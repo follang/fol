@@ -1,0 +1,60 @@
+use warn: std = {fmt/log}
+use assert: std = {system/debug}
+use locker: loc = {../file/path}
+use osth: std = {os/path}
+use log, sync, color: std = {fmt/log}, {os/sync}, {fmt/color};
+
+pro dirent: non = {
+    def 'obj': alt = 'rec[obj]'
+    def '*'(a: ptr): mac = '.pointer_value'
+
+    typ[pub] file: obj = {
+        +var name: str;
+        +var path: str;
+        +var file: osth::stat.fileinfo;
+        +var mode: osth::stat.filemode;
+        +var[mut] number: num;
+        +var[mut] active: bol;
+        +var[mut] select: bol;
+        +var[mut] ignore: bol;
+        +var[mut] nick: str;
+    }
+
+    +fun (file)'$': str = { self.path }
+    +fun (file)'%': str = { self.name }
+    +fun (file)'~': str = { self.nick }
+    +fun (file)isDir(): bol = { result = self.file.ModeDir }
+    +fun (file)isRegular(): bol = { result = self.file.ModeType }
+    +fun (file)isSymlink(): bol = { result = self.file.ModeSymlink }
+    +fun (file)isHidden(): bol = { result = false | self%[0] == "." | true }
+    +fun (file)fileExte(): str = { result = getExte(self%) | when(nil) | "none" }
+    +fun (file)fileIcon(): str = { result = getIcon(self%) | when(nil) | "none" }
+    +fun (file)fileType(): str = { result = getType(self%) | when(nil) | "none" }
+    +fun (file)size(): int = { result = getSize(self%) | when(nil or 0) | 1 }
+    +fun (file)parent(): set[str, str] = { result[0] =  osth::base( self.path ), result[1] = osth::pathonly( self.path ) }
+    +fun (file)siblings(): set[str, str] = { result[0] = elements( this.parent[1]) }
+    +fun (file)ancestors(): set[str, str] = { result[0] = ancestors(this.parent[1] ) }
+    +fun (file)childrens(): set[str, str] = { result[0] = elements(this)}
+
+    +fun '%'(a, b: num): num = { result = a + b }
+
+    typ[pub] files: seq[file]
+
+    +fun (files)String(i: int): int = { result = this[i]% }
+    +fun (files)Len(): int = { result = self.len() }
+    +fun (files)Less(i, j: int): bol = { result = self[i]% < self[j]% }
+    +fun (files)Swap(i, j: int) = { self[i], self[j] = self[j], self[i] }
+
+    +fun makeFile(path: str): file = {
+        var dir: str = ospath.normalizePath(path) | check(nonzero) | report
+        var name: str = extractFileName(dir) | when(nil) | "/"
+        var dirent: dirent = {
+            name = name
+            path = dir
+            file = ospath.fileinfo(dir)
+            mode = ospath.filemode(dir)
+            nick = name
+        }
+        result = dirent
+    }
+}
