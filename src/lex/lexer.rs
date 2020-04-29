@@ -54,7 +54,7 @@ impl Token {
 
 impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}   {}", self.loc, self.con)
+        write!(f, "{}   {}      {}", self.loc, self.con, self.tok)
     }
 }
 
@@ -69,44 +69,35 @@ pub fn tokenize(mut input: &str) -> impl Iterator<Item = Token> + '_ {
     })
 }
 
-/// Creates an iterator that produces tokens from the input string.
-// pub fn reader<'a>(inp: &'a str) -> impl Iterator<Item = Token> + '_ {
-    // let index: usize = 0;
-    // let mut red = reader::readerize(&inp).peekable();
-    // let mut input = &red.peek().unwrap().data;
-    // let file = red.peek().unwrap().name.clone();
-    // let mut loc = locate::LOCATION::new(&file);
+// pub fn reader2<'a, I>(mut inp: I) -> impl Iterator<Item = Token> +'a
+// where
+    // I: Iterator<Item = &'a reader::READER>,
+// {
+    // let red = inp.by_ref().next();
+    // let mut loc = locate::LOCATION::new(&red.unwrap().name);
     // std::iter::from_fn(move || {
-        // if input.is_empty() {
+        // if red.unwrap().data.is_empty() {
             // return None;
         // }
-        // let token = parts::Part::new(&input).advance_token(&mut loc);
-        // input = &input[token.len..].to_string();
+        // let token = parts::Part::new(&red.unwrap().data).advance_token(&mut loc);
+        // let a = red.unwrap().data[token.len..].to_string();
+        // red.unwrap().set(a);
         // Some(token)
     // })
 // }
 
+
+
 /// Creates an iterator that produces tokens from the input string.
-pub fn read_dir<'a>(inp: &'a str) -> impl Iterator<Item = Token> + '_ {
-    let mut red = reader::readerize(&inp).next();
-    let mut input = &red.unwrap().data;
-    let mut file = &red.unwrap().name;
-    let mut loc = locate::LOCATION::new(&file);
+pub fn reader(red: &mut reader::READER) -> impl Iterator<Item = Token> + '_ {
+    let name = &red.path;
+    let mut loc = locate::LOCATION::new(name);
     std::iter::from_fn(move || {
-        if input.is_empty() {
-            if red == None {
-                return None
-            } else {
-                red = reader::readerize(&inp).next();
-                input = &red.unwrap().data;
-                file = &red.unwrap().name;
-                loc = locate::LOCATION::new(&file);
-                let tok = Token::new(token::KEYWORD::void_(token::VOID::endfile_), loc.clone(), "".to_string(), 0);
-                return Some(tok)
-            }
+        if red.data.is_empty() {
+            return None;
         }
-        let token = parts::Part::new(&input).advance_token(&mut loc);
-        input = &input[token.len..].to_string();
+        let token = parts::Part::new(&red.data).advance_token(&mut loc);
+        red.data = red.data[token.len..].to_string();
         Some(token)
     })
 }
@@ -118,9 +109,12 @@ impl parts::Part<'_> {
     fn advance_token(&mut self, loc: &mut locate::LOCATION) -> Token {
         let tok = assign_(ASSIGN::var_);
         let first_char = self.bumpit(loc).unwrap();
-        let result = Token::new(tok, loc.clone(), self.curr_char().to_string(), 1);
+        let mut result = Token::new(tok, loc.clone(), self.curr_char().to_string(), 1);
         if is_eol(&first_char) {
             loc.new_line()
+        }
+        if is_digit(&first_char) {
+            result.tok = assign_(ASSIGN::use_)
         }
         return result
     }

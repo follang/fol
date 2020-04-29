@@ -23,15 +23,15 @@ fn main() {
     // }
     // println!("-----------------------------------------------------------------");
 
-    // for e in reader::readerize("./dirk.mod") {
+    for mut e in reader::readerize("./dirk.mod") {
         // println!("{}/{}", e.name(), e.file());
-    // }
-    // println!("-----------------------------------------------------------------");
-    for e in lexer::tokenize("./dirk.mod") {
-        println!("{}", e)
+        println!("-----------------------------------------------------------------");
+        for p in lexer::reader(&mut e) {
+            println!("{}", p)
+        }
     }
-    println!("-----------------------------------------------------------------");
-    // for e in lexer::read_dir("./dirk.mod") {
+    // println!("-----------------------------------------------------------------");
+    // for e in lexer::tokenize("./dirk.mod") {
         // println!("{}", e)
     // }
 }

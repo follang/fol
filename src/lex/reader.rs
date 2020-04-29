@@ -46,6 +46,7 @@ pub fn read_string_file(s: &str) -> Result<String, io::Error> {
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct READER {
+    pub path: String,
     pub file: String,
     pub name: String,
     pub data: String,
@@ -92,8 +93,11 @@ impl READER {
             let name: String = fs::canonicalize(&f).unwrap()
                 .as_path().parent().unwrap().to_str().unwrap().to_string()
                 .trim_start_matches(&e).to_string();
+            let path: String = fs::canonicalize(&f).unwrap()
+                .as_path().to_str().unwrap().to_string()
+                .trim_start_matches(&e).to_string();
             let data: String = read_string_file(f).unwrap();
-            let reader = READER{ file, name, data };
+            let reader = READER{ path, file, name, data };
             vec.push(reader);
         }
         return vec
@@ -109,5 +113,9 @@ impl READER {
 
     pub fn data(&self) -> &String {
         &self.data
+    }
+
+    pub fn set(&mut self, a: String) {
+        self.data = a;
     }
 }
