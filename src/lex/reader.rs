@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 use std::fs;
+use std::str;
 use std::io;
 use std::fs::File;
 use std::io::Read;
@@ -15,14 +16,15 @@ pub fn file_list(s: &str) -> Vec<String> {
     let mut avec = Vec::new();
 
     for path in paths {
-        let filepath: String = path.unwrap().path().to_str().unwrap().to_string();
-        let filename: String = Path::new(&filepath).file_name().and_then(OsStr::to_str).unwrap().to_string();
-        if Regex::new(r"(\.mod)$").unwrap().is_match(&filename) { continue }
+        let filepath: String = path.as_ref().unwrap().path().to_str().unwrap().to_string();
+        let filename: String = path.as_ref().unwrap().file_name().to_str().unwrap().to_string();
+        // println!("{}", path);
         if Path::new(&filepath).is_dir() {
+            if Regex::new(r"(\.mod)$").unwrap().is_match(&filename) { continue }
             let newvec = file_list(&filepath);
             avec.extend(newvec);
         } else {
-            let filetype: String = Path::new(&filepath).extension().and_then(OsStr::to_str).unwrap().to_string();
+            let filetype: String = path.unwrap().path().extension().and_then(OsStr::to_str).unwrap().to_string();
             if filetype != "fol" { continue }
             avec.push(filepath);
         }
@@ -36,18 +38,47 @@ pub fn read_file(s: &str) -> Result<Vec<u8>, io::Error> {
     Ok(buffer)
 }
 
-pub fn in_module(s: &str, p: &str) -> String {
-    let entry = fs::canonicalize(s).unwrap().as_path().parent().unwrap().to_str().unwrap().to_string();
-    let trimed = entry.trim_start_matches(p).to_string();
-    let trimed = trimed.trim_start_matches("/").to_string();
-    return trimed
+pub fn read_string_file(s: &str) -> Result<String, io::Error> {
+    let mut buffer = String::new();
+    File::open(s)?.read_to_string(&mut buffer)?;
+    Ok(buffer)
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct READER {
-    path: String,
-    file: String,
-    name: String,
-    data: Vec<u8>,
+    pub file: String,
+    pub name: String,
+    pub data: String,
+}
+
+
+// pub struct Mod {
+    // pub amod: Vec<READER>,
+    // index: usize
+// }
+
+// impl Iterator for Mod {
+    // type Item = READER;
+    // fn next(&mut self) -> Option<Self::Item> {
+        // while self.index < self.amod.len() - 1 {
+            // let prev = self.amod[self.index].clone();
+            // self.index += 1;
+            // Some(prev);
+        // }
+        // None
+    // }
+// }
+
+/// Creates an iterator that produces tokens from the input string.
+pub fn readerize(input: &str) -> impl Iterator<Item = READER> + '_ {
+    let red = READER::init(&input);
+    let mut index: usize = 0;
+    std::iter::from_fn(move || {
+        if index >= red.len() { return None; }
+        let prev = red[index].clone();
+        index += 1;
+        Some(prev)
+    })
 }
 
 impl READER {
@@ -55,18 +86,17 @@ impl READER {
         let mut vec = Vec::new();
         let e = fs::canonicalize(s.to_string()).unwrap().as_path().to_str().unwrap().to_string();
         for f in file_list(&e).iter(){
-            let path: String = f.to_string();
-            let file: String = Path::new(&f).file_name().and_then(OsStr::to_str).unwrap().to_string();
-            let name: String = in_module(&f, &e);
-            let data: Vec<u8> = read_file(f).unwrap();
-            let reader = READER{ path, file, name, data };
+            let file : String = Path::new(&f).file_name()
+                .and_then(OsStr::to_str).unwrap().to_string()
+                .trim_end_matches(".fol").to_string();
+            let name: String = fs::canonicalize(&f).unwrap()
+                .as_path().parent().unwrap().to_str().unwrap().to_string()
+                .trim_start_matches(&e).to_string();
+            let data: String = read_string_file(f).unwrap();
+            let reader = READER{ file, name, data };
             vec.push(reader);
         }
         return vec
-    }
-
-    pub fn path(&self) -> &String {
-        &self.path
     }
 
     pub fn file(&self) -> &String {
@@ -77,7 +107,7 @@ impl READER {
         &self.name
     }
 
-    pub fn data(&self) -> &Vec<u8> {
+    pub fn data(&self) -> &String {
         &self.data
     }
 }
