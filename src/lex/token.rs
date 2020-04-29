@@ -6,6 +6,7 @@
 
 use std::fmt;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum KEYWORD {
     assign_(ASSIGN),
     options_(OPTION),
@@ -14,6 +15,7 @@ pub enum KEYWORD {
     form_(FORM),
     ident_(IDENT),
     symbol_(SYMBOL),
+    operator_(SYMBOL),
     void_(VOID),
     encap_(ENCAP),
     number_(NUMBER),
@@ -21,6 +23,7 @@ pub enum KEYWORD {
 }
 
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum NUMBER {
     float_,
     decimal_,
@@ -29,23 +32,27 @@ pub enum NUMBER {
     binary_
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum VOID {
     space_,
     endline_{ terminated: bool },
     endfile_,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum IDENT {
     ident_,
     silent_
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ENCAP {
     string_,
     char_,
     comment_,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum SYMBOL {
     roundBO_,
     roundBC_,
@@ -56,12 +63,12 @@ pub enum SYMBOL {
     angleBO_,
     angleBC_,
     dot_,
-    equal_,
     comma_,
     colon_,
     semi_,
     escape_,
     pipe_,
+    equal_,
     plus_,
     minus_,
     under_,
@@ -77,9 +84,9 @@ pub enum SYMBOL {
     at_,
     hash_,
     dollar_,
-    euro_
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum BUILDIN {
     not_,
     or_,
@@ -115,6 +122,7 @@ pub enum BUILDIN {
     let_
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ASSIGN {
     use_,
     def_,
@@ -126,6 +134,7 @@ pub enum ASSIGN {
     ali_
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum TYPE {
     int_,
     flt_,
@@ -158,6 +167,7 @@ pub enum TYPE {
     blk_
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum OPTION {
     mut_,
     imu_,
@@ -168,6 +178,7 @@ pub enum OPTION {
     hid_,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum FORM {
     intA_,
     int8_,
