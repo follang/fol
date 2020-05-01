@@ -6,7 +6,7 @@ use std::fmt;
 
 /// Peekable iterator over a char sequence.
 /// Next characters can be peeked via `nth_char` method, and position can be shifted forward via `bump` method.
-pub(crate) struct Part<'a> {
+pub(crate) struct PART<'a> {
     initial_len: usize,
     content: String,
     restof: Chars<'a>,
@@ -16,15 +16,15 @@ pub(crate) struct Part<'a> {
 pub(crate) const EOF_CHAR: char = '\0';
 
 
-impl fmt::Display for Part<'_> {
+impl fmt::Display for PART<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.first())
     }
 }
 
-impl<'a> Part<'a> {
-    pub(crate) fn new(input: &'a str) -> Part<'a> {
-        Part {
+impl<'a> PART<'a> {
+    pub(crate) fn new(input: &'a str) -> PART<'a> {
+        PART {
             initial_len: input.len(),
             content: String::new(),
             restof: input.chars(),
