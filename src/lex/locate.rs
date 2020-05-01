@@ -14,7 +14,7 @@ pub struct LOCATION {
 
 impl fmt::Display for LOCATION {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "file: {}, row: {}, col: {}", self.file, self.row, self.col)
+        write!(f, "file: {}   row: {: <4}   col: {: <3}   len: {: <10}", self.file, self.row, self.col, self.len)
     }
 }
 
@@ -31,7 +31,7 @@ impl LOCATION {
 
 impl LOCATION {
     pub fn new(file: &str) -> Self {
-        LOCATION { file: file.to_string(), row: 1, col: 0, len: 0 }
+        LOCATION { file: file.to_string(), row: 1, col: 0, len: 1 }
     }
 
     pub fn row(&self) -> usize {
@@ -53,15 +53,17 @@ impl LOCATION {
 
     pub fn reset(&mut self) {
         self.row = 1;
-        self.col = 0;
+        self.col = 1;
+        self.len = 1;
     }
 
-    pub fn set_len(&mut self, i: usize) {
-        self.len = i;
+    pub fn new_word(&mut self) {
+        self.len = 0;
     }
 
     pub fn new_char(&mut self) {
         self.col += 1;
+        self.len += 1;
     }
 
     pub fn new_line(&mut self) {

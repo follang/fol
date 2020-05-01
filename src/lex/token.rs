@@ -18,13 +18,13 @@ pub enum KEYWORD {
     operator_(SYMBOL),
     void_(VOID),
     encap_(ENCAP),
-    number_(NUMBER),
+    digit_(DIGIT),
     illegal_
 }
 
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum NUMBER {
+pub enum DIGIT {
     float_,
     decimal_,
     hexal_,
@@ -198,8 +198,16 @@ impl fmt::Display for KEYWORD {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use KEYWORD::*;
         match self {
-            assign_(ASSIGN::use_) => write!(f, "'{}'", "use"),
-            _ => write!(f, "'{}'", "ILLEGAL")
+            assign_(ASSIGN::use_) => write!(f, "{: <10} {: <10}", "ASSIGN", "use"),
+            assign_(ASSIGN::var_) => write!(f, "{: <10} {: <10}", "ASSIGN", "var"),
+            digit_(DIGIT::decimal_) => write!(f, "{: <10} {: <10}", "DIGIT", "decimal"),
+            encap_(ENCAP::string_) => write!(f, "{: <10} {: <10}", "ENCAP", "string"),
+            void_(VOID::endline_ { terminated: false } ) => write!(f, "{: <10} {: <10}", "VOID", "eol(nont)"),
+            void_(VOID::endline_ { terminated: true } ) => write!(f, "{: <10} {: <10}", "VOID", "eol(term)"),
+            void_(VOID::space_ ) => write!(f, "{: <10} {: <10}", "VOID", "space"),
+            symbol_(SYMBOL::curlyBC_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "{"),
+            ident_(IDENT::ident_ ) => write!(f, "{: <10} {: <10}", "IDENT", "ident"),
+            _ => write!(f, "{: <10} {: <10}", "ILLEGAL", "")
         }
     }
 }
