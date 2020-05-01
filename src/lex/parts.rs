@@ -5,7 +5,7 @@ use crate::lex::locate;
 use std::fmt;
 
 /// Peekable iterator over a char sequence.
-/// Next characters can be peeked via `nth_char` method, and position can be shifted forward via `bump` method.
+/// Next characters can be peeked via `nth` method, and position can be shifted forward via `bump` method.
 pub(crate) struct PART<'a> {
     initial_len: usize,
     content: String,
@@ -18,7 +18,7 @@ pub(crate) const EOF_CHAR: char = '\0';
 
 impl fmt::Display for PART<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.first())
+        write!(f, "{}", self.next_char())
     }
 }
 
@@ -32,25 +32,21 @@ impl<'a> PART<'a> {
         }
     }
 
+    /// Returns nth character relative to the current part position, if position doesn't exist, `EOF_CHAR` is returned.
+    /// However, getting `EOF_CHAR` doesn't always mean actual end of file, it should be checked with `is_eof` method.
+    fn nth(&self, n: usize) -> char {
+        self.restof().nth(n).unwrap_or(EOF_CHAR)
+    }
+
     /// Returns the last eaten symbol
     pub(crate) fn curr_char(&self) -> char {
         self.curr_char
     }
 
-    /// Returns nth character relative to the current part position, if position doesn't exist, `EOF_CHAR` is returned.
-    /// However, getting `EOF_CHAR` doesn't always mean actual end of file, it should be checked with `is_eof` method.
-    fn nth_char(&self, n: usize) -> char {
-        self.restof().nth(n).unwrap_or(EOF_CHAR)
-    }
 
     /// Peeks the next symbol from the input stream without consuming it.
-    pub(crate) fn first(&self) -> char {
-        self.nth_char(0)
-    }
-
-    /// Peeks the second symbol from the input stream without consuming it.
-    pub(crate) fn second(&self) -> char {
-        self.nth_char(1)
+    pub(crate) fn next_char(&self) -> char {
+        self.nth(0)
     }
 
     /// Returns the content of the part/chunk

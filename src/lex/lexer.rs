@@ -19,7 +19,7 @@ pub fn is_digit(ch: &char) -> bool {
     return '0' <= *ch && *ch <= '9'
 }
 
-pub fn is_alphabetic(ch: &char) -> bool {
+pub fn is_alpha(ch: &char) -> bool {
     return 'a' <= *ch && *ch <= 'z' || 'A' <= *ch && *ch <= 'Z' || *ch == '_'
 }
 
@@ -35,7 +35,7 @@ pub fn is_hex_digit(ch: &char) -> bool {
 }
 
 pub fn is_alphanumeric(ch: &char) -> bool {
-    return is_digit(ch) || is_alphabetic(ch)
+    return is_digit(ch) || is_alpha(ch)
 }
 
 pub struct LEX {
@@ -69,15 +69,15 @@ impl fmt::Display for LEX {
 }
 
 /// Creates an iterator that produces tokens from the input string.
-pub fn tokenize(mut input: &str) -> impl Iterator<Item = LEX> + '_ {
-    let mut loc = locate::LOCATION::new(&input);
-    std::iter::from_fn(move || {
-        if input.is_empty() { return None; }
-        let token = parts::PART::new(&input).advance_token(&mut loc);
-        input = &input[token.loc.len()..];
-        Some(token)
-    })
-}
+// pub fn tokenize(mut input: &str) -> impl Iterator<Item = LEX> + '_ {
+    // let mut loc = locate::LOCATION::new(&input);
+    // std::iter::from_fn(move || {
+        // if input.is_empty() { return None; }
+        // let token = parts::PART::new(&input).advance_token(&mut loc);
+        // input = &input[token.loc.len()..];
+        // Some(token)
+    // })
+// }
 
 // pub fn reader2<'a, I>(mut inp: I) -> impl Iterator<Item = LEX> +'a
 // where
@@ -99,7 +99,19 @@ pub fn tokenize(mut input: &str) -> impl Iterator<Item = LEX> + '_ {
 
 
 /// Creates an iterator that produces tokens from the input string.
-pub fn reader(red: &mut reader::READER) -> impl Iterator<Item = LEX> + '_ {
+pub fn vectorize(red: &mut reader::READER) -> Vec<LEX> {
+    let mut vec: Vec<LEX> = Vec::new();
+    let mut loc = locate::LOCATION::new(&red.path);
+    while !red.data.is_empty() {
+        let token = parts::PART::new(&red.data).advance_token(&mut loc);
+        red.data = red.data[token.loc.len()..].to_string();
+        vec.push(token)
+    }
+    vec
+}
+
+/// Creates an iterator that produces tokens from the input string.
+pub fn iteratize(red: &mut reader::READER) -> impl Iterator<Item = LEX> + '_ {
     let mut loc = locate::LOCATION::new(&red.path);
     std::iter::from_fn(move || {
         if red.data.is_empty() {
@@ -119,7 +131,7 @@ impl parts::PART<'_> {
         F: FnMut(char) -> bool,
         {
             let mut eaten: usize = 0;
-            while predicate(self.first()) && !self.is_eof() {
+            while predicate(self.next_char()) && !self.is_eof() {
                 eaten += 1;
                 self.bump();
             }
@@ -129,11 +141,9 @@ impl parts::PART<'_> {
     /// Parses a token from the input string.
     fn advance_token(&mut self, loc: &mut locate::LOCATION) -> LEX {
         loc.new_word();
-        let key = illegal_;
-        let first_char = self.bumpit(loc).unwrap();
-        let mut result = LEX::new(key, loc.clone(), self.curr_char().to_string());
-        // println!("{}", &first_char);
-        // println!("{}", self.first());
+        let key = illegal;
+        let first_char = self.bump().unwrap();
+        let mut result = LEX::new(key, loc.clone(), String::new());
         if is_eol(&first_char) {
             result.endline(self, false);
         } else if is_space(&first_char) {
@@ -144,48 +154,75 @@ impl parts::PART<'_> {
             result.digit(self);
         } else if is_symbol(&first_char) {
             result.symbol(self);
-        } else if is_alphabetic(&first_char) {
+        } else if is_alpha(&first_char) {
             result.alpha(self);
         }
         *loc = result.loc.clone();
+        result.loc.adjust();
         return result
     }
 }
 
 impl LEX {
     fn endline(&mut self, part: &mut parts::PART, terminated: bool) {
-        self.con = " ".to_string();
         self.loc.new_line();
-        self.key = void_(VOID::endline_ {terminated});
-        while is_eol(&part.first()) || is_space(&part.first()) {
-            if is_eol(&part.first()) {
-                self.loc.new_line();
-            }
+        self.key = void(VOID::endline_ {terminated});
+        while is_eol(&part.next_char()) || is_space(&part.next_char()) {
+            if is_eol(&part.next_char()) { self.loc.new_line(); }
             part.bumpit(&mut self.loc);
         }
+        self.con = " ".to_string();
     }
     fn space(&mut self, part: &mut parts::PART) {
-        while is_space(&part.first()) {
+        while is_space(&part.next_char()) {
             part.bumpit(&mut self.loc);
         }
-        if is_eol(&part.first()) {
+        if is_eol(&part.next_char()) {
             part.bumpit(&mut self.loc);
             self.endline(part, false);
             return
         }
-        self.key = void_(VOID::space_);
+        self.key = void(VOID::space_);
+        self.con = " ".to_string();
     }
     fn digit(&mut self, part: &mut parts::PART) {
-        self.key = digit_(DIGIT::decimal_);
+        self.push_char(part);
+        while is_digit(&part.next_char()) {
+            // part.bumpit(&mut self.loc);
+            // self.push_char(part);
+            self.push_bump(part);
+        }
+        self.key = literal(LITERAL::decimal_);
     }
     fn encap(&mut self, part: &mut parts::PART) {
-        self.key = encap_(ENCAP::string_);
+        self.push_char(part);
+        self.key = literal(LITERAL::string_);
     }
     fn symbol(&mut self, part: &mut parts::PART) {
-        self.key = symbol_(SYMBOL::curlyBC_);
+        self.push_char(part);
+        self.key = symbol(SYMBOL::curlyBC_);
+        match part.curr_char() {
+            '{' | '[' | '(' => self.loc.deepen(),
+            '}' | ']' | ')' => self.loc.soften(),
+            _ => {}
+        }
     }
     fn alpha(&mut self, part: &mut parts::PART) {
-        self.key = ident_(IDENT::ident_);
+        self.push_char(part);
+        while is_alpha(&part.next_char()) {
+            // part.bumpit(&mut self.loc);
+            // self.push_char(part);
+            self.push_bump(part);
+        }
+        self.key = ident;
+    }
+
+    fn push_char(&mut self, part: &mut parts::PART) {
+        self.con.push_str(&part.curr_char().to_string());
+    }
+    fn push_bump(&mut self, part: &mut parts::PART) {
+        part.bumpit(&mut self.loc);
+        self.con.push_str(&part.curr_char().to_string());
     }
 }
 

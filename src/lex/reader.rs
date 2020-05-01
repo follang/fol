@@ -32,7 +32,7 @@ pub fn file_list(s: &str) -> Vec<String> {
     return avec
 }
 
-pub fn read_file(s: &str) -> Result<Vec<u8>, io::Error> {
+pub fn read_vec_file(s: &str) -> Result<Vec<u8>, io::Error> {
     let mut buffer = Vec::new();
     File::open(s)?.read_to_end(&mut buffer)?;
     Ok(buffer)

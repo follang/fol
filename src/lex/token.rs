@@ -8,24 +8,28 @@ use std::fmt;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum KEYWORD {
-    assign_(ASSIGN),
-    options_(OPTION),
-    buildin_(BUILDIN),
-    types_(TYPE),
-    form_(FORM),
-    ident_(IDENT),
-    symbol_(SYMBOL),
-    operator_(SYMBOL),
-    void_(VOID),
-    encap_(ENCAP),
-    digit_(DIGIT),
-    illegal_
+    assign(ASSIGN),
+    options(OPTION),
+    ident,
+    types(TYPE),
+    form(FORM),
+    literal(LITERAL),
+    buildin(BUILDIN),
+    comment,
+    symbol(SYMBOL),
+    operator(SYMBOL),
+    bracket(SYMBOL),
+    void(VOID),
+    illegal
 }
 
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum DIGIT {
+pub enum LITERAL {
+    string_,
+    char_,
     float_,
+    bool_,
     decimal_,
     hexal_,
     octal_,
@@ -37,19 +41,6 @@ pub enum VOID {
     space_,
     endline_{ terminated: bool },
     endfile_,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum IDENT {
-    ident_,
-    silent_
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum ENCAP {
-    string_,
-    char_,
-    comment_,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -69,6 +60,8 @@ pub enum SYMBOL {
     escape_,
     pipe_,
     equal_,
+    greater_,
+    less_,
     plus_,
     minus_,
     under_,
@@ -190,6 +183,7 @@ pub enum FORM {
     unt16_,
     unt32_,
     unt64_,
+    fltA_,
     flt32_,
     flt64_,
 }
@@ -198,16 +192,17 @@ impl fmt::Display for KEYWORD {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use KEYWORD::*;
         match self {
-            assign_(ASSIGN::use_) => write!(f, "{: <10} {: <10}", "ASSIGN", "use"),
-            assign_(ASSIGN::var_) => write!(f, "{: <10} {: <10}", "ASSIGN", "var"),
-            digit_(DIGIT::decimal_) => write!(f, "{: <10} {: <10}", "DIGIT", "decimal"),
-            encap_(ENCAP::string_) => write!(f, "{: <10} {: <10}", "ENCAP", "string"),
-            void_(VOID::endline_ { terminated: false } ) => write!(f, "{: <10} {: <10}", "VOID", "eol(nont)"),
-            void_(VOID::endline_ { terminated: true } ) => write!(f, "{: <10} {: <10}", "VOID", "eol(term)"),
-            void_(VOID::space_ ) => write!(f, "{: <10} {: <10}", "VOID", "space"),
-            symbol_(SYMBOL::curlyBC_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "{"),
-            ident_(IDENT::ident_ ) => write!(f, "{: <10} {: <10}", "IDENT", "ident"),
-            _ => write!(f, "{: <10} {: <10}", "ILLEGAL", "")
+            assign(ASSIGN::use_) => write!(f, "{: <10} {: <10}", "ASSIGN", "use"),
+            assign(ASSIGN::var_) => write!(f, "{: <10} {: <10}", "ASSIGN", "var"),
+            literal(LITERAL::decimal_) => write!(f, "{: <10} {: <10}", "LITERAL", "decimal"),
+            literal(LITERAL::string_) => write!(f, "{: <10} {: <10}", "LITERAL", "string"),
+            void(VOID::endline_ { terminated: false } ) => write!(f, "{: <10} {: <10}", "VOID", "eol(nont)"),
+            void(VOID::endline_ { terminated: true } ) => write!(f, "{: <10} {: <10}", "VOID", "eol(term)"),
+            void(VOID::space_ ) => write!(f, "{: <10} {: <10}", "VOID", "space"),
+            symbol(SYMBOL::curlyBC_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "{"),
+            ident => write!(f, "{: <10} {: <10}", "IDENTIFIER", ""),
+            illegal => write!(f, "{: <10} {: <10}", "ILLEGAL", ""),
+            _ => write!(f, "{: <10} {: <10}", "non-def", "")
         }
     }
 }
