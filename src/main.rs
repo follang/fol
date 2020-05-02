@@ -26,9 +26,19 @@ fn main() {
 
     for mut e in reader::readerize("./dirk.mod") {
         // println!("{}/{}", e.name(), e.file());
-        println!("-----------------------------------------------------------------");
-        for p in lexer::reader(&mut e) {
+        // for p in lexer::iteratize(&mut e) {
+            // println!("{}", p)
+        // }
+        for p in lexer::vectorize(&mut e).iter() {
             println!("{}", p)
         }
     }
+
+    // let a = [1, 2, 3, 4, 5];
+    // let mut b = a.iter().peekable();
+    // println!("{}", b.peek().nth(0).unwrap());
+    // println!("{}", b.nth(0).unwrap());
+    // println!("{}", b.nth(0).unwrap());
+
+
 }

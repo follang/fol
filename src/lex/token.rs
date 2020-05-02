@@ -8,24 +8,28 @@ use std::fmt;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum KEYWORD {
-    assign_(ASSIGN),
-    options_(OPTION),
-    buildin_(BUILDIN),
-    types_(TYPE),
-    form_(FORM),
-    ident_(IDENT),
-    symbol_(SYMBOL),
-    operator_(SYMBOL),
-    void_(VOID),
-    encap_(ENCAP),
-    digit_(DIGIT),
-    illegal_
+    assign(ASSIGN),
+    options(OPTION),
+    ident,
+    types(TYPE),
+    form(FORM),
+    literal(LITERAL),
+    buildin(BUILDIN),
+    comment,
+    symbol(SYMBOL),
+    operator(SYMBOL),
+    bracket(SYMBOL),
+    void(VOID),
+    illegal
 }
 
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum DIGIT {
+pub enum LITERAL {
+    string_,
+    char_,
     float_,
+    bool_,
     decimal_,
     hexal_,
     octal_,
@@ -37,19 +41,6 @@ pub enum VOID {
     space_,
     endline_{ terminated: bool },
     endfile_,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum IDENT {
-    ident_,
-    silent_
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum ENCAP {
-    string_,
-    char_,
-    comment_,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -69,6 +60,8 @@ pub enum SYMBOL {
     escape_,
     pipe_,
     equal_,
+    greater_,
+    less_,
     plus_,
     minus_,
     under_,
@@ -190,6 +183,7 @@ pub enum FORM {
     unt16_,
     unt32_,
     unt64_,
+    fltA_,
     flt32_,
     flt64_,
 }
@@ -198,16 +192,55 @@ impl fmt::Display for KEYWORD {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use KEYWORD::*;
         match self {
-            assign_(ASSIGN::use_) => write!(f, "{: <10} {: <10}", "ASSIGN", "use"),
-            assign_(ASSIGN::var_) => write!(f, "{: <10} {: <10}", "ASSIGN", "var"),
-            digit_(DIGIT::decimal_) => write!(f, "{: <10} {: <10}", "DIGIT", "decimal"),
-            encap_(ENCAP::string_) => write!(f, "{: <10} {: <10}", "ENCAP", "string"),
-            void_(VOID::endline_ { terminated: false } ) => write!(f, "{: <10} {: <10}", "VOID", "eol(nont)"),
-            void_(VOID::endline_ { terminated: true } ) => write!(f, "{: <10} {: <10}", "VOID", "eol(term)"),
-            void_(VOID::space_ ) => write!(f, "{: <10} {: <10}", "VOID", "space"),
-            symbol_(SYMBOL::curlyBC_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "{"),
-            ident_(IDENT::ident_ ) => write!(f, "{: <10} {: <10}", "IDENT", "ident"),
-            _ => write!(f, "{: <10} {: <10}", "ILLEGAL", "")
+            literal(LITERAL::string_) => write!(f, "{: <10} {: <10}", "LITERAL", "string"),
+            literal(LITERAL::char_) => write!(f, "{: <10} {: <10}", "LITERAL", "char"),
+            literal(LITERAL::float_) => write!(f, "{: <10} {: <10}", "LITERAL", "float"),
+            literal(LITERAL::decimal_) => write!(f, "{: <10} {: <10}", "LITERAL", "decimal"),
+            literal(LITERAL::hexal_) => write!(f, "{: <10} {: <10}", "LITERAL", "hexal"),
+            literal(LITERAL::octal_) => write!(f, "{: <10} {: <10}", "LITERAL", "octal"),
+            literal(LITERAL::binary_) => write!(f, "{: <10} {: <10}", "LITERAL", "binary_"),
+            void(VOID::endline_ { terminated: false } ) => write!(f, "{: <10} {: <10}", "VOID", "eol(nont)"),
+            void(VOID::endline_ { terminated: true } ) => write!(f, "{: <10} {: <10}", "VOID", "eol(term)"),
+            void(VOID::space_ ) => write!(f, "{: <10} {: <10}", "VOID", "space"),
+            void(VOID::endfile_ ) => write!(f, "{: <10} {: <10}", "VOID", "EOF"),
+            symbol(SYMBOL::curlyBC_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "curlyBC_"),
+            symbol(SYMBOL::curlyBO_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "curlyBO_"),
+            symbol(SYMBOL::squarBC_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "squarBC_"),
+            symbol(SYMBOL::squarBO_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "squarBO_"),
+            symbol(SYMBOL::roundBC_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "roundBC_"),
+            symbol(SYMBOL::roundBO_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "roundBO_"),
+            symbol(SYMBOL::angleBC_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "angleBC_"),
+            symbol(SYMBOL::angleBO_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "angleBO_"),
+            symbol(SYMBOL::dot_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "dot_"),
+            symbol(SYMBOL::comma_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "comma_"),
+            symbol(SYMBOL::colon_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "colon_"),
+            symbol(SYMBOL::semi_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "semi_"),
+            symbol(SYMBOL::escape_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "escape_"),
+            symbol(SYMBOL::pipe_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "pipe_"),
+            symbol(SYMBOL::equal_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "equal_"),
+            symbol(SYMBOL::greater_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "greater_"),
+            symbol(SYMBOL::less_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "less_"),
+            symbol(SYMBOL::plus_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "plus_"),
+            symbol(SYMBOL::minus_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "minus_"),
+            symbol(SYMBOL::under_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "under_"),
+            symbol(SYMBOL::star_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "star_"),
+            symbol(SYMBOL::home_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "home_"),
+            symbol(SYMBOL::root_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "root_"),
+            symbol(SYMBOL::percent_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "percent_"),
+            symbol(SYMBOL::degree_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "degree_"),
+            symbol(SYMBOL::carret_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "carret_"),
+            symbol(SYMBOL::query_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "query_"),
+            symbol(SYMBOL::bang_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "bang_"),
+            symbol(SYMBOL::and_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "and_"),
+            symbol(SYMBOL::at_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "at_"),
+            symbol(SYMBOL::hash_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "hash_"),
+            symbol(SYMBOL::dollar_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "dollar_"),
+            assign(ASSIGN::use_) => write!(f, "{: <10} {: <10}", "ASSIGN", "use"),
+            assign(ASSIGN::var_) => write!(f, "{: <10} {: <10}", "ASSIGN", "var"),
+            ident => write!(f, "{: <10} {: <10}", "IDENT", ""),
+            comment => write!(f, "{: <10} {: <10}", "COMMENT", ""),
+            illegal => write!(f, "{: <10} {: <10}", "ILLEGAL", ""),
+            _ => write!(f, "{: <10} {: <10}", "non-def", "")
         }
     }
 }

@@ -32,7 +32,7 @@ pub fn file_list(s: &str) -> Vec<String> {
     return avec
 }
 
-pub fn read_file(s: &str) -> Result<Vec<u8>, io::Error> {
+pub fn read_vec_file(s: &str) -> Result<Vec<u8>, io::Error> {
     let mut buffer = Vec::new();
     File::open(s)?.read_to_end(&mut buffer)?;
     Ok(buffer)
@@ -50,6 +50,7 @@ pub struct READER {
     pub file: String,
     pub name: String,
     pub data: String,
+    pub past: String,
 }
 
 
@@ -97,7 +98,7 @@ impl READER {
                 .as_path().to_str().unwrap().to_string()
                 .trim_start_matches(&e).to_string();
             let data: String = read_string_file(f).unwrap();
-            let reader = READER{ path, file, name, data };
+            let reader = READER{ path, file, name, data, past: String::new() };
             vec.push(reader);
         }
         return vec
