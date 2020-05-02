@@ -2,6 +2,7 @@
 
 use std::str::Chars;
 use crate::lex::locate;
+use crate::lex::reader;
 use std::fmt;
 
 /// Peekable iterator over a char sequence.
@@ -10,7 +11,9 @@ pub(crate) struct PART<'a> {
     initial_len: usize,
     content: String,
     restof: Chars<'a>,
+    pastof: Chars<'a>,
     curr_char: char,
+    prev_char: char,
 }
 
 pub(crate) const EOF_CHAR: char = '\0';
@@ -23,18 +26,20 @@ impl fmt::Display for PART<'_> {
 }
 
 impl<'a> PART<'a> {
-    pub(crate) fn new(input: &'a str) -> PART<'a> {
+    pub(crate) fn init(red: &'a reader::READER) -> PART<'a> {
         PART {
-            initial_len: input.len(),
+            initial_len: red.data.len(),
             content: String::new(),
-            restof: input.chars(),
+            restof: red.data.chars(),
+            pastof: red.past.chars(),
             curr_char: EOF_CHAR,
+            prev_char: EOF_CHAR,
         }
     }
 
     /// Returns nth character relative to the current part position, if position doesn't exist, `EOF_CHAR` is returned.
     /// However, getting `EOF_CHAR` doesn't always mean actual end of file, it should be checked with `is_eof` method.
-    fn nth(&self, n: usize) -> char {
+    pub fn nth(&self, n: usize) -> char {
         self.restof().nth(n).unwrap_or(EOF_CHAR)
     }
 
@@ -43,6 +48,10 @@ impl<'a> PART<'a> {
         self.curr_char
     }
 
+    /// Returns the past eaten symbol
+    pub(crate) fn prev_char(&self) -> char {
+        self.prev_char
+    }
 
     /// Peeks the next symbol from the input stream without consuming it.
     pub(crate) fn next_char(&self) -> char {
@@ -77,15 +86,15 @@ impl<'a> PART<'a> {
 
     /// Moves to the next character.
     pub(crate) fn bump(&mut self) -> Option<char> {
+        self.prev_char = self.pastof.clone().rev().nth(0).unwrap_or(EOF_CHAR);
         let c = self.restof.next()?;
         self.curr_char = c;
         Some(c)
     }
 
     pub(crate) fn bumpit(&mut self, loc: &mut locate::LOCATION) -> Option<char> {
-        let c = self.restof.next()?;
-        self.curr_char = c;
+        let a = self.bump();
         loc.new_char();
-        Some(c)
+        Some(a.unwrap())
     }
 }

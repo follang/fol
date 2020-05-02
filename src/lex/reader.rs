@@ -50,6 +50,7 @@ pub struct READER {
     pub file: String,
     pub name: String,
     pub data: String,
+    pub past: String,
 }
 
 
@@ -97,7 +98,7 @@ impl READER {
                 .as_path().to_str().unwrap().to_string()
                 .trim_start_matches(&e).to_string();
             let data: String = read_string_file(f).unwrap();
-            let reader = READER{ path, file, name, data };
+            let reader = READER{ path, file, name, data, past: String::new() };
             vec.push(reader);
         }
         return vec

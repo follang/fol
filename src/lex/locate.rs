@@ -10,7 +10,7 @@ pub struct LOCATION {
     row: usize,
     col: usize,
     len: usize,
-    dep: isize,
+    dep: i8,
 }
 
 impl fmt::Display for LOCATION {

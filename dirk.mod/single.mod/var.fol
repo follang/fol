@@ -9,7 +9,7 @@
 var[] seven, seven2, seven3, seven4: int[exp,imu], flt[imu, exp], bol[], str;
 var[] eight;
 var nine;
-var ten = <expression>;   
+var ten[={<expression>};]   
 
 
   x ,	
