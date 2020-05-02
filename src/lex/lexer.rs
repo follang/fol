@@ -68,7 +68,7 @@ impl LEX {
 
 impl fmt::Display for LEX {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{: <10} {: <10} {: <10}", self.loc, self.con, self.key)
+        write!(f, "{: <10} {: <20} {: <10}", self.loc, self.con, self.key)
     }
 }
 
@@ -138,7 +138,6 @@ impl parts::PART<'_> {
             let mut eaten: usize = 0;
             while predicate(self.next_char()) && !self.is_eof() {
                 eaten += 1;
-                self.bump();
             }
             eaten
         }
@@ -147,7 +146,7 @@ impl parts::PART<'_> {
     fn lexify(&mut self, loc: &mut locate::LOCATION) -> LEX {
         let mut result = LEX::new(illegal, loc.clone(), String::new());
         result.loc.new_word();
-        self.bump().unwrap();
+        self.bump(&mut result.loc);
         if is_eol(&self.curr_char()) {
             result.endline(self, false);
         } else if is_space(&self.curr_char()) {
@@ -173,16 +172,16 @@ impl LEX {
         self.key = void(VOID::endline_ {terminated});
         while is_eol(&part.next_char()) || is_space(&part.next_char()) {
             if is_eol(&part.next_char()) { self.loc.new_line(); }
-            part.bumpit(&mut self.loc);
+            part.bump(&mut self.loc);
         }
         self.con = " ".to_string();
     }
     fn space(&mut self, part: &mut parts::PART) {
         while is_space(&part.next_char()) {
-            part.bumpit(&mut self.loc);
+            part.bump(&mut self.loc);
         }
         if is_eol(&part.next_char()) {
-            part.bumpit(&mut self.loc);
+            part.bump(&mut self.loc);
             self.endline(part, false);
             return
         }
@@ -211,6 +210,7 @@ impl LEX {
             }
         } else {
             self.push_curr(part);
+            self.key = literal(LITERAL::decimal_);
             while is_digit(&part.next_char()) || part.next_char() == '_' { self.bump_next(part); }
             if part.next_char() == '.' && is_digit(&part.nth(1)) {
                 self.bump_next(part);
@@ -222,12 +222,31 @@ impl LEX {
                     while is_digit(&part.next_char()) || part.next_char() == '_' { self.bump_next(part); }
                 }
             }
-            self.key = literal(LITERAL::decimal_);
+        }
+        // if part.next_char() == '.' && !(is_alpha(&part.nth(1)) || (is_eol(&part.nth(1)) && is_alpha(&part.nth(2)))) {
+        if part.next_char() == '.' && is_digit(&part.nth(1)) {
+            self.key = illegal;
+            while !is_void(&part.next_char()) { self.bump_next(part); }
         }
     }
+    // println!("{} {} {}", &part.prev_char(), &part.curr_char(), &part.next_char());
     fn encap(&mut self, part: &mut parts::PART) {
-        self.push_curr(part);
-        self.key = literal(LITERAL::string_);
+        let litsym = part.curr_char();
+        if litsym == '\'' {
+            self.key = literal(LITERAL::char_);
+        } else if litsym == '`' {
+            self.key = comment;
+        } else {
+            self.key = literal(LITERAL::string_);
+        }
+        if part.curr_char() == litsym {
+            self.bump_curr(part);
+            while part.curr_char() != litsym || (part.curr_char() == litsym && part.prev_char() == '\\') {
+                if part.curr_char() != litsym && part.next_char() == '\0' { self.key = illegal; break }
+                self.bump_curr(part);
+            }
+            self.bump_curr(part);
+        }
     }
     fn symbol(&mut self, part: &mut parts::PART) {
         if part.curr_char() == '.' && is_digit(&part.next_char()) {
@@ -245,7 +264,7 @@ impl LEX {
     fn alpha(&mut self, part: &mut parts::PART) {
         self.push_curr(part);
         while is_alpha(&part.next_char()) {
-            part.bumpit(&mut self.loc);
+            part.bump(&mut self.loc);
             self.push_curr(part);
             // self.bump_next(part);
         }
@@ -257,13 +276,13 @@ impl LEX {
     }
 
     fn bump_next(&mut self, part: &mut parts::PART) {
-        part.bumpit(&mut self.loc);
+        part.bump(&mut self.loc);
         self.con.push_str(&part.curr_char().to_string());
     }
 
     fn bump_curr(&mut self, part: &mut parts::PART) {
         self.con.push_str(&part.curr_char().to_string());
-        part.bumpit(&mut self.loc);
+        part.bump(&mut self.loc);
     }
 }
 

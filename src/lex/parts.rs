@@ -33,7 +33,7 @@ impl<'a> PART<'a> {
             restof: red.data.chars(),
             pastof: red.past.chars(),
             curr_char: EOF_CHAR,
-            prev_char: EOF_CHAR,
+            prev_char: red.past.chars().rev().nth(0).unwrap_or(EOF_CHAR),
         }
     }
 
@@ -85,16 +85,11 @@ impl<'a> PART<'a> {
     }
 
     /// Moves to the next character.
-    pub(crate) fn bump(&mut self) -> Option<char> {
-        self.prev_char = self.pastof.clone().rev().nth(0).unwrap_or(EOF_CHAR);
+    pub(crate) fn bump(&mut self, loc: &mut locate::LOCATION) -> Option<char> {
+        self.prev_char = self.curr_char();
         let c = self.restof.next()?;
         self.curr_char = c;
-        Some(c)
-    }
-
-    pub(crate) fn bumpit(&mut self, loc: &mut locate::LOCATION) -> Option<char> {
-        let a = self.bump();
         loc.new_char();
-        Some(a.unwrap())
+        Some(c)
     }
 }
