@@ -1,12 +1,12 @@
 #![allow(unused_imports)]
 #![allow(unused_variables)]
 
-mod lex;
+mod scan;
 use std::str;
-use crate::lex::token;
-use crate::lex::parts;
-use crate::lex::reader;
-use crate::lex::lexer;
+use crate::scan::token;
+use crate::scan::parts;
+use crate::scan::reader;
+use crate::scan::scanner;
 
 fn main() {
     // let red = reader::READER::init("./dirk.mod");
@@ -29,7 +29,7 @@ fn main() {
         // for p in lexer::iteratize(&mut e) {
             // println!("{}", p)
         // }
-        for p in lexer::vectorize(&mut e).iter() {
+        for p in scanner::vectorize(&mut e).iter() {
             println!("{}", p)
         }
     }

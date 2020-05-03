@@ -89,7 +89,7 @@ impl LOCATION {
         self.reset();
     }
 
-    pub fn adjust(&mut self){
+    pub fn adjust_length(&mut self){
         if self.len <= self.col {
             self.col = self.col - self.len
         }
