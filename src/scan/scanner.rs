@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 
 use std::fmt;
-use std::str;
 use crate::scan::locate;
 use crate::scan::reader;
 use crate::scan::parts;
@@ -50,8 +49,13 @@ pub struct SCAN {
 }
 
 impl SCAN {
-    fn new(key: token::KEYWORD, loc: locate::LOCATION, con: String) -> Self {
+    pub fn new(key: token::KEYWORD, loc: locate::LOCATION, con: String) -> Self {
         SCAN { key, loc, con }
+    }
+    pub fn zero(name: &str) -> Self {
+        let key = token::KEYWORD::void(token::VOID::endfile_);
+        let loc = locate::LOCATION::new(name.to_string(), 0,0,0,0,0);
+        SCAN { key, loc, con: String::new() }
     }
 }
 
@@ -106,13 +110,14 @@ impl fmt::Display for SCAN {
 /// Creates a vector that produces tokens from the input string.
 pub fn vectorize(red: &mut reader::READER) -> Vec<SCAN> {
     let mut vec: Vec<SCAN> = Vec::new();
-    let mut loc = locate::LOCATION::new(&red);
+    let mut loc = locate::LOCATION::init(&red);
     while !red.data.is_empty() {
         let token = parts::PART::init(&red).scan(&mut loc);
         red.past = red.data[..token.loc.len()].to_string();
         red.data = red.data[token.loc.len()..].to_string();
         vec.push(token)
     }
+    vec.push(SCAN::zero(red.name()));
     vec
 }
 
@@ -177,7 +182,7 @@ impl SCAN {
             if is_eol(&part.next_char()) { self.loc.new_line(); }
             self.bump_next(part);
         }
-        // self.con = " ".to_string();
+        self.con = " ".to_string();
     }
     fn space(&mut self, part: &mut parts::PART) {
         self.push_curr(part);

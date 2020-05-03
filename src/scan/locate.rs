@@ -8,7 +8,7 @@ use std::fmt;
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct LOCATION {
     ns: String,
-    pos: isize,
+    pos: usize,
     row: usize,
     col: usize,
     len: usize,
@@ -34,8 +34,12 @@ impl LOCATION {
 }
 
 impl LOCATION {
-    pub fn new(red: &reader::READER) -> Self {
+    pub fn init(red: &reader::READER) -> Self {
         LOCATION { ns: red.name.to_string(), pos: 1, row: 1, col: 1, len: 1, deep: 1 }
+    }
+
+    pub fn new(ns: String, pos: usize, row: usize, col: usize, len: usize, deep: isize) -> Self {
+        LOCATION { ns, pos, row, col, len, deep }
     }
 
     pub fn row(&self) -> usize {
@@ -54,7 +58,7 @@ impl LOCATION {
         self.deep
     }
 
-    pub fn pos(&self) -> isize {
+    pub fn pos(&self) -> usize {
         self.pos
     }
 
@@ -84,7 +88,7 @@ impl LOCATION {
         self.col = 1;
     }
 
-    pub fn adjust(&mut self, row: usize, col: usize, pos: isize){
+    pub fn adjust(&mut self, row: usize, col: usize, pos: usize){
         self.row = row;
         self.col = col;
         self.pos = pos;
