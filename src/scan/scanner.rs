@@ -2,10 +2,10 @@
 
 use std::fmt;
 use std::str;
-use crate::lex::locate;
-use crate::lex::reader;
-use crate::lex::parts;
-use crate::lex::token;
+use crate::scan::locate;
+use crate::scan::reader;
+use crate::scan::parts;
+use crate::scan::token;
 
 pub fn is_eol(ch: &char) -> bool {
     return *ch == '\n' || *ch == '\r'
@@ -42,19 +42,19 @@ pub fn is_void(ch: &char) -> bool {
     return is_eol(ch) || is_space(ch)
 }
 
-pub struct LEX {
+pub struct SCAN {
     key: token::KEYWORD,
     loc: locate::LOCATION,
     con: String,
 }
 
-impl LEX {
+impl SCAN {
     fn new(key: token::KEYWORD, loc: locate::LOCATION, con: String) -> Self {
-        LEX { key, loc, con }
+        SCAN { key, loc, con }
     }
 }
 
-impl LEX {
+impl SCAN {
     pub fn key(&self) -> &token::KEYWORD {
         &self.key
     }
@@ -66,24 +66,24 @@ impl LEX {
     }
 }
 
-impl fmt::Display for LEX {
+impl fmt::Display for SCAN {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{: <10} {: <20} {: <10}", self.loc, self.con, self.key)
     }
 }
 
 /// Creates an iterator that produces tokens from the input string.
-// pub fn tokenize(mut input: &str) -> impl Iterator<Item = LEX> + '_ {
+// pub fn tokenize(mut input: &str) -> impl Iterator<Item = SCAN> + '_ {
     // let mut loc = locate::LOCATION::new(&input);
     // std::iter::from_fn(move || {
         // if input.is_empty() { return None; }
-        // let token = parts::PART::new(&input).lexify(&mut loc);
+        // let token = parts::PART::new(&input).scan(&mut loc);
         // input = &input[token.loc.len()..];
         // Some(token)
     // })
 // }
 
-// pub fn reader2<'a, I>(mut inp: I) -> impl Iterator<Item = LEX> +'a
+// pub fn reader2<'a, I>(mut inp: I) -> impl Iterator<Item = SCAN> +'a
 // where
     // I: Iterator<Item = &'a reader::READER>,
 // {
@@ -93,7 +93,7 @@ impl fmt::Display for LEX {
         // if red.unwrap().data.is_empty() {
             // return None;
         // }
-        // let token = parts::PART::new(&red.unwrap().data).lexify(&mut loc);
+        // let token = parts::PART::new(&red.unwrap().data).scan(&mut loc);
         // let a = red.unwrap().data[token.len..].to_string();
         // red.unwrap().set(a);
         // Some(token)
@@ -103,11 +103,11 @@ impl fmt::Display for LEX {
 
 
 /// Creates an iterator that produces tokens from the input string.
-pub fn vectorize(red: &mut reader::READER) -> Vec<LEX> {
-    let mut vec: Vec<LEX> = Vec::new();
+pub fn vectorize(red: &mut reader::READER) -> Vec<SCAN> {
+    let mut vec: Vec<SCAN> = Vec::new();
     let mut loc = locate::LOCATION::new(&red.path);
     while !red.data.is_empty() {
-        let token = parts::PART::init(&red).lexify(&mut loc);
+        let token = parts::PART::init(&red).scan(&mut loc);
         red.past = red.data[..token.loc.len()].to_string();
         red.data = red.data[token.loc.len()..].to_string();
         vec.push(token)
@@ -116,20 +116,20 @@ pub fn vectorize(red: &mut reader::READER) -> Vec<LEX> {
 }
 
 /// Creates an iterator that produces tokens from the input string.
-// pub fn iteratize(red: &mut reader::READER) -> impl Iterator<Item = LEX> + '_ {
+// pub fn iteratize(red: &mut reader::READER) -> impl Iterator<Item = SCAN> + '_ {
     // let mut loc = locate::LOCATION::new(&red.path);
     // std::iter::from_fn(move || {
         // if red.data.is_empty() {
             // return None;
         // }
-        // let token = parts::PART::init(&red.data).lexify(&mut loc);
+        // let token = parts::PART::init(&red.data).scan(&mut loc);
         // red.data = red.data[token.loc.len()..].to_string();
         // Some(token)
     // })
 // }
 
-use crate::lex::token::*;
-use crate::lex::token::KEYWORD::*;
+use crate::scan::token::*;
+use crate::scan::token::KEYWORD::*;
 impl parts::PART<'_> {
     fn eat_while<F>(&mut self, mut predicate: F) -> usize
     where
@@ -143,8 +143,8 @@ impl parts::PART<'_> {
         }
 
     /// Parses a token from the input string.
-    fn lexify(&mut self, loc: &mut locate::LOCATION) -> LEX {
-        let mut result = LEX::new(illegal, loc.clone(), String::new());
+    fn scan(&mut self, loc: &mut locate::LOCATION) -> SCAN {
+        let mut result = SCAN::new(illegal, loc.clone(), String::new());
         result.loc.new_word();
         self.bump(&mut result.loc);
         if is_eol(&self.curr_char()) {
@@ -161,27 +161,29 @@ impl parts::PART<'_> {
             result.alpha(self);
         }
         *loc = result.loc.clone();
-        result.loc.adjust();
+        result.loc.adjust_length();
         return result
     }
 }
 
-impl LEX {
+impl SCAN {
     fn endline(&mut self, part: &mut parts::PART, terminated: bool) {
+        self.push_curr(part);
         self.loc.new_line();
         self.key = void(VOID::endline_ {terminated});
         while is_eol(&part.next_char()) || is_space(&part.next_char()) {
             if is_eol(&part.next_char()) { self.loc.new_line(); }
-            part.bump(&mut self.loc);
+            self.bump_next(part);
         }
         self.con = " ".to_string();
     }
     fn space(&mut self, part: &mut parts::PART) {
+        self.push_curr(part);
         while is_space(&part.next_char()) {
-            part.bump(&mut self.loc);
+            self.bump_next(part);
         }
         if is_eol(&part.next_char()) {
-            part.bump(&mut self.loc);
+            self.bump_next(part);
             self.endline(part, false);
             return
         }
@@ -229,27 +231,23 @@ impl LEX {
             while !is_void(&part.next_char()) { self.bump_next(part); }
         }
     }
-    // println!("{} {} {}", &part.prev_char(), &part.curr_char(), &part.next_char());
     fn encap(&mut self, part: &mut parts::PART) {
         let litsym = part.curr_char();
-        if litsym == '\'' {
-            self.key = literal(LITERAL::char_);
-        } else if litsym == '`' {
-            self.key = comment;
-        } else {
-            self.key = literal(LITERAL::string_);
+        if litsym == '`' { self.key = comment;}
+        else if litsym == '\'' { self.key = literal(LITERAL::char_); }
+        else { self.key = literal(LITERAL::string_); }
+        self.push_curr(part);
+        while part.next_char() != litsym || (part.next_char() == litsym && part.curr_char() == '\\') {
+            if part.next_char() != litsym && part.next_char() == '\0' { self.key = illegal; break }
+            else if is_eol(&part.next_char()) { self.loc.new_line(); }
+            self.bump_next(part);
         }
-        if part.curr_char() == litsym {
-            self.bump_curr(part);
-            while part.curr_char() != litsym || (part.curr_char() == litsym && part.prev_char() == '\\') {
-                if part.curr_char() != litsym && part.next_char() == '\0' { self.key = illegal; break }
-                self.bump_curr(part);
-            }
-            self.bump_curr(part);
-        }
+        self.bump_next(part);
     }
     fn symbol(&mut self, part: &mut parts::PART) {
-        if part.curr_char() == '.' && is_digit(&part.next_char()) {
+        // println!("{} - {}", "enter", &part.curr_char());
+        // println!("{} {} {}", &part.prev_char(), &part.curr_char(), &part.next_char());
+        if (part.curr_char() == '.' || part.curr_char() == '-') && is_digit(&part.next_char()) {
             self.digit(part);
             return
         }
