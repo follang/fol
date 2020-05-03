@@ -42,6 +42,7 @@ pub fn is_void(ch: &char) -> bool {
     return is_eol(ch) || is_space(ch)
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct SCAN {
     key: token::KEYWORD,
     loc: locate::LOCATION,
@@ -68,7 +69,7 @@ impl SCAN {
 
 impl fmt::Display for SCAN {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{: <10} {: <20} {: <10}", self.loc, self.con, self.key)
+        write!(f, "{} {: <20} {}", self.loc, self.key, self.con)
     }
 }
 
@@ -160,8 +161,9 @@ impl parts::PART<'_> {
         } else if is_alpha(&self.curr_char()) {
             result.alpha(self);
         }
+        let (row, col, pos) = (loc.row(), loc.col(), loc.pos());
         *loc = result.loc.clone();
-        result.loc.adjust_length();
+        result.loc.adjust(row, col, pos);
         return result
     }
 }
@@ -175,7 +177,7 @@ impl SCAN {
             if is_eol(&part.next_char()) { self.loc.new_line(); }
             self.bump_next(part);
         }
-        self.con = " ".to_string();
+        // self.con = " ".to_string();
     }
     fn space(&mut self, part: &mut parts::PART) {
         self.push_curr(part);
@@ -245,21 +247,50 @@ impl SCAN {
         self.bump_next(part);
     }
     fn symbol(&mut self, part: &mut parts::PART) {
-        // println!("{} - {}", "enter", &part.curr_char());
-        // println!("{} {} {}", &part.prev_char(), &part.curr_char(), &part.next_char());
         if (part.curr_char() == '.' || part.curr_char() == '-') && is_digit(&part.next_char()) {
             self.digit(part);
             return
         }
         self.push_curr(part);
-        self.key = symbol(SYMBOL::curlyBC_);
+        self.key = symbol(SYMBOL::curlyC_);
         match part.curr_char() {
-            '{' | '[' | '(' => self.loc.deepen(),
-            '}' | ']' | ')' => self.loc.soften(),
-            _ => {}
+            '{' => { self.loc.deepen(); self.key = symbol(SYMBOL::curlyO_) },
+            '}' => { self.loc.soften(); self.key = symbol(SYMBOL::curlyC_) },
+            '[' => { self.loc.deepen(); self.key = symbol(SYMBOL::squarO_) },
+            ']' => { self.loc.soften(); self.key = symbol(SYMBOL::squarC_) },
+            '(' => { self.loc.deepen(); self.key = symbol(SYMBOL::roundO_) },
+            ')' => { self.loc.soften(); self.key = symbol(SYMBOL::roundC_) },
+            '\\' => { self.key = symbol(SYMBOL::escape_) },
+            '.' => { self.key = symbol(SYMBOL::dot_) },
+            ',' => { self.key = symbol(SYMBOL::comma_) },
+            ':' => { self.key = symbol(SYMBOL::colon_) },
+            ';' => { self.key = symbol(SYMBOL::semi_) },
+            '|' => { self.key = symbol(SYMBOL::pipe_) },
+            '=' => { self.key = symbol(SYMBOL::equal_) },
+            '>' => { self.key = symbol(SYMBOL::greater_) },
+            '<' => { self.key = symbol(SYMBOL::less_) },
+            '+' => { self.key = symbol(SYMBOL::plus_) },
+            '-' => { self.key = symbol(SYMBOL::minus_) },
+            '_' => { self.key = symbol(SYMBOL::under_) },
+            '*' => { self.key = symbol(SYMBOL::star_) },
+            '~' => { self.key = symbol(SYMBOL::home_) },
+            '/' => { self.key = symbol(SYMBOL::root_) },
+            '%' => { self.key = symbol(SYMBOL::percent_) },
+            '^' => { self.key = symbol(SYMBOL::carret_) },
+            '?' => { self.key = symbol(SYMBOL::query_) },
+            '!' => { self.key = symbol(SYMBOL::bang_) },
+            '&' => { self.key = symbol(SYMBOL::and_) },
+            '@' => { self.key = symbol(SYMBOL::at_) },
+            '#' => { self.key = symbol(SYMBOL::hash_) },
+            '$' => { self.key = symbol(SYMBOL::dollar_) },
+            '°' => { self.key = symbol(SYMBOL::degree_) },
+            '§' => { self.key = symbol(SYMBOL::sign_) },
+            _ => { self.key = illegal }
         }
     }
     fn alpha(&mut self, part: &mut parts::PART) {
+        // println!("{} - {}", "enter", &part.curr_char());
+        // println!("{} {} {}", &part.prev_char(), &part.curr_char(), &part.next_char());
         self.push_curr(part);
         while is_alpha(&part.next_char()) {
             part.bump(&mut self.loc);

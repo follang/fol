@@ -7,17 +7,18 @@ use std::fmt;
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct LOCATION {
     file: String,
+    pos: isize,
     row: usize,
     col: usize,
+    word: usize,
     len: usize,
-    dep: isize,
-    pos: isize,
+    deep: isize,
 }
 
 impl fmt::Display for LOCATION {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "file: {}   pos: {: <3}   row: {: <3}   col: {: <3}   dep: {: <3}  len: {: <10}",
-            self.file, self.pos, self.row, self.col, self.dep, self.len)
+        write!(f, "file: {}   pos: {: <3}   row: {: <3}   col: {: <3}   word: {: <3}   deep: {: <3}  len: {: <5}",
+            self.file, self.pos, self.row, self.col, self.word, self.deep, self.len)
     }
 }
 
@@ -34,7 +35,7 @@ impl LOCATION {
 
 impl LOCATION {
     pub fn new(file: &str) -> Self {
-        LOCATION { file: file.to_string(), row: 1, col: 1, len: 1, dep: 1, pos: -1 }
+        LOCATION { file: file.to_string(), pos: 1, row: 1, col: 1, word: 1, len: 1, deep: 1 }
     }
 
     pub fn row(&self) -> usize {
@@ -49,8 +50,8 @@ impl LOCATION {
         self.len
     }
 
-    pub fn dep(&self) -> isize {
-        self.dep
+    pub fn deep(&self) -> isize {
+        self.deep
     }
 
     pub fn pos(&self) -> isize {
@@ -65,7 +66,7 @@ impl LOCATION {
         self.row = 1;
         self.col = 1;
         self.len = 1;
-        self.pos = -1;
+        self.pos = 1;
     }
 
     pub fn new_char(&mut self) {
@@ -76,12 +77,14 @@ impl LOCATION {
 
     pub fn new_word(&mut self) {
         self.len = 0;
+        self.word += 1;
         // self.new_char();
     }
 
     pub fn new_line(&mut self) {
         self.row += 1;
         self.col = 1;
+        self.word = 0;
     }
 
     pub fn new_file(&mut self, s: String) {
@@ -89,17 +92,17 @@ impl LOCATION {
         self.reset();
     }
 
-    pub fn adjust_length(&mut self){
-        if self.len <= self.col {
-            self.col = self.col - self.len
-        }
+    pub fn adjust(&mut self, row: usize, col: usize, pos: isize){
+        self.row = row;
+        self.col = col;
+        self.pos = pos;
     }
 
     pub fn deepen(&mut self){
-        self.dep += 1
+        self.deep += 1
     }
 
     pub fn soften(&mut self){
-        self.dep -= 1
+        self.deep -= 1
     }
 }
