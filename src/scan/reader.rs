@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 use std::fs;
+use std::fmt;
 use std::str;
 use std::io;
 use std::fs::File;
@@ -53,6 +54,12 @@ pub struct READER {
     pub past: String,
 }
 
+impl fmt::Display for READER {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "path: {}\nfile: {}\nname: {}",
+            self.path, self.file, self.name)
+    }
+}
 
 // pub struct Mod {
     // pub amod: Vec<READER>,
@@ -72,7 +79,7 @@ pub struct READER {
 // }
 
 /// Creates an iterator that produces tokens from the input string.
-pub fn readerize(input: &str) -> impl Iterator<Item = READER> + '_ {
+pub fn iteratize(input: &str) -> impl Iterator<Item = READER> + '_ {
     let red = READER::init(&input);
     let mut index: usize = 0;
     std::iter::from_fn(move || {
@@ -93,7 +100,8 @@ impl READER {
                 .trim_end_matches(".fol").to_string();
             let name: String = fs::canonicalize(&f).unwrap()
                 .as_path().parent().unwrap().to_str().unwrap().to_string()
-                .trim_start_matches(&e).to_string();
+                .trim_start_matches(&e).to_string()
+                .trim_start_matches("/").to_string();
             let path: String = fs::canonicalize(&f).unwrap()
                 .as_path().to_str().unwrap().to_string()
                 .trim_start_matches(&e).to_string();

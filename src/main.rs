@@ -24,7 +24,7 @@ fn main() {
     // println!("{}", e)
     // }
 
-    for mut e in reader::readerize("./dirk.mod") {
+    for mut e in reader::iteratize("./dirk.mod") {
         // println!("{}/{}", e.name(), e.file());
         // for p in lexer::iteratize(&mut e) {
             // println!("{}", p)

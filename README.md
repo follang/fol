@@ -1,5 +1,5 @@
 <p align="center">
-    <img alt="logo" src="/etc/logo.svg" width="300px">
+    <img alt="logo" src="https://follang.org/images/fol_full.svg" width="300px">
 </p>
 
 

@@ -103,10 +103,10 @@ impl fmt::Display for SCAN {
 
 
 
-/// Creates an iterator that produces tokens from the input string.
+/// Creates a vector that produces tokens from the input string.
 pub fn vectorize(red: &mut reader::READER) -> Vec<SCAN> {
     let mut vec: Vec<SCAN> = Vec::new();
-    let mut loc = locate::LOCATION::new(&red.path);
+    let mut loc = locate::LOCATION::new(&red);
     while !red.data.is_empty() {
         let token = parts::PART::init(&red).scan(&mut loc);
         red.past = red.data[..token.loc.len()].to_string();
