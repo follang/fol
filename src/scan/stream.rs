@@ -33,7 +33,6 @@ impl STREAM {
         }
         let prev = SCAN::zero(&vec.last().unwrap().loc().ns());
         let curr = vec.get(0).unwrap_or(&zero()).to_owned();
-        vec = vec[1..].to_vec();
         STREAM { vec, prev, curr }
     }
 
@@ -48,7 +47,7 @@ impl STREAM {
     pub fn next(&self) -> SCAN {
         self.vec.get(1).unwrap_or(&zero()).to_owned()
     }
-    pub fn nth(&self, num: usize) -> SCAN {
+    pub fn peek(&self, num: usize) -> SCAN {
         self.vec.get(num).unwrap_or(&zero()).to_owned()
     }
 }

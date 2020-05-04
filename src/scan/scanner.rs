@@ -69,6 +69,9 @@ impl SCAN {
     pub fn con(&self) -> &String {
         &self.con
     }
+    pub fn set_key(&mut self, k: token::KEYWORD) {
+        self.key = k;
+    }
 }
 
 impl fmt::Display for SCAN {
@@ -174,6 +177,11 @@ impl parts::PART<'_> {
 }
 
 impl SCAN {
+    pub fn combine(&mut self, other: &SCAN) {
+        self.con.push_str(&other.con);
+        //TODO: what about len??
+    }
+
     fn endline(&mut self, part: &mut parts::PART, terminated: bool) {
         self.push_curr(part);
         self.loc.new_line();
@@ -221,7 +229,7 @@ impl SCAN {
             self.push_curr(part);
             self.key = literal(LITERAL::decimal_);
             while is_digit(&part.next_char()) || part.next_char() == '_' { self.bump_next(part); }
-            if part.next_char() == '.' && is_digit(&part.nth(1)) {
+            if part.next_char() == '.' && is_digit(&part.peek(1)) {
                 self.bump_next(part);
                 if is_digit(&part.next_char()) {
                     self.key = literal(LITERAL::float_);
@@ -232,8 +240,8 @@ impl SCAN {
                 }
             }
         }
-        // if part.next_char() == '.' && !(is_alpha(&part.nth(1)) || (is_eol(&part.nth(1)) && is_alpha(&part.nth(2)))) {
-        if part.next_char() == '.' && is_digit(&part.nth(1)) {
+        // if part.next_char() == '.' && !(is_alpha(&part.peek(1)) || (is_eol(&part.peek(1)) && is_alpha(&part.peek(2)))) {
+        if part.next_char() == '.' && is_digit(&part.peek(1)) {
             self.key = illegal;
             while !is_void(&part.next_char()) { self.bump_next(part); }
         }
@@ -259,12 +267,12 @@ impl SCAN {
         self.push_curr(part);
         self.key = symbol(SYMBOL::curlyC_);
         match part.curr_char() {
-            '{' => { self.loc.deepen(); self.key = symbol(SYMBOL::curlyO_) },
-            '}' => { self.loc.soften(); self.key = symbol(SYMBOL::curlyC_) },
-            '[' => { self.loc.deepen(); self.key = symbol(SYMBOL::squarO_) },
-            ']' => { self.loc.soften(); self.key = symbol(SYMBOL::squarC_) },
-            '(' => { self.loc.deepen(); self.key = symbol(SYMBOL::roundO_) },
-            ')' => { self.loc.soften(); self.key = symbol(SYMBOL::roundC_) },
+            '{' => { self.loc.deepen(); self.key = bracket(SYMBOL::curlyO_) },
+            '}' => { self.loc.soften(); self.key = bracket(SYMBOL::curlyC_) },
+            '[' => { self.loc.deepen(); self.key = bracket(SYMBOL::squarO_) },
+            ']' => { self.loc.soften(); self.key = bracket(SYMBOL::squarC_) },
+            '(' => { self.loc.deepen(); self.key = bracket(SYMBOL::roundO_) },
+            ')' => { self.loc.soften(); self.key = bracket(SYMBOL::roundC_) },
             '\\' => { self.key = symbol(SYMBOL::escape_) },
             '.' => { self.key = symbol(SYMBOL::dot_) },
             ',' => { self.key = symbol(SYMBOL::comma_) },

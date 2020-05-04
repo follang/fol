@@ -5,11 +5,12 @@
 
 
 use std::fmt;
+use std::collections::HashMap;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum KEYWORD {
     assign(ASSIGN),
-    options(OPTION),
+    option(OPTION),
     ident,
     types(TYPE),
     form(FORM),
@@ -17,11 +18,100 @@ pub enum KEYWORD {
     buildin(BUILDIN),
     comment,
     symbol(SYMBOL),
-    operator(SYMBOL),
+    operator(OPERATOR),
     bracket(SYMBOL),
     void(VOID),
     illegal
 }
+
+// impl PartialEq for KEYWORD {
+    // fn eq(&self, other: &Self) -> bool {
+        // match &self {
+            // other => true,
+            // _ => false,
+        // }
+    // }
+// }
+
+// std::cmp::PartialEq<fn(scan::token::SYMBOL) -> scan::token::KEYWORD {scan::token::KEYWORD::symbol}>
+
+impl KEYWORD {
+    pub fn is_option(&self) -> bool {
+        match *self {
+            KEYWORD::option(_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_ident(&self) -> bool {
+        match *self {
+            KEYWORD::ident => true,
+            _ => false,
+        }
+    }
+    pub fn is_types(&self) -> bool {
+        match *self {
+            KEYWORD::types(_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_form(&self) -> bool {
+        match *self {
+            KEYWORD::form(_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_literal(&self) -> bool {
+        match *self {
+            KEYWORD::literal(_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_buildin(&self) -> bool {
+        match *self {
+            KEYWORD::buildin(_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_comment(&self) -> bool {
+        match *self {
+            KEYWORD::comment => true,
+            _ => false,
+        }
+    }
+    pub fn is_symbol(&self) -> bool {
+        match *self {
+            KEYWORD::symbol(_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_operator(&self) -> bool {
+        match *self {
+            KEYWORD::operator(_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_bracket(&self) -> bool {
+        match *self {
+            KEYWORD::bracket(_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_void(&self) -> bool {
+        match *self {
+            KEYWORD::void(_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_illegal(&self) -> bool {
+        match *self {
+            KEYWORD::illegal => true,
+            _ => false,
+        }
+    }
+}
+
+
+// std::cmp::PartialEq<fn(SYMBOL) -> KEYWORD {KEYWORD::symbol}>
 
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -79,6 +169,13 @@ pub enum SYMBOL {
     degree_,
     sign_,
 }
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum OPERATOR {
+    dd_,
+    ddd_,
+}
+
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum BUILDIN {
@@ -204,14 +301,14 @@ impl fmt::Display for KEYWORD {
             void(VOID::endline_ { terminated: true } ) => write!(f, "{: <10} {: <10}", "VOID", "eol(term)"),
             void(VOID::space_ ) => write!(f, "{: <10} {: <10}", "VOID", "space"),
             void(VOID::endfile_ ) => write!(f, "{: <10} {: <10}", "VOID", "EOF"),
-            symbol(SYMBOL::curlyC_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "curlyC"),
-            symbol(SYMBOL::curlyO_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "curlyO"),
-            symbol(SYMBOL::squarC_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "squarC"),
-            symbol(SYMBOL::squarO_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "squarO"),
-            symbol(SYMBOL::roundC_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "roundC"),
-            symbol(SYMBOL::roundO_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "roundO"),
-            symbol(SYMBOL::angleC_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "angleC"),
-            symbol(SYMBOL::angleO_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "angleO"),
+            bracket(SYMBOL::curlyC_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "curlyC"),
+            bracket(SYMBOL::curlyO_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "curlyO"),
+            bracket(SYMBOL::squarC_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "squarC"),
+            bracket(SYMBOL::squarO_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "squarO"),
+            bracket(SYMBOL::roundC_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "roundC"),
+            bracket(SYMBOL::roundO_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "roundO"),
+            bracket(SYMBOL::angleC_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "angleC"),
+            bracket(SYMBOL::angleO_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "angleO"),
             symbol(SYMBOL::dot_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "dot"),
             symbol(SYMBOL::comma_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "comma"),
             symbol(SYMBOL::colon_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "colon"),
@@ -237,12 +334,55 @@ impl fmt::Display for KEYWORD {
             symbol(SYMBOL::dollar_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "dollar"),
             symbol(SYMBOL::degree_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "degree"),
             symbol(SYMBOL::sign_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "sign"),
+            operator(OPERATOR::ddd_ ) => write!(f, "{: <10} {: <10}", "OPERATOR", "3dot"),
+            operator(OPERATOR::dd_ ) => write!(f, "{: <10} {: <10}", "OPERATOR", "2dot"),
             assign(ASSIGN::use_) => write!(f, "{: <10} {: <10}", "ASSIGN", "use"),
             assign(ASSIGN::var_) => write!(f, "{: <10} {: <10}", "ASSIGN", "var"),
+            assign(ASSIGN::def_) => write!(f, "{: <10} {: <10}", "ASSIGN", "def"),
+            assign(ASSIGN::fun_) => write!(f, "{: <10} {: <10}", "ASSIGN", "fun"),
+            assign(ASSIGN::pro_) => write!(f, "{: <10} {: <10}", "ASSIGN", "pro"),
+            assign(ASSIGN::log_) => write!(f, "{: <10} {: <10}", "ASSIGN", "log"),
+            assign(ASSIGN::typ_) => write!(f, "{: <10} {: <10}", "ASSIGN", "typ"),
+            assign(ASSIGN::ali_) => write!(f, "{: <10} {: <10}", "ASSIGN", "ali"),
+            types(TYPE::int_) => write!(f, "{: <10} {: <10}", "TYPE", "int"),
+            types(TYPE::flt_) => write!(f, "{: <10} {: <10}", "TYPE", "flt"),
+            types(TYPE::chr_) => write!(f, "{: <10} {: <10}", "TYPE", "chr"),
+            types(TYPE::bol_) => write!(f, "{: <10} {: <10}", "TYPE", "bol"),
+            types(TYPE::arr_) => write!(f, "{: <10} {: <10}", "TYPE", "arr"),
+            types(TYPE::vec_) => write!(f, "{: <10} {: <10}", "TYPE", "vec"),
+            types(TYPE::seq_) => write!(f, "{: <10} {: <10}", "TYPE", "seq"),
+            types(TYPE::mat_) => write!(f, "{: <10} {: <10}", "TYPE", "mat"),
+            types(TYPE::set_) => write!(f, "{: <10} {: <10}", "TYPE", "set"),
+            types(TYPE::map_) => write!(f, "{: <10} {: <10}", "TYPE", "map"),
+            types(TYPE::axi_) => write!(f, "{: <10} {: <10}", "TYPE", "axi"),
+            types(TYPE::tab_) => write!(f, "{: <10} {: <10}", "TYPE", "tab"),
+            types(TYPE::str_) => write!(f, "{: <10} {: <10}", "TYPE", "str"),
+            types(TYPE::num_) => write!(f, "{: <10} {: <10}", "TYPE", "num"),
+            types(TYPE::ptr_) => write!(f, "{: <10} {: <10}", "TYPE", "ptr"),
+            types(TYPE::err_) => write!(f, "{: <10} {: <10}", "TYPE", "err"),
+            types(TYPE::opt_) => write!(f, "{: <10} {: <10}", "TYPE", "opt"),
+            types(TYPE::nev_) => write!(f, "{: <10} {: <10}", "TYPE", "nev"),
+            types(TYPE::uni_) => write!(f, "{: <10} {: <10}", "TYPE", "uni"),
+            types(TYPE::any_) => write!(f, "{: <10} {: <10}", "TYPE", "any"),
+            types(TYPE::non_) => write!(f, "{: <10} {: <10}", "TYPE", "non"),
+            types(TYPE::nil_) => write!(f, "{: <10} {: <10}", "TYPE", "nil"),
+            types(TYPE::rec_) => write!(f, "{: <10} {: <10}", "TYPE", "rec"),
+            types(TYPE::ent_) => write!(f, "{: <10} {: <10}", "TYPE", "ent"),
+            types(TYPE::blu_) => write!(f, "{: <10} {: <10}", "TYPE", "blu"),
+            types(TYPE::std_) => write!(f, "{: <10} {: <10}", "TYPE", "std"),
+            types(TYPE::loc_) => write!(f, "{: <10} {: <10}", "TYPE", "loc"),
+            types(TYPE::url_) => write!(f, "{: <10} {: <10}", "TYPE", "url"),
+            types(TYPE::blk_) => write!(f, "{: <10} {: <10}", "TYPE", "blk"),
             ident => write!(f, "{: <10} {: <10}", "IDENT", ""),
             comment => write!(f, "{: <10} {: <10}", "COMMENT", ""),
             illegal => write!(f, "{: <10} {: <10}", "ILLEGAL", ""),
             _ => write!(f, "{: <10} {: <10}", "non-def", "")
         }
     }
+}
+
+pub fn get_keyword() -> HashMap<String, KEYWORD> {
+    let mut keywords: HashMap<String, KEYWORD> = HashMap::new();
+    keywords.insert(String::from("use"), KEYWORD::assign(ASSIGN::use_));
+    keywords
 }
