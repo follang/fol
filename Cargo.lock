@@ -10,7 +10,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "fol_in_rust"
+name = "fol"
 version = "0.1.0"
 dependencies = [
  "regex",
