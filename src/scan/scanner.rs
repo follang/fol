@@ -80,47 +80,15 @@ impl fmt::Display for SCAN {
     }
 }
 
-/// Creates an iterator that produces tokens from the input string.
-// pub fn tokenize(mut input: &str) -> impl Iterator<Item = SCAN> + '_ {
-    // let mut loc = locate::LOCATION::new(&input);
-    // std::iter::from_fn(move || {
-        // if input.is_empty() { return None; }
-        // let token = parts::PART::new(&input).scan(&mut loc);
-        // input = &input[token.loc.len()..];
-        // Some(token)
-    // })
-// }
-
-// pub fn reader2<'a, I>(mut inp: I) -> impl Iterator<Item = SCAN> +'a
-// where
-    // I: Iterator<Item = &'a reader::READER>,
-// {
-    // let red = inp.by_ref().next();
-    // let mut loc = locate::LOCATION::new(&red.unwrap().name);
-    // std::iter::from_fn(move || {
-        // if red.unwrap().data.is_empty() {
-            // return None;
-        // }
-        // let token = parts::PART::new(&red.unwrap().data).scan(&mut loc);
-        // let a = red.unwrap().data[token.len..].to_string();
-        // red.unwrap().set(a);
-        // Some(token)
-    // })
-// }
-
-
-
 /// Creates a vector that produces tokens from the input string.
 pub fn vectorize(red: &mut reader::READER) -> Vec<SCAN> {
     let mut vec: Vec<SCAN> = Vec::new();
     let mut loc = locate::LOCATION::init(&red);
-    while !red.data.is_empty() {
-        let token = parts::PART::init(&red).scan(&mut loc);
-        red.past = red.data[..token.loc.len()].to_string();
-        red.data = red.data[token.loc.len()..].to_string();
+    let mut part = parts::PART::init(&red.data);
+    while part.not_eof() {
+        let token = part.scan(&mut loc);
         vec.push(token)
     }
-    vec.push(SCAN::zero(red.name()));
     vec
 }
 
@@ -139,18 +107,7 @@ pub fn vectorize(red: &mut reader::READER) -> Vec<SCAN> {
 
 use crate::scan::token::*;
 use crate::scan::token::KEYWORD::*;
-impl parts::PART<'_> {
-    fn eat_while<F>(&mut self, mut predicate: F) -> usize
-    where
-        F: FnMut(char) -> bool,
-        {
-            let mut eaten: usize = 0;
-            while predicate(self.next_char()) && !self.is_eof() {
-                eaten += 1;
-            }
-            eaten
-        }
-
+impl parts::PART {
     /// Parses a token from the input string.
     fn scan(&mut self, loc: &mut locate::LOCATION) -> SCAN {
         let mut result = SCAN::new(illegal, loc.clone(), String::new());
@@ -260,7 +217,7 @@ impl SCAN {
         self.bump_next(part);
     }
     fn symbol(&mut self, part: &mut parts::PART) {
-        if (part.curr_char() == '.' || part.curr_char() == '-') && is_digit(&part.next_char()) {
+        if (part.curr_char() == '.' || part.curr_char() == '-') && is_digit(&part.next_char()) && is_void(&part.prev_char()) {
             // println!("{}", is_void(&part.prev_char()));
             self.digit(part);
             return
