@@ -66,12 +66,12 @@ impl stream::STREAM {
         let mut result = self.curr().clone();
         if (self.prev().key().is_void() || self.prev().key().is_bracket()) &&
             self.curr().key().is_symbol() && self.next().key().is_symbol() {
-            // println!("{}{}{}", self.prev().key(), self.curr().key(), self.next().key());
-            while self.next().key().is_symbol(){
-                result.combine(&self.next());
-                self.bump()
-            }
-            // self.symbol();
+            if self.after_symbol().is_void() || self.after_symbol().is_bracket() {
+                while self.next().key().is_symbol(){
+                    result.combine(&self.next());
+                    self.bump()
+                }
+            } else { return result }
             match result.con().as_str() {
                 "..." => { result.set_key(operator(OPERATOR::ddd_)) }
                 ".." => { result.set_key(operator(OPERATOR::dd_)) }
@@ -148,6 +148,26 @@ impl stream::STREAM {
                 "go" => { result.set_key(buildin(BUILDIN::go_)) },
                 "get" => { result.set_key(buildin(BUILDIN::get_)) },
                 "let" => { result.set_key(buildin(BUILDIN::let_)) },
+                "mut" => { result.set_key(option(OPTION::mut_)) },
+                "imu" => { result.set_key(option(OPTION::imu_)) },
+                "sta" => { result.set_key(option(OPTION::sta_)) },
+                "rea" => { result.set_key(option(OPTION::rea_)) },
+                "exp" => { result.set_key(option(OPTION::exp_)) },
+                "nor" => { result.set_key(option(OPTION::nor_)) },
+                "hid" => { result.set_key(option(OPTION::hid_)) },
+                "i8" => { result.set_key(form(FORM::i8_)) },
+                "i16" => { result.set_key(form(FORM::i16_)) },
+                "i32" => { result.set_key(form(FORM::i32_)) },
+                "i64" => { result.set_key(form(FORM::i64_)) },
+                "ia" => { result.set_key(form(FORM::ia_)) },
+                "u8" => { result.set_key(form(FORM::u8_)) },
+                "u16" => { result.set_key(form(FORM::u16_)) },
+                "u32" => { result.set_key(form(FORM::u32_)) },
+                "u64" => { result.set_key(form(FORM::u64_)) },
+                "ua" => { result.set_key(form(FORM::ua_)) },
+                "f32" => { result.set_key(form(FORM::f32_)) },
+                "f64" => { result.set_key(form(FORM::f64_)) },
+                "fa" => { result.set_key(form(FORM::fa_)) },
                 _ => { result.set_key(ident) },
             }
         }

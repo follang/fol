@@ -271,19 +271,19 @@ pub enum OPTION {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum FORM {
-    intA_,
-    int8_,
-    int16_,
-    int32_,
-    int64_,
-    untA_,
-    unt8_,
-    unt16_,
-    unt32_,
-    unt64_,
-    fltA_,
-    flt32_,
-    flt64_,
+    i8_,
+    i16_,
+    i32_,
+    i64_,
+    ia_,
+    u8_,
+    u16_,
+    u32_,
+    u64_,
+    ua_,
+    f32_,
+    f64_,
+    fa_,
 }
 
 impl fmt::Display for KEYWORD {

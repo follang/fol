@@ -86,7 +86,8 @@ impl<'a> PART<'a> {
 
     /// Moves to the next character.
     pub(crate) fn bump(&mut self, loc: &mut locate::LOCATION) -> Option<char> {
-        self.prev_char = self.curr_char();
+        self.prev_char = self.curr_char().clone();
+        println!("(p){}", self.curr_char);
         let c = self.restof.next()?;
         self.curr_char = c;
         loc.new_char();

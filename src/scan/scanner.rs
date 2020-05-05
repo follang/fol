@@ -261,6 +261,7 @@ impl SCAN {
     }
     fn symbol(&mut self, part: &mut parts::PART) {
         if (part.curr_char() == '.' || part.curr_char() == '-') && is_digit(&part.next_char()) {
+            // println!("{}", is_void(&part.prev_char()));
             self.digit(part);
             return
         }

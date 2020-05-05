@@ -3,7 +3,7 @@
 use std::fmt;
 use crate::scan::scanner;
 use crate::scan::reader;
-// use crate::scan::token;
+use crate::scan::token;
 
 use crate::scan::scanner::SCAN;
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -49,6 +49,12 @@ impl STREAM {
     }
     pub fn peek(&self, num: usize) -> SCAN {
         self.vec.get(num).unwrap_or(&zero()).to_owned()
+    }
+
+    pub fn after_symbol(&self) -> token::KEYWORD {
+        let mut i = 1;
+        while self.peek(i).key().is_symbol() { i += 1; }
+        *self.peek(i).key()
     }
 }
 
