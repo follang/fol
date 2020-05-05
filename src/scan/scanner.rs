@@ -22,6 +22,10 @@ pub fn is_alpha(ch: &char) -> bool {
     return 'a' <= *ch && *ch <= 'z' || 'A' <= *ch && *ch <= 'Z' || *ch == '_'
 }
 
+pub fn is_bracket(ch: &char) -> bool {
+    return *ch == '{' || *ch == '[' || *ch == '(' || *ch == ')' || *ch == ']' || *ch == '}'
+}
+
 pub fn is_symbol(ch: &char) -> bool {
     return '!' <= *ch && *ch <= '/' || ':' <= *ch && *ch <= '@' || '[' <= *ch && *ch <= '^' || '{' <= *ch && *ch <= '~'
 }
@@ -217,7 +221,8 @@ impl SCAN {
         self.bump_next(part);
     }
     fn symbol(&mut self, part: &mut parts::PART) {
-        if (part.curr_char() == '.' || part.curr_char() == '-') && is_digit(&part.next_char()) && is_void(&part.prev_char()) {
+        if (part.curr_char() == '.' || part.curr_char() == '-') && is_digit(&part.next_char())
+            && (is_void(&part.prev_char()) || is_bracket(&part.prev_char())) {
             // println!("{}", is_void(&part.prev_char()));
             self.digit(part);
             return
