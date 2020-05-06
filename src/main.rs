@@ -24,7 +24,7 @@ fn main() {
     // }
 
     let mut s = lexer::LEXEME::init("./etc");
-    while !s.list().is_empty() {
+    while s.not_empty() {
         println!("{}", s);
         s.bump()
     }

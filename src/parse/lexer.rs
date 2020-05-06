@@ -40,8 +40,8 @@ impl LEXEME {
         LEXEME { vec, prev, curr }
     }
 
-    pub fn analyze(&mut self, s: &mut stream::STREAM) -> SCAN {
-        s.curr().to_owned()
+    pub fn not_empty(&self) -> bool {
+        !self.list().is_empty()
     }
 
     pub fn bump(&mut self) {

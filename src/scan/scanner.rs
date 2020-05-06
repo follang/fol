@@ -45,6 +45,10 @@ pub fn is_void(ch: &char) -> bool {
     return is_eol(ch) || is_space(ch)
 }
 
+pub fn is_vobra(ch: &char) -> bool {
+    return is_void(ch) || is_bracket(ch)
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct SCAN {
     key: token::KEYWORD,
@@ -190,7 +194,7 @@ impl SCAN {
             self.push_curr(part);
             self.key = literal(LITERAL::decimal_);
             while is_digit(&part.next_char()) || part.next_char() == '_' { self.bump_next(part); }
-            if part.next_char() == '.' && is_digit(&part.peek(1)) {
+            if part.next_char() == '.' && (is_digit(&part.peek(1)) || is_vobra(&part.peek(1))) {
                 self.bump_next(part);
                 if is_digit(&part.next_char()) {
                     self.key = literal(LITERAL::float_);
