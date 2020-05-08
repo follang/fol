@@ -22,14 +22,24 @@ pub enum EXPR {
 pub enum STAT {
     use_,
     def_,
-    var_,
-    pro_,
+    var_{
+        options: Vec<token::OPTION>,
+        ident: String,
+        retype: token::TYPE,
+        value: EXPR
+    },
+    fun_{
+        options: Vec<token::OPTION>,
+        implement: Vec<token::KEYWORD>,
+        ident: String,
+        generics: Vec<STAT>,
+        parameters: Vec<STAT>,
+        retype: token::TYPE,
+        value: EXPR
+    },
     typ_,
     if_,
     when_,
     loop_,
 }
 
-pub struct ROOT {
-    el: Vec<NODE>
-}

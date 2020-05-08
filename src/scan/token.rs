@@ -108,6 +108,28 @@ impl KEYWORD {
             _ => false,
         }
     }
+    pub fn is_eol(&self) -> bool {
+        match *self {
+            KEYWORD::void(VOID::endline_(_)) => true,
+            _ => false,
+        }
+    }
+    pub fn is_nonterm(&self) -> bool {
+        match *self {
+            KEYWORD::bracket(SYMBOL::curlyO_) => true,
+            KEYWORD::bracket(SYMBOL::squarO_) => true,
+            KEYWORD::bracket(SYMBOL::roundO_) => true,
+            KEYWORD::symbol(SYMBOL::dot_) => true,
+            KEYWORD::symbol(SYMBOL::comma_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_dot(&self) -> bool {
+        match *self {
+            KEYWORD::symbol(SYMBOL::dot_) => true,
+            _ => false,
+        }
+    }
 }
 
 
@@ -129,7 +151,7 @@ pub enum LITERAL {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum VOID {
     space_,
-    endline_{ terminated: bool },
+    endline_(bool),
     endfile_,
 }
 
@@ -297,8 +319,8 @@ impl fmt::Display for KEYWORD {
             literal(LITERAL::hexal_) => write!(f, "{: <10} {: <10}", "LITERAL", "hexal"),
             literal(LITERAL::octal_) => write!(f, "{: <10} {: <10}", "LITERAL", "octal"),
             literal(LITERAL::binary_) => write!(f, "{: <10} {: <10}", "LITERAL", "binary"),
-            void(VOID::endline_ { terminated: false } ) => write!(f, "{: <10} {: <10}", "VOID", "eol(nont)"),
-            void(VOID::endline_ { terminated: true } ) => write!(f, "{: <10} {: <10}", "VOID", "eol(term)"),
+            void(VOID::endline_(false) ) => write!(f, "{: <10} {: <10}", "VOID", "eol"),
+            void(VOID::endline_(true) ) => write!(f, "{: <10} {: <10}", "VOID", "TERM"),
             void(VOID::space_ ) => write!(f, "{: <10} {: <10}", "VOID", "space"),
             void(VOID::endfile_ ) => write!(f, "{: <10} {: <10}", "VOID", "EOF"),
             bracket(SYMBOL::curlyC_ ) => write!(f, "{: <10} {: <10}", "SYMBOL", "curlyC"),

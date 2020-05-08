@@ -9,13 +9,14 @@ use crate::scan::stream;
 
 use crate::scan::scanner::SCAN;
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct LEXEME {
+pub struct BAG {
     vec: Vec<SCAN>,
     prev: SCAN,
     curr: SCAN,
+    brac: Vec<token::SYMBOL>,
 }
 
-impl LEXEME {
+impl BAG {
     pub fn list(&self) -> &Vec<SCAN> {
         &self.vec
     }
@@ -27,25 +28,25 @@ impl LEXEME {
     }
 }
 
-impl LEXEME {
-    pub fn init(path: &str ) -> Self {
-        let mut stream = stream::STREAM::init(path);
-        let prev = stream.prev().to_owned();
-        let curr = stream.curr().to_owned();
-        let mut vec: Vec<SCAN> = Vec::new();
-        while !stream.list().is_empty() {
-            vec.push(stream.analyze().to_owned());
-            stream.bump();
-        }
-        LEXEME { vec, prev, curr }
+pub fn init(path: &str ) -> BAG {
+    let mut stream = stream::STREAM::init(path);
+    let prev = stream.prev().to_owned();
+    let curr = stream.curr().to_owned();
+    let mut vec: Vec<SCAN> = Vec::new();
+    while !stream.list().is_empty() {
+        vec.push(stream.analyze().to_owned());
+        stream.bump();
     }
+    BAG { vec, prev, curr, brac: Vec::new() }
+}
 
+impl BAG {
     pub fn not_empty(&self) -> bool {
         !self.list().is_empty()
     }
 
     pub fn bump(&mut self) {
-        if !self.vec.is_empty(){
+        if self.not_empty(){
             self.prev = self.curr.to_owned();
             self.vec = self.vec[1..].to_vec();
             self.curr = self.vec.get(0).unwrap_or(&stream::zero()).to_owned();
@@ -77,8 +78,7 @@ impl stream::STREAM {
                 ".." => { result.set_key(operator(OPERATOR::dd_)) }
                 _ => { result.set_key(illegal) }
             }
-        }
-        if self.curr().key().is_ident() {
+        } else if self.curr().key().is_ident() {
             match result.con().as_str() {
                 "use" => { result.set_key(assign(ASSIGN::use_)) },
                 "def" => { result.set_key(assign(ASSIGN::def_)) },
@@ -170,15 +170,16 @@ impl stream::STREAM {
                 "fa" => { result.set_key(form(FORM::fa_)) },
                 _ => { result.set_key(ident) },
             }
+        } else if self.curr().key().is_eol() {
+            if self.prev().key().is_nonterm() || self.next().key().is_dot() {
+                result.set_key(void(VOID::endline_(false)))
+            }
         }
         result
     }
-    pub fn symbol(&mut self) {
-
-    }
 }
 
-impl fmt::Display for LEXEME {
+impl fmt::Display for BAG {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.curr())
     }

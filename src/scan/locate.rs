@@ -7,18 +7,16 @@ use std::fmt;
 /// A location somewhere in the sourcecode.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct LOCATION {
-    ns: String,
-    pos: usize,
+    file: String,
     row: usize,
     col: usize,
-    len: usize,
     deep: isize,
 }
 
 impl fmt::Display for LOCATION {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "ns: {: <5}   pos: {: <3}   row: {: <3}   col: {: <3}   deep: {: <3}  len: {: <5}",
-            self.ns, self.pos, self.row, self.col, self.deep, self.len)
+        write!(f, "file: {: <5}   row: {: <3}   col: {: <3}   deep: {: <3}",
+            self.file, self.row, self.col, self.deep)
     }
 }
 
@@ -35,11 +33,13 @@ impl LOCATION {
 
 impl LOCATION {
     pub fn init(red: &reader::READER) -> Self {
-        LOCATION { ns: red.name.to_string(), pos: 1, row: 1, col: 1, len: 1, deep: 1 }
+        let file = red.path.to_string();
+        // file.add_str("go");
+        LOCATION { file, row: 1, col: 1, deep: 1 }
     }
 
-    pub fn new(ns: String, pos: usize, row: usize, col: usize, len: usize, deep: isize) -> Self {
-        LOCATION { ns, pos, row, col, len, deep }
+    pub fn new(file: String, row: usize, col: usize, deep: isize) -> Self {
+        LOCATION { file, row, col, deep }
     }
 
     pub fn row(&self) -> usize {
@@ -50,37 +50,21 @@ impl LOCATION {
         self.col
     }
 
-    pub fn len(&self) -> usize {
-        self.len
-    }
-
     pub fn deep(&self) -> isize {
         self.deep
     }
 
-    pub fn pos(&self) -> usize {
-        self.pos
-    }
-
-    pub fn ns(&self) -> &String {
-        &self.ns
+    pub fn file(&self) -> &String {
+        &self.file
     }
 
     pub fn reset(&mut self) {
         self.row = 1;
         self.col = 1;
-        self.len = 1;
-        self.pos = 1;
     }
 
     pub fn new_char(&mut self) {
         self.col += 1;
-        self.len += 1;
-        self.pos += 1;
-    }
-
-    pub fn new_word(&mut self) {
-        self.len = 0;
     }
 
     pub fn new_line(&mut self) {
@@ -88,10 +72,9 @@ impl LOCATION {
         self.col = 1;
     }
 
-    pub fn adjust(&mut self, row: usize, col: usize, pos: usize){
+    pub fn adjust(&mut self, row: usize, col: usize){
         self.row = row;
         self.col = col;
-        self.pos = pos;
     }
 
     pub fn deepen(&mut self){

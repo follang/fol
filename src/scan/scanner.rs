@@ -62,7 +62,7 @@ impl SCAN {
     }
     pub fn zero(name: &str) -> Self {
         let key = token::KEYWORD::void(token::VOID::endfile_);
-        let loc = locate::LOCATION::new(name.to_string(), 0,0,0,0,0);
+        let loc = locate::LOCATION::new(name.to_string(), 0,0,0);
         SCAN { key, loc, con: String::new() }
     }
 }
@@ -119,7 +119,6 @@ impl parts::PART {
     /// Parses a token from the input string.
     fn scan(&mut self, loc: &mut locate::LOCATION) -> SCAN {
         let mut result = SCAN::new(illegal, loc.clone(), String::new());
-        result.loc.new_word();
         self.bump(&mut result.loc);
         if is_eol(&self.curr_char()) {
             result.endline(self, false);
@@ -134,9 +133,9 @@ impl parts::PART {
         } else if is_alpha(&self.curr_char()) {
             result.alpha(self);
         }
-        let (row, col, pos) = (loc.row(), loc.col(), loc.pos());
+        let (row, col) = (loc.row(), loc.col());
         *loc = result.loc.clone();
-        result.loc.adjust(row, col, pos);
+        result.loc.adjust(row, col);
         return result
     }
 }
@@ -150,7 +149,7 @@ impl SCAN {
     fn endline(&mut self, part: &mut parts::PART, terminated: bool) {
         self.push_curr(part);
         self.loc.new_line();
-        self.key = void(VOID::endline_ {terminated});
+        self.key = void(VOID::endline_(true));
         while is_eol(&part.next_char()) || is_space(&part.next_char()) {
             if is_eol(&part.next_char()) { self.loc.new_line(); }
             self.bump_next(part);

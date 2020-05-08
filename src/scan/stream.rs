@@ -31,7 +31,7 @@ impl STREAM {
         for mut e in reader::iteratize(path) {
             vec.append(&mut scanner::vectorize(&mut e))
         }
-        let prev = SCAN::zero(&vec.last().unwrap().loc().ns());
+        let prev = SCAN::zero(&vec.last().unwrap().loc().file());
         let curr = vec.get(0).unwrap_or(&zero()).to_owned();
         STREAM { vec, prev, curr }
     }
