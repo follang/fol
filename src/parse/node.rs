@@ -9,7 +9,6 @@ use crate::scan::token;
 pub enum NODE {
     expr(EXPR),
     stat(STAT),
-    comp(Vec<NODE>)
 }
 
 pub enum EXPR {
@@ -43,3 +42,17 @@ pub enum STAT {
     loop_,
 }
 
+pub enum literal {
+    string,
+    char,
+    number
+}
+
+impl fmt::Display for NODE {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match &self {
+            NODE::expr(_) => { write!(f, "expr") }
+            NODE::stat(_) => { write!(f, "stat") }
+        }
+    }
+}

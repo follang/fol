@@ -58,6 +58,10 @@ impl BAG {
     pub fn peek(&self, num: usize) -> SCAN {
         self.vec.get(num).unwrap_or(&stream::zero()).to_owned()
     }
+
+    pub fn is_terminal(&self) -> bool {
+        self.curr().key().is_terminal()
+    }
 }
 
 use crate::scan::token::*;
@@ -177,6 +181,7 @@ impl stream::STREAM {
         }
         result
     }
+
 }
 
 impl fmt::Display for BAG {
@@ -184,4 +189,3 @@ impl fmt::Display for BAG {
         write!(f, "{}", self.curr())
     }
 }
-

@@ -11,6 +11,7 @@ use crate::scan::stream;
 mod parse;
 use crate::parse::lexer;
 use crate::parse::parser;
+use crate::parse::node;
 
 fn main() {
     // for mut e in reader::iteratize("./etc") {
@@ -34,8 +35,9 @@ fn main() {
     // }
 
     let mut s = lexer::init("./etc");
-    let root = parser::init();
+    let mut root = parser::init();
     root.parse_tree(&mut s);
-
-
+    for e in root.el {
+        println!("{}", e);
+    }
 }
