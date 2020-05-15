@@ -37,7 +37,9 @@ impl LOCATION {
         // file.add_str("go");
         LOCATION { file, row: 1, col: 1, deep: 1 }
     }
-
+    pub fn def() -> Self {
+        LOCATION { file: String::new(), row: 1, col: 1, deep: 1 }
+    }
     pub fn new(file: String, row: usize, col: usize, deep: isize) -> Self {
         LOCATION { file, row, col, deep }
     }

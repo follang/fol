@@ -4,7 +4,8 @@ with import <nixpkgs> {}; rec {
     buildInputs = [ stdenv
                     gcc
                     llvm
-                    rustc
+                    # rustc
+                    rustup
                     cargo
                   ];
     LD_LIBRARY_PATH="${xorg.libX11}/lib/";

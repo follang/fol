@@ -70,7 +70,7 @@ impl stream::STREAM {
     pub fn analyze(&mut self) -> SCAN {
         let mut result = self.curr().clone();
         if (self.prev().key().is_void() || self.prev().key().is_bracket()) &&
-            self.curr().key().is_symbol() && self.next().key().is_symbol() {
+            self.curr().key().is_symbol() && (self.next().key().is_symbol() || self.next().key().is_void()) {
             if self.after_symbol().is_void() || self.after_symbol().is_bracket() {
                 while self.next().key().is_symbol(){
                     result.combine(&self.next());
@@ -80,7 +80,26 @@ impl stream::STREAM {
             match result.con().as_str() {
                 "..." => { result.set_key(operator(OPERATOR::ddd_)) }
                 ".." => { result.set_key(operator(OPERATOR::dd_)) }
-                _ => { result.set_key(illegal) }
+                "=" => { result.set_key(operator(OPERATOR::assign_)) }
+                ":=" => { result.set_key(operator(OPERATOR::assign2_)) }
+                "=>" => { result.set_key(operator(OPERATOR::flow_)) }
+                "->" => { result.set_key(operator(OPERATOR::flow2_)) }
+                "+" => { result.set_key(operator(OPERATOR::add_)) }
+                "-" => { result.set_key(operator(OPERATOR::subtract_)) }
+                "*" => { result.set_key(operator(OPERATOR::multiply_)) }
+                "/" => { result.set_key(operator(OPERATOR::divide_)) }
+                "<" => { result.set_key(operator(OPERATOR::less_)) }
+                ">" => { result.set_key(operator(OPERATOR::greater_)) }
+                "==" => { result.set_key(operator(OPERATOR::equal_)) }
+                ">=" => { result.set_key(operator(OPERATOR::greatereq_)) }
+                "<=" => { result.set_key(operator(OPERATOR::lesseq_)) }
+                "+=" => { result.set_key(operator(OPERATOR::addeq_)) }
+                "-=" => { result.set_key(operator(OPERATOR::subtracteq_)) }
+                "*=" => { result.set_key(operator(OPERATOR::multiplyeq_)) }
+                "/=" => { result.set_key(operator(OPERATOR::divideeq_)) }
+                "<<" => { result.set_key(operator(OPERATOR::shiftleft_)) }
+                ">>" => { result.set_key(operator(OPERATOR::shiftright_)) }
+                _ => { if result.con().as_str().len() > 1 { result.set_key(illegal) } }
             }
         } else if self.curr().key().is_ident() {
             match result.con().as_str() {

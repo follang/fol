@@ -56,6 +56,12 @@ impl STREAM {
         while self.peek(i).key().is_symbol() { i += 1; }
         *self.peek(i).key()
     }
+
+    pub fn after(&self, key: token::KEYWORD) -> token::KEYWORD {
+        let mut i = 1;
+        while matches!( self.peek(i).key(), key) { i += 1; }
+        *self.peek(i).key()
+    }
 }
 
 impl fmt::Display for STREAM {

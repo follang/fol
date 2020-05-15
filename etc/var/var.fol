@@ -43,11 +43,9 @@ def '$'(a: any): mac = '.to_string($)'
 def '~var': alt = 'var[~]'
 def 'str': def[] = 'str[new,mut,nor]'
 
-
 ----------------------------------
-let it be
-let,
-it,
-be.
 .yourself
+...
+==
+-
 
