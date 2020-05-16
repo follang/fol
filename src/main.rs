@@ -38,6 +38,6 @@ fn main() {
     let mut root = parser::new();
     root.init(&mut s);
     for e in root.el {
-        println!("{}\t{}", e.1, e.0);
+        println!("{}\t{}", e.loc(), e.node());
     }
 }

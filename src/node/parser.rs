@@ -39,14 +39,14 @@ impl forest {
 
     pub fn parse_expr_ident_str(&self, l: &mut lexer::BAG) -> tree {
         l.bump();
-        (node::stat(stat::Use), l.curr().loc().clone())
+        tree::new(node::stat(stat::Use), l.curr().loc().clone())
     }
 
     pub fn parse_stat_var(&mut self, l: &mut lexer::BAG) {
-        let n: tree; let v = var_stat::init(); let c = l.curr().loc().clone();
+        let v = var_stat::init(); let c = l.curr().loc().clone();
         // println!("{} \t\t--- {} {}", l.curr().loc(), l.curr().key(), l.curr().con());
         l.end();
-        n = (node::stat(stat::Var(v)), c);
+        let n = tree::new(node::stat(stat::Var(v)), c);
         self.el.push(n);
     }
 }

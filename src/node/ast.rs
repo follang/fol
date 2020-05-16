@@ -13,7 +13,21 @@ pub enum node {
     node(Vec<node>),
 }
 
-pub type tree = (node, locate::LOCATION);
+pub struct tree {
+    node: node,
+    loc: locate::LOCATION,
+}
+impl tree {
+    pub fn new(node: node, loc: locate::LOCATION) -> Self {
+        tree{node, loc}
+    }
+    pub fn node(&self) -> &node {
+        &self.node
+    }
+    pub fn loc(&self) -> &locate::LOCATION {
+        &self.loc
+    }
+}
 
 
 pub enum expr {
