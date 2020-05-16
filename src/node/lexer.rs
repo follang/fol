@@ -44,7 +44,7 @@ pub fn init(path: &str, e: &mut err::ERROR) -> BAG {
 
 
 #[macro_export]
-macro_rules! expect(($e:expr, $p:pat) => (
+macro_rules! expect(($e:expr, $p:expr) => (
     match $e {
         $p => { true },
         _ => { false }
@@ -76,11 +76,17 @@ impl BAG {
     pub fn toend(&mut self) {
         let deep = self.curr().loc().deep();
         loop {
-            if self.is_terminal() && self.curr().loc().deep() == deep { break }
+            if (self.is_terminal() && self.curr().loc().deep() == deep) || (self.curr().key().is_eof()) { break }
             self.bump()
         }
         self.bump();
         self.eat();
+    }
+
+    pub fn report(&mut self, k: token::KEYWORD, e: &mut err::ERROR) {
+        let s: String = String::from("expected {") + &k.to_string() + "}, got {" + &self.curr().key().to_string() + "}";
+        e.report(err::TYPE::parser, &s, self.curr().loc().clone());
+        self.toend();
     }
 
     pub fn next(&self) -> SCAN {

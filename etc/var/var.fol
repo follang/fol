@@ -13,9 +13,9 @@ var ten = <expression>
 
 
 fun one(two: int): int = { <expression> }
-~fun one(two: int): int = { <expression> }
+fun one(two: int): int = { <expression> }
 ~log[] one(two: int): int = { <expression> }
-~fun[] '!='(one, two: int): bol = { <expression> }
+fun[] '!='(one, two: int): bol = { <expression> }
 ~pro[] (obj)one(two: int): int = { <expression> }
 ~pro[] (obj)'$': str = { <expression> }
 ~pro[] one[T: gen](two: int): int = { <expression> }

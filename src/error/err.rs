@@ -6,6 +6,11 @@
 
 use std::fmt;
 use crate::scan::locate;
+use std::fs::File;
+use std::io::BufRead;
+use std::io::BufReader;
+use std::io::Error;
+use std::path::Path;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct error {
@@ -46,17 +51,41 @@ impl ERROR {
     }
 
     pub fn show(&mut self) {
+        println!("\n");
         for e in self.el.iter() {
-            println!("{}", e)
+            println!("{}", e);
+            println!("\n--------------------------------------------\n");
         }
     }
+}
+
+fn get_line_at(filepath: &str, line_num: usize) -> Result<String, Error> {
+    let path = Path::new(filepath);
+    let file = File::open(path).expect("File not found or cannot be opened");
+    let content = BufReader::new(&file);
+    let mut lines = content.lines();
+    lines.nth(line_num-1).expect("No line found at that position")
 }
 
 impl fmt::Display for error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.typ {
-            TYPE::lexer => write!(f, "{: <18} {}\n{}", "LEXER error at:", self.loc, self.msg),
-            TYPE::parser => write!(f, "{: <18} {}\n{}", "PARSER error at:", self.loc, self.msg)
+            TYPE::lexer => write!(f,
+                "{}\n{} \n\n{} \n{}\n{}",
+                "error in lexing stage:",
+                self.loc,
+                get_line_at(self.loc.path(), self.loc.row()).unwrap(),
+                "^^^",
+                self.msg,
+                ),
+            TYPE::parser => write!(f,
+                "{}\n{} \n\n{} \n{}\n{}",
+                "error in parsing stage:",
+                self.loc,
+                get_line_at(self.loc.path(), self.loc.row()).unwrap(),
+                "^^^",
+                self.msg,
+                ),
         }
     }
 }

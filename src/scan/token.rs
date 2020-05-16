@@ -108,6 +108,12 @@ impl KEYWORD {
             _ => false,
         }
     }
+    pub fn is_eof(&self) -> bool {
+        match *self {
+            KEYWORD::void(VOID::endfile_) => true,
+            _ => false,
+        }
+    }
     pub fn is_eol(&self) -> bool {
         match *self {
             KEYWORD::void(VOID::endline_(_)) => true,

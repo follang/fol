@@ -35,8 +35,9 @@ fn main() {
         // s.bump()
     // }
 
+    let path = "./etc";
     let mut error = err::ERROR::init();
-    let mut tokens = lexer::init("./etc", &mut error);
+    let mut tokens = lexer::init(path, &mut error);
     let mut forest = parser::new();
     forest.init(&mut tokens, &mut error);
     for tree in forest.el {

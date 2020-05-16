@@ -7,7 +7,8 @@ use std::fmt;
 /// A location somewhere in the sourcecode.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct LOCATION {
-    file: String,
+    path: String,
+    name: String,
     row: usize,
     col: usize,
     deep: isize,
@@ -15,8 +16,8 @@ pub struct LOCATION {
 
 impl fmt::Display for LOCATION {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "file: {: <5}   row: {: <3}   col: {: <3}",
-            self.file, self.row, self.col)
+        write!(f, "file: {: <4}   row: {: <2}   col: {: <2}",
+            self.name, self.row, self.col)
     }
 }
 
@@ -33,15 +34,16 @@ impl LOCATION {
 
 impl LOCATION {
     pub fn init(red: &reader::READER) -> Self {
-        let file = red.path.to_string();
+        let name = red.name.to_string();
+        let path = red.path.to_string();
         // file.add_str("go");
-        LOCATION { file, row: 1, col: 1, deep: 1 }
+        LOCATION { path, name,  row: 1, col: 1, deep: 1 }
     }
     pub fn def() -> Self {
-        LOCATION { file: String::new(), row: 1, col: 1, deep: 1 }
+        LOCATION { path: String::new(), name: String::new(), row: 1, col: 1, deep: 1 }
     }
-    pub fn new(file: String, row: usize, col: usize, deep: isize) -> Self {
-        LOCATION { file, row, col, deep }
+    pub fn new(path: String, name: String, row: usize, col: usize, deep: isize) -> Self {
+        LOCATION { path, name, row, col, deep }
     }
 
     pub fn row(&self) -> usize {
@@ -56,8 +58,12 @@ impl LOCATION {
         self.deep
     }
 
-    pub fn file(&self) -> &String {
-        &self.file
+    pub fn path(&self) -> &String {
+        &self.path
+    }
+
+    pub fn name(&self) -> &String {
+        &self.name
     }
 
     pub fn reset(&mut self) {

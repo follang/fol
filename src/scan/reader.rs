@@ -51,7 +51,6 @@ pub struct READER {
     pub file: String,
     pub name: String,
     pub data: String,
-    pub past: String,
 }
 
 impl fmt::Display for READER {
@@ -98,15 +97,18 @@ impl READER {
             let file : String = Path::new(&f).file_name()
                 .and_then(OsStr::to_str).unwrap().to_string()
                 .trim_end_matches(".fol").to_string();
+            // let name: String = fs::canonicalize(&f).unwrap()
+                // .as_path().parent().unwrap().to_str().unwrap().to_string()
+                // .trim_start_matches(&e).to_string()
+                // .trim_start_matches("/").to_string();
             let name: String = fs::canonicalize(&f).unwrap()
-                .as_path().parent().unwrap().to_str().unwrap().to_string()
-                .trim_start_matches(&e).to_string()
-                .trim_start_matches("/").to_string();
-            let path: String = fs::canonicalize(&f).unwrap()
                 .as_path().to_str().unwrap().to_string()
                 .trim_start_matches(&e).to_string();
+                // .trim_end_matches(".fol").to_string();
+            let path: String = fs::canonicalize(&f).unwrap()
+                .as_path().to_str().unwrap().to_string();
             let data: String = read_string_file(f).unwrap();
-            let reader = READER{ path, file, name, data, past: String::new() };
+            let reader = READER{ path, file, name, data };
             vec.push(reader);
         }
         return vec
