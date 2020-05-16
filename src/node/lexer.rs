@@ -44,12 +44,16 @@ impl BAG {
     pub fn not_empty(&self) -> bool {
         !self.list().is_empty()
     }
-
     pub fn bump(&mut self) {
         if self.not_empty(){
             self.prev = self.curr.to_owned();
             self.vec = self.vec[1..].to_vec();
             self.curr = self.vec.get(0).unwrap_or(&stream::zero()).to_owned();
+        }
+    }
+    pub fn times(&mut self, t: u8) {
+        for i in 0..t {
+            self.bump()
         }
     }
     pub fn next(&self) -> SCAN {
@@ -99,7 +103,7 @@ impl stream::STREAM {
                 "/=" => { result.set_key(operator(OPERATOR::divideeq_)) }
                 "<<" => { result.set_key(operator(OPERATOR::shiftleft_)) }
                 ">>" => { result.set_key(operator(OPERATOR::shiftright_)) }
-                _ => { if result.con().as_str().len() > 1 { result.set_key(illegal) } }
+                _ => {}
             }
         } else if self.curr().key().is_ident() {
             match result.con().as_str() {

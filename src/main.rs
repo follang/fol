@@ -35,9 +35,9 @@ fn main() {
     // }
 
     let mut s = lexer::init("./etc");
-    let mut root = parser::init();
+    let mut root = parser::new();
     root.init(&mut s);
-    // for e in root.el {
-        // println!("{}", e);
-    // }
+    for e in root.el {
+        println!("{}\t{}", e.1, e.0);
+    }
 }

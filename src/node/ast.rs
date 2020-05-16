@@ -12,6 +12,7 @@ pub enum node {
     stat(stat),
     node(Vec<node>),
 }
+
 pub type tree = (node, locate::LOCATION);
 
 
@@ -34,27 +35,22 @@ pub enum stat {
     Loop,
 }
 pub struct var_stat{
-    options: (assign_mut, assign_exp),
+    options: options_men,
     ident: String,
     retype: Option<expr>,
     body: Option<expr>
 }
 impl var_stat {
     pub fn init() -> Self {
-        var_stat { options: (assign_mut::Imu, assign_exp::Nor), ident: String::new(), retype: None, body: None }
+        var_stat { options: options_men(assign_mut::Imu, assign_exp::Nor, assign_ptr::Stk), ident: String::new(), retype: None, body: None }
     }
-    pub fn new(options: (assign_mut, assign_exp), ident: String, retype: Option<expr>, body: Option<expr>) -> Self {
+    pub fn new(options: options_men, ident: String, retype: Option<expr>, body: Option<expr>) -> Self {
         var_stat { options, ident, retype, body }
-    }
-}
-impl fmt::Display for var_stat {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "var")
     }
 }
 
 pub struct fun_stat {
-    options: (assign_mut, assign_exp),
+    options: options_men,
     implement: Option<Box<node>>,
     ident: String,
     generics: Option<Box<node>>,
@@ -65,16 +61,23 @@ pub struct fun_stat {
 
 
 pub enum assign_mut {
-    Mut,
     Imu,
+    Mut,
     Sta,
 }
 
 pub enum assign_exp {
-    Exp,
     Nor,
+    Exp,
     Hid,
 }
+
+pub enum assign_ptr {
+    Stk,
+    Hep,
+}
+
+pub struct options_men(assign_mut, assign_exp, assign_ptr);
 
 pub struct contain_expr {
     uniform: bool,
@@ -93,14 +96,60 @@ pub enum number_expr {
     int_8(i8),
 }
 
+
+//                      //
+//  DISPLAY PROPERTIES  //
+//                      //
+
 impl fmt::Display for node {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match &self {
             node::expr(_) => { write!(f, "expr") }
-            node::stat(stat::Var(var_stat)) => { write!(f, "var") }
+            node::stat(stat::Var(var_stat)) => { write!(f, "{}", var_stat) }
             node::stat(stat::Fun(fun_stat)) => { write!(f, "fun") }
             node::stat(_) => { write!(f, "stat") }
             _ => { write!(f, "---") }
         }
+    }
+}
+
+impl fmt::Display for var_stat {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "var {}", self.options)
+    }
+}
+
+impl fmt::Display for assign_mut {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match &self {
+            assign_mut::Imu => { write!(f, "imu") }
+            assign_mut::Mut => { write!(f, "mut") }
+            assign_mut::Sta => { write!(f, "sta") }
+        }
+    }
+}
+
+impl fmt::Display for assign_exp {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match &self {
+            assign_exp::Nor => { write!(f, "nor") }
+            assign_exp::Exp => { write!(f, "exp") }
+            assign_exp::Hid => { write!(f, "hid") }
+        }
+    }
+}
+
+impl fmt::Display for assign_ptr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match &self {
+            assign_ptr::Stk => { write!(f, "stk") }
+            assign_ptr::Hep => { write!(f, "hep") }
+        }
+    }
+}
+
+impl fmt::Display for options_men {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "[{}, {}, {}]", self.0, self.1, self.2)
     }
 }
