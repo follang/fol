@@ -1,15 +1,15 @@
-~var[nor,rac, exp, hid] one = <expression>;
-~var[exp,imu] two: str[exp,imu] = <expression>;
-+var three: int = <expression>;
+~var[nor,rac, exp, hid] one = <expression>
+~var[exp,imu] two: str[exp,imu] = <expression>
++var three: int = <expression>
 ~var[exp] (
-    four: int[exp] ;
+    four: int[exp];
     five: int[nor] = <expression>;
 )
-~var[exp] six, six2, six3, six4: int[] = <expression>;
-var[] seven, seven2, seven3: int[exp,imu], flt[imu, exp], str;
-var[] eight;
-var nine;
-var ten = <expression>;
+~var[exp] six, six2, six3, six4: int[] = <expression>
+var[] seven, seven2, seven3: int[exp,imu], flt[imu, exp], str
+var[] eight
+var nine
+var ten = <expression>
 
 
 fun one(two: int): int = { <expression> }
@@ -42,10 +42,3 @@ use[] one: two = <expression>;
 def '$'(a: any): mac = '.to_string($)'
 def '~var': alt = 'var[~]'
 def 'str': def[] = 'str[new,mut,nor]'
-
-----------------------------------
-.yourself
-...
-==
--
-

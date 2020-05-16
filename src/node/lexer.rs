@@ -51,11 +51,26 @@ impl BAG {
             self.curr = self.vec.get(0).unwrap_or(&stream::zero()).to_owned();
         }
     }
-    pub fn times(&mut self, t: u8) {
+    pub fn jump(&mut self, t: u8) {
         for i in 0..t {
             self.bump()
         }
     }
+    pub fn eat(&mut self) {
+        if self.curr().key().is_void(){
+            self.bump()
+        }
+    }
+    pub fn end(&mut self) {
+        let deep = self.curr().loc().deep();
+        loop {
+            if self.is_terminal() && self.curr().loc().deep() == deep { break }
+            self.bump()
+        }
+        self.bump();
+        self.eat();
+    }
+
     pub fn next(&self) -> SCAN {
         self.vec.get(1).unwrap_or(&stream::zero()).to_owned()
     }
