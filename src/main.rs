@@ -2,7 +2,6 @@
 #![allow(unused_variables)]
 
 mod scan;
-mod error;
 // use crate::scan::token;
 // use crate::scan::parts;
 use crate::scan::reader;
@@ -12,6 +11,8 @@ mod node;
 use crate::node::lexer;
 use crate::node::parser;
 use crate::node::ast;
+mod error;
+use crate::error::err;
 
 fn main() {
     // for mut e in reader::iteratize("./etc") {
@@ -34,10 +35,12 @@ fn main() {
         // s.bump()
     // }
 
-    let mut s = lexer::init("./etc");
-    let mut root = parser::new();
-    root.init(&mut s);
-    for e in root.el {
-        println!("{}\t{}", e.loc(), e.node());
+    let mut error = err::ERROR::init();
+    let mut tokens = lexer::init("./etc", &mut error);
+    let mut forest = parser::new();
+    forest.init(&mut tokens, &mut error);
+    for tree in forest.el {
+        println!("{}\t{}", tree.loc(), tree.node());
     }
+    error.show();
 }

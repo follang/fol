@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+#![allow(unused_macros)]
 
 use std::fmt;
 // use crate::scan::scanner;
@@ -6,6 +7,7 @@ use std::fmt;
 // use crate::scan::locate;
 use crate::scan::token;
 use crate::scan::stream;
+use crate::error::err;
 
 use crate::scan::scanner::SCAN;
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -28,17 +30,26 @@ impl BAG {
     }
 }
 
-pub fn init(path: &str ) -> BAG {
+pub fn init(path: &str, e: &mut err::ERROR) -> BAG {
     let mut stream = stream::STREAM::init(path);
     let prev = stream.prev().to_owned();
     let curr = stream.curr().to_owned();
     let mut vec: Vec<SCAN> = Vec::new();
     while !stream.list().is_empty() {
-        vec.push(stream.analyze().to_owned());
+        vec.push(stream.analyze(e).to_owned());
         stream.bump();
     }
     BAG { vec, prev, curr, brac: Vec::new() }
 }
+
+
+#[macro_export]
+macro_rules! expect(($e:expr, $p:pat) => (
+    match $e {
+        $p => { true },
+        _ => { false }
+    }
+));
 
 impl BAG {
     pub fn not_empty(&self) -> bool {
@@ -61,7 +72,8 @@ impl BAG {
             self.bump()
         }
     }
-    pub fn end(&mut self) {
+
+    pub fn toend(&mut self) {
         let deep = self.curr().loc().deep();
         loop {
             if self.is_terminal() && self.curr().loc().deep() == deep { break }
@@ -86,7 +98,7 @@ impl BAG {
 use crate::scan::token::*;
 use crate::scan::token::KEYWORD::*;
 impl stream::STREAM {
-    pub fn analyze(&mut self) -> SCAN {
+    pub fn analyze(&mut self, e: &mut err::ERROR) -> SCAN {
         let mut result = self.curr().clone();
         if (self.prev().key().is_void() || self.prev().key().is_bracket()) &&
             self.curr().key().is_symbol() && (self.next().key().is_symbol() || self.next().key().is_void()) {
