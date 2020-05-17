@@ -40,7 +40,7 @@ fn main() {
     let mut tokens = lexer::init(path, &mut error);
     let mut forest = parser::new();
     forest.init(&mut tokens, &mut error);
-    for tree in forest.el {
+    for tree in forest.trees {
         println!("{}\t{}", tree.loc(), tree.node());
     }
     error.show();

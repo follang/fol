@@ -8,23 +8,22 @@ use crate::scan::token;
 use crate::scan::locate;
 
 #[derive(Clone, Debug)]
-pub enum node {
+pub enum root {
     expr(expr),
     stat(stat),
-    node(Vec<node>),
 }
 
 #[derive(Clone, Debug)]
 pub struct tree {
-    node: node,
+    one: root,
     loc: locate::LOCATION,
 }
 impl tree {
-    pub fn new(node: node, loc: locate::LOCATION) -> Self {
-        tree{node, loc}
+    pub fn new(one: root, loc: locate::LOCATION) -> Self {
+        tree{one, loc}
     }
-    pub fn node(&self) -> &node {
-        &self.node
+    pub fn node(&self) -> &root {
+        &self.one
     }
     pub fn loc(&self) -> &locate::LOCATION {
         &self.loc
@@ -59,14 +58,14 @@ pub struct var_stat{
     pub options: Vec<assign_opts>,
     pub ident: String,
     pub retype: Option<expr>,
-    pub body: Option<expr>
+    pub body: Option<Box<root>>
 }
 
 impl var_stat {
     pub fn init() -> Self {
         var_stat { options: Vec::new(), ident: String::from("test"), retype: None, body: None }
     }
-    pub fn new(options: Vec<assign_opts>, ident: String, retype: Option<expr>, body: Option<expr>) -> Self {
+    pub fn new(options: Vec<assign_opts>, ident: String, retype: Option<expr>, body: Option<Box<root>>) -> Self {
         var_stat { options, ident, retype, body }
     }
 }
@@ -74,12 +73,12 @@ impl var_stat {
 #[derive(Clone, Debug)]
 pub struct fun_stat {
     options: Vec<assign_opts>,
-    implement: Option<Box<node>>,
+    implement: Option<Box<root>>,
     ident: String,
-    generics: Option<Box<node>>,
-    parameters: Option<Box<node>>,
+    generics: Option<Box<root>>,
+    parameters: Option<Box<root>>,
     retype: Option<expr>,
-    body: expr
+    body: Box<root>
 }
 
 #[derive(Clone, Debug)]
@@ -112,7 +111,7 @@ pub enum assign_opts {
 #[derive(Clone, Debug)]
 pub struct contain_expr {
     uniform: bool,
-    elements: Box<node>
+    elements: Box<root>
 }
 
 #[derive(Clone, Debug)]
@@ -140,14 +139,13 @@ pub enum binary_expr {
 //                                          DISPLAY PROPERTIES                                          //
 //------------------------------------------------------------------------------------------------------//
 
-impl fmt::Display for node {
+impl fmt::Display for root {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match &self {
-            node::expr(_) => { write!(f, "expr") }
-            node::stat(stat::Var(var_stat)) => { write!(f, "{}", var_stat) }
-            node::stat(stat::Fun(fun_stat)) => { write!(f, "fun") }
-            node::stat(_) => { write!(f, "stat") }
-            _ => { write!(f, "---") }
+            root::expr(_) => { write!(f, "expr") }
+            root::stat(stat::Var(var_stat)) => { write!(f, "{}", var_stat) }
+            root::stat(stat::Fun(fun_stat)) => { write!(f, "fun") }
+            root::stat(_) => { write!(f, "stat") }
         }
     }
 }

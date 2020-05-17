@@ -12,22 +12,22 @@ use crate::error::err;
 
 
 pub struct forest {
-    pub el: Vec<tree>
+    pub trees: Vec<tree>
 }
 
 pub fn new() -> forest {
-    let el = Vec::new();
+    let trees = Vec::new();
     // let loc =  locate::LOCATION::def();
-    forest{ el }
+    forest{ trees }
 }
 
 impl forest {
     pub fn init(&mut self, l: &mut lexer::BAG, e: &mut err::ERROR) {
         while l.not_empty() {
-            self.parse_node(l, e);
+            self.parse_stat(l, e);
         }
     }
-pub fn parse_node(&mut self, l: &mut lexer::BAG, e: &mut err::ERROR) {
+pub fn parse_stat(&mut self, l: &mut lexer::BAG, e: &mut err::ERROR) {
 // println!("{}", l);
     if matches!( l.curr().key(), KEYWORD::assign(ASSIGN::var_) ) ||
         ( matches!( l.curr().key(), KEYWORD::symbol(_) ) && matches!( l.next().key(), KEYWORD::assign(ASSIGN::var_) ) ) {
@@ -63,7 +63,7 @@ pub fn parse_node(&mut self, l: &mut lexer::BAG, e: &mut err::ERROR) {
 
 pub fn parse_expr_ident_str(&self, l: &mut lexer::BAG, e: &mut err::ERROR) -> tree {
     l.bump();
-    tree::new(node::stat(stat::Use), l.curr().loc().clone())
+    tree::new(root::stat(stat::Use), l.curr().loc().clone())
 }
 
 pub fn parse_stat_var(&mut self, l: &mut lexer::BAG, e: &mut err::ERROR) ->tree {
@@ -71,8 +71,8 @@ pub fn parse_stat_var(&mut self, l: &mut lexer::BAG, e: &mut err::ERROR) ->tree 
     if matches!(l.curr().key(), KEYWORD::symbol(_)) { l.bump() }
     println!("{} \t\t--- {} {}", l.curr().loc(), l.curr().key(), l.curr().con());
     l.toend();
-    let n = tree::new(node::stat(stat::Var(v)), c);
-    self.el.push(n.clone());
+    let n = tree::new(root::stat(stat::Var(v)), c);
+    self.trees.push(n.clone());
     n
 }
 }

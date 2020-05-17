@@ -4,6 +4,9 @@
 #![allow(unused_variables)]
 
 
+extern crate colored;
+use colored::Colorize;
+
 use std::fmt;
 use crate::scan::locate;
 use std::fs::File;
@@ -54,7 +57,7 @@ impl ERROR {
         println!("\n");
         for e in self.el.iter() {
             println!("{}", e);
-            println!("\n--------------------------------------------\n");
+            println!("\n\n");
         }
     }
 }
@@ -71,18 +74,18 @@ impl fmt::Display for error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.typ {
             TYPE::lexer => write!(f,
-                "{}\n{} \n\n{} \n{}\n{}",
-                "error in lexing stage:",
+                "{}\n {}\n\n    {}\n    {}\n {}",
+                " error in parsing stage: ".black().bold().on_white(),
                 self.loc,
-                get_line_at(self.loc.path(), self.loc.row()).unwrap(),
+                get_line_at(self.loc.path(), self.loc.row()).unwrap().red(),
                 "^^^",
                 self.msg,
                 ),
             TYPE::parser => write!(f,
-                "{}\n{} \n\n{} \n{}\n{}",
-                "error in parsing stage:",
+                "{}\n {}\n\n    {}\n    {}\n {}",
+                " error in parsing stage: ".black().bold().on_white(),
                 self.loc,
-                get_line_at(self.loc.path(), self.loc.row()).unwrap(),
+                get_line_at(self.loc.path(), self.loc.row()).unwrap().red(),
                 "^^^",
                 self.msg,
                 ),
