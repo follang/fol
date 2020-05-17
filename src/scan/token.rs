@@ -19,7 +19,6 @@ pub enum KEYWORD {
     comment,
     symbol(SYMBOL),
     operator(OPERATOR),
-    bracket(SYMBOL),
     void(VOID),
     illegal
 }
@@ -36,6 +35,12 @@ pub enum KEYWORD {
 // std::cmp::PartialEq<fn(scan::token::SYMBOL) -> scan::token::KEYWORD {scan::token::KEYWORD::symbol}>
 
 impl KEYWORD {
+    pub fn is_assign(&self) -> bool {
+        match *self {
+            KEYWORD::assign(_) => true,
+            _ => false,
+        }
+    }
     pub fn is_option(&self) -> bool {
         match *self {
             KEYWORD::option(_) => true,
@@ -92,7 +97,12 @@ impl KEYWORD {
     }
     pub fn is_bracket(&self) -> bool {
         match *self {
-            KEYWORD::bracket(_) => true,
+            KEYWORD::symbol(SYMBOL::curlyC_) => true,
+            KEYWORD::symbol(SYMBOL::squarC_) => true,
+            KEYWORD::symbol(SYMBOL::roundC_) => true,
+            KEYWORD::symbol(SYMBOL::curlyO_) => true,
+            KEYWORD::symbol(SYMBOL::squarO_) => true,
+            KEYWORD::symbol(SYMBOL::roundO_) => true,
             _ => false,
         }
     }
@@ -122,9 +132,9 @@ impl KEYWORD {
     }
     pub fn is_nonterm(&self) -> bool {
         match *self {
-            KEYWORD::bracket(SYMBOL::curlyO_) => true,
-            KEYWORD::bracket(SYMBOL::squarO_) => true,
-            KEYWORD::bracket(SYMBOL::roundO_) => true,
+            KEYWORD::symbol(SYMBOL::curlyO_) => true,
+            KEYWORD::symbol(SYMBOL::squarO_) => true,
+            KEYWORD::symbol(SYMBOL::roundO_) => true,
             KEYWORD::symbol(SYMBOL::dot_) => true,
             KEYWORD::symbol(SYMBOL::comma_) => true,
             _ => false,
@@ -151,6 +161,7 @@ impl KEYWORD {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum LITERAL {
+    ANY,
     string_,
     char_,
     float_,
@@ -163,6 +174,7 @@ pub enum LITERAL {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum VOID {
+    ANY,
     space_,
     endline_(bool),
     endfile_,
@@ -170,6 +182,7 @@ pub enum VOID {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum SYMBOL {
+    ANY,
     roundO_,
     roundC_,
     squarO_,
@@ -207,6 +220,7 @@ pub enum SYMBOL {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum OPERATOR {
+    ANY,
     dd_,
     ddd_,
     assign_,
@@ -233,6 +247,7 @@ pub enum OPERATOR {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum BUILDIN {
+    ANY,
     not_,
     or_,
     xor_,
@@ -269,6 +284,7 @@ pub enum BUILDIN {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ASSIGN {
+    ANY,
     use_,
     def_,
     var_,
@@ -281,6 +297,7 @@ pub enum ASSIGN {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum TYPE {
+    ANY,
     int_,
     flt_,
     chr_,
@@ -314,17 +331,20 @@ pub enum TYPE {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum OPTION {
-    mut_,
+    ANY,
     imu_,
+    mut_,
     sta_,
-    rea_,
-    exp_,
     nor_,
+    exp_,
     hid_,
+    stk_,
+    hep_,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum FORM {
+    ANY,
     i8_,
     i16_,
     i32_,
@@ -344,7 +364,9 @@ impl fmt::Display for KEYWORD {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use KEYWORD::*;
         match self {
+        literal(LITERAL::ANY) => write!(f, "{}", "LITERAL"),
             literal(LITERAL::string_) => write!(f, "{}: {}", "LITERAL", "string"),
+            literal(LITERAL::bool_) => write!(f, "{}: {}", "LITERAL", "bool"),
             literal(LITERAL::char_) => write!(f, "{}: {}", "LITERAL", "char"),
             literal(LITERAL::float_) => write!(f, "{}: {}", "LITERAL", "float"),
             literal(LITERAL::decimal_) => write!(f, "{}: {}", "LITERAL", "decimal"),
@@ -355,14 +377,14 @@ impl fmt::Display for KEYWORD {
             void(VOID::endline_(true) ) => write!(f, "{}: {}", "VOID", "TERM"),
             void(VOID::space_ ) => write!(f, "{}: {}", "VOID", "space"),
             void(VOID::endfile_ ) => write!(f, "{}: {}", "VOID", "EOF"),
-            bracket(SYMBOL::curlyC_ ) => write!(f, "{}: {}", "SYMBOL", "curlyC"),
-            bracket(SYMBOL::curlyO_ ) => write!(f, "{}: {}", "SYMBOL", "curlyO"),
-            bracket(SYMBOL::squarC_ ) => write!(f, "{}: {}", "SYMBOL", "squarC"),
-            bracket(SYMBOL::squarO_ ) => write!(f, "{}: {}", "SYMBOL", "squarO"),
-            bracket(SYMBOL::roundC_ ) => write!(f, "{}: {}", "SYMBOL", "roundC"),
-            bracket(SYMBOL::roundO_ ) => write!(f, "{}: {}", "SYMBOL", "roundO"),
-            bracket(SYMBOL::angleC_ ) => write!(f, "{}: {}", "SYMBOL", "angleC"),
-            bracket(SYMBOL::angleO_ ) => write!(f, "{}: {}", "SYMBOL", "angleO"),
+            symbol(SYMBOL::curlyC_ ) => write!(f, "{}: {}", "SYMBOL", "curlyC"),
+            symbol(SYMBOL::curlyO_ ) => write!(f, "{}: {}", "SYMBOL", "curlyO"),
+            symbol(SYMBOL::squarC_ ) => write!(f, "{}: {}", "SYMBOL", "squarC"),
+            symbol(SYMBOL::squarO_ ) => write!(f, "{}: {}", "SYMBOL", "squarO"),
+            symbol(SYMBOL::roundC_ ) => write!(f, "{}: {}", "SYMBOL", "roundC"),
+            symbol(SYMBOL::roundO_ ) => write!(f, "{}: {}", "SYMBOL", "roundO"),
+            symbol(SYMBOL::angleC_ ) => write!(f, "{}: {}", "SYMBOL", "angleC"),
+            symbol(SYMBOL::angleO_ ) => write!(f, "{}: {}", "SYMBOL", "angleO"),
             symbol(SYMBOL::dot_ ) => write!(f, "{}: {}", "SYMBOL", "dot"),
             symbol(SYMBOL::comma_ ) => write!(f, "{}: {}", "SYMBOL", "comma"),
             symbol(SYMBOL::colon_ ) => write!(f, "{}: {}", "SYMBOL", "colon"),
@@ -446,10 +468,70 @@ impl fmt::Display for KEYWORD {
             types(TYPE::loc_) => write!(f, "{}: {}", "TYPE", "loc"),
             types(TYPE::url_) => write!(f, "{}: {}", "TYPE", "url"),
             types(TYPE::blk_) => write!(f, "{}: {}", "TYPE", "blk"),
-            ident => write!(f, "{}: {}", "IDENT", ""),
-            comment => write!(f, "{}: {}", "COMMENT", ""),
-            illegal => write!(f, "{}: {}", "ILLEGAL", ""),
-            _ => write!(f, "{}: {}", "non-def", "")
+            buildin(BUILDIN::not_) => write!(f, "{}: {}", "BUILDIN", "not"),
+            buildin(BUILDIN::or_) => write!(f, "{}: {}", "BUILDIN", "or"),
+            buildin(BUILDIN::xor_) => write!(f, "{}: {}", "BUILDIN", "xor"),
+            buildin(BUILDIN::nor_) => write!(f, "{}: {}", "BUILDIN", "nor"),
+            buildin(BUILDIN::and_) => write!(f, "{}: {}", "BUILDIN", "and"),
+            buildin(BUILDIN::nand_) => write!(f, "{}: {}", "BUILDIN", "nand"),
+            buildin(BUILDIN::as_) => write!(f, "{}: {}", "BUILDIN", "as"),
+            buildin(BUILDIN::if_) => write!(f, "{}: {}", "BUILDIN", "if"),
+            buildin(BUILDIN::when_) => write!(f, "{}: {}", "BUILDIN", "when"),
+            buildin(BUILDIN::loop_) => write!(f, "{}: {}", "BUILDIN", "loop"),
+            buildin(BUILDIN::is_) => write!(f, "{}: {}", "BUILDIN", "is"),
+            buildin(BUILDIN::has_) => write!(f, "{}: {}", "BUILDIN", "has"),
+            buildin(BUILDIN::in_) => write!(f, "{}: {}", "BUILDIN", "in"),
+            buildin(BUILDIN::case_) => write!(f, "{}: {}", "BUILDIN", "case"),
+            buildin(BUILDIN::this_) => write!(f, "{}: {}", "BUILDIN", "this"),
+            buildin(BUILDIN::self_) => write!(f, "{}: {}", "BUILDIN", "self"),
+            buildin(BUILDIN::break_) => write!(f, "{}: {}", "BUILDIN", "break"),
+            buildin(BUILDIN::return_) => write!(f, "{}: {}", "BUILDIN", "return"),
+            buildin(BUILDIN::yeild_) => write!(f, "{}: {}", "BUILDIN", "yeild"),
+            buildin(BUILDIN::panic_) => write!(f, "{}: {}", "BUILDIN", "panic"),
+            buildin(BUILDIN::report_) => write!(f, "{}: {}", "BUILDIN", "report"),
+            buildin(BUILDIN::check_) => write!(f, "{}: {}", "BUILDIN", "check"),
+            buildin(BUILDIN::assert_) => write!(f, "{}: {}", "BUILDIN", "assert"),
+            buildin(BUILDIN::where_) => write!(f, "{}: {}", "BUILDIN", "where"),
+            buildin(BUILDIN::true_) => write!(f, "{}: {}", "BUILDIN", "true"),
+            buildin(BUILDIN::false_) => write!(f, "{}: {}", "BUILDIN", "false"),
+            buildin(BUILDIN::each_) => write!(f, "{}: {}", "BUILDIN", "each"),
+            buildin(BUILDIN::for_) => write!(f, "{}: {}", "BUILDIN", "for"),
+            buildin(BUILDIN::do_) => write!(f, "{}: {}", "BUILDIN", "do"),
+            buildin(BUILDIN::go_) => write!(f, "{}: {}", "BUILDIN", "go"),
+            buildin(BUILDIN::get_) => write!(f, "{}: {}", "BUILDIN", "get"),
+            buildin(BUILDIN::let_) => write!(f, "{}: {}", "BUILDIN", "let"),
+            form(FORM::i8_) => write!(f, "{}: {}", "FORM", "i8"),
+            form(FORM::i16_) => write!(f, "{}: {}", "FORM", "i16"),
+            form(FORM::i32_) => write!(f, "{}: {}", "FORM", "i32"),
+            form(FORM::i64_) => write!(f, "{}: {}", "FORM", "i64"),
+            form(FORM::ia_) => write!(f, "{}: {}", "FORM", "ia"),
+            form(FORM::u8_) => write!(f, "{}: {}", "FORM", "u8"),
+            form(FORM::u16_) => write!(f, "{}: {}", "FORM", "u16"),
+            form(FORM::u32_) => write!(f, "{}: {}", "FORM", "u32"),
+            form(FORM::u64_) => write!(f, "{}: {}", "FORM", "u64"),
+            form(FORM::ua_) => write!(f, "{}: {}", "FORM", "ua"),
+            form(FORM::f32_) => write!(f, "{}: {}", "FORM", "f32"),
+            form(FORM::f64_) => write!(f, "{}: {}", "FORM", "f64"),
+            form(FORM::fa_) => write!(f, "{}: {}", "FORM", "fa"),
+            option(OPTION::imu_) => write!(f, "{}: {}", "OPTION", "imu"),
+            option(OPTION::mut_) => write!(f, "{}: {}", "OPTION", "mut"),
+            option(OPTION::sta_) => write!(f, "{}: {}", "OPTION", "sta"),
+            option(OPTION::nor_) => write!(f, "{}: {}", "OPTION", "nor"),
+            option(OPTION::exp_) => write!(f, "{}: {}", "OPTION", "exp"),
+            option(OPTION::hid_) => write!(f, "{}: {}", "OPTION", "hid"),
+            option(OPTION::stk_) => write!(f, "{}: {}", "OPTION", "stk"),
+            option(OPTION::hep_) => write!(f, "{}: {}", "OPTION", "hep"),
+            ident => write!(f, "{}", "IDENT"),
+            comment => write!(f, "{}", "COMMENT"),
+            illegal => write!(f, "{}", "ILLEGAL"),
+            void(VOID::ANY ) => write!(f, "{}", "VOID"),
+            symbol(SYMBOL::ANY ) => write!(f, "{}", "SYMBOL"),
+            operator(OPERATOR::ANY ) => write!(f, "{}", "OPERATOR"),
+            buildin(BUILDIN::ANY) => write!(f, "{}", "BUILDIN"),
+            assign(ASSIGN::ANY) => write!(f, "{}", "ASSIGN"),
+            types(TYPE::ANY) => write!(f, "{}", "TYPE"),
+            form(FORM::ANY) => write!(f, "{}", "FORM"),
+            option(OPTION::ANY) => write!(f, "{}", "OPTION"),
         }
     }
 }

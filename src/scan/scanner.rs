@@ -233,12 +233,12 @@ impl SCAN {
         self.push_curr(part);
         self.key = symbol(SYMBOL::curlyC_);
         match part.curr_char() {
-            '{' => { self.loc.deepen(); self.key = bracket(SYMBOL::curlyO_) },
-            '}' => { self.loc.soften(); self.key = bracket(SYMBOL::curlyC_) },
-            '[' => { self.loc.deepen(); self.key = bracket(SYMBOL::squarO_) },
-            ']' => { self.loc.soften(); self.key = bracket(SYMBOL::squarC_) },
-            '(' => { self.loc.deepen(); self.key = bracket(SYMBOL::roundO_) },
-            ')' => { self.loc.soften(); self.key = bracket(SYMBOL::roundC_) },
+            '{' => { self.loc.deepen(); self.key = symbol(SYMBOL::curlyO_) },
+            '}' => { self.loc.soften(); self.key = symbol(SYMBOL::curlyC_) },
+            '[' => { self.loc.deepen(); self.key = symbol(SYMBOL::squarO_) },
+            ']' => { self.loc.soften(); self.key = symbol(SYMBOL::squarC_) },
+            '(' => { self.loc.deepen(); self.key = symbol(SYMBOL::roundO_) },
+            ')' => { self.loc.soften(); self.key = symbol(SYMBOL::roundC_) },
             '\\' => { self.key = symbol(SYMBOL::escape_) },
             '.' => { self.key = symbol(SYMBOL::dot_) },
             ',' => { self.key = symbol(SYMBOL::comma_) },

@@ -27,7 +27,9 @@ fn main() {
         // s.bump()
     // }
 
-    // let mut s = lexer::init("./etc");
+    // let mut error = err::ERROR::init();
+    // let path = "./etc";
+    // let mut s = lexer::init(path, &mut error);
     // while s.not_empty() {
         // println!("{}", s);
         // if s.curr().key().is_eol(){

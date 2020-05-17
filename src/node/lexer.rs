@@ -76,15 +76,14 @@ impl BAG {
     pub fn toend(&mut self) {
         let deep = self.curr().loc().deep();
         loop {
-            if (self.is_terminal() && self.curr().loc().deep() == deep) || (self.curr().key().is_eof()) { break }
+            if (self.is_terminal() && self.curr().loc().deep() <= deep) || (self.curr().key().is_eof()) { break }
             self.bump()
         }
         self.bump();
         self.eat();
     }
 
-    pub fn report(&mut self, k: token::KEYWORD, e: &mut err::ERROR) {
-        let s: String = String::from("expected {") + &k.to_string() + "}, got {" + &self.curr().key().to_string() + "}";
+    pub fn report(&mut self, s: String, e: &mut err::ERROR) {
         e.report(err::TYPE::parser, &s, self.curr().loc().clone());
         self.toend();
     }
@@ -211,10 +210,11 @@ impl stream::STREAM {
                 "mut" => { result.set_key(option(OPTION::mut_)) },
                 "imu" => { result.set_key(option(OPTION::imu_)) },
                 "sta" => { result.set_key(option(OPTION::sta_)) },
-                "rea" => { result.set_key(option(OPTION::rea_)) },
                 "exp" => { result.set_key(option(OPTION::exp_)) },
                 "nor" => { result.set_key(option(OPTION::nor_)) },
                 "hid" => { result.set_key(option(OPTION::hid_)) },
+                "stk" => { result.set_key(option(OPTION::stk_)) },
+                "hep" => { result.set_key(option(OPTION::hep_)) },
                 "i8" => { result.set_key(form(FORM::i8_)) },
                 "i16" => { result.set_key(form(FORM::i16_)) },
                 "i32" => { result.set_key(form(FORM::i32_)) },
@@ -230,8 +230,18 @@ impl stream::STREAM {
                 "fa" => { result.set_key(form(FORM::fa_)) },
                 _ => { result.set_key(ident) },
             }
-        } else if self.curr().key().is_eol() {
-            if self.prev().key().is_nonterm() || self.next().key().is_dot() {
+        } else if self.curr().key().is_symbol() && self.next().key().is_assign() {
+            match result.con().as_str() {
+                "~" => { result.set_key(option(OPTION::mut_)) },
+                "!" => { result.set_key(option(OPTION::sta_)) },
+                "+" => { result.set_key(option(OPTION::exp_)) },
+                "-" => { result.set_key(option(OPTION::hid_)) },
+                "@" => { result.set_key(option(OPTION::hep_)) },
+                _ => { result.set_key(ident) },
+            }
+        }
+        if self.curr().key().is_eol() {
+            if self.prev().key().is_nonterm() || self.prev().key().is_operator() || self.next().key().is_dot() {
                 result.set_key(void(VOID::endline_(false)))
             }
         }

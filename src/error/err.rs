@@ -54,10 +54,8 @@ impl ERROR {
     }
 
     pub fn show(&mut self) {
-        println!("\n");
         for e in self.el.iter() {
             println!("{}", e);
-            println!("\n\n");
         }
     }
 }
@@ -72,23 +70,17 @@ fn get_line_at(filepath: &str, line_num: usize) -> Result<String, Error> {
 
 impl fmt::Display for error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.typ {
-            TYPE::lexer => write!(f,
-                "{}\n {}\n\n    {}\n    {}\n {}",
-                " error in parsing stage: ".black().bold().on_white(),
-                self.loc,
-                get_line_at(self.loc.path(), self.loc.row()).unwrap().red(),
-                "^^^",
-                self.msg,
-                ),
-            TYPE::parser => write!(f,
-                "{}\n {}\n\n    {}\n    {}\n {}",
-                " error in parsing stage: ".black().bold().on_white(),
-                self.loc,
-                get_line_at(self.loc.path(), self.loc.row()).unwrap().red(),
-                "^^^",
-                self.msg,
-                ),
-        }
+        let errtype: &str = match self.typ {
+            TYPE::lexer => " error in lexing stage ",
+            TYPE::parser => " error in parsing stage ",
+        };
+        write!(f,
+            "\n\n{}\n {}\n\n    {}\n    {}\n {}",
+            errtype.black().bold().on_white(),
+            self.loc,
+            get_line_at(self.loc.path(), self.loc.row()).unwrap_or("---".to_string()).red(),
+            "^^^",
+            self.msg,
+        )
     }
 }
