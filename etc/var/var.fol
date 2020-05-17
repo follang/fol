@@ -1,5 +1,5 @@
 ~var[nor,rac, exp, hid] one = <expression>
-~var[exp,imu] two: str[exp,imu] = <expression>
+-var[exp,imu] two: str[exp,imu] = <expression>
 +var three: int = <expression>
 ~var[exp] (
     four: int[exp];

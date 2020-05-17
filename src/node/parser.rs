@@ -75,7 +75,7 @@ impl forest {
         println!("{} \t\t {} {}", l.curr().loc(), l.curr().key(), l.curr().con());
 
         // symbol options
-        if matches!(l.curr().key(), KEYWORD::symbol(_)) { l.bump() }
+        if matches!(l.curr().key(), KEYWORD::option(_)) { l.bump() }
 
         l.toend();
         let n = tree::new(root::stat(stat::Var(v)), c);
