@@ -59,7 +59,8 @@ impl forest {
             if !matches!(l.curr().key(), KEYWORD::literal(_)) {
                 let s = String::from("expected { ") + &KEYWORD::literal(LITERAL::ANY).to_string() +
                     " }, got { " + &l.curr().key().to_string() + " }";
-                l.report(s, e);
+                // l.report(s, e);
+                l.toend();
                 return
             }
             l.toend()
@@ -72,25 +73,37 @@ impl forest {
     }
 
     pub fn parse_stat_var(&mut self, l: &mut lexer::BAG, e: &mut err::ERROR) ->tree {
-        let v = var_stat::init(); let c = l.curr().loc().clone();
+        let c = l.curr().loc().clone();
         println!("1. {} \t\t {} {}", l.curr().loc(), l.curr().key(), l.curr().con());
 
         // symbol options
-        if matches!(l.curr().key(), KEYWORD::option(_)) { l.bump() }
+        let mut options: Vec<assign_opts> = Vec::new();
+        if matches!(l.curr().key(), KEYWORD::option(_)) {
+            self.help_assign_options(&mut options, l, e);
+        }
+        let v = var_stat::part(options);
+        println!("2. {} \t\t {} {}", l.curr().loc(), l.curr().key(), l.curr().con());
 
         l.toend();
         let n = tree::new(root::stat(stat::Var(v)), c);
         self.trees.push(n.clone());
         n
     }
-    pub fn help_assign_options(&mut self, l: &mut lexer::BAG, e: &mut err::ERROR) ->Vec<assign_opts>  {
-        if matches!(l.curr().key(), KEYWORD::symbol(_)) {
+
+    pub fn help_assign_options(&mut self, v: &mut Vec<assign_opts>, l: &mut lexer::BAG, e: &mut err::ERROR) {
+        if matches!(l.curr().key(), KEYWORD::option(_)) {
+            let el = match l.curr().key() {
+                KEYWORD::option(OPTION::mut_) => { assign_opts::Mut }
+                KEYWORD::option(OPTION::sta_) => { assign_opts::Sta }
+                KEYWORD::option(OPTION::exp_) => { assign_opts::Mut }
+                KEYWORD::option(OPTION::hid_) => { assign_opts::Hid }
+                KEYWORD::option(OPTION::hep_) => { assign_opts::Hep }
+                _ => { assign_opts::Nor }
+            };
+            v.push(el);
             l.bump();
-            match l.curr().key() {
-                _ => {}
-            }
+            return
         }
-        Vec::new()
     }
 }
 

@@ -65,6 +65,9 @@ impl var_stat {
     pub fn init() -> Self {
         var_stat { options: Vec::new(), ident: String::from("test"), retype: None, body: None }
     }
+    pub fn part(options: Vec<assign_opts>) -> Self {
+        var_stat { options, ident: String::from("test"), retype: None, body: None }
+    }
     pub fn new(options: Vec<assign_opts>, ident: String, retype: Option<expr>, body: Option<Box<root>>) -> Self {
         var_stat { options, ident, retype, body }
     }
@@ -82,30 +85,8 @@ pub struct fun_stat {
 }
 
 #[derive(Clone, Debug)]
-pub enum assign_mut {
-    Imu,
-    Mut,
-    Sta,
-}
-
-#[derive(Clone, Debug)]
-pub enum assign_exp {
-    Nor,
-    Exp,
-    Hid,
-}
-
-#[derive(Clone, Debug)]
-pub enum assign_ptr {
-    Stk,
-    Hep,
-}
-
-#[derive(Clone, Debug)]
 pub enum assign_opts {
-    Mut(assign_mut),
-    Exp(assign_exp),
-    Ptr(assign_ptr),
+    Imu, Mut, Sta, Nor, Exp, Hid, Stk, Hep,
 }
 
 #[derive(Clone, Debug)]
@@ -159,14 +140,14 @@ impl fmt::Display for var_stat {
 impl fmt::Display for assign_opts {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match &self {
-            assign_opts::Mut(assign_mut::Imu) => { write!(f, "imu") }
-            assign_opts::Mut(assign_mut::Mut) => { write!(f, "mut") }
-            assign_opts::Mut(assign_mut::Sta) => { write!(f, "sta") }
-            assign_opts::Exp(assign_exp::Nor) => { write!(f, "nor") }
-            assign_opts::Exp(assign_exp::Exp) => { write!(f, "exp") }
-            assign_opts::Exp(assign_exp::Hid) => { write!(f, "hid") }
-            assign_opts::Ptr(assign_ptr::Stk) => { write!(f, "stk") }
-            assign_opts::Ptr(assign_ptr::Hep) => { write!(f, "hep") }
+            assign_opts::Imu => { write!(f, "imu") }
+            assign_opts::Mut => { write!(f, "mut") }
+            assign_opts::Sta => { write!(f, "sta") }
+            assign_opts::Nor => { write!(f, "nor") }
+            assign_opts::Exp => { write!(f, "exp") }
+            assign_opts::Hid => { write!(f, "hid") }
+            assign_opts::Stk => { write!(f, "stk") }
+            assign_opts::Hep => { write!(f, "hep") }
         }
     }
 }

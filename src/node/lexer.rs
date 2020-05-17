@@ -115,8 +115,6 @@ impl stream::STREAM {
             match result.con().as_str() {
                 "..." => { result.set_key(operator(OPERATOR::ddd_)) }
                 ".." => { result.set_key(operator(OPERATOR::dd_)) }
-                "=" => { result.set_key(operator(OPERATOR::assign_)) }
-                ":=" => { result.set_key(operator(OPERATOR::assign2_)) }
                 "=>" => { result.set_key(operator(OPERATOR::flow_)) }
                 "->" => { result.set_key(operator(OPERATOR::flow2_)) }
                 "+" => { result.set_key(operator(OPERATOR::add_)) }
