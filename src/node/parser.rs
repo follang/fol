@@ -30,7 +30,7 @@ impl forest {
     pub fn parse_stat(&mut self, l: &mut lexer::BAG, e: &mut err::ERROR) {
     // println!("{}", l);
         if matches!( l.curr().key(), KEYWORD::assign(ASSIGN::var_) ) ||
-            ( matches!( l.curr().key(), KEYWORD::symbol(_) ) && matches!( l.next().key(), KEYWORD::assign(ASSIGN::var_) ) ) {
+            ( matches!( l.curr().key(), KEYWORD::option(_) ) && matches!( l.next().key(), KEYWORD::assign(ASSIGN::var_) ) ) {
             self.parse_stat_var(l, e);
         // } else if matches!( l.curr().key(), KEYWORD::assign(ASSIGN::fun_) ) ||
             // ( matches!( l.curr().key(), KEYWORD::symbol(_) ) && matches!( l.next().key(), KEYWORD::assign(ASSIGN::fun_) ) ) {
@@ -56,8 +56,9 @@ impl forest {
         } else {
             // let s = l.expect(KEYWORD::assign(ASSIGN::fun_), e);
             // println!("{}", s);
-            if !matches!(l.curr().key(), KEYWORD::option(_)) {
-                let s = String::from("expected { ") + &KEYWORD::option(OPTION::ANY).to_string() + " }, got { " + &l.curr().key().to_string() + " }";
+            if !matches!(l.curr().key(), KEYWORD::literal(_)) {
+                let s = String::from("expected { ") + &KEYWORD::literal(LITERAL::ANY).to_string() +
+                    " }, got { " + &l.curr().key().to_string() + " }";
                 l.report(s, e);
                 return
             }
@@ -72,7 +73,7 @@ impl forest {
 
     pub fn parse_stat_var(&mut self, l: &mut lexer::BAG, e: &mut err::ERROR) ->tree {
         let v = var_stat::init(); let c = l.curr().loc().clone();
-        println!("{} \t\t {} {}", l.curr().loc(), l.curr().key(), l.curr().con());
+        println!("1. {} \t\t {} {}", l.curr().loc(), l.curr().key(), l.curr().con());
 
         // symbol options
         if matches!(l.curr().key(), KEYWORD::option(_)) { l.bump() }

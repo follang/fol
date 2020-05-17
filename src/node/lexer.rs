@@ -32,13 +32,12 @@ impl BAG {
 
 pub fn init(path: &str, e: &mut err::ERROR) -> BAG {
     let mut stream = stream::STREAM::init(path);
-    let prev = stream.prev().to_owned();
-    let curr = stream.curr().to_owned();
     let mut vec: Vec<SCAN> = Vec::new();
     while !stream.list().is_empty() {
         vec.push(stream.analyze(e).to_owned());
-        stream.bump();
     }
+    let curr = vec.get(0).unwrap_or(&stream::zero()).to_owned();
+    let prev = curr.to_owned();
     BAG { vec, prev, curr, brac: Vec::new() }
 }
 
@@ -138,7 +137,6 @@ impl stream::STREAM {
                 _ => {}
             }
         } else if self.curr().key().is_symbol() && self.next().key().is_assign() {
-            println!("{}", result.con().as_str());
             match result.con().as_str() {
                 "~" => { result.set_key(option(OPTION::mut_)) },
                 "!" => { result.set_key(option(OPTION::sta_)) },
@@ -152,6 +150,7 @@ impl stream::STREAM {
                 result.set_key(void(VOID::endline_(false)))
             }
         }
+        self.bump();
         result
     }
 
