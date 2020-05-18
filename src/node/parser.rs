@@ -78,9 +78,15 @@ impl forest {
 
         // assign var
         l.bump_n_eat(e);
-        println!("a {:>2} {} \t\t {}", l.curr().loc().row(), l.curr().key(), l.next().key());
 
-        //TODO: rething the whitespace and new-line
+
+        // option elements
+        if matches!(l.curr().key(), KEYWORD::symbol(SYMBOL::squarO_)) {
+            self.help_assign_options(&mut options, l, e);
+        }
+        println!("{:>2} {} \t\t {}", l.curr().loc().row(), l.curr().key(), l.next().key());
+
+
 
         let v = var_stat::part(options);
 
@@ -104,5 +110,13 @@ impl forest {
             l.bump();
             return
         }
+        let deep = l.curr().loc().deep() -1;
+        l.bump();
+        loop {
+            //TODO: finish options
+            if l.match_bracket(KEYWORD::symbol(SYMBOL::curlyC_), deep) { break }
+            l.bump();
+        }
+        l.bump_n_eat(e);
     }
 }

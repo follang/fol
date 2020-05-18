@@ -34,7 +34,8 @@ pub fn init(path: &str, e: &mut err::FLAW) -> BAG {
     let mut stream = stream::STREAM::init(path);
     let mut vec: Vec<SCAN> = Vec::new();
     while !stream.list().is_empty() {
-        vec.push(stream.analyze(e).to_owned());
+        let last = vec.last().cloned().unwrap_or(stream::zero()).to_owned();
+        vec.push(stream.analyze(e, &last).to_owned());
     }
     let curr = vec.get(0).unwrap_or(&stream::zero()).to_owned();
     let prev = curr.to_owned();
@@ -67,6 +68,7 @@ impl BAG {
         }
     }
     pub fn eat(&mut self, e: &mut err::FLAW) {
+        // println!("a {:>2} {} \t\t {}", self.curr().loc().row(), self.curr().key(), self.next().key());
         if self.curr().key().is_void() {
             if *self.curr().key() == KEYWORD::void(VOID::endline_(true)) {
                 let s = String::from("expected { ") + &KEYWORD::void(VOID::space_).to_string() +
@@ -89,6 +91,7 @@ impl BAG {
             self.bump()
         }
         self.bump();
+        // self.eat();
     }
 
     pub fn report(&mut self, s: String, e: &mut err::FLAW) {
@@ -106,21 +109,25 @@ impl BAG {
     pub fn is_terminal(&self) -> bool {
         self.curr().key().is_terminal()
     }
+
+    pub fn match_bracket(&self, k: KEYWORD, d: isize) -> bool {
+        if matches!(self.curr().key(), k) && self.curr().loc().deep() == d { true } else { false }
+    }
 }
 
 use crate::scan::token::*;
 use crate::scan::token::KEYWORD::*;
 impl stream::STREAM {
-    pub fn analyze(&mut self, e: &mut err::FLAW) -> SCAN {
+    pub fn analyze(&mut self, e: &mut err::FLAW, p: &SCAN) -> SCAN {
         let mut result = self.curr().clone();
-        if (self.prev().key().is_void() || self.prev().key().is_bracket()) &&
-            self.curr().key().is_symbol() && (self.next().key().is_symbol() || self.next().key().is_void()) {
+        if (self.prev().key().is_void() || self.prev().key().is_bracket()) && self.curr().key().is_symbol()
+            && (self.next().key().is_symbol() || self.next().key().is_void()) {
             if self.after_symbol().is_void() || self.after_symbol().is_bracket() {
                 while self.next().key().is_symbol(){
                     result.combine(&self.next());
                     self.bump()
                 }
-            } else { return result }
+            } else { self.bump(); return result }
             match result.con().as_str() {
                 "..." => { result.set_key(operator(OPERATOR::ddd_)) }
                 ".." => { result.set_key(operator(OPERATOR::dd_)) }
@@ -154,7 +161,7 @@ impl stream::STREAM {
                 _ => { result.set_key(ident) },
             }
         } else if self.curr().key().is_eol() {
-            if self.prev().key().is_nonterm() || self.next().key().is_dot() {
+            if self.prev().key().is_nonterm() || self.next().key().is_dot() || p.key().is_operator() {
                 result.set_key(void(VOID::endline_(false)))
             }
         }
