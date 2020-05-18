@@ -326,7 +326,10 @@ pub enum TYPE {
     std_,
     loc_,
     url_,
-    blk_
+    blk_,
+    rut_,
+    pat_,
+    gen_,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -468,6 +471,9 @@ impl fmt::Display for KEYWORD {
             types(TYPE::loc_) => write!(f, "{}: {}", "TYPE", "loc"),
             types(TYPE::url_) => write!(f, "{}: {}", "TYPE", "url"),
             types(TYPE::blk_) => write!(f, "{}: {}", "TYPE", "blk"),
+            types(TYPE::rut_) => write!(f, "{}: {}", "TYPE", "rut"),
+            types(TYPE::pat_) => write!(f, "{}: {}", "TYPE", "pat"),
+            types(TYPE::gen_) => write!(f, "{}: {}", "TYPE", "gen"),
             buildin(BUILDIN::not_) => write!(f, "{}: {}", "BUILDIN", "not"),
             buildin(BUILDIN::or_) => write!(f, "{}: {}", "BUILDIN", "or"),
             buildin(BUILDIN::xor_) => write!(f, "{}: {}", "BUILDIN", "xor"),

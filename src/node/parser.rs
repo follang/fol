@@ -59,30 +59,31 @@ impl forest {
             if !matches!(l.curr().key(), KEYWORD::literal(_)) {
                 let s = String::from("expected { ") + &KEYWORD::literal(LITERAL::ANY).to_string() +
                     " }, got { " + &l.curr().key().to_string() + " }";
-                // l.report(s, e);
-                l.toend();
+                l.report(s, e);
+                // l.toend();
                 return
             }
             l.toend()
         }
     }
 
-    pub fn parse_expr_ident_str(&self, l: &mut lexer::BAG, e: &mut err::ERROR) -> tree {
-        l.bump();
-        tree::new(root::stat(stat::Use), l.curr().loc().clone())
-    }
-
     pub fn parse_stat_var(&mut self, l: &mut lexer::BAG, e: &mut err::ERROR) ->tree {
         let c = l.curr().loc().clone();
-        println!("1. {} \t\t {} {}", l.curr().loc(), l.curr().key(), l.curr().con());
 
-        // symbol options
+        // option symbol
         let mut options: Vec<assign_opts> = Vec::new();
         if matches!(l.curr().key(), KEYWORD::option(_)) {
             self.help_assign_options(&mut options, l, e);
         }
-        let v = var_stat::part(options);
+
+        // assign var
+        println!("1. {} \t\t {} {}", l.curr().loc(), l.curr().key(), l.curr().con());
+        l.bump();
         println!("2. {} \t\t {} {}", l.curr().loc(), l.curr().key(), l.curr().con());
+
+        //TODO: rething the whitespace and new-line
+
+        let v = var_stat::part(options);
 
         l.toend();
         let n = tree::new(root::stat(stat::Var(v)), c);
@@ -95,7 +96,7 @@ impl forest {
             let el = match l.curr().key() {
                 KEYWORD::option(OPTION::mut_) => { assign_opts::Mut }
                 KEYWORD::option(OPTION::sta_) => { assign_opts::Sta }
-                KEYWORD::option(OPTION::exp_) => { assign_opts::Mut }
+                KEYWORD::option(OPTION::exp_) => { assign_opts::Exp }
                 KEYWORD::option(OPTION::hid_) => { assign_opts::Hid }
                 KEYWORD::option(OPTION::hep_) => { assign_opts::Hep }
                 _ => { assign_opts::Nor }
