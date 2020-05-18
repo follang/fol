@@ -119,6 +119,7 @@ impl parts::PART {
     /// Parses a token from the input string.
     fn scan(&mut self, loc: &mut locate::LOCATION) -> SCAN {
         let mut result = SCAN::new(illegal, loc.clone(), String::new());
+        result.loc.new_word();
         self.bump(&mut result.loc);
         if is_eol(&self.curr_char()) {
             result.endline(self, false);

@@ -87,6 +87,10 @@ impl LOCATION {
         self.col = 1;
     }
 
+    pub fn new_word(&mut self) {
+        self.len = 0;
+    }
+
     pub fn adjust(&mut self, row: usize, col: usize){
         self.row = row;
         self.col = col;
