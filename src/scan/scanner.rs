@@ -62,7 +62,7 @@ impl SCAN {
     }
     pub fn zero(name: &str) -> Self {
         let key = token::KEYWORD::void(token::VOID::endfile_);
-        let loc = locate::LOCATION::new(name.to_string(), name.to_string(), 0,0,0);
+        let loc = locate::LOCATION::new(name.to_string(), name.to_string(), 0,0,0,0);
         SCAN { key, loc, con: String::new() }
     }
 }

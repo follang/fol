@@ -11,6 +11,7 @@ pub struct LOCATION {
     name: String,
     row: usize,
     col: usize,
+    len: usize,
     deep: isize,
 }
 
@@ -37,13 +38,13 @@ impl LOCATION {
         let name = red.name.to_string();
         let path = red.path.to_string();
         // file.add_str("go");
-        LOCATION { path, name,  row: 1, col: 1, deep: 1 }
+        LOCATION { path, name,  row: 1, col: 1, len: 1, deep: 1 }
     }
     pub fn def() -> Self {
-        LOCATION { path: String::new(), name: String::new(), row: 1, col: 1, deep: 1 }
+        LOCATION { path: String::new(), name: String::new(), row: 1, col: 1, len: 1, deep: 1 }
     }
-    pub fn new(path: String, name: String, row: usize, col: usize, deep: isize) -> Self {
-        LOCATION { path, name, row, col, deep }
+    pub fn new(path: String, name: String, row: usize, col: usize, len: usize, deep: isize) -> Self {
+        LOCATION { path, name, row, col, len, deep }
     }
 
     pub fn row(&self) -> usize {
@@ -52,6 +53,10 @@ impl LOCATION {
 
     pub fn col(&self) -> usize {
         self.col
+    }
+
+    pub fn len(&self) -> usize {
+        self.len
     }
 
     pub fn deep(&self) -> isize {
@@ -69,10 +74,12 @@ impl LOCATION {
     pub fn reset(&mut self) {
         self.row = 1;
         self.col = 1;
+        self.len = 1;
     }
 
     pub fn new_char(&mut self) {
         self.col += 1;
+        self.len += 1;
     }
 
     pub fn new_line(&mut self) {

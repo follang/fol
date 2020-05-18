@@ -30,7 +30,7 @@ impl BAG {
     }
 }
 
-pub fn init(path: &str, e: &mut err::ERROR) -> BAG {
+pub fn init(path: &str, e: &mut err::FLAW) -> BAG {
     let mut stream = stream::STREAM::init(path);
     let mut vec: Vec<SCAN> = Vec::new();
     while !stream.list().is_empty() {
@@ -82,8 +82,8 @@ impl BAG {
         self.eat();
     }
 
-    pub fn report(&mut self, s: String, e: &mut err::ERROR) {
-        e.report(err::TYPE::parser, &s, self.curr().loc().clone());
+    pub fn report(&mut self, s: String, e: &mut err::FLAW) {
+        e.report(err::flaw_type::parser, &s, self.curr().loc().clone());
         self.toend();
     }
 
@@ -102,7 +102,7 @@ impl BAG {
 use crate::scan::token::*;
 use crate::scan::token::KEYWORD::*;
 impl stream::STREAM {
-    pub fn analyze(&mut self, e: &mut err::ERROR) -> SCAN {
+    pub fn analyze(&mut self, e: &mut err::FLAW) -> SCAN {
         let mut result = self.curr().clone();
         if (self.prev().key().is_void() || self.prev().key().is_bracket()) &&
             self.curr().key().is_symbol() && (self.next().key().is_symbol() || self.next().key().is_void()) {

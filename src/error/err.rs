@@ -12,47 +12,44 @@ use crate::scan::locate;
 use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
-use std::io::Error;
 use std::path::Path;
 
+
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct error {
-    typ: TYPE,
+pub enum flaw_type {
+    lexer,
+    parser,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct flaw {
+    typ: flaw_type,
     msg: String,
     loc: locate::LOCATION,
 }
 
-
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct ERROR {
-    el: Vec<error>
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum TYPE {
-    lexer,
-    parser,
-}
-impl error {
-    pub fn new(typ: TYPE, msg: &str, loc: locate::LOCATION) -> Self {
-        error { typ, msg: msg.to_string(), loc }
+impl flaw {
+    pub fn new(typ: flaw_type, msg: &str, loc: locate::LOCATION) -> Self {
+        flaw { typ, msg: msg.to_string(), loc }
     }
 }
 
-impl ERROR {
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct FLAW {
+    el: Vec<flaw>
+}
+
+impl FLAW {
     pub fn init() -> Self {
-        ERROR{ el: Vec::new() }
+        FLAW{ el: Vec::new() }
     }
-
-    pub fn list(&self) -> &Vec<error> {
+    pub fn list(&self) -> &Vec<flaw> {
         &self.el
     }
-
-    pub fn report(&mut self, typ: TYPE, msg: &str, loc:locate::LOCATION) {
-        let e = error::new(typ, msg, loc);
+    pub fn report(&mut self, typ: flaw_type, msg: &str, loc:locate::LOCATION) {
+        let e = flaw::new(typ, msg, loc);
         &self.el.push(e);
     }
-
     pub fn show(&mut self) {
         for e in self.el.iter() {
             println!("{}", e);
@@ -60,25 +57,23 @@ impl ERROR {
     }
 }
 
-fn get_line_at(filepath: &str, line_num: usize) -> Result<String, Error> {
-    let path = Path::new(filepath);
-    let file = File::open(path).expect("File not found or cannot be opened");
-    let content = BufReader::new(&file);
-    let mut lines = content.lines();
-    lines.nth(line_num-1).expect("No line found at that position")
+fn get_line_at(filepath: &str, line_num: usize) -> String {
+    let file = File::open(Path::new(filepath)).unwrap();
+    let mut lines = BufReader::new(&file).lines();
+    lines.nth(line_num-1).unwrap().unwrap()
 }
 
-impl fmt::Display for error {
+impl fmt::Display for flaw {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let errtype: &str = match self.typ {
-            TYPE::lexer => " error in lexing stage ",
-            TYPE::parser => " error in parsing stage ",
+            flaw_type::lexer => " flaw in lexing stage ",
+            flaw_type::parser => " flaw in parsing stage ",
         };
         write!(f,
             "\n\n{}\n {}\n\n    {}\n    {}\n {}",
             errtype.black().bold().on_white(),
             self.loc,
-            get_line_at(self.loc.path(), self.loc.row()).unwrap_or("---".to_string()).red(),
+            get_line_at(self.loc.path(), self.loc.row()).red(),
             "^^^",
             self.msg,
         )

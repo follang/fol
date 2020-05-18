@@ -22,12 +22,12 @@ pub fn new() -> forest {
 }
 
 impl forest {
-    pub fn init(&mut self, l: &mut lexer::BAG, e: &mut err::ERROR) {
+    pub fn init(&mut self, l: &mut lexer::BAG, e: &mut err::FLAW) {
         while l.not_empty() {
             self.parse_stat(l, e);
         }
     }
-    pub fn parse_stat(&mut self, l: &mut lexer::BAG, e: &mut err::ERROR) {
+    pub fn parse_stat(&mut self, l: &mut lexer::BAG, e: &mut err::FLAW) {
     // println!("{}", l);
         if matches!( l.curr().key(), KEYWORD::assign(ASSIGN::var_) ) ||
             ( matches!( l.curr().key(), KEYWORD::option(_) ) && matches!( l.next().key(), KEYWORD::assign(ASSIGN::var_) ) ) {
@@ -67,7 +67,7 @@ impl forest {
         }
     }
 
-    pub fn parse_stat_var(&mut self, l: &mut lexer::BAG, e: &mut err::ERROR) ->tree {
+    pub fn parse_stat_var(&mut self, l: &mut lexer::BAG, e: &mut err::FLAW) ->tree {
         let c = l.curr().loc().clone();
 
         // option symbol
@@ -91,7 +91,7 @@ impl forest {
         n
     }
 
-    pub fn help_assign_options(&mut self, v: &mut Vec<assign_opts>, l: &mut lexer::BAG, e: &mut err::ERROR) {
+    pub fn help_assign_options(&mut self, v: &mut Vec<assign_opts>, l: &mut lexer::BAG, e: &mut err::FLAW) {
         if matches!(l.curr().key(), KEYWORD::option(_)) {
             let el = match l.curr().key() {
                 KEYWORD::option(OPTION::mut_) => { assign_opts::Mut }
@@ -107,4 +107,3 @@ impl forest {
         }
     }
 }
-
