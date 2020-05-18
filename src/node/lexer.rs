@@ -66,10 +66,20 @@ impl BAG {
             self.bump()
         }
     }
-    pub fn eat(&mut self) {
-        if self.curr().key().is_void(){
+    pub fn eat(&mut self, e: &mut err::FLAW) {
+        if self.curr().key().is_void() {
+            if *self.curr().key() == KEYWORD::void(VOID::endline_(true)) {
+                let s = String::from("expected { ") + &KEYWORD::void(VOID::space_).to_string() +
+                    " }, got { " + &self.curr().key().to_string() + " }";
+                self.report(s, e);
+                return
+            }
             self.bump()
         }
+    }
+    pub fn bump_n_eat(&mut self, e: &mut err::FLAW) {
+        self.bump();
+        self.eat(e);
     }
 
     pub fn toend(&mut self) {
@@ -79,7 +89,6 @@ impl BAG {
             self.bump()
         }
         self.bump();
-        self.eat();
     }
 
     pub fn report(&mut self, s: String, e: &mut err::FLAW) {
@@ -124,6 +133,7 @@ impl stream::STREAM {
                 "<" => { result.set_key(operator(OPERATOR::less_)) }
                 ">" => { result.set_key(operator(OPERATOR::greater_)) }
                 "==" => { result.set_key(operator(OPERATOR::equal_)) }
+                "!=" => { result.set_key(operator(OPERATOR::noteq_)) }
                 ">=" => { result.set_key(operator(OPERATOR::greatereq_)) }
                 "<=" => { result.set_key(operator(OPERATOR::lesseq_)) }
                 "+=" => { result.set_key(operator(OPERATOR::addeq_)) }

@@ -9,8 +9,8 @@
 var[] seven, seven2, seven3: int[exp,imu], flt[imu, exp], str
 var[] eight
 var nine
-var ten = <expression>
 var eleven: rut[(x: int): int] = { <expression> }
+var ten = <expression>
 
 
 fun one(two: int): int = { <expression> }

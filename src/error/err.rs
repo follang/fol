@@ -70,11 +70,15 @@ impl fmt::Display for flaw {
             flaw_type::parser => " flaw in parsing stage ",
         };
         write!(f,
-            "\n\n{}\n {}\n\n    {}\n    {}{}\n {}",
+            "\n\n{}\n {}\n {:>5}\n {:>5}  {}\n {:>5} {}{}\n {}",
             errtype.black().bold().on_white(),
             self.loc,
+            // "file: ".to_string() + self.loc.path(),
+            " |".red(),
+            (self.loc.row().to_string() + " |").red(),
             get_line_at(self.loc.path(), self.loc.row()).red(),
-            " ".repeat(self.loc.col()-1),
+            " |".red(),
+            " ".repeat(self.loc.col()),
             "^".repeat(self.loc.len()),
             self.msg,
         )

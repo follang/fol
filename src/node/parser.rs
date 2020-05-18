@@ -59,8 +59,8 @@ impl forest {
             if !matches!(l.curr().key(), KEYWORD::literal(_)) {
                 let s = String::from("expected { ") + &KEYWORD::literal(LITERAL::ANY).to_string() +
                     " }, got { " + &l.curr().key().to_string() + " }";
-                l.report(s, e);
-                // l.toend();
+                // l.report(s, e);
+                l.toend();
                 return
             }
             l.toend()
@@ -77,9 +77,8 @@ impl forest {
         }
 
         // assign var
-        println!("1. {} \t\t {} {}", l.curr().loc(), l.curr().key(), l.curr().con());
-        l.bump();
-        println!("2. {} \t\t {} {}", l.curr().loc(), l.curr().key(), l.curr().con());
+        l.bump_n_eat(e);
+        println!("a {:>2} {} \t\t {}", l.curr().loc().row(), l.curr().key(), l.next().key());
 
         //TODO: rething the whitespace and new-line
 
