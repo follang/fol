@@ -31,7 +31,7 @@ impl forest {
     // println!("{}", l);
         if matches!( l.curr().key(), KEYWORD::assign(ASSIGN::var_) ) ||
             ( matches!( l.curr().key(), KEYWORD::option(_) ) && matches!( l.next().key(), KEYWORD::assign(ASSIGN::var_) ) ) {
-            self.parse_stat_var(l, e);
+            self.parse_stat_var(l, e, &var_stat::init(), false);
         // } else if matches!( l.curr().key(), KEYWORD::assign(ASSIGN::fun_) ) ||
             // ( matches!( l.curr().key(), KEYWORD::symbol(_) ) && matches!( l.next().key(), KEYWORD::assign(ASSIGN::fun_) ) ) {
             // self.parse_stat_var(l, e);
@@ -66,29 +66,36 @@ impl forest {
             l.toend()
         }
     }
+}
 
-    pub fn parse_stat_var(&mut self, l: &mut lexer::BAG, e: &mut err::FLAW) ->tree {
+// VAR STATEMENT
+impl forest {
+    pub fn parse_stat_var(&mut self, l: &mut lexer::BAG, e: &mut err::FLAW, t: &var_stat, jump: bool) -> tree {
         let c = l.curr().loc().clone();
-
-        // option symbol
         let mut options: Vec<assign_opts> = Vec::new();
-        if matches!(l.curr().key(), KEYWORD::option(_)) {
-            self.help_assign_options(&mut options, l, e);
+
+        if !jump {
+            // option symbol
+            if matches!(l.curr().key(), KEYWORD::option(_)) {
+                self.help_assign_options(&mut options, l, e);
+            }
+
+            // assign var
+            l.bump_n_eat(e);
+
+
+            // option elements
+            if matches!(l.curr().key(), KEYWORD::symbol(SYMBOL::squarO_)) {
+                self.help_assign_options(&mut options, l, e);
+            }
         }
 
-        // assign var
-        l.bump_n_eat(e);
-
-
-        // option elements
-        if matches!(l.curr().key(), KEYWORD::symbol(SYMBOL::squarO_)) {
-            self.help_assign_options(&mut options, l, e);
-        }
         println!("{:>2} {} \t\t {}", l.curr().loc().row(), l.curr().key(), l.next().key());
 
 
 
-        let v = var_stat::part(options);
+        let mut v = var_stat::init();
+        v.set_options(options);
 
         l.toend();
         let n = tree::new(root::stat(stat::Var(v)), c);

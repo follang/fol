@@ -14,6 +14,10 @@ use crate::node::ast;
 mod error;
 use crate::error::err;
 
+
+#[macro_use]
+extern crate getset;
+
 fn main() {
     // for mut e in reader::iteratize("./etc") {
         // for s in scanner::vectorize(&mut e) {

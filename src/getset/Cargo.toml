@@ -1,12 +1,12 @@
 [package]
-name = "fol"
+name = "getset"
 version = "0.1.0"
 authors = ["Trim Bresilla <trim.bresilla@gmail.com>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
+[lib]
+proc-macro=true
 [dependencies]
-regex = "1"
-colored = "1"
-getset = { path = "src/getset" }
+quote="^0.3.12"
+syn="^0.11.4"

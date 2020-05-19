@@ -4,8 +4,13 @@
 
 
 use std::fmt;
+// use getset::{CopyGetters, Getters, MutGetters, Setters};
+
 use crate::scan::token;
 use crate::scan::locate;
+
+use crate::getset;
+
 
 #[derive(Clone, Debug)]
 pub enum root {
@@ -53,23 +58,17 @@ pub enum stat {
     Loop,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, GetSet)]
 pub struct var_stat{
-    pub options: Vec<assign_opts>,
-    pub ident: String,
-    pub retype: Option<expr>,
-    pub body: Option<Box<root>>
+    options: Vec<assign_opts>,
+    ident: String,
+    retype: Option<expr>,
+    body: Option<Box<root>>
 }
 
 impl var_stat {
     pub fn init() -> Self {
         var_stat { options: Vec::new(), ident: String::from("test"), retype: None, body: None }
-    }
-    pub fn part(options: Vec<assign_opts>) -> Self {
-        var_stat { options, ident: String::from("test"), retype: None, body: None }
-    }
-    pub fn new(options: Vec<assign_opts>, ident: String, retype: Option<expr>, body: Option<Box<root>>) -> Self {
-        var_stat { options, ident, retype, body }
     }
 }
 
