@@ -1,18 +1,17 @@
-~var[nor, rac] one = <expression>
-~var[ nor,rac, []exp, hid] one = <expression>
-~var[ nor,rac, []exp, hid] one = <expression>
+~var[nor, []rac] one = <expression>
 -var[exp,imu] two: str[exp,hid] = <expression>
 +var three: int = <expression>
 ~var[exp] (
     four: int[exp];
     five: int[nor] = <expression>;
+    zero: int[nor] = <expression>;
 )
 ~var[exp] six, six2, six3, six4: int[] = <expression>
 var[] seven, seven2, seven3: int[exp,imu], flt[imu, exp], str
 var[] eight
-var nine
-var eleven: rut[(x: int): int] = { <expression> }
+var ... var nine
 var ten = <expression>
+var eleven: rut[(x: int): int] = { <expression> }
 
 
 fun one(two: int): int = { <expression> }

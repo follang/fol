@@ -70,9 +70,10 @@ impl forest {
 
 // VAR STATEMENT
 impl forest {
-    pub fn parse_stat_var(&mut self, l: &mut lexer::BAG, e: &mut err::FLAW, t: &var_stat, jump: bool) -> tree {
+    pub fn parse_stat_var(&mut self, l: &mut lexer::BAG, e: &mut err::FLAW, t: &var_stat, jump: bool) {
         let c = l.curr().loc().clone();
         let mut options: Vec<assign_opts> = Vec::new();
+        let mut v = t.clone();
 
         if !jump {
             // option symbol
@@ -83,24 +84,38 @@ impl forest {
             // assign var
             l.bump_n_eat(e);
 
-
             // option elements
             if matches!(l.curr().key(), KEYWORD::symbol(SYMBOL::squarO_)) {
                 self.help_assign_options(&mut options, l, e);
             }
         }
+        v.set_options(options);
 
+        if matches!(l.curr().key(), KEYWORD::symbol(SYMBOL::roundO_)) {
+            l.bump_n_eat(e);
+            while matches!(l.curr().key(), KEYWORD::ident) {
+                self.parse_stat_var(l, e, &v, true);
+                l.bump()
+            }
+            return
+        }
+
+        // println!(">> {:>2} {} \t\t {}", l.curr().loc().row(), l.curr().key(), l.next().key());
         println!("{:>2} {} \t\t {}", l.curr().loc().row(), l.curr().key(), l.next().key());
 
+        if matches!(l.curr().key(), KEYWORD::ident) {
+            v.set_ident(l.curr().con().clone());
+        } else {
+            let s = String::from("expected { ") + &KEYWORD::ident.to_string() +
+                    " }, got { " + &l.curr().key().to_string() + " }";
+            l.report(s, e);
+        }
 
 
-        let mut v = var_stat::init();
-        v.set_options(options);
 
         l.toend();
         let n = tree::new(root::stat(stat::Var(v)), c);
         self.trees.push(n.clone());
-        n
     }
 
     pub fn help_assign_options(&mut self, v: &mut Vec<assign_opts>, l: &mut lexer::BAG, e: &mut err::FLAW) {

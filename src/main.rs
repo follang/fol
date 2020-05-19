@@ -2,21 +2,21 @@
 #![allow(unused_variables)]
 
 mod scan;
+mod node;
+mod error;
+#[macro_use]
+extern crate getset;
 // use crate::scan::token;
 // use crate::scan::parts;
-use crate::scan::reader;
-use crate::scan::scanner;
-use crate::scan::stream;
-mod node;
+// use crate::scan::reader;
+// use crate::scan::scanner;
+// use crate::scan::stream;
+// use crate::node::ast;
 use crate::node::lexer;
 use crate::node::parser;
-use crate::node::ast;
-mod error;
 use crate::error::err;
 
 
-#[macro_use]
-extern crate getset;
 
 fn main() {
     // for mut e in reader::iteratize("./etc") {

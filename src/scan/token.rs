@@ -23,17 +23,6 @@ pub enum KEYWORD {
     illegal
 }
 
-// impl PartialEq for KEYWORD {
-    // fn eq(&self, other: &Self) -> bool {
-        // match &self {
-            // other => true,
-            // _ => false,
-        // }
-    // }
-// }
-
-// std::cmp::PartialEq<fn(scan::token::SYMBOL) -> scan::token::KEYWORD {scan::token::KEYWORD::symbol}>
-
 impl KEYWORD {
     pub fn is_assign(&self) -> bool {
         match *self {

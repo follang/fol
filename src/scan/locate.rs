@@ -59,6 +59,10 @@ impl LOCATION {
         self.len
     }
 
+    pub fn longer(&mut self, i: &usize) {
+        self.len += i
+    }
+
     pub fn deep(&self) -> isize {
         self.deep
     }

@@ -144,7 +144,7 @@ impl parts::PART {
 impl SCAN {
     pub fn combine(&mut self, other: &SCAN) {
         self.con.push_str(&other.con);
-        //TODO: what about len??
+        self.loc.longer(&other.loc.len())
     }
 
     fn endline(&mut self, part: &mut parts::PART, terminated: bool) {
