@@ -79,37 +79,45 @@ impl forest {
             if matches!(l.curr().key(), KEYWORD::symbol(SYMBOL::squarO_)) {
                 self.help_assign_options(&mut options, l, e);
             }
+            v.set_options(options);
         }
-        v.set_options(options);
 
+        // group variables
         if matches!(l.curr().key(), KEYWORD::symbol(SYMBOL::roundO_)) {
+            // println!("{:?}", t);
             l.bump(); l.eat_space(e, false);
             while matches!(l.curr().key(), KEYWORD::ident) {
                 self.parse_stat_var(l, e, &v, true);
                 l.bump()
             }
-            if matches!(l.curr().key(), KEYWORD::symbol(SYMBOL::roundC_)) { l.bump(); } else { l.expect_report(KEYWORD::symbol(SYMBOL::roundC_), e) }
+            if matches!(l.curr().key(), KEYWORD::symbol(SYMBOL::roundC_)) {
+                l.bump();
+            } else {
+                l.expect_report(KEYWORD::symbol(SYMBOL::roundC_), e);
+                return
+            }
             l.eat_terminal(e, true);
-            println!("{:>2} {} \t\t {}", l.curr().loc().row(), l.curr().key(), l.next().key());
             return
         }
 
-
-
+        //identifier
+        l.eat_space(e, false);
         if matches!(l.curr().key(), KEYWORD::ident) {
             v.set_ident(l.curr().con().clone());
             l.bump();
         } else {
-            let s = String::from("expected { ") + &KEYWORD::ident.to_string() + " }, got { " + &l.curr().key().to_string() + " }";
-            l.report(s, e);
+            l.expect_report(KEYWORD::ident, e);
+            return
         }
 
-
+        // short version (no type)
         if l.curr().key().is_terminal(){
             self.trees.push(tree::new(root::stat(stat::Var(v)), c));
             l.eat_terminal(e, true);
             return;
         }
+        // println!("{:>2}  {:>2}\t\t{} \t {}", l.curr().loc().row(), l.curr().loc().col(), l.curr().key(), l.next().key());
+
 
         l.toend(e);
         self.trees.push(tree::new(root::stat(stat::Var(v)), c));

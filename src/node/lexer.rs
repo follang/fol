@@ -78,17 +78,6 @@ impl BAG {
         }
     }
 
-    pub fn eat_expected(&mut self, k:KEYWORD) {
-        if matches!(self.curr().key(), k) {
-            println!("{}", true)
-        }
-    }
-
-    pub fn expect_report(&mut self, k: KEYWORD, e: &mut err::FLAW) {
-        let s = String::from("expected { ") + &k.to_string() + " }, got { " + &self.curr().key().to_string() + " }";
-        self.report(s, e);
-    }
-
     pub fn eat_terminal(&mut self, e: &mut err::FLAW, enforced: bool) {
         if enforced && !self.curr().key().is_terminal() {
             let s = String::from("expected { ") + &KEYWORD::void(VOID::space_).to_string() + " }, got { " + &self.curr().key().to_string() + " }";
@@ -104,7 +93,7 @@ impl BAG {
     pub fn toend(&mut self, e: &mut err::FLAW) {
         let deep = self.curr().loc().deep();
         loop {
-            if (self.is_terminal() && self.curr().loc().deep() <= deep) || (self.curr().key().is_eof()) { break }
+            if (self.curr().key().is_terminal() && self.curr().loc().deep() <= deep) || (self.curr().key().is_eof()) { break }
             self.bump()
         }
         self.bump();
@@ -118,6 +107,11 @@ impl BAG {
         self.toend(e);
     }
 
+    pub fn expect_report(&mut self, k: KEYWORD, e: &mut err::FLAW) {
+        let s = String::from("expected { ") + &k.to_string() + " }, got { " + &self.curr().key().to_string() + " }";
+        self.report(s, e);
+    }
+
     pub fn next(&self) -> SCAN {
         self.vec.get(1).unwrap_or(&stream::zero()).to_owned()
     }
@@ -125,12 +119,8 @@ impl BAG {
         self.vec.get(num).unwrap_or(&stream::zero()).to_owned()
     }
 
-    pub fn is_terminal(&self) -> bool {
-        self.curr().key().is_terminal()
-    }
-
     pub fn match_bracket(&self, k: KEYWORD, d: isize) -> bool {
-        if matches!(self.curr().key(), k) && self.curr().loc().deep() == d { true } else { false }
+        if (matches!(self.curr().key(), k) && self.curr().loc().deep() == d) || self.curr().key().is_eof() { true } else { false }
     }
 }
 
