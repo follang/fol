@@ -6,7 +6,7 @@ use crate::scan::reader;
 use std::fmt;
 
 /// Peekable iterator over a char sequence.
-/// Next characters can be peeked via `peek` method, and position can be shifted forward via `bump` method.
+/// Next characters can be peeked via `nth` method, and position can be shifted forward via `bump` method.
 pub(crate) struct PART {
     content: String,
     curr_char: char,
@@ -31,9 +31,9 @@ impl PART {
         }
     }
 
-    /// Returns peek character relative to the current part position, if position doesn't exist, `EOF_CHAR` is returned.
+    /// Returns nth character relative to the current part position, if position doesn't exist, `EOF_CHAR` is returned.
     /// However, getting `EOF_CHAR` doesn't always mean actual end of file, it should be checked with `is_eof` method.
-    pub fn peek(&self, n: usize) -> char {
+    pub fn nth(&self, n: usize) -> char {
         self.content.chars().nth(n).unwrap_or(EOF_CHAR)
     }
 
@@ -53,7 +53,7 @@ impl PART {
 
     /// Peeks the next symbol from the input stream without consuming it.
     pub(crate) fn next_char(&self) -> char {
-        self.peek(0)
+        self.nth(0)
     }
 
     /// Checks if there is nothing more to consume.

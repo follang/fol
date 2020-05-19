@@ -67,7 +67,7 @@ impl BAG {
             self.bump()
         }
     }
-    pub fn eat_space(&mut self, e: &mut err::FLAW, enforced: bool) {
+    pub fn eat_curr_space(&mut self, e: &mut err::FLAW, enforced: bool) {
         if enforced && !self.curr().key().is_space() {
             let s = String::from("expected { ") + &KEYWORD::void(VOID::space_).to_string() + " }, got { " + &self.curr().key().to_string() + " }";
             self.report(s, e);
@@ -78,7 +78,7 @@ impl BAG {
         }
     }
 
-    pub fn eat_terminal(&mut self, e: &mut err::FLAW, enforced: bool) {
+    pub fn eat_curr_termin(&mut self, e: &mut err::FLAW, enforced: bool) {
         if enforced && !self.curr().key().is_terminal() {
             let s = String::from("expected { ") + &KEYWORD::void(VOID::space_).to_string() + " }, got { " + &self.curr().key().to_string() + " }";
             self.report(s, e);
@@ -87,7 +87,7 @@ impl BAG {
         if self.curr().key().is_terminal() {
             self.bump()
         }
-        self.eat_space(e, false);
+        self.eat_curr_space(e, false);
     }
 
     pub fn toend(&mut self, e: &mut err::FLAW) {
@@ -97,7 +97,7 @@ impl BAG {
             self.bump()
         }
         self.bump();
-        // self.eat_terminal(e, false);
+        // self.eat_curr_termin(e, false);
         // println!("a {:>2} {} \t\t {}", self.curr().loc().row(), self.curr().key(), self.next().key());
         // self.eat();
     }
@@ -107,16 +107,19 @@ impl BAG {
         self.toend(e);
     }
 
-    pub fn expect_report(&mut self, k: KEYWORD, e: &mut err::FLAW) {
-        let s = String::from("expected { ") + &k.to_string() + " }, got { " + &self.curr().key().to_string() + " }";
+    pub fn expect_report(&mut self, k: String, e: &mut err::FLAW) {
+        let s = String::from("expected { ") + &k + " }, got { " + &self.curr().key().to_string() + " }";
         self.report(s, e);
     }
 
     pub fn next(&self) -> SCAN {
         self.vec.get(1).unwrap_or(&stream::zero()).to_owned()
     }
-    pub fn peek(&self, num: usize) -> SCAN {
+    pub fn nth(&self, num: usize) -> SCAN {
         self.vec.get(num).unwrap_or(&stream::zero()).to_owned()
+    }
+    pub fn peek(&self) -> SCAN {
+        if self.next().key().is_space() { self.nth(2) } else { self.next() }
     }
 
     pub fn match_bracket(&self, k: KEYWORD, d: isize) -> bool {
@@ -138,6 +141,8 @@ impl stream::STREAM {
                 }
             } else { self.bump(); return result }
             match result.con().as_str() {
+                "=" => { result.set_key(operator(OPERATOR::assign_)) }
+                ":=" => { result.set_key(operator(OPERATOR::assign2_)) }
                 "..." => { result.set_key(operator(OPERATOR::ddd_)) }
                 ".." => { result.set_key(operator(OPERATOR::dd_)) }
                 "=>" => { result.set_key(operator(OPERATOR::flow_)) }

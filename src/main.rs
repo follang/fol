@@ -48,6 +48,7 @@ fn main() {
     forest.init(&mut tokens, &mut error);
     for tree in forest.trees {
         println!("{}\t{}", tree.loc(), tree.node());
+        // println!("{:?}", tree.node());
     }
     error.show();
 }

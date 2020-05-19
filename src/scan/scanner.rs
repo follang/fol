@@ -194,7 +194,7 @@ impl SCAN {
             self.push_curr(part);
             self.key = literal(LITERAL::decimal_);
             while is_digit(&part.next_char()) || part.next_char() == '_' { self.bump_next(part); }
-            if part.next_char() == '.' && (is_digit(&part.peek(1)) || is_vobra(&part.peek(1))) {
+            if part.next_char() == '.' && (is_digit(&part.nth(1)) || is_vobra(&part.nth(1))) {
                 self.bump_next(part);
                 if is_digit(&part.next_char()) {
                     self.key = literal(LITERAL::float_);
@@ -205,8 +205,8 @@ impl SCAN {
                 }
             }
         }
-        // if part.next_char() == '.' && !(is_alpha(&part.peek(1)) || (is_eol(&part.peek(1)) && is_alpha(&part.peek(2)))) {
-        if part.next_char() == '.' && is_digit(&part.peek(1)) {
+        // if part.next_char() == '.' && !(is_alpha(&part.nth(1)) || (is_eol(&part.nth(1)) && is_alpha(&part.nth(2)))) {
+        if part.next_char() == '.' && is_digit(&part.nth(1)) {
             self.key = illegal;
             while !is_void(&part.next_char()) { self.bump_next(part); }
         }
