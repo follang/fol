@@ -54,16 +54,7 @@ impl forest {
             // ( matches!( l.curr().key(), KEYWORD::symbol(_) ) && matches!( l.next().key(), KEYWORD::assign(ASSIGN::def_) ) ) {
             // self.parse_stat_var(l, e);
         } else {
-            // let s = l.expect(KEYWORD::assign(ASSIGN::fun_), e);
-            // println!("{}", s);
-            if !matches!(l.curr().key(), KEYWORD::literal(_)) {
-                let s = String::from("expected { ") + &KEYWORD::literal(LITERAL::ANY).to_string() +
-                    " }, got { " + &l.curr().key().to_string() + " }";
-                // l.report(s, e);
-                l.toend();
-                return
-            }
-            l.toend()
+            l.toend(e)
         }
     }
 }
@@ -82,7 +73,7 @@ impl forest {
             }
 
             // assign var
-            l.bump_n_eat(e);
+            l.bump(); l.eat_space(e, false);
 
             // option elements
             if matches!(l.curr().key(), KEYWORD::symbol(SYMBOL::squarO_)) {
@@ -92,30 +83,36 @@ impl forest {
         v.set_options(options);
 
         if matches!(l.curr().key(), KEYWORD::symbol(SYMBOL::roundO_)) {
-            l.bump_n_eat(e);
+            l.bump(); l.eat_space(e, false);
             while matches!(l.curr().key(), KEYWORD::ident) {
                 self.parse_stat_var(l, e, &v, true);
                 l.bump()
             }
+            if matches!(l.curr().key(), KEYWORD::symbol(SYMBOL::roundC_)) { l.bump(); } else { l.expect_report(KEYWORD::symbol(SYMBOL::roundC_), e) }
+            l.eat_terminal(e, true);
+            println!("{:>2} {} \t\t {}", l.curr().loc().row(), l.curr().key(), l.next().key());
             return
         }
 
-        // println!(">> {:>2} {} \t\t {}", l.curr().loc().row(), l.curr().key(), l.next().key());
-        println!("{:>2} {} \t\t {}", l.curr().loc().row(), l.curr().key(), l.next().key());
+
 
         if matches!(l.curr().key(), KEYWORD::ident) {
             v.set_ident(l.curr().con().clone());
+            l.bump();
         } else {
-            let s = String::from("expected { ") + &KEYWORD::ident.to_string() +
-                    " }, got { " + &l.curr().key().to_string() + " }";
+            let s = String::from("expected { ") + &KEYWORD::ident.to_string() + " }, got { " + &l.curr().key().to_string() + " }";
             l.report(s, e);
         }
 
 
+        if l.curr().key().is_terminal(){
+            self.trees.push(tree::new(root::stat(stat::Var(v)), c));
+            l.eat_terminal(e, true);
+            return;
+        }
 
-        l.toend();
-        let n = tree::new(root::stat(stat::Var(v)), c);
-        self.trees.push(n.clone());
+        l.toend(e);
+        self.trees.push(tree::new(root::stat(stat::Var(v)), c));
     }
 
     pub fn help_assign_options(&mut self, v: &mut Vec<assign_opts>, l: &mut lexer::BAG, e: &mut err::FLAW) {
@@ -139,6 +136,6 @@ impl forest {
             if l.match_bracket(KEYWORD::symbol(SYMBOL::curlyC_), deep) { break }
             l.bump();
         }
-        l.bump_n_eat(e);
+        l.bump(); l.eat_space(e, true);
     }
 }

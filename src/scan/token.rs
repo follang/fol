@@ -101,21 +101,21 @@ impl KEYWORD {
             _ => false,
         }
     }
-    pub fn is_illegal(&self) -> bool {
-        match *self {
-            KEYWORD::illegal => true,
-            _ => false,
-        }
-    }
     pub fn is_eof(&self) -> bool {
         match *self {
             KEYWORD::void(VOID::endfile_) => true,
             _ => false,
         }
     }
+    pub fn is_space(&self) -> bool {
+        match *self {
+            KEYWORD::void(VOID::space_) => true,
+            _ => false,
+        }
+    }
     pub fn is_eol(&self) -> bool {
         match *self {
-            KEYWORD::void(VOID::endline_(_)) => true,
+            KEYWORD::void(VOID::endline_) => true,
             _ => false,
         }
     }
@@ -131,7 +131,7 @@ impl KEYWORD {
     }
     pub fn is_terminal(&self) -> bool {
         match *self {
-            KEYWORD::void(VOID::endline_(true)) => true,
+            KEYWORD::void(VOID::endline_) => true,
             KEYWORD::symbol(SYMBOL::semi_) => true,
             _ => false,
         }
@@ -165,7 +165,7 @@ pub enum LITERAL {
 pub enum VOID {
     ANY,
     space_,
-    endline_(bool),
+    endline_,
     endfile_,
 }
 
@@ -366,8 +366,7 @@ impl fmt::Display for KEYWORD {
             literal(LITERAL::hexal_) => write!(f, "{}: {}", "LITERAL", "hexal"),
             literal(LITERAL::octal_) => write!(f, "{}: {}", "LITERAL", "octal"),
             literal(LITERAL::binary_) => write!(f, "{}: {}", "LITERAL", "binary"),
-            void(VOID::endline_(false) ) => write!(f, "{}: {}", "VOID", "eol"),
-            void(VOID::endline_(true) ) => write!(f, "{}: {}", "VOID", "TERM"),
+            void(VOID::endline_ ) => write!(f, "{}: {}", "VOID", "eol"),
             void(VOID::space_ ) => write!(f, "{}: {}", "VOID", "space"),
             void(VOID::endfile_ ) => write!(f, "{}: {}", "VOID", "EOF"),
             symbol(SYMBOL::curlyC_ ) => write!(f, "{}: {}", "SYMBOL", "}"),

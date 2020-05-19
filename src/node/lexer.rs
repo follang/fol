@@ -67,36 +67,55 @@ impl BAG {
             self.bump()
         }
     }
-    pub fn eat(&mut self, e: &mut err::FLAW) {
-        // println!("a {:>2} {} \t\t {}", self.curr().loc().row(), self.curr().key(), self.next().key());
-        if self.curr().key().is_void() {
-            if *self.curr().key() == KEYWORD::void(VOID::endline_(true)) {
-                let s = String::from("expected { ") + &KEYWORD::void(VOID::space_).to_string() +
-                    " }, got { " + &self.curr().key().to_string() + " }";
-                self.report(s, e);
-                return
-            }
+    pub fn eat_space(&mut self, e: &mut err::FLAW, enforced: bool) {
+        if enforced && !self.curr().key().is_space() {
+            let s = String::from("expected { ") + &KEYWORD::void(VOID::space_).to_string() + " }, got { " + &self.curr().key().to_string() + " }";
+            self.report(s, e);
+            return;
+        }
+        if self.curr().key().is_space() {
             self.bump()
         }
     }
-    pub fn bump_n_eat(&mut self, e: &mut err::FLAW) {
-        self.bump();
-        self.eat(e);
+
+    pub fn eat_expected(&mut self, k:KEYWORD) {
+        if matches!(self.curr().key(), k) {
+            println!("{}", true)
+        }
     }
 
-    pub fn toend(&mut self) {
+    pub fn expect_report(&mut self, k: KEYWORD, e: &mut err::FLAW) {
+        let s = String::from("expected { ") + &k.to_string() + " }, got { " + &self.curr().key().to_string() + " }";
+        self.report(s, e);
+    }
+
+    pub fn eat_terminal(&mut self, e: &mut err::FLAW, enforced: bool) {
+        if enforced && !self.curr().key().is_terminal() {
+            let s = String::from("expected { ") + &KEYWORD::void(VOID::space_).to_string() + " }, got { " + &self.curr().key().to_string() + " }";
+            self.report(s, e);
+            return;
+        }
+        if self.curr().key().is_terminal() {
+            self.bump()
+        }
+        self.eat_space(e, false);
+    }
+
+    pub fn toend(&mut self, e: &mut err::FLAW) {
         let deep = self.curr().loc().deep();
         loop {
             if (self.is_terminal() && self.curr().loc().deep() <= deep) || (self.curr().key().is_eof()) { break }
             self.bump()
         }
         self.bump();
+        // self.eat_terminal(e, false);
+        // println!("a {:>2} {} \t\t {}", self.curr().loc().row(), self.curr().key(), self.next().key());
         // self.eat();
     }
 
     pub fn report(&mut self, s: String, e: &mut err::FLAW) {
         e.report(err::flaw_type::parser, &s, self.curr().loc().clone());
-        self.toend();
+        self.toend(e);
     }
 
     pub fn next(&self) -> SCAN {
@@ -162,7 +181,7 @@ impl stream::STREAM {
             }
         } else if self.curr().key().is_eol() {
             if self.prev().key().is_nonterm() || self.next().key().is_dot() || p.key().is_operator() {
-                result.set_key(void(VOID::endline_(false)))
+                result.set_key(void(VOID::space_))
             }
         }
         self.bump();

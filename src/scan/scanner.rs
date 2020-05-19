@@ -150,7 +150,7 @@ impl SCAN {
     fn endline(&mut self, part: &mut parts::PART, terminated: bool) {
         self.push_curr(part);
         self.loc.new_line();
-        self.key = void(VOID::endline_(true));
+        self.key = void(VOID::endline_);
         while is_eol(&part.next_char()) || is_space(&part.next_char()) {
             if is_eol(&part.next_char()) { self.loc.new_line(); }
             self.bump_next(part);
@@ -240,11 +240,11 @@ impl SCAN {
             ']' => { self.loc.soften(); self.key = symbol(SYMBOL::squarC_) },
             '(' => { self.loc.deepen(); self.key = symbol(SYMBOL::roundO_) },
             ')' => { self.loc.soften(); self.key = symbol(SYMBOL::roundC_) },
+            ';' => { self.key = symbol(SYMBOL::semi_) },
             '\\' => { self.key = symbol(SYMBOL::escape_) },
             '.' => { self.key = symbol(SYMBOL::dot_) },
             ',' => { self.key = symbol(SYMBOL::comma_) },
             ':' => { self.key = symbol(SYMBOL::colon_) },
-            ';' => { self.key = symbol(SYMBOL::semi_) },
             '|' => { self.key = symbol(SYMBOL::pipe_) },
             '=' => { self.key = symbol(SYMBOL::equal_) },
             '>' => { self.key = symbol(SYMBOL::greater_) },
@@ -272,7 +272,7 @@ impl SCAN {
         // println!("{} - {}", "enter", &part.curr_char());
         // println!("{} {} {}", &part.prev_char(), &part.curr_char(), &part.next_char());
         self.push_curr(part);
-        while is_alpha(&part.next_char()) {
+        while is_alpha(&part.next_char()) || is_digit(&part.next_char()) {
             part.bump(&mut self.loc);
             self.push_curr(part);
             // self.bump_next(part);
