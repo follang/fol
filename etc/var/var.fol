@@ -1,4 +1,4 @@
-~var[nor, []rac] one # <expression>
+~var[nor, []rac] one = <expression>
 -var[exp,imu] two: str[exp,hid] = <expression>
 +var three: int = <expression>
 ~var[exp] (
@@ -13,37 +13,3 @@ var[] eight, eight2, eight3
 var nine; var ten = <expression>
 var eleven := <expression>
 
-
-fun one(two: int): int = { <expression> }
-fun one(two: int): int = { <expression> }
-~log[] one(two: int): int = { <expression> }
-fun[] '!='(one, two: int): bol = { <expression> }
-~pro[] (obj)one(two: int): int = { <expression> }
-~pro[] (obj)'$': str = { <expression> }
-~pro[] one[T: gen](two: int): int = { <expression> }
-
-fun[] add1(adder: rut[(x: int): int]): int = { <expression> }
-fun[] add2(): rut[(x: int): int] = { <expression> }
-
-typ user: rec = { <expression> };
-~typ[] (
-    one: rec[] = <expression>;
-    two: rec[] = <expression>;
-)
-~typ[] user: rec = { <expression> };
-~typ[] user: rec[] = { <expression> };
-~typ[] user(blue): rec[] = { <expression> };
-~typ[] user(T: gen, N: int)(blue): obj ;
-~ali[] five: arr[int, 5];
-~ali[] int: int;
-
-use[] one: two = <expression>;
-~use[] one: two = <expression>;
-~use[] (
-    one: two = <expression>;
-    two: two = <expression>;
-)
-
-def '$'(a: any): mac = '.to_string($)'
-def '~var': alt = 'var[~]'
-def 'str': def[] = 'str[new,mut,nor]'

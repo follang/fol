@@ -67,44 +67,31 @@ impl BAG {
             self.bump()
         }
     }
-    pub fn eat_curr_space(&mut self, e: &mut err::FLAW, enforced: bool) {
-        if enforced && !self.curr().key().is_space() {
-            let s = String::from("expected { ") + &KEYWORD::void(VOID::space_).to_string() + " }, got { " + &self.curr().key().to_string() + " }";
-            self.report(s, e);
-            return;
-        }
+    pub fn eat_space(&mut self, e: &mut err::FLAW) {
         if self.curr().key().is_space() {
             self.bump()
         }
     }
 
-    pub fn eat_curr_termin(&mut self, e: &mut err::FLAW, enforced: bool) {
-        if enforced && !self.curr().key().is_terminal() {
-            let s = String::from("expected { ") + &KEYWORD::void(VOID::space_).to_string() + " }, got { " + &self.curr().key().to_string() + " }";
-            self.report(s, e);
-            return;
-        }
+    pub fn eat_termin(&mut self, e: &mut err::FLAW) {
         if self.curr().key().is_terminal() {
             self.bump()
         }
-        self.eat_curr_space(e, false);
+        self.eat_space(e);
     }
 
-    pub fn toend(&mut self, e: &mut err::FLAW) {
+    pub fn to_end(&mut self, e: &mut err::FLAW) {
         let deep = self.curr().loc().deep();
         loop {
             if (self.curr().key().is_terminal() && self.curr().loc().deep() <= deep) || (self.curr().key().is_eof()) { break }
             self.bump()
         }
-        self.bump();
-        // self.eat_curr_termin(e, false);
-        // println!("a {:>2} {} \t\t {}", self.curr().loc().row(), self.curr().key(), self.next().key());
-        // self.eat();
+        if self.curr().key().is_terminal() { self.bump() }
     }
 
     pub fn report(&mut self, s: String, e: &mut err::FLAW) {
         e.report(err::flaw_type::parser, &s, self.curr().loc().clone());
-        self.toend(e);
+        self.to_end(e);
     }
 
     pub fn expect_report(&mut self, k: String, e: &mut err::FLAW) {
@@ -120,6 +107,10 @@ impl BAG {
     }
     pub fn peek(&self) -> SCAN {
         if self.next().key().is_space() { self.nth(2) } else { self.next() }
+    }
+
+    pub fn look(&self) -> SCAN {
+        if self.curr().key().is_space() { self.next() } else { self.curr().clone() }
     }
 
     pub fn match_bracket(&self, k: KEYWORD, d: isize) -> bool {

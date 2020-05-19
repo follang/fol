@@ -54,7 +54,7 @@ impl forest {
             // ( matches!( l.curr().key(), KEYWORD::symbol(_) ) && matches!( l.next().key(), KEYWORD::assign(ASSIGN::def_) ) ) {
             // self.parse_stat_var(l, e);
         } else {
-            l.toend(e)
+            l.to_end(e)
         }
     }
 }
@@ -73,17 +73,24 @@ impl forest {
             }
 
             // assign var
-            l.bump(); l.eat_curr_space(e, false);
+            l.bump(); l.eat_space(e);
 
             // option elements
             if matches!(l.curr().key(), KEYWORD::symbol(SYMBOL::squarO_)) {
                 self.help_assign_options(&mut options, l, e);
+                if l.curr().key().is_space() {
+                    l.eat_space(e);
+                } else {
+                    l.expect_report(KEYWORD::void(VOID::space_).to_string(), e);
+                    return
+                }
+                l.eat_space(e);
             }
             t.set_options(options);
 
             // group variables
             if matches!(l.curr().key(), KEYWORD::symbol(SYMBOL::roundO_)) {
-                l.bump(); l.eat_curr_space(e, false);
+                l.bump(); l.eat_space(e);
                 while matches!(l.curr().key(), KEYWORD::ident) {
                     self.parse_stat_var(l, e, &mut t, true);
                     l.bump()
@@ -94,13 +101,18 @@ impl forest {
                     l.expect_report(KEYWORD::symbol(SYMBOL::roundC_).to_string(), e);
                     return
                 }
-                l.eat_curr_termin(e, true);
+                if l.curr().key().is_terminal() {
+                    l.eat_termin(e);
+                } else {
+                    l.expect_report(KEYWORD::void(VOID::endline_).to_string(), e);
+                    return
+                }
                 return
             }
         }
 
         //identifier
-        l.eat_curr_space(e, false);
+        l.eat_space(e);
         if matches!(l.curr().key(), KEYWORD::ident) {
             t.set_ident(l.curr().con().clone());
             l.bump();
@@ -109,16 +121,17 @@ impl forest {
             return
         }
 
+        // list variables
         if matches!(l.curr().key(), KEYWORD::symbol(SYMBOL::comma_)) {
-            l.bump(); l.eat_curr_space(e, false);
+            l.bump(); l.eat_space(e);
             loop {
                 if matches!(l.curr().key(), KEYWORD::ident) {
                     list.push(l.curr().con().clone());
-                    l.bump(); l.eat_curr_space(e, false);
+                    l.bump(); l.eat_space(e);
                 }
                 if matches!(l.curr().key(), KEYWORD::symbol(SYMBOL::comma_)) {
                     l.bump();
-                    l.eat_curr_space(e, false);
+                    l.eat_space(e);
                 }
                 if !matches!(l.curr().key(), KEYWORD::ident) { break }
             }
@@ -128,19 +141,31 @@ impl forest {
         // short version (no type)
         if l.curr().key().is_terminal(){
             self.trees.push(tree::new(root::stat(stat::Var(t.clone())), c));
-            l.eat_curr_termin(e, true);
+            l.eat_termin(e);
             return;
         }
 
+        if !(matches!(l.look().key(), KEYWORD::operator(OPERATOR::assign_))
+            || matches!(l.look().key(), KEYWORD::operator(OPERATOR::assign2_))
+            || matches!(l.look().key(), KEYWORD::symbol(SYMBOL::colon_))
+            ) {
+            l.eat_space(e);
+            l.expect_report(KEYWORD::operator(OPERATOR::assign_).to_string() + " } or { " +
+                &KEYWORD::operator(OPERATOR::assign2_).to_string() + " } or { " +
+                &KEYWORD::symbol(SYMBOL::colon_).to_string(), e);
+        }
+        l.eat_space(e);
 
-        // l.eat_curr_space(e, false);
+
+        if matches!(l.curr().key(), KEYWORD::symbol(SYMBOL::colon_)) {}
+
         println!("{:>2}  {:>2}  {:>2}\t\t{} \t {}", "", l.curr().loc().col(), l.curr().loc().row(), l.curr().key(), l.next().key());
 
         // short assign ':='
         if matches!(l.curr().key(), KEYWORD::operator(OPERATOR::assign2_)) || matches!(l.curr().key(), KEYWORD::operator(OPERATOR::assign2_)) {
         }
 
-        l.toend(e);
+        l.to_end(e);
         self.trees.push(tree::new(root::stat(stat::Var(t.clone())), c.clone()));
 
         for e in list {
@@ -172,6 +197,6 @@ impl forest {
             if l.match_bracket(KEYWORD::symbol(SYMBOL::curlyC_), deep) { break }
             l.bump();
         }
-        l.bump(); l.eat_curr_space(e, true);
+        l.bump();
     }
 }
