@@ -73,8 +73,8 @@ pub fn init(path: &str, e: &mut err::FLAW) -> BAG {
         vec.push(stream.analyze(e, &last).to_owned());
     }
     let curr = vec.get(0).unwrap_or(&stream::zero()).to_owned();
-    let prev = curr.to_owned();
-    let past = curr.to_owned();
+    let prev = SCAN::zero("");
+    let past = SCAN::zero("");
     BAG { vec, prev, curr, past }
 }
 
@@ -162,7 +162,7 @@ impl stream::STREAM {
                 "+" => { result.set_key(option(OPTION::exp_)) },
                 "-" => { result.set_key(option(OPTION::hid_)) },
                 "@" => { result.set_key(option(OPTION::hep_)) },
-                _ => { result.set_key(ident(String::new())) },
+                _ => {},
             }
         } else if self.curr().key().is_eol() {
             if self.prev().key().is_nonterm() || self.next().key().is_dot() || p.key().is_operator() {

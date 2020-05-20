@@ -30,32 +30,34 @@ impl forest {
     }
     pub fn parse_stat(&mut self, l: &mut lexer::BAG, e: &mut err::FLAW) {
     // println!("{}", l);
-        if matches!( l.curr().key(), KEYWORD::assign(ASSIGN::var_) ) ||
-            ( matches!( l.curr().key(), KEYWORD::option(_) ) && matches!( l.next().key(), KEYWORD::assign(ASSIGN::var_) ) ) {
-            self.parse_stat_var(l, e, &mut var_stat::init(), false);
-        // } else if matches!( l.curr().key(), KEYWORD::assign(ASSIGN::fun_) ) ||
-            // ( matches!( l.curr().key(), KEYWORD::symbol(_) ) && matches!( l.next().key(), KEYWORD::assign(ASSIGN::fun_) ) ) {
-            // self.parse_stat_var(l, e);
-        // } else if matches!( l.curr().key(), KEYWORD::assign(ASSIGN::pro_) ) ||
-            // ( matches!( l.curr().key(), KEYWORD::symbol(_) ) && matches!( l.next().key(), KEYWORD::assign(ASSIGN::pro_) ) ) {
-            // self.parse_stat_var(l, e);
-        // } else if matches!( l.curr().key(), KEYWORD::assign(ASSIGN::log_) ) ||
-            // ( matches!( l.curr().key(), KEYWORD::symbol(_) ) && matches!( l.next().key(), KEYWORD::assign(ASSIGN::log_) ) ) {
-            // self.parse_stat_var(l, e);
-        // } else if matches!( l.curr().key(), KEYWORD::assign(ASSIGN::typ_) ) ||
-            // ( matches!( l.curr().key(), KEYWORD::symbol(_) ) && matches!( l.next().key(), KEYWORD::assign(ASSIGN::typ_) ) ) {
-            // self.parse_stat_var(l, e);
-        // } else if matches!( l.curr().key(), KEYWORD::assign(ASSIGN::ali_) ) ||
-            // ( matches!( l.curr().key(), KEYWORD::symbol(_) ) && matches!( l.next().key(), KEYWORD::assign(ASSIGN::ali_) ) ) {
-            // self.parse_stat_var(l, e);
-        // } else if matches!( l.curr().key(), KEYWORD::assign(ASSIGN::use_) ) ||
-            // ( matches!( l.curr().key(), KEYWORD::symbol(_) ) && matches!( l.next().key(), KEYWORD::assign(ASSIGN::use_) ) ) {
-            // self.parse_stat_var(l, e);
-        // } else if matches!( l.curr().key(), KEYWORD::assign(ASSIGN::def_) ) ||
-            // ( matches!( l.curr().key(), KEYWORD::symbol(_) ) && matches!( l.next().key(), KEYWORD::assign(ASSIGN::def_) ) ) {
-            // self.parse_stat_var(l, e);
-        } else {
-            l.to_end(e)
+        if l.prev().key().is_terminal() || l.prev().key().is_eof() {
+            if matches!( l.curr().key(), KEYWORD::assign(ASSIGN::var_) ) ||
+                ( matches!( l.curr().key(), KEYWORD::option(_) ) && matches!( l.next().key(), KEYWORD::assign(ASSIGN::var_) ) ) {
+                self.parse_stat_var(l, e, &mut var_stat::init(), false);
+            // } else if matches!( l.curr().key(), KEYWORD::assign(ASSIGN::fun_) ) ||
+                // ( matches!( l.curr().key(), KEYWORD::symbol(_) ) && matches!( l.next().key(), KEYWORD::assign(ASSIGN::fun_) ) ) {
+                // self.parse_stat_var(l, e);
+            // } else if matches!( l.curr().key(), KEYWORD::assign(ASSIGN::pro_) ) ||
+                // ( matches!( l.curr().key(), KEYWORD::symbol(_) ) && matches!( l.next().key(), KEYWORD::assign(ASSIGN::pro_) ) ) {
+                // self.parse_stat_var(l, e);
+            // } else if matches!( l.curr().key(), KEYWORD::assign(ASSIGN::log_) ) ||
+                // ( matches!( l.curr().key(), KEYWORD::symbol(_) ) && matches!( l.next().key(), KEYWORD::assign(ASSIGN::log_) ) ) {
+                // self.parse_stat_var(l, e);
+            // } else if matches!( l.curr().key(), KEYWORD::assign(ASSIGN::typ_) ) ||
+                // ( matches!( l.curr().key(), KEYWORD::symbol(_) ) && matches!( l.next().key(), KEYWORD::assign(ASSIGN::typ_) ) ) {
+                // self.parse_stat_var(l, e);
+            // } else if matches!( l.curr().key(), KEYWORD::assign(ASSIGN::ali_) ) ||
+                // ( matches!( l.curr().key(), KEYWORD::symbol(_) ) && matches!( l.next().key(), KEYWORD::assign(ASSIGN::ali_) ) ) {
+                // self.parse_stat_var(l, e);
+            // } else if matches!( l.curr().key(), KEYWORD::assign(ASSIGN::use_) ) ||
+                // ( matches!( l.curr().key(), KEYWORD::symbol(_) ) && matches!( l.next().key(), KEYWORD::assign(ASSIGN::use_) ) ) {
+                // self.parse_stat_var(l, e);
+            // } else if matches!( l.curr().key(), KEYWORD::assign(ASSIGN::def_) ) ||
+                // ( matches!( l.curr().key(), KEYWORD::symbol(_) ) && matches!( l.next().key(), KEYWORD::assign(ASSIGN::def_) ) ) {
+                // self.parse_stat_var(l, e);
+            } else {
+                l.to_end(e)
+            }
         }
     }
 }
@@ -125,7 +127,6 @@ impl forest {
         // list variables
         if matches!(l.curr().key(), KEYWORD::symbol(SYMBOL::comma_)) {
             l.bump(); l.eat_space(e);
-            println!(" > {:>2}\t{:>10}\t {:>10} \t {:>10}", l.curr().loc(), l.past().key(), l.curr().key().to_string().red(), l.next().key());
             loop {
                 if matches!(l.curr().key(), KEYWORD::ident(_)) {
                     list.push(l.curr().con().clone());
@@ -142,7 +143,13 @@ impl forest {
 
         // short version (no type)
         if l.look().key().is_terminal(){
-            self.trees.push(tree::new(root::stat(stat::Var(t.clone())), c));
+            println!(" > {:>2}\t{:>10}\t {:>10} \t {:>10}", l.curr().loc(), l.prev().key(), l.curr().key().to_string().red(), l.next().key());
+            self.trees.push(tree::new(root::stat(stat::Var(t.clone())), c.clone()));
+            for e in list {
+                let mut clo = t.clone();
+                clo.set_ident(e);
+                self.trees.push(tree::new(root::stat(stat::Var(clo)), c.clone()));
+            }
             l.eat_termin(e);
             return;
         }
@@ -202,13 +209,17 @@ impl forest {
 
     pub fn help_assign_options(&mut self, v: &mut Vec<assign_opts>, l: &mut lexer::BAG, e: &mut err::FLAW) {
         if matches!(l.curr().key(), KEYWORD::option(_)) {
-            let el = match l.curr().key() {
-                KEYWORD::option(OPTION::mut_) => { assign_opts::Mut }
-                KEYWORD::option(OPTION::sta_) => { assign_opts::Sta }
-                KEYWORD::option(OPTION::exp_) => { assign_opts::Exp }
-                KEYWORD::option(OPTION::hid_) => { assign_opts::Hid }
-                KEYWORD::option(OPTION::hep_) => { assign_opts::Hep }
-                _ => { assign_opts::Nor }
+            let el;
+            match l.curr().key() {
+                KEYWORD::option(OPTION::mut_) => { el = assign_opts::Mut }
+                KEYWORD::option(OPTION::sta_) => { el = assign_opts::Sta }
+                KEYWORD::option(OPTION::exp_) => { el = assign_opts::Exp }
+                KEYWORD::option(OPTION::hid_) => { el = assign_opts::Hid }
+                KEYWORD::option(OPTION::hep_) => { el = assign_opts::Hep }
+                _ => {
+                    l.expect_report(KEYWORD::option(OPTION::ANY).to_string(), e);
+                    return
+                }
             };
             v.push(el);
             l.bump();
