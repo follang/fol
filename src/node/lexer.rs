@@ -10,7 +10,6 @@ use crate::scan::stream;
 use crate::error::err;
 
 use crate::getset;
-use colored::Colorize;
 
 use crate::scan::scanner::SCAN;
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, GetSet)]
@@ -109,7 +108,7 @@ impl BAG {
     }
 
     pub fn expect_report(&mut self, k: String, e: &mut err::FLAW) {
-        let s = String::from("expected { ") + &k.red().to_string() + " } | got { " + &self.curr().key().to_string().red().to_string() + " }";
+        let s = String::from("expected { ") + &k + " } | got { " + &self.curr().key().to_string() + " }";
         self.report(s, e);
     }
     pub fn match_bracket(&self, k: KEYWORD, d: isize) -> bool {
@@ -122,8 +121,14 @@ use crate::scan::token::KEYWORD::*;
 impl stream::STREAM {
     pub fn analyze(&mut self, e: &mut err::FLAW, p: &SCAN) -> SCAN {
         let mut result = self.curr().clone();
-        if (self.prev().key().is_void() || self.prev().key().is_bracket()) && self.curr().key().is_symbol()
-            && (self.next().key().is_symbol() || self.next().key().is_void()) {
+
+        if self.curr().key().is_eol() &&
+            (self.prev().key().is_nonterm() || self.next().key().is_dot() || p.key().is_operator()) {
+            result.set_key(void(VOID::space_))
+        } else if self.curr().key().is_symbol()
+            && (self.next().key().is_void() || self.next().key().is_symbol())
+            && (self.prev().key().is_void() || self.prev().key().is_bracket())
+        {
             if self.after_symbol().is_void() || self.after_symbol().is_bracket() {
                 while self.next().key().is_symbol(){
                     result.combine(&self.next());
@@ -155,7 +160,10 @@ impl stream::STREAM {
                 ">>" => { result.set_key(operator(OPERATOR::shiftright_)) }
                 _ => {}
             }
-        } else if self.curr().key().is_symbol() && self.next().key().is_assign() {
+        } else if self.curr().key().is_symbol()
+            && self.next().key().is_assign()
+            && (self.prev().key().is_terminal() || self.prev().key().is_eof() || self.prev().key().is_void())
+        {
             match result.con().as_str() {
                 "~" => { result.set_key(option(OPTION::mut_)) },
                 "!" => { result.set_key(option(OPTION::sta_)) },
@@ -164,12 +172,11 @@ impl stream::STREAM {
                 "@" => { result.set_key(option(OPTION::hep_)) },
                 _ => {},
             }
-        } else if self.curr().key().is_eol() {
-            if self.prev().key().is_nonterm() || self.next().key().is_dot() || p.key().is_operator() {
-                result.set_key(void(VOID::space_))
-            }
         }
-        if matches!(self.curr().key(), KEYWORD::ident(_)) { result.set_key(ident(self.curr().con().to_string())) }
+        if matches!(self.curr().key(), KEYWORD::ident(_)) {
+            result.set_key(ident(self.curr().con().to_string()))
+        }
+
         self.bump();
         result
     }

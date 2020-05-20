@@ -143,7 +143,6 @@ impl forest {
 
         // short version (no type)
         if l.look().key().is_terminal(){
-            println!(" > {:>2}\t{:>10}\t {:>10} \t {:>10}", l.curr().loc(), l.prev().key(), l.curr().key().to_string().red(), l.next().key());
             self.trees.push(tree::new(root::stat(stat::Var(t.clone())), c.clone()));
             for e in list {
                 let mut clo = t.clone();
@@ -154,15 +153,12 @@ impl forest {
             return;
         }
 
-        if matches!(l.curr().key(), KEYWORD::symbol(SYMBOL::colon_)) && l.next().key().is_void() {
+        if matches!(l.curr().key(), KEYWORD::symbol(SYMBOL::colon_)) && l.peek().key().is_ident() {
             l.bump();
             l.eat_space(e);
-        } else if matches!(l.curr().key(), KEYWORD::symbol(SYMBOL::colon_)) && !l.next().key().is_void() {
-            l.expect_report(KEYWORD::operator(OPERATOR::assign_).to_string() + " } or { " +
-                &KEYWORD::operator(OPERATOR::assign2_).to_string() + " } or { " +
-                &KEYWORD::symbol(SYMBOL::colon_).to_string(), e);
-            return
         }
+
+        println!(" > {:>2}\t{:>10}\t -> {:>10}\t{:>10}", l.curr().loc(), l.prev().key(), l.curr().key().to_string().red(), l.next().key());
 
         // type separator ':'
         // if !(matches!(l.look().key(), KEYWORD::operator(OPERATOR::assign_))
