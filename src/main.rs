@@ -6,6 +6,7 @@ mod node;
 mod error;
 #[macro_use]
 extern crate getset;
+extern crate colored;
 // use crate::scan::token;
 // use crate::scan::parts;
 // use crate::scan::reader;

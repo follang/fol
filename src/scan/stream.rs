@@ -54,13 +54,13 @@ impl STREAM {
     pub fn after_symbol(&self) -> token::KEYWORD {
         let mut i = 1;
         while self.nth(i).key().is_symbol() { i += 1; }
-        *self.nth(i).key()
+        self.nth(i).key().clone()
     }
 
     pub fn after(&self, key: token::KEYWORD) -> token::KEYWORD {
         let mut i = 1;
         while matches!( self.nth(i).key(), key) { i += 1; }
-        *self.nth(i).key()
+        self.nth(i).key().clone()
     }
 }
 

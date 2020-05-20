@@ -315,6 +315,9 @@ impl SCAN {
             "loc" => { self.set_key(types(TYPE::loc_)) },
             "url" => { self.set_key(types(TYPE::url_)) },
             "blk" => { self.set_key(types(TYPE::blk_)) },
+            "rut" => { self.set_key(types(TYPE::rut_)) },
+            "pat" => { self.set_key(types(TYPE::pat_)) },
+            "gen" => { self.set_key(types(TYPE::gen_)) },
             "not" => { self.set_key(buildin(BUILDIN::not_)) },
             "or" => { self.set_key(buildin(BUILDIN::or_)) },
             "xor" => { self.set_key(buildin(BUILDIN::xor_)) },
@@ -367,7 +370,7 @@ impl SCAN {
             "f32" => { self.set_key(form(FORM::f32_)) },
             "f64" => { self.set_key(form(FORM::f64_)) },
             "fa" => { self.set_key(form(FORM::fa_)) },
-            _ => { self.set_key(ident) },
+            _ => { self.set_key(ident(String::new())) },
         }
     }
 

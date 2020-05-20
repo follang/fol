@@ -9,25 +9,60 @@ use crate::scan::token;
 use crate::scan::stream;
 use crate::error::err;
 
+use crate::getset;
+use colored::Colorize;
+
 use crate::scan::scanner::SCAN;
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, GetSet)]
 pub struct BAG {
     vec: Vec<SCAN>,
     prev: SCAN,
+    past: SCAN,
     curr: SCAN,
-    brac: Vec<token::SYMBOL>,
 }
 
 impl BAG {
-    pub fn list(&self) -> &Vec<SCAN> {
-        &self.vec
+    pub fn bump(&mut self) {
+        if self.not_empty(){
+            self.prev = self.curr.to_owned();
+            if !self.curr.key().is_void() { self.past = self.curr.to_owned() };
+            self.vec = self.vec[1..].to_vec();
+            self.curr = self.vec.get(0).unwrap_or(&stream::zero()).to_owned();
+        }
     }
-    pub fn curr(&self) -> &SCAN {
-        &self.curr
+    pub fn jump(&mut self, t: u8) {
+        for i in 0..t { self.bump() }
     }
+
+    //past token
     pub fn prev(&self) -> &SCAN {
         &self.prev
     }
+    //past token ignoring space
+    pub fn past(&self) -> &SCAN {
+        &self.past
+    }
+    //current token
+    pub fn curr(&self) -> &SCAN {
+        &self.curr
+    }
+    //current token ignoring space
+    pub fn look(&self) -> SCAN {
+        if self.curr().key().is_space() { self.next() } else { self.curr().clone() }
+    }
+    //next token
+    pub fn next(&self) -> SCAN {
+        self.vec.get(1).unwrap_or(&stream::zero()).to_owned()
+    }
+    //next token ignoring space
+    pub fn peek(&self) -> SCAN {
+        if self.next().key().is_space() { self.nth(2) } else { self.next() }
+    }
+    //nth token
+    pub fn nth(&self, num: usize) -> SCAN {
+        self.vec.get(num).unwrap_or(&stream::zero()).to_owned()
+    }
+
 }
 
 pub fn init(path: &str, e: &mut err::FLAW) -> BAG {
@@ -39,45 +74,24 @@ pub fn init(path: &str, e: &mut err::FLAW) -> BAG {
     }
     let curr = vec.get(0).unwrap_or(&stream::zero()).to_owned();
     let prev = curr.to_owned();
-    BAG { vec, prev, curr, brac: Vec::new() }
+    let past = curr.to_owned();
+    BAG { vec, prev, curr, past }
 }
-
-
-#[macro_export]
-macro_rules! expect(($e:expr, $p:expr) => (
-    match $e {
-        $p => { true },
-        _ => { false }
-    }
-));
 
 impl BAG {
     pub fn not_empty(&self) -> bool {
-        !self.list().is_empty()
+        !self.get_vec().is_empty()
     }
-    pub fn bump(&mut self) {
-        if self.not_empty(){
-            self.prev = self.curr.to_owned();
-            self.vec = self.vec[1..].to_vec();
-            self.curr = self.vec.get(0).unwrap_or(&stream::zero()).to_owned();
-        }
-    }
-    pub fn jump(&mut self, t: u8) {
-        for i in 0..t {
-            self.bump()
-        }
-    }
+
     pub fn eat_space(&mut self, e: &mut err::FLAW) {
         if self.curr().key().is_space() {
             self.bump()
         }
     }
-
     pub fn eat_termin(&mut self, e: &mut err::FLAW) {
-        if self.curr().key().is_terminal() {
+        while self.curr().key().is_terminal() || self.curr().key().is_space() {
             self.bump()
         }
-        self.eat_space(e);
     }
 
     pub fn to_end(&mut self, e: &mut err::FLAW) {
@@ -95,24 +109,9 @@ impl BAG {
     }
 
     pub fn expect_report(&mut self, k: String, e: &mut err::FLAW) {
-        let s = String::from("expected { ") + &k + " }, got { " + &self.curr().key().to_string() + " }";
+        let s = String::from("expected { ") + &k.red().to_string() + " } | got { " + &self.curr().key().to_string().red().to_string() + " }";
         self.report(s, e);
     }
-
-    pub fn next(&self) -> SCAN {
-        self.vec.get(1).unwrap_or(&stream::zero()).to_owned()
-    }
-    pub fn nth(&self, num: usize) -> SCAN {
-        self.vec.get(num).unwrap_or(&stream::zero()).to_owned()
-    }
-    pub fn peek(&self) -> SCAN {
-        if self.next().key().is_space() { self.nth(2) } else { self.next() }
-    }
-
-    pub fn look(&self) -> SCAN {
-        if self.curr().key().is_space() { self.next() } else { self.curr().clone() }
-    }
-
     pub fn match_bracket(&self, k: KEYWORD, d: isize) -> bool {
         if (matches!(self.curr().key(), k) && self.curr().loc().deep() == d) || self.curr().key().is_eof() { true } else { false }
     }
@@ -163,13 +162,14 @@ impl stream::STREAM {
                 "+" => { result.set_key(option(OPTION::exp_)) },
                 "-" => { result.set_key(option(OPTION::hid_)) },
                 "@" => { result.set_key(option(OPTION::hep_)) },
-                _ => { result.set_key(ident) },
+                _ => { result.set_key(ident(String::new())) },
             }
         } else if self.curr().key().is_eol() {
             if self.prev().key().is_nonterm() || self.next().key().is_dot() || p.key().is_operator() {
                 result.set_key(void(VOID::space_))
             }
         }
+        if matches!(self.curr().key(), KEYWORD::ident(_)) { result.set_key(ident(self.curr().con().to_string())) }
         self.bump();
         result
     }

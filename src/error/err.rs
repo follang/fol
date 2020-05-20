@@ -4,7 +4,6 @@
 #![allow(unused_variables)]
 
 
-extern crate colored;
 use colored::Colorize;
 
 use std::fmt;

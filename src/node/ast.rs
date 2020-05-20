@@ -68,7 +68,7 @@ pub struct var_stat{
 
 impl var_stat {
     pub fn init() -> Self {
-        var_stat { options: Vec::new(), ident: String::from("test"), retype: None, body: None }
+        var_stat { options: Vec::new(), ident: String::new(), retype: None, body: None }
     }
 }
 

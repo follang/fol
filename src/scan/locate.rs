@@ -17,8 +17,10 @@ pub struct LOCATION {
 
 impl fmt::Display for LOCATION {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "file: {: <4}   row: {: <2}   col: {: <2}",
-            self.name, self.row, self.col)
+        // write!(f, "file: {: <4}   row: {: <2}   col: {: <2}",
+            // self.name, self.row, self.col)
+        write!(f, "row: {: <2}   col: {: <2}",
+            self.col, self.row)
     }
 }
 

@@ -9,6 +9,7 @@ use crate::node::ast::*;
 use crate::scan::token::*;
 use crate::scan::locate;
 use crate::error::err;
+use colored::Colorize;
 
 
 pub struct forest {
@@ -91,7 +92,7 @@ impl forest {
             // group variables
             if matches!(l.curr().key(), KEYWORD::symbol(SYMBOL::roundO_)) {
                 l.bump(); l.eat_space(e);
-                while matches!(l.curr().key(), KEYWORD::ident) {
+                while matches!(l.curr().key(), KEYWORD::ident(_)) {
                     self.parse_stat_var(l, e, &mut t, true);
                     l.bump()
                 }
@@ -113,19 +114,20 @@ impl forest {
 
         //identifier
         l.eat_space(e);
-        if matches!(l.curr().key(), KEYWORD::ident) {
+        if matches!(l.curr().key(), KEYWORD::ident(_)) {
             t.set_ident(l.curr().con().clone());
             l.bump();
         } else {
-            l.expect_report(KEYWORD::ident.to_string(), e);
+            l.expect_report(KEYWORD::ident(String::new()).to_string(), e);
             return
         }
 
         // list variables
         if matches!(l.curr().key(), KEYWORD::symbol(SYMBOL::comma_)) {
             l.bump(); l.eat_space(e);
+            println!(" > {:>2}\t{:>10}\t {:>10} \t {:>10}", l.curr().loc(), l.past().key(), l.curr().key().to_string().red(), l.next().key());
             loop {
-                if matches!(l.curr().key(), KEYWORD::ident) {
+                if matches!(l.curr().key(), KEYWORD::ident(_)) {
                     list.push(l.curr().con().clone());
                     l.bump(); l.eat_space(e);
                 }
@@ -133,33 +135,55 @@ impl forest {
                     l.bump();
                     l.eat_space(e);
                 }
-                if !matches!(l.curr().key(), KEYWORD::ident) { break }
+                if !matches!(l.curr().key(), KEYWORD::ident(_)) { break }
             }
         }
 
 
         // short version (no type)
-        if l.curr().key().is_terminal(){
+        if l.look().key().is_terminal(){
             self.trees.push(tree::new(root::stat(stat::Var(t.clone())), c));
             l.eat_termin(e);
             return;
         }
 
-        if !(matches!(l.look().key(), KEYWORD::operator(OPERATOR::assign_))
-            || matches!(l.look().key(), KEYWORD::operator(OPERATOR::assign2_))
-            || matches!(l.look().key(), KEYWORD::symbol(SYMBOL::colon_))
-            ) {
+        if matches!(l.curr().key(), KEYWORD::symbol(SYMBOL::colon_)) && l.next().key().is_void() {
+            l.bump();
             l.eat_space(e);
+        } else if matches!(l.curr().key(), KEYWORD::symbol(SYMBOL::colon_)) && !l.next().key().is_void() {
             l.expect_report(KEYWORD::operator(OPERATOR::assign_).to_string() + " } or { " +
                 &KEYWORD::operator(OPERATOR::assign2_).to_string() + " } or { " +
                 &KEYWORD::symbol(SYMBOL::colon_).to_string(), e);
+            return
         }
-        l.eat_space(e);
+
+        // type separator ':'
+        // if !(matches!(l.look().key(), KEYWORD::operator(OPERATOR::assign_))
+            // || matches!(l.look().key(), KEYWORD::operator(OPERATOR::assign2_))
+            // || matches!(l.look().key(), KEYWORD::symbol(SYMBOL::colon_))
+            // ) {
+            // l.eat_space(e);
+            // l.expect_report(KEYWORD::operator(OPERATOR::assign_).to_string() + " } or { " +
+                // &KEYWORD::operator(OPERATOR::assign2_).to_string() + " } or { " +
+                // &KEYWORD::symbol(SYMBOL::colon_).to_string(), e);
+        // }
+        // l.eat_space(e);
 
 
-        if matches!(l.curr().key(), KEYWORD::symbol(SYMBOL::colon_)) {}
+        // if matches!(l.curr().key(), KEYWORD::symbol(SYMBOL::colon_)) {
+            // l.bump();
+            // if matches!(l.curr().key(), KEYWORD::symbol(SYMBOL::equal_)) {
+                // l.expect_report(KEYWORD::types(TYPE::ANY).to_string(), e);
+                // return
+            // }
+            // if !(matches!(l.look().key(), KEYWORD::types(_))) {
+                // l.bump();
+                // l.expect_report(KEYWORD::types(TYPE::ANY).to_string(), e);
+                // return
+            // }
+            // l.eat_space(e);
+        // }
 
-        println!("{:>2}  {:>2}  {:>2}\t\t{} \t {}", "", l.curr().loc().col(), l.curr().loc().row(), l.curr().key(), l.next().key());
 
         // short assign ':='
         if matches!(l.curr().key(), KEYWORD::operator(OPERATOR::assign2_)) || matches!(l.curr().key(), KEYWORD::operator(OPERATOR::assign2_)) {
@@ -194,6 +218,7 @@ impl forest {
         l.bump();
         loop {
             //TODO: finish options
+            //TODO: fix the match_bracket (dont sent pattern in function parameter)
             if l.match_bracket(KEYWORD::symbol(SYMBOL::curlyC_), deep) { break }
             l.bump();
         }
