@@ -89,13 +89,13 @@ impl forest {
                 l.unexpect_report(KEYWORD::void(VOID::space_).to_string(), e); return;
             } else { l.eat_space(e); }
 
+            l.log(">");
             // ERROR if '[' because is a little late for that
             if matches!(l.curr().key(), KEYWORD::symbol(SYMBOL::squarO_)) {
-                l.log(">");
                 l.separator_report(l.past().key().to_string(), e); return;
             }
 
-            // group variables
+            // group variables matching "("
             if matches!(l.curr().key(), KEYWORD::symbol(SYMBOL::roundO_)) {
                 l.bump(); l.eat_space(e);
                 while matches!(l.curr().key(), KEYWORD::ident(_)) {
@@ -119,7 +119,6 @@ impl forest {
         }
 
         //identifier
-        l.eat_space(e);
         if matches!(l.curr().key(), KEYWORD::ident(_)) {
             t.set_ident(l.curr().con().clone());
             l.bump();

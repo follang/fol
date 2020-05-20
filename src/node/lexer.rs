@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 #![allow(unused_macros)]
+#![allow(non_snake_case)]
 
 use std::fmt;
 // use crate::scan::scanner;
@@ -14,33 +15,23 @@ use crate::getset;
 use crate::scan::scanner::SCAN;
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, GetSet)]
 pub struct BAG {
-    vec: Vec<SCAN>,
-    prev: SCAN,
-    past: SCAN,
+    NEXT: Vec<SCAN>,
     curr: SCAN,
+    PAST: Vec<SCAN>,
 }
 
 impl BAG {
     pub fn bump(&mut self) {
         if self.not_empty(){
-            self.prev = self.curr.to_owned();
-            if !self.curr.key().is_void() { self.past = self.curr.to_owned() };
-            self.vec = self.vec[1..].to_vec();
-            self.curr = self.vec.get(0).unwrap_or(&stream::zero()).to_owned();
+            self.PAST.push(self.curr.to_owned());
+            self.NEXT = self.NEXT[1..].to_vec();
+            self.curr = self.NEXT.get(0).unwrap_or(&stream::zero()).to_owned();
         }
     }
     pub fn jump(&mut self, t: u8) {
         for i in 0..t { self.bump() }
     }
 
-    //past token
-    pub fn prev(&self) -> &SCAN {
-        &self.prev
-    }
-    //past token ignoring space
-    pub fn past(&self) -> &SCAN {
-        &self.past
-    }
     //current token
     pub fn curr(&self) -> &SCAN {
         &self.curr
@@ -49,37 +40,51 @@ impl BAG {
     pub fn look(&self) -> SCAN {
         if self.curr().key().is_space() { self.next() } else { self.curr().clone() }
     }
+
+    //next th token
+    pub fn nth(&self, num: usize) -> SCAN {
+        self.NEXT.get(num).unwrap_or(&stream::zero()).to_owned()
+    }
     //next token
     pub fn next(&self) -> SCAN {
-        self.vec.get(1).unwrap_or(&stream::zero()).to_owned()
+        self.nth(1)
     }
     //next token ignoring space
     pub fn peek(&self) -> SCAN {
         if self.next().key().is_space() { self.nth(2) } else { self.next() }
     }
-    //nth token
-    pub fn nth(&self, num: usize) -> SCAN {
-        self.vec.get(num).unwrap_or(&stream::zero()).to_owned()
+
+    //past th token
+    pub fn pth(&self, num: usize) -> SCAN {
+        let len = if self.PAST.len() > num { self.PAST.len() - num } else { 0 };
+        self.PAST.get(len).unwrap_or(&stream::zero()).to_owned()
+    }
+    //past token
+    pub fn prev(&self) -> SCAN {
+        self.pth(1)
+    }
+    //past token ignoring space
+    pub fn past(&self) -> SCAN {
+        if self.prev().key().is_space() { self.pth(2) } else { self.prev() }
     }
 
 }
 
 pub fn init(path: &str, e: &mut err::FLAW) -> BAG {
     let mut stream = stream::STREAM::init(path);
-    let mut vec: Vec<SCAN> = Vec::new();
+    let mut NEXT: Vec<SCAN> = Vec::new();
+    let PAST: Vec<SCAN> = Vec::new();
     while !stream.list().is_empty() {
-        let last = vec.last().cloned().unwrap_or(stream::zero()).to_owned();
-        vec.push(stream.analyze(e, &last).to_owned());
+        let last = NEXT.last().cloned().unwrap_or(stream::zero()).to_owned();
+        NEXT.push(stream.analyze(e, &last).to_owned());
     }
-    let curr = vec.get(0).unwrap_or(&stream::zero()).to_owned();
-    let prev = SCAN::zero("");
-    let past = SCAN::zero("");
-    BAG { vec, prev, curr, past }
+    let curr = NEXT.get(0).unwrap_or(&stream::zero()).to_owned();
+    BAG { NEXT, PAST, curr}
 }
 
 impl BAG {
     pub fn not_empty(&self) -> bool {
-        !self.get_vec().is_empty()
+        !self.get_NEXT().is_empty()
     }
 
     pub fn eat_space(&mut self, e: &mut err::FLAW) {
