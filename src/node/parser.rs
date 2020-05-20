@@ -76,20 +76,24 @@ impl forest {
             }
 
             // assign var
-            l.bump(); l.eat_space(e);
+            l.bump();
 
             // option elements
             if matches!(l.curr().key(), KEYWORD::symbol(SYMBOL::squarO_)) {
                 self.help_assign_options(&mut options, l, e);
-                if l.curr().key().is_space() {
-                    l.eat_space(e);
-                } else {
-                    l.expect_report(KEYWORD::void(VOID::space_).to_string(), e);
-                    return
-                }
-                l.eat_space(e);
             }
             t.set_options(options);
+
+            // ERROR if not 'space'
+            if !(matches!(l.curr().key(), KEYWORD::void(VOID::space_))) {
+                l.unexpect_report(KEYWORD::void(VOID::space_).to_string(), e); return;
+            } else { l.eat_space(e); }
+
+            // ERROR if '[' because is a little late for that
+            if matches!(l.curr().key(), KEYWORD::symbol(SYMBOL::squarO_)) {
+                l.log(">");
+                l.separator_report(l.past().key().to_string(), e); return;
+            }
 
             // group variables
             if matches!(l.curr().key(), KEYWORD::symbol(SYMBOL::roundO_)) {
@@ -101,13 +105,13 @@ impl forest {
                 if matches!(l.curr().key(), KEYWORD::symbol(SYMBOL::roundC_)) {
                     l.bump();
                 } else {
-                    l.expect_report(KEYWORD::symbol(SYMBOL::roundC_).to_string(), e);
+                    l.unexpect_report(KEYWORD::symbol(SYMBOL::roundC_).to_string(), e);
                     return
                 }
                 if l.curr().key().is_terminal() {
                     l.eat_termin(e);
                 } else {
-                    l.expect_report(KEYWORD::void(VOID::endline_).to_string(), e);
+                    l.unexpect_report(KEYWORD::void(VOID::endline_).to_string(), e);
                     return
                 }
                 return
@@ -120,7 +124,7 @@ impl forest {
             t.set_ident(l.curr().con().clone());
             l.bump();
         } else {
-            l.expect_report(KEYWORD::ident(String::new()).to_string(), e);
+            l.unexpect_report(KEYWORD::ident(String::new()).to_string(), e);
             return
         }
 
@@ -153,12 +157,11 @@ impl forest {
             return;
         }
 
-        if matches!(l.curr().key(), KEYWORD::symbol(SYMBOL::colon_)) && l.peek().key().is_ident() {
+        if matches!(l.curr().key(), KEYWORD::symbol(SYMBOL::colon_)) && l.peek().key().is_type() {
             l.bump();
             l.eat_space(e);
         }
 
-        println!(" > {:>2}\t{:>10}\t -> {:>10}\t{:>10}", l.curr().loc(), l.prev().key(), l.curr().key().to_string().red(), l.next().key());
 
         // type separator ':'
         // if !(matches!(l.look().key(), KEYWORD::operator(OPERATOR::assign_))
@@ -166,7 +169,7 @@ impl forest {
             // || matches!(l.look().key(), KEYWORD::symbol(SYMBOL::colon_))
             // ) {
             // l.eat_space(e);
-            // l.expect_report(KEYWORD::operator(OPERATOR::assign_).to_string() + " } or { " +
+            // l.unexpect_report(KEYWORD::operator(OPERATOR::assign_).to_string() + " } or { " +
                 // &KEYWORD::operator(OPERATOR::assign2_).to_string() + " } or { " +
                 // &KEYWORD::symbol(SYMBOL::colon_).to_string(), e);
         // }
@@ -176,12 +179,12 @@ impl forest {
         // if matches!(l.curr().key(), KEYWORD::symbol(SYMBOL::colon_)) {
             // l.bump();
             // if matches!(l.curr().key(), KEYWORD::symbol(SYMBOL::equal_)) {
-                // l.expect_report(KEYWORD::types(TYPE::ANY).to_string(), e);
+                // l.unexpect_report(KEYWORD::types(TYPE::ANY).to_string(), e);
                 // return
             // }
             // if !(matches!(l.look().key(), KEYWORD::types(_))) {
                 // l.bump();
-                // l.expect_report(KEYWORD::types(TYPE::ANY).to_string(), e);
+                // l.unexpect_report(KEYWORD::types(TYPE::ANY).to_string(), e);
                 // return
             // }
             // l.eat_space(e);
@@ -213,7 +216,7 @@ impl forest {
                 KEYWORD::option(OPTION::hid_) => { el = assign_opts::Hid }
                 KEYWORD::option(OPTION::hep_) => { el = assign_opts::Hep }
                 _ => {
-                    l.expect_report(KEYWORD::option(OPTION::ANY).to_string(), e);
+                    l.unexpect_report(KEYWORD::option(OPTION::ANY).to_string(), e);
                     return
                 }
             };

@@ -17,7 +17,9 @@ use std::path::Path;
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum flaw_type {
     lexer,
-    parser,
+    parser_unexpected,
+    parser_missmatch,
+    parser_indentation,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -50,8 +52,12 @@ impl FLAW {
         &self.el.push(e);
     }
     pub fn show(&mut self) {
-        for e in self.el.iter() {
-            println!("{}", e);
+        for (i, e) in self.el.iter().enumerate() {
+            println!("\n\n{}{:<2} : {}", " ERROR #".black().on_red(), (&i + 1).to_string().black().on_red(), e);
+        }
+        if self.el.len() != 0 {
+            let num = if self.el.len() == 1 { "error" } else { "errors" };
+            println!("\n\n{:^10} due to {:^3} previous {}", "ABORTING".black().on_red(), self.el.len().to_string().black().on_red(), num);
         }
     }
 }
@@ -64,15 +70,19 @@ fn get_line_at(filepath: &str, line_num: usize) -> String {
 
 impl fmt::Display for flaw {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let errtype: &str = match self.typ {
-            flaw_type::lexer => " flaw in lexing stage ",
-            flaw_type::parser => " flaw in parsing stage ",
+        let parse_msg = String::from(" flaw in parsing stage ").bold().on_white();
+        let lexer_msg = String::from(" flaw in lexing stage ").bold().on_white();
+        let separator = "".white().to_string();
+        let errtype = match self.typ {
+            flaw_type::lexer => lexer_msg.to_string(),
+            flaw_type::parser_unexpected =>{ parse_msg.to_string() + separator.as_str() +  &" UNEXPECTED TOKEN ".bold().on_red().to_string() },
+            flaw_type::parser_missmatch => { parse_msg.to_string() + separator.as_str() + &" MISSMATCHED ARGUMENTS ".bold().on_red().to_string() },
+            flaw_type::parser_indentation => { parse_msg.to_string() + separator.as_str() + &" MISSED SPACE/SEPARATOR ".bold().on_red().to_string() }
         };
         write!(f,
-            "\n\n{}\n {}\n {:>5}\n {:>5}  {}\n {:>5} {}{}\n {}",
-            errtype.black().bold().on_white(),
+            "{}\n {}\n {:>5}\n {:>5}  {}\n {:>5} {}{}\n {}",
+            errtype.black(),
             self.loc,
-            // "file: ".to_string() + self.loc.path(),
             " |".red(),
             (self.loc.row().to_string() + " |").red(),
             get_line_at(self.loc.path(), self.loc.row()).red(),

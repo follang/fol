@@ -4,7 +4,7 @@
 use std::fmt;
 // use crate::scan::scanner;
 // use crate::scan::reader;
-// use crate::scan::locate;
+use crate::scan::locate;
 use crate::scan::token;
 use crate::scan::stream;
 use crate::error::err;
@@ -102,17 +102,38 @@ impl BAG {
         if self.curr().key().is_terminal() { self.bump() }
     }
 
-    pub fn report(&mut self, s: String, e: &mut err::FLAW) {
-        e.report(err::flaw_type::parser, &s, self.curr().loc().clone());
+    pub fn report(&mut self, s: String, l: locate::LOCATION, e: &mut err::FLAW, t: err::flaw_type) {
+        e.report(t, &s, l);
         self.to_end(e);
     }
 
-    pub fn expect_report(&mut self, k: String, e: &mut err::FLAW) {
-        let s = String::from("expected { ") + &k + " } | got { " + &self.curr().key().to_string() + " }";
-        self.report(s, e);
+    pub fn unexpect_report(&mut self, k: String, e: &mut err::FLAW) {
+        let s = String::from("expected: ") + &k + " but recieved: " + &self.curr().key().to_string();
+        self.report(s, self.curr().loc().clone(), e, err::flaw_type::parser_unexpected);
     }
+    pub fn missmatch_report(&mut self, k: String, e: &mut err::FLAW) {
+        let s = String::from("expected: ") + &k + " but recieved: " + &self.curr().key().to_string();
+        self.report(s, self.curr().loc().clone(), e, err::flaw_type::parser_missmatch);
+    }
+    pub fn separator_report(&mut self, k: String, e: &mut err::FLAW) {
+        let s = String::from("space between: ") + &k + " and: " + &self.curr().key().to_string() + " nedds to be removed";
+        self.report(s, self.prev().loc().clone(), e, err::flaw_type::parser_indentation);
+    }
+
     pub fn match_bracket(&self, k: KEYWORD, d: isize) -> bool {
         if (matches!(self.curr().key(), k) && self.curr().loc().deep() == d) || self.curr().key().is_eof() { true } else { false }
+    }
+
+    pub fn log(&self, msg: &str) {
+        println!(" {} [{:>2} {:>2}] \t past:{} \t prev:{} \t curr:{} \t next:{} \t peek:{}",
+            msg,
+            self.curr().loc().row(),
+            self.curr().loc().col(),
+            self.past().key(),
+            self.prev().key(),
+            self.curr().key(),
+            self.next().key(),
+            self.peek().key());
     }
 }
 
