@@ -19,7 +19,8 @@ pub enum flaw_type {
     lexer,
     parser_unexpected,
     parser_missmatch,
-    parser_indentation,
+    parser_space_rem,
+    parser_space_add,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -77,7 +78,8 @@ impl fmt::Display for flaw {
             flaw_type::lexer => lexer_msg.to_string(),
             flaw_type::parser_unexpected =>{ parse_msg.to_string() + separator.as_str() +  &" UNEXPECTED TOKEN ".bold().on_red().to_string() },
             flaw_type::parser_missmatch => { parse_msg.to_string() + separator.as_str() + &" MISSMATCHED ARGUMENTS ".bold().on_red().to_string() },
-            flaw_type::parser_indentation => { parse_msg.to_string() + separator.as_str() + &" MISSED SPACE/SEPARATOR ".bold().on_red().to_string() }
+            flaw_type::parser_space_add => { parse_msg.to_string() + separator.as_str() + &" MISSING BLANK SPACE ".bold().on_red().to_string() }
+            flaw_type::parser_space_rem => { parse_msg.to_string() + separator.as_str() + &" OBSOLETE BLANK SPACE ".bold().on_red().to_string() }
         };
         write!(f,
             "{}\n {}\n {:>5}\n {:>5}  {}\n {:>5} {}{}\n {}",

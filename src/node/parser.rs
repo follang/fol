@@ -75,7 +75,7 @@ impl forest {
                 self.help_assign_options(&mut options, l, e);
             }
 
-            // assign var
+            // eat assign var
             l.bump();
 
             // option elements
@@ -86,13 +86,12 @@ impl forest {
 
             // ERROR if not 'space'
             if !(matches!(l.curr().key(), KEYWORD::void(VOID::space_))) {
-                l.unexpect_report(KEYWORD::void(VOID::space_).to_string(), e); return;
+                l.space_add_report(l.prev().key().to_string(), e); return;
             } else { l.eat_space(e); }
 
-            l.log(">");
             // ERROR if '[' because is a little late for that
             if matches!(l.curr().key(), KEYWORD::symbol(SYMBOL::squarO_)) {
-                l.separator_report(l.past().key().to_string(), e); return;
+                l.space_rem_report(l.past().key().to_string(), e); return;
             }
 
             // group variables matching "("
@@ -143,7 +142,6 @@ impl forest {
             }
         }
 
-
         // short version (no type)
         if l.look().key().is_terminal(){
             self.trees.push(tree::new(root::stat(stat::Var(t.clone())), c.clone()));
@@ -156,47 +154,17 @@ impl forest {
             return;
         }
 
-        if matches!(l.curr().key(), KEYWORD::symbol(SYMBOL::colon_)) && l.peek().key().is_type() {
+        if matches!(l.curr().key(), KEYWORD::symbol(SYMBOL::colon_)) {
             l.bump();
-            l.eat_space(e);
-        }
-
-
-        // type separator ':'
-        // if !(matches!(l.look().key(), KEYWORD::operator(OPERATOR::assign_))
-            // || matches!(l.look().key(), KEYWORD::operator(OPERATOR::assign2_))
-            // || matches!(l.look().key(), KEYWORD::symbol(SYMBOL::colon_))
-            // ) {
-            // l.eat_space(e);
-            // l.unexpect_report(KEYWORD::operator(OPERATOR::assign_).to_string() + " } or { " +
-                // &KEYWORD::operator(OPERATOR::assign2_).to_string() + " } or { " +
-                // &KEYWORD::symbol(SYMBOL::colon_).to_string(), e);
-        // }
-        // l.eat_space(e);
-
-
-        // if matches!(l.curr().key(), KEYWORD::symbol(SYMBOL::colon_)) {
-            // l.bump();
-            // if matches!(l.curr().key(), KEYWORD::symbol(SYMBOL::equal_)) {
-                // l.unexpect_report(KEYWORD::types(TYPE::ANY).to_string(), e);
-                // return
-            // }
-            // if !(matches!(l.look().key(), KEYWORD::types(_))) {
-                // l.bump();
-                // l.unexpect_report(KEYWORD::types(TYPE::ANY).to_string(), e);
-                // return
-            // }
-            // l.eat_space(e);
-        // }
-
-
-        // short assign ':='
-        if matches!(l.curr().key(), KEYWORD::operator(OPERATOR::assign2_)) || matches!(l.curr().key(), KEYWORD::operator(OPERATOR::assign2_)) {
+            if !(matches!(l.curr().key(), KEYWORD::void(VOID::space_))) {
+                l.space_add_report(l.prev().key().to_string(), e); return;
+            } else { l.eat_space(e); }
+            // self.help_assign_options(&mut options, l, e);
+            l.log(">");
         }
 
         l.to_end(e);
         self.trees.push(tree::new(root::stat(stat::Var(t.clone())), c.clone()));
-
         for e in list {
             let mut clo = t.clone();
             clo.set_ident(e);
@@ -205,6 +173,8 @@ impl forest {
 
     }
 
+    pub fn help_assign_types(&mut self, v: &mut Vec<assign_opts>, l: &mut lexer::BAG, e: &mut err::FLAW) {
+    }
     pub fn help_assign_options(&mut self, v: &mut Vec<assign_opts>, l: &mut lexer::BAG, e: &mut err::FLAW) {
         if matches!(l.curr().key(), KEYWORD::option(_)) {
             let el;

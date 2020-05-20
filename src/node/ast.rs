@@ -42,8 +42,8 @@ pub enum expr {
     Ident,
     Number,
     Letter(letter_expr),
-    Container(contain_expr),
-    Binary(binary_expr)
+    Container(container_expr),
+    Binary(binary_expr),
 }
 
 #[derive(Clone, Debug)]
@@ -52,7 +52,7 @@ pub enum stat {
     Def,
     Var(var_stat),
     Fun(fun_stat),
-    Typ,
+    Type(type_expr),
     If,
     When,
     Loop,
@@ -62,7 +62,7 @@ pub enum stat {
 pub struct var_stat{
     options: Vec<assign_opts>,
     ident: String,
-    retype: Option<expr>,
+    retype: Option<Box<stat>>,
     body: Option<Box<root>>
 }
 
@@ -79,7 +79,7 @@ pub struct fun_stat {
     ident: String,
     generics: Option<Box<root>>,
     parameters: Option<Box<root>>,
-    retype: Option<expr>,
+    retype: Option<Box<stat>>,
     body: Box<root>
 }
 
@@ -89,7 +89,7 @@ pub enum assign_opts {
 }
 
 #[derive(Clone, Debug)]
-pub struct contain_expr {
+pub struct container_expr {
     uniform: bool,
     elements: Box<root>
 }
@@ -112,6 +112,42 @@ pub enum number_expr {
 pub enum binary_expr {
     leaf(number_expr),
     node(Box<binary_expr>, number_expr, Box<binary_expr>)
+}
+
+#[derive(Clone, Debug)]
+pub enum type_expr {
+    Int,
+    Flt,
+    Chr,
+    Bol,
+    Arr,
+    Vec,
+    Seq,
+    Mat,
+    Set,
+    Map,
+    Axi,
+    Tab,
+    Str,
+    Num,
+    Ptr,
+    Err,
+    Opt,
+    Nev,
+    Uni,
+    Any,
+    Non,
+    Nil,
+    Rec,
+    Ent,
+    Blu,
+    Std,
+    Loc,
+    Url,
+    Blk,
+    Rut,
+    Pat,
+    Gen,
 }
 
 

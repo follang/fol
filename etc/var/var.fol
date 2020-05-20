@@ -1,12 +1,12 @@
 ~var[nor, []rac] one = <expression>
 -var[exp,imu] two% str[exp,hid] = <expression>
-+var three:int = <expression>
++var three: int = <expression>
 ~var[exp] (
     four: int[exp];
     four2: arr[nor] = <expression>;
     four3: int[nor] = <expression>;
 )
-var five: rut[(x: int): int] = { <expression> }
+var five : rut[(x: int): int] = { <expression> }
 ~var[exp] six, six2, six3, six4: int[] = <expression>
 var[] seven, seven2, seven3: int[exp,imu], flt[imu, exp], str
 !var[] eight, eight2, eight3
