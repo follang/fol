@@ -16,7 +16,7 @@ use std::path::Path;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum flaw_type {
-    lexer,
+    lexer_bracket_unmatch,
     parser_unexpected,
     parser_missmatch,
     parser_space_rem,
@@ -75,7 +75,7 @@ impl fmt::Display for flaw {
         let lexer_msg = String::from(" flaw in lexing stage ").bold().on_white();
         let separator = "".white().to_string();
         let errtype = match self.typ {
-            flaw_type::lexer => lexer_msg.to_string(),
+            flaw_type::lexer_bracket_unmatch =>{ lexer_msg.to_string() + separator.as_str() +  &" UNMATCHED BRACKET ".bold().on_red().to_string() },
             flaw_type::parser_unexpected =>{ parse_msg.to_string() + separator.as_str() +  &" UNEXPECTED TOKEN ".bold().on_red().to_string() },
             flaw_type::parser_missmatch => { parse_msg.to_string() + separator.as_str() + &" MISSMATCHED ARGUMENTS ".bold().on_red().to_string() },
             flaw_type::parser_space_add => { parse_msg.to_string() + separator.as_str() + &" MISSING BLANK SPACE ".bold().on_red().to_string() }

@@ -154,14 +154,14 @@ impl stream::STREAM {
         let loc = self.curr().loc().clone();
         let key = self.curr().key().clone();
         if self.curr().key().is_eol() &&
-            (self.prev().key().is_nonterm() || self.next().key().is_dot() || p.key().is_operator()) {
+            ( self.prev().key().is_nonterm() || self.next().key().is_dot() || p.key().is_operator() ) {
             result.set_key(void(VOID::space_))
         } else if (self.curr().key().is_symbol() && !self.curr().key().is_bracket())
-            && (self.next().key().is_void() || self.next().key().is_symbol())
-            && (self.prev().key().is_void() || self.prev().key().is_bracket())
+            && ( self.next().key().is_void() || ( self.next().key().is_symbol() && !self.next().key().is_bracket() ) )
+            && ( self.prev().key().is_void() || self.prev().key().is_bracket() )
         {
             if self.after_symbol().is_void() || self.after_symbol().is_bracket() {
-                while self.next().key().is_symbol(){
+                while self.next().key().is_symbol() && !self.next().key().is_bracket() {
                     result.combine(&self.next());
                     self.bump()
                 }
@@ -222,12 +222,17 @@ impl stream::STREAM {
                 self.log(">");
                 self.bracs().pop();
             } else {
-                // println!("{:?}", self.bracs().len());
                 // self.to_end()
+                // println!("{:?}", self.bracs().len());
+                let key = match self.bracs().last().unwrap_or(&(loc.clone(), KEYWORD::illegal)).1 {
+                    KEYWORD::symbol(SYMBOL::curlyO_) => { KEYWORD::symbol(SYMBOL::curlyC_) },
+                    KEYWORD::symbol(SYMBOL::squarO_) => { KEYWORD::symbol(SYMBOL::squarC_) },
+                    KEYWORD::symbol(SYMBOL::roundO_) => { KEYWORD::symbol(SYMBOL::roundC_) },
+                    _ => { KEYWORD::illegal }
+                };
+                self.unexpect_report(key.to_string(), e);
             }
         }
-        // self.log("--");
-
         self.bump();
         result
     }

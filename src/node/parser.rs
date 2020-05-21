@@ -215,7 +215,8 @@ impl forest {
 //------------------------------------------------------------------------------------------------------//
 impl forest {
     pub fn retypes_stat(&mut self, l: &mut lexer::BAG, e: &mut err::FLAW) -> Option<Box<root>> {
-        l.log(">>");
+        // l.log(">>");
+        if TYPE::int_ == TYPE::arr_ { println!("true") };
         match l.curr().key() {
             KEYWORD::types(TYPE::int_) => { return self.retypes_int_stat(l, e) }
             _ => { return None; }

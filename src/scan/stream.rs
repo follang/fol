@@ -5,6 +5,7 @@ use crate::scan::scanner;
 use crate::scan::reader;
 use crate::scan::token;
 use crate::scan::locate;
+use crate::error::err;
 
 use crate::scan::scanner::SCAN;
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -69,7 +70,8 @@ impl STREAM {
         while matches!( self.nth(i).key(), key) { i += 1; }
         self.nth(i).key().clone()
     }
-    pub fn to_end(&mut self) {
+
+    pub fn to_endline(&mut self) {
         let deep = self.curr().loc().deep();
         loop {
             if (self.curr().key().is_terminal() && self.curr().loc().deep() <= deep) || (self.curr().key().is_eof()) { break }
@@ -77,6 +79,22 @@ impl STREAM {
         }
         if self.curr().key().is_terminal() { self.bump() }
     }
+    pub fn to_endsym(&mut self) {
+        while !self.curr().key().is_void() {
+            self.bump()
+        }
+    }
+
+    pub fn report(&mut self, s: String, l: locate::LOCATION, e: &mut err::FLAW, t: err::flaw_type) {
+        e.report(t, &s, l);
+        self.to_endsym();
+    }
+
+    pub fn unexpect_report(&mut self, k: String, e: &mut err::FLAW) {
+        let s = String::from("expected:") + &k + " but recieved:" + &self.curr().key().to_string();
+        self.report(s, self.curr().loc().clone(), e, err::flaw_type::lexer_bracket_unmatch);
+    }
+
     pub fn log(&self, msg: &str) {
         println!(" {} [{:>2} {:>2}] \t prev:{} \t curr:{} \t next:{}",
             msg,
