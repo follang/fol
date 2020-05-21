@@ -172,6 +172,7 @@ impl forest {
             } else { self.retypes_stat(l, e); }
         }
 
+        l.log(">>");
         l.to_end(e);
         self.trees.push(tree::new(root::stat(stat::Var(t.clone())), c.clone()));
         for e in list {
@@ -217,7 +218,6 @@ impl forest {
 //------------------------------------------------------------------------------------------------------//
 impl forest {
     pub fn retypes_stat(&mut self, l: &mut lexer::BAG, e: &mut flaw::FLAW) -> Option<Box<root>> {
-        // l.log(">>");
         if TYPE::int_ == TYPE::arr_ { println!("true") };
         match l.curr().key() {
             KEYWORD::types(TYPE::int_) => { return self.retypes_int_stat(l, e) }

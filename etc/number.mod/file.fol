@@ -1,3 +1,4 @@
+var[] gett =
 55
 3.34
 55asd
@@ -24,3 +25,4 @@ go.5.2.tostring()
 0x123ABC
 .5.
 to_string()
+2 + 4

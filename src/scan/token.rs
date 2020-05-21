@@ -76,18 +76,6 @@ impl KEYWORD {
             _ => false,
         }
     }
-    pub fn is_symbol(&self) -> bool {
-        match *self {
-            KEYWORD::symbol(_) => true,
-            _ => false,
-        }
-    }
-    pub fn is_operator(&self) -> bool {
-        match *self {
-            KEYWORD::operator(_) => true,
-            _ => false,
-        }
-    }
     pub fn is_open_bracket(&self) -> bool {
         match *self {
             KEYWORD::symbol(SYMBOL::curlyO_) => true,
@@ -112,6 +100,23 @@ impl KEYWORD {
             KEYWORD::symbol(SYMBOL::curlyO_) => true,
             KEYWORD::symbol(SYMBOL::squarO_) => true,
             KEYWORD::symbol(SYMBOL::roundO_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_symbol(&self) -> bool {
+        if self.is_bracket() {
+            false
+        }
+        else {
+            match *self {
+                KEYWORD::symbol(_) => true,
+                _ => false,
+            }
+        }
+    }
+    pub fn is_operator(&self) -> bool {
+        match *self {
+            KEYWORD::operator(_) => true,
             _ => false,
         }
     }
