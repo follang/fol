@@ -2,43 +2,55 @@
 #![allow(unused_variables)]
 
 mod scan;
-use std::str;
-use crate::scan::token;
-use crate::scan::parts;
-use crate::scan::reader;
-use crate::scan::scanner;
+mod node;
+mod error;
+#[macro_use]
+extern crate getset;
+// extern crate enumeq;
+extern crate colored;
+// use crate::scan::token;
+// use crate::scan::parts;
+// use crate::scan::reader;
+// use crate::scan::scanner;
+// use crate::scan::stream;
+// use crate::node::ast;
+use crate::node::lexer;
+use crate::node::parser;
+use crate::error::flaw;
+
+
 
 fn main() {
-    // let red = reader::READER::init("./dirk.mod");
-    // for e in red.iter(){
-        // // println!("-----------------------------------------------------------------");
-        // println!("{}/{}", e.name(), e.file());
-        // for d in e.data().chars(){
-            // print!("{}", d);
-            // // print!("|{}", (d as u8))
+    // for mut e in reader::iteratize("./etc") {
+        // for s in scanner::vectorize(&mut e) {
+            // println!("{}", s);
         // }
     // }
 
-    // println!("-----------------------------------------------------------------");
-    // for e in lexer::tokenize("./dirk.mod") {
-    // println!("{}", e)
+    // let mut s = stream::STREAM::init("./etc");
+    // while !s.list().is_empty() {
+        // println!("{}", s);
+        // s.bump()
     // }
 
-    for mut e in reader::readerize("./dirk.mod") {
-        // println!("{}/{}", e.name(), e.file());
-        // for p in lexer::iteratize(&mut e) {
-            // println!("{}", p)
+    // let mut error = flaw::FLAW::init();
+    // let path = "./etc";
+    // let mut s = lexer::init(path, &mut error);
+    // while s.not_empty() {
+        // println!("{}", s);
+        // if s.curr().key().is_eol(){
         // }
-        for p in scanner::vectorize(&mut e).iter() {
-            println!("{}", p)
-        }
+        // s.bump()
+    // }
+
+    let path = "./etc";
+    let mut error = flaw::FLAW::init();
+    let mut tokens = lexer::init(path, &mut error);
+    let mut forest = parser::new();
+    forest.init(&mut tokens, &mut error);
+    for tree in forest.trees {
+        println!("{}\t{}", tree.loc(), tree.node());
+        // println!("{:?}", tree.node());
     }
-
-    // let a = [1, 2, 3, 4, 5];
-    // let mut b = a.iter().peekable();
-    // println!("{}", b.peek().nth(0).unwrap());
-    // println!("{}", b.nth(0).unwrap());
-    // println!("{}", b.nth(0).unwrap());
-
-
+    error.show();
 }

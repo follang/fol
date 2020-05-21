@@ -1,24 +1,24 @@
 #![allow(unused_variables)]
 #![allow(dead_code)]
 
+use crate::scan::reader;
 use std::fmt;
 
 /// A location somewhere in the sourcecode.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct LOCATION {
-    file: String,
-    pos: isize,
+    path: String,
+    name: String,
     row: usize,
     col: usize,
-    word: usize,
     len: usize,
     deep: isize,
 }
 
 impl fmt::Display for LOCATION {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "file: {}   pos: {: <3}   row: {: <3}   col: {: <3}   word: {: <3}   deep: {: <3}  len: {: <5}",
-            self.file, self.pos, self.row, self.col, self.word, self.deep, self.len)
+        write!(f, "file: {: <4}   row: {: <2}   col: {: <2}",
+            self.name, self.row, self.col)
     }
 }
 
@@ -34,8 +34,17 @@ impl LOCATION {
 }
 
 impl LOCATION {
-    pub fn new(file: &str) -> Self {
-        LOCATION { file: file.to_string(), pos: 1, row: 1, col: 1, word: 1, len: 1, deep: 1 }
+    pub fn init(red: &reader::READER) -> Self {
+        let name = red.name.to_string();
+        let path = red.path.to_string();
+        // file.add_str("go");
+        LOCATION { path, name,  row: 1, col: 1, len: 1, deep: 1 }
+    }
+    pub fn def() -> Self {
+        LOCATION { path: String::new(), name: String::new(), row: 1, col: 1, len: 1, deep: 1 }
+    }
+    pub fn new(path: String, name: String, row: usize, col: usize, len: usize, deep: isize) -> Self {
+        LOCATION { path, name, row, col, len, deep }
     }
 
     pub fn row(&self) -> usize {
@@ -50,52 +59,45 @@ impl LOCATION {
         self.len
     }
 
+    pub fn longer(&mut self, i: &usize) {
+        self.len += i
+    }
+
     pub fn deep(&self) -> isize {
         self.deep
     }
 
-    pub fn pos(&self) -> isize {
-        self.pos
+    pub fn path(&self) -> &String {
+        &self.path
     }
 
-    pub fn file(&self) -> &String {
-        &self.file
+    pub fn name(&self) -> &String {
+        &self.name
     }
 
     pub fn reset(&mut self) {
         self.row = 1;
         self.col = 1;
         self.len = 1;
-        self.pos = 1;
     }
 
     pub fn new_char(&mut self) {
         self.col += 1;
         self.len += 1;
-        self.pos += 1;
-    }
-
-    pub fn new_word(&mut self) {
-        self.len = 0;
-        self.word += 1;
-        // self.new_char();
     }
 
     pub fn new_line(&mut self) {
         self.row += 1;
         self.col = 1;
-        self.word = 0;
     }
 
-    pub fn new_file(&mut self, s: String) {
-        self.file = s;
-        self.reset();
+    pub fn new_word(&mut self) {
+        self.len = 0;
     }
 
-    pub fn adjust(&mut self, row: usize, col: usize, pos: isize){
+    pub fn adjust(&mut self, row: usize, col: usize){
         self.row = row;
         self.col = col;
-        self.pos = pos;
     }
 
     pub fn deepen(&mut self){

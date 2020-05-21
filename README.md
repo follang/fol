@@ -1,9 +1,9 @@
 <p align="center">
-    <img alt="logo" src="/etc/logo.svg" width="300px">
+    <img alt="logo" src="https://follang.org/images/fol_full.svg" width="300px">
 </p>
 
 
-<a href="http://www.follang.org"></a><h2><p align="center">www.follang.org</p></h2></a>
+<a href="http://www.follang.org" style="color: rgb(179, 128, 255)"></a><h2><p align="center" style="color: rgb(179, 128, 255)">www.follang.org</p></h2></a>
 
 <p align="center">
   <a href="https://github.com/follang/fol/blob/develop/LICENSE.md"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
