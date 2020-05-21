@@ -177,7 +177,7 @@ impl stream::STREAM {
         else if (matches!(self.curr().key(), KEYWORD::symbol(SYMBOL::minus_))  && self.next().key().is_number()) || self.curr().key().is_number() {
             if !self.prev().key().is_void() && matches!(self.curr().key(), KEYWORD::symbol(SYMBOL::minus_)) {
                 let key = self.prev().key().clone();
-                self.report_space_add(key.to_string(), e);
+                self.report_space_add(key.to_string(), self.curr().loc().clone(), e);
             } else {
                 result = self.make_number(e);
                 // self.make_number(e, &mut result);
@@ -251,17 +251,18 @@ impl stream::STREAM {
     }
     pub fn make_number(&mut self, e: &mut flaw::FLAW) -> SCAN {
         let mut result = self.curr().clone();
-        result.set_key(literal(LITERAL::decimal_));
-        if self.curr().key().is_dot() && self.next().key().is_number() {
+        if self.curr().key().is_dot() && self.next().key().is_decimal() {
             result.set_key(literal(LITERAL::float_));
             result.combine(&self.next());
             self.bump();
-            println!("{}", self.next().con());
-            if self.next().key().is_dot() && !self.nth(2).key().is_ident() {
-                self.report_space_add(self.prev().key().to_string(), e);
+            // println!("{} {} {} {}", self.next().key(), self.nth(2).key().is_void(), self.nth(3).key().is_ident(), self.nth(4).key());
+            if self.next().key().is_dot() && self.nth(2).key().is_eol() && self.nth(3).key().is_ident() {
+                return result
+            } else if self.next().key().is_dot() && !self.nth(2).key().is_ident() {
+                self.bump();
+                self.report_primitive_acccess(" flt ".to_string(), self.next().loc().clone(), e);
             }
-        }
-        if self.prev().key().is_continue() && self.curr().key().is_number() && self.next().key().is_dot() && !self.nth(2).key().is_ident() {
+        } else if self.prev().key().is_continue() && self.curr().key().is_decimal() && self.next().key().is_dot() && !self.nth(2).key().is_ident() {
             result.set_key(literal(LITERAL::float_));
             result.combine(&self.next());
             self.bump();
@@ -270,11 +271,11 @@ impl stream::STREAM {
                 self.bump();
                 if self.next().key().is_dot() && self.nth(2).key().is_number() {
                     self.bump();
-                    self.report_space_add(self.prev().key().to_string(), e);
+                    self.report_primitive_acccess(" flt ".to_string(), self.next().loc().clone(), e);
                 }
             } else if !self.next().key().is_void() {
-                self.report_space_add(self.prev().key().to_string(), e);
                 self.bump();
+                self.report_space_add(self.prev().key().to_string(), self.next().loc().clone(), e);
             }
         }
         result
@@ -312,7 +313,7 @@ impl stream::STREAM {
                     KEYWORD::symbol(SYMBOL::roundO_) => { KEYWORD::symbol(SYMBOL::roundC_) },
                     _ => { KEYWORD::illegal }
                 };
-                self.report_bracket(key.to_string(), e);
+                self.report_bracket(key.to_string(), self.curr().loc().clone(), e);
             }
         }
     }

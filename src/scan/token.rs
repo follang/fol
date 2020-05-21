@@ -103,6 +103,13 @@ impl KEYWORD {
             _ => false,
         }
     }
+    pub fn is_decimal(&self) -> bool {
+        match *self {
+            KEYWORD::literal(LITERAL::decimal_) => true,
+            KEYWORD::literal(LITERAL::float_) => true,
+            _ => false,
+        }
+    }
     pub fn is_number(&self) -> bool {
         match *self {
             KEYWORD::literal(LITERAL::decimal_) => true,

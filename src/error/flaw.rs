@@ -31,6 +31,7 @@ pub enum parser {
 pub enum lexer {
     lexer_bracket_unmatch,
     lexer_space_add,
+    lexer_primitive_access,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -123,6 +124,7 @@ impl fmt::Display for lexer {
         let value: String = match self {
             lexer::lexer_bracket_unmatch => " UNMATCHED BRACKET ".to_string(),
             lexer::lexer_space_add => " MISSING BLANK SPACE ".to_string(),
+            lexer::lexer_primitive_access => " PRIMITIVE_ACCESS ".to_string(),
         };
         write!(f, "{}", value.on_red().to_string())
     }
