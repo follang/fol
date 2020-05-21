@@ -1,8 +1,0 @@
-~var[nor, []rac] one = <expression>
--var{exp,imu] two% str[exp,hid} = <expression>
-+var three: int = <expression>
-~var[exp] (
-    four: int[exp];
-    four2: arr[nor] = <expression>;
-    four3: int[nor] = <expression>;
-)
