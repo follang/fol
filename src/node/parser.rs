@@ -168,10 +168,6 @@ impl forest {
             if !(matches!(l.curr().key(), KEYWORD::types(_))) {
                 l.unexpect_report(KEYWORD::types(TYPE::ANY).to_string(), e); return;
             } else { self.retypes_stat(l, e); }
-
-            // self.retypes_stat(l, e);
-
-            // self.help_assign_options(&mut options, l, e);
         }
 
         l.to_end(e);

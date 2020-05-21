@@ -15,9 +15,9 @@ use crate::getset;
 use crate::scan::scanner::SCAN;
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, GetSet)]
 pub struct BAG {
+    PAST: Vec<SCAN>,
     NEXT: Vec<SCAN>,
     curr: SCAN,
-    PAST: Vec<SCAN>,
 }
 
 impl BAG {
@@ -151,11 +151,12 @@ use crate::scan::token::KEYWORD::*;
 impl stream::STREAM {
     pub fn analyze(&mut self, e: &mut err::FLAW, p: &SCAN) -> SCAN {
         let mut result = self.curr().clone();
-
+        let loc = self.curr().loc().clone();
+        let key = self.curr().key().clone();
         if self.curr().key().is_eol() &&
             (self.prev().key().is_nonterm() || self.next().key().is_dot() || p.key().is_operator()) {
             result.set_key(void(VOID::space_))
-        } else if self.curr().key().is_symbol()
+        } else if (self.curr().key().is_symbol() && !self.curr().key().is_bracket())
             && (self.next().key().is_void() || self.next().key().is_symbol())
             && (self.prev().key().is_void() || self.prev().key().is_bracket())
         {
@@ -206,6 +207,26 @@ impl stream::STREAM {
         if matches!(self.curr().key(), KEYWORD::ident(_)) {
             result.set_key(ident(self.curr().con().to_string()))
         }
+        if self.curr().key().is_open_bracket() {
+            let loc = self.curr().loc().clone();
+            let key = self.curr().key().clone();
+            self.bracs().push((loc, key))
+        } else if self.curr().key().is_close_bracket() {
+            if ( matches!(self.curr().key(), KEYWORD::symbol(SYMBOL::roundC_))
+                && matches!(self.bracs().last().unwrap_or(&(loc.clone(), KEYWORD::illegal)).1, KEYWORD::symbol(SYMBOL::roundO_)) )
+                || ( matches!(self.curr().key(), KEYWORD::symbol(SYMBOL::squarC_))
+                && matches!(self.bracs().last().unwrap_or(&(loc.clone(), KEYWORD::illegal)).1, KEYWORD::symbol(SYMBOL::squarO_)) )
+                || ( matches!(self.curr().key(), KEYWORD::symbol(SYMBOL::curlyC_))
+                && matches!(self.bracs().last().unwrap_or(&(loc.clone(), KEYWORD::illegal)).1, KEYWORD::symbol(SYMBOL::curlyO_)) )
+            {
+                self.log(">");
+                self.bracs().pop();
+            } else {
+                // println!("{:?}", self.bracs().len());
+                // self.to_end()
+            }
+        }
+        // self.log("--");
 
         self.bump();
         result

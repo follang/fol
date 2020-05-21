@@ -85,6 +85,22 @@ impl KEYWORD {
             _ => false,
         }
     }
+    pub fn is_open_bracket(&self) -> bool {
+        match *self {
+            KEYWORD::symbol(SYMBOL::curlyO_) => true,
+            KEYWORD::symbol(SYMBOL::squarO_) => true,
+            KEYWORD::symbol(SYMBOL::roundO_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_close_bracket(&self) -> bool {
+        match *self {
+            KEYWORD::symbol(SYMBOL::curlyC_) => true,
+            KEYWORD::symbol(SYMBOL::squarC_) => true,
+            KEYWORD::symbol(SYMBOL::roundC_) => true,
+            _ => false,
+        }
+    }
     pub fn is_bracket(&self) -> bool {
         match *self {
             KEYWORD::symbol(SYMBOL::curlyC_) => true,
