@@ -144,72 +144,158 @@ impl BAG {
             self.next().key(),
             self.peek().key());
     }
+    pub fn log2(&self, msg: &str) {
+        println!(" {} [{:>2} {:>2}] \t prev:{} \t curr:{} \t next:{}",
+            msg,
+            self.curr().loc().row(),
+            self.curr().loc().col(),
+            self.prev().key(),
+            self.curr().key(),
+            self.next().key())
+    }
 }
 
 use crate::scan::token::*;
 use crate::scan::token::KEYWORD::*;
 impl stream::STREAM {
-    pub fn analyze(&mut self, e: &mut flaw::FLAW, p: &SCAN) -> SCAN {
+    pub fn analyze(&mut self, e: &mut flaw::FLAW, prev: &SCAN) -> SCAN {
+        self.curr().log(">>");
         let mut result = self.curr().clone();
-        let loc = self.curr().loc().clone();
-        let key = self.curr().key().clone();
+        // EOL to SPACE
         if self.curr().key().is_eol() &&
-            ( self.prev().key().is_nonterm() || self.next().key().is_dot() || p.key().is_operator() ) {
+            ( self.prev().key().is_nonterm() || self.next().key().is_dot() || prev.key().is_operator() )
+        {
             result.set_key(void(VOID::space_))
-        } else if (self.curr().key().is_symbol() && !self.curr().key().is_bracket())
-            && ( self.next().key().is_void() || ( self.next().key().is_symbol() && !self.next().key().is_bracket() ) )
+        }
+
+        // numbers
+        else if matches!(self.curr().key(), KEYWORD::symbol(SYMBOL::dot_)) && self.next().key().is_number() {
+            if self.prev().key().is_void() {
+                result = self.make_number(e);
+            }
+        }
+        else if (matches!(self.curr().key(), KEYWORD::symbol(SYMBOL::minus_))  && self.next().key().is_number()) || self.curr().key().is_number() {
+            if !self.prev().key().is_void() && matches!(self.curr().key(), KEYWORD::symbol(SYMBOL::minus_)) {
+                let key = self.prev().key().clone();
+                self.report_space_add(key.to_string(), self.curr().loc().clone(), e);
+            } else {
+                result = self.make_number(e);
+                // self.make_number(e, &mut result);
+            }
+        }
+
+        // operators
+        else if  self.curr().key().is_symbol()
+            && ( self.next().key().is_void() || self.next().key().is_symbol() )
             && ( self.prev().key().is_void() || self.prev().key().is_bracket() )
         {
-            if self.after_symbol().is_void() || self.after_symbol().is_bracket() {
-                while self.next().key().is_symbol() && !self.next().key().is_bracket() {
-                    result.combine(&self.next());
-                    self.bump()
-                }
-            } else { self.bump(); return result }
-            match result.con().as_str() {
-                "=" => { result.set_key(operator(OPERATOR::assign_)) }
-                ":=" => { result.set_key(operator(OPERATOR::assign2_)) }
-                "..." => { result.set_key(operator(OPERATOR::ddd_)) }
-                ".." => { result.set_key(operator(OPERATOR::dd_)) }
-                "=>" => { result.set_key(operator(OPERATOR::flow_)) }
-                "->" => { result.set_key(operator(OPERATOR::flow2_)) }
-                "+" => { result.set_key(operator(OPERATOR::add_)) }
-                "-" => { result.set_key(operator(OPERATOR::subtract_)) }
-                "*" => { result.set_key(operator(OPERATOR::multiply_)) }
-                "/" => { result.set_key(operator(OPERATOR::divide_)) }
-                "<" => { result.set_key(operator(OPERATOR::less_)) }
-                ">" => { result.set_key(operator(OPERATOR::greater_)) }
-                "==" => { result.set_key(operator(OPERATOR::equal_)) }
-                "!=" => { result.set_key(operator(OPERATOR::noteq_)) }
-                ">=" => { result.set_key(operator(OPERATOR::greatereq_)) }
-                "<=" => { result.set_key(operator(OPERATOR::lesseq_)) }
-                "+=" => { result.set_key(operator(OPERATOR::addeq_)) }
-                "-=" => { result.set_key(operator(OPERATOR::subtracteq_)) }
-                "*=" => { result.set_key(operator(OPERATOR::multiplyeq_)) }
-                "/=" => { result.set_key(operator(OPERATOR::divideeq_)) }
-                "<<" => { result.set_key(operator(OPERATOR::shiftleft_)) }
-                ">>" => { result.set_key(operator(OPERATOR::shiftright_)) }
-                _ => {}
-            }
-        } else if self.curr().key().is_symbol()
+            result = self.make_operator(e);
+        }
+
+        // options
+        else if self.curr().key().is_symbol()
             && self.next().key().is_assign()
             && (self.prev().key().is_terminal() || self.prev().key().is_eof() || self.prev().key().is_void())
         {
-            match result.con().as_str() {
-                "~" => { result.set_key(option(OPTION::mut_)) },
-                "!" => { result.set_key(option(OPTION::sta_)) },
-                "+" => { result.set_key(option(OPTION::exp_)) },
-                "-" => { result.set_key(option(OPTION::hid_)) },
-                "@" => { result.set_key(option(OPTION::hep_)) },
-                _ => {},
-            }
+            result = self.make_syoption(e);
         }
-        if matches!(self.curr().key(), KEYWORD::ident(_)) {
+
+        // set key content to indetifier
+        else if matches!(self.curr().key(), KEYWORD::ident(_)) {
             result.set_key(ident(self.curr().con().to_string()))
         }
+
+        // check bracket matching
+        else if self.curr().key().is_bracket() {
+            self.check_bracket_match(e);
+        }
+
+        result.log(">>");
+        println!("-------------------------------------------------------------------------------------");
+        self.bump();
+        result
+    }
+
+    pub fn make_operator(&mut self, e: &mut flaw::FLAW)  -> SCAN {
+        let mut result = self.curr().clone();
+            while self.next().key().is_symbol() && !self.next().key().is_bracket() {
+                result.combine(&self.next());
+                self.bump()
+            }
+        match result.con().as_str() {
+            "=" => { result.set_key(operator(OPERATOR::assign_)) }
+            "+" => { result.set_key(operator(OPERATOR::add_)) }
+            "-" => { result.set_key(operator(OPERATOR::subtract_)) }
+            "*" => { result.set_key(operator(OPERATOR::multiply_)) }
+            "/" => { result.set_key(operator(OPERATOR::divide_)) }
+            "<" => { result.set_key(operator(OPERATOR::less_)) }
+            ">" => { result.set_key(operator(OPERATOR::greater_)) }
+            ":=" => { result.set_key(operator(OPERATOR::assign2_)) }
+            "..." => { result.set_key(operator(OPERATOR::ddd_)) }
+            ".." => { result.set_key(operator(OPERATOR::dd_)) }
+            "=>" => { result.set_key(operator(OPERATOR::flow_)) }
+            "->" => { result.set_key(operator(OPERATOR::flow2_)) }
+            "==" => { result.set_key(operator(OPERATOR::equal_)) }
+            "!=" => { result.set_key(operator(OPERATOR::noteq_)) }
+            ">=" => { result.set_key(operator(OPERATOR::greatereq_)) }
+            "<=" => { result.set_key(operator(OPERATOR::lesseq_)) }
+            "+=" => { result.set_key(operator(OPERATOR::addeq_)) }
+            "-=" => { result.set_key(operator(OPERATOR::subtracteq_)) }
+            "*=" => { result.set_key(operator(OPERATOR::multiplyeq_)) }
+            "/=" => { result.set_key(operator(OPERATOR::divideeq_)) }
+            "<<" => { result.set_key(operator(OPERATOR::shiftleft_)) }
+            ">>" => { result.set_key(operator(OPERATOR::shiftright_)) }
+            _ => {}
+        }
+        result
+    }
+    pub fn make_number(&mut self, e: &mut flaw::FLAW) -> SCAN {
+        let mut result = self.curr().clone();
+        if self.curr().key().is_dot() && self.next().key().is_decimal() {
+            result.set_key(literal(LITERAL::float_));
+            result.combine(&self.next());
+            self.bump();
+            // println!("{} {} {} {}", self.next().key(), self.nth(2).key().is_void(), self.nth(3).key().is_ident(), self.nth(4).key());
+            if self.next().key().is_dot() && self.nth(2).key().is_eol() && self.nth(3).key().is_ident() {
+                return result
+            } else if self.next().key().is_dot() && !self.nth(2).key().is_ident() {
+                self.bump();
+                self.report_primitive_acccess(" flt ".to_string(), self.next().loc().clone(), e);
+            }
+        } else if self.prev().key().is_continue() && self.curr().key().is_decimal() && self.next().key().is_dot() && !self.nth(2).key().is_ident() {
+            result.set_key(literal(LITERAL::float_));
+            result.combine(&self.next());
+            self.bump();
+            if self.next().key().is_number() {
+                result.combine(&self.next());
+                self.bump();
+                if self.next().key().is_dot() && self.nth(2).key().is_number() {
+                    self.bump();
+                    self.report_primitive_acccess(" flt ".to_string(), self.next().loc().clone(), e);
+                }
+            } else if !self.next().key().is_void() {
+                self.bump();
+                self.report_space_add(self.prev().key().to_string(), self.next().loc().clone(), e);
+            }
+        }
+        result
+    }
+    pub fn make_syoption(&mut self, e: &mut flaw::FLAW)  -> SCAN {
+        let mut result = self.curr().clone();
+        match result.con().as_str() {
+            "~" => { result.set_key(option(OPTION::mut_)) },
+            "!" => { result.set_key(option(OPTION::sta_)) },
+            "+" => { result.set_key(option(OPTION::exp_)) },
+            "-" => { result.set_key(option(OPTION::hid_)) },
+            "@" => { result.set_key(option(OPTION::hep_)) },
+            _ => {},
+        }
+        result
+    }
+    pub fn check_bracket_match(&mut self, e: &mut flaw::FLAW) {
+        let loc = self.curr().loc().clone();
+        let key = self.curr().key().clone();
         if self.curr().key().is_open_bracket() {
-            let loc = self.curr().loc().clone();
-            let key = self.curr().key().clone();
             self.bracs().push((loc, key))
         } else if self.curr().key().is_close_bracket() {
             if ( matches!(self.curr().key(), KEYWORD::symbol(SYMBOL::roundC_))
@@ -227,14 +313,10 @@ impl stream::STREAM {
                     KEYWORD::symbol(SYMBOL::roundO_) => { KEYWORD::symbol(SYMBOL::roundC_) },
                     _ => { KEYWORD::illegal }
                 };
-                self.unexpect_report(key.to_string(), e);
+                self.report_bracket(key.to_string(), self.curr().loc().clone(), e);
             }
         }
-        self.log2(">");
-        self.bump();
-        result
     }
-
 }
 
 impl fmt::Display for BAG {

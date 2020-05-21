@@ -22,14 +22,12 @@ pub fn new() -> forest {
 
 impl forest {
     pub fn init(&mut self, l: &mut lexer::BAG, e: &mut flaw::FLAW) {
-        if !e.list().is_empty() { return; }
-        // println!("{}", e.list().len());
+        // if !e.list().is_empty() { return; }
         while l.not_empty() {
             self.parse_stat(l, e);
         }
     }
     pub fn parse_stat(&mut self, l: &mut lexer::BAG, e: &mut flaw::FLAW) {
-    // println!("{}", l);
         if l.prev().key().is_terminal() || l.prev().key().is_eof() {
             if matches!( l.curr().key(), KEYWORD::assign(ASSIGN::var_) ) ||
                 ( matches!( l.curr().key(), KEYWORD::option(_) ) && matches!( l.next().key(), KEYWORD::assign(ASSIGN::var_) ) ) {
@@ -217,7 +215,6 @@ impl forest {
 //------------------------------------------------------------------------------------------------------//
 impl forest {
     pub fn retypes_stat(&mut self, l: &mut lexer::BAG, e: &mut flaw::FLAW) -> Option<Box<root>> {
-        // l.log(">>");
         if TYPE::int_ == TYPE::arr_ { println!("true") };
         match l.curr().key() {
             KEYWORD::types(TYPE::int_) => { return self.retypes_int_stat(l, e) }

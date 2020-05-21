@@ -45,10 +45,6 @@ pub fn is_void(ch: &char) -> bool {
     return is_eol(ch) || is_space(ch)
 }
 
-pub fn is_vobra(ch: &char) -> bool {
-    return is_void(ch) || is_bracket(ch)
-}
-
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct SCAN {
     key: token::KEYWORD,
@@ -80,6 +76,14 @@ impl SCAN {
     pub fn set_key(&mut self, k: token::KEYWORD) {
         self.key = k;
     }
+    pub fn log(&self, msg: &str) {
+        println!(" {} [{:>2} {:>2}] \t key:{} \t\t{}",
+            msg,
+            self.loc().row(),
+            self.loc().col(),
+            self.key(),
+            self.con());
+    }
 }
 
 impl fmt::Display for SCAN {
@@ -99,19 +103,6 @@ pub fn vectorize(red: &mut reader::READER) -> Vec<SCAN> {
     }
     vec
 }
-
-/// Creates an iterator that produces tokens from the input string.
-// pub fn iteratize(red: &mut reader::READER) -> impl Iterator<Item = SCAN> + '_ {
-    // let mut loc = locate::LOCATION::new(&red.path);
-    // std::iter::from_fn(move || {
-        // if red.data.is_empty() {
-            // return None;
-        // }
-        // let token = parts::PART::init(&red.data).scan(&mut loc);
-        // red.data = red.data[token.loc.len()..].to_string();
-        // Some(token)
-    // })
-// }
 
 use crate::scan::token::*;
 use crate::scan::token::KEYWORD::*;
@@ -171,11 +162,7 @@ impl SCAN {
         self.con = " ".to_string();
     }
     fn digit(&mut self, part: &mut parts::PART) {
-        if part.curr_char() == '.' {
-            self.push_curr(part);
-            self.key = literal(LITERAL::float_);
-            while is_digit(&part.next_char()) || part.next_char() == '_' { self.bump_next(part); }
-        } else if part.curr_char() == '0' && ( part.next_char() == 'x' || part.next_char() == 'o' || part.next_char() == 'b' ) {
+        if part.curr_char() == '0' && ( part.next_char() == 'x' || part.next_char() == 'o' || part.next_char() == 'b' ) {
             self.push_curr(part);
             if part.next_char() == 'x' {
                 self.bump_next(part);
@@ -187,28 +174,15 @@ impl SCAN {
                 while is_oct_digit(&part.next_char()) { self.bump_next(part); }
             } else if part.next_char() == 'b' {
                 self.bump_next(part);
-                self.key = literal(LITERAL::octal_);
+                self.key = literal(LITERAL::binary_);
                 while part.next_char() == '0' || part.next_char() == '1' || part.next_char() == '_' { self.bump_next(part); }
             }
         } else {
             self.push_curr(part);
             self.key = literal(LITERAL::decimal_);
-            while is_digit(&part.next_char()) || part.next_char() == '_' { self.bump_next(part); }
-            if part.next_char() == '.' && (is_digit(&part.nth(1)) || is_vobra(&part.nth(1))) {
+            while is_digit(&part.next_char()) || part.next_char() == '_' {
                 self.bump_next(part);
-                if is_digit(&part.next_char()) {
-                    self.key = literal(LITERAL::float_);
-                    while is_digit(&part.next_char()) || part.next_char() == '_' { self.bump_next(part); }
-                } else if is_void(&part.next_char()) {
-                    self.key = literal(LITERAL::float_);
-                    while is_digit(&part.next_char()) || part.next_char() == '_' { self.bump_next(part); }
-                }
             }
-        }
-        // if part.next_char() == '.' && !(is_alpha(&part.nth(1)) || (is_eol(&part.nth(1)) && is_alpha(&part.nth(2)))) {
-        if part.next_char() == '.' && is_digit(&part.nth(1)) {
-            self.key = illegal;
-            while !is_void(&part.next_char()) { self.bump_next(part); }
         }
     }
     fn encap(&mut self, part: &mut parts::PART) {
@@ -225,12 +199,6 @@ impl SCAN {
         self.bump_next(part);
     }
     fn symbol(&mut self, part: &mut parts::PART) {
-        if (part.curr_char() == '.' || part.curr_char() == '-') && is_digit(&part.next_char())
-            && (is_void(&part.prev_char()) || is_bracket(&part.prev_char())) {
-            // println!("{}", is_void(&part.prev_char()));
-            self.digit(part);
-            return
-        }
         self.push_curr(part);
         self.key = symbol(SYMBOL::curlyC_);
         match part.curr_char() {
@@ -269,13 +237,10 @@ impl SCAN {
         }
     }
     fn alpha(&mut self, part: &mut parts::PART) {
-        // println!("{} - {}", "enter", &part.curr_char());
-        // println!("{} {} {}", &part.prev_char(), &part.curr_char(), &part.next_char());
         self.push_curr(part);
         while is_alpha(&part.next_char()) || is_digit(&part.next_char()) {
             part.bump(&mut self.loc);
             self.push_curr(part);
-            // self.bump_next(part);
         }
         match self.con().as_str() {
             "use" => { self.set_key(assign(ASSIGN::use_)) },
