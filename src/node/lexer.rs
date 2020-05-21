@@ -230,7 +230,7 @@ impl stream::STREAM {
                 self.unexpect_report(key.to_string(), e);
             }
         }
-        self.log(">");
+        self.log2(">");
         self.bump();
         result
     }
