@@ -52,22 +52,19 @@ impl STREAM {
             // let curr = vec.remove(0);
         }
     }
-    pub fn next(&self) -> SCAN {
-        self.vec.get(1).unwrap_or(&zero()).to_owned()
-    }
     pub fn nth(&self, num: usize) -> SCAN {
         self.vec.get(num).unwrap_or(&zero()).to_owned()
     }
-
-    pub fn after_symbol(&self) -> token::KEYWORD {
-        let mut i = 1;
-        while self.nth(i).key().is_symbol() { i += 1; }
-        self.nth(i).key().clone()
+    pub fn next(&self) -> SCAN {
+        self.nth(1)
+    }
+    pub fn peek(&self) -> SCAN {
+        if self.next().key().is_space() { self.nth(2) } else { self.next() }
     }
 
-    pub fn after(&self, key: token::KEYWORD) -> token::KEYWORD {
+    pub fn after(&self) -> token::KEYWORD {
         let mut i = 1;
-        while matches!( self.nth(i).key(), key) { i += 1; }
+        while self.nth(i).key().is_symbol() { i += 1; }
         self.nth(i).key().clone()
     }
 
@@ -90,9 +87,13 @@ impl STREAM {
         self.to_endsym();
     }
 
-    pub fn unexpect_report(&mut self, k: String, e: &mut flaw::FLAW) {
+    pub fn report_bracket(&mut self, k: String, e: &mut flaw::FLAW) {
         let s = String::from("expected:") + &k + " but recieved:" + &self.curr().key().to_string();
         self.report(s, self.curr().loc().clone(), e, flaw::flaw_type::lexer(flaw::lexer::lexer_bracket_unmatch));
+    }
+    pub fn report_space_add(&mut self, k: String, e: &mut flaw::FLAW) {
+        let s = String::from("space between:") + &k + " and:" + &self.curr().key().to_string() + " needs to be added";
+        self.report(s, self.prev().loc().clone(), e, flaw::flaw_type::lexer(flaw::lexer::lexer_space_add));
     }
 
     pub fn log(&self, msg: &str) {

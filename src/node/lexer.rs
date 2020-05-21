@@ -144,37 +144,64 @@ impl BAG {
             self.next().key(),
             self.peek().key());
     }
+    pub fn log2(&self, msg: &str) {
+        println!(" {} [{:>2} {:>2}] \t prev:{} \t curr:{} \t next:{}",
+            msg,
+            self.curr().loc().row(),
+            self.curr().loc().col(),
+            self.prev().key(),
+            self.curr().key(),
+            self.next().key())
+    }
 }
 
 use crate::scan::token::*;
 use crate::scan::token::KEYWORD::*;
 impl stream::STREAM {
     pub fn analyze(&mut self, e: &mut flaw::FLAW, prev: &SCAN) -> SCAN {
+        self.curr().log(">>");
         let mut result = self.curr().clone();
-        let loc = self.curr().loc().clone();
-        let key = self.curr().key().clone();
-
         // EOL to SPACE
         if self.curr().key().is_eol() &&
-            ( self.prev().key().is_nonterm() || self.next().key().is_dot() || prev.key().is_operator() ) {
+            ( self.prev().key().is_nonterm() || self.next().key().is_dot() || prev.key().is_operator() )
+        {
             result.set_key(void(VOID::space_))
+        }
+
+        // numbers
+        else if matches!(self.curr().key(), KEYWORD::symbol(SYMBOL::dot_)) && self.next().key().is_number() {
+            if self.prev().key().is_void() {
+                result = self.make_number(e);
+            }
+        }
+        else if (matches!(self.curr().key(), KEYWORD::symbol(SYMBOL::minus_))  && self.next().key().is_number()) || self.curr().key().is_number() {
+            if !self.prev().key().is_void() && matches!(self.curr().key(), KEYWORD::symbol(SYMBOL::minus_)) {
+                let key = self.prev().key().clone();
+                self.report_space_add(key.to_string(), e);
+            } else {
+                result = self.make_number(e);
+                // self.make_number(e, &mut result);
+            }
+        }
 
         // operators
-        } else if  self.curr().key().is_symbol()
+        else if  self.curr().key().is_symbol()
             && ( self.next().key().is_void() || self.next().key().is_symbol() )
             && ( self.prev().key().is_void() || self.prev().key().is_bracket() )
         {
             result = self.make_operator(e);
+        }
 
         // options
-        } else if self.curr().key().is_symbol()
+        else if self.curr().key().is_symbol()
             && self.next().key().is_assign()
             && (self.prev().key().is_terminal() || self.prev().key().is_eof() || self.prev().key().is_void())
         {
             result = self.make_syoption(e);
+        }
 
         // set key content to indetifier
-        } else if matches!(self.curr().key(), KEYWORD::ident(_)) {
+        else if matches!(self.curr().key(), KEYWORD::ident(_)) {
             result.set_key(ident(self.curr().con().to_string()))
         }
 
@@ -183,7 +210,8 @@ impl stream::STREAM {
             self.check_bracket_match(e);
         }
 
-        self.log2(">");
+        result.log(">>");
+        println!("-------------------------------------------------------------------------------------");
         self.bump();
         result
     }
@@ -221,6 +249,36 @@ impl stream::STREAM {
         }
         result
     }
+    pub fn make_number(&mut self, e: &mut flaw::FLAW) -> SCAN {
+        let mut result = self.curr().clone();
+        result.set_key(literal(LITERAL::decimal_));
+        if self.curr().key().is_dot() && self.next().key().is_number() {
+            result.set_key(literal(LITERAL::float_));
+            result.combine(&self.next());
+            self.bump();
+            println!("{}", self.next().con());
+            if self.next().key().is_dot() && !self.nth(2).key().is_ident() {
+                self.report_space_add(self.prev().key().to_string(), e);
+            }
+        }
+        if self.prev().key().is_continue() && self.curr().key().is_number() && self.next().key().is_dot() && !self.nth(2).key().is_ident() {
+            result.set_key(literal(LITERAL::float_));
+            result.combine(&self.next());
+            self.bump();
+            if self.next().key().is_number() {
+                result.combine(&self.next());
+                self.bump();
+                if self.next().key().is_dot() && self.nth(2).key().is_number() {
+                    self.bump();
+                    self.report_space_add(self.prev().key().to_string(), e);
+                }
+            } else if !self.next().key().is_void() {
+                self.report_space_add(self.prev().key().to_string(), e);
+                self.bump();
+            }
+        }
+        result
+    }
     pub fn make_syoption(&mut self, e: &mut flaw::FLAW)  -> SCAN {
         let mut result = self.curr().clone();
         match result.con().as_str() {
@@ -254,7 +312,7 @@ impl stream::STREAM {
                     KEYWORD::symbol(SYMBOL::roundO_) => { KEYWORD::symbol(SYMBOL::roundC_) },
                     _ => { KEYWORD::illegal }
                 };
-                self.unexpect_report(key.to_string(), e);
+                self.report_bracket(key.to_string(), e);
             }
         }
     }

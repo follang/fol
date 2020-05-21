@@ -103,6 +103,16 @@ impl KEYWORD {
             _ => false,
         }
     }
+    pub fn is_number(&self) -> bool {
+        match *self {
+            KEYWORD::literal(LITERAL::decimal_) => true,
+            KEYWORD::literal(LITERAL::float_) => true,
+            KEYWORD::literal(LITERAL::hexal_) => true,
+            KEYWORD::literal(LITERAL::octal_) => true,
+            KEYWORD::literal(LITERAL::binary_) => true,
+            _ => false,
+        }
+    }
     pub fn is_symbol(&self) -> bool {
         if self.is_bracket() {
             false
@@ -165,6 +175,23 @@ impl KEYWORD {
         match *self {
             KEYWORD::symbol(SYMBOL::dot_) => true,
             _ => false,
+        }
+    }
+    pub fn is_comma(&self) -> bool {
+        match *self {
+            KEYWORD::symbol(SYMBOL::comma_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_continue(&self) -> bool {
+        if self.is_void()
+            || self.is_bracket()
+            || self.is_terminal()
+            || self.is_comma()
+        {
+            true
+        } else {
+            false
         }
     }
 }

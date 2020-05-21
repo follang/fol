@@ -22,14 +22,12 @@ pub fn new() -> forest {
 
 impl forest {
     pub fn init(&mut self, l: &mut lexer::BAG, e: &mut flaw::FLAW) {
-        if !e.list().is_empty() { return; }
-        // println!("{}", e.list().len());
+        // if !e.list().is_empty() { return; }
         while l.not_empty() {
             self.parse_stat(l, e);
         }
     }
     pub fn parse_stat(&mut self, l: &mut lexer::BAG, e: &mut flaw::FLAW) {
-    // println!("{}", l);
         if l.prev().key().is_terminal() || l.prev().key().is_eof() {
             if matches!( l.curr().key(), KEYWORD::assign(ASSIGN::var_) ) ||
                 ( matches!( l.curr().key(), KEYWORD::option(_) ) && matches!( l.next().key(), KEYWORD::assign(ASSIGN::var_) ) ) {
@@ -172,7 +170,6 @@ impl forest {
             } else { self.retypes_stat(l, e); }
         }
 
-        l.log(">>");
         l.to_end(e);
         self.trees.push(tree::new(root::stat(stat::Var(t.clone())), c.clone()));
         for e in list {
