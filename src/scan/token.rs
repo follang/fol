@@ -359,20 +359,20 @@ impl fmt::Display for KEYWORD {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 
         let key = [
-            String::from(" ASSIGN"),
-            String::from(" OPTION"),
-            String::from(" IDENT"),
-            String::from(" TYPE"),
-            String::from(" FORM"),
-            String::from(" LITERAL"),
-            String::from(" BUILDIN"),
-            String::from(" SYMBOL"),
-            String::from(" OPERATOR"),
-            String::from(" VOID"),
-            String::from(" COMMENT"),
-            String::from(" ILLEGAL")
+            String::from(" ASSIGN "),
+            String::from(" OPTION "),
+            String::from(" IDENT "),
+            String::from(" TYPE "),
+            String::from(" FORM "),
+            String::from(" LITERAL "),
+            String::from(" BUILDIN "),
+            String::from(" SYMBOL "),
+            String::from(" OPERATOR "),
+            String::from(" VOID "),
+            String::from(" COMMENT "),
+            String::from(" ILLEGAL ")
         ];
-        let mid = " | ";
+        let mid = "| ";
         let pos = " ";
         use KEYWORD::*;
         let value: String = match self {

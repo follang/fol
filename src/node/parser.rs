@@ -17,9 +17,7 @@ pub struct forest {
 }
 
 pub fn new() -> forest {
-    let trees = Vec::new();
-    // let loc =  locate::LOCATION::def();
-    forest{ trees }
+    forest{ trees: Vec::new() }
 }
 
 impl forest {
@@ -62,7 +60,10 @@ impl forest {
     }
 }
 
-// VAR STATEMENT
+
+//------------------------------------------------------------------------------------------------------//
+//                                             VAR STATEMENT                                            //
+//------------------------------------------------------------------------------------------------------//
 impl forest {
     pub fn parse_stat_var(&mut self, l: &mut lexer::BAG, e: &mut err::FLAW, mut t: &mut var_stat, group: bool) {
         let c = l.curr().loc().clone();
@@ -154,13 +155,23 @@ impl forest {
             return;
         }
 
+        // type separator ':'
         if matches!(l.curr().key(), KEYWORD::symbol(SYMBOL::colon_)) {
             l.bump();
+
+            // ERROR if not 'space'
             if !(matches!(l.curr().key(), KEYWORD::void(VOID::space_))) {
                 l.space_add_report(l.prev().key().to_string(), e); return;
             } else { l.eat_space(e); }
+
+            // ERROR if not any 'type'
+            if !(matches!(l.curr().key(), KEYWORD::types(_))) {
+                l.unexpect_report(KEYWORD::types(TYPE::ANY).to_string(), e); return;
+            } else { self.retypes_stat(l, e); }
+
+            // self.retypes_stat(l, e);
+
             // self.help_assign_options(&mut options, l, e);
-            l.log(">");
         }
 
         l.to_end(e);
@@ -171,9 +182,6 @@ impl forest {
             self.trees.push(tree::new(root::stat(stat::Var(clo)), c.clone()));
         }
 
-    }
-
-    pub fn help_assign_types(&mut self, v: &mut Vec<assign_opts>, l: &mut lexer::BAG, e: &mut err::FLAW) {
     }
     pub fn help_assign_options(&mut self, v: &mut Vec<assign_opts>, l: &mut lexer::BAG, e: &mut err::FLAW) {
         if matches!(l.curr().key(), KEYWORD::option(_)) {
@@ -197,10 +205,27 @@ impl forest {
         l.bump();
         loop {
             //TODO: finish options
-            //TODO: fix the match_bracket (dont sent pattern in function parameter)
-            if l.match_bracket(KEYWORD::symbol(SYMBOL::curlyC_), deep) { break }
+            if ( matches!(l.curr().key(), KEYWORD::symbol(SYMBOL::squarC_)) && l.curr().loc().deep() == deep )
+                || l.curr().key().is_eof() { break }
             l.bump();
         }
         l.bump();
+    }
+}
+
+
+//------------------------------------------------------------------------------------------------------//
+//                                             TYPE STATEMENT                                           //
+//------------------------------------------------------------------------------------------------------//
+impl forest {
+    pub fn retypes_stat(&mut self, l: &mut lexer::BAG, e: &mut err::FLAW) -> Option<Box<root>> {
+        l.log(">>");
+        match l.curr().key() {
+            KEYWORD::types(TYPE::int_) => { return self.retypes_int_stat(l, e) }
+            _ => { return None; }
+        }
+    }
+    pub fn retypes_int_stat(&mut self, l: &mut lexer::BAG, e: &mut err::FLAW) -> Option<Box<root>> {
+        None
     }
 }

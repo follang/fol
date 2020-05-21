@@ -113,19 +113,19 @@ impl BAG {
     }
 
     pub fn unexpect_report(&mut self, k: String, e: &mut err::FLAW) {
-        let s = String::from("expected: ") + &k + " but recieved: " + &self.curr().key().to_string();
+        let s = String::from("expected:") + &k + " but recieved:" + &self.curr().key().to_string();
         self.report(s, self.curr().loc().clone(), e, err::flaw_type::parser_unexpected);
     }
     pub fn missmatch_report(&mut self, k: String, e: &mut err::FLAW) {
-        let s = String::from("expected: ") + &k + " but recieved: " + &self.curr().key().to_string();
+        let s = String::from("expected:") + &k + " but recieved:" + &self.curr().key().to_string();
         self.report(s, self.curr().loc().clone(), e, err::flaw_type::parser_missmatch);
     }
     pub fn space_rem_report(&mut self, k: String, e: &mut err::FLAW) {
-        let s = String::from("space between: ") + &k + " and: " + &self.curr().key().to_string() + " needs to be removed";
+        let s = String::from("space between:") + &k + " and:" + &self.curr().key().to_string() + " needs to be removed";
         self.report(s, self.prev().loc().clone(), e, err::flaw_type::parser_space_rem);
     }
     pub fn space_add_report(&mut self, k: String, e: &mut err::FLAW) {
-        let s = String::from("space between: ") + &k + " and: " + &self.curr().key().to_string() + " needs to be added";
+        let s = String::from("space between:") + &k + " and:" + &self.curr().key().to_string() + " needs to be added";
         self.report(s, self.prev().loc().clone(), e, err::flaw_type::parser_space_add);
     }
 

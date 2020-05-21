@@ -96,10 +96,11 @@ pub struct container_expr {
 
 #[derive(Clone, Debug)]
 pub enum letter_expr {
-    string_n,
-    string_r,
-    char_n(char),
-    char_b(u8)
+    string_normal,
+    string_raw,
+    string_formated,
+    char_normal(char),
+    char_binary(u8)
 }
 
 #[derive(Clone, Debug)]
