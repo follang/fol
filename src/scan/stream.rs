@@ -104,6 +104,14 @@ impl STREAM {
             self.curr().key(),
             self.next().key())
     }
+    pub fn log2(&self, msg: &str) {
+        println!(" {} [{:>2} {:>2}] \t \t {:<30} {:>20}",
+            msg,
+            self.curr().loc().row(),
+            self.curr().loc().col(),
+            self.curr().key(),
+            self.curr().con())
+    }
 }
 
 impl fmt::Display for STREAM {

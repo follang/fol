@@ -98,8 +98,8 @@ impl fmt::Display for flaw {
 impl fmt::Display for flaw_type {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let value: String = match self {
-            flaw_type::lexer(a) => " in parsing stage ".black().on_white().to_string() + a.to_string().as_str(),
-            flaw_type::parser(a) => " in lexing stage ".black().on_white().to_string() + a.to_string().as_str()
+            flaw_type::lexer(a) => " in lexing stage ".black().on_white().to_string() + a.to_string().as_str(),
+            flaw_type::parser(b) => " in parsing stage ".black().on_white().to_string() + b.to_string().as_str()
         };
         write!(f, "{}", value.bold().on_red())
     }
