@@ -8,7 +8,7 @@ use crate::node::lexer;
 use crate::node::ast::*;
 use crate::scan::token::*;
 use crate::scan::locate;
-use crate::error::err;
+use crate::error::flaw;
 use colored::Colorize;
 
 
@@ -21,12 +21,14 @@ pub fn new() -> forest {
 }
 
 impl forest {
-    pub fn init(&mut self, l: &mut lexer::BAG, e: &mut err::FLAW) {
+    pub fn init(&mut self, l: &mut lexer::BAG, e: &mut flaw::FLAW) {
+        if !e.list().is_empty() { return; }
+        // println!("{}", e.list().len());
         while l.not_empty() {
             self.parse_stat(l, e);
         }
     }
-    pub fn parse_stat(&mut self, l: &mut lexer::BAG, e: &mut err::FLAW) {
+    pub fn parse_stat(&mut self, l: &mut lexer::BAG, e: &mut flaw::FLAW) {
     // println!("{}", l);
         if l.prev().key().is_terminal() || l.prev().key().is_eof() {
             if matches!( l.curr().key(), KEYWORD::assign(ASSIGN::var_) ) ||
@@ -65,7 +67,7 @@ impl forest {
 //                                             VAR STATEMENT                                            //
 //------------------------------------------------------------------------------------------------------//
 impl forest {
-    pub fn parse_stat_var(&mut self, l: &mut lexer::BAG, e: &mut err::FLAW, mut t: &mut var_stat, group: bool) {
+    pub fn parse_stat_var(&mut self, l: &mut lexer::BAG, e: &mut flaw::FLAW, mut t: &mut var_stat, group: bool) {
         let c = l.curr().loc().clone();
         let mut options: Vec<assign_opts> = Vec::new();
         let mut list: Vec<String> = Vec::new();
@@ -179,7 +181,7 @@ impl forest {
         }
 
     }
-    pub fn help_assign_options(&mut self, v: &mut Vec<assign_opts>, l: &mut lexer::BAG, e: &mut err::FLAW) {
+    pub fn help_assign_options(&mut self, v: &mut Vec<assign_opts>, l: &mut lexer::BAG, e: &mut flaw::FLAW) {
         if matches!(l.curr().key(), KEYWORD::option(_)) {
             let el;
             match l.curr().key() {
@@ -214,7 +216,7 @@ impl forest {
 //                                             TYPE STATEMENT                                           //
 //------------------------------------------------------------------------------------------------------//
 impl forest {
-    pub fn retypes_stat(&mut self, l: &mut lexer::BAG, e: &mut err::FLAW) -> Option<Box<root>> {
+    pub fn retypes_stat(&mut self, l: &mut lexer::BAG, e: &mut flaw::FLAW) -> Option<Box<root>> {
         // l.log(">>");
         if TYPE::int_ == TYPE::arr_ { println!("true") };
         match l.curr().key() {
@@ -222,7 +224,7 @@ impl forest {
             _ => { return None; }
         }
     }
-    pub fn retypes_int_stat(&mut self, l: &mut lexer::BAG, e: &mut err::FLAW) -> Option<Box<root>> {
+    pub fn retypes_int_stat(&mut self, l: &mut lexer::BAG, e: &mut flaw::FLAW) -> Option<Box<root>> {
         None
     }
 }

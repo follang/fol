@@ -8,7 +8,7 @@ use std::fmt;
 use crate::scan::locate;
 use crate::scan::token;
 use crate::scan::stream;
-use crate::error::err;
+use crate::error::flaw;
 
 use crate::getset;
 
@@ -70,7 +70,7 @@ impl BAG {
 
 }
 
-pub fn init(path: &str, e: &mut err::FLAW) -> BAG {
+pub fn init(path: &str, e: &mut flaw::FLAW) -> BAG {
     let mut stream = stream::STREAM::init(path);
     let mut NEXT: Vec<SCAN> = Vec::new();
     let PAST: Vec<SCAN> = Vec::new();
@@ -87,18 +87,18 @@ impl BAG {
         !self.get_NEXT().is_empty()
     }
 
-    pub fn eat_space(&mut self, e: &mut err::FLAW) {
+    pub fn eat_space(&mut self, e: &mut flaw::FLAW) {
         if self.curr().key().is_space() {
             self.bump()
         }
     }
-    pub fn eat_termin(&mut self, e: &mut err::FLAW) {
+    pub fn eat_termin(&mut self, e: &mut flaw::FLAW) {
         while self.curr().key().is_terminal() || self.curr().key().is_space() {
             self.bump()
         }
     }
 
-    pub fn to_end(&mut self, e: &mut err::FLAW) {
+    pub fn to_end(&mut self, e: &mut flaw::FLAW) {
         let deep = self.curr().loc().deep();
         loop {
             if (self.curr().key().is_terminal() && self.curr().loc().deep() <= deep) || (self.curr().key().is_eof()) { break }
@@ -107,26 +107,26 @@ impl BAG {
         if self.curr().key().is_terminal() { self.bump() }
     }
 
-    pub fn report(&mut self, s: String, l: locate::LOCATION, e: &mut err::FLAW, t: err::flaw_type) {
+    pub fn report(&mut self, s: String, l: locate::LOCATION, e: &mut flaw::FLAW, t: flaw::flaw_type) {
         e.report(t, &s, l);
         self.to_end(e);
     }
 
-    pub fn unexpect_report(&mut self, k: String, e: &mut err::FLAW) {
+    pub fn unexpect_report(&mut self, k: String, e: &mut flaw::FLAW) {
         let s = String::from("expected:") + &k + " but recieved:" + &self.curr().key().to_string();
-        self.report(s, self.curr().loc().clone(), e, err::flaw_type::parser_unexpected);
+        self.report(s, self.curr().loc().clone(), e, flaw::flaw_type::parser(flaw::parser::parser_unexpected));
     }
-    pub fn missmatch_report(&mut self, k: String, e: &mut err::FLAW) {
+    pub fn missmatch_report(&mut self, k: String, e: &mut flaw::FLAW) {
         let s = String::from("expected:") + &k + " but recieved:" + &self.curr().key().to_string();
-        self.report(s, self.curr().loc().clone(), e, err::flaw_type::parser_missmatch);
+        self.report(s, self.curr().loc().clone(), e, flaw::flaw_type::parser(flaw::parser::parser_missmatch));
     }
-    pub fn space_rem_report(&mut self, k: String, e: &mut err::FLAW) {
+    pub fn space_rem_report(&mut self, k: String, e: &mut flaw::FLAW) {
         let s = String::from("space between:") + &k + " and:" + &self.curr().key().to_string() + " needs to be removed";
-        self.report(s, self.prev().loc().clone(), e, err::flaw_type::parser_space_rem);
+        self.report(s, self.prev().loc().clone(), e, flaw::flaw_type::parser(flaw::parser::parser_space_rem));
     }
-    pub fn space_add_report(&mut self, k: String, e: &mut err::FLAW) {
+    pub fn space_add_report(&mut self, k: String, e: &mut flaw::FLAW) {
         let s = String::from("space between:") + &k + " and:" + &self.curr().key().to_string() + " needs to be added";
-        self.report(s, self.prev().loc().clone(), e, err::flaw_type::parser_space_add);
+        self.report(s, self.prev().loc().clone(), e, flaw::flaw_type::parser(flaw::parser::parser_space_add));
     }
 
     pub fn match_bracket(&self, k: KEYWORD, d: isize) -> bool {
@@ -149,7 +149,7 @@ impl BAG {
 use crate::scan::token::*;
 use crate::scan::token::KEYWORD::*;
 impl stream::STREAM {
-    pub fn analyze(&mut self, e: &mut err::FLAW, p: &SCAN) -> SCAN {
+    pub fn analyze(&mut self, e: &mut flaw::FLAW, p: &SCAN) -> SCAN {
         let mut result = self.curr().clone();
         let loc = self.curr().loc().clone();
         let key = self.curr().key().clone();
@@ -219,11 +219,8 @@ impl stream::STREAM {
                 || ( matches!(self.curr().key(), KEYWORD::symbol(SYMBOL::curlyC_))
                 && matches!(self.bracs().last().unwrap_or(&(loc.clone(), KEYWORD::illegal)).1, KEYWORD::symbol(SYMBOL::curlyO_)) )
             {
-                self.log(">");
                 self.bracs().pop();
             } else {
-                // self.to_end()
-                // println!("{:?}", self.bracs().len());
                 let key = match self.bracs().last().unwrap_or(&(loc.clone(), KEYWORD::illegal)).1 {
                     KEYWORD::symbol(SYMBOL::curlyO_) => { KEYWORD::symbol(SYMBOL::curlyC_) },
                     KEYWORD::symbol(SYMBOL::squarO_) => { KEYWORD::symbol(SYMBOL::squarC_) },
@@ -232,6 +229,7 @@ impl stream::STREAM {
                 };
                 self.unexpect_report(key.to_string(), e);
             }
+            // self.log(">");
         }
         self.bump();
         result

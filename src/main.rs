@@ -16,7 +16,7 @@ extern crate colored;
 // use crate::node::ast;
 use crate::node::lexer;
 use crate::node::parser;
-use crate::error::err;
+use crate::error::flaw;
 
 
 
@@ -33,7 +33,7 @@ fn main() {
         // s.bump()
     // }
 
-    // let mut error = err::FLAW::init();
+    // let mut error = flaw::FLAW::init();
     // let path = "./etc";
     // let mut s = lexer::init(path, &mut error);
     // while s.not_empty() {
@@ -44,7 +44,7 @@ fn main() {
     // }
 
     let path = "./etc";
-    let mut error = err::FLAW::init();
+    let mut error = flaw::FLAW::init();
     let mut tokens = lexer::init(path, &mut error);
     let mut forest = parser::new();
     forest.init(&mut tokens, &mut error);

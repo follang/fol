@@ -5,7 +5,7 @@ use crate::scan::scanner;
 use crate::scan::reader;
 use crate::scan::token;
 use crate::scan::locate;
-use crate::error::err;
+use crate::error::flaw;
 
 use crate::scan::scanner::SCAN;
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -85,14 +85,14 @@ impl STREAM {
         }
     }
 
-    pub fn report(&mut self, s: String, l: locate::LOCATION, e: &mut err::FLAW, t: err::flaw_type) {
+    pub fn report(&mut self, s: String, l: locate::LOCATION, e: &mut flaw::FLAW, t: flaw::flaw_type) {
         e.report(t, &s, l);
         self.to_endsym();
     }
 
-    pub fn unexpect_report(&mut self, k: String, e: &mut err::FLAW) {
+    pub fn unexpect_report(&mut self, k: String, e: &mut flaw::FLAW) {
         let s = String::from("expected:") + &k + " but recieved:" + &self.curr().key().to_string();
-        self.report(s, self.curr().loc().clone(), e, err::flaw_type::lexer_bracket_unmatch);
+        self.report(s, self.curr().loc().clone(), e, flaw::flaw_type::lexer(flaw::lexer::lexer_bracket_unmatch));
     }
 
     pub fn log(&self, msg: &str) {

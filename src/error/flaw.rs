@@ -16,11 +16,20 @@ use std::path::Path;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum flaw_type {
-    lexer_bracket_unmatch,
+    lexer(lexer),
+    parser(parser)
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum parser {
     parser_unexpected,
     parser_missmatch,
     parser_space_rem,
     parser_space_add,
+}
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum lexer {
+    lexer_bracket_unmatch,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -54,10 +63,10 @@ impl FLAW {
     }
     pub fn show(&mut self) {
         for (i, e) in self.el.iter().enumerate() {
-            println!("\n\n{}{:<2} : {}", " ERROR #".black().on_red(), (&i + 1).to_string().black().on_red(), e);
+            println!("\n\n{}{:<2} : {}", " FLAW #".black().on_red(), (&i + 1).to_string().black().on_red(), e);
         }
         if self.el.len() != 0 {
-            let num = if self.el.len() == 1 { "error" } else { "errors" };
+            let num = if self.el.len() == 1 { "flaw" } else { "flaws" };
             println!("\n\n{:^10} due to {:^3} previous {}", "ABORTING".black().on_red(), self.el.len().to_string().black().on_red(), num);
         }
     }
@@ -71,19 +80,9 @@ fn get_line_at(filepath: &str, line_num: usize) -> String {
 
 impl fmt::Display for flaw {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let parse_msg = String::from(" flaw in parsing stage ").bold().on_white();
-        let lexer_msg = String::from(" flaw in lexing stage ").bold().on_white();
-        let separator = "".white().to_string();
-        let errtype = match self.typ {
-            flaw_type::lexer_bracket_unmatch =>{ lexer_msg.to_string() + separator.as_str() +  &" UNMATCHED BRACKET ".bold().on_red().to_string() },
-            flaw_type::parser_unexpected =>{ parse_msg.to_string() + separator.as_str() +  &" UNEXPECTED TOKEN ".bold().on_red().to_string() },
-            flaw_type::parser_missmatch => { parse_msg.to_string() + separator.as_str() + &" MISSMATCHED ARGUMENTS ".bold().on_red().to_string() },
-            flaw_type::parser_space_add => { parse_msg.to_string() + separator.as_str() + &" MISSING BLANK SPACE ".bold().on_red().to_string() }
-            flaw_type::parser_space_rem => { parse_msg.to_string() + separator.as_str() + &" OBSOLETE BLANK SPACE ".bold().on_red().to_string() }
-        };
         write!(f,
             "{}\n {}\n {:>5}\n {:>5}  {}\n {:>5} {}{}\n {}",
-            errtype.black(),
+            self.typ,
             self.loc,
             " |".red(),
             (self.loc.row().to_string() + " |").red(),
@@ -93,5 +92,36 @@ impl fmt::Display for flaw {
             "^".repeat(self.loc.len()),
             self.msg,
         )
+    }
+}
+
+impl fmt::Display for flaw_type {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let value: String = match self {
+            flaw_type::lexer(a) => " in parsing stage ".black().on_white().to_string() + a.to_string().as_str(),
+            flaw_type::parser(a) => " in lexing stage ".black().on_white().to_string() + a.to_string().as_str()
+        };
+        write!(f, "{}", value.bold().on_red())
+    }
+}
+
+impl fmt::Display for parser {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let value: String = match self {
+            parser::parser_unexpected => " UNEXPECTED TOKEN ".to_string(),
+            parser::parser_missmatch => " MISSMATCHED ARGUMENTS ".to_string(),
+            parser::parser_space_add => " MISSING BLANK SPACE ".to_string(),
+            parser::parser_space_rem => " OBSOLETE BLANK SPACE ".to_string(),
+        };
+        write!(f, "{}", value.on_red().to_string())
+    }
+}
+
+impl fmt::Display for lexer {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let value: String = match self {
+            lexer::lexer_bracket_unmatch => " UNMATCHED BRACKET ".to_string(),
+        };
+        write!(f, "{}", value.on_red().to_string())
     }
 }
