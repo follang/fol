@@ -13,21 +13,21 @@ use crate::getset;
 
 
 #[derive(Clone, Debug)]
-pub enum root {
+pub enum body {
     expr(expr),
     stat(stat),
 }
 
 #[derive(Clone, Debug)]
 pub struct tree {
-    one: root,
+    one: body,
     loc: locate::LOCATION,
 }
 impl tree {
-    pub fn new(one: root, loc: locate::LOCATION) -> Self {
+    pub fn new(one: body, loc: locate::LOCATION) -> Self {
         tree{one, loc}
     }
-    pub fn node(&self) -> &root {
+    pub fn node(&self) -> &body {
         &self.one
     }
     pub fn loc(&self) -> &locate::LOCATION {
@@ -61,58 +61,31 @@ pub enum stat {
 #[derive(Clone, Debug, GetSet)]
 pub struct var_stat{
     options: Vec<assign_opts>,
-    ident: String,
+    ident: Box<String>,
     retype: Option<Box<stat>>,
-    body: Option<Box<root>>
+    body: Option<Box<body>>
 }
 
 impl var_stat {
     pub fn init() -> Self {
-        var_stat { options: Vec::new(), ident: String::new(), retype: None, body: None }
+        var_stat { options: Vec::new(), ident: Box::new(String::new()), retype: None, body: None }
     }
 }
 
 #[derive(Clone, Debug)]
 pub struct fun_stat {
     options: Vec<assign_opts>,
-    implement: Option<Box<root>>,
-    ident: String,
-    generics: Option<Box<root>>,
-    parameters: Option<Box<root>>,
+    implement: Option<Box<body>>,
+    ident: Box<String>,
+    generics: Option<Box<body>>,
+    parameters: Option<Box<body>>,
     retype: Option<Box<stat>>,
-    body: Box<root>
+    body: Box<body>
 }
 
 #[derive(Clone, Debug)]
 pub enum assign_opts {
     Imu, Mut, Sta, Nor, Exp, Hid, Stk, Hep,
-}
-
-#[derive(Clone, Debug)]
-pub struct container_expr {
-    uniform: bool,
-    elements: Box<root>
-}
-
-#[derive(Clone, Debug)]
-pub enum letter_expr {
-    string_normal,
-    string_raw,
-    string_formated,
-    char_normal(char),
-    char_binary(u8)
-}
-
-#[derive(Clone, Debug)]
-pub enum number_expr {
-    int(isize),
-    int_8(i8),
-}
-
-#[derive(Clone, Debug)]
-pub enum binary_expr {
-    leaf(number_expr),
-    node(Box<binary_expr>, number_expr, Box<binary_expr>)
 }
 
 #[derive(Clone, Debug)]
@@ -151,39 +124,29 @@ pub enum type_expr {
     Gen,
 }
 
-
-//------------------------------------------------------------------------------------------------------//
-//                                          DISPLAY PROPERTIES                                          //
-//------------------------------------------------------------------------------------------------------//
-
-impl fmt::Display for root {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match &self {
-            root::expr(_) => { write!(f, "expr") }
-            root::stat(stat::Var(var_stat)) => { write!(f, "{}", var_stat) }
-            root::stat(stat::Fun(fun_stat)) => { write!(f, "fun") }
-            root::stat(_) => { write!(f, "stat") }
-        }
-    }
+#[derive(Clone, Debug)]
+pub struct container_expr {
+    uniform: bool,
+    elements: Box<body>
 }
 
-impl fmt::Display for var_stat {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "var {:?} {}", self.options, self.ident)
-    }
+#[derive(Clone, Debug)]
+pub enum letter_expr {
+    string_normal,
+    string_raw,
+    string_formated,
+    char_normal(char),
+    char_binary(u8)
 }
 
-impl fmt::Display for assign_opts {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match &self {
-            assign_opts::Imu => { write!(f, "imu") }
-            assign_opts::Mut => { write!(f, "mut") }
-            assign_opts::Sta => { write!(f, "sta") }
-            assign_opts::Nor => { write!(f, "nor") }
-            assign_opts::Exp => { write!(f, "exp") }
-            assign_opts::Hid => { write!(f, "hid") }
-            assign_opts::Stk => { write!(f, "stk") }
-            assign_opts::Hep => { write!(f, "hep") }
-        }
-    }
+#[derive(Clone, Debug)]
+pub enum number_expr {
+    int(isize),
+    int_8(i8),
+}
+
+#[derive(Clone, Debug)]
+pub enum binary_expr {
+    leaf(number_expr),
+    node(Box<binary_expr>, number_expr, Box<binary_expr>)
 }

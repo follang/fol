@@ -67,10 +67,11 @@ impl forest {
 //                                             VAR STATEMENT                                            //
 //------------------------------------------------------------------------------------------------------//
 impl forest {
-    pub fn parse_stat_var(&mut self, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW, mut stat: &mut var_stat, group: bool) {
+    pub fn parse_stat_var(&mut self, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW, mut var_stat: &mut var_stat, group: bool) {
         let c = lex.curr().loc().clone();
         let mut options: Vec<assign_opts> = Vec::new();
         let mut list: Vec<String> = Vec::new();
+        let mut types: Vec<Option<Box<stat>>> = Vec::new();
 
         if !group {
             // option symbol
@@ -85,35 +86,35 @@ impl forest {
             if matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::squarO_)) {
                 self.help_assign_options(&mut options, lex, flaw);
             }
-            stat.set_options(options);
+            var_stat.set_options(options);
 
             // ERROR if not 'space'
             if !(matches!(lex.curr().key(), KEYWORD::void(VOID::space_))) {
-                lex.space_add_report(lex.prev().key().to_string(), lex.prev().loc().clone(), flaw); return;
+                lex.report_space_add(lex.prev().key().to_string(), lex.prev().loc().clone(), flaw); return;
             } else { lex.eat_space(flaw); }
 
             // ERROR if '[' because is a little late for that
             if matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::squarO_)) {
-                lex.space_rem_report(lex.past().key().to_string(), lex.prev().loc().clone(), flaw); return;
+                lex.report_space_rem(lex.past().key().to_string(), lex.prev().loc().clone(), flaw); return;
             }
 
             // group variables matching "("
             if matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::roundO_)) {
                 lex.bump(); lex.eat_space(flaw);
                 while matches!(lex.curr().key(), KEYWORD::ident(_)) {
-                    self.parse_stat_var(lex, flaw, &mut stat, true);
+                    self.parse_stat_var(lex, flaw, &mut var_stat, true);
                     lex.eat_termin(flaw);
                 }
                 if matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::roundC_)) {
                     lex.bump();
                 } else {
-                    lex.unexpect_report(KEYWORD::symbol(SYMBOL::roundC_).to_string(), lex.curr().loc().clone(), flaw);
+                    lex.report_unepected(KEYWORD::symbol(SYMBOL::roundC_).to_string(), lex.curr().loc().clone(), flaw);
                     return
                 }
                 if lex.curr().key().is_terminal() {
                     lex.eat_termin(flaw);
                 } else {
-                    lex.unexpect_report(KEYWORD::void(VOID::endline_).to_string(), lex.curr().loc().clone(), flaw);
+                    lex.report_unepected(KEYWORD::void(VOID::endline_).to_string(), lex.curr().loc().clone(), flaw);
                     return
                 }
                 return
@@ -122,10 +123,10 @@ impl forest {
 
         //identifier
         if matches!(lex.curr().key(), KEYWORD::ident(_)) {
-            stat.set_ident(lex.curr().con().clone());
+            var_stat.set_ident(Box::new(lex.curr().con().clone()));
             lex.bump();
         } else {
-            lex.unexpect_report(KEYWORD::ident(String::new()).to_string(), lex.curr().loc().clone(), flaw);
+            lex.report_unepected(KEYWORD::ident(String::new()).to_string(), lex.curr().loc().clone(), flaw);
             return
         }
 
@@ -136,6 +137,8 @@ impl forest {
                 lex.eat_space(flaw);
                 list.push(lex.curr().con().clone());
                 lex.jump();
+            } else {
+                lex.report_unepected(KEYWORD::ident(String::new()).to_string(), lex.curr().loc().clone(), flaw);
             }
         }
 
@@ -145,18 +148,18 @@ impl forest {
 
             // ERROR if not 'space'
             if !(matches!(lex.curr().key(), KEYWORD::void(VOID::space_))) {
-                lex.space_add_report(lex.prev().key().to_string(), lex.prev().loc().clone(), flaw);
+                lex.report_space_add(lex.prev().key().to_string(), lex.prev().loc().clone(), flaw);
                 return;
             } else { lex.eat_space(flaw); }
 
             // ERROR if not any 'type'
             if !(matches!(lex.curr().key(), KEYWORD::types(_))) {
-                lex.unexpect_report(KEYWORD::types(TYPE::ANY).to_string(), lex.curr().loc().clone(), flaw);
+                lex.report_unepected(KEYWORD::types(TYPE::ANY).to_string(), lex.curr().loc().clone(), flaw);
                 return;
 
             // types
             } else {
-                self.parse_type_stat(lex, flaw);
+                var_stat.set_retype(self.parse_type_stat(lex, flaw));
             }
         }
 
@@ -165,35 +168,42 @@ impl forest {
             lex.jump();
             if matches!(lex.look().key(), KEYWORD::types(_)) {
                 lex.eat_space(flaw);
-                self.parse_type_stat(lex, flaw);
+                types.push(self.parse_type_stat(lex, flaw));
             }
+        }
+        // error if list variables and list type does not match
+        if list.len() != types.len() && types.len() != 0 {
+            lex.report_type_disbalance((" ".to_string() + list.len().to_string().as_str() + " ").black().bold().on_white().to_string(),
+            (" ".to_string() + types.len().to_string().as_str() + " ").black().bold().on_white().to_string(),
+            lex.curr().loc().clone(), flaw);
+            // return
         }
 
         // short version (no type)
         if lex.look().key().is_terminal(){
-            self.trees.push(tree::new(root::stat(stat::Var(stat.clone())), c.clone()));
+            self.trees.push(tree::new(body::stat(stat::Var(var_stat.clone())), c.clone()));
             for e in list {
-                let mut clo = stat.clone();
-                clo.set_ident(e);
-                self.trees.push(tree::new(root::stat(stat::Var(clo)), c.clone()));
+                let mut clo = var_stat.clone();
+                clo.set_ident(Box::new(e));
+                self.trees.push(tree::new(body::stat(stat::Var(clo)), c.clone()));
             }
             lex.eat_termin(flaw);
             return;
         }
-        lex.log(">>>");
 
         // now is the equal
 
-        stat.set_body(self.parse_expr_var(lex, flaw));
+        var_stat.set_body(self.parse_expr_var(lex, flaw));
+        self.trees.push(tree::new(body::stat(stat::Var(var_stat.clone())), c.clone()));
 
-        self.trees.push(tree::new(root::stat(stat::Var(stat.clone())), c.clone()));
-        for e in list {
-            let mut clo = stat.clone();
-            clo.set_ident(e);
-            self.trees.push(tree::new(root::stat(stat::Var(clo)), c.clone()));
+        for (e, f) in list.iter().zip(types.iter()) {
+            let mut clo = var_stat.clone();
+            clo.set_ident(Box::new(e.clone()));
+            clo.set_retype(f.clone());
+            self.trees.push(tree::new(body::stat(stat::Var(clo)), c.clone()));
         }
-
     }
+
     pub fn help_assign_options(&mut self, v: &mut Vec<assign_opts>, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) {
         if matches!(lex.curr().key(), KEYWORD::option(_)) {
             let el;
@@ -204,7 +214,7 @@ impl forest {
                 KEYWORD::option(OPTION::hid_) => { el = assign_opts::Hid }
                 KEYWORD::option(OPTION::hep_) => { el = assign_opts::Hep }
                 _ => {
-                    lex.unexpect_report(KEYWORD::option(OPTION::ANY).to_string(), lex.curr().loc().clone(), flaw);
+                    lex.report_unepected(KEYWORD::option(OPTION::ANY).to_string(), lex.curr().loc().clone(), flaw);
                     return
                 }
             };
@@ -222,7 +232,7 @@ impl forest {
         }
         lex.bump();
     }
-    pub fn parse_expr_var(&mut self, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> Option<Box<root>> {
+    pub fn parse_expr_var(&mut self, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> Option<Box<body>> {
         lex.to_endline(flaw);
         lex.eat_termin(flaw);
         None
@@ -234,26 +244,42 @@ impl forest {
 //                                             TYPE STATEMENT                                           //
 //------------------------------------------------------------------------------------------------------//
 impl forest {
-    pub fn parse_type_stat(&mut self, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> Option<Box<root>> {
+    pub fn parse_type_stat(&mut self, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> Option<Box<stat>> {
         match lex.curr().key() {
-            _ => {
-                lex.bump();
-                if matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::squarO_)) {
-                    let deep = lex.curr().loc().deep() -1;
-                    loop {
-
-                        //TODO: finish types
-                        if ( matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::squarC_)) && lex.curr().loc().deep() == deep )
-                            || lex.curr().key().is_eof() { break }
-                        lex.bump();
-                    }
-                    lex.bump();
-                }
-                return None;
-            }
+            KEYWORD::types(TYPE::int_) => { return self.retypes_int_stat(lex, flaw) }
+            _ => { return self.retypes_all_stat(lex, flaw) }
         }
     }
-    pub fn retypes_int_stat(&mut self, l: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> Option<Box<root>> {
+    pub fn retypes_int_stat(&mut self, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> Option<Box<stat>> {
+        lex.log(">>>");
+        let typ = Some(Box::new(stat::Type(type_expr::Int)));
+        lex.bump();
+        if matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::squarO_)) {
+            let deep = lex.curr().loc().deep() -1;
+            loop {
+
+                //TODO: finish types
+                if ( matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::squarC_)) && lex.curr().loc().deep() == deep )
+                    || lex.curr().key().is_eof() { break }
+                lex.bump();
+            }
+            lex.bump();
+        }
+        typ
+    }
+    pub fn retypes_all_stat(&mut self, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> Option<Box<stat>> {
+        lex.bump();
+        if matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::squarO_)) {
+            let deep = lex.curr().loc().deep() -1;
+            loop {
+
+                //TODO: finish types
+                if ( matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::squarC_)) && lex.curr().loc().deep() == deep )
+                    || lex.curr().key().is_eof() { break }
+                lex.bump();
+            }
+            lex.bump();
+        }
         None
     }
 }

@@ -112,21 +112,25 @@ impl BAG {
         self.eat_termin(e)
     }
 
-    pub fn unexpect_report(&mut self, k: String, l: locate::LOCATION, e: &mut flaw::FLAW) {
+    pub fn report_unepected(&mut self, k: String, l: locate::LOCATION, e: &mut flaw::FLAW) {
         let s = String::from("expected:") + &k + " but recieved:" + &self.curr().key().to_string();
         self.report(s, l, e, flaw::flaw_type::parser(flaw::parser::parser_unexpected));
     }
-    pub fn missmatch_report(&mut self, k: String, l: locate::LOCATION, e: &mut flaw::FLAW) {
+    pub fn report_missmatch(&mut self, k: String, l: locate::LOCATION, e: &mut flaw::FLAW) {
         let s = String::from("expected:") + &k + " but recieved:" + &self.curr().key().to_string();
         self.report(s, l, e, flaw::flaw_type::parser(flaw::parser::parser_missmatch));
     }
-    pub fn space_rem_report(&mut self, k: String, l: locate::LOCATION, e: &mut flaw::FLAW) {
+    pub fn report_space_rem(&mut self, k: String, l: locate::LOCATION, e: &mut flaw::FLAW) {
         let s = String::from("space between:") + &k + " and:" + &self.curr().key().to_string() + " needs to be removed";
         self.report(s, l, e, flaw::flaw_type::parser(flaw::parser::parser_space_rem));
     }
-    pub fn space_add_report(&mut self, k: String, l: locate::LOCATION, e: &mut flaw::FLAW) {
+    pub fn report_space_add(&mut self, k: String, l: locate::LOCATION, e: &mut flaw::FLAW) {
         let s = String::from("space between:") + &k + " and:" + &self.curr().key().to_string() + " needs to be added";
         self.report(s, l, e, flaw::flaw_type::parser(flaw::parser::parser_space_add));
+    }
+    pub fn report_type_disbalance(&mut self, k: String, p: String, l: locate::LOCATION, e: &mut flaw::FLAW) {
+        let s = String::from("number of variables:") + &k + " and number of types:" + &p + " does not match";
+        self.report(s, l, e, flaw::flaw_type::parser(flaw::parser::parser_type_disbalance));
     }
 
     pub fn match_bracket(&self, k: KEYWORD, d: isize) -> bool {

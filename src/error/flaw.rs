@@ -26,6 +26,7 @@ pub enum parser {
     parser_missmatch,
     parser_space_rem,
     parser_space_add,
+    parser_type_disbalance,
 }
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum lexer {
@@ -114,6 +115,7 @@ impl fmt::Display for parser {
             parser::parser_missmatch => " MISSMATCHED ARGUMENTS ".to_string(),
             parser::parser_space_add => " MISSING BLANK SPACE ".to_string(),
             parser::parser_space_rem => " OBSOLETE BLANK SPACE ".to_string(),
+            parser::parser_type_disbalance => " DISBALANCE OF TYPES ".to_string(),
         };
         write!(f, "{}", value.on_red().to_string())
     }
