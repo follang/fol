@@ -28,8 +28,8 @@ impl BAG {
             self.curr = self.NEXT.get(0).unwrap_or(&stream::zero()).to_owned();
         }
     }
-    pub fn jump(&mut self, t: u8) {
-        for i in 0..t { self.bump() }
+    pub fn jump(&mut self) {
+        if self.curr().key().is_space() { self.bump(); self.bump() } else { self.bump() }
     }
 
     //current token
@@ -98,35 +98,35 @@ impl BAG {
         }
     }
 
-    pub fn to_end(&mut self, e: &mut flaw::FLAW) {
+    pub fn to_endline(&mut self, e: &mut flaw::FLAW) {
         let deep = self.curr().loc().deep();
         loop {
             if (self.curr().key().is_terminal() && self.curr().loc().deep() <= deep) || (self.curr().key().is_eof()) { break }
             self.bump()
         }
-        if self.curr().key().is_terminal() { self.bump() }
     }
 
     pub fn report(&mut self, s: String, l: locate::LOCATION, e: &mut flaw::FLAW, t: flaw::flaw_type) {
         e.report(t, &s, l);
-        self.to_end(e);
+        self.to_endline(e);
+        self.eat_termin(e)
     }
 
-    pub fn unexpect_report(&mut self, k: String, e: &mut flaw::FLAW) {
+    pub fn unexpect_report(&mut self, k: String, l: locate::LOCATION, e: &mut flaw::FLAW) {
         let s = String::from("expected:") + &k + " but recieved:" + &self.curr().key().to_string();
-        self.report(s, self.curr().loc().clone(), e, flaw::flaw_type::parser(flaw::parser::parser_unexpected));
+        self.report(s, l, e, flaw::flaw_type::parser(flaw::parser::parser_unexpected));
     }
-    pub fn missmatch_report(&mut self, k: String, e: &mut flaw::FLAW) {
+    pub fn missmatch_report(&mut self, k: String, l: locate::LOCATION, e: &mut flaw::FLAW) {
         let s = String::from("expected:") + &k + " but recieved:" + &self.curr().key().to_string();
-        self.report(s, self.curr().loc().clone(), e, flaw::flaw_type::parser(flaw::parser::parser_missmatch));
+        self.report(s, l, e, flaw::flaw_type::parser(flaw::parser::parser_missmatch));
     }
-    pub fn space_rem_report(&mut self, k: String, e: &mut flaw::FLAW) {
+    pub fn space_rem_report(&mut self, k: String, l: locate::LOCATION, e: &mut flaw::FLAW) {
         let s = String::from("space between:") + &k + " and:" + &self.curr().key().to_string() + " needs to be removed";
-        self.report(s, self.prev().loc().clone(), e, flaw::flaw_type::parser(flaw::parser::parser_space_rem));
+        self.report(s, l, e, flaw::flaw_type::parser(flaw::parser::parser_space_rem));
     }
-    pub fn space_add_report(&mut self, k: String, e: &mut flaw::FLAW) {
+    pub fn space_add_report(&mut self, k: String, l: locate::LOCATION, e: &mut flaw::FLAW) {
         let s = String::from("space between:") + &k + " and:" + &self.curr().key().to_string() + " needs to be added";
-        self.report(s, self.prev().loc().clone(), e, flaw::flaw_type::parser(flaw::parser::parser_space_add));
+        self.report(s, l, e, flaw::flaw_type::parser(flaw::parser::parser_space_add));
     }
 
     pub fn match_bracket(&self, k: KEYWORD, d: isize) -> bool {
@@ -159,7 +159,7 @@ use crate::scan::token::*;
 use crate::scan::token::KEYWORD::*;
 impl stream::STREAM {
     pub fn analyze(&mut self, e: &mut flaw::FLAW, prev: &SCAN) -> SCAN {
-        self.curr().log(">>");
+        // self.curr().log(">>");
         let mut result = self.curr().clone();
         // EOL to SPACE
         if self.curr().key().is_eol() &&
@@ -210,8 +210,8 @@ impl stream::STREAM {
             self.check_bracket_match(e);
         }
 
-        result.log(">>");
-        println!("-------------------------------------------------------------------------------------");
+        // result.log(">>");
+        // println!("-------------------------------------------------------------------------------------");
         self.bump();
         result
     }
@@ -255,7 +255,6 @@ impl stream::STREAM {
             result.set_key(literal(LITERAL::float_));
             result.combine(&self.next());
             self.bump();
-            // println!("{} {} {} {}", self.next().key(), self.nth(2).key().is_void(), self.nth(3).key().is_ident(), self.nth(4).key());
             if self.next().key().is_dot() && self.nth(2).key().is_eol() && self.nth(3).key().is_ident() {
                 return result
             } else if self.next().key().is_dot() && !self.nth(2).key().is_ident() {

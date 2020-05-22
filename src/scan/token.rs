@@ -606,7 +606,7 @@ impl fmt::Display for KEYWORD {
             form(FORM::ANY) => key[4].clone(),
             option(OPTION::ANY) => key[2].clone(),
         };
-        write!(f, "{}", value.black().on_white())
+        write!(f, "{}", value.black().bold().on_white())
     }
 }
 

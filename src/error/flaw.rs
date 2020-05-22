@@ -65,7 +65,7 @@ impl FLAW {
     }
     pub fn show(&mut self) {
         for (i, e) in self.el.iter().enumerate() {
-            println!("\n\n{}{:<2} : {}", " FLAW #".black().on_red(), (&i + 1).to_string().black().on_red(), e);
+            println!("\n\n{}{:<2} >> {}", " FLAW #".black().on_red(), (&i + 1).to_string().black().on_red(), e);
         }
         if self.el.len() != 0 {
             let num = if self.el.len() == 1 { "flaw" } else { "flaws" };
@@ -100,10 +100,10 @@ impl fmt::Display for flaw {
 impl fmt::Display for flaw_type {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let value: String = match self {
-            flaw_type::lexer(a) => " in lexing stage ".black().on_white().to_string() + a.to_string().as_str(),
-            flaw_type::parser(b) => " in parsing stage ".black().on_white().to_string() + b.to_string().as_str()
+            flaw_type::lexer(a) => " lexing stage ".black().bold().on_white().to_string() + ":" + a.to_string().as_str(),
+            flaw_type::parser(b) => " parsing stage ".black().bold().on_white().to_string() + ":" + b.to_string().as_str()
         };
-        write!(f, "{}", value.bold().on_red())
+        write!(f, "{}", value)
     }
 }
 
