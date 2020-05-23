@@ -24,14 +24,13 @@ impl<T> ID<T> {
     pub fn set_nod(&mut self, nod: T) { self.nod = nod }
 }
 
+pub type tree = ID<body>;
+
 #[derive(Clone, Debug)]
 pub enum body {
     expr(expr),
     stat(stat),
 }
-
-pub type tree = ID<body>;
-
 
 #[derive(Clone, Debug)]
 pub enum expr {
