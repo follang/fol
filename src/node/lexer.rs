@@ -120,8 +120,8 @@ impl BAG {
         let s = String::from("expected:") + &k + " but recieved:" + &self.curr().key().to_string();
         self.report(s, l, e, flaw::flaw_type::parser(flaw::parser::parser_missmatch));
     }
-    pub fn report_space_rem(&mut self, k: String, l: locate::LOCATION, e: &mut flaw::FLAW) {
-        let s = String::from("space between:") + &k + " and:" + &self.curr().key().to_string() + " needs to be removed";
+    pub fn report_space_rem(&mut self, l: locate::LOCATION, e: &mut flaw::FLAW) {
+        let s = String::from("space between:") + &self.prev().key().to_string() + " and:" + &self.next().key().to_string() + " needs to be removed";
         self.report(s, l, e, flaw::flaw_type::parser(flaw::parser::parser_space_rem));
     }
     pub fn report_space_add(&mut self, k: String, l: locate::LOCATION, e: &mut flaw::FLAW) {
@@ -132,10 +132,14 @@ impl BAG {
         let s = String::from("number of variables:") + &k + " and number of types:" + &p + " does not match";
         self.report(s, l, e, flaw::flaw_type::parser(flaw::parser::parser_type_disbalance));
     }
-
-    pub fn match_bracket(&self, k: KEYWORD, d: isize) -> bool {
-        if (matches!(self.curr().key(), k) && self.curr().loc().deep() == d) || self.curr().key().is_eof() { true } else { false }
+    pub fn report_many_unexpected(&mut self, k: String, l: locate::LOCATION, e: &mut flaw::FLAW) {
+        let s = String::from("unexpected:") + &self.curr().key().to_string() + " only those are valid: " + &k;
+        self.report(s, l, e, flaw::flaw_type::parser(flaw::parser::parser_many_unexpected));
     }
+
+    // pub fn match_bracket(&self, k: KEYWORD, d: isize) -> bool {
+        // if (matches!(self.curr().key(), k) && self.curr().loc().deep() == d) || self.curr().key().is_eof() { true } else { false }
+    // }
 
     pub fn log(&self, msg: &str) {
         println!(" {} [{:>2} {:>2}] \t past:{} \t prev:{} \t curr:{} \t next:{} \t peek:{}",
@@ -167,9 +171,11 @@ impl stream::STREAM {
         let mut result = self.curr().clone();
         // EOL to SPACE
         if self.curr().key().is_eol() &&
-            ( self.prev().key().is_nonterm() || self.next().key().is_dot() || prev.key().is_operator() )
-        {
+            ( self.prev().key().is_nonterm() || self.next().key().is_dot() || prev.key().is_operator() ){
             result.set_key(void(VOID::space_))
+        }else if matches!(self.curr().key(), KEYWORD::symbol(SYMBOL::semi_)) && self.next().key().is_void(){
+            result.combine(&self.next());
+                self.bump()
         }
 
         // numbers

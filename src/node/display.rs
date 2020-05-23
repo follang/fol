@@ -8,10 +8,6 @@ use std::fmt;
 
 use crate::node::ast::*;
 
-//------------------------------------------------------------------------------------------------------//
-//                                          DISPLAY PROPERTIES                                          //
-//------------------------------------------------------------------------------------------------------//
-
 impl fmt::Display for body {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match &self {
@@ -32,8 +28,6 @@ impl fmt::Display for stat {
         }
     }
 }
-
-// impl fmt::Display for std::option::Option<std::boxed::Box<stat>> {}
 
 
 impl fmt::Display for var_stat {

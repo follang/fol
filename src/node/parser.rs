@@ -83,7 +83,12 @@ impl forest {
             lex.bump();
 
             // option elements
-            if matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::squarO_)) {
+            if matches!(lex.look().key(), KEYWORD::symbol(SYMBOL::squarO_)) {
+                // ERROR if space betwwen 'var' and '['
+                if !(matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::squarO_))) {
+                    lex.report_space_rem(lex.curr().loc().clone(), flaw);
+                    return;
+                }
                 self.help_assign_options(&mut options, lex, flaw);
             }
             var_stat.set_options(options);
@@ -93,10 +98,6 @@ impl forest {
                 lex.report_space_add(lex.prev().key().to_string(), lex.prev().loc().clone(), flaw); return;
             } else { lex.eat_space(flaw); }
 
-            // ERROR if '[' because is a little late for that
-            if matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::squarO_)) {
-                lex.report_space_rem(lex.past().key().to_string(), lex.prev().loc().clone(), flaw); return;
-            }
 
             // group variables matching "("
             if matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::roundO_)) {
@@ -106,15 +107,9 @@ impl forest {
                     lex.eat_termin(flaw);
                 }
                 if matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::roundC_)) {
-                    lex.bump();
+                    lex.bump(); lex.eat_termin(flaw);
                 } else {
                     lex.report_unepected(KEYWORD::symbol(SYMBOL::roundC_).to_string(), lex.curr().loc().clone(), flaw);
-                    return
-                }
-                if lex.curr().key().is_terminal() {
-                    lex.eat_termin(flaw);
-                } else {
-                    lex.report_unepected(KEYWORD::void(VOID::endline_).to_string(), lex.curr().loc().clone(), flaw);
                     return
                 }
                 return
@@ -142,8 +137,14 @@ impl forest {
             }
         }
 
+
         // type separator ':'
-        if matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::colon_)) {
+        if matches!(lex.look().key(), KEYWORD::symbol(SYMBOL::colon_)) {
+            if !(matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::colon_))) {
+                lex.log(">>");
+                lex.report_space_rem(lex.curr().loc().clone(), flaw);
+                return
+            }
             lex.bump();
 
             // ERROR if not 'space'
@@ -192,16 +193,34 @@ impl forest {
         }
 
         // now is the equal
+        if !(matches!(lex.look().key(), KEYWORD::operator(OPERATOR::assign_))){
+            let msg = KEYWORD::symbol(SYMBOL::colon_).to_string()
+                + " or " + KEYWORD::symbol(SYMBOL::comma_).to_string().as_str()
+                + " or " + KEYWORD::operator(OPERATOR::assign_).to_string().as_str();
+            lex.report_many_unexpected(msg, lex.curr().loc().clone(), flaw);
+            return
+            lex.log(">>");
+        }
 
         var_stat.set_body(self.parse_expr_var(lex, flaw));
         self.trees.push(tree::new(body::stat(stat::Var(var_stat.clone())), c.clone()));
 
-        for (e, f) in list.iter().zip(types.iter()) {
-            let mut clo = var_stat.clone();
-            clo.set_ident(Box::new(e.clone()));
-            clo.set_retype(f.clone());
-            self.trees.push(tree::new(body::stat(stat::Var(clo)), c.clone()));
+        if list.len() == types.len() {
+            for (e, f) in list.iter().zip(types.iter()) {
+                let mut clo = var_stat.clone();
+                clo.set_ident(Box::new(e.clone()));
+                clo.set_retype(f.clone());
+                self.trees.push(tree::new(body::stat(stat::Var(clo)), c.clone()));
+            }
+        } else {
+            for e in list.iter() {
+                lex.log(">>");
+                let mut clo = var_stat.clone();
+                clo.set_ident(Box::new(e.clone()));
+                self.trees.push(tree::new(body::stat(stat::Var(clo)), c.clone()));
+            }
         }
+
     }
 
     pub fn help_assign_options(&mut self, v: &mut Vec<assign_opts>, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) {
@@ -251,35 +270,24 @@ impl forest {
         }
     }
     pub fn retypes_int_stat(&mut self, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> Option<Box<stat>> {
-        lex.log(">>>");
         let typ = Some(Box::new(stat::Type(type_expr::Int)));
         lex.bump();
-        if matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::squarO_)) {
-            let deep = lex.curr().loc().deep() -1;
-            loop {
-
-                //TODO: finish types
-                if ( matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::squarC_)) && lex.curr().loc().deep() == deep )
-                    || lex.curr().key().is_eof() { break }
-                lex.bump();
-            }
-            lex.bump();
-        }
+        self.temp_go_end_type(lex);
         typ
     }
     pub fn retypes_all_stat(&mut self, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> Option<Box<stat>> {
         lex.bump();
+        self.temp_go_end_type(lex);
+        None
+    }
+    /// TEMPOrARY GO TO END VAR
+    pub fn temp_go_end_type(&mut self, lex: &mut lexer::BAG) {
         if matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::squarO_)) {
             let deep = lex.curr().loc().deep() -1;
-            loop {
-
-                //TODO: finish types
-                if ( matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::squarC_)) && lex.curr().loc().deep() == deep )
-                    || lex.curr().key().is_eof() { break }
+            while !( ( matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::squarC_)) && lex.curr().loc().deep() == deep ) || lex.curr().key().is_eof() ) {
                 lex.bump();
             }
             lex.bump();
         }
-        None
     }
 }
