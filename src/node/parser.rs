@@ -70,6 +70,7 @@ impl forest {
     pub fn parse_stat_var(&mut self, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW, mut var_stat: &mut var_stat, group: bool) {
         let c = lex.curr().loc().clone();
         let mut options: Vec<assign_opts> = Vec::new();
+        let identifier: String;
         let mut list: Vec<String> = Vec::new();
         let mut types: Vec<Option<Box<stat>>> = Vec::new();
 
@@ -118,10 +119,11 @@ impl forest {
 
         //identifier
         if matches!(lex.curr().key(), KEYWORD::ident(_)) {
-            var_stat.set_ident(Box::new(lex.curr().con().clone()));
+            identifier = lex.curr().con().clone();
+            var_stat.set_ident(Box::new(identifier.clone()));
             lex.bump();
         } else {
-            lex.report_unepected(KEYWORD::ident(String::new()).to_string(), lex.curr().loc().clone(), flaw);
+            lex.report_unepected(KEYWORD::ident(None).to_string(), lex.curr().loc().clone(), flaw);
             return
         }
 
@@ -133,7 +135,8 @@ impl forest {
                 list.push(lex.curr().con().clone());
                 lex.jump();
             } else {
-                lex.report_unepected(KEYWORD::ident(String::new()).to_string(), lex.curr().loc().clone(), flaw);
+                lex.report_unepected(KEYWORD::ident(None).to_string(), lex.curr().loc().clone(), flaw);
+                return
             }
         }
 
@@ -141,7 +144,6 @@ impl forest {
         // type separator ':'
         if matches!(lex.look().key(), KEYWORD::symbol(SYMBOL::colon_)) {
             if !(matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::colon_))) {
-                lex.log(">>");
                 lex.report_space_rem(lex.curr().loc().clone(), flaw);
                 return
             }
@@ -170,6 +172,9 @@ impl forest {
             if matches!(lex.look().key(), KEYWORD::types(_)) {
                 lex.eat_space(flaw);
                 types.push(self.parse_type_stat(lex, flaw));
+            } else {
+                lex.report_unepected(KEYWORD::types(TYPE::ANY).to_string(), lex.curr().loc().clone(), flaw);
+                return
             }
         }
         // error if list variables and list type does not match
@@ -180,46 +185,53 @@ impl forest {
             // return
         }
 
-        // short version (no type)
-        if lex.look().key().is_terminal(){
-            self.trees.push(tree::new(body::stat(stat::Var(var_stat.clone())), c.clone()));
-            for e in list {
-                let mut clo = var_stat.clone();
-                clo.set_ident(Box::new(e));
-                self.trees.push(tree::new(body::stat(stat::Var(clo)), c.clone()));
+        // if equal or endline
+        if lex.look().key().is_terminal() || matches!(lex.look().key(), KEYWORD::operator(OPERATOR::assign_)) {
+            lex.eat_space(flaw);
+            if matches!(lex.look().key(), KEYWORD::operator(OPERATOR::assign_)){
+                var_stat.set_body(self.parse_expr_var(lex, flaw));
+            }
+            if list.len() == 0 {
+                var_stat.set_multi(None);
+                self.trees.push(tree::new(body::stat(stat::Var(var_stat.clone())), c.clone()));
+            } else {
+                var_stat.set_multi(Some((0, identifier.clone())));
+                self.trees.push(tree::new(body::stat(stat::Var(var_stat.clone())), c.clone()));
+                if types.len() != 0 {
+                    for ((i, e), f) in list.iter().enumerate().zip(types.iter()) {
+                        let mut clo = var_stat.clone();
+                        clo.set_multi(Some((i+1, identifier.clone())));
+                        clo.set_ident(Box::new(e.clone()));
+                        clo.set_retype(f.clone());
+                        self.trees.push(tree::new(body::stat(stat::Var(clo)), c.clone()));
+                    }
+                } else {
+                    for (i, e) in list.iter().enumerate() {
+                        let mut clo = var_stat.clone();
+                        clo.set_ident(Box::new(e.clone()));
+                        clo.set_multi(Some((i+1, identifier.clone())));
+                        self.trees.push(tree::new(body::stat(stat::Var(clo)), c.clone()));
+                    }
+                }
             }
             lex.eat_termin(flaw);
             return;
         }
 
-        // now is the equal
-        if !(matches!(lex.look().key(), KEYWORD::operator(OPERATOR::assign_))){
-            let msg = KEYWORD::symbol(SYMBOL::colon_).to_string()
-                + " or " + KEYWORD::symbol(SYMBOL::comma_).to_string().as_str()
-                + " or " + KEYWORD::operator(OPERATOR::assign_).to_string().as_str();
-            lex.report_many_unexpected(msg, lex.curr().loc().clone(), flaw);
-            return
-            lex.log(">>");
+        if matches!(lex.look().key(), KEYWORD::symbol(SYMBOL::equal_)) {
+            lex.report_space_add(lex.prev().key().to_string(), lex.prev().loc().clone(), flaw);
+            return;
         }
 
-        var_stat.set_body(self.parse_expr_var(lex, flaw));
-        self.trees.push(tree::new(body::stat(stat::Var(var_stat.clone())), c.clone()));
+        let msg = KEYWORD::symbol(SYMBOL::colon_).to_string()
+            + " or " + KEYWORD::symbol(SYMBOL::comma_).to_string().as_str()
+            + " or " + KEYWORD::symbol(SYMBOL::semi_).to_string().as_str()
+            + " or " + KEYWORD::operator(OPERATOR::assign_).to_string().as_str();
+        lex.report_many_unexpected(msg, lex.curr().loc().clone(), flaw);
+        return
+    }
 
-        if list.len() == types.len() {
-            for (e, f) in list.iter().zip(types.iter()) {
-                let mut clo = var_stat.clone();
-                clo.set_ident(Box::new(e.clone()));
-                clo.set_retype(f.clone());
-                self.trees.push(tree::new(body::stat(stat::Var(clo)), c.clone()));
-            }
-        } else {
-            for e in list.iter() {
-                lex.log(">>");
-                let mut clo = var_stat.clone();
-                clo.set_ident(Box::new(e.clone()));
-                self.trees.push(tree::new(body::stat(stat::Var(clo)), c.clone()));
-            }
-        }
+    pub fn help_var_multipe_assign(&mut self, list: &mut Vec<String>, types: &mut Vec<Option<Box<stat>>>, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW, ) {
 
     }
 
@@ -266,15 +278,41 @@ impl forest {
     pub fn parse_type_stat(&mut self, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> Option<Box<stat>> {
         match lex.curr().key() {
             KEYWORD::types(TYPE::int_) => { return self.retypes_int_stat(lex, flaw) }
+            KEYWORD::types(TYPE::str_) => { return self.retypes_str_stat(lex, flaw) }
+            KEYWORD::types(TYPE::flt_) => { return self.retypes_flt_stat(lex, flaw) }
+            KEYWORD::types(TYPE::rut_) => { return self.retypes_rut_stat(lex, flaw) }
             _ => { return self.retypes_all_stat(lex, flaw) }
         }
     }
+    // int
     pub fn retypes_int_stat(&mut self, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> Option<Box<stat>> {
         let typ = Some(Box::new(stat::Type(type_expr::Int)));
         lex.bump();
         self.temp_go_end_type(lex);
         typ
     }
+    // flt
+    pub fn retypes_flt_stat(&mut self, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> Option<Box<stat>> {
+        let typ = Some(Box::new(stat::Type(type_expr::Flt)));
+        lex.bump();
+        self.temp_go_end_type(lex);
+        typ
+    }
+    // rut
+    pub fn retypes_rut_stat(&mut self, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> Option<Box<stat>> {
+        let typ = Some(Box::new(stat::Type(type_expr::Rut)));
+        lex.bump();
+        self.temp_go_end_type(lex);
+        typ
+    }
+    // str
+    pub fn retypes_str_stat(&mut self, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> Option<Box<stat>> {
+        let typ = Some(Box::new(stat::Type(type_expr::Str)));
+        lex.bump();
+        self.temp_go_end_type(lex);
+        typ
+    }
+    // ANY
     pub fn retypes_all_stat(&mut self, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> Option<Box<stat>> {
         lex.bump();
         self.temp_go_end_type(lex);

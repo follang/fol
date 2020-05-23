@@ -15,7 +15,7 @@ use colored::Colorize;
 pub enum KEYWORD {
     assign(ASSIGN),
     option(OPTION),
-    ident(String),
+    ident(Option<String>),
     types(TYPE),
     form(FORM),
     literal(LITERAL),
@@ -593,7 +593,8 @@ impl fmt::Display for KEYWORD {
             option(OPTION::hid_) => key[1].clone() + &mid + "hid" + &pos,
             option(OPTION::stk_) => key[1].clone() + &mid + "stk" + &pos,
             option(OPTION::hep_) => key[1].clone() + &mid + "hep" + &pos,
-            ident(a) => key[2].clone() + &mid + a + &pos,
+            ident(Some(a)) => key[2].clone() + &mid + a + &pos,
+            ident(None) => key[2].clone(),
             comment => key[10].clone(),
             illegal => key[11].clone(),
             literal(LITERAL::ANY) => key[5].clone(),

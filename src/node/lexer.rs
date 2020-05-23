@@ -212,7 +212,7 @@ impl stream::STREAM {
 
         // set key content to indetifier
         else if matches!(self.curr().key(), KEYWORD::ident(_)) {
-            result.set_key(ident(self.curr().con().to_string()))
+            result.set_key(ident(Some(self.curr().con().to_string())))
         }
 
         // check bracket matching

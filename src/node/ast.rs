@@ -11,6 +11,11 @@ use crate::scan::locate;
 
 use crate::getset;
 
+#[derive(Clone, Debug)]
+pub struct Located<T> {
+    pub location: locate::LOCATION,
+    pub node: T,
+}
 
 #[derive(Clone, Debug)]
 pub enum body {
@@ -62,13 +67,14 @@ pub enum stat {
 pub struct var_stat{
     options: Vec<assign_opts>,
     ident: Box<String>,
+    multi: Option<(usize, String)>,
     retype: Option<Box<stat>>,
     body: Option<Box<body>>
 }
 
 impl var_stat {
     pub fn init() -> Self {
-        var_stat { options: Vec::new(), ident: Box::new(String::new()), retype: None, body: None }
+        var_stat { options: Vec::new(), ident: Box::new(String::new()), multi: None, retype: None, body: None }
     }
 }
 

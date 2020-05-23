@@ -335,7 +335,7 @@ impl SCAN {
             "f32" => { self.set_key(form(FORM::f32_)) },
             "f64" => { self.set_key(form(FORM::f64_)) },
             "fa" => { self.set_key(form(FORM::fa_)) },
-            _ => { self.set_key(ident(String::new())) },
+            _ => { self.set_key(ident(None)) },
         }
     }
 
