@@ -13,7 +13,6 @@ extern crate colored;
 // use crate::scan::reader;
 // use crate::scan::scanner;
 // use crate::scan::stream;
-// use crate::node::ast;
 use crate::node::lexer;
 use crate::node::parser;
 use crate::error::flaw;
@@ -49,7 +48,7 @@ fn main() {
     let mut forest = parser::new();
     forest.init(&mut tokens, &mut error);
     for tree in forest.trees {
-        println!("{}\t{}", tree.loc(), tree.node());
+        println!("{}\t{}", tree.clone().loc, tree.clone().nod);
         // println!("{:?}", tree.node());
     }
     error.show();

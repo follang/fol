@@ -68,7 +68,7 @@ impl forest {
 //------------------------------------------------------------------------------------------------------//
 impl forest {
     pub fn parse_stat_var(&mut self, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW, mut var_stat: &mut var_stat, group: bool) {
-        let c = lex.curr().loc().clone();
+        let loc = lex.curr().loc().clone();
         let mut options: Vec<assign_opts> = Vec::new();
         let identifier: String;
         let mut list: Vec<String> = Vec::new();
@@ -193,24 +193,24 @@ impl forest {
             }
             if list.len() == 0 {
                 var_stat.set_multi(None);
-                self.trees.push(tree::new(body::stat(stat::Var(var_stat.clone())), c.clone()));
+                self.trees.push(tree::new(loc.clone(), body::stat(stat::Var(var_stat.clone()))));
             } else {
                 var_stat.set_multi(Some((0, identifier.clone())));
-                self.trees.push(tree::new(body::stat(stat::Var(var_stat.clone())), c.clone()));
+                self.trees.push(tree::new(loc.clone(), body::stat(stat::Var(var_stat.clone()))));
                 if types.len() != 0 {
                     for ((i, e), f) in list.iter().enumerate().zip(types.iter()) {
                         let mut clo = var_stat.clone();
                         clo.set_multi(Some((i+1, identifier.clone())));
                         clo.set_ident(Box::new(e.clone()));
                         clo.set_retype(f.clone());
-                        self.trees.push(tree::new(body::stat(stat::Var(clo)), c.clone()));
+                        self.trees.push(tree::new(loc.clone(), body::stat(stat::Var(clo))));
                     }
                 } else {
                     for (i, e) in list.iter().enumerate() {
                         let mut clo = var_stat.clone();
                         clo.set_ident(Box::new(e.clone()));
                         clo.set_multi(Some((i+1, identifier.clone())));
-                        self.trees.push(tree::new(body::stat(stat::Var(clo)), c.clone()));
+                        self.trees.push(tree::new(loc.clone(), body::stat(stat::Var(clo))));
                     }
                 }
             }

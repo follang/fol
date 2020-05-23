@@ -12,9 +12,16 @@ use crate::scan::locate;
 use crate::getset;
 
 #[derive(Clone, Debug)]
-pub struct Located<T> {
-    pub location: locate::LOCATION,
-    pub node: T,
+pub struct ID<T> {
+    pub loc: locate::LOCATION,
+    pub nod: T,
+}
+impl<T> ID<T> {
+    pub fn new(loc: locate::LOCATION, nod: T) -> Self { ID{loc, nod} }
+    pub fn get_loc(self) -> locate::LOCATION { self.loc }
+    pub fn set_loc(&mut self, loc: locate::LOCATION) { self.loc = loc }
+    pub fn get_nod(self) -> T { self.nod }
+    pub fn set_nod(&mut self, nod: T) { self.nod = nod }
 }
 
 #[derive(Clone, Debug)]
@@ -23,22 +30,7 @@ pub enum body {
     stat(stat),
 }
 
-#[derive(Clone, Debug)]
-pub struct tree {
-    one: body,
-    loc: locate::LOCATION,
-}
-impl tree {
-    pub fn new(one: body, loc: locate::LOCATION) -> Self {
-        tree{one, loc}
-    }
-    pub fn node(&self) -> &body {
-        &self.one
-    }
-    pub fn loc(&self) -> &locate::LOCATION {
-        &self.loc
-    }
-}
+pub type tree = ID<body>;
 
 
 #[derive(Clone, Debug)]
