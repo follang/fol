@@ -6,7 +6,7 @@
 use std::fmt;
 // use getset::{CopyGetters, Getters, MutGetters, Setters};
 
-use crate::node::ast::*;
+use crate::parsing::ast::*;
 
 impl fmt::Display for body {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

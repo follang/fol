@@ -7,7 +7,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-getset = { path = "src/getset" }
+getset = { path = "src/helpers/getset" }
 # enumeq = { path = "src/enumeq" }
 regex = "1"
 colored = "1"

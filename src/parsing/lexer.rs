@@ -3,16 +3,16 @@
 #![allow(non_snake_case)]
 
 use std::fmt;
-// use crate::scan::scanner;
-// use crate::scan::reader;
-use crate::scan::locate;
-use crate::scan::token;
-use crate::scan::stream;
+// use crate::scanning::scanner;
+// use crate::scanning::reader;
+use crate::scanning::locate;
+use crate::scanning::token;
+use crate::scanning::stream;
 use crate::error::flaw;
 
 use crate::getset;
 
-use crate::scan::scanner::SCAN;
+use crate::scanning::scanner::SCAN;
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, GetSet)]
 pub struct BAG {
     PAST: Vec<SCAN>,
@@ -142,13 +142,13 @@ impl BAG {
     // }
 
     pub fn log(&self, msg: &str) {
-        println!(" {} [{:>2} {:>2}] \t past:{} \t prev:{} \t curr:{} \t next:{} \t peek:{}",
+        println!(" {} [{:>2} {:>2}] \t prev:{} \t curr:{} \t look:{} \t next:{} \t peek:{}",
             msg,
             self.curr().loc().row(),
             self.curr().loc().col(),
-            self.past().key(),
             self.prev().key(),
             self.curr().key(),
+            self.look().key(),
             self.next().key(),
             self.peek().key());
     }
@@ -163,8 +163,8 @@ impl BAG {
     }
 }
 
-use crate::scan::token::*;
-use crate::scan::token::KEYWORD::*;
+use crate::scanning::token::*;
+use crate::scanning::token::KEYWORD::*;
 impl stream::STREAM {
     pub fn analyze(&mut self, e: &mut flaw::FLAW, prev: &SCAN) -> SCAN {
         // self.curr().log(">>");
@@ -196,11 +196,13 @@ impl stream::STREAM {
 
         // operators
         else if  self.curr().key().is_symbol()
-            && ( self.next().key().is_void() || self.next().key().is_symbol() )
-            && ( self.prev().key().is_void() || self.prev().key().is_bracket() )
+            && ( matches!(self.curr().key(), KEYWORD::symbol(SYMBOL::semi_)))
+            && ( matches!(self.next().key(), KEYWORD::symbol(SYMBOL::semi_)))
+            && self.next().key().is_symbol() && ( self.prev().key().is_void() || self.prev().key().is_bracket() )
         {
-            result = self.make_operator(e);
+            result = self.make_multi_operator(e);
         }
+
 
         // options
         else if self.curr().key().is_symbol()
@@ -226,20 +228,13 @@ impl stream::STREAM {
         result
     }
 
-    pub fn make_operator(&mut self, e: &mut flaw::FLAW)  -> SCAN {
+    pub fn make_multi_operator(&mut self, e: &mut flaw::FLAW)  -> SCAN {
         let mut result = self.curr().clone();
             while self.next().key().is_symbol() && !self.next().key().is_bracket() {
                 result.combine(&self.next());
                 self.bump()
             }
         match result.con().as_str() {
-            "=" => { result.set_key(operator(OPERATOR::assign_)) }
-            "+" => { result.set_key(operator(OPERATOR::add_)) }
-            "-" => { result.set_key(operator(OPERATOR::subtract_)) }
-            "*" => { result.set_key(operator(OPERATOR::multiply_)) }
-            "/" => { result.set_key(operator(OPERATOR::divide_)) }
-            "<" => { result.set_key(operator(OPERATOR::less_)) }
-            ">" => { result.set_key(operator(OPERATOR::greater_)) }
             ":=" => { result.set_key(operator(OPERATOR::assign2_)) }
             "..." => { result.set_key(operator(OPERATOR::ddd_)) }
             ".." => { result.set_key(operator(OPERATOR::dd_)) }
@@ -255,7 +250,7 @@ impl stream::STREAM {
             "/=" => { result.set_key(operator(OPERATOR::divideeq_)) }
             "<<" => { result.set_key(operator(OPERATOR::shiftleft_)) }
             ">>" => { result.set_key(operator(OPERATOR::shiftright_)) }
-            _ => {}
+            _ => { result.set_key(operator(OPERATOR::ANY)) }
         }
         result
     }

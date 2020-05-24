@@ -1,7 +1,7 @@
 #![allow(unused_variables)]
 #![allow(dead_code)]
 
-use crate::scan::reader;
+use crate::scanning::reader;
 use std::fmt;
 
 /// A location somewhere in the sourcecode.

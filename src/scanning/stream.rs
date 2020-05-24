@@ -1,14 +1,14 @@
 #![allow(dead_code)]
 
 use std::fmt;
-use crate::scan::scanner;
-use crate::scan::reader;
-use crate::scan::token;
-use crate::scan::locate;
+use crate::scanning::scanner;
+use crate::scanning::reader;
+use crate::scanning::token;
+use crate::scanning::locate;
 use crate::error::flaw;
 use colored::Colorize;
 
-use crate::scan::scanner::SCAN;
+use crate::scanning::scanner::SCAN;
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct STREAM {
     vec: Vec<SCAN>,

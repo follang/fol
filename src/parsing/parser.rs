@@ -4,10 +4,10 @@
 #![allow(unused_macros)]
 
 use std::fmt;
-use crate::node::lexer;
-use crate::node::ast::*;
-use crate::scan::token::*;
-use crate::scan::locate;
+use crate::parsing::lexer;
+use crate::parsing::ast::*;
+use crate::scanning::token::*;
+use crate::scanning::locate;
 use crate::error::flaw;
 use colored::Colorize;
 
@@ -69,38 +69,13 @@ impl forest {
 impl forest {
     pub fn parse_stat_var(&mut self, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW, mut var_stat: &mut var_stat, group: bool) {
         let loc = lex.curr().loc().clone();
-        let mut options: Vec<assign_opts> = Vec::new();
+        let mut opts: Vec<assign_opts> = Vec::new();
         let identifier: String;
         let mut list: Vec<String> = Vec::new();
         let mut types: Vec<Option<Box<stat>>> = Vec::new();
 
         if !group {
-            // option symbol
-            if matches!(lex.curr().key(), KEYWORD::option(_)) {
-                self.help_assign_options(&mut options, lex, flaw);
-            }
-
-            // eat assign var
-            lex.bump();
-
-            // option elements
-            if matches!(lex.look().key(), KEYWORD::symbol(SYMBOL::squarO_)) {
-                // ERROR if space betwwen 'var' and '['
-                if !(matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::squarO_))) {
-                    lex.report_space_rem(lex.curr().loc().clone(), flaw);
-                    return;
-                }
-                self.help_assign_options(&mut options, lex, flaw);
-            }
-            var_stat.set_options(options);
-
-            // ERROR if not 'space'
-            if !(matches!(lex.curr().key(), KEYWORD::void(VOID::space_))) {
-                lex.report_space_add(lex.prev().key().to_string(), lex.prev().loc().clone(), flaw); return;
-            } else { lex.eat_space(flaw); }
-
-
-            // group variables matching "("
+            self.help_assign_assign(&mut opts, lex, flaw, var_stat);
             if matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::roundO_)) {
                 lex.bump(); lex.eat_space(flaw);
                 while matches!(lex.curr().key(), KEYWORD::ident(_)) {
@@ -117,78 +92,30 @@ impl forest {
             }
         }
 
-        //identifier
-        if matches!(lex.curr().key(), KEYWORD::ident(_)) {
-            identifier = lex.curr().con().clone();
-            var_stat.set_ident(Box::new(identifier.clone()));
-            lex.bump();
-        } else {
-            lex.report_unepected(KEYWORD::ident(None).to_string(), lex.curr().loc().clone(), flaw);
-            return
-        }
 
-        // list variables
-        while matches!(lex.look().key(), KEYWORD::symbol(SYMBOL::comma_)) {
-            lex.jump();
-            if matches!(lex.look().key(), KEYWORD::ident(_)) {
-                lex.eat_space(flaw);
-                list.push(lex.curr().con().clone());
-                lex.jump();
-            } else {
-                lex.report_unepected(KEYWORD::ident(None).to_string(), lex.curr().loc().clone(), flaw);
-                return
-            }
-        }
-
+        // identifier and indentifier list
+        identifier = lex.curr().con().clone();
+        if !self.help_assign_identifiers(&mut list, lex, flaw, var_stat) { return; } ;
 
         // type separator ':'
-        if matches!(lex.look().key(), KEYWORD::symbol(SYMBOL::colon_)) {
-            if !(matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::colon_))) {
-                lex.report_space_rem(lex.curr().loc().clone(), flaw);
-                return
-            }
-            lex.bump();
+        // identifier and indentifier list
+        if !self.help_assign_retypes(&mut types, lex, flaw, var_stat) { return; };
 
-            // ERROR if not 'space'
-            if !(matches!(lex.curr().key(), KEYWORD::void(VOID::space_))) {
-                lex.report_space_add(lex.prev().key().to_string(), lex.prev().loc().clone(), flaw);
-                return;
-            } else { lex.eat_space(flaw); }
-
-            // ERROR if not any 'type'
-            if !(matches!(lex.curr().key(), KEYWORD::types(_))) {
-                lex.report_unepected(KEYWORD::types(TYPE::ANY).to_string(), lex.curr().loc().clone(), flaw);
-                return;
-
-            // types
-            } else {
-                var_stat.set_retype(self.parse_type_stat(lex, flaw));
-            }
-        }
-
-        // list types
-        while matches!(lex.look().key(), KEYWORD::symbol(SYMBOL::comma_)) {
-            lex.jump();
-            if matches!(lex.look().key(), KEYWORD::types(_)) {
-                lex.eat_space(flaw);
-                types.push(self.parse_type_stat(lex, flaw));
-            } else {
-                lex.report_unepected(KEYWORD::types(TYPE::ANY).to_string(), lex.curr().loc().clone(), flaw);
-                return
-            }
-        }
         // error if list variables and list type does not match
         if list.len() != types.len() && types.len() != 0 {
             lex.report_type_disbalance((" ".to_string() + list.len().to_string().as_str() + " ").black().bold().on_white().to_string(),
             (" ".to_string() + types.len().to_string().as_str() + " ").black().bold().on_white().to_string(),
             lex.curr().loc().clone(), flaw);
-            // return
+            return
         }
 
         // if equal or endline
-        if lex.look().key().is_terminal() || matches!(lex.look().key(), KEYWORD::operator(OPERATOR::assign_)) {
+        if lex.look().key().is_terminal()
+            || matches!(lex.look().key(), KEYWORD::symbol(SYMBOL::equal_))
+            || matches!(lex.look().key(), KEYWORD::operator(OPERATOR::assign2_))
+        {
             lex.eat_space(flaw);
-            if matches!(lex.look().key(), KEYWORD::operator(OPERATOR::assign_)){
+            if !lex.look().key().is_terminal(){
                 var_stat.set_body(self.parse_expr_var(lex, flaw));
             }
             if list.len() == 0 {
@@ -218,24 +145,95 @@ impl forest {
             return;
         }
 
-        if matches!(lex.look().key(), KEYWORD::symbol(SYMBOL::equal_)) {
-            lex.report_space_add(lex.prev().key().to_string(), lex.prev().loc().clone(), flaw);
-            return;
-        }
+        lex.log(">>");
 
         let msg = KEYWORD::symbol(SYMBOL::colon_).to_string()
             + " or " + KEYWORD::symbol(SYMBOL::comma_).to_string().as_str()
             + " or " + KEYWORD::symbol(SYMBOL::semi_).to_string().as_str()
-            + " or " + KEYWORD::operator(OPERATOR::assign_).to_string().as_str();
+            + " or " + KEYWORD::symbol(SYMBOL::equal_).to_string().as_str()
+            + " or " + KEYWORD::operator(OPERATOR::assign2_).to_string().as_str();
         lex.report_many_unexpected(msg, lex.curr().loc().clone(), flaw);
         return
     }
 
-    pub fn help_var_multipe_assign(&mut self, list: &mut Vec<String>, types: &mut Vec<Option<Box<stat>>>, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW, ) {
+    pub fn help_assign_identifiers(&mut self, list: &mut Vec<String>, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW, var_stat: &mut var_stat) -> bool {
+        //identifier
+        if matches!(lex.curr().key(), KEYWORD::ident(_)) {
+            var_stat.set_ident(Box::new(lex.curr().con().clone()));
+            lex.bump();
+        } else {
+            lex.report_unepected(KEYWORD::ident(None).to_string(), lex.curr().loc().clone(), flaw);
+            return false
+        }
+        // list variables
+        while matches!(lex.look().key(), KEYWORD::symbol(SYMBOL::comma_)) {
+            lex.jump();
+            if matches!(lex.look().key(), KEYWORD::ident(_)) {
+                lex.eat_space(flaw);
+                list.push(lex.curr().con().clone());
+                lex.jump();
+            } else {
+                lex.report_unepected(KEYWORD::ident(None).to_string(), lex.curr().loc().clone(), flaw);
+                return false
+            }
+        }
+        return true
+    }
+    pub fn help_assign_retypes(&mut self, types: &mut Vec<Option<Box<stat>>>, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW, var_stat: &mut var_stat) -> bool {
+        if matches!(lex.look().key(), KEYWORD::symbol(SYMBOL::colon_)) {
+            lex.eat_space(flaw);
+            lex.bump();
+            lex.eat_space(flaw);
+            if matches!(lex.look().key(), KEYWORD::symbol(SYMBOL::equal_)) { return true }
 
+            // types
+            if matches!(lex.curr().key(), KEYWORD::types(_)) {
+                var_stat.set_retype(self.parse_type_stat(lex, flaw));
+            } else {
+                lex.report_unepected(KEYWORD::types(TYPE::ANY).to_string(), lex.curr().loc().clone(), flaw);
+                return false;
+            }
+
+            while matches!(lex.look().key(), KEYWORD::symbol(SYMBOL::comma_)) {
+                lex.jump();
+                if matches!(lex.look().key(), KEYWORD::types(_)) {
+                    lex.eat_space(flaw);
+                    types.push(self.parse_type_stat(lex, flaw));
+                } else {
+                    lex.report_unepected(KEYWORD::types(TYPE::ANY).to_string(), lex.curr().loc().clone(), flaw);
+                    return false
+                }
+            }
+        }
+        return true
     }
 
-    pub fn help_assign_options(&mut self, v: &mut Vec<assign_opts>, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) {
+    pub fn help_assign_assign(&mut self, opts: &mut Vec<assign_opts>, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW, var_stat: &mut var_stat) {
+            // option symbol
+            if matches!(lex.curr().key(), KEYWORD::option(_)) {
+                self.help_assign_var_options(opts, lex, flaw);
+            }
+            // eat the entry (var, fun, typ...)
+            lex.bump();
+            // option elements
+            if matches!(lex.look().key(), KEYWORD::symbol(SYMBOL::squarO_)) {
+                // ERROR if space betwwen 'var' and '['
+                if !(matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::squarO_))) {
+                    lex.report_space_rem(lex.curr().loc().clone(), flaw);
+                    return;
+                }
+                self.help_assign_var_options(opts, lex, flaw);
+            }
+            var_stat.set_options(opts.clone());
+
+            // ERROR if not 'space'
+            if !(matches!(lex.curr().key(), KEYWORD::void(VOID::space_))) {
+                lex.report_space_add(lex.prev().key().to_string(), lex.prev().loc().clone(), flaw);
+                return;
+            } else { lex.eat_space(flaw); }
+    }
+
+    pub fn help_assign_var_options(&mut self, v: &mut Vec<assign_opts>, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> bool {
         if matches!(lex.curr().key(), KEYWORD::option(_)) {
             let el;
             match lex.curr().key() {
@@ -246,12 +244,12 @@ impl forest {
                 KEYWORD::option(OPTION::hep_) => { el = assign_opts::Hep }
                 _ => {
                     lex.report_unepected(KEYWORD::option(OPTION::ANY).to_string(), lex.curr().loc().clone(), flaw);
-                    return
+                    return false
                 }
             };
             v.push(el);
             lex.bump();
-            return
+            return true
         }
         let deep = lex.curr().loc().deep() -1;
         lex.bump();
@@ -262,6 +260,7 @@ impl forest {
             lex.bump();
         }
         lex.bump();
+        return true
     }
     pub fn parse_expr_var(&mut self, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> Option<Box<body>> {
         lex.to_endline(flaw);

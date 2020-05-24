@@ -1,20 +1,21 @@
 #![allow(unused_imports)]
 #![allow(unused_variables)]
 
-mod scan;
-mod node;
+mod scanning;
+mod parsing;
 mod error;
 #[macro_use]
 extern crate getset;
 // extern crate enumeq;
 extern crate colored;
-// use crate::scan::token;
-// use crate::scan::parts;
-// use crate::scan::reader;
-// use crate::scan::scanner;
-// use crate::scan::stream;
-use crate::node::lexer;
-use crate::node::parser;
+// use crate::scanning::token;
+// use crate::scanning::parts;
+// use crate::scanning::reader;
+// use crate::scanning::scanner;
+// use crate::scanning::stream;
+use crate::parsing::lexer;
+use crate::parsing::parser;
+use crate::parsing::ast;
 use crate::error::flaw;
 
 
@@ -49,7 +50,7 @@ fn main() {
     forest.init(&mut tokens, &mut error);
     for tree in forest.trees {
         println!("{}\t{}", tree.clone().loc, tree.clone().nod);
-        // println!("{:?}", tree.node());
+        // println!("{:?}", tree.parsing());
     }
     error.show();
 }

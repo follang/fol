@@ -7,7 +7,7 @@
 use colored::Colorize;
 
 use std::fmt;
-use crate::scan::locate;
+use crate::scanning::locate;
 use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;

@@ -1,10 +1,10 @@
 #![allow(dead_code)]
 
 use std::fmt;
-use crate::scan::locate;
-use crate::scan::reader;
-use crate::scan::parts;
-use crate::scan::token;
+use crate::scanning::locate;
+use crate::scanning::reader;
+use crate::scanning::parts;
+use crate::scanning::token;
 
 pub fn is_eol(ch: &char) -> bool {
     return *ch == '\n' || *ch == '\r'
@@ -98,17 +98,17 @@ pub fn vectorize(red: &mut reader::READER) -> Vec<SCAN> {
     let mut loc = locate::LOCATION::init(&red);
     let mut part = parts::PART::init(&red.data);
     while part.not_eof() {
-        let token = part.scan(&mut loc);
+        let token = part.scanning(&mut loc);
         vec.push(token)
     }
     vec
 }
 
-use crate::scan::token::*;
-use crate::scan::token::KEYWORD::*;
+use crate::scanning::token::*;
+use crate::scanning::token::KEYWORD::*;
 impl parts::PART {
     /// Parses a token from the input string.
-    fn scan(&mut self, loc: &mut locate::LOCATION) -> SCAN {
+    fn scanning(&mut self, loc: &mut locate::LOCATION) -> SCAN {
         let mut result = SCAN::new(illegal, loc.clone(), String::new());
         result.loc.new_word();
         self.bump(&mut result.loc);

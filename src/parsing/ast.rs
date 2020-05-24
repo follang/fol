@@ -6,8 +6,8 @@
 use std::fmt;
 // use getset::{CopyGetters, Getters, MutGetters, Setters};
 
-use crate::scan::token;
-use crate::scan::locate;
+use crate::scanning::token;
+use crate::scanning::locate;
 
 use crate::getset;
 

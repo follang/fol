@@ -1,8 +1,8 @@
 #![allow(dead_code)]
 
 use std::str::Chars;
-use crate::scan::locate;
-use crate::scan::reader;
+use crate::scanning::locate;
+use crate::scanning::reader;
 use std::fmt;
 
 /// Peekable iterator over a char sequence.
