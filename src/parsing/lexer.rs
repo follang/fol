@@ -156,6 +156,7 @@ impl BAG {
         println!(" {} [{:>2} {:>2}] \t prev:{} \t curr:{} \t next:{}",
             msg,
             self.curr().loc().row(),
+
             self.curr().loc().col(),
             self.prev().key(),
             self.curr().key(),
@@ -173,9 +174,9 @@ impl stream::STREAM {
         if self.curr().key().is_eol() &&
             ( self.prev().key().is_nonterm() || self.next().key().is_dot() || prev.key().is_operator() ){
             result.set_key(void(VOID::space_))
-        }else if matches!(self.curr().key(), KEYWORD::symbol(SYMBOL::semi_)) && self.next().key().is_void(){
+        } else if matches!(self.curr().key(), KEYWORD::symbol(SYMBOL::semi_)) && self.next().key().is_void(){
             result.combine(&self.next());
-                self.bump()
+            self.bump();
         }
 
         // numbers

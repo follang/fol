@@ -20,6 +20,7 @@ pub fn new() -> forest {
     forest{ trees: Vec::new() }
 }
 
+
 impl forest {
     pub fn init(&mut self, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) {
         if !flaw.list().is_empty() { return; }
@@ -32,7 +33,7 @@ impl forest {
         if lex.prev().key().is_terminal() || lex.prev().key().is_eof() {
             if matches!( lex.curr().key(), KEYWORD::assign(ASSIGN::var_) ) ||
                 ( matches!( lex.curr().key(), KEYWORD::option(_) ) && matches!( lex.next().key(), KEYWORD::assign(ASSIGN::var_) ) ) {
-                parse_stat_var(self, lex, flaw, &mut var_stat::init(), false);
+                if let Ok(e) = parse_stat_var(self, lex, flaw, &mut var_stat::init(), false) {};
             // } else if matches!( l.curr().key(), KEYWORD::assign(ASSIGN::fun_) ) ||
                 // ( matches!( l.curr().key(), KEYWORD::symbol(_) ) && matches!( l.next().key(), KEYWORD::assign(ASSIGN::fun_) ) ) {
                 // self.parse_stat_var(l, flaw);
@@ -64,48 +65,36 @@ impl forest {
 
 
 //------------------------------------------------------------------------------------------------------//
-//                                             VAR STATEMENT                                            //
+//                                             VAR STATEMENT
 //------------------------------------------------------------------------------------------------------//
-fn parse_stat_var(forest: &mut forest, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW, var_stat: &mut var_stat, group: bool) {
+fn parse_stat_var(forest: &mut forest, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW, var_stat: &mut var_stat, recursive: bool) -> flaw::flw {
     let loc = lex.curr().loc().clone();
     let mut opts: Vec<assign_opts> = Vec::new();
     let identifier: String;
     let mut list: Vec<String> = Vec::new();
     let mut types: Vec<Option<Box<stat>>> = Vec::new();
 
-    if !group {
-        if !help_assign_definition(&mut opts, lex, flaw, var_stat, help_assign_var_options) { return; };
+    if !recursive {
+        if let Err(e) = help_assign_definition(&mut opts, lex, flaw, var_stat, help_assign_var_options) { return Err(e); };
         if matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::roundO_)) {
-            lex.bump(); lex.eat_space(flaw);
-            while matches!(lex.curr().key(), KEYWORD::ident(_)) {
-                parse_stat_var(forest, lex, flaw, var_stat, true);
-                lex.eat_termin(flaw);
-            }
-            if matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::roundC_)) {
-                lex.bump(); lex.eat_termin(flaw);
-            } else {
-                lex.report_unepected(KEYWORD::symbol(SYMBOL::roundC_).to_string(), lex.curr().loc().clone(), flaw);
-                return
-            }
-            return
+            if let Err(e) = help_assign_recursive(forest, lex, flaw, var_stat, parse_stat_var) { return Err(e); };
+            return Ok(())
         }
     }
 
-
     // identifier and indentifier list
     identifier = lex.curr().con().clone();
-    if !help_assign_identifiers(&mut list, lex, flaw, var_stat) { return; } ;
+    if let Err(e) = help_assign_identifiers(&mut list, lex, flaw, var_stat) { return Err(e); };
 
-    // type separator ':'
-    // identifier and indentifier list
-    if !help_assign_retypes(&mut types, lex, flaw, var_stat) { return; };
+    // types and types list
+    if let Err(e) = help_assign_retypes(&mut types, lex, flaw, var_stat) { return Err(e); };
 
     // error if list variables and list type does not match
     if list.len() != types.len() && types.len() != 0 {
         lex.report_type_disbalance((" ".to_string() + list.len().to_string().as_str() + " ").black().bold().on_white().to_string(),
         (" ".to_string() + types.len().to_string().as_str() + " ").black().bold().on_white().to_string(),
         lex.curr().loc().clone(), flaw);
-        return
+        return Err(flaw::flaw_type::parser(flaw::parser::parser_missmatch))
     }
 
     // if equal or endline
@@ -141,7 +130,7 @@ fn parse_stat_var(forest: &mut forest, lex: &mut lexer::BAG, flaw: &mut flaw::FL
             }
         }
         lex.eat_termin(flaw);
-        return;
+        return Ok(());
     }
 
     let msg = KEYWORD::symbol(SYMBOL::colon_).to_string()
@@ -150,7 +139,7 @@ fn parse_stat_var(forest: &mut forest, lex: &mut lexer::BAG, flaw: &mut flaw::FL
         + " or " + KEYWORD::symbol(SYMBOL::equal_).to_string().as_str()
         + " or " + KEYWORD::operator(OPERATOR::assign2_).to_string().as_str();
     lex.report_many_unexpected(msg, lex.curr().loc().clone(), flaw);
-    return
+    return Err(flaw::flaw_type::parser(flaw::parser::parser_unexpected))
 }
 
 fn parse_expr_var(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> Option<Box<body>> {
@@ -159,7 +148,7 @@ fn parse_expr_var(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> Option<Box<bod
     None
 }
 
-fn help_assign_var_options(v: &mut Vec<assign_opts>, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> bool {
+fn help_assign_var_options(v: &mut Vec<assign_opts>, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> flaw::flw {
     if matches!(lex.curr().key(), KEYWORD::option(_)) {
         let el;
         match lex.curr().key() {
@@ -170,12 +159,12 @@ fn help_assign_var_options(v: &mut Vec<assign_opts>, lex: &mut lexer::BAG, flaw:
             KEYWORD::option(OPTION::hep_) => { el = assign_opts::Hep }
             _ => {
                 lex.report_unepected(KEYWORD::option(OPTION::ANY).to_string(), lex.curr().loc().clone(), flaw);
-                return false
+                return Err(flaw::flaw_type::parser(flaw::parser::parser_unexpected))
             }
         };
         v.push(el);
         lex.bump();
-        return true
+        return Ok(())
     }
     let deep = lex.curr().loc().deep() -1;
     lex.bump();
@@ -186,13 +175,30 @@ fn help_assign_var_options(v: &mut Vec<assign_opts>, lex: &mut lexer::BAG, flaw:
         lex.bump();
     }
     lex.bump();
-    return true
+    Ok(())
 }
 
 //------------------------------------------------------------------------------------------------------//
 //                                                 HELPERS                                              //
 //------------------------------------------------------------------------------------------------------//
-fn help_assign_identifiers(list: &mut Vec<String>, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW, var_stat: &mut var_stat) -> bool {
+fn help_assign_recursive(forest: &mut forest, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW, var_stat: &mut var_stat,
+    assign: fn(&mut forest, &mut lexer::BAG, &mut flaw::FLAW, &mut var_stat, bool) -> flaw::flw ) -> flaw::flw {
+    if matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::roundO_)) {
+        lex.bump(); lex.eat_space(flaw);
+        while matches!(lex.curr().key(), KEYWORD::ident(_)) {
+            if let Err(e) = assign(forest, lex, flaw, var_stat, true) { return Err(e) };
+            lex.eat_termin(flaw);
+        }
+        if matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::roundC_)) {
+            lex.bump(); lex.eat_termin(flaw);
+        } else {
+            lex.report_unepected(KEYWORD::symbol(SYMBOL::roundC_).to_string(), lex.curr().loc().clone(), flaw);
+            return Err(flaw::flaw_type::parser(flaw::parser::parser_unexpected))
+        }
+    }
+    Ok(())
+}
+fn help_assign_identifiers(list: &mut Vec<String>, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW, var_stat: &mut var_stat) -> flaw::flw {
     //identifier
     if matches!(lex.look().key(), KEYWORD::ident(_)) {
         lex.eat_space(flaw);
@@ -200,7 +206,7 @@ fn help_assign_identifiers(list: &mut Vec<String>, lex: &mut lexer::BAG, flaw: &
         lex.bump();
     } else {
         lex.report_unepected(KEYWORD::ident(None).to_string(), lex.curr().loc().clone(), flaw);
-        return false
+        return Err(flaw::flaw_type::parser(flaw::parser::parser_unexpected))
     }
     // list variables
     while matches!(lex.look().key(), KEYWORD::symbol(SYMBOL::comma_)) {
@@ -211,25 +217,25 @@ fn help_assign_identifiers(list: &mut Vec<String>, lex: &mut lexer::BAG, flaw: &
             lex.jump();
         } else {
             lex.report_unepected(KEYWORD::ident(None).to_string(), lex.curr().loc().clone(), flaw);
-            return false
+            return Err(flaw::flaw_type::parser(flaw::parser::parser_unexpected))
         }
     }
-    return true
+    Ok(())
 }
 
-fn help_assign_retypes(types: &mut Vec<Option<Box<stat>>>, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW, var_stat: &mut var_stat) -> bool {
+fn help_assign_retypes(types: &mut Vec<Option<Box<stat>>>, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW, var_stat: &mut var_stat) -> flaw::flw {
     if matches!(lex.look().key(), KEYWORD::symbol(SYMBOL::colon_)) {
         lex.eat_space(flaw);
         lex.bump();
         lex.eat_space(flaw);
-        if matches!(lex.look().key(), KEYWORD::symbol(SYMBOL::equal_)) { return true }
+        if matches!(lex.look().key(), KEYWORD::symbol(SYMBOL::equal_)) { return Ok(()) }
 
         // types
         if matches!(lex.curr().key(), KEYWORD::types(_)) {
             var_stat.set_retype(parse_type_stat(lex, flaw));
         } else {
             lex.report_unepected(KEYWORD::types(TYPE::ANY).to_string(), lex.curr().loc().clone(), flaw);
-            return false;
+            return Err(flaw::flaw_type::parser(flaw::parser::parser_unexpected))
         }
 
         while matches!(lex.look().key(), KEYWORD::symbol(SYMBOL::comma_)) {
@@ -239,19 +245,18 @@ fn help_assign_retypes(types: &mut Vec<Option<Box<stat>>>, lex: &mut lexer::BAG,
                 types.push(parse_type_stat(lex, flaw));
             } else {
                 lex.report_unepected(KEYWORD::types(TYPE::ANY).to_string(), lex.curr().loc().clone(), flaw);
-                return false
+                return Err(flaw::flaw_type::parser(flaw::parser::parser_unexpected))
             }
         }
     }
-    return true
+    Ok(())
 }
 
 fn help_assign_definition(opts: &mut Vec<assign_opts>, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW, var_stat: &mut var_stat,
-    assign: fn(&mut Vec<assign_opts>, &mut lexer::BAG, &mut flaw::FLAW) -> bool
-    ) -> bool {
+    assign: fn(&mut Vec<assign_opts>, &mut lexer::BAG, &mut flaw::FLAW) -> flaw::flw ) -> flaw::flw {
         // option symbol
         if matches!(lex.curr().key(), KEYWORD::option(_)) {
-            assign(opts, lex, flaw);
+            if let Err(e) = assign(opts, lex, flaw) { return Err(e) };
         }
         // eat the entry (var, fun, typ...)
         lex.bump();
@@ -260,19 +265,19 @@ fn help_assign_definition(opts: &mut Vec<assign_opts>, lex: &mut lexer::BAG, fla
             // ERROR if space betwwen 'var' and '['
             if !(matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::squarO_))) {
                 lex.report_space_rem(lex.curr().loc().clone(), flaw);
-                return false;
+                return Err(flaw::flaw_type::parser(flaw::parser::parser_space_rem))
             }
-            assign(opts, lex, flaw);
+            if let Err(e) = assign(opts, lex, flaw) { return Err(e) };
         }
         var_stat.set_options(opts.clone());
 
         // ERROR if not 'space'
         if !(matches!(lex.curr().key(), KEYWORD::void(VOID::space_))) {
             lex.report_space_add(lex.prev().key().to_string(), lex.prev().loc().clone(), flaw);
-            return false;
+            return Err(flaw::flaw_type::parser(flaw::parser::parser_space_add))
         }
         lex.eat_space(flaw);
-        return true
+        Ok(())
 }
 
 

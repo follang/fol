@@ -13,6 +13,8 @@ use std::io::BufRead;
 use std::io::BufReader;
 use std::path::Path;
 
+pub type flw = Result<(), flaw_type>;
+
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum flaw_type {
