@@ -50,6 +50,7 @@ pub enum stat_type {
     Fun(fun_stat),
     Typ(type_expr),
     Ident(String),
+    Opts(assign_opts),
     If,
     When,
     Loop,
@@ -58,7 +59,7 @@ pub enum stat_type {
 
 #[derive(Clone, Debug, GetSet)]
 pub struct var_stat{
-    options: Vec<ID<assign_opts>>,
+    options: Vec<stat>,
     ident: stat,
     multi: Option<(usize, String)>,
     retype: Option<stat>,
@@ -70,10 +71,9 @@ impl var_stat {
         var_stat { options: Vec::new(), ident: stat::new(locate::LOCATION::def(), stat_type::Ident(String::new())), multi: None, retype: None, body: None }
     }
 }
-pub type op = ID<assign_opts>;
 #[derive(Clone, Debug)]
 pub struct fun_stat {
-    options: Vec<op>,
+    options: Vec<stat>,
     implement: Option<Box<tree>>,
     ident: Box<String>,
     generics: Option<Box<tree>>,

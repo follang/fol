@@ -30,6 +30,7 @@ impl fmt::Display for stat_type {
             stat_type::Typ(a) => {write!(f, "{}", a)},
             stat_type::Var(a) => {write!(f, "{}", a)},
             stat_type::Ident(a) => {write!(f, "{}", a)},
+            stat_type::Opts(a) => {write!(f, "{}", a)},
             _ => { write!(f, "---") }
         }
     }

@@ -71,7 +71,7 @@ impl forest {
 //------------------------------------------------------------------------------------------------------//
 fn parse_stat_var(forest: &mut forest, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW, var_stat: &mut var_stat, recursive: bool) -> Con<()> {
     let loc = lex.curr().loc().clone();
-    let mut opts: Vec<op> = Vec::new();
+    let mut opts: Vec<stat> = Vec::new();
     let mut ids: Vec<ID<String>> = Vec::new();
     let mut typ: Vec<stat> = Vec::new();
 
@@ -153,7 +153,7 @@ fn parse_expr_var(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> Option<tree> {
     Some(tree::stat(stat::new(lex.curr().loc().clone(), stat_type::Illegal)))
 }
 
-fn help_assign_var_options(v: &mut Vec<op>, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> Con<()> {
+fn help_assign_var_options(v: &mut Vec<stat>, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> Con<()> {
     if matches!(lex.curr().key(), KEYWORD::option(_)) {
         let el;
         match lex.curr().key() {
@@ -167,7 +167,7 @@ fn help_assign_var_options(v: &mut Vec<op>, lex: &mut lexer::BAG, flaw: &mut fla
                 return Err(flaw::flaw_type::parser(flaw::parser::parser_unexpected))
             }
         };
-        v.push(op::new(lex.curr().loc().clone(), el));
+        v.push(stat::new(lex.curr().loc().clone(), stat_type::Opts(el)));
         lex.bump();
         return Ok(())
     }
@@ -241,8 +241,8 @@ fn help_assign_retypes(types: &mut Vec<stat>, lex: &mut lexer::BAG, flaw: &mut f
     Ok(())
 }
 
-fn help_assign_definition(opts: &mut Vec<op>, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW, var_stat: &mut var_stat,
-    assign: fn(&mut Vec<op>, &mut lexer::BAG, &mut flaw::FLAW) -> Con<()> ) -> Con<()> {
+fn help_assign_definition(opts: &mut Vec<stat>, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW, var_stat: &mut var_stat,
+    assign: fn(&mut Vec<stat>, &mut lexer::BAG, &mut flaw::FLAW) -> Con<()> ) -> Con<()> {
         // option symbol
         if matches!(lex.curr().key(), KEYWORD::option(_)) {
             assign(opts, lex, flaw)?;
