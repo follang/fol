@@ -108,8 +108,8 @@ impl BAG {
 
     pub fn report(&mut self, s: String, l: locate::LOCATION, e: &mut flaw::FLAW, t: flaw::flaw_type) {
         e.report(t, &s, l);
-        self.to_endline(e);
-        self.eat_termin(e)
+        // self.to_endline(e);
+        // self.eat_termin(e)
     }
 
     pub fn report_unepected(&mut self, k: String, l: locate::LOCATION, e: &mut flaw::FLAW) {
@@ -131,6 +131,10 @@ impl BAG {
     pub fn report_type_disbalance(&mut self, k: String, p: String, l: locate::LOCATION, e: &mut flaw::FLAW) {
         let s = String::from("number of variables:") + &k + " and number of types:" + &p + " does not match";
         self.report(s, l, e, flaw::flaw_type::parser(flaw::parser::parser_type_disbalance));
+    }
+    pub fn report_no_type(&mut self, p: String, l: locate::LOCATION, e: &mut flaw::FLAW) {
+        let s = String::from("type annotation needed, conider giving ") + &p + " a type annottion";
+        self.report(s, l, e, flaw::flaw_type::parser(flaw::parser::parser_no_type));
     }
     pub fn report_many_unexpected(&mut self, k: String, l: locate::LOCATION, e: &mut flaw::FLAW) {
         let s = String::from("unexpected:") + &self.curr().key().to_string() + " only those are valid: " + &k;

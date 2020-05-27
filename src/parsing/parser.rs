@@ -26,14 +26,14 @@ impl forest {
         if !flaw.list().is_empty() { return; }
         let f = self::new();
         while lex.not_empty() {
-            self.parse_stat(lex, flaw);
+            if let Err(e) = self.parse_stat(lex, flaw) { lex.to_endline(flaw); lex.eat_termin(flaw); };
         }
     }
-    pub fn parse_stat(&mut self, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) {
+    pub fn parse_stat(&mut self, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> flaw::flw {
         if lex.prev().key().is_terminal() || lex.prev().key().is_eof() {
             if matches!( lex.curr().key(), KEYWORD::assign(ASSIGN::var_) ) ||
                 ( matches!( lex.curr().key(), KEYWORD::option(_) ) && matches!( lex.next().key(), KEYWORD::assign(ASSIGN::var_) ) ) {
-                if let Ok(e) = parse_stat_var(self, lex, flaw, &mut var_stat::init(), false) {};
+                parse_stat_var(self, lex, flaw, &mut var_stat::init(), false)?;
             // } else if matches!( l.curr().key(), KEYWORD::assign(ASSIGN::fun_) ) ||
                 // ( matches!( l.curr().key(), KEYWORD::symbol(_) ) && matches!( l.next().key(), KEYWORD::assign(ASSIGN::fun_) ) ) {
                 // self.parse_stat_var(l, flaw);
@@ -60,6 +60,7 @@ impl forest {
                 lex.eat_termin(flaw);
             }
         }
+        Ok(())
     }
 }
 
@@ -75,25 +76,24 @@ fn parse_stat_var(forest: &mut forest, lex: &mut lexer::BAG, flaw: &mut flaw::FL
     let mut types: Vec<Option<Box<stat>>> = Vec::new();
 
     if !recursive {
-        if let Err(e) = help_assign_definition(&mut opts, lex, flaw, var_stat, help_assign_var_options) { return Err(e); };
-        if matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::roundO_)) {
-            if let Err(e) = help_assign_recursive(forest, lex, flaw, var_stat, parse_stat_var) { return Err(e); };
+        help_assign_definition(&mut opts, lex, flaw, var_stat, help_assign_var_options)?;
+        if matches!(lex.look().key(), KEYWORD::symbol(SYMBOL::roundO_)) {
+            help_assign_recursive(forest, lex, flaw, var_stat, parse_stat_var)?;
             return Ok(())
         }
     }
 
     // identifier and indentifier list
     identifier = lex.curr().con().clone();
-    if let Err(e) = help_assign_identifiers(&mut list, lex, flaw, var_stat) { return Err(e); };
+    help_assign_identifiers(&mut list, lex, flaw, var_stat)?;
 
     // types and types list
-    if let Err(e) = help_assign_retypes(&mut types, lex, flaw, var_stat) { return Err(e); };
+    help_assign_retypes(&mut types, lex, flaw, var_stat)?;
 
     // error if list variables and list type does not match
     if list.len() != types.len() && types.len() != 0 {
         lex.report_type_disbalance((" ".to_string() + list.len().to_string().as_str() + " ").black().bold().on_white().to_string(),
-        (" ".to_string() + types.len().to_string().as_str() + " ").black().bold().on_white().to_string(),
-        lex.curr().loc().clone(), flaw);
+        (" ".to_string() + types.len().to_string().as_str() + " ").black().bold().on_white().to_string(), loc, flaw);
         return Err(flaw::flaw_type::parser(flaw::parser::parser_missmatch))
     }
 
@@ -110,6 +110,10 @@ fn parse_stat_var(forest: &mut forest, lex: &mut lexer::BAG, flaw: &mut flaw::FL
             var_stat.set_multi(None);
             forest.trees.push(tree::new(loc.clone(), body::stat(stat::Var(var_stat.clone()))));
         } else {
+            // if let None = var_stat.get_retype() {
+                // lex.report_no_type(lex.past().key().to_string(), lex.past().loc().clone(), flaw);
+                // return Err(flaw::flaw_type::parser(flaw::parser::parser_no_type))
+            // }
             var_stat.set_multi(Some((0, identifier.clone())));
             forest.trees.push(tree::new(loc.clone(), body::stat(stat::Var(var_stat.clone()))));
             if types.len() != 0 {
@@ -166,11 +170,11 @@ fn help_assign_var_options(v: &mut Vec<assign_opts>, lex: &mut lexer::BAG, flaw:
         lex.bump();
         return Ok(())
     }
-    let deep = lex.curr().loc().deep() -1;
+    let deep = lex.curr().loc().deep();
     lex.bump();
     loop {
         //TODO: finish options
-        if ( matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::squarC_)) && lex.curr().loc().deep() == deep )
+        if ( matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::squarC_)) && lex.curr().loc().deep() < deep )
             || lex.curr().key().is_eof() { break }
         lex.bump();
     }
@@ -186,7 +190,7 @@ fn help_assign_recursive(forest: &mut forest, lex: &mut lexer::BAG, flaw: &mut f
     if matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::roundO_)) {
         lex.bump(); lex.eat_space(flaw);
         while matches!(lex.curr().key(), KEYWORD::ident(_)) {
-            if let Err(e) = assign(forest, lex, flaw, var_stat, true) { return Err(e) };
+            assign(forest, lex, flaw, var_stat, true)?;
             lex.eat_termin(flaw);
         }
         if matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::roundC_)) {
@@ -256,7 +260,7 @@ fn help_assign_definition(opts: &mut Vec<assign_opts>, lex: &mut lexer::BAG, fla
     assign: fn(&mut Vec<assign_opts>, &mut lexer::BAG, &mut flaw::FLAW) -> flaw::flw ) -> flaw::flw {
         // option symbol
         if matches!(lex.curr().key(), KEYWORD::option(_)) {
-            if let Err(e) = assign(opts, lex, flaw) { return Err(e) };
+            assign(opts, lex, flaw)?;
         }
         // eat the entry (var, fun, typ...)
         lex.bump();
@@ -267,7 +271,7 @@ fn help_assign_definition(opts: &mut Vec<assign_opts>, lex: &mut lexer::BAG, fla
                 lex.report_space_rem(lex.curr().loc().clone(), flaw);
                 return Err(flaw::flaw_type::parser(flaw::parser::parser_space_rem))
             }
-            if let Err(e) = assign(opts, lex, flaw) { return Err(e) };
+            assign(opts, lex, flaw)?;
         }
         var_stat.set_options(opts.clone());
 
@@ -554,8 +558,10 @@ fn retypes_all_stat(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> Option<Box<s
 /// TEMPOrARY GO TO END VAR
 fn temp_go_end_type(lex: &mut lexer::BAG) {
     if matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::squarO_)) {
-        let deep = lex.curr().loc().deep() -1;
-        while !( ( matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::squarC_)) && lex.curr().loc().deep() == deep ) || lex.curr().key().is_eof() ) {
+        let deep = lex.curr().loc().deep();
+        while !( ( matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::squarC_))
+            && lex.curr().loc().deep() < deep )
+            || lex.curr().key().is_eof() ) {
             lex.bump();
         }
         lex.bump();

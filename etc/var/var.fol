@@ -11,7 +11,7 @@ var five: rut[(x: int): int] = { <expression> }
 var[] seven , seven2, seven3: vec[exp,imu], flt[imu, exp], int
 !var[] eight, eight2: bol[exp,imu] , rut[(x: int): int]
 var nine ;-var[] ten ,ten2 , ten3
-var eleven = <expression>; + var gettit
+var eleven = <expression>; +var gettit
 
 
 fun one(two: int): int = { <expression> }
