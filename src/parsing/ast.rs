@@ -14,26 +14,25 @@ use crate::getset;
 #[derive(Clone, Debug)]
 pub struct ID<T> {
     pub loc: locate::LOCATION,
-    pub nod: T,
+    pub nod: Box<T>,
 }
 impl<T> ID<T> {
-    pub fn new(loc: locate::LOCATION, nod: T) -> Self { ID{loc, nod} }
-    pub fn get(self) -> T { self.nod }
-    pub fn set(&mut self, nod: T) { self.nod = nod }
+    pub fn new(loc: locate::LOCATION, nod: T) -> Self { ID{loc, nod: Box::new(nod)} }
+    pub fn get(self) -> T { *self.nod }
+    pub fn set(&mut self, nod: T) { self.nod = Box::new(nod) }
     pub fn get_loc(self) -> locate::LOCATION { self.loc }
     pub fn set_loc(&mut self, loc: locate::LOCATION) { self.loc = loc }
 }
 
-pub type tree = ID<body>;
-
 #[derive(Clone, Debug)]
-pub enum body {
+pub enum tree {
     expr(expr),
     stat(stat),
 }
 
+pub type expr = ID<expr_type>;
 #[derive(Clone, Debug)]
-pub enum expr {
+pub enum expr_type {
     Comment,
     Ident,
     Number,
@@ -42,14 +41,16 @@ pub enum expr {
     Binary(binary_expr),
 }
 
+pub type stat = ID<stat_type>;
 #[derive(Clone, Debug)]
-pub enum stat {
+pub enum stat_type {
     Use,
     Def,
     Var(var_stat),
     Fun(fun_stat),
     Typ(type_expr),
     Ident(String),
+    Opts(assign_opts),
     If,
     When,
     Loop,
@@ -58,28 +59,27 @@ pub enum stat {
 
 #[derive(Clone, Debug, GetSet)]
 pub struct var_stat{
-    options: Vec<ID<assign_opts>>,
-    ident: ID<String>,
+    options: Vec<stat>,
+    ident: stat,
     multi: Option<(usize, String)>,
-    retype: Option<Box<stat>>,
-    body: Option<Box<body>>
+    retype: Option<stat>,
+    body: Option<tree>
 }
 
 impl var_stat {
     pub fn init() -> Self {
-        var_stat { options: Vec::new(), ident: ID::new(locate::LOCATION::def(), String::new()), multi: None, retype: None, body: None }
+        var_stat { options: Vec::new(), ident: stat::new(locate::LOCATION::def(), stat_type::Ident(String::new())), multi: None, retype: None, body: None }
     }
 }
-pub type op = ID<assign_opts>;
 #[derive(Clone, Debug)]
 pub struct fun_stat {
-    options: Vec<op>,
-    implement: Option<Box<body>>,
+    options: Vec<stat>,
+    implement: Option<Box<tree>>,
     ident: Box<String>,
-    generics: Option<Box<body>>,
-    parameters: Option<Box<body>>,
+    generics: Option<Box<tree>>,
+    parameters: Option<Box<tree>>,
     retype: Option<Box<stat>>,
-    body: Box<body>
+    body: Box<tree>
 }
 
 #[derive(Clone, Debug)]
@@ -126,7 +126,7 @@ pub enum type_expr {
 #[derive(Clone, Debug)]
 pub struct container_expr {
     uniform: bool,
-    elements: Box<body>
+    elements: Box<tree>
 }
 
 #[derive(Clone, Debug)]
