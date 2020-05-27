@@ -10,8 +10,8 @@ var five: rut[(x: int): int] = { <expression> }
 ~var[exp] six,six2, six3, six4: seq[] = <expression>
 var[] seven , seven2, seven3: vec[exp,imu], flt[imu, exp], int
 !var[] eight, eight2: bol[exp,imu] , rut[(x: int): int]
-var nine ;-var[] ten ,ten2 , ten3
-var eleven = <expression>; +var gettit
+var nine: axi;-var[] ten ,ten2 , ten3 :rec
+var eleven = <expression>; +var gettit :int
 
 
 fun one(two: int): int = { <expression> }

@@ -106,44 +106,34 @@ impl BAG {
         }
     }
 
-    pub fn report(&mut self, s: String, l: locate::LOCATION, e: &mut flaw::FLAW, t: flaw::flaw_type) {
-        e.report(t, &s, l);
-        // self.to_endline(e);
-        // self.eat_termin(e)
-    }
-
     pub fn report_unepected(&mut self, k: String, l: locate::LOCATION, e: &mut flaw::FLAW) {
         let s = String::from("expected:") + &k + " but recieved:" + &self.curr().key().to_string();
-        self.report(s, l, e, flaw::flaw_type::parser(flaw::parser::parser_unexpected));
+        e.report(flaw::flaw_type::parser(flaw::parser::parser_unexpected), &s, l);
     }
     pub fn report_missmatch(&mut self, k: String, l: locate::LOCATION, e: &mut flaw::FLAW) {
         let s = String::from("expected:") + &k + " but recieved:" + &self.curr().key().to_string();
-        self.report(s, l, e, flaw::flaw_type::parser(flaw::parser::parser_missmatch));
+        e.report(flaw::flaw_type::parser(flaw::parser::parser_missmatch), &s, l);
     }
     pub fn report_space_rem(&mut self, l: locate::LOCATION, e: &mut flaw::FLAW) {
         let s = String::from("space between:") + &self.prev().key().to_string() + " and:" + &self.next().key().to_string() + " needs to be removed";
-        self.report(s, l, e, flaw::flaw_type::parser(flaw::parser::parser_space_rem));
+        e.report(flaw::flaw_type::parser(flaw::parser::parser_space_rem), &s, l);
     }
     pub fn report_space_add(&mut self, k: String, l: locate::LOCATION, e: &mut flaw::FLAW) {
         let s = String::from("space between:") + &k + " and:" + &self.curr().key().to_string() + " needs to be added";
-        self.report(s, l, e, flaw::flaw_type::parser(flaw::parser::parser_space_add));
+        e.report(flaw::flaw_type::parser(flaw::parser::parser_space_add), &s, l);
     }
     pub fn report_type_disbalance(&mut self, k: String, p: String, l: locate::LOCATION, e: &mut flaw::FLAW) {
         let s = String::from("number of variables:") + &k + " and number of types:" + &p + " does not match";
-        self.report(s, l, e, flaw::flaw_type::parser(flaw::parser::parser_type_disbalance));
+        e.report(flaw::flaw_type::parser(flaw::parser::parser_type_disbalance), &s, l);
     }
     pub fn report_no_type(&mut self, p: String, l: locate::LOCATION, e: &mut flaw::FLAW) {
-        let s = String::from("type annotation needed, conider giving ") + &p + " a type annottion";
-        self.report(s, l, e, flaw::flaw_type::parser(flaw::parser::parser_no_type));
+        let s = String::from("type annotation needed, add type annotation after ") + &p;
+        e.report(flaw::flaw_type::parser(flaw::parser::parser_no_type), &s, l);
     }
     pub fn report_many_unexpected(&mut self, k: String, l: locate::LOCATION, e: &mut flaw::FLAW) {
         let s = String::from("unexpected:") + &self.curr().key().to_string() + " only those are valid: " + &k;
-        self.report(s, l, e, flaw::flaw_type::parser(flaw::parser::parser_many_unexpected));
+        e.report(flaw::flaw_type::parser(flaw::parser::parser_many_unexpected), &s, l);
     }
-
-    // pub fn match_bracket(&self, k: KEYWORD, d: isize) -> bool {
-        // if (matches!(self.curr().key(), k) && self.curr().loc().deep() == d) || self.curr().key().is_eof() { true } else { false }
-    // }
 
     pub fn log(&self, msg: &str) {
         println!(" {} [{:>2} {:>2}] \t prev:{} \t curr:{} \t look:{} \t next:{} \t peek:{}",

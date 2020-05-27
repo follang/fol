@@ -15,6 +15,8 @@ use std::path::Path;
 
 pub type flw = Result<(), flaw_type>;
 
+// pub type flwstr
+
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum flaw_type {

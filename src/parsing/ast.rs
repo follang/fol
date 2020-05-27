@@ -52,6 +52,7 @@ pub enum stat {
     If,
     When,
     Loop,
+    Illegal,
 }
 
 #[derive(Clone, Debug, GetSet)]
