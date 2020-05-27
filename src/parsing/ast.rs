@@ -18,10 +18,10 @@ pub struct ID<T> {
 }
 impl<T> ID<T> {
     pub fn new(loc: locate::LOCATION, nod: T) -> Self { ID{loc, nod} }
+    pub fn get(self) -> T { self.nod }
+    pub fn set(&mut self, nod: T) { self.nod = nod }
     pub fn get_loc(self) -> locate::LOCATION { self.loc }
     pub fn set_loc(&mut self, loc: locate::LOCATION) { self.loc = loc }
-    pub fn get_nod(self) -> T { self.nod }
-    pub fn set_nod(&mut self, nod: T) { self.nod = nod }
 }
 
 pub type tree = ID<body>;
@@ -49,6 +49,7 @@ pub enum stat {
     Var(var_stat),
     Fun(fun_stat),
     Typ(type_expr),
+    Ident(String),
     If,
     When,
     Loop,
@@ -57,8 +58,8 @@ pub enum stat {
 
 #[derive(Clone, Debug, GetSet)]
 pub struct var_stat{
-    options: Vec<assign_opts>,
-    ident: Box<String>,
+    options: Vec<ID<assign_opts>>,
+    ident: ID<String>,
     multi: Option<(usize, String)>,
     retype: Option<Box<stat>>,
     body: Option<Box<body>>
@@ -66,13 +67,13 @@ pub struct var_stat{
 
 impl var_stat {
     pub fn init() -> Self {
-        var_stat { options: Vec::new(), ident: Box::new(String::new()), multi: None, retype: None, body: None }
+        var_stat { options: Vec::new(), ident: ID::new(locate::LOCATION::def(), String::new()), multi: None, retype: None, body: None }
     }
 }
-
+pub type op = ID<assign_opts>;
 #[derive(Clone, Debug)]
 pub struct fun_stat {
-    options: Vec<assign_opts>,
+    options: Vec<op>,
     implement: Option<Box<body>>,
     ident: Box<String>,
     generics: Option<Box<body>>,

@@ -34,17 +34,17 @@ impl fmt::Display for var_stat {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut typ = String::new();
         let mut base = String::new();
+        let mut opts: Vec<String> = Vec::new();
         if let Some(a) = self.get_retype().clone() {
             typ = ": ".to_string() + a.to_string().as_str() + "[]";
         }
         if let Some(a) = self.get_multi().clone() {
-            base = "[".to_string() + a.0.to_string().as_str() + " + " + a.1.as_str() + "]";
+            base = "[".to_string() + a.0.to_string().as_str() + ", " + a.1.as_str() + "]";
         }
-        // let typ = match self.get_retype().clone() {
-            // Some(a) => { a.to_string() },
-            // None => { "NONE".to_string() }
-        // };
-        write!(f, "{:<15}var{:?} {}{};", base, self.get_options(), self.get_ident(), typ)
+        for e in self.get_options().iter() {
+            opts.push(e.clone().get().to_string())
+        }
+        write!(f, "{:<15}var{:?} {}{};", base, opts, self.get_ident().clone().get(), typ)
     }
 }
 

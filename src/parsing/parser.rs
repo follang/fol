@@ -71,8 +71,8 @@ impl forest {
 //------------------------------------------------------------------------------------------------------//
 fn parse_stat_var(forest: &mut forest, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW, var_stat: &mut var_stat, recursive: bool) -> Con<()> {
     let loc = lex.curr().loc().clone();
-    let mut opts: Vec<assign_opts> = Vec::new();
-    let mut ids: Vec<Box<String>> = Vec::new();
+    let mut opts: Vec<op> = Vec::new();
+    let mut ids: Vec<ID<String>> = Vec::new();
     let mut typ: Vec<Box<stat>> = Vec::new();
 
     if !recursive {
@@ -109,14 +109,14 @@ fn parse_stat_var(forest: &mut forest, lex: &mut lexer::BAG, flaw: &mut flaw::FL
         }
         if typ.len() == 0 {
             var_stat.set_multi(None);
-            var_stat.set_ident(ids[0].clone());
+            var_stat.set_ident(ID::new(lex.curr().loc().clone(), ids[0].clone().get()));
             forest.trees.push(tree::new(loc.clone(), body::stat(stat::Var(var_stat.clone()))));
         } else if typ.len() == ids.len() {
             for ((i, e), t) in ids.iter().enumerate().zip(typ.iter()) {
                 let mut var_clone = var_stat.clone();
                 var_clone.set_ident(e.clone());
                 var_clone.set_retype(Some(t.clone()));
-                if ids.len() > 1 { var_clone.set_multi(Some((i, *ids[0].clone()))) };
+                if ids.len() > 1 { var_clone.set_multi(Some((i, ids[0].clone().get()))) };
                 forest.trees.push(tree::new(loc.clone(), body::stat(stat::Var(var_clone))));
             }
         } else {
@@ -124,14 +124,14 @@ fn parse_stat_var(forest: &mut forest, lex: &mut lexer::BAG, flaw: &mut flaw::FL
                 let mut var_clone = var_stat.clone();
                 var_clone.set_ident(ids[i].clone());
                 var_clone.set_retype(Some(typ[i].clone()));
-                var_clone.set_multi(Some((i, *ids[0].clone())));
+                var_clone.set_multi(Some((i, ids[0].clone().get())));
                 forest.trees.push(tree::new(loc.clone(), body::stat(stat::Var(var_clone))));
             }
             for i in typ.len()..ids.len() {
                 let mut var_clone = var_stat.clone();
                 var_clone.set_ident(ids[i].clone());
                 var_clone.set_retype(Some(typ[typ.len()-1].clone()));
-                var_clone.set_multi(Some((i, *ids[0].clone())));
+                var_clone.set_multi(Some((i, ids[0].clone().get())));
                 forest.trees.push(tree::new(loc.clone(), body::stat(stat::Var(var_clone))));
             }
         }
@@ -153,7 +153,7 @@ fn parse_expr_var(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> Option<Box<bod
     Some(Box::new(body::stat(stat::Illegal)))
 }
 
-fn help_assign_var_options(v: &mut Vec<assign_opts>, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> Con<()> {
+fn help_assign_var_options(v: &mut Vec<op>, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> Con<()> {
     if matches!(lex.curr().key(), KEYWORD::option(_)) {
         let el;
         match lex.curr().key() {
@@ -167,7 +167,7 @@ fn help_assign_var_options(v: &mut Vec<assign_opts>, lex: &mut lexer::BAG, flaw:
                 return Err(flaw::flaw_type::parser(flaw::parser::parser_unexpected))
             }
         };
-        v.push(el);
+        v.push(op::new(lex.curr().loc().clone(), el));
         lex.bump();
         return Ok(())
     }
@@ -203,7 +203,7 @@ fn help_assign_recursive(forest: &mut forest, lex: &mut lexer::BAG, flaw: &mut f
     }
     Ok(())
 }
-fn help_assign_identifiers(list: &mut Vec<Box<String>>, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW, var_stat: &mut var_stat) -> Con<()> {
+fn help_assign_identifiers(list: &mut Vec<ID<String>>, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW, var_stat: &mut var_stat) -> Con<()> {
     //identifier
     if !lex.look().key().is_ident() {
         lex.report_unepected(KEYWORD::ident(None).to_string(), lex.curr().loc().clone(), flaw);
@@ -241,8 +241,8 @@ fn help_assign_retypes(types: &mut Vec<Box<stat>>, lex: &mut lexer::BAG, flaw: &
     Ok(())
 }
 
-fn help_assign_definition(opts: &mut Vec<assign_opts>, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW, var_stat: &mut var_stat,
-    assign: fn(&mut Vec<assign_opts>, &mut lexer::BAG, &mut flaw::FLAW) -> Con<()> ) -> Con<()> {
+fn help_assign_definition(opts: &mut Vec<op>, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW, var_stat: &mut var_stat,
+    assign: fn(&mut Vec<op>, &mut lexer::BAG, &mut flaw::FLAW) -> Con<()> ) -> Con<()> {
         // option symbol
         if matches!(lex.curr().key(), KEYWORD::option(_)) {
             assign(opts, lex, flaw)?;
@@ -273,8 +273,8 @@ fn help_assign_definition(opts: &mut Vec<assign_opts>, lex: &mut lexer::BAG, fla
 //------------------------------------------------------------------------------------------------------//
 //                                             TYPE STATEMENT                                           //
 //------------------------------------------------------------------------------------------------------//
-fn parse_ident_stat(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> Box<String> {
-    let to_ret = Box::new(lex.curr().con().clone());
+fn parse_ident_stat(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> ID<String> {
+    let to_ret = ID::new(lex.curr().loc().clone(), lex.curr().con().clone());
     lex.jump();
     to_ret
 }
