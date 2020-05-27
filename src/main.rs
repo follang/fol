@@ -49,7 +49,10 @@ fn main() {
     let mut forest = parser::new();
     forest.init(&mut tokens, &mut error);
     for tree in forest.trees {
-        println!("{}\t{}", tree.clone().loc, tree.clone().nod);
+        // if let ast::tree::stat(a) = tree.clone() {
+            // println!("{}", a.get_loc());
+        // }
+        println!("{}", tree.clone());
         // println!("{:?}", tree.parsing());
     }
     error.show();

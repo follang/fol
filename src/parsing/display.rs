@@ -8,27 +8,40 @@ use std::fmt;
 
 use crate::parsing::ast::*;
 
-impl fmt::Display for body {
+impl fmt::Display for tree {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match &self {
-            body::expr(_) => { write!(f, "expr") }
-            body::stat(stat::Var(var_stat)) => { write!(f, "{}", var_stat) }
-            body::stat(stat::Fun(fun_stat)) => { write!(f, "fun") }
-            body::stat(_) => { write!(f, "stat") }
+            tree::expr(expr) => { write!(f, "{}", expr.clone().get().to_string()) }
+            tree::stat(stat) => { write!(f, "{}", stat.clone().get().to_string()) }
         }
     }
 }
 
-
+impl fmt::Display for expr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { write!(f, "{}", self.clone().get()) }
+}
 impl fmt::Display for stat {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { write!(f, "{}", self.clone().get()) }
+}
+
+impl fmt::Display for stat_type {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match &self {
-            stat::Typ(a) => {write!(f, "{}", a)},
+            stat_type::Typ(a) => {write!(f, "{}", a)},
+            stat_type::Var(a) => {write!(f, "{}", a)},
+            stat_type::Ident(a) => {write!(f, "{}", a)},
             _ => { write!(f, "---") }
         }
     }
 }
 
+impl fmt::Display for expr_type {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match &self {
+            _ => { write!(f, "---") }
+        }
+    }
+}
 
 impl fmt::Display for var_stat {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
