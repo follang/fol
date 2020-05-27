@@ -111,22 +111,28 @@ fn parse_stat_var(forest: &mut forest, lex: &mut lexer::BAG, flaw: &mut flaw::FL
             var_stat.set_multi(None);
             var_stat.set_ident(ids[0].clone());
             forest.trees.push(tree::new(loc.clone(), body::stat(stat::Var(var_stat.clone()))));
-            return Ok(());
-        }
-
-        var_stat.set_multi(Some((0, *ids[0].clone())));
-        if typ.len() == 1 {
-            for (i, e) in ids.iter().enumerate() {
+        } else if typ.len() == ids.len() {
+            for ((i, e), t) in ids.iter().enumerate().zip(typ.iter()) {
                 let mut var_clone = var_stat.clone();
                 var_clone.set_ident(e.clone());
-                var_clone.set_retype(Some(typ[0].clone()));
+                var_clone.set_retype(Some(t.clone()));
+                if ids.len() > 1 { var_clone.set_multi(Some((i, *ids[0].clone()))) };
                 forest.trees.push(tree::new(loc.clone(), body::stat(stat::Var(var_clone))));
             }
         } else {
-            for ((i, e), f) in ids.iter().enumerate().zip(typ.iter()) {
+            for i in 0..typ.len() {
+                lex.log(">>");
                 let mut var_clone = var_stat.clone();
-                var_clone.set_ident(e.clone());
-                var_clone.set_retype(Some(f.clone()));
+                var_clone.set_ident(ids[i].clone());
+                var_clone.set_retype(Some(typ[i].clone()));
+                var_clone.set_multi(Some((i, *ids[0].clone())));
+                forest.trees.push(tree::new(loc.clone(), body::stat(stat::Var(var_clone))));
+            }
+            for i in typ.len()..ids.len() {
+                let mut var_clone = var_stat.clone();
+                var_clone.set_ident(ids[i].clone());
+                var_clone.set_retype(Some(typ[typ.len()-1].clone()));
+                var_clone.set_multi(Some((i, *ids[0].clone())));
                 forest.trees.push(tree::new(loc.clone(), body::stat(stat::Var(var_clone))));
             }
         }
