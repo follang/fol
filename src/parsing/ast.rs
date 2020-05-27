@@ -48,7 +48,7 @@ pub enum stat {
     Def,
     Var(var_stat),
     Fun(fun_stat),
-    Type(type_expr),
+    Typ(type_expr),
     If,
     When,
     Loop,

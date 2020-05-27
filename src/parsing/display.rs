@@ -23,7 +23,7 @@ impl fmt::Display for body {
 impl fmt::Display for stat {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match &self {
-            stat::Type(a) => {write!(f, "{}", a)},
+            stat::Typ(a) => {write!(f, "{}", a)},
             _ => { write!(f, "---") }
         }
     }

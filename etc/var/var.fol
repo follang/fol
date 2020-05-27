@@ -15,6 +15,18 @@ var eleven = <expression>; +var gettit :int
 var t1, t2, t3, t4, t5, t6: int, str
 
 
+typ user: rec = { <expression> };
+~typ[] (
+    one: rec[] = <expression>;
+    two: rec[] = <expression>;
+)
+~typ[] user: rec = { <expression> };
+~typ[] user: rec[] = { <expression> };
+~typ[] user(blue): rec[] = { <expression> };
+~typ[] user[T: gen, N: int](blue): obj ;
+~ali[] five: arr[int, 5];
+~ali[] int: int;
+
 fun one(two: int): int = { <expression> }
 fun one(two: int): int = { <expression> }
 ~log[] one(two: int): int = { <expression> }
@@ -24,18 +36,6 @@ fun[] '!='(one, two: int): bol = { <expression> }
 ~pro[] one[T: gen](two: int): int = { <expression> }
 fun[] add1(adder: rut[(x: int): int]): int = { <expression> }
 fun[] add2(): rut[(x: int): int] = { <expression> }
-
-typ user: rec = { <expression> };
-~typ[] (
-    one: rec[] = <expression>;
-    two: rec[] = <expression>;
-)
-~typ[] user: rec = { <expression> };
-~typ[] user: rec[] = { <expression> };
-~typ[] user(blue): rec[] = { <expression> };
-~typ[] user(T: gen, N: int)(blue): obj ;
-~ali[] five: arr[int, 5];
-~ali[] int: int;
 
 use[] one: two = <expression>;
 ~use[] one: two = <expression>;
