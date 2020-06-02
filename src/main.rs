@@ -52,7 +52,7 @@ fn main() {
         // if let ast::tree::stat(a) = tree.clone() {
             // println!("{}", a.get_loc());
         // }
-        println!("{}", tree.clone());
+        println!("{}\t\t{}", tree.clone().loc(), tree.clone().get());
         // println!("{:?}", tree.parsing());
     }
     error.show();

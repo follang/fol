@@ -10,18 +10,20 @@ use crate::parsing::ast::*;
 
 impl fmt::Display for tree {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match &self {
-            tree::expr(expr) => { write!(f, "{}", expr.clone().get().to_string()) }
-            tree::stat(stat) => { write!(f, "{}", stat.clone().get().to_string()) }
+        match &self.clone().get() {
+            tree_type::expr(expr) => { write!(f, "{}", expr) }
+            tree_type::stat(stat) => { write!(f, "{}", stat) }
         }
     }
 }
 
-impl fmt::Display for expr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { write!(f, "{}", self.clone().get()) }
-}
-impl fmt::Display for stat {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { write!(f, "{}", self.clone().get()) }
+impl fmt::Display for tree_type {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match &self {
+            tree_type::expr(expr) => { write!(f, "{}", expr.clone().to_string()) }
+            tree_type::stat(stat) => { write!(f, "{}", stat.clone().to_string()) }
+        }
+    }
 }
 
 impl fmt::Display for stat_type {
@@ -30,7 +32,6 @@ impl fmt::Display for stat_type {
             stat_type::Typ(a) => {write!(f, "{}", a)},
             stat_type::Var(a) => {write!(f, "{}", a)},
             stat_type::Ident(a) => {write!(f, "{}", a)},
-            stat_type::Opts(a) => {write!(f, "{}", a)},
             _ => { write!(f, "---") }
         }
     }
@@ -47,18 +48,13 @@ impl fmt::Display for expr_type {
 impl fmt::Display for var_stat {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut typ = String::new();
+        if let Some(a) = self.get_retype().clone() { typ = ": ".to_string() + a.to_string().as_str() + "[]"; }
         let mut base = String::new();
+        if let Some(a) = self.get_multi().clone() { base = "[".to_string() + a.0.to_string().as_str() + ", " + a.1.as_str() + "]"; }
         let mut opts: Vec<String> = Vec::new();
-        if let Some(a) = self.get_retype().clone() {
-            typ = ": ".to_string() + a.to_string().as_str() + "[]";
-        }
-        if let Some(a) = self.get_multi().clone() {
-            base = "[".to_string() + a.0.to_string().as_str() + ", " + a.1.as_str() + "]";
-        }
-        for e in self.get_options().iter() {
-            opts.push(e.clone().get().to_string())
-        }
-        write!(f, "{:<15}var{:?} {}{};", base, opts, self.get_ident().clone().get(), typ)
+        for e in self.get_options().iter() { opts.push(e.clone().to_string()) }
+        let id: String = self.get_ident().clone().get().to_string();
+        write!(f, "{:<15}var{:?} {}{};", base, opts, id, typ)
     }
 }
 
@@ -77,41 +73,41 @@ impl fmt::Display for assign_opts {
     }
 }
 
-impl fmt::Display for type_expr {
+impl fmt::Display for typ_expr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match &self {
-            type_expr::Int => { write!(f, "int") },
-            type_expr::Flt => { write!(f, "flt") },
-            type_expr::Chr => { write!(f, "chr") },
-            type_expr::Bol => { write!(f, "bol") },
-            type_expr::Arr => { write!(f, "arr") },
-            type_expr::Vec => { write!(f, "vec") },
-            type_expr::Seq => { write!(f, "seq") },
-            type_expr::Mat => { write!(f, "mat") },
-            type_expr::Set => { write!(f, "set") },
-            type_expr::Map => { write!(f, "map") },
-            type_expr::Axi => { write!(f, "axi") },
-            type_expr::Tab => { write!(f, "tab") },
-            type_expr::Str => { write!(f, "str") },
-            type_expr::Num => { write!(f, "num") },
-            type_expr::Ptr => { write!(f, "ptr") },
-            type_expr::Err => { write!(f, "err") },
-            type_expr::Opt => { write!(f, "opt") },
-            type_expr::Nev => { write!(f, "nev") },
-            type_expr::Uni => { write!(f, "uni") },
-            type_expr::Any => { write!(f, "any") },
-            type_expr::Non => { write!(f, "non") },
-            type_expr::Nil => { write!(f, "nil") },
-            type_expr::Rec => { write!(f, "rec") },
-            type_expr::Ent => { write!(f, "ent") },
-            type_expr::Blu => { write!(f, "blu") },
-            type_expr::Std => { write!(f, "std") },
-            type_expr::Loc => { write!(f, "loc") },
-            type_expr::Url => { write!(f, "url") },
-            type_expr::Blk => { write!(f, "blk") },
-            type_expr::Rut => { write!(f, "rut") },
-            type_expr::Pat => { write!(f, "pat") },
-            type_expr::Gen => { write!(f, "gen") },
+            typ_expr::Int => { write!(f, "int") },
+            typ_expr::Flt => { write!(f, "flt") },
+            typ_expr::Chr => { write!(f, "chr") },
+            typ_expr::Bol => { write!(f, "bol") },
+            typ_expr::Arr => { write!(f, "arr") },
+            typ_expr::Vec => { write!(f, "vec") },
+            typ_expr::Seq => { write!(f, "seq") },
+            typ_expr::Mat => { write!(f, "mat") },
+            typ_expr::Set => { write!(f, "set") },
+            typ_expr::Map => { write!(f, "map") },
+            typ_expr::Axi => { write!(f, "axi") },
+            typ_expr::Tab => { write!(f, "tab") },
+            typ_expr::Str => { write!(f, "str") },
+            typ_expr::Num => { write!(f, "num") },
+            typ_expr::Ptr => { write!(f, "ptr") },
+            typ_expr::Err => { write!(f, "err") },
+            typ_expr::Opt => { write!(f, "opt") },
+            typ_expr::Nev => { write!(f, "nev") },
+            typ_expr::Uni => { write!(f, "uni") },
+            typ_expr::Any => { write!(f, "any") },
+            typ_expr::Non => { write!(f, "non") },
+            typ_expr::Nil => { write!(f, "nil") },
+            typ_expr::Rec => { write!(f, "rec") },
+            typ_expr::Ent => { write!(f, "ent") },
+            typ_expr::Blu => { write!(f, "blu") },
+            typ_expr::Std => { write!(f, "std") },
+            typ_expr::Loc => { write!(f, "loc") },
+            typ_expr::Url => { write!(f, "url") },
+            typ_expr::Blk => { write!(f, "blk") },
+            typ_expr::Rut => { write!(f, "rut") },
+            typ_expr::Pat => { write!(f, "pat") },
+            typ_expr::Gen => { write!(f, "gen") },
         }
     }
 }
