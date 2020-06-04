@@ -13,14 +13,6 @@ use colored::Colorize;
 
 use crate::error::flaw::Con;
 
-//------------------------------------------------------------------------------------------------------//
-//                                             TYPES STATEMENT                                           //
-//------------------------------------------------------------------------------------------------------//
-pub fn parse_ident_stat(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> ID<String> {
-    let to_ret = ID::new(lex.curr().loc().clone(), lex.curr().con().clone());
-    lex.jump();
-    to_ret
-}
 pub fn parse_type_stat(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> tree {
     match lex.curr().key() {
         KEYWORD::types(TYPE::int_) => { return retypes_int_stat(lex, flaw) }

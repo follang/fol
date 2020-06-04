@@ -4,13 +4,12 @@
 use crate::parsing::lexer;
 use crate::parsing::ast::*;
 use crate::parsing::parser::*;
-use crate::parsing::stat::helper::*;
+use crate::parsing::stat::helper;
 use crate::parsing::stat::retype::*;
 
 use crate::scanning::token::*;
 use crate::scanning::locate;
 use crate::error::flaw;
-use colored::Colorize;
 
 use crate::error::flaw::Con;
 
@@ -28,26 +27,22 @@ pub fn parse_stat_var(forest: &mut forest, lex: &mut lexer::BAG, flaw: &mut flaw
         opt = optioins
     } else {
         opt = Vec::new();
-        help_assign_definition(&mut opt, lex, flaw, help_assign_options)?;
+        helper::assign_definition(&mut opt, lex, flaw, helper::assign_options)?;
         if matches!(lex.look().key(), KEYWORD::symbol(SYMBOL::roundO_)) {
-            help_assign_recursive(forest, lex, flaw, Some(opt), parse_stat_var)?;
+            helper::assign_recursive(forest, lex, flaw, Some(opt), parse_stat_var)?;
             lex.to_endline(flaw); lex.eat_termin(flaw);
             return Ok(())
         }
     }
 
     // identifier and indentifier list
-    help_assign_identifiers(&mut ids, lex, flaw, true)?;
+    helper::assign_identifiers(&mut ids, lex, flaw, true)?;
 
     // types and types list
-    help_assign_retypes(&mut typ, lex, flaw, true)?;
+    helper::assign_retypes(&mut typ, lex, flaw, true)?;
 
-    if ids.len() < typ.len() {
-        lex.report_type_disbalance((" ".to_string() + ids.len().to_string().as_str() + " ").black().bold().on_white().to_string(),
-        (" ".to_string() + typ.len().to_string().as_str() + " ").black().bold().on_white().to_string(),
-            lex.curr().loc().clone(), flaw);
-        return Err(flaw::flaw_type::parser(flaw::parser::parser_missmatch))
-    }
+    // error if disbalance between IDS and TYP
+    helper::error_disbalance(lex, flaw, &ids, &typ)?;
 
     if matches!(lex.look().key(), KEYWORD::symbol(SYMBOL::equal_)) || matches!(lex.look().key(), KEYWORD::operator(OPERATOR::assign2_)) {
         lex.eat_space(flaw);
@@ -93,7 +88,7 @@ pub fn parse_stat_var(forest: &mut forest, lex: &mut lexer::BAG, flaw: &mut flaw
         return Ok(());
     }
 
-    return error_assign_last(lex, flaw);
+    return helper::error_assign_last(lex, flaw);
 }
 
 fn parse_expr_var(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> Option<tree> {

@@ -24,6 +24,7 @@ impl<T> ID<T> {
 }
 
 pub type tree = ID<tree_type>;
+pub type trees = Vec<tree>;
 #[derive(Clone, Debug)]
 pub enum tree_type {
     expr(expr_type),
@@ -80,8 +81,8 @@ pub struct typ_stat{
     options: Vec<assign_opts>,
     multi: Option<(usize, String)>,
     ident: tree,
-    generics: Option<tree>,
-    inherit: Option<tree>,
+    generics: Option<Vec<tree>>,
+    contract: Option<Vec<(tree, tree)>>,
     retype: Option<tree>,
     body: Option<tree>
 }
@@ -92,7 +93,7 @@ impl typ_stat {
         multi: None,
         ident: tree::new(locate::LOCATION::def(), tree_type::stat(stat_type::Ident(String::new()))),
         generics: None,
-        inherit: None,
+        contract: None,
         retype: None,
         body: None }
     }

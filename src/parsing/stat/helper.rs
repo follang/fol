@@ -14,10 +14,13 @@ use crate::error::flaw;
 use colored::Colorize;
 use crate::error::flaw::Con;
 
-//------------------------------------------------------------------------------------------------------//
-//                                                 HELPERS                                              //
-//------------------------------------------------------------------------------------------------------//
-pub fn help_assign_recursive(forest: &mut forest, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW, op: Option<Vec<assign_opts>>,
+pub fn parse_ident_stat(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> ID<String> {
+    let to_ret = ID::new(lex.curr().loc().clone(), lex.curr().con().clone());
+    lex.jump();
+    to_ret
+}
+
+pub fn assign_recursive(forest: &mut forest, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW, op: Option<Vec<assign_opts>>,
     assign: fn(&mut forest, &mut lexer::BAG, &mut flaw::FLAW, op: Option<Vec<assign_opts>>) -> Con<()> ) -> Con<()> {
     if matches!(lex.look().key(), KEYWORD::symbol(SYMBOL::roundO_)) {
         lex.bump(); lex.eat_space(flaw);
@@ -34,7 +37,7 @@ pub fn help_assign_recursive(forest: &mut forest, lex: &mut lexer::BAG, flaw: &m
     }
     Ok(())
 }
-pub fn help_assign_identifiers(list: &mut Vec<ID<String>>, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW, multi: bool) -> Con<()> {
+pub fn assign_identifiers(list: &mut Vec<ID<String>>, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW, multi: bool) -> Con<()> {
     //identifier
     if !lex.look().key().is_ident() {
         lex.report_unepected(KEYWORD::ident(None).to_string(), lex.curr().loc().clone(), flaw);
@@ -51,7 +54,7 @@ pub fn help_assign_identifiers(list: &mut Vec<ID<String>>, lex: &mut lexer::BAG,
     Ok(())
 }
 
-pub fn help_assign_retypes(types: &mut Vec<tree>, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW, multi: bool) -> Con<()> {
+pub fn assign_retypes(types: &mut Vec<tree>, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW, multi: bool) -> Con<()> {
     if matches!(lex.look().key(), KEYWORD::symbol(SYMBOL::colon_)) {
         lex.jump();
         if matches!(lex.look().key(), KEYWORD::symbol(SYMBOL::equal_)) { return Ok(()) }
@@ -72,7 +75,7 @@ pub fn help_assign_retypes(types: &mut Vec<tree>, lex: &mut lexer::BAG, flaw: &m
     Ok(())
 }
 
-pub fn help_assign_definition(opts: &mut Vec<assign_opts>, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW,
+pub fn assign_definition(opts: &mut Vec<assign_opts>, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW,
     assign: fn(&mut Vec<assign_opts>, &mut lexer::BAG, &mut flaw::FLAW) -> Con<()> ) -> Con<()> {
         // option symbol
         if matches!(lex.curr().key(), KEYWORD::option(_)) {
@@ -99,7 +102,7 @@ pub fn help_assign_definition(opts: &mut Vec<assign_opts>, lex: &mut lexer::BAG,
         Ok(())
 }
 
-pub fn help_assign_options(v: &mut Vec<assign_opts>, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> Con<()> {
+pub fn assign_options(v: &mut Vec<assign_opts>, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> Con<()> {
     if matches!(lex.curr().key(), KEYWORD::option(_)) {
         let el;
         match lex.curr().key() {
@@ -130,6 +133,13 @@ pub fn help_assign_options(v: &mut Vec<assign_opts>, lex: &mut lexer::BAG, flaw:
     Ok(())
 }
 
+pub fn assign_contract(v: &mut Vec<assign_opts>, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> Con<()> {
+    Ok(())
+}
+pub fn assign_generics(v: &mut Vec<assign_opts>, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> Con<()> {
+    Ok(())
+}
+
 pub fn error_assign_last(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> Con<()> {
     let msg = KEYWORD::symbol(SYMBOL::colon_).to_string()
         + " or " + KEYWORD::symbol(SYMBOL::comma_).to_string().as_str()
@@ -138,4 +148,14 @@ pub fn error_assign_last(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> Con<()>
         + " or " + KEYWORD::operator(OPERATOR::assign2_).to_string().as_str();
     lex.report_many_unexpected(msg, lex.look().loc().clone(), flaw);
     return Err(flaw::flaw_type::parser(flaw::parser::parser_unexpected))
+}
+
+pub fn error_disbalance(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW, ids: &Vec<ID<String>>, typ: &Vec<tree>) -> Con<()> {
+    if ids.len() < typ.len() {
+        lex.report_type_disbalance((" ".to_string() + ids.len().to_string().as_str() + " ").black().bold().on_white().to_string(),
+        (" ".to_string() + typ.len().to_string().as_str() + " ").black().bold().on_white().to_string(),
+            lex.curr().loc().clone(), flaw);
+        return Err(flaw::flaw_type::parser(flaw::parser::parser_missmatch))
+    }
+    Ok(())
 }

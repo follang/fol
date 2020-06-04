@@ -5,13 +5,12 @@
 use crate::parsing::lexer;
 use crate::parsing::ast::*;
 use crate::parsing::parser::*;
-use crate::parsing::stat::helper::*;
+use crate::parsing::stat::helper;
 use crate::parsing::stat::retype::*;
 
 use crate::scanning::token::*;
 use crate::scanning::locate;
 use crate::error::flaw;
-use colored::Colorize;
 
 use crate::error::flaw::Con;
 
@@ -23,24 +22,24 @@ pub fn parse_stat_typ(forest: &mut forest, lex: &mut lexer::BAG, flaw: &mut flaw
     let mut typ: Vec<tree> = Vec::new();
     let mut typ_stat = typ_stat::init();
 
-    lex.log(">>");
     if let Some(o) = op.clone() {
         opt = o
     } else {
         opt = Vec::new();
-        help_assign_definition(&mut opt, lex, flaw, help_assign_options)?;
+        helper::assign_definition(&mut opt, lex, flaw, helper::assign_options)?;
         if matches!(lex.look().key(), KEYWORD::symbol(SYMBOL::roundO_)) {
-            help_assign_recursive(forest, lex, flaw, Some(opt), parse_stat_typ)?;
+            helper::assign_recursive(forest, lex, flaw, Some(opt), parse_stat_typ)?;
             lex.to_endline(flaw); lex.eat_termin(flaw);
             return Ok(())
         }
     }
 
     // identifier and indentifier list
-    help_assign_identifiers(&mut ids, lex, flaw, false)?;
+    helper::assign_identifiers(&mut ids, lex, flaw, false)?;
+    lex.log(">>");
 
     // types and types list
-    help_assign_retypes(&mut typ, lex, flaw, false)?;
+    helper::assign_retypes(&mut typ, lex, flaw, false)?;
 
     if matches!(lex.look().key(), KEYWORD::symbol(SYMBOL::equal_)) || matches!(lex.look().key(), KEYWORD::operator(OPERATOR::assign2_)) {
         lex.eat_space(flaw);
@@ -70,7 +69,7 @@ pub fn parse_stat_typ(forest: &mut forest, lex: &mut lexer::BAG, flaw: &mut flaw
         lex.to_endline(flaw); lex.eat_termin(flaw);
         return Ok(());
     }
-    return error_assign_last(lex, flaw);
+    return helper::error_assign_last(lex, flaw);
 }
 
 fn parse_expr_typ(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> Option<tree> {

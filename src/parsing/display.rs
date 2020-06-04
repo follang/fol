@@ -33,6 +33,7 @@ impl fmt::Display for stat_type {
             stat_type::Var(a) => {write!(f, "{}", a)},
             stat_type::Ident(a) => {write!(f, "{}", a)},
             stat_type::Retype(a) => {write!(f, "{}", a)},
+            stat_type::Illegal => {write!(f, "<unknown>")},
             _ => { write!(f, "---") }
         }
     }
@@ -55,7 +56,9 @@ impl fmt::Display for var_stat {
         let mut opts: Vec<String> = Vec::new();
         for e in self.get_options().iter() { opts.push(e.clone().to_string()) }
         let id: String = self.get_ident().clone().get().to_string();
-        write!(f, "{:<15}var{:?} {}{};", base, opts, id, typ)
+        let mut body = String::new();
+        if let Some(a) = self.get_body().clone() { body = " = ".to_string() + a.to_string().as_str(); }
+        write!(f, "{:<15}var{:?} {}{}{};", base, opts, id, typ, body)
     }
 }
 
@@ -68,7 +71,9 @@ impl fmt::Display for typ_stat {
         let mut opts: Vec<String> = Vec::new();
         for e in self.get_options().iter() { opts.push(e.clone().to_string()) }
         let id: String = self.get_ident().clone().get().to_string();
-        write!(f, "{:<15}typ{:?} {}{};", base, opts, id, typ)
+        let mut body = String::new();
+        if let Some(a) = self.get_body().clone() { body = " = ".to_string() + a.to_string().as_str(); }
+        write!(f, "{:<15}typ{:?} {}{}{};", base, opts, id, typ, body)
     }
 }
 
