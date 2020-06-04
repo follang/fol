@@ -20,8 +20,8 @@ impl fmt::Display for tree {
 impl fmt::Display for tree_type {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match &self {
-            tree_type::expr(expr) => { write!(f, "{}", expr.clone().to_string()) }
-            tree_type::stat(stat) => { write!(f, "{}", stat.clone().to_string()) }
+            tree_type::expr(expr) => { write!(f, "{}", expr.to_string()) }
+            tree_type::stat(stat) => { write!(f, "{}", stat.to_string()) }
         }
     }
 }
@@ -32,6 +32,7 @@ impl fmt::Display for stat_type {
             stat_type::Typ(a) => {write!(f, "{}", a)},
             stat_type::Var(a) => {write!(f, "{}", a)},
             stat_type::Ident(a) => {write!(f, "{}", a)},
+            stat_type::Retype(a) => {write!(f, "{}", a)},
             _ => { write!(f, "---") }
         }
     }
@@ -58,6 +59,19 @@ impl fmt::Display for var_stat {
     }
 }
 
+impl fmt::Display for typ_stat {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut typ = String::new();
+        if let Some(a) = self.get_retype().clone() { typ = ": ".to_string() + a.to_string().as_str() + "[]"; }
+        let mut base = String::new();
+        if let Some(a) = self.get_multi().clone() { base = "[".to_string() + a.0.to_string().as_str() + ", " + a.1.as_str() + "]"; }
+        let mut opts: Vec<String> = Vec::new();
+        for e in self.get_options().iter() { opts.push(e.clone().to_string()) }
+        let id: String = self.get_ident().clone().get().to_string();
+        write!(f, "{:<15}typ{:?} {}{};", base, opts, id, typ)
+    }
+}
+
 impl fmt::Display for assign_opts {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match &self {
@@ -73,41 +87,41 @@ impl fmt::Display for assign_opts {
     }
 }
 
-impl fmt::Display for typ_expr {
+impl fmt::Display for retype_stat {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match &self {
-            typ_expr::Int => { write!(f, "int") },
-            typ_expr::Flt => { write!(f, "flt") },
-            typ_expr::Chr => { write!(f, "chr") },
-            typ_expr::Bol => { write!(f, "bol") },
-            typ_expr::Arr => { write!(f, "arr") },
-            typ_expr::Vec => { write!(f, "vec") },
-            typ_expr::Seq => { write!(f, "seq") },
-            typ_expr::Mat => { write!(f, "mat") },
-            typ_expr::Set => { write!(f, "set") },
-            typ_expr::Map => { write!(f, "map") },
-            typ_expr::Axi => { write!(f, "axi") },
-            typ_expr::Tab => { write!(f, "tab") },
-            typ_expr::Str => { write!(f, "str") },
-            typ_expr::Num => { write!(f, "num") },
-            typ_expr::Ptr => { write!(f, "ptr") },
-            typ_expr::Err => { write!(f, "err") },
-            typ_expr::Opt => { write!(f, "opt") },
-            typ_expr::Nev => { write!(f, "nev") },
-            typ_expr::Uni => { write!(f, "uni") },
-            typ_expr::Any => { write!(f, "any") },
-            typ_expr::Non => { write!(f, "non") },
-            typ_expr::Nil => { write!(f, "nil") },
-            typ_expr::Rec => { write!(f, "rec") },
-            typ_expr::Ent => { write!(f, "ent") },
-            typ_expr::Blu => { write!(f, "blu") },
-            typ_expr::Std => { write!(f, "std") },
-            typ_expr::Loc => { write!(f, "loc") },
-            typ_expr::Url => { write!(f, "url") },
-            typ_expr::Blk => { write!(f, "blk") },
-            typ_expr::Rut => { write!(f, "rut") },
-            typ_expr::Pat => { write!(f, "pat") },
-            typ_expr::Gen => { write!(f, "gen") },
+            retype_stat::Int => { write!(f, "int") },
+            retype_stat::Flt => { write!(f, "flt") },
+            retype_stat::Chr => { write!(f, "chr") },
+            retype_stat::Bol => { write!(f, "bol") },
+            retype_stat::Arr => { write!(f, "arr") },
+            retype_stat::Vec => { write!(f, "vec") },
+            retype_stat::Seq => { write!(f, "seq") },
+            retype_stat::Mat => { write!(f, "mat") },
+            retype_stat::Set => { write!(f, "set") },
+            retype_stat::Map => { write!(f, "map") },
+            retype_stat::Axi => { write!(f, "axi") },
+            retype_stat::Tab => { write!(f, "tab") },
+            retype_stat::Str => { write!(f, "str") },
+            retype_stat::Num => { write!(f, "num") },
+            retype_stat::Ptr => { write!(f, "ptr") },
+            retype_stat::Err => { write!(f, "err") },
+            retype_stat::Opt => { write!(f, "opt") },
+            retype_stat::Nev => { write!(f, "nev") },
+            retype_stat::Uni => { write!(f, "uni") },
+            retype_stat::Any => { write!(f, "any") },
+            retype_stat::Non => { write!(f, "non") },
+            retype_stat::Nil => { write!(f, "nil") },
+            retype_stat::Rec => { write!(f, "rec") },
+            retype_stat::Ent => { write!(f, "ent") },
+            retype_stat::Blu => { write!(f, "blu") },
+            retype_stat::Std => { write!(f, "std") },
+            retype_stat::Loc => { write!(f, "loc") },
+            retype_stat::Url => { write!(f, "url") },
+            retype_stat::Blk => { write!(f, "blk") },
+            retype_stat::Rut => { write!(f, "rut") },
+            retype_stat::Pat => { write!(f, "pat") },
+            retype_stat::Gen => { write!(f, "gen") },
         }
     }
 }

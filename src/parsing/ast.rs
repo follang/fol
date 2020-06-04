@@ -18,7 +18,7 @@ pub struct ID<T> {
 }
 impl<T> ID<T> {
     pub fn new(loc: locate::LOCATION, nod: T) -> Self { ID{loc, nod: Box::new(nod)} }
-    pub fn loc(self) -> locate::LOCATION { self.loc }
+    pub fn loc(&self) -> &locate::LOCATION { &self.loc }
     pub fn get(&self) -> &T { &self.nod }
     pub fn set(&mut self, nod: T) { self.nod = Box::new(nod) }
 }
@@ -47,8 +47,9 @@ pub enum stat_type {
     Def,
     Var(var_stat),
     Fun(fun_stat),
-    Typ(typ_expr),
+    Typ(typ_stat),
     Ident(String),
+    Retype(retype_stat),
     If,
     When,
     Loop,
@@ -73,7 +74,6 @@ impl var_stat {
         body: None }
     }
 }
-
 
 #[derive(Clone, Debug, GetSet)]
 pub struct typ_stat{
@@ -115,7 +115,7 @@ pub enum assign_opts {
 }
 
 #[derive(Clone, Debug)]
-pub enum typ_expr {
+pub enum retype_stat {
     Int,
     Flt,
     Chr,

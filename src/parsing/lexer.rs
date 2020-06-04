@@ -67,7 +67,6 @@ impl BAG {
     pub fn past(&self) -> SCAN {
         if self.prev().key().is_space() { self.pth(2) } else { self.prev() }
     }
-
 }
 
 pub fn init(path: &str, e: &mut flaw::FLAW) -> BAG {
@@ -136,10 +135,11 @@ impl BAG {
     }
 
     pub fn log(&self, msg: &str) {
-        println!(" {} [{:>2} {:>2}] \t prev:{} \t curr:{} \t look:{} \t next:{} \t peek:{}",
+        println!(" {} [{:>2} {:>2}] \t past:{} \t prev:{} \t curr:{} \t look:{} \t next:{} \t peek:{}",
             msg,
             self.curr().loc().row(),
             self.curr().loc().col(),
+            self.past().key(),
             self.prev().key(),
             self.curr().key(),
             self.look().key(),

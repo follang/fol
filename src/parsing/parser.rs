@@ -36,7 +36,7 @@ impl forest {
         if lex.prev().key().is_terminal() || lex.prev().key().is_eof() {
             if matches!( lex.curr().key(), KEYWORD::assign(ASSIGN::var_) ) ||
                 ( matches!( lex.curr().key(), KEYWORD::option(_) ) && matches!( lex.next().key(), KEYWORD::assign(ASSIGN::var_) ) ) {
-                parse_stat_var(self, lex, flaw, None, false)?;
+                parse_stat_var(self, lex, flaw, None)?;
             // } else if matches!( lex.curr().key(), KEYWORD::assign(ASSIGN::fun_) ) ||
                 // ( matches!( lex.curr().key(), KEYWORD::option(_) ) && matches!( lex.next().key(), KEYWORD::assign(ASSIGN::fun_) ) ) {
                 // self.parse_stat_var(lex, flaw);
@@ -46,9 +46,9 @@ impl forest {
             // } else if matches!( lex.curr().key(), KEYWORD::assign(ASSIGN::log_) ) ||
                 // ( matches!( lex.curr().key(), KEYWORD::option(_) ) && matches!( lex.next().key(), KEYWORD::assign(ASSIGN::log_) ) ) {
                 // self.parse_stat_var(lex, flaw);
-            // } else if matches!( lex.curr().key(), KEYWORD::assign(ASSIGN::typ_) ) ||
-                // ( matches!( lex.curr().key(), KEYWORD::option(_) ) && matches!( lex.next().key(), KEYWORD::assign(ASSIGN::typ_) ) ) {
-                // parse_stat_typ(self, lex, flaw, &mut var_stat::init(), false)?;
+            } else if matches!( lex.curr().key(), KEYWORD::assign(ASSIGN::typ_) ) ||
+                ( matches!( lex.curr().key(), KEYWORD::option(_) ) && matches!( lex.next().key(), KEYWORD::assign(ASSIGN::typ_) ) ) {
+                parse_stat_typ(self, lex, flaw, None)?;
                 // self.parse_stat_var(lex, flaw);
             // } else if matches!( lex.curr().key(), KEYWORD::assign(ASSIGN::ali_) ) ||
                 // ( matches!( lex.curr().key(), KEYWORD::option(_) ) && matches!( lex.next().key(), KEYWORD::assign(ASSIGN::ali_) ) ) {
@@ -69,16 +69,16 @@ impl forest {
 //------------------------------------------------------------------------------------------------------//
 //                                                 HELPERS                                              //
 //------------------------------------------------------------------------------------------------------//
-fn help_assign_recursive(forest: &mut forest, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW, var_stat: &mut var_stat,
-    assign: fn(&mut forest, &mut lexer::BAG, &mut flaw::FLAW, &mut var_stat, bool) -> Con<()> ) -> Con<()> {
-    if matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::roundO_)) {
+fn help_assign_recursive(forest: &mut forest, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW, op: Option<Vec<assign_opts>>,
+    assign: fn(&mut forest, &mut lexer::BAG, &mut flaw::FLAW, op: Option<Vec<assign_opts>>) -> Con<()> ) -> Con<()> {
+    if matches!(lex.look().key(), KEYWORD::symbol(SYMBOL::roundO_)) {
         lex.bump(); lex.eat_space(flaw);
         while matches!(lex.curr().key(), KEYWORD::ident(_)) {
-            assign(forest, lex, flaw, var_stat, true)?;
+            assign(forest, lex, flaw, op.clone())?;
             lex.eat_termin(flaw);
         }
         if matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::roundC_)) {
-            lex.bump(); lex.eat_termin(flaw);
+            lex.bump();
         } else {
             lex.report_unepected(KEYWORD::symbol(SYMBOL::roundC_).to_string(), lex.curr().loc().clone(), flaw);
             return Err(flaw::flaw_type::parser(flaw::parser::parser_unexpected))
@@ -186,30 +186,22 @@ fn help_assign_options(v: &mut Vec<assign_opts>, lex: &mut lexer::BAG, flaw: &mu
 //------------------------------------------------------------------------------------------------------//
 //                                             VAR STATEMENT
 //------------------------------------------------------------------------------------------------------//
-fn parse_stat_var(forest: &mut forest, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW, op: Option<Vec<assign_opts>>, recursive: bool) -> Con<()> {
+fn parse_stat_var(forest: &mut forest, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW, op: Option<Vec<assign_opts>>) -> Con<()> {
     //if let tree_type::stat(stat_type::Var(v)) = tree.get() {}
     let loc = lex.curr().loc().clone();
     let mut opt: Vec<assign_opts>;
     let mut ids: Vec<ID<String>> = Vec::new();
     let mut typ: Vec<tree> = Vec::new();
     let mut var_stat = var_stat::init();
-    if let Some(o) = op { opt = o } else { opt = Vec::new(); }
 
-    if !recursive {
+    // go recursively if None or go normal if Some
+    if let Some(optioins) = op.clone() {
+        opt = optioins
+    } else {
+        opt = Vec::new();
         help_assign_definition(&mut opt, lex, flaw, help_assign_options)?;
         if matches!(lex.look().key(), KEYWORD::symbol(SYMBOL::roundO_)) {
-            lex.bump(); lex.eat_space(flaw);
-            while matches!(lex.curr().key(), KEYWORD::ident(_)) {
-                parse_stat_var(forest, lex, flaw, Some(opt.clone()), true)?;
-                lex.eat_termin(flaw);
-            }
-            if matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::roundC_)) {
-                lex.bump(); lex.eat_termin(flaw);
-            } else {
-                lex.report_unepected(KEYWORD::symbol(SYMBOL::roundC_).to_string(), lex.curr().loc().clone(), flaw);
-                return Err(flaw::flaw_type::parser(flaw::parser::parser_unexpected))
-            }
-            //help_assign_recursive(forest, lex, flaw, var_stat, parse_stat_var)?;
+            help_assign_recursive(forest, lex, flaw, Some(opt), parse_stat_var)?;
             return Ok(())
         }
     }
@@ -286,6 +278,100 @@ fn parse_expr_var(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> Option<tree> {
 }
 
 
+//------------------------------------------------------------------------------------------------------//
+//                                             TYP STATEMENT
+//------------------------------------------------------------------------------------------------------//
+fn parse_stat_typ(forest: &mut forest, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW, op: Option<Vec<assign_opts>>) -> Con<()> {
+    //if let tree_type::stat(stat_type::Var(v)) = tree.get() {}
+    let loc = lex.curr().loc().clone();
+    let mut opt: Vec<assign_opts>;
+    let mut ids: Vec<ID<String>> = Vec::new();
+    let mut typ: Vec<tree> = Vec::new();
+    let mut typ_stat = typ_stat::init();
+
+    if let Some(o) = op.clone() {
+        opt = o
+    } else {
+        opt = Vec::new();
+        help_assign_definition(&mut opt, lex, flaw, help_assign_options)?;
+        if matches!(lex.look().key(), KEYWORD::symbol(SYMBOL::roundO_)) {
+            help_assign_recursive(forest, lex, flaw, op, parse_stat_var)?;
+            return Ok(())
+        }
+    }
+
+    // identifier and indentifier list
+    help_assign_identifiers(&mut ids, lex, flaw)?;
+
+    // types and types list
+    help_assign_retypes(&mut typ, lex, flaw)?;
+
+    if ids.len() < typ.len() {
+        lex.report_type_disbalance((" ".to_string() + ids.len().to_string().as_str() + " ").black().bold().on_white().to_string(),
+        (" ".to_string() + typ.len().to_string().as_str() + " ").black().bold().on_white().to_string(),
+            lex.curr().loc().clone(), flaw);
+        return Err(flaw::flaw_type::parser(flaw::parser::parser_missmatch))
+    }
+
+    if matches!(lex.look().key(), KEYWORD::symbol(SYMBOL::equal_)) || matches!(lex.look().key(), KEYWORD::operator(OPERATOR::assign2_)) {
+        lex.eat_space(flaw);
+        typ_stat.set_body(parse_expr_var(lex, flaw));
+    }
+
+    // endline
+    if lex.look().key().is_terminal() {
+        if typ.len() == 0 && matches!(typ_stat.get_body(), None) {
+            lex.report_no_type(lex.past().key().to_string(), lex.past().loc().clone(), flaw);
+            return Err(flaw::flaw_type::parser(flaw::parser::parser_no_type))
+        }
+        typ_stat.set_options(opt.clone());
+        if typ.len() == 0 {
+            typ_stat.set_multi(None);
+            typ_stat.set_ident(tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Ident(ids[0].get().to_string()))));
+            forest.trees.push(tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Typ(typ_stat.clone()))));
+        } else if typ.len() == ids.len() {
+            for ((i, e), t) in ids.iter().enumerate().zip(typ.iter()) {
+                let mut var_clone = typ_stat.clone();
+                var_clone.set_ident(tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Ident(ids[i].get().to_string()))));
+                var_clone.set_retype(Some(t.clone()));
+                if ids.len() > 1 { var_clone.set_multi(Some((i, ids[0].get().to_string()))) };
+                forest.trees.push(tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Typ(var_clone))));
+            }
+        } else {
+            for i in 0..typ.len() {
+                let mut var_clone = typ_stat.clone();
+                var_clone.set_ident(tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Ident(ids[i].get().to_string()))));
+                var_clone.set_retype(Some(typ[i].clone()));
+                var_clone.set_multi(Some((i, ids[0].get().to_string())));
+                forest.trees.push(tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Typ(var_clone))));
+            }
+            for i in typ.len()..ids.len() {
+                let mut var_clone = typ_stat.clone();
+                var_clone.set_ident(tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Ident(ids[i].get().to_string()))));
+                var_clone.set_retype(Some(typ[typ.len()-1].clone()));
+                var_clone.set_multi(Some((i, ids[0].get().to_string())));
+                forest.trees.push(tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Typ(var_clone))));
+            }
+        }
+        return Ok(());
+    }
+
+
+    let msg = KEYWORD::symbol(SYMBOL::colon_).to_string()
+        + " or " + KEYWORD::symbol(SYMBOL::comma_).to_string().as_str()
+        + " or " + KEYWORD::symbol(SYMBOL::semi_).to_string().as_str()
+        + " or " + KEYWORD::symbol(SYMBOL::equal_).to_string().as_str()
+        + " or " + KEYWORD::operator(OPERATOR::assign2_).to_string().as_str();
+    lex.report_many_unexpected(msg, lex.look().loc().clone(), flaw);
+    return Err(flaw::flaw_type::parser(flaw::parser::parser_unexpected))
+}
+
+fn parse_expr_typ(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> Option<tree> {
+    lex.to_endline(flaw);
+    Some(tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Illegal)))
+}
+
+
 
 //------------------------------------------------------------------------------------------------------//
 //                                             TYPES STATEMENT                                           //
@@ -334,224 +420,224 @@ fn parse_type_stat(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> tree {
 }
 // int
 fn retypes_int_stat(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> tree {
-    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Typ(typ_expr::Int)));
+    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Retype(retype_stat::Int)));
     lex.bump();
     temp_go_end_type(lex);
     typ
 }
 // flt
 fn retypes_flt_stat(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> tree {
-    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Typ(typ_expr::Flt)));
+    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Retype(retype_stat::Flt)));
     lex.bump();
     temp_go_end_type(lex);
     typ
 }
 // chr
 fn retypes_chr_stat(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> tree {
-    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Typ(typ_expr::Chr)));
+    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Retype(retype_stat::Chr)));
     lex.bump();
     temp_go_end_type(lex);
     typ
 }
 // bol
 fn retypes_bol_stat(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> tree {
-    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Typ(typ_expr::Bol)));
+    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Retype(retype_stat::Bol)));
     lex.bump();
     temp_go_end_type(lex);
     typ
 }
 // arr
 fn retypes_arr_stat(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> tree {
-    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Typ(typ_expr::Arr)));
+    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Retype(retype_stat::Arr)));
     lex.bump();
     temp_go_end_type(lex);
     typ
 }
 // vec
 fn retypes_vec_stat(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> tree {
-    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Typ(typ_expr::Vec)));
+    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Retype(retype_stat::Vec)));
     lex.bump();
     temp_go_end_type(lex);
     typ
 }
 // seq
 fn retypes_seq_stat(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> tree {
-    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Typ(typ_expr::Seq)));
+    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Retype(retype_stat::Seq)));
     lex.bump();
     temp_go_end_type(lex);
     typ
 }
 // mat
 fn retypes_mat_stat(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> tree {
-    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Typ(typ_expr::Mat)));
+    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Retype(retype_stat::Mat)));
     lex.bump();
     temp_go_end_type(lex);
     typ
 }
 // set
 fn retypes_set_stat(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> tree {
-    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Typ(typ_expr::Set)));
+    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Retype(retype_stat::Set)));
     lex.bump();
     temp_go_end_type(lex);
     typ
 }
 // map
 fn retypes_map_stat(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> tree {
-    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Typ(typ_expr::Map)));
+    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Retype(retype_stat::Map)));
     lex.bump();
     temp_go_end_type(lex);
     typ
 }
 // axi
 fn retypes_axi_stat(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> tree {
-    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Typ(typ_expr::Axi)));
+    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Retype(retype_stat::Axi)));
     lex.bump();
     temp_go_end_type(lex);
     typ
 }
 // tab
 fn retypes_tab_stat(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> tree {
-    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Typ(typ_expr::Tab)));
+    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Retype(retype_stat::Tab)));
     lex.bump();
     temp_go_end_type(lex);
     typ
 }
 // str
 fn retypes_str_stat(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> tree {
-    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Typ(typ_expr::Str)));
+    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Retype(retype_stat::Str)));
     lex.bump();
     temp_go_end_type(lex);
     typ
 }
 // num
 fn retypes_num_stat(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> tree {
-    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Typ(typ_expr::Num)));
+    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Retype(retype_stat::Num)));
     lex.bump();
     temp_go_end_type(lex);
     typ
 }
 // ptr
 fn retypes_ptr_stat(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> tree {
-    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Typ(typ_expr::Ptr)));
+    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Retype(retype_stat::Ptr)));
     lex.bump();
     temp_go_end_type(lex);
     typ
 }
 // err
 fn retypes_err_stat(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> tree {
-    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Typ(typ_expr::Err)));
+    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Retype(retype_stat::Err)));
     lex.bump();
     temp_go_end_type(lex);
     typ
 }
 // opt
 fn retypes_opt_stat(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> tree {
-    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Typ(typ_expr::Opt)));
+    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Retype(retype_stat::Opt)));
     lex.bump();
     temp_go_end_type(lex);
     typ
 }
 // nev
 fn retypes_nev_stat(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> tree {
-    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Typ(typ_expr::Nev)));
+    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Retype(retype_stat::Nev)));
     lex.bump();
     temp_go_end_type(lex);
     typ
 }
 // uni
 fn retypes_uni_stat(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> tree {
-    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Typ(typ_expr::Uni)));
+    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Retype(retype_stat::Uni)));
     lex.bump();
     temp_go_end_type(lex);
     typ
 }
 // any
 fn retypes_any_stat(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> tree {
-    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Typ(typ_expr::Any)));
+    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Retype(retype_stat::Any)));
     lex.bump();
     temp_go_end_type(lex);
     typ
 }
 // non
 fn retypes_non_stat(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> tree {
-    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Typ(typ_expr::Non)));
+    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Retype(retype_stat::Non)));
     lex.bump();
     temp_go_end_type(lex);
     typ
 }
 // nil
 fn retypes_nil_stat(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> tree {
-    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Typ(typ_expr::Nil)));
+    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Retype(retype_stat::Nil)));
     lex.bump();
     temp_go_end_type(lex);
     typ
 }
 // rec
 fn retypes_rec_stat(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> tree {
-    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Typ(typ_expr::Rec)));
+    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Retype(retype_stat::Rec)));
     lex.bump();
     temp_go_end_type(lex);
     typ
 }
 // ent
 fn retypes_ent_stat(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> tree {
-    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Typ(typ_expr::Ent)));
+    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Retype(retype_stat::Ent)));
     lex.bump();
     temp_go_end_type(lex);
     typ
 }
 // blu
 fn retypes_blu_stat(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> tree {
-    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Typ(typ_expr::Blu)));
+    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Retype(retype_stat::Blu)));
     lex.bump();
     temp_go_end_type(lex);
     typ
 }
 // std
 fn retypes_std_stat(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> tree {
-    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Typ(typ_expr::Std)));
+    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Retype(retype_stat::Std)));
     lex.bump();
     temp_go_end_type(lex);
     typ
 }
 // loc
 fn retypes_loc_stat(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> tree {
-    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Typ(typ_expr::Loc)));
+    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Retype(retype_stat::Loc)));
     lex.bump();
     temp_go_end_type(lex);
     typ
 }
 // url
 fn retypes_url_stat(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> tree {
-    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Typ(typ_expr::Url)));
+    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Retype(retype_stat::Url)));
     lex.bump();
     temp_go_end_type(lex);
     typ
 }
 // blk
 fn retypes_blk_stat(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> tree {
-    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Typ(typ_expr::Blk)));
+    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Retype(retype_stat::Blk)));
     lex.bump();
     temp_go_end_type(lex);
     typ
 }
 // rut
 fn retypes_rut_stat(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> tree {
-    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Typ(typ_expr::Rut)));
+    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Retype(retype_stat::Rut)));
     lex.bump();
     temp_go_end_type(lex);
     typ
 }
 // pat
 fn retypes_pat_stat(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> tree {
-    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Typ(typ_expr::Pat)));
+    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Retype(retype_stat::Pat)));
     lex.bump();
     temp_go_end_type(lex);
     typ
 }
 // gen
 fn retypes_gen_stat(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> tree {
-    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Typ(typ_expr::Gen)));
+    let typ = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Retype(retype_stat::Gen)));
     lex.bump();
     temp_go_end_type(lex);
     typ

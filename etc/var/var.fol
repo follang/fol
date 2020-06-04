@@ -3,8 +3,8 @@
 +var three: int = <expression>
 -var[exp] (
     four: int[exp];
-    four2, four10: arr[nor], int = <expression>
-    four3 : str[nor] = <expression>;
+    four2, four3: arr[nor], int = <expression>
+    four4 : str[nor] = <expression>;
 )
 var five: rut[(x: int): int] = { <expression> }
 ~var[exp] six,six2, six3, six4: seq[] = <expression>
