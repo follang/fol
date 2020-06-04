@@ -15,7 +15,7 @@ extern crate colored;
 // use crate::scanning::stream;
 use crate::parsing::lexer;
 use crate::parsing::parser;
-use crate::parsing::ast;
+use crate::parsing::ast::*;
 use crate::error::flaw;
 
 
@@ -49,11 +49,9 @@ fn main() {
     let mut forest = parser::new();
     forest.init(&mut tokens, &mut error);
     for tree in forest.trees {
-        // if let ast::tree::stat(a) = tree.clone() {
-            // println!("{}", a.get_loc());
-        // }
-        println!("{}\t\t{}", tree.clone().loc(), tree.clone().get());
-        // println!("{:?}", tree.parsing());
+        if let tree_type::stat(stat_type::Typ(_)) = tree.get() {
+            println!("{}\t\t{}", tree.clone().loc(), tree.clone().get());
+        }
     }
     error.show();
 }

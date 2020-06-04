@@ -1,10 +1,8 @@
 #![allow(dead_code)]
-#![allow(unused_macros)]
 #![allow(non_snake_case)]
+#![allow(non_camel_case_types)]
 
 use std::fmt;
-// use crate::scanning::scanner;
-// use crate::scanning::reader;
 use crate::scanning::locate;
 use crate::scanning::token;
 use crate::scanning::stream;
@@ -109,10 +107,10 @@ impl BAG {
         let s = String::from("expected:") + &k + " but recieved:" + &self.curr().key().to_string();
         e.report(flaw::flaw_type::parser(flaw::parser::parser_unexpected), &s, l);
     }
-    pub fn report_missmatch(&mut self, k: String, l: locate::LOCATION, e: &mut flaw::FLAW) {
-        let s = String::from("expected:") + &k + " but recieved:" + &self.curr().key().to_string();
-        e.report(flaw::flaw_type::parser(flaw::parser::parser_missmatch), &s, l);
-    }
+    // pub fn report_missmatch(&mut self, k: String, l: locate::LOCATION, e: &mut flaw::FLAW) {
+        // let s = String::from("expected:") + &k + " but recieved:" + &self.curr().key().to_string();
+        // e.report(flaw::flaw_type::parser(flaw::parser::parser_missmatch), &s, l);
+    // }
     pub fn report_space_rem(&mut self, l: locate::LOCATION, e: &mut flaw::FLAW) {
         let s = String::from("space between:") + &self.prev().key().to_string() + " and:" + &self.next().key().to_string() + " needs to be removed";
         e.report(flaw::flaw_type::parser(flaw::parser::parser_space_rem), &s, l);
@@ -145,16 +143,6 @@ impl BAG {
             self.look().key(),
             self.next().key(),
             self.peek().key());
-    }
-    pub fn log2(&self, msg: &str) {
-        println!(" {} [{:>2} {:>2}] \t prev:{} \t curr:{} \t next:{}",
-            msg,
-            self.curr().loc().row(),
-
-            self.curr().loc().col(),
-            self.prev().key(),
-            self.curr().key(),
-            self.next().key())
     }
 }
 
