@@ -20,8 +20,8 @@ pub fn parse_ident_stat(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> ID<Strin
     to_ret
 }
 
-pub fn assign_recursive(forest: &mut forest, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW, op: Option<Vec<assign_opts>>,
-    assign: fn(&mut forest, &mut lexer::BAG, &mut flaw::FLAW, op: Option<Vec<assign_opts>>) -> Con<()> ) -> Con<()> {
+pub fn assign_recursive(forest: &mut forest, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW, op: Option<trees>,
+    assign: fn(&mut forest, &mut lexer::BAG, &mut flaw::FLAW, op: Option<trees>) -> Con<()> ) -> Con<()> {
     if matches!(lex.look().key(), KEYWORD::symbol(SYMBOL::roundO_)) {
         lex.bump(); lex.eat_space(flaw);
         while matches!(lex.curr().key(), KEYWORD::ident(_)) {
@@ -75,8 +75,8 @@ pub fn assign_retypes(types: &mut Vec<tree>, lex: &mut lexer::BAG, flaw: &mut fl
     Ok(())
 }
 
-pub fn assign_definition(opts: &mut Vec<assign_opts>, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW,
-    assign: fn(&mut Vec<assign_opts>, &mut lexer::BAG, &mut flaw::FLAW) -> Con<()> ) -> Con<()> {
+pub fn assign_definition(opts: &mut trees, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW,
+    assign: fn(&mut trees, &mut lexer::BAG, &mut flaw::FLAW) -> Con<()> ) -> Con<()> {
         // option symbol
         if matches!(lex.curr().key(), KEYWORD::option(_)) {
             assign(opts, lex, flaw)?;
@@ -102,15 +102,15 @@ pub fn assign_definition(opts: &mut Vec<assign_opts>, lex: &mut lexer::BAG, flaw
         Ok(())
 }
 
-pub fn assign_options(v: &mut Vec<assign_opts>, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> Con<()> {
+pub fn assign_options(v: &mut trees, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> Con<()> {
     if matches!(lex.curr().key(), KEYWORD::option(_)) {
         let el;
         match lex.curr().key() {
-            KEYWORD::option(OPTION::mut_) => { el = assign_opts::Mut }
-            KEYWORD::option(OPTION::sta_) => { el = assign_opts::Sta }
-            KEYWORD::option(OPTION::exp_) => { el = assign_opts::Exp }
-            KEYWORD::option(OPTION::hid_) => { el = assign_opts::Hid }
-            KEYWORD::option(OPTION::hep_) => { el = assign_opts::Hep }
+            KEYWORD::option(OPTION::mut_) => { el = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Opts(assign_opts::Mut))) }
+            KEYWORD::option(OPTION::sta_) => { el = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Opts(assign_opts::Sta))) }
+            KEYWORD::option(OPTION::exp_) => { el = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Opts(assign_opts::Exp))) }
+            KEYWORD::option(OPTION::hid_) => { el = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Opts(assign_opts::Hid))) }
+            KEYWORD::option(OPTION::hep_) => { el = tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Opts(assign_opts::Hep))) }
             _ => {
                 lex.report_unepected(KEYWORD::option(OPTION::ANY).to_string(), lex.curr().loc().clone(), flaw);
                 return Err(flaw::flaw_type::parser(flaw::parser::parser_unexpected))
@@ -133,10 +133,32 @@ pub fn assign_options(v: &mut Vec<assign_opts>, lex: &mut lexer::BAG, flaw: &mut
     Ok(())
 }
 
-pub fn assign_contract(v: &mut Vec<assign_opts>, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> Con<()> {
+pub fn assign_contract(v: &mut trees, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> Con<()> {
+    // TODO:
+    // TEMPOrARY GO TO END OF CONTRACT
+    if matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::roundO_)) {
+        let deep = lex.curr().loc().deep();
+        while !( ( matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::roundC_))
+            && lex.curr().loc().deep() < deep )
+            || lex.curr().key().is_eof() ) {
+            lex.bump();
+        }
+        lex.bump();
+    }
     Ok(())
 }
-pub fn assign_generics(v: &mut Vec<assign_opts>, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> Con<()> {
+pub fn assign_generics(v: &mut trees, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> Con<()> {
+    // TODO:
+    // TEMPOrARY GO TO END OF ENDGENERICS
+    if matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::squarO_)) {
+        let deep = lex.curr().loc().deep();
+        while !( ( matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::squarC_))
+            && lex.curr().loc().deep() < deep )
+            || lex.curr().key().is_eof() ) {
+            lex.bump();
+        }
+        lex.bump();
+    }
     Ok(())
 }
 

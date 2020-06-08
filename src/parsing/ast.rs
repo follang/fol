@@ -49,6 +49,7 @@ pub enum stat_type {
     Var(var_stat),
     Fun(fun_stat),
     Typ(typ_stat),
+    Opts(assign_opts),
     Ident(String),
     Retype(retype_stat),
     If,
@@ -58,7 +59,7 @@ pub enum stat_type {
 
 #[derive(Clone, Debug, GetSet)]
 pub struct var_stat{
-    options: Vec<assign_opts>,
+    options: Option<trees>,
     multi: Option<(usize, String)>,
     ident: tree,
     retype: Option<tree>,
@@ -68,7 +69,7 @@ pub struct var_stat{
 impl var_stat {
     pub fn init() -> Self {
         var_stat {
-        options: Vec::new(),
+        options: None,
         ident: tree::new(locate::LOCATION::def(), tree_type::stat(stat_type::Ident(String::new()))),
         multi: None,
         retype: None,
@@ -78,18 +79,18 @@ impl var_stat {
 
 #[derive(Clone, Debug, GetSet)]
 pub struct typ_stat{
-    options: Vec<assign_opts>,
+    options: Option<trees>,
     multi: Option<(usize, String)>,
     ident: tree,
-    generics: Option<Vec<tree>>,
-    contract: Option<Vec<(tree, tree)>>,
+    generics: Option<Vec<(tree, tree)>>,
+    contract: Option<Vec<tree>>,
     retype: Option<tree>,
     body: Option<tree>
 }
 impl typ_stat {
     pub fn init() -> Self {
         typ_stat {
-        options: Vec::new(),
+        options: None,
         multi: None,
         ident: tree::new(locate::LOCATION::def(), tree_type::stat(stat_type::Ident(String::new()))),
         generics: None,

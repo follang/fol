@@ -31,6 +31,7 @@ impl fmt::Display for stat_type {
         match &self {
             stat_type::Typ(a) => {write!(f, "{}", a)},
             stat_type::Var(a) => {write!(f, "{}", a)},
+            stat_type::Opts(a) => {write!(f, "{}", a)},
             stat_type::Ident(a) => {write!(f, "{}", a)},
             stat_type::Retype(a) => {write!(f, "{}", a)},
             stat_type::Illegal => {write!(f, "<unknown>")},
@@ -54,7 +55,7 @@ impl fmt::Display for var_stat {
         let mut base = String::new();
         if let Some(a) = self.get_multi().clone() { base = "[".to_string() + a.0.to_string().as_str() + ", " + a.1.as_str() + "]"; }
         let mut opts: Vec<String> = Vec::new();
-        for e in self.get_options().iter() { opts.push(e.clone().to_string()) }
+        if let Some(a) = self.get_options().clone() { for e in a.iter() { opts.push(e.clone().to_string()) } }
         let id: String = self.get_ident().clone().get().to_string();
         let mut body = String::new();
         if let Some(a) = self.get_body().clone() { body = " = ".to_string() + a.to_string().as_str(); }
@@ -69,7 +70,7 @@ impl fmt::Display for typ_stat {
         let mut base = String::new();
         if let Some(a) = self.get_multi().clone() { base = "[".to_string() + a.0.to_string().as_str() + ", " + a.1.as_str() + "]"; }
         let mut opts: Vec<String> = Vec::new();
-        for e in self.get_options().iter() { opts.push(e.clone().to_string()) }
+        if let Some(a) = self.get_options().clone() { for e in a.iter() { opts.push(e.clone().to_string()) } }
         let id: String = self.get_ident().clone().get().to_string();
         let mut body = String::new();
         if let Some(a) = self.get_body().clone() { body = " = ".to_string() + a.to_string().as_str(); }

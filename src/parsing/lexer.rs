@@ -131,7 +131,10 @@ impl BAG {
         let s = String::from("unexpected:") + &self.curr().key().to_string() + " only those are valid: " + &k;
         e.report(flaw::flaw_type::parser(flaw::parser::parser_many_unexpected), &s, l);
     }
-
+    pub fn report_needs_body(&mut self, k: String, l: locate::LOCATION, e: &mut flaw::FLAW) {
+        let s = String::from("type body not declared, declare body after ") + &k;
+        e.report(flaw::flaw_type::parser(flaw::parser::parser_needs_body), &s, l);
+    }
     pub fn log(&self, msg: &str) {
         println!(" {} [{:>2} {:>2}] \t past:{} \t prev:{} \t curr:{} \t look:{} \t next:{} \t peek:{}",
             msg,

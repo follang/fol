@@ -14,16 +14,16 @@ use crate::error::flaw;
 
 use crate::error::flaw::Con;
 
-pub fn parse_stat_typ(forest: &mut forest, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW, op: Option<Vec<assign_opts>>) -> Con<()> {
+pub fn parse_stat_typ(forest: &mut forest, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW, op: Option<trees>) -> Con<()> {
     //if let tree_type::stat(stat_type::Var(v)) = tree.get() {}
     let loc = lex.curr().loc().clone();
-    let mut opt: Vec<assign_opts>;
+    let mut opt: trees;
     let mut ids: Vec<ID<String>> = Vec::new();
     let mut typ: Vec<tree> = Vec::new();
     let mut typ_stat = typ_stat::init();
 
-    if let Some(o) = op.clone() {
-        opt = o
+    if let Some(options) = op.clone() {
+        opt = options
     } else {
         opt = Vec::new();
         helper::assign_definition(&mut opt, lex, flaw, helper::assign_options)?;
@@ -36,7 +36,12 @@ pub fn parse_stat_typ(forest: &mut forest, lex: &mut lexer::BAG, flaw: &mut flaw
 
     // identifier and indentifier list
     helper::assign_identifiers(&mut ids, lex, flaw, false)?;
-    lex.log(">>");
+
+    // generics
+    helper::assign_generics(&mut opt, lex, flaw)?;
+
+    // contracts
+    helper::assign_contract(&mut opt, lex, flaw)?;
 
     // types and types list
     helper::assign_retypes(&mut typ, lex, flaw, false)?;
@@ -45,14 +50,13 @@ pub fn parse_stat_typ(forest: &mut forest, lex: &mut lexer::BAG, flaw: &mut flaw
         lex.eat_space(flaw);
         typ_stat.set_body(parse_expr_typ(lex, flaw));
     }
-
     // endline
     if lex.look().key().is_terminal() {
-        if typ.len() == 0 && matches!(typ_stat.get_body(), None) {
-            lex.report_no_type(lex.past().key().to_string(), lex.past().loc().clone(), flaw);
+        if matches!(typ_stat.get_body(), None) {
+            lex.report_needs_body(lex.past().key().to_string(), lex.past().loc().clone(), flaw);
             return Err(flaw::flaw_type::parser(flaw::parser::parser_no_type))
         }
-        typ_stat.set_options(opt.clone());
+        typ_stat.set_options(Some(opt.clone()));
         if typ.len() == 0 {
             typ_stat.set_multi(None);
             typ_stat.set_ident(tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Ident(ids[0].get().to_string()))));

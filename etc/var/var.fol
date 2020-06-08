@@ -16,7 +16,7 @@ var t1, t2, t3, t4, t5, t6: int, str
 
 
 typ one: rec = { <expression> };
-typ two[T: gen, N: int](): obj = { <expression> };
+typ two[T: gen, N: int](): rec = { <expression> };
 ~typ[] (
     three: rec[] = <expression>;
     three2: rec[] = <expression>;
@@ -24,7 +24,7 @@ typ two[T: gen, N: int](): obj = { <expression> };
 ~typ[] four: rec = { <expression> };
 ~typ[] five: rec[] = { <expression> };
 ~typ[] six(blue): rec[] = { <expression> };
-~typ[] seven[T: gen, N: int](blue): obj ;
+~typ[] seven[T: gen, N: int](blue): rec = <expression>;
 ~ali[] five: arr[int, 5];
 ~ali[] int: int;
 

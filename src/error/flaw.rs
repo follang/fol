@@ -29,6 +29,7 @@ pub enum parser {
     parser_space_add,
     parser_type_disbalance,
     parser_no_type,
+    parser_needs_body,
     parser_many_unexpected,
 }
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -115,6 +116,7 @@ impl fmt::Display for parser {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let value: String = match self {
             parser::parser_unexpected => " UNEXPECTED TOKEN ".to_string(),
+            parser::parser_needs_body => " MISSING DECLARATATION ".to_string(),
             parser::parser_missmatch => " MISSMATCHED ARGUMENTS ".to_string(),
             parser::parser_space_add => " MISSING BLANK SPACE ".to_string(),
             parser::parser_space_rem => " OBSOLETE BLANK SPACE ".to_string(),

@@ -14,12 +14,12 @@ use crate::error::flaw;
 use crate::error::flaw::Con;
 
 
-pub fn parse_stat_var(forest: &mut forest, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW, op: Option<Vec<assign_opts>>) -> Con<()> {
+pub fn parse_stat_var(forest: &mut forest, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW, op: Option<trees>) -> Con<()> {
     //if let tree_type::stat(stat_type::Var(v)) = tree.get() {}
     let loc = lex.curr().loc().clone();
-    let mut opt: Vec<assign_opts>;
+    let mut opt: trees;
     let mut ids: Vec<ID<String>> = Vec::new();
-    let mut typ: Vec<tree> = Vec::new();
+    let mut typ: trees = Vec::new();
     let mut var_stat = var_stat::init();
 
     // go recursively if None or go normal if Some
@@ -55,7 +55,7 @@ pub fn parse_stat_var(forest: &mut forest, lex: &mut lexer::BAG, flaw: &mut flaw
             lex.report_no_type(lex.past().key().to_string(), lex.past().loc().clone(), flaw);
             return Err(flaw::flaw_type::parser(flaw::parser::parser_no_type))
         }
-        var_stat.set_options(opt.clone());
+        var_stat.set_options(Some(opt.clone()));
         if typ.len() == 0 {
             var_stat.set_multi(None);
             var_stat.set_ident(tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Ident(ids[0].get().to_string()))));
