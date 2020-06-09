@@ -47,4 +47,4 @@ fun[] '!='(one, two: int): bol = { <expression> }
 ~pro[] (obj)'$': str = { <expression> }
 ~pro[] one[T: gen](two: int): int = { <expression> }
 fun[] add1(adder: rut[(x: int): int]): int = { <expression> }
-fun[] add2(): rut[(x: int): int] = { <expression> }
+/* fun[] add2(): rut[(x: int): int] = { <expression> } */

@@ -121,6 +121,7 @@ impl parts::PART {
             result.endline(self, false);
         } else if is_space(&self.curr_char()) {
             result.space(self);
+            //TODO: fix comment here
         } else if self.curr_char() == '"' || self.curr_char() == '\'' || self.curr_char() == '`' {
             result.encap(self);
         } else if is_digit(&self.curr_char()) {
