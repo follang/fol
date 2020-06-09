@@ -47,7 +47,7 @@ pub enum stat_type {
     Use,
     Def,
     Var(var_stat),
-    Fun(fun_stat),
+    // Fun(fun_stat),
     Typ(typ_stat),
     Opts(assign_opts),
     Ident(String),
@@ -100,16 +100,6 @@ impl typ_stat {
     }
 }
 
-#[derive(Clone, Debug, GetSet)]
-pub struct fun_stat {
-    options: Vec<assign_opts>,
-    implement: Option<tree>,
-    ident: Box<String>,
-    generics: Option<Box<tree>>,
-    parameters: Option<Box<tree>>,
-    retype: Option<Box<tree>>,
-    body: Box<tree>
-}
 
 #[derive(Clone, Debug)]
 pub enum assign_opts {
