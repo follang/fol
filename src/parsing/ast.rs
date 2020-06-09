@@ -49,6 +49,7 @@ pub enum stat_type {
     Var(var_stat),
     // Fun(fun_stat),
     Typ(typ_stat),
+    Ali(typ_stat),
     Opts(assign_opts),
     Ident(String),
     Retype(retype_stat),
@@ -69,11 +70,12 @@ pub struct var_stat{
 impl var_stat {
     pub fn init() -> Self {
         var_stat {
-        options: None,
-        ident: tree::new(locate::LOCATION::def(), tree_type::stat(stat_type::Ident(String::new()))),
-        multi: None,
-        retype: None,
-        body: None }
+            options: None,
+            ident: tree::new(locate::LOCATION::def(), tree_type::stat(stat_type::Ident(String::new()))),
+            multi: None,
+            retype: None,
+            body: None
+        }
     }
 }
 
@@ -90,20 +92,21 @@ pub struct typ_stat{
 impl typ_stat {
     pub fn init() -> Self {
         typ_stat {
-        options: None,
-        multi: None,
-        ident: tree::new(locate::LOCATION::def(), tree_type::stat(stat_type::Ident(String::new()))),
-        generics: None,
-        contract: None,
-        retype: None,
-        body: None }
+            options: None,
+            multi: None,
+            ident: tree::new(locate::LOCATION::def(), tree_type::stat(stat_type::Ident(String::new()))),
+            generics: None,
+            contract: None,
+            retype: None,
+            body: None
+        }
     }
 }
 
 
 #[derive(Clone, Debug)]
 pub enum assign_opts {
-    Imu, Mut, Sta, Nor, Exp, Hid, Stk, Hep,
+    Imu, Mut, Sta, Nor, Exp, Hid, Stk, Hep, Ext
 }
 
 #[derive(Clone, Debug)]

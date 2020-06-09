@@ -322,6 +322,7 @@ impl SCAN {
             "hid" => { self.set_key(option(OPTION::hid_)) },
             "stk" => { self.set_key(option(OPTION::stk_)) },
             "hep" => { self.set_key(option(OPTION::hep_)) },
+            "ext" => { self.set_key(option(OPTION::ext_)) },
             "i8" => { self.set_key(form(FORM::i8_)) },
             "i16" => { self.set_key(form(FORM::i16_)) },
             "i32" => { self.set_key(form(FORM::i32_)) },

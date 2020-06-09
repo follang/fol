@@ -49,7 +49,7 @@ fn main() {
     let mut forest = parser::new();
     forest.init(&mut tokens, &mut error);
     for tree in forest.trees {
-        if let tree_type::stat(stat_type::Var(_)) = tree.get() {
+        if let tree_type::stat(stat_type::Typ(_)) = tree.get() {
             println!("{}\t\t{}", tree.clone().loc(), tree.clone().get());
         }
     }

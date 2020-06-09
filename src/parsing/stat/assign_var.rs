@@ -14,7 +14,7 @@ use crate::error::flaw;
 use crate::error::flaw::Con;
 
 
-pub fn parse_stat_var(forest: &mut forest, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW, op: Option<trees>) -> Con<()> {
+pub fn parse_stat(forest: &mut forest, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW, op: Option<trees>, short: bool) -> Con<()> {
     //if let tree_type::stat(stat_type::Var(v)) = tree.get() {}
     let loc = lex.curr().loc().clone();
     let mut opt: trees;
@@ -29,7 +29,18 @@ pub fn parse_stat_var(forest: &mut forest, lex: &mut lexer::BAG, flaw: &mut flaw
         opt = Vec::new();
         helper::assign_definition(&mut opt, lex, flaw, helper::assign_options)?;
         if matches!(lex.look().key(), KEYWORD::symbol(SYMBOL::roundO_)) {
-            helper::assign_recursive(forest, lex, flaw, Some(opt), parse_stat_var)?;
+            lex.bump(); lex.eat_space(flaw);
+            while matches!(lex.curr().key(), KEYWORD::ident(_)) {
+                parse_stat(forest, lex, flaw, Some(opt.clone()), false)?;
+                lex.eat_termin(flaw);
+            }
+            if matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::roundC_)) {
+                lex.bump();
+            } else {
+                lex.report_unepected(KEYWORD::symbol(SYMBOL::roundC_).to_string(), lex.curr().loc().clone(), flaw);
+                return Err(flaw::flaw_type::parser(flaw::parser::parser_unexpected))
+            }
+            // helper::assign_recursive(forest, lex, flaw, Some(opt), parse_stat_var)?;
             lex.to_endline(flaw); lex.eat_termin(flaw);
             return Ok(())
         }
@@ -46,7 +57,7 @@ pub fn parse_stat_var(forest: &mut forest, lex: &mut lexer::BAG, flaw: &mut flaw
 
     if matches!(lex.look().key(), KEYWORD::symbol(SYMBOL::equal_)) || matches!(lex.look().key(), KEYWORD::operator(OPERATOR::assign2_)) {
         lex.eat_space(flaw);
-        var_stat.set_body(parse_expr_var(lex, flaw));
+        var_stat.set_body(parse_expr(lex, flaw));
     }
 
     // endline
@@ -91,7 +102,7 @@ pub fn parse_stat_var(forest: &mut forest, lex: &mut lexer::BAG, flaw: &mut flaw
     return helper::error_assign_last(lex, flaw);
 }
 
-fn parse_expr_var(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> Option<tree> {
+fn parse_expr(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> Option<tree> {
     lex.to_endline(flaw);
     Some(tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Illegal)))
 }

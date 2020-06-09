@@ -102,7 +102,7 @@ pub fn assign_definition(opts: &mut trees, lex: &mut lexer::BAG, flaw: &mut flaw
         Ok(())
 }
 
-pub fn assign_options(v: &mut trees, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> Con<()> {
+pub fn assign_options(opts: &mut trees, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> Con<()> {
     if matches!(lex.curr().key(), KEYWORD::option(_)) {
         let el;
         match lex.curr().key() {
@@ -116,7 +116,7 @@ pub fn assign_options(v: &mut trees, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW
                 return Err(flaw::flaw_type::parser(flaw::parser::parser_unexpected))
             }
         };
-        v.push(el);
+        opts.push(el);
         lex.bump();
         return Ok(())
     }

@@ -391,6 +391,8 @@ pub enum OPTION {
     hid_,
     stk_,
     hep_,
+    // for alias extension
+    ext_,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -591,6 +593,7 @@ impl fmt::Display for KEYWORD {
             option(OPTION::hid_) => key[1].clone() + &mid + "hid" + &pos,
             option(OPTION::stk_) => key[1].clone() + &mid + "stk" + &pos,
             option(OPTION::hep_) => key[1].clone() + &mid + "hep" + &pos,
+            option(OPTION::ext_) => key[1].clone() + &mid + "ext" + &pos,
             ident(Some(a)) => key[2].clone() + &mid + a + &pos,
             ident(None) => key[2].clone(),
             comment => key[10].clone(),

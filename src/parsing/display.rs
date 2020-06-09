@@ -89,6 +89,7 @@ impl fmt::Display for assign_opts {
             assign_opts::Hid => { write!(f, "hid") }
             assign_opts::Stk => { write!(f, "stk") }
             assign_opts::Hep => { write!(f, "hep") }
+            assign_opts::Ext => { write!(f, "ext") }
         }
     }
 }
