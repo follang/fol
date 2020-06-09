@@ -112,6 +112,11 @@ impl parts::PART {
         let mut result = SCAN::new(illegal, loc.clone(), String::new());
         result.loc.new_word();
         self.bump(&mut result.loc);
+        //ignore comments
+        if self.curr_char() == '/' && ( self.next_char() == '/' || self.next_char() == '*' ) {
+            result.comment(self);
+            self.bump(&mut result.loc);
+        }
         if is_eol(&self.curr_char()) {
             result.endline(self, false);
         } else if is_space(&self.curr_char()) {
@@ -138,6 +143,26 @@ impl SCAN {
         self.loc.longer(&other.loc.len())
     }
 
+    fn comment(&mut self,  part: &mut parts::PART) {
+        self.bump_next(part);
+        if part.curr_char() == '/' {
+            // self.bump_next(part);
+            while !is_eol(&part.next_char()) {
+                self.bump_next(part);
+            }
+        }
+        if part.curr_char() == '*' {
+            self.bump_next(part);
+            while part.curr_char() != '*' && part.next_char() != '/' {
+                self.bump_next(part);
+            }
+            self.bump_next(part);
+            //TODO: double check
+            if is_space(&part.next_char()) {
+                self.bump_next(part);
+            }
+        }
+    }
     fn endline(&mut self, part: &mut parts::PART, terminated: bool) {
         self.push_curr(part);
         self.loc.new_line();

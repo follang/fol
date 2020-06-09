@@ -84,12 +84,12 @@ impl BAG {
         !self.get_NEXT().is_empty()
     }
 
-    pub fn eat_space(&mut self, e: &mut flaw::FLAW) {
+    pub fn bump_space(&mut self, e: &mut flaw::FLAW) {
         if self.curr().key().is_space() {
             self.bump()
         }
     }
-    pub fn eat_termin(&mut self, e: &mut flaw::FLAW) {
+    pub fn bump_termin(&mut self, e: &mut flaw::FLAW) {
         while self.curr().key().is_terminal() || self.curr().key().is_space() {
             self.bump()
         }
@@ -120,7 +120,7 @@ impl BAG {
         e.report(flaw::flaw_type::parser(flaw::parser::parser_space_add), &s, l);
     }
     pub fn report_type_disbalance(&mut self, k: String, p: String, l: locate::LOCATION, e: &mut flaw::FLAW) {
-        let s = String::from("number of variables:") + &k + " and number of types:" + &p + " does not match";
+        let s = String::from("number of variables does not match number of types");
         e.report(flaw::flaw_type::parser(flaw::parser::parser_type_disbalance), &s, l);
     }
     pub fn report_no_type(&mut self, p: String, l: locate::LOCATION, e: &mut flaw::FLAW) {
@@ -128,11 +128,11 @@ impl BAG {
         e.report(flaw::flaw_type::parser(flaw::parser::parser_no_type), &s, l);
     }
     pub fn report_many_unexpected(&mut self, k: String, l: locate::LOCATION, e: &mut flaw::FLAW) {
-        let s = String::from("unexpected:") + &self.curr().key().to_string() + " only those are valid: " + &k;
+        let s = String::from("unexpected:") + &self.curr().key().to_string();
         e.report(flaw::flaw_type::parser(flaw::parser::parser_many_unexpected), &s, l);
     }
     pub fn report_needs_body(&mut self, k: String, l: locate::LOCATION, e: &mut flaw::FLAW) {
-        let s = String::from("type body not declared, declare body after ") + &k;
+        let s = String::from("type body not declared, consider declaring it after ") + &k;
         e.report(flaw::flaw_type::parser(flaw::parser::parser_needs_body), &s, l);
     }
     pub fn log(&self, msg: &str) {
@@ -178,12 +178,6 @@ impl stream::STREAM {
                 result = self.make_number(e);
                 // self.make_number(e, &mut result);
             }
-        }
-
-        else if  matches!(self.curr().key(), KEYWORD::symbol(SYMBOL::root_))
-            && ( matches!(self.next().key(), KEYWORD::symbol(SYMBOL::root_)) || matches!(self.next().key(), KEYWORD::symbol(SYMBOL::star_)))
-        {
-            result = self.make_comment(e);
         }
 
         // operators
@@ -254,7 +248,6 @@ impl stream::STREAM {
                 result.combine(&self.next());
                 self.bump()
             }
-
         } else if matches!(self.next().key(), KEYWORD::symbol(SYMBOL::star_)) {
             while !(matches!(self.next().key(), KEYWORD::symbol(SYMBOL::star_)) && matches!(self.nth(2).key(), KEYWORD::symbol(SYMBOL::root_)))
                 || self.next().key().is_eof()

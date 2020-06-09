@@ -2,7 +2,7 @@
 -var[exp,imu] two: str[exp,hid] = <expression>
 +var three: int = <expression>
 -var[exp] (
-    four: int[exp];
+    /* four: int[exp], str; */
     four2, four3: arr[nor], int = <expression>
     four4 : str[nor] = <expression>;
 )
