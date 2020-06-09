@@ -180,6 +180,12 @@ impl stream::STREAM {
             }
         }
 
+        else if  matches!(self.curr().key(), KEYWORD::symbol(SYMBOL::root_))
+            && ( matches!(self.next().key(), KEYWORD::symbol(SYMBOL::root_)) || matches!(self.next().key(), KEYWORD::symbol(SYMBOL::star_)))
+        {
+            result = self.make_comment(e);
+        }
+
         // operators
         else if  self.curr().key().is_symbol()
             && ( matches!(self.curr().key(), KEYWORD::symbol(SYMBOL::semi_)))
@@ -240,6 +246,29 @@ impl stream::STREAM {
         }
         result
     }
+
+    pub fn make_comment(&mut self, e: &mut flaw::FLAW) -> SCAN {
+        let mut result = self.curr().clone();
+        if matches!(self.next().key(), KEYWORD::symbol(SYMBOL::root_)){
+            while !self.next().key().is_eol() {
+                result.combine(&self.next());
+                self.bump()
+            }
+
+        } else if matches!(self.next().key(), KEYWORD::symbol(SYMBOL::star_)) {
+            while !(matches!(self.next().key(), KEYWORD::symbol(SYMBOL::star_)) && matches!(self.nth(2).key(), KEYWORD::symbol(SYMBOL::root_)))
+                || self.next().key().is_eof()
+            {
+                result.combine(&self.next());
+                self.bump()
+            }
+            result.combine(&self.next()); self.bump();
+            result.combine(&self.next()); self.bump();
+        }
+        result.set_key(comment);
+        result
+    }
+
     pub fn make_number(&mut self, e: &mut flaw::FLAW) -> SCAN {
         let mut result = self.curr().clone();
         if self.curr().key().is_dot() && self.next().key().is_decimal() {
