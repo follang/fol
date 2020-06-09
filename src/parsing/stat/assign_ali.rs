@@ -28,10 +28,10 @@ pub fn parse_stat(forest: &mut forest, lex: &mut lexer::BAG, flaw: &mut flaw::FL
         opt = Vec::new();
         helper::assign_definition(&mut opt, lex, flaw, helper::assign_options)?;
         if matches!(lex.look().key(), KEYWORD::symbol(SYMBOL::roundO_)) {
-            lex.bump(); lex.eat_space(flaw);
+            lex.bump(); lex.bump_termin(flaw);
             while matches!(lex.curr().key(), KEYWORD::ident(_)) {
                 parse_stat(forest, lex, flaw, Some(opt.clone()))?;
-                lex.eat_termin(flaw);
+                lex.bump_termin(flaw);
             }
             if matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::roundC_)) {
                 lex.bump();
@@ -40,7 +40,7 @@ pub fn parse_stat(forest: &mut forest, lex: &mut lexer::BAG, flaw: &mut flaw::FL
                 return Err(flaw::flaw_type::parser(flaw::parser::parser_unexpected))
             }
             // helper::assign_recursive(forest, lex, flaw, Some(opt), parse_stat_typ)?;
-            lex.to_endline(flaw); lex.eat_termin(flaw);
+            lex.to_endline(flaw); lex.bump_termin(flaw);
             return Ok(())
         }
     }
@@ -58,7 +58,7 @@ pub fn parse_stat(forest: &mut forest, lex: &mut lexer::BAG, flaw: &mut flaw::FL
     helper::assign_retypes(&mut typ, lex, flaw, false)?;
 
     if matches!(lex.look().key(), KEYWORD::symbol(SYMBOL::equal_)) || matches!(lex.look().key(), KEYWORD::operator(OPERATOR::assign2_)) {
-        lex.eat_space(flaw);
+        lex.bump_space(flaw);
         typ_stat.set_body(parse_expr(lex, flaw));
     }
     // endline
@@ -81,7 +81,7 @@ pub fn parse_stat(forest: &mut forest, lex: &mut lexer::BAG, flaw: &mut flaw::FL
                 forest.trees.push(tree::new(lex.curr().loc().clone(), tree_type::stat(stat_type::Typ(var_clone))));
             }
         }
-        lex.to_endline(flaw); lex.eat_termin(flaw);
+        lex.to_endline(flaw); lex.bump_termin(flaw);
         return Ok(());
     }
     return helper::error_assign_last(lex, flaw);

@@ -28,7 +28,7 @@ impl forest {
         if !flaw.list().is_empty() { return; }
         let f = self::new();
         while lex.not_empty() {
-            if let Err(e) = self.parse_tree(lex, flaw) { lex.to_endline(flaw); lex.eat_termin(flaw); };
+            if let Err(e) = self.parse_tree(lex, flaw) { lex.to_endline(flaw); lex.bump_termin(flaw); };
         }
     }
     pub fn parse_tree(&mut self, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> Con<()> {
@@ -53,7 +53,7 @@ impl forest {
             // } else if matches!( lex.curr().key(), KEYWORD::assign(ASSIGN::def_) ) ||
                 // ( matches!( lex.curr().key(), KEYWORD::option(_) ) && matches!( lex.next().key(), KEYWORD::assign(ASSIGN::def_) ) ) {
             } else {
-                lex.to_endline(flaw); lex.eat_termin(flaw);
+                lex.to_endline(flaw); lex.bump_termin(flaw);
             }
         }
         Ok(())

@@ -23,10 +23,10 @@ pub fn parse_ident_stat(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> ID<Strin
 pub fn assign_recursive(forest: &mut forest, lex: &mut lexer::BAG, flaw: &mut flaw::FLAW, op: Option<trees>,
     assign: fn(&mut forest, &mut lexer::BAG, &mut flaw::FLAW, op: Option<trees>) -> Con<()> ) -> Con<()> {
     if matches!(lex.look().key(), KEYWORD::symbol(SYMBOL::roundO_)) {
-        lex.bump(); lex.eat_space(flaw);
+        lex.bump(); lex.bump_space(flaw);
         while matches!(lex.curr().key(), KEYWORD::ident(_)) {
             assign(forest, lex, flaw, op.clone())?;
-            lex.eat_termin(flaw);
+            lex.bump_termin(flaw);
         }
         if matches!(lex.curr().key(), KEYWORD::symbol(SYMBOL::roundC_)) {
             lex.bump();
@@ -44,7 +44,7 @@ pub fn assign_identifiers(list: &mut Vec<ID<String>>, lex: &mut lexer::BAG, flaw
         return Err(flaw::flaw_type::parser(flaw::parser::parser_unexpected))
     }
     while lex.look().key().is_ident() {
-        lex.eat_space(flaw);
+        lex.bump_space(flaw);
         list.push(parse_ident_stat(lex, flaw));
         if !(matches!(lex.look().key(), KEYWORD::symbol(SYMBOL::comma_))) || !multi {
             break;
@@ -64,7 +64,7 @@ pub fn assign_retypes(types: &mut Vec<tree>, lex: &mut lexer::BAG, flaw: &mut fl
             return Err(flaw::flaw_type::parser(flaw::parser::parser_unexpected))
         }
         while lex.look().key().is_type() {
-            lex.eat_space(flaw);
+            lex.bump_space(flaw);
             types.push(parse_type_stat(lex, flaw));
             if !(matches!(lex.look().key(), KEYWORD::symbol(SYMBOL::comma_))) || !multi {
                 break;
@@ -98,7 +98,7 @@ pub fn assign_definition(opts: &mut trees, lex: &mut lexer::BAG, flaw: &mut flaw
             lex.report_space_add(lex.prev().key().to_string(), lex.prev().loc().clone(), flaw);
             return Err(flaw::flaw_type::parser(flaw::parser::parser_space_add))
         }
-        lex.eat_space(flaw);
+        lex.bump_space(flaw);
         Ok(())
 }
 
@@ -163,21 +163,6 @@ pub fn assign_generics(v: &mut trees, lex: &mut lexer::BAG, flaw: &mut flaw::FLA
 }
 
 pub fn error_assign_last(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW) -> Con<()> {
-    let msg = KEYWORD::symbol(SYMBOL::colon_).to_string()
-        + " or " + KEYWORD::symbol(SYMBOL::comma_).to_string().as_str()
-        + " or " + KEYWORD::symbol(SYMBOL::semi_).to_string().as_str()
-        + " or " + KEYWORD::symbol(SYMBOL::equal_).to_string().as_str()
-        + " or " + KEYWORD::operator(OPERATOR::assign2_).to_string().as_str();
-    lex.report_many_unexpected(msg, lex.look().loc().clone(), flaw);
+    lex.report_many_unexpected(String::new(), lex.look().loc().clone(), flaw);
     return Err(flaw::flaw_type::parser(flaw::parser::parser_unexpected))
-}
-
-pub fn error_disbalance(lex: &mut lexer::BAG, flaw: &mut flaw::FLAW, ids: &Vec<ID<String>>, typ: &Vec<tree>) -> Con<()> {
-    if ids.len() < typ.len() {
-        lex.report_type_disbalance((" ".to_string() + ids.len().to_string().as_str() + " ").black().bold().on_white().to_string(),
-        (" ".to_string() + typ.len().to_string().as_str() + " ").black().bold().on_white().to_string(),
-            lex.curr().loc().clone(), flaw);
-        return Err(flaw::flaw_type::parser(flaw::parser::parser_missmatch))
-    }
-    Ok(())
 }

@@ -264,6 +264,7 @@ pub enum SYMBOL {
     dollar_,
     degree_,
     sign_,
+    tik_,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -479,6 +480,7 @@ impl fmt::Display for KEYWORD {
             symbol(SYMBOL::dollar_ ) => key[7].clone() + &mid + "$" + &pos,
             symbol(SYMBOL::degree_ ) => key[7].clone() + &mid + "°" + &pos,
             symbol(SYMBOL::sign_ ) => key[7].clone() + &mid + "§" + &pos,
+            symbol(SYMBOL::tik_ ) => key[7].clone() + &mid + "`" + &pos,
             operator(OPERATOR::ddd_ ) => key[8].clone() + &mid + ".." + &pos,
             operator(OPERATOR::dd_ ) => key[8].clone() + &mid + ".." + &pos,
             operator(OPERATOR::assign2_) => key[8].clone() + &mid + ":=" + &pos,
