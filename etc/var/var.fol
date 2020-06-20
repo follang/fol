@@ -35,9 +35,9 @@ use[] one: two = <expression>;
     two: two = <expression>;
 )
 
-def '$'(a: any): mac = '.to_string($)'
-def '~var': alt = 'var[~]'
-def 'str': def[] = 'str[new,mut,nor]'
+def `$`(a: any): mac = `.to_string($)`
+def `~var`: alt = `var[~]`
+def `str`: def[] = `str[new,mut,nor]`
 
 fun one(two: int): int = { <expression> }
 fun one(two: int): int = { <expression> }

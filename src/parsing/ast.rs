@@ -6,8 +6,8 @@
 use std::fmt;
 // use getset::{CopyGetters, Getters, MutGetters, Setters};
 
-use crate::scanning::token;
 use crate::scanning::locate;
+use crate::scanning::token;
 
 use crate::getset;
 
@@ -17,10 +17,21 @@ pub struct ID<T> {
     pub nod: Box<T>,
 }
 impl<T> ID<T> {
-    pub fn new(loc: locate::LOCATION, nod: T) -> Self { ID{loc, nod: Box::new(nod)} }
-    pub fn loc(&self) -> &locate::LOCATION { &self.loc }
-    pub fn get(&self) -> &T { &self.nod }
-    pub fn set(&mut self, nod: T) { self.nod = Box::new(nod) }
+    pub fn new(loc: locate::LOCATION, nod: T) -> Self {
+        ID {
+            loc,
+            nod: Box::new(nod),
+        }
+    }
+    pub fn loc(&self) -> &locate::LOCATION {
+        &self.loc
+    }
+    pub fn get(&self) -> &T {
+        &self.nod
+    }
+    pub fn set(&mut self, nod: T) {
+        self.nod = Box::new(nod)
+    }
 }
 
 pub type tree = ID<tree_type>;
@@ -59,54 +70,67 @@ pub enum stat_type {
 }
 
 #[derive(Clone, Debug, GetSet)]
-pub struct var_stat{
+pub struct var_stat {
     options: Option<trees>,
     multi: Option<(usize, String)>,
     ident: tree,
     retype: Option<tree>,
-    body: Option<tree>
+    body: Option<tree>,
 }
 
 impl var_stat {
     pub fn init() -> Self {
         var_stat {
             options: None,
-            ident: tree::new(locate::LOCATION::def(), tree_type::stat(stat_type::Ident(String::new()))),
+            ident: tree::new(
+                locate::LOCATION::def(),
+                tree_type::stat(stat_type::Ident(String::new())),
+            ),
             multi: None,
             retype: None,
-            body: None
+            body: None,
         }
     }
 }
 
 #[derive(Clone, Debug, GetSet)]
-pub struct typ_stat{
+pub struct typ_stat {
     options: Option<trees>,
     multi: Option<(usize, String)>,
     ident: tree,
     generics: Option<Vec<(tree, tree)>>,
     contract: Option<Vec<tree>>,
     retype: Option<tree>,
-    body: Option<tree>
+    body: Option<tree>,
 }
 impl typ_stat {
     pub fn init() -> Self {
         typ_stat {
             options: None,
             multi: None,
-            ident: tree::new(locate::LOCATION::def(), tree_type::stat(stat_type::Ident(String::new()))),
+            ident: tree::new(
+                locate::LOCATION::def(),
+                tree_type::stat(stat_type::Ident(String::new())),
+            ),
             generics: None,
             contract: None,
             retype: None,
-            body: None
+            body: None,
         }
     }
 }
 
-
 #[derive(Clone, Debug)]
 pub enum assign_opts {
-    Imu, Mut, Sta, Nor, Exp, Hid, Stk, Hep, Ext
+    Imu,
+    Mut,
+    Sta,
+    Nor,
+    Exp,
+    Hid,
+    Stk,
+    Hep,
+    Ext,
 }
 
 #[derive(Clone, Debug)]
@@ -148,7 +172,7 @@ pub enum retype_stat {
 #[derive(Clone, Debug)]
 pub struct container_expr {
     uniform: bool,
-    elements: Box<tree>
+    elements: Box<tree>,
 }
 
 #[derive(Clone, Debug)]
@@ -157,7 +181,7 @@ pub enum letter_expr {
     string_raw,
     string_formated,
     char_normal(char),
-    char_binary(u8)
+    char_binary(u8),
 }
 
 #[derive(Clone, Debug)]
@@ -169,5 +193,5 @@ pub enum number_expr {
 #[derive(Clone, Debug)]
 pub enum binary_expr {
     leaf(number_expr),
-    node(Box<binary_expr>, number_expr, Box<binary_expr>)
+    node(Box<binary_expr>, number_expr, Box<binary_expr>),
 }

@@ -2,11 +2,11 @@
 #![allow(non_snake_case)]
 #![allow(non_camel_case_types)]
 
-use std::fmt;
-use crate::scanning::locate;
-use crate::scanning::token;
-use crate::scanning::stream;
 use crate::error::flaw;
+use crate::scanning::locate;
+use crate::scanning::stream;
+use crate::scanning::token;
+use std::fmt;
 
 use crate::getset;
 
@@ -20,14 +20,19 @@ pub struct BAG {
 
 impl BAG {
     pub fn bump(&mut self) {
-        if self.not_empty(){
+        if self.not_empty() {
             self.PAST.push(self.curr.to_owned());
             self.NEXT = self.NEXT[1..].to_vec();
             self.curr = self.NEXT.get(0).unwrap_or(&stream::zero()).to_owned();
         }
     }
     pub fn jump(&mut self) {
-        if self.curr().key().is_space() { self.bump(); self.bump() } else { self.bump() }
+        if self.curr().key().is_space() {
+            self.bump();
+            self.bump()
+        } else {
+            self.bump()
+        }
     }
 
     //current token
@@ -36,7 +41,11 @@ impl BAG {
     }
     //current token ignoring space
     pub fn look(&self) -> SCAN {
-        if self.curr().key().is_space() { self.next() } else { self.curr().clone() }
+        if self.curr().key().is_space() {
+            self.next()
+        } else {
+            self.curr().clone()
+        }
     }
 
     //next th token
@@ -49,12 +58,20 @@ impl BAG {
     }
     //next token ignoring space
     pub fn peek(&self) -> SCAN {
-        if self.next().key().is_space() { self.nth(2) } else { self.next() }
+        if self.next().key().is_space() {
+            self.nth(2)
+        } else {
+            self.next()
+        }
     }
 
     //past th token
     pub fn pth(&self, num: usize) -> SCAN {
-        let len = if self.PAST.len() > num { self.PAST.len() - num } else { 0 };
+        let len = if self.PAST.len() > num {
+            self.PAST.len() - num
+        } else {
+            0
+        };
         self.PAST.get(len).unwrap_or(&stream::zero()).to_owned()
     }
     //past token
@@ -63,7 +80,11 @@ impl BAG {
     }
     //past token ignoring space
     pub fn past(&self) -> SCAN {
-        if self.prev().key().is_space() { self.pth(2) } else { self.prev() }
+        if self.prev().key().is_space() {
+            self.pth(2)
+        } else {
+            self.prev()
+        }
     }
 }
 
@@ -76,7 +97,7 @@ pub fn init(path: &str, e: &mut flaw::FLAW) -> BAG {
         NEXT.push(stream.analyze(e, &last).to_owned());
     }
     let curr = NEXT.get(0).unwrap_or(&stream::zero()).to_owned();
-    BAG { NEXT, PAST, curr}
+    BAG { NEXT, PAST, curr }
 }
 
 impl BAG {
@@ -98,30 +119,64 @@ impl BAG {
     pub fn to_endline(&mut self, e: &mut flaw::FLAW) {
         let deep = self.curr().loc().deep();
         loop {
-            if (self.curr().key().is_terminal() && self.curr().loc().deep() <= deep) || (self.curr().key().is_eof()) { break }
+            if (self.curr().key().is_terminal() && self.curr().loc().deep() <= deep)
+                || (self.curr().key().is_eof())
+            {
+                break;
+            }
             self.bump()
         }
     }
 
     pub fn report_unepected(&mut self, k: String, l: locate::LOCATION, e: &mut flaw::FLAW) {
         let s = String::from("expected:") + &k + " but recieved:" + &self.curr().key().to_string();
-        e.report(flaw::flaw_type::parser(flaw::parser::parser_unexpected), &s, l);
+        e.report(
+            flaw::flaw_type::parser(flaw::parser::parser_unexpected),
+            &s,
+            l,
+        );
     }
     // pub fn report_missmatch(&mut self, k: String, l: locate::LOCATION, e: &mut flaw::FLAW) {
-        // let s = String::from("expected:") + &k + " but recieved:" + &self.curr().key().to_string();
-        // e.report(flaw::flaw_type::parser(flaw::parser::parser_missmatch), &s, l);
+    // let s = String::from("expected:") + &k + " but recieved:" + &self.curr().key().to_string();
+    // e.report(flaw::flaw_type::parser(flaw::parser::parser_missmatch), &s, l);
     // }
     pub fn report_space_rem(&mut self, l: locate::LOCATION, e: &mut flaw::FLAW) {
-        let s = String::from("space between:") + &self.prev().key().to_string() + " and:" + &self.next().key().to_string() + " needs to be removed";
-        e.report(flaw::flaw_type::parser(flaw::parser::parser_space_rem), &s, l);
+        let s = String::from("space between:")
+            + &self.prev().key().to_string()
+            + " and:"
+            + &self.next().key().to_string()
+            + " needs to be removed";
+        e.report(
+            flaw::flaw_type::parser(flaw::parser::parser_space_rem),
+            &s,
+            l,
+        );
     }
     pub fn report_space_add(&mut self, k: String, l: locate::LOCATION, e: &mut flaw::FLAW) {
-        let s = String::from("space between:") + &k + " and:" + &self.curr().key().to_string() + " needs to be added";
-        e.report(flaw::flaw_type::parser(flaw::parser::parser_space_add), &s, l);
+        let s = String::from("space between:")
+            + &k
+            + " and:"
+            + &self.curr().key().to_string()
+            + " needs to be added";
+        e.report(
+            flaw::flaw_type::parser(flaw::parser::parser_space_add),
+            &s,
+            l,
+        );
     }
-    pub fn report_type_disbalance(&mut self, k: String, p: String, l: locate::LOCATION, e: &mut flaw::FLAW) {
+    pub fn report_type_disbalance(
+        &mut self,
+        k: String,
+        p: String,
+        l: locate::LOCATION,
+        e: &mut flaw::FLAW,
+    ) {
         let s = String::from("number of variables does not match number of types");
-        e.report(flaw::flaw_type::parser(flaw::parser::parser_type_disbalance), &s, l);
+        e.report(
+            flaw::flaw_type::parser(flaw::parser::parser_type_disbalance),
+            &s,
+            l,
+        );
     }
     pub fn report_no_type(&mut self, p: String, l: locate::LOCATION, e: &mut flaw::FLAW) {
         let s = String::from("type annotation needed, add type annotation after ") + &p;
@@ -129,14 +184,31 @@ impl BAG {
     }
     pub fn report_many_unexpected(&mut self, k: String, l: locate::LOCATION, e: &mut flaw::FLAW) {
         let s = String::from("unexpected:") + &self.curr().key().to_string();
-        e.report(flaw::flaw_type::parser(flaw::parser::parser_many_unexpected), &s, l);
+        e.report(
+            flaw::flaw_type::parser(flaw::parser::parser_many_unexpected),
+            &s,
+            l,
+        );
+    }
+    pub fn report_body_forbidden(&mut self, k: String, l: locate::LOCATION, e: &mut flaw::FLAW) {
+        let s = String::from(" body declaraton is not allowd, consider removing after ") + &k;
+        e.report(
+            flaw::flaw_type::parser(flaw::parser::parser_body_forbidden),
+            &s,
+            l,
+        );
     }
     pub fn report_needs_body(&mut self, k: String, l: locate::LOCATION, e: &mut flaw::FLAW) {
         let s = String::from("type body not declared, consider declaring it after ") + &k;
-        e.report(flaw::flaw_type::parser(flaw::parser::parser_needs_body), &s, l);
+        e.report(
+            flaw::flaw_type::parser(flaw::parser::parser_needs_body),
+            &s,
+            l,
+        );
     }
     pub fn log(&self, msg: &str) {
-        println!(" {} [{:>2} {:>2}] \t past:{} \t prev:{} \t curr:{} \t look:{} \t next:{} \t peek:{}",
+        println!(
+            " {} [{:>2} {:>2}] \t past:{} \t prev:{} \t curr:{} \t look:{} \t next:{} \t peek:{}",
             msg,
             self.curr().loc().row(),
             self.curr().loc().col(),
@@ -145,33 +217,44 @@ impl BAG {
             self.curr().key(),
             self.look().key(),
             self.next().key(),
-            self.peek().key());
+            self.peek().key()
+        );
     }
 }
 
-use crate::scanning::token::*;
 use crate::scanning::token::KEYWORD::*;
+use crate::scanning::token::*;
 impl stream::STREAM {
     pub fn analyze(&mut self, e: &mut flaw::FLAW, prev: &SCAN) -> SCAN {
         // self.curr().log(">>");
         let mut result = self.curr().clone();
         // EOL to SPACE
-        if self.curr().key().is_eol() &&
-            ( self.prev().key().is_nonterm() || self.next().key().is_dot() || prev.key().is_operator() ){
+        if self.curr().key().is_eol()
+            && (self.prev().key().is_nonterm()
+                || self.next().key().is_dot()
+                || prev.key().is_operator())
+        {
             result.set_key(void(VOID::space_))
-        } else if matches!(self.curr().key(), KEYWORD::symbol(SYMBOL::semi_)) && self.next().key().is_void(){
+        } else if matches!(self.curr().key(), KEYWORD::symbol(SYMBOL::semi_))
+            && self.next().key().is_void()
+        {
             result.combine(&self.next());
             self.bump();
         }
-
         // numbers
-        else if matches!(self.curr().key(), KEYWORD::symbol(SYMBOL::dot_)) && self.next().key().is_number() {
+        else if matches!(self.curr().key(), KEYWORD::symbol(SYMBOL::dot_))
+            && self.next().key().is_number()
+        {
             if self.prev().key().is_void() {
                 result = self.make_number(e);
             }
-        }
-        else if (matches!(self.curr().key(), KEYWORD::symbol(SYMBOL::minus_))  && self.next().key().is_number()) || self.curr().key().is_number() {
-            if !self.prev().key().is_void() && matches!(self.curr().key(), KEYWORD::symbol(SYMBOL::minus_)) {
+        } else if (matches!(self.curr().key(), KEYWORD::symbol(SYMBOL::minus_))
+            && self.next().key().is_number())
+            || self.curr().key().is_number()
+        {
+            if !self.prev().key().is_void()
+                && matches!(self.curr().key(), KEYWORD::symbol(SYMBOL::minus_))
+            {
                 let key = self.prev().key().clone();
                 self.report_space_add(key.to_string(), self.curr().loc().clone(), e);
             } else {
@@ -179,30 +262,28 @@ impl stream::STREAM {
                 // self.make_number(e, &mut result);
             }
         }
-
         // operators
-        else if  self.curr().key().is_symbol()
-            && ( matches!(self.curr().key(), KEYWORD::symbol(SYMBOL::semi_)))
-            && ( matches!(self.next().key(), KEYWORD::symbol(SYMBOL::semi_)))
-            && self.next().key().is_symbol() && ( self.prev().key().is_void() || self.prev().key().is_bracket() )
+        else if self.curr().key().is_symbol()
+            && (matches!(self.curr().key(), KEYWORD::symbol(SYMBOL::semi_)))
+            && (matches!(self.next().key(), KEYWORD::symbol(SYMBOL::semi_)))
+            && self.next().key().is_symbol()
+            && (self.prev().key().is_void() || self.prev().key().is_bracket())
         {
             result = self.make_multi_operator(e);
         }
-
-
         // options
         else if self.curr().key().is_symbol()
             && self.next().key().is_assign()
-            && (self.prev().key().is_terminal() || self.prev().key().is_eof() || self.prev().key().is_void())
+            && (self.prev().key().is_terminal()
+                || self.prev().key().is_eof()
+                || self.prev().key().is_void())
         {
             result = self.make_syoption(e);
         }
-
         // set key content to indetifier
         else if matches!(self.curr().key(), KEYWORD::ident(_)) {
             result.set_key(ident(Some(self.curr().con().to_string())))
         }
-
         // check bracket matching
         else if self.curr().key().is_bracket() {
             self.check_bracket_match(e);
@@ -214,49 +295,52 @@ impl stream::STREAM {
         result
     }
 
-    pub fn make_multi_operator(&mut self, e: &mut flaw::FLAW)  -> SCAN {
+    pub fn make_multi_operator(&mut self, e: &mut flaw::FLAW) -> SCAN {
         let mut result = self.curr().clone();
-            while self.next().key().is_symbol() && !self.next().key().is_bracket() {
-                result.combine(&self.next());
-                self.bump()
-            }
+        while self.next().key().is_symbol() && !self.next().key().is_bracket() {
+            result.combine(&self.next());
+            self.bump()
+        }
         match result.con().as_str() {
-            ":=" => { result.set_key(operator(OPERATOR::assign2_)) }
-            "..." => { result.set_key(operator(OPERATOR::ddd_)) }
-            ".." => { result.set_key(operator(OPERATOR::dd_)) }
-            "=>" => { result.set_key(operator(OPERATOR::flow_)) }
-            "->" => { result.set_key(operator(OPERATOR::flow2_)) }
-            "==" => { result.set_key(operator(OPERATOR::equal_)) }
-            "!=" => { result.set_key(operator(OPERATOR::noteq_)) }
-            ">=" => { result.set_key(operator(OPERATOR::greatereq_)) }
-            "<=" => { result.set_key(operator(OPERATOR::lesseq_)) }
-            "+=" => { result.set_key(operator(OPERATOR::addeq_)) }
-            "-=" => { result.set_key(operator(OPERATOR::subtracteq_)) }
-            "*=" => { result.set_key(operator(OPERATOR::multiplyeq_)) }
-            "/=" => { result.set_key(operator(OPERATOR::divideeq_)) }
-            "<<" => { result.set_key(operator(OPERATOR::shiftleft_)) }
-            ">>" => { result.set_key(operator(OPERATOR::shiftright_)) }
-            _ => { result.set_key(operator(OPERATOR::ANY)) }
+            ":=" => result.set_key(operator(OPERATOR::assign2_)),
+            "..." => result.set_key(operator(OPERATOR::ddd_)),
+            ".." => result.set_key(operator(OPERATOR::dd_)),
+            "=>" => result.set_key(operator(OPERATOR::flow_)),
+            "->" => result.set_key(operator(OPERATOR::flow2_)),
+            "==" => result.set_key(operator(OPERATOR::equal_)),
+            "!=" => result.set_key(operator(OPERATOR::noteq_)),
+            ">=" => result.set_key(operator(OPERATOR::greatereq_)),
+            "<=" => result.set_key(operator(OPERATOR::lesseq_)),
+            "+=" => result.set_key(operator(OPERATOR::addeq_)),
+            "-=" => result.set_key(operator(OPERATOR::subtracteq_)),
+            "*=" => result.set_key(operator(OPERATOR::multiplyeq_)),
+            "/=" => result.set_key(operator(OPERATOR::divideeq_)),
+            "<<" => result.set_key(operator(OPERATOR::shiftleft_)),
+            ">>" => result.set_key(operator(OPERATOR::shiftright_)),
+            _ => result.set_key(operator(OPERATOR::ANY)),
         }
         result
     }
 
     pub fn make_comment(&mut self, e: &mut flaw::FLAW) -> SCAN {
         let mut result = self.curr().clone();
-        if matches!(self.next().key(), KEYWORD::symbol(SYMBOL::root_)){
+        if matches!(self.next().key(), KEYWORD::symbol(SYMBOL::root_)) {
             while !self.next().key().is_eol() {
                 result.combine(&self.next());
                 self.bump()
             }
         } else if matches!(self.next().key(), KEYWORD::symbol(SYMBOL::star_)) {
-            while !(matches!(self.next().key(), KEYWORD::symbol(SYMBOL::star_)) && matches!(self.nth(2).key(), KEYWORD::symbol(SYMBOL::root_)))
+            while !(matches!(self.next().key(), KEYWORD::symbol(SYMBOL::star_))
+                && matches!(self.nth(2).key(), KEYWORD::symbol(SYMBOL::root_)))
                 || self.next().key().is_eof()
             {
                 result.combine(&self.next());
                 self.bump()
             }
-            result.combine(&self.next()); self.bump();
-            result.combine(&self.next()); self.bump();
+            result.combine(&self.next());
+            self.bump();
+            result.combine(&self.next());
+            self.bump();
         }
         result.set_key(comment);
         result
@@ -268,13 +352,20 @@ impl stream::STREAM {
             result.set_key(literal(LITERAL::float_));
             result.combine(&self.next());
             self.bump();
-            if self.next().key().is_dot() && self.nth(2).key().is_eol() && self.nth(3).key().is_ident() {
-                return result
+            if self.next().key().is_dot()
+                && self.nth(2).key().is_eol()
+                && self.nth(3).key().is_ident()
+            {
+                return result;
             } else if self.next().key().is_dot() && !self.nth(2).key().is_ident() {
                 self.bump();
                 self.report_primitive_acccess(" flt ".to_string(), self.next().loc().clone(), e);
             }
-        } else if self.prev().key().is_continue() && self.curr().key().is_decimal() && self.next().key().is_dot() && !self.nth(2).key().is_ident() {
+        } else if self.prev().key().is_continue()
+            && self.curr().key().is_decimal()
+            && self.next().key().is_dot()
+            && !self.nth(2).key().is_ident()
+        {
             result.set_key(literal(LITERAL::float_));
             result.combine(&self.next());
             self.bump();
@@ -283,7 +374,11 @@ impl stream::STREAM {
                 self.bump();
                 if self.next().key().is_dot() && self.nth(2).key().is_number() {
                     self.bump();
-                    self.report_primitive_acccess(" flt ".to_string(), self.next().loc().clone(), e);
+                    self.report_primitive_acccess(
+                        " flt ".to_string(),
+                        self.next().loc().clone(),
+                        e,
+                    );
                 }
             } else if !self.next().key().is_void() {
                 self.bump();
@@ -292,15 +387,15 @@ impl stream::STREAM {
         }
         result
     }
-    pub fn make_syoption(&mut self, e: &mut flaw::FLAW)  -> SCAN {
+    pub fn make_syoption(&mut self, e: &mut flaw::FLAW) -> SCAN {
         let mut result = self.curr().clone();
         match result.con().as_str() {
-            "~" => { result.set_key(option(OPTION::mut_)) },
-            "!" => { result.set_key(option(OPTION::sta_)) },
-            "+" => { result.set_key(option(OPTION::exp_)) },
-            "-" => { result.set_key(option(OPTION::hid_)) },
-            "@" => { result.set_key(option(OPTION::hep_)) },
-            _ => {},
+            "~" => result.set_key(option(OPTION::mut_)),
+            "!" => result.set_key(option(OPTION::sta_)),
+            "+" => result.set_key(option(OPTION::exp_)),
+            "-" => result.set_key(option(OPTION::hid_)),
+            "@" => result.set_key(option(OPTION::hep_)),
+            _ => {}
         }
         result
     }
@@ -310,20 +405,43 @@ impl stream::STREAM {
         if self.curr().key().is_open_bracket() {
             self.bracs().push((loc, key))
         } else if self.curr().key().is_close_bracket() {
-            if ( matches!(self.curr().key(), KEYWORD::symbol(SYMBOL::roundC_))
-                && matches!(self.bracs().last().unwrap_or(&(loc.clone(), KEYWORD::illegal)).1, KEYWORD::symbol(SYMBOL::roundO_)) )
-                || ( matches!(self.curr().key(), KEYWORD::symbol(SYMBOL::squarC_))
-                && matches!(self.bracs().last().unwrap_or(&(loc.clone(), KEYWORD::illegal)).1, KEYWORD::symbol(SYMBOL::squarO_)) )
-                || ( matches!(self.curr().key(), KEYWORD::symbol(SYMBOL::curlyC_))
-                && matches!(self.bracs().last().unwrap_or(&(loc.clone(), KEYWORD::illegal)).1, KEYWORD::symbol(SYMBOL::curlyO_)) )
+            if (matches!(self.curr().key(), KEYWORD::symbol(SYMBOL::roundC_))
+                && matches!(
+                    self.bracs()
+                        .last()
+                        .unwrap_or(&(loc.clone(), KEYWORD::illegal))
+                        .1,
+                    KEYWORD::symbol(SYMBOL::roundO_)
+                ))
+                || (matches!(self.curr().key(), KEYWORD::symbol(SYMBOL::squarC_))
+                    && matches!(
+                        self.bracs()
+                            .last()
+                            .unwrap_or(&(loc.clone(), KEYWORD::illegal))
+                            .1,
+                        KEYWORD::symbol(SYMBOL::squarO_)
+                    ))
+                || (matches!(self.curr().key(), KEYWORD::symbol(SYMBOL::curlyC_))
+                    && matches!(
+                        self.bracs()
+                            .last()
+                            .unwrap_or(&(loc.clone(), KEYWORD::illegal))
+                            .1,
+                        KEYWORD::symbol(SYMBOL::curlyO_)
+                    ))
             {
                 self.bracs().pop();
             } else {
-                let key = match self.bracs().last().unwrap_or(&(loc.clone(), KEYWORD::illegal)).1 {
-                    KEYWORD::symbol(SYMBOL::curlyO_) => { KEYWORD::symbol(SYMBOL::curlyC_) },
-                    KEYWORD::symbol(SYMBOL::squarO_) => { KEYWORD::symbol(SYMBOL::squarC_) },
-                    KEYWORD::symbol(SYMBOL::roundO_) => { KEYWORD::symbol(SYMBOL::roundC_) },
-                    _ => { KEYWORD::illegal }
+                let key = match self
+                    .bracs()
+                    .last()
+                    .unwrap_or(&(loc.clone(), KEYWORD::illegal))
+                    .1
+                {
+                    KEYWORD::symbol(SYMBOL::curlyO_) => KEYWORD::symbol(SYMBOL::curlyC_),
+                    KEYWORD::symbol(SYMBOL::squarO_) => KEYWORD::symbol(SYMBOL::squarC_),
+                    KEYWORD::symbol(SYMBOL::roundO_) => KEYWORD::symbol(SYMBOL::roundC_),
+                    _ => KEYWORD::illegal,
                 };
                 self.report_bracket(key.to_string(), self.curr().loc().clone(), e);
             }

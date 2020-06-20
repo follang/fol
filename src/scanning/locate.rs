@@ -17,8 +17,11 @@ pub struct LOCATION {
 
 impl fmt::Display for LOCATION {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "file: {: <4}   row: {: <2}   col: {: <2}",
-            self.name, self.row, self.col)
+        write!(
+            f,
+            "file: {: <4}   row: {: <2}   col: {: <2}",
+            self.name, self.row, self.col
+        )
     }
 }
 
@@ -38,13 +41,41 @@ impl LOCATION {
         let name = red.name.to_string();
         let path = red.path.to_string();
         // file.add_str("go");
-        LOCATION { path, name,  row: 1, col: 1, len: 1, deep: 1 }
+        LOCATION {
+            path,
+            name,
+            row: 1,
+            col: 1,
+            len: 1,
+            deep: 1,
+        }
     }
     pub fn def() -> Self {
-        LOCATION { path: String::new(), name: String::new(), row: 1, col: 1, len: 1, deep: 1 }
+        LOCATION {
+            path: String::new(),
+            name: String::new(),
+            row: 1,
+            col: 1,
+            len: 1,
+            deep: 1,
+        }
     }
-    pub fn new(path: String, name: String, row: usize, col: usize, len: usize, deep: isize) -> Self {
-        LOCATION { path, name, row, col, len, deep }
+    pub fn new(
+        path: String,
+        name: String,
+        row: usize,
+        col: usize,
+        len: usize,
+        deep: isize,
+    ) -> Self {
+        LOCATION {
+            path,
+            name,
+            row,
+            col,
+            len,
+            deep,
+        }
     }
 
     pub fn row(&self) -> usize {
@@ -95,16 +126,16 @@ impl LOCATION {
         self.len = 0;
     }
 
-    pub fn adjust(&mut self, row: usize, col: usize){
+    pub fn adjust(&mut self, row: usize, col: usize) {
         self.row = row;
         self.col = col;
     }
 
-    pub fn deepen(&mut self){
+    pub fn deepen(&mut self) {
         self.deep += 1
     }
 
-    pub fn soften(&mut self){
+    pub fn soften(&mut self) {
         self.deep -= 1
     }
 }

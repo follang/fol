@@ -1,9 +1,9 @@
 #![allow(dead_code)]
 
-use std::str::Chars;
 use crate::scanning::locate;
 use crate::scanning::reader;
 use std::fmt;
+use std::str::Chars;
 
 /// Peekable iterator over a char sequence.
 /// Next characters can be peeked via `nth` method, and position can be shifted forward via `bump` method.
@@ -14,7 +14,6 @@ pub(crate) struct PART {
 }
 
 pub(crate) const EOF_CHAR: char = '\0';
-
 
 impl fmt::Display for PART {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

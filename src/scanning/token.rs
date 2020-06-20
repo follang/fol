@@ -4,9 +4,9 @@
 #![allow(unused_variables)]
 
 
-use std::fmt;
-use std::collections::HashMap;
 use colored::Colorize;
+use std::collections::HashMap;
+use std::fmt;
 
 // use enumeq::EnumEq;
 // #[derive(Clone, Debug, PartialOrd, Ord, EnumEq)]
@@ -24,7 +24,7 @@ pub enum KEYWORD {
     symbol(SYMBOL),
     operator(OPERATOR),
     void(VOID),
-    illegal
+    illegal,
 }
 
 impl KEYWORD {
@@ -123,8 +123,7 @@ impl KEYWORD {
     pub fn is_symbol(&self) -> bool {
         if self.is_bracket() {
             false
-        }
-        else {
+        } else {
             match *self {
                 KEYWORD::symbol(_) => true,
                 _ => false,
@@ -191,11 +190,7 @@ impl KEYWORD {
         }
     }
     pub fn is_continue(&self) -> bool {
-        if self.is_void()
-            || self.is_bracket()
-            || self.is_terminal()
-            || self.is_comma()
-        {
+        if self.is_void() || self.is_bracket() || self.is_terminal() || self.is_comma() {
             true
         } else {
             false
@@ -203,9 +198,7 @@ impl KEYWORD {
     }
 }
 
-
 // std::cmp::PartialEq<fn(SYMBOL) -> KEYWORD {KEYWORD::symbol}>
-
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum LITERAL {
@@ -217,7 +210,7 @@ pub enum LITERAL {
     decimal_,
     hexal_,
     octal_,
-    binary_
+    binary_,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -293,7 +286,6 @@ pub enum OPERATOR {
     shiftright_,
 }
 
-
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum BUILDIN {
     ANY,
@@ -328,7 +320,7 @@ pub enum BUILDIN {
     do_,
     go_,
     get_,
-    let_
+    let_,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -341,7 +333,7 @@ pub enum ASSIGN {
     pro_,
     log_,
     typ_,
-    ali_
+    ali_,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -414,10 +406,8 @@ pub enum FORM {
     fa_,
 }
 
-
 impl fmt::Display for KEYWORD {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-
         let key = [
             String::from(" ASSIGN "),
             String::from(" OPTION "),
@@ -430,7 +420,7 @@ impl fmt::Display for KEYWORD {
             String::from(" OPERATOR "),
             String::from(" VOID "),
             String::from(" COMMENT "),
-            String::from(" ILLEGAL ")
+            String::from(" ILLEGAL "),
         ];
         let mid = "| ";
         let pos = " ";
@@ -444,45 +434,45 @@ impl fmt::Display for KEYWORD {
             literal(LITERAL::hexal_) => key[5].clone() + &mid + "hexal" + &pos,
             literal(LITERAL::octal_) => key[5].clone() + &mid + "octal" + &pos,
             literal(LITERAL::binary_) => key[5].clone() + &mid + "binary" + &pos,
-            void(VOID::endline_ ) => key[9].clone() + &mid + "eol" + &pos,
-            void(VOID::space_ ) => key[9].clone() + &mid + "space" + &pos,
-            void(VOID::endfile_ ) => key[9].clone() + &mid + "EOF" + &pos,
-            symbol(SYMBOL::curlyC_ ) => key[7].clone() + &mid + "}" + &pos,
-            symbol(SYMBOL::curlyO_ ) => key[7].clone() + &mid + "{" + &pos,
-            symbol(SYMBOL::squarC_ ) => key[7].clone() + &mid + "]" + &pos,
-            symbol(SYMBOL::squarO_ ) => key[7].clone() + &mid + "[" + &pos,
-            symbol(SYMBOL::roundC_ ) => key[7].clone() + &mid + ")" + &pos,
-            symbol(SYMBOL::roundO_ ) => key[7].clone() + &mid + "(" + &pos,
-            symbol(SYMBOL::angleC_ ) => key[7].clone() + &mid + ">" + &pos,
-            symbol(SYMBOL::angleO_ ) => key[7].clone() + &mid + "<" + &pos,
-            symbol(SYMBOL::dot_ ) => key[7].clone() + &mid + "." + &pos,
-            symbol(SYMBOL::comma_ ) => key[7].clone() + &mid + "," + &pos,
-            symbol(SYMBOL::colon_ ) => key[7].clone() + &mid + ":" + &pos,
-            symbol(SYMBOL::semi_ ) => key[7].clone() + &mid + ";" + &pos,
-            symbol(SYMBOL::escape_ ) => key[7].clone() + &mid + "\\" + &pos,
-            symbol(SYMBOL::pipe_ ) => key[7].clone() + &mid + "|" + &pos,
-            symbol(SYMBOL::equal_ ) => key[7].clone() + &mid + "=" + &pos,
-            symbol(SYMBOL::greater_ ) => key[7].clone() + &mid + ">" + &pos,
-            symbol(SYMBOL::less_ ) => key[7].clone() + &mid + "<" + &pos,
-            symbol(SYMBOL::plus_ ) => key[7].clone() + &mid + "+" + &pos,
-            symbol(SYMBOL::minus_ ) => key[7].clone() + &mid + "-" + &pos,
-            symbol(SYMBOL::under_ ) => key[7].clone() + &mid + "_" + &pos,
-            symbol(SYMBOL::star_ ) => key[7].clone() + &mid + "*" + &pos,
-            symbol(SYMBOL::home_ ) => key[7].clone() + &mid + "~" + &pos,
-            symbol(SYMBOL::root_ ) => key[7].clone() + &mid + "/" + &pos,
-            symbol(SYMBOL::percent_ ) => key[7].clone() + &mid + "%" + &pos,
-            symbol(SYMBOL::carret_ ) => key[7].clone() + &mid + "^" + &pos,
-            symbol(SYMBOL::query_ ) => key[7].clone() + &mid + "?" + &pos,
-            symbol(SYMBOL::bang_ ) => key[7].clone() + &mid + "!" + &pos,
-            symbol(SYMBOL::and_ ) => key[7].clone() + &mid + "&" + &pos,
-            symbol(SYMBOL::at_ ) => key[7].clone() + &mid + "@" + &pos,
-            symbol(SYMBOL::hash_ ) => key[7].clone() + &mid + "#" + &pos,
-            symbol(SYMBOL::dollar_ ) => key[7].clone() + &mid + "$" + &pos,
-            symbol(SYMBOL::degree_ ) => key[7].clone() + &mid + "°" + &pos,
-            symbol(SYMBOL::sign_ ) => key[7].clone() + &mid + "§" + &pos,
-            symbol(SYMBOL::tik_ ) => key[7].clone() + &mid + "`" + &pos,
-            operator(OPERATOR::ddd_ ) => key[8].clone() + &mid + ".." + &pos,
-            operator(OPERATOR::dd_ ) => key[8].clone() + &mid + ".." + &pos,
+            void(VOID::endline_) => key[9].clone() + &mid + "eol" + &pos,
+            void(VOID::space_) => key[9].clone() + &mid + "space" + &pos,
+            void(VOID::endfile_) => key[9].clone() + &mid + "EOF" + &pos,
+            symbol(SYMBOL::curlyC_) => key[7].clone() + &mid + "}" + &pos,
+            symbol(SYMBOL::curlyO_) => key[7].clone() + &mid + "{" + &pos,
+            symbol(SYMBOL::squarC_) => key[7].clone() + &mid + "]" + &pos,
+            symbol(SYMBOL::squarO_) => key[7].clone() + &mid + "[" + &pos,
+            symbol(SYMBOL::roundC_) => key[7].clone() + &mid + ")" + &pos,
+            symbol(SYMBOL::roundO_) => key[7].clone() + &mid + "(" + &pos,
+            symbol(SYMBOL::angleC_) => key[7].clone() + &mid + ">" + &pos,
+            symbol(SYMBOL::angleO_) => key[7].clone() + &mid + "<" + &pos,
+            symbol(SYMBOL::dot_) => key[7].clone() + &mid + "." + &pos,
+            symbol(SYMBOL::comma_) => key[7].clone() + &mid + "," + &pos,
+            symbol(SYMBOL::colon_) => key[7].clone() + &mid + ":" + &pos,
+            symbol(SYMBOL::semi_) => key[7].clone() + &mid + ";" + &pos,
+            symbol(SYMBOL::escape_) => key[7].clone() + &mid + "\\" + &pos,
+            symbol(SYMBOL::pipe_) => key[7].clone() + &mid + "|" + &pos,
+            symbol(SYMBOL::equal_) => key[7].clone() + &mid + "=" + &pos,
+            symbol(SYMBOL::greater_) => key[7].clone() + &mid + ">" + &pos,
+            symbol(SYMBOL::less_) => key[7].clone() + &mid + "<" + &pos,
+            symbol(SYMBOL::plus_) => key[7].clone() + &mid + "+" + &pos,
+            symbol(SYMBOL::minus_) => key[7].clone() + &mid + "-" + &pos,
+            symbol(SYMBOL::under_) => key[7].clone() + &mid + "_" + &pos,
+            symbol(SYMBOL::star_) => key[7].clone() + &mid + "*" + &pos,
+            symbol(SYMBOL::home_) => key[7].clone() + &mid + "~" + &pos,
+            symbol(SYMBOL::root_) => key[7].clone() + &mid + "/" + &pos,
+            symbol(SYMBOL::percent_) => key[7].clone() + &mid + "%" + &pos,
+            symbol(SYMBOL::carret_) => key[7].clone() + &mid + "^" + &pos,
+            symbol(SYMBOL::query_) => key[7].clone() + &mid + "?" + &pos,
+            symbol(SYMBOL::bang_) => key[7].clone() + &mid + "!" + &pos,
+            symbol(SYMBOL::and_) => key[7].clone() + &mid + "&" + &pos,
+            symbol(SYMBOL::at_) => key[7].clone() + &mid + "@" + &pos,
+            symbol(SYMBOL::hash_) => key[7].clone() + &mid + "#" + &pos,
+            symbol(SYMBOL::dollar_) => key[7].clone() + &mid + "$" + &pos,
+            symbol(SYMBOL::degree_) => key[7].clone() + &mid + "°" + &pos,
+            symbol(SYMBOL::sign_) => key[7].clone() + &mid + "§" + &pos,
+            symbol(SYMBOL::tik_) => key[7].clone() + &mid + "`" + &pos,
+            operator(OPERATOR::ddd_) => key[8].clone() + &mid + ".." + &pos,
+            operator(OPERATOR::dd_) => key[8].clone() + &mid + ".." + &pos,
             operator(OPERATOR::assign2_) => key[8].clone() + &mid + ":=" + &pos,
             operator(OPERATOR::flow_) => key[8].clone() + &mid + "=>" + &pos,
             operator(OPERATOR::flow2_) => key[8].clone() + &mid + "->" + &pos,
@@ -601,9 +591,9 @@ impl fmt::Display for KEYWORD {
             comment => key[10].clone(),
             illegal => key[11].clone(),
             literal(LITERAL::ANY) => key[5].clone(),
-            void(VOID::ANY ) => key[9].clone(),
-            symbol(SYMBOL::ANY ) => key[7].clone(),
-            operator(OPERATOR::ANY ) => key[8].clone(),
+            void(VOID::ANY) => key[9].clone(),
+            symbol(SYMBOL::ANY) => key[7].clone(),
+            operator(OPERATOR::ANY) => key[8].clone(),
             buildin(BUILDIN::ANY) => key[6].clone(),
             assign(ASSIGN::ANY) => key[0].clone(),
             types(TYPE::ANY) => key[3].clone(),
