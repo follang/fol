@@ -26,7 +26,7 @@ typ two[T: gen, N: int](): rec = { <expression> };
 ~typ[] six(blue): rec[] = { <expression> };
 ~typ[] seven[T: gen, N: int](blue): rec = <expression>;
 ~ali[] five: arr[int, 5];
-~ali[] int, int;
+~ali[] gos: int;
 
 use[] one: two = <expression>;
 ~use[] one: two = <expression>;
@@ -47,4 +47,4 @@ fun[] '!='(one, two: int): bol = { <expression> }
 ~pro[] (obj)'$': str = { <expression> }
 ~pro[] one[T: gen](two: int): int = { <expression> }
 fun[] add1(adder: rut[(x: int): int]): int = { <expression> }
-/* fun[] add2(): rut[(x: int): int] = { <expression> } */
+/* fun[] add2(): rut[(x: int): int] = { <expression> }

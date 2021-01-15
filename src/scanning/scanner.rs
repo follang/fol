@@ -6,6 +6,10 @@ use crate::scanning::reader;
 use crate::scanning::token;
 use std::fmt;
 
+pub fn is_eof(ch: &char) -> bool {
+    return *ch == '\0';
+}
+
 pub fn is_eol(ch: &char) -> bool {
     return *ch == '\n' || *ch == '\r';
 }
@@ -158,15 +162,18 @@ impl SCAN {
 
     fn comment(&mut self, part: &mut parts::PART) {
         self.bump_next(part);
+        println!("{}", &part.curr_char());
         if part.curr_char() == '/' {
             // self.bump_next(part);
             while !is_eol(&part.next_char()) {
+                if is_eof(&part.next_char()) { return };
                 self.bump_next(part);
             }
         }
         if part.curr_char() == '*' {
             self.bump_next(part);
             while part.curr_char() != '*' && part.next_char() != '/' {
+                if is_eof(&part.next_char()) { return };
                 self.bump_next(part);
             }
             self.bump_next(part);

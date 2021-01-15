@@ -25,7 +25,7 @@ pub fn file_list(s: &str) -> Vec<String> {
             .to_str()
             .unwrap()
             .to_string();
-        // println!("{}", path);
+        // println!("{:#?}", path);
         if Path::new(&filepath).is_dir() {
             if Regex::new(r"(\.mod)$").unwrap().is_match(&filename) {
                 continue;
