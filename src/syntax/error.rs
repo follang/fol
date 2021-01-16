@@ -10,10 +10,21 @@ use crate::syntax::point;
 // }
 
 pub trait Glitch: std::error::Error {}
-macro_rules! glitch { ($err:expr $(,)?) => ({ Err(Box::new($err)) }); }
+macro_rules! glitch { ($err:expr $(,)?) => ({ Box::new($err) }); }
+// macro_rules! E { ($err:expr $(,)?) => ({ Err(Box::new($err)) }); }
+// macro_rules! V { ($val:expr $(,)?) => ({ Ok($val) }); () => ({ Ok(()) });  }
 
-pub type Cont<T> = Result<T, Box<(dyn Glitch + 'static)>>;
-pub type Void = Result<(), Box<(dyn Glitch + 'static)>>;
+// macro_rules! log { 
+//     ($(e:expr),*) => ({ 
+//         let message = String::new()
+//         $(message.push(&format!("{}", $e));)*
+//         println!("{}" message);
+//     });
+// }
+
+
+pub(crate) type Cont<T> = Result<T, Box<(dyn Glitch + 'static)>>;
+pub(crate) type Void = Result<(), Box<(dyn Glitch + 'static)>>;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Typo {

@@ -12,20 +12,28 @@ fn main() {
     // for f in reader::file_list("./etc").iter(){
     //     println!("{}", f);    
     // }
-    match reader::from_dir("./etp") {
-        Ok(files) => {
-            for f in files.iter(){
-                println!("{}", f);    
-            }
-        },
-        Err(e) => println!("{}", e)
-    }
-    // if let Ok(files) = reader::from_dir("./etc"){
-    //     for f in files.iter(){
-    //         println!("{}", f);    
-    //     }
+    // match reader::from_dir("./etc") {
+    //     Ok(files) => {
+    //         for f in files.iter(){
+    //             println!("{}", f);    
+    //         }
+    //     },
+    //     Err(e) => println!("{}", e)
     // }
-    // println!("{}", reader::READER::file("./etc/var/var.fol"));
+    // match reader::from_dir("/home/bresilla/data/code/proj/folang/fol/etc") {
+    //     Ok(files) => {
+    //         for f in files.iter(){
+    //             println!("{}", f);    
+    //         }
+    //     },
+    //     Err(e) => println!("{}", e)
+    // }
+    println!("----");
+    for en in reader::READER::from_dir("/home/bresilla/data/code/proj/folang/fol/etc").unwrap().iter() {
+    // for en in reader::READER::from_dir("./etc").unwrap().iter() {
+        println!("{}", en);
+    }
+    // println!("{}", reader::READER::from_dir("./etc/var/var.fol"));
     // for mut e in reader::iteratize("./etc") {
         // println!("{}", e);
         // for s in scanner::vectorize(&mut e) {

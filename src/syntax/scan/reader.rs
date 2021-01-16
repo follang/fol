@@ -11,8 +11,8 @@ use crate::syntax::error::*;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct READER {
+    call: String,
     pub path: String,
-    pub name: String,
     pub data: String,
 }
 
@@ -21,7 +21,7 @@ impl fmt::Display for READER {
         write!(
             f,
             "path: {}\nname: {}",
-            self.path, self.name
+            self.path(), self.name()
         )
     }
 }
@@ -50,15 +50,6 @@ impl READER {
             .unwrap()
             .to_string();
         for f in file_list(&e).iter() {
-            let name: String = std::fs::canonicalize(&f)
-                .unwrap()
-                .as_path()
-                .to_str()
-                .unwrap()
-                .to_string()
-                .trim_start_matches(&e)
-                .to_string();
-                // .trim_end_matches(".fol").to_string();
             let path: String = std::fs::canonicalize(&f)
                 .unwrap()
                 .as_path()
@@ -67,25 +58,42 @@ impl READER {
                 .to_string();
             let data: String = read_string_file(f).unwrap();
             let reader = READER {
+                call: s.to_string(),
                 path,
-                name,
                 data,
             };
             vec.push(reader);
         }
         return vec;
     }
-
-    pub fn file(s: &str) -> Self {
-        let name: String = std::fs::canonicalize(&s)
+    
+    pub fn from_dir(s: &str) -> Cont<Vec<Self>> {
+        let mut vec = Vec::new();
+        let e = std::fs::canonicalize(s.to_string())
             .unwrap()
             .as_path()
             .to_str()
             .unwrap()
-            .to_string()
-            .trim_start_matches(&s)
             .to_string();
-            // .trim_end_matches(".fol").to_string();
+        for f in from_dir(&e).unwrap().iter() {
+            let path: String = std::fs::canonicalize(&f)
+                .unwrap()
+                .as_path()
+                .to_str()
+                .unwrap()
+                .to_string();
+            let data: String = read_string_file(f).unwrap();
+            let reader = READER {
+                call: s.to_string(),
+                path,
+                data,
+            };
+            vec.push(reader);
+        }
+        Ok(vec)
+    }
+
+    pub fn file(s: &str) -> Self {
         let path: String = std::fs::canonicalize(&s)
             .unwrap()
             .as_path()
@@ -93,11 +101,28 @@ impl READER {
             .unwrap()
             .to_string();
         let data: String = read_string_file(s).unwrap();
-        Self { path, name, data}
+        Self { call: s.to_string(), path, data}
     }
 
-    pub fn name(&self) -> &String {
-        &self.name
+    pub fn path(&self) -> &String {
+        &self.path
+    }
+
+    pub fn name(&self) -> String {
+        let e = std::fs::canonicalize(&self.call)
+            .unwrap()
+            .as_path()
+            .to_str()
+            .unwrap()
+            .to_string();
+        std::fs::canonicalize(&self.path)
+            .unwrap()
+            .as_path()
+            .to_str()
+            .unwrap()
+            .to_string()
+            .trim_start_matches(&e)
+            .to_string()
     }
 
     pub fn data(&self) -> &String {
@@ -143,9 +168,9 @@ pub fn from_dir(s: &str) -> Cont<Vec<String>> {
     }
     if avec.is_empty() { 
         let msg = format!("{}", "No file found".red());
-        glitch!(Flaw::GettingNoEntry{msg: Some(msg)})
-    } else { 
-        Ok(avec) 
+        Err( glitch!(Flaw::GettingNoEntry{msg: Some(msg)}) )
+    } else {
+        Ok(avec)
     }
 }
 
