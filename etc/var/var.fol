@@ -2,7 +2,7 @@
 -var[exp,imu] two: str[exp,hid] = <expression>
 +var three: int = <expression>
 -var[exp] (
-    /* four: int[exp], str; */
+    four: int[exp], str;
     four2, four3: arr[nor], int = <expression>
     four4 : str[nor] = <expression>;
 )
@@ -18,7 +18,7 @@ var t1, t2, t3, t4, t5, t6: int, str
 typ one: rec = { <expression> };
 typ two[T: gen, N: int](): rec = { <expression> };
 ~typ[] (
-    three: rec[] = <expression>;
+    three, two: rec[] = <expression>;
     three2: rec[] = <expression>;
 )
 ~typ[] four: rec = { <expression> };
@@ -44,7 +44,9 @@ fun one(two: int): int = { <expression> }
 ~log[] one(two: int): int = { <expression> }
 fun[] '!='(one, two: int): bol = { <expression> }
 ~pro[] (obj)one(two: int): int = { <expression> }
-~pro[] (obj)'$': str = { <expression> }
+~pro[] (obj)'$': str = { <expression> } */
 ~pro[] one[T: gen](two: int): int = { <expression> }
 fun[] add1(adder: rut[(x: int): int]): int = { <expression> }
-/* fun[] add2(): rut[(x: int): int] = { <expression> }
+fun[] add1(adder: rut[(x: int): int]): int = { <expression> }
+// ///sonr
+fun[]

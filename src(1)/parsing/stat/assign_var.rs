@@ -48,6 +48,7 @@ pub fn parse_stat(
                     lex.curr().loc().clone(),
                     flaw,
                 );
+                println!("{}", flaw::Glitch::report(flaw::Typo::ParserUnexpected{ msg: Some("unexpected token"), loc: Some(loc) }));
                 return Err(flaw::flaw_type::parser(flaw::parser::parser_unexpected));
             }
             // helper::assign_recursive(forest, lex, flaw, Some(opt), parse_stat_var)?;

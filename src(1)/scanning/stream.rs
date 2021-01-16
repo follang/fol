@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 
+use crate::error::flaw;
 use crate::scanning::locate;
 use crate::scanning::reader;
 use crate::scanning::scanner;
@@ -112,6 +113,51 @@ impl STREAM {
         while !self.curr().key().is_void() {
             self.bump()
         }
+    }
+
+    pub fn report(
+        &mut self,
+        s: String,
+        l: locate::LOCATION,
+        e: &mut flaw::FLAW,
+        t: flaw::flaw_type,
+    ) {
+        e.report(t, &s, l);
+        self.to_endsym();
+    }
+
+    pub fn report_bracket(&mut self, k: String, l: locate::LOCATION, e: &mut flaw::FLAW) {
+        let s = String::from("expected:") + &k + " but recieved:" + &self.curr().key().to_string();
+        self.report(
+            s,
+            l,
+            e,
+            flaw::flaw_type::lexer(flaw::lexer::lexer_bracket_unmatch),
+        );
+    }
+    pub fn report_primitive_acccess(&mut self, k: String, l: locate::LOCATION, e: &mut flaw::FLAW) {
+        let s = String::from("primitive type: ")
+            + k.as_str().black().on_white().to_string().as_str()
+            + " doesn't have fields to access ";
+        self.report(
+            s,
+            l,
+            e,
+            flaw::flaw_type::lexer(flaw::lexer::lexer_primitive_access),
+        );
+    }
+    pub fn report_space_add(&mut self, k: String, l: locate::LOCATION, e: &mut flaw::FLAW) {
+        let s = String::from("space between:")
+            + &k
+            + " and:"
+            + &self.curr().key().to_string()
+            + " needs to be added";
+        self.report(
+            s,
+            l,
+            e,
+            flaw::flaw_type::lexer(flaw::lexer::lexer_space_add),
+        );
     }
 
     pub fn log(&self, msg: &str) {
