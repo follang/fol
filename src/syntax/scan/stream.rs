@@ -1,19 +1,19 @@
 #![allow(dead_code)]
 
-use crate::scanning::locate;
-use crate::scanning::reader;
-use crate::scanning::scanner;
-use crate::scanning::token;
+use crate::syntax::point;
+use crate::syntax::scan::reader;
+use crate::syntax::scan::scanner;
+use crate::syntax::scan::token;
 use colored::Colorize;
 use std::fmt;
 
-use crate::scanning::scanner::SCAN;
+use crate::syntax::scan::scanner::SCAN;
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct STREAM {
     vec: Vec<SCAN>,
     prev: SCAN,
     curr: SCAN,
-    bracs: Vec<(locate::LOCATION, token::KEYWORD)>,
+    bracs: Vec<(point::Location, token::KEYWORD)>,
 }
 
 impl STREAM {
@@ -27,23 +27,15 @@ impl STREAM {
         &self.prev
     }
 
-    pub fn bracs(&mut self) -> &mut Vec<(locate::LOCATION, token::KEYWORD)> {
+    pub fn bracs(&mut self) -> &mut Vec<(point::Location, token::KEYWORD)> {
         &mut self.bracs
     }
 }
 
-// impl Iterator for STREAM {
-//     type Item = SCAN;
-
-//     fn next(&mut self) -> Option<Self::Item> {
-//         todo!();
-//     }
-// }
-
 impl STREAM {
     pub fn init(path: &str) -> Self {
         let mut vec: Vec<SCAN> = Vec::new();
-        let bracs: Vec<(locate::LOCATION, token::KEYWORD)> = Vec::new();
+        let bracs: Vec<(point::Location, token::KEYWORD)> = Vec::new();
         for mut e in reader::iteratize(path) {
             vec.append(&mut scanner::vectorize(&mut e))
         }

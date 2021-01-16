@@ -1,9 +1,9 @@
 #![allow(dead_code)]
 
-use crate::scanning::locate;
-use crate::scanning::reader;
-use crate::scanning::parts;
-use crate::scanning::token;
+use crate::syntax::point;
+use crate::syntax::scan::reader;
+use crate::syntax::scan::parts;
+use crate::syntax::scan::token;
 use std::fmt;
 
 pub fn is_eof(ch: &char) -> bool {
@@ -58,17 +58,17 @@ pub fn is_void(ch: &char) -> bool {
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct SCAN {
     key: token::KEYWORD,
-    loc: locate::LOCATION,
+    loc: point::Location,
     con: String,
 }
 
 impl SCAN {
-    pub fn new(key: token::KEYWORD, loc: locate::LOCATION, con: String) -> Self {
+    pub fn new(key: token::KEYWORD, loc: point::Location, con: String) -> Self {
         SCAN { key, loc, con }
     }
     pub fn zero(name: &str) -> Self {
         let key = token::KEYWORD::void(token::VOID::endfile_);
-        let loc = locate::LOCATION::new(name.to_string(), name.to_string(), 0, 0, 0, 0);
+        let loc = point::Location::new(name.to_string(), name.to_string(), 0, 0, 0, 0);
         SCAN {
             key,
             loc,
@@ -81,7 +81,7 @@ impl SCAN {
     pub fn key(&self) -> &token::KEYWORD {
         &self.key
     }
-    pub fn loc(&self) -> &locate::LOCATION {
+    pub fn loc(&self) -> &point::Location {
         &self.loc
     }
     pub fn con(&self) -> &String {
@@ -111,7 +111,7 @@ impl fmt::Display for SCAN {
 /// Creates a vector that produces tokens from the input string.
 pub fn vectorize(red: &mut reader::READER) -> Vec<SCAN> {
     let mut vec: Vec<SCAN> = Vec::new();
-    let mut loc = locate::LOCATION::init(&red);
+    let mut loc = point::Location::init(&red.path);
     let mut part = parts::PART::init(&red.data);
     while part.not_eof() {
         let token = part.scanning(&mut loc);
@@ -120,11 +120,11 @@ pub fn vectorize(red: &mut reader::READER) -> Vec<SCAN> {
     vec
 }
 
-use crate::scanning::token::KEYWORD::*;
-use crate::scanning::token::*;
+use crate::syntax::scan::token::KEYWORD::*;
+use crate::syntax::scan::token::*;
 impl parts::PART {
     /// Parses a token from the input string.
-    fn scanning(&mut self, loc: &mut locate::LOCATION) -> SCAN {
+    fn scanning(&mut self, loc: &mut point::Location) -> SCAN {
         let mut result = SCAN::new(illegal, loc.clone(), String::new());
         result.loc.new_word();
         self.bump(&mut result.loc);

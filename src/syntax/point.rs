@@ -1,12 +1,17 @@
 #![allow(unused_variables)]
 #![allow(dead_code)]
 
-use crate::scanning::reader;
 use std::fmt;
+use std::fs::File;
+use std::io::BufRead;
+use std::io::BufReader;
+use std::path::Path;
+use colored::Colorize;
+
 
 /// A location somewhere in the sourcecode.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct LOCATION {
+pub struct Location {
     path: String,
     name: String,
     row: usize,
@@ -15,7 +20,7 @@ pub struct LOCATION {
     deep: isize,
 }
 
-impl fmt::Display for LOCATION {
+impl fmt::Display for Location {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -25,33 +30,9 @@ impl fmt::Display for LOCATION {
     }
 }
 
-impl LOCATION {
-    pub fn visualize(&self, desc: &str) -> String {
-        format!(
-            "{}↑\n{}{}",
-            " ".repeat(self.col - 1),
-            " ".repeat(self.col - 1),
-            desc
-        )
-    }
-}
-
-impl LOCATION {
-    pub fn init(red: &reader::READER) -> Self {
-        let name = red.name.to_string();
-        let path = red.path.to_string();
-        // file.add_str("go");
-        LOCATION {
-            path,
-            name,
-            row: 1,
-            col: 1,
-            len: 1,
-            deep: 1,
-        }
-    }
-    pub fn def() -> Self {
-        LOCATION {
+impl std::default::Default for Location {
+    fn default() -> Self {
+        Self {
             path: String::new(),
             name: String::new(),
             row: 1,
@@ -60,6 +41,29 @@ impl LOCATION {
             deep: 1,
         }
     }
+}
+
+impl Location {
+    pub fn visualize(&self) -> String {
+        let file = File::open(Path::new(self.path())).unwrap();
+        let mut lines = BufReader::new(&file).lines();
+        let line = lines.nth(self.row() - 1).unwrap().unwrap();
+        format!(
+            "{}\n {:>6}\n {:>6}  {}\n {:>6} {}{}",
+            self,
+            " |".red(),
+            (self.row().to_string() + " |").red(),
+            line.red(),
+            " |".red(),
+            " ".repeat(self.col()),
+            "^".repeat(self.len()),
+        )
+    }
+
+    pub fn init(path: &String) -> Self {
+        Self { path: path.to_string(), ..Default::default() }
+    }
+
     pub fn new(
         path: String,
         name: String,
@@ -68,7 +72,7 @@ impl LOCATION {
         len: usize,
         deep: isize,
     ) -> Self {
-        LOCATION {
+        Location {
             path,
             name,
             row,

@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 
-use crate::scanning::locate;
-use crate::scanning::reader;
+use crate::syntax::point;
 use std::fmt;
 use std::str::Chars;
 
@@ -61,7 +60,7 @@ impl PART {
     }
 
     /// Moves to the next character.
-    pub(crate) fn bump(&mut self, loc: &mut locate::LOCATION) -> Option<char> {
+    pub(crate) fn bump(&mut self, loc: &mut point::Location) -> Option<char> {
         self.prev_char = self.curr_char;
         loc.new_char();
         if self.not_eof() {

@@ -1,16 +1,10 @@
 #![allow(unused_imports)]
 #![allow(unused_variables)]
 
-mod flaw;
-mod scanning;
+mod syntax;
 #[macro_use]
 extern crate getset;
 extern crate colored;
-// use crate::scanning::token;
-// use crate::scanning::parts;
-use crate::scanning::reader;
-use crate::scanning::scanner;
-use crate::scanning::stream;
 
 fn main() {
     // for mut e in reader::iteratize("./etc") {
