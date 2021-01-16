@@ -6,7 +6,7 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 use regex::Regex;
-
+use crate::colored::Colorize;
 use crate::syntax::error::*;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -142,7 +142,8 @@ pub fn from_dir(s: &str) -> Cont<Vec<String>> {
         }
     }
     if avec.is_empty() { 
-        Err(Flaw::GettingNoEntry{ msg: Some("No file found") }.report()) 
+        let msg = format!("{}", "No file found".red());
+        glitch!(Flaw::GettingNoEntry{msg: Some(msg)})
     } else { 
         Ok(avec) 
     }

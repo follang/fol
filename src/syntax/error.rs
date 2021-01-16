@@ -9,10 +9,8 @@ use crate::syntax::point;
 //     fn box (&self) -> Box<Self>;
 // }
 
-pub trait Glitch: std::error::Error {
-    // const GLITCHES: Box<Vec<(dyn Glitch + 'static)>>;
-    // fn report(&self);
-}
+pub trait Glitch: std::error::Error {}
+macro_rules! glitch { ($err:expr $(,)?) => ({ Err(Box::new($err)) }); }
 
 pub type Cont<T> = Result<T, Box<(dyn Glitch + 'static)>>;
 pub type Void = Result<(), Box<(dyn Glitch + 'static)>>;
@@ -20,51 +18,51 @@ pub type Void = Result<(), Box<(dyn Glitch + 'static)>>;
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Typo {
     ParserUnexpected {
-        msg: Option<&'static str>,
+        msg: Option<String>,
         loc: Option<point::Location>,
     },
     ParserMissmatch {
-        msg: Option<&'static str>,
+        msg: Option<String>,
         loc: Option<point::Location>,
     },
     ParserSpaceRem {
-        msg: Option<&'static str>,
+        msg: Option<String>,
         loc: Option<point::Location>,
     },
     ParserSpaceAdd {
-        msg: Option<&'static str>,
+        msg: Option<String>,
         loc: Option<point::Location>,
     },
     ParserTypeDisbalance {
-        msg: Option<&'static str>,
+        msg: Option<String>,
         loc: Option<point::Location>,
     },
     ParserBodyForbidden {
-        msg: Option<&'static str>,
+        msg: Option<String>,
         loc: Option<point::Location>,
     },
     ParserNoType {
-        msg: Option<&'static str>,
+        msg: Option<String>,
         loc: Option<point::Location>,
     },
     ParserNeedsBody {
-        msg: Option<&'static str>,
+        msg: Option<String>,
         loc: Option<point::Location>,
     },
     ParserManyUnexpected {
-        msg: Option<&'static str>,
+        msg: Option<String>,
         loc: Option<point::Location>,
     },
     LexerPrimitiveAccess {
-        msg: Option<&'static str>,
+        msg: Option<String>,
         loc: Option<point::Location>,
     },
     LexerBracketUnmatch {
-        msg: Option<&'static str>,
+        msg: Option<String>,
         loc: Option<point::Location>,
     },
     LexerSpaceAdd {
-        msg: Option<&'static str>,
+        msg: Option<String>,
         loc: Option<point::Location>,
     },
 }
@@ -148,7 +146,7 @@ impl fmt::Display for Typo {
         };
         write!(f, "\n{} >> {}:{}{}{}",
             " TYPO ".black().on_red(),
-            (" ".to_string() + &s + " stage ").black().bold().on_white().to_string(), v.on_red().to_string(),
+            (" ".to_string() + &s + " stage ").black().on_white().to_string(), v.on_red().bold().to_string(),
             match l { Some(val) => "\n".to_string() + &val.visualize(), None => "".to_string() },
             match m { Some(val) => "\n".to_string() + &val.to_string(), None => "".to_string() },
         )
@@ -156,21 +154,21 @@ impl fmt::Display for Typo {
 }
 impl std::error::Error for Typo  {  }
 impl Glitch for Typo {  }
-impl Typo { pub fn report(self) -> Box<Self> { Box::new(self) } }
+impl Typo { pub fn r#box(self) -> Box<Self> { Box::new(self) } }
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Flaw {
     GettingWrongPath {
-        msg: Option<&'static str>,
+        msg: Option<String>,
     },
     GettingNoEntry {
-        msg: Option<&'static str>,
+        msg: Option<String>,
     },
     ReadingEmptyFile {
-        msg: Option<&'static str>,
+        msg: Option<String>,
     },
     ReadingBadContent {
-        msg: Option<&'static str>,
+        msg: Option<String>,
     },
 }
 impl fmt::Display for Flaw {
@@ -200,11 +198,12 @@ impl fmt::Display for Flaw {
         };
         write!(f, "\n{} >> {}:{}{}",
             " FLAW ".black().on_red(),
-            (" ".to_string() + &s + " file ").black().bold().on_white().to_string(), v.on_red().to_string(),
+            (" ".to_string() + &s + " file ").black().on_white().to_string(), v.on_red().bold().to_string(),
             match m { Some(val) => "\n".to_string() + &val.to_string(), None => "".to_string() },
         )
     }
 }
 impl std::error::Error for Flaw  {  }
 impl Glitch for Flaw  {  }
-impl Flaw { pub fn report(self) -> Box<Self> { Box::new(self) } }
+impl Flaw { pub fn r#box(self) -> Box<Self> { Box::new(self) } }
+
