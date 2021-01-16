@@ -60,8 +60,8 @@ impl Location {
         )
     }
 
-    pub fn init(path: &String) -> Self {
-        Self { path: path.to_string(), ..Default::default() }
+    pub fn init(path: &String, name: &String) -> Self {
+        Self { path: path.to_string(), name: name.to_string(), ..Default::default() }
     }
 
     pub fn new(

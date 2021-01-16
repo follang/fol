@@ -1,59 +1,10 @@
 #![allow(dead_code)]
 
+use std::fmt;
 use crate::syntax::point;
 use crate::syntax::scan::reader;
 use crate::syntax::scan::parts;
 use crate::syntax::scan::token;
-use std::fmt;
-
-pub fn is_eof(ch: &char) -> bool {
-    return *ch == '\0';
-}
-
-pub fn is_eol(ch: &char) -> bool {
-    return *ch == '\n' || *ch == '\r';
-}
-
-pub fn is_space(ch: &char) -> bool {
-    return *ch == ' ' || *ch == '\t';
-}
-
-pub fn is_digit(ch: &char) -> bool {
-    return '0' <= *ch && *ch <= '9';
-}
-
-pub fn is_alpha(ch: &char) -> bool {
-    return 'a' <= *ch && *ch <= 'z' || 'A' <= *ch && *ch <= 'Z' || *ch == '_';
-}
-
-pub fn is_bracket(ch: &char) -> bool {
-    return *ch == '{' || *ch == '[' || *ch == '(' || *ch == ')' || *ch == ']' || *ch == '}';
-}
-
-pub fn is_symbol(ch: &char) -> bool {
-    return '!' <= *ch && *ch <= '/'
-        || ':' <= *ch && *ch <= '@'
-        || '[' <= *ch && *ch <= '^'
-        || '{' <= *ch && *ch <= '~';
-}
-
-pub fn is_oct_digit(ch: &char) -> bool {
-    return '0' <= *ch && *ch <= '7' || *ch == '_';
-}
-pub fn is_hex_digit(ch: &char) -> bool {
-    return '0' <= *ch && *ch <= '9'
-        || 'a' <= *ch && *ch <= 'f'
-        || 'A' <= *ch && *ch <= 'F'
-        || *ch == '_';
-}
-
-pub fn is_alphanumeric(ch: &char) -> bool {
-    return is_digit(ch) || is_alpha(ch);
-}
-
-pub fn is_void(ch: &char) -> bool {
-    return is_eol(ch) || is_space(ch);
-}
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct SCAN {
@@ -75,9 +26,6 @@ impl SCAN {
             con: String::new(),
         }
     }
-}
-
-impl SCAN {
     pub fn key(&self) -> &token::KEYWORD {
         &self.key
     }
@@ -111,7 +59,7 @@ impl fmt::Display for SCAN {
 /// Creates a vector that produces tokens from the input string.
 pub fn vectorize(red: &mut reader::READER) -> Vec<SCAN> {
     let mut vec: Vec<SCAN> = Vec::new();
-    let mut loc = point::Location::init(&red.path);
+    let mut loc = point::Location::init(&red.path, &red.name);
     let mut part = parts::PART::init(&red.data);
     while part.not_eof() {
         let token = part.scanning(&mut loc);
@@ -439,3 +387,53 @@ impl SCAN {
         self.con.push_str(&part.curr_char().to_string());
     }
 }
+
+pub fn is_eof(ch: &char) -> bool {
+    return *ch == '\0';
+}
+
+pub fn is_eol(ch: &char) -> bool {
+    return *ch == '\n' || *ch == '\r';
+}
+
+pub fn is_space(ch: &char) -> bool {
+    return *ch == ' ' || *ch == '\t';
+}
+
+pub fn is_digit(ch: &char) -> bool {
+    return '0' <= *ch && *ch <= '9';
+}
+
+pub fn is_alpha(ch: &char) -> bool {
+    return 'a' <= *ch && *ch <= 'z' || 'A' <= *ch && *ch <= 'Z' || *ch == '_';
+}
+
+pub fn is_bracket(ch: &char) -> bool {
+    return *ch == '{' || *ch == '[' || *ch == '(' || *ch == ')' || *ch == ']' || *ch == '}';
+}
+
+pub fn is_symbol(ch: &char) -> bool {
+    return '!' <= *ch && *ch <= '/'
+        || ':' <= *ch && *ch <= '@'
+        || '[' <= *ch && *ch <= '^'
+        || '{' <= *ch && *ch <= '~';
+}
+
+pub fn is_oct_digit(ch: &char) -> bool {
+    return '0' <= *ch && *ch <= '7' || *ch == '_';
+}
+pub fn is_hex_digit(ch: &char) -> bool {
+    return '0' <= *ch && *ch <= '9'
+        || 'a' <= *ch && *ch <= 'f'
+        || 'A' <= *ch && *ch <= 'F'
+        || *ch == '_';
+}
+
+pub fn is_alphanumeric(ch: &char) -> bool {
+    return is_digit(ch) || is_alpha(ch);
+}
+
+pub fn is_void(ch: &char) -> bool {
+    return is_eol(ch) || is_space(ch);
+}
+
