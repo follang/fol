@@ -40,8 +40,8 @@ impl Stream {
         for src in source::sources(path) {
             vec.extend(element::elements(&src))
         }
-        let prev = Element::zero(&vec.last().unwrap().loc().path(true));
-        let curr = vec.get(0).unwrap_or(&Element::zero(" ")).to_owned();
+        let prev = Element::default();
+        let curr = vec.get(0).unwrap_or(&Element::default()).to_owned();
         Stream {
             vec,
             prev,
@@ -54,12 +54,12 @@ impl Stream {
         if !self.vec.is_empty() {
             self.prev = self.curr.to_owned();
             self.vec = self.vec[1..].to_vec();
-            self.curr = self.vec.get(0).unwrap_or(&Element::zero(" ")).to_owned();
+            self.curr = self.vec.get(0).unwrap_or(&Element::default()).to_owned();
             // let curr = vec.remove(0);
         }
     }
     pub fn nth(&self, num: usize) -> Element {
-        self.vec.get(num).unwrap_or(&Element::zero(" ")).to_owned()
+        self.vec.get(num).unwrap_or(&Element::default()).to_owned()
     }
     pub fn next(&self) -> Element {
         self.nth(1)

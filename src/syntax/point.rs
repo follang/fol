@@ -20,16 +20,6 @@ pub struct Location {
     deep: isize,
 }
 
-impl fmt::Display for Location {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "file: {: <4}   row: {: <2}   col: {: <2}",
-            self.path(false), self.row, self.col
-        )
-    }
-}
-
 impl std::default::Default for Location {
     fn default() -> Self {
         Self {
@@ -143,3 +133,14 @@ impl Location {
         self.deep -= 1
     }
 }
+
+impl fmt::Display for Location {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "file: {: <4}   row: {: <2}   col: {: <2}",
+            self.path(false), self.row, self.col
+        )
+    }
+}
+

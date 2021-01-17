@@ -15,18 +15,19 @@ pub struct Element {
     con: String,
 }
 
+impl std::default::Default for Element {
+    fn default() -> Self {
+        Self {
+            key: KEYWORD::illegal,
+            loc: point::Location::default(),
+            con: String::new(),
+        }
+    }
+}
+
 impl Element {
     pub fn new(key: KEYWORD, loc: point::Location, con: String) -> Self {
         Element { key, loc, con }
-    }
-    pub fn zero(name: &str) -> Self {
-        let key = KEYWORD::void(VOID::endfile_);
-        let loc = point::Location::new((name.to_string(), name.to_string()), name.to_string(), 0, 0, 0, 0);
-        Element {
-            key,
-            loc,
-            con: String::new(),
-        }
     }
     pub fn key(&self) -> &KEYWORD {
         &self.key
