@@ -11,7 +11,7 @@ use crate::syntax::point;
 
 pub trait Glitch: std::error::Error {}
 macro_rules! glitch { ($err:expr $(,)?) => ({ Box::new($err) }); }
-// macro_rules! crash { ($err:expr $(,)?) => ({ println!("{}", $err); std::process::exit(0); }); }
+macro_rules! crash { ($err:expr $(,)?) => ({ println!("{}", $err); std::process::exit(0); }); }
 // macro_rules! E { ($err:expr $(,)?) => ({ Err(Box::new($err)) }); }
 // macro_rules! V { ($val:expr $(,)?) => ({ Ok($val) }); () => ({ Ok(()) });  }
 
