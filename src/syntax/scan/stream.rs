@@ -40,7 +40,7 @@ impl Stream {
         for src in source::sources(path) {
             vec.extend(element::elements(&src))
         }
-        let prev = Element::zero(&vec.last().unwrap().loc().module());
+        let prev = Element::zero(&vec.last().unwrap().loc().path(true));
         let curr = vec.get(0).unwrap_or(&Element::zero(" ")).to_owned();
         Stream {
             vec,
@@ -134,8 +134,4 @@ impl fmt::Display for Stream {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.curr())
     }
-}
-
-pub fn zero() -> Element {
-    Element::zero(" ")
 }

@@ -21,7 +21,7 @@ impl Element {
     }
     pub fn zero(name: &str) -> Self {
         let key = KEYWORD::void(VOID::endfile_);
-        let loc = point::Location::new(name.to_string(), name.to_string(), 0, 0, 0, 0);
+        let loc = point::Location::new((name.to_string(), name.to_string()), name.to_string(), 0, 0, 0, 0);
         Element {
             key,
             loc,
@@ -57,7 +57,7 @@ impl Element {
 /// Creates a vector that produces tokens from the input string.
 pub fn elements(src: &source::Source) -> Vec<Element> {
     let mut el: Vec<Element> = Vec::new();
-    let mut loc = point::Location::init(&src.path(true), &src.path(false));
+    let mut loc = point::Location::init((src.path(true), src.path(false)), &src.module());
     let mut part = text::Text::init(&src.data);
     while part.not_eof() {
         let token = part.scan(&mut loc);

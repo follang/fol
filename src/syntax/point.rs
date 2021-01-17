@@ -13,7 +13,7 @@ use colored::Colorize;
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Location {
     module: String,
-    path: String,
+    path: (String, String),
     row: usize,
     col: usize,
     len: usize,
@@ -25,7 +25,7 @@ impl fmt::Display for Location {
         write!(
             f,
             "file: {: <4}   row: {: <2}   col: {: <2}",
-            self.module, self.row, self.col
+            self.path(false), self.row, self.col
         )
     }
 }
@@ -33,7 +33,7 @@ impl fmt::Display for Location {
 impl std::default::Default for Location {
     fn default() -> Self {
         Self {
-            path: String::new(),
+            path: (String::new(), String::new()),
             module: String::new(),
             row: 1,
             col: 1,
@@ -45,7 +45,7 @@ impl std::default::Default for Location {
 
 impl Location {
     pub fn visualize(&self) -> String {
-        let file = File::open(Path::new(self.path())).unwrap();
+        let file = File::open(Path::new(&self.path.1)).unwrap();
         let mut lines = BufReader::new(&file).lines();
         let line = lines.nth(self.row() - 1).unwrap().unwrap();
         format!(
@@ -60,12 +60,12 @@ impl Location {
         )
     }
 
-    pub fn init(path: &String, module: &String) -> Self {
-        Self { path: path.to_string(), module: module.to_string(), ..Default::default() }
+    pub fn init(path: (String, String), module: &String) -> Self {
+        Self { path: path, module: module.to_string(), ..Default::default() }
     }
 
     pub fn new(
-        path: String,
+        path: (String, String),
         module: String,
         row: usize,
         col: usize,
@@ -102,8 +102,8 @@ impl Location {
         self.deep
     }
 
-    pub fn path(&self) -> &String {
-        &self.path
+    pub fn path(&self, abs: bool) -> &String {
+        if abs { &self.path.0 } else { &self.path.1 }
     }
 
     pub fn module(&self) -> &String {
