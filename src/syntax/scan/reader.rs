@@ -48,7 +48,6 @@ impl READER {
     pub fn init(s: &str) -> Cont<Vec<Self>> {
         let mut vec = Vec::new();
         let e = full_path(s)?;
-        println!("----");
         let pathvec = from_dir(&e)?;
         for f in pathvec.iter() {
             let path = full_path(f)?;
@@ -91,6 +90,20 @@ impl READER {
 
     pub fn set(&mut self, a: String) {
         self.data = a;
+    }
+}
+
+fn check_file_dir(s: &str) -> Cont<String> {
+    if !std::path::Path::new(s).exists() { 
+        let msg = format!("path: {} is not a valid path", s.red());
+        return Err( glitch!(Flaw::GettingWrongPath{msg: Some(msg)}) );
+    };
+    let md = std::fs::metadata(s).unwrap();
+    if md.is_dir() {
+        Ok(full_path(s)?)
+    } else {
+        let msg = format!("path: {} is not a valid file", s.red());
+        Err( glitch!(Flaw::ReadingBadContent{msg: Some(msg)}) )
     }
 }
 
