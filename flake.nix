@@ -31,6 +31,7 @@
             "rustfmt-preview"
           ])
           rust-analyzer
+          rls
         ];
       };
     }

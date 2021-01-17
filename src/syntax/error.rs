@@ -10,22 +10,16 @@ use crate::syntax::point;
 // }
 
 pub trait Glitch: std::error::Error {}
-macro_rules! glitch { ($err:expr $(,)?) => ({ Box::new($err) }); }
-macro_rules! crash { ($err:expr $(,)?) => ({ println!("{}", $err); std::process::exit(0); }); }
-// macro_rules! E { ($err:expr $(,)?) => ({ Err(Box::new($err)) }); }
-// macro_rules! V { ($val:expr $(,)?) => ({ Ok($val) }); () => ({ Ok(()) });  }
+macro_rules! catch {
+    ($err:expr $(,)?) => ({ Box::new($err) });
+}
+macro_rules! crash {
+    () => ({ std::process::exit(0); });
+    ($err:expr $(,)?) => ({ println!("{}", $err); std::process::exit(0); });
+}
 
-// macro_rules! log { 
-//     ($(e:expr),*) => ({ 
-//         let message = String::new()
-//         $(message.push(&format!("{}", $e));)*
-//         println!("{}" message);
-//     });
-// }
-
-
-pub(crate) type Cont<T> = Result<T, Box<(dyn Glitch + 'static)>>;
-pub(crate) type Void = Result<(), Box<(dyn Glitch + 'static)>>;
+pub(crate) type Con<T> = Result<T, Box<(dyn Glitch + 'static)>>;
+pub(crate) type Vod = Result<(), Box<(dyn Glitch + 'static)>>;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Typo {

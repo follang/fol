@@ -33,7 +33,7 @@ fn main() {
         // println!("{}", en);
     // }
     // println!("{}", reader::READER::from_dir("./etc/var/var.fol"));
-    for e in reader::iteratize("./etc") {
+    for e in reader::iteratize("./etc/var/var.fol") {
         println!("{}", e);
         // for s in scanner::vectorize(&mut e) {
         //     println!("{}", s);

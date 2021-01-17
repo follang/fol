@@ -29,8 +29,13 @@ impl fmt::Display for READER {
 /// Creates an iterator that produces tokens from the input string.
 pub fn iteratize(input: &str) -> impl Iterator<Item = READER> + '_ {
     let red: Vec<READER>;
-    match READER::init(&input) {
-        Ok(files) => { red = files }
+    match check_file_dir(input) {
+        Ok(input) => {
+            match READER::init(&input) {
+                Ok(files) => { red = files }
+                Err(e) => { crash!(e) }
+            }
+        }
         Err(e) => { crash!(e) }
     }
     let mut index: usize = 0;
@@ -45,7 +50,7 @@ pub fn iteratize(input: &str) -> impl Iterator<Item = READER> + '_ {
 }
 
 impl READER {
-    pub fn init(s: &str) -> Cont<Vec<Self>> {
+    pub fn init(s: &str) -> Con<Vec<Self>> {
         let mut vec = Vec::new();
         let e = full_path(s)?;
         let pathvec = from_dir(&e)?;
@@ -68,12 +73,7 @@ impl READER {
     }
 
     fn rel_path(&self) -> String {
-        let e = std::fs::canonicalize(&self.call)
-            .unwrap()
-            .as_path()
-            .to_str()
-            .unwrap()
-            .to_string();
+        let e = full_path(&self.call).unwrap();
         std::fs::canonicalize(&self.path)
             .unwrap()
             .as_path()
@@ -93,21 +93,23 @@ impl READER {
     }
 }
 
-fn check_file_dir(s: &str) -> Cont<String> {
-    if !std::path::Path::new(s).exists() { 
+fn check_file_dir(s: &str) -> Con<String> {
+    let path = std::path::Path::new(s);
+    if !path.exists() { 
         let msg = format!("path: {} is not a valid path", s.red());
-        return Err( glitch!(Flaw::GettingWrongPath{msg: Some(msg)}) );
+        return Err( catch!(Flaw::GettingWrongPath{msg: Some(msg)}) );
     };
-    let md = std::fs::metadata(s).unwrap();
-    if md.is_dir() {
+    if path.is_dir() {
         Ok(full_path(s)?)
+    } else if path.is_file() {
+        Ok(path.parent().unwrap().to_str().unwrap().to_string())
     } else {
         let msg = format!("path: {} is not a valid file", s.red());
-        Err( glitch!(Flaw::ReadingBadContent{msg: Some(msg)}) )
+        Err( catch!(Flaw::ReadingBadContent{msg: Some(msg)}) )
     }
 }
 
-fn full_path(s: &str) -> Cont<String> {
+fn full_path(s: &str) -> Con<String> {
     let e = std::fs::canonicalize(s.to_string())
         .unwrap()
         .as_path()
@@ -117,7 +119,7 @@ fn full_path(s: &str) -> Cont<String> {
     Ok(e)
 }
 
-pub fn from_dir(s: &str) -> Cont<Vec<String>> {
+pub fn from_dir(s: &str) -> Con<Vec<String>> {
     let paths = std::fs::read_dir(s.to_string()).unwrap();
     let mut avec = Vec::new();
     for path in paths {
@@ -146,17 +148,17 @@ pub fn from_dir(s: &str) -> Cont<Vec<String>> {
     }
     if avec.is_empty() { 
         let msg = format!("{}", "No file found".red());
-        Err( glitch!(Flaw::GettingNoEntry{msg: Some(msg)}) )
+        Err( catch!(Flaw::GettingNoEntry{msg: Some(msg)}) )
     } else {
         Ok(avec)
     }
 }
 
-pub fn read_vec_file(s: &str) -> Result<Vec<u8>, std::io::Error> {
-    let mut buffer = Vec::new();
-    File::open(s)?.read_to_end(&mut buffer)?;
-    Ok(buffer)
-}
+// pub fn read_vec_file(s: &str) -> Result<Vec<u8>, std::io::Error> {
+//     let mut buffer = Vec::new();
+//     File::open(s)?.read_to_end(&mut buffer)?;
+//     Ok(buffer)
+// }
 
 pub fn read_string_file(s: &str) -> Result<String, std::io::Error> {
     let mut buffer = String::new();
