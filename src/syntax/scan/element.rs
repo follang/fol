@@ -3,11 +3,10 @@
 use std::fmt;
 use crate::syntax::point;
 use crate::syntax::scan::source;
-use crate::syntax::scan::parts;
-use crate::syntax::scan::token;
+use crate::syntax::scan::text;
 
-use crate::syntax::scan::token::KEYWORD::*;
-use crate::syntax::scan::token::*;
+use crate::syntax::token::KEYWORD::*;
+use crate::syntax::token::*;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Element {
@@ -57,7 +56,7 @@ impl Element {
 pub fn elements(src: &source::Source) -> Vec<Element> {
     let mut vec: Vec<Element> = Vec::new();
     let mut loc = point::Location::init(&src.path(true), &src.path(false));
-    let mut part = parts::Word::init(&src.data);
+    let mut part = text::Text::init(&src.data);
     while part.not_eof() {
         let token = part.scanning(&mut loc);
         vec.push(token)
@@ -65,7 +64,7 @@ pub fn elements(src: &source::Source) -> Vec<Element> {
     vec
 }
 
-impl parts::Word {
+impl text::Text {
     /// Parses a token from the input string.
     fn scanning(&mut self, loc: &mut point::Location) -> Element {
         let mut result = Element::new(illegal, loc.clone(), String::new());
@@ -96,7 +95,7 @@ impl parts::Word {
 }
 
 impl Element {
-    fn comment(&mut self, part: &mut parts::Word) {
+    fn comment(&mut self, part: &mut text::Text) {
         let mut con = part.curr_char().to_string();
         self.bump(part);
         if part.curr_char() == '/' {
@@ -128,7 +127,7 @@ impl Element {
         self.key = comment;
         self.con = con;
     }
-    fn endline(&mut self, part: &mut parts::Word, terminated: bool) {
+    fn endline(&mut self, part: &mut text::Text, terminated: bool) {
         self.push_curr(part);
         self.loc.new_line();
         self.key = void(VOID::endline_);
@@ -140,7 +139,7 @@ impl Element {
         }
         self.con = " ".to_string();
     }
-    fn space(&mut self, part: &mut parts::Word) {
+    fn space(&mut self, part: &mut text::Text) {
         self.push_curr(part);
         while is_space(&part.next_char()) {
             self.bump(part);
@@ -153,7 +152,7 @@ impl Element {
         self.key = void(VOID::space_);
         self.con = " ".to_string();
     }
-    fn digit(&mut self, part: &mut parts::Word) {
+    fn digit(&mut self, part: &mut text::Text) {
         if part.curr_char() == '0'
             && (part.next_char() == 'x' || part.next_char() == 'o' || part.next_char() == 'b')
         {
@@ -186,7 +185,7 @@ impl Element {
             }
         }
     }
-    fn encap(&mut self, part: &mut parts::Word) {
+    fn encap(&mut self, part: &mut text::Text) {
         let litsym = part.curr_char();
         if litsym == '`' {
             self.key = comment;
@@ -208,7 +207,7 @@ impl Element {
         }
         self.bump(part);
     }
-    fn symbol(&mut self, part: &mut parts::Word) {
+    fn symbol(&mut self, part: &mut text::Text) {
         self.push_curr(part);
         self.key = symbol(SYMBOL::curlyC_);
         match part.curr_char() {
@@ -264,7 +263,7 @@ impl Element {
             _ => self.key = illegal,
         }
     }
-    fn alpha(&mut self, part: &mut parts::Word) {
+    fn alpha(&mut self, part: &mut text::Text) {
         self.push_curr(part);
         while is_alpha(&part.next_char()) || is_digit(&part.next_char()) {
             part.bump(&mut self.loc);
@@ -368,11 +367,11 @@ impl Element {
         }
     }
 
-    fn push_curr(&mut self, part: &mut parts::Word) {
+    fn push_curr(&mut self, part: &mut text::Text) {
         self.con.push_str(&part.curr_char().to_string());
     }
 
-    fn bump(&mut self, part: &mut parts::Word) {
+    fn bump(&mut self, part: &mut text::Text) {
         part.bump(&mut self.loc);
         self.con.push_str(&part.curr_char().to_string());
     }

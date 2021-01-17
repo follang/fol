@@ -1,13 +1,14 @@
 #![allow(dead_code)]
 
+use std::fmt;
+use colored::Colorize;
 use crate::syntax::point;
-use crate::syntax::scan::token;
+use crate::syntax::token;
 use crate::syntax::scan::source;
 use crate::syntax::scan::element;
-use colored::Colorize;
-use std::fmt;
 
 use crate::syntax::scan::element::Element;
+
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Stream {
     vec: Vec<Element>,
