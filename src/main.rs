@@ -33,7 +33,10 @@ fn main() {
         // println!("{}", en);
     // }
     // println!("{}", reader::READER::from_dir("./etc/var/var.fol"));
-    for e in reader::iteratize("./etc/var/var.fol") {
+    // for e in reader::iteratize("/home/bresilla/data/code/proj/folang/fol/etc/var/var.fol") {
+    for e in source::sources("/home/bresilla/data/code/proj/folang/fol/etc") {
+    // for e in source::sources("./etc/var/var.fol") {
+    // for e in reader::iteratize("./etc") {
         println!("{}", e);
         // for s in scanner::vectorize(&mut e) {
         //     println!("{}", s);

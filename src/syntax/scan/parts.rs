@@ -6,37 +6,37 @@ use std::str::Chars;
 
 /// Peekable iterator over a char sequence.
 /// Next characters can be peeked via `nth` method, and position can be shifted forward via `bump` method.
-pub(crate) struct PART {
-    content: String,
+pub(crate) struct Word {
+    value: String,
     curr_char: char,
     prev_char: char,
 }
 
 pub(crate) const EOF_CHAR: char = '\0';
 
-impl fmt::Display for PART {
+impl fmt::Display for Word {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.next_char())
     }
 }
 
-impl PART {
-    pub(crate) fn init(data: &String) -> PART {
-        PART {
-            content: data.to_string(),
+impl Word {
+    pub(crate) fn init(data: &String) -> Word {
+        Word {
+            value: data.to_string(),
             curr_char: EOF_CHAR,
             prev_char: EOF_CHAR,
         }
     }
 
-    /// Returns nth character relative to the current part position, if position doesn't exist, `EOF_CHAR` is returned.
+    /// Returns nth character relative to the current Word position, if position doesn't exist, `EOF_CHAR` is returned.
     /// However, getting `EOF_CHAR` doesn't always mean actual end of file, it should be checked with `is_eof` method.
     pub fn nth(&self, n: usize) -> char {
-        self.content.chars().nth(n).unwrap_or(EOF_CHAR)
+        self.value.chars().nth(n).unwrap_or(EOF_CHAR)
     }
 
-    pub fn content(&self) -> &String {
-        &self.content
+    pub fn value(&self) -> &String {
+        &self.value
     }
 
     /// Returns the last eaten symbol
@@ -56,7 +56,7 @@ impl PART {
 
     /// Checks if there is nothing more to consume.
     pub(crate) fn not_eof(&self) -> bool {
-        !self.content.is_empty()
+        !self.value.is_empty()
     }
 
     /// Moves to the next character.
@@ -64,8 +64,8 @@ impl PART {
         self.prev_char = self.curr_char;
         loc.new_char();
         if self.not_eof() {
-            let c = self.content.chars().next()?;
-            self.content = self.content[1..].to_string();
+            let c = self.value.chars().next()?;
+            self.value = self.value[1..].to_string();
             self.curr_char = c;
             Some(c)
         } else {

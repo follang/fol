@@ -10,28 +10,28 @@ use crate::colored::Colorize;
 use crate::syntax::error::*;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct READER {
+pub struct Source {
     call: String,
     pub path: String,
     pub data: String,
 }
 
-impl fmt::Display for READER {
+impl fmt::Display for Source {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "abs_path: {}\nrel_path: {}",
-            self.path(true), self.path(false)
+            "abs_path: {}\nrel_path: {}\nmodule:   {}\n",
+            self.path(true), self.path(false), self.module()
         )
     }
 }
 
 /// Creates an iterator that produces tokens from the input string.
-pub fn iteratize(input: &str) -> impl Iterator<Item = READER> + '_ {
-    let red: Vec<READER>;
+pub fn sources(input: &str) -> impl Iterator<Item = Source> + '_ {
+    let red: Vec<Source>;
     match check_file_dir(input) {
         Ok(input) => {
-            match READER::init(&input) {
+            match Source::init(&input) {
                 Ok(files) => { red = files }
                 Err(e) => { crash!(e) }
             }
@@ -49,20 +49,16 @@ pub fn iteratize(input: &str) -> impl Iterator<Item = READER> + '_ {
     })
 }
 
-impl READER {
-    pub fn init(s: &str) -> Con<Vec<Self>> {
+impl Source {
+    fn init(s: &str) -> Con<Vec<Self>> {
         let mut vec = Vec::new();
         let e = full_path(s)?;
-        let pathvec = from_dir(&e)?;
-        for f in pathvec.iter() {
-            let path = full_path(f)?;
-            let data: String = read_string_file(f).unwrap();
-            let reader = READER {
+        for f in from_dir(&e)? {
+            vec.push( Source {
                 call: s.to_string(),
-                path,
-                data,
-            };
-            vec.push(reader);
+                path: full_path(&f)?,
+                data: read_string_file(&f).unwrap(),
+            } );
         }
         Ok(vec)
     }
@@ -73,12 +69,22 @@ impl READER {
     }
 
     fn rel_path(&self) -> String {
-        let e = full_path(&self.call).unwrap();
-        std::fs::canonicalize(&self.path)
-            .unwrap()
+        let e = std::fs::canonicalize(full_path(&self.call).unwrap()).unwrap().as_path().parent().unwrap().to_str().unwrap().to_string();
+        // let e = full_path(&self.call).unwrap();
+        std::fs::canonicalize(&self.path).unwrap()
             .as_path()
-            .to_str()
-            .unwrap()
+            .to_str().unwrap()
+            .to_string()
+            .trim_start_matches(&e)
+            .to_string()
+    }
+
+    pub fn module(&self) -> String {
+        let e = std::fs::canonicalize(full_path(&self.call).unwrap()).unwrap().as_path().parent().unwrap().to_str().unwrap().to_string();
+        std::fs::canonicalize(&self.path).unwrap()
+            .as_path()
+            .parent().unwrap()
+            .to_str().unwrap()
             .to_string()
             .trim_start_matches(&e)
             .to_string()
@@ -110,37 +116,31 @@ fn check_file_dir(s: &str) -> Con<String> {
 }
 
 fn full_path(s: &str) -> Con<String> {
-    let e = std::fs::canonicalize(s.to_string())
-        .unwrap()
+    let e = std::fs::canonicalize(s.to_string()).unwrap()
         .as_path()
-        .to_str()
-        .unwrap()
+        .to_str().unwrap()
         .to_string();
     Ok(e)
 }
 
-pub fn from_dir(s: &str) -> Con<Vec<String>> {
+fn from_dir(s: &str) -> Con<Vec<String>> {
     let paths = std::fs::read_dir(s.to_string()).unwrap();
     let mut avec = Vec::new();
     for path in paths {
         let filepath: String = path.as_ref().unwrap().path().to_str().unwrap().to_string();
         let filename: String = path
-            .as_ref()
-            .unwrap()
+            .as_ref().unwrap()
             .file_name()
-            .to_str()
-            .unwrap()
+            .to_str().unwrap()
             .to_string();
         if Path::new(&filepath).is_dir() {
             if Regex::new(r"(\.mod)$").unwrap().is_match(&filename) { continue; }
             if let Ok(recvec) = from_dir(&filepath) { avec.extend(recvec) }
         } else {
-            let filetype: String = path
-                .unwrap()
+            let filetype: String = path.unwrap()
                 .path()
                 .extension()
-                .and_then(OsStr::to_str)
-                .unwrap()
+                .and_then(OsStr::to_str).unwrap()
                 .to_string();
             if filetype != "fol" { continue; }
             avec.push(filepath);
@@ -160,7 +160,7 @@ pub fn from_dir(s: &str) -> Con<Vec<String>> {
 //     Ok(buffer)
 // }
 
-pub fn read_string_file(s: &str) -> Result<String, std::io::Error> {
+fn read_string_file(s: &str) -> Result<String, std::io::Error> {
     let mut buffer = String::new();
     File::open(s)?.read_to_string(&mut buffer)?;
     Ok(buffer)

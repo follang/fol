@@ -1,29 +1,29 @@
 #![allow(dead_code)]
 
 use crate::syntax::point;
-use crate::syntax::scan::reader;
-use crate::syntax::scan::scanner;
 use crate::syntax::scan::token;
+use crate::syntax::scan::source;
+use crate::syntax::scan::element;
 use colored::Colorize;
 use std::fmt;
 
-use crate::syntax::scan::scanner::SCAN;
+use crate::syntax::scan::element::Element;
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct STREAM {
-    vec: Vec<SCAN>,
-    prev: SCAN,
-    curr: SCAN,
+pub struct Stream {
+    vec: Vec<Element>,
+    prev: Element,
+    curr: Element,
     bracs: Vec<(point::Location, token::KEYWORD)>,
 }
 
-impl STREAM {
-    pub fn list(&self) -> &Vec<SCAN> {
+impl Stream {
+    pub fn list(&self) -> &Vec<Element> {
         &self.vec
     }
-    pub fn curr(&self) -> &SCAN {
+    pub fn curr(&self) -> &Element {
         &self.curr
     }
-    pub fn prev(&self) -> &SCAN {
+    pub fn prev(&self) -> &Element {
         &self.prev
     }
 
@@ -32,16 +32,16 @@ impl STREAM {
     }
 }
 
-impl STREAM {
+impl Stream {
     pub fn init(path: &str) -> Self {
-        let mut vec: Vec<SCAN> = Vec::new();
+        let mut vec: Vec<Element> = Vec::new();
         let bracs: Vec<(point::Location, token::KEYWORD)> = Vec::new();
-        for mut e in reader::iteratize(path) {
-            vec.append(&mut scanner::vectorize(&mut e))
+        for src in source::sources(path) {
+            vec.extend(element::elements(&src))
         }
-        let prev = SCAN::zero(&vec.last().unwrap().loc().name());
-        let curr = vec.get(0).unwrap_or(&SCAN::zero(" ")).to_owned();
-        STREAM {
+        let prev = Element::zero(&vec.last().unwrap().loc().name());
+        let curr = vec.get(0).unwrap_or(&Element::zero(" ")).to_owned();
+        Stream {
             vec,
             prev,
             curr,
@@ -53,24 +53,24 @@ impl STREAM {
         if !self.vec.is_empty() {
             self.prev = self.curr.to_owned();
             self.vec = self.vec[1..].to_vec();
-            self.curr = self.vec.get(0).unwrap_or(&SCAN::zero(" ")).to_owned();
+            self.curr = self.vec.get(0).unwrap_or(&Element::zero(" ")).to_owned();
             // let curr = vec.remove(0);
         }
     }
-    pub fn nth(&self, num: usize) -> SCAN {
-        self.vec.get(num).unwrap_or(&SCAN::zero(" ")).to_owned()
+    pub fn nth(&self, num: usize) -> Element {
+        self.vec.get(num).unwrap_or(&Element::zero(" ")).to_owned()
     }
-    pub fn next(&self) -> SCAN {
+    pub fn next(&self) -> Element {
         self.nth(1)
     }
-    pub fn peek(&self) -> SCAN {
+    pub fn peek(&self) -> Element {
         if self.next().key().is_space() {
             self.nth(2)
         } else {
             self.next()
         }
     }
-    pub fn seek(&self) -> SCAN {
+    pub fn seek(&self) -> Element {
         if self.nth(2).key().is_space() {
             self.nth(3)
         } else {
@@ -129,12 +129,12 @@ impl STREAM {
     }
 }
 
-impl fmt::Display for STREAM {
+impl fmt::Display for Stream {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.curr())
     }
 }
 
-pub fn zero() -> SCAN {
-    SCAN::zero(" ")
+pub fn zero() -> Element {
+    Element::zero(" ")
 }

@@ -1,93 +1,44 @@
 #![allow(dead_code)]
 
-use crate::scanning::locate;
-use crate::scanning::reader;
-use crate::scanning::parts;
-use crate::scanning::token;
 use std::fmt;
+use crate::syntax::point;
+use crate::syntax::scan::source;
+use crate::syntax::scan::parts;
+use crate::syntax::scan::token;
 
-pub fn is_eof(ch: &char) -> bool {
-    return *ch == '\0';
-}
-
-pub fn is_eol(ch: &char) -> bool {
-    return *ch == '\n' || *ch == '\r';
-}
-
-pub fn is_space(ch: &char) -> bool {
-    return *ch == ' ' || *ch == '\t';
-}
-
-pub fn is_digit(ch: &char) -> bool {
-    return '0' <= *ch && *ch <= '9';
-}
-
-pub fn is_alpha(ch: &char) -> bool {
-    return 'a' <= *ch && *ch <= 'z' || 'A' <= *ch && *ch <= 'Z' || *ch == '_';
-}
-
-pub fn is_bracket(ch: &char) -> bool {
-    return *ch == '{' || *ch == '[' || *ch == '(' || *ch == ')' || *ch == ']' || *ch == '}';
-}
-
-pub fn is_symbol(ch: &char) -> bool {
-    return '!' <= *ch && *ch <= '/'
-        || ':' <= *ch && *ch <= '@'
-        || '[' <= *ch && *ch <= '^'
-        || '{' <= *ch && *ch <= '~';
-}
-
-pub fn is_oct_digit(ch: &char) -> bool {
-    return '0' <= *ch && *ch <= '7' || *ch == '_';
-}
-pub fn is_hex_digit(ch: &char) -> bool {
-    return '0' <= *ch && *ch <= '9'
-        || 'a' <= *ch && *ch <= 'f'
-        || 'A' <= *ch && *ch <= 'F'
-        || *ch == '_';
-}
-
-pub fn is_alphanumeric(ch: &char) -> bool {
-    return is_digit(ch) || is_alpha(ch);
-}
-
-pub fn is_void(ch: &char) -> bool {
-    return is_eol(ch) || is_space(ch);
-}
+use crate::syntax::scan::token::KEYWORD::*;
+use crate::syntax::scan::token::*;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct SCAN {
-    key: token::KEYWORD,
-    loc: locate::LOCATION,
+pub struct Element {
+    key: KEYWORD,
+    loc: point::Location,
     con: String,
 }
 
-impl SCAN {
-    pub fn new(key: token::KEYWORD, loc: locate::LOCATION, con: String) -> Self {
-        SCAN { key, loc, con }
+impl Element {
+    pub fn new(key: KEYWORD, loc: point::Location, con: String) -> Self {
+        Element { key, loc, con }
     }
     pub fn zero(name: &str) -> Self {
-        let key = token::KEYWORD::void(token::VOID::endfile_);
-        let loc = locate::LOCATION::new(name.to_string(), name.to_string(), 0, 0, 0, 0);
-        SCAN {
+        let key = KEYWORD::void(VOID::endfile_);
+        let loc = point::Location::new(name.to_string(), name.to_string(), 0, 0, 0, 0);
+        Element {
             key,
             loc,
             con: String::new(),
         }
     }
-}
-
-impl SCAN {
-    pub fn key(&self) -> &token::KEYWORD {
+    pub fn key(&self) -> &KEYWORD {
         &self.key
     }
-    pub fn loc(&self) -> &locate::LOCATION {
+    pub fn loc(&self) -> &point::Location {
         &self.loc
     }
     pub fn con(&self) -> &String {
         &self.con
     }
-    pub fn set_key(&mut self, k: token::KEYWORD) {
+    pub fn set_key(&mut self, k: KEYWORD) {
         self.key = k;
     }
     pub fn log(&self, msg: &str) {
@@ -102,17 +53,11 @@ impl SCAN {
     }
 }
 
-impl fmt::Display for SCAN {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} {: <20} {}", self.loc, self.key, self.con)
-    }
-}
-
 /// Creates a vector that produces tokens from the input string.
-pub fn vectorize(red: &mut reader::READER) -> Vec<SCAN> {
-    let mut vec: Vec<SCAN> = Vec::new();
-    let mut loc = locate::LOCATION::init(&red);
-    let mut part = parts::PART::init(&red.data);
+pub fn elements(src: &source::Source) -> Vec<Element> {
+    let mut vec: Vec<Element> = Vec::new();
+    let mut loc = point::Location::init(&src.path(true), &src.path(false));
+    let mut part = parts::Word::init(&src.data);
     while part.not_eof() {
         let token = part.scanning(&mut loc);
         vec.push(token)
@@ -120,12 +65,10 @@ pub fn vectorize(red: &mut reader::READER) -> Vec<SCAN> {
     vec
 }
 
-use crate::scanning::token::KEYWORD::*;
-use crate::scanning::token::*;
-impl parts::PART {
+impl parts::Word {
     /// Parses a token from the input string.
-    fn scanning(&mut self, loc: &mut locate::LOCATION) -> SCAN {
-        let mut result = SCAN::new(illegal, loc.clone(), String::new());
+    fn scanning(&mut self, loc: &mut point::Location) -> Element {
+        let mut result = Element::new(illegal, loc.clone(), String::new());
         result.loc.new_word();
         self.bump(&mut result.loc);
         //ignore comments
@@ -152,13 +95,8 @@ impl parts::PART {
     }
 }
 
-impl SCAN {
-    pub fn combine(&mut self, other: &SCAN) {
-        self.con.push_str(&other.con);
-        self.loc.longer(&other.loc.len())
-    }
-
-    fn comment(&mut self, part: &mut parts::PART) {
+impl Element {
+    fn comment(&mut self, part: &mut parts::Word) {
         let mut con = part.curr_char().to_string();
         self.bump(part);
         if part.curr_char() == '/' {
@@ -190,7 +128,7 @@ impl SCAN {
         self.key = comment;
         self.con = con;
     }
-    fn endline(&mut self, part: &mut parts::PART, terminated: bool) {
+    fn endline(&mut self, part: &mut parts::Word, terminated: bool) {
         self.push_curr(part);
         self.loc.new_line();
         self.key = void(VOID::endline_);
@@ -202,7 +140,7 @@ impl SCAN {
         }
         self.con = " ".to_string();
     }
-    fn space(&mut self, part: &mut parts::PART) {
+    fn space(&mut self, part: &mut parts::Word) {
         self.push_curr(part);
         while is_space(&part.next_char()) {
             self.bump(part);
@@ -215,7 +153,7 @@ impl SCAN {
         self.key = void(VOID::space_);
         self.con = " ".to_string();
     }
-    fn digit(&mut self, part: &mut parts::PART) {
+    fn digit(&mut self, part: &mut parts::Word) {
         if part.curr_char() == '0'
             && (part.next_char() == 'x' || part.next_char() == 'o' || part.next_char() == 'b')
         {
@@ -248,7 +186,7 @@ impl SCAN {
             }
         }
     }
-    fn encap(&mut self, part: &mut parts::PART) {
+    fn encap(&mut self, part: &mut parts::Word) {
         let litsym = part.curr_char();
         if litsym == '`' {
             self.key = comment;
@@ -270,7 +208,7 @@ impl SCAN {
         }
         self.bump(part);
     }
-    fn symbol(&mut self, part: &mut parts::PART) {
+    fn symbol(&mut self, part: &mut parts::Word) {
         self.push_curr(part);
         self.key = symbol(SYMBOL::curlyC_);
         match part.curr_char() {
@@ -326,7 +264,7 @@ impl SCAN {
             _ => self.key = illegal,
         }
     }
-    fn alpha(&mut self, part: &mut parts::PART) {
+    fn alpha(&mut self, part: &mut parts::Word) {
         self.push_curr(part);
         while is_alpha(&part.next_char()) || is_digit(&part.next_char()) {
             part.bump(&mut self.loc);
@@ -430,12 +368,73 @@ impl SCAN {
         }
     }
 
-    fn push_curr(&mut self, part: &mut parts::PART) {
+    fn push_curr(&mut self, part: &mut parts::Word) {
         self.con.push_str(&part.curr_char().to_string());
     }
 
-    fn bump(&mut self, part: &mut parts::PART) {
+    fn bump(&mut self, part: &mut parts::Word) {
         part.bump(&mut self.loc);
         self.con.push_str(&part.curr_char().to_string());
     }
+
+    fn combine(&mut self, other: &Element) {
+        self.con.push_str(&other.con);
+        self.loc.longer(&other.loc.len())
+    }
 }
+
+impl fmt::Display for Element {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{} {: <20} {}", self.loc, self.key, self.con)
+    }
+}
+
+pub fn is_eof(ch: &char) -> bool {
+    return *ch == '\0';
+}
+
+pub fn is_eol(ch: &char) -> bool {
+    return *ch == '\n' || *ch == '\r';
+}
+
+pub fn is_space(ch: &char) -> bool {
+    return *ch == ' ' || *ch == '\t';
+}
+
+pub fn is_digit(ch: &char) -> bool {
+    return '0' <= *ch && *ch <= '9';
+}
+
+pub fn is_alpha(ch: &char) -> bool {
+    return 'a' <= *ch && *ch <= 'z' || 'A' <= *ch && *ch <= 'Z' || *ch == '_';
+}
+
+pub fn is_bracket(ch: &char) -> bool {
+    return *ch == '{' || *ch == '[' || *ch == '(' || *ch == ')' || *ch == ']' || *ch == '}';
+}
+
+pub fn is_symbol(ch: &char) -> bool {
+    return '!' <= *ch && *ch <= '/'
+        || ':' <= *ch && *ch <= '@'
+        || '[' <= *ch && *ch <= '^'
+        || '{' <= *ch && *ch <= '~';
+}
+
+pub fn is_oct_digit(ch: &char) -> bool {
+    return '0' <= *ch && *ch <= '7' || *ch == '_';
+}
+pub fn is_hex_digit(ch: &char) -> bool {
+    return '0' <= *ch && *ch <= '9'
+        || 'a' <= *ch && *ch <= 'f'
+        || 'A' <= *ch && *ch <= 'F'
+        || *ch == '_';
+}
+
+pub fn is_alphanumeric(ch: &char) -> bool {
+    return is_digit(ch) || is_alpha(ch);
+}
+
+pub fn is_void(ch: &char) -> bool {
+    return is_eol(ch) || is_space(ch);
+}
+

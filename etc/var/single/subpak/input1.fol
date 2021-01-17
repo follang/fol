@@ -1,9 +1,0 @@
-when (){
-    case(result > 5){ return true };
-    case(result < 10){ return true };
-    * { return false };
-}
-
-++
-
-{{{ { ([]) } }}}
