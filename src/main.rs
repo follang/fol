@@ -6,6 +6,7 @@ mod syntax;
 extern crate regex;
 extern crate colored;
 
+use crate::syntax::error::*;
 use crate::syntax::scan::*;
 
 fn main() {
@@ -28,6 +29,7 @@ fn main() {
     //     },
     //     Err(e) => println!("{}", e)
     // }
+    // println!("{}", reader::READER::file("/home/bresilla/data/code/proj/folang/fol/etc/var/var.fol").unwrap());
     println!("----");
     for en in reader::READER::from_dir("/home/bresilla/data/code/proj/folang/fol/etc").unwrap().iter() {
     // for en in reader::READER::from_dir("./etc").unwrap().iter() {

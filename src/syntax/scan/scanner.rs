@@ -59,7 +59,7 @@ impl fmt::Display for SCAN {
 /// Creates a vector that produces tokens from the input string.
 pub fn vectorize(red: &mut reader::READER) -> Vec<SCAN> {
     let mut vec: Vec<SCAN> = Vec::new();
-    let mut loc = point::Location::init(&red.path(), &red.name());
+    let mut loc = point::Location::init(&red.path(true), &red.path(false));
     let mut part = parts::PART::init(&red.data);
     while part.not_eof() {
         let token = part.scanning(&mut loc);

@@ -20,15 +20,18 @@ impl fmt::Display for READER {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "path: {}\nname: {}",
-            self.path(), self.name()
+            "abs_path: {}\nrel_path: {}",
+            self.path(true), self.path(false)
         )
     }
 }
 
 /// Creates an iterator that produces tokens from the input string.
 pub fn iteratize(input: &str) -> impl Iterator<Item = READER> + '_ {
-    let red = READER::init(&input);
+    let mut red: Vec<READER> = Vec::new();
+    if let Ok(files) = READER::init(&input) {
+        red = files
+    }
     let mut index: usize = 0;
     std::iter::from_fn(move || {
         if index >= red.len() {
@@ -41,33 +44,7 @@ pub fn iteratize(input: &str) -> impl Iterator<Item = READER> + '_ {
 }
 
 impl READER {
-    pub fn init(s: &str) -> Vec<Self> {
-        let mut vec = Vec::new();
-        let e = std::fs::canonicalize(s.to_string())
-            .unwrap()
-            .as_path()
-            .to_str()
-            .unwrap()
-            .to_string();
-        for f in file_list(&e).iter() {
-            let path: String = std::fs::canonicalize(&f)
-                .unwrap()
-                .as_path()
-                .to_str()
-                .unwrap()
-                .to_string();
-            let data: String = read_string_file(f).unwrap();
-            let reader = READER {
-                call: s.to_string(),
-                path,
-                data,
-            };
-            vec.push(reader);
-        }
-        return vec;
-    }
-    
-    pub fn from_dir(s: &str) -> Cont<Vec<Self>> {
+    pub fn init(s: &str) -> Cont<Vec<Self>> {
         let mut vec = Vec::new();
         let e = std::fs::canonicalize(s.to_string())
             .unwrap()
@@ -93,22 +70,12 @@ impl READER {
         Ok(vec)
     }
 
-    pub fn file(s: &str) -> Self {
-        let path: String = std::fs::canonicalize(&s)
-            .unwrap()
-            .as_path()
-            .to_str()
-            .unwrap()
-            .to_string();
-        let data: String = read_string_file(s).unwrap();
-        Self { call: s.to_string(), path, data}
+    /// getting the full path or relatve path
+    pub fn path(&self, abs: bool) -> String {
+        if abs { self.path.clone() } else { self.rel_path() }
     }
 
-    pub fn path(&self) -> &String {
-        &self.path
-    }
-
-    pub fn name(&self) -> String {
+    fn rel_path(&self) -> String {
         let e = std::fs::canonicalize(&self.call)
             .unwrap()
             .as_path()
