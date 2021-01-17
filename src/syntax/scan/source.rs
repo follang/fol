@@ -57,7 +57,7 @@ impl Source {
             vec.push( Source {
                 call: s.to_string(),
                 path: full_path(&f)?,
-                data: read_string_file(&f).unwrap(),
+                data: read_string_file(&f)?,
             } );
         }
         Ok(vec)
@@ -160,9 +160,25 @@ fn from_dir(s: &str) -> Con<Vec<String>> {
 //     Ok(buffer)
 // }
 
-fn read_string_file(s: &str) -> Result<String, std::io::Error> {
-    let mut buffer = String::new();
-    File::open(s)?.read_to_string(&mut buffer)?;
-    Ok(buffer)
+
+fn read_string_file(s: &str) -> Con<String> {
+    let mut string = String::new();
+    let msg = format!("{}", "Error whil reading file".red());
+    match File::open(s) {
+        Ok(mut b) => { 
+            match b.read_to_string(&mut string) {
+                Ok(_) => { 
+                    if string.is_empty() { 
+                        let msg = format!("{}", "File is empty".red());
+                        Err( catch!(Flaw::ReadingEmptyFile{msg: Some(msg)}) )
+                    } else {
+                        Ok(string)
+                    }
+                }
+                Err(e) => { Err(catch!(Flaw::ReadingEmptyFile{msg: Some(e.to_string())})) }
+            }
+        }
+        Err(e) => { Err(catch!(Flaw::ReadingBadContent{msg: Some(e.to_string())})) }
+    }
 }
 

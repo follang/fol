@@ -12,8 +12,8 @@ use colored::Colorize;
 /// A location somewhere in the sourcecode.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Location {
+    module: String,
     path: String,
-    name: String,
     row: usize,
     col: usize,
     len: usize,
@@ -25,7 +25,7 @@ impl fmt::Display for Location {
         write!(
             f,
             "file: {: <4}   row: {: <2}   col: {: <2}",
-            self.name, self.row, self.col
+            self.module, self.row, self.col
         )
     }
 }
@@ -34,7 +34,7 @@ impl std::default::Default for Location {
     fn default() -> Self {
         Self {
             path: String::new(),
-            name: String::new(),
+            module: String::new(),
             row: 1,
             col: 1,
             len: 1,
@@ -60,13 +60,13 @@ impl Location {
         )
     }
 
-    pub fn init(path: &String, name: &String) -> Self {
-        Self { path: path.to_string(), name: name.to_string(), ..Default::default() }
+    pub fn init(path: &String, module: &String) -> Self {
+        Self { path: path.to_string(), module: module.to_string(), ..Default::default() }
     }
 
     pub fn new(
         path: String,
-        name: String,
+        module: String,
         row: usize,
         col: usize,
         len: usize,
@@ -74,7 +74,7 @@ impl Location {
     ) -> Self {
         Location {
             path,
-            name,
+            module,
             row,
             col,
             len,
@@ -106,8 +106,8 @@ impl Location {
         &self.path
     }
 
-    pub fn name(&self) -> &String {
-        &self.name
+    pub fn module(&self) -> &String {
+        &self.module
     }
 
     pub fn reset(&mut self) {

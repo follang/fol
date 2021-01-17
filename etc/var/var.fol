@@ -48,5 +48,7 @@ fun[] '!='(one, two: int): bol = { <expression> }
 ~pro[] one[T: gen](two: int): int = { <expression> }
 fun[] add1(adder: rut[(x: int): int]): int = { <expression> }
 fun[] add1(adder: rut[(x: int): int]): int = { <expression> }
-// ///sonr
-fun[]
+'/* sonr
+/* fun[  ] *ear && run
+'
+fun

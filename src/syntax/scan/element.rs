@@ -52,21 +52,23 @@ impl Element {
     }
 }
 
+
+
 /// Creates a vector that produces tokens from the input string.
 pub fn elements(src: &source::Source) -> Vec<Element> {
-    let mut vec: Vec<Element> = Vec::new();
+    let mut el: Vec<Element> = Vec::new();
     let mut loc = point::Location::init(&src.path(true), &src.path(false));
     let mut part = text::Text::init(&src.data);
     while part.not_eof() {
-        let token = part.scanning(&mut loc);
-        vec.push(token)
+        let token = part.scan(&mut loc);
+        el.push(token)
     }
-    vec
+    el
 }
 
 impl text::Text {
     /// Parses a token from the input string.
-    fn scanning(&mut self, loc: &mut point::Location) -> Element {
+    fn scan(&mut self, loc: &mut point::Location) -> Element {
         let mut result = Element::new(illegal, loc.clone(), String::new());
         result.loc.new_word();
         self.bump(&mut result.loc);
@@ -96,28 +98,24 @@ impl text::Text {
 
 impl Element {
     fn comment(&mut self, part: &mut text::Text) {
-        let mut con = part.curr_char().to_string();
+        self.con.push_str(&part.curr_char().to_string());
         self.bump(part);
         if part.curr_char() == '/' {
-            con.push(part.curr_char().clone());
             self.bump(part);
             while !is_eol(&part.next_char()) {
                 if is_eof(&part.next_char()) { break };
-                con.push(part.curr_char().clone());
                 self.bump(part);
             }
         }
         if part.curr_char() == '*' {
-            con.push(part.curr_char().clone());
-            con.push(part.next_char().clone());
             self.bump(part);
-            while part.curr_char() != '*' && part.next_char() != '/' {
+            while !(part.curr_char() == '*' && part.next_char() == '/') {
+                println!("{}", part.curr_char());
                 if is_eol(&part.next_char()) { self.loc.new_line(); }
+                // self.log(">>>>");
                 else if is_eof(&part.next_char()) { break };
-                con.push(part.next_char().clone());
                 self.bump(part);
             }
-            con.push(part.next_char().clone());
             self.bump(part);
             //TODO: double check
             if is_space(&part.next_char()) {
@@ -125,10 +123,9 @@ impl Element {
             }
         }
         self.key = comment;
-        self.con = con;
     }
     fn endline(&mut self, part: &mut text::Text, terminated: bool) {
-        self.push_curr(part);
+        self.push(part);
         self.loc.new_line();
         self.key = void(VOID::endline_);
         while is_eol(&part.next_char()) || is_space(&part.next_char()) {
@@ -140,7 +137,7 @@ impl Element {
         self.con = " ".to_string();
     }
     fn space(&mut self, part: &mut text::Text) {
-        self.push_curr(part);
+        self.push(part);
         while is_space(&part.next_char()) {
             self.bump(part);
         }
@@ -156,7 +153,7 @@ impl Element {
         if part.curr_char() == '0'
             && (part.next_char() == 'x' || part.next_char() == 'o' || part.next_char() == 'b')
         {
-            self.push_curr(part);
+            self.push(part);
             if part.next_char() == 'x' {
                 self.bump(part);
                 self.key = literal(LITERAL::hexal_);
@@ -178,7 +175,7 @@ impl Element {
                 }
             }
         } else {
-            self.push_curr(part);
+            self.push(part);
             self.key = literal(LITERAL::decimal_);
             while is_digit(&part.next_char()) || part.next_char() == '_' {
                 self.bump(part);
@@ -194,7 +191,7 @@ impl Element {
         } else {
             self.key = literal(LITERAL::string_);
         }
-        self.push_curr(part);
+        self.push(part);
         while part.next_char() != litsym || (part.next_char() == litsym && part.curr_char() == '\\')
         {
             if part.next_char() != litsym && part.next_char() == '\0' {
@@ -208,7 +205,7 @@ impl Element {
         self.bump(part);
     }
     fn symbol(&mut self, part: &mut text::Text) {
-        self.push_curr(part);
+        self.push(part);
         self.key = symbol(SYMBOL::curlyC_);
         match part.curr_char() {
             '{' => {
@@ -264,10 +261,13 @@ impl Element {
         }
     }
     fn alpha(&mut self, part: &mut text::Text) {
-        self.push_curr(part);
+        let mut con = part.curr_char().to_string();
+        self.push(part);
         while is_alpha(&part.next_char()) || is_digit(&part.next_char()) {
-            part.bump(&mut self.loc);
-            self.push_curr(part);
+            // part.bump(&mut self.loc);
+            self.bump(part);
+            con.push(part.curr_char().clone());
+            // self.push(part);
         }
         match self.con().as_str() {
             "use" => self.set_key(assign(ASSIGN::use_)),
@@ -367,11 +367,12 @@ impl Element {
         }
     }
 
-    fn push_curr(&mut self, part: &mut text::Text) {
+    fn push(&mut self, part: &mut text::Text) {
         self.con.push_str(&part.curr_char().to_string());
     }
 
     fn bump(&mut self, part: &mut text::Text) {
+        // if is_eol(&part.next_char()) { self.loc.new_line(); }
         part.bump(&mut self.loc);
         self.con.push_str(&part.curr_char().to_string());
     }
@@ -384,7 +385,7 @@ impl Element {
 
 impl fmt::Display for Element {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} {: <20} {}", self.loc, self.key, self.con)
+        write!(f, "{}\t{}  {}", self.loc, self.key, self.con)
     }
 }
 

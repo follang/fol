@@ -40,7 +40,7 @@ impl Stream {
         for src in source::sources(path) {
             vec.extend(element::elements(&src))
         }
-        let prev = Element::zero(&vec.last().unwrap().loc().name());
+        let prev = Element::zero(&vec.last().unwrap().loc().module());
         let curr = vec.get(0).unwrap_or(&Element::zero(" ")).to_owned();
         Stream {
             vec,
