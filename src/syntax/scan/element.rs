@@ -45,7 +45,8 @@ impl Element {
     }
 }
 
-pub fn elements2(src: source::Source) -> impl Iterator<Item = Element> {
+/// Creates a iterator that produces tokens from the input string.
+pub fn elements(src: source::Source) -> impl Iterator<Item = Element> {
     let mut loc = point::Location::init((src.path(true), src.path(false)), &src.module());
     let mut code = text::Text::init(&src.data);
     std::iter::from_fn(move || {
@@ -57,18 +58,6 @@ pub fn elements2(src: source::Source) -> impl Iterator<Item = Element> {
 
 }
 
-
-/// Creates a vector that produces tokens from the input string.
-pub fn elements(src: &source::Source) -> Vec<Element> {
-    let mut el: Vec<Element> = Vec::new();
-    let mut loc = point::Location::init((src.path(true), src.path(false)), &src.module());
-    let mut code = text::Text::init(&src.data);
-    while code.not_eof() {
-        let token = code.scan(&mut loc);
-        el.push(token)
-    }
-    el
-}
 
 impl text::Text {
     /// Parses a token from the input string.

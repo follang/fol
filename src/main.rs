@@ -46,7 +46,7 @@ fn main() {
     loop {
         match e.bump() {
             Some(val) => {
-                // println!("{}", val.1);
+                println!("{}", val[0]);
             }
             None => {
                 // println!("{}", e);

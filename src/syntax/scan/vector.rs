@@ -38,7 +38,9 @@ impl Elements {
         let mut list: Vec<Element> = Vec::new();
         let bracs: Vec<(point::Location, token::KEYWORD)> = Vec::new();
         for src in source::sources(path) {
-            list.extend(element::elements(&src))
+            for el in element::elements(src) {
+                list.push(el);
+            }
         }
         let prev = Element::default();
         let curr = list.get(0).unwrap_or(&Element::default()).to_owned();
