@@ -12,6 +12,8 @@ use crate::syntax::scan::element::Element;
 use crate::syntax::error::*;
 
 // #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+//
+const SLIDER: u8 = 9;
 pub struct Elements {
     src: Box<dyn Iterator<Item = source::Source>>,
     elm: Box<dyn Iterator<Item = Element>>,
@@ -29,10 +31,10 @@ impl Elements {
 
 impl Elements {
     pub fn init(path: &'static str) -> Self {
+        let mut win = Vec::new();
         let mut src = Box::new(source::sources(&path));
         let mut elm = Box::new(element::elements(src.next().unwrap()));
-        let mut win = Vec::new();
-        for _ in 0..9 { win.push(elm.next().unwrap()) }
+        for _ in 0..SLIDER { win.push(elm.next().unwrap()) }
         Elements { src, elm, win }
     }
 
