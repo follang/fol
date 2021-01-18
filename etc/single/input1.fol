@@ -9,5 +9,4 @@ fun add(xt, yt: int): int = {
 
 var result: int = add(five, ten);
 
-!-/*5;
-5 < 10 > 5;
+/*5;6 < 10 > 5;*/

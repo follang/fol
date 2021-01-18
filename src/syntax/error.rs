@@ -20,6 +20,7 @@ macro_rules! crash {
 
 pub(crate) type Con<T> = Result<T, Box<(dyn Glitch + 'static)>>;
 pub(crate) type Vod = Result<(), Box<(dyn Glitch + 'static)>>;
+pub(crate) type Opt<T> = Option<T>;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Typo {

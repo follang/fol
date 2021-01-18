@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 use std::fmt;
+use std::iter;
 use colored::Colorize;
 use crate::syntax::point;
 use crate::syntax::token;
@@ -8,130 +9,60 @@ use crate::syntax::scan::source;
 use crate::syntax::scan::element;
 
 use crate::syntax::scan::element::Element;
+use crate::syntax::error::*;
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Stream {
-    vec: Vec<Element>,
-    prev: Element,
-    curr: Element,
-    bracs: Vec<(point::Location, token::KEYWORD)>,
+// #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Elements {
+    src: Box<dyn Iterator<Item = source::Source>>,
+    elm: Box<dyn Iterator<Item = Element>>,
+    tri: (Element, Element, Element),
 }
 
-impl Stream {
-    pub fn list(&self) -> &Vec<Element> {
-        &self.vec
+impl Elements {
+    pub fn elements(self) -> Box<dyn Iterator<Item = Element>> {
+        self.elm
     }
-    pub fn curr(&self) -> &Element {
-        &self.curr
-    }
-    pub fn prev(&self) -> &Element {
-        &self.prev
-    }
-
-    pub fn bracs(&mut self) -> &mut Vec<(point::Location, token::KEYWORD)> {
-        &mut self.bracs
+    pub fn sources(self) -> Box<dyn Iterator<Item = source::Source>> {
+        self.src
     }
 }
 
-impl Stream {
-    pub fn init(path: &str) -> Self {
-        let mut vec: Vec<Element> = Vec::new();
-        let bracs: Vec<(point::Location, token::KEYWORD)> = Vec::new();
-        for src in source::sources(path) {
-            vec.extend(element::elements(&src))
-        }
-        let prev = Element::default();
-        let curr = vec.get(0).unwrap_or(&Element::default()).to_owned();
-        Stream {
-            vec,
-            prev,
-            curr,
-            bracs,
+impl Elements {
+    pub fn init(path: &'static str) -> Self {
+        let mut src = Box::new(source::sources(&path));
+        let elm = Box::new(element::elements2(src.next().unwrap()));
+        Elements {
+            src, elm, tri: (
+                Element::default(), 
+                Element::default(), 
+                Element::default()
+            )
         }
     }
 
-    pub fn bump(&mut self) {
-        if !self.vec.is_empty() {
-            self.prev = self.curr.to_owned();
-            self.vec = self.vec[1..].to_vec();
-            self.curr = self.vec.get(0).unwrap_or(&Element::default()).to_owned();
-            // let curr = vec.remove(0);
-        }
-    }
-    pub fn nth(&self, num: usize) -> Element {
-        self.vec.get(num).unwrap_or(&Element::default()).to_owned()
-    }
-    pub fn next(&self) -> Element {
-        self.nth(1)
-    }
-    pub fn peek(&self) -> Element {
-        if self.next().key().is_space() {
-            self.nth(2)
-        } else {
-            self.next()
-        }
-    }
-    pub fn seek(&self) -> Element {
-        if self.nth(2).key().is_space() {
-            self.nth(3)
-        } else {
-            self.nth(2)
-        }
-    }
-
-    pub fn after(&self) -> token::KEYWORD {
-        let mut i = 1;
-        while self.nth(i).key().is_symbol() {
-            i += 1;
-        }
-        self.nth(i).key().clone()
-    }
-
-    pub fn to_endline(&mut self) {
-        let deep = self.curr().loc().deep();
-        loop {
-            if (self.curr().key().is_terminal() && self.curr().loc().deep() <= deep)
-                || (self.curr().key().is_eof())
-            {
-                break;
+    pub fn bump(&mut self) -> Opt<(Element, Element, Element)> {
+        println!("{}", self.tri.1);
+        match self.elm.next() {
+            Some(v) => {
+                self.tri = (self.tri.1.to_owned(), self.tri.2.to_owned(), v);
+                Some(self.tri.clone())
+            },
+            None => {
+                if let Some(v) = self.src.next() {
+                    self.elm = Box::new(element::elements2(v));
+                    if let Some(u) = self.elm.next() {
+                        self.tri = (self.tri.1.to_owned(), self.tri.2.to_owned(), u);
+                        return Some(self.tri.clone())
+                    };
+                };
+                None
             }
-            self.bump()
         }
-        if self.curr().key().is_terminal() {
-            self.bump()
-        }
-    }
-    pub fn to_endsym(&mut self) {
-        while !self.curr().key().is_void() {
-            self.bump()
-        }
-    }
-
-    pub fn log(&self, msg: &str) {
-        println!(
-            " {} [{:>2} {:>2}] \t prev:{} \t curr:{} \t next:{}",
-            msg,
-            self.curr().loc().row(),
-            self.curr().loc().col(),
-            self.prev().key(),
-            self.curr().key(),
-            self.next().key()
-        )
-    }
-    pub fn log2(&self, msg: &str) {
-        println!(
-            " {} [{:>2} {:>2}] \t \t {:<30} {:>20}",
-            msg,
-            self.curr().loc().row(),
-            self.curr().loc().col(),
-            self.curr().key(),
-            self.curr().con()
-        )
     }
 }
 
-impl fmt::Display for Stream {
+impl fmt::Display for Elements {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.curr())
+        write!(f, "{}", self.tri.1)
     }
 }
