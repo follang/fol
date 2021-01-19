@@ -154,11 +154,11 @@ impl Text {
                 match self.lines.next() {
                     Some(v) => {
                         self.chars = Box::new(chars2(v.clone()));
-                        if let Some(u) = self.chars.next() {
+                        if let Some(v) = self.chars.next() {
                             loc.new_char();
                             self.win.0.remove(0); self.win.0.push(self.win.1);
                             self.win.1 = self.win.2[0];
-                            self.win.2.remove(0); self.win.2.push(u);
+                            self.win.2.remove(0); self.win.2.push(v);
                             return Some(self.win.1)
                         }
                         None
