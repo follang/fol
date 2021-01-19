@@ -6,22 +6,21 @@ use colored::Colorize;
 use crate::syntax::point;
 use crate::syntax::token;
 use crate::syntax::scan::source;
-use crate::syntax::scan::element;
+use crate::syntax::scan::stage1;
 
-use crate::syntax::scan::element::Element;
 use crate::syntax::error::*;
 
 // #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 //
-const SLIDER: u8 = 9;
+const SLIDER: usize = 9;
 pub struct Elements {
     src: Box<dyn Iterator<Item = source::Source>>,
-    elm: Box<dyn Iterator<Item = Element>>,
-    win: Vec<Element>,
+    elm: Box<dyn Iterator<Item = stage1::Element>>,
+    win: Vec<stage1::Element>,
 }
 
 impl Elements {
-    pub fn elements(self) -> Box<dyn Iterator<Item = Element>> {
+    pub fn elements(self) -> Box<dyn Iterator<Item = stage1::Element>> {
         self.elm
     }
     pub fn sources(self) -> Box<dyn Iterator<Item = source::Source>> {
@@ -31,14 +30,14 @@ impl Elements {
 
 impl Elements {
     pub fn init(path: &'static str) -> Self {
-        let mut win = Vec::new();
+        let mut win = Vec::with_capacity(SLIDER);
         let mut src = Box::new(source::sources(&path));
-        let mut elm = Box::new(element::elements(src.next().unwrap()));
+        let mut elm = Box::new(stage1::elements(src.next().unwrap()));
         for _ in 0..SLIDER { win.push(elm.next().unwrap()) }
         Elements { src, elm, win }
     }
 
-    pub fn bump(&mut self) -> Opt<Vec<Element>> {
+    pub fn bump(&mut self) -> Opt<Vec<stage1::Element>> {
         match self.elm.next() {
             Some(v) => {
                 self.win.remove(0);
@@ -47,7 +46,7 @@ impl Elements {
             },
             None => {
                 if let Some(v) = self.src.next() {
-                    self.elm = Box::new(element::elements(v));
+                    self.elm = Box::new(stage1::elements(v));
                     if let Some(u) = self.elm.next() {
                         self.win.remove(0);
                         self.win.push(u);

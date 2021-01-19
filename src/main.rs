@@ -26,13 +26,15 @@ fn main() {
     //     for d in element::elements2(e) {
     //         println!("{}", d);
     //     }
-    // for e in reader::iteratize("./etc") {
-        // println!("{}", e);
+    for e in source::sources("./etc") {
+        for l in text::chars(e) {
+            println!("{}", l);
+        }
         // for s in element::elements(&e) {
         //     println!("{}", s);
         //     // s.log("--");
         // }
-    // }
+    }
 
 
     // let mut s = vector::Elements::init("./etc/var");
@@ -42,19 +44,19 @@ fn main() {
     // }
 
 
-    let mut e = stream::Elements::init("./etc");
-    loop {
-        match e.bump() {
-            Some(val) => {
-                println!("{}", val.len());
-                println!("{}", val[0]);
-            }
-            None => {
-                // println!("{}", e);
-                break;
-            }
-        }
-    }
+    // let mut e = stream::Elements::init("./etc");
+    // loop {
+    //     match e.bump() {
+    //         Some(val) => {
+    //             // println!("{}", val.len());
+    //             println!("{}", val[0]);
+    //         }
+    //         None => {
+    //             // println!("{}", e);
+    //             break;
+    //         }
+    //     }
+    // }
 
     // let mut error = flaw::FLAW::init();
     // let mut s = lexer::init("./etc", &mut error);
