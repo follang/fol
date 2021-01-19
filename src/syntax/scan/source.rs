@@ -52,7 +52,13 @@ impl Sources {
     pub fn curr(&self) -> Source {
         self.src.clone()
     }
-    // pub fn bump(&mut self) -> Source
+    pub fn bump(&mut self) -> Opt<Source> {
+        if let Some(v) = self.srcs.next() {
+            self.src = v.clone();
+            return Some(v)
+        }
+        None
+    }
 }
 
 impl Source {
