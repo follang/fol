@@ -7,27 +7,19 @@ use crate::syntax::scan::source;
 
 use crate::syntax::error::*;
 
+pub const EOF_CHAR: char = '\0';
+const SLIDER: usize = 6;
+
 /// Peekable iterator over a char sequence.
 /// Next characters can be peeked via `nth` method, and position can be shifted forward via `bump` method.
-const SLIDER: usize = 6;
 pub struct Text {
     lines: Box<dyn Iterator<Item = String>>,
     chars: Box<dyn Iterator<Item = char>>,
     win: (Vec<char>, char, Vec<char>),
     _in_count: usize,
-    fulltext: String,
-    curr_char: char,
 }
 
-pub const EOF_CHAR: char = '\0';
-
-impl fmt::Display for Text {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.next_char())
-    }
-}
-
-pub fn lines(src: source::Source) -> impl Iterator<Item = String> {
+fn lines(src: source::Source) -> impl Iterator<Item = String> {
     let mut reader = reader::BufReader::open(src.path(true)).unwrap();
     let mut buffer = String::new();
     std::iter::from_fn(move || {
@@ -38,30 +30,7 @@ pub fn lines(src: source::Source) -> impl Iterator<Item = String> {
     })
 }
 
-pub fn chars(src: source::Source) -> impl Iterator<Item = char> + 'static {
-    let mut line = lines(src);
-    let mut chrs = line.next().unwrap();
-
-    std::iter::from_fn(move || {
-        match chrs.chars().next() {
-            Some(ch) => {
-                chrs.remove(0);
-                return Some(ch.clone()) 
-            },
-            None => {
-                match line.next() {
-                    Some(l) => { 
-                        chrs = l.clone();
-                        return Some(chrs.remove(0));
-                    },
-                    None => {return None }
-                }
-            }
-        };
-    })
-}
-
-pub fn chars2(src: String) -> impl Iterator<Item = char> + 'static {
+fn chars(src: String) -> impl Iterator<Item = char> + 'static {
     let mut chrs = src.clone();
     std::iter::from_fn(move || {
         if let Some(ch) =  chrs.chars().next() {
@@ -73,33 +42,15 @@ pub fn chars2(src: String) -> impl Iterator<Item = char> + 'static {
 }
 
 
-
-//  pub fn chars(src: source::Source) -> impl Iterator<Item = char> {
-//      use std::fs::File;
-//      use std::io::{self, prelude::*, BufReader};
-
-//      let file = File::open(src.path(true)).unwrap();
-//      let reader = BufReader::new(file);
-//      let line = reader.lines().next();
-//      std::iter::from_fn(move || {
-//          for line2 in reader.lines() {
-//              println!("{}", line2.unwrap());
-//          }
-//          None
-//      })
-//  }
-
 impl Text {
     pub fn init(src: source::Source) -> Text {
         let mut prev = Vec::with_capacity(SLIDER);
         let mut next = Vec::with_capacity(SLIDER);
         let mut lines = Box::new(lines(src.clone()));
-        let mut chars = Box::new(chars2(lines.next().unwrap()));
+        let mut chars = Box::new(chars(lines.next().unwrap()));
         for _ in 0..SLIDER { prev.push('\n') }
         for _ in 0..SLIDER { next.push(chars.next().unwrap()) }
         Text {
-            fulltext: src.data.to_string(),
-            curr_char: EOF_CHAR,
             chars,
             lines,
             win: (prev, '\n', next),
@@ -107,10 +58,6 @@ impl Text {
         }
     }
 
-    /// Returns the last eaten symbol
-    pub fn curr_char(&self) -> char {
-        self.curr_char
-    }
     pub fn curr(&self) -> char {
         self.win.1
     }
@@ -123,36 +70,10 @@ impl Text {
         rev.reverse();
         rev
     }
-    /// Returns the past eaten symbol
-    // pub fn prev_char(&self) -> char {
-    //     self.prev_char
-    // }
-
-    /// Peeks the next symbol from the input stream without consuming it.
-    pub fn next_char(&self) -> char {
-        self.fulltext.chars().nth(0).unwrap_or(EOF_CHAR)
-    }
-
-    /// Checks if there is nothing more to consume.
-    pub fn not_eof(&self) -> bool {
-        !self.fulltext.is_empty()
-    }
 
     /// Moves to the next character.
-    pub fn bump(&mut self, loc: &mut point::Location) -> Option<char> {
-        // self.prev_char = self.curr_char;
-        loc.new_char();
-        if self.not_eof() {
-            let c = self.fulltext.chars().next()?;
-            self.fulltext = self.fulltext[1..].to_string();
-            self.curr_char = c;
-            Some(c)
-        } else {
-            Some(EOF_CHAR)
-        }
-    }
 
-    pub fn bump2(&mut self, loc: &mut point::Location) -> Opt<char> {
+    pub fn bump(&mut self, loc: &mut point::Location) -> Opt<char> {
         match self.chars.next() {
             Some(v) => {
                 loc.new_char();
@@ -164,7 +85,7 @@ impl Text {
             None => {
                 match self.lines.next() {
                     Some(v) => {
-                        self.chars = Box::new(chars2(v.clone()));
+                        self.chars = Box::new(chars(v.clone()));
                         if let Some(v) = self.chars.next() {
                             loc.new_char();
                             self.win.0.remove(0); self.win.0.push(self.win.1);
@@ -186,6 +107,12 @@ impl Text {
                 }
             }
         }
+    }
+}
+
+impl fmt::Display for Text {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.win.1)
     }
 }
 
@@ -221,3 +148,20 @@ mod reader {
         }
     }
 }
+
+
+//  pub fn chars(src: source::Source) -> impl Iterator<Item = char> {
+//      use std::fs::File;
+//      use std::io::{self, prelude::*, BufReader};
+
+//      let file = File::open(src.path(true)).unwrap();
+//      let reader = BufReader::new(file);
+//      let line = reader.lines().next();
+//      std::iter::from_fn(move || {
+//          for line2 in reader.lines() {
+//              println!("{}", line2.unwrap());
+//          }
+//          None
+//      })
+//  }
+

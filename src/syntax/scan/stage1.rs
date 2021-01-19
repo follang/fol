@@ -50,7 +50,7 @@ pub fn elements(src: source::Source) -> impl Iterator<Item = Element> {
     let mut loc = point::Location::init((src.path(true), src.path(false)), &src.module());
     let mut code = text::Text::init(src);
     std::iter::from_fn(move || {
-        if let Some(v) = code.bump2(&mut loc) {
+        if let Some(v) = code.bump(&mut loc) {
             return Some(scan(&mut code, &mut loc));
         }
         None
@@ -358,7 +358,7 @@ impl Element {
 
     fn bump(&mut self, code: &mut text::Text) {
         // if is_eol(&code.next()) { self.loc.new_line(); }
-        code.bump2(&mut self.loc);
+        code.bump(&mut self.loc);
         self.con.push_str(&code.curr().to_string());
     }
 
