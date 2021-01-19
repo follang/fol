@@ -16,6 +16,7 @@ const SLIDER: usize = 9;
 pub struct Elements {
     src: Box<dyn Iterator<Item = source::Source>>,
     elm: Box<dyn Iterator<Item = stage1::Element>>,
+    // wind: (Vec<stage1::Element>, stage1::Element, Vec<stage1::Element>),
     win: Vec<stage1::Element>,
     _in_count: usize,
 }

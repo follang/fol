@@ -9,15 +9,14 @@ use crate::syntax::error::*;
 
 /// Peekable iterator over a char sequence.
 /// Next characters can be peeked via `nth` method, and position can be shifted forward via `bump` method.
-const SLIDER: usize = 5;
+const SLIDER: usize = 6;
 pub struct Text {
     lines: Box<dyn Iterator<Item = String>>,
     chars: Box<dyn Iterator<Item = char>>,
-    win: Vec<char>,
+    win: (Vec<char>, char, Vec<char>),
     _in_count: usize,
     fulltext: String,
     curr_char: char,
-    // prev_char: char,
 }
 
 pub const EOF_CHAR: char = '\0';
@@ -92,16 +91,18 @@ pub fn chars2(src: String) -> impl Iterator<Item = char> + 'static {
 
 impl Text {
     pub fn init(src: source::Source) -> Text {
-        let mut win = Vec::with_capacity(SLIDER);
+        let mut prev = Vec::with_capacity(SLIDER);
+        let mut next = Vec::with_capacity(SLIDER);
         let mut lines = Box::new(lines(src.clone()));
         let mut chars = Box::new(chars2(lines.next().unwrap()));
-        for _ in 0..SLIDER { win.push(chars.next().unwrap()) }
+        for _ in 0..SLIDER { prev.push('\n') }
+        for _ in 0..SLIDER { next.push(chars.next().unwrap()) }
         Text {
             fulltext: src.data.to_string(),
             curr_char: EOF_CHAR,
             chars,
             lines,
-            win,
+            win: (prev, '\n', next),
             _in_count: SLIDER
         }
     }
@@ -139,14 +140,15 @@ impl Text {
             Some(EOF_CHAR)
         }
     }
-    
-    pub fn bump2(&mut self, loc: &mut point::Location) -> Opt<Vec<char>> {
+
+    pub fn bump2(&mut self, loc: &mut point::Location) -> Opt<char> {
         match self.chars.next() {
             Some(v) => {
                 loc.new_char();
-                self.win.remove(0);
-                self.win.push(v);
-                return Some(self.win.clone())
+                self.win.0.remove(0); self.win.0.push(self.win.1);
+                self.win.1 = self.win.2[0];
+                self.win.2.remove(0); self.win.2.push(v);
+                return Some(self.win.1)
             },
             None => {
                 match self.lines.next() {
@@ -154,27 +156,25 @@ impl Text {
                         self.chars = Box::new(chars2(v.clone()));
                         if let Some(u) = self.chars.next() {
                             loc.new_char();
-                            self.win.remove(0);
-                            self.win.push(u);
-                            return Some(self.win.clone())
+                            self.win.0.remove(0); self.win.0.push(self.win.1);
+                            self.win.1 = self.win.2[0];
+                            self.win.2.remove(0); self.win.2.push(u);
+                            return Some(self.win.1)
                         }
                         None
                     },
                     None => {
                         if self._in_count > 1 {
-                            self.win.remove(0);
-                            self.win.push('\n');
+                            self.win.0.remove(0); self.win.0.push(self.win.1);
+                            self.win.1 = self.win.2[0];
+                            self.win.2.remove(0); self.win.2.push('\n');
                             self._in_count -= 1;
-                            return Some(self.win.clone())
+                            return Some(self.win.1)
                         } else { return None }
                     }
                 }
             }
         }
-    }
-
-    pub fn bump3(&mut self) -> Opt<Vec<char>> {
-        self.bump2(&mut point::Location::default())
     }
 }
 

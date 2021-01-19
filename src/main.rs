@@ -6,6 +6,7 @@ mod syntax;
 extern crate regex;
 extern crate colored;
 
+use crate::syntax::point;
 use crate::syntax::error::*;
 use crate::syntax::scan::*;
 
@@ -20,12 +21,12 @@ fn main() {
     // }
 
 
-    // for e in source::sources("./etc/var/var.fol") {
-    //     let mut text = text::Text::init(e);
-    //     while let Some(win) = text.bump3() {
-    //         println!("{}", win[0]);
-    //     }
-    // }
+    for e in source::sources("./etc/var/var.fol") {
+        let mut text = text::Text::init(e);
+        while let Some(win) = text.bump2(&mut point::Location::default()) {
+            println!("{}", win);
+        }
+    }
 
     // for e in source::sources("./etc") {
     //     for d in element::elements2(e) {
@@ -41,17 +42,17 @@ fn main() {
     // }
 
 
-    let mut e = stream::Elements::init("./etc/var");
-    loop {
-        match e.bump() {
-            Some(val) => {
-                // println!("{}", val.len());
-                println!("{}", val[0]);
-            }
-            None => {
-                // println!("{}", e);
-                break;
-            }
-        }
-    }
+//     let mut e = stream::Elements::init("./etc/var");
+//     loop {
+//         match e.bump() {
+//             Some(val) => {
+//                 // println!("{}", val.len());
+//                 println!("{}", val[0]);
+//             }
+//             None => {
+//                 // println!("{}", e);
+//                 break;
+//             }
+//         }
+//     }
 }
