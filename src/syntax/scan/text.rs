@@ -5,9 +5,16 @@ use std::str::Chars;
 use crate::syntax::point;
 use crate::syntax::scan::source;
 
+use crate::syntax::error::*;
+
 /// Peekable iterator over a char sequence.
 /// Next characters can be peeked via `nth` method, and position can be shifted forward via `bump` method.
+const SLIDER: usize = 5;
 pub struct Text {
+    lines: Box<dyn Iterator<Item = String>>,
+    chars: Box<dyn Iterator<Item = char>>,
+    win: Vec<char>,
+    _in_count: usize,
     fulltext: String,
     curr_char: char,
     // prev_char: char,
@@ -55,6 +62,17 @@ pub fn chars(src: source::Source) -> impl Iterator<Item = char> + 'static {
     })
 }
 
+pub fn chars2(src: String) -> impl Iterator<Item = char> + 'static {
+    let mut chrs = src.clone();
+    std::iter::from_fn(move || {
+        if let Some(ch) =  chrs.chars().next() {
+            chrs.remove(0);
+            return Some(ch.clone()) 
+        };
+        None
+    })
+}
+
 
 
 //  pub fn chars(src: source::Source) -> impl Iterator<Item = char> {
@@ -73,16 +91,19 @@ pub fn chars(src: source::Source) -> impl Iterator<Item = char> + 'static {
 //  }
 
 impl Text {
-    pub fn init(data: &String) -> Text {
+    pub fn init(src: source::Source) -> Text {
+        let mut win = Vec::with_capacity(SLIDER);
+        let mut lines = Box::new(lines(src.clone()));
+        let mut chars = Box::new(chars2(lines.next().unwrap()));
+        for _ in 0..SLIDER { win.push(chars.next().unwrap()) }
         Text {
-            fulltext: data.to_string(),
+            fulltext: src.data.to_string(),
             curr_char: EOF_CHAR,
-            // prev_char: EOF_CHAR,
+            chars,
+            lines,
+            win,
+            _in_count: SLIDER
         }
-    }
-
-    pub fn fulltext(&self) -> &String {
-        &self.fulltext
     }
 
     /// Returns the last eaten symbol
@@ -118,7 +139,45 @@ impl Text {
             Some(EOF_CHAR)
         }
     }
+    
+    pub fn bump2(&mut self, loc: &mut point::Location) -> Opt<Vec<char>> {
+        match self.chars.next() {
+            Some(v) => {
+                loc.new_char();
+                self.win.remove(0);
+                self.win.push(v);
+                return Some(self.win.clone())
+            },
+            None => {
+                match self.lines.next() {
+                    Some(v) => {
+                        self.chars = Box::new(chars2(v.clone()));
+                        if let Some(u) = self.chars.next() {
+                            loc.new_char();
+                            self.win.remove(0);
+                            self.win.push(u);
+                            return Some(self.win.clone())
+                        }
+                        None
+                    },
+                    None => {
+                        if self._in_count > 1 {
+                            self.win.remove(0);
+                            self.win.push('\n');
+                            self._in_count -= 1;
+                            return Some(self.win.clone())
+                        } else { return None }
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn bump3(&mut self) -> Opt<Vec<char>> {
+        self.bump2(&mut point::Location::default())
+    }
 }
+
 
 mod reader {
     use std::{

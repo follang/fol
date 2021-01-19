@@ -20,22 +20,19 @@ fn main() {
     // }
 
 
-    // for e in source::sources("/home/bresilla/data/code/proj/folang/fol/etc/var/var.fol") {
-    // for e in source::sources("/home/bresilla/data/code/proj/folang/fol/etc") {
     // for e in source::sources("./etc/var/var.fol") {
-    //     for d in element::elements2(e) {
-    //         println!("{}", d);
+    //     let mut text = text::Text::init(e);
+    //     while let Some(win) = text.bump3() {
+    //         println!("{}", win[0]);
     //     }
-    for e in source::sources("./etc") {
-        for l in text::chars(e) {
-            println!("{}", l);
-        }
-        // for s in element::elements(&e) {
-        //     println!("{}", s);
-        //     // s.log("--");
-        // }
-    }
+    // }
 
+    // for e in source::sources("./etc") {
+    //     for d in element::elements2(e) {
+    //     for l in text::chars(e) {
+    //         println!("{}", l);
+    //     }
+    // }
 
     // let mut s = vector::Elements::init("./etc/var");
     // while !s.list().is_empty() {
@@ -44,24 +41,17 @@ fn main() {
     // }
 
 
-    // let mut e = stream::Elements::init("./etc");
-    // loop {
-    //     match e.bump() {
-    //         Some(val) => {
-    //             // println!("{}", val.len());
-    //             println!("{}", val[0]);
-    //         }
-    //         None => {
-    //             // println!("{}", e);
-    //             break;
-    //         }
-    //     }
-    // }
-
-    // let mut error = flaw::FLAW::init();
-    // let mut s = lexer::init("./etc", &mut error);
-    // while s.not_empty() {
-    //     println!("{}", s);
-    //     s.bump()
-    // }
+    let mut e = stream::Elements::init("./etc/var");
+    loop {
+        match e.bump() {
+            Some(val) => {
+                // println!("{}", val.len());
+                println!("{}", val[0]);
+            }
+            None => {
+                // println!("{}", e);
+                break;
+            }
+        }
+    }
 }

@@ -17,6 +17,7 @@ pub struct Elements {
     src: Box<dyn Iterator<Item = source::Source>>,
     elm: Box<dyn Iterator<Item = stage1::Element>>,
     win: Vec<stage1::Element>,
+    _in_count: usize,
 }
 
 impl Elements {
@@ -34,7 +35,7 @@ impl Elements {
         let mut src = Box::new(source::sources(&path));
         let mut elm = Box::new(stage1::elements(src.next().unwrap()));
         for _ in 0..SLIDER { win.push(elm.next().unwrap()) }
-        Elements { src, elm, win }
+        Elements { src, elm, win, _in_count: SLIDER }
     }
 
     pub fn bump(&mut self) -> Opt<Vec<stage1::Element>> {
@@ -45,15 +46,25 @@ impl Elements {
                 return Some(self.win.clone())
             },
             None => {
-                if let Some(v) = self.src.next() {
-                    self.elm = Box::new(stage1::elements(v));
-                    if let Some(u) = self.elm.next() {
-                        self.win.remove(0);
-                        self.win.push(u);
-                        return Some(self.win.clone())
-                    };
-                };
-                None
+                match self.src.next() {
+                    Some(v) => {
+                        self.elm = Box::new(stage1::elements(v));
+                        if let Some(u) = self.elm.next() {
+                            self.win.remove(0);
+                            self.win.push(u);
+                            return Some(self.win.clone())
+                        }
+                        None
+                    }
+                    None => {
+                        if self._in_count > 1 {
+                            self.win.remove(0);
+                            self.win.push(stage1::Element::default());
+                            self._in_count -= 1;
+                            return Some(self.win.clone())
+                        } else { return None }
+                    }
+                }
             }
         }
     }

@@ -46,9 +46,21 @@ impl Element {
 }
 
 /// Creates a iterator that produces tokens from the input string.
+pub fn elements2(src: source::Source) -> impl Iterator<Item = Element> {
+    let mut loc = point::Location::init((src.path(true), src.path(false)), &src.module());
+    let mut code = text::Text::init(src);
+    std::iter::from_fn(move || {
+        if let Some(v) = code.bump2(&mut loc) {
+            return Some(scan(&mut code, &mut loc));
+        }
+        None
+    })
+}
+
+/// Creates a iterator that produces tokens from the input string.
 pub fn elements(src: source::Source) -> impl Iterator<Item = Element> {
     let mut loc = point::Location::init((src.path(true), src.path(false)), &src.module());
-    let mut code = text::Text::init(&src.data);
+    let mut code = text::Text::init(src);
     std::iter::from_fn(move || {
         if !code.not_eof() {
             return None;
@@ -58,6 +70,30 @@ pub fn elements(src: source::Source) -> impl Iterator<Item = Element> {
 
 }
 
+fn scan(code: &mut text::Text, loc: &mut point::Location) -> Element {
+    let mut result = Element::empty(illegal, loc.clone(), String::new());
+    result.loc.new_word();
+    if code.curr_char() == '/' && (code.next_char() == '/' || code.next_char() == '*') {
+        result.comment(code);
+    } else if is_eol(&code.curr_char()) {
+        result.endline(code, false);
+    } else if is_space(&code.curr_char()) {
+        result.space(code);
+    //TODO: fix comment here
+    } else if code.curr_char() == '"' || code.curr_char() == '\'' || code.curr_char() == '`' {
+        result.encap(code);
+    } else if is_digit(&code.curr_char()) {
+        result.digit(code);
+    } else if is_symbol(&code.curr_char()) {
+        result.symbol(code);
+    } else if is_alpha(&code.curr_char()) {
+        result.alpha(code);
+    }
+    let (row, col) = (loc.row(), loc.col());
+    *loc = result.loc.clone();
+    result.loc.adjust(row, col);
+    return result;
+}
 
 impl text::Text {
     /// Parses a token from the input string.
