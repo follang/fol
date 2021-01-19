@@ -43,36 +43,37 @@ fn chars(src: String) -> impl Iterator<Item = char> + 'static {
 
 
 impl Text {
-    pub fn init(src: source::Source) -> Text {
+    pub fn init(src: source::Source) -> Self {
         let mut prev = Vec::with_capacity(SLIDER);
         let mut next = Vec::with_capacity(SLIDER);
         let mut lines = Box::new(lines(src.clone()));
         let mut chars = Box::new(chars(lines.next().unwrap()));
         for _ in 0..SLIDER { prev.push('\n') }
         for _ in 0..SLIDER { next.push(chars.next().unwrap()) }
-        Text {
+        Self {
             chars,
             lines,
             win: (prev, '\n', next),
             _in_count: SLIDER
         }
     }
-
     pub fn curr(&self) -> char {
         self.win.1
     }
     pub fn next_vec(&self) -> Vec<char> {
         self.win.2.clone()
     }
-    pub fn next(&self) -> char { self.next_vec()[0] }
+    pub fn next(&self) -> char { 
+        self.next_vec()[0] 
+    }
     pub fn prev_vec(&self) -> Vec<char> {
         let mut rev = self.win.0.clone();
         rev.reverse();
         rev
     }
-
-    /// Moves to the next character.
-
+    pub fn prev(&self) -> char { 
+        self.prev_vec()[0] 
+    }
     pub fn bump(&mut self, loc: &mut point::Location) -> Opt<char> {
         match self.chars.next() {
             Some(v) => {

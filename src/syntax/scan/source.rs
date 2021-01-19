@@ -13,23 +13,16 @@ use crate::syntax::error::*;
 pub struct Source {
     call: String,
     pub path: String,
-    pub data: String,
 }
 
-impl fmt::Display for Source {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "abs_path: {}\nrel_path: {}\nmodule:   {}\n",
-            self.path(true), self.path(false), self.module()
-        )
-    }
+pub struct Sources {
+    itr:  Box<dyn Iterator<Item = Source>>,
 }
 
 /// Creates an iterator that produces tokens from the input string.
-pub fn sources(input: &str) -> impl Iterator<Item = Source> + '_ {
+pub fn sources(input: String) -> impl Iterator<Item = Source> {
     let red: Vec<Source>;
-    match check_file_dir(input) {
+    match check_file_dir(&input) {
         Ok(input) => {
             match Source::init(&input) {
                 Ok(files) => { red = files }
@@ -49,6 +42,13 @@ pub fn sources(input: &str) -> impl Iterator<Item = Source> + '_ {
     })
 }
 
+impl Sources {
+    pub fn init(dir: String) -> Self {
+        let itr = Box::new(sources(dir));
+        Self { itr }
+    }
+}
+
 impl Source {
     fn init(s: &str) -> Con<Vec<Self>> {
         let mut vec = Vec::new();
@@ -57,7 +57,6 @@ impl Source {
             vec.push( Source {
                 call: s.to_string(),
                 path: full_path(&f)?,
-                data: read_string_file(&f)?,
             } );
         }
         Ok(vec)
@@ -90,14 +89,19 @@ impl Source {
             .to_string()
     }
 
-    pub fn data(&self) -> &String {
-        &self.data
-    }
+}
 
-    pub fn set(&mut self, a: String) {
-        self.data = a;
+
+impl fmt::Display for Source {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "abs_path: {}\nrel_path: {}\nmodule:   {}\n",
+            self.path(true), self.path(false), self.module()
+        )
     }
 }
+
 
 fn check_file_dir(s: &str) -> Con<String> {
     let path = std::path::Path::new(s);

@@ -7,6 +7,11 @@ use crate::syntax::scan::text;
 
 use crate::syntax::token::KEYWORD::*;
 use crate::syntax::token::*;
+use crate::syntax::error::*;
+
+
+const SLIDER: usize = 9;
+
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Element {
@@ -15,6 +20,11 @@ pub struct Element {
     con: String,
 }
 
+pub struct Elements {
+    src: Box<dyn Iterator<Item = Element>>,
+    win: (Vec<Element>, Element, Vec<Element>),
+    _in_count: usize,
+}
 
 
 impl std::default::Default for Element {
@@ -42,6 +52,50 @@ impl Element {
     }
     pub fn set_key(&mut self, k: KEYWORD) {
         self.key = k;
+    }
+}
+
+impl Elements {
+    pub fn init(src: source::Source) -> Self {
+        let mut prev = Vec::with_capacity(SLIDER);
+        let mut next = Vec::with_capacity(SLIDER);
+        let mut src = Box::new(elements(src));
+        for _ in 0..SLIDER { prev.push(Element::default()) }
+        for _ in 0..SLIDER { next.push(src.next().unwrap()) }
+        Self {
+            src,
+            win: (prev, Element::default(), next),
+            _in_count: SLIDER
+        }
+    }
+    // pub fn iter(&self) -> Box<dyn Iterator<Item = Element>> {
+    //     Box::new(self.src)
+    // }
+    pub fn curr(&self) -> Element {
+        self.win.1.clone()
+    }
+    pub fn next_vec(&self) -> Vec<Element> {
+        self.win.2.clone()
+    }
+    pub fn next(&self) -> Element { 
+        self.next_vec()[0].clone() 
+    }
+    pub fn prev_vec(&self) -> Vec<Element> {
+        let mut rev = self.win.0.clone();
+        rev.reverse();
+        rev
+    }
+    pub fn prev(&self) -> Element { 
+        self.prev_vec()[0].clone() 
+    }
+    pub fn bump(&mut self) -> Opt<Element> {
+        if let Some(v) = self.src.next() {
+            self.win.0.remove(0); self.win.0.push(self.win.1.clone());
+            self.win.1 = self.win.2[0].clone();
+            self.win.2.remove(0); self.win.2.push(v);
+            return Some(self.win.1.clone())
+        }
+        None
     }
 }
 

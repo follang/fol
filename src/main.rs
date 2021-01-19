@@ -42,7 +42,7 @@ fn main() {
     // }
 
 
-    let mut e = stream::Elements::init("./etc");
+    let mut e = stream::Stream::init("./etc");
     while let Some(val) = e.bump() {
         println!("{}", val)
     }
