@@ -16,7 +16,8 @@ pub struct Source {
 }
 
 pub struct Sources {
-    itr:  Box<dyn Iterator<Item = Source>>,
+    srcs:  Box<dyn Iterator<Item = Source>>,
+    src: Source,
 }
 
 /// Creates an iterator that produces tokens from the input string.
@@ -44,9 +45,14 @@ pub fn sources(input: String) -> impl Iterator<Item = Source> {
 
 impl Sources {
     pub fn init(dir: String) -> Self {
-        let itr = Box::new(sources(dir));
-        Self { itr }
+        let mut srcs = Box::new(sources(dir));
+        let src = srcs.next().unwrap();
+        Self { srcs, src }
     }
+    pub fn curr(&self) -> Source {
+        self.src.clone()
+    }
+    // pub fn bump(&mut self) -> Source
 }
 
 impl Source {

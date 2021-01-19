@@ -21,7 +21,7 @@ pub struct Element {
 }
 
 pub struct Elements {
-    src: Box<dyn Iterator<Item = Element>>,
+    elem: Box<dyn Iterator<Item = Element>>,
     win: (Vec<Element>, Element, Vec<Element>),
     _in_count: usize,
 }
@@ -56,20 +56,20 @@ impl Element {
 }
 
 impl Elements {
-    pub fn init(src: source::Source) -> Self {
+    pub fn init(elem: source::Source) -> Self {
         let mut prev = Vec::with_capacity(SLIDER);
         let mut next = Vec::with_capacity(SLIDER);
-        let mut src = Box::new(elements(src));
+        let mut elem = Box::new(elements(elem));
         for _ in 0..SLIDER { prev.push(Element::default()) }
-        for _ in 0..SLIDER { next.push(src.next().unwrap()) }
+        for _ in 0..SLIDER { next.push(elem.next().unwrap()) }
         Self {
-            src,
+            elem,
             win: (prev, Element::default(), next),
             _in_count: SLIDER
         }
     }
     // pub fn iter(&self) -> Box<dyn Iterator<Item = Element>> {
-    //     Box::new(self.src)
+    //     Box::new(self.elem)
     // }
     pub fn curr(&self) -> Element {
         self.win.1.clone()
@@ -89,7 +89,7 @@ impl Elements {
         self.prev_vec()[0].clone() 
     }
     pub fn bump(&mut self) -> Opt<Element> {
-        if let Some(v) = self.src.next() {
+        if let Some(v) = self.elem.next() {
             self.win.0.remove(0); self.win.0.push(self.win.1.clone());
             self.win.1 = self.win.2[0].clone();
             self.win.2.remove(0); self.win.2.push(v);
