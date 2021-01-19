@@ -111,7 +111,18 @@ impl Text {
     pub fn curr_char(&self) -> char {
         self.curr_char
     }
-
+    pub fn curr(&self) -> char {
+        self.win.1
+    }
+    pub fn next_vec(&self) -> Vec<char> {
+        self.win.2.clone()
+    }
+    pub fn next(&self) -> char { self.next_vec()[0] }
+    pub fn prev_vec(&self) -> Vec<char> {
+        let mut rev = self.win.0.clone();
+        rev.reverse();
+        rev
+    }
     /// Returns the past eaten symbol
     // pub fn prev_char(&self) -> char {
     //     self.prev_char

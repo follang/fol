@@ -46,7 +46,7 @@ impl Element {
 }
 
 /// Creates a iterator that produces tokens from the input string.
-pub fn elements2(src: source::Source) -> impl Iterator<Item = Element> {
+pub fn elements(src: source::Source) -> impl Iterator<Item = Element> {
     let mut loc = point::Location::init((src.path(true), src.path(false)), &src.module());
     let mut code = text::Text::init(src);
     std::iter::from_fn(move || {
@@ -57,36 +57,23 @@ pub fn elements2(src: source::Source) -> impl Iterator<Item = Element> {
     })
 }
 
-/// Creates a iterator that produces tokens from the input string.
-pub fn elements(src: source::Source) -> impl Iterator<Item = Element> {
-    let mut loc = point::Location::init((src.path(true), src.path(false)), &src.module());
-    let mut code = text::Text::init(src);
-    std::iter::from_fn(move || {
-        if !code.not_eof() {
-            return None;
-        }
-        Some(code.scan(&mut loc))
-    })
-
-}
-
 fn scan(code: &mut text::Text, loc: &mut point::Location) -> Element {
     let mut result = Element::empty(illegal, loc.clone(), String::new());
     result.loc.new_word();
-    if code.curr_char() == '/' && (code.next_char() == '/' || code.next_char() == '*') {
+    if code.curr() == '/' && (code.next() == '/' || code.next() == '*') {
         result.comment(code);
-    } else if is_eol(&code.curr_char()) {
+    } else if is_eol(&code.curr()) {
         result.endline(code, false);
-    } else if is_space(&code.curr_char()) {
+    } else if is_space(&code.curr()) {
         result.space(code);
     //TODO: fix comment here
-    } else if code.curr_char() == '"' || code.curr_char() == '\'' || code.curr_char() == '`' {
+    } else if code.curr() == '"' || code.curr() == '\'' || code.curr() == '`' {
         result.encap(code);
-    } else if is_digit(&code.curr_char()) {
+    } else if is_digit(&code.curr()) {
         result.digit(code);
-    } else if is_symbol(&code.curr_char()) {
+    } else if is_symbol(&code.curr()) {
         result.symbol(code);
-    } else if is_alpha(&code.curr_char()) {
+    } else if is_alpha(&code.curr()) {
         result.alpha(code);
     }
     let (row, col) = (loc.row(), loc.col());
@@ -95,57 +82,28 @@ fn scan(code: &mut text::Text, loc: &mut point::Location) -> Element {
     return result;
 }
 
-impl text::Text {
-    /// Parses a token from the input string.
-    fn scan(&mut self, loc: &mut point::Location) -> Element {
-        let mut result = Element::empty(illegal, loc.clone(), String::new());
-        result.loc.new_word();
-        self.bump(&mut result.loc);
-        //ignore comments
-        if self.curr_char() == '/' && (self.next_char() == '/' || self.next_char() == '*') {
-            result.comment(self);
-        } else if is_eol(&self.curr_char()) {
-            result.endline(self, false);
-        } else if is_space(&self.curr_char()) {
-            result.space(self);
-        //TODO: fix comment here
-        } else if self.curr_char() == '"' || self.curr_char() == '\'' || self.curr_char() == '`' {
-            result.encap(self);
-        } else if is_digit(&self.curr_char()) {
-            result.digit(self);
-        } else if is_symbol(&self.curr_char()) {
-            result.symbol(self);
-        } else if is_alpha(&self.curr_char()) {
-            result.alpha(self);
-        }
-        let (row, col) = (loc.row(), loc.col());
-        *loc = result.loc.clone();
-        result.loc.adjust(row, col);
-        return result;
-    }
-}
 
 impl Element {
     fn comment(&mut self, code: &mut text::Text) {
-        self.con.push_str(&code.curr_char().to_string());
+        self.con.push_str(&code.curr().to_string());
         self.bump(code);
-        if code.curr_char() == '/' {
+        if code.curr() == '/' {
             self.bump(code);
-            while !is_eol(&code.next_char()) {
-                if is_eof(&code.next_char()) { break };
+            while !is_eol(&code.next()) {
+                if is_eof(&code.next()) { break };
                 self.bump(code);
             }
         }
-        if code.curr_char() == '*' {
+        if code.curr() == '*' {
             self.bump(code);
-            while !(code.curr_char() == '*' && code.next_char() == '/') {
-                if is_eol(&code.next_char()) { self.loc.new_line(); }
-                else if is_eof(&code.next_char()) { break };
+            while !(code.curr() == '*' && code.next() == '/') {
+                if is_eol(&code.next()) { self.loc.new_line(); }
+                else if is_eof(&code.next()) { break };
                 self.bump(code);
             }
             self.bump(code);
             //TODO: double check
-            if is_space(&code.next_char()) {
+            if is_space(&code.next()) {
                 self.bump(code);
             }
         }
@@ -155,8 +113,8 @@ impl Element {
         self.push(code);
         self.loc.new_line();
         self.key = void(VOID::endline_);
-        while is_eol(&code.next_char()) || is_space(&code.next_char()) {
-            if is_eol(&code.next_char()) {
+        while is_eol(&code.next()) || is_space(&code.next()) {
+            if is_eol(&code.next()) {
                 self.loc.new_line();
             }
             self.bump(code);
@@ -165,10 +123,10 @@ impl Element {
     }
     fn space(&mut self, code: &mut text::Text) {
         self.push(code);
-        while is_space(&code.next_char()) {
+        while is_space(&code.next()) {
             self.bump(code);
         }
-        if is_eol(&code.next_char()) {
+        if is_eol(&code.next()) {
             self.bump(code);
             self.endline(code, false);
             return;
@@ -177,26 +135,26 @@ impl Element {
         self.con = " ".to_string();
     }
     fn digit(&mut self, code: &mut text::Text) {
-        if code.curr_char() == '0'
-            && (code.next_char() == 'x' || code.next_char() == 'o' || code.next_char() == 'b')
+        if code.curr() == '0'
+            && (code.next() == 'x' || code.next() == 'o' || code.next() == 'b')
         {
             self.push(code);
-            if code.next_char() == 'x' {
+            if code.next() == 'x' {
                 self.bump(code);
                 self.key = literal(LITERAL::hexal_);
-                while is_hex_digit(&code.next_char()) {
+                while is_hex_digit(&code.next()) {
                     self.bump(code);
                 }
-            } else if code.next_char() == 'o' {
+            } else if code.next() == 'o' {
                 self.bump(code);
                 self.key = literal(LITERAL::octal_);
-                while is_oct_digit(&code.next_char()) {
+                while is_oct_digit(&code.next()) {
                     self.bump(code);
                 }
-            } else if code.next_char() == 'b' {
+            } else if code.next() == 'b' {
                 self.bump(code);
                 self.key = literal(LITERAL::binary_);
-                while code.next_char() == '0' || code.next_char() == '1' || code.next_char() == '_'
+                while code.next() == '0' || code.next() == '1' || code.next() == '_'
                 {
                     self.bump(code);
                 }
@@ -204,13 +162,13 @@ impl Element {
         } else {
             self.push(code);
             self.key = literal(LITERAL::decimal_);
-            while is_digit(&code.next_char()) || code.next_char() == '_' {
+            while is_digit(&code.next()) || code.next() == '_' {
                 self.bump(code);
             }
         }
     }
     fn encap(&mut self, code: &mut text::Text) {
-        let litsym = code.curr_char();
+        let litsym = code.curr();
         if litsym == '`' {
             self.key = comment;
         } else if litsym == '\'' {
@@ -219,12 +177,12 @@ impl Element {
             self.key = literal(LITERAL::string_);
         }
         self.push(code);
-        while code.next_char() != litsym || (code.next_char() == litsym && code.curr_char() == '\\')
+        while code.next() != litsym || (code.next() == litsym && code.curr() == '\\')
         {
-            if code.next_char() != litsym && code.next_char() == '\0' {
+            if code.next() != litsym && code.next() == '\0' {
                 self.key = illegal;
                 break;
-            } else if is_eol(&code.next_char()) {
+            } else if is_eol(&code.next()) {
                 self.loc.new_line();
             }
             self.bump(code);
@@ -234,7 +192,7 @@ impl Element {
     fn symbol(&mut self, code: &mut text::Text) {
         self.push(code);
         self.key = symbol(SYMBOL::curlyC_);
-        match code.curr_char() {
+        match code.curr() {
             '{' => {
                 self.loc.deepen();
                 self.key = symbol(SYMBOL::curlyO_)
@@ -288,12 +246,12 @@ impl Element {
         }
     }
     fn alpha(&mut self, code: &mut text::Text) {
-        let mut con = code.curr_char().to_string();
+        let mut con = code.curr().to_string();
         self.push(code);
-        while is_alpha(&code.next_char()) || is_digit(&code.next_char()) {
+        while is_alpha(&code.next()) || is_digit(&code.next()) {
             // code.bump(&mut self.loc);
             self.bump(code);
-            con.push(code.curr_char().clone());
+            con.push(code.curr().clone());
             // self.push(code);
         }
         match self.con().as_str() {
@@ -395,13 +353,13 @@ impl Element {
     }
 
     fn push(&mut self, code: &mut text::Text) {
-        self.con.push_str(&code.curr_char().to_string());
+        self.con.push_str(&code.curr().to_string());
     }
 
     fn bump(&mut self, code: &mut text::Text) {
-        // if is_eol(&code.next_char()) { self.loc.new_line(); }
-        code.bump(&mut self.loc);
-        self.con.push_str(&code.curr_char().to_string());
+        // if is_eol(&code.next()) { self.loc.new_line(); }
+        code.bump2(&mut self.loc);
+        self.con.push_str(&code.curr().to_string());
     }
 
     fn combine(&mut self, other: &Element) {

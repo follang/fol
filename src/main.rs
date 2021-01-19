@@ -46,4 +46,9 @@ fn main() {
     while let Some(val) = e.bump() {
         println!("{}", val)
     }
+
+
+
+
+
 }
