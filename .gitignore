@@ -2,3 +2,4 @@
 /vendor
 .dirnev
 .direnv
+flake.lock
