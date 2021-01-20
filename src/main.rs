@@ -37,11 +37,11 @@ fn main() {
     //     println!("{}\t{}", e.1, e.0);
     // }
 
-    let chars = stage1::Elements::init(path);
-    for c in chars {
+    // let elem = stage1::Elements::init(path);
+    let elem = lexer::Elements::init(path);
+    for c in elem {
         println!("{}", c);
     }
-
 
     // for e in source::sources("./etc/var/var.fol".to_string()) {
     //     let mut text = text::Text::init(e);

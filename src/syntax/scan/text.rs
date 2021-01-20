@@ -16,76 +16,6 @@ pub struct Text {
     _in_count: usize,
 }
 
-fn lines(src: source::Source) -> impl Iterator<Item = String> {
-    let mut reader = reader::BufReader::open(src.path(true)).unwrap();
-    let mut buffer = String::new();
-    std::iter::from_fn(move || {
-        if let Some(line) = reader.read_line(&mut buffer) {
-            return Some(line.unwrap().clone());
-        }
-        None
-    })
-}
-
-fn chars(src: String) -> impl Iterator<Item = char> {
-    let mut chrs = src.clone();
-    std::iter::from_fn(move || {
-        if let Some(ch) =  chrs.chars().next() {
-            chrs.remove(0);
-            return Some(ch.clone()) 
-        };
-        None
-    })
-}
-
-
-pub fn gen(path: String) -> impl Iterator<Item = Part<char>> {
-    let mut s = source::Sources::init(path);
-    let mut l = lines(s.next().unwrap());
-    let mut c = chars(l.next().unwrap());
-    let mut loc = point::Location::init(
-        (s.curr().path(true), s.curr().path(false)), 
-        &s.curr().module()
-    );
-    loc.adjust(1,0);
-    std::iter::from_fn(move || {
-        loop {
-            match c.next() {
-                Some(i) => {
-                    loc.new_char();
-                    if i == ' ' { loc.new_word() }
-                    return Some ((i, loc.clone()))
-                },
-                None => {
-                    match l.next() {
-                        Some(j) => { 
-                            loc.new_line();
-                            loc.new_word();
-                            c = chars(j);
-                            return Some((c.next().unwrap_or('\n'), loc.clone()))
-                        },
-                        None => {
-                            match s.bump() {
-                                Some(k) => {
-                                    loc = point::Location::init(
-                                        (s.curr().path(true), s.curr().path(false)), 
-                                        &s.curr().module()
-                                    );
-                                    l = lines(k);
-                                },
-                                None => {
-                                    return None 
-                                }
-                            }
-                        }
-                    }
-                }
-            };
-        }
-    })
-}
-
-
 impl Text {
     pub fn curr(&self) -> Part<char> {
         self.win.1.clone()
@@ -159,6 +89,78 @@ impl fmt::Display for Text {
         write!(f, "{} {}", self.win.1.1, self.win.1.0)
     }
 }
+
+
+pub fn gen(path: String) -> impl Iterator<Item = Part<char>> {
+    let mut s = source::Sources::init(path);
+    let mut l = lines(s.next().unwrap());
+    let mut c = chars(l.next().unwrap());
+    let mut loc = point::Location::init(
+        (s.curr().path(true), s.curr().path(false)), 
+        &s.curr().module()
+    );
+    loc.adjust(1,0);
+    std::iter::from_fn(move || {
+        loop {
+            match c.next() {
+                Some(i) => {
+                    loc.new_char();
+                    if i == ' ' { loc.new_word() }
+                    return Some ((i, loc.clone()))
+                },
+                None => {
+                    match l.next() {
+                        Some(j) => { 
+                            loc.new_line();
+                            loc.new_word();
+                            c = chars(j);
+                            return Some((c.next().unwrap_or('\n'), loc.clone()))
+                        },
+                        None => {
+                            match s.bump() {
+                                Some(k) => {
+                                    loc = point::Location::init(
+                                        (s.curr().path(true), s.curr().path(false)), 
+                                        &s.curr().module()
+                                    );
+                                    l = lines(k);
+                                },
+                                None => {
+                                    return None 
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+        }
+    })
+}
+
+
+fn lines(src: source::Source) -> impl Iterator<Item = String> {
+    let mut reader = reader::BufReader::open(src.path(true)).unwrap();
+    let mut buffer = String::new();
+    std::iter::from_fn(move || {
+        if let Some(line) = reader.read_line(&mut buffer) {
+            return Some(line.unwrap().clone());
+        }
+        None
+    })
+}
+
+
+fn chars(src: String) -> impl Iterator<Item = char> {
+    let mut chrs = src.clone();
+    std::iter::from_fn(move || {
+        if let Some(ch) =  chrs.chars().next() {
+            chrs.remove(0);
+            return Some(ch.clone()) 
+        };
+        None
+    })
+}
+
 
 mod reader {
     use std::{

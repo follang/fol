@@ -42,7 +42,7 @@ impl Element {
     pub fn con(&self) -> &String { &self.con }
     pub fn set_key(&mut self, k: KEYWORD) { self.key = k; }
 
-    //private
+    //checking
     fn comment(&mut self, code: &mut text::Text) {
        self.con.push_str(&code.curr().0.to_string());
        self.bump(code);
@@ -355,7 +355,7 @@ impl Elements {
     }
     pub fn seek(&self, u: usize) -> Element { 
         if u > SLIDER { format!("{} is begger than SLIDER: {}", u, SLIDER); }
-        self.prev_vec()[0].clone() 
+        self.prev_vec()[0].clone()
     }
     pub fn bump(&mut self) -> Opt<Element> {
         match self.elem.next() {
