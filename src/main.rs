@@ -15,62 +15,13 @@ use crate::syntax::lexer::*;
 
 fn main() {
     let path = "./test/main/var/var.fol".to_string();
-    // let path = "./test/main".to_string();
-    // match source::from_dir("/home/bresilla/data/code/proj/folang/fol/etc") {
-    //     Ok(files) => {
-    //         for f in files.iter(){
-    //             println!("{}", f);    
-    //         }
-    //     },
-    //     Err(e) => println!("{}", e)
-    // }
 
-    // let mut srcs = source::Sources::init(path);
-    // while let Some(src) = srcs.next() {
-    //     println!("{}", src);
-    // }
-    // let chars = text2::Text::init(path);
-    // for c in chars {
-    //     println!("{}\t{}", c.1, c.0);
-    // }
-    // for e in  text2::gen(path) {
-    //     println!("{}\t{}", e.1, e.0);
-    // }
-
+    // let elem = source::Sources::init(path);
+    // let elem = text2::Text::init(path);
     // let elem = stage1::Elements::init(path);
     let elem = stage2::Elements::init(path);
     for c in elem {
         println!("{}", c);
     }
-
-    // for e in source::sources("./etc/var/var.fol".to_string()) {
-    //     let mut text = text::Text::init(e);
-    //     while let Some(win) = text.bump(&mut point::Location::default()) {
-    //         println!("{}", win);
-    //     }
-    // }
-
-    // for e in source::sources("./etc") {
-    //     for d in element::elements2(e) {
-    //     for l in text::chars(e) {
-    //         println!("{}", l);
-    //     }
-    // }
-
-    // let mut s = vector::Elements::init(path);
-    // while !s.list().is_empty() {
-    //     println!("{}", s);
-    //     s.bump()
-    // }
-
-
-    // let mut e = stream::Stream::init(&path);
-    // while let Some(val) = e.bump() {
-    //     println!("{}", val)
-    // }
-
-
-
-
 
 }

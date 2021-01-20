@@ -279,19 +279,20 @@ impl Elements {
     pub fn next_vec(&self) -> Vec<Element> {
         self.win.2.clone()
     }
-    pub fn peek(&self, u: usize) -> Element { 
-        if u > SLIDER { format!("{} is begger than SLIDER: {}", u, SLIDER); }
-        self.next_vec()[0].clone() 
+    pub fn peek(&self, index: usize) -> Element { 
+        let u = if index > SLIDER { 0 } else { index };
+        self.next_vec()[u].clone() 
     }
     pub fn prev_vec(&self) -> Vec<Element> {
         let mut rev = self.win.0.clone();
         rev.reverse();
         rev
     }
-    pub fn seek(&self, u: usize) -> Element { 
-        if u > SLIDER { format!("{} is begger than SLIDER: {}", u, SLIDER); }
-        self.prev_vec()[0].clone() 
+    pub fn seek(&self, index: usize) -> Element { 
+        let u = if index > SLIDER { 0 } else { index };
+        self.prev_vec()[u].clone() 
     }
+
     pub fn bump(&mut self) -> Opt<Element> {
         match self.elem.next() {
             Some(v) => {

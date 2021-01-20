@@ -24,9 +24,9 @@ impl Text {
     pub fn next_vec(&self) -> Vec<Part<char>> {
         self.win.2.clone()
     }
-    pub fn peek(&self, u: usize) -> Part<char> { 
-        if u > SLIDER { format!("{} is begger than SLIDER: {}", u, SLIDER); }
-        self.next_vec()[0].clone() 
+    pub fn peek(&self, index: usize) -> Part<char> { 
+        let u = if index > SLIDER { 0 } else { index };
+        self.next_vec()[u].clone() 
     }
     ///prev vector
     pub fn prev_vec(&self) -> Vec<Part<char>> {
@@ -34,9 +34,9 @@ impl Text {
         rev.reverse();
         rev
     }
-    pub fn seek(&self, u: usize) -> Part<char> { 
-        if u > SLIDER { format!("{} is begger than SLIDER: {}", u, SLIDER); }
-        self.prev_vec()[0].clone() 
+    pub fn seek(&self, index: usize) -> Part<char> { 
+        let u = if index > SLIDER { 0 } else { index };
+        self.prev_vec()[u].clone() 
     }
 
     pub fn init(dir: String) -> Self {
