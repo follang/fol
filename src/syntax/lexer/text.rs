@@ -3,8 +3,8 @@
 use std::fmt;
 use std::str::Chars;
 use crate::syntax::point;
-use crate::syntax::scan::source;
 
+use crate::syntax::lexer::source;
 use crate::syntax::error::*;
 use crate::types::*;
 

@@ -2,8 +2,7 @@
 
 use std::fmt;
 use crate::syntax::point;
-use crate::syntax::scan::source;
-use crate::syntax::scan::text;
+use crate::syntax::lexer::text;
 use crate::types::*;
 use crate::syntax::error::*;
 

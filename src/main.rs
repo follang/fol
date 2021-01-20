@@ -11,11 +11,11 @@ extern crate colored;
 
 use crate::syntax::point;
 use crate::syntax::error::*;
-use crate::syntax::scan::*;
+use crate::syntax::lexer::*;
 
 fn main() {
-    // let path = "./etc/main/var/var.fol".to_string();
-    let path = "./tst/main".to_string();
+    let path = "./test/main/var/var.fol".to_string();
+    // let path = "./test/main".to_string();
     // match source::from_dir("/home/bresilla/data/code/proj/folang/fol/etc") {
     //     Ok(files) => {
     //         for f in files.iter(){
@@ -38,7 +38,7 @@ fn main() {
     // }
 
     // let elem = stage1::Elements::init(path);
-    let elem = lexer::Elements::init(path);
+    let elem = stage2::Elements::init(path);
     for c in elem {
         println!("{}", c);
     }
