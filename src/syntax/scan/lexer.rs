@@ -3,11 +3,16 @@
 use std::fmt;
 use crate::syntax::point;
 use crate::syntax::scan::source;
+// use crate::syntax::scan::text;
 use crate::syntax::scan::text;
-use crate::syntax::scan::stage1;
 
 use crate::syntax::token::KEYWORD::*;
 use crate::syntax::token::*;
+use crate::syntax::error::*;
+
+
+const SLIDER: usize = 9;
+
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Element {
@@ -15,18 +20,6 @@ pub struct Element {
     loc: point::Location,
     con: String,
 }
-
-impl From<stage1::Element> for Element {
-    fn from(el: stage1::Element) -> Self {
-        Self { 
-            key: el.key().clone(),
-            loc: el.loc().clone(),
-            con: el.con().clone(),
-        }
-    }
-}
-
-
 
 impl std::default::Default for Element {
     fn default() -> Self {
@@ -55,21 +48,3 @@ impl Element {
         self.key = k;
     }
 }
-
-/// Creates a iterator that produces tokens from the input string.
-pub fn elements<'a, I>(src: &mut Box<I>) -> impl Iterator<Item = Element> + '_
-where I: Iterator<Item = stage1::Element> {
-    std::iter::from_fn(move || {
-        if let Some(v) = src.next() {
-            return Some(v.into());
-        }
-        None
-    })
-}
-
-impl fmt::Display for Element {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}\t{}  {}", self.loc, self.key, self.con)
-    }
-}
-

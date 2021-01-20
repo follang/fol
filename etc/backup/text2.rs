@@ -89,16 +89,21 @@ pub fn gen(path: String) -> impl Iterator<Item = Part> {
 
 
 impl Text {
-    pub fn curr(&self) -> Part {
+    pub fn curr_part(&self) -> Part {
         self.win.1.clone()
+    }
+    pub fn curr_char(&self) -> char {
+        self.win.1.0
     }
     ///next vector
     pub fn next_vec(&self) -> Vec<Part> {
         self.win.2.clone()
     }
-    pub fn peek(&self, u: usize) -> Part { 
-        if u > SLIDER { format!("{} is begger than SLIDER: {}", u, SLIDER); }
+    pub fn next_part(&self) -> Part {
         self.next_vec()[0].clone() 
+    }
+    pub fn next_char(&self) -> char {
+        self.next_vec()[0].0
     }
     ///prev vector
     pub fn prev_vec(&self) -> Vec<Part> {
@@ -106,9 +111,11 @@ impl Text {
         rev.reverse();
         rev
     }
-    pub fn seek(&self, u: usize) -> Part { 
-        if u > SLIDER { format!("{} is begger than SLIDER: {}", u, SLIDER); }
+    pub fn prev_part(&self) -> Part {
         self.prev_vec()[0].clone() 
+    }
+    pub fn prev_char(&self) -> char {
+        self.prev_vec()[0].0
     }
 
     pub fn init(dir: String) -> Self {

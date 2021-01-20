@@ -25,9 +25,9 @@ impl std::default::Default for Location {
         Self {
             path: (String::new(), String::new()),
             module: String::new(),
-            row: 1,
-            col: 1,
-            len: 1,
+            row: 0,
+            col: 0,
+            len: 0,
             deep: 1,
         }
     }
@@ -98,12 +98,6 @@ impl Location {
 
     pub fn module(&self) -> &String {
         &self.module
-    }
-
-    pub fn reset(&mut self) {
-        self.row = 1;
-        self.col = 1;
-        self.len = 1;
     }
 
     pub fn new_char(&mut self) {
