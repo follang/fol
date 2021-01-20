@@ -14,8 +14,8 @@ use crate::syntax::error::*;
 use crate::syntax::scan::*;
 
 fn main() {
-    let path = "./etc/main/var/var.fol".to_string();
-    // let path = "./etc/main".to_string();
+    // let path = "./etc/main/var/var.fol".to_string();
+    let path = "./etc/main".to_string();
     // match source::from_dir("/home/bresilla/data/code/proj/folang/fol/etc") {
     //     Ok(files) => {
     //         for f in files.iter(){

@@ -411,8 +411,6 @@ pub fn elements(dir: String) -> impl Iterator<Item = Element>  {
             } else if is_alpha(&txt.curr().0) {
                 result.alpha(&mut txt);
             }
-            // let (row, col) = (loc.row(), loc.col());
-            // result.loc.adjust(row, col);
             return Some(result);
         }
         None
