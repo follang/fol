@@ -105,7 +105,6 @@ pub fn gen(path: String) -> impl Iterator<Item = Part<char>> {
             match c.next() {
                 Some(i) => {
                     loc.new_char();
-                    if i == ' ' { loc.new_word() }
                     return Some ((i, loc.clone()))
                 },
                 None => {

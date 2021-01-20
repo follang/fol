@@ -17,7 +17,9 @@ macro_rules! crash {
 }
 
 pub trait Glitch: std::error::Error {}
+pub type Sin = Vec<Box<(dyn Glitch + 'static)>>;
 
 pub type Con<T> = Result<T, Box<(dyn Glitch + 'static)>>;
 pub type Vod = Result<(), Box<(dyn Glitch + 'static)>>;
 pub type Opt<T> = Option<T>;
+

@@ -279,8 +279,9 @@ impl Elements {
     pub fn next_vec(&self) -> Vec<Element> {
         self.win.2.clone()
     }
-    pub fn peek(&self, index: usize) -> Element { 
-        let u = if index > SLIDER { 0 } else { index };
+    pub fn peek(&self, index: usize, ignore: bool) -> Element { 
+        let mut u = if index > SLIDER { SLIDER } else { index };
+        if ignore && self.next_vec()[u].key().is_space() && u < SLIDER { u += 1 };
         self.next_vec()[u].clone() 
     }
     pub fn prev_vec(&self) -> Vec<Element> {
@@ -288,8 +289,9 @@ impl Elements {
         rev.reverse();
         rev
     }
-    pub fn seek(&self, index: usize) -> Element { 
-        let u = if index > SLIDER { 0 } else { index };
+    pub fn seek(&self, index: usize, ignore: bool) -> Element { 
+        let mut u = if index > SLIDER { SLIDER } else { index };
+        if ignore && self.next_vec()[u].key().is_space() && u < SLIDER { u += 1 };
         self.prev_vec()[u].clone() 
     }
 
