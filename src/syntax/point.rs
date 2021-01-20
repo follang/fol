@@ -8,6 +8,8 @@ use std::io::BufReader;
 use std::path::Path;
 use colored::Colorize;
 
+use crate::types::*;
+
 
 /// A location somewhere in the sourcecode.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]

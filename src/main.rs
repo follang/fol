@@ -1,7 +1,10 @@
 #![allow(unused_imports)]
 #![allow(unused_variables)]
 
+#[macro_use]
+mod types;
 mod syntax;
+
 #[macro_use]
 extern crate regex;
 extern crate colored;

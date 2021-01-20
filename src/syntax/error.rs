@@ -4,23 +4,7 @@
 use std::fmt;
 use colored::Colorize;
 use crate::syntax::point;
-
-// pub trait Boxing {
-//     fn box (&self) -> Box<Self>;
-// }
-
-pub trait Glitch: std::error::Error {}
-macro_rules! catch {
-    ($err:expr $(,)?) => ({ Box::new($err) });
-}
-macro_rules! crash {
-    () => ({ std::process::exit(0); });
-    ($err:expr $(,)?) => ({ println!("{}", $err); std::process::exit(0); });
-}
-
-pub(crate) type Con<T> = Result<T, Box<(dyn Glitch + 'static)>>;
-pub(crate) type Vod = Result<(), Box<(dyn Glitch + 'static)>>;
-pub(crate) type Opt<T> = Option<T>;
+use crate::types::*;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Typo {

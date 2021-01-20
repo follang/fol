@@ -1,2 +1,3 @@
-~var[nor, []rac] one;
-~fun[nor, []rac] one;
+~var[nor, []rac] one = "one two";
+~fun[nor, []rac] one = 'h';
+//fn

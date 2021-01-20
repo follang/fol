@@ -3,15 +3,13 @@
 use std::fmt;
 use crate::syntax::point;
 use crate::syntax::scan::source;
-// use crate::syntax::scan::text;
 use crate::syntax::scan::text;
+use crate::types::*;
+use crate::syntax::error::*;
 
 use crate::syntax::token::KEYWORD::*;
 use crate::syntax::token::*;
-use crate::syntax::error::*;
 
-
-const SLIDER: usize = 9;
 
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -31,26 +29,21 @@ impl std::default::Default for Element {
     }
 }
 
-impl Element {
-    pub fn empty(key: KEYWORD, loc: point::Location, con: String) -> Self {
-        Element { key, loc, con }
-    }
-    pub fn key(&self) -> &KEYWORD {
-        &self.key
-    }
-    pub fn loc(&self) -> &point::Location {
-        &self.loc
-    }
-    pub fn con(&self) -> &String {
-        &self.con
-    }
-    pub fn set_key(&mut self, k: KEYWORD) {
-        self.key = k;
+impl fmt::Display for Element {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}\t{}  {}", self.loc, self.key, self.con)
     }
 }
 
 impl Element {
-   fn comment(&mut self, code: &mut text::Text) {
+    pub fn init(key: KEYWORD, loc: point::Location, con: String) -> Self { Self{ key, loc, con } }
+    pub fn key(&self) -> &KEYWORD { &self.key }
+    pub fn loc(&self) -> &point::Location { &self.loc }
+    pub fn con(&self) -> &String { &self.con }
+    pub fn set_key(&mut self, k: KEYWORD) { self.key = k; }
+
+    //private
+    fn comment(&mut self, code: &mut text::Text) {
        self.con.push_str(&code.curr().0.to_string());
        self.bump(code);
        if code.curr().0 == '/' {
@@ -325,15 +318,9 @@ impl Element {
 //    }
 }
 
-impl fmt::Display for Element {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}\t{}  {}", self.loc, self.key, self.con)
-    }
-}
-
 pub struct Elements {
     elem: Box<dyn Iterator<Item = Element>>,
-    win: (Vec<Element>, Element, Vec<Element>),
+    win: Win<Element>,
     _in_count: usize,
 }
 
@@ -405,9 +392,9 @@ impl Iterator for Elements {
 pub fn elements(dir: String) -> impl Iterator<Item = Element>  {
     let mut txt = Box::new(text::Text::init(dir));
     std::iter::from_fn(move || {
-        if let Some(v) = txt.bump() {
-            let loc = v.1.1.clone();
-            let mut result = Element::empty(illegal, loc.clone(), String::new());
+        if let Some(v) = txt.next() {
+            let loc = txt.curr().1.clone();
+            let mut result = Element::init(illegal, loc.clone(), String::new());
             result.loc.new_word();
             if txt.curr().0 == '/' && (txt.peek(0).0 == '/' || txt.peek(0).0 == '*') {
                 result.comment(&mut txt);

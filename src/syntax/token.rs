@@ -8,8 +8,7 @@ use colored::Colorize;
 use std::collections::HashMap;
 use std::fmt;
 
-// use enumeq::EnumEq;
-// #[derive(Clone, Debug, PartialOrd, Ord, EnumEq)]
+use crate::types::*;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum KEYWORD {

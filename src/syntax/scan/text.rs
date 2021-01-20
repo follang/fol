@@ -6,15 +6,13 @@ use crate::syntax::point;
 use crate::syntax::scan::source;
 
 use crate::syntax::error::*;
+use crate::types::*;
 
-pub const EOF_CHAR: char = '\0';
-const SLIDER: usize = 9;
-
-type Part = (char, point::Location);
+type Part<T> = (T, point::Location);
 
 pub struct Text {
-    chars: Box<dyn Iterator<Item = Part>>,
-    win: (Vec<Part>, Part, Vec<Part>),
+    chars: Box<dyn Iterator<Item = Part<char>>>,
+    win: Win<Part<char>>,
     _in_count: usize,
 }
 
@@ -41,7 +39,7 @@ fn chars(src: String) -> impl Iterator<Item = char> {
 }
 
 
-pub fn gen(path: String) -> impl Iterator<Item = Part> {
+pub fn gen(path: String) -> impl Iterator<Item = Part<char>> {
     let mut s = source::Sources::init(path);
     let mut l = lines(s.next().unwrap());
     let mut c = chars(l.next().unwrap());
@@ -89,30 +87,30 @@ pub fn gen(path: String) -> impl Iterator<Item = Part> {
 
 
 impl Text {
-    pub fn curr(&self) -> Part {
+    pub fn curr(&self) -> Part<char> {
         self.win.1.clone()
     }
     ///next vector
-    pub fn next_vec(&self) -> Vec<Part> {
+    pub fn next_vec(&self) -> Vec<Part<char>> {
         self.win.2.clone()
     }
-    pub fn peek(&self, u: usize) -> Part { 
+    pub fn peek(&self, u: usize) -> Part<char> { 
         if u > SLIDER { format!("{} is begger than SLIDER: {}", u, SLIDER); }
         self.next_vec()[0].clone() 
     }
     ///prev vector
-    pub fn prev_vec(&self) -> Vec<Part> {
+    pub fn prev_vec(&self) -> Vec<Part<char>> {
         let mut rev = self.win.0.clone();
         rev.reverse();
         rev
     }
-    pub fn seek(&self, u: usize) -> Part { 
+    pub fn seek(&self, u: usize) -> Part<char> { 
         if u > SLIDER { format!("{} is begger than SLIDER: {}", u, SLIDER); }
         self.prev_vec()[0].clone() 
     }
 
     pub fn init(dir: String) -> Self {
-        let def: Part = ('\0', point::Location::default());
+        let def: Part<char> = ('\0', point::Location::default());
         let mut prev = Vec::with_capacity(SLIDER);
         let mut next = Vec::with_capacity(SLIDER);
         let mut chars = Box::new(gen(dir));
@@ -125,7 +123,7 @@ impl Text {
         }
     }
 
-    pub fn bump(&mut self) -> Opt<(Vec<Part>, Part, Vec<Part>)> {
+    pub fn bump(&mut self) -> Opt<(Vec<Part<char>>, Part<char>, Vec<Part<char>>)> {
         match self.chars.next() {
             Some(v) => {
                 self.win.0.remove(0); self.win.0.push(self.win.1.clone());
@@ -147,8 +145,8 @@ impl Text {
 }
 
 impl Iterator for Text {
-    type Item = Part;
-    fn next(&mut self) -> Option<Part> {
+    type Item = Part<char>;
+    fn next(&mut self) -> Option<Part<char>> {
         match self.bump() {
             Some(v) => Some(v.1),
             None => None
