@@ -330,7 +330,7 @@ impl Elements {
         let mut next = Vec::with_capacity(SLIDER);
         let mut elem = Box::new(elements(dir));
         for _ in 0..SLIDER { prev.push(Element::default()) }
-        for _ in 0..SLIDER { next.push(elem.next().unwrap()) }
+        for _ in 0..SLIDER { next.push(elem.next().unwrap_or(Element::default())) }
         Self {
             elem,
             win: (prev, Element::default(), next),

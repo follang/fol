@@ -45,7 +45,7 @@ impl Text {
         let mut next = Vec::with_capacity(SLIDER);
         let mut chars = Box::new(gen(dir));
         for _ in 0..SLIDER { prev.push(def.clone()) }
-        for _ in 0..SLIDER { next.push(chars.next().unwrap()) }
+        for _ in 0..SLIDER { next.push(chars.next().unwrap_or(def.clone())) }
         Self {
             chars,
             win: (prev, def, next),

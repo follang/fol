@@ -24,6 +24,9 @@ impl fmt::Display for Glitch {
 }
 
 impl std::error::Error for Glitch  {  }
+// impl From<std::option::NoneError> for Glitch { 
+//     fn from(_: T) -> Self { todo!() }
+// }
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Typo {

@@ -218,8 +218,7 @@ impl Elements {
         let mut next = Vec::with_capacity(SLIDER);
         let mut elem = Box::new(elements(dir));
         for _ in 0..SLIDER { prev.push(Element::default()) }
-        //TODO::fix this unwrap
-        for _ in 0..SLIDER { next.push(elem.next().unwrap().unwrap()) }
+        for _ in 0..SLIDER { next.push(elem.next().unwrap_or(Ok(Element::default())).unwrap()) }
         Self {
             elem,
             win: (prev, Element::default(), next),
@@ -248,14 +247,14 @@ impl Elements {
         self.prev_vec()[u].clone() 
     }
 
-    pub fn bump(&mut self) -> Option<Element> {
+    pub fn bump(&mut self) -> Option<Con<Element>> {
         match self.elem.next() {
             Some(v) => {
                 self.win.0.remove(0); self.win.0.push(self.win.1.clone());
                 self.win.1 = self.win.2[0].clone();
                 //TODO: fix this unwrap
                 self.win.2.remove(0); self.win.2.push(v.unwrap());
-                return Some(self.win.1.clone())
+                return Some(Ok(self.win.1.clone()))
             },
             None => {
                 if self._in_count > 0 {
@@ -263,7 +262,7 @@ impl Elements {
                     self.win.1 = self.win.2[0].clone();
                     self.win.2.remove(0); self.win.2.push(Element::default());
                     self._in_count -= 1;
-                    return Some(self.win.1.clone())
+                    return Some(Ok(self.win.1.clone()))
                 } else { return None }
             }
         }
@@ -273,7 +272,17 @@ impl Elements {
 impl Iterator for Elements {
     type Item = Element;
     fn next(&mut self) -> Option<Element> {
-        return self.bump()
+        loop {
+            match self.bump() {
+                Some(v) => {
+                    match v {
+                        Ok(i) => { return Some(i) },
+                        Err(_) => continue
+                    }
+                },
+                None => return None
+            }
+        }
     }
 }
 
@@ -283,7 +292,9 @@ pub fn elements(dir: String) -> impl Iterator<Item = Con<Element>>  {
     std::iter::from_fn(move || {
         if let Some(v) = stg.next() {
             let mut result: Element = v.into();
-            result.analyze(&mut stg).ok();
+            if let Err(err) = result.analyze(&mut stg) {
+                return Some(Err(err));
+            }
             return Some(Ok(result));
         }
         None
