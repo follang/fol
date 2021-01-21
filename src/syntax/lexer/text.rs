@@ -105,6 +105,7 @@ pub fn gen(path: String) -> impl Iterator<Item = Part<char>> {
             match c.next() {
                 Some(i) => {
                     loc.new_char();
+                    if i == ' ' { loc.new_word() }
                     return Some ((i, loc.clone()))
                 },
                 None => {
@@ -191,4 +192,50 @@ mod reader {
                 .transpose()
         }
     }
+}
+
+pub fn gen2(path: String) -> impl Iterator<Item = Con<Part<char>>> {
+    let mut s = source::Sources::init(path);
+    let mut l = lines(s.next().unwrap());
+    let mut c = chars(l.next().unwrap());
+    let mut loc = point::Location::init(
+        (s.curr().path(true), s.curr().path(false)), 
+        &s.curr().module()
+    );
+    loc.adjust(1,0);
+    std::iter::from_fn(move || {
+        loop {
+            match c.next() {
+                Some(i) => {
+                    loc.new_char();
+                    if i == ' ' { loc.new_word() }
+                    return Some(Ok((i, loc.clone())))
+                },
+                None => {
+                    match l.next() {
+                        Some(j) => { 
+                            loc.new_line();
+                            loc.new_word();
+                            c = chars(j);
+                            return Some(Ok((c.next().unwrap_or('\n'), loc.clone())))
+                        },
+                        None => {
+                            match s.bump() {
+                                Some(k) => {
+                                    loc = point::Location::init(
+                                        (s.curr().path(true), s.curr().path(false)), 
+                                        &s.curr().module()
+                                    );
+                                    l = lines(k);
+                                },
+                                None => {
+                                    return None 
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+        }
+    })
 }

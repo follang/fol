@@ -202,55 +202,6 @@ impl Element {
         };
         self.set_key(comment);
     }
-    // pub fn check_bracket_match(&mut self, e: &mut flaw::FLAW) {
-    //     let loc = self.curr().loc().clone();
-    //     let key = self.curr().key().clone();
-    //     if self.curr().key().is_open_bracket() {
-    //         self.bracs().push((loc, key))
-    //     } else if self.curr().key().is_close_bracket() {
-    //         if (matches!(self.curr().key(), KEYWORD::symbol(SYMBOL::roundC_))
-    //             && matches!(
-    //                 self.bracs()
-    //                     .last()
-    //                     .unwrap_or(&(loc.clone(), KEYWORD::illegal))
-    //                     .1,
-    //                 KEYWORD::symbol(SYMBOL::roundO_)
-    //             ))
-    //             || (matches!(self.curr().key(), KEYWORD::symbol(SYMBOL::squarC_))
-    //                 && matches!(
-    //                     self.bracs()
-    //                         .last()
-    //                         .unwrap_or(&(loc.clone(), KEYWORD::illegal))
-    //                         .1,
-    //                     KEYWORD::symbol(SYMBOL::squarO_)
-    //                 ))
-    //             || (matches!(self.curr().key(), KEYWORD::symbol(SYMBOL::curlyC_))
-    //                 && matches!(
-    //                     self.bracs()
-    //                         .last()
-    //                         .unwrap_or(&(loc.clone(), KEYWORD::illegal))
-    //                         .1,
-    //                     KEYWORD::symbol(SYMBOL::curlyO_)
-    //                 ))
-    //         {
-    //             self.bracs().pop();
-    //         } else {
-    //             let key = match self
-    //                 .bracs()
-    //                 .last()
-    //                 .unwrap_or(&(loc.clone(), KEYWORD::illegal))
-    //                 .1
-    //             {
-    //                 KEYWORD::symbol(SYMBOL::curlyO_) => KEYWORD::symbol(SYMBOL::curlyC_),
-    //                 KEYWORD::symbol(SYMBOL::squarO_) => KEYWORD::symbol(SYMBOL::squarC_),
-    //                 KEYWORD::symbol(SYMBOL::roundO_) => KEYWORD::symbol(SYMBOL::roundC_),
-    //                 _ => KEYWORD::illegal,
-    //             };
-    //             self.report_bracket(key.to_string(), self.curr().loc().clone(), e);
-    //         }
-    //     }
-    // }
-
 }
 
 pub struct Elements {

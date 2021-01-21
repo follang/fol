@@ -6,6 +6,22 @@ use colored::Colorize;
 use crate::syntax::point;
 use crate::types::*;
 
+pub enum Error {
+    Flaw(Flaw),
+    Typo(Typo),
+    Slip(Slip)
+}
+
+// impl fmt::Display for Error {
+//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//         match self {
+//             Flaw(a) => write!(f, "{}", a),
+//             Typo(a) => write!(f, "{}", a),
+//             Slip(a) => write!(f, "{}", a),
+//         }
+//     }
+// }
+
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Typo {
     ParserUnexpected {
