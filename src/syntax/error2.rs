@@ -16,14 +16,17 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Error::Flaw(v) => write!(f, "{}", v),
-            Error::Typo(v) => write!(f, "{}", v),
-            Error::Slip(v) => write!(f, "{}", v),
+            ErrorKind::Flaw(v) => write!(f, "{}", v),
+            ErrorKind::Typo(v) => write!(f, "{}", v),
+            ErrorKind::Slip(v) => write!(f, "{}", v),
         }
     }
 }
 
-impl std::error::Error for Error  {  }
+impl std::error::Error for Flaw  {  }
+ 
+
+
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Typo {
@@ -163,6 +166,8 @@ impl fmt::Display for Typo {
     }
 }
 impl std::error::Error for Typo  {  }
+impl Glitch for Typo {  }
+impl Typo { pub fn r#box(self) -> Box<Self> { Box::new(self) } }
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Flaw {
@@ -212,6 +217,8 @@ impl fmt::Display for Flaw {
     }
 }
 impl std::error::Error for Flaw  {  }
+impl Glitch for Flaw  {  }
+impl Flaw { pub fn r#box(self) -> Box<Self> { Box::new(self) } }
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Slip {
@@ -253,4 +260,6 @@ impl fmt::Display for Slip {
     }
 }
 impl std::error::Error for Slip  {  }
+impl Glitch for Slip  {  }
+impl Slip { pub fn r#box(self) -> Box<Self> { Box::new(self) } }
 

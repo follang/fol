@@ -1,14 +1,16 @@
 #![allow(dead_code)]
 #![allow(unused_macros)]
 
+use crate::syntax::error::Error;
+
+
 pub const SLIDER: usize = 9;
 pub const EOF_CHAR: char = '\0';
 pub type Win<T> = (Vec<T>, T, Vec<T>);
 
-
 #[macro_export]
 macro_rules! catch {
-    ($err:expr $(,)?) => ({ Box::new($err) });
+    ($err:expr $(,)?) => ({ Err($err) });
 }
 #[macro_export]
 macro_rules! crash {
@@ -16,10 +18,6 @@ macro_rules! crash {
     ($err:expr $(,)?) => ({ println!("{}", $err); std::process::exit(0); });
 }
 
-pub trait Glitch: std::error::Error {}
-pub type Sin = Vec<Box<(dyn Glitch + 'static)>>;
 
-pub type Con<T> = Result<T, Box<(dyn Glitch + 'static)>>;
-pub type Vod = Result<(), Box<(dyn Glitch + 'static)>>;
-pub type Opt<T> = Option<T>;
-
+pub type Con<T> = Result<T, Error>;
+pub type Vod = Result<(), Error>;

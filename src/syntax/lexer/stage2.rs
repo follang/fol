@@ -52,7 +52,7 @@ impl Element {
         self.loc.longer(&other.loc.len())
     }
 
-    pub fn analyze(&mut self, el: &mut stage1::Elements){
+    pub fn analyze(&mut self, el: &mut stage1::Elements) -> Vod {
         // // EOL to SPACE
         if el.curr().key().is_eol()
             && (el.seek(0).key().is_nonterm()
@@ -71,7 +71,7 @@ impl Element {
             && el.peek(0).key().is_number()
         {
             if el.seek(0).key().is_void() {
-                self.make_number(el);
+                self.make_number(el)?;
             }
         } else if (matches!(el.curr().key(), KEYWORD::symbol(SYMBOL::minus_))
             && el.peek(0).key().is_number())
@@ -83,7 +83,7 @@ impl Element {
                 let key = el.seek(0).key().clone();
                 //TODO: report error
             } else {
-                self.make_number(el);
+                self.make_number(el)?;
             }
         }
         // operators
@@ -93,7 +93,7 @@ impl Element {
             && el.peek(0).key().is_symbol()
             && (el.seek(0).key().is_void() || el.seek(0).key().is_bracket())
         {
-            self.make_multi_operator(el);
+            self.make_multi_operator(el)?;
         }
         // options
         else if el.curr().key().is_symbol()
@@ -102,53 +102,52 @@ impl Element {
                 || el.seek(0).key().is_eof()
                 || el.seek(0).key().is_void())
         {
-            self.make_syoption(el);
+            self.make_syoption(el)?;
         }
         else if matches!(el.curr().key(), KEYWORD::ident(_)) {
             self.set_key(ident(Some(el.curr().con().to_string())))
         }
+        Ok(())
     }
 
-    pub fn make_multi_operator(&mut self, el: &mut stage1::Elements) -> Self {
-        let mut result = self.clone();
+    pub fn make_multi_operator(&mut self, el: &mut stage1::Elements) -> Vod {
         while el.peek(0).key().is_symbol() && !el.peek(0).key().is_bracket() {
-            result.combine(&el.peek(0).into());
+            self.combine(&el.peek(0).into());
             el.bump();
         }
-        match result.con().as_str() {
-            ":=" => result.set_key(operator(OPERATOR::assign2_)),
-            "..." => result.set_key(operator(OPERATOR::ddd_)),
-            ".." => result.set_key(operator(OPERATOR::dd_)),
-            "=>" => result.set_key(operator(OPERATOR::flow_)),
-            "->" => result.set_key(operator(OPERATOR::flow2_)),
-            "==" => result.set_key(operator(OPERATOR::equal_)),
-            "!=" => result.set_key(operator(OPERATOR::noteq_)),
-            ">=" => result.set_key(operator(OPERATOR::greatereq_)),
-            "<=" => result.set_key(operator(OPERATOR::lesseq_)),
-            "+=" => result.set_key(operator(OPERATOR::addeq_)),
-            "-=" => result.set_key(operator(OPERATOR::subtracteq_)),
-            "*=" => result.set_key(operator(OPERATOR::multiplyeq_)),
-            "/=" => result.set_key(operator(OPERATOR::divideeq_)),
-            "<<" => result.set_key(operator(OPERATOR::shiftleft_)),
-            ">>" => result.set_key(operator(OPERATOR::shiftright_)),
-            _ => result.set_key(operator(OPERATOR::ANY)),
+        match self.con().as_str() {
+            ":=" => self.set_key(operator(OPERATOR::assign2_)),
+            "..." => self.set_key(operator(OPERATOR::ddd_)),
+            ".." => self.set_key(operator(OPERATOR::dd_)),
+            "=>" => self.set_key(operator(OPERATOR::flow_)),
+            "->" => self.set_key(operator(OPERATOR::flow2_)),
+            "==" => self.set_key(operator(OPERATOR::equal_)),
+            "!=" => self.set_key(operator(OPERATOR::noteq_)),
+            ">=" => self.set_key(operator(OPERATOR::greatereq_)),
+            "<=" => self.set_key(operator(OPERATOR::lesseq_)),
+            "+=" => self.set_key(operator(OPERATOR::addeq_)),
+            "-=" => self.set_key(operator(OPERATOR::subtracteq_)),
+            "*=" => self.set_key(operator(OPERATOR::multiplyeq_)),
+            "/=" => self.set_key(operator(OPERATOR::divideeq_)),
+            "<<" => self.set_key(operator(OPERATOR::shiftleft_)),
+            ">>" => self.set_key(operator(OPERATOR::shiftright_)),
+            _ => self.set_key(operator(OPERATOR::ANY)),
         }
-        result
+        Ok(())
     }
-    pub fn make_syoption(&mut self, el: &mut stage1::Elements) -> Self {
-        let mut result = self.clone();
-        match result.con().as_str() {
-            "~" => result.set_key(option(OPTION::mut_)),
-            "!" => result.set_key(option(OPTION::sta_)),
-            "+" => result.set_key(option(OPTION::exp_)),
-            "-" => result.set_key(option(OPTION::hid_)),
-            "@" => result.set_key(option(OPTION::hep_)),
+    pub fn make_syoption(&mut self, el: &mut stage1::Elements) -> Vod {
+        match self.con().as_str() {
+            "~" => self.set_key(option(OPTION::mut_)),
+            "!" => self.set_key(option(OPTION::sta_)),
+            "+" => self.set_key(option(OPTION::exp_)),
+            "-" => self.set_key(option(OPTION::hid_)),
+            "@" => self.set_key(option(OPTION::hep_)),
             _ => {}
         }
-        result
+        Ok(())
     }
 
-    pub fn make_number(&mut self, el: &mut stage1::Elements){
+    pub fn make_number(&mut self, el: &mut stage1::Elements) -> Vod{
         if el.curr().key().is_dot() && el.peek(0).key().is_decimal() {
             self.set_key(literal(LITERAL::float_));
             self.combine(&el.peek(0).into());
@@ -157,7 +156,7 @@ impl Element {
                 && el.peek(1).key().is_eol()
                 && el.peek(2).key().is_ident()
             {
-                return
+                return Ok(())
             } else if el.peek(0).key().is_dot() && !el.peek(1).key().is_ident() {
                 el.bump();
                 //TODO: report error
@@ -182,8 +181,9 @@ impl Element {
                 //TODO: report error
             }
         };
+        Ok(())
     }
-    pub fn make_comment(&mut self, el: &mut stage1::Elements) {
+    pub fn make_comment(&mut self, el: &mut stage1::Elements) -> Vod {
         if matches!(el.peek(0).key(), KEYWORD::symbol(SYMBOL::root_)) {
             while !el.peek(0).key().is_eol() {
                 self.combine(&el.peek(0).into());
@@ -201,11 +201,12 @@ impl Element {
             el.bump();
         };
         self.set_key(comment);
+        Ok(())
     }
 }
 
 pub struct Elements {
-    elem: Box<dyn Iterator<Item = Element>>,
+    elem: Box<dyn Iterator<Item = Con<Element>>>,
     win: Win<Element>,
     _in_count: usize,
 }
@@ -217,7 +218,8 @@ impl Elements {
         let mut next = Vec::with_capacity(SLIDER);
         let mut elem = Box::new(elements(dir));
         for _ in 0..SLIDER { prev.push(Element::default()) }
-        for _ in 0..SLIDER { next.push(elem.next().unwrap()) }
+        //TODO::fix this unwrap
+        for _ in 0..SLIDER { next.push(elem.next().unwrap().unwrap()) }
         Self {
             elem,
             win: (prev, Element::default(), next),
@@ -246,12 +248,13 @@ impl Elements {
         self.prev_vec()[u].clone() 
     }
 
-    pub fn bump(&mut self) -> Opt<Element> {
+    pub fn bump(&mut self) -> Option<Element> {
         match self.elem.next() {
             Some(v) => {
                 self.win.0.remove(0); self.win.0.push(self.win.1.clone());
                 self.win.1 = self.win.2[0].clone();
-                self.win.2.remove(0); self.win.2.push(v);
+                //TODO: fix this unwrap
+                self.win.2.remove(0); self.win.2.push(v.unwrap());
                 return Some(self.win.1.clone())
             },
             None => {
@@ -270,21 +273,18 @@ impl Elements {
 impl Iterator for Elements {
     type Item = Element;
     fn next(&mut self) -> Option<Element> {
-        match self.bump() {
-            Some(v) => Some(v),
-            None => None
-        }
+        return self.bump()
     }
 }
 
 /// Creates a iterator that produces tokens from the input string.
-pub fn elements(dir: String) -> impl Iterator<Item = Element>  {
+pub fn elements(dir: String) -> impl Iterator<Item = Con<Element>>  {
     let mut stg = Box::new(stage1::Elements::init(dir));
     std::iter::from_fn(move || {
         if let Some(v) = stg.next() {
             let mut result: Element = v.into();
-            result.analyze(&mut stg);
-            return Some(result);
+            result.analyze(&mut stg).ok();
+            return Some(Ok(result));
         }
         None
     })

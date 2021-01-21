@@ -53,13 +53,13 @@ impl Text {
         }
     }
 
-    pub fn bump(&mut self) -> Opt<(Vec<Part<char>>, Part<char>, Vec<Part<char>>)> {
+    pub fn bump(&mut self) -> Option<Part<char>> {
         match self.chars.next() {
             Some(v) => {
                 self.win.0.remove(0); self.win.0.push(self.win.1.clone());
                 self.win.1 = self.win.2[0].clone();
                 self.win.2.remove(0); self.win.2.push(v);
-                return Some(self.win.clone())
+                return Some(self.win.1.clone())
             },
             None => {
                 if self._in_count > 0 {
@@ -67,7 +67,7 @@ impl Text {
                     self.win.1 = self.win.2[0].clone();
                     self.win.2.remove(0); self.win.2.push(('\0', point::Location::default()));
                     self._in_count -= 1;
-                    return Some(self.win.clone())
+                    return Some(self.win.1.clone())
                 } else { return None }
             }
         }
@@ -77,10 +77,7 @@ impl Text {
 impl Iterator for Text {
     type Item = Part<char>;
     fn next(&mut self) -> Option<Part<char>> {
-        match self.bump() {
-            Some(v) => Some(v.1),
-            None => None
-        }
+        return self.bump()
     }
 }
 
@@ -192,50 +189,4 @@ mod reader {
                 .transpose()
         }
     }
-}
-
-pub fn gen2(path: String) -> impl Iterator<Item = Con<Part<char>>> {
-    let mut s = source::Sources::init(path);
-    let mut l = lines(s.next().unwrap());
-    let mut c = chars(l.next().unwrap());
-    let mut loc = point::Location::init(
-        (s.curr().path(true), s.curr().path(false)), 
-        &s.curr().module()
-    );
-    loc.adjust(1,0);
-    std::iter::from_fn(move || {
-        loop {
-            match c.next() {
-                Some(i) => {
-                    loc.new_char();
-                    if i == ' ' { loc.new_word() }
-                    return Some(Ok((i, loc.clone())))
-                },
-                None => {
-                    match l.next() {
-                        Some(j) => { 
-                            loc.new_line();
-                            loc.new_word();
-                            c = chars(j);
-                            return Some(Ok((c.next().unwrap_or('\n'), loc.clone())))
-                        },
-                        None => {
-                            match s.bump() {
-                                Some(k) => {
-                                    loc = point::Location::init(
-                                        (s.curr().path(true), s.curr().path(false)), 
-                                        &s.curr().module()
-                                    );
-                                    l = lines(k);
-                                },
-                                None => {
-                                    return None 
-                                }
-                            }
-                        }
-                    }
-                }
-            };
-        }
-    })
 }

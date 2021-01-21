@@ -319,7 +319,6 @@ impl Element {
 
 pub struct Elements {
     elem: Box<dyn Iterator<Item = Element>>,
-    sins: Sin,
     win: Win<Element>,
     _in_count: usize,
 }
@@ -329,13 +328,11 @@ impl Elements {
     pub fn init(dir: String) -> Self {
         let mut prev = Vec::with_capacity(SLIDER);
         let mut next = Vec::with_capacity(SLIDER);
-        let mut sins: Sin = Vec::new();
-        let mut elem = Box::new(elements(dir, &mut sins));
+        let mut elem = Box::new(elements(dir));
         for _ in 0..SLIDER { prev.push(Element::default()) }
         for _ in 0..SLIDER { next.push(elem.next().unwrap()) }
         Self {
             elem,
-            sins,
             win: (prev, Element::default(), next),
             _in_count: SLIDER
         }
@@ -359,7 +356,7 @@ impl Elements {
         let u = if index > SLIDER { 0 } else { index };
         self.prev_vec()[u].clone()
     }
-    pub fn bump(&mut self) -> Opt<Element> {
+    pub fn bump(&mut self) -> Option<Element> {
         match self.elem.next() {
             Some(v) => {
                 self.win.0.remove(0); self.win.0.push(self.win.1.clone());
@@ -383,15 +380,12 @@ impl Elements {
 impl Iterator for Elements {
     type Item = Element;
     fn next(&mut self) -> Option<Element> {
-        match self.bump() {
-            Some(v) => Some(v),
-            None => None
-        }
+        return self.bump()
     }
 }
 
 /// Creates a iterator that produces tokens from the input string.
-pub fn elements(dir: String, sins: &mut Sin) -> impl Iterator<Item = Element>  {
+pub fn elements(dir: String) -> impl Iterator<Item = Element>  {
     let mut txt = Box::new(text::Text::init(dir));
     // *sins = *txt.sins();
     std::iter::from_fn(move || {
