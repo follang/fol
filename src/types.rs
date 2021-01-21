@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 #![allow(unused_macros)]
 
-use crate::syntax::error::Error;
+use crate::syntax::error::Glitch;
 
 
 pub const SLIDER: usize = 9;
@@ -19,5 +19,5 @@ macro_rules! crash {
 }
 
 
-pub type Con<T> = Result<T, Error>;
-pub type Vod = Result<(), Error>;
+pub type Con<T> = Result<T, Glitch>;
+pub type Vod = Result<(), Glitch>;

@@ -7,23 +7,23 @@ use crate::syntax::point;
 use crate::types::*;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Error {
+pub enum Glitch {
     Flaw(Flaw),
     Typo(Typo),
     Slip(Slip)
 }
 
-impl fmt::Display for Error {
+impl fmt::Display for Glitch {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Error::Flaw(v) => write!(f, "{}", v),
-            Error::Typo(v) => write!(f, "{}", v),
-            Error::Slip(v) => write!(f, "{}", v),
+            Glitch::Flaw(v) => write!(f, "{}", v),
+            Glitch::Typo(v) => write!(f, "{}", v),
+            Glitch::Slip(v) => write!(f, "{}", v),
         }
     }
 }
 
-impl std::error::Error for Error  {  }
+impl std::error::Error for Glitch  {  }
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Typo {
