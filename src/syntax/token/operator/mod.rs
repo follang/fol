@@ -54,7 +54,7 @@ impl fmt::Display for OPERATOR {
             OPERATOR::shiftright_ => { t = Some(">>".to_string()); },
             _ => { t = None },
         };
-        write!(f, "{}: {}",
+        write!(f, "{}  {}",
             " OPERATOR ".black().on_red(),
             match t { 
                 Some(val) => { (format!(" {} ", val)).black().on_red().to_string() }, 

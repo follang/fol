@@ -8,6 +8,8 @@ use colored::Colorize;
 use std::collections::HashMap;
 use std::fmt;
 
+pub mod help;
+
 pub mod literal;
 pub mod void;
 pub mod symbol;
@@ -17,6 +19,7 @@ pub mod assign;
 pub mod types;
 pub mod option;
 pub mod form;
+
 
 use crate::syntax::token::{
     literal::LITERAL,
@@ -40,8 +43,8 @@ pub enum KEYWORD {
     symbol(SYMBOL),
     operator(OPERATOR),
     void(VOID),
-    ident(Option<String>),
-    comment(Option<String>),
+    ident,
+    comment,
     illegal,
 }
 
@@ -60,7 +63,7 @@ impl KEYWORD {
     }
     pub fn is_ident(&self) -> bool {
         match *self {
-            KEYWORD::ident(_) => true,
+            KEYWORD::ident => true,
             _ => false,
         }
     }
@@ -90,7 +93,7 @@ impl KEYWORD {
     }
     pub fn is_comment(&self) -> bool {
         match *self {
-            KEYWORD::comment(_) => true,
+            KEYWORD::comment => true,
             _ => false,
         }
     }
@@ -228,11 +231,9 @@ impl fmt::Display for KEYWORD {
             KEYWORD::buildin(v) => write!(f, "{}", v),
             KEYWORD::form(v) => write!(f, "{}", v),
             KEYWORD::option(v) => write!(f, "{}", v),
-            KEYWORD::ident(Some(v)) => write!(f, "{}: {}", " IDENT    ".black().on_red(), format!(" {} ", v).black().on_red().to_string()),
-            KEYWORD::ident(None) => write!(f, "{}", " IDENT    ".black().on_red()),
-            KEYWORD::comment(Some(v)) => write!(f, "{}: {}", " COMMENT  ".black().on_red(), format!(" {} ", v).black().on_red().to_string()),
-            KEYWORD::comment(None) => write!(f, "{}", " COMMENT  ".black().on_red()),
-            KEYWORD::illegal => write!(f, "{}", " ILLEGAL  ".black().on_red()),
+            KEYWORD::ident => write!(f, "{}  {}", " IDENT    ".black().on_red(), " -> ".black().on_red()),
+            KEYWORD::comment => write!(f, "{}  {}", " COMMENT  ".black().on_red(), " -> ".black().on_red()),
+            KEYWORD::illegal => write!(f, "{}  {}", " ILLEGAL  ".black().on_red(), " -> ".black().on_red()),
         }
     }
 }
@@ -241,54 +242,4 @@ pub fn get_keyword() -> HashMap<String, KEYWORD> {
     let mut keywords: HashMap<String, KEYWORD> = HashMap::new();
     keywords.insert(String::from("use"), KEYWORD::assign(ASSIGN::use_));
     keywords
-}
-pub mod part {
-    pub fn is_eof(ch: &char) -> bool {
-        return *ch == '\0';
-    }
-
-    pub fn is_eol(ch: &char) -> bool {
-        return *ch == '\n' || *ch == '\r';
-    }
-
-    pub fn is_space(ch: &char) -> bool {
-        return *ch == ' ' || *ch == '\t';
-    }
-
-    pub fn is_digit(ch: &char) -> bool {
-        return '0' <= *ch && *ch <= '9';
-    }
-
-    pub fn is_alpha(ch: &char) -> bool {
-        return 'a' <= *ch && *ch <= 'z' || 'A' <= *ch && *ch <= 'Z' || *ch == '_';
-    }
-
-    pub fn is_bracket(ch: &char) -> bool {
-        return *ch == '{' || *ch == '[' || *ch == '(' || *ch == ')' || *ch == ']' || *ch == '}';
-    }
-
-    pub fn is_symbol(ch: &char) -> bool {
-        return '!' <= *ch && *ch <= '/'
-            || ':' <= *ch && *ch <= '@'
-            || '[' <= *ch && *ch <= '^'
-            || '{' <= *ch && *ch <= '~';
-    }
-
-    pub fn is_oct_digit(ch: &char) -> bool {
-        return '0' <= *ch && *ch <= '7' || *ch == '_';
-    }
-    pub fn is_hex_digit(ch: &char) -> bool {
-        return '0' <= *ch && *ch <= '9'
-            || 'a' <= *ch && *ch <= 'f'
-            || 'A' <= *ch && *ch <= 'F'
-            || *ch == '_';
-    }
-
-    pub fn is_alphanumeric(ch: &char) -> bool {
-        return is_digit(ch) || is_alpha(ch);
-    }
-
-    pub fn is_void(ch: &char) -> bool {
-        return is_eol(ch) || is_space(ch);
-    }
 }

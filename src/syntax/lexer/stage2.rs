@@ -112,8 +112,8 @@ impl Element {
         {
             self.make_syoption(el)?;
         }
-        else if matches!(el.curr().key(), KEYWORD::ident(_)) {
-            self.set_key(ident(Some(el.curr().con().to_string())))
+        else if matches!(el.curr().key(), KEYWORD::ident) {
+            self.set_key(ident)
         }
         Ok(())
     }
@@ -208,7 +208,7 @@ impl Element {
             self.combine(&el.peek(0).into());
             el.bump();
         };
-        self.set_key(comment(Some(self.con.clone())));
+        self.set_key(comment);
         Ok(())
     }
 }

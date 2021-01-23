@@ -77,7 +77,7 @@ impl fmt::Display for BUILDIN {
             BUILDIN::let_ => { t = Some("let".to_string()); },
             _ => { t = None },
         };
-        write!(f, "{}: {}",
+        write!(f, "{}  {}",
             " BUILDIN  ".black().on_red(),
             match t { 
                 Some(val) => { (format!(" {} ", val)).black().on_red().to_string() }, 
