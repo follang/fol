@@ -2,25 +2,25 @@
 use crate::syntax::ast::*;
 
 #[derive(Clone, Debug)]
-pub enum stat_type {
-    Illegal,
-    Use,
-    Def,
-    Var(var_stat),
+pub enum Stat {
+    illegal,
+    r#use,
+    def,
+    var(Var),
     // Fun(fun_stat),
-    Typ(typ_stat),
-    Ali(typ_stat),
-    Opts(assign_opts),
-    Ident(String),
-    Retype(retype_stat),
-    If,
-    When,
-    Loop,
+    typ(Typ),
+    ali(Typ),
+    opts(assign_opts),
+    ident(String),
+    retype(retype_stat),
+    r#if,
+    when,
+    r#loop,
 }
 
 
 #[derive(Clone, Debug)]
-pub struct var_stat {
+pub struct Var{
     options: Option<Trees>,
     multi: Option<(usize, String)>,
     ident: Tree,
@@ -28,13 +28,13 @@ pub struct var_stat {
     body: Option<Tree>,
 }
 
-impl var_stat {
+impl Var {
     pub fn init() -> Self {
-        var_stat {
+        Var {
             options: None,
             ident: Tree::new(
                 point::Location::default(),
-                tree_type::stat(stat_type::Ident(String::new())),
+                tree_type::stat(Stat::ident(String::new())),
             ),
             multi: None,
             retype: None,
@@ -44,7 +44,7 @@ impl var_stat {
 }
 
 #[derive(Clone, Debug)]
-pub struct typ_stat {
+pub struct Typ {
     options: Option<Trees>,
     multi: Option<(usize, String)>,
     ident: Tree,
@@ -53,14 +53,14 @@ pub struct typ_stat {
     retype: Option<Tree>,
     body: Option<Tree>,
 }
-impl typ_stat {
+impl Typ {
     pub fn init() -> Self {
-        typ_stat {
+        Typ {
             options: None,
             multi: None,
             ident: Tree::new(
                 point::Location::default(),
-                tree_type::stat(stat_type::Ident(String::new())),
+                tree_type::stat(Stat::ident(String::new())),
             ),
             generics: None,
             contract: None,

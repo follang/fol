@@ -4,40 +4,39 @@
 use std::fmt;
 use crate::syntax::point;
 
-pub trait Node: core::fmt::Display {}
+pub trait Ast: core::fmt::Display {}
 
 pub mod expr;
 pub mod stat;
 
 #[derive(Clone, Debug)]
-pub struct ID<T> {
+pub struct id<T> {
     pub loc: point::Location,
-    pub nod: Box<T>,
+    pub node: Box<T>,
 }
-impl<T> ID<T> {
-    pub fn new(loc: point::Location, nod: T) -> Self {
-        ID {
-            loc,
-            nod: Box::new(nod),
-        }
+impl<T> id<T> {
+    pub fn new(loc: point::Location, node: T) -> Self {
+        Self{ loc, node: Box::new(node) }
     }
     pub fn loc(&self) -> &point::Location {
         &self.loc
     }
     pub fn get(&self) -> &T {
-        &self.nod
+        &self.node
     }
-    pub fn set(&mut self, nod: T) {
-        self.nod = Box::new(nod)
+    pub fn set(&mut self, node: T) {
+        self.node = Box::new(node)
     }
 }
 
-pub type Tree = ID<tree_type>;
+pub type Tree = id<tree_type>;
 pub type Trees = Vec<Tree>;
+
+pub type Node = id<dyn Ast + 'static>;
 
 #[derive(Clone, Debug)]
 pub enum tree_type {
     expr(expr::Expr),
-    stat(stat::stat_type),
+    stat(stat::Stat),
 }
 
