@@ -5,9 +5,18 @@ use crate::syntax::point;
 use crate::syntax::lexer::text;
 
 use crate::types::{Con, Win, SLIDER};
-use crate::syntax::token::KEYWORD::*;
-use crate::syntax::token::*;
 
+use crate::syntax::token::{
+    literal::LITERAL,
+    void::VOID,
+    symbol::SYMBOL,
+    operator::OPERATOR,
+    buildin::BUILDIN,
+    assign::ASSIGN,
+    types::TYPE,
+    option::OPTION,
+    form::FORM };
+use crate::syntax::token::{part::*, KEYWORD, KEYWORD::*};
 
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -63,7 +72,7 @@ impl Element {
                self.bump(code);
            }
        }
-       self.key = comment;
+       self.key = comment(Some(self.con.clone()));
    }
    fn endline(&mut self, code: &mut text::Text, terminated: bool) {
        self.push(code);
@@ -123,7 +132,7 @@ impl Element {
    fn encap(&mut self, code: &mut text::Text) {
        let litsym = code.curr().0;
        if litsym == '`' {
-           self.key = comment;
+           self.key = comment(Some(self.con.clone()));
        } else if litsym == '\'' {
            self.key = literal(LITERAL::char_);
        } else {

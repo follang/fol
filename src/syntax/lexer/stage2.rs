@@ -5,8 +5,17 @@ use crate::syntax::point;
 use crate::syntax::lexer::stage1;
 
 use crate::types::{Con, Vod, Win, SLIDER};
-use crate::syntax::token::KEYWORD::*;
-use crate::syntax::token::*;
+use crate::syntax::token::{
+    literal::LITERAL,
+    void::VOID,
+    symbol::SYMBOL,
+    operator::OPERATOR,
+    buildin::BUILDIN,
+    assign::ASSIGN,
+    types::TYPE,
+    option::OPTION,
+    form::FORM };
+use crate::syntax::token::{KEYWORD, KEYWORD::*};
 
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -199,7 +208,7 @@ impl Element {
             self.combine(&el.peek(0).into());
             el.bump();
         };
-        self.set_key(comment);
+        self.set_key(comment(Some(self.con.clone())));
         Ok(())
     }
 }
