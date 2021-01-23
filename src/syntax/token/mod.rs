@@ -228,9 +228,9 @@ impl fmt::Display for KEYWORD {
             KEYWORD::buildin(v) => write!(f, "{}", v),
             KEYWORD::form(v) => write!(f, "{}", v),
             KEYWORD::option(v) => write!(f, "{}", v),
-            KEYWORD::ident(Some(v)) => write!(f, "{}: {}", " IDENT    ".black().on_red(), v.to_string()),
+            KEYWORD::ident(Some(v)) => write!(f, "{}: {}", " IDENT    ".black().on_red(), format!(" {} ", v).black().on_red().to_string()),
             KEYWORD::ident(None) => write!(f, "{}", " IDENT    ".black().on_red()),
-            KEYWORD::comment(Some(v)) => write!(f, "{}: {}", " COMMENT  ".black().on_red(), v.to_string()),
+            KEYWORD::comment(Some(v)) => write!(f, "{}: {}", " COMMENT  ".black().on_red(), format!(" {} ", v).black().on_red().to_string()),
             KEYWORD::comment(None) => write!(f, "{}", " COMMENT  ".black().on_red()),
             KEYWORD::illegal => write!(f, "{}", " ILLEGAL  ".black().on_red()),
         }

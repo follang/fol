@@ -78,7 +78,10 @@ impl fmt::Display for TYPE {
         };
         write!(f, "{}: {}",
             " TYPE     ".black().on_red(),
-            match t { Some(val) => val.to_string(), None => "".to_string() },
+            match t { 
+                Some(val) => { (format!(" {} ", val)).black().on_red().to_string() }, 
+                None => "".to_string()
+            },
         )
     }
 }
