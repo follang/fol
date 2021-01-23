@@ -5,8 +5,7 @@ use std::str::Chars;
 use crate::syntax::point;
 
 use crate::syntax::lexer::source;
-use crate::syntax::error::*;
-use crate::types::*;
+use crate::types::{Con, Win, SLIDER};
 
 type Part<T> = (T, point::Location);
 

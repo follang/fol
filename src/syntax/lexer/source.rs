@@ -7,8 +7,8 @@ use std::io::Read;
 use std::path::Path;
 use regex::Regex;
 use crate::colored::Colorize;
-use crate::types::*;
-use crate::syntax::error::{Glitch, Fault, flaw::Flaw};
+use crate::types::{Con, Win};
+use crate::types::error::{Glitch, Fault, flaw::Flaw};
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Source {

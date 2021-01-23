@@ -1,12 +1,11 @@
 #![allow(dead_code)]
 #![allow(unused_macros)]
 
-use crate::syntax::error::Glitch;
-use crate::syntax::error::Fault;
+pub mod error;
+use crate::types::error::{Glitch, Fault};
 
 
 pub const SLIDER: usize = 9;
-pub const EOF_CHAR: char = '\0';
 pub type Win<T> = (Vec<T>, T, Vec<T>);
 
 macro_rules! flaw {

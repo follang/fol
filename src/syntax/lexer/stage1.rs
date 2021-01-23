@@ -3,9 +3,8 @@
 use std::fmt;
 use crate::syntax::point;
 use crate::syntax::lexer::text;
-use crate::types::*;
-use crate::syntax::error::*;
 
+use crate::types::{Con, Win, SLIDER};
 use crate::syntax::token::KEYWORD::*;
 use crate::syntax::token::*;
 

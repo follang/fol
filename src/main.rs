@@ -10,7 +10,6 @@ extern crate regex;
 extern crate colored;
 
 use crate::syntax::point;
-use crate::syntax::error::*;
 use crate::syntax::lexer::*;
 
 fn main() {
