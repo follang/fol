@@ -2,16 +2,29 @@
 #![allow(unused_macros)]
 
 use crate::syntax::error::Glitch;
+use crate::syntax::error::Fault;
 
 
 pub const SLIDER: usize = 9;
 pub const EOF_CHAR: char = '\0';
 pub type Win<T> = (Vec<T>, T, Vec<T>);
 
-#[macro_export]
-macro_rules! catch {
-    ($err:expr $(,)?) => ({ Err($err) });
+macro_rules! flaw {
+    ($err:expr $(,)?) => ({ Fault::Flaw( $err ) });
 }
+
+macro_rules! typo {
+    ($err:expr $(,)?) => ({ Fault::Typo( $err ) });
+}
+
+macro_rules! slip {
+    ($err:expr $(,)?) => ({ Fault::Slip( $err ) });
+}
+
+macro_rules! catch {
+    ($err:expr $(,)?) => ({ Box::new($err) });
+}
+
 #[macro_export]
 macro_rules! crash {
     () => ({ std::process::exit(0); });
@@ -19,5 +32,7 @@ macro_rules! crash {
 }
 
 
-pub type Con<T> = Result<T, Glitch>;
-pub type Vod = Result<(), Glitch>;
+pub type Con<T> = Result<T, Box<(dyn Glitch + 'static)>>;
+// pub type Con<T> = Result<T, Fault>;
+pub type Vod = Result<(), Box<(dyn Glitch + 'static)>>;
+// pub type Vod = Result<(), Fault>;

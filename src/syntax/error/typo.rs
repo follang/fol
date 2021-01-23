@@ -6,27 +6,7 @@ use colored::Colorize;
 use crate::syntax::point;
 use crate::types::*;
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Glitch {
-    Flaw(Flaw),
-    Typo(Typo),
-    Slip(Slip)
-}
-
-impl fmt::Display for Glitch {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Glitch::Flaw(v) => write!(f, "{}", v),
-            Glitch::Typo(v) => write!(f, "{}", v),
-            Glitch::Slip(v) => write!(f, "{}", v),
-        }
-    }
-}
-
-impl std::error::Error for Glitch  {  }
-// impl From<std::option::NoneError> for Glitch { 
-//     fn from(_: T) -> Self { todo!() }
-// }
+use super::{Glitch, Fault};
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Typo {
@@ -79,6 +59,9 @@ pub enum Typo {
         loc: Option<point::Location>,
     },
 }
+
+impl std::error::Error for Typo  {  }
+impl Glitch for Typo {  }
 
 impl fmt::Display for Typo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -165,95 +148,3 @@ impl fmt::Display for Typo {
         )
     }
 }
-impl std::error::Error for Typo  {  }
-
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Flaw {
-    GettingWrongPath {
-        msg: Option<String>,
-    },
-    GettingNoEntry {
-        msg: Option<String>,
-    },
-    ReadingEmptyFile {
-        msg: Option<String>,
-    },
-    ReadingBadContent {
-        msg: Option<String>,
-    },
-}
-impl fmt::Display for Flaw {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let (v, s, m);
-        match self {
-            Flaw::GettingWrongPath { msg } => { 
-                s = "getting".to_string();
-                v = " PATH_DOES_NOT_EXIST ".to_string(); 
-                m = msg.as_ref();
-            },
-            Flaw::GettingNoEntry { msg } => { 
-                s = "getting".to_string();
-                v = " NO_FILE_FOUND ".to_string(); 
-                m = msg.as_ref();
-            },
-            Flaw::ReadingBadContent { msg } => { 
-                s = "reading".to_string();
-                v = " NOT_VALID_TEXT_FILE ".to_string(); 
-                m = msg.as_ref();
-            },
-            Flaw::ReadingEmptyFile { msg } => { 
-                s = "reading".to_string();
-                v = " FILE_IS_EMPTY ".to_string(); 
-                m = msg.as_ref();
-            },
-        };
-        write!(f, "\n{} >> {}:{}{}",
-            " FLAW ".black().on_red(),
-            (" ".to_string() + &s + " file ").black().on_white().to_string(), v.on_red().bold().to_string(),
-            match m { Some(val) => "\n".to_string() + &val.to_string(), None => "".to_string() },
-        )
-    }
-}
-impl std::error::Error for Flaw  {  }
-
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Slip {
-    UnmatchedBracket {
-        msg: Option<String>,
-    },
-    UnmatchedQuote {
-        msg: Option<String>,
-    },
-    UnfinishedComment {
-        msg: Option<String>,
-    },
-}
-impl fmt::Display for Slip {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let (v, s, m);
-        match self {
-            Slip::UnmatchedBracket { msg } => { 
-                s = "getting".to_string();
-                v = " PATH_DOES_NOT_EXIST ".to_string(); 
-                m = msg.as_ref();
-            },
-            Slip::UnmatchedQuote { msg } => { 
-                s = "getting".to_string();
-                v = " NO_FILE_FOUND ".to_string(); 
-                m = msg.as_ref();
-            },
-            Slip::UnfinishedComment { msg } => { 
-                s = "reading".to_string();
-                v = " FILE_IS_EMPTY ".to_string(); 
-                m = msg.as_ref();
-            },
-        };
-        write!(f, "\n{} >> {}:{}{}",
-            " SLIP ".black().on_red(),
-            (" ".to_string() + &s + " file ").black().on_white().to_string(), v.on_red().bold().to_string(),
-            match m { Some(val) => "\n".to_string() + &val.to_string(), None => "".to_string() },
-        )
-    }
-}
-impl std::error::Error for Slip  {  }
-

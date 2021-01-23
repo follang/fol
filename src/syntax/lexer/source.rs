@@ -7,8 +7,8 @@ use std::io::Read;
 use std::path::Path;
 use regex::Regex;
 use crate::colored::Colorize;
-use crate::syntax::error::*;
 use crate::types::*;
+use crate::syntax::error::{Glitch, Fault, flaw::Flaw};
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Source {
@@ -84,7 +84,7 @@ fn check_file_dir(s: &str) -> Con<String> {
     let path = std::path::Path::new(s);
     if !path.exists() { 
         let msg = format!("path: {} is not a valid path", s.red());
-        return catch!(Glitch::Flaw(Flaw::GettingWrongPath{msg: Some(msg)}));
+        return Err( catch!(Flaw::GettingWrongPath{msg: Some(msg)}) );
     };
     if path.is_dir() {
         Ok(full_path(s)?)
@@ -92,7 +92,7 @@ fn check_file_dir(s: &str) -> Con<String> {
         Ok(path.parent().unwrap().to_str().unwrap().to_string())
     } else {
         let msg = format!("path: {} is not a valid file", s.red());
-        catch!(Glitch::Flaw(Flaw::ReadingBadContent{msg: Some(msg)}))
+        Err( catch!(Flaw::ReadingBadContent{msg: Some(msg)}) )
     }
 }
 
@@ -129,7 +129,7 @@ fn from_dir(s: &str) -> Con<Vec<String>> {
     }
     if avec.is_empty() { 
         let msg = format!("{}", "No file found".red());
-        catch!(Glitch::Flaw(Flaw::GettingNoEntry{msg: Some(msg)}))
+        Err( catch!(Flaw::GettingNoEntry{msg: Some(msg)}) )
     } else {
         Ok(avec)
     }
@@ -151,15 +151,15 @@ fn read_string_file(s: &str) -> Con<String> {
                 Ok(_) => { 
                     if string.is_empty() { 
                         let msg = format!("{}", "File is empty".red());
-                        catch!(Glitch::Flaw(Flaw::ReadingEmptyFile{msg: Some(msg)}))
+                        Err( catch!(Flaw::ReadingEmptyFile{msg: Some(msg)}) )
                     } else {
                         Ok(string)
                     }
                 }
-                Err(e) => { catch!(Glitch::Flaw(Flaw::ReadingEmptyFile{msg: Some(e.to_string())})) }
+                Err(e) => { Err(catch!(Flaw::ReadingEmptyFile{msg: Some(e.to_string())})) }
             }
         }
-        Err(e) => { catch!(Glitch::Flaw(Flaw::ReadingBadContent{msg: Some(e.to_string())})) }
+        Err(e) => { Err(catch!(Flaw::ReadingBadContent{msg: Some(e.to_string())})) }
     }
 }
 
