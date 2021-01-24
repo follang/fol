@@ -5,7 +5,6 @@ use crate::syntax::point;
 use crate::syntax::lexer::text;
 
 use crate::types::{Con, Win, SLIDER};
-
 use crate::syntax::token::{
     literal::LITERAL,
     void::VOID,

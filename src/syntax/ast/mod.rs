@@ -4,16 +4,17 @@
 use std::fmt;
 use crate::syntax::point;
 
-pub trait Ast: core::fmt::Display {}
 
 pub mod expr;
 pub mod stat;
+pub mod opts;
 
 #[derive(Clone, Debug)]
 pub struct id<T> {
     pub loc: point::Location,
     pub node: Box<T>,
 }
+
 impl<T> id<T> {
     pub fn new(loc: point::Location, node: T) -> Self {
         Self{ loc, node: Box::new(node) }
@@ -33,6 +34,7 @@ pub type Tree = id<tree_type>;
 pub type Trees = Vec<Tree>;
 
 pub type Node = id<dyn Ast + 'static>;
+pub trait Ast {}
 
 #[derive(Clone, Debug)]
 pub enum tree_type {

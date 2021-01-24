@@ -1,3 +1,5 @@
+use crate::syntax::ast::Ast;
+
 #[derive(Clone, Debug)]
 pub enum LetterExpr {
     string_normal,
@@ -6,3 +8,5 @@ pub enum LetterExpr {
     char_normal(char),
     char_binary(u8),
 }
+
+impl Ast for LetterExpr {}

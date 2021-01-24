@@ -10,7 +10,7 @@ extern crate regex;
 extern crate colored;
 
 use crate::syntax::point;
-use crate::syntax::lexer::*;
+use crate::syntax::lexer::{Element, Elements};
 
 fn main() {
     let path = "./test/main/var/var.fol".to_string();
@@ -18,8 +18,13 @@ fn main() {
     // let elem = source::Sources::init(path);
     // let elem = text2::Text::init(path);
     // let elem = stage1::Elements::init(path);
-    let elem = stage2::Elements::init(path);
+    let mut vec = Vec::new();
+    let elem = Elements::init(path);
     for c in elem {
+        vec.push(c);
+    }
+    let newvec = vec.clone();
+    for c in newvec {
         println!("{}", c);
     }
 
