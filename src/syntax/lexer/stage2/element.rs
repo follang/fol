@@ -53,7 +53,9 @@ impl Element {
     pub fn key(&self) -> &KEYWORD { &self.key }
     pub fn set_key(&mut self, k: KEYWORD) { self.key = k; }
     pub fn loc(&self) -> &point::Location { &self.loc }
+    pub fn set_loc(&mut self, l: point::Location) { self.loc = l; }
     pub fn con(&self) -> &String { &self.con }
+    pub fn set_con(&mut self, c: String) { self.con = c; }
 
     fn combine(&mut self, other: &Element) {
         self.con.push_str(&other.con);
@@ -61,14 +63,16 @@ impl Element {
     }
 
     pub fn analyze(&mut self, el: &mut stage1::Elements) -> Vod {
-        // // EOL to SPACE
+        // EOL to SPACE
         if el.curr().key().is_eol()
             && (el.seek(0).key().is_nonterm()
                 || el.peek(0).key().is_dot()
                 || el.seek(0).key().is_operator())
         {
             self.set_key(void(VOID::space_))
-        } else if matches!(el.curr().key(), KEYWORD::symbol(SYMBOL::semi_))
+        } 
+        // EOL to SEMICOLON
+        else if matches!(el.curr().key(), KEYWORD::symbol(SYMBOL::semi_))
             && el.peek(0).key().is_void()
         {
             self.combine(&el.peek(0).into());

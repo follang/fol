@@ -1,10 +1,10 @@
-use crate::syntax::ast::*;
-use crate::syntax::ast::opts::*;
+use crate::syntax::nodes::*;
+use crate::syntax::nodes::opts::*;
 
 pub mod var;
 pub mod typ;
 
-pub use crate::syntax::ast::stat::{
+pub use crate::syntax::nodes::stat::{
     var::VarStat,
     typ::TypStat };
 

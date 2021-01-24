@@ -1,7 +1,5 @@
 #![allow(dead_code)]
-
 use std::fmt;
-use crate::syntax::point;
 use crate::syntax::lexer::stage1;
 
 use crate::types::{Con, Vod, Win, SLIDER};
@@ -93,12 +91,17 @@ impl Iterator for Elements {
 pub fn elements(dir: String) -> impl Iterator<Item = Con<Element>>  {
     let mut stg = Box::new(stage1::Elements::init(dir));
     std::iter::from_fn(move || {
-        if let Some(v) = stg.next() {
-            let mut result: Element = v.into();
-            if let Err(err) = result.analyze(&mut stg) {
-                return Some(Err(err));
+        if let Some(v) = stg.bump() {
+            match v {
+                Ok(el) => {
+                    let mut result: Element = el.into();
+                    if let Err(err) = result.analyze(&mut stg) {
+                        return Some(Err(err));
+                    }
+                    return Some(Ok(result));
+                },
+                Err(e) => { return Some(Err(e)); }
             }
-            return Some(Ok(result));
         }
         None
     })

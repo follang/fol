@@ -1,4 +1,4 @@
-use crate::syntax::ast::{Node, Tree};
+use crate::syntax::nodes::{Node, Tree};
 
 pub struct TypStat {
     options: Option<Node>,

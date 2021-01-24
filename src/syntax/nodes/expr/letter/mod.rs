@@ -1,4 +1,4 @@
-use crate::syntax::ast::Tree;
+use crate::syntax::nodes::Tree;
 
 pub enum LetterExpr {
     string_normal,

@@ -1,5 +1,5 @@
-use crate::syntax::ast::Tree;
-use crate::syntax::ast::expr::number::NumberExpr;
+use crate::syntax::nodes::Tree;
+use crate::syntax::nodes::expr::number::NumberExpr;
 
 pub enum BinaryExpr {
     leaf(NumberExpr),

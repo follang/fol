@@ -9,9 +9,9 @@ pub mod expr;
 pub mod stat;
 pub mod opts;
 
-pub use crate::syntax::ast::stat::*;
-pub use crate::syntax::ast::expr::*;
-pub use crate::syntax::ast::opts::*;
+pub use crate::syntax::nodes::stat::*;
+pub use crate::syntax::nodes::expr::*;
+pub use crate::syntax::nodes::opts::*;
 
 pub struct id<T: ?Sized> {
     pub loc: point::Location,
