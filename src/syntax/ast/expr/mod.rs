@@ -7,15 +7,3 @@ pub use crate::syntax::ast::expr::{
     container::ContainerExpr,
     binary::BinaryExpr,
     number::NumberExpr };
-
-
-#[derive(Clone, Debug)]
-pub enum Expr {
-    Illegal,
-    Comment,
-    Number,
-    Letter(LetterExpr),
-    Container(ContainerExpr),
-    Binary(BinaryExpr),
-}
-

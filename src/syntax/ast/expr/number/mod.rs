@@ -1,9 +1,8 @@
-use crate::syntax::ast::Ast;
+use crate::syntax::ast::Tree;
 
-#[derive(Clone, Debug)]
 pub enum NumberExpr {
     int(isize),
     int_8(i8),
 }
 
-impl Ast for NumberExpr {}
+impl Tree for NumberExpr {}

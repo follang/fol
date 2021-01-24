@@ -1,6 +1,5 @@
-use crate::syntax::ast::Ast;
+use crate::syntax::ast::Tree;
 
-#[derive(Clone, Debug)]
 pub enum LetterExpr {
     string_normal,
     string_raw,
@@ -9,4 +8,4 @@ pub enum LetterExpr {
     char_binary(u8),
 }
 
-impl Ast for LetterExpr {}
+impl Tree for LetterExpr {}

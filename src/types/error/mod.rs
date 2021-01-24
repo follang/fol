@@ -8,8 +8,7 @@ use std::fmt;
 use colored::Colorize;
 use crate::syntax::point;
 
-use crate::types::error::{flaw::Flaw, typo::Typo, slip::Slip};
-
+pub use crate::types::error::{flaw::Flaw, typo::Typo, slip::Slip};
 pub trait Glitch: std::error::Error {}
 
 

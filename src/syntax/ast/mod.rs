@@ -9,8 +9,11 @@ pub mod expr;
 pub mod stat;
 pub mod opts;
 
-#[derive(Clone, Debug)]
-pub struct id<T> {
+pub use crate::syntax::ast::stat::*;
+pub use crate::syntax::ast::expr::*;
+pub use crate::syntax::ast::opts::*;
+
+pub struct id<T: ?Sized> {
     pub loc: point::Location,
     pub node: Box<T>,
 }
@@ -30,15 +33,5 @@ impl<T> id<T> {
     }
 }
 
-pub type Tree = id<tree_type>;
-pub type Trees = Vec<Tree>;
-
-pub type Node = id<dyn Ast + 'static>;
-pub trait Ast {}
-
-#[derive(Clone, Debug)]
-pub enum tree_type {
-    expr(expr::Expr),
-    stat(stat::Stat),
-}
-
+pub trait Tree {}
+pub type Node = id<dyn Tree + 'static>;

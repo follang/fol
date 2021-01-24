@@ -1,4 +1,4 @@
-use crate::syntax::ast::Ast;
+use crate::syntax::ast::Tree;
 
 
 #[derive(Clone, Debug)]
@@ -37,4 +37,4 @@ pub enum TypOpts {
     gen,
 }
 
-impl Ast for TypOpts {}
+impl Tree for TypOpts {}

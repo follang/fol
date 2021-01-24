@@ -1,29 +1,11 @@
-use crate::syntax::ast::*;
-use crate::syntax::ast::stat::*;
+use crate::syntax::ast::{Node, Tree};
 
-#[derive(Clone, Debug)]
 pub struct VarStat{
-    options: Option<Trees>,
+    options: Option<Node>,
     multi: Option<(usize, String)>,
-    ident: Tree,
-    retype: Option<Tree>,
-    body: Option<Tree>,
+    ident: Node,
+    retype: Option<Node>,
+    body: Option<Node>,
 }
 
-impl VarStat {
-    pub fn init() -> Self {
-        Self {
-            options: None,
-            ident: Tree::new(
-                point::Location::default(),
-                tree_type::stat(Stat::ident(String::new())),
-            ),
-            multi: None,
-            retype: None,
-            body: None,
-        }
-    }
-}
-
-
-impl Ast for VarStat {}
+impl Tree for VarStat {}

@@ -1,9 +1,8 @@
-use crate::syntax::ast::{Tree, Ast};
+use crate::syntax::ast::{Node, Tree};
 
-#[derive(Clone, Debug)]
 pub struct ContainerExpr {
     uniform: bool,
-    ulements: Box<Tree>,
+    ulements: Node,
 }
 
-impl Ast for ContainerExpr {}
+impl Tree for ContainerExpr {}

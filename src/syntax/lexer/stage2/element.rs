@@ -1,0 +1,214 @@
+#![allow(dead_code)]
+
+use std::fmt;
+use crate::syntax::point;
+use crate::syntax::lexer::stage1;
+
+use crate::types::{Con, Vod, Win, SLIDER};
+use crate::syntax::token::{
+    literal::LITERAL,
+    void::VOID,
+    symbol::SYMBOL,
+    operator::OPERATOR,
+    buildin::BUILDIN,
+    assign::ASSIGN,
+    types::TYPE,
+    option::OPTION,
+    form::FORM };
+use crate::syntax::token::{KEYWORD, KEYWORD::*};
+
+
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Element {
+    key: KEYWORD,
+    loc: point::Location,
+    con: String,
+}
+
+impl std::default::Default for Element {
+    fn default() -> Self {
+        Self {
+            key: KEYWORD::illegal,
+            loc: point::Location::default(),
+            con: String::new(),
+        }
+    }
+}
+
+impl From<stage1::Element> for Element {
+    fn from(stg1: stage1::Element) -> Self {
+        Self { key: stg1.key().clone(), loc: stg1.loc().clone(), con: stg1.con().clone() }
+    }
+}
+
+impl fmt::Display for Element {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}\t{}  {}", self.loc, self.key, self.con)
+    }
+}
+
+
+impl Element {
+    pub fn init(key: KEYWORD, loc: point::Location, con: String) -> Self { Self{ key, loc, con } }
+    pub fn key(&self) -> &KEYWORD { &self.key }
+    pub fn set_key(&mut self, k: KEYWORD) { self.key = k; }
+    pub fn loc(&self) -> &point::Location { &self.loc }
+    pub fn con(&self) -> &String { &self.con }
+
+    fn combine(&mut self, other: &Element) {
+        self.con.push_str(&other.con);
+        self.loc.longer(&other.loc.len())
+    }
+
+    pub fn analyze(&mut self, el: &mut stage1::Elements) -> Vod {
+        // // EOL to SPACE
+        if el.curr().key().is_eol()
+            && (el.seek(0).key().is_nonterm()
+                || el.peek(0).key().is_dot()
+                || el.seek(0).key().is_operator())
+        {
+            self.set_key(void(VOID::space_))
+        } else if matches!(el.curr().key(), KEYWORD::symbol(SYMBOL::semi_))
+            && el.peek(0).key().is_void()
+        {
+            self.combine(&el.peek(0).into());
+            el.bump();
+        }
+        // numbers
+        else if matches!(el.curr().key(), KEYWORD::symbol(SYMBOL::dot_))
+            && el.peek(0).key().is_number()
+        {
+            if el.seek(0).key().is_void() {
+                self.make_number(el)?;
+            }
+        } else if (matches!(el.curr().key(), KEYWORD::symbol(SYMBOL::minus_))
+            && el.peek(0).key().is_number())
+            || el.curr().key().is_number()
+        {
+            if !el.seek(0).key().is_void()
+                && matches!(el.curr().key(), KEYWORD::symbol(SYMBOL::minus_))
+            {
+                let key = el.seek(0).key().clone();
+                //TODO: report error
+            } else {
+                self.make_number(el)?;
+            }
+        }
+        // operators
+        else if el.curr().key().is_symbol()
+            && (matches!(el.curr().key(), KEYWORD::symbol(SYMBOL::semi_)))
+            && (matches!(el.peek(0).key(), KEYWORD::symbol(SYMBOL::semi_)))
+            && el.peek(0).key().is_symbol()
+            && (el.seek(0).key().is_void() || el.seek(0).key().is_bracket())
+        {
+            self.make_multi_operator(el)?;
+        }
+        // options
+        else if el.curr().key().is_symbol()
+            && el.peek(0).key().is_assign()
+            && (el.seek(0).key().is_terminal()
+                || el.seek(0).key().is_eof()
+                || el.seek(0).key().is_void())
+        {
+            self.make_syoption(el)?;
+        }
+        else if matches!(el.curr().key(), KEYWORD::ident) {
+            self.set_key(ident)
+        }
+        Ok(())
+    }
+
+    pub fn make_multi_operator(&mut self, el: &mut stage1::Elements) -> Vod {
+        while el.peek(0).key().is_symbol() && !el.peek(0).key().is_bracket() {
+            self.combine(&el.peek(0).into());
+            el.bump();
+        }
+        match self.con().as_str() {
+            ":=" => self.set_key(operator(OPERATOR::assign2_)),
+            "..." => self.set_key(operator(OPERATOR::ddd_)),
+            ".." => self.set_key(operator(OPERATOR::dd_)),
+            "=>" => self.set_key(operator(OPERATOR::flow_)),
+            "->" => self.set_key(operator(OPERATOR::flow2_)),
+            "==" => self.set_key(operator(OPERATOR::equal_)),
+            "!=" => self.set_key(operator(OPERATOR::noteq_)),
+            ">=" => self.set_key(operator(OPERATOR::greatereq_)),
+            "<=" => self.set_key(operator(OPERATOR::lesseq_)),
+            "+=" => self.set_key(operator(OPERATOR::addeq_)),
+            "-=" => self.set_key(operator(OPERATOR::subtracteq_)),
+            "*=" => self.set_key(operator(OPERATOR::multiplyeq_)),
+            "/=" => self.set_key(operator(OPERATOR::divideeq_)),
+            "<<" => self.set_key(operator(OPERATOR::shiftleft_)),
+            ">>" => self.set_key(operator(OPERATOR::shiftright_)),
+            _ => self.set_key(operator(OPERATOR::ANY)),
+        }
+        Ok(())
+    }
+    pub fn make_syoption(&mut self, el: &mut stage1::Elements) -> Vod {
+        match self.con().as_str() {
+            "~" => self.set_key(option(OPTION::mut_)),
+            "!" => self.set_key(option(OPTION::sta_)),
+            "+" => self.set_key(option(OPTION::exp_)),
+            "-" => self.set_key(option(OPTION::hid_)),
+            "@" => self.set_key(option(OPTION::hep_)),
+            _ => {}
+        }
+        Ok(())
+    }
+
+    pub fn make_number(&mut self, el: &mut stage1::Elements) -> Vod{
+        if el.curr().key().is_dot() && el.peek(0).key().is_decimal() {
+            self.set_key(literal(LITERAL::float_));
+            self.combine(&el.peek(0).into());
+            el.bump();
+            if el.peek(0).key().is_dot()
+                && el.peek(1).key().is_eol()
+                && el.peek(2).key().is_ident()
+            {
+                return Ok(())
+            } else if el.peek(0).key().is_dot() && !el.peek(1).key().is_ident() {
+                el.bump();
+                //TODO: report error
+            }
+        } else if el.seek(0).key().is_continue()
+            && el.curr().key().is_decimal()
+            && el.peek(0).key().is_dot()
+            && !el.peek(1).key().is_ident()
+        {
+            self.set_key(literal(LITERAL::float_));
+            self.combine(&el.peek(0).into());
+            el.bump();
+            if el.peek(0).key().is_number() {
+                self.combine(&el.peek(0).into());
+                el.bump();
+                if el.peek(0).key().is_dot() && el.peek(1).key().is_number() {
+                    el.bump();
+                    //TODO: report error
+                }
+            } else if !el.peek(0).key().is_void() {
+                el.bump();
+                //TODO: report error
+            }
+        };
+        Ok(())
+    }
+    pub fn make_comment(&mut self, el: &mut stage1::Elements) -> Vod {
+        if matches!(el.peek(0).key(), KEYWORD::symbol(SYMBOL::root_)) {
+            while !el.peek(0).key().is_eol() {
+                self.combine(&el.peek(0).into());
+                el.bump();
+            }
+        } else if matches!(el.peek(0).key(), KEYWORD::symbol(SYMBOL::star_)) {
+            while !(matches!(el.peek(0).key(), KEYWORD::symbol(SYMBOL::star_))
+                && matches!(el.peek(1).key(), KEYWORD::symbol(SYMBOL::root_)))
+                || el.peek(0).key().is_eof()
+            {
+                self.combine(&el.peek(0).into());
+                el.bump();
+            }
+            self.combine(&el.peek(0).into());
+            el.bump();
+        };
+        self.set_key(comment);
+        Ok(())
+    }
+}
