@@ -14,6 +14,7 @@ use crate::syntax::lexer::{Element, Elements};
 
 fn main() {
     let path = "./test/main/var/var.fol".to_string();
+    // let path = "./test/main".to_string();
 
     // let elem = source::Sources::init(path);
     // let elem = text2::Text::init(path);

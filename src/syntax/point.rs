@@ -85,6 +85,10 @@ impl Location {
     pub fn len(&self) -> usize {
         self.len
     }
+    
+    pub fn set_len(&mut self, l: usize) {
+        self.len = l
+    }
 
     pub fn longer(&mut self, i: &usize) {
         self.len += i

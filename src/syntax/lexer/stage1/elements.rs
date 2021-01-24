@@ -80,8 +80,8 @@ pub fn elements(dir: String) -> impl Iterator<Item = Element>  {
     // *sins = *txt.sins();
     std::iter::from_fn(move || {
         if let Some(v) = txt.next() {
-            let loc = txt.curr().1.clone();
-            let mut result = Element::init(illegal, loc.clone(), String::new());
+            let mut loc = txt.curr().1.clone(); loc.set_len(1);
+            let mut result = Element::init(illegal, loc, String::new());
             if txt.curr().0 == '/' && (txt.peek(0).0 == '/' || txt.peek(0).0 == '*') {
                 result.comment(&mut txt);
             } else if is_eol(&txt.curr().0) {

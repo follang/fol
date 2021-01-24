@@ -44,13 +44,14 @@ impl fmt::Display for Element {
 impl Element {
     pub fn init(key: KEYWORD, loc: point::Location, con: String) -> Self { Self{ key, loc, con } }
     pub fn key(&self) -> &KEYWORD { &self.key }
-    pub fn loc(&self) -> &point::Location { &self.loc }
-    pub fn con(&self) -> &String { &self.con }
     pub fn set_key(&mut self, k: KEYWORD) { self.key = k; }
+    pub fn loc(&self) -> &point::Location { &self.loc }
+    pub fn set_loc(&mut self, l: point::Location) { self.loc = l; }
+    pub fn con(&self) -> &String { &self.con }
+    pub fn set_con(&mut self, c: String) { self.con = c; }
 
     //checking
-        pub fn comment(&mut self, code: &mut text::Text) {
-        self.loc.new_word();
+    pub fn comment(&mut self, code: &mut text::Text) {
         self.con.push_str(&code.curr().0.to_string());
         self.bump(code);
         if code.curr().0 == '/' {
@@ -61,7 +62,6 @@ impl Element {
             }
         }
         if code.curr().0 == '*' {
-            self.bump(code);
             while !(code.curr().0 == '*' && code.peek(0).0 == '/') {
                 if is_eof(&code.peek(0).0) { break };
                 self.bump(code);
@@ -74,8 +74,8 @@ impl Element {
         }
         self.key = comment;
     }
+
     pub fn endline(&mut self, code: &mut text::Text, terminated: bool) {
-        self.loc.new_word();
         self.push(code);
         self.key = void(VOID::endline_);
         while is_eol(&code.peek(0).0) || is_space(&code.peek(0).0) {
@@ -84,8 +84,9 @@ impl Element {
         }
         self.con = " ".to_string();
     }
+
     pub fn space(&mut self, code: &mut text::Text) {
-            self.loc.new_word();
+        let len = code.curr().1.len();
         self.push(code);
         while is_space(&code.peek(0).0) {
             self.bump(code);
@@ -98,8 +99,8 @@ impl Element {
         self.key = void(VOID::space_);
         self.con = " ".to_string();
     }
+
     pub fn digit(&mut self, code: &mut text::Text) {
-        self.loc.new_word();
         if code.curr().0 == '0'
             && (code.peek(0).0 == 'x' || code.peek(0).0 == 'o' || code.peek(0).0 == 'b')
         {
@@ -132,8 +133,8 @@ impl Element {
             }
         }
     }
+
     pub fn encap(&mut self, code: &mut text::Text) {
-        self.loc.new_word();
         let litsym = code.curr().0;
         if litsym == '`' {
             self.key = comment;
@@ -153,8 +154,8 @@ impl Element {
         }
         self.bump(code);
     }
+
     pub fn symbol(&mut self, code: &mut text::Text) {
-        self.loc.new_word();
         self.push(code);
         self.key = symbol(SYMBOL::curlyC_);
         match code.curr().0 {
@@ -210,8 +211,8 @@ impl Element {
             _ => self.key = illegal,
         }
     }
+
     pub fn alpha(&mut self, code: &mut text::Text) {
-        self.loc.new_word();
         let mut con = code.curr().0.to_string();
         self.push(code);
         while is_alpha(&code.peek(0).0) || is_digit(&code.peek(0).0) {
@@ -322,6 +323,7 @@ impl Element {
 
     pub fn bump(&mut self, code: &mut text::Text) {
         code.bump();
+        self.loc.set_len(self.loc.len() + 1);
         self.con.push_str(&code.curr().0.to_string());
     }
 }
