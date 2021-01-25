@@ -93,19 +93,19 @@ pub fn elements(dir: String) -> impl Iterator<Item = Con<Element>>  {
             let mut loc = txt.curr().1.clone(); loc.set_len(1);
             let mut result = Element::init(illegal, loc, String::new());
             if txt.curr().0 == '/' && (txt.peek(0).0 == '/' || txt.peek(0).0 == '*') {
-                result.comment(&mut txt);
+                result.comment(&mut txt).ok()?;
             } else if is_eol(&txt.curr().0) {
-                result.endline(&mut txt, false);
+                result.endline(&mut txt, false).ok()?;
             } else if is_space(&txt.curr().0) {
-                result.space(&mut txt);
+                result.space(&mut txt).ok()?;
             } else if txt.curr().0 == '"' || txt.curr().0 == '\'' || txt.curr().0 == '`' {
-                result.encap(&mut txt);
+                result.encap(&mut txt).ok()?;
             } else if is_digit(&txt.curr().0) {
-                result.digit(&mut txt);
+                result.digit(&mut txt).ok()?;
             } else if is_symbol(&txt.curr().0) {
-                result.symbol(&mut txt);
+                result.symbol(&mut txt).ok()?;
             } else if is_alpha(&txt.curr().0) {
-                result.alpha(&mut txt);
+                result.alpha(&mut txt).ok()?;
             }
             return Some(Ok(result));
         }

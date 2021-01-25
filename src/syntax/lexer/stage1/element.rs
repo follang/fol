@@ -4,7 +4,7 @@ use std::fmt;
 use crate::syntax::point;
 use crate::syntax::lexer::text;
 
-use crate::types::Con;
+use crate::types::{Con, Vod};
 use crate::syntax::token::{
     literal::LITERAL,
     void::VOID,
@@ -51,7 +51,7 @@ impl Element {
     pub fn set_con(&mut self, c: String) { self.con = c; }
 
     //checking
-    pub fn comment(&mut self, code: &mut text::Text) {
+    pub fn comment(&mut self, code: &mut text::Text) -> Vod {
         self.con.push_str(&code.curr().0.to_string());
         self.bump(code);
         if code.curr().0 == '/' {
@@ -73,9 +73,10 @@ impl Element {
             }
         }
         self.key = comment;
+        Ok(())
     }
 
-    pub fn endline(&mut self, code: &mut text::Text, terminated: bool) {
+    pub fn endline(&mut self, code: &mut text::Text, terminated: bool) -> Vod {
         self.push(code);
         self.key = void(VOID::endline_);
         while is_eol(&code.peek(0).0) || is_space(&code.peek(0).0) {
@@ -83,9 +84,10 @@ impl Element {
             self.bump(code);
         }
         self.con = " ".to_string();
+        Ok(())
     }
 
-    pub fn space(&mut self, code: &mut text::Text) {
+    pub fn space(&mut self, code: &mut text::Text) -> Vod {
         let len = code.curr().1.len();
         self.push(code);
         while is_space(&code.peek(0).0) {
@@ -93,14 +95,15 @@ impl Element {
         }
         if is_eol(&code.peek(0).0) {
             self.bump(code);
-            self.endline(code, false);
-            return;
+            self.endline(code, false)?;
+            return Ok(());
         }
         self.key = void(VOID::space_);
         self.con = " ".to_string();
+        Ok(())
     }
 
-    pub fn digit(&mut self, code: &mut text::Text) {
+    pub fn digit(&mut self, code: &mut text::Text) -> Vod {
         if code.curr().0 == '0'
             && (code.peek(0).0 == 'x' || code.peek(0).0 == 'o' || code.peek(0).0 == 'b')
         {
@@ -132,9 +135,10 @@ impl Element {
                 self.bump(code);
             }
         }
+        Ok(())
     }
 
-    pub fn encap(&mut self, code: &mut text::Text) {
+    pub fn encap(&mut self, code: &mut text::Text) -> Vod {
         let litsym = code.curr().0;
         if litsym == '`' {
             self.key = comment;
@@ -153,9 +157,10 @@ impl Element {
             self.bump(code);
         }
         self.bump(code);
+        Ok(())
     }
 
-    pub fn symbol(&mut self, code: &mut text::Text) {
+    pub fn symbol(&mut self, code: &mut text::Text) -> Vod {
         self.push(code);
         self.key = symbol(SYMBOL::curlyC_);
         match code.curr().0 {
@@ -210,9 +215,10 @@ impl Element {
             '§' => self.key = symbol(SYMBOL::sign_),
             _ => self.key = illegal,
         }
+        Ok(())
     }
 
-    pub fn alpha(&mut self, code: &mut text::Text) {
+    pub fn alpha(&mut self, code: &mut text::Text) -> Vod {
         let mut con = code.curr().0.to_string();
         self.push(code);
         while is_alpha(&code.peek(0).0) || is_digit(&code.peek(0).0) {
@@ -315,6 +321,7 @@ impl Element {
             "fa" => self.set_key(form(FORM::fa_)),
             _ => self.set_key(ident),
         }
+        Ok(())
     }
 
     pub fn push(&mut self, code: &mut text::Text) {
