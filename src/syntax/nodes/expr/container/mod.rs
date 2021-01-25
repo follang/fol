@@ -1,8 +1,18 @@
-use crate::syntax::nodes::{Node, Tree};
+use std::fmt;
+use crate::syntax::nodes::{Node, NodeTrait, ExprTrait};
 
+#[derive(Clone)]
 pub struct ContainerExpr {
     uniform: bool,
-    ulements: Node,
+    elements: Node,
 }
 
-impl Tree for ContainerExpr {}
+impl NodeTrait for ContainerExpr {}
+impl ExprTrait for ContainerExpr {}
+
+
+impl fmt::Display for ContainerExpr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        todo!();
+    }
+}

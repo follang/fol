@@ -1,9 +1,17 @@
-use crate::syntax::nodes::Tree;
-use crate::syntax::nodes::expr::number::NumberExpr;
+use std::fmt;
+use crate::syntax::nodes::{NodeTrait, Expr, ExprTrait, NumberExpr};
 
+#[derive(Clone)]
 pub enum BinaryExpr {
     leaf(NumberExpr),
-    node(Box<BinaryExpr>, NumberExpr, Box<BinaryExpr>),
+    node(Expr, NumberExpr, Expr),
 }
 
-impl Tree for BinaryExpr {}
+impl NodeTrait for BinaryExpr {}
+impl ExprTrait for BinaryExpr {}
+
+impl fmt::Display for BinaryExpr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        todo!();
+    }
+}

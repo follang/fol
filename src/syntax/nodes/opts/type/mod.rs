@@ -1,8 +1,7 @@
 use std::fmt;
-use crate::syntax::nodes::Tree;
+use crate::syntax::nodes::{NodeTrait, OptsTrait};
 
-
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub enum TypOpts {
     int,
     flt,
@@ -38,7 +37,8 @@ pub enum TypOpts {
     gen,
 }
 
-impl Tree for TypOpts {}
+impl NodeTrait for TypOpts {}
+impl OptsTrait for TypOpts {}
 
 impl fmt::Display for TypOpts {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

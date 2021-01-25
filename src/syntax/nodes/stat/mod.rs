@@ -1,12 +1,16 @@
-use crate::syntax::nodes::*;
-use crate::syntax::nodes::opts::*;
+use dyn_clone::DynClone;
 
 pub mod var;
 pub mod typ;
-
+pub use crate::syntax::nodes::{NodeTrait, id};
 pub use crate::syntax::nodes::stat::{
     var::VarStat,
     typ::TypStat };
+
+pub trait StatTrait: NodeTrait {}
+dyn_clone::clone_trait_object!(StatTrait);
+
+pub type Stat = id<Box<dyn StatTrait + 'static>>;
 
 // STATEMENTS TYPES
 // - illegal,

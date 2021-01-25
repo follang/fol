@@ -1,5 +1,7 @@
-use crate::syntax::nodes::{Node, Tree};
+use std::fmt;
+use crate::syntax::nodes::{Node, NodeTrait, ExprTrait};
 
+#[derive(Clone)]
 pub struct TypStat {
     options: Option<Node>,
     multi: Option<(usize, String)>,
@@ -10,4 +12,11 @@ pub struct TypStat {
     body: Option<Node>,
 }
 
-impl Tree for TypStat {}
+impl NodeTrait for TypStat {}
+impl ExprTrait for TypStat {}
+
+impl fmt::Display for TypStat {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        todo!();
+    }
+}

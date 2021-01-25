@@ -2,6 +2,7 @@
 #![allow(non_camel_case_types)]
 
 use std::fmt;
+use dyn_clone::DynClone;
 use crate::syntax::point;
 
 
@@ -9,18 +10,19 @@ pub mod expr;
 pub mod stat;
 pub mod opts;
 
-pub use crate::syntax::nodes::stat::*;
 pub use crate::syntax::nodes::expr::*;
+pub use crate::syntax::nodes::stat::*;
 pub use crate::syntax::nodes::opts::*;
 
+#[derive(Clone)]
 pub struct id<T: ?Sized> {
     pub loc: point::Location,
-    pub node: Box<T>,
+    pub node: T,
 }
 
 impl<T> id<T> {
     pub fn new(loc: point::Location, node: T) -> Self {
-        Self{ loc, node: Box::new(node) }
+        Self{ loc, node }
     }
     pub fn loc(&self) -> &point::Location {
         &self.loc
@@ -29,9 +31,11 @@ impl<T> id<T> {
         &self.node
     }
     pub fn set(&mut self, node: T) {
-        self.node = Box::new(node)
+        self.node = node
     }
 }
 
-pub trait Tree {}
-pub type Node = id<dyn Tree + 'static>;
+pub trait NodeTrait: DynClone + fmt::Display {}
+dyn_clone::clone_trait_object!(NodeTrait);
+
+pub type Node = id<Box<dyn NodeTrait + 'static>>;
