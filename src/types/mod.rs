@@ -5,7 +5,7 @@ pub mod error;
 use crate::types::error::{Glitch, Fault};
 
 
-pub const SLIDER: usize = 9;
+pub const SLIDER: usize = 3;
 pub type Win<T> = (Vec<T>, T, Vec<T>);
 
 macro_rules! flaw {
@@ -35,3 +35,4 @@ pub type Con<T> = Result<T, Box<(dyn Glitch + 'static)>>;
 // pub type Con<T> = Result<T, Fault>;
 pub type Vod = Result<(), Box<(dyn Glitch + 'static)>>;
 // pub type Vod = Result<(), Fault>;
+//

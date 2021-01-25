@@ -30,7 +30,7 @@ impl std::default::Default for Location {
             row: 0,
             col: 0,
             len: 0,
-            deep: 1,
+            deep: 0,
         }
     }
 }

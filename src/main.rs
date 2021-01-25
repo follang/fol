@@ -8,6 +8,7 @@ mod syntax;
 #[macro_use]
 extern crate regex;
 extern crate colored;
+extern crate dyn_clone;
 
 use crate::syntax::point;
 use crate::syntax::lexer::{Element, Elements};
@@ -23,21 +24,19 @@ fn main() {
     let mut er = Vec::new();
     let mut elem = Elements::init(path);
     while let Some(c) = elem.bump() {
-        // vec.push(c);
         match c {
-            Ok(o) => {
-                // println!("{}", o);
-                el.push(o);
-            },
-            Err(e) => {
-                // println!("{}", e);
-                er.push(e);
-            }
+            Ok(o) => { el.push(o); },
+            Err(e) => { er.push(e); }
         }
     }
-    // let newvec = er.clone();
-    for c in el {
-        println!("{}", c);
+    if er.len() == 0 {
+        for c in el {
+            println!("{}", c);
+        }
+    } else {
+        for c in er {
+            println!("{}", c);
+        }
     }
 
 }
