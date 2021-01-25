@@ -28,7 +28,7 @@ impl fmt::Display for ASSIGN {
             ASSIGN::ali_ => { t = Some("ali".to_string()); },
             _ => { t = None },
         };
-        write!(f, "{}  {}",
+        write!(f, "{}:{}",
             " ASSIGN   ".black().on_red(),
             match t { 
                 Some(val) => { (format!(" {} ", val)).black().on_red().to_string() }, 

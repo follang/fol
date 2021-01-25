@@ -28,7 +28,7 @@ impl fmt::Display for LITERAL {
             LITERAL::binary_ => { t = Some("binary".to_string()); },
             _ => { t = None },
         };
-        write!(f, "{}  {}",
+        write!(f, "{}:{}",
             " LITERAL  ".black().on_red(),
             match t { 
                 Some(val) => { (format!(" {} ", val)).black().on_red().to_string() }, 

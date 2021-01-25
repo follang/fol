@@ -76,7 +76,7 @@ impl fmt::Display for TYPE {
             TYPE::gen_ => { t = Some("gen".to_string()); },
             _ => { t = None },
         };
-        write!(f, "{}  {}",
+        write!(f, "{}:{}",
             " TYPE     ".black().on_red(),
             match t { 
                 Some(val) => { (format!(" {} ", val)).black().on_red().to_string() }, 

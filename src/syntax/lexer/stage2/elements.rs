@@ -51,11 +51,17 @@ impl Elements {
     pub fn bump(&mut self) -> Option<Con<Element>> {
         match self.elem.next() {
             Some(v) => {
-                self.win.0.remove(0); self.win.0.push(self.win.1.clone());
-                self.win.1 = self.win.2[0].clone();
-                //TODO: fix this unwrap
-                self.win.2.remove(0); self.win.2.push(v.unwrap());
-                return Some(Ok(self.win.1.clone()))
+                match v {
+                    Ok(e) => {
+                        self.win.0.remove(0); self.win.0.push(self.win.1.clone());
+                        self.win.1 = self.win.2[0].clone();
+                        self.win.2.remove(0); self.win.2.push(e);
+                        return Some(Ok(self.win.1.clone()));
+                    },
+                    Err(e) => {
+                        return Some(Err(e));
+                    }
+                }
             },
             None => {
                 if self._in_count > 0 {

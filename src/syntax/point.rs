@@ -37,7 +37,7 @@ impl std::default::Default for Location {
 
 impl Location {
     pub fn visualize(&self) -> String {
-        let file = File::open(Path::new(&self.path.1)).unwrap();
+        let file = File::open(Path::new(&self.path.0)).unwrap();
         let mut lines = BufReader::new(&file).lines();
         let line = lines.nth(self.row() - 1).unwrap().unwrap();
         format!(

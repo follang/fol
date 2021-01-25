@@ -10,7 +10,7 @@ use crate::types::{Con, Win, SLIDER};
 type Part<T> = (T, point::Location);
 
 pub struct Text {
-    chars: Box<dyn Iterator<Item = Part<char>>>,
+    chars: Box<dyn Iterator<Item = Con<Part<char>>>>,
     win: Win<Part<char>>,
     _in_count: usize,
 }
@@ -44,7 +44,7 @@ impl Text {
         let mut next = Vec::with_capacity(SLIDER);
         let mut chars = Box::new(gen(dir));
         for _ in 0..SLIDER { prev.push(def.clone()) }
-        for _ in 0..SLIDER { next.push(chars.next().unwrap_or(def.clone())) }
+        for _ in 0..SLIDER { next.push(chars.next().unwrap_or(Ok(def.clone())).unwrap()) }
         Self {
             chars,
             win: (prev, def, next),
@@ -52,13 +52,20 @@ impl Text {
         }
     }
 
-    pub fn bump(&mut self) -> Option<Part<char>> {
+    pub fn bump(&mut self) -> Option<Con<Part<char>>> {
         match self.chars.next() {
             Some(v) => {
-                self.win.0.remove(0); self.win.0.push(self.win.1.clone());
-                self.win.1 = self.win.2[0].clone();
-                self.win.2.remove(0); self.win.2.push(v);
-                return Some(self.win.1.clone())
+                match v {
+                    Ok(e) => {
+                        self.win.0.remove(0); self.win.0.push(self.win.1.clone());
+                        self.win.1 = self.win.2[0].clone();
+                        self.win.2.remove(0); self.win.2.push(e);
+                        return Some(Ok(self.win.1.clone()));
+                    },
+                    Err(e) => {
+                        return Some(Err(e));
+                    }
+                }
             },
             None => {
                 if self._in_count > 0 {
@@ -66,7 +73,7 @@ impl Text {
                     self.win.1 = self.win.2[0].clone();
                     self.win.2.remove(0); self.win.2.push(('\0', point::Location::default()));
                     self._in_count -= 1;
-                    return Some(self.win.1.clone())
+                    return Some(Ok(self.win.1.clone()));
                 } else { return None }
             }
         }
@@ -76,9 +83,20 @@ impl Text {
 impl Iterator for Text {
     type Item = Part<char>;
     fn next(&mut self) -> Option<Part<char>> {
-        return self.bump()
+        loop {
+            match self.bump() {
+                Some(v) => {
+                    match v {
+                        Ok(i) => { return Some(i) },
+                        Err(_) => continue
+                    }
+                },
+                None => return None
+            }
+        }
     }
 }
+
 
 impl fmt::Display for Text {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -87,7 +105,7 @@ impl fmt::Display for Text {
 }
 
 
-pub fn gen(path: String) -> impl Iterator<Item = Part<char>> {
+pub fn gen(path: String) -> impl Iterator<Item = Con<Part<char>>> {
     let mut s = source::Sources::init(path);
     let mut l = lines(s.next().unwrap());
     let mut c = chars(l.next().unwrap());
@@ -102,7 +120,7 @@ pub fn gen(path: String) -> impl Iterator<Item = Part<char>> {
                 Some(i) => {
                     loc.new_char();
                     // if i == ' ' { loc.new_word() }
-                    return Some ((i, loc.clone()))
+                    return Some (Ok((i, loc.clone())))
                 },
                 None => {
                     match l.next() {
@@ -110,7 +128,7 @@ pub fn gen(path: String) -> impl Iterator<Item = Part<char>> {
                             loc.new_line();
                             loc.new_word();
                             c = chars(j);
-                            return Some((c.next().unwrap_or('\n'), loc.clone()))
+                            return Some(Ok((c.next().unwrap_or('\n'), loc.clone())))
                         },
                         None => {
                             match s.bump() {
@@ -122,7 +140,7 @@ pub fn gen(path: String) -> impl Iterator<Item = Part<char>> {
                                     l = lines(k);
                                 },
                                 None => {
-                                    return None 
+                                    return None
                                 }
                             }
                         }

@@ -19,13 +19,24 @@ fn main() {
     // let elem = source::Sources::init(path);
     // let elem = text2::Text::init(path);
     // let elem = stage1::Elements::init(path);
-    let mut vec = Vec::new();
-    let elem = Elements::init(path);
-    for c in elem {
-        vec.push(c);
+    let mut el = Vec::new();
+    let mut er = Vec::new();
+    let mut elem = Elements::init(path);
+    while let Some(c) = elem.bump() {
+        // vec.push(c);
+        match c {
+            Ok(o) => {
+                // println!("{}", o);
+                el.push(o);
+            },
+            Err(e) => {
+                // println!("{}", e);
+                er.push(e);
+            }
+        }
     }
-    let newvec = vec.clone();
-    for c in newvec {
+    // let newvec = er.clone();
+    for c in el {
         println!("{}", c);
     }
 

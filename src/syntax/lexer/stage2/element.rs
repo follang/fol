@@ -5,6 +5,7 @@ use crate::syntax::point;
 use crate::syntax::lexer::stage1;
 
 use crate::types::{Con, Vod, Win, SLIDER};
+use crate::types::error::{Glitch, Fault, Flaw, Typo};
 use crate::syntax::token::{
     literal::LITERAL,
     void::VOID,
@@ -76,7 +77,7 @@ impl Element {
             && el.peek(0).key().is_void()
         {
             self.combine(&el.peek(0).into());
-            el.bump();
+            self.bump(el);
         }
         // numbers
         else if matches!(el.curr().key(), KEYWORD::symbol(SYMBOL::dot_))
@@ -125,7 +126,7 @@ impl Element {
     pub fn make_multi_operator(&mut self, el: &mut stage1::Elements) -> Vod {
         while el.peek(0).key().is_symbol() && !el.peek(0).key().is_bracket() {
             self.combine(&el.peek(0).into());
-            el.bump();
+            self.bump(el);
         }
         match self.con().as_str() {
             ":=" => self.set_key(operator(OPERATOR::assign2_)),
@@ -163,15 +164,19 @@ impl Element {
         if el.curr().key().is_dot() && el.peek(0).key().is_decimal() {
             self.set_key(literal(LITERAL::float_));
             self.combine(&el.peek(0).into());
-            el.bump();
+            self.bump(el);
             if el.peek(0).key().is_dot()
                 && el.peek(1).key().is_eol()
                 && el.peek(2).key().is_ident()
             {
                 return Ok(())
             } else if el.peek(0).key().is_dot() && !el.peek(1).key().is_ident() {
-                el.bump();
-                //TODO: report error
+                let elem = el.peek(0);
+                self.toeol(el);
+                return Err(catch!(Typo::LexerSpaceAdd{ 
+                    msg: Some(format!("Expected {} but {} was given", KEYWORD::void(VOID::space_), elem.key())),
+                    loc: Some(elem.loc().clone()),
+                }))
             }
         } else if el.seek(0).key().is_continue()
             && el.curr().key().is_decimal()
@@ -180,16 +185,16 @@ impl Element {
         {
             self.set_key(literal(LITERAL::float_));
             self.combine(&el.peek(0).into());
-            el.bump();
+            self.bump(el);
             if el.peek(0).key().is_number() {
                 self.combine(&el.peek(0).into());
-                el.bump();
+                self.bump(el);
                 if el.peek(0).key().is_dot() && el.peek(1).key().is_number() {
-                    el.bump();
+                    self.bump(el);
                     //TODO: report error
                 }
             } else if !el.peek(0).key().is_void() {
-                el.bump();
+                self.bump(el);
                 //TODO: report error
             }
         };
@@ -199,7 +204,7 @@ impl Element {
         if matches!(el.peek(0).key(), KEYWORD::symbol(SYMBOL::root_)) {
             while !el.peek(0).key().is_eol() {
                 self.combine(&el.peek(0).into());
-                el.bump();
+                self.bump(el);
             }
         } else if matches!(el.peek(0).key(), KEYWORD::symbol(SYMBOL::star_)) {
             while !(matches!(el.peek(0).key(), KEYWORD::symbol(SYMBOL::star_))
@@ -207,12 +212,20 @@ impl Element {
                 || el.peek(0).key().is_eof()
             {
                 self.combine(&el.peek(0).into());
-                el.bump();
+                self.bump(el);
             }
             self.combine(&el.peek(0).into());
-            el.bump();
+            self.bump(el);
         };
         self.set_key(comment);
         Ok(())
+    }
+    pub fn bump(&mut self, el: &mut stage1::Elements) {
+        el.bump();
+    }
+    pub fn toeol(&mut self, el: &mut stage1::Elements) {
+        while !el.curr().key().is_terminal() {
+            el.bump();
+        }
     }
 }
