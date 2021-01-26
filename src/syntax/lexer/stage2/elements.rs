@@ -26,8 +26,8 @@ impl Elements {
             _in_count: SLIDER
         }
     }
-    pub fn curr(&self) -> Element {
-        self.win.1.clone()
+    pub fn curr(&self, ignore: bool) -> Element {
+        if ignore && self.win.1.key().is_space() { self.peek(0, false) } else { self.win.1.clone() }
     }
     pub fn next_vec(&self) -> Vec<Element> {
         self.win.2.clone()

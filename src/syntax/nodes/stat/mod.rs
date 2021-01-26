@@ -1,16 +1,18 @@
 use dyn_clone::DynClone;
 
-pub mod var;
-pub mod typ;
-pub use crate::syntax::nodes::{NodeTrait, id};
-pub use crate::syntax::nodes::stat::{
-    var::VarStat,
-    typ::TypStat };
+pub use crate::syntax::nodes::Node;
+pub mod datatype;
+pub use crate::syntax::nodes::stat::datatype::*;
+pub mod assign;
+pub use crate::syntax::nodes::stat::assign::*;
 
-pub trait StatTrait: NodeTrait {}
-dyn_clone::clone_trait_object!(StatTrait);
+pub trait Stat: Node {}
+dyn_clone::clone_trait_object!(Stat);
 
-pub type Stat = id<Box<dyn StatTrait + 'static>>;
+pub trait Opts: Node {}
+dyn_clone::clone_trait_object!(Opts);
+
+
 
 // STATEMENTS TYPES
 // - illegal,

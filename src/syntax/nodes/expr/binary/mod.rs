@@ -1,14 +1,14 @@
 use std::fmt;
-use crate::syntax::nodes::{NodeTrait, Expr, ExprTrait, NumberExpr};
+use crate::syntax::nodes::{Node, Expr, NumberExpr};
 
 #[derive(Clone)]
 pub enum BinaryExpr {
     leaf(NumberExpr),
-    node(Expr, NumberExpr, Expr),
+    node(Box<dyn Expr>, NumberExpr, Box<dyn Expr>),
 }
 
-impl NodeTrait for BinaryExpr {}
-impl ExprTrait for BinaryExpr {}
+impl Node for BinaryExpr {}
+impl Expr for BinaryExpr {}
 
 impl fmt::Display for BinaryExpr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

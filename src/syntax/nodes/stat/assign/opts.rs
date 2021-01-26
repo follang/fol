@@ -1,5 +1,5 @@
 use std::fmt;
-use crate::syntax::nodes::{NodeTrait, OptsTrait};
+use crate::syntax::nodes::{Node, Opts};
 
 #[derive(Clone)]
 pub enum AssOpts {
@@ -14,8 +14,8 @@ pub enum AssOpts {
     ext,
 }
 
-impl NodeTrait for AssOpts {}
-impl OptsTrait for AssOpts {}
+impl Node for AssOpts {}
+impl Opts for AssOpts {}
 
 impl fmt::Display for AssOpts {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
