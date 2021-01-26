@@ -143,31 +143,31 @@ pub fn assign_options(opts: &mut trees, lex: &mut lexer::BAG, flaw: &mut flaw::F
             KEYWORD::option(OPTION::mut_) => {
                 el = tree::new(
                     lex.curr().loc().clone(),
-                    tree_type::stat(stat_type::Opts(assign_opts::Mut)),
+                    tree_type::stat(stat_type::OptsTrait(assign_opts::Mut)),
                 )
             }
             KEYWORD::option(OPTION::sta_) => {
                 el = tree::new(
                     lex.curr().loc().clone(),
-                    tree_type::stat(stat_type::Opts(assign_opts::Sta)),
+                    tree_type::stat(stat_type::OptsTrait(assign_opts::Sta)),
                 )
             }
             KEYWORD::option(OPTION::exp_) => {
                 el = tree::new(
                     lex.curr().loc().clone(),
-                    tree_type::stat(stat_type::Opts(assign_opts::Exp)),
+                    tree_type::stat(stat_type::OptsTrait(assign_opts::Exp)),
                 )
             }
             KEYWORD::option(OPTION::hid_) => {
                 el = tree::new(
                     lex.curr().loc().clone(),
-                    tree_type::stat(stat_type::Opts(assign_opts::Hid)),
+                    tree_type::stat(stat_type::OptsTrait(assign_opts::Hid)),
                 )
             }
             KEYWORD::option(OPTION::hep_) => {
                 el = tree::new(
                     lex.curr().loc().clone(),
-                    tree_type::stat(stat_type::Opts(assign_opts::Hep)),
+                    tree_type::stat(stat_type::OptsTrait(assign_opts::Hep)),
                 )
             }
             _ => {

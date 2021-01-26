@@ -1,14 +1,14 @@
 use std::fmt;
-use crate::syntax::nodes::{Node, Expr};
+use crate::syntax::nodes::{NodeTrait, ExprTrait};
 
 #[derive(Clone)]
 pub struct ContainerExpr {
     uniform: bool,
-    elements: Box<dyn Node>,
+    elements: Box<dyn NodeTrait>,
 }
 
-impl Node for ContainerExpr {}
-impl Expr for ContainerExpr {}
+impl NodeTrait for ContainerExpr {}
+impl ExprTrait for ContainerExpr {}
 
 
 impl fmt::Display for ContainerExpr {

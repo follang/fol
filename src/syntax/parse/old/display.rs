@@ -30,7 +30,7 @@ impl fmt::Display for stat_type {
             stat_type::Typ(a) => write!(f, "typ{}", a),
             stat_type::Ali(a) => write!(f, "ali{}", a),
             stat_type::Var(a) => write!(f, "var{}", a),
-            stat_type::Opts(a) => write!(f, "{}", a),
+            stat_type::OptsTrait(a) => write!(f, "{}", a),
             stat_type::Ident(a) => write!(f, "{}", a),
             stat_type::Retype(a) => write!(f, "{}", a),
             stat_type::Illegal => write!(f, "<unknown>"),

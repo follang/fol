@@ -14,8 +14,8 @@ impl fmt::Display for VOID {
         let t;
         match self {
             VOID::space_ => { t = Some("space".to_string()); },
-            VOID::endfile_ => { t = Some("eol".to_string()); },
-            VOID::endline_ => { t = Some("EOF".to_string()); },
+            VOID::endfile_ => { t = Some("EOF".to_string()); },
+            VOID::endline_ => { t = Some("eol".to_string()); },
             _ => { t = None },
         };
         write!(f, "{}:{}",

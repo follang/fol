@@ -1,5 +1,5 @@
 use std::fmt;
-use crate::syntax::nodes::{Node, Expr};
+use crate::syntax::nodes::{NodeTrait, ExprTrait};
 
 #[derive(Clone)]
 pub enum NumberExpr {
@@ -7,11 +7,14 @@ pub enum NumberExpr {
     int_8(i8),
 }
 
-impl Node for NumberExpr {}
-impl Expr for NumberExpr {}
+impl NodeTrait for NumberExpr {}
+impl ExprTrait for NumberExpr {}
 
 impl fmt::Display for NumberExpr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!();
+        match self {
+            NumberExpr::int(i) => write!(f, "{}", i),
+            NumberExpr::int_8(i) => write!(f, "{}", i)
+        }
     }
 }

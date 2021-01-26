@@ -138,7 +138,7 @@ impl fmt::Display for Location {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "file: {: <4}   row: {: <2}   col: {: <2}",
+            "{: <4} [{: <2}:{: <2}]",
             self.path(false), self.row, self.col
         )
     }

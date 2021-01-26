@@ -1,5 +1,5 @@
 use std::fmt;
-use crate::syntax::nodes::{Node, Expr};
+use crate::syntax::nodes::{NodeTrait, ExprTrait};
 
 
 #[derive(Clone)]
@@ -11,8 +11,8 @@ pub enum LetterExpr {
     char_binary(u8),
 }
 
-impl Node for LetterExpr {}
-impl Expr for LetterExpr {}
+impl NodeTrait for LetterExpr {}
+impl ExprTrait for LetterExpr {}
 
 
 impl fmt::Display for LetterExpr {

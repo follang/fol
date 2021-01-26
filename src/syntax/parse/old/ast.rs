@@ -60,7 +60,7 @@ pub enum stat_type {
     // Fun(fun_stat),
     Typ(typ_stat),
     Ali(typ_stat),
-    Opts(assign_opts),
+    OptsTrait(assign_opts),
     Ident(String),
     Retype(retype_stat),
     If,

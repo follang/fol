@@ -13,9 +13,18 @@ extern crate dyn_clone;
 use std::fs::File;
 use crate::syntax::point;
 use crate::syntax::lexer::{Element, Elements};
+use crate::syntax::nodes::*;
 
 fn main() {
-    let path = "./test/main/var2".to_string();
+    let mut vec: Vec<Node> = Vec::new();
+    let node = Expr::new(point::Location::default(), Box::new(NumberExpr::int(5)));
+    let node2 = Expr::new(point::Location::default(), Box::new(NumberExpr::int(6)));
+    vec.push(node.into());
+    vec.push(node2.into());
+    for e in vec {
+        println!("{}", e.get_node());
+    }
+    let path = "./test/main/var".to_string();
     // let path = "./test/main".to_string();
 
     // let elem = source::Sources::init(path);

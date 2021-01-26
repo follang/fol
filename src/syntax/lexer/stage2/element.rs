@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 use std::fmt;
+use colored::Colorize;
 use crate::syntax::point;
 use crate::syntax::lexer::stage1;
 
@@ -44,7 +45,10 @@ impl From<stage1::Element> for Element {
 
 impl fmt::Display for Element {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} {}\t{}  {}", self.loc, self.loc.len(), self.key, self.con)
+        let con = if self.key().is_literal()
+            || self.key().is_comment()
+            || self.key().is_ident() { " ".to_string() + &self.con + " " } else { "".to_string() };
+        write!(f, "{}\t{}{}", self.loc, self.key, con.black().on_red())
     }
 }
 

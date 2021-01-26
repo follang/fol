@@ -1,5 +1,5 @@
 use std::fmt;
-pub use crate::syntax::nodes::{Node, Stat};
+pub use crate::syntax::nodes::{NodeTrait, StatTrait};
 
 #[derive(Clone)]
 pub enum Datatype {
@@ -37,8 +37,8 @@ pub enum Datatype {
     gen,
 }
 
-impl Node for Datatype {}
-impl Stat for Datatype {}
+impl NodeTrait for Datatype {}
+impl StatTrait for Datatype {}
 
 impl fmt::Display for Datatype {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

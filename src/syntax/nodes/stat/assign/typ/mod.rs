@@ -1,20 +1,20 @@
 use std::fmt;
-use crate::syntax::nodes::{Node, Stat};
+use crate::syntax::nodes::{NodeTrait, StatTrait};
 
 #[derive(Clone)]
-pub struct TypStat {
-    optis: Vec<Box<dyn Node>>,
-    ident: Box<dyn Node>,
-    generics: Option<Vec<(Box<dyn Node>, Box<dyn Node>)>>,
-    contract: Option<Vec<Box<dyn Node>>>,
-    form: Option<Box<dyn Node>>,
-    body: Option<Box<dyn Node>>,
+pub struct TypStatTrait {
+    optis: Vec<Box<dyn NodeTrait>>,
+    ident: Box<dyn NodeTrait>,
+    generics: Option<Vec<(Box<dyn NodeTrait>, Box<dyn NodeTrait>)>>,
+    contract: Option<Vec<Box<dyn NodeTrait>>>,
+    form: Option<Box<dyn NodeTrait>>,
+    body: Option<Box<dyn NodeTrait>>,
 }
 
-impl Node for TypStat {}
-impl Stat for TypStat {}
+impl NodeTrait for TypStatTrait {}
+impl StatTrait for TypStatTrait {}
 
-impl fmt::Display for TypStat {
+impl fmt::Display for TypStatTrait {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         todo!();
     }
