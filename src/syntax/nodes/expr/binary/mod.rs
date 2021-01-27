@@ -1,10 +1,10 @@
 use std::fmt;
-use crate::syntax::nodes::{NodeTrait, ExprTrait, NumberExpr};
+use crate::syntax::nodes::{NodeTrait, ExprTrait, NumberExpr, Node};
 
 #[derive(Clone)]
 pub enum BinaryExpr {
     leaf(NumberExpr),
-    node(Box<dyn ExprTrait>, NumberExpr, Box<dyn ExprTrait>),
+    node(Node, NumberExpr, Node),
 }
 
 impl NodeTrait for BinaryExpr {}

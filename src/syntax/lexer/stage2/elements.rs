@@ -9,7 +9,7 @@ use crate::syntax::lexer::stage2::Element;
 pub struct Elements {
     elem: Box<dyn Iterator<Item = Con<Element>>>,
     win: Win<Element>,
-    _in_count: usize,
+    _in_count: u8,
 }
 
 
@@ -23,7 +23,7 @@ impl Elements {
         Self {
             elem,
             win: (prev, Element::default(), next),
-            _in_count: SLIDER
+            _in_count: SLIDER as u8
         }
     }
     pub fn curr(&self, ignore: bool) -> Element {

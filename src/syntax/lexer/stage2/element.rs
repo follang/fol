@@ -55,7 +55,7 @@ impl fmt::Display for Element {
 
 impl Element {
     pub fn init(key: KEYWORD, loc: point::Location, con: String) -> Self { Self{ key, loc, con } }
-    pub fn key(&self) -> &KEYWORD { &self.key }
+    pub fn key(&self) -> KEYWORD { self.key.clone() }
     pub fn set_key(&mut self, k: KEYWORD) { self.key = k; }
     pub fn loc(&self) -> &point::Location { &self.loc }
     pub fn set_loc(&mut self, l: point::Location) { self.loc = l; }

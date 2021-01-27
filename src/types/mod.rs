@@ -2,11 +2,15 @@
 #![allow(unused_macros)]
 
 pub mod error;
-use crate::types::error::{Glitch, Fault};
+pub use crate::types::error::*;
 
+pub mod id;
+pub use crate::types::id::*;
 
 pub const SLIDER: usize = 3;
 pub type Win<T> = (Vec<T>, T, Vec<T>);
+pub type Con<T> = Result<T, Box<(dyn Glitch + 'static)>>;
+pub type Vod = Result<(), Box<(dyn Glitch + 'static)>>;
 
 macro_rules! flaw {
     ($err:expr $(,)?) => ({ Fault::Flaw( $err ) });
@@ -29,10 +33,3 @@ macro_rules! crash {
     () => ({ std::process::exit(0); });
     ($err:expr $(,)?) => ({ println!("{}", $err); std::process::exit(0); });
 }
-
-
-pub type Con<T> = Result<T, Box<(dyn Glitch + 'static)>>;
-// pub type Con<T> = Result<T, Fault>;
-pub type Vod = Result<(), Box<(dyn Glitch + 'static)>>;
-// pub type Vod = Result<(), Fault>;
-//
