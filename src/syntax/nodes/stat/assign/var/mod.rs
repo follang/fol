@@ -1,18 +1,18 @@
 use std::fmt;
-use crate::syntax::nodes::{NodeTrait, StatTrait, OptsTrait};
+use crate::syntax::nodes::{NodeTrait, Node, StatTrait, Opts};
 
 #[derive(Clone)]
-pub struct VarStatTrait{
-    options: Vec<Box<dyn OptsTrait>>,
-    ident: Box<dyn NodeTrait>,
-    data: Box<dyn NodeTrait>,
-    body: Option<Box<dyn NodeTrait>>,
+pub struct VarStat{
+    options: Vec<Opts>,
+    ident: Node,
+    data: Node,
+    body: Option<Node>,
 }
 
-impl NodeTrait for VarStatTrait {}
-impl StatTrait for VarStatTrait {}
+impl NodeTrait for VarStat {}
+impl StatTrait for VarStat {}
 
-impl fmt::Display for VarStatTrait {
+impl fmt::Display for VarStat {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         todo!();
     }

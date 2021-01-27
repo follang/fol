@@ -44,6 +44,7 @@ pub enum KEYWORD {
     operator(OPERATOR),
     void(VOID),
     ident,
+    orbit,
     comment,
     illegal,
 }
@@ -88,6 +89,12 @@ impl KEYWORD {
     pub fn is_buildin(&self) -> bool {
         match *self {
             KEYWORD::buildin(_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_orbit(&self) -> bool {
+        match *self {
+            KEYWORD::orbit => true,
             _ => false,
         }
     }
@@ -232,6 +239,7 @@ impl fmt::Display for KEYWORD {
             KEYWORD::form(v) => write!(f, "{}", v),
             KEYWORD::option(v) => write!(f, "{}", v),
             KEYWORD::ident => write!(f, "{}:", " IDENT    ".black().on_red()),
+            KEYWORD::orbit => write!(f, "{}:", " ORBIT    ".black().on_red()),
             KEYWORD::comment => write!(f, "{}:", " COMMENT  ".black().on_red()),
             KEYWORD::illegal => write!(f, "{}", " ILLEGAL  ".black().on_green()),
         }

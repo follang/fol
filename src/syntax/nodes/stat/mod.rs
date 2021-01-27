@@ -14,8 +14,9 @@ pub type Stat = ID<Box<dyn StatTrait>>;
 impl From<Stat> for Node {
     fn from(stat: Stat) -> Self {
         Self {
-            loc: stat.get_loc().clone(), 
-            node: Box::new(stat.get_node().clone())
+            key: stat.key().clone(), 
+            loc: stat.loc().clone(), 
+            node: Box::new(stat.node().clone())
         }
     }
 }
@@ -27,8 +28,9 @@ pub type Opts = ID<Box<dyn OptsTrait>>;
 impl From<Opts> for Node {
     fn from(opts: Opts) -> Self {
         Self {
-            loc: opts.get_loc().clone(), 
-            node: Box::new(opts.get_node().clone())
+            key: opts.key().clone(), 
+            loc: opts.loc().clone(), 
+            node: Box::new(opts.node().clone())
         }
     }
 }

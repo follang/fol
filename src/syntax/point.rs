@@ -35,6 +35,16 @@ impl std::default::Default for Location {
     }
 }
 
+impl fmt::Display for Location {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{: <4} [{: <2}:{: <2}]",
+            self.path(false), self.row, self.col
+        )
+    }
+}
+
 impl Location {
     pub fn visualize(&self) -> String {
         let file = File::open(Path::new(&self.path.0)).unwrap();
@@ -133,14 +143,3 @@ impl Location {
         self.deep -= 1
     }
 }
-
-impl fmt::Display for Location {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{: <4} [{: <2}:{: <2}]",
-            self.path(false), self.row, self.col
-        )
-    }
-}
-

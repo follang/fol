@@ -12,11 +12,6 @@ pub use crate::syntax::nodes::stat::*;
 
 pub trait NodeTrait: DynClone + fmt::Display {}
 dyn_clone::clone_trait_object!(NodeTrait);
-pub type Node = id::ID<Box<dyn NodeTrait>>;
 
-pub type Tree = id::Neo<Node>;
-impl From<Node> for Tree {
-    fn from(expr: Node) -> Self {
-        Self::One(expr)
-    }
-}
+pub type Node = id::ID<Box<dyn NodeTrait>>;
+pub type Tree = Vec<Node>;

@@ -19,8 +19,9 @@ pub type Expr = ID<Box<dyn ExprTrait>>;
 impl From<Expr> for Node {
     fn from(expr: Expr) -> Self {
         Self {
-            loc: expr.get_loc().clone(), 
-            node: Box::new(expr.get_node().clone())
+            key: expr.key().clone(), 
+            loc: expr.loc().clone(), 
+            node: Box::new(expr.node().clone())
         }
     }
 }

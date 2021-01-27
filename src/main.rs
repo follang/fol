@@ -4,6 +4,7 @@
 #[macro_use]
 mod types;
 mod syntax;
+mod helper;
 
 #[macro_use]
 extern crate regex;
@@ -11,22 +12,16 @@ extern crate colored;
 extern crate dyn_clone;
 
 use std::fs::File;
+use crate::types::*;
 use crate::syntax::point;
 use crate::syntax::lexer::{Element, Elements};
 use crate::syntax::nodes::*;
 use crate::syntax::token::*;
+use crate::syntax::parse::*;
+use crate::syntax::parse::statement::var_stat::*;
 
 fn main() {
-    let mut vec: Vec<Node> = Vec::new();
-    let node = Expr::new(None, Box::new(NumberExpr::int(5)));
-    let node2 = Expr::new(None, Box::new(NumberExpr::int(6)));
-    vec.push(node.into());
-    vec.push(node2.into());
-    for e in vec {
-        println!("{}", e);
-    }
     let path = "./test/main/var".to_string();
-    // let path = "./test/main".to_string();
 
     // let elem = source::Sources::init(path);
     // let elem = text2::Text::init(path);
@@ -37,20 +32,16 @@ fn main() {
     // for o in elem.filter(|x| x.key() == KEYWORD::comment) {
     //     println!("{}", o);
     // }
-    while let Some(c) = elem.bump() {
-        match c {
-            Ok(o) => { 
-                // el.push(o); 
-                // if o.key() == KEYWORD::literal(LITERAL::char_) {
-                    println!("{}", o);
-                // }
-            },
-            Err(e) => { 
-                // er.push(e); 
-                println!("{}", e);
-            }
-        }
-    }
+    // while let Some(c) = elem.bump() {
+    //     match c {
+    //         Ok(o) => { 
+    //             el.push(o); 
+    //         },
+    //         Err(e) => { 
+    //             er.push(e); 
+    //         }
+    //     }
+    // }
     // if er.len() == 0 {
     //     for c in el {
     //         println!("{}", c);
@@ -60,4 +51,6 @@ fn main() {
     //         println!("{}", c);
     //     }
     // }
+    let var_stat = Expr::new(Box::new(NumberExpr::int(5)));
+    let parser = Parser::default().parse(&mut elem);
 }

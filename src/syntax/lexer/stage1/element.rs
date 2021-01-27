@@ -141,7 +141,7 @@ impl Element {
     pub fn encap(&mut self, code: &mut text::Text) -> Vod {
         let litsym = code.curr().0;
         if litsym == '`' {
-            self.key = comment;
+            self.key = orbit;
         } else if litsym == '\'' {
             self.key = literal(LITERAL::char_);
         } else {
