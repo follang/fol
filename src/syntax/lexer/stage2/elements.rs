@@ -13,19 +13,17 @@ pub struct Elements {
 
 
 impl Elements {
-    pub fn new(dir: String) -> Self {
+    pub fn init(dir: String) -> Self {
         let mut prev = Vec::with_capacity(SLIDER);
         let mut next = Vec::with_capacity(SLIDER);
         let mut elem = Box::new(elements(dir));
         for _ in 0..SLIDER { prev.push(Element::default()) }
         for _ in 0..SLIDER { next.push(elem.next().unwrap_or(Ok(Element::default())).unwrap()) }
-        let mut el = Self {
+        Self {
             elem,
             win: (prev, Element::default(), next),
             _in_count: SLIDER as u8
-        };
-        if let Some(val) = el.bump() { if let Err(e) = val { crash!(e) }; };
-        el
+        }
     }
     pub fn curr(&self, ignore: bool) -> Element {
         if ignore && self.win.1.key().is_space() { self.peek(0, false) } else { self.win.1.clone() }

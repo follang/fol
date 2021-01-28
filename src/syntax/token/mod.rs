@@ -97,6 +97,12 @@ impl KEYWORD {
             _ => false,
         }
     }
+    pub fn is_illegal(&self) -> bool {
+        match *self {
+            KEYWORD::illegal => true,
+            _ => false,
+        }
+    }
     pub fn is_comment(&self) -> bool {
         match *self {
             KEYWORD::comment => true,

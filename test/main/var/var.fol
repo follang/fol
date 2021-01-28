@@ -1,4 +1,4 @@
 ~var[nor, []rac] one = "one two";
-~fun[nor, []rac] one = .45.34.to_string();
+~fun[nor, []rac] one = += 45.34.to_string();
 `one`
 //fn

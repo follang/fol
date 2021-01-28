@@ -104,38 +104,40 @@ impl fmt::Display for Text {
 
 
 pub fn gen(path: String) -> impl Iterator<Item = Con<Part<char>>> {
-    let mut s = source::Sources::init(path);
-    let mut l = lines(s.next().unwrap());
-    let mut c = chars(l.next().unwrap());
+    let mut files = source::Sources::init(path);
+    let mut lines = get_lines(files.next().unwrap());
+    let mut chars = get_chars(lines.next().unwrap());
     let mut loc = point::Location::init(
-        (s.curr().path(true), s.curr().path(false)), 
-        &s.curr().module()
+        (files.curr().path(true), files.curr().path(false)), 
+        &files.curr().module()
     );
     loc.adjust(1,0);
     std::iter::from_fn(move || {
-        loop {
-            match c.next() {
+        // loop {
+            match chars.next() {
                 Some(i) => {
                     loc.new_char();
                     // if i == ' ' { loc.new_word() }
                     return Some (Ok((i, loc.clone())))
                 },
                 None => {
-                    match l.next() {
+                    match lines.next() {
                         Some(j) => { 
                             loc.new_line();
                             loc.new_word();
-                            c = chars(j);
-                            return Some(Ok((c.next().unwrap_or('\n'), loc.clone())))
+                            chars = get_chars(j);
+                            return Some(Ok((chars.next().unwrap_or('\n'), loc.clone())))
                         },
                         None => {
-                            match s.bump() {
+                            match files.bump() {
                                 Some(k) => {
+                                    let old = Some(Ok(('\0', loc.clone())));
                                     loc = point::Location::init(
-                                        (s.curr().path(true), s.curr().path(false)), 
-                                        &s.curr().module()
+                                        (files.curr().path(true), files.curr().path(false)), 
+                                        &files.curr().module()
                                     );
-                                    l = lines(k);
+                                    lines = get_lines(k);
+                                    return old;
                                 },
                                 None => {
                                     return None
@@ -145,12 +147,12 @@ pub fn gen(path: String) -> impl Iterator<Item = Con<Part<char>>> {
                     }
                 }
             };
-        }
+        // }
     })
 }
 
 
-fn lines(src: source::Source) -> impl Iterator<Item = String> {
+fn get_lines(src: source::Source) -> impl Iterator<Item = String> {
     let mut reader = reader::BufReader::open(src.path(true)).unwrap();
     let mut buffer = String::new();
     std::iter::from_fn(move || {
@@ -162,7 +164,7 @@ fn lines(src: source::Source) -> impl Iterator<Item = String> {
 }
 
 
-fn chars(src: String) -> impl Iterator<Item = char> {
+fn get_chars(src: String) -> impl Iterator<Item = char> {
     let mut chrs = src.clone();
     std::iter::from_fn(move || {
         if let Some(ch) =  chrs.chars().next() {

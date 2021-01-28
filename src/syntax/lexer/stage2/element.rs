@@ -80,6 +80,13 @@ impl Element {
             self.combine(&el.peek(0).into());
             self.bump(el);
         }
+        else if ( matches!(el.curr().key(), KEYWORD::void(VOID::space_))
+            || matches!(el.curr().key(), KEYWORD::void(VOID::endline_)) )
+            && el.peek(0).key().is_eof()
+        {
+            self.combine(&el.peek(0).into());
+            self.bump(el);
+        }
         // numbers
         else if matches!(el.curr().key(), KEYWORD::symbol(SYMBOL::dot_))
             && el.peek(0).key().is_number()
@@ -113,6 +120,7 @@ impl Element {
         else if el.curr().key().is_symbol()
             && el.peek(0).key().is_assign()
             && (el.seek(0).key().is_terminal()
+                || el.seek(0).key().is_illegal()
                 || el.seek(0).key().is_eof()
                 || el.seek(0).key().is_void())
         {

@@ -102,6 +102,8 @@ pub fn elements(dir: String) -> impl Iterator<Item = Con<Element>>  {
                     let analyze;
                     if txt.curr().0 == '/' && (txt.peek(0).0 == '/' || txt.peek(0).0 == '*') {
                         analyze = result.comment(&mut txt);
+                    } else if is_eof(&txt.curr().0) {
+                        analyze = result.endfile(&mut txt);
                     } else if is_eol(&txt.curr().0) {
                         analyze = result.endline(&mut txt, false);
                     } else if is_space(&txt.curr().0) {

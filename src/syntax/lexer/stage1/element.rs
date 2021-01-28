@@ -74,6 +74,16 @@ impl Element {
         Ok(())
     }
 
+    pub fn endfile(&mut self, code: &mut text::Text) -> Vod {
+        self.key = void(VOID::endfile_);
+        // while is_eol(&code.peek(0).0) || is_space(&code.peek(0).0) {
+        //     self.loc.new_line();
+        //     self.bump(code);
+        // }
+        self.con = '\0'.to_string();
+        Ok(())
+    }
+
     pub fn endline(&mut self, code: &mut text::Text, terminated: bool) -> Vod {
         self.push(code);
         self.key = void(VOID::endline_);
@@ -86,7 +96,6 @@ impl Element {
     }
 
     pub fn space(&mut self, code: &mut text::Text) -> Vod {
-        let len = code.curr().1.len();
         self.push(code);
         while is_space(&code.peek(0).0) {
             self.bump(code);
