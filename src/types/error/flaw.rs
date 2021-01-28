@@ -3,10 +3,8 @@
 
 use std::fmt;
 use colored::Colorize;
+use super::Glitch;
 use crate::syntax::point;
-use crate::types::*;
-
-use super::{Glitch, Fault};
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Flaw {

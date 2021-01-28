@@ -4,9 +4,8 @@
 use std::fmt;
 use colored::Colorize;
 use crate::syntax::point;
+use super::Glitch;
 use crate::types::*;
-
-use super::{Glitch, Fault};
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Typo {

@@ -1,11 +1,9 @@
-#![allow(dead_code)]
-
 use std::fmt;
 use std::str::Chars;
+use crate::types::*;
 use crate::syntax::point;
 use crate::syntax::lexer::source;
 use crate::syntax::lexer::text::reader;
-use crate::types::{Con, Win, SLIDER};
 
 type Part<T> = (T, point::Location);
 

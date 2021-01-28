@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 #![allow(non_camel_case_types)]
 
 use std::fmt;
@@ -14,4 +13,4 @@ pub trait NodeTrait: DynClone + fmt::Display {}
 dyn_clone::clone_trait_object!(NodeTrait);
 
 pub type Node = id::ID<Box<dyn NodeTrait>>;
-pub type Tree = Vec<Node>;
+pub type Nodes = Vec<Node>;

@@ -12,8 +12,11 @@ impl std::default::Default for StatParser {
 }
 
 impl Parse for StatParser {
-    fn parse(self, mut lexer: &mut lexer::Elements) -> Con<Tree> {
+    fn parse(&mut self, mut lexer: &mut lexer::Elements) -> Con<Nodes> {
         let parse_var = VarStatParser::default().parse(&mut lexer);
+        if let Err(e) = parse_var.clone() {
+            println!("{}", e)
+        }
         parse_var
     }
 }

@@ -1,8 +1,7 @@
-#![allow(dead_code)]
 use std::fmt;
+use crate::types::*;
+use crate::syntax::token::*;
 use crate::syntax::lexer::stage1;
-
-use crate::types::{Con, Vod, Win, SLIDER};
 use crate::syntax::lexer::stage2::Element;
 
 
@@ -14,17 +13,19 @@ pub struct Elements {
 
 
 impl Elements {
-    pub fn init(dir: String) -> Self {
+    pub fn new(dir: String) -> Self {
         let mut prev = Vec::with_capacity(SLIDER);
         let mut next = Vec::with_capacity(SLIDER);
         let mut elem = Box::new(elements(dir));
         for _ in 0..SLIDER { prev.push(Element::default()) }
         for _ in 0..SLIDER { next.push(elem.next().unwrap_or(Ok(Element::default())).unwrap()) }
-        Self {
+        let mut el = Self {
             elem,
             win: (prev, Element::default(), next),
             _in_count: SLIDER as u8
-        }
+        };
+        if let Some(val) = el.bump() { if let Err(e) = val { crash!(e) }; };
+        el
     }
     pub fn curr(&self, ignore: bool) -> Element {
         if ignore && self.win.1.key().is_space() { self.peek(0, false) } else { self.win.1.clone() }
@@ -46,6 +47,12 @@ impl Elements {
         let mut u = if index > SLIDER { SLIDER } else { index };
         if ignore && self.next_vec()[u].key().is_space() && u < SLIDER { u += 1 };
         self.prev_vec()[u].clone() 
+    }
+    pub fn expect(&self, keyword: KEYWORD, ignore: bool) -> Vod {
+        if self.curr(ignore).key() == keyword {
+            return Ok(())
+        };
+        Err( catch!( Typo::ParserManyUnexpected{ msg: None, loc: Some(self.curr(ignore).loc().clone()) } ))
     }
 
     pub fn bump(&mut self) -> Option<Con<Element>> {

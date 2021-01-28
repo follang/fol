@@ -1,9 +1,7 @@
-#![allow(dead_code)]
 use std::fmt;
 use crate::syntax::lexer::text;
 
-use crate::types::{Con, Win, SLIDER};
-use crate::types::error::{Glitch, Fault, Flaw};
+use crate::types::*;
 use crate::syntax::token::{help::*, KEYWORD, KEYWORD::*};
 use crate::syntax::lexer::stage1::Element;
 

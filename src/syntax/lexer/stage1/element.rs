@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use std::fmt;
 use crate::syntax::point;
 use crate::syntax::lexer::text;

@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use std::fmt;
 use std::ffi::OsStr;
 use std::fs::File;
@@ -7,8 +5,7 @@ use std::io::Read;
 use std::path::Path;
 use regex::Regex;
 use crate::colored::Colorize;
-use crate::types::{Con, Win};
-use crate::types::error::{Glitch, Fault, Flaw};
+use crate::types::*;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Source {

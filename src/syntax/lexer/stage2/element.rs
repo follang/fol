@@ -1,12 +1,8 @@
-#![allow(dead_code)]
-
 use std::fmt;
 use colored::Colorize;
+use crate::types::*;
 use crate::syntax::point;
 use crate::syntax::lexer::stage1;
-
-use crate::types::{Con, Vod, Win, SLIDER};
-use crate::types::error::{Glitch, Fault, Flaw, Typo};
 use crate::syntax::token::{
     literal::LITERAL,
     void::VOID,
