@@ -1,5 +1,6 @@
 use crate::types::*;
 use crate::syntax::nodes::*;
+use crate::syntax::token::*;
 use crate::syntax::lexer;
 
 pub mod statement;
@@ -21,15 +22,15 @@ impl std::default::Default for Parser {
 impl Parser {
     pub fn parse(&mut self, mut lex: &mut lexer::Elements) {
         if let Some(val) = lex.bump() { if let Err(e) = val { crash!(e) }; };
-        // if matches!(lex.curr().key(), KEYWORD::assign(ASSIGN::var_))
-        //     || (matches!(lex.curr().key(), KEYWORD::option(_))
-        //         && matches!(lex.next().key(), KEYWORD::assign(ASSIGN::var_)))
-        // {
-        // }
-        let parse_stat = StatParser::default().parse(&mut lex);
-        match parse_stat {
-            Ok(val) => { self.nodes.extend(val) },
-            Err(err) => { self.errors.push(err) }
+        if matches!(lex.curr(false).key(), KEYWORD::assign(_))
+            || (matches!(lex.curr(false).key(), KEYWORD::option(_))
+                && matches!(lex.peek(0, false).key(), KEYWORD::assign(_)))
+        {
+            let parse_stat = StatParser::default().parse(&mut lex);
+            match parse_stat {
+                Ok(val) => { self.nodes.extend(val) },
+                Err(err) => { self.errors.push(err) }
+            }
         }
     }
 }

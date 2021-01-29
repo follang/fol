@@ -23,3 +23,7 @@ macro_rules! crash {
     () => ({ std::process::exit(0); });
     ($err:expr $(,)?) => ({ println!("{}", $err); std::process::exit(0); });
 }
+
+macro_rules! halt {
+    () => ({ println!("\n ... UNIMPLEMENTED ... \n"); std::process::exit(0); });
+}
