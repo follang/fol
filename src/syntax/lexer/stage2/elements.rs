@@ -46,6 +46,11 @@ impl Elements {
         if ignore && self.next_vec()[u].key().is_space() && u < SLIDER { u += 1 };
         self.prev_vec()[u].clone() 
     }
+    pub fn toend(&mut self) {
+        while !self.curr(false).key().is_terminal() {
+            self.bump();
+        }
+    }
     pub fn bump(&mut self) -> Option<Con<Element>> {
         match self.elem.next() {
             Some(v) => {
@@ -113,17 +118,25 @@ pub fn elements(dir: String) -> impl Iterator<Item = Con<Element>>  {
 
 
 impl Elements {
-    pub fn expect(&self, keyword: KEYWORD, ignore: bool) -> Vod {
+    pub fn expect_one(&self, keyword: KEYWORD, ignore: bool) -> Vod {
         if self.curr(ignore).key() == keyword {
             return Ok(())
         };
-        let msg = format!("expected: {} but got {}", keyword, self.curr(ignore).key());
-        Err( catch!( Typo::ParserManyUnexpected{ msg: Some(msg), loc: Some(self.curr(ignore).loc().clone()) } ))
+        Err( catch!( Typo::ParserUnexpected{ 
+            loc: Some(self.curr(ignore).loc().clone()), 
+            key1: self.curr(ignore).key(), 
+            key2: keyword,
+        }))
     }
-    pub fn toend(&mut self) {
-        while !self.curr(false).key().is_terminal() {
-            self.bump();
+    pub fn expect_many(&self, keywords: Vec<KEYWORD>, ignore: bool) -> Vod {
+        if let Some(e) = keywords.iter().find(|&x| x == &self.curr(ignore).key()) {
+            return Ok(())
         }
+        Err( catch!( Typo::ParserManyUnexpected{ 
+            loc: Some(self.curr(ignore).loc().clone()), 
+            key1: self.curr(ignore).key(), 
+            keys: keywords,
+        }))
     }
     pub fn expect_option(&self, ignore: bool) -> Vod {
         if matches!(self.curr(ignore).key(), KEYWORD::option(_)) { return Ok(()) };

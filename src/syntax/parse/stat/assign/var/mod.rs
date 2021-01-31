@@ -5,21 +5,25 @@ use crate::syntax::lexer;
 use super::Parse;
 
 
-pub struct VarStatParser {
+pub struct ParserStatAssVar {
     pub nodes: Nodes,
 }
-impl std::default::Default for VarStatParser {
+impl std::default::Default for ParserStatAssVar {
     fn default() -> Self { Self { nodes: Nodes::new() } }
 }
 
-impl Parse for VarStatParser {
+impl Parse for ParserStatAssVar {
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
         let varstat: VarStat = VarStat::default();
-        lex.expect_option(true)?;
-        // let opt = lex.curr
+        if matches!(lex.curr(true).key(), KEYWORD::option(_) ) {
+            lex.bump();
+        }
+        lex.expect_assign(true)?;
         lex.bump();
-        // lex.expect( KEYWORD::option(OPTION::mut_) , true)?;
-        lex.expect( KEYWORD::assign(ASSIGN::var_) , true)?;
+        if lex.curr(true).key() == KEYWORD::symbol(SYMBOL::squarO_) {
+            lex.bump();
+        }
+        lex.expect_one( KEYWORD::option(OPTION::mut_) , true)?;
 
 
 

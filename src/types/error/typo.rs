@@ -44,8 +44,9 @@ pub enum Typo {
         loc: Option<point::Location>,
     },
     ParserManyUnexpected {
-        msg: Option<String>,
         loc: Option<point::Location>,
+        key1: KEYWORD,
+        keys: Vec<KEYWORD>
     },
     LexerPrimitiveAccess {
         msg: Option<String>,
@@ -66,8 +67,8 @@ impl Glitch for Typo {  }
 
 impl fmt::Display for Typo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let (v, s, l, m);
-        let message;
+        let (v, s, l, m, message);
+        let mut comma_separated = String::new();
         match self {
             Typo::ParserUnexpected { loc, key1, key2 } => { 
                 v = " UNEXPECTED TOKEN ".to_string(); 
@@ -118,11 +119,17 @@ impl fmt::Display for Typo {
                 m = msg.as_ref();
                 l = loc.as_ref();
             },
-            Typo::ParserManyUnexpected { msg, loc } => { 
+            Typo::ParserManyUnexpected { loc, key1, keys } => { 
                 v = " UNEXPECTED TOKEN ".to_string(); 
                 s = "parsing".to_string();
-                m = msg.as_ref();
                 l = loc.as_ref();
+                for num in &keys[0..keys.len() - 1] {
+                    comma_separated.push_str(&num.to_string());
+                    comma_separated.push_str(", ");
+                }
+                comma_separated.push_str(&keys[keys.len() - 1].to_string());
+                message = format!("expected one of: {},\ninstead recieved {}", comma_separated, key1);
+                m = Some(&message);
             },
             Typo::LexerBracketUnmatch { msg, loc } => { 
                 v = " UNMATCHED BRACKET ".to_string(); 
