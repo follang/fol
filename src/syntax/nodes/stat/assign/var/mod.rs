@@ -31,4 +31,7 @@ impl VarStat {
     pub fn new(options: Option<Nodes>, ident: Option<Node>, data: Option<Node>, body: Option<Node>) -> Self {
         Self{ options, ident, data, body }
     }
+    pub fn set_options(&mut self, options: Option<Nodes>) {
+        self.options = options;
+    }
 }

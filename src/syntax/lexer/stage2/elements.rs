@@ -91,21 +91,6 @@ impl Iterator for Elements {
     }
 }
 
-impl Elements {
-    pub fn expect(&self, keyword: KEYWORD, ignore: bool) -> Vod {
-        if self.curr(ignore).key() == keyword {
-            return Ok(())
-        };
-        let msg = format!("expected: {} but got {}", keyword, self.curr(ignore).key());
-        Err( catch!( Typo::ParserManyUnexpected{ msg: Some(msg), loc: Some(self.curr(ignore).loc().clone()) } ))
-    }
-    pub fn toend(&mut self) {
-        while !self.curr(false).key().is_terminal() {
-            self.bump();
-        }
-    }
-}
-
 /// Creates a iterator that produces tokens from the input string.
 pub fn elements(dir: String) -> impl Iterator<Item = Con<Element>>  {
     let mut stg = Box::new(stage1::Elements::init(dir));
@@ -126,3 +111,90 @@ pub fn elements(dir: String) -> impl Iterator<Item = Con<Element>>  {
     })
 }
 
+
+impl Elements {
+    pub fn expect(&self, keyword: KEYWORD, ignore: bool) -> Vod {
+        if self.curr(ignore).key() == keyword {
+            return Ok(())
+        };
+        let msg = format!("expected: {} but got {}", keyword, self.curr(ignore).key());
+        Err( catch!( Typo::ParserManyUnexpected{ msg: Some(msg), loc: Some(self.curr(ignore).loc().clone()) } ))
+    }
+    pub fn toend(&mut self) {
+        while !self.curr(false).key().is_terminal() {
+            self.bump();
+        }
+    }
+    pub fn expect_option(&self, ignore: bool) -> Vod {
+        if matches!(self.curr(ignore).key(), KEYWORD::option(_)) { return Ok(()) };
+        Err( catch!( Typo::ParserUnexpected{ 
+            loc: Some(self.curr(ignore).loc().clone()), 
+            key1: self.curr(ignore).key(), 
+            key2: KEYWORD::option(OPTION::ANY),
+        }))
+    }
+    pub fn expect_assign(&self, ignore: bool) -> Vod {
+        if matches!(self.curr(ignore).key(), KEYWORD::assign(_)) { return Ok(()) };
+        Err( catch!( Typo::ParserUnexpected{ 
+            loc: Some(self.curr(ignore).loc().clone()), 
+            key1: self.curr(ignore).key(), 
+            key2: KEYWORD::assign(ASSIGN::ANY), 
+        }))
+    }
+    pub fn expect_types(&self, ignore: bool) -> Vod {
+        if matches!(self.curr(ignore).key(), KEYWORD::types(_)) { return Ok(()) };
+        Err( catch!( Typo::ParserUnexpected{ 
+            loc: Some(self.curr(ignore).loc().clone()), 
+            key1: self.curr(ignore).key(), 
+            key2: KEYWORD::types(TYPE::ANY), 
+        }))
+    }
+    pub fn expect_form(&self, ignore: bool) -> Vod {
+        if matches!(self.curr(ignore).key(), KEYWORD::form(_)) { return Ok(()) };
+        Err( catch!( Typo::ParserUnexpected{ 
+            loc: Some(self.curr(ignore).loc().clone()), 
+            key1: self.curr(ignore).key(), 
+            key2: KEYWORD::form(FORM::ANY), 
+        }))
+    }
+    pub fn expect_literal(&self, ignore: bool) -> Vod {
+        if matches!(self.curr(ignore).key(), KEYWORD::literal(_)) { return Ok(()) };
+        Err( catch!( Typo::ParserUnexpected{ 
+            loc: Some(self.curr(ignore).loc().clone()), 
+            key1: self.curr(ignore).key(), 
+            key2: KEYWORD::literal(LITERAL::ANY), 
+        }))
+    }
+    pub fn expect_buildin(&self, ignore: bool) -> Vod {
+        if matches!(self.curr(ignore).key(), KEYWORD::buildin(_)) { return Ok(()) };
+        Err( catch!( Typo::ParserUnexpected{ 
+            loc: Some(self.curr(ignore).loc().clone()), 
+            key1: self.curr(ignore).key(), 
+            key2: KEYWORD::buildin(BUILDIN::ANY), 
+        }))
+    }
+    pub fn expect_symbol(&self, ignore: bool) -> Vod {
+        if matches!(self.curr(ignore).key(), KEYWORD::symbol(_)) { return Ok(()) };
+        Err( catch!( Typo::ParserUnexpected{ 
+            loc: Some(self.curr(ignore).loc().clone()), 
+            key1: self.curr(ignore).key(), 
+            key2: KEYWORD::symbol(SYMBOL::ANY), 
+        }))
+    }
+    pub fn expect_operator(&self, ignore: bool) -> Vod {
+        if matches!(self.curr(ignore).key(), KEYWORD::operator(_)) { return Ok(()) };
+        Err( catch!( Typo::ParserUnexpected{ 
+            loc: Some(self.curr(ignore).loc().clone()), 
+            key1: self.curr(ignore).key(), 
+            key2: KEYWORD::operator(OPERATOR::ANY), 
+        }))
+    }
+    pub fn expect_void(&self, ignore: bool) -> Vod {
+        if matches!(self.curr(ignore).key(), KEYWORD::void(_)) { return Ok(()) };
+        Err( catch!( Typo::ParserUnexpected{ 
+            loc: Some(self.curr(ignore).loc().clone()), 
+            key1: self.curr(ignore).key(), 
+            key2: KEYWORD::void(VOID::ANY), 
+        }))
+    }
+}

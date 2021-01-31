@@ -15,15 +15,15 @@ impl std::default::Default for VarStatParser {
 impl Parse for VarStatParser {
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
         let varstat: VarStat = VarStat::default();
-
-        lex.expect( KEYWORD::option(OPTION::mut_) , true)?;
+        lex.expect_option(true)?;
+        // let opt = lex.curr
         lex.bump();
         // lex.expect( KEYWORD::option(OPTION::mut_) , true)?;
         lex.expect( KEYWORD::assign(ASSIGN::var_) , true)?;
+
+
+
         lex.toend();
-
-
-
         self.nodes.push(Node::new(Box::new(varstat)));
         Ok(())
     }

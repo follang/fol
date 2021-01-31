@@ -200,6 +200,7 @@ impl KEYWORD {
     pub fn is_terminal(&self) -> bool {
         match *self {
             KEYWORD::void(VOID::endline_) => true,
+            KEYWORD::void(VOID::endfile_) => true,
             KEYWORD::symbol(SYMBOL::semi_) => true,
             _ => false,
         }

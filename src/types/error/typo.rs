@@ -4,14 +4,16 @@
 use std::fmt;
 use colored::Colorize;
 use crate::syntax::point;
+use crate::syntax::token::KEYWORD;
 use super::Glitch;
 use crate::types::*;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Typo {
     ParserUnexpected {
-        msg: Option<String>,
         loc: Option<point::Location>,
+        key1: KEYWORD,
+        key2: KEYWORD
     },
     ParserMissmatch {
         msg: Option<String>,
@@ -65,12 +67,14 @@ impl Glitch for Typo {  }
 impl fmt::Display for Typo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let (v, s, l, m);
+        let message;
         match self {
-            Typo::ParserUnexpected { msg, loc } => { 
+            Typo::ParserUnexpected { loc, key1, key2 } => { 
                 v = " UNEXPECTED TOKEN ".to_string(); 
                 s = "parsing".to_string();
-                m = msg.as_ref();
                 l = loc.as_ref();
+                message = format!("expected: {} but got {}", key2, key1);
+                m = Some(&message);
             },
             Typo::ParserNeedsBody { msg, loc } => {
                 v = " MISSING DECLARATATION ".to_string(); 

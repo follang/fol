@@ -16,18 +16,18 @@ impl std::default::Default for StatParser {
 
 impl Parse for StatParser {
     fn parse(&mut self, mut lex: &mut lexer::Elements) -> Vod {
-        if matches!(lex.curr(false).key(), KEYWORD::assign(ASSIGN::var_))
-            || (matches!(lex.curr(false).key(), KEYWORD::option(_))
-                && matches!(lex.peek(0, false).key(), KEYWORD::assign(ASSIGN::var_)))
-        {
+        // if matches!(lex.curr(false).key(), KEYWORD::assign(ASSIGN::var_))
+        //     || (matches!(lex.curr(false).key(), KEYWORD::option(_))
+        //         && matches!(lex.peek(0, false).key(), KEYWORD::assign(ASSIGN::var_)))
+        // {
             let mut parse_var = VarStatParser::default();
             parse_var.parse(&mut lex)?;
             self.nodes.extend(parse_var.nodes);
-        } else if matches!(lex.curr(false).key(), KEYWORD::assign(ASSIGN::var_))
-            || (matches!(lex.curr(false).key(), KEYWORD::option(_))
-                && matches!(lex.peek(0, false).key(), KEYWORD::assign(ASSIGN::var_)))
-        {
-        }
+        // } else if matches!(lex.curr(false).key(), KEYWORD::assign(ASSIGN::var_))
+        //     || (matches!(lex.curr(false).key(), KEYWORD::option(_))
+        //         && matches!(lex.peek(0, false).key(), KEYWORD::assign(ASSIGN::var_)))
+        // {
+        // }
         Ok(())
     }
 }
