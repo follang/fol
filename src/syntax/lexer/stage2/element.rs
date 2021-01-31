@@ -65,7 +65,7 @@ impl Element {
     }
 
     pub fn analyze(&mut self, el: &mut stage1::Elements) -> Vod {
-        // EOL to SPACE
+        // EOL => SPACE
         if el.curr().key().is_eol()
             && (el.seek(0).key().is_nonterm()
                 || el.peek(0).key().is_dot()
@@ -73,13 +73,14 @@ impl Element {
         {
             self.set_key(void(VOID::space_))
         } 
-        // EOL to SEMICOLON
+        // EOL => SEMICOLON
         else if matches!(el.curr().key(), KEYWORD::symbol(SYMBOL::semi_))
             && el.peek(0).key().is_void()
         {
             self.combine(&el.peek(0).into());
             self.bump(el);
         }
+        // EOL or SPACE => EOF
         else if ( matches!(el.curr().key(), KEYWORD::void(VOID::space_))
             || matches!(el.curr().key(), KEYWORD::void(VOID::endline_)) )
             && el.peek(0).key().is_eof()
@@ -109,9 +110,9 @@ impl Element {
         }
         // operators
         else if el.curr().key().is_symbol()
-            && (matches!(el.curr().key(), KEYWORD::symbol(SYMBOL::semi_)))
-            && (matches!(el.peek(0).key(), KEYWORD::symbol(SYMBOL::semi_)))
             && el.peek(0).key().is_symbol()
+            && (!(matches!(el.curr().key(), KEYWORD::symbol(SYMBOL::semi_)))
+            || !(matches!(el.peek(0).key(), KEYWORD::symbol(SYMBOL::semi_))))
             && (el.seek(0).key().is_void() || el.seek(0).key().is_bracket())
         {
             self.make_multi_operator(el)?;

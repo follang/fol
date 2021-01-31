@@ -14,9 +14,6 @@ impl<T: Clone> Neo<T> {
     pub fn is_many(&self) -> bool {
         !self.is_one()
     }
-    pub fn to_many(&mut self) {
-        if let Neo::One(v) = self { *self = Self::Many(vec![v.clone()]) };
-    }
     pub fn pop(&mut self) -> Option<T> {
         match self {
             Neo::One(v) => { 

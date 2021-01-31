@@ -1,9 +1,9 @@
 use std::fmt;
-use crate::syntax::nodes::{NodeTrait, Node, StatTrait, Opts};
+use crate::syntax::nodes::{NodeTrait, Node, Nodes, StatTrait};
 
 #[derive(Clone)]
 pub struct TypStat {
-    options: Vec<Opts>,
+    options: Nodes,
     ident: Node,
     body: Option<Node>,
 }

@@ -6,22 +6,25 @@ use super::Parse;
 
 
 pub struct VarStatParser {
-    multi: bool,
+    pub nodes: Nodes,
 }
 impl std::default::Default for VarStatParser {
-    fn default() -> Self { Self { multi: false } }
+    fn default() -> Self { Self { nodes: Nodes::new() } }
 }
 
 impl Parse for VarStatParser {
-    fn parse(&mut self, lex: &mut lexer::Elements) -> Con<Nodes> {
+    fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
+        let varstat: VarStat = VarStat::default();
+
         lex.expect( KEYWORD::option(OPTION::mut_) , true)?;
         lex.bump();
         // lex.expect( KEYWORD::option(OPTION::mut_) , true)?;
         lex.expect( KEYWORD::assign(ASSIGN::var_) , true)?;
-        let nodes: Nodes = Vec::new();
-        for e in lex {
-            println!("{}", e);
-        }
-        Ok(nodes)
+        lex.toend();
+
+
+
+        self.nodes.push(Node::new(Box::new(varstat)));
+        Ok(())
     }
 }

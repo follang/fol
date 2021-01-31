@@ -46,13 +46,6 @@ impl Elements {
         if ignore && self.next_vec()[u].key().is_space() && u < SLIDER { u += 1 };
         self.prev_vec()[u].clone() 
     }
-    pub fn expect(&self, keyword: KEYWORD, ignore: bool) -> Vod {
-        if self.curr(ignore).key() == keyword {
-            return Ok(())
-        };
-        Err( catch!( Typo::ParserManyUnexpected{ msg: None, loc: Some(self.curr(ignore).loc().clone()) } ))
-    }
-
     pub fn bump(&mut self) -> Option<Con<Element>> {
         match self.elem.next() {
             Some(v) => {
@@ -94,6 +87,21 @@ impl Iterator for Elements {
                 },
                 None => return None
             }
+        }
+    }
+}
+
+impl Elements {
+    pub fn expect(&self, keyword: KEYWORD, ignore: bool) -> Vod {
+        if self.curr(ignore).key() == keyword {
+            return Ok(())
+        };
+        let msg = format!("expected: {} but got {}", keyword, self.curr(ignore).key());
+        Err( catch!( Typo::ParserManyUnexpected{ msg: Some(msg), loc: Some(self.curr(ignore).loc().clone()) } ))
+    }
+    pub fn toend(&mut self) {
+        while !self.curr(false).key().is_terminal() {
+            self.bump();
         }
     }
 }

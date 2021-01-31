@@ -30,8 +30,11 @@
             "rustc"
             "rustfmt-preview"
           ])
-          rust-analyzer
+          rust-analyzer-nightly
           rls
+          vscode-extensions.llvm-org.lldb-vscode
+          # lldb
+          # vscode-extensions.vadimcn.vscode-lldb
         ];
       };
     }

@@ -13,4 +13,5 @@ pub trait NodeTrait: DynClone + fmt::Display {}
 dyn_clone::clone_trait_object!(NodeTrait);
 
 pub type Node = id::ID<Box<dyn NodeTrait>>;
-pub type Nodes = Vec<Node>;
+pub type Nodes = List<Node>;
+pub type Pools = Pool<Node>;

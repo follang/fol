@@ -38,3 +38,15 @@ impl<T: std::fmt::Display> std::fmt::Display for ID<T> {
         write!(f, "{}\t{}", loc, self.node())
     }
 }
+
+impl<T: std::fmt::Display> std::ops::Deref for ID<T> {
+    type Target = T;
+    fn deref(&self) -> &Self::Target {
+        &self.node
+    }
+}
+impl<T: std::fmt::Display> std::ops::DerefMut for ID<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.node
+    }
+}

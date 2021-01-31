@@ -126,15 +126,9 @@ impl KEYWORD {
         }
     }
     pub fn is_bracket(&self) -> bool {
-        match *self {
-            KEYWORD::symbol(SYMBOL::curlyC_) => true,
-            KEYWORD::symbol(SYMBOL::squarC_) => true,
-            KEYWORD::symbol(SYMBOL::roundC_) => true,
-            KEYWORD::symbol(SYMBOL::curlyO_) => true,
-            KEYWORD::symbol(SYMBOL::squarO_) => true,
-            KEYWORD::symbol(SYMBOL::roundO_) => true,
-            _ => false,
-        }
+        if self.is_open_bracket() || self.is_close_bracket() {
+            true
+        } else { false }
     }
     pub fn is_decimal(&self) -> bool {
         match *self {
@@ -223,8 +217,11 @@ impl KEYWORD {
         }
     }
     pub fn is_continue(&self) -> bool {
-        if self.is_void() || self.is_bracket() || self.is_terminal() || self.is_comma() {
-            true
+        if self.is_void() 
+            || self.is_bracket()
+            || self.is_terminal()
+            || self.is_comma() {
+                true
         } else {
             false
         }

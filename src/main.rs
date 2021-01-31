@@ -21,6 +21,17 @@ use crate::syntax::parse::*;
 
 fn main() {
     let path = "./test/main/var".to_string();
+    // let numexpr: NumberExpr = NumberExpr::int(5);
+    // let numexpr2: NumberExpr = NumberExpr::int(6);
+    // let mut nodes: Nodes = Nodes::new();
+    // let mut node: Node = Node::new(Box::new(numexpr));
+    // node.set_loc(point::Location::default());
+    // let node2: Node = Node::new(Box::new(numexpr2));
+    // nodes.push(node);
+    // nodes.push(node2);
+    // for e in nodes.iter() {
+    //     println!("{}", e);
+    // }
 
     // let elems = source::Sources::init(path);
     // let elems = text::Text::init(path);
