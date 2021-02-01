@@ -3,7 +3,7 @@ use std::str::Chars;
 use crate::types::*;
 use crate::syntax::point;
 use crate::syntax::token::help::*;
-use crate::syntax::lexer::source;
+use crate::syntax::index::*;
 use crate::syntax::lexer::text::reader;
 
 type Part<T> = (T, point::Location);
@@ -37,11 +37,11 @@ impl Text {
         self.prev_vec()[u].clone() 
     }
 
-    pub fn init(dir: String) -> Self {
+    pub fn init(file: &source::Source) -> Self {
         let def: Part<char> = ('\0', point::Location::default());
         let mut prev = Vec::with_capacity(SLIDER);
         let mut next = Vec::with_capacity(SLIDER);
-        let mut chars = Box::new(gen(dir));
+        let mut chars = Box::new(gen(file));
         for _ in 0..SLIDER { prev.push(def.clone()) }
         for _ in 0..SLIDER { next.push(chars.next().unwrap_or(Ok(def.clone())).unwrap()) }
         Self {
@@ -104,58 +104,47 @@ impl fmt::Display for Text {
 }
 
 
-pub fn gen(path: String) -> impl Iterator<Item = Con<Part<char>>> {
-    let mut files = source::Sources::init(path);
-    let mut lines = get_lines(files.next().unwrap());
+pub fn gen(file: &source::Source) -> impl Iterator<Item = Con<Part<char>>> {
+    let mut lines = get_lines(file);
     let mut chars = get_chars(lines.next().unwrap());
     let mut loc = point::Location::init(
-        (files.curr().path(true), files.curr().path(false)), 
-        &files.curr().module()
+        (file.path(true), file.path(false)), 
+        &file.module()
     );
     loc.adjust(1,0);
+    let mut last_eol = false;
     std::iter::from_fn(move || {
-        // loop {
-            match chars.next() {
-                Some(i) => {
-                    loc.new_char();
-                    if is_open_bracket(&i) { loc.deepen() }
-                    else if is_close_bracket(&i) { loc.soften() }
-                    // if i == ' ' { loc.new_word() }
-                    return Some (Ok((i, loc.clone())))
-                },
-                None => {
-                    match lines.next() {
-                        Some(j) => { 
-                            loc.new_line();
-                            loc.new_word();
-                            chars = get_chars(j);
-                            return Some(Ok((chars.next().unwrap_or('\n'), loc.clone())))
-                        },
-                        None => {
-                            match files.bump() {
-                                Some(k) => {
-                                    let old = Some(Ok(('\0', loc.clone())));
-                                    loc = point::Location::init(
-                                        (files.curr().path(true), files.curr().path(false)), 
-                                        &files.curr().module()
-                                    );
-                                    lines = get_lines(k);
-                                    return old;
-                                },
-                                None => {
-                                    return None
-                                }
-                            }
+        match chars.next() {
+            Some(i) => {
+                loc.new_char();
+                if is_open_bracket(&i) { loc.deepen() }
+                else if is_close_bracket(&i) { loc.soften() }
+                // if i == ' ' { loc.new_word() }
+                return Some (Ok((i, loc.clone())))
+            },
+            None => {
+                match lines.next() {
+                    Some(j) => { 
+                        loc.new_line();
+                        loc.new_word();
+                        chars = get_chars(j);
+                        return Some(Ok((chars.next().unwrap_or('\n'), loc.clone())))
+                    },
+                    None => {
+                        if !last_eol {
+                            last_eol = true;
+                            return Some(Ok(('\0', loc.clone())));
                         }
+                        return None
                     }
                 }
-            };
-        // }
+            }
+        };
     })
 }
 
 
-fn get_lines(src: source::Source) -> impl Iterator<Item = String> {
+fn get_lines(src: &source::Source) -> impl Iterator<Item = String> {
     let mut reader = reader::BufReader::open(src.path(true)).unwrap();
     let mut buffer = String::new();
     std::iter::from_fn(move || {

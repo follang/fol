@@ -1,4 +1,4 @@
 pub mod source;
 pub mod sources;
-pub use crate::syntax::lexer::source::source::Source;
-pub use crate::syntax::lexer::source::sources::Sources;
+pub use crate::syntax::index::source::Source;
+pub use crate::syntax::index::sources::Sources;

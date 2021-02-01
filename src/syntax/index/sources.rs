@@ -1,6 +1,6 @@
 use crate::types::Con;
 use crate::colored::Colorize;
-use crate::syntax::lexer::source::Source;
+use crate::syntax::index::source::Source;
 use crate::types::error::Flaw;
 
 pub struct Sources {

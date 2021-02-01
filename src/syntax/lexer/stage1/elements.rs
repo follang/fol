@@ -4,6 +4,7 @@ use crate::syntax::lexer::text;
 use crate::types::*;
 use crate::syntax::token::{help::*, KEYWORD, KEYWORD::*};
 use crate::syntax::lexer::stage1::Element;
+use crate::syntax::index::*;
 
 pub struct Elements {
     elem: Box<dyn Iterator<Item = Con<Element>>>,
@@ -13,10 +14,10 @@ pub struct Elements {
 
 
 impl Elements {
-    pub fn init(dir: String) -> Self {
+    pub fn init(file: &source::Source) -> Self {
         let mut prev = Vec::with_capacity(SLIDER);
         let mut next = Vec::with_capacity(SLIDER);
-        let mut elem = Box::new(elements(dir));
+        let mut elem = Box::new(elements(file));
         for _ in 0..SLIDER { prev.push(Element::default()) }
         for _ in 0..SLIDER { next.push(elem.next().unwrap_or(Ok(Element::default())).unwrap()) }
         Self {
@@ -90,8 +91,8 @@ impl Iterator for Elements {
 }
 
 /// Creates a iterator that produces tokens from the input string.
-pub fn elements(dir: String) -> impl Iterator<Item = Con<Element>>  {
-    let mut txt = Box::new(text::Text::init(dir));
+pub fn elements(file: &source::Source) -> impl Iterator<Item = Con<Element>>  {
+    let mut txt = Box::new(text::Text::init(file));
     // *sins = *txt.sins();
     std::iter::from_fn(move || {
         if let Some(v) = txt.bump() {
