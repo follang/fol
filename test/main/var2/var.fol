@@ -1,4 +1,4 @@
-~var[nor, []rac] one = <expression>
+~var[ nor, ext, hid] one = <expression>
 -var[exp,imu] two: str[exp,hid] = <expression>
 +var three: int = <expression>
 -var[exp] (

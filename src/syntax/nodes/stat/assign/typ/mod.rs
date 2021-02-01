@@ -2,16 +2,16 @@ use std::fmt;
 use crate::syntax::nodes::{NodeTrait, Node, Nodes, StatTrait};
 
 #[derive(Clone)]
-pub struct TypStat {
+pub struct NodeStatAssTyp {
     options: Nodes,
     ident: Node,
     body: Option<Node>,
 }
 
-impl NodeTrait for TypStat {}
-impl StatTrait for TypStat {}
+impl NodeTrait for NodeStatAssTyp {}
+impl StatTrait for NodeStatAssTyp {}
 
-impl fmt::Display for TypStat {
+impl fmt::Display for NodeStatAssTyp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         todo!();
     }

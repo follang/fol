@@ -1,16 +1,16 @@
 use std::fmt;
-use crate::syntax::nodes::{NodeTrait, ExprTrait, NumberExpr, Node};
+use crate::syntax::nodes::{NodeTrait, ExprTrait, Node};
 
 #[derive(Clone)]
-pub enum BinaryExpr {
-    leaf(NumberExpr),
-    node(Node, NumberExpr, Node),
+pub enum NodeExprBinary {
+    leaf(Node),
+    node(Node, Node, Node),
 }
 
-impl NodeTrait for BinaryExpr {}
-impl ExprTrait for BinaryExpr {}
+impl NodeTrait for NodeExprBinary {}
+impl ExprTrait for NodeExprBinary {}
 
-impl fmt::Display for BinaryExpr {
+impl fmt::Display for NodeExprBinary {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         todo!();
     }

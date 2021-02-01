@@ -7,10 +7,10 @@ pub mod number;
 pub mod binary;
 pub use crate::syntax::nodes::{NodeTrait, Node};
 pub use crate::syntax::nodes::expr::{
-    letter::LetterExpr,
-    container::ContainerExpr,
-    binary::BinaryExpr,
-    number::NumberExpr };
+    letter::NodeExprLetter,
+    container::NodeExprContainer,
+    binary::NodeExprBinary,
+    number::NodeExprNumber };
 
 pub trait ExprTrait: NodeTrait {}
 dyn_clone::clone_trait_object!(ExprTrait);

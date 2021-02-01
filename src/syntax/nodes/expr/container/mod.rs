@@ -2,16 +2,16 @@ use std::fmt;
 use crate::syntax::nodes::{NodeTrait, ExprTrait, Node};
 
 #[derive(Clone)]
-pub struct ContainerExpr {
+pub struct NodeExprContainer {
     uniform: bool,
     elements: Vec<Node>,
 }
 
-impl NodeTrait for ContainerExpr {}
-impl ExprTrait for ContainerExpr {}
+impl NodeTrait for NodeExprContainer {}
+impl ExprTrait for NodeExprContainer {}
 
 
-impl fmt::Display for ContainerExpr {
+impl fmt::Display for NodeExprContainer {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         todo!();
     }

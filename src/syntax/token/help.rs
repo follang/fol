@@ -46,3 +46,11 @@ pub fn is_alphanumeric(ch: &char) -> bool {
 pub fn is_void(ch: &char) -> bool {
     return is_eol(ch) || is_space(ch);
 }
+
+pub fn is_open_bracket(ch: &char) -> bool {
+    return *ch == '{' || *ch == '[' || *ch == '(';
+}
+
+pub fn is_close_bracket(ch: &char) -> bool {
+    return *ch == '}' || *ch == ']' || *ch == ')';
+}

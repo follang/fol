@@ -37,5 +37,8 @@ impl<T: fmt::Display> List<T> {
     pub fn new() -> Self {
         Self(Vec::new())
     }
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
 }
 

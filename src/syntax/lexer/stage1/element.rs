@@ -172,27 +172,21 @@ impl Element {
         self.key = symbol(SYMBOL::curlyC_);
         match code.curr().0 {
             '{' => {
-                self.loc.deepen();
                 self.key = symbol(SYMBOL::curlyO_)
             }
             '}' => {
-                self.loc.soften();
                 self.key = symbol(SYMBOL::curlyC_)
             }
             '[' => {
-                self.loc.deepen();
                 self.key = symbol(SYMBOL::squarO_)
             }
             ']' => {
-                self.loc.soften();
                 self.key = symbol(SYMBOL::squarC_)
             }
             '(' => {
-                self.loc.deepen();
                 self.key = symbol(SYMBOL::roundO_)
             }
             ')' => {
-                self.loc.soften();
                 self.key = symbol(SYMBOL::roundC_)
             }
             ';' => self.key = symbol(SYMBOL::semi_),

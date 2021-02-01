@@ -34,8 +34,7 @@ impl<T: std::fmt::Display> ID<T> {
 
 impl<T: std::fmt::Display> std::fmt::Display for ID<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let loc = match self.loc() { Some(e) => e.to_string(), None => String::new()  };
-        write!(f, "{}\t{}", loc, self.node())
+        write!(f, "{}", self.node())
     }
 }
 

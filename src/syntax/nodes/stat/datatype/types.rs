@@ -2,7 +2,7 @@ use std::fmt;
 pub use crate::syntax::nodes::{NodeTrait, StatTrait};
 
 #[derive(Clone)]
-pub enum Datatype {
+pub enum NodeExprType {
     int,
     flt,
     chr,
@@ -37,44 +37,44 @@ pub enum Datatype {
     gen,
 }
 
-impl NodeTrait for Datatype {}
-impl StatTrait for Datatype {}
+impl NodeTrait for NodeExprType {}
+impl StatTrait for NodeExprType {}
 
-impl fmt::Display for Datatype {
+impl fmt::Display for NodeExprType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match &self {
-            Datatype::int => write!(f, "int"),
-            Datatype::flt => write!(f, "flt"),
-            Datatype::chr => write!(f, "chr"),
-            Datatype::bol => write!(f, "bol"),
-            Datatype::arr => write!(f, "arr"),
-            Datatype::vec => write!(f, "vec"),
-            Datatype::seq => write!(f, "seq"),
-            Datatype::mat => write!(f, "mat"),
-            Datatype::set => write!(f, "set"),
-            Datatype::map => write!(f, "map"),
-            Datatype::axi => write!(f, "axi"),
-            Datatype::tab => write!(f, "tab"),
-            Datatype::r#str => write!(f, "str"),
-            Datatype::num => write!(f, "num"),
-            Datatype::ptr => write!(f, "ptr"),
-            Datatype::err => write!(f, "err"),
-            Datatype::opt => write!(f, "opt"),
-            Datatype::nev => write!(f, "nev"),
-            Datatype::uni => write!(f, "uni"),
-            Datatype::any => write!(f, "any"),
-            Datatype::non => write!(f, "non"),
-            Datatype::nil => write!(f, "nil"),
-            Datatype::rec => write!(f, "rec"),
-            Datatype::ent => write!(f, "ent"),
-            Datatype::blu => write!(f, "blu"),
-            Datatype::std => write!(f, "std"),
-            Datatype::loc => write!(f, "loc"),
-            Datatype::url => write!(f, "url"),
-            Datatype::blk => write!(f, "blk"),
-            Datatype::rut => write!(f, "rut"),
-            Datatype::pat => write!(f, "pat"),
-            Datatype::gen => write!(f, "gen"),
+            NodeExprType::int => write!(f, "int"),
+            NodeExprType::flt => write!(f, "flt"),
+            NodeExprType::chr => write!(f, "chr"),
+            NodeExprType::bol => write!(f, "bol"),
+            NodeExprType::arr => write!(f, "arr"),
+            NodeExprType::vec => write!(f, "vec"),
+            NodeExprType::seq => write!(f, "seq"),
+            NodeExprType::mat => write!(f, "mat"),
+            NodeExprType::set => write!(f, "set"),
+            NodeExprType::map => write!(f, "map"),
+            NodeExprType::axi => write!(f, "axi"),
+            NodeExprType::tab => write!(f, "tab"),
+            NodeExprType::r#str => write!(f, "str"),
+            NodeExprType::num => write!(f, "num"),
+            NodeExprType::ptr => write!(f, "ptr"),
+            NodeExprType::err => write!(f, "err"),
+            NodeExprType::opt => write!(f, "opt"),
+            NodeExprType::nev => write!(f, "nev"),
+            NodeExprType::uni => write!(f, "uni"),
+            NodeExprType::any => write!(f, "any"),
+            NodeExprType::non => write!(f, "non"),
+            NodeExprType::nil => write!(f, "nil"),
+            NodeExprType::rec => write!(f, "rec"),
+            NodeExprType::ent => write!(f, "ent"),
+            NodeExprType::blu => write!(f, "blu"),
+            NodeExprType::std => write!(f, "std"),
+            NodeExprType::loc => write!(f, "loc"),
+            NodeExprType::url => write!(f, "url"),
+            NodeExprType::blk => write!(f, "blk"),
+            NodeExprType::rut => write!(f, "rut"),
+            NodeExprType::pat => write!(f, "pat"),
+            NodeExprType::gen => write!(f, "gen"),
         }
     }
 }

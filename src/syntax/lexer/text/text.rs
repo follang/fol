@@ -2,6 +2,7 @@ use std::fmt;
 use std::str::Chars;
 use crate::types::*;
 use crate::syntax::point;
+use crate::syntax::token::help::*;
 use crate::syntax::lexer::source;
 use crate::syntax::lexer::text::reader;
 
@@ -117,6 +118,8 @@ pub fn gen(path: String) -> impl Iterator<Item = Con<Part<char>>> {
             match chars.next() {
                 Some(i) => {
                     loc.new_char();
+                    if is_open_bracket(&i) { loc.deepen() }
+                    else if is_close_bracket(&i) { loc.soften() }
                     // if i == ' ' { loc.new_word() }
                     return Some (Ok((i, loc.clone())))
                 },

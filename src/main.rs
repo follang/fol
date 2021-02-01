@@ -20,7 +20,7 @@ use crate::syntax::token::*;
 use crate::syntax::parse::*;
 
 fn main() {
-    let path = "./test/main/var".to_string();
+    let path = "./test/main/var2".to_string();
     // let numexpr: NumberExpr = NumberExpr::int(5);
     // let numexpr2: NumberExpr = NumberExpr::int(6);
     // let mut nodes: Nodes = Nodes::new();

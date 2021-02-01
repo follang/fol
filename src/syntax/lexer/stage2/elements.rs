@@ -46,11 +46,6 @@ impl Elements {
         if ignore && self.next_vec()[u].key().is_space() && u < SLIDER { u += 1 };
         self.prev_vec()[u].clone() 
     }
-    pub fn toend(&mut self) {
-        while !self.curr(false).key().is_terminal() {
-            self.bump();
-        }
-    }
     pub fn bump(&mut self) -> Option<Con<Element>> {
         match self.elem.next() {
             Some(v) => {
@@ -76,6 +71,12 @@ impl Elements {
                 } else { return None }
             }
         }
+    }
+    pub fn jump(&mut self) {
+        while self.curr(false).key().is_void() {
+            self.bump();
+        }
+        self.bump();
     }
 }
 
@@ -117,8 +118,41 @@ pub fn elements(dir: String) -> impl Iterator<Item = Con<Element>>  {
 }
 
 
+
+
 impl Elements {
-    pub fn expect_one(&self, keyword: KEYWORD, ignore: bool) -> Vod {
+    pub fn until_term(&mut self) {
+        loop{ 
+            if self.curr(false).key().is_terminal() || self.curr(false).key().is_eof() {
+                break
+            }
+            self.bump();
+        }
+    }
+    pub fn until_char(&mut self, el: &str) {
+        loop{ 
+            if self.curr(false).con() == &el.to_string() || self.curr(false).key().is_eof() {
+                break
+            }
+            self.bump();
+        }
+    }
+    pub fn until_bracket(&mut self) {
+        let deep = self.curr(false).loc().deep() - 1;
+        loop{
+            if (self.curr(false).key().is_close_bracket() && self.curr(false).loc().deep() == deep) 
+                || self.curr(false).key().is_eof() {
+                break
+            }
+            self.bump();
+        }
+        self.bump();
+    }
+}
+
+
+impl Elements {
+    pub fn expect(&self, keyword: KEYWORD, ignore: bool) -> Vod {
         if self.curr(ignore).key() == keyword {
             return Ok(())
         };

@@ -3,7 +3,7 @@ use crate::syntax::nodes::{NodeTrait, ExprTrait};
 
 
 #[derive(Clone)]
-pub enum LetterExpr {
+pub enum NodeExprLetter {
     string_normal,
     string_raw,
     string_formated,
@@ -11,11 +11,11 @@ pub enum LetterExpr {
     char_binary(u8),
 }
 
-impl NodeTrait for LetterExpr {}
-impl ExprTrait for LetterExpr {}
+impl NodeTrait for NodeExprLetter {}
+impl ExprTrait for NodeExprLetter {}
 
 
-impl fmt::Display for LetterExpr {
+impl fmt::Display for NodeExprLetter {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         todo!();
     }
