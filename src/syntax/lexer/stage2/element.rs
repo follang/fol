@@ -86,6 +86,7 @@ impl Element {
             && el.peek(0).key().is_eof()
         {
             self.combine(&el.peek(0).into());
+            self.set_key(void(VOID::endfile_));
             self.bump(el);
         }
         // numbers

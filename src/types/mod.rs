@@ -27,3 +27,9 @@ macro_rules! crash {
 macro_rules! halt {
     () => ({ println!("\n ... UNIMPLEMENTED ... \n"); std::process::exit(0); });
 }
+
+
+#[macro_export]
+macro_rules! printer {
+    ($err:expr $(,)?) => ({ for e in $err { println!("{}", e)} });
+}
