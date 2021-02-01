@@ -9,8 +9,8 @@ pub struct ID<T: ?Sized + std::fmt::Display> {
 }
 
 impl<T: std::fmt::Display> ID<T> {
-    pub fn new(node: T) -> Self {
-        Self{ key: None, loc: None, node }
+    pub fn new(loc: point::Location, node: T) -> Self {
+        Self{ key: None, loc: Some(loc), node }
     }
     pub fn key(&self) -> Option<token::KEYWORD> {
         self.key.clone()

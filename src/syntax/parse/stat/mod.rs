@@ -27,7 +27,9 @@ impl Parse for ParserStat {
             let mut parse_ass = ParserStatAss::default();
             parse_ass.parse(lex)?;
             self.nodes.extend(parse_ass.nodes);
+            return Ok(())
         }
+        lex.until_term();
         Ok(())
     }
 }

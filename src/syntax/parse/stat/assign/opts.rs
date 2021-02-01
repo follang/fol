@@ -23,10 +23,10 @@ impl Parse for ParserStatAssOpts {
             lex.expect_option(true)?;
             if let KEYWORD::option(a) = lex.curr(true).key() {
                 let assopt: AssOptsTrait = a.into();
-                let node = Node::new(Box::new(assopt));
+                let node = Node::new(lex.curr(true).loc().clone(), Box::new(assopt));
                 self.nodes.push(node);
             }
-            lex.jump();
+            lex.jump(true);
             if lex.curr(true).key() == KEYWORD::symbol(SYMBOL::squarC_)
                 || lex.curr(true).key().is_eol()
             {

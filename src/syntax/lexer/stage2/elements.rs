@@ -72,11 +72,11 @@ impl Elements {
             }
         }
     }
-    pub fn jump(&mut self) {
+    pub fn jump(&mut self, elem: bool) {
         while self.curr(false).key().is_void() {
             self.bump();
         }
-        self.bump();
+        if elem { self.bump(); }
     }
 }
 
@@ -123,10 +123,10 @@ pub fn elements(dir: String) -> impl Iterator<Item = Con<Element>>  {
 impl Elements {
     pub fn until_term(&mut self) {
         loop{ 
+            self.bump();
             if self.curr(false).key().is_terminal() || self.curr(false).key().is_eof() {
                 break
             }
-            self.bump();
         }
     }
     pub fn until_char(&mut self, el: &str) {
@@ -147,6 +147,9 @@ impl Elements {
             self.bump();
         }
         self.bump();
+    }
+    pub fn debug(&self) {
+        println!("{}\t{}", self.curr(false).loc(), self.curr(false).key());
     }
 }
 

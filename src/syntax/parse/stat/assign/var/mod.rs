@@ -24,12 +24,13 @@ impl Parse for ParserStatAssVar {
         if matches!(lex.curr(true).key(), KEYWORD::option(_) ) {
             if let KEYWORD::option(a) = lex.curr(true).key() {
                 let assopt: AssOptsTrait = a.into();
-                let node = Node::new(Box::new(assopt));
+                let node = Node::new(lex.curr(true).loc().clone(), Box::new(assopt));
                 opts.push(node);
             }
-            lex.jump();
+            lex.jump(true);
         }
         lex.expect( KEYWORD::assign(ASSIGN::var_) , true)?;
+        let loc = lex.curr(true).loc().clone();
         lex.bump();
         if lex.curr(true).key() == KEYWORD::symbol(SYMBOL::squarO_) {
             opts.parse(lex)?;
@@ -37,10 +38,11 @@ impl Parse for ParserStatAssVar {
                 nodestatassvar.set_options(Some(opts.nodes));
             }
         }
-        lex.expect( KEYWORD::ident , true)?;
+        // let mut idents = ParserStatIdent::default();
+        // idents.parse(lex)?;
 
         lex.until_term();
-        self.nodes.push(Node::new(Box::new(nodestatassvar)));
+        self.nodes.push(Node::new(loc, Box::new(nodestatassvar)));
         Ok(())
     }
 }

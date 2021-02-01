@@ -25,11 +25,10 @@ impl Parse for ParserStatAss {
             let mut parse_var = ParserStatAssVar::default();
             parse_var.parse(lex)?;
             self.nodes.extend(parse_var.nodes);
-        } else if matches!(lex.curr(false).key(), KEYWORD::assign(ASSIGN::var_))
-            || (matches!(lex.curr(false).key(), KEYWORD::option(_))
-                && matches!(lex.peek(0, false).key(), KEYWORD::assign(ASSIGN::var_)))
-        {
+            lex.jump(false);
+            return Ok(())
         }
+        lex.until_term();
         Ok(())
     }
 }
