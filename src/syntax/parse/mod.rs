@@ -33,18 +33,14 @@ impl Parse for Parser {
                     Err(err) => { self.errors.push(err) }
                 }
             } else {
-                lex.until_term();
+                lex.until_term(false);
             }
         }
-        for e in self.errors.clone() {
-            println!("{}", e);
-        }
+        printer!(self.errors.clone());
+        println!("\n\n--------------------------------------------------\n\n");
         for e in self.nodes.clone() {
             println!("{}, {}", e.loc().unwrap(), e);
         }
-        // for e in lex {
-        //     println!("{}", e);
-        // }
         Ok(())
     }
 }

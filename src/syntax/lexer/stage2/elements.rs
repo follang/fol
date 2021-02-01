@@ -73,11 +73,13 @@ impl Elements {
             }
         }
     }
-    pub fn jump(&mut self, elem: bool) {
-        while self.curr(false).key().is_void() {
+    pub fn jump(&mut self, loops: isize, elem: bool) {
+        for _ in 0..loops+1 {
+            if elem && self.curr(false).key().is_void() {
+                self.bump();
+            }
             self.bump();
         }
-        if elem { self.bump(); }
     }
 }
 
@@ -122,10 +124,11 @@ pub fn elements(file: &source::Source) -> impl Iterator<Item = Con<Element>>  {
 
 
 impl Elements {
-    pub fn until_term(&mut self) {
+    pub fn until_term(&mut self, term: bool) {
         loop{ 
             self.bump();
             if self.curr(false).key().is_terminal() || self.curr(false).key().is_eof() {
+                if term { self.bump(); }
                 break
             }
         }

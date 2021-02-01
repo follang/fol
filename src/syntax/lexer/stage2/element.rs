@@ -89,7 +89,7 @@ impl Element {
             self.set_key(void(VOID::endfile_));
             self.bump(el);
         }
-        // numbers
+        // numberfile_
         else if matches!(el.curr().key(), KEYWORD::symbol(SYMBOL::dot_))
             && el.peek(0).key().is_number()
         {

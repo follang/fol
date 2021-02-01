@@ -21,7 +21,7 @@ use crate::syntax::token::*;
 use crate::syntax::parse::*;
 
 fn main() {
-    let path = "./test/main".to_string();
+    let path = "./test/main/var2".to_string();
     let sources = index::sources::Sources::init(path);
     for e in sources {
         let mut elems = Elements::init(&e);

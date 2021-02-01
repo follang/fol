@@ -27,7 +27,7 @@ impl Parse for ParserStatAssVar {
                 let node = Node::new(lex.curr(true).loc().clone(), Box::new(assopt));
                 opts.push(node);
             }
-            lex.jump(true);
+            lex.jump(0, true);
         }
         lex.expect( KEYWORD::assign(ASSIGN::var_) , true)?;
         let loc = lex.curr(true).loc().clone();
@@ -38,10 +38,10 @@ impl Parse for ParserStatAssVar {
                 nodestatassvar.set_options(Some(opts.nodes));
             }
         }
-        // let mut idents = ParserStatIdent::default();
-        // idents.parse(lex)?;
+        let mut idents = ParserStatIdent::default();
+        idents.parse(lex)?;
 
-        lex.until_term();
+        lex.until_term(true);
         self.nodes.push(Node::new(loc, Box::new(nodestatassvar)));
         Ok(())
     }

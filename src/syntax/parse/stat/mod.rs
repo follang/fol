@@ -29,7 +29,7 @@ impl Parse for ParserStat {
             self.nodes.extend(parse_ass.nodes);
             return Ok(())
         }
-        lex.until_term();
+        lex.until_term(true);
         Ok(())
     }
 }
