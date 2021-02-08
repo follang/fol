@@ -10,6 +10,7 @@ pub struct Elements {
     elem: Box<dyn Iterator<Item = Con<Element>>>,
     win: Win<Con<Element>>,
     _in_count: usize,
+    _source: Source,
 }
 
 
@@ -22,11 +23,15 @@ impl Elements {
         let mut elem = Box::new(elements(file));
         for _ in 0..SLIDER { prev.push(initerr.clone()) }
         for _ in 0..SLIDER { next.push(elem.next().unwrap_or(enderr.clone())) }
-        Self {
+        let mut newborn = Self {
             elem,
             win: (prev, initerr, next),
-            _in_count: SLIDER
-        }
+            _in_count: SLIDER,
+            _source: file.clone(),
+        };
+        //TODO: make sure that file has at least one character
+        newborn.bump();
+        newborn
     }
     pub fn curr(&self, ignore: bool) -> Con<Element> {
         if ignore && self.win.1.clone()?.key().is_space() { self.peek(0, false) } else { self.win.1.clone() }
@@ -102,12 +107,13 @@ impl Iterator for Elements {
 /// Creates a iterator that produces tokens from the input string.
 pub fn elements(file: &source::Source) -> impl Iterator<Item = Con<Element>>  {
     let mut stg = Box::new(stage1::Elements::init(file));
+    let src = file.clone();
     std::iter::from_fn(move || {
         if let Some(v) = stg.bump() {
             match v {
                 Ok(el) => {
                     let mut result: Element = el.into();
-                    if let Err(err) = result.analyze(&mut stg) {
+                    if let Err(err) = result.analyze(&mut stg, &src) {
                         return Some(Err(err));
                     }
                     return Some(Ok(result));
@@ -155,7 +161,7 @@ impl Elements {
         Ok(())
     }
     pub fn debug(&self) -> Vod {
-        println!("{}\t{}", self.curr(false)?.loc().show(), self.curr(false)?.key());
+        println!("{}\t{}", self.curr(false)?.loc(), self.curr(false)?.key());
         Ok(())
     }
 }
@@ -170,6 +176,7 @@ impl Elements {
             loc: Some(self.curr(ignore)?.loc().clone()), 
             key1: self.curr(ignore)?.key(), 
             key2: keyword,
+            src: self._source.clone(),
         }))
     }
     pub fn expect_many(&self, keywords: Vec<KEYWORD>, ignore: bool) -> Vod {
@@ -181,6 +188,7 @@ impl Elements {
             loc: Some(self.curr(ignore)?.loc().clone()), 
             key1: self.curr(ignore)?.key(), 
             keys: keywords,
+            src: self._source.clone(),
         }))
     }
     pub fn expect_option(&self, ignore: bool) -> Vod {
@@ -189,6 +197,7 @@ impl Elements {
             loc: Some(self.curr(ignore)?.loc().clone()), 
             key1: self.curr(ignore)?.key(), 
             key2: KEYWORD::option(OPTION::ANY),
+            src: self._source.clone(),
         }))
     }
     pub fn expect_assign(&self, ignore: bool) -> Vod {
@@ -197,6 +206,7 @@ impl Elements {
             loc: Some(self.curr(ignore)?.loc().clone()), 
             key1: self.curr(ignore)?.key(), 
             key2: KEYWORD::assign(ASSIGN::ANY), 
+            src: self._source.clone(),
         }))
     }
     pub fn expect_types(&self, ignore: bool) -> Vod {
@@ -205,6 +215,7 @@ impl Elements {
             loc: Some(self.curr(ignore)?.loc().clone()), 
             key1: self.curr(ignore)?.key(), 
             key2: KEYWORD::types(TYPE::ANY), 
+            src: self._source.clone(),
         }))
     }
     pub fn expect_form(&self, ignore: bool) -> Vod {
@@ -213,6 +224,7 @@ impl Elements {
             loc: Some(self.curr(ignore)?.loc().clone()), 
             key1: self.curr(ignore)?.key(), 
             key2: KEYWORD::form(FORM::ANY), 
+            src: self._source.clone(),
         }))
     }
     pub fn expect_literal(&self, ignore: bool) -> Vod {
@@ -221,6 +233,7 @@ impl Elements {
             loc: Some(self.curr(ignore)?.loc().clone()), 
             key1: self.curr(ignore)?.key(), 
             key2: KEYWORD::literal(LITERAL::ANY), 
+            src: self._source.clone(),
         }))
     }
     pub fn expect_buildin(&self, ignore: bool) -> Vod {
@@ -229,6 +242,7 @@ impl Elements {
             loc: Some(self.curr(ignore)?.loc().clone()), 
             key1: self.curr(ignore)?.key(), 
             key2: KEYWORD::buildin(BUILDIN::ANY), 
+            src: self._source.clone(),
         }))
     }
     pub fn expect_symbol(&self, ignore: bool) -> Vod {
@@ -237,6 +251,7 @@ impl Elements {
             loc: Some(self.curr(ignore)?.loc().clone()), 
             key1: self.curr(ignore)?.key(), 
             key2: KEYWORD::symbol(SYMBOL::ANY), 
+            src: self._source.clone(),
         }))
     }
     pub fn expect_operator(&self, ignore: bool) -> Vod {
@@ -245,6 +260,7 @@ impl Elements {
             loc: Some(self.curr(ignore)?.loc().clone()), 
             key1: self.curr(ignore)?.key(), 
             key2: KEYWORD::operator(OPERATOR::ANY), 
+            src: self._source.clone(),
         }))
     }
     pub fn expect_void(&self, ignore: bool) -> Vod {
@@ -253,6 +269,7 @@ impl Elements {
             loc: Some(self.curr(ignore)?.loc().clone()), 
             key1: self.curr(ignore)?.key(), 
             key2: KEYWORD::void(VOID::ANY), 
+            src: self._source.clone(),
         }))
     }
 }

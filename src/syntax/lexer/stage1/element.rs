@@ -36,7 +36,7 @@ impl std::default::Default for Element {
 
 impl fmt::Display for Element {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}\t{}  {}", self.loc.show(), self.key, self.con)
+        write!(f, "{}\t{}  {}", self.loc, self.key, self.con)
     }
 }
 

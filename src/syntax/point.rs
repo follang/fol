@@ -9,13 +9,12 @@ use std::path::Path;
 use colored::Colorize;
 
 use crate::types::*;
+use crate::syntax::index::source::Source;
 
 
 /// A location somewhere in the sourcecode.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Location {
-    module: String,
-    path: (String, String),
     row: usize,
     col: usize,
     len: usize,
@@ -25,8 +24,6 @@ pub struct Location {
 impl std::default::Default for Location {
     fn default() -> Self {
         Self {
-            path: (String::new(), String::new()),
-            module: String::new(),
             row: 0,
             col: 0,
             len: 0,
@@ -35,24 +32,24 @@ impl std::default::Default for Location {
     }
 }
 
-// impl fmt::Display for Location {
-//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//         write!(
-//             f,
-//             "{: <4} [{: <2}:{: <2}]",
-//             self.path(false), self.row, self.col
-//         )
-//     }
-// }
+impl fmt::Display for Location {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "[{: <2}:{: <2}]",
+            self.row, self.col
+        )
+    }
+}
 
 impl Location {
-    pub fn visualize(&self) -> String {
-        let file = File::open(Path::new(&self.path.0)).unwrap();
+    pub fn visualize(&self, source: &Source) -> String {
+        let file = File::open(Path::new(&source.path(true))).unwrap();
         let mut lines = BufReader::new(&file).lines();
         let line = lines.nth(self.row() - 1).unwrap().unwrap();
         format!(
             "{}\n {:>6}\n {:>6}  {}\n {:>6} {}{}",
-            self.show(),
+            self.print(source),
             " |".red(),
             (self.row().to_string() + " |").red(),
             line.red(),
@@ -62,28 +59,20 @@ impl Location {
         )
     }
 
-    pub fn show(&self) -> String {
+    pub fn print(&self, source: &Source) -> String {
         format!(
-            "{: <4} [{: <2}:{: <2}]",
-            self.path(false), self.row, self.col
+            "{: <4} {}",
+            source.path(false), self
         )
     }
 
-    pub fn init(path: (String, String), module: &String) -> Self {
-        Self { path: path, module: module.to_string(), ..Default::default() }
-    }
-
     pub fn new(
-        path: (String, String),
-        module: String,
         row: usize,
         col: usize,
         len: usize,
         deep: isize,
     ) -> Self {
         Location {
-            path,
-            module,
             row,
             col,
             len,
@@ -113,14 +102,6 @@ impl Location {
 
     pub fn deep(&self) -> isize {
         self.deep
-    }
-
-    pub fn path(&self, abs: bool) -> &String {
-        if abs { &self.path.0 } else { &self.path.1 }
-    }
-
-    pub fn module(&self) -> &String {
-        &self.module
     }
 
     pub fn new_char(&mut self) {

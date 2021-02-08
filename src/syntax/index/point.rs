@@ -14,32 +14,42 @@ use crate::syntax::index::source::Source;
 
 /// A Point somewhere in the source code.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Point<'a> {
-    source: &'a Source,
+pub struct Point {
     row: usize,
     col: usize,
     len: usize,
     deep: isize,
 }
 
-impl<'a> fmt::Display for Point<'a> {
+impl std::default::Default for Point {
+    fn default() -> Self {
+        Self {
+            row: 0,
+            col: 0,
+            len: 0,
+            deep: 0,
+        }
+    }
+}
+
+impl fmt::Display for Point {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "{: <4} [{: <2}:{: <2}]",
-            self.source.path(false), self.row, self.col
+            "[{: <2}:{: <2}]",
+            self.row, self.col
         )
     }
 }
 
-impl<'a> Point<'a> {
-    pub fn visualize(&self) -> String {
-        let file = File::open(Path::new(&self.source.path(true))).unwrap();
+impl Point {
+    pub fn visualize(&self, source: &Source) -> String {
+        let file = File::open(Path::new(&source.path(true))).unwrap();
         let mut lines = BufReader::new(&file).lines();
         let line = lines.nth(self.row() - 1).unwrap().unwrap();
         format!(
             "{}\n {:>6}\n {:>6}  {}\n {:>6} {}{}",
-            self.show(),
+            self.print(source),
             " |".red(),
             (self.row().to_string() + " |").red(),
             line.red(),
@@ -49,21 +59,11 @@ impl<'a> Point<'a> {
         )
     }
 
-    pub fn show(&self) -> String {
+    pub fn print(&self, source: &Source) -> String {
         format!(
-            "{: <4} [{: <2}:{: <2}]",
-            self.source.path(false), self.row, self.col
+            "{: <4} {}",
+            source.path(false), self
         )
-    }
-
-    pub fn default(soruce: &'a Source) -> Self {
-        Point {
-            source: soruce,
-            row: 0,
-            col: 0,
-            len: 0,
-            deep: 0,
-        }
     }
 
     pub fn row(&self) -> usize {

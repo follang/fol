@@ -89,7 +89,7 @@ impl Iterator for Text {
 impl fmt::Display for Text {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if let Ok(ok) = self.win.1.clone() {
-            write!(f, "{} {}", self.win.1.clone().unwrap().1.show(), self.win.1.clone().unwrap().0)
+            write!(f, "{} {}", self.win.1.clone().unwrap().1, self.win.1.clone().unwrap().0)
         } else {
             write!(f, "ERROR")
         }
@@ -100,10 +100,7 @@ impl fmt::Display for Text {
 pub fn gen(file: &source::Source) -> impl Iterator<Item = Con<Part<char>>> {
     let mut lines = get_lines(file);
     let mut chars = get_chars(lines.next().unwrap());
-    let mut loc = point::Location::init(
-        (file.path(true), file.path(false)), 
-        &file.module()
-    );
+    let mut loc = point::Location::default();
     loc.adjust(1,0);
     let mut last_eol = false;
     std::iter::from_fn(move || {

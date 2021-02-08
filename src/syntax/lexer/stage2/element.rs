@@ -1,6 +1,7 @@
 use std::fmt;
 use colored::Colorize;
 use crate::types::*;
+use crate::syntax::index::*;
 use crate::syntax::point;
 use crate::syntax::lexer::stage1;
 use crate::syntax::token::{
@@ -45,7 +46,7 @@ impl fmt::Display for Element {
             || self.key().is_comment()
             || self.key().is_orbit()
             || self.key().is_ident() { " ".to_string() + &self.con + " " } else { "".to_string() };
-        write!(f, "{}\t{}{}", self.loc.show(), self.key, con.black().on_red())
+        write!(f, "{}\t{}{}", self.loc, self.key, con.black().on_red())
     }
 }
 
@@ -64,7 +65,7 @@ impl Element {
         self.loc.longer(&other.loc.len())
     }
 
-    pub fn analyze(&mut self, el: &mut stage1::Elements) -> Vod {
+    pub fn analyze(&mut self, el: &mut stage1::Elements, src: &source::Source) -> Vod {
         // EOL => SPACE
         if el.curr()?.key().is_eol()
             && (el.seek(0)?.key().is_nonterm()
@@ -94,7 +95,7 @@ impl Element {
             && el.peek(0)?.key().is_number()
         {
             if el.seek(0)?.key().is_void() {
-                self.make_number(el)?;
+                self.make_number(el, src)?;
             }
         } else if (matches!(el.curr()?.key(), KEYWORD::symbol(SYMBOL::minus_))
             && el.peek(0)?.key().is_number())
@@ -106,7 +107,7 @@ impl Element {
                 let key = el.seek(0)?.key().clone();
                 //TODO: report error
             } else {
-                self.make_number(el)?;
+                self.make_number(el, src)?;
             }
         }
         // operators
@@ -116,7 +117,7 @@ impl Element {
             || !(matches!(el.peek(0)?.key(), KEYWORD::symbol(SYMBOL::semi_))))
             && (el.seek(0)?.key().is_void() || el.seek(0)?.key().is_bracket())
         {
-            self.make_multi_operator(el)?;
+            self.make_multi_operator(el, src)?;
         }
         // options
         else if el.curr()?.key().is_symbol()
@@ -126,7 +127,7 @@ impl Element {
                 || el.seek(0)?.key().is_eof()
                 || el.seek(0)?.key().is_void())
         {
-            self.make_syoption(el)?;
+            self.make_syoption(el, src)?;
         }
         else if matches!(el.curr()?.key(), KEYWORD::ident) {
             self.set_key(ident)
@@ -134,7 +135,7 @@ impl Element {
         Ok(())
     }
 
-    pub fn make_multi_operator(&mut self, el: &mut stage1::Elements) -> Vod {
+    pub fn make_multi_operator(&mut self, el: &mut stage1::Elements, src: &source::Source) -> Vod {
         while el.peek(0)?.key().is_symbol() && !el.peek(0)?.key().is_bracket() {
             self.combine(&el.peek(0)?.into());
             self.bump(el);
@@ -159,7 +160,7 @@ impl Element {
         }
         Ok(())
     }
-    pub fn make_syoption(&mut self, el: &mut stage1::Elements) -> Vod {
+    pub fn make_syoption(&mut self, el: &mut stage1::Elements, src: &source::Source) -> Vod {
         match self.con().as_str() {
             "~" => self.set_key(option(OPTION::mut_)),
             "!" => self.set_key(option(OPTION::sta_)),
@@ -171,7 +172,7 @@ impl Element {
         Ok(())
     }
 
-    pub fn make_number(&mut self, el: &mut stage1::Elements) -> Vod{
+    pub fn make_number(&mut self, el: &mut stage1::Elements, src: &source::Source) -> Vod{
         if el.curr()?.key().is_dot() && el.peek(0)?.key().is_decimal() {
             self.set_key(literal(LITERAL::float_));
             self.combine(&el.peek(0)?.into());
@@ -186,6 +187,7 @@ impl Element {
                 return Err(catch!(Typo::LexerSpaceAdd{ 
                     msg: Some(format!("Expected {} but {} was given", KEYWORD::void(VOID::space_), elem.key())),
                     loc: Some(elem.loc().clone()),
+                    src: src.clone(),
                 }))
             }
         } else if el.seek(0)?.key().is_continue()
@@ -210,7 +212,7 @@ impl Element {
         };
         Ok(())
     }
-    pub fn make_comment(&mut self, el: &mut stage1::Elements) -> Vod {
+    pub fn make_comment(&mut self, el: &mut stage1::Elements, src: &source::Source) -> Vod {
         if matches!(el.peek(0)?.key(), KEYWORD::symbol(SYMBOL::root_)) {
             while !el.peek(0)?.key().is_eol() {
                 self.combine(&el.peek(0)?.into());
