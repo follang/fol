@@ -23,7 +23,7 @@ impl Elements {
         let mut elem = Box::new(elements(file));
         for _ in 0..SLIDER { prev.push(initerr.clone()) }
         for _ in 0..SLIDER { next.push(elem.next().unwrap_or(enderr.clone())) }
-        let mut newborn = Self {
+        let newborn = Self {
             elem,
             win: (prev, initerr, next),
             _in_count: SLIDER,

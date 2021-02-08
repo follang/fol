@@ -28,9 +28,8 @@ impl std::default::Default for Parser {
 impl Parser {
     pub fn init (&mut self, lex: &mut lexer::Elements, src: &Source) {
         self.source = src.clone();
-        lex.bump();
+        // lex.bump();
         while let Some(e) = lex.next() {
-            // lex.debug();
             if let Err(err) = self.parse(lex) {
                 self.errors.push(err)
             }
