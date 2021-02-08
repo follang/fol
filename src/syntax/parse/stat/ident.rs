@@ -15,7 +15,14 @@ impl std::default::Default for ParserStatIdent {
 
 impl Parse for ParserStatIdent {
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
-        lex.expect( KEYWORD::ident , true)?;
+        // loop {
+            lex.expect( KEYWORD::ident , true)?;
+            // if let KEYWORD::ident = lex.curr(true).key() {
+            //     let assopt: AssOptsTrait = a.into();
+            //     let node = Node::new(lex.curr(true).loc().clone(), Box::new(assopt));
+            //     self.nodes.push(node);
+            // }
+        // }
         Ok(())
     }
 }

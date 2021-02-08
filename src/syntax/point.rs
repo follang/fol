@@ -35,15 +35,15 @@ impl std::default::Default for Location {
     }
 }
 
-impl fmt::Display for Location {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{: <4} [{: <2}:{: <2}]",
-            self.path(false), self.row, self.col
-        )
-    }
-}
+// impl fmt::Display for Location {
+//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//         write!(
+//             f,
+//             "{: <4} [{: <2}:{: <2}]",
+//             self.path(false), self.row, self.col
+//         )
+//     }
+// }
 
 impl Location {
     pub fn visualize(&self) -> String {
@@ -52,13 +52,20 @@ impl Location {
         let line = lines.nth(self.row() - 1).unwrap().unwrap();
         format!(
             "{}\n {:>6}\n {:>6}  {}\n {:>6} {}{}",
-            self,
+            self.show(),
             " |".red(),
             (self.row().to_string() + " |").red(),
             line.red(),
             " |".red(),
             " ".repeat(self.col()),
             "^".repeat(self.len()),
+        )
+    }
+
+    pub fn show(&self) -> String {
+        format!(
+            "{: <4} [{: <2}:{: <2}]",
+            self.path(false), self.row, self.col
         )
     }
 
@@ -95,7 +102,7 @@ impl Location {
     pub fn len(&self) -> usize {
         self.len
     }
-    
+
     pub fn set_len(&mut self, l: usize) {
         self.len = l
     }

@@ -12,9 +12,10 @@ pub use crate::syntax::parse::stat::ident::*;
 
 pub struct ParserStatAssVar {
     pub nodes: Nodes,
+    _recurse: bool
 }
 impl std::default::Default for ParserStatAssVar {
-    fn default() -> Self { Self { nodes: Nodes::new() } }
+    fn default() -> Self { Self { nodes: Nodes::new(), _recurse: false } }
 }
 
 impl Parse for ParserStatAssVar {
@@ -27,11 +28,11 @@ impl Parse for ParserStatAssVar {
                 let node = Node::new(lex.curr(true).loc().clone(), Box::new(assopt));
                 opts.push(node);
             }
-            lex.jump(0, true);
+            lex.jump(0, true)?;
         }
-        lex.expect( KEYWORD::assign(ASSIGN::var_) , true)?;
         let loc = lex.curr(true).loc().clone();
-        lex.bump();
+        lex.expect( KEYWORD::assign(ASSIGN::var_) , true)?;
+        lex.jump(0, false)?;
         if lex.curr(true).key() == KEYWORD::symbol(SYMBOL::squarO_) {
             opts.parse(lex)?;
             if opts.nodes.len() > 0 {

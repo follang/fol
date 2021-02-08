@@ -10,29 +10,29 @@ type Part<T> = (T, point::Location);
 
 pub struct Text {
     chars: Box<dyn Iterator<Item = Con<Part<char>>>>,
-    win: Win<Part<char>>,
+    win: Win<Con<Part<char>>>,
     _in_count: usize,
 }
 
 impl Text {
-    pub fn curr(&self) -> Part<char> {
+    pub fn curr(&self) -> Con<Part<char>> {
         self.win.1.clone()
     }
     ///next vector
-    pub fn next_vec(&self) -> Vec<Part<char>> {
+    pub fn next_vec(&self) -> Vec<Con<Part<char>>> {
         self.win.2.clone()
     }
-    pub fn peek(&self, index: usize) -> Part<char> { 
+    pub fn peek(&self, index: usize) -> Con<Part<char>> { 
         let u = if index > SLIDER { 0 } else { index };
         self.next_vec()[u].clone() 
     }
     ///prev vector
-    pub fn prev_vec(&self) -> Vec<Part<char>> {
+    pub fn prev_vec(&self) -> Vec<Con<Part<char>>> {
         let mut rev = self.win.0.clone();
         rev.reverse();
         rev
     }
-    pub fn seek(&self, index: usize) -> Part<char> { 
+    pub fn seek(&self, index: usize) -> Con<Part<char>> { 
         let u = if index > SLIDER { 0 } else { index };
         self.prev_vec()[u].clone() 
     }
@@ -42,11 +42,11 @@ impl Text {
         let mut prev = Vec::with_capacity(SLIDER);
         let mut next = Vec::with_capacity(SLIDER);
         let mut chars = Box::new(gen(file));
-        for _ in 0..SLIDER { prev.push(def.clone()) }
-        for _ in 0..SLIDER { next.push(chars.next().unwrap_or(Ok(def.clone())).unwrap()) }
+        for _ in 0..SLIDER { prev.push(Ok(def.clone())) }
+        for _ in 0..SLIDER { next.push(chars.next().unwrap_or(Ok(def.clone()))) }
         Self {
             chars,
-            win: (prev, def, next),
+            win: (prev, Ok(def), next),
             _in_count: SLIDER
         }
     }
@@ -54,25 +54,22 @@ impl Text {
     pub fn bump(&mut self) -> Option<Con<Part<char>>> {
         match self.chars.next() {
             Some(v) => {
-                match v {
-                    Ok(e) => {
-                        self.win.0.remove(0); self.win.0.push(self.win.1.clone());
-                        self.win.1 = self.win.2[0].clone();
-                        self.win.2.remove(0); self.win.2.push(e);
-                        return Some(Ok(self.win.1.clone()));
-                    },
-                    Err(e) => {
-                        return Some(Err(e));
-                    }
-                }
+                    // TODO: Handle better .ok()
+                    self.win.0.remove(0).ok(); self.win.0.push(self.win.1.clone());
+                    self.win.1 = self.win.2[0].clone();
+                    // TODO: Handle better .ok()
+                    self.win.2.remove(0).ok(); self.win.2.push(v);
+                    return Some(self.win.1.clone());
             },
             None => {
                 if self._in_count > 0 {
-                    self.win.0.remove(0); self.win.0.push(self.win.1.clone());
+                    // TODO: Handle better .ok()
+                    self.win.0.remove(0).ok(); self.win.0.push(self.win.1.clone());
                     self.win.1 = self.win.2[0].clone();
-                    self.win.2.remove(0); self.win.2.push(('\0', point::Location::default()));
+                    // TODO: Handle better .ok()
+                    self.win.2.remove(0).ok(); self.win.2.push(Ok(('\0', point::Location::default())));
                     self._in_count -= 1;
-                    return Some(Ok(self.win.1.clone()));
+                    return Some(self.win.1.clone());
                 } else { return None }
             }
         }
@@ -99,7 +96,11 @@ impl Iterator for Text {
 
 impl fmt::Display for Text {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} {}", self.win.1.1, self.win.1.0)
+        if let Ok(ok) = self.win.1.clone() {
+            write!(f, "{} {}", self.win.1.clone().unwrap().1.show(), self.win.1.clone().unwrap().0)
+        } else {
+            write!(f, "ERROR")
+        }
     }
 }
 

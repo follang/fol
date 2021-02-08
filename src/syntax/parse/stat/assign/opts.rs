@@ -15,9 +15,9 @@ impl std::default::Default for ParserStatAssOpts {
 
 impl Parse for ParserStatAssOpts {
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
-        lex.bump();
+        lex.jump(0, false)?;
         if lex.curr(true).key() == KEYWORD::symbol(SYMBOL::squarC_) {
-            lex.jump(0, true);
+            lex.jump(0, true)?;
             return Ok(())
         }
         loop {
@@ -27,19 +27,19 @@ impl Parse for ParserStatAssOpts {
                 let node = Node::new(lex.curr(true).loc().clone(), Box::new(assopt));
                 self.nodes.push(node);
             }
-            lex.jump(0, true);
+            lex.jump(0, true)?;
             if lex.curr(true).key() == KEYWORD::symbol(SYMBOL::squarC_)
                 || lex.curr(true).key().is_eol()
             {
-                lex.jump(0, true);
+                lex.jump(0, true)?;
                 return Ok(())
             } else if lex.curr(true).key() == KEYWORD::symbol(SYMBOL::comma_) {
                 if lex.peek(0, true).key() == KEYWORD::symbol(SYMBOL::squarC_) 
                 {
-                    lex.jump(1, true);
+                    lex.jump(1, true)?;
                     return Ok(())
                 }
-                lex.bump();
+                lex.jump(0, false)?;
             }
         }
         // lex.until_bracket();
