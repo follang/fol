@@ -9,5 +9,6 @@ regex = "1"
 syn = "1"
 colored = "1"
 dyn-clone = "1"
+terminal_size = "0.1.16"
 
 #TODO: use <weld> for SIMD

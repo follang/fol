@@ -5,6 +5,7 @@ use std::fmt;
 use colored::Colorize;
 use crate::syntax::point;
 use crate::syntax::token::KEYWORD;
+use terminal_size::{Width, Height, terminal_size};
 use super::Glitch;
 use crate::types::*;
 use crate::syntax::index::source::Source;
@@ -175,11 +176,13 @@ impl fmt::Display for Typo {
                 source = src;
             },
         };
-        write!(f, "\n{} >> {}:{}{}{}",
+        let width = if let Some((Width(w), Height(h))) = terminal_size() { w } else { 5 };
+        write!(f, "{} >> {}:{}{}{}\n{}",
             " TYPO ".black().on_red(),
             (" ".to_string() + &s + " stage ").black().on_white().to_string(), v.on_red().bold().to_string(),
             match l { Some(val) => "\n".to_string() + &val.visualize(&source), None => "".to_string() },
             match m { Some(val) => "\n".to_string() + &val.to_string(), None => "".to_string() },
+            "-".repeat(width as usize).red()
         )
     }
 }

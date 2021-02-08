@@ -3,6 +3,7 @@
 
 use std::fmt;
 use colored::Colorize;
+use terminal_size::{Width, Height, terminal_size};
 use super::Glitch;
 use crate::syntax::point;
 
@@ -36,6 +37,7 @@ impl Glitch for Flaw {  }
 impl fmt::Display for Flaw {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let (v, s, m);
+        let width = 0;
         match self {
             Flaw::GettingWrongPath { msg } => { 
                 s = "getting".to_string();
@@ -68,10 +70,12 @@ impl fmt::Display for Flaw {
                 m = msg.as_ref();
             },
         };
-        write!(f, "\n{} >> {}:{}{}",
+        let width = if let Some((Width(w), Height(h))) = terminal_size() { w } else { 5 };
+        write!(f, "{} >> {}:{}{}\n{}",
             " FLAW ".black().on_red(),
             (" ".to_string() + &s + " file ").black().on_white().to_string(), v.on_red().bold().to_string(),
             match m { Some(val) => "\n".to_string() + &val.to_string(), None => "".to_string() },
+            "-".repeat(width as usize).red()
         )
     }
 }

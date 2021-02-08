@@ -10,6 +10,7 @@ mod helper;
 extern crate regex;
 extern crate colored;
 extern crate dyn_clone;
+extern crate terminal_size;
 
 use std::fs::File;
 use crate::types::*;
