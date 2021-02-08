@@ -11,6 +11,10 @@ pub trait Parse {
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod;
 }
 
+pub trait Fixer {
+    fn fix(&mut self, lex: &mut lexer::Elements) -> Vod;
+}
+
 pub struct Parser {
     pub nodes: Nodes,
     pub errors: Errors
@@ -21,8 +25,7 @@ impl std::default::Default for Parser {
 
 impl Parser {
     pub fn init (&mut self, lex: &mut lexer::Elements) {
-        // if let Some(val) = lex.bump() { if let Err(e) = val { crash!(e) }; };
-        // lex.jump(0, false);
+        lex.bump();
         while let Some(e) = lex.next() {
             // lex.debug();
             if let Err(err) = self.parse(lex) {

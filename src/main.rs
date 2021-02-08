@@ -23,7 +23,7 @@ use crate::syntax::nodes::*;
 use crate::syntax::parse::*;
 
 fn main() -> Vod {
-    let path = "./test/main/var2".to_string();
+    let path = "./test/main/var".to_string();
     let sources = index::sources::Sources::init(path);
     for e in sources {
         // let mut el = Vec::new();
