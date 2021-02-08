@@ -28,7 +28,7 @@ fn main() {
     for e in sources {
         // let mut el = Vec::new();
         // let mut er = Vec::new();
-        let mut elems = stage2::Elements::init(&e);
+        let mut elems = Elements::init(&e);
         while let Some(c) = elems.bump() {
             match c {
                 Ok(e) => { println!("{}", e); },

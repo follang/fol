@@ -20,6 +20,12 @@ pub enum Flaw {
     ReadingBadContent {
         msg: Option<String>,
     },
+    InitError {
+        msg: Option<String>,
+    },
+    EndError {
+        msg: Option<String>,
+    },
 }
 
 
@@ -49,6 +55,16 @@ impl fmt::Display for Flaw {
             Flaw::ReadingEmptyFile { msg } => { 
                 s = "reading".to_string();
                 v = " FILE_IS_EMPTY ".to_string(); 
+                m = msg.as_ref();
+            },
+            Flaw::InitError { msg } => { 
+                s = "reading".to_string();
+                v = " INIT_ERROR ".to_string(); 
+                m = msg.as_ref();
+            },
+            Flaw::EndError { msg } => { 
+                s = "reading".to_string();
+                v = " END_ERROR ".to_string(); 
                 m = msg.as_ref();
             },
         };
