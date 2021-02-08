@@ -80,6 +80,13 @@ impl Location {
         }
     }
 
+    pub fn is_first(&self) -> bool {
+        if self.col == 1 && self.row == 1 {
+            return true
+        }
+        false
+    }
+
     pub fn row(&self) -> usize {
         self.row
     }

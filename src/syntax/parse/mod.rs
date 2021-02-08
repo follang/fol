@@ -1,4 +1,5 @@
 use crate::types::*;
+use crate::syntax::index::Source;
 use crate::syntax::nodes::*;
 use crate::syntax::token::*;
 use crate::syntax::lexer;
@@ -17,14 +18,16 @@ pub trait Fixer {
 
 pub struct Parser {
     pub nodes: Nodes,
-    pub errors: Errors
+    pub errors: Errors,
+    pub source: Source,
 }
 impl std::default::Default for Parser {
-    fn default() -> Self { Self { nodes: Nodes::new(), errors: Vec::new() } }
+    fn default() -> Self { Self { nodes: Nodes::new(), errors: Vec::new(), source: Source::default() } }
 }
 
 impl Parser {
-    pub fn init (&mut self, lex: &mut lexer::Elements) {
+    pub fn init (&mut self, lex: &mut lexer::Elements, src: &Source) {
+        self.source = src.clone();
         lex.bump();
         while let Some(e) = lex.next() {
             // lex.debug();
@@ -34,7 +37,7 @@ impl Parser {
         }
         printer!(self.errors.clone());
         for e in self.nodes.clone() {
-            println!("{}, {}", e.loc().unwrap().show(), e);
+            println!("{}, {}", e.loc().unwrap().print(&self.source), e);
         }
     }
 }

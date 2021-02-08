@@ -97,7 +97,8 @@ impl Element {
             if el.seek(0)?.key().is_void() {
                 self.make_number(el, src)?;
             }
-        } else if (matches!(el.curr()?.key(), KEYWORD::symbol(SYMBOL::minus_))
+        } 
+        else if (matches!(el.curr()?.key(), KEYWORD::symbol(SYMBOL::minus_))
             && el.peek(0)?.key().is_number())
             || el.curr()?.key().is_number()
         {
@@ -120,16 +121,22 @@ impl Element {
             self.make_multi_operator(el, src)?;
         }
         // options
+        else if el.curr()?.key().is_symbol() 
+            && el.peek(0)?.key().is_assign() 
+            && el.curr()?.loc().is_first() 
+        { 
+            self.make_syoption(el, src)?;
+        }
         else if el.curr()?.key().is_symbol()
             && el.peek(0)?.key().is_assign()
             && (el.seek(0)?.key().is_terminal()
-                || el.seek(0)?.key().is_illegal()
-                || el.seek(0)?.key().is_eof()
-                || el.seek(0)?.key().is_void())
+                || el.seek(0)?.key().is_void()
+                || el.seek(0)?.key().is_eol())
         {
             self.make_syoption(el, src)?;
         }
-        else if matches!(el.curr()?.key(), KEYWORD::ident) {
+        else if matches!(el.curr()?.key(), KEYWORD::ident) 
+        {
             self.set_key(ident)
         }
         Ok(())

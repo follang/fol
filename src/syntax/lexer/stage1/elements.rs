@@ -10,6 +10,7 @@ pub struct Elements {
     elem: Box<dyn Iterator<Item = Con<Element>>>,
     win: Win<Con<Element>>,
     _in_count: usize,
+    _source: Source,
 }
 
 
@@ -25,7 +26,8 @@ impl Elements {
         Self {
             elem,
             win: (prev, initerr, next),
-            _in_count: SLIDER
+            _in_count: SLIDER,
+            _source: file.clone(),
         }
     }
     pub fn curr(&self) -> Con<Element> {

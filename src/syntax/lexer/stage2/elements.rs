@@ -30,7 +30,7 @@ impl Elements {
             _source: file.clone(),
         };
         //TODO: make sure that file has at least one character
-        newborn.bump();
+        // newborn.bump();
         newborn
     }
     pub fn curr(&self, ignore: bool) -> Con<Element> {
@@ -61,7 +61,6 @@ impl Elements {
                 self.win.0.remove(0).ok(); self.win.0.push(self.win.1.clone());
                 self.win.1 = self.win.2[0].clone();
                 // TODO: Handle better .ok()
-                let enderr: Con<Element> = Err(Box::new(Flaw::EndError{ msg: None }));
                 self.win.2.remove(0).ok(); self.win.2.push(v);
                 return Some(self.win.1.clone());
             },
@@ -116,6 +115,7 @@ pub fn elements(file: &source::Source) -> impl Iterator<Item = Con<Element>>  {
                     if let Err(err) = result.analyze(&mut stg, &src) {
                         return Some(Err(err));
                     }
+                    // println!("{}", result.clone());
                     return Some(Ok(result));
                 },
                 Err(e) => { return Some(Err(e)); }
