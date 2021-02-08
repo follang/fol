@@ -19,23 +19,24 @@ use crate::syntax::lexer::stage1;
 use crate::syntax::lexer::text;
 use crate::syntax::lexer::*;
 use crate::syntax::token::*;
-// use crate::syntax::nodes::*;
-// use crate::syntax::parse::*;
+use crate::syntax::nodes::*;
+use crate::syntax::parse::*;
 
-fn main() {
-    let path = "./test/main/var".to_string();
+fn main() -> Vod {
+    let path = "./test/main/var2".to_string();
     let sources = index::sources::Sources::init(path);
     for e in sources {
         // let mut el = Vec::new();
         // let mut er = Vec::new();
         let mut elems = Elements::init(&e);
-        while let Some(c) = elems.bump() {
-            match c {
-                Ok(e) => { println!("{}", e); },
-                Err(e) => { println!("{}", e); }
-            }
-        }
-        // let mut parser = Parser::default();
-        // parser.parse(&mut elems);
+        // while let Some(c) = elems.bump() {
+        //     match c {
+        //         Ok(e) => { println!("{}", e); },
+        //         Err(e) => { println!("{}", e); }
+        //     }
+        // }
+        let mut parser = Parser::default();
+        parser.init(&mut elems);
     }
+    Ok(())
 }

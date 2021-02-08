@@ -18,16 +18,16 @@ impl std::default::Default for ParserStatAss {
 
 impl Parse for ParserStatAss {
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
-        if matches!(lex.curr(false).key(), KEYWORD::assign(ASSIGN::var_))
-            || (matches!(lex.curr(false).key(), KEYWORD::option(_))
-                && matches!(lex.peek(0, false).key(), KEYWORD::assign(ASSIGN::var_)))
+        if matches!(lex.curr(false)?.key(), KEYWORD::assign(ASSIGN::var_))
+            || (matches!(lex.curr(false)?.key(), KEYWORD::option(_))
+                && matches!(lex.peek(0, false)?.key(), KEYWORD::assign(ASSIGN::var_)))
         {
             let mut parse_var = ParserStatAssVar::default();
             parse_var.parse(lex)?;
             self.nodes.extend(parse_var.nodes);
             return Ok(())
         }
-        lex.until_term(true);
+        lex.until_term(true)?;
         Ok(())
     }
 }

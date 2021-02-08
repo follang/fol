@@ -78,12 +78,12 @@ impl Elements {
         for _ in 0..loops+1 {
             if ( elem && self.curr(false)?.key().is_void() ) && !self.peek(0, true)?.key().is_eof() {
                 if let Err(e) = self.bump().unwrap() {
-                    self.until_term(true);
+                    self.until_term(true)?;
                     return Err(e);
                 };
             }
             if let Err(e) = self.bump().unwrap() {
-                self.until_term(true);
+                self.until_term(true)?;
                 return Err(e);
             };
         }
@@ -92,21 +92,12 @@ impl Elements {
 }
 
 impl Iterator for Elements {
-    type Item = Element;
-    fn next(&mut self) -> Option<Element> {
-        loop {
-            match self.bump() {
-                Some(v) => {
-                    match v {
-                        Ok(i) => { return Some(i) },
-                        Err(_) => continue
-                    }
-                },
-                None => return None
-            }
-        }
+    type Item = Con<Element>;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.bump()
     }
 }
+
 
 /// Creates a iterator that produces tokens from the input string.
 pub fn elements(file: &source::Source) -> impl Iterator<Item = Con<Element>>  {

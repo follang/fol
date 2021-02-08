@@ -79,19 +79,9 @@ impl Text {
 }
 
 impl Iterator for Text {
-    type Item = Part<char>;
-    fn next(&mut self) -> Option<Part<char>> {
-        loop {
-            match self.bump() {
-                Some(v) => {
-                    match v {
-                        Ok(i) => { return Some(i) },
-                        Err(_) => continue
-                    }
-                },
-                None => return None
-            }
-        }
+    type Item = Con<Part<char>>;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.bump()
     }
 }
 

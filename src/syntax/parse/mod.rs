@@ -19,30 +19,36 @@ impl std::default::Default for Parser {
     fn default() -> Self { Self { nodes: Nodes::new(), errors: Vec::new() } }
 }
 
+impl Parser {
+    pub fn init (&mut self, lex: &mut lexer::Elements) {
+        // if let Some(val) = lex.bump() { if let Err(e) = val { crash!(e) }; };
+        // lex.jump(0, false);
+        while let Some(e) = lex.next() {
+            // lex.debug();
+            if let Err(err) = self.parse(lex) {
+                self.errors.push(err)
+            }
+        }
+        printer!(self.errors.clone());
+        for e in self.nodes.clone() {
+            println!("{}, {}", e.loc().unwrap().show(), e);
+        }
+    }
+}
+
 impl Parse for Parser {
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
-        // if let Some(val) = lex.bump() { if let Err(e) = val { crash!(e) }; };
-        while !lex.curr(false).key().is_eof() {
-            println!("{:?}", lex.bump());
-        //     lex.jump(0, false);
-        //     if matches!(lex.curr(false).key(), KEYWORD::assign(_))
-        //         || (matches!(lex.curr(false).key(), KEYWORD::option(_))
-        //             && matches!(lex.peek(0, false).key(), KEYWORD::assign(_)))
-        //     {
-        //         lex.debug();
-        //         let mut parse_stat = ParserStat::default();
-        //         match parse_stat.parse(lex) {
-        //             Ok(()) => { self.nodes.extend(parse_stat.nodes) },
-        //             Err(err) => { self.errors.push(err) }
-        //         }
-        //     } else {
-        //         lex.until_term(false);
-        //     }
-        // }
-        // printer!(self.errors.clone());
-        // println!("\n\n--------------------------------------------------\n\n");
-        // for e in self.nodes.clone() {
-        //     println!("{}, {}", e.loc().unwrap(), e);
+        if matches!(lex.curr(false)?.key(), KEYWORD::assign(_))
+            || (matches!(lex.curr(false)?.key(), KEYWORD::option(_))
+                && matches!(lex.peek(0, false)?.key(), KEYWORD::assign(_)))
+        {
+            let mut parse_stat = ParserStat::default();
+            match parse_stat.parse(lex) {
+                Ok(()) => { self.nodes.extend(parse_stat.nodes) },
+                Err(err) => { self.errors.push(err) }
+            }
+        } else {
+            lex.until_term(false)?;
         }
         Ok(())
     }
