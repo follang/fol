@@ -147,6 +147,12 @@ impl KEYWORD {
             _ => false,
         }
     }
+    pub fn is_numberish(&self) -> bool {
+        if self.is_number()
+            || matches!(self, KEYWORD::symbol(SYMBOL::dot_))
+            || matches!(self, KEYWORD::symbol(SYMBOL::minus_)) 
+        { true } else { false }
+    }
     pub fn is_symbol(&self) -> bool {
         if self.is_bracket() {
             false

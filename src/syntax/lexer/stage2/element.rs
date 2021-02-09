@@ -91,22 +91,15 @@ impl Element {
             self.bump(el);
         }
         // numberfile_
-        else if matches!(el.curr()?.key(), KEYWORD::symbol(SYMBOL::dot_))
-            && el.peek(0)?.key().is_number()
+        else if el.curr()?.key().is_number() && !el.seek(0)?.key().is_void() {
+            self.set_key(ident)
+        }
+        else if el.curr()?.key().is_numberish() && (el.peek(0)?.key().is_number() || el.seek(0)?.key().is_continue())
         {
-            if el.seek(0)?.key().is_void() {
+            if el.seek(0)?.key().is_continue() {
                 self.make_number(el, src)?;
             }
         } 
-        else if (matches!(el.curr()?.key(), KEYWORD::symbol(SYMBOL::minus_))
-            && el.peek(0)?.key().is_number())
-        {
-            self.make_number(el, src)?;
-        }
-        else if el.curr()?.key().is_number()
-        {
-            self.make_number(el, src)?;
-        }
         // operators
         else if el.curr()?.key().is_symbol()
             && el.peek(0)?.key().is_symbol()
