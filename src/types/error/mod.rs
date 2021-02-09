@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 use dyn_clone::DynClone;
+use terminal_size::{Width, Height, terminal_size};
 
 pub mod flaw;
 pub mod typo;
@@ -24,4 +25,18 @@ impl fmt::Display for Repo {
         write!(f, "\n{}", " Repo ".black().on_red(),
         )
     }
+}
+
+fn border_up(chr: &str, msg: String) -> String {
+    let mut width = if let Some((Width(w), Height(h))) = terminal_size() { w as usize } else { 5 };
+    width = width - msg.len();
+    let middle = 5;
+    format!("{}{}{}\n", chr.repeat(width - middle), msg.red(), chr.repeat(middle))
+}
+
+fn border_down(chr: &str, msg: String) -> String {
+    let mut width = if let Some((Width(w), Height(h))) = terminal_size() { w as usize } else { 5 };
+    width = width - msg.len();
+    let middle = 5;
+    format!("\n{}{}{}", chr.repeat(width - middle), msg.red(), chr.repeat(middle))
 }

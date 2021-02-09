@@ -5,7 +5,6 @@ use std::fmt;
 pub enum LITERAL {
     ANY,
     string_,
-    char_,
     bool_,
     float_,
     decimal_,
@@ -19,7 +18,6 @@ impl fmt::Display for LITERAL {
         let t;
         match self {
             LITERAL::string_ => { t = Some("string".to_string()); },
-            LITERAL::char_ => { t = Some("char".to_string()); },
             LITERAL::float_ => { t = Some("float".to_string()); },
             LITERAL::bool_ => { t = Some("bool".to_string()); },
             LITERAL::decimal_ => { t = Some("decimal".to_string()); },

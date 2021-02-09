@@ -24,20 +24,20 @@ use crate::syntax::nodes::*;
 use crate::syntax::parse::*;
 
 fn main() -> Vod {
-    let path = "./test/main/number.mod".to_string();
+    let path = "./test/main/var2".to_string();
     let sources = index::sources::Sources::init(path);
     for e in sources {
         // let mut el = Vec::new();
         // let mut er = Vec::new();
         let mut elems = stage2::Elements::init(&e);
-        while let Some(c) = elems.bump() {
-            match c {
-                Ok(e) => { println!("{}", e); },
-                Err(e) => { println!("\n{}", e); }
-            }
-        }
-        // let mut parser = Parser::default();
-        // parser.init(&mut elems, &e);
+        // while let Some(c) = elems.bump() {
+        //     match c {
+        //         Ok(e) => { println!("{}", e); },
+        //         Err(e) => { println!("\n{}", e); }
+        //     }
+        // }
+        let mut parser = Parser::default();
+        parser.init(&mut elems, &e);
     }
     Ok(())
 }

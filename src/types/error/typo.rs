@@ -5,8 +5,7 @@ use std::fmt;
 use colored::Colorize;
 use crate::syntax::point;
 use crate::syntax::token::KEYWORD;
-use terminal_size::{Width, Height, terminal_size};
-use super::Glitch;
+use super::{Glitch, border_up, border_down};
 use crate::types::*;
 use crate::syntax::index::source::Source;
 
@@ -81,7 +80,7 @@ impl Glitch for Typo {  }
 
 impl fmt::Display for Typo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let (v, s, l, m, message, source);
+        let (v, s, l, m, message, source, id);
         let mut comma_separated = String::new();
         match self {
             Typo::ParserUnexpected { loc, key1, key2, src } => { 
@@ -91,6 +90,7 @@ impl fmt::Display for Typo {
                 message = format!("expected: {} but got {}", key2, key1);
                 m = Some(&message);
                 source = src;
+                id = "TYPO001"
             },
             Typo::ParserNeedsBody { msg, loc, src } => {
                 v = " MISSING DECLARATATION ".to_string(); 
@@ -98,6 +98,7 @@ impl fmt::Display for Typo {
                 m = msg.as_ref();
                 l = loc.as_ref();
                 source = src;
+                id = "TYPO002"
             },
             Typo::ParserBodyForbidden { msg, loc, src } => { 
                 v = " DECLARATATION FORBIDDEN ".to_string(); 
@@ -105,6 +106,7 @@ impl fmt::Display for Typo {
                 m = msg.as_ref();
                 l = loc.as_ref();
                 source = src;
+                id = "TYPO003"
             },
             Typo::ParserMissmatch { msg, loc, src } => { 
                 v = " MISSMATCHED ARGUMENTS ".to_string(); 
@@ -112,6 +114,7 @@ impl fmt::Display for Typo {
                 m = msg.as_ref();
                 l = loc.as_ref();
                 source = src;
+                id = "TYPO004"
             },
             Typo::ParserSpaceAdd { msg, loc, src } => { 
                 v = " MISSING BLANK SPACE ".to_string(); 
@@ -119,6 +122,7 @@ impl fmt::Display for Typo {
                 m = msg.as_ref();
                 l = loc.as_ref();
                 source = src;
+                id = "TYPO005"
             },
             Typo::ParserSpaceRem { msg, loc, src } => { 
                 v = " OBSOLETE BLANK SPACE ".to_string(); 
@@ -126,6 +130,7 @@ impl fmt::Display for Typo {
                 m = msg.as_ref();
                 l = loc.as_ref();
                 source = src;
+                id = "TYPO006"
             },
             Typo::ParserTypeDisbalance { msg, loc, src } => { 
                 v = " DISBALANCE OF TYPES ".to_string(); 
@@ -133,6 +138,7 @@ impl fmt::Display for Typo {
                 m = msg.as_ref();
                 l = loc.as_ref();
                 source = src;
+                id = "TYPO007"
             },
             Typo::ParserNoType { msg, loc, src } => { 
                 v = " MISSING TYPE ANNOTATION ".to_string(); 
@@ -140,6 +146,7 @@ impl fmt::Display for Typo {
                 m = msg.as_ref();
                 l = loc.as_ref();
                 source = src;
+                id = "TYPO008"
             },
             Typo::ParserManyUnexpected { loc, key1, keys, src } => { 
                 v = " UNEXPECTED TOKEN ".to_string(); 
@@ -153,6 +160,7 @@ impl fmt::Display for Typo {
                 message = format!("expected one of: {},\ninstead recieved {}", comma_separated, key1);
                 m = Some(&message);
                 source = src;
+                id = "TYPO009"
             },
             Typo::LexerBracketUnmatch { msg, loc, src } => { 
                 v = " UNMATCHED BRACKET ".to_string(); 
@@ -160,6 +168,7 @@ impl fmt::Display for Typo {
                 m = msg.as_ref();
                 l = loc.as_ref();
                 source = src;
+                id = "TYPO010"
             },
             Typo::LexerSpaceAdd { msg, loc, src } => { 
                 v = " MISSING BLANK SPACE ".to_string(); 
@@ -167,6 +176,7 @@ impl fmt::Display for Typo {
                 m = msg.as_ref();
                 l = loc.as_ref();
                 source = src;
+                id = "TYPO011"
             },
             Typo::LexerPrimitiveAccess { msg, loc, src } => { 
                 v = " PRIMITIVE_ACCESS ".to_string(); 
@@ -174,15 +184,16 @@ impl fmt::Display for Typo {
                 m = msg.as_ref();
                 l = loc.as_ref();
                 source = src;
+                id = "TYPO012"
             },
         };
-        let width = if let Some((Width(w), Height(h))) = terminal_size() { w } else { 5 };
-        write!(f, "{} >> {}:{}{}{}\n{}",
+        write!(f, "{}{} >> {}:{}{}{}{}",
+            border_up("-", String::new()).bright_black(),
             " TYPO ".black().on_red(),
             (" ".to_string() + &s + " stage ").black().on_white().to_string(), v.on_red().bold().to_string(),
             match l { Some(val) => "\n".to_string() + &val.visualize(&source), None => "".to_string() },
             match m { Some(val) => "\n".to_string() + &val.to_string(), None => "".to_string() },
-            "-".repeat(width as usize).red()
+            border_down("-", " fol --explain err#".to_string() + id + " ").bright_black()
         )
     }
 }

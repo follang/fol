@@ -45,6 +45,7 @@ impl fmt::Display for Element {
         let con = if self.key().is_literal()
             || self.key().is_comment()
             || self.key().is_orbit()
+            || self.key().is_makro()
             || self.key().is_ident() { " ".to_string() + &self.con + " " } else { "".to_string() };
         write!(f, "{}\t{}{}", self.loc, self.key, con.black().on_red())
     }
@@ -94,7 +95,10 @@ impl Element {
         else if el.curr()?.key().is_number() && !el.seek(0)?.key().is_void() {
             self.set_key(ident)
         }
-        else if el.curr()?.key().is_numberish() && (el.peek(0)?.key().is_number() || el.seek(0)?.key().is_continue())
+        else if el.curr()?.key().is_numberish() 
+            && (el.peek(0)?.key().is_number() 
+            || el.seek(0)?.key().is_continue() 
+            || el.seek(0)?.key().is_eol())
         {
             if el.seek(0)?.key().is_continue() {
                 self.make_number(el, src)?;

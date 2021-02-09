@@ -44,6 +44,7 @@ pub enum KEYWORD {
     void(VOID),
     ident,
     orbit,
+    makro,
     comment,
     illegal,
 }
@@ -94,6 +95,12 @@ impl KEYWORD {
     pub fn is_orbit(&self) -> bool {
         match *self {
             KEYWORD::orbit => true,
+            _ => false,
+        }
+    }
+    pub fn is_makro(&self) -> bool {
+        match *self {
+            KEYWORD::makro => true,
             _ => false,
         }
     }
@@ -172,6 +179,7 @@ impl KEYWORD {
     pub fn is_void(&self) -> bool {
         match *self {
             KEYWORD::void(_) => true,
+            KEYWORD::illegal => true,
             _ => false,
         }
     }
@@ -249,6 +257,7 @@ impl fmt::Display for KEYWORD {
             KEYWORD::option(v) => write!(f, "{}", v),
             KEYWORD::ident => write!(f, "{}:", " IDENT    ".black().on_red()),
             KEYWORD::orbit => write!(f, "{}:", " ORBIT    ".black().on_red()),
+            KEYWORD::makro => write!(f, "{}:", " MAKRO    ".black().on_red()),
             KEYWORD::comment => write!(f, "{}:", " COMMENT  ".black().on_red()),
             KEYWORD::illegal => write!(f, "{}", " ILLEGAL  ".black().on_green()),
         }

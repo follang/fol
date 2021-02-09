@@ -1,7 +1,7 @@
-2.2 2.2 2.2 2.2.2
+22.2.2
+22.2.22.
+~var[nor, ext, hid ] one = .23
 -var[exp,imu,] two: str[exp,hid] = <expression>
-~var 23.22 [ 2.23.54 nor, ext, hid ] one = .23.243.23
-~var[ .23.54 nor, ext, hid ] one = .23.243.23
 +var three: int = <expression>
 -var[exp] (
     four: int[exp], str;
@@ -37,9 +37,9 @@ use[] one: two = <expression>;
     two: two = <expression>;
 )
 
-def `$`(a: any): mac = `.to_string($)`
-def `~var`: alt = `var[~]`
-def `str`: def[] = `str[new,mut,nor]`
+def '$'(a: any): mac = '.to_string($)'
+def '~var': alt = 'var[~]'
+def 'str': def[] = 'str[new,mut,nor]'
 
 fun one(two: int): int = { <expression> }
 fun one(two: int): int = { <expression> }

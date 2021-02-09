@@ -180,7 +180,8 @@ impl Element {
         if litsym == '`' {
             self.key = orbit;
         } else if litsym == '\'' {
-            self.key = literal(LITERAL::char_);
+            self.key = makro;
+            // self.key = literal(LITERAL::char_);
         } else {
             self.key = literal(LITERAL::string_);
         }
