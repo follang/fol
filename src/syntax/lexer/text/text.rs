@@ -12,6 +12,7 @@ pub struct Text {
     chars: Box<dyn Iterator<Item = Con<Part<char>>>>,
     win: Win<Con<Part<char>>>,
     _in_count: usize,
+    _source: Source,
 }
 
 impl Text {
@@ -38,17 +39,16 @@ impl Text {
     }
 
     pub fn init(file: &source::Source) -> Self {
-        let initerr: Con<Part<char>> = Err(Box::new(Flaw::InitError{ msg: None }));
-        let enderr: Con<Part<char>> = Err(Box::new(Flaw::EndError{ msg: None }));
         let mut prev = Vec::with_capacity(SLIDER);
         let mut next = Vec::with_capacity(SLIDER);
         let mut chars = Box::new(gen(file));
-        for _ in 0..SLIDER { prev.push(initerr.clone()) }
-        for _ in 0..SLIDER { next.push(chars.next().unwrap_or(enderr.clone())) }
+        for _ in 0..SLIDER { prev.push(Ok(('\0', point::Location::default()))) }
+        for _ in 0..SLIDER { next.push(chars.next().unwrap_or(Ok(('\0', point::Location::default())))) }
         Self {
             chars,
-            win: (prev, initerr, next),
-            _in_count: SLIDER
+            win: (prev, Ok(('\0', point::Location::default())), next),
+            _in_count: SLIDER,
+            _source: file.clone(),
         }
     }
 
@@ -64,17 +64,20 @@ impl Text {
             },
             None => {
                 if self._in_count > 0 {
-                    let enderr: Con<Part<char>> = Err(Box::new(Flaw::EndError{ msg: None }));
                     // TODO: Handle better .ok()
                     self.win.0.remove(0).ok(); self.win.0.push(self.win.1.clone());
                     self.win.1 = self.win.2[0].clone();
                     // TODO: Handle better .ok()
-                    self.win.2.remove(0).ok(); self.win.2.push(enderr);
+                    self.win.2.remove(0).ok(); self.win.2.push(Ok(('\0', point::Location::default())));
                     self._in_count -= 1;
                     return Some(self.win.1.clone());
                 } else { return None }
             }
         }
+    }
+    pub fn debug(&self) -> Vod {
+        println!("{}\t{}", self.curr()?.1, self.curr()?.0);
+        Ok(())
     }
 }
 

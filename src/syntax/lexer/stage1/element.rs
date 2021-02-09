@@ -136,7 +136,6 @@ impl Element {
     }
 
     pub fn digit(&mut self, code: &mut text::Text) -> Vod {
-        // return Err( catch!(Flaw::GettingWrongPath{ msg: None } ));
         if code.curr()?.0 == '0'
             && (code.peek(0)?.0 == 'x' || code.peek(0)?.0 == 'o' || code.peek(0)?.0 == 'b')
         {

@@ -16,16 +16,14 @@ pub struct Elements {
 
 impl Elements {
     pub fn init(file: &source::Source) -> Self {
-        let enderr: Con<Element> = Err(Box::new(Flaw::EndError{ msg: None }));
-        let initerr: Con<Element> = Err(Box::new(Flaw::InitError{ msg: None }));
         let mut prev = Vec::with_capacity(SLIDER);
         let mut next = Vec::with_capacity(SLIDER);
         let mut elem = Box::new(elements(file));
-        for _ in 0..SLIDER { prev.push(initerr.clone()) }
-        for _ in 0..SLIDER { next.push(elem.next().unwrap_or(enderr.clone())) }
+        for _ in 0..SLIDER { prev.push(Ok(Element::default())) }
+        for _ in 0..SLIDER { next.push(elem.next().unwrap_or(Ok(Element::default()))) }
         Self {
             elem,
-            win: (prev, initerr, next),
+            win: (prev, Ok(Element::default()), next),
             _in_count: SLIDER,
             _source: file.clone(),
         }
@@ -61,17 +59,20 @@ impl Elements {
             },
             None => {
                 if self._in_count > 0 {
-                    let enderr: Con<Element> = Err(Box::new(Flaw::EndError{ msg: None }));
                     // TODO: Handle better .ok()
                     self.win.0.remove(0).ok(); self.win.0.push(self.win.1.clone());
                     self.win.1 = self.win.2[0].clone();
                     // TODO: Handle better .ok()
-                    self.win.2.remove(0).ok(); self.win.2.push(enderr);
+                    self.win.2.remove(0).ok(); self.win.2.push(Ok(Element::default()));
                     self._in_count -= 1;
                     return Some(self.win.1.clone())
                 } else { return None }
             }
         }
+    }
+    pub fn debug(&self) -> Vod {
+        println!("{}\t{}", self.curr()?.loc(), self.curr()?.key());
+        Ok(())
     }
 }
 
