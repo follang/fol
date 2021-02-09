@@ -71,9 +71,10 @@ impl Elements {
         }
     }
     pub fn debug(&self) -> Vod {
-        println!("{}\t{}", self.curr()?.loc(), self.curr()?.key());
+        println!("{}\t{}\t{}", self.curr()?.loc(), self.curr()?.key(), self.curr()?.con());
         Ok(())
     }
+    pub fn echo(&self) { println!(">>>>>>>>>>>>>>>>>>>>>") }
 }
 
 impl Iterator for Elements {

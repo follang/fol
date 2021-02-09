@@ -49,6 +49,11 @@ impl Element {
     pub fn con(&self) -> &String { &self.con }
     pub fn set_con(&mut self, c: String) { self.con = c; }
 
+    pub fn append(&mut self, other: &Element) {
+        self.con.push_str(&other.con);
+        self.loc.longer(&other.loc.len())
+    }
+
     pub fn analyze(&mut self, mut code: &mut text::Text) -> Vod {
         if code.curr()?.0 == '/' && (code.peek(0)?.0 == '/' || code.peek(0)?.0 == '*') {
             self.comment(&mut code)?;

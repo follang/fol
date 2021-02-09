@@ -27,7 +27,6 @@ impl Elements {
             _in_count: SLIDER,
             _source: file.clone(),
         };
-        //TODO: make sure that file has at least one character
         // newborn.bump();
         newborn
     }
