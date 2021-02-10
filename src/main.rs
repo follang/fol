@@ -36,8 +36,7 @@ fn main() -> Vod {
                 // Err(e) => { println!("\n{}", e); }
             // }
         // }
-        let mut parser = Parser::default();
-        parser.init(&mut elems, &e);
+        let parser = Parser::init(&mut elems, e);
     }
     Ok(())
 }

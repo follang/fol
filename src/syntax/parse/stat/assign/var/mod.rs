@@ -1,4 +1,5 @@
 use crate::types::*;
+use crate::syntax::index::Source;
 use crate::syntax::nodes::*;
 use crate::syntax::token::*;
 use crate::syntax::lexer;
@@ -12,16 +13,19 @@ pub use crate::syntax::parse::stat::ident::*;
 
 pub struct ParserStatAssVar {
     pub nodes: Nodes,
+    _source: Source,
     _recurse: bool
 }
-impl std::default::Default for ParserStatAssVar {
-    fn default() -> Self { Self { nodes: Nodes::new(), _recurse: false } }
-}
 
+impl ParserStatAssVar {
+    pub fn init(src: Source) -> Self {
+        Self { nodes: Nodes::new(), _source: src, _recurse: false } 
+    }
+}
 impl Parse for ParserStatAssVar {
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
         let mut nodestatassvar = NodeStatAssVar::default();
-        let mut opts = ParserStatAssOpts::default();
+        let mut opts = ParserStatAssOpts::init(self._source.clone());
         if matches!(lex.curr(true)?.key(), KEYWORD::option(_) ) {
             if let KEYWORD::option(a) = lex.curr(true)?.key() {
                 let assopt: AssOptsTrait = a.into();
@@ -39,7 +43,7 @@ impl Parse for ParserStatAssVar {
         if opts.nodes.len() > 0 {
             nodestatassvar.set_options(Some(opts.nodes));
         }
-        let mut idents = ParserStatIdent::default();
+        let mut idents = ParserStatIdent::init(self._source.clone());
         idents.parse(lex)?;
 
         lex.until_term(false)?;

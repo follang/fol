@@ -12,32 +12,27 @@ pub trait Parse {
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod;
 }
 
-pub trait Fixer {
-    fn fix(&mut self, lex: &mut lexer::Elements) -> Vod;
-}
-
 pub struct Parser {
     pub nodes: Nodes,
     pub errors: Errors,
-    pub source: Source,
-}
-impl std::default::Default for Parser {
-    fn default() -> Self { Self { nodes: Nodes::new(), errors: Vec::new(), source: Source::default() } }
+    _source: Source,
 }
 
 impl Parser {
-    pub fn init (&mut self, lex: &mut lexer::Elements, src: &Source) {
-        self.source = src.clone();
+    pub fn init (lex: &mut lexer::Elements, src: Source) -> Self {
+        let mut parser = Self { nodes: Nodes::new(), errors: Vec::new(), _source: Source::default() };
+        parser._source = src.clone();
         while let Some(e) = lex.bump() {
-            lex.debug().ok();
-            if let Err(err) = self.parse(lex) {
-                self.errors.push(err)
+            // lex.debug().ok();
+            if let Err(err) = parser.parse(lex) {
+                parser.errors.push(err)
             }
         }
-        printer!(self.errors.clone());
-        for e in self.nodes.clone() {
-            println!("{}, {}", e.loc().unwrap().print(&self.source), e);
-        }
+        printer!(parser.errors.clone());
+        for e in parser.nodes.clone() {
+            println!("{}, {}", e.loc().unwrap().print(&parser._source), e);
+        };
+        parser
     }
 }
 
@@ -47,7 +42,7 @@ impl Parse for Parser {
             || (matches!(lex.curr(false)?.key(), KEYWORD::option(_))
                 && matches!(lex.peek(0, false)?.key(), KEYWORD::assign(_)))
         {
-            let mut parse_stat = ParserStat::default();
+            let mut parse_stat = ParserStat::init(self._source.clone());
             match parse_stat.parse(lex) {
                 Ok(()) => { self.nodes.extend(parse_stat.nodes) },
                 Err(err) => { self.errors.push(err) }

@@ -1,4 +1,5 @@
 use crate::types::*;
+use crate::syntax::index::Source;
 use crate::syntax::nodes::*;
 use crate::syntax::token::*;
 use crate::syntax::lexer;
@@ -8,11 +9,14 @@ pub use crate::syntax::nodes::stat::assign::opts::*;
 
 pub struct ParserStatAssOpts {
     pub nodes: Nodes,
-}
-impl std::default::Default for ParserStatAssOpts {
-    fn default() -> Self { Self { nodes: Nodes::new() } }
+    _source: Source,
 }
 
+impl ParserStatAssOpts {
+    pub fn init(src: Source) -> Self {
+        Self { nodes: Nodes::new(), _source: src } 
+    }
+}
 impl Parse for ParserStatAssOpts {
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
         lex.jump(0, false)?;
