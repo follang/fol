@@ -28,10 +28,11 @@ impl Parser {
                 parser.errors.push(err)
             }
         }
-        printer!(parser.errors.clone());
+        logit!(parser.nodes.len().to_string());
         for e in parser.nodes.clone() {
             println!("{}, {}", e.loc().unwrap().print(&parser._source), e);
         };
+        printer!(parser.errors.clone());
         parser
     }
 }

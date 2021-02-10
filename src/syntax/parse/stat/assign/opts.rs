@@ -19,7 +19,10 @@ impl ParserStatAssOpts {
 }
 impl Parse for ParserStatAssOpts {
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
+        // eat "["
         lex.jump(0, false)?;
+
+        // match "]" if there and return
         if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::squarC_) {
             lex.jump(0, true)?;
             return Ok(())
@@ -32,22 +35,22 @@ impl Parse for ParserStatAssOpts {
                 self.nodes.push(node);
             }
             lex.jump(0, true)?;
+
             if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::squarC_)
                 || lex.curr(true)?.key().is_eol()
             {
                 lex.jump(0, true)?;
-                return Ok(())
+                break
             } else if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::comma_) {
                 if lex.peek(0, true)?.key() == KEYWORD::symbol(SYMBOL::squarC_) 
                 {
                     lex.jump(1, true)?;
-                    return Ok(())
+                    break
                 }
                 lex.jump(0, false)?;
             }
         }
-        // lex.until_bracket();
-        // Ok(())
+        Ok(())
     }
 }
 

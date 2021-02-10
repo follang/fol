@@ -20,7 +20,10 @@ impl ParserStatIdent {
 impl Parse for ParserStatIdent {
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
         // loop {
+            // lex.jump(0, false)?;
+            lex.debug().ok();
             lex.expect( KEYWORD::ident , true)?;
+            let identnode = NodeStatIdent::default();
             // if let KEYWORD::ident = lex.curr(true).key() {
             //     let assopt: AssOptsTrait = a.into();
             //     let node = Node::new(lex.curr(true).loc().clone(), Box::new(assopt));

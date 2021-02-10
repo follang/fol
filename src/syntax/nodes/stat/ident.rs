@@ -2,11 +2,11 @@ use std::fmt;
 use crate::syntax::nodes::{NodeTrait, Node, Nodes, StatTrait};
 
 #[derive(Clone)]
-pub struct NodeStatIdent(Option<Node>);
+pub struct NodeStatIdent(String);
 
 impl Default for NodeStatIdent {
     fn default() -> Self {
-        Self { 0: None }
+        Self { 0: String::new() }
     }
 }
 
@@ -15,13 +15,12 @@ impl StatTrait for NodeStatIdent {}
 
 impl fmt::Display for NodeStatIdent {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let data = match self.0 { Some(ref e) => " :".to_string() + &e.to_string(), None => String::new()  };
-        write!(f, "{}", data)
+        write!(f, "{}", self.0)
     }
 }
 
 impl NodeStatIdent {
-    pub fn new(node: Node) -> Self {
-        Self(Some(node))
+    pub fn new(name: String) -> Self {
+        Self(name)
     }
 }

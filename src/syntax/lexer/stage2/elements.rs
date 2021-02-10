@@ -89,6 +89,11 @@ impl Elements {
         }
         Ok(())
     }
+    pub fn eat(&mut self) {
+        if let Ok(e) =  self.curr(false) {
+            if matches!(e.key(), KEYWORD::void(_)) { self.bump(); };
+        } 
+    }
 }
 
 impl Iterator for Elements {
@@ -157,7 +162,7 @@ impl Elements {
         Ok(())
     }
     pub fn debug(&self) -> Vod {
-        println!("{}\t{}", self.curr(false)?.loc(), self.curr(false)?.key());
+        println!("{}\t{}\t{}", self.curr(false)?.loc(), self.curr(false)?.key(), self.curr(false)?.con());
         Ok(())
     }
 }
@@ -259,11 +264,11 @@ impl Elements {
             src: self._source.clone(),
         }))
     }
-    pub fn expect_void(&self, ignore: bool) -> Vod {
-        if matches!(self.curr(ignore)?.key(), KEYWORD::void(_)) { return Ok(()) };
+    pub fn expect_void(&self) -> Vod {
+        if matches!(self.curr(false)?.key(), KEYWORD::void(_)) { return Ok(()) };
         Err( catch!( Typo::ParserUnexpected{ 
-            loc: Some(self.curr(ignore)?.loc().clone()), 
-            key1: self.curr(ignore)?.key(), 
+            loc: Some(self.curr(false)?.loc().clone()), 
+            key1: self.curr(false)?.key(), 
             key2: KEYWORD::void(VOID::ANY), 
             src: self._source.clone(),
         }))
