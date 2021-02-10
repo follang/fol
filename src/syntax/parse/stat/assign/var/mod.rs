@@ -35,14 +35,14 @@ impl Parse for ParserStatAssVar {
         lex.jump(0, false)?;
         if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::squarO_) {
             opts.parse(lex)?;
-            if opts.nodes.len() > 0 {
-                nodestatassvar.set_options(Some(opts.nodes));
-            }
+                }
+        if opts.nodes.len() > 0 {
+            nodestatassvar.set_options(Some(opts.nodes));
         }
         let mut idents = ParserStatIdent::default();
         idents.parse(lex)?;
 
-        lex.until_term(true)?;
+        lex.until_term(false)?;
         self.nodes.push(Node::new(loc, Box::new(nodestatassvar)));
         Ok(())
     }

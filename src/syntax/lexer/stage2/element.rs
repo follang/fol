@@ -91,6 +91,12 @@ impl Element {
             self.set_key(void(VOID::endfile_));
             self.bump(el);
         }
+        // options
+        else if el.curr()?.key().is_symbol() 
+            && el.peek(0)?.key().is_assign() 
+        { 
+            self.make_syoption(el, src)?;
+        }
         // numberfile_
         else if el.curr()?.key().is_number() && !el.seek(0)?.key().is_void() {
             self.set_key(ident)
@@ -100,9 +106,7 @@ impl Element {
             || el.seek(0)?.key().is_continue() 
             || el.seek(0)?.key().is_eol())
         {
-            if el.seek(0)?.key().is_continue() {
-                self.make_number(el, src)?;
-            }
+            self.make_number(el, src)?;
         } 
         // operators
         else if el.curr()?.key().is_symbol()
@@ -112,13 +116,6 @@ impl Element {
             && (el.seek(0)?.key().is_void() || el.seek(0)?.key().is_bracket())
         {
             self.make_multi_operator(el, src)?;
-        }
-        // options
-        else if el.curr()?.key().is_symbol() 
-            && el.peek(0)?.key().is_assign() 
-            && el.curr()?.loc().is_first() 
-        { 
-            self.make_syoption(el, src)?;
         }
         else if el.curr()?.key().is_symbol()
             && el.peek(0)?.key().is_assign()

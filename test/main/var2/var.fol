@@ -1,5 +1,3 @@
-22.2.2
-22.2.22.
 ~var[nor, ext, hid ] one = .23
 -var[exp,imu,] two: str[exp,hid] = <expression>
 +var three: int = <expression>

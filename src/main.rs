@@ -31,10 +31,10 @@ fn main() -> Vod {
         // let mut er = Vec::new();
         let mut elems = stage2::Elements::init(&e);
         // while let Some(c) = elems.bump() {
-        //     match c {
-        //         Ok(e) => { println!("{}", e); },
-        //         Err(e) => { println!("\n{}", e); }
-        //     }
+            // match c {
+                // Ok(e) => { println!("{}", e); },
+                // Err(e) => { println!("\n{}", e); }
+            // }
         // }
         let mut parser = Parser::default();
         parser.init(&mut elems, &e);

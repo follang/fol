@@ -29,7 +29,7 @@ impl Parser {
     pub fn init (&mut self, lex: &mut lexer::Elements, src: &Source) {
         self.source = src.clone();
         while let Some(e) = lex.bump() {
-            // lex.debug().ok();
+            lex.debug().ok();
             if let Err(err) = self.parse(lex) {
                 self.errors.push(err)
             }
