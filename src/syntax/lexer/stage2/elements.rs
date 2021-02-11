@@ -131,8 +131,8 @@ pub fn elements(file: &source::Source) -> impl Iterator<Item = Con<Element>>  {
 
 impl Elements {
     pub fn until_term(&mut self, term: bool) -> Vod {
-        loop{ 
-            if self.curr(false)?.key().is_terminal() || self.curr(false)?.key().is_eof() {
+        while !self.curr(true)?.key().is_eof() {
+            if self.curr(false)?.key().is_terminal() {
                 if term { self.bump(); }
                 break
             }
@@ -266,6 +266,15 @@ impl Elements {
     }
     pub fn expect_void(&self) -> Vod {
         if matches!(self.curr(false)?.key(), KEYWORD::void(_)) { return Ok(()) };
+        Err( catch!( Typo::ParserUnexpected{ 
+            loc: Some(self.curr(false)?.loc().clone()), 
+            key1: self.curr(false)?.key(), 
+            key2: KEYWORD::void(VOID::ANY), 
+            src: self._source.clone(),
+        }))
+    }
+    pub fn expect_terminal(&self) -> Vod {
+        if self.curr(false)?.key().is_terminal() { return Ok(()) };
         Err( catch!( Typo::ParserUnexpected{ 
             loc: Some(self.curr(false)?.loc().clone()), 
             key1: self.curr(false)?.key(), 
