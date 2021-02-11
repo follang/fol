@@ -20,7 +20,7 @@ impl ParserStatIdent {
 impl Parse for ParserStatIdent {
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
         while !lex.curr(true)?.key().is_eof() {
-            lex.expect( KEYWORD::ident , true)?;
+            lex.expect( KEYWORD::ident , true)?; lex.eat();
             let identnode = NodeStatIdent::new(lex.curr(false)?.con().clone());
             self.nodes.push(Node::new(Box::new(identnode)));
             lex.jump(0, true)?;

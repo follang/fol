@@ -28,6 +28,7 @@ impl Parse for ParserStatAss {
         {
             let mut parse_var = ParserStatAssVar::init(self._source.clone());
             parse_var.parse(lex)?;
+            // printer!(parse_var.nodes.clone());
             self.nodes.extend(parse_var.nodes);
             return Ok(())
         }
