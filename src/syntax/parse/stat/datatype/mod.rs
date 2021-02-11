@@ -19,19 +19,39 @@ impl ParserStatDatatypes {
 }
 impl Parse for ParserStatDatatypes {
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
-        // eat "["
+        // eat ":"
         lex.jump(0, false)?; 
 
+        while !lex.curr(true)?.key().is_eof() {
         // match type
-        lex.expect_types(true)?; lex.eat();
-        if let KEYWORD::types(a) = lex.curr(true)?.key() {
-            let dt: datatype::NodeExprDatatype = a.into();
-            let node = Node::new(Box::new(dt));
-            self.nodes.push(node);
-        }
-        lex.jump(0, false)?; 
-        // lex.debug().ok();
+            lex.expect_types(true)?; lex.eat();
+            if let KEYWORD::types(a) = lex.curr(true)?.key() {
+                let dt: datatype::NodeExprDatatype = a.into();
+                let node = Node::new(Box::new(dt));
+                self.nodes.push(node);
+            }
+            lex.jump(0, false)?; 
 
+            // match options after type  -> "[opts]"
+            if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::squarO_) {
+                lex.until_bracket()?;
+            }
+
+            // match restrictions after type  -> "[rest]"
+            if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::squarO_) {
+                lex.until_bracket()?;
+            }
+            if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::equal_)
+                || lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::semi_)
+                || lex.curr(true)?.key().is_eol()
+            {
+                lex.eat();
+                break
+            } else if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::comma_) {
+                lex.jump(0, true)?; lex.eat();
+            }
+            lex.eat();
+        }
 
         Ok(())
     }

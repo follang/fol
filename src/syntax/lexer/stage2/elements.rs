@@ -91,7 +91,7 @@ impl Elements {
     }
     pub fn eat(&mut self) {
         if let Ok(e) =  self.curr(false) {
-            if matches!(e.key(), KEYWORD::void(_)) { self.bump(); };
+            if matches!(e.key(), KEYWORD::void(_)) && !e.key().is_terminal() { self.bump(); };
         } 
     }
 }

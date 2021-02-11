@@ -58,20 +58,21 @@ impl Parse for ParserStatAssVar {
         if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::colon_) {
             dt.parse(lex)?;
         }
-        lex.debug().ok();
 
+        let mut nodestatassvar: NodeStatAssVar;
         for i in 0..idents.nodes.len() {
-            let mut nodestatassvar = NodeStatAssVar::default();
+            nodestatassvar = NodeStatAssVar::default();
             if opts.nodes.len() > 0 {
                 nodestatassvar.set_options(Some(opts.nodes.clone()));
             }
             if dt.nodes.len() > 0 {
-                nodestatassvar.set_datatype(Some(dt.nodes.get(0).clone()));
+                let idx = if i >= dt.nodes.len() { dt.nodes.len()-1 } else { i };
+                nodestatassvar.set_datatype(Some(dt.nodes.get(idx).clone()));
             }
-            let mut nodestatassvar_new = nodestatassvar.clone();
-            nodestatassvar_new.set_ident(Some(idents.nodes.get(i).clone()));
-            let mut newnode = Node::new(Box::new(nodestatassvar_new));
+            nodestatassvar.set_ident(Some(idents.nodes.get(i).clone()));
+            let mut newnode = Node::new(Box::new(nodestatassvar));
             newnode.set_loc(loc.clone());
+            println!("{}", newnode.clone());
             self.nodes.push(newnode);
         }
         // if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::semi_)
