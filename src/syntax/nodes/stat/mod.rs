@@ -8,6 +8,8 @@ pub mod assign;
 pub use crate::syntax::nodes::stat::assign::*;
 pub mod ident;
 pub use crate::syntax::nodes::stat::ident::*;
+pub mod contracts;
+pub use crate::syntax::nodes::stat::contracts::*;
 
 pub trait StatTrait: NodeTrait {}
 dyn_clone::clone_trait_object!(StatTrait);

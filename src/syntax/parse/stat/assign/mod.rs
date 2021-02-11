@@ -9,6 +9,8 @@ pub mod opts;
 pub use crate::syntax::parse::stat::assign::opts::*;
 pub mod var;
 pub use crate::syntax::parse::stat::assign::var::*;
+pub mod typ;
+pub use crate::syntax::parse::stat::assign::typ::*;
 
 pub struct ParserStatAss {
     pub nodes: Nodes,
@@ -26,10 +28,17 @@ impl Parse for ParserStatAss {
             || (matches!(lex.curr(false)?.key(), KEYWORD::option(_))
                 && matches!(lex.peek(0, false)?.key(), KEYWORD::assign(ASSIGN::var_)))
         {
-            let mut parse_var = ParserStatAssVar::init(self._source.clone());
-            parse_var.parse(lex)?;
-            // printer!(parse_var.nodes.clone());
-            self.nodes.extend(parse_var.nodes);
+            let mut parser = ParserStatAssVar::init(self._source.clone());
+            parser.parse(lex)?;
+            self.nodes.extend(parser.nodes);
+            return Ok(())
+        } else if matches!(lex.curr(false)?.key(), KEYWORD::assign(ASSIGN::typ_))
+            || (matches!(lex.curr(false)?.key(), KEYWORD::option(_))
+                && matches!(lex.peek(0, false)?.key(), KEYWORD::assign(ASSIGN::typ_)))
+        {
+            let mut parser = ParserStatAssTyp::init(self._source.clone());
+            parser.parse(lex)?;
+            self.nodes.extend(parser.nodes);
             return Ok(())
         }
         lex.until_term(true)?;

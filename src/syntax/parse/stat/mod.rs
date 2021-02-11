@@ -11,6 +11,8 @@ pub mod assign;
 pub use crate::syntax::parse::stat::assign::*;
 pub mod ident;
 pub use crate::syntax::parse::stat::ident::*;
+pub mod contracts;
+pub use crate::syntax::parse::stat::contracts::*;
 
 pub struct ParserStat {
     pub nodes: Nodes,

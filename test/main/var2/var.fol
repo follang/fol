@@ -4,7 +4,7 @@
 -var[exp] (
     four: str[exp];
     four2, four3: arr[nor], int = <expression>;
-    four4: str[nor] = <expression>;
+    four4: str[nor[]] = <expression>
 )
 var five: rut[(x: int): int][opt sd s] = { <expression> }
 ~var[exp] six,six2, six3, six4: seq[][one two] = <expression>
@@ -16,15 +16,15 @@ var t1, t2, t3, t4, t5, t6: int, str
 
 
 typ one: rec = { <expression> };
-typ two[T: gen, N: int](): rec = { <expression> };
-~typ[] (
+typ two: rec[T: gen, N: int] = { <expression> };
++typ[] (
     three, two: rec[] = <expression>;
     three2: rec[] = <expression>;
 )
 ~typ[] four: rec = { <expression> };
 ~typ[] five: rec[] = { <expression> };
-~typ[] six(blue): rec[] = { <expression> };
-~typ[] seven[T: gen, N: int](blue): rec = <expression>;
+~typ[] six(blue, yellow): rec[] = { <expression> };
+~typ[] seven(blue, geen): rec[T: gen[], N: int] = <expression>;
 ~ali[] five: arr[int, 5];
 ~ali[] gos: int;
 
@@ -45,6 +45,6 @@ fun one(two: int): int = { <expression> }
 fun[] '!='(one, two: int): bol = { <expression> }
 ~pro[] (obj)one(two: int): int = { <expression> }
 ~pro[] (obj)'$': str = { <expression> } */
-~pro[] one[T: gen](two: int): int = { <expression> }
+~pro[] one(gon: gen[], two: int): int = { <expression> }
 fun[] add1(adder: rut[(x: int): int]): int = { <expression> }
 fun[] add1(adder: rut[(x: int): int]): int = { <expression> }

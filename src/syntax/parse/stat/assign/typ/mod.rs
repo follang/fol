@@ -7,21 +7,22 @@ use super::Parse;
 
 pub use crate::syntax::parse::stat::assign::opts::*;
 pub use crate::syntax::parse::stat::ident::*;
+pub use crate::syntax::parse::stat::contracts::*;
 pub use crate::syntax::parse::stat::datatype::*;
 
 
 #[derive(Clone)]
-pub struct ParserStatAssVar {
+pub struct ParserStatAssTyp {
     pub nodes: Nodes,
     _source: Source,
     _recurse: bool,
-    _oldstat: NodeStatAssVar,
+    _oldstat: NodeStatAssTyp,
 }
 
-impl ParserStatAssVar {
+impl ParserStatAssTyp {
     pub fn len(&self) -> usize { self.nodes.len() }
     pub fn init(src: Source) -> Self {
-        Self { nodes: Nodes::new(), _source: src, _recurse: false, _oldstat: NodeStatAssVar::default() } 
+        Self { nodes: Nodes::new(), _source: src, _recurse: false, _oldstat: NodeStatAssTyp::default() } 
     }
     pub fn recurse(&self) -> Self {
         let mut new_clone = self.clone();
@@ -29,10 +30,10 @@ impl ParserStatAssVar {
         new_clone
     }
 }
-impl Parse for ParserStatAssVar {
+impl Parse for ParserStatAssTyp {
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
         let loc = lex.curr(true)?.loc().clone();
-        let mut node = NodeStatAssVar::default();
+        let mut node = NodeStatAssTyp::default();
         if !self._recurse {
             // match symbol before var  -> "~"
             let mut opts = ParserStatAssOpts::init(self._source.clone());
@@ -46,7 +47,7 @@ impl Parse for ParserStatAssVar {
             }
 
             // match "var"
-            lex.expect( KEYWORD::assign(ASSIGN::var_) , true)?;
+            lex.expect( KEYWORD::assign(ASSIGN::typ_) , true)?;
             lex.jump(0, false)?;
 
             // match options after var  -> "[opts]"
@@ -98,6 +99,12 @@ impl Parse for ParserStatAssVar {
         let mut idents = ParserStatIdent::init(self._source.clone());
         idents.parse(lex)?; lex.eat();
 
+        // match contracts after (  -> "(one, two)"
+        let mut contracts = ParserStatContract::init(self._source.clone());
+        if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::roundO_) {
+            contracts.parse(lex)?; lex.eat();
+        }
+
         // match datatypes after :  -> "int[opts][]"
         let mut dt = ParserStatDatatypes::init(self._source.clone());
         if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::colon_) {
@@ -131,7 +138,7 @@ impl Parse for ParserStatAssVar {
     }
 }
 
-impl ParserStatAssVar {
+impl ParserStatAssTyp {
         pub fn extend(&mut self, n: Nodes) {
             self.nodes.extend(n)
         }

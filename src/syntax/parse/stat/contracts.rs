@@ -7,19 +7,27 @@ use super::Parse;
 
 pub use crate::syntax::nodes::stat::ident::*;
 
-pub struct ParserStatIdent {
+pub struct ParserStatContract {
     pub nodes: Nodes,
     _source: Source,
-    _only_once: bool,
 }
 
-impl ParserStatIdent {
+impl ParserStatContract {
     pub fn init(src: Source) -> Self {
-        Self { nodes: Nodes::new(), _source: src, _only_once: false } 
+        Self { nodes: Nodes::new(), _source: src } 
     }
 }
-impl Parse for ParserStatIdent {
+impl Parse for ParserStatContract {
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
+        lex.debug().ok();
+        // eat "("
+        lex.jump(0, false)?;
+
+        // match ")" if there and return
+        if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::roundC_) {
+            lex.jump(0, true)?;
+            return Ok(())
+        }
         while !lex.curr(true)?.key().is_eof() {
             lex.expect( KEYWORD::ident , true)?; lex.eat();
             let identnode = NodeStatIdent::new(lex.curr(false)?.con().clone());
@@ -27,7 +35,6 @@ impl Parse for ParserStatIdent {
             lex.jump(0, true)?;
             if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::colon_) 
                 || lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::equal_)
-                || lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::roundO_)
                 || lex.curr(true)?.key().is_terminal()
             {
                 break
