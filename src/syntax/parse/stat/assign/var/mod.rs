@@ -27,6 +27,7 @@ impl Parse for ParserStatAssVar {
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
         let mut nodestatassvar = NodeStatAssVar::default();
         let mut opts = ParserStatAssOpts::init(self._source.clone());
+        let loc = lex.curr(true)?.loc().clone();
         // match symbol before var  -> "~"
         if matches!(lex.curr(true)?.key(), KEYWORD::option(_) ) {
             if let KEYWORD::option(a) = lex.curr(true)?.key() {
@@ -38,16 +39,12 @@ impl Parse for ParserStatAssVar {
         }
 
         // match "var"
-        let loc = lex.curr(true)?.loc().clone();
         lex.expect( KEYWORD::assign(ASSIGN::var_) , true)?;
         lex.jump(0, false)?;
 
         // match options after var  -> "[opts]"
         if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::squarO_) {
             opts.parse(lex)?;
-        }
-        if opts.nodes.len() > 0 {
-            nodestatassvar.set_options(Some(opts.nodes));
         }
 
         // match space after "var" or after "[opts]"
@@ -58,8 +55,17 @@ impl Parse for ParserStatAssVar {
         let mut idents = ParserStatIdent::init(self._source.clone());
         idents.parse(lex)?;
 
+        for i in 0..idents.nodes.len() {
+            if opts.nodes.len() > 0 {
+                nodestatassvar.set_options(Some(opts.nodes.clone()));
+            }
+            let mut newnode = nodestatassvar.clone();
+            newnode.set_ident(Some(idents.nodes.get(i).clone()));
+            self.nodes.push(Node::new(loc.clone(), Box::new(newnode)));
+        }
+        // if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::semi_)
+        //     || lex.curr(true)?.key().is_eol() { return Ok(()) }
         lex.until_term(false)?;
-        self.nodes.push(Node::new(loc, Box::new(nodestatassvar)));
         Ok(())
     }
 }

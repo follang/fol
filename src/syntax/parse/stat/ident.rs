@@ -19,17 +19,21 @@ impl ParserStatIdent {
 }
 impl Parse for ParserStatIdent {
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
-        // loop {
-            // lex.jump(0, false)?;
-            lex.debug().ok();
+        while !lex.curr(true)?.key().is_eof() {
             lex.expect( KEYWORD::ident , true)?;
-            let identnode = NodeStatIdent::default();
-            // if let KEYWORD::ident = lex.curr(true).key() {
-            //     let assopt: AssOptsTrait = a.into();
-            //     let node = Node::new(lex.curr(true).loc().clone(), Box::new(assopt));
-            //     self.nodes.push(node);
-            // }
-        // }
+            let identnode = NodeStatIdent::new(lex.curr(false)?.con().clone());
+            self.nodes.push(Node::new(lex.curr(true)?.loc().clone(), Box::new(identnode)));
+            lex.jump(0, true)?;
+            if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::colon_) 
+                || lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::equal_)
+                || lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::semi_)
+                || lex.curr(true)?.key().is_eol()
+            {
+                break
+            } else if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::comma_) {
+                lex.jump(0, true)?; lex.eat();
+            }
+        }
         Ok(())
     }
 }

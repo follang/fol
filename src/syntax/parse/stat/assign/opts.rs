@@ -27,7 +27,7 @@ impl Parse for ParserStatAssOpts {
             lex.jump(0, true)?;
             return Ok(())
         }
-        loop {
+        while !lex.curr(true)?.key().is_eof() {
             lex.expect_option(true)?;
             if let KEYWORD::option(a) = lex.curr(true)?.key() {
                 let assopt: AssOptsTrait = a.into();

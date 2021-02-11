@@ -34,4 +34,7 @@ impl NodeStatAssVar {
     pub fn set_options(&mut self, options: Option<Nodes>) {
         self.options = options;
     }
+    pub fn set_ident(&mut self, ident: Option<Node>) {
+        self.ident = ident;
+    }
 }

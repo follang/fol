@@ -132,11 +132,11 @@ pub fn elements(file: &source::Source) -> impl Iterator<Item = Con<Element>>  {
 impl Elements {
     pub fn until_term(&mut self, term: bool) -> Vod {
         loop{ 
-            self.bump();
             if self.curr(false)?.key().is_terminal() || self.curr(false)?.key().is_eof() {
                 if term { self.bump(); }
                 break
             }
+            self.bump();
         }
         Ok(())
     }
