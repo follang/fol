@@ -19,7 +19,6 @@ impl ParserStatContract {
 }
 impl Parse for ParserStatContract {
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
-        lex.debug().ok();
         // eat "("
         lex.jump(0, false)?;
 
@@ -33,10 +32,9 @@ impl Parse for ParserStatContract {
             let identnode = NodeStatIdent::new(lex.curr(false)?.con().clone());
             self.nodes.push(Node::new(Box::new(identnode)));
             lex.jump(0, true)?;
-            if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::colon_) 
-                || lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::equal_)
-                || lex.curr(true)?.key().is_terminal()
+            if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::roundC_) 
             {
+                lex.jump(0, true)?;
                 break
             } else if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::comma_) {
                 lex.jump(0, true)?; lex.eat();

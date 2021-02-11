@@ -104,6 +104,12 @@ impl Parse for ParserStatAssVar {
             dt.parse(lex)?;
         }
 
+        lex.expect_many(vec![ 
+            KEYWORD::symbol(SYMBOL::semi_),
+            KEYWORD::symbol(SYMBOL::equal_),
+            KEYWORD::void(VOID::endline_)
+        ], true)?;
+
         if dt.nodes.len() > idents.nodes.len() {
             return Err( catch!( Typo::ParserTypeDisbalance {
                 msg: Some(format!(

@@ -97,12 +97,14 @@ impl Parse for ParserStatAssTyp {
 
         // match indentifier "ident"
         let mut idents = ParserStatIdent::init(self._source.clone());
+        idents.only_one();
         idents.parse(lex)?; lex.eat();
 
         // match contracts after (  -> "(one, two)"
         let mut contracts = ParserStatContract::init(self._source.clone());
         if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::roundO_) {
             contracts.parse(lex)?; lex.eat();
+            if contracts.nodes.len() > 0 { node.set_contracts(Some(contracts.nodes.clone())) }
         }
 
         // match datatypes after :  -> "int[opts][]"
@@ -110,6 +112,12 @@ impl Parse for ParserStatAssTyp {
         if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::colon_) {
             dt.parse(lex)?;
         }
+
+        lex.expect_many(vec![ 
+            KEYWORD::symbol(SYMBOL::semi_),
+            KEYWORD::symbol(SYMBOL::equal_),
+            KEYWORD::void(VOID::endline_)
+        ], true)?;
 
         if dt.nodes.len() > idents.nodes.len() {
             return Err( catch!( Typo::ParserTypeDisbalance {

@@ -10,13 +10,14 @@ pub use crate::syntax::nodes::stat::ident::*;
 pub struct ParserStatIdent {
     pub nodes: Nodes,
     _source: Source,
-    _only_once: bool,
+    _once: bool,
 }
 
 impl ParserStatIdent {
     pub fn init(src: Source) -> Self {
-        Self { nodes: Nodes::new(), _source: src, _only_once: false } 
+        Self { nodes: Nodes::new(), _source: src, _once: false } 
     }
+    pub fn only_one(&mut self) { self._once = true; }
 }
 impl Parse for ParserStatIdent {
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
@@ -25,6 +26,7 @@ impl Parse for ParserStatIdent {
             let identnode = NodeStatIdent::new(lex.curr(false)?.con().clone());
             self.nodes.push(Node::new(Box::new(identnode)));
             lex.jump(0, true)?;
+            if self._once { return Ok(()) }
             if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::colon_) 
                 || lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::equal_)
                 || lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::roundO_)
