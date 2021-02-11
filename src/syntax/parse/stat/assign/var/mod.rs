@@ -25,10 +25,9 @@ impl ParserStatAssVar {
 }
 impl Parse for ParserStatAssVar {
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
-        let mut nodestatassvar = NodeStatAssVar::default();
-        let mut opts = ParserStatAssOpts::init(self._source.clone());
         let loc = lex.curr(true)?.loc().clone();
         // match symbol before var  -> "~"
+        let mut opts = ParserStatAssOpts::init(self._source.clone());
         if matches!(lex.curr(true)?.key(), KEYWORD::option(_) ) {
             if let KEYWORD::option(a) = lex.curr(true)?.key() {
                 let assopt: AssOptsTrait = a.into();
@@ -56,6 +55,7 @@ impl Parse for ParserStatAssVar {
         idents.parse(lex)?;
 
         for i in 0..idents.nodes.len() {
+            let mut nodestatassvar = NodeStatAssVar::default();
             if opts.nodes.len() > 0 {
                 nodestatassvar.set_options(Some(opts.nodes.clone()));
             }
