@@ -31,7 +31,7 @@ impl Parse for ParserStatAssOpts {
             lex.expect_option(true)?;
             if let KEYWORD::option(a) = lex.curr(true)?.key() {
                 let assopt: AssOptsTrait = a.into();
-                let node = Node::new(lex.curr(true)?.loc().clone(), Box::new(assopt));
+                let node = Node::new(Box::new(assopt));
                 self.nodes.push(node);
             }
             lex.jump(0, true)?;

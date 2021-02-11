@@ -28,10 +28,9 @@ impl Parser {
                 parser.errors.push(err)
             }
         }
-        logit!(parser.nodes.len().to_string());
-        for e in parser.nodes.clone() {
-            println!("{}, {}", e.loc().unwrap().print(&parser._source), e);
-        };
+        logit!(src.path(false));
+        // logit!(parser.nodes.len().to_string());
+        printer!(parser.nodes.clone());
         printer!(parser.errors.clone());
         parser
     }

@@ -22,7 +22,7 @@ impl Parse for ParserStatIdent {
         while !lex.curr(true)?.key().is_eof() {
             lex.expect( KEYWORD::ident , true)?;
             let identnode = NodeStatIdent::new(lex.curr(false)?.con().clone());
-            self.nodes.push(Node::new(lex.curr(true)?.loc().clone(), Box::new(identnode)));
+            self.nodes.push(Node::new(Box::new(identnode)));
             lex.jump(0, true)?;
             if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::colon_) 
                 || lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::equal_)

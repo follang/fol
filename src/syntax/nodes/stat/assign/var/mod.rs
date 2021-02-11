@@ -22,8 +22,8 @@ impl fmt::Display for NodeStatAssVar {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let opts = match self.options { Some(ref e) => e.to_string(), None => String::new()  };
         let ident = match self.ident { Some(ref e) => " ".to_string() + &e.to_string(), None => String::new()  };
-        let data = match self.data { Some(ref e) => " :".to_string() + &e.to_string(), None => String::new()  };
-        write!(f, "{}{}{}{}{}{};", "var","[",opts,"]", ident, data)
+        let data = match self.data { Some(ref e) => ": ".to_string() + &e.to_string(), None => String::new()  };
+        write!(f, "{}[{}]{}{};", "var", opts, ident, data)
     }
 }
 
@@ -36,5 +36,8 @@ impl NodeStatAssVar {
     }
     pub fn set_ident(&mut self, ident: Option<Node>) {
         self.ident = ident;
+    }
+    pub fn set_datatype(&mut self, dt: Option<Node>) {
+        self.data = dt;
     }
 }

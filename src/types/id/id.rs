@@ -9,8 +9,8 @@ pub struct ID<T: ?Sized + std::fmt::Display> {
 }
 
 impl<T: std::fmt::Display> ID<T> {
-    pub fn new(loc: point::Location, node: T) -> Self {
-        Self{ key: None, loc: Some(loc), node }
+    pub fn new(node: T) -> Self {
+        Self{ key: None, loc: None, node }
     }
     pub fn key(&self) -> Option<token::KEYWORD> {
         self.key.clone()
@@ -34,8 +34,8 @@ impl<T: std::fmt::Display> ID<T> {
 
 impl<T: std::fmt::Display> std::fmt::Display for ID<T> {
         fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        // let loc = if let Some(l) = &self.loc { l.to_string() + "\t" } else { String::new() };
-        write!(f, "{}{}", "", self.node())
+        let loc = if let Some(l) = &self.loc { l.to_string() + "\t" } else { String::new() };
+        write!(f, "{}{}", loc, self.node())
     }
 }
 
