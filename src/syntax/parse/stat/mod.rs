@@ -1,18 +1,20 @@
-use crate::types::*;
+use crate::types::Vod;
 use crate::syntax::index::Source;
-use crate::syntax::nodes::*;
+use crate::syntax::nodes::{Node, Nodes};
 use crate::syntax::token::*;
 use crate::syntax::lexer;
 use super::Parse;
 
-pub mod datatype;
-pub use crate::syntax::parse::stat::datatype::*;
-pub mod assign;
-pub use crate::syntax::parse::stat::assign::*;
-pub mod ident;
-pub use crate::syntax::parse::stat::ident::*;
 pub mod contracts;
-pub use crate::syntax::parse::stat::contracts::*;
+pub mod datatype;
+pub mod assign;
+pub mod ident;
+pub use crate::syntax::parse::stat::{
+        contracts::*,
+        datatype::*,
+        assign::*,
+        ident::*,
+};
 
 pub struct ParserStat {
     pub nodes: Nodes,

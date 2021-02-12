@@ -5,8 +5,8 @@ use crate::syntax::token::*;
 use crate::syntax::lexer;
 
 pub mod stat;
-pub use crate::syntax::parse::stat::*;
 pub mod expr;
+pub use crate::syntax::parse::stat::*;
 
 pub trait Parse {
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod;

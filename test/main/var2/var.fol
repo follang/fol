@@ -19,14 +19,16 @@ typ one: rec = { <expression> };
 typ two: rec[T: gen, N: int] = { <expression> };
 +typ[] (
     three: rec[] = <expression>;
-    three2: rec[] = <expression>;
+    three2(got): rec[] = <expression>;
 )
 ~typ[] four: rec = { <expression> };
 ~typ[] five: rec[] = { <expression> };
 ~typ[] six(blue, yellow): rec[] = { <expression> };
 ~typ[] seven(blue, geen): rec[T: gen[], N: int] = <expression>;
-~ali[] five: arr[int, 5];
-~ali[] gos: int;
+
+~ali[] one: arr[int, 5];
+~ali[] two: int;
++ali[ext] int(blue): int;
 
 use[] one: two = <expression>;
 ~use[] one: two = <expression>;

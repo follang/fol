@@ -1,6 +1,6 @@
-use crate::types::*;
+use crate::types::Vod;
 use crate::syntax::index::Source;
-use crate::syntax::nodes::*;
+use crate::syntax::nodes::{Node, Nodes};
 use crate::syntax::token::*;
 use crate::syntax::lexer;
 use super::Parse;

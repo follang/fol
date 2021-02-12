@@ -1,4 +1,4 @@
-use crate::types::*;
+use crate::types::Vod;
 use crate::syntax::index::Source;
 use crate::syntax::nodes::*;
 use crate::syntax::token::*;
@@ -6,11 +6,17 @@ use crate::syntax::lexer;
 use super::Parse;
 
 pub mod opts;
-pub use crate::syntax::parse::stat::assign::opts::*;
 pub mod var;
-pub use crate::syntax::parse::stat::assign::var::*;
 pub mod typ;
-pub use crate::syntax::parse::stat::assign::typ::*;
+pub mod ali;
+pub mod r#use;
+use crate::syntax::parse::stat::assign::{
+    opts::ParserStatAssOpts,
+    var::ParserStatAssVar,
+    typ::ParserStatAssTyp,
+    ali::ParserStatAssAli,
+    r#use::ParserStatAssUse,
+};
 
 pub struct ParserStatAss {
     pub nodes: Nodes,
@@ -37,6 +43,14 @@ impl Parse for ParserStatAss {
                 && matches!(lex.peek(0, false)?.key(), KEYWORD::assign(ASSIGN::typ_)))
         {
             let mut parser = ParserStatAssTyp::init(self._source.clone());
+            parser.parse(lex)?;
+            self.nodes.extend(parser.nodes);
+            return Ok(())
+        } else if matches!(lex.curr(false)?.key(), KEYWORD::assign(ASSIGN::ali_))
+            || (matches!(lex.curr(false)?.key(), KEYWORD::option(_))
+                && matches!(lex.peek(0, false)?.key(), KEYWORD::assign(ASSIGN::ali_)))
+        {
+            let mut parser = ParserStatAssAli::init(self._source.clone());
             parser.parse(lex)?;
             self.nodes.extend(parser.nodes);
             return Ok(())

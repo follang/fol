@@ -40,3 +40,13 @@ impl Parse for ParserStatIdent {
         Ok(())
     }
 }
+
+impl ParserStatIdent {
+    pub fn parse_2(&mut self, lex: &mut lexer::Elements) -> Vod {
+        lex.expect_types(true)?; lex.eat();
+        let identnode = NodeStatIdent::new(lex.curr(false)?.con().clone());
+        self.nodes.push(Node::new(Box::new(identnode)));
+        lex.jump(0, true)?;
+        Ok(())
+    }
+}
