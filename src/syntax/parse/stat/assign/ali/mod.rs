@@ -24,6 +24,7 @@ impl ParserStatAssAli {
     }
 }
 impl Parse for ParserStatAssAli {
+    fn nodes(&self) -> Nodes { self.nodes.clone() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
         let loc = lex.curr(true)?.loc().clone();
         let mut node = NodeStatAssAli::default();
@@ -38,7 +39,7 @@ impl Parse for ParserStatAssAli {
             lex.jump(0, true)?;
         }
 
-        // match "var"
+        // match "typ"
         lex.expect( KEYWORD::assign(ASSIGN::ali_) , true)?;
         lex.jump(0, false)?;
 

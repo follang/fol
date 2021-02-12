@@ -30,11 +30,11 @@ typ two: rec[T: gen, N: int] = { <expression> };
 ~ali[] two: int;
 +ali[ext] int(blue): int;
 
-use[] one: two = <expression>;
-~use[] one: two = <expression>;
+use[] one: url = <expression>;
+~use[] two: loc = <expression>;
 ~use[] (
-    one: two = <expression>;
-    two: two = <expression>;
+    three: std = <expression>;
+    four: std = <expression>;
 )
 
 def '$'(a: any): mac = '.to_string($)'

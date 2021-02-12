@@ -12,7 +12,7 @@ use crate::syntax::parse::stat::datatype::*;
 
 #[derive(Clone)]
 pub struct ParserStatAssUse {
-    pub nodes: Nodes,
+    nodes: Nodes,
     _source: Source,
     _recurse: bool,
     _oldstat: NodeStatAssUse,
@@ -30,6 +30,7 @@ impl ParserStatAssUse {
     }
 }
 impl Parse for ParserStatAssUse {
+    fn nodes(&self) -> Nodes { self.nodes.clone() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
         let loc = lex.curr(true)?.loc().clone();
         let mut node = NodeStatAssUse::default();
@@ -45,8 +46,8 @@ impl Parse for ParserStatAssUse {
                 lex.jump(0, true)?;
             }
 
-            // match "var"
-            lex.expect( KEYWORD::assign(ASSIGN::var_) , true)?;
+            // match "use"
+            lex.expect( KEYWORD::assign(ASSIGN::use_) , true)?;
             lex.jump(0, false)?;
 
             // match options after var  -> "[opts]"
@@ -96,6 +97,7 @@ impl Parse for ParserStatAssUse {
 
         // match indentifier "ident"
         let mut idents = ParserStatIdent::init(self._source.clone());
+        idents.only_one();
         idents.parse(lex)?; lex.eat();
 
         // match datatypes after :  -> "int[opts][]"

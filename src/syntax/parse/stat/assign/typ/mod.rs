@@ -30,6 +30,7 @@ impl ParserStatAssTyp {
     }
 }
 impl Parse for ParserStatAssTyp {
+    fn nodes(&self) -> Nodes { self.nodes.clone() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
         let loc = lex.curr(true)?.loc().clone();
         let mut node = NodeStatAssTyp::default();

@@ -1,6 +1,6 @@
 use crate::types::*;
 use crate::syntax::index::Source;
-use crate::syntax::nodes::*;
+use crate::syntax::nodes::{Node, Nodes};
 use crate::syntax::token::*;
 use crate::syntax::lexer;
 
@@ -10,6 +10,7 @@ pub use crate::syntax::parse::stat::*;
 
 pub trait Parse {
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod;
+    fn nodes(&self) -> Nodes;
 }
 
 pub struct Parser {
@@ -37,6 +38,7 @@ impl Parser {
 }
 
 impl Parse for Parser {
+    fn nodes(&self) -> Nodes { self.nodes.clone() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
         if matches!(lex.curr(false)?.key(), KEYWORD::assign(_))
             || (matches!(lex.curr(false)?.key(), KEYWORD::option(_))

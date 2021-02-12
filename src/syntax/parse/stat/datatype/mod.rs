@@ -18,6 +18,7 @@ impl ParserStatDatatypes {
     }
 }
 impl Parse for ParserStatDatatypes {
+    fn nodes(&self) -> Nodes { self.nodes.clone() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
         // eat ":"
         lex.jump(0, false)?; 

@@ -20,6 +20,7 @@ impl ParserStatIdent {
     pub fn only_one(&mut self) { self._once = true; }
 }
 impl Parse for ParserStatIdent {
+    fn nodes(&self) -> Nodes { self.nodes.clone() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
         while !lex.curr(true)?.key().is_eof() {
             lex.expect( KEYWORD::ident , true)?; lex.eat();

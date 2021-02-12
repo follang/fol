@@ -29,6 +29,7 @@ impl ParserStatAss {
     }
 }
 impl Parse for ParserStatAss {
+    fn nodes(&self) -> Nodes { self.nodes.clone() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
         if matches!(lex.curr(false)?.key(), KEYWORD::assign(ASSIGN::var_))
             || (matches!(lex.curr(false)?.key(), KEYWORD::option(_))
@@ -36,7 +37,7 @@ impl Parse for ParserStatAss {
         {
             let mut parser = ParserStatAssVar::init(self._source.clone());
             parser.parse(lex)?;
-            self.nodes.extend(parser.nodes);
+            self.nodes.extend(parser.nodes());
             return Ok(())
         } else if matches!(lex.curr(false)?.key(), KEYWORD::assign(ASSIGN::typ_))
             || (matches!(lex.curr(false)?.key(), KEYWORD::option(_))
@@ -44,7 +45,7 @@ impl Parse for ParserStatAss {
         {
             let mut parser = ParserStatAssTyp::init(self._source.clone());
             parser.parse(lex)?;
-            self.nodes.extend(parser.nodes);
+            self.nodes.extend(parser.nodes());
             return Ok(())
         } else if matches!(lex.curr(false)?.key(), KEYWORD::assign(ASSIGN::ali_))
             || (matches!(lex.curr(false)?.key(), KEYWORD::option(_))
@@ -52,10 +53,19 @@ impl Parse for ParserStatAss {
         {
             let mut parser = ParserStatAssAli::init(self._source.clone());
             parser.parse(lex)?;
-            self.nodes.extend(parser.nodes);
+            self.nodes.extend(parser.nodes());
+            return Ok(())
+        } else if matches!(lex.curr(false)?.key(), KEYWORD::assign(ASSIGN::use_))
+            || (matches!(lex.curr(false)?.key(), KEYWORD::option(_))
+                && matches!(lex.peek(0, false)?.key(), KEYWORD::assign(ASSIGN::use_)))
+        {
+            let mut parser = ParserStatAssUse::init(self._source.clone());
+            parser.parse(lex)?;
+            self.nodes.extend(parser.nodes());
+            return Ok(())
+        } else {
+            lex.until_term(true)?;
             return Ok(())
         }
-        lex.until_term(true)?;
-        Ok(())
     }
 }
