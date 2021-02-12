@@ -10,12 +10,14 @@ pub mod var;
 pub mod typ;
 pub mod ali;
 pub mod r#use;
+pub mod fun;
 use crate::syntax::parse::stat::assign::{
     opts::ParserStatAssOpts,
     var::ParserStatAssVar,
     typ::ParserStatAssTyp,
     ali::ParserStatAssAli,
     r#use::ParserStatAssUse,
+    fun::ParserStatAssFun,
 };
 
 pub struct ParserStatAss {
@@ -31,11 +33,13 @@ impl ParserStatAss {
 impl Parse for ParserStatAss {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
+        // let psr: Box<dyn Parse>;
         if matches!(lex.curr(false)?.key(), KEYWORD::assign(ASSIGN::var_))
             || (matches!(lex.curr(false)?.key(), KEYWORD::option(_))
                 && matches!(lex.peek(0, false)?.key(), KEYWORD::assign(ASSIGN::var_)))
         {
             let mut parser = ParserStatAssVar::init(self._source.clone());
+            // psr = Box::new(ParserStatAssVar::init(self._source.clone()));
             parser.parse(lex)?;
             self.nodes.extend(parser.nodes());
             return Ok(())
@@ -44,6 +48,7 @@ impl Parse for ParserStatAss {
                 && matches!(lex.peek(0, false)?.key(), KEYWORD::assign(ASSIGN::typ_)))
         {
             let mut parser = ParserStatAssTyp::init(self._source.clone());
+            // psr = Box::new(ParserStatAssTyp::init(self._source.clone()));
             parser.parse(lex)?;
             self.nodes.extend(parser.nodes());
             return Ok(())
@@ -52,6 +57,7 @@ impl Parse for ParserStatAss {
                 && matches!(lex.peek(0, false)?.key(), KEYWORD::assign(ASSIGN::ali_)))
         {
             let mut parser = ParserStatAssAli::init(self._source.clone());
+            // psr = Box::new(ParserStatAssAli::init(self._source.clone()));
             parser.parse(lex)?;
             self.nodes.extend(parser.nodes());
             return Ok(())
@@ -60,6 +66,16 @@ impl Parse for ParserStatAss {
                 && matches!(lex.peek(0, false)?.key(), KEYWORD::assign(ASSIGN::use_)))
         {
             let mut parser = ParserStatAssUse::init(self._source.clone());
+            // psr = Box::new(ParserStatAssUse::init(self._source.clone()));
+            parser.parse(lex)?;
+            self.nodes.extend(parser.nodes());
+            return Ok(())
+        } else if matches!(lex.curr(false)?.key(), KEYWORD::assign(ASSIGN::fun_))
+            || (matches!(lex.curr(false)?.key(), KEYWORD::option(_))
+                && matches!(lex.peek(0, false)?.key(), KEYWORD::assign(ASSIGN::fun_)))
+        {
+            let mut parser = ParserStatAssFun::init(self._source.clone());
+            // psr = Box::new(ParserStatAssUse::init(self._source.clone()));
             parser.parse(lex)?;
             self.nodes.extend(parser.nodes());
             return Ok(())
@@ -67,5 +83,7 @@ impl Parse for ParserStatAss {
             lex.until_term(true)?;
             return Ok(())
         }
+        // psr.parse(lex)?;
+        // self.nodes.extend(psr.nodes());
     }
 }
