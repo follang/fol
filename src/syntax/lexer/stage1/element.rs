@@ -220,6 +220,12 @@ impl Element {
             ')' => {
                 self.key = symbol(SYMBOL::roundC_)
             }
+            '<' => {
+                self.key = symbol(SYMBOL::angleO_)
+            }
+            '>' => {
+                self.key = symbol(SYMBOL::angleC_)
+            }
             ';' => self.key = symbol(SYMBOL::semi_),
             '\\' => self.key = symbol(SYMBOL::escape_),
             '.' => self.key = symbol(SYMBOL::dot_),
@@ -227,8 +233,6 @@ impl Element {
             ':' => self.key = symbol(SYMBOL::colon_),
             '|' => self.key = symbol(SYMBOL::pipe_),
             '=' => self.key = symbol(SYMBOL::equal_),
-            '>' => self.key = symbol(SYMBOL::greater_),
-            '<' => self.key = symbol(SYMBOL::less_),
             '+' => self.key = symbol(SYMBOL::plus_),
             '-' => self.key = symbol(SYMBOL::minus_),
             '_' => self.key = symbol(SYMBOL::under_),

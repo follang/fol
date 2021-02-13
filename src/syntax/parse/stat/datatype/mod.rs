@@ -14,7 +14,10 @@ pub struct ParserStatDatatypes {
 
 impl ParserStatDatatypes {
     pub fn init(src: Source) -> Self {
-        Self { nodes: Nodes::new(), _source: src } 
+        Self { 
+            nodes: Nodes::new(),
+            _source: src,
+        } 
     }
 }
 impl Parse for ParserStatDatatypes {
@@ -26,6 +29,7 @@ impl Parse for ParserStatDatatypes {
         while !lex.curr(true)?.key().is_eof() {
         // match type
             lex.expect_types(true)?; lex.eat();
+            lex.debug().ok();
             if let KEYWORD::types(a) = lex.curr(true)?.key() {
                 let dt: datatype::NodeExprDatatype = a.into();
                 let node = Node::new(Box::new(dt));
@@ -44,6 +48,7 @@ impl Parse for ParserStatDatatypes {
             }
             if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::equal_)
                 || lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::semi_)
+                || lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::roundC_)
                 || lex.curr(true)?.key().is_eol()
             {
                 lex.eat();

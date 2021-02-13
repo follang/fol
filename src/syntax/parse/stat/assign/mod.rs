@@ -54,6 +54,11 @@ impl Parse for ParserStatAss {
                 && matches!(lex.peek(0, false)?.key(), KEYWORD::assign(ASSIGN::use_)))
         {
             parser = Box::new(ParserStatAssUse::init(self._source.clone()));
+        } else if matches!(lex.curr(false)?.key(), KEYWORD::assign(ASSIGN::pro_))
+            || (matches!(lex.curr(false)?.key(), KEYWORD::option(_))
+                && matches!(lex.peek(0, false)?.key(), KEYWORD::assign(ASSIGN::pro_)))
+        {
+            parser = Box::new(ParserStatAssFun::init(self._source.clone()));
         } else if matches!(lex.curr(false)?.key(), KEYWORD::assign(ASSIGN::fun_))
             || (matches!(lex.curr(false)?.key(), KEYWORD::option(_))
                 && matches!(lex.peek(0, false)?.key(), KEYWORD::assign(ASSIGN::fun_)))

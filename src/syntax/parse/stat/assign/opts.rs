@@ -10,12 +10,20 @@ pub use crate::syntax::nodes::stat::assign::opts::*;
 pub struct ParserStatAssOpts {
     pub nodes: Nodes,
     _source: Source,
+    pub recivers: Nodes,
+    _recivers: bool,
 }
 
 impl ParserStatAssOpts {
     pub fn init(src: Source) -> Self {
-        Self { nodes: Nodes::new(), _source: src } 
+        Self { 
+            nodes: Nodes::new(),
+            _source: src,
+            _recivers: false,
+            recivers: Nodes::new(),
+        } 
     }
+    pub fn recivers(&mut self) { self._recivers = true }
 }
 impl Parse for ParserStatAssOpts {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
@@ -29,11 +37,26 @@ impl Parse for ParserStatAssOpts {
             return Ok(())
         }
         while !lex.curr(true)?.key().is_eof() {
-            lex.expect_option(true)?;
+            // checks if no recivers then expect only options
+            if !self._recivers { lex.expect_option(true)?; }
+
+            // checks if option
             if let KEYWORD::option(a) = lex.curr(true)?.key() {
                 let assopt: AssOptsTrait = a.into();
                 let node = Node::new(Box::new(assopt));
                 self.nodes.push(node);
+            // checks if option or type (those are recivers) -> only for procedures
+            } else if lex.curr(true)?.key().is_ident() || lex.curr(true)?.key().is_type(){
+                let reviver = NodeStatIdent::new(lex.curr(true)?.con().clone());
+                let node = Node::new(Box::new(reviver));
+                self.recivers.push(node);
+            // error if not procedure, type or ident
+            } else {
+                lex.expect_many(vec![ 
+                    KEYWORD::ident,
+                    KEYWORD::option(OPTION::ANY),
+                    KEYWORD::types(TYPE::ANY)
+                ], true)?;
             }
             lex.jump(0, true)?;
 

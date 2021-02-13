@@ -151,8 +151,8 @@ impl Element {
             "-=" => self.set_key(operator(OPERATOR::subtracteq_)),
             "*=" => self.set_key(operator(OPERATOR::multiplyeq_)),
             "/=" => self.set_key(operator(OPERATOR::divideeq_)),
-            "<<" => self.set_key(operator(OPERATOR::shiftleft_)),
-            ">>" => self.set_key(operator(OPERATOR::shiftright_)),
+            "<<" => self.set_key(operator(OPERATOR::lesser_)),
+            ">>" => self.set_key(operator(OPERATOR::greater_)),
             _ => self.set_key(operator(OPERATOR::ANY)),
         }
         Ok(())

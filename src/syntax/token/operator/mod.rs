@@ -13,8 +13,6 @@ pub enum OPERATOR {
     subtract_,
     multiply_,
     divide_,
-    greater_,
-    less_,
     equal_,
     noteq_,
     greatereq_,
@@ -23,8 +21,8 @@ pub enum OPERATOR {
     subtracteq_,
     multiplyeq_,
     divideeq_,
-    shiftleft_,
-    shiftright_,
+    lesser_,
+    greater_,
 }
 
 impl fmt::Display for OPERATOR {
@@ -40,8 +38,6 @@ impl fmt::Display for OPERATOR {
             OPERATOR::subtract_ => { t = Some("-".to_string()); },
             OPERATOR::multiply_ => { t = Some("*".to_string()); },
             OPERATOR::divide_ => { t = Some("/".to_string()); },
-            OPERATOR::greater_ => { t = Some(">".to_string()); },
-            OPERATOR::less_ => { t = Some("<".to_string()); },
             OPERATOR::equal_ => { t = Some("==".to_string()); },
             OPERATOR::noteq_ => { t = Some("!=".to_string()); },
             OPERATOR::greatereq_ => { t = Some(">=".to_string()); },
@@ -50,8 +46,8 @@ impl fmt::Display for OPERATOR {
             OPERATOR::subtracteq_ => { t = Some("-=".to_string()); },
             OPERATOR::multiplyeq_ => { t = Some("*=".to_string()); },
             OPERATOR::divideeq_ => { t = Some("/=".to_string()); },
-            OPERATOR::shiftleft_ => { t = Some("<<".to_string()); },
-            OPERATOR::shiftright_ => { t = Some(">>".to_string()); },
+            OPERATOR::lesser_ => { t = Some("<<".to_string()); },
+            OPERATOR::greater_ => { t = Some(">>".to_string()); },
             _ => { t = None },
         };
         write!(f, "{}:{}",

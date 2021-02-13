@@ -5,15 +5,17 @@ use crate::syntax::token::*;
 use crate::syntax::lexer;
 use super::Parse;
 
+pub mod parameters;
 pub mod contracts;
 pub mod datatype;
 pub mod assign;
 pub mod ident;
 pub use crate::syntax::parse::stat::{
-        contracts::*,
-        datatype::*,
-        assign::*,
-        ident::*,
+    parameters::*,
+    contracts::*,
+    datatype::*,
+    assign::*,
+    ident::*,
 };
 
 pub struct ParserStat {

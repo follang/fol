@@ -1,33 +1,43 @@
-use crate::types::{Vod, List, error::*};
+use crate::types::{Vod, Con, List, error::*};
 use crate::syntax::index::Source;
-use crate::syntax::nodes::{Node, Nodes, NodeStatAssFun};
+use crate::syntax::nodes::{Node, Nodes, NodeStatAssVar};
 use crate::syntax::token::*;
 use crate::syntax::lexer;
 use super::Parse;
 
 use crate::syntax::parse::stat::assign::opts::*;
 use crate::syntax::parse::stat::ident::*;
-use crate::syntax::parse::stat::contracts::*;
 use crate::syntax::parse::stat::datatype::*;
-use crate::syntax::parse::stat::parameters::*;
+
 
 #[derive(Clone)]
-pub struct ParserStatAssFun {
+pub struct ParserStatParameters {
     pub nodes: Nodes,
     _source: Source,
 }
 
-impl ParserStatAssFun {
+impl ParserStatParameters {
     pub fn len(&self) -> usize { self.nodes.len() }
-        pub fn init(src: Source) -> Self {
+    pub fn init(src: Source) -> Self {
         Self { nodes: Nodes::new(), _source: src } 
     }
 }
-impl Parse for ParserStatAssFun {
+impl Parse for ParserStatParameters {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
+        // lex.until_bracket()?;
+        lex.jump(0, true)?;
+        match self.parse2(lex) {
+            Ok(ok) => self.nodes.extend(ok),
+            Err(err) => return Err(err)
+        };
+        Ok(())
+    }
+}
+impl ParserStatParameters {
+    fn parse2(&mut self, lex: &mut lexer::Elements) -> Con<Nodes> {
         let loc = lex.curr(true)?.loc().clone();
-        let mut node = NodeStatAssFun::default();
+        let mut node = NodeStatAssVar::default();
         // match symbol before var  -> "~"
         let mut opts = ParserStatAssOpts::init(self._source.clone());
         if matches!(lex.curr(true)?.key(), KEYWORD::option(_) ) {
@@ -39,38 +49,26 @@ impl Parse for ParserStatAssFun {
             lex.jump(0, true)?;
         }
 
-        // match "typ"
-        // lex.expect( KEYWORD::assign(ASSIGN::fun_) , true)?;
-        lex.jump(0, false)?;
+        // match "var"
+        if lex.curr(true)?.key() == KEYWORD::assign(ASSIGN::var_) {
+            lex.jump(0, true)?;
+        }
 
         // match options after var  -> "[opts]"
         if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::squarO_) {
-            opts.recivers();
             opts.parse(lex)?;
             if opts.nodes.len() > 0 {
                 node.set_options(Some(opts.nodes.clone()));
             }
-            if opts.recivers.len() > 0 {
-                node.set_recivers(Some(opts.recivers.clone()));
-            }
-        }
+            // match space after "var" or after "[opts]"
+            lex.expect_void()?;
+            lex.jump(0, false)?;
 
-        // match space after "var" or after "[opts]"
-        lex.expect_void()?;
-        lex.jump(0, false)?;
+        }
 
         // match indentifier "ident"
         let mut idents = ParserStatIdent::init(self._source.clone());
-        idents.only_one();
         idents.parse(lex)?; lex.eat();
-
-        // match parameters after (  -> "(one, two)"
-        if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::roundO_) {
-            let mut parameters = ParserStatParameters::init(self._source.clone());
-            parameters.parse(lex)?; lex.eat();
-            if parameters.nodes.len() > 0 { node.set_parameters(Some(parameters.nodes.clone())) }
-            // lex.until_bracket()?;
-        }
 
         // match datatypes after :  -> "int[opts][]"
         let mut dt = ParserStatDatatypes::init(self._source.clone());
@@ -81,6 +79,7 @@ impl Parse for ParserStatAssFun {
         lex.expect_many(vec![ 
             KEYWORD::symbol(SYMBOL::semi_),
             KEYWORD::symbol(SYMBOL::equal_),
+            KEYWORD::symbol(SYMBOL::roundC_),
             KEYWORD::void(VOID::endline_)
         ], true)?;
 
@@ -96,6 +95,8 @@ impl Parse for ParserStatAssFun {
             }))
         }
 
+        let mut nodes: Nodes = List::new();
+
         for i in 0..idents.nodes.len() {
             if dt.nodes.len() > 0 {
                 let idx = if i >= dt.nodes.len() { dt.nodes.len()-1 } else { i };
@@ -104,14 +105,14 @@ impl Parse for ParserStatAssFun {
             node.set_ident(Some(idents.nodes.get(i).clone()));
             let mut newnode = Node::new(Box::new(node.clone()));
             newnode.set_loc(loc.clone());
-            self.nodes.push(newnode);
+            nodes.push(newnode);
         }
         lex.until_term(false)?;
-        Ok(())
+        Ok(nodes)
     }
 }
 
-impl ParserStatAssFun {
+impl ParserStatParameters {
         pub fn extend(&mut self, n: Nodes) {
             self.nodes.extend(n)
         }

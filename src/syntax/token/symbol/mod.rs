@@ -59,8 +59,6 @@ impl fmt::Display for SYMBOL {
             SYMBOL::escape_ => { t = Some("\\".to_string()); },
             SYMBOL::pipe_ => { t = Some("|".to_string()); },
             SYMBOL::equal_ => { t = Some("=".to_string()); },
-            SYMBOL::greater_ => { t = Some(">".to_string()); },
-            SYMBOL::less_ => { t = Some("<".to_string()); },
             SYMBOL::plus_ => { t = Some("+".to_string()); },
             SYMBOL::minus_ => { t = Some("-".to_string()); },
             SYMBOL::under_ => { t = Some("_".to_string()); },

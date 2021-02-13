@@ -4,14 +4,16 @@ use crate::types::*;
 pub use crate::syntax::nodes::{NodeTrait, Node};
 pub mod contracts;
 pub mod datatype;
-pub mod reciver;
 pub mod assign;
 pub mod ident;
-pub use crate::syntax::nodes::stat::contracts::*;
-pub use crate::syntax::nodes::stat::datatype::*;
-pub use crate::syntax::nodes::stat::reciver::*;
-pub use crate::syntax::nodes::stat::assign::*;
-pub use crate::syntax::nodes::stat::ident::*;
+
+pub use crate::syntax::nodes::stat::{
+        contracts::*,
+        datatype::*,
+        assign::*,
+        ident::*,
+};
+
 
 pub trait StatTrait: NodeTrait {}
 dyn_clone::clone_trait_object!(StatTrait);
