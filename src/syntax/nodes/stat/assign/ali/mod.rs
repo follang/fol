@@ -46,3 +46,9 @@ impl NodeStatAssAli {
         self.data = dt;
     }
 }
+
+impl From<NodeStatAssAli> for Node {
+    fn from(el: NodeStatAssAli) -> Self {
+        Self::new(Box::new(el)) 
+    }
+}

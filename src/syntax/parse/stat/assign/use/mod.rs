@@ -21,7 +21,12 @@ pub struct ParserStatAssUse {
 impl ParserStatAssUse {
     pub fn len(&self) -> usize { self.nodes.len() }
     pub fn init(src: Source) -> Self {
-        Self { nodes: Nodes::new(), _source: src, _recurse: false, _oldstat: NodeStatAssUse::default() } 
+        Self { 
+            nodes: Nodes::new(), 
+            _source: src,
+            _recurse: false,
+            _oldstat: NodeStatAssUse::default()
+        } 
     }
     pub fn recurse(&self) -> Self {
         let mut new_clone = self.clone();

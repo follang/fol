@@ -14,13 +14,12 @@ use crate::syntax::parse::stat::datatype::*;
 pub struct ParserStatAssFun {
     pub nodes: Nodes,
     _source: Source,
-    _alias: bool,
 }
 
 impl ParserStatAssFun {
     pub fn len(&self) -> usize { self.nodes.len() }
         pub fn init(src: Source) -> Self {
-        Self { nodes: Nodes::new(), _source: src, _alias: true } 
+        Self { nodes: Nodes::new(), _source: src } 
     }
 }
 impl Parse for ParserStatAssFun {
@@ -40,15 +39,15 @@ impl Parse for ParserStatAssFun {
         }
 
         // match "typ"
-        lex.expect( KEYWORD::assign(ASSIGN::ali_) , true)?;
+        lex.expect( KEYWORD::assign(ASSIGN::fun_) , true)?;
         lex.jump(0, false)?;
 
         // match options after var  -> "[opts]"
         if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::squarO_) {
             opts.parse(lex)?;
-        }
-        if opts.nodes.len() > 0 {
-            node.set_options(Some(opts.nodes.clone()));
+            if opts.nodes.len() > 0 {
+                node.set_options(Some(opts.nodes.clone()));
+            }
         }
 
         // match space after "var" or after "[opts]"
@@ -57,20 +56,13 @@ impl Parse for ParserStatAssFun {
 
         // match indentifier "ident"
         let mut idents = ParserStatIdent::init(self._source.clone());
-        if lex.curr(true)?.key().is_type() {
-            idents.parse_2(lex)?; lex.eat();
-            self._alias = false;
-        } else {
-            idents.only_one();
-            idents.parse(lex)?; lex.eat();
-        }
+        idents.only_one();
+        idents.parse(lex)?; lex.eat();
 
-        // match contracts after (  -> "(one, two)"
-        let mut contracts = ParserStatContract::init(self._source.clone());
-        if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::roundO_) {
-            contracts.parse(lex)?; lex.eat();
-            if contracts.nodes.len() > 0 { node.set_contracts(Some(contracts.nodes.clone())) }
-        }
+        // match parameters after (  -> "(one, two)"
+        let mut parameters = ParserStatContract::init(self._source.clone());
+        parameters.parse(lex)?; lex.eat();
+        if parameters.nodes.len() > 0 { node.set_parameters(Some(parameters.nodes.clone())) }
 
         // match datatypes after :  -> "int[opts][]"
         let mut dt = ParserStatDatatypes::init(self._source.clone());

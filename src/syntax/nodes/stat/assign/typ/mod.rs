@@ -46,3 +46,9 @@ impl NodeStatAssTyp {
         self.data = dt;
     }
 }
+
+impl From<NodeStatAssTyp> for Node {
+    fn from(el: NodeStatAssTyp) -> Self {
+        Self::new(Box::new(el)) 
+    }
+}
