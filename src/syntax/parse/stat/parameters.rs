@@ -27,10 +27,18 @@ impl Parse for ParserStatParameters {
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
         // lex.until_bracket()?;
         lex.jump(0, true)?;
-        match self.parse2(lex) {
-            Ok(ok) => self.nodes.extend(ok),
-            Err(err) => return Err(err)
-        };
+        while !lex.curr(true)?.key().is_eof() {
+            match self.parse2(lex) {
+                Ok(ok) => self.nodes.extend(ok),
+                Err(err) => return Err(err)
+            };
+            if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::semi_) {
+                lex.jump(0, true)?; lex.eat();
+            } else if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::roundC_) {
+                lex.jump(0, true)?; lex.eat();
+                break
+            }
+        }
         Ok(())
     }
 }
@@ -71,7 +79,7 @@ impl ParserStatParameters {
         idents.parse(lex)?; lex.eat();
 
         // match datatypes after :  -> "int[opts][]"
-        let mut dt = ParserStatDatatypes::init(self._source.clone());
+        let mut dt = ParserStatDatatypes::init(self._source.clone(), true);
         if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::colon_) {
             dt.parse(lex)?;
         }
@@ -107,13 +115,13 @@ impl ParserStatParameters {
             newnode.set_loc(loc.clone());
             nodes.push(newnode);
         }
-        lex.until_term(false)?;
+        lex.until_char(";", ")")?;
         Ok(nodes)
     }
 }
 
 impl ParserStatParameters {
-        pub fn extend(&mut self, n: Nodes) {
-            self.nodes.extend(n)
-        }
+    pub fn extend(&mut self, n: Nodes) {
+        self.nodes.extend(n)
+    }
 }

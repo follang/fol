@@ -140,9 +140,11 @@ impl Elements {
         }
         Ok(())
     }
-    pub fn until_char(&mut self, el: &str) -> Vod {
+    pub fn until_char(&mut self, el: &str, el2: &str) -> Vod {
         loop{ 
-            if self.curr(false)?.con() == &el.to_string() || self.curr(false)?.key().is_eof() {
+            if self.curr(false)?.con() == &el.to_string() 
+                || self.curr(false)?.con() == &el2.to_string()
+                || self.curr(false)?.key().is_eof() {
                 break
             }
             self.bump();

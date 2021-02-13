@@ -10,13 +10,15 @@ pub use crate::syntax::nodes::stat::datatype::*;
 pub struct ParserStatDatatypes {
     pub nodes: Nodes,
     _source: Source,
+    _inparam: bool,
 }
 
 impl ParserStatDatatypes {
-    pub fn init(src: Source) -> Self {
+    pub fn init(src: Source, inparam: bool) -> Self {
         Self { 
             nodes: Nodes::new(),
             _source: src,
+            _inparam: inparam,
         } 
     }
 }
@@ -29,7 +31,6 @@ impl Parse for ParserStatDatatypes {
         while !lex.curr(true)?.key().is_eof() {
         // match type
             lex.expect_types(true)?; lex.eat();
-            lex.debug().ok();
             if let KEYWORD::types(a) = lex.curr(true)?.key() {
                 let dt: datatype::NodeExprDatatype = a.into();
                 let node = Node::new(Box::new(dt));
@@ -48,8 +49,8 @@ impl Parse for ParserStatDatatypes {
             }
             if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::equal_)
                 || lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::semi_)
-                || lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::roundC_)
                 || lex.curr(true)?.key().is_eol()
+                || (lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::roundC_) && self._inparam)
             {
                 lex.eat();
                 break

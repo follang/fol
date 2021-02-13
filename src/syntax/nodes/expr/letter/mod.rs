@@ -1,5 +1,5 @@
 use std::fmt;
-use crate::syntax::nodes::{NodeTrait, ExprTrait};
+use crate::syntax::nodes::{NodeTrait, Node, Nodes};
 
 
 #[derive(Clone)]
@@ -12,7 +12,6 @@ pub enum NodeExprLetter {
 }
 
 impl NodeTrait for NodeExprLetter {}
-impl ExprTrait for NodeExprLetter {}
 
 
 impl fmt::Display for NodeExprLetter {

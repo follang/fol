@@ -3,20 +3,13 @@ use crate::syntax::token;
 
 #[derive(Debug, Clone)]
 pub struct ID<T: ?Sized + std::fmt::Display> {
-    pub key: Option<token::KEYWORD>,
     pub loc: Option<point::Location>,
     pub node: T,
 }
 
 impl<T: std::fmt::Display> ID<T> {
     pub fn new(node: T) -> Self {
-        Self{ key: None, loc: None, node }
-    }
-    pub fn key(&self) -> Option<token::KEYWORD> {
-        self.key.clone()
-    }
-    pub fn set_key(&mut self, key: token::KEYWORD) {
-        self.key = Some(key);
+        Self{ loc: None, node }
     }
     pub fn loc(&self) -> Option<point::Location> {
         self.loc.clone()

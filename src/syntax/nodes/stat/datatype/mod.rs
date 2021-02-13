@@ -1,5 +1,5 @@
 use std::fmt;
-use crate::syntax::nodes::{NodeTrait, StatTrait, Nodes, Node};
+use crate::syntax::nodes::{NodeTrait, Node, Nodes};
 use crate::syntax::token::{KEYWORD, TYPE};
 
 #[derive(Clone)]
@@ -39,7 +39,6 @@ pub enum NodeExprTypeType {
 }
 
 impl NodeTrait for NodeExprTypeType {}
-impl StatTrait for NodeExprTypeType {}
 
 impl fmt::Display for NodeExprTypeType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -128,7 +127,6 @@ impl From<TYPE> for NodeExprDatatype {
 }
 
 impl NodeTrait for NodeExprDatatype {}
-impl StatTrait for NodeExprDatatype {}
 
 impl fmt::Display for NodeExprDatatype {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

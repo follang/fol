@@ -73,7 +73,7 @@ impl Parse for ParserStatAssAli {
         }
 
         // match datatypes after :  -> "int[opts][]"
-        let mut dt = ParserStatDatatypes::init(self._source.clone());
+        let mut dt = ParserStatDatatypes::init(self._source.clone(), true);
         if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::colon_) {
             dt.parse(lex)?;
         }

@@ -31,7 +31,9 @@ impl Parser {
         }
         logit!(src.path(false));
         // logit!(parser.nodes.len().to_string());
-        printer!(parser.nodes.clone());
+        for e in parser.nodes.clone() {
+            println!("{}\t{}", e.loc().unwrap(), e);
+        }
         printer!(parser.errors.clone());
         parser
     }

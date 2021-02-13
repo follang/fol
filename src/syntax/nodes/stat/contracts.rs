@@ -1,5 +1,5 @@
 use std::fmt;
-use crate::syntax::nodes::{NodeTrait, Node, Nodes, StatTrait};
+use crate::syntax::nodes::{NodeTrait, Node, Nodes};
 
 #[derive(Clone)]
 pub struct NodeStatContracts(Vec<String>);
@@ -11,7 +11,6 @@ impl Default for NodeStatContracts {
 }
 
 impl NodeTrait for NodeStatContracts {}
-impl StatTrait for NodeStatContracts {}
 
 impl fmt::Display for NodeStatContracts {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

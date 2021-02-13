@@ -1,5 +1,5 @@
 use std::fmt;
-use crate::syntax::nodes::{NodeTrait, Node, Nodes, StatTrait};
+use crate::syntax::nodes::{NodeTrait, Node, Nodes};
 
 #[derive(Clone)]
 pub struct NodeStatAssUse{
@@ -16,7 +16,6 @@ impl Default for NodeStatAssUse {
 }
 
 impl NodeTrait for NodeStatAssUse {}
-impl StatTrait for NodeStatAssUse {}
 
 impl fmt::Display for NodeStatAssUse {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

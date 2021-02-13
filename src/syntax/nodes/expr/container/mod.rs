@@ -1,5 +1,5 @@
 use std::fmt;
-use crate::syntax::nodes::{NodeTrait, ExprTrait, Node};
+use crate::syntax::nodes::{NodeTrait, Node, Nodes};
 
 #[derive(Clone)]
 pub struct NodeExprContainer {
@@ -8,7 +8,6 @@ pub struct NodeExprContainer {
 }
 
 impl NodeTrait for NodeExprContainer {}
-impl ExprTrait for NodeExprContainer {}
 
 
 impl fmt::Display for NodeExprContainer {

@@ -5,8 +5,8 @@ use dyn_clone::DynClone;
 use crate::syntax::point;
 use crate::types::*;
 pub mod expr;
-pub use crate::syntax::nodes::expr::*;
 pub mod stat;
+pub use crate::syntax::nodes::expr::*;
 pub use crate::syntax::nodes::stat::*;
 
 pub trait NodeTrait: DynClone + fmt::Display {}

@@ -1,5 +1,5 @@
 use std::fmt;
-use crate::syntax::nodes::{NodeTrait, ExprTrait, Node};
+use crate::syntax::nodes::{NodeTrait, Node, Nodes};
 
 #[derive(Clone)]
 pub enum NodeExprBinary {
@@ -8,7 +8,6 @@ pub enum NodeExprBinary {
 }
 
 impl NodeTrait for NodeExprBinary {}
-impl ExprTrait for NodeExprBinary {}
 
 impl fmt::Display for NodeExprBinary {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
