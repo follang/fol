@@ -66,7 +66,7 @@ impl Element {
         self.loc.longer(&other.loc.len())
     }
 
-    pub fn analyze(&mut self, el: &mut stage2::Elements, src: &source::Source) -> Vod {
+    pub fn analyze(&mut self, el: &mut stage2::Elements) -> Vod {
         let _one = el.curr(false)?;
         Ok(())
     }
