@@ -100,12 +100,7 @@ impl fmt::Display for Elements {
 
 
 pub fn gen(file: &index::Source, is_string: bool) -> impl Iterator<Item = Con<Part<char>>> {
-        let mut lines: Box<dyn Iterator<Item = String>>;
-    if !is_string {
-        lines = Box::new(index::source_lines(file));
-    } else {
-        lines = Box::new(index::string_lines(&"sfsdasf".to_string()));
-    }
+    let mut lines = index::Lines::init(index::Input::Soruce(file.clone()));
     let mut chars = get_chars(lines.next().unwrap());
     let mut loc = point::Location::default();
     loc.adjust(1,0);

@@ -6,19 +6,13 @@ pub use crate::syntax::index::source::{Source, Sources};
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)] 
 pub enum Input {
     Soruce(Source),
-    String(String)
+    String(String),
+    Sources(String)
 }
-
-// pub struct Srcs {
-    
-// }
-//
-//
-//
 
 pub struct Lines {
     lines: Box<dyn Iterator<Item = String>>,
-    _input: Input,
+    source: Option<Source>,
 }
 
 impl Lines {
@@ -28,16 +22,27 @@ impl Lines {
             Input::Soruce(s) => { 
                 lines = Box::new(source_lines(&s));
             },
+            Input::Sources(s) => { 
+                lines = Box::new(sources_lines(&s));
+            },
             Input::String(s) => {
                 lines = Box::new(string_lines(&s));
             }
         }
         Self {
             lines,
-            _input: input,
+            source: None,
         }
     }
 }
+
+impl Iterator for Lines {
+    type Item = String;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.lines.next()
+    }
+}
+
 
 
 pub fn source_lines(src: &Source) -> impl Iterator<Item = String> {
@@ -62,5 +67,17 @@ pub fn string_lines(src: &String) -> impl Iterator<Item = String> {
         let (line, rest) = input_copy.split_at(split);
         input = rest.to_string();
         Some(line.to_string())
+    })
+}
+
+pub fn sources_lines(src: &String) -> impl Iterator<Item = String> {
+    let sources = Sources::init(src.to_string());
+    let mut reader = reader::BufReader::open(sources.curr().path(true)).unwrap();
+    let mut buffer = String::new();
+    std::iter::from_fn(move || {
+        if let Some(line) = reader.read_line(&mut buffer) {
+            return Some(line.unwrap().clone());
+        }
+        None
     })
 }
