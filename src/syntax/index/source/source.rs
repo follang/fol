@@ -13,6 +13,11 @@ pub struct Source {
     pub path: String,
 }
 
+pub enum SourceType {
+    Soruce(Source),
+    String(String)
+}
+
 impl Source {
     pub fn init(s: &str) -> Con<Vec<Self>> {
         let mut vec = Vec::new();

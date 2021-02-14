@@ -3,7 +3,7 @@ use std::str::Chars;
 use crate::types::{Vod, Con, Win, SLIDER};
 use crate::syntax::point;
 use crate::syntax::token::help;
-use crate::syntax::index::{Source, elements::reader};
+use crate::syntax::index::{Source, source::reader};
 
 type Part<T> = (T, point::Location);
 
