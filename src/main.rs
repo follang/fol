@@ -26,6 +26,6 @@ fn main() {
         //         Err(e) => { println!("\n{}", e); }
         //     }
         // }
-        let parser = parse::Parser::init(&mut elems, e.clone());
+        let parser = parse::Parser::init(&mut elems);
     }
 }

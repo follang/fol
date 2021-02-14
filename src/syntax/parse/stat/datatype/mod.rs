@@ -10,15 +10,13 @@ pub use crate::syntax::nodes::stat::datatype::*;
 
 pub struct ParserStatDatatypes {
     pub nodes: Nodes,
-    _source: Source,
     _inparam: bool,
 }
 
 impl ParserStatDatatypes {
-    pub fn init(src: Source, inparam: bool) -> Self {
+    pub fn init(inparam: bool) -> Self {
         Self { 
             nodes: Nodes::new(),
-            _source: src,
             _inparam: inparam,
         } 
     }

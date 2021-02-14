@@ -20,12 +20,11 @@ pub use crate::syntax::parse::stat::{
 
 pub struct ParserStat {
     pub nodes: Nodes,
-    _source: Source,
 }
 
 impl ParserStat {
-    pub fn init(src: Source) -> Self {
-        Self { nodes: Nodes::new(), _source: src } 
+    pub fn init() -> Self {
+        Self { nodes: Nodes::new()} 
     }
 }
 impl Parse for ParserStat {
@@ -35,7 +34,7 @@ impl Parse for ParserStat {
             || (matches!(lex.curr(false)?.key(), KEYWORD::option(_))
                 && matches!(lex.peek(0, false)?.key(), KEYWORD::assign(_)))
         {
-            let mut parse_ass = ParserStatAss::init(self._source.clone());
+            let mut parse_ass = ParserStatAss::init();
             parse_ass.parse(lex)?;
             self.nodes.extend(parse_ass.nodes);
             return Ok(())

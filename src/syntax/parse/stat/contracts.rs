@@ -10,12 +10,11 @@ pub use crate::syntax::nodes::stat::ident::*;
 
 pub struct ParserStatContract {
     pub nodes: Nodes,
-    _source: Source,
 }
 
 impl ParserStatContract {
-    pub fn init(src: Source) -> Self {
-        Self { nodes: Nodes::new(), _source: src } 
+    pub fn init() -> Self {
+        Self { nodes: Nodes::new() } 
     }
 }
 impl Parse for ParserStatContract {

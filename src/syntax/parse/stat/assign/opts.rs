@@ -10,16 +10,14 @@ pub use crate::syntax::nodes::stat::assign::opts::*;
 
 pub struct ParserStatAssOpts {
     pub nodes: Nodes,
-    _source: Source,
     pub recivers: Nodes,
     _recivers: bool,
 }
 
 impl ParserStatAssOpts {
-    pub fn init(src: Source, recivers: bool) -> Self {
+    pub fn init(recivers: bool) -> Self {
         Self { 
             nodes: Nodes::new(),
-            _source: src,
             _recivers: recivers,
             recivers: Nodes::new(),
         } 

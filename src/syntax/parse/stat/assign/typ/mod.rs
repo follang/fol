@@ -14,15 +14,14 @@ use crate::syntax::parse::stat::datatype::*;
 #[derive(Clone)]
 pub struct ParserStatAssTyp {
     pub nodes: Nodes,
-    _source: Source,
     _recurse: bool,
     _oldstat: NodeStatAssTyp,
 }
 
 impl ParserStatAssTyp {
     pub fn len(&self) -> usize { self.nodes.len() }
-    pub fn init(src: Source) -> Self {
-        Self { nodes: Nodes::new(), _source: src, _recurse: false, _oldstat: NodeStatAssTyp::default() } 
+    pub fn init() -> Self {
+        Self { nodes: Nodes::new(), _recurse: false, _oldstat: NodeStatAssTyp::default() } 
     }
     pub fn recurse(&self) -> Self {
         let mut new_clone = self.clone();
@@ -37,7 +36,7 @@ impl Parse for ParserStatAssTyp {
         let mut node = NodeStatAssTyp::default();
         if !self._recurse {
             // match symbol before var  -> "~"
-            let mut opts = ParserStatAssOpts::init(self._source.clone(), false);
+            let mut opts = ParserStatAssOpts::init(false);
             if matches!(lex.curr(true)?.key(), KEYWORD::option(_) ) {
                 if let KEYWORD::option(a) = lex.curr(true)?.key() {
                     let assopt: AssOptsTrait = a.into();
@@ -97,19 +96,19 @@ impl Parse for ParserStatAssTyp {
         }
 
         // match indentifier "ident"
-        let mut idents = ParserStatIdent::init(self._source.clone());
+        let mut idents = ParserStatIdent::init();
         idents.only_one();
         idents.parse(lex)?; lex.eat();
 
         // match contracts after (  -> "(one, two)"
-        let mut contracts = ParserStatContract::init(self._source.clone());
+        let mut contracts = ParserStatContract::init();
         if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::roundO_) {
             contracts.parse(lex)?; lex.eat();
             if contracts.nodes.len() > 0 { node.set_contracts(Some(contracts.nodes.clone())) }
         }
 
         // match datatypes after :  -> "int[opts][]"
-        let mut dt = ParserStatDatatypes::init(self._source.clone(), true);
+        let mut dt = ParserStatDatatypes::init(true);
         if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::colon_) {
             dt.parse(lex)?;
         }
@@ -119,7 +118,7 @@ impl Parse for ParserStatAssTyp {
             KEYWORD::symbol(SYMBOL::equal_),
             KEYWORD::void(VOID::endline_)
         ], true)?;
-        check::type_balance(idents.nodes.len(), dt.nodes.len(), &loc, &self._source )?;
+        check::type_balance(idents.nodes.len(), dt.nodes.len(), &loc, &lex.curr(false)?.loc().source() )?;
 
         for i in 0..idents.nodes.len() {
             if dt.nodes.len() > 0 {

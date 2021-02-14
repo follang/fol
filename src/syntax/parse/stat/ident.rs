@@ -10,13 +10,12 @@ pub use crate::syntax::nodes::stat::ident::*;
 
 pub struct ParserStatIdent {
     pub nodes: Nodes,
-    _source: Source,
     _once: bool,
 }
 
 impl ParserStatIdent {
-    pub fn init(src: Source) -> Self {
-        Self { nodes: Nodes::new(), _source: src, _once: false } 
+    pub fn init() -> Self {
+        Self { nodes: Nodes::new(), _once: false } 
     }
     pub fn only_one(&mut self) { self._once = true; }
 }

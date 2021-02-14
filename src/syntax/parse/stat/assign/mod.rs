@@ -22,12 +22,11 @@ use crate::syntax::parse::stat::assign::{
 
 pub struct ParserStatAss {
     pub nodes: Nodes,
-    _source: Source,
 }
 
 impl ParserStatAss {
-    pub fn init(src: Source) -> Self {
-        Self { nodes: Nodes::new(), _source: src } 
+    pub fn init() -> Self {
+        Self { nodes: Nodes::new() } 
     }
 }
 impl Parse for ParserStatAss {
@@ -38,32 +37,32 @@ impl Parse for ParserStatAss {
             || (matches!(lex.curr(false)?.key(), KEYWORD::option(_))
                 && matches!(lex.peek(0, false)?.key(), KEYWORD::assign(ASSIGN::var_)))
         {
-            parser = Box::new(ParserStatAssVar::init(self._source.clone()));
+            parser = Box::new(ParserStatAssVar::init());
         } else if matches!(lex.curr(false)?.key(), KEYWORD::assign(ASSIGN::typ_))
             || (matches!(lex.curr(false)?.key(), KEYWORD::option(_))
                 && matches!(lex.peek(0, false)?.key(), KEYWORD::assign(ASSIGN::typ_)))
         {
-            parser = Box::new(ParserStatAssTyp::init(self._source.clone()));
+            parser = Box::new(ParserStatAssTyp::init());
         } else if matches!(lex.curr(false)?.key(), KEYWORD::assign(ASSIGN::ali_))
             || (matches!(lex.curr(false)?.key(), KEYWORD::option(_))
                 && matches!(lex.peek(0, false)?.key(), KEYWORD::assign(ASSIGN::ali_)))
         {
-            parser = Box::new(ParserStatAssAli::init(self._source.clone()));
+            parser = Box::new(ParserStatAssAli::init());
         } else if matches!(lex.curr(false)?.key(), KEYWORD::assign(ASSIGN::use_))
             || (matches!(lex.curr(false)?.key(), KEYWORD::option(_))
                 && matches!(lex.peek(0, false)?.key(), KEYWORD::assign(ASSIGN::use_)))
         {
-            parser = Box::new(ParserStatAssUse::init(self._source.clone()));
+            parser = Box::new(ParserStatAssUse::init());
         } else if matches!(lex.curr(false)?.key(), KEYWORD::assign(ASSIGN::pro_))
             || (matches!(lex.curr(false)?.key(), KEYWORD::option(_))
                 && matches!(lex.peek(0, false)?.key(), KEYWORD::assign(ASSIGN::pro_)))
         {
-            parser = Box::new(ParserStatAssFun::init(self._source.clone()));
+            parser = Box::new(ParserStatAssFun::init());
         } else if matches!(lex.curr(false)?.key(), KEYWORD::assign(ASSIGN::fun_))
             || (matches!(lex.curr(false)?.key(), KEYWORD::option(_))
                 && matches!(lex.peek(0, false)?.key(), KEYWORD::assign(ASSIGN::fun_)))
         {
-            parser = Box::new(ParserStatAssFun::init(self._source.clone()));
+            parser = Box::new(ParserStatAssFun::init());
         } else {
             lex.until_term(false)?;
             return Ok(())
