@@ -13,7 +13,7 @@ pub fn expect(lex: &mut lexer::Elements, keyword: KEYWORD, ignore: bool) -> Vod 
         loc: Some(lex.curr(ignore)?.loc().clone()), 
         key1: lex.curr(ignore)?.key(), 
         key2: keyword,
-        src: lex.source().clone()
+        src: lex.curr(ignore)?.loc().source().clone()
     }))
 }
 pub fn expect_many(lex: &mut lexer::Elements, keywords: Vec<KEYWORD>, ignore: bool) -> Vod {
@@ -25,7 +25,7 @@ pub fn expect_many(lex: &mut lexer::Elements, keywords: Vec<KEYWORD>, ignore: bo
         loc: Some(lex.curr(ignore)?.loc().clone()), 
         key1: lex.curr(ignore)?.key(), 
         keys: keywords,
-        src: lex.source().clone()
+        src: lex.curr(ignore)?.loc().source().clone()
     }))
 }
 pub fn expect_option(lex: &mut lexer::Elements, ignore: bool) -> Vod {
@@ -34,7 +34,7 @@ pub fn expect_option(lex: &mut lexer::Elements, ignore: bool) -> Vod {
         loc: Some(lex.curr(ignore)?.loc().clone()), 
         key1: lex.curr(ignore)?.key(), 
         key2: KEYWORD::option(OPTION::ANY),
-        src: lex.source().clone()
+        src: lex.curr(ignore)?.loc().source().clone()
     }))
 }
 pub fn expect_assign(lex: &mut lexer::Elements, ignore: bool) -> Vod {
@@ -43,7 +43,7 @@ pub fn expect_assign(lex: &mut lexer::Elements, ignore: bool) -> Vod {
         loc: Some(lex.curr(ignore)?.loc().clone()), 
         key1: lex.curr(ignore)?.key(), 
         key2: KEYWORD::assign(ASSIGN::ANY), 
-        src: lex.source().clone()
+        src: lex.curr(ignore)?.loc().source().clone()
     }))
 }
 pub fn expect_types(lex: &mut lexer::Elements, ignore: bool) -> Vod {
@@ -52,7 +52,7 @@ pub fn expect_types(lex: &mut lexer::Elements, ignore: bool) -> Vod {
         loc: Some(lex.curr(ignore)?.loc().clone()), 
         key1: lex.curr(ignore)?.key(), 
         key2: KEYWORD::types(TYPE::ANY), 
-        src: lex.source().clone()
+        src: lex.curr(ignore)?.loc().source().clone()
     }))
 }
 pub fn expect_form(lex: &mut lexer::Elements, ignore: bool) -> Vod {
@@ -61,7 +61,7 @@ pub fn expect_form(lex: &mut lexer::Elements, ignore: bool) -> Vod {
         loc: Some(lex.curr(ignore)?.loc().clone()), 
         key1: lex.curr(ignore)?.key(), 
         key2: KEYWORD::form(FORM::ANY), 
-        src: lex.source().clone()
+        src: lex.curr(ignore)?.loc().source().clone()
     }))
 }
 pub fn expect_literal(lex: &mut lexer::Elements, ignore: bool) -> Vod {
@@ -70,7 +70,7 @@ pub fn expect_literal(lex: &mut lexer::Elements, ignore: bool) -> Vod {
         loc: Some(lex.curr(ignore)?.loc().clone()), 
         key1: lex.curr(ignore)?.key(), 
         key2: KEYWORD::literal(LITERAL::ANY), 
-        src: lex.source().clone()
+        src: lex.curr(ignore)?.loc().source().clone()
     }))
 }
 pub fn expect_buildin(lex: &mut lexer::Elements, ignore: bool) -> Vod {
@@ -79,7 +79,7 @@ pub fn expect_buildin(lex: &mut lexer::Elements, ignore: bool) -> Vod {
         loc: Some(lex.curr(ignore)?.loc().clone()), 
         key1: lex.curr(ignore)?.key(), 
         key2: KEYWORD::buildin(BUILDIN::ANY), 
-        src: lex.source().clone()
+        src: lex.curr(ignore)?.loc().source().clone()
     }))
 }
 pub fn expect_symbol(lex: &mut lexer::Elements, ignore: bool) -> Vod {
@@ -88,7 +88,7 @@ pub fn expect_symbol(lex: &mut lexer::Elements, ignore: bool) -> Vod {
         loc: Some(lex.curr(ignore)?.loc().clone()), 
         key1: lex.curr(ignore)?.key(), 
         key2: KEYWORD::symbol(SYMBOL::ANY), 
-        src: lex.source().clone()
+        src: lex.curr(ignore)?.loc().source().clone()
     }))
 }
 pub fn expect_operator(lex: &mut lexer::Elements, ignore: bool) -> Vod {
@@ -97,7 +97,7 @@ pub fn expect_operator(lex: &mut lexer::Elements, ignore: bool) -> Vod {
         loc: Some(lex.curr(ignore)?.loc().clone()), 
         key1: lex.curr(ignore)?.key(), 
         key2: KEYWORD::operator(OPERATOR::ANY), 
-        src: lex.source().clone()
+        src: lex.curr(ignore)?.loc().source().clone()
     }))
 }
 pub fn expect_void(lex: &mut lexer::Elements) -> Vod {
@@ -106,7 +106,7 @@ pub fn expect_void(lex: &mut lexer::Elements) -> Vod {
         loc: Some(lex.curr(false)?.loc().clone()), 
         key1: lex.curr(false)?.key(), 
         key2: KEYWORD::void(VOID::ANY), 
-        src: lex.source().clone()
+        src: lex.curr(false)?.loc().source().clone()
     }))
 }
 pub fn expect_terminal(lex: &mut lexer::Elements) -> Vod {
@@ -115,7 +115,7 @@ pub fn expect_terminal(lex: &mut lexer::Elements) -> Vod {
         loc: Some(lex.curr(false)?.loc().clone()), 
         key1: lex.curr(false)?.key(), 
         key2: KEYWORD::void(VOID::ANY), 
-        src: lex.source().clone()
+        src: lex.curr(false)?.loc().source().clone()
     }))
 }
 pub fn until_key(lex: &mut lexer::Elements, keywords: Vec<KEYWORD>) -> Vod {

@@ -69,6 +69,7 @@ impl Location {
     }
 
     pub fn set_source(&mut self, source: &Source) { self.src = source.clone() }
+    pub fn source(&self) -> Source { self.src.clone() }
 
     pub fn new(
         row: usize,
