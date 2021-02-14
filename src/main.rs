@@ -12,13 +12,13 @@ extern crate colored;
 extern crate dyn_clone;
 extern crate terminal_size;
 
-use crate::syntax::index;
+use crate::syntax::index::Sources;
 use crate::syntax::lexer;
 use crate::syntax::parse;
 
 fn main() {
     let path = "./test/main/var2".to_string();
-    let sources = index::sources::Sources::init(path);
+    let sources = Sources::init(path);
     for e in sources {
         let mut elems = lexer::Elements::init(&e);
         // while let Some(c) = elems.bump() {

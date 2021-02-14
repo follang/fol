@@ -33,7 +33,7 @@ impl Parse for ParserStatParameters {
         }
 
         while !lex.curr(true)?.key().is_eof() {
-            match self.parse2(lex) {
+            match self.parse_each(lex) {
                 Ok(ok) => self.nodes.extend(ok),
                 Err(err) => return Err(err)
             };
@@ -48,7 +48,7 @@ impl Parse for ParserStatParameters {
     }
 }
 impl ParserStatParameters {
-    fn parse2(&mut self, lex: &mut lexer::Elements) -> Con<Nodes> {
+    fn parse_each(&mut self, lex: &mut lexer::Elements) -> Con<Nodes> {
         let loc = lex.curr(true)?.loc().clone();
         let mut node = NodeStatAssVar::default();
         // match symbol before var  -> "~"

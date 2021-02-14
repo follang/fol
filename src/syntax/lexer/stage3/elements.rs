@@ -10,12 +10,11 @@ pub struct Elements {
     elem: Box<dyn Iterator<Item = Con<Element>>>,
     win: Win<Con<Element>>,
     _in_count: usize,
-    _source: Source,
+    pub source: Source,
 }
 
 
 impl Elements {
-    pub fn source(&self) -> Source { self._source.clone() }
     pub fn default(&self) -> Element { Element::default() }
     pub fn init(file: &source::Source) -> Self {
         let mut prev = Vec::with_capacity(SLIDER);
@@ -27,7 +26,7 @@ impl Elements {
             elem,
             win: (prev, Ok(Element::default()), next),
             _in_count: SLIDER,
-            _source: file.clone(),
+            source: file.clone(),
         };
         // newborn.bump();
         newborn

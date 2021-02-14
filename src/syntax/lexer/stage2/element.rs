@@ -1,7 +1,7 @@
 use std::fmt;
 use colored::Colorize;
-use crate::types::*;
-use crate::syntax::index::*;
+use crate::types::{Vod, Con, Win, SLIDER, error::*};
+use crate::syntax::index;
 use crate::syntax::point;
 use crate::syntax::lexer::stage1;
 use crate::syntax::token::{
@@ -66,7 +66,7 @@ impl Element {
         self.loc.longer(&other.loc.len())
     }
 
-    pub fn analyze(&mut self, el: &mut stage1::Elements, src: &source::Source) -> Vod {
+    pub fn analyze(&mut self, el: &mut stage1::Elements, src: &index::Source) -> Vod {
         // EOL => SPACE
         if el.curr()?.key().is_eol()
             && (el.seek(0)?.key().is_nonterm()
@@ -129,10 +129,11 @@ impl Element {
         {
             self.set_key(ident)
         }
+        // if self.key().is_eol() { self.set_key(symbol(SYMBOL::semi_)) }
         Ok(())
     }
 
-    pub fn make_multi_operator(&mut self, el: &mut stage1::Elements, src: &source::Source) -> Vod {
+    pub fn make_multi_operator(&mut self, el: &mut stage1::Elements, src: &index::Source) -> Vod {
         while el.peek(0)?.key().is_symbol() && !el.peek(0)?.key().is_bracket() {
             self.append(&el.peek(0)?.into());
             self.bump(el);
@@ -157,7 +158,7 @@ impl Element {
         }
         Ok(())
     }
-    pub fn make_syoption(&mut self, el: &mut stage1::Elements, src: &source::Source) -> Vod {
+    pub fn make_syoption(&mut self, el: &mut stage1::Elements, src: &index::Source) -> Vod {
         match self.con().as_str() {
             "~" => self.set_key(option(OPTION::mut_)),
             "!" => self.set_key(option(OPTION::sta_)),
@@ -169,7 +170,7 @@ impl Element {
         Ok(())
     }
 
-    pub fn make_number(&mut self, el: &mut stage1::Elements, src: &source::Source) -> Vod{
+    pub fn make_number(&mut self, el: &mut stage1::Elements, src: &index::Source) -> Vod{
         self.set_key(literal(LITERAL::decimal_));
         if matches!(el.curr()?.key(), KEYWORD::symbol(SYMBOL::minus_)) && el.peek(0)?.key().is_decimal()
         {
@@ -202,7 +203,7 @@ impl Element {
         }
         Ok(())
     }
-    pub fn make_comment(&mut self, el: &mut stage1::Elements, src: &source::Source) -> Vod {
+    pub fn make_comment(&mut self, el: &mut stage1::Elements, src: &index::Source) -> Vod {
         if matches!(el.peek(0)?.key(), KEYWORD::symbol(SYMBOL::root_)) {
             while !el.peek(0)?.key().is_eol() {
                 self.append(&el.peek(0)?.into());

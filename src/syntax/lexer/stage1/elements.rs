@@ -1,21 +1,19 @@
 use std::fmt;
-use crate::syntax::lexer::stage0;
-
-use crate::types::*;
-use crate::syntax::token::{help::*, KEYWORD, KEYWORD::*};
+use crate::types::{Vod, Con, Win, SLIDER};
+use crate::syntax::token::{help, KEYWORD, KEYWORD::*};
 use crate::syntax::lexer::stage1::Element;
-use crate::syntax::index::*;
+use crate::syntax::index;
 
 pub struct Elements {
     elem: Box<dyn Iterator<Item = Con<Element>>>,
     win: Win<Con<Element>>,
     _in_count: usize,
-    _source: Source,
+    _source: index::Source,
 }
 
 
 impl Elements {
-    pub fn init(file: &source::Source) -> Self {
+    pub fn init(file: &index::Source) -> Self {
         let mut prev = Vec::with_capacity(SLIDER);
         let mut next = Vec::with_capacity(SLIDER);
         let mut elem = Box::new(elements(file));
@@ -34,8 +32,8 @@ impl Elements {
     pub fn next_vec(&self) -> Vec<Con<Element>> {
         self.win.2.clone()
     }
-    pub fn peek(&self, index: usize) -> Con<Element> { 
-        let u = if index > SLIDER { 0 } else { index };
+    pub fn peek(&self, indx: usize) -> Con<Element> { 
+        let u = if indx > SLIDER { 0 } else { indx };
         self.next_vec()[u].clone() 
     }
     pub fn prev_vec(&self) -> Vec<Con<Element>> {
@@ -43,8 +41,8 @@ impl Elements {
         rev.reverse();
         rev
     }
-    pub fn seek(&self, index: usize) -> Con<Element> { 
-        let u = if index > SLIDER { 0 } else { index };
+    pub fn seek(&self, indx: usize) -> Con<Element> { 
+        let u = if indx > SLIDER { 0 } else { indx };
         self.prev_vec()[u].clone()
     }
     pub fn bump(&mut self) -> Option<Con<Element>> {
@@ -86,8 +84,8 @@ impl Iterator for Elements {
 
 
 /// Creates a iterator that produces tokens from the input string.
-pub fn elements(file: &source::Source) -> impl Iterator<Item = Con<Element>>  {
-    let mut txt = Box::new(stage0::Elements::init(file));
+pub fn elements(file: &index::Source) -> impl Iterator<Item = Con<Element>>  {
+    let mut txt = Box::new(index::Elements::init(file));
     // *sins = *txt.sins();
     std::iter::from_fn(move || {
         if let Some(v) = txt.bump() {

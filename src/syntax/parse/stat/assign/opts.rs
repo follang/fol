@@ -24,7 +24,6 @@ impl ParserStatAssOpts {
             recivers: Nodes::new(),
         } 
     }
-    pub fn recivers(&mut self) { self._recivers = true }
 }
 impl Parse for ParserStatAssOpts {
     fn nodes(&self) -> Nodes { self.nodes.clone() }

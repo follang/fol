@@ -1,10 +1,9 @@
 use std::fmt;
 use std::str::Chars;
-use crate::types::*;
+use crate::types::{Vod, Con, Win, SLIDER};
 use crate::syntax::point;
-use crate::syntax::token::help::*;
-use crate::syntax::index::*;
-use crate::syntax::lexer::stage0::reader;
+use crate::syntax::token::help;
+use crate::syntax::index::{Source, elements::reader};
 
 type Part<T> = (T, point::Location);
 
@@ -38,7 +37,7 @@ impl Elements {
         self.prev_vec()[u].clone() 
     }
 
-    pub fn init(file: &source::Source) -> Self {
+    pub fn init(file: &Source) -> Self {
         let mut prev = Vec::with_capacity(SLIDER);
         let mut next = Vec::with_capacity(SLIDER);
         let mut chars = Box::new(gen(file));
@@ -100,7 +99,7 @@ impl fmt::Display for Elements {
 }
 
 
-pub fn gen(file: &source::Source) -> impl Iterator<Item = Con<Part<char>>> {
+pub fn gen(file: &Source) -> impl Iterator<Item = Con<Part<char>>> {
     let mut lines = get_lines(file);
     let mut chars = get_chars(lines.next().unwrap());
     let mut loc = point::Location::default();
@@ -110,8 +109,8 @@ pub fn gen(file: &source::Source) -> impl Iterator<Item = Con<Part<char>>> {
         match chars.next() {
             Some(i) => {
                 loc.new_char();
-                if is_open_bracket(&i) { loc.deepen() }
-                else if is_close_bracket(&i) { loc.soften() }
+                if help::is_open_bracket(&i) { loc.deepen() }
+                else if help::is_close_bracket(&i) { loc.soften() }
                 // if i == ' ' { loc.new_word() }
                 return Some (Ok((i, loc.clone())))
             },
@@ -137,7 +136,7 @@ pub fn gen(file: &source::Source) -> impl Iterator<Item = Con<Part<char>>> {
 }
 
 
-fn get_lines(src: &source::Source) -> impl Iterator<Item = String> {
+fn get_lines(src: &Source) -> impl Iterator<Item = String> {
     let mut reader = reader::BufReader::open(src.path(true)).unwrap();
     let mut buffer = String::new();
     std::iter::from_fn(move || {

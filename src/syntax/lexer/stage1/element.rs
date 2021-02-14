@@ -1,9 +1,8 @@
 use std::fmt;
-use crate::types::*;
+use crate::types::{Vod, Con, Win, SLIDER, error::*};
 use crate::syntax::point;
-use crate::syntax::lexer::stage0;
+use crate::syntax::index;
 
-use crate::types::{Con, Vod};
 use crate::syntax::token::{
     literal::LITERAL,
     void::VOID,
@@ -54,7 +53,7 @@ impl Element {
         self.loc.longer(&other.loc.len())
     }
 
-    pub fn analyze(&mut self, mut code: &mut stage0::Elements) -> Vod {
+    pub fn analyze(&mut self, mut code: &mut index::Elements) -> Vod {
         if code.curr()?.0 == '/' && (code.peek(0)?.0 == '/' || code.peek(0)?.0 == '*') {
             self.comment(&mut code)?;
         } else if is_eof(&code.curr()?.0) {
@@ -79,7 +78,7 @@ impl Element {
     }
 
     //checking
-    pub fn comment(&mut self, code: &mut stage0::Elements) -> Vod {
+    pub fn comment(&mut self, code: &mut index::Elements) -> Vod {
         self.con.push_str(&code.curr()?.0.to_string());
         self.bump(code)?;
         if code.curr()?.0 == '/' {
@@ -104,7 +103,7 @@ impl Element {
         Ok(())
     }
 
-    pub fn endfile(&mut self, code: &mut stage0::Elements) -> Vod {
+    pub fn endfile(&mut self, code: &mut index::Elements) -> Vod {
         self.key = void(VOID::endfile_);
         // while is_eol(&code.peek(0).0) || is_space(&code.peek(0).0) {
         //     self.loc.new_line();
@@ -114,7 +113,7 @@ impl Element {
         Ok(())
     }
 
-    pub fn endline(&mut self, code: &mut stage0::Elements, terminated: bool) -> Vod {
+    pub fn endline(&mut self, code: &mut index::Elements, terminated: bool) -> Vod {
         self.push(code)?;
         self.key = void(VOID::endline_);
         while is_eol(&code.peek(0)?.0) || is_space(&code.peek(0)?.0) {
@@ -125,7 +124,7 @@ impl Element {
         Ok(())
     }
 
-    pub fn space(&mut self, code: &mut stage0::Elements) -> Vod {
+    pub fn space(&mut self, code: &mut index::Elements) -> Vod {
         self.push(code)?;
         while is_space(&code.peek(0)?.0) {
             self.bump(code)?;
@@ -140,7 +139,7 @@ impl Element {
         Ok(())
     }
 
-    pub fn digit(&mut self, code: &mut stage0::Elements) -> Vod {
+    pub fn digit(&mut self, code: &mut index::Elements) -> Vod {
         if code.curr()?.0 == '0'
             && (code.peek(0)?.0 == 'x' || code.peek(0)?.0 == 'o' || code.peek(0)?.0 == 'b')
         {
@@ -175,7 +174,7 @@ impl Element {
         Ok(())
     }
 
-    pub fn encap(&mut self, code: &mut stage0::Elements) -> Vod {
+    pub fn encap(&mut self, code: &mut index::Elements) -> Vod {
         let litsym = code.curr()?.0;
         if litsym == '`' {
             self.key = operator(OPERATOR::ANY);
@@ -198,7 +197,7 @@ impl Element {
         Ok(())
     }
 
-    pub fn symbol(&mut self, code: &mut stage0::Elements) -> Vod {
+    pub fn symbol(&mut self, code: &mut index::Elements) -> Vod {
         self.push(code)?;
         self.key = symbol(SYMBOL::curlyC_);
         match code.curr()?.0 {
@@ -254,7 +253,7 @@ impl Element {
         Ok(())
     }
 
-    pub fn alpha(&mut self, code: &mut stage0::Elements) -> Vod {
+    pub fn alpha(&mut self, code: &mut index::Elements) -> Vod {
         let mut con = code.curr()?.0.to_string();
         self.push(code)?;
         while is_alpha(&code.peek(0)?.0) || is_digit(&code.peek(0)?.0) {
@@ -360,12 +359,12 @@ impl Element {
         Ok(())
     }
 
-    pub fn push(&mut self, code: &mut stage0::Elements) -> Vod {
+    pub fn push(&mut self, code: &mut index::Elements) -> Vod {
         self.con.push_str(&code.curr()?.0.to_string());
         Ok(())
     }
 
-    pub fn bump(&mut self, code: &mut stage0::Elements) -> Vod {
+    pub fn bump(&mut self, code: &mut index::Elements) -> Vod {
         code.bump();
         self.loc.set_len(self.loc.len() + 1);
         self.con.push_str(&code.curr()?.0.to_string());

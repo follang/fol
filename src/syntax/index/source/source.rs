@@ -5,7 +5,7 @@ use std::io::Read;
 use std::path::Path;
 use regex::Regex;
 use crate::colored::Colorize;
-use crate::types::*;
+use crate::types::{Con, Flaw};
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Source {

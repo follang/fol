@@ -84,7 +84,7 @@ impl Parse for ParserStatAssUse {
 
                     //go to next one
                     check::expect_terminal(lex)?;
-                    lex.bump();
+                    lex.jump(0, false)?;
 
                     // match and eat ")"
                     if matches!(lex.curr(true)?.key(), KEYWORD::symbol(SYMBOL::roundC_)) {
