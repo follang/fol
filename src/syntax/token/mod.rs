@@ -255,10 +255,10 @@ impl fmt::Display for KEYWORD {
             KEYWORD::buildin(v) => write!(f, "{}", v),
             KEYWORD::form(v) => write!(f, "{}", v),
             KEYWORD::option(v) => write!(f, "{}", v),
-            KEYWORD::ident => write!(f, "{}:", " IDENT    ".black().on_red()),
-            KEYWORD::orbit => write!(f, "{}:", " ORBIT    ".black().on_red()),
-            KEYWORD::makro => write!(f, "{}:", " MAKRO    ".black().on_red()),
-            KEYWORD::comment => write!(f, "{}:", " COMMENT  ".black().on_red()),
+            KEYWORD::ident => write!(f, "{}", " IDENT    ".black().on_red()),
+            KEYWORD::orbit => write!(f, "{}", " ORBIT    ".black().on_red()),
+            KEYWORD::makro => write!(f, "{}", " MAKRO    ".black().on_red()),
+            KEYWORD::comment => write!(f, "{}", " COMMENT  ".black().on_red()),
             KEYWORD::illegal => write!(f, "{}", " ILLEGAL  ".black().on_green()),
         }
     }

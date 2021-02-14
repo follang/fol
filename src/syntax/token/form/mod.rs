@@ -38,10 +38,10 @@ impl fmt::Display for FORM {
             FORM::fa_ => { t = Some("fa".to_string()); },
             _ => { t = None },
         };
-        write!(f, "{}:{}",
+        write!(f, "{}{}",
             " FORM    ".black().on_red(),
             match t { 
-                Some(val) => { (format!(" {} ", val)).black().on_red().to_string() }, 
+                Some(val) => { (":".to_string().white().on_black().to_string() + &format!(" {} ", val)).black().on_red().to_string() }, 
                 None => "".to_string()
             },
         )

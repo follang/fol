@@ -178,9 +178,9 @@ impl Element {
     pub fn encap(&mut self, code: &mut text::Text) -> Vod {
         let litsym = code.curr()?.0;
         if litsym == '`' {
-            self.key = orbit;
-        } else if litsym == '\'' {
-            self.key = makro;
+            self.key = operator(OPERATOR::ANY);
+        // } else if litsym == '\'' {
+            // self.key = makro;
             // self.key = literal(LITERAL::char_);
         } else {
             self.key = literal(LITERAL::string_);

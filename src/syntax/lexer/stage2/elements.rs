@@ -140,17 +140,16 @@ impl Elements {
         }
         Ok(())
     }
-    pub fn until_char(&mut self, el: &str, el2: &str) -> Vod {
+    pub fn until_key(&mut self, keywords: Vec<KEYWORD>) -> Vod {
         loop{ 
-            if self.curr(false)?.con() == &el.to_string() 
-                || self.curr(false)?.con() == &el2.to_string()
-                || self.curr(false)?.key().is_eof() {
+            if keywords.iter().any(|i| *i == self.curr(false).unwrap_or(Element::default()).key()) { 
                 break
             }
             self.bump();
         }
         Ok(())
     }
+
     pub fn until_bracket(&mut self) -> Vod {
         let deep = self.curr(false)?.loc().deep() - 1;
         loop{

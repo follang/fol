@@ -25,17 +25,21 @@ impl ParserStatParameters {
 impl Parse for ParserStatParameters {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
-        // lex.until_bracket()?;
         lex.jump(0, true)?;
+        if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::roundC_) {
+            lex.jump(0, true)?;
+            return Ok(())
+        }
+
         while !lex.curr(true)?.key().is_eof() {
             match self.parse2(lex) {
                 Ok(ok) => self.nodes.extend(ok),
                 Err(err) => return Err(err)
             };
             if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::semi_) {
-                lex.jump(0, true)?; lex.eat();
+                lex.jump(0, true)?;
             } else if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::roundC_) {
-                lex.jump(0, true)?; lex.eat();
+                lex.jump(0, true)?;
                 break
             }
         }
@@ -83,7 +87,6 @@ impl ParserStatParameters {
         if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::colon_) {
             dt.parse(lex)?;
         }
-
         lex.expect_many(vec![ 
             KEYWORD::symbol(SYMBOL::semi_),
             KEYWORD::symbol(SYMBOL::equal_),
@@ -115,7 +118,7 @@ impl ParserStatParameters {
             newnode.set_loc(loc.clone());
             nodes.push(newnode);
         }
-        lex.until_char(";", ")")?;
+        lex.until_key(vec![KEYWORD::symbol(SYMBOL::roundC_), KEYWORD::symbol(SYMBOL::semi_)])?;
         Ok(nodes)
     }
 }

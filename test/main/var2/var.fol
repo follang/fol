@@ -41,13 +41,13 @@ def '$'(a: any): mac = '.to_string(a)'
 def '~var': alt = 'var[~]'
 def 'str': def[] = 'str[new,mut,nor]'
 
-fun one(two: int): int = { <expression> }
+fun one(): int = { <expression> }
 fun one(two: int): int = { <expression> }
 !fun[hid, exp, three] one(two: int): int = { <expression> }
 ~log[] one(two: int): int = { <expression> }
-fun[] '!='(one, two: int): bol = { <expression> }
+fun[] `!=`(one, two: int): bol = { <expression> }
 ~pro[obj] one(two: int): int = { <expression> }
-~pro[obj] '$': str = { <expression> } */
+~pro[obj] `$`(): str = { <expression> } */
 ~pro[] one(gon: gen[]; two: int): int = { <expression> }
 fun[] add1(adder: rut[(x: int): int]): int = { <expression> }
-fun[] add1(adder: rut[(x: int): int]): int = { <expression> }
+fun[] add2(adder: rut[(x: int): int]; gold: int): int = { <expression> }
