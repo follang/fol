@@ -1,5 +1,5 @@
 use std::fmt;
-use crate::syntax::lexer::text;
+use crate::syntax::lexer::stage0;
 
 use crate::types::*;
 use crate::syntax::token::{help::*, KEYWORD, KEYWORD::*};
@@ -87,7 +87,7 @@ impl Iterator for Elements {
 
 /// Creates a iterator that produces tokens from the input string.
 pub fn elements(file: &source::Source) -> impl Iterator<Item = Con<Element>>  {
-    let mut txt = Box::new(text::Text::init(file));
+    let mut txt = Box::new(stage0::Elements::init(file));
     // *sins = *txt.sins();
     std::iter::from_fn(move || {
         if let Some(v) = txt.bump() {

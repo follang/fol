@@ -4,18 +4,18 @@ use crate::types::*;
 use crate::syntax::point;
 use crate::syntax::token::help::*;
 use crate::syntax::index::*;
-use crate::syntax::lexer::text::reader;
+use crate::syntax::lexer::stage0::reader;
 
 type Part<T> = (T, point::Location);
 
-pub struct Text {
+pub struct Elements {
     chars: Box<dyn Iterator<Item = Con<Part<char>>>>,
     win: Win<Con<Part<char>>>,
     _in_count: usize,
     _source: Source,
 }
 
-impl Text {
+impl Elements {
     pub fn curr(&self) -> Con<Part<char>> {
         self.win.1.clone()
     }
@@ -81,7 +81,7 @@ impl Text {
     }
 }
 
-impl Iterator for Text {
+impl Iterator for Elements {
     type Item = Con<Part<char>>;
     fn next(&mut self) -> Option<Self::Item> {
         self.bump()
@@ -89,7 +89,7 @@ impl Iterator for Text {
 }
 
 
-impl fmt::Display for Text {
+impl fmt::Display for Elements {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if let Ok(ok) = self.win.1.clone() {
             write!(f, "{} {}", self.win.1.clone().unwrap().1, self.win.1.clone().unwrap().0)
