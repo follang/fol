@@ -66,7 +66,7 @@ impl Element {
         self.loc.longer(&other.loc.len())
     }
 
-    pub fn analyze(&mut self, el: &mut stage1::Elements, src: &index::Source) -> Vod {
+    pub fn analyze(&mut self, el: &mut stage1::Elements) -> Vod {
         // EOL => SPACE
         if el.curr()?.key().is_eol()
             && (el.seek(0)?.key().is_nonterm()
@@ -95,7 +95,7 @@ impl Element {
         else if el.curr()?.key().is_symbol() 
             && el.peek(0)?.key().is_assign() 
         { 
-            self.make_syoption(el, src)?;
+            self.make_syoption(el)?;
         }
         // numberfile_
         else if el.curr()?.key().is_number() && !el.seek(0)?.key().is_void() {
@@ -106,7 +106,7 @@ impl Element {
             || el.seek(0)?.key().is_continue() 
             || el.seek(0)?.key().is_eol())
         {
-            self.make_number(el, src)?;
+            self.make_number(el)?;
         } 
         // operators
         else if el.curr()?.key().is_symbol()
@@ -115,7 +115,7 @@ impl Element {
             || !(matches!(el.peek(0)?.key(), KEYWORD::symbol(SYMBOL::semi_))))
             && (el.seek(0)?.key().is_void() || el.seek(0)?.key().is_bracket())
         {
-            self.make_multi_operator(el, src)?;
+            self.make_multi_operator(el)?;
         }
         else if el.curr()?.key().is_symbol()
             && el.peek(0)?.key().is_assign()
@@ -123,7 +123,7 @@ impl Element {
                 || el.seek(0)?.key().is_void()
                 || el.seek(0)?.key().is_eol())
         {
-            self.make_syoption(el, src)?;
+            self.make_syoption(el)?;
         }
         else if matches!(el.curr()?.key(), KEYWORD::ident) 
         {
@@ -133,7 +133,7 @@ impl Element {
         Ok(())
     }
 
-    pub fn make_multi_operator(&mut self, el: &mut stage1::Elements, src: &index::Source) -> Vod {
+    pub fn make_multi_operator(&mut self, el: &mut stage1::Elements) -> Vod {
         while el.peek(0)?.key().is_symbol() && !el.peek(0)?.key().is_bracket() {
             self.append(&el.peek(0)?.into());
             self.bump(el);
@@ -158,7 +158,7 @@ impl Element {
         }
         Ok(())
     }
-    pub fn make_syoption(&mut self, el: &mut stage1::Elements, src: &index::Source) -> Vod {
+    pub fn make_syoption(&mut self, el: &mut stage1::Elements) -> Vod {
         match self.con().as_str() {
             "~" => self.set_key(option(OPTION::mut_)),
             "!" => self.set_key(option(OPTION::sta_)),
@@ -170,7 +170,7 @@ impl Element {
         Ok(())
     }
 
-    pub fn make_number(&mut self, el: &mut stage1::Elements, src: &index::Source) -> Vod{
+    pub fn make_number(&mut self, el: &mut stage1::Elements) -> Vod{
         self.set_key(literal(LITERAL::decimal_));
         if matches!(el.curr()?.key(), KEYWORD::symbol(SYMBOL::minus_)) && el.peek(0)?.key().is_decimal()
         {
@@ -198,12 +198,12 @@ impl Element {
             return Err(catch!(Typo::LexerSpaceAdd{ 
                 msg: Some(format!("Expected {} but {} was given", KEYWORD::void(VOID::space_), elem.key())),
                 loc: Some(elem.loc().clone()),
-                src: src.clone(),
+                src: el.curr()?.loc().source(),
             }))
         }
         Ok(())
     }
-    pub fn make_comment(&mut self, el: &mut stage1::Elements, src: &index::Source) -> Vod {
+    pub fn make_comment(&mut self, el: &mut stage1::Elements) -> Vod {
         if matches!(el.peek(0)?.key(), KEYWORD::symbol(SYMBOL::root_)) {
             while !el.peek(0)?.key().is_eol() {
                 self.append(&el.peek(0)?.into());

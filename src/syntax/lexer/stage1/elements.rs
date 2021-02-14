@@ -13,7 +13,7 @@ pub struct Elements {
 
 
 impl Elements {
-    pub fn init(file: &index::Source) -> Self {
+    pub fn init(file: &index::Input) -> Self {
         let mut prev = Vec::with_capacity(SLIDER);
         let mut next = Vec::with_capacity(SLIDER);
         let mut elem = Box::new(elements(file));
@@ -83,9 +83,8 @@ impl Iterator for Elements {
 
 
 /// Creates a iterator that produces tokens from the input string.
-pub fn elements(file: &index::Source) -> impl Iterator<Item = Con<Element>>  {
-    let input = index::Input::Source(file.clone());
-    let mut txt = Box::new(stage0::Elements::init(&input));
+pub fn elements(file: &index::Input) -> impl Iterator<Item = Con<Element>>  {
+    let mut txt = Box::new(stage0::Elements::init(file));
     // *sins = *txt.sins();
     std::iter::from_fn(move || {
         if let Some(v) = txt.bump() {
