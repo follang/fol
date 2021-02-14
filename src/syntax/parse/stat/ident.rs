@@ -4,6 +4,7 @@ use crate::syntax::nodes::*;
 use crate::syntax::token::*;
 use crate::syntax::lexer;
 use super::Parse;
+use crate::syntax::parse::check;
 
 pub use crate::syntax::nodes::stat::ident::*;
 
@@ -23,7 +24,7 @@ impl Parse for ParserStatIdent {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
         while !lex.curr(true)?.key().is_eof() {
-            lex.expect( KEYWORD::ident , true)?; lex.eat();
+            check::expect(lex, KEYWORD::ident , true)?; lex.eat();
             let identnode = NodeStatIdent::new(lex.curr(false)?.con().clone());
             self.nodes.push(Node::new(Box::new(identnode)));
             lex.jump(0, true)?;
@@ -44,7 +45,7 @@ impl Parse for ParserStatIdent {
 
 impl ParserStatIdent {
     pub fn parse_2(&mut self, lex: &mut lexer::Elements) -> Vod {
-        lex.expect_types(true)?; lex.eat();
+        check::expect_types(lex, true)?; lex.eat();
         let identnode = NodeStatIdent::new(lex.curr(false)?.con().clone());
         self.nodes.push(Node::new(Box::new(identnode)));
         lex.jump(0, true)?;

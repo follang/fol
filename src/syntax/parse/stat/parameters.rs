@@ -4,6 +4,7 @@ use crate::syntax::nodes::{Node, Nodes, NodeStatAssVar};
 use crate::syntax::token::*;
 use crate::syntax::lexer;
 use super::Parse;
+use crate::syntax::parse::check;
 
 use crate::syntax::parse::stat::assign::opts::*;
 use crate::syntax::parse::stat::ident::*;
@@ -73,7 +74,7 @@ impl ParserStatParameters {
                 node.set_options(Some(opts.nodes.clone()));
             }
             // match space after "var" or after "[opts]"
-            lex.expect_void()?;
+            check::expect_void(lex)?;
             lex.jump(0, false)?;
 
         }
@@ -87,7 +88,7 @@ impl ParserStatParameters {
         if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::colon_) {
             dt.parse(lex)?;
         }
-        lex.expect_many(vec![ 
+        check::expect_many(lex, vec![ 
             KEYWORD::symbol(SYMBOL::semi_),
             KEYWORD::symbol(SYMBOL::equal_),
             KEYWORD::symbol(SYMBOL::roundC_),
@@ -118,7 +119,7 @@ impl ParserStatParameters {
             newnode.set_loc(loc.clone());
             nodes.push(newnode);
         }
-        lex.until_key(vec![KEYWORD::symbol(SYMBOL::roundC_), KEYWORD::symbol(SYMBOL::semi_)])?;
+        check::until_key(lex, vec![KEYWORD::symbol(SYMBOL::roundC_), KEYWORD::symbol(SYMBOL::semi_)])?;
         Ok(nodes)
     }
 }

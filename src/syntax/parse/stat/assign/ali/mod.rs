@@ -4,6 +4,7 @@ use crate::syntax::nodes::{Node, Nodes, NodeStatAssAli};
 use crate::syntax::token::*;
 use crate::syntax::lexer;
 use super::Parse;
+use crate::syntax::parse::check;
 
 use crate::syntax::parse::stat::assign::opts::*;
 use crate::syntax::parse::stat::ident::*;
@@ -40,7 +41,7 @@ impl Parse for ParserStatAssAli {
         }
 
         // match "typ"
-        lex.expect( KEYWORD::assign(ASSIGN::ali_) , true)?;
+        check::expect(lex, KEYWORD::assign(ASSIGN::ali_) , true)?;
         lex.jump(0, false)?;
 
         // match options after var  -> "[opts]"
@@ -52,7 +53,7 @@ impl Parse for ParserStatAssAli {
         }
 
         // match space after "var" or after "[opts]"
-        lex.expect_void()?;
+        check::expect_void(lex)?;
         lex.jump(0, false)?;
 
         // match indentifier "ident"
@@ -78,7 +79,7 @@ impl Parse for ParserStatAssAli {
             dt.parse(lex)?;
         }
 
-        lex.expect_many(vec![ 
+        check::expect_many(lex, vec![ 
             KEYWORD::symbol(SYMBOL::semi_),
             KEYWORD::symbol(SYMBOL::equal_),
             KEYWORD::void(VOID::endline_)

@@ -4,6 +4,7 @@ use crate::syntax::nodes::*;
 use crate::syntax::token::*;
 use crate::syntax::lexer;
 use super::Parse;
+use crate::syntax::parse::check;
 
 pub use crate::syntax::nodes::stat::datatype::*;
 
@@ -30,7 +31,7 @@ impl Parse for ParserStatDatatypes {
 
         while !lex.curr(true)?.key().is_eof() {
         // match type
-            lex.expect_types(true)?; lex.eat();
+            check::expect_types(lex, true)?; lex.eat();
             if let KEYWORD::types(a) = lex.curr(true)?.key() {
                 let dt: datatype::NodeExprDatatype = a.into();
                 let node = Node::new(Box::new(dt));
@@ -40,12 +41,12 @@ impl Parse for ParserStatDatatypes {
 
             // match options after type  -> "[opts]"
             if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::squarO_) {
-                lex.until_bracket()?;
+                check::until_bracket(lex)?;
             }
 
             // match restrictions after type  -> "[rest]"
             if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::squarO_) {
-                lex.until_bracket()?;
+                check::until_bracket(lex)?;
             }
             if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::equal_)
                 || lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::semi_)

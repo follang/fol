@@ -4,6 +4,7 @@ use crate::syntax::nodes::{Node, Nodes, NodeStatAssTyp};
 use crate::syntax::token::*;
 use crate::syntax::lexer;
 use super::Parse;
+use crate::syntax::parse::check;
 
 use crate::syntax::parse::stat::assign::opts::*;
 use crate::syntax::parse::stat::ident::*;
@@ -47,7 +48,7 @@ impl Parse for ParserStatAssTyp {
             }
 
             // match "var"
-            lex.expect( KEYWORD::assign(ASSIGN::typ_) , true)?;
+            check::expect(lex,  KEYWORD::assign(ASSIGN::typ_) , true)?;
             lex.jump(0, false)?;
 
             // match options after var  -> "[opts]"
@@ -59,7 +60,7 @@ impl Parse for ParserStatAssTyp {
             }
 
             // match space after "var" or after "[opts]"
-            lex.expect_void()?;
+            check::expect_void(lex)?;
             lex.jump(0, false)?;
 
             // march "(" to go recursively
@@ -77,14 +78,14 @@ impl Parse for ParserStatAssTyp {
                     nodes.extend(newself.nodes);
 
                     //go to next one
-                    lex.expect_terminal()?;
+                    check::expect_terminal(lex)?;
                     lex.bump();
 
                     // match and eat ")"
                     if matches!(lex.curr(true)?.key(), KEYWORD::symbol(SYMBOL::roundC_)) {
                         lex.jump(0, true)?;
                         //expect endline
-                        lex.expect_terminal()?;
+                        check::expect_terminal(lex)?;
                         break
                     }
                 }
@@ -113,7 +114,7 @@ impl Parse for ParserStatAssTyp {
             dt.parse(lex)?;
         }
 
-        lex.expect_many(vec![ 
+        check::expect_many(lex, vec![ 
             KEYWORD::symbol(SYMBOL::semi_),
             KEYWORD::symbol(SYMBOL::equal_),
             KEYWORD::void(VOID::endline_)

@@ -4,6 +4,8 @@ use crate::syntax::nodes::{Node, Nodes};
 use crate::syntax::token::*;
 use crate::syntax::lexer;
 
+pub mod check;
+
 pub mod stat;
 pub mod expr;
 pub use crate::syntax::parse::stat::*;

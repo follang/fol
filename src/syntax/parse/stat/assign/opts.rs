@@ -4,6 +4,7 @@ use crate::syntax::nodes::*;
 use crate::syntax::token::*;
 use crate::syntax::lexer;
 use super::Parse;
+use crate::syntax::parse::check;
 
 pub use crate::syntax::nodes::stat::assign::opts::*;
 
@@ -38,7 +39,7 @@ impl Parse for ParserStatAssOpts {
         }
         while !lex.curr(true)?.key().is_eof() {
             // checks if no recivers then expect only options
-            if !self._recivers { lex.expect_option(true)?; }
+            if !self._recivers { check::expect_option(lex, true)?; }
 
             // checks if option
             if let KEYWORD::option(a) = lex.curr(true)?.key() {
@@ -52,7 +53,7 @@ impl Parse for ParserStatAssOpts {
                 self.recivers.push(node);
             // error if not procedure, type or ident
             } else {
-                lex.expect_many(vec![ 
+                check::expect_many(lex, vec![ 
                     KEYWORD::ident,
                     KEYWORD::option(OPTION::ANY),
                     KEYWORD::types(TYPE::ANY)

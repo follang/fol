@@ -4,6 +4,7 @@ use crate::syntax::nodes::{Node, Nodes, NodeStatAssFun};
 use crate::syntax::token::*;
 use crate::syntax::lexer;
 use super::Parse;
+use crate::syntax::parse::check;
 
 use crate::syntax::parse::stat::assign::opts::*;
 use crate::syntax::parse::stat::ident::*;
@@ -33,14 +34,13 @@ impl Parse for ParserStatAssFun {
         if matches!(lex.curr(true)?.key(), KEYWORD::option(_) ) {
             if let KEYWORD::option(a) = lex.curr(true)?.key() {
                 let assopt: AssOptsTrait = a.into();
-                let node = Node::new(Box::new(assopt));
-                opts.push(node);
+                opts.push(Node::new(Box::new(assopt)));
             }
             lex.jump(0, true)?;
         }
 
         // match "typ"
-        // lex.expect( KEYWORD::assign(ASSIGN::fun_) , true)?;
+        // expect( KEYWORD::assign(ASSIGN::fun_) , true)?;
         lex.jump(0, false)?;
 
         // match options after var  -> "[opts]"
@@ -56,7 +56,7 @@ impl Parse for ParserStatAssFun {
         }
 
         // match space after "var" or after "[opts]"
-        lex.expect_void()?;
+        check::expect_void(lex)?;
         lex.jump(0, false)?;
 
         // match indentifier "ident"
@@ -78,7 +78,7 @@ impl Parse for ParserStatAssFun {
             dt.parse(lex)?;
         }
 
-        lex.expect_many(vec![ 
+        check::expect_many(lex, vec![ 
             KEYWORD::symbol(SYMBOL::semi_),
             KEYWORD::symbol(SYMBOL::equal_),
             KEYWORD::void(VOID::endline_)

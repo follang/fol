@@ -4,6 +4,7 @@ use crate::syntax::nodes::{Node, Nodes};
 use crate::syntax::token::*;
 use crate::syntax::lexer;
 use super::Parse;
+use crate::syntax::parse::check;
 
 pub use crate::syntax::nodes::stat::ident::*;
 
@@ -29,7 +30,7 @@ impl Parse for ParserStatContract {
             return Ok(())
         }
         while !lex.curr(true)?.key().is_eof() {
-            lex.expect( KEYWORD::ident , true)?; lex.eat();
+            check::expect(lex, KEYWORD::ident , true)?; lex.eat();
             let identnode = NodeStatIdent::new(lex.curr(false)?.con().clone());
             self.nodes.push(Node::new(Box::new(identnode)));
             lex.jump(0, true)?;
