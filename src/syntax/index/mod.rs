@@ -14,7 +14,6 @@ pub struct Lines {
     _source: Option<Source>,
 }
 
-
 impl Lines {
     pub fn source(&self) -> Option<Source> { self._source.clone() }
     pub fn init(input: Input) -> Self {
@@ -42,8 +41,6 @@ impl Iterator for Lines {
         self.lines.next()
     }
 }
-
-
 
 pub fn source_lines(src: &Source) -> impl Iterator<Item = String> {
     let mut reader = reader::BufReader::open(src.path(true)).unwrap();
