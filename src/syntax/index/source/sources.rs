@@ -1,6 +1,6 @@
 use crate::types::Con;
 use crate::colored::Colorize;
-use crate::syntax::index::source::Source;
+use crate::syntax::index::source::{Source, source};
 use crate::types::error::Flaw;
 
 pub struct Sources {
@@ -41,7 +41,7 @@ pub fn sources(input: String) -> impl Iterator<Item = Source> {
     let red: Vec<Source>;
     match check_file_dir(&input) {
         Ok(input) => {
-            match Source::from_folder(&input) {
+            match source::from_folder(&input) {
                 Ok(files) => { red = files }
                 Err(e) => { crash!(e) }
             }
