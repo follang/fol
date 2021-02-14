@@ -19,17 +19,13 @@ pub enum SourceType {
 }
 
 impl Source {
-    pub fn init(s: &str) -> Con<Vec<Self>> {
-        let mut vec = Vec::new();
-        let e = full_path(s)?;
-        for f in from_dir(&e)? {
-            vec.push( Source {
-                call: s.to_string(),
-                path: full_path(&f)?,
-            } );
+    pub fn folder(input: &str) -> Vec<Self> {
+        match from_folder(input) {
+            Ok(s) => { s }
+            Err(e) => { crash!(e) }
         }
-        Ok(vec)
     }
+    
 
     /// getting the full path or relatve path
     pub fn path(&self, abs: bool) -> String {
@@ -81,6 +77,23 @@ impl fmt::Display for Source {
     }
 }
 
+pub fn from_folder(input: &str) -> Con<Vec<Source>> {
+        let mut vec = Vec::new();
+        match check_file_dir(input) {
+            Ok(s) => {
+                let e = full_path(&s)?;
+                for f in from_dir(&e)? {
+                    vec.push( Source {
+                        call: s.to_string(),
+                        path: full_path(&f)?,
+                    } );
+                }
+            }
+            Err(e) => { return Err(e) }
+        }
+        Ok(vec)
+    }
+
 fn full_path(s: &str) -> Con<String> {
     let e = std::fs::canonicalize(s.to_string()).unwrap()
         .as_path()
@@ -120,13 +133,6 @@ fn from_dir(s: &str) -> Con<Vec<String>> {
     }
 }
 
-// pub fn read_vec_file(s: &str) -> Result<Vec<u8>, std::io::Error> {
-//     let mut buffer = Vec::new();
-//     File::open(s)?.read_to_end(&mut buffer)?;
-//     Ok(buffer)
-// }
-
-
 fn read_string_file(s: &str) -> Con<String> {
     let mut string = String::new();
     let msg = format!("{}", "Error whil reading file".red());
@@ -147,3 +153,21 @@ fn read_string_file(s: &str) -> Con<String> {
         Err(e) => { Err(catch!(Flaw::ReadingBadContent{msg: Some(e.to_string())})) }
     }
 }
+
+fn check_file_dir(s: &str) -> Con<String> {
+    let path = std::path::Path::new(s);
+    if !path.exists() { 
+        let msg = format!("path: {} is not a valid path", s.red());
+        return Err( catch!(Flaw::GettingWrongPath{msg: Some(msg)}) );
+    };
+    if path.is_dir() {
+        Ok(full_path(s)?)
+    } else if path.is_file() {
+        Ok(path.parent().unwrap().to_str().unwrap().to_string())
+    } else {
+        let msg = format!("path: {} is not a valid file", s.red());
+        Err( catch!(Flaw::ReadingBadContent{msg: Some(msg)}) )
+    }
+}
+
+

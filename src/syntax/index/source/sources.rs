@@ -41,7 +41,7 @@ pub fn sources(input: String) -> impl Iterator<Item = Source> {
     let red: Vec<Source>;
     match check_file_dir(&input) {
         Ok(input) => {
-            match Source::init(&input) {
+            match Source::from_folder(&input) {
                 Ok(files) => { red = files }
                 Err(e) => { crash!(e) }
             }

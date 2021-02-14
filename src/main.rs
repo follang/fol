@@ -12,14 +12,14 @@ extern crate colored;
 extern crate dyn_clone;
 extern crate terminal_size;
 
-use crate::syntax::index::Sources;
+use crate::syntax::index::Source;
 use crate::syntax::lexer;
 use crate::syntax::parse;
 
 fn main() {
     let path = "./test/main/var2".to_string();
-    let sources = Sources::init(path);
-    for e in sources {
+    let sources = Source::folder(&path);
+    for e in sources.iter() {
         let mut elems = lexer::Elements::init(&e);
         // while let Some(c) = elems.bump() {
         //     match c {
@@ -27,6 +27,6 @@ fn main() {
         //         Err(e) => { println!("\n{}", e); }
         //     }
         // }
-        let parser = parse::Parser::init(&mut elems, e);
+        let parser = parse::Parser::init(&mut elems, e.clone());
     }
 }

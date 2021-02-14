@@ -11,10 +11,11 @@ pub struct Elements {
     chars: Box<dyn Iterator<Item = Con<Part<char>>>>,
     win: Win<Con<Part<char>>>,
     _in_count: usize,
-    _source: index::Source,
+    _source: Option<index::Source>,
 }
 
 impl Elements {
+    pub fn source(&self) -> Option<index::Source> { self._source.clone() }
     pub fn curr(&self) -> Con<Part<char>> {
         self.win.1.clone()
     }
@@ -40,14 +41,15 @@ impl Elements {
     pub fn init(file: &index::Source, is_string: bool) -> Self {
         let mut prev = Vec::with_capacity(SLIDER);
         let mut next = Vec::with_capacity(SLIDER);
-        let mut chars = Box::new(gen(file, is_string));
+        let (src, itr) = gen(file, is_string);
+        let mut chars = Box::new(itr);
         for _ in 0..SLIDER { prev.push(Ok(('\0', point::Location::default()))) }
         for _ in 0..SLIDER { next.push(chars.next().unwrap_or(Ok(('\0', point::Location::default())))) }
         Self {
             chars,
             win: (prev, Ok(('\0', point::Location::default())), next),
             _in_count: SLIDER,
-            _source: file.clone(),
+            _source: src,
         }
     }
 
@@ -99,13 +101,13 @@ impl fmt::Display for Elements {
 }
 
 
-pub fn gen(file: &index::Source, is_string: bool) -> impl Iterator<Item = Con<Part<char>>> {
+pub fn gen(file: &index::Source, is_string: bool) -> (Option<index::Source>, impl Iterator<Item = Con<Part<char>>>) {
     let mut lines = index::Lines::init(index::Input::Soruce(file.clone()));
     let mut chars = get_chars(lines.next().unwrap());
     let mut loc = point::Location::default();
     loc.adjust(1,0);
     let mut last_eol = false;
-    std::iter::from_fn(move || {
+    (lines.source(), std::iter::from_fn(move || {
         match chars.next() {
             Some(i) => {
                 loc.new_char();
@@ -132,7 +134,7 @@ pub fn gen(file: &index::Source, is_string: bool) -> impl Iterator<Item = Con<Pa
                 }
             }
         };
-    })
+    }))
 }
 
 

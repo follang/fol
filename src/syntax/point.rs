@@ -19,6 +19,7 @@ pub struct Location {
     col: usize,
     len: usize,
     deep: isize,
+    src: Source,
 }
 
 impl std::default::Default for Location {
@@ -28,6 +29,7 @@ impl std::default::Default for Location {
             col: 0,
             len: 0,
             deep: 0,
+            src: Source::default(),
         }
     }
 }
@@ -71,12 +73,14 @@ impl Location {
         col: usize,
         len: usize,
         deep: isize,
+        src: Source
     ) -> Self {
         Location {
             row,
             col,
             len,
             deep,
+            src,
         }
     }
 
