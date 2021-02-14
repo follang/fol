@@ -1,6 +1,9 @@
+use colored::Colorize;
 use crate::types::*;
 use crate::syntax::lexer;
 use crate::syntax::token::*;
+use crate::syntax::point;
+use crate::syntax::index;
 
 pub fn expect(lex: &mut lexer::Elements, keyword: KEYWORD, ignore: bool) -> Vod {
     if lex.curr(ignore)?.key() == keyword {
@@ -135,5 +138,19 @@ pub fn until_bracket(lex: &mut lexer::Elements) -> Vod {
         lex.bump();
     }
     lex.bump();
+    Ok(())
+}
+
+pub fn type_balance(idents: usize, dt: usize, loc: &point::Location, src: &index::Source) -> Vod {
+    if dt > idents {
+        return Err( catch!( Typo::ParserTypeDisbalance {
+            msg: Some(format!(
+                "number of identifiers: {} is smaller than number of types: {}",
+                format!("[ {} ]", idents).black().on_red(), format!("[ {} ]", dt).black().on_red(),
+                )),
+            loc: Some(loc.clone()), 
+            src: src.clone(),
+        }))
+    }
     Ok(())
 }

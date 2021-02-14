@@ -84,18 +84,7 @@ impl Parse for ParserStatAssAli {
             KEYWORD::symbol(SYMBOL::equal_),
             KEYWORD::void(VOID::endline_)
         ], true)?;
-
-        if dt.nodes.len() > idents.nodes.len() {
-            return Err( catch!( Typo::ParserTypeDisbalance {
-                msg: Some(format!(
-                    "number of identifiers: [{}] is smaller than number of types [{}]",
-                    idents.nodes.len(),
-                    dt.nodes.len(),
-                    )),
-                loc: Some(loc.clone()), 
-                src: self._source.clone(),
-            }))
-        }
+        check::type_balance(idents.nodes.len(), dt.nodes.len(), &loc, &self._source )?;
 
         for i in 0..idents.nodes.len() {
             if dt.nodes.len() > 0 {
