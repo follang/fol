@@ -36,10 +36,10 @@ impl Elements {
         self.prev_vec()[u].clone() 
     }
 
-    pub fn init(file: &index::Source, is_string: bool) -> Self {
+    pub fn init(file: &index::Input) -> Self {
         let mut prev = Vec::with_capacity(SLIDER);
         let mut next = Vec::with_capacity(SLIDER);
-        let mut chars = Box::new(gen(file, is_string));
+        let mut chars = Box::new(gen(file));
         for _ in 0..SLIDER { prev.push(Ok(('\0', point::Location::default()))) }
         for _ in 0..SLIDER { next.push(chars.next().unwrap_or(Ok(('\0', point::Location::default())))) }
         Self {
@@ -97,11 +97,12 @@ impl fmt::Display for Elements {
 }
 
 
-pub fn gen(file: &index::Source, is_string: bool) -> impl Iterator<Item = Con<Part<char>>> {
-    let mut lines = index::Lines::init(index::Input::Soruce(file.clone()));
+pub fn gen(file: &index::Input) -> impl Iterator<Item = Con<Part<char>>> {
+    let mut lines = index::Lines::init(file);
     let mut chars = get_chars(lines.next().unwrap());
     let mut loc = point::Location::default();
-    loc.adjust(1,0); loc.set_source(&file);
+    if let index::Input::Source(s) = file { loc.set_source(&s); }
+    loc.adjust(1,0); 
     let mut last_eol = false;
     std::iter::from_fn(move || {
         match chars.next() {

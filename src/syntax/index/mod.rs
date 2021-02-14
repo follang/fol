@@ -5,7 +5,7 @@ pub use crate::syntax::index::source::Source;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)] 
 pub enum Input {
-    Soruce(Source),
+    Source(Source),
     String(String),
 }
 
@@ -16,11 +16,11 @@ pub struct Lines {
 
 impl Lines {
     pub fn source(&self) -> Option<Source> { self._source.clone() }
-    pub fn init(input: Input) -> Self {
+    pub fn init(input: &Input) -> Self {
         let lines: Box<dyn Iterator<Item = String>>;
         let mut _source = None;
         match input.clone() {
-            Input::Soruce(s) => { 
+            Input::Source(s) => { 
                 _source = Some(s.clone());
                 lines = Box::new(source_lines(&s));
             },
