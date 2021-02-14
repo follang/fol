@@ -1,7 +1,7 @@
 pub mod source;
 pub mod reader;
 
-pub use crate::syntax::index::source::{Source, Sources};
+pub use crate::syntax::index::source::Source;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)] 
 pub enum Input {
@@ -69,24 +69,3 @@ pub fn string_lines(src: &String) -> impl Iterator<Item = String> {
         Some(line.to_string())
     })
 }
-
-// pub fn sources_lines(src: &String) -> impl Iterator<Item = String> {
-//     let mut sources = Sources::init(src.to_string());
-//     let mut line = source_lines(&sources.next().unwrap());
-//     std::iter::from_fn(move || {
-//         match line.next() {
-//             Some(line) =>  { return Some(line) },
-//             None => {
-//                 match sources.next() {
-//                     Some(source) => {
-//                         line = source_lines(&source);
-//                         return Some("\0".to_string())
-//                     },
-//                     None => { 
-//                         return None 
-//                     }
-//                 }
-//             }
-//         }
-//     })
-// }

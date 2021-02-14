@@ -17,9 +17,8 @@ use crate::syntax::lexer;
 use crate::syntax::parse;
 
 fn main() {
-    let path = "./test/main/var2".to_string();
-    let sources = Source::folder(&path);
-    for e in sources.iter() {
+    let path = "./test/main/main.fol".to_string();
+    for e in Source::init(&path, true).iter() {
         let mut elems = lexer::Elements::init(&e);
         // while let Some(c) = elems.bump() {
         //     match c {
