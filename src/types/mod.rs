@@ -15,14 +15,6 @@ pub type Win<T> = (Vec<T>, T, Vec<T>);
 pub type Con<T> = Result<T, Box<(dyn Glitch + 'static)>>;
 pub type Vod = Result<(), Box<(dyn Glitch + 'static)>>;
 
-// impl<T> From<Con<T>> for Vod {
-//     fn from(stat: Con<T>) -> Self {
-//         if let Err(e) = stat {
-//             return Err(e)
-//         } else { return () }
-//     }
-// }
-
 #[macro_export]
 macro_rules! catch {
     ($err:expr $(,)?) => ({ Box::new($err) });
@@ -41,8 +33,22 @@ macro_rules! halt {
 
 
 #[macro_export]
-macro_rules! printer {
-    ($err:expr $(,)?) => ({ for e in $err { println!("{}", e)} });
+macro_rules! errinter {
+    ($err:expr $(,)?) => ({ 
+        for e in $err.iter().enumerate() { 
+            let bup = border_up("-", " FLAW: #".to_string() + &e.0.to_string() + " ");
+            println!("{}{}", bup, e.1)
+        } 
+    });
+}
+
+#[macro_export]
+macro_rules! nodinter {
+    ($nod:expr $(,)?) => ({ 
+        for e in $nod { 
+            println!("{}\t{}", e.loc().unwrap(), e);
+        } 
+    });
 }
 
 #[macro_export]

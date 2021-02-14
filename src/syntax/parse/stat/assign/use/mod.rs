@@ -42,7 +42,7 @@ impl Parse for ParserStatAssUse {
         let mut node = NodeStatAssUse::default();
         if !self._recurse {
             // match symbol before var  -> "~"
-            let mut opts = ParserStatAssOpts::init(self._source.clone());
+            let mut opts = ParserStatAssOpts::init(self._source.clone(), false);
             if matches!(lex.curr(true)?.key(), KEYWORD::option(_) ) {
                 if let KEYWORD::option(a) = lex.curr(true)?.key() {
                     let assopt: AssOptsTrait = a.into();

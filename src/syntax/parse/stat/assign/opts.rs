@@ -16,11 +16,11 @@ pub struct ParserStatAssOpts {
 }
 
 impl ParserStatAssOpts {
-    pub fn init(src: Source) -> Self {
+    pub fn init(src: Source, recivers: bool) -> Self {
         Self { 
             nodes: Nodes::new(),
             _source: src,
-            _recivers: false,
+            _recivers: recivers,
             recivers: Nodes::new(),
         } 
     }

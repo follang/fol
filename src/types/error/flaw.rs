@@ -69,12 +69,11 @@ impl fmt::Display for Flaw {
                 m = msg.as_ref();
             },
         };
-        write!(f, "{}{} >> {}:{}{}{}",
-            border_up("-", String::new()).bright_black(),
+        write!(f, "{} >> {}:{}{}{}",
             " FLAW ".black().on_red(),
             (" ".to_string() + &s + " file ").black().on_white().to_string(), v.on_red().bold().to_string(),
             match m { Some(val) => "\n".to_string() + &val.to_string(), None => "".to_string() },
-            border_down("-", " fol --explain err#".to_string() + "001" + " ").bright_black()
+            border_down("-", " fol --explain err#".to_string() + "001" + " ")
         )
     }
 }

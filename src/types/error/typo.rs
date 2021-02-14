@@ -187,13 +187,12 @@ impl fmt::Display for Typo {
                 id = "TYPO012"
             },
         };
-        write!(f, "{}{} >> {}:{}{}{}{}",
-            border_up("-", String::new()).bright_black(),
+        write!(f, "{} >> {}:{}{}{}{}",
             " TYPO ".black().on_red(),
             (" ".to_string() + &s + " stage ").black().on_white().to_string(), v.on_red().bold().to_string(),
             match l { Some(val) => "\n".to_string() + &val.visualize(&source), None => "".to_string() },
             match m { Some(val) => "\n".to_string() + &val.to_string(), None => "".to_string() },
-            border_down("-", " fol --explain err#".to_string() + id + " ").bright_black()
+            border_down("-", " fol --explain err#".to_string() + id + " ")
         )
     }
 }

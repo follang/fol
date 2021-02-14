@@ -27,16 +27,16 @@ impl fmt::Display for Repo {
     }
 }
 
-fn border_up(chr: &str, msg: String) -> String {
+pub fn border_up(chr: &str, msg: String) -> String {
     let mut width = if let Some((Width(w), Height(h))) = terminal_size() { w as usize } else { 5 };
     width = width - msg.len();
     let middle = 5;
-    format!("{}{}{}\n", chr.repeat(width - middle), msg.red(), chr.repeat(middle))
+    format!("{}{}{}\n", chr.repeat(width - middle).bright_black(), msg.red(), chr.repeat(middle).bright_black())
 }
 
 fn border_down(chr: &str, msg: String) -> String {
     let mut width = if let Some((Width(w), Height(h))) = terminal_size() { w as usize } else { 5 };
     width = width - msg.len();
     let middle = 5;
-    format!("\n{}{}{}", chr.repeat(width - middle), msg.red(), chr.repeat(middle))
+    format!("\n{}{}{}", chr.repeat(width - middle).bright_black(), msg.red(), chr.repeat(middle).bright_black())
 }

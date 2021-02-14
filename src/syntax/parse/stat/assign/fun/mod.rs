@@ -30,7 +30,7 @@ impl Parse for ParserStatAssFun {
         let loc = lex.curr(true)?.loc().clone();
         let mut node = NodeStatAssFun::default();
         // match symbol before var  -> "~"
-        let mut opts = ParserStatAssOpts::init(self._source.clone());
+        let mut opts = ParserStatAssOpts::init(self._source.clone(), true);
         if matches!(lex.curr(true)?.key(), KEYWORD::option(_) ) {
             if let KEYWORD::option(a) = lex.curr(true)?.key() {
                 let assopt: AssOptsTrait = a.into();
@@ -45,7 +45,6 @@ impl Parse for ParserStatAssFun {
 
         // match options after var  -> "[opts]"
         if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::squarO_) {
-            opts.recivers();
             opts.parse(lex)?;
             if opts.nodes.len() > 0 {
                 node.set_options(Some(opts.nodes.clone()));
