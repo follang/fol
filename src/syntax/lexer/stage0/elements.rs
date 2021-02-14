@@ -3,7 +3,7 @@ use std::str::Chars;
 use crate::types::{Vod, Con, Win, SLIDER};
 use crate::syntax::point;
 use crate::syntax::token::help;
-use crate::syntax::index::{Source, source::reader};
+use crate::syntax::index;
 
 type Part<T> = (T, point::Location);
 
@@ -11,7 +11,7 @@ pub struct Elements {
     chars: Box<dyn Iterator<Item = Con<Part<char>>>>,
     win: Win<Con<Part<char>>>,
     _in_count: usize,
-    _source: Source,
+    _source: index::Source,
 }
 
 impl Elements {
@@ -37,10 +37,10 @@ impl Elements {
         self.prev_vec()[u].clone() 
     }
 
-    pub fn init(file: &Source) -> Self {
+    pub fn init(file: &index::Source, is_string: bool) -> Self {
         let mut prev = Vec::with_capacity(SLIDER);
         let mut next = Vec::with_capacity(SLIDER);
-        let mut chars = Box::new(gen(file));
+        let mut chars = Box::new(gen(file, is_string));
         for _ in 0..SLIDER { prev.push(Ok(('\0', point::Location::default()))) }
         for _ in 0..SLIDER { next.push(chars.next().unwrap_or(Ok(('\0', point::Location::default())))) }
         Self {
@@ -99,8 +99,13 @@ impl fmt::Display for Elements {
 }
 
 
-pub fn gen(file: &Source) -> impl Iterator<Item = Con<Part<char>>> {
-    let mut lines = get_lines(file);
+pub fn gen(file: &index::Source, is_string: bool) -> impl Iterator<Item = Con<Part<char>>> {
+        let mut lines: Box<dyn Iterator<Item = String>>;
+    if !is_string {
+        lines = Box::new(index::source_lines(file));
+    } else {
+        lines = Box::new(index::string_lines(&"sfsdasf".to_string()));
+    }
     let mut chars = get_chars(lines.next().unwrap());
     let mut loc = point::Location::default();
     loc.adjust(1,0);
@@ -132,18 +137,6 @@ pub fn gen(file: &Source) -> impl Iterator<Item = Con<Part<char>>> {
                 }
             }
         };
-    })
-}
-
-
-fn get_lines(src: &Source) -> impl Iterator<Item = String> {
-    let mut reader = reader::BufReader::open(src.path(true)).unwrap();
-    let mut buffer = String::new();
-    std::iter::from_fn(move || {
-        if let Some(line) = reader.read_line(&mut buffer) {
-            return Some(line.unwrap().clone());
-        }
-        None
     })
 }
 

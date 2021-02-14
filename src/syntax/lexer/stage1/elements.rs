@@ -1,6 +1,7 @@
 use std::fmt;
 use crate::types::{Vod, Con, Win, SLIDER};
 use crate::syntax::token::{help, KEYWORD, KEYWORD::*};
+use crate::syntax::lexer::stage0;
 use crate::syntax::lexer::stage1::Element;
 use crate::syntax::index;
 
@@ -13,6 +14,7 @@ pub struct Elements {
 
 
 impl Elements {
+    pub fn source(&self) -> index::Source { self._source.clone() }
     pub fn init(file: &index::Source) -> Self {
         let mut prev = Vec::with_capacity(SLIDER);
         let mut next = Vec::with_capacity(SLIDER);
@@ -85,7 +87,7 @@ impl Iterator for Elements {
 
 /// Creates a iterator that produces tokens from the input string.
 pub fn elements(file: &index::Source) -> impl Iterator<Item = Con<Element>>  {
-    let mut txt = Box::new(index::Elements::init(file));
+    let mut txt = Box::new(stage0::Elements::init(file, false));
     // *sins = *txt.sins();
     std::iter::from_fn(move || {
         if let Some(v) = txt.bump() {

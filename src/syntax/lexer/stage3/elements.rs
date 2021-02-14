@@ -3,20 +3,21 @@ use crate::types::*;
 use crate::syntax::token::*;
 use crate::syntax::lexer::stage2;
 use crate::syntax::lexer::stage3::Element;
-use crate::syntax::index::*;
+use crate::syntax::index;
 
 
 pub struct Elements {
     elem: Box<dyn Iterator<Item = Con<Element>>>,
     win: Win<Con<Element>>,
     _in_count: usize,
-    pub source: Source,
+    _source: index::Source,
 }
 
 
 impl Elements {
+    pub fn source(&self) -> index::Source { self._source.clone() }
     pub fn default(&self) -> Element { Element::default() }
-    pub fn init(file: &source::Source) -> Self {
+    pub fn init(file: &index::Source) -> Self {
         let mut prev = Vec::with_capacity(SLIDER);
         let mut next = Vec::with_capacity(SLIDER);
         let mut elem = Box::new(elements(file));
@@ -26,7 +27,7 @@ impl Elements {
             elem,
             win: (prev, Ok(Element::default()), next),
             _in_count: SLIDER,
-            source: file.clone(),
+            _source: file.clone(),
         };
         // newborn.bump();
         newborn
@@ -116,7 +117,7 @@ impl Iterator for Elements {
 
 
 /// Creates a iterator that produces tokens from the input string.
-pub fn elements(file: &source::Source) -> impl Iterator<Item = Con<Element>>  {
+pub fn elements(file: &index::Source) -> impl Iterator<Item = Con<Element>>  {
     let mut stg = Box::new(stage2::Elements::init(file));
     let src = file.clone();
     std::iter::from_fn(move || {

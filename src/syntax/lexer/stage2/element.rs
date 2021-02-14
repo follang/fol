@@ -27,7 +27,7 @@ pub struct Element {
 impl std::default::Default for Element {
     fn default() -> Self {
         Self {
-            key: KEYWORD::illegal,
+            key: KEYWORD::void(VOID::endfile_),
             loc: point::Location::default(),
             con: String::new(),
         }

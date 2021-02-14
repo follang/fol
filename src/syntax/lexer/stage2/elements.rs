@@ -15,6 +15,7 @@ pub struct Elements {
 
 
 impl Elements {
+    pub fn source(&self) -> index::Source { self._source.clone() }
     pub fn init(file: &index::Source) -> Self {
         let mut prev = Vec::with_capacity(SLIDER);
         let mut next = Vec::with_capacity(SLIDER);
