@@ -13,65 +13,65 @@ use crate::syntax::index::source::Source;
 pub enum Typo {
     ParserUnexpected {
         loc: Option<point::Location>,
-        src: Source,
+        src: Option<Source>,
         key1: KEYWORD,
         key2: KEYWORD
     },
     ParserMissmatch {
         msg: Option<String>,
         loc: Option<point::Location>,
-        src: Source,
+        src: Option<Source>,
     },
     ParserSpaceRem {
         msg: Option<String>,
         loc: Option<point::Location>,
-        src: Source,
+        src: Option<Source>,
     },
     ParserSpaceAdd {
         msg: Option<String>,
         loc: Option<point::Location>,
-        src: Source,
+        src: Option<Source>,
     },
     ParserTypeDisbalance {
         msg: Option<String>,
         loc: Option<point::Location>,
-        src: Source,
+        src: Option<Source>,
     },
     ParserBodyForbidden {
         msg: Option<String>,
         loc: Option<point::Location>,
-        src: Source,
+        src: Option<Source>,
     },
     ParserNoType {
         msg: Option<String>,
         loc: Option<point::Location>,
-        src: Source,
+        src: Option<Source>,
     },
     ParserNeedsBody {
         msg: Option<String>,
         loc: Option<point::Location>,
-        src: Source,
+        src: Option<Source>,
     },
     ParserManyUnexpected {
         loc: Option<point::Location>,
-        src: Source,
+        src: Option<Source>,
         key1: KEYWORD,
         keys: Vec<KEYWORD>
     },
     LexerPrimitiveAccess {
         msg: Option<String>,
         loc: Option<point::Location>,
-        src: Source,
+        src: Option<Source>,
     },
     LexerBracketUnmatch {
         msg: Option<String>,
         loc: Option<point::Location>,
-        src: Source,
+        src: Option<Source>,
     },
     LexerSpaceAdd {
         msg: Option<String>,
         loc: Option<point::Location>,
-        src: Source,
+        src: Option<Source>,
     },
 }
 
@@ -190,7 +190,7 @@ impl fmt::Display for Typo {
         write!(f, "{} >> {}:{}{}{}{}",
             " TYPO ".black().on_red(),
             (" ".to_string() + &s + " stage ").black().on_white().to_string(), v.on_red().bold().to_string(),
-            match l { Some(val) => "\n".to_string() + &val.visualize(&source), None => "".to_string() },
+            match l { Some(val) => "\n".to_string() + &val.visualize(source), None => "".to_string() },
             match m { Some(val) => "\n".to_string() + &val.to_string(), None => "".to_string() },
             border_down("-", " fol --explain err#".to_string() + id + " ")
         )

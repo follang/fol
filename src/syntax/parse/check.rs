@@ -141,7 +141,7 @@ pub fn until_bracket(lex: &mut lexer::Elements) -> Vod {
     Ok(())
 }
 
-pub fn type_balance(idents: usize, dt: usize, loc: &point::Location, src: &index::Source) -> Vod {
+pub fn type_balance(idents: usize, dt: usize, loc: &point::Location, src: &Option<index::Source>) -> Vod {
     if dt > idents {
         return Err( catch!( Typo::ParserTypeDisbalance {
             msg: Some(format!(

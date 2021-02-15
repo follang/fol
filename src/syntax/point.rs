@@ -19,7 +19,7 @@ pub struct Location {
     col: usize,
     len: usize,
     deep: isize,
-    src: Source,
+    src: Option<Source>,
 }
 
 impl std::default::Default for Location {
@@ -29,7 +29,7 @@ impl std::default::Default for Location {
             col: 0,
             len: 0,
             deep: 0,
-            src: Source::default(),
+            src: None,
         }
     }
 }
@@ -45,20 +45,24 @@ impl fmt::Display for Location {
 }
 
 impl Location {
-    pub fn visualize(&self, source: &Source) -> String {
-        let file = File::open(Path::new(&source.path(true))).unwrap();
-        let mut lines = BufReader::new(&file).lines();
-        let line = lines.nth(self.row() - 1).unwrap().unwrap();
-        format!(
-            "{}\n {:>6}\n {:>6}  {}\n {:>6} {}{}",
-            self.print(source),
-            " |".red(),
-            (self.row().to_string() + " |").red(),
-            line.red(),
-            " |".red(),
-            " ".repeat(self.col()),
-            "^".repeat(self.len()),
-        )
+    pub fn visualize(&self, src: &Option<Source>) -> String {
+        if let Some(source) = src {
+            let file = File::open(Path::new(&source.path(true))).unwrap();
+            let mut lines = BufReader::new(&file).lines();
+            let line = lines.nth(self.row() - 1).unwrap().unwrap();
+            format!(
+                "{}\n {:>6}\n {:>6}  {}\n {:>6} {}{}",
+                self.print(source),
+                " |".red(),
+                (self.row().to_string() + " |").red(),
+                line.red(),
+                " |".red(),
+                " ".repeat(self.col()),
+                "^".repeat(self.len()),
+            )
+        } else {
+            String::new()
+        }
     }
 
     pub fn print(&self, source: &Source) -> String {
@@ -68,30 +72,12 @@ impl Location {
         )
     }
 
-    pub fn set_source(&mut self, source: &Source) { self.src = source.clone() }
-    pub fn source(&self) -> Source { self.src.clone() }
-
-    pub fn new(
-        row: usize,
-        col: usize,
-        len: usize,
-        deep: isize,
-        src: Source
-    ) -> Self {
-        Location {
-            row,
-            col,
-            len,
-            deep,
-            src,
-        }
+    pub fn set_source(&mut self, source: &Option<Source>) { 
+        self.src = source.clone() 
     }
 
-    pub fn is_first(&self) -> bool {
-        if self.col == 1 && self.row == 1 {
-            return true
-        }
-        false
+    pub fn source(&self) -> Option<Source> { 
+        self.src.clone() 
     }
 
     pub fn row(&self) -> usize {

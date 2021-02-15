@@ -20,7 +20,7 @@ impl Source {
             Err(e) => { crash!(e) }
         }
     }
-    
+
     /// getting the full path or relatve path
     pub fn path(&self, abs: bool) -> String {
         if abs { self.path.clone() } else { self.rel_path() }
@@ -54,7 +54,6 @@ impl Source {
     }
 
 }
-
 
 impl std::default::Default for Source {
     fn default() -> Self {
@@ -159,8 +158,8 @@ fn check_validity(s: &str, file: bool) -> Con<String> {
     }
 }
 
-pub fn sources(input: String) -> impl Iterator<Item = Source> {
-    let red: Vec<Source> = Source::init(&input, false);
+pub fn sources(input: String, file:bool) -> impl Iterator<Item = Source> {
+    let red: Vec<Source> = Source::init(&input, file);
     let mut index: usize = 0;
     std::iter::from_fn(move || {
         if index >= red.len() {

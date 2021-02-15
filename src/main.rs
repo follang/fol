@@ -19,17 +19,16 @@ use crate::syntax::parse;
 fn main() {
     let path = "./test/main".to_string();
     let mut elems = lexer::Elements::init(&Input::Source(path, false));
+    // while let Some(c) = elems.bump() {
+    //     match c {
+    //         Ok(e) => { println!("{}", e); },
+    //         Err(e) => { println!("\n{}", e); }
+    //     }
+    // }
     let parser = parse::Parser::init(&mut elems);
     
-    // for e in index::Source::init(&path, false).iter() {
-    //     let input = index::Input::Source(e.clone());
-    //     let mut elems = lexer::Elements::init(&input);
-    //     // while let Some(c) = elems.bump() {
-    //     //     match c {
-    //     //         Ok(e) => { println!("{}", e); },
-    //     //         Err(e) => { println!("\n{}", e); }
-    //     //     }
-    //     // }
+    // for e in Source::init(&path, false).iter() {
+    //     let mut elems = lexer::Elements::init(&Input::Source(e.clone());
     //     let parser = parse::Parser::init(&mut elems);
     // }
 }

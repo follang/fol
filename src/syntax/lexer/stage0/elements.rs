@@ -101,7 +101,7 @@ pub fn gen(file: &index::Input) -> impl Iterator<Item = Con<Part<char>>> {
     let mut loc = point::Location::default();
     let mut lines = index::Lines::init(file);
     let (line, source) = lines.next().unwrap();
-    if let Some(s) = source { loc.set_source(&s); }
+    loc.set_source(&source);
     // if let Some(s) = lines.source() { loc.set_source(&s); }
     let mut chars = get_chars(line);
     loc.adjust(1,0); 
@@ -120,13 +120,12 @@ pub fn gen(file: &index::Input) -> impl Iterator<Item = Con<Part<char>>> {
                     Some(j) => { 
                         loc.new_line();
                         loc.new_word();
-                        // println!("{}  {} \t{}", loc.source().path(false), loc, j.0);
                         if j.0 == "\0" { 
                             loc.adjust(0,0);
-                            if let Some(s) = j.1 { loc.set_source(&s); }
+                            loc.set_source(&j.1);
                         }
                         chars = get_chars(j.0);
-                        return Some(Ok((chars.next().unwrap_or('\n'), loc.clone())))
+                        return Some(Ok((chars.next().unwrap_or('\0'), loc.clone())))
                     },
                     None => {
                         if !last_eol {

@@ -26,7 +26,7 @@ impl Lines {
                 lines = Box::new(string_lines(&s));
             }
             Input::Source(s, b) => {
-                lines = Box::new(source_lines2(&s, b));
+                lines = Box::new(source_lines2(s, b));
             }
         }
         Self {
@@ -72,21 +72,8 @@ pub fn source_lines(src: &Source) -> impl Iterator<Item = (String, Option<Source
     })
 }
 
-pub fn sources(src: &String, file: bool) -> impl Iterator<Item = Source> {
-    let red: Vec<Source> = Source::init(&src, file);
-    let mut index: usize = 0;
-    std::iter::from_fn(move || {
-        if index >= red.len() {
-            return None;
-        }
-        let prev = red[index].clone();
-        index += 1;
-        Some(prev)
-    })
-}
-
-pub fn source_lines2(src: &String, file: bool) -> impl Iterator<Item = (String, Option<Source>)> {
-    let mut sources = sources(&src, file);
+pub fn source_lines2(src: String, file: bool) -> impl Iterator<Item = (String, Option<Source>)> {
+    let mut sources = source::sources(src, file);
     let source = sources.next().unwrap();
     let mut reader = reader::BufReader::open(source.path(true)).unwrap();
     let mut buffer = String::new();
