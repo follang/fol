@@ -61,7 +61,10 @@ impl Location {
                 "^".repeat(self.len()),
             )
         } else {
-            String::new()
+            format!(
+                "at line: {:>6}",
+                self,
+            )
         }
     }
 
