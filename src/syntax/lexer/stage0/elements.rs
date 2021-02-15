@@ -120,6 +120,11 @@ pub fn gen(file: &index::Input) -> impl Iterator<Item = Con<Part<char>>> {
                     Some(j) => { 
                         loc.new_line();
                         loc.new_word();
+                        // println!("{}  {} \t{}", loc.source().path(false), loc, j.0);
+                        if j.0 == "\0" { 
+                            loc.adjust(0,0);
+                            if let Some(s) = j.1 { loc.set_source(&s); }
+                        }
                         chars = get_chars(j.0);
                         return Some(Ok((chars.next().unwrap_or('\n'), loc.clone())))
                     },

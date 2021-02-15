@@ -5,9 +5,9 @@ pub use crate::syntax::index::source::Source;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)] 
 pub enum Input {
-    Source(Source),
-    String2(String, bool),
+    Source(String, bool),
     String(String),
+    SourceAlt(Source),
 }
 
 // #[derive(Clone, Debug)] 
@@ -19,13 +19,13 @@ impl Lines {
     pub fn init(input: &Input) -> Self {
         let lines: Box<dyn Iterator<Item = (String, Option<Source>)>>;
         match input.clone() {
-            Input::Source(s) => { 
+            Input::SourceAlt(s) => { 
                 lines = Box::new(source_lines(&s));
             },
             Input::String(s) => {
                 lines = Box::new(string_lines(&s));
             }
-            Input::String2(s, b) => {
+            Input::Source(s, b) => {
                 lines = Box::new(source_lines2(&s, b));
             }
         }
@@ -90,7 +90,7 @@ pub fn source_lines2(src: &String, file: bool) -> impl Iterator<Item = (String, 
     let source = sources.next().unwrap();
     let mut reader = reader::BufReader::open(source.path(true)).unwrap();
     let mut buffer = String::new();
-    let newline = "\0\0\0".to_string();
+    let newline = "\0".to_string();
     std::iter::from_fn(move || {
         match reader.read_line(&mut buffer) {
             Some(line) => {
@@ -112,29 +112,3 @@ pub fn source_lines2(src: &String, file: bool) -> impl Iterator<Item = (String, 
     })
 }
 
-
-
-// pub fn gen(path: String, file: bool) -> impl Iterator<Item = (String, Option<Source>)> {
-//     let mut s = sources(&path, file);
-//     let mut l = source_lines(&s.next().unwrap());
-//     let newline = "\0\0\0".to_string();
-//     std::iter::from_fn(move || {
-//         match l.next() {
-//             Some(j) => { 
-//                 return Some((j, s.clone()))
-//             },
-//             None => {
-//                 match s.next() {
-//                     Some(k) => {
-//                         l = source_lines(&k);
-//                         let val = (newline, Some(k));
-//                         return Some(val)
-//                     },
-//                     None => {
-//                         return None 
-//                     }
-//                 }
-//             }
-//         }
-//     })
-// }
