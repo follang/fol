@@ -5,9 +5,9 @@ pub use crate::syntax::index::source::Source;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)] 
 pub enum Input {
-    Source(String, bool),
+    Path(String, bool),
     String(String),
-    SourceAlt(Source),
+    Source(Source),
 }
 
 // #[derive(Clone, Debug)] 
@@ -19,13 +19,13 @@ impl Lines {
     pub fn init(input: &Input) -> Self {
         let lines: Box<dyn Iterator<Item = (String, Option<Source>)>>;
         match input.clone() {
-            Input::SourceAlt(s) => { 
+            Input::Source(s) => { 
                 lines = Box::new(source_lines(&s));
             },
             Input::String(s) => {
                 lines = Box::new(string_lines(&s));
             }
-            Input::Source(s, b) => {
+            Input::Path(s, b) => {
                 lines = Box::new(source_lines2(s, b));
             }
         }

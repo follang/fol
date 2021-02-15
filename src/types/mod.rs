@@ -46,7 +46,7 @@ macro_rules! errinter {
 macro_rules! nodinter {
     ($nod:expr $(,)?) => ({ 
         for e in $nod { 
-            println!("{}\t{}", e.loc().unwrap(), e);
+            println!("{} {}\t{}", e.loc().unwrap().source().unwrap().path(false),  e.loc().unwrap(), e);
         } 
     });
 }

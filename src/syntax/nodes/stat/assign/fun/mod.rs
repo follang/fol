@@ -30,9 +30,9 @@ impl fmt::Display for NodeStatAssFun {
         let opts = match self.options { Some(ref e) => e.to_string(), None => String::new()  };
         let recivers = match self.recivers { Some(ref e) => ", ".to_string() + &e.to_string(), None => String::new()  };
         let ident = match self.ident { Some(ref e) => " ".to_string() + &e.to_string(), None => String::new()  };
-        let parameters = match self.parameters { Some(ref e) => e.to_string(), None => String::new()  };
+        let parameters = match self.parameters { Some(ref e) => e.print(), None => String::new()  };
         let data = match self.data { Some(ref e) => ": ".to_string() + &e.to_string(), None => String::new()  };
-        write!(f, "{}[{}{}] {}({}){};", "fun", opts, recivers, ident, parameters, data)
+        write!(f, "{}[{}{}]{}({}){};", "fun", opts, recivers, ident, parameters, data)
     }
 }
 

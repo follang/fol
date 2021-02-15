@@ -23,13 +23,12 @@ pub struct Parser {
 impl Parser {
     pub fn init (lex: &mut lexer::Elements) -> Self {
         let mut parser = Self { nodes: Nodes::new(), errors: Vec::new() };
-        let src = lex.peek(0, false).unwrap().loc().source().unwrap();
         while let Some(e) = lex.bump() {
             if let Err(err) = parser.parse(lex) {
                 parser.errors.push(err)
             }
         }
-        logit!(src.path(false));
+        logit!("");
         nodinter!(parser.nodes.clone());
         errinter!(parser.errors.clone());
         parser

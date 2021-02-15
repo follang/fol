@@ -17,8 +17,7 @@ use crate::syntax::lexer;
 use crate::syntax::parse;
 
 fn main() {
-    let path = "./test/main".to_string();
-    let mut elems = lexer::Elements::init(&Input::Source(path, false));
+    let mut elems = lexer::Elements::init(&Input::Path("./test/main/var2".to_string(), false));
     // while let Some(c) = elems.bump() {
     //     match c {
     //         Ok(e) => { println!("{}", e); },
@@ -28,7 +27,7 @@ fn main() {
     let parser = parse::Parser::init(&mut elems);
     
     // for e in Source::init(&path, false).iter() {
-    //     let mut elems = lexer::Elements::init(&Input::Source(e.clone());
+    //     let mut elems = lexer::Elements::init(&Input::SourceAlt(e.clone());
     //     let parser = parse::Parser::init(&mut elems);
     // }
 }

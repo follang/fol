@@ -97,23 +97,12 @@ impl Element {
         { 
             self.make_syoption(el)?;
         }
-        // numberfile_
-        else if el.curr()?.key().is_number() && !el.seek(0)?.key().is_void() {
-            self.set_key(ident)
-        }
-        else if el.curr()?.key().is_numberish() 
-            && (el.peek(0)?.key().is_number() 
-            || el.seek(0)?.key().is_continue() 
-            || el.seek(0)?.key().is_eol())
-        {
-            self.make_number(el)?;
-        } 
         // operators
         else if el.curr()?.key().is_symbol()
             && el.peek(0)?.key().is_symbol()
             && (!(matches!(el.curr()?.key(), KEYWORD::symbol(SYMBOL::semi_)))
             || !(matches!(el.peek(0)?.key(), KEYWORD::symbol(SYMBOL::semi_))))
-            && (el.seek(0)?.key().is_void() || el.seek(0)?.key().is_bracket())
+            // && (el.seek(0)?.key().is_void() || el.seek(0)?.key().is_bracket())
         {
             self.make_multi_operator(el)?;
         }
@@ -134,11 +123,10 @@ impl Element {
     }
 
     pub fn make_multi_operator(&mut self, el: &mut stage1::Elements) -> Vod {
-        while el.peek(0)?.key().is_symbol() && !el.peek(0)?.key().is_bracket() {
-            self.append(&el.peek(0)?.into());
-            self.bump(el);
-        }
-        match self.con().as_str() {
+        let mut content = String::new();
+        content.push_str(el.curr()?.con());
+        content.push_str(el.peek(0)?.con());
+        match content.as_str() {
             ":=" => self.set_key(operator(OPERATOR::assign2_)),
             "..." => self.set_key(operator(OPERATOR::ddd_)),
             ".." => self.set_key(operator(OPERATOR::dd_)),
@@ -154,8 +142,9 @@ impl Element {
             "/=" => self.set_key(operator(OPERATOR::divideeq_)),
             "<<" => self.set_key(operator(OPERATOR::lesser_)),
             ">>" => self.set_key(operator(OPERATOR::greater_)),
-            _ => self.set_key(operator(OPERATOR::ANY)),
+            _ => return Ok(()),
         }
+        self.bump(el);
         Ok(())
     }
     pub fn make_syoption(&mut self, el: &mut stage1::Elements) -> Vod {
@@ -170,39 +159,6 @@ impl Element {
         Ok(())
     }
 
-    pub fn make_number(&mut self, el: &mut stage1::Elements) -> Vod{
-        self.set_key(literal(LITERAL::decimal_));
-        if matches!(el.curr()?.key(), KEYWORD::symbol(SYMBOL::minus_)) && el.peek(0)?.key().is_decimal()
-        {
-            self.append(&el.peek(0)?.into());
-            self.bump(el);
-            if !el.peek(0)?.key().is_dot() || !el.peek(0)?.key().is_decimal() { return Ok(()) }
-        }
-
-        if el.curr()?.key().is_decimal() && el.peek(0)?.key().is_dot() && el.peek(1)?.key().is_decimal() {
-            self.set_key(literal(LITERAL::float_));
-            self.append(&el.peek(0)?.into());
-            self.bump(el);
-        }
-
-        if el.curr()?.key().is_dot() && el.peek(0)?.key().is_decimal() {
-            self.set_key(literal(LITERAL::float_));
-            self.append(&el.peek(0)?.into());
-            self.bump(el);
-        }
-
-        if el.peek(0)?.key().is_dot() && !(el.peek(1)?.key().is_ident() || el.peek(1)?.key().is_buildin()) {
-            let mut elem = el.peek(0)?;
-            elem.append(&el.peek(1)?);
-            self.bump(el);
-            return Err(catch!(Typo::LexerSpaceAdd{ 
-                msg: Some(format!("Expected {} but {} was given", KEYWORD::void(VOID::space_), elem.key())),
-                loc: Some(elem.loc().clone()),
-                src: el.curr()?.loc().source(),
-            }))
-        }
-        Ok(())
-    }
     pub fn make_comment(&mut self, el: &mut stage1::Elements) -> Vod {
         if matches!(el.peek(0)?.key(), KEYWORD::symbol(SYMBOL::root_)) {
             while !el.peek(0)?.key().is_eol() {

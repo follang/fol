@@ -102,6 +102,10 @@ impl Elements {
         }
         Ok(())
     }
+    pub fn debug(&self, bol: bool) -> Vod {
+        println!("{}\t{}\t{}", self.curr(bol)?.loc(), self.curr(bol)?.key(), self.curr(bol)?.con());
+        Ok(())
+    }
 }
 
 impl Iterator for Elements {

@@ -67,7 +67,61 @@ impl Element {
     }
 
     pub fn analyze(&mut self, el: &mut stage2::Elements) -> Vod {
-        let _one = el.curr(false)?;
+        // el.debug(false).ok();
+        // println!("{}   {}", el.curr(false)?.key(), el.seek(0, false)?.key());
+        if el.curr(false)?.key().is_number() && el.seek(0, false)?.key().is_operator() {
+            self.make_number(el)?;
+        }else if el.curr(false)?.key().is_number() && !el.seek(0, false)?.key().is_void() {
+            self.set_key(ident);
+        }
+        else if (el.curr(false)?.key().is_numberish() && el.seek(0, false)?.key().is_continue())
+            && (el.peek(0, false)?.key().is_number() 
+            || el.seek(0, false)?.key().is_continue() 
+            || el.seek(0, false)?.key().is_operator() 
+            || el.seek(0, false)?.key().is_eol())
+        {
+            self.make_number(el)?;
+        }
+        Ok(())
+    }
+    pub fn make_number(&mut self, el: &mut stage2::Elements) -> Vod{
+        self.set_key(literal(LITERAL::decimal_));
+
+        // if el.curr(false)?.key().is_dot() && el.peek(0, false)?.key().is_symbol() {
+            // self.make_multi_operator(el)?;
+        // } else if el.curr(false)?.key().is_decimal() && el.peek(0, false)?.key().is_dot() && el.peek(1, false)?.key().is_symbol() {
+            // return Ok(());
+        // }
+
+        if matches!(el.curr(false)?.key(), KEYWORD::symbol(SYMBOL::minus_)) && el.peek(0, false)?.key().is_decimal()
+        {
+            self.append(&el.peek(0, false)?.into());
+            self.bump(el);
+            if !el.peek(0, false)?.key().is_dot() || !el.peek(0, false)?.key().is_decimal() { return Ok(()) }
+        }
+
+        if el.curr(false)?.key().is_decimal() && el.peek(0, false)?.key().is_dot() && el.peek(1, false)?.key().is_decimal() {
+            self.set_key(literal(LITERAL::float_));
+            self.append(&el.peek(0, false)?.into());
+            self.bump(el);
+        }
+
+        if el.curr(false)?.key().is_dot() && el.peek(0, false)?.key().is_decimal() {
+            self.set_key(literal(LITERAL::float_));
+            self.append(&el.peek(0, false)?.into());
+            self.bump(el);
+        }
+
+        if el.peek(0, false)?.key().is_dot() && !(el.peek(1, false)?.key().is_ident() || el.peek(1, false)?.key().is_buildin()) {
+            let mut elem = el.peek(0, false)?;
+            elem.append(&el.peek(1, false)?);
+            self.bump(el);
+            return Err(catch!(Typo::LexerSpaceAdd{ 
+                msg: Some(format!("Expected {} but {} was given", KEYWORD::void(VOID::space_), elem.key())),
+                loc: Some(elem.loc().clone()),
+                src: el.curr(false)?.loc().source(),
+            }))
+        }
         Ok(())
     }
     pub fn bump(&mut self, el: &mut stage2::Elements) {
