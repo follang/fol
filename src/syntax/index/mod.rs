@@ -6,54 +6,43 @@ pub use crate::syntax::index::source::Source;
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)] 
 pub enum Input {
     Source(Source),
+    String2(String, bool),
     String(String),
 }
 
+// #[derive(Clone, Debug)] 
 pub struct Lines {
-    lines: Box<dyn Iterator<Item = String>>,
-    _source: Option<Source>,
+    pub lines: Box<dyn Iterator<Item = (String, Option<Source>)>>,
 }
 
 impl Lines {
-    pub fn source(&self) -> Option<Source> { self._source.clone() }
     pub fn init(input: &Input) -> Self {
-        let lines: Box<dyn Iterator<Item = String>>;
-        let mut _source = None;
+        let lines: Box<dyn Iterator<Item = (String, Option<Source>)>>;
         match input.clone() {
             Input::Source(s) => { 
-                _source = Some(s.clone());
                 lines = Box::new(source_lines(&s));
             },
             Input::String(s) => {
                 lines = Box::new(string_lines(&s));
             }
+            Input::String2(s, b) => {
+                lines = Box::new(source_lines2(&s, b));
+            }
         }
         Self {
             lines,
-            _source,
         }
     }
 }
 
 impl Iterator for Lines {
-    type Item = String;
+    type Item = (String, Option<Source>);
     fn next(&mut self) -> Option<Self::Item> {
         self.lines.next()
     }
 }
 
-pub fn source_lines(src: &Source) -> impl Iterator<Item = String> {
-    let mut reader = reader::BufReader::open(src.path(true)).unwrap();
-    let mut buffer = String::new();
-    std::iter::from_fn(move || {
-        if let Some(line) = reader.read_line(&mut buffer) {
-            return Some(line.unwrap().clone());
-        }
-        None
-    })
-}
-
-pub fn string_lines(src: &String) -> impl Iterator<Item = String> {
+pub fn string_lines(src: &String) -> impl Iterator<Item = (String, Option<Source>)> {
     let mut input = src.clone();
     std::iter::from_fn(move || {
         let input_copy = input.clone();
@@ -63,6 +52,89 @@ pub fn string_lines(src: &String) -> impl Iterator<Item = String> {
         let split = input.find('\n').map(|i| i + 1).unwrap_or(input.len());
         let (line, rest) = input_copy.split_at(split);
         input = rest.to_string();
-        Some(line.to_string())
+        Some((line.to_string(), None))
     })
 }
+
+pub fn source_lines(src: &Source) -> impl Iterator<Item = (String, Option<Source>)> {
+    let source = src.clone();
+    let mut reader = reader::BufReader::open(source.path(true)).unwrap();
+    let mut buffer = String::new();
+    std::iter::from_fn(move || {
+        match reader.read_line(&mut buffer) {
+            Some(line) => {
+                return Some((line.unwrap().clone(), Some(source.clone())));
+            }, 
+            None => { 
+                return None 
+            }
+        }
+    })
+}
+
+pub fn sources(src: &String, file: bool) -> impl Iterator<Item = Source> {
+    let red: Vec<Source> = Source::init(&src, file);
+    let mut index: usize = 0;
+    std::iter::from_fn(move || {
+        if index >= red.len() {
+            return None;
+        }
+        let prev = red[index].clone();
+        index += 1;
+        Some(prev)
+    })
+}
+
+pub fn source_lines2(src: &String, file: bool) -> impl Iterator<Item = (String, Option<Source>)> {
+    let mut sources = sources(&src, file);
+    let source = sources.next().unwrap();
+    let mut reader = reader::BufReader::open(source.path(true)).unwrap();
+    let mut buffer = String::new();
+    let newline = "\0\0\0".to_string();
+    std::iter::from_fn(move || {
+        match reader.read_line(&mut buffer) {
+            Some(line) => {
+                return Some((line.unwrap().clone(), Some(source.clone())));
+            }, 
+            None => { 
+                match sources.next() {
+                    Some(k) => {
+                        reader = reader::BufReader::open(k.path(true)).unwrap();
+                        let val = (newline.clone(), Some(k));
+                        return Some(val)
+                    },
+                    None => {
+                        return None 
+                    }
+                }
+            }
+        }
+    })
+}
+
+
+
+// pub fn gen(path: String, file: bool) -> impl Iterator<Item = (String, Option<Source>)> {
+//     let mut s = sources(&path, file);
+//     let mut l = source_lines(&s.next().unwrap());
+//     let newline = "\0\0\0".to_string();
+//     std::iter::from_fn(move || {
+//         match l.next() {
+//             Some(j) => { 
+//                 return Some((j, s.clone()))
+//             },
+//             None => {
+//                 match s.next() {
+//                     Some(k) => {
+//                         l = source_lines(&k);
+//                         let val = (newline, Some(k));
+//                         return Some(val)
+//                     },
+//                     None => {
+//                         return None 
+//                     }
+//                 }
+//             }
+//         }
+//     })
+// }

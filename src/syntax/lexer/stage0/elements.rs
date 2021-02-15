@@ -98,10 +98,12 @@ impl fmt::Display for Elements {
 
 
 pub fn gen(file: &index::Input) -> impl Iterator<Item = Con<Part<char>>> {
-    let mut lines = index::Lines::init(file);
-    let mut chars = get_chars(lines.next().unwrap());
     let mut loc = point::Location::default();
-    if let index::Input::Source(s) = file { loc.set_source(&s); }
+    let mut lines = index::Lines::init(file);
+    let (line, source) = lines.next().unwrap();
+    if let Some(s) = source { loc.set_source(&s); }
+    // if let Some(s) = lines.source() { loc.set_source(&s); }
+    let mut chars = get_chars(line);
     loc.adjust(1,0); 
     let mut last_eol = false;
     std::iter::from_fn(move || {
@@ -118,7 +120,7 @@ pub fn gen(file: &index::Input) -> impl Iterator<Item = Con<Part<char>>> {
                     Some(j) => { 
                         loc.new_line();
                         loc.new_word();
-                        chars = get_chars(j);
+                        chars = get_chars(j.0);
                         return Some(Ok((chars.next().unwrap_or('\n'), loc.clone())))
                     },
                     None => {

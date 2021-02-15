@@ -159,4 +159,15 @@ fn check_validity(s: &str, file: bool) -> Con<String> {
     }
 }
 
-
+pub fn sources(input: String) -> impl Iterator<Item = Source> {
+    let red: Vec<Source> = Source::init(&input, false);
+    let mut index: usize = 0;
+    std::iter::from_fn(move || {
+        if index >= red.len() {
+            return None;
+        }
+        let prev = red[index].clone();
+        index += 1;
+        Some(prev)
+    })
+}
