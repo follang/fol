@@ -26,7 +26,6 @@ impl Elements {
             win: (prev, Ok(Element::default()), next),
             _in_count: SLIDER,
         };
-        // newborn.bump();
         newborn
     }
     pub fn curr(&self, ignore: bool) -> Con<Element> {
