@@ -5,7 +5,7 @@ use[] two: loc = { /bin/vendor_perl/GET }
     two: url = <expression>;
 )
 
-pro main(arg: int): int {
+pro main(arg: int): int = {
     -var[exp] (
         four: int[exp], str;
         four2, four3: arr[nor], int = <expression>
@@ -17,11 +17,11 @@ pro main(arg: int): int {
     three: rec[] = { 
         one: int,
         two: str
-    };
+    }
     three2: rec[] = {
         three: vec,
         four: flt
-    };
+    }
 )
 
 
@@ -40,7 +40,7 @@ typ some: rec[S: gen, t: int] = {
 }
 
 [rut[(one: int; two: flt): int]]{ 
-    ~var sum = one + two::(int); 
+    ~var sum = one + two<int>; 
     result = sum;
 }
 

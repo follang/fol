@@ -4,7 +4,7 @@ use crate::syntax::nodes::{Node, Nodes, NodeStatAssUse};
 use crate::syntax::token::*;
 use crate::syntax::lexer;
 use super::Parse;
-use crate::syntax::parse::check;
+use crate::syntax::parse::{check, eater};
 
 use crate::syntax::parse::stat::assign::opts::*;
 use crate::syntax::parse::stat::ident::*;
@@ -41,30 +41,15 @@ impl Parse for ParserStatAssUse {
         if !self._recurse {
             // match symbol before var  -> "~"
             let mut opts = ParserStatAssOpts::init(false);
-            if matches!(lex.curr(true)?.key(), KEYWORD::option(_) ) {
-                if let KEYWORD::option(a) = lex.curr(true)?.key() {
-                    let assopt: AssOptsTrait = a.into();
-                    let node = Node::new(Box::new(assopt));
-                    opts.push(node);
-                }
-                lex.jump(0, true)?;
-            }
+            opts.parse(lex)?;
 
             // match "use"
             check::expect(lex, KEYWORD::assign(ASSIGN::use_) , true)?;
             lex.jump(0, false)?;
 
             // match options after var  -> "[opts]"
-            if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::squarO_) {
-                opts.parse(lex)?;
-            }
-            if opts.nodes.len() > 0 {
-                node.set_options(Some(opts.nodes.clone()));
-            }
-
-            // match space after "var" or after "[opts]"
-            check::expect_void(lex)?;
-            lex.jump(0, false)?;
+            opts.parse(lex)?;
+            if opts.nodes.len() > 0 { node.set_options(Some(opts.nodes.clone())); }
 
             // march "(" to go recursively
             if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::roundO_) {
@@ -100,15 +85,14 @@ impl Parse for ParserStatAssUse {
         }
 
         // match indentifier "ident"
-        let mut idents = ParserStatIdent::init();
+        let mut idents = ParserStatIdent::init(true);
         idents.only_one();
         idents.parse(lex)?; lex.eat();
 
         // match datatypes after :  -> "int[opts][]"
         let mut dt = ParserStatDatatypes::init(true);
-        if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::colon_) {
-            dt.parse(lex)?;
-        }
+        dt.parse(lex)?;
+        if dt.nodes.len() > 0 { node.set_datatype(Some(dt.nodes.get(0).clone())); }
 
         check::expect_many(lex, vec![ 
             KEYWORD::symbol(SYMBOL::semi_),
@@ -117,17 +101,11 @@ impl Parse for ParserStatAssUse {
         ], true)?;
         check::type_balance(idents.nodes.len(), dt.nodes.len(), &loc, &lex.curr(false)?.loc().source() )?;
 
-        for i in 0..idents.nodes.len() {
-            if dt.nodes.len() > 0 {
-                let idx = if i >= dt.nodes.len() { dt.nodes.len()-1 } else { i };
-                node.set_datatype(Some(dt.nodes.get(idx).clone()));
-            }
-            node.set_ident(Some(idents.nodes.get(i).clone()));
-            let mut newnode = Node::new(Box::new(node.clone()));
-            newnode.set_loc(loc.clone());
-            self.nodes.push(newnode);
-        }
-        lex.until_term(false)?;
+        let mut id = Node::new(Box::new(node.clone()));
+        id.set_loc(loc.clone());
+        self.nodes.push(id);
+
+        eater::until_term(lex, false)?;
         Ok(())
     }
 }

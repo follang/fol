@@ -25,7 +25,11 @@ impl ParserStatParameters {
 impl Parse for ParserStatParameters {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
-        lex.jump(0, true)?;
+        if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::roundO_) {
+            lex.jump(0, true)?;
+        } else {
+            return Ok(())
+        }
         if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::roundC_) {
             lex.jump(0, true)?;
             return Ok(())
@@ -79,7 +83,7 @@ impl ParserStatParameters {
         }
 
         // match indentifier "ident"
-        let mut idents = ParserStatIdent::init();
+        let mut idents = ParserStatIdent::init(false);
         idents.parse(lex)?; lex.eat();
 
         // match datatypes after :  -> "int[opts][]"

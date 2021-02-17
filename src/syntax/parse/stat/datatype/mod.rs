@@ -25,7 +25,11 @@ impl Parse for ParserStatDatatypes {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
         // eat ":"
-        lex.jump(0, false)?; 
+        if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::colon_) {
+            lex.jump(0, true)?; 
+        } else {
+            return Ok(())
+        }
 
         while !lex.curr(true)?.key().is_eof() {
         // match type

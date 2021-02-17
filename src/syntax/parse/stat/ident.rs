@@ -14,8 +14,8 @@ pub struct ParserStatIdent {
 }
 
 impl ParserStatIdent {
-    pub fn init() -> Self {
-        Self { nodes: Nodes::new(), _once: false } 
+    pub fn init(_once: bool) -> Self {
+        Self { nodes: Nodes::new(), _once } 
     }
     pub fn only_one(&mut self) { self._once = true; }
 }

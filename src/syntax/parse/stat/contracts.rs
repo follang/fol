@@ -21,7 +21,11 @@ impl Parse for ParserStatContract {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
         // eat "("
-        lex.jump(0, false)?;
+        if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::roundO_) {
+            lex.jump(0, true)?;
+        } else {
+            return Ok(())
+        }
 
         // match ")" if there and return
         if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::roundC_) {

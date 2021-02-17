@@ -27,11 +27,26 @@ impl Parse for ParserStatAssOpts {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
         // eat "["
-        lex.jump(0, false)?;
+        if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::squarO_) {
+            lex.jump(0, false)?;
+        // match symbol before var  -> "~" and return 
+        } else if matches!(lex.curr(true)?.key(), KEYWORD::option(_) ) {
+            if let KEYWORD::option(a) = lex.curr(true)?.key() {
+                let assopt: AssOptsTrait = a.into();
+                let node = Node::new(Box::new(assopt));
+                self.nodes.push(node);
+            }
+            lex.jump(0, true)?;
+            return Ok(())
+        } else {
+            return Ok(())
+        }
 
         // match "]" if there and return
         if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::squarC_) {
             lex.jump(0, true)?;
+            // match space after "var" or after "[opts]"
+            check::expect_void(lex)?;
             return Ok(())
         }
         while !lex.curr(true)?.key().is_eof() {
@@ -62,6 +77,8 @@ impl Parse for ParserStatAssOpts {
                 || lex.curr(true)?.key().is_eol()
             {
                 lex.jump(0, true)?;
+                // match space after "var" or after "[opts]"
+                check::expect_void(lex)?;
                 break
             } else if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::comma_) {
                 if lex.peek(0, true)?.key() == KEYWORD::symbol(SYMBOL::squarC_) 

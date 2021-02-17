@@ -96,7 +96,7 @@ impl Parse for ParserStatAssVar {
         }
 
         // match indentifier "ident"
-        let mut idents = ParserStatIdent::init();
+        let mut idents = ParserStatIdent::init(false);
         idents.parse(lex)?; lex.eat();
 
         // match datatypes after :  -> "int[opts][]"

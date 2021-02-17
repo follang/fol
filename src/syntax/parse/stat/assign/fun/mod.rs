@@ -4,7 +4,7 @@ use crate::syntax::nodes::{Node, Nodes, NodeStatAssFun};
 use crate::syntax::token::*;
 use crate::syntax::lexer;
 use super::Parse;
-use crate::syntax::parse::check;
+use crate::syntax::parse::{check, eater};
 
 use crate::syntax::parse::stat::assign::opts::*;
 use crate::syntax::parse::stat::ident::*;
@@ -30,51 +30,31 @@ impl Parse for ParserStatAssFun {
         let mut node = NodeStatAssFun::default();
         // match symbol before var  -> "~"
         let mut opts = ParserStatAssOpts::init(true);
-        if matches!(lex.curr(true)?.key(), KEYWORD::option(_) ) {
-            if let KEYWORD::option(a) = lex.curr(true)?.key() {
-                let assopt: AssOptsTrait = a.into();
-                opts.push(Node::new(Box::new(assopt)));
-            }
-            lex.jump(0, true)?;
-        }
+        opts.parse(lex)?;
 
-        // match "typ"
+        // match "fun"
         // expect( KEYWORD::assign(ASSIGN::fun_) , true)?;
         lex.jump(0, false)?;
 
         // match options after var  -> "[opts]"
-        if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::squarO_) {
-            opts.parse(lex)?;
-            if opts.nodes.len() > 0 {
-                node.set_options(Some(opts.nodes.clone()));
-            }
-            if opts.recivers.len() > 0 {
-                node.set_recivers(Some(opts.recivers.clone()));
-            }
-        }
-
-        // match space after "var" or after "[opts]"
-        check::expect_void(lex)?;
-        lex.jump(0, false)?;
+        opts.parse(lex)?;
+        if opts.nodes.len() > 0 { node.set_options(Some(opts.nodes.clone())); }
+        if opts.recivers.len() > 0 { node.set_recivers(Some(opts.recivers.clone())); }
 
         // match indentifier "ident"
-        let mut idents = ParserStatIdent::init();
-        idents.only_one();
+        let mut idents = ParserStatIdent::init(true);
         idents.parse(lex)?; lex.eat();
+        node.set_ident(Some(idents.nodes.get(0).clone()));
 
         // match parameters after (  -> "(one, two)"
-        if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::roundO_) {
-            let mut parameters = ParserStatParameters::init();
-            parameters.parse(lex)?; lex.eat();
-            if parameters.nodes.len() > 0 { node.set_parameters(Some(parameters.nodes.clone())) }
-            // lex.until_bracket()?;
-        }
+        let mut parameters = ParserStatParameters::init();
+        parameters.parse(lex)?; lex.eat();
+        if parameters.nodes.len() > 0 { node.set_parameters(Some(parameters.nodes.clone())) }
 
         // match datatypes after :  -> "int[opts][]"
         let mut dt = ParserStatDatatypes::init(true);
-        if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::colon_) {
-            dt.parse(lex)?;
-        }
+        dt.parse(lex)?;
+        if dt.nodes.len() > 0 { node.set_datatype(Some(dt.nodes.get(0).clone())); }
 
         check::expect_many(lex, vec![ 
             KEYWORD::symbol(SYMBOL::semi_),
@@ -83,17 +63,11 @@ impl Parse for ParserStatAssFun {
         ], true)?;
         check::type_balance(idents.nodes.len(), dt.nodes.len(), &loc, &lex.curr(false)?.loc().source() )?;
 
-        for i in 0..idents.nodes.len() {
-            if dt.nodes.len() > 0 {
-                let idx = if i >= dt.nodes.len() { dt.nodes.len()-1 } else { i };
-                node.set_datatype(Some(dt.nodes.get(idx).clone()));
-            }
-            node.set_ident(Some(idents.nodes.get(i).clone()));
-            let mut newnode = Node::new(Box::new(node.clone()));
-            newnode.set_loc(loc.clone());
-            self.nodes.push(newnode);
-        }
-        lex.until_term(false)?;
+        let mut id = Node::new(Box::new(node.clone()));
+        id.set_loc(loc.clone());
+        self.nodes.push(id);
+
+        eater::until_term(lex, false)?;
         Ok(())
     }
 }
