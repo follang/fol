@@ -40,8 +40,8 @@ typ some: rec[S: gen, t: int] = {
 }
 
 [rut[(one: int; two: flt): int]]{ 
-    ~var sum = one + two<int>; 
-    result = sum;
+    ~var sum = <b>one + <b>two->(int); 
+    result = <o>sum;
 }
 
 [some[int, 5]]{ 1, 2, 3, 4, 5 }

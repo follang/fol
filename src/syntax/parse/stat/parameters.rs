@@ -56,14 +56,7 @@ impl ParserStatParameters {
         let mut node = NodeStatAssVar::default();
         // match symbol before var  -> "~"
         let mut opts = ParserStatAssOpts::init(false);
-        if matches!(lex.curr(true)?.key(), KEYWORD::option(_) ) {
-            if let KEYWORD::option(a) = lex.curr(true)?.key() {
-                let assopt: AssOptsTrait = a.into();
-                let node = Node::new(Box::new(assopt));
-                opts.push(node);
-            }
-            lex.jump(0, true)?;
-        }
+        opts.parse(lex)?;
 
         // match "var"
         if lex.curr(true)?.key() == KEYWORD::assign(ASSIGN::var_) {
@@ -71,16 +64,8 @@ impl ParserStatParameters {
         }
 
         // match options after var  -> "[opts]"
-        if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::squarO_) {
-            opts.parse(lex)?;
-            if opts.nodes.len() > 0 {
-                node.set_options(Some(opts.nodes.clone()));
-            }
-            // match space after "var" or after "[opts]"
-            check::expect_void(lex)?;
-            lex.jump(0, false)?;
-
-        }
+        opts.parse(lex)?;
+        if opts.nodes.len() > 0 { node.set_options(Some(opts.nodes.clone())); }
 
         // match indentifier "ident"
         let mut idents = ParserStatIdent::init(false);
@@ -88,9 +73,8 @@ impl ParserStatParameters {
 
         // match datatypes after :  -> "int[opts][]"
         let mut dt = ParserStatDatatypes::init(true);
-        if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::colon_) {
-            dt.parse(lex)?;
-        }
+        dt.parse(lex)?;
+
         check::expect_many(lex, vec![ 
             KEYWORD::symbol(SYMBOL::semi_),
             KEYWORD::symbol(SYMBOL::equal_),
@@ -100,16 +84,15 @@ impl ParserStatParameters {
         check::type_balance(idents.nodes.len(), dt.nodes.len(), &loc, &lex.curr(false)?.loc().source() )?;
 
         let mut nodes: Nodes = List::new();
-
         for i in 0..idents.nodes.len() {
             if dt.nodes.len() > 0 {
                 let idx = if i >= dt.nodes.len() { dt.nodes.len()-1 } else { i };
                 node.set_datatype(Some(dt.nodes.get(idx).clone()));
             }
             node.set_ident(Some(idents.nodes.get(i).clone()));
-            let mut newnode = Node::new(Box::new(node.clone()));
-            newnode.set_loc(loc.clone());
-            nodes.push(newnode);
+            let mut id = Node::new(Box::new(node.clone()));
+            id.set_loc(loc.clone());
+            nodes.push(id);
         }
         check::until_key(lex, vec![KEYWORD::symbol(SYMBOL::roundC_), KEYWORD::symbol(SYMBOL::semi_)])?;
         Ok(nodes)

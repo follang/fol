@@ -23,11 +23,6 @@ impl ParserStatAssVar {
     pub fn init() -> Self {
         Self { nodes: Nodes::new(), _recurse: false, _oldstat: NodeStatAssVar::default() } 
     }
-    pub fn recurse(&self) -> Self {
-        let mut new_clone = self.clone();
-        new_clone._recurse = true;
-        new_clone
-    }
 }
 impl Parse for ParserStatAssVar {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
@@ -37,58 +32,19 @@ impl Parse for ParserStatAssVar {
         if !self._recurse {
             // match symbol before var  -> "~"
             let mut opts = ParserStatAssOpts::init(false);
-            if matches!(lex.curr(true)?.key(), KEYWORD::option(_) ) {
-                if let KEYWORD::option(a) = lex.curr(true)?.key() {
-                    let assopt: AssOptsTrait = a.into();
-                    let node = Node::new(Box::new(assopt));
-                    opts.push(node);
-                }
-                lex.jump(0, true)?;
-            }
+            opts.parse(lex)?;
 
             // match "var"
             check::expect(lex, KEYWORD::assign(ASSIGN::var_) , true)?;
             lex.jump(0, false)?;
 
             // match options after var  -> "[opts]"
-            if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::squarO_) {
-                opts.parse(lex)?;
-            }
-            if opts.nodes.len() > 0 {
-                node.set_options(Some(opts.nodes.clone()));
-            }
-
-            // match space after "var" or after "[opts]"
-            check::expect_void(lex)?;
-            lex.jump(0, false)?;
+            opts.parse(lex)?;
+            if opts.nodes.len() > 0 { node.set_options(Some(opts.nodes.clone())); }
 
             // march "(" to go recursively
             if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::roundO_) {
-                let mut nodes: Nodes = List::new();
-
-                // eat "("
-                lex.jump(0, true)?; lex.eat();
-
-                while !lex.curr(true)?.key().is_eof() {
-                    // clone self and set recursive flag
-                    let mut newself = self.recurse();
-                    newself._oldstat = node.clone();
-                    newself.parse(lex)?;
-                    nodes.extend(newself.nodes);
-
-                    //go to next one
-                    check::expect_terminal(lex, )?;
-                    lex.jump(0, false)?;
-
-                    // match and eat ")"
-                    if matches!(lex.curr(true)?.key(), KEYWORD::symbol(SYMBOL::roundC_)) {
-                        lex.jump(0, true)?;
-                        //expect endline
-                        check::expect_terminal(lex)?;
-                        break
-                    }
-                }
-                self.nodes.extend(nodes);
+                self.recurse(&node, lex)?;
                 return Ok(());
             }
         } else {
@@ -101,9 +57,7 @@ impl Parse for ParserStatAssVar {
 
         // match datatypes after :  -> "int[opts][]"
         let mut dt = ParserStatDatatypes::init(true);
-        if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::colon_) {
-            dt.parse(lex)?;
-        }
+        dt.parse(lex)?;
 
         check::expect_many(lex, vec![ 
             KEYWORD::symbol(SYMBOL::semi_),
@@ -118,9 +72,9 @@ impl Parse for ParserStatAssVar {
                 node.set_datatype(Some(dt.nodes.get(idx).clone()));
             }
             node.set_ident(Some(idents.nodes.get(i).clone()));
-            let mut newnode = Node::new(Box::new(node.clone()));
-            newnode.set_loc(loc.clone());
-            self.nodes.push(newnode);
+            let mut id = Node::new(Box::new(node.clone()));
+            id.set_loc(loc.clone());
+            self.nodes.push(id);
         }
         lex.until_term(false)?;
         Ok(())
@@ -128,7 +82,33 @@ impl Parse for ParserStatAssVar {
 }
 
 impl ParserStatAssVar {
-        pub fn extend(&mut self, n: Nodes) {
-            self.nodes.extend(n)
+    fn recurse(&mut self, node: &NodeStatAssVar, lex: &mut lexer::Elements) -> Vod {
+        if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::roundO_) {
+            lex.jump(0, true)?; lex.eat();
+
+            let mut nodes: Nodes = List::new();
+            while !lex.curr(true)?.key().is_eof() {
+                // clone self and set recursive flag
+                let mut newself = self.clone();
+                newself._recurse = true;
+                newself._oldstat = node.clone();
+                newself.parse(lex)?;
+                nodes.extend(newself.nodes);
+
+                //go to next one
+                check::expect_terminal(lex, )?;
+                lex.jump(0, false)?;
+
+                // match and eat ")"
+                if matches!(lex.curr(true)?.key(), KEYWORD::symbol(SYMBOL::roundC_)) {
+                    lex.jump(0, true)?;
+                    //expect endline
+                    check::expect_terminal(lex)?;
+                    break
+                }
+            }
+            self.nodes.extend(nodes);
         }
+        return Ok(())
+    }
 }

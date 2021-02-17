@@ -27,11 +27,6 @@ impl ParserStatAssUse {
             _oldstat: NodeStatAssUse::default()
         } 
     }
-    pub fn recurse(&self) -> Self {
-        let mut new_clone = self.clone();
-        new_clone._recurse = true;
-        new_clone
-    }
 }
 impl Parse for ParserStatAssUse {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
@@ -53,31 +48,7 @@ impl Parse for ParserStatAssUse {
 
             // march "(" to go recursively
             if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::roundO_) {
-                let mut nodes: Nodes = List::new();
-
-                // eat "("
-                lex.jump(0, true)?; lex.eat();
-
-                while !lex.curr(true)?.key().is_eof() {
-                    // clone self and set recursive flag
-                    let mut newself = self.recurse();
-                    newself._oldstat = node.clone();
-                    newself.parse(lex)?;
-                    nodes.extend(newself.nodes);
-
-                    //go to next one
-                    check::expect_terminal(lex)?;
-                    lex.jump(0, false)?;
-
-                    // match and eat ")"
-                    if matches!(lex.curr(true)?.key(), KEYWORD::symbol(SYMBOL::roundC_)) {
-                        lex.jump(0, true)?;
-                        //expect endline
-                        check::expect_terminal(lex)?;
-                        break
-                    }
-                }
-                self.nodes.extend(nodes);
+                self.recurse(&node, lex)?;
                 return Ok(());
             }
         } else {
@@ -86,8 +57,8 @@ impl Parse for ParserStatAssUse {
 
         // match indentifier "ident"
         let mut idents = ParserStatIdent::init(true);
-        idents.only_one();
-        idents.parse(lex)?; lex.eat();
+        idents.parse(lex)?;
+        node.set_ident(Some(idents.nodes.get(0).clone()));
 
         // match datatypes after :  -> "int[opts][]"
         let mut dt = ParserStatDatatypes::init(true);
@@ -111,7 +82,33 @@ impl Parse for ParserStatAssUse {
 }
 
 impl ParserStatAssUse {
-        pub fn extend(&mut self, n: Nodes) {
-            self.nodes.extend(n)
+    fn recurse(&mut self, node: &NodeStatAssUse, lex: &mut lexer::Elements) -> Vod {
+        if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::roundO_) {
+            lex.jump(0, true)?; lex.eat();
+
+            let mut nodes: Nodes = List::new();
+            while !lex.curr(true)?.key().is_eof() {
+                // clone self and set recursive flag
+                let mut newself = self.clone();
+                newself._recurse = true;
+                newself._oldstat = node.clone();
+                newself.parse(lex)?;
+                nodes.extend(newself.nodes);
+
+                //go to next one
+                check::expect_terminal(lex, )?;
+                lex.jump(0, false)?;
+
+                // match and eat ")"
+                if matches!(lex.curr(true)?.key(), KEYWORD::symbol(SYMBOL::roundC_)) {
+                    lex.jump(0, true)?;
+                    //expect endline
+                    check::expect_terminal(lex)?;
+                    break
+                }
+            }
+            self.nodes.extend(nodes);
         }
+        return Ok(())
+    }
 }
