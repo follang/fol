@@ -67,13 +67,14 @@ impl Parse for ParserStatAssTyp {
         if dt.nodes.len() > 0 { node.set_datatype(Some(dt.nodes.get(0).clone())); }
 
         check::expect(lex, KEYWORD::symbol(SYMBOL::equal_), true)?;
-        check::type_balance(idents.nodes.len(), dt.nodes.len(), &loc, &lex.curr(false)?.loc().source() )?;
+        lex.jump(0, true)?;
 
         let mut id = Node::new(Box::new(node.clone()));
         id.set_loc(loc.clone());
         self.nodes.push(id);
 
-        eater::until_term(lex, false)?;
+        eater::expr_body(lex)?;
+        // eater::until_term(lex, false)?;
         Ok(())
     }
 }

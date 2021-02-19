@@ -15,8 +15,8 @@ pro main(arg: int): int = {
 
 ~typ[] (
     three: rec[] = { 
-        one: int,
-        two: str
+        var one: int,
+        var two: str
     }
     three2: rec[] = {
         three: vec,

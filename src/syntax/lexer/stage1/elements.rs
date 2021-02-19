@@ -85,12 +85,21 @@ impl Iterator for Elements {
 /// Creates a iterator that produces tokens from the input string.
 pub fn elements(file: &index::Input) -> impl Iterator<Item = Con<Element>>  {
     let mut txt = Box::new(stage0::Elements::init(file));
-    // *sins = *txt.sins();
+    let mut deep = 0;
     std::iter::from_fn(move || {
         if let Some(v) = txt.bump() {
             match v {
                 Ok(i) => {
-                    let mut loc = i.1.clone(); loc.set_len(1);
+                    let mut loc = i.1.clone();
+                    if help::is_open_bracket(&i.0) { 
+                        deep += 1;
+                    }
+                    else if help::is_close_bracket(&i.0) { 
+                        deep -= 1;
+                    }
+
+                    loc.set_len(1);
+                    loc.set_deep(deep);
                     let mut result = Element::init(illegal, loc, String::new());
                     if let Err(err) = result.analyze(&mut txt) {
                         return Some(Err(err));

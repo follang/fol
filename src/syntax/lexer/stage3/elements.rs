@@ -80,10 +80,12 @@ impl Elements {
                     return Err(e);
                 };
             }
-            if let Err(e) = self.bump().unwrap() {
-                self.until_term(true)?;
-                return Err(e);
-            };
+            if !self.curr(false)?.key().is_eof(){
+                if let Err(e) = self.bump().unwrap() {
+                    self.until_term(true)?;
+                    return Err(e);
+                };
+            }
         }
         Ok(())
     }

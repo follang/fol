@@ -98,6 +98,16 @@ impl Element {
             self.make_syoption(el)?;
         }
         // operators
+        else if el.curr()?.key().is_dot() && el.peek(0)?.key().is_dot() {
+            self.append(&el.peek(0)?.into());
+            self.bump(el);
+            self.set_key(operator(OPERATOR::dd_));
+            if el.peek(0)?.key().is_dot() {
+                self.append(&el.peek(0)?.into());
+                self.bump(el);
+                self.set_key(operator(OPERATOR::ddd_));
+            }
+        }
         else if el.curr()?.key().is_symbol()
             && el.peek(0)?.key().is_symbol()
             && (!(matches!(el.curr()?.key(), KEYWORD::symbol(SYMBOL::semi_)))
@@ -128,8 +138,7 @@ impl Element {
         content.push_str(el.peek(0)?.con());
         match content.as_str() {
             ":=" => self.set_key(operator(OPERATOR::assign2_)),
-            "..." => self.set_key(operator(OPERATOR::ddd_)),
-            ".." => self.set_key(operator(OPERATOR::dd_)),
+            "::" => self.set_key(operator(OPERATOR::path_)),
             "=>" => self.set_key(operator(OPERATOR::flow_)),
             "->" => self.set_key(operator(OPERATOR::flow2_)),
             "==" => self.set_key(operator(OPERATOR::equal_)),
@@ -144,6 +153,7 @@ impl Element {
             ">>" => self.set_key(operator(OPERATOR::greater_)),
             _ => return Ok(()),
         }
+        self.append(&el.peek(0)?.into());
         self.bump(el);
         Ok(())
     }

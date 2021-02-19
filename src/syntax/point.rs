@@ -38,8 +38,8 @@ impl fmt::Display for Location {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "[{: <2}:{: <2}]",
-            self.row, self.col
+            "[{: <2}:{: <2} | {}]",
+            self.row, self.col, self.deep
         )
     }
 }
@@ -107,6 +107,10 @@ impl Location {
         self.deep
     }
 
+    pub fn set_deep(&mut self, deep: isize) {
+        self.deep = deep
+    }
+
     pub fn new_char(&mut self) {
         self.col += 1;
         self.len += 1;
@@ -124,13 +128,5 @@ impl Location {
     pub fn adjust(&mut self, row: usize, col: usize) {
         self.row = row;
         self.col = col;
-    }
-
-    pub fn deepen(&mut self) {
-        self.deep += 1
-    }
-
-    pub fn soften(&mut self) {
-        self.deep -= 1
     }
 }

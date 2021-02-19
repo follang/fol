@@ -110,9 +110,6 @@ pub fn gen(file: &index::Input) -> impl Iterator<Item = Con<Part<char>>> {
         match chars.next() {
             Some(i) => {
                 loc.new_char();
-                if help::is_open_bracket(&i) { loc.deepen() }
-                else if help::is_close_bracket(&i) { loc.soften() }
-                // if i == ' ' { loc.new_word() }
                 return Some (Ok((i, loc.clone())))
             },
             None => {

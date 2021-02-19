@@ -118,29 +118,6 @@ pub fn expect_terminal(lex: &mut lexer::Elements) -> Vod {
         src: lex.curr(false)?.loc().source().clone()
     }))
 }
-pub fn until_key(lex: &mut lexer::Elements, keywords: Vec<KEYWORD>) -> Vod {
-    loop{ 
-        if keywords.iter().any(|i| *i == lex.curr(false).unwrap_or(lex.default()).key()) { 
-            break
-        }
-        lex.jump(0, false)?;
-    }
-    Ok(())
-}
-
-pub fn until_bracket(lex: &mut lexer::Elements) -> Vod {
-    let deep = lex.curr(false)?.loc().deep() - 1;
-    loop{
-        if (lex.curr(false)?.key().is_close_bracket() && lex.curr(false)?.loc().deep() == deep) 
-            || lex.curr(false)?.key().is_eof() {
-            break
-        }
-        lex.jump(0, false)?;
-    }
-    lex.jump(0, false)?;
-    Ok(())
-}
-
 pub fn type_balance(idents: usize, dt: usize, loc: &point::Location, src: &Option<index::Source>) -> Vod {
     if dt > idents {
         return Err( catch!( Typo::ParserTypeDisbalance {

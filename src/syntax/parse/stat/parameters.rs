@@ -4,7 +4,7 @@ use crate::syntax::nodes::{Node, Nodes, NodeStatAssVar};
 use crate::syntax::token::*;
 use crate::syntax::lexer;
 use super::Parse;
-use crate::syntax::parse::check;
+use crate::syntax::parse::{eater, check};
 
 use crate::syntax::parse::stat::assign::opts::*;
 use crate::syntax::parse::stat::ident::*;
@@ -30,21 +30,22 @@ impl Parse for ParserStatParameters {
         } else {
             return Ok(())
         }
+
         if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::roundC_) {
             lex.jump(0, true)?;
             return Ok(())
-        }
-
-        while !lex.curr(true)?.key().is_eof() {
-            match self.parse_each(lex) {
-                Ok(ok) => self.nodes.extend(ok),
-                Err(err) => return Err(err)
-            };
-            if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::semi_) {
-                lex.jump(0, true)?;
-            } else if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::roundC_) {
-                lex.jump(0, true)?;
-                break
+        } else {
+            while !lex.curr(true)?.key().is_eof() {
+                match self.parse_each(lex) {
+                    Ok(ok) => self.nodes.extend(ok),
+                    Err(err) => return Err(err)
+                };
+                if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::semi_) {
+                    lex.jump(0, true)?;
+                } else if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::roundC_) {
+                    lex.jump(0, true)?;
+                    break
+                }
             }
         }
         Ok(())
@@ -94,13 +95,7 @@ impl ParserStatParameters {
             id.set_loc(loc.clone());
             nodes.push(id);
         }
-        check::until_key(lex, vec![KEYWORD::symbol(SYMBOL::roundC_), KEYWORD::symbol(SYMBOL::semi_)])?;
+        eater::until_key(lex, vec![KEYWORD::symbol(SYMBOL::roundC_), KEYWORD::symbol(SYMBOL::semi_)])?;
         Ok(nodes)
-    }
-}
-
-impl ParserStatParameters {
-    pub fn extend(&mut self, n: Nodes) {
-        self.nodes.extend(n)
     }
 }

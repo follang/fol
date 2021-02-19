@@ -4,7 +4,7 @@ use crate::syntax::nodes::*;
 use crate::syntax::token::*;
 use crate::syntax::lexer;
 use super::Parse;
-use crate::syntax::parse::check;
+use crate::syntax::parse::{eater, check};
 
 pub use crate::syntax::nodes::stat::datatype::*;
 
@@ -43,12 +43,12 @@ impl Parse for ParserStatDatatypes {
 
             // match options after type  -> "[opts]"
             if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::squarO_) {
-                check::until_bracket(lex)?;
+                eater::until_bracket(lex)?;
             }
 
             // match restrictions after type  -> "[rest]"
             if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::squarO_) {
-                check::until_bracket(lex)?;
+                eater::until_bracket(lex)?;
             }
             if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::equal_)
                 || lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::semi_)

@@ -18,13 +18,13 @@ var t1, t2, t3, t4, t5, t6: int, str
 typ one: rec = { <expression> };
 typ two: rec[T: gen, N: int] = { <expression> };
 +typ[] (
-    three: rec[] = <expression>;
-    three2(got): rec[] = <expression>;
+    three: rec[] = { <expression> };
+    three2(got): rec[] = { <expression> };
 )
 ~typ[] four: rec = { <expression> };
 ~typ[] five: rec[] = { <expression> };
 ~typ[] six(blue, yellow): rec[] = { <expression> };
-~typ[] seven(blue, geen): rec[T: gen[], N: int] = <expression>;
+~typ[] seven(blue, geen): rec[T: gen[], N: int] = { <expression> };
 
 ~ali[] one: arr[int, 5];
 ~ali[] two: int;
@@ -45,7 +45,7 @@ fun one(): int = { <expression> }
 fun one(two: int): int = { <expression> }
 !fun[hid, exp, three] one(two: int): int = { <expression> }
 ~log[] one(two: int): int = { <expression> }
-fun[] `!=`(one, two: int): bol = { <expression> }
+fun[obj] `!=`(one, two: int): bol = { <expression> }
 ~pro[obj] one(two: int): int = { <expression> }
 ~pro[obj] `$`(): str = { <expression> } */
 ~pro[] one(gon: gen[]; two: int): int = { <expression> }

@@ -6,6 +6,7 @@ pub enum OPERATOR {
     ANY,
     dd_,
     ddd_,
+    path_,
     assign2_,
     flow_,
     flow2_,
@@ -29,8 +30,9 @@ impl fmt::Display for OPERATOR {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let t;
         match self {
-            OPERATOR::ddd_ => { t = Some("..".to_string()); },
+            OPERATOR::ddd_ => { t = Some("...".to_string()); },
             OPERATOR::dd_ => { t = Some("..".to_string()); },
+            OPERATOR::path_ => { t = Some("::".to_string()); },
             OPERATOR::assign2_ => { t = Some(":=".to_string()); },
             OPERATOR::flow_ => { t = Some("=>".to_string()); },
             OPERATOR::flow2_ => { t = Some("->".to_string()); },
