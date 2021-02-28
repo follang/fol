@@ -8,7 +8,8 @@ use crate::syntax::parse::{check, eater};
 
 use crate::syntax::parse::stat::assign::opts::*;
 use crate::syntax::parse::stat::ident::*;
-use crate::syntax::parse::stat::contracts::*;
+use crate::syntax::parse::stat::parameters::*;
+use crate::syntax::parse::stat::generics::*;
 use crate::syntax::parse::stat::datatype::*;
 
 #[derive(Clone)]
@@ -42,6 +43,13 @@ impl Parse for ParserStatAssTyp {
             opts.parse(lex)?;
             if opts.nodes.len() > 0 { node.set_options(Some(opts.nodes.clone())); }
 
+            // match generics
+            let mut gen = ParserStatGenerics::init();
+            gen.parse(lex)?;
+            if gen.nodes.len() > 0 { node.set_generics(Some(gen.nodes.clone())); }
+
+            // check::expect_void(lex)?;
+
             // march "(" to go recursively
             if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::roundO_) {
                 self.recurse(&node, lex)?;
@@ -56,10 +64,10 @@ impl Parse for ParserStatAssTyp {
         idents.parse(lex)?;
         node.set_ident(Some(idents.nodes.get(0).clone()));
 
-        // match contracts after (  -> "(one, two)"
-        let mut contracts = ParserStatContract::init();
-        contracts.parse(lex)?;
-        if contracts.nodes.len() > 0 { node.set_contracts(Some(contracts.nodes.clone())) }
+        // match parameters after (  -> "(one, two)"
+        let mut parameters = ParserStatParameters::init();
+        parameters.parse(lex)?; lex.eat();
+        if parameters.nodes.len() > 0 { node.set_parameters(Some(parameters.nodes.clone())) }
 
         // match datatypes after :  -> "int[opts][]"
         let mut dt = ParserStatDatatypes::init(true);

@@ -11,9 +11,7 @@ use crate::syntax::token::{
     operator::OPERATOR,
     buildin::BUILDIN,
     assign::ASSIGN,
-    types::TYPE,
-    option::OPTION,
-    form::FORM };
+};
 use crate::syntax::token::{KEYWORD, KEYWORD::*};
 
 
@@ -44,8 +42,6 @@ impl fmt::Display for Element {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let con = if self.key().is_literal()
             || self.key().is_comment()
-            || self.key().is_orbit()
-            || self.key().is_makro()
             || self.key().is_ident() { " ".to_string() + &self.con + " " } else { "".to_string() };
         write!(f, "{}\t{}{}", self.loc, self.key, con.black().on_red())
     }
@@ -91,12 +87,6 @@ impl Element {
             self.set_key(void(VOID::endfile_));
             self.bump(el);
         }
-        // options
-        else if el.curr()?.key().is_symbol() 
-            && el.peek(0)?.key().is_assign() 
-        { 
-            self.make_syoption(el)?;
-        }
         // operators
         else if el.curr()?.key().is_dot() && el.peek(0)?.key().is_dot() {
             self.append(&el.peek(0)?.into());
@@ -115,14 +105,6 @@ impl Element {
             // && (el.seek(0)?.key().is_void() || el.seek(0)?.key().is_bracket())
         {
             self.make_multi_operator(el)?;
-        }
-        else if el.curr()?.key().is_symbol()
-            && el.peek(0)?.key().is_assign()
-            && (el.seek(0)?.key().is_terminal()
-                || el.seek(0)?.key().is_void()
-                || el.seek(0)?.key().is_eol())
-        {
-            self.make_syoption(el)?;
         }
         else if matches!(el.curr()?.key(), KEYWORD::ident) 
         {
@@ -155,17 +137,6 @@ impl Element {
         }
         self.append(&el.peek(0)?.into());
         self.bump(el);
-        Ok(())
-    }
-    pub fn make_syoption(&mut self, el: &mut stage1::Elements) -> Vod {
-        match self.con().as_str() {
-            "~" => self.set_key(option(OPTION::mut_)),
-            "!" => self.set_key(option(OPTION::sta_)),
-            "+" => self.set_key(option(OPTION::exp_)),
-            "-" => self.set_key(option(OPTION::hid_)),
-            "@" => self.set_key(option(OPTION::hep_)),
-            _ => {}
-        }
         Ok(())
     }
 

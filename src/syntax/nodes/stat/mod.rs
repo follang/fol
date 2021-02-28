@@ -1,14 +1,10 @@
 use dyn_clone::DynClone;
 use crate::types::*;
 
-pub mod contracts;
-pub mod datatype;
 pub mod assign;
 pub mod ident;
 
 pub use crate::syntax::nodes::stat::{
-        contracts::*,
-        datatype::*,
         assign::*,
         ident::*,
 };

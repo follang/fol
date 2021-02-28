@@ -28,15 +28,6 @@ pub fn expect_many(lex: &mut lexer::Elements, keywords: Vec<KEYWORD>, ignore: bo
         src: lex.curr(ignore)?.loc().source().clone()
     }))
 }
-pub fn expect_option(lex: &mut lexer::Elements, ignore: bool) -> Vod {
-    if matches!(lex.curr(ignore)?.key(), KEYWORD::option(_)) { return Ok(()) };
-    Err( catch!( Typo::ParserUnexpected{ 
-        loc: Some(lex.curr(ignore)?.loc().clone()), 
-        key1: lex.curr(ignore)?.key(), 
-        key2: KEYWORD::option(OPTION::ANY),
-        src: lex.curr(ignore)?.loc().source().clone()
-    }))
-}
 pub fn expect_assign(lex: &mut lexer::Elements, ignore: bool) -> Vod {
     if matches!(lex.curr(ignore)?.key(), KEYWORD::assign(_)) { return Ok(()) };
     Err( catch!( Typo::ParserUnexpected{ 
@@ -46,21 +37,12 @@ pub fn expect_assign(lex: &mut lexer::Elements, ignore: bool) -> Vod {
         src: lex.curr(ignore)?.loc().source().clone()
     }))
 }
-pub fn expect_types(lex: &mut lexer::Elements, ignore: bool) -> Vod {
-    if matches!(lex.curr(ignore)?.key(), KEYWORD::types(_)) { return Ok(()) };
+pub fn expect_ident(lex: &mut lexer::Elements, ignore: bool) -> Vod {
+    if matches!(lex.curr(ignore)?.key(), KEYWORD::ident) { return Ok(()) };
     Err( catch!( Typo::ParserUnexpected{ 
         loc: Some(lex.curr(ignore)?.loc().clone()), 
         key1: lex.curr(ignore)?.key(), 
-        key2: KEYWORD::types(TYPE::ANY), 
-        src: lex.curr(ignore)?.loc().source().clone()
-    }))
-}
-pub fn expect_form(lex: &mut lexer::Elements, ignore: bool) -> Vod {
-    if matches!(lex.curr(ignore)?.key(), KEYWORD::form(_)) { return Ok(()) };
-    Err( catch!( Typo::ParserUnexpected{ 
-        loc: Some(lex.curr(ignore)?.loc().clone()), 
-        key1: lex.curr(ignore)?.key(), 
-        key2: KEYWORD::form(FORM::ANY), 
+        key2: KEYWORD::ident, 
         src: lex.curr(ignore)?.loc().source().clone()
     }))
 }

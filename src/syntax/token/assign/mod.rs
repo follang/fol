@@ -12,6 +12,8 @@ pub enum ASSIGN {
     log_,
     typ_,
     ali_,
+    imp_,
+    lab_,
 }
 
 impl fmt::Display for ASSIGN {
@@ -26,6 +28,8 @@ impl fmt::Display for ASSIGN {
             ASSIGN::log_ => { t = Some("log".to_string()); },
             ASSIGN::typ_ => { t = Some("typ".to_string()); },
             ASSIGN::ali_ => { t = Some("ali".to_string()); },
+            ASSIGN::imp_ => { t = Some("imp".to_string()); },
+            ASSIGN::lab_ => { t = Some("lab".to_string()); },
             _ => { t = None },
         };
         write!(f, "{}{}",

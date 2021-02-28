@@ -4,7 +4,7 @@ use crate::syntax::nodes::{NodeTrait, Node, Nodes};
 #[derive(Clone)]
 pub struct NodeStatAssFun {
     options: Option<Nodes>,
-    recivers: Option<Nodes>,
+    generics: Option<Nodes>,
     ident: Option<Node>,
     parameters: Option<Nodes>,
     data: Option<Node>,
@@ -15,7 +15,7 @@ impl Default for NodeStatAssFun {
     fn default() -> Self {
         Self { 
             options: None,
-            recivers: None,
+            generics: None,
             ident: None,
             parameters: None,
             data: None,
@@ -28,29 +28,29 @@ impl NodeTrait for NodeStatAssFun {}
 impl fmt::Display for NodeStatAssFun {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let opts = match self.options { Some(ref e) => e.to_string(), None => String::new()  };
-        let recivers = match self.recivers { Some(ref e) => ", ".to_string() + &e.to_string(), None => String::new()  };
+        let generics = match self.generics { Some(ref e) => ", ".to_string() + &e.to_string(), None => String::new()  };
         let ident = match self.ident { Some(ref e) => " ".to_string() + &e.to_string(), None => String::new()  };
         let parameters = match self.parameters { Some(ref e) => e.print(), None => String::new()  };
         let data = match self.data { Some(ref e) => ": ".to_string() + &e.to_string(), None => String::new()  };
-        write!(f, "{}[{}{}]{}({}){};", "fun", opts, recivers, ident, parameters, data)
+        write!(f, "{}[{}][{}]{}({}){};", "fun", opts, generics, ident, parameters, data)
     }
 }
 
 impl NodeStatAssFun {
     pub fn new(
             options: Option<Nodes>,
-            recivers: Option<Nodes>,
+            generics: Option<Nodes>,
             ident: Option<Node>,
             parameters: Option<Nodes>,
             data: Option<Node>,
             body: Option<Node> ) -> Self {
-        Self{ options, recivers, ident, data, parameters, body }
+        Self{ options, generics, ident, data, parameters, body }
     }
     pub fn set_options(&mut self, options: Option<Nodes>) {
         self.options = options;
     }
-    pub fn set_recivers(&mut self, recivers: Option<Nodes>) {
-        self.recivers = recivers;
+    pub fn set_generics(&mut self, generics: Option<Nodes>) {
+        self.generics = generics;
     }
     pub fn set_ident(&mut self, ident: Option<Node>) {
         self.ident = ident;

@@ -8,7 +8,6 @@ use crate::syntax::parse::{check, eater};
 
 use crate::syntax::parse::stat::assign::opts::*;
 use crate::syntax::parse::stat::ident::*;
-use crate::syntax::parse::stat::contracts::*;
 use crate::syntax::parse::stat::datatype::*;
 
 #[derive(Clone)]
@@ -42,19 +41,9 @@ impl Parse for ParserStatAssAli {
 
         // match indentifier "ident"
         let mut idents = ParserStatIdent::init(true);
-        if lex.curr(true)?.key().is_type() {
-            idents.parse_2(lex)?; lex.eat();
-            self._alias = false;
-        } else {
-            idents.only_one();
-            idents.parse(lex)?; lex.eat();
-        }
+        idents.only_one();
+        idents.parse(lex)?; lex.eat();
         node.set_ident(Some(idents.nodes.get(0).clone()));
-
-        // match contracts after (  -> "(one, two)"
-        let mut contracts = ParserStatContract::init();
-        contracts.parse(lex)?; lex.eat();
-        if contracts.nodes.len() > 0 { node.set_contracts(Some(contracts.nodes.clone())) }
 
         // match datatypes after :  -> "int[opts][]"
         let mut dt = ParserStatDatatypes::init(true);

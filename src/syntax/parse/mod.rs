@@ -40,7 +40,7 @@ impl Parse for Parser {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
         if matches!(lex.curr(false)?.key(), KEYWORD::assign(_))
-            || (matches!(lex.curr(false)?.key(), KEYWORD::option(_))
+            || (matches!(lex.curr(false)?.key(), KEYWORD::symbol(_))
                 && matches!(lex.peek(0, false)?.key(), KEYWORD::assign(_)))
         {
             let mut parse_stat = ParserStat::init();

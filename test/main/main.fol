@@ -13,7 +13,7 @@ pro main(arg: int): int = {
     )
 }
 
-~typ[] (
+~typ[set, get, nothing] (
     three: rec[] = { 
         var one: int,
         var two: str
@@ -34,14 +34,73 @@ fun[mut, three] one(two: int): int = {
 }
 
 
-typ some: rec[S: gen, t: int] = {
+typ some: rec[S: gen[three], t: int] = {
     el: S;
     num: t;
 }
 
-[rut[(one: int; two: flt): int]]{ 
+rut[(one: int; two: flt): int]{ 
     ~var sum = <b>one + <b>two->(int); 
     result = <o>sum;
 }
 
-[some[int, 5]]{ 1, 2, 3, 4, 5 }
+some[int, 5]{ 1, 2, 3, 4, 5 }
+
+lab athing: int;
+var intwrap = athing(5);
+
+typ[][T: gen] OP(type: T): enm = {
+    lab None;
+    lab Some: type
+}
+
+fun makeOption(): OP[int] = {
+    result = OP::Some(5)
+}
+
+when(makeOption()) { 
+    is (OP::Some(a)){ a + 2 },
+    is (OP::None){ 0 }
+}
+
+// something
+
+
++typ[][T: gen[][Sized, Display]] ID(val: T): rec[Display] = {
+    +var loc: opt[point::Location]
+    +var node: val
+}
+
+imp[][T: gen[]] Self: ID[T] = {
+    +fun[] init(node: T): self = {
+        self{ loc = None, node = node }
+    }
+}
+
+var aval = ID[int]::init(5);
+
+imp[][T: gen[][Sized, Display]] Sized: ID[T] = {} 
+
+typ[get, set][T: gen[]] array(val: T; num: int): rec = { 
+    var container: arr[val, num];
+    var temp: int;
+    lab gone: non;
+
+    +pro lasttwo(): val = { 
+        result = container[-0] + container[-1]
+    }
+};
+
+imp[][T: gen[]] Self: array[T, int] = {
+    +pro firsttwo(): T {
+        result = self.container[0] + self.container[1]
+    } 
+} 
+~var arrayish: array[int, 5] = { container: {1, 2, 3, 4, 5 }; temp: 5; };
+var test = <c>arrayish.get(0)
+arrayish.set(0) = { 0, 1, 2, 3, 4 }
+
+
+ali fiveint: array[int, 5];
+var somevar: fiveint = {1, 2, 3, 4, 5}
+var somevar = fiveint{1, 2, 3, 4, 5}

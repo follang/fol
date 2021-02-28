@@ -8,7 +8,6 @@ use crate::syntax::parse::{check, eater};
 
 use crate::syntax::parse::stat::assign::opts::*;
 use crate::syntax::parse::stat::ident::*;
-use crate::syntax::parse::stat::contracts::*;
 use crate::syntax::parse::stat::datatype::*;
 use crate::syntax::parse::stat::parameters::*;
 
@@ -39,7 +38,6 @@ impl Parse for ParserStatAssFun {
         // match options after var  -> "[opts]"
         opts.parse(lex)?;
         if opts.nodes.len() > 0 { node.set_options(Some(opts.nodes.clone())); }
-        if opts.recivers.len() > 0 { node.set_recivers(Some(opts.recivers.clone())); }
 
         // match indentifier "ident"
         let mut idents = ParserStatIdent::init(true);

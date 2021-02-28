@@ -11,9 +11,7 @@ use crate::syntax::token::{
     operator::OPERATOR,
     buildin::BUILDIN,
     assign::ASSIGN,
-    types::TYPE,
-    option::OPTION,
-    form::FORM };
+};
 use crate::syntax::token::{KEYWORD, KEYWORD::*};
 
 
@@ -44,8 +42,6 @@ impl fmt::Display for Element {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let con = if self.key().is_literal()
             || self.key().is_comment()
-            || self.key().is_orbit()
-            || self.key().is_makro()
             || self.key().is_ident() { " ".to_string() + &self.con + " " } else { "".to_string() };
         write!(f, "{}\t{}{}", self.loc, self.key, con.black().on_red())
     }

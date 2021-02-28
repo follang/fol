@@ -1,4 +1,3 @@
-pub mod opts;
 pub mod var;
 pub mod typ;
 pub mod ali;

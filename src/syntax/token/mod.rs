@@ -15,9 +15,6 @@ pub mod symbol;
 pub mod operator;
 pub mod buildin;
 pub mod assign;
-pub mod types;
-pub mod option;
-pub mod form;
 
 
 pub use crate::syntax::token::{
@@ -27,24 +24,17 @@ pub use crate::syntax::token::{
     operator::OPERATOR,
     buildin::BUILDIN,
     assign::ASSIGN,
-    types::TYPE,
-    option::OPTION,
-    form::FORM };
+};
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum KEYWORD {
     assign(ASSIGN),
-    option(OPTION),
-    types(TYPE),
-    form(FORM),
     literal(LITERAL),
     buildin(BUILDIN),
     symbol(SYMBOL),
     operator(OPERATOR),
     void(VOID),
     ident,
-    orbit,
-    makro,
     comment,
     illegal,
 }
@@ -56,27 +46,9 @@ impl KEYWORD {
             _ => false,
         }
     }
-    pub fn is_option(&self) -> bool {
-        match *self {
-            KEYWORD::option(_) => true,
-            _ => false,
-        }
-    }
     pub fn is_ident(&self) -> bool {
         match *self {
             KEYWORD::ident => true,
-            _ => false,
-        }
-    }
-    pub fn is_type(&self) -> bool {
-        match *self {
-            KEYWORD::types(_) => true,
-            _ => false,
-        }
-    }
-    pub fn is_form(&self) -> bool {
-        match *self {
-            KEYWORD::form(_) => true,
             _ => false,
         }
     }
@@ -89,18 +61,6 @@ impl KEYWORD {
     pub fn is_buildin(&self) -> bool {
         match *self {
             KEYWORD::buildin(_) => true,
-            _ => false,
-        }
-    }
-    pub fn is_orbit(&self) -> bool {
-        match *self {
-            KEYWORD::orbit => true,
-            _ => false,
-        }
-    }
-    pub fn is_makro(&self) -> bool {
-        match *self {
-            KEYWORD::makro => true,
             _ => false,
         }
     }
@@ -251,13 +211,8 @@ impl fmt::Display for KEYWORD {
             KEYWORD::symbol(v) => write!(f, "{}", v),
             KEYWORD::operator(v) => write!(f, "{}", v),
             KEYWORD::assign(v) => write!(f, "{}", v),
-            KEYWORD::types(v) => write!(f, "{}", v),
             KEYWORD::buildin(v) => write!(f, "{}", v),
-            KEYWORD::form(v) => write!(f, "{}", v),
-            KEYWORD::option(v) => write!(f, "{}", v),
             KEYWORD::ident => write!(f, "{}", " IDENT    ".black().on_red()),
-            KEYWORD::orbit => write!(f, "{}", " ORBIT    ".black().on_red()),
-            KEYWORD::makro => write!(f, "{}", " MAKRO    ".black().on_red()),
             KEYWORD::comment => write!(f, "{}", " COMMENT  ".black().on_red()),
             KEYWORD::illegal => write!(f, "{}", " ILLEGAL  ".black().on_green()),
         }

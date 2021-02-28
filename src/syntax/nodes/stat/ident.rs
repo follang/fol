@@ -2,7 +2,7 @@ use std::fmt;
 use crate::syntax::nodes::{NodeTrait, Node, Nodes};
 
 #[derive(Clone)]
-pub struct NodeStatIdent(String);
+pub struct NodeStatIdent(pub String);
 
 impl Default for NodeStatIdent {
     fn default() -> Self {
