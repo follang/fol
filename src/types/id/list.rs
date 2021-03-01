@@ -26,7 +26,7 @@ impl<T: Clone + fmt::Display> fmt::Display for List<T> {
         let mut comma_separated = String::new();
         for num in &self.0[0..self.0.len() - 1] {
             comma_separated.push_str(&num.to_string());
-            comma_separated.push_str(", ");
+            comma_separated.push_str("; ");
         }
         comma_separated.push_str(&self.0[self.0.len() - 1].to_string());
         write!(f, "{}", comma_separated)

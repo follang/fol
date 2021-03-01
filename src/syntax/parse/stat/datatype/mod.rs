@@ -6,7 +6,11 @@ use crate::syntax::lexer;
 use super::Parse;
 use crate::syntax::parse::{eater, check};
 
-pub use crate::syntax::nodes::stat::ident;
+use crate::syntax::nodes::stat::datatype;
+use crate::syntax::parse::stat::assign::opts;
+pub mod rec;
+pub mod rut;
+
 
 pub struct ParserStatDatatypes {
     pub nodes: Nodes,
@@ -24,6 +28,7 @@ impl ParserStatDatatypes {
 impl Parse for ParserStatDatatypes {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
+
         // eat ":"
         if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::colon_) {
             lex.jump(0, true)?; 
@@ -32,22 +37,36 @@ impl Parse for ParserStatDatatypes {
         }
 
         while !lex.curr(true)?.key().is_eof() {
-        // match type
-            check::expect_ident(lex, true)?; lex.eat();
-            let dt = ident::NodeStatIdent(lex.curr(true)?.con().to_string());
-            let node = Node::new(Box::new(dt));
-            self.nodes.push(node);
-            lex.jump(0, false)?; 
-
-            // match options after type  -> "[opts]"
-            if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::squarO_) {
-                eater::until_bracket(lex)?;
+            match lex.curr(true)?.con().as_str() {
+                "rec" => { 
+                    let mut data = rec::ParserStatData::init(); 
+                    data.parse(lex)?;
+                    self.nodes.push(data.nodes().get(0));
+                },
+                "rut" => { 
+                    let mut data = rut::ParserStatData::init(); 
+                    data.parse(lex)?;
+                    self.nodes.push(data.nodes().get(0));
+                }
+                _ => {
+                    let mut node = datatype::NodeStatDatatypes::default();
+                    check::expect_ident(lex, true)?;
+                    lex.eat();
+                    node.set_data(lex.curr(true)?.con().to_string());
+                    lex.jump(0, false)?; 
+                    if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::squarO_) { 
+                        let mut op = opts::ParserStatAssOpts::init(true); 
+                        op.parse(lex)?; 
+                        if op.nodes.len() > 0 { node.set_form(Some(op.nodes.clone())); }
+                    }
+                    if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::squarO_) { 
+                        eater::until_bracket(lex)?
+                    }
+                    let id = Node::new(Box::new(node));
+                    self.nodes.push(id);
+                }
             }
 
-            // match restrictions after type  -> "[rest]"
-            if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::squarO_) {
-                eater::until_bracket(lex)?;
-            }
             if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::equal_)
                 || lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::semi_)
                 || lex.curr(true)?.key().is_eol()

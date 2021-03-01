@@ -34,7 +34,7 @@ fun[mut, three] one(two: int): int = {
 }
 
 
-typ some: rec[S: gen[three], t: int] = {
+typ some(S: gen[three]; t: int): rec[] = {
     el: S;
     num: t;
 }

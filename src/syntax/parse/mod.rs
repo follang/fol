@@ -29,7 +29,7 @@ impl Parser {
                 parser.errors.push(err)
             }
         }
-        logit!("");
+        println!();
         nodinter!(parser.nodes.clone());
         errinter!(parser.errors.clone());
         parser

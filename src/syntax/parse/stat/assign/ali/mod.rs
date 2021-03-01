@@ -38,6 +38,7 @@ impl Parse for ParserStatAssAli {
         // match options after var  -> "[opts]"
         opts.parse(lex)?;
         if opts.nodes.len() > 0 { node.set_options(Some(opts.nodes.clone())); }
+        check::expect_void(lex)?;
 
         // match indentifier "ident"
         let mut idents = ParserStatIdent::init(true);

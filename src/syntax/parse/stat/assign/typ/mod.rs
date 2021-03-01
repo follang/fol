@@ -47,6 +47,7 @@ impl Parse for ParserStatAssTyp {
             let mut gen = ParserStatGenerics::init();
             gen.parse(lex)?;
             if gen.nodes.len() > 0 { node.set_generics(Some(gen.nodes.clone())); }
+            check::expect_void(lex)?;
 
             // check::expect_void(lex)?;
 

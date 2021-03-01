@@ -45,6 +45,7 @@ impl Parse for ParserStatAssUse {
             // match options after var  -> "[opts]"
             opts.parse(lex)?;
             if opts.nodes.len() > 0 { node.set_options(Some(opts.nodes.clone())); }
+            check::expect_void(lex)?;
 
             // march "(" to go recursively
             if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::roundO_) {

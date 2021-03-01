@@ -46,6 +46,15 @@ pub fn expect_ident(lex: &mut lexer::Elements, ignore: bool) -> Vod {
         src: lex.curr(ignore)?.loc().source().clone()
     }))
 }
+pub fn expect_ident_literal(lex: &mut lexer::Elements, ignore: bool) -> Vod {
+    if matches!(lex.curr(ignore)?.key(), KEYWORD::ident) || matches!(lex.curr(ignore)?.key(), KEYWORD::literal(_)) { return Ok(()) };
+    Err( catch!( Typo::ParserUnexpected{ 
+        loc: Some(lex.curr(ignore)?.loc().clone()), 
+        key1: lex.curr(ignore)?.key(), 
+        key2: KEYWORD::ident, 
+        src: lex.curr(ignore)?.loc().source().clone()
+    }))
+}
 pub fn expect_literal(lex: &mut lexer::Elements, ignore: bool) -> Vod {
     if matches!(lex.curr(ignore)?.key(), KEYWORD::literal(_)) { return Ok(()) };
     Err( catch!( Typo::ParserUnexpected{ 
