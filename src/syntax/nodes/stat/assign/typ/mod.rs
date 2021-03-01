@@ -3,6 +3,7 @@ use crate::syntax::nodes::{NodeTrait, Node, Nodes};
 
 #[derive(Clone)]
 pub struct NodeStatAssTyp {
+    string: String,
     options: Option<Nodes>,
     generics: Option<Nodes>,
     ident: Option<Node>,
@@ -13,7 +14,15 @@ pub struct NodeStatAssTyp {
 
 impl Default for NodeStatAssTyp {
     fn default() -> Self {
-        Self { options: None, generics: None, ident: None, parameters: None, data: None, body: None }
+        Self { 
+            string: String::new(),
+            options: None,
+            generics: None,
+            ident: None,
+            parameters: None,
+            data: None,
+            body: None
+        }
     }
 }
 
@@ -26,20 +35,12 @@ impl fmt::Display for NodeStatAssTyp {
         let ident = match self.ident { Some(ref e) => " ".to_string() + &e.to_string(), None => String::new()  };
         let contr = match self.parameters { Some(ref e) => e.to_string(), None => String::new()  };
         let data = match self.data { Some(ref e) => ": ".to_string() + &e.to_string(), None => String::new()  };
-        write!(f, "{}{}{}{}({}){}", "typ", opts, gen, ident, contr, data)
+        write!(f, "{}{}{}{}({}){}", self.string, opts, gen, ident, contr, data)
     }
 }
 
 impl NodeStatAssTyp {
-    pub fn new(
-            options: Option<Nodes>,
-            generics: Option<Nodes>,
-            ident: Option<Node>,
-            data: Option<Node>,
-            parameters: Option<Nodes>,
-            body: Option<Node>
-        ) -> Self { Self{ options, generics, ident, data, parameters, body } }
-
+    pub fn set_string(&mut self, string: String) { self.string = string }
     pub fn set_options(&mut self, options: Option<Nodes>) {
         self.options = options;
     }

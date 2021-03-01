@@ -9,6 +9,7 @@ use crate::syntax::parse::{check, eater};
 use crate::syntax::parse::stat::assign::opts::*;
 use crate::syntax::parse::stat::ident::*;
 use crate::syntax::parse::stat::datatype::*;
+use crate::syntax::parse::stat::generics::*;
 use crate::syntax::parse::stat::parameters::*;
 
 #[derive(Clone)]
@@ -33,11 +34,18 @@ impl Parse for ParserStatAssFun {
 
         // match "fun"
         // expect( KEYWORD::assign(ASSIGN::fun_) , true)?;
+        node.set_string(lex.curr(true)?.con().to_string());
         lex.jump(0, false)?;
 
         // match options after var  -> "[opts]"
         opts.parse(lex)?;
         if opts.nodes.len() > 0 { node.set_options(Some(opts.nodes.clone())); }
+
+        // match generics
+        let mut gen = ParserStatGenerics::init();
+        gen.parse(lex)?;
+        if gen.nodes.len() > 0 { node.set_generics(Some(gen.nodes.clone())); }
+
         check::expect_void(lex)?;
 
         // match indentifier "ident"

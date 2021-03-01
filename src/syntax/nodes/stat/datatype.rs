@@ -3,14 +3,14 @@ use crate::syntax::nodes::{NodeTrait, Node, Nodes};
 
 #[derive(Clone)]
 pub struct NodeStatDatatypes {
-    data: String,
+    string: String,
     form: Option<Nodes>,
     bound: Option<Node>,
 }
 
 impl Default for NodeStatDatatypes {
     fn default() -> Self {
-        Self { data: String::new(), form: None, bound: None }
+        Self { string: String::new(), form: None, bound: None }
     }
 }
 
@@ -20,19 +20,19 @@ impl fmt::Display for NodeStatDatatypes {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let form = match self.form { Some(ref e) => "[".to_string() + &e.to_string() + "]", None => String::new()  };
         let bound = match self.bound { Some(ref e) => "[".to_string() + &e.to_string() + "]", None => String::new()  };
-        write!(f, "{}{}{}", self.data, form, bound )
+        write!(f, "{}{}{}", self.string, form, bound )
     }
 }
 
 impl NodeStatDatatypes {
     pub fn new(
-            data: String,
+            string: String,
             form: Option<Nodes>,
             bound: Option<Node>,
-        ) -> Self { Self{ data, form, bound } }
+        ) -> Self { Self{ string, form, bound } }
 
-    pub fn set_data(&mut self, data: String) {
-        self.data = data;
+    pub fn set_string(&mut self, string: String) {
+        self.string = string;
     }
     pub fn set_form(&mut self, form: Option<Nodes>) {
         self.form = form;

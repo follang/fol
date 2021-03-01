@@ -3,6 +3,7 @@ use crate::syntax::nodes::{NodeTrait, Node, Nodes};
 
 #[derive(Clone)]
 pub struct NodeStatAssUse{
+    string: String,
     options: Option<Nodes>,
     ident: Option<Node>,
     data: Option<Node>,
@@ -11,7 +12,13 @@ pub struct NodeStatAssUse{
 
 impl Default for NodeStatAssUse {
     fn default() -> Self {
-        Self { options: None, ident: None, data: None, body: None }
+        Self {
+            string: String::new(),
+            options: None,
+            ident: None,
+            data: None,
+            body: None 
+        }
     }
 }
 
@@ -22,14 +29,12 @@ impl fmt::Display for NodeStatAssUse {
         let opts = match self.options { Some(ref e) => "[".to_string() + &e.to_string() + "]", None => String::new()  };
         let ident = match self.ident { Some(ref e) => " ".to_string() + &e.to_string(), None => String::new()  };
         let data = match self.data { Some(ref e) => ": ".to_string() + &e.to_string(), None => String::new()  };
-        write!(f, "{}{}{}{}", "use", opts, ident, data)
+        write!(f, "{}{}{}{}", self.string, opts, ident, data)
     }
 }
 
 impl NodeStatAssUse {
-    pub fn new(options: Option<Nodes>, ident: Option<Node>, data: Option<Node>, body: Option<Node>) -> Self {
-        Self{ options, ident, data, body }
-    }
+    pub fn set_string(&mut self, string: String) { self.string = string }
     pub fn options(&self) -> &Option<Nodes> { &self.options }
     pub fn set_options(&mut self, options: Option<Nodes>) {
         self.options = options;

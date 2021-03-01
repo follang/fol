@@ -29,7 +29,7 @@ impl Parse for ParserStatData {
         let mut node = datatype::NodeStatDatatypes::default();
         // match type
         check::expect_ident(lex, true)?; lex.eat();
-        node.set_data(lex.curr(true)?.con().to_string());
+        node.set_string(lex.curr(true)?.con().to_string());
         lex.jump(0, false)?; 
 
         // match options after type  -> "[opts]"

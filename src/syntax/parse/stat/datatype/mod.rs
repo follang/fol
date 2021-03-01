@@ -52,7 +52,7 @@ impl Parse for ParserStatDatatypes {
                     let mut node = datatype::NodeStatDatatypes::default();
                     check::expect_ident(lex, true)?;
                     lex.eat();
-                    node.set_data(lex.curr(true)?.con().to_string());
+                    node.set_string(lex.curr(true)?.con().to_string());
                     lex.jump(0, false)?; 
                     if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::squarO_) { 
                         let mut op = opts::ParserStatAssOpts::init(true); 

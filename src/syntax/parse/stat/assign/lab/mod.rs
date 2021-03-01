@@ -1,38 +1,38 @@
 use crate::types::{Vod, List, error::*};
 use crate::syntax::index::Source;
-use crate::syntax::nodes::{Node, Nodes, NodeStatAssAli};
+use crate::syntax::nodes::{Node, Nodes, NodeStatAssVar};
 use crate::syntax::token::*;
 use crate::syntax::lexer;
 use super::Parse;
-use crate::syntax::parse::{check, eater};
+use crate::syntax::parse::check;
 
 use crate::syntax::parse::stat::assign::opts::*;
 use crate::syntax::parse::stat::ident::*;
 use crate::syntax::parse::stat::datatype::*;
 
+
 #[derive(Clone)]
-pub struct ParserStatAssAli {
+pub struct ParserStatAssLab {
     pub nodes: Nodes,
-    _alias: bool,
 }
 
-impl ParserStatAssAli {
+impl ParserStatAssLab {
     pub fn len(&self) -> usize { self.nodes.len() }
-        pub fn init() -> Self {
-        Self { nodes: Nodes::new(), _alias: true } 
+    pub fn init() -> Self {
+        Self { nodes: Nodes::new() } 
     }
 }
-impl Parse for ParserStatAssAli {
+impl Parse for ParserStatAssLab {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
         let loc = lex.curr(true)?.loc().clone();
-        let mut node = NodeStatAssAli::default();
+        let mut node = NodeStatAssVar::default();
         // match symbol before var  -> "~"
         let mut opts = ParserStatAssOpts::init(false);
         opts.parse(lex)?;
 
-        // match "typ"
-        check::expect(lex, KEYWORD::assign(ASSIGN::ali_) , true)?;
+        // match "var"
+        check::expect(lex, KEYWORD::assign(ASSIGN::lab_) , true)?;
         node.set_string(lex.curr(true)?.con().to_string());
         lex.jump(0, false)?;
 
@@ -43,33 +43,26 @@ impl Parse for ParserStatAssAli {
 
         // match indentifier "ident"
         let mut idents = ParserStatIdent::init(true);
-        idents.only_one();
         idents.parse(lex)?; lex.eat();
-        node.set_ident(Some(idents.nodes.get(0).clone()));
 
         // match datatypes after :  -> "int[opts][]"
         let mut dt = ParserStatDatatypes::init(true);
         dt.parse(lex)?;
-        if dt.nodes.len() > 0 { node.set_datatype(Some(dt.nodes.get(0).clone())); }
 
-        check::expect_many(lex, vec![ 
-            KEYWORD::symbol(SYMBOL::semi_),
-            KEYWORD::symbol(SYMBOL::equal_),
-            KEYWORD::void(VOID::endline_)
-        ], true)?;
+        check::expect_terminal(lex)?;
         check::type_balance(idents.nodes.len(), dt.nodes.len(), &loc, &lex.curr(false)?.loc().source() )?;
 
-        let mut id = Node::new(Box::new(node.clone()));
-        id.set_loc(loc.clone());
-        self.nodes.push(id);
-
-        eater::until_term(lex, false)?;
+        for i in 0..idents.nodes.len() {
+            if dt.nodes.len() > 0 {
+                let idx = if i >= dt.nodes.len() { dt.nodes.len()-1 } else { i };
+                node.set_datatype(Some(dt.nodes.get(idx).clone()));
+            }
+            node.set_ident(Some(idents.nodes.get(i).clone()));
+            let mut id = Node::new(Box::new(node.clone()));
+            id.set_loc(loc.clone());
+            self.nodes.push(id);
+        }
+        lex.until_term(false)?;
         Ok(())
     }
-}
-
-impl ParserStatAssAli {
-        pub fn extend(&mut self, n: Nodes) {
-            self.nodes.extend(n)
-        }
 }

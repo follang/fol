@@ -40,6 +40,7 @@ impl Parse for ParserStatAssUse {
 
             // match "use"
             check::expect(lex, KEYWORD::assign(ASSIGN::use_) , true)?;
+            node.set_string(lex.curr(true)?.con().to_string());
             lex.jump(0, false)?;
 
             // match options after var  -> "[opts]"

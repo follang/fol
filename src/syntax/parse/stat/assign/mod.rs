@@ -11,6 +11,7 @@ pub mod typ;
 pub mod ali;
 pub mod r#use;
 pub mod fun;
+pub mod lab;
 use crate::syntax::parse::stat::assign::{
     opts::ParserStatAssOpts,
     var::ParserStatAssVar,
@@ -18,6 +19,7 @@ use crate::syntax::parse::stat::assign::{
     ali::ParserStatAssAli,
     r#use::ParserStatAssUse,
     fun::ParserStatAssFun,
+    lab::ParserStatAssLab,
 };
 
 pub struct ParserStatAss {
@@ -63,6 +65,11 @@ impl Parse for ParserStatAss {
                 && matches!(lex.peek(0, false)?.key(), KEYWORD::assign(ASSIGN::fun_)))
         {
             parser = Box::new(ParserStatAssFun::init());
+        } else if matches!(lex.curr(false)?.key(), KEYWORD::assign(ASSIGN::lab_))
+            || (matches!(lex.curr(false)?.key(), KEYWORD::symbol(_))
+                && matches!(lex.peek(0, false)?.key(), KEYWORD::assign(ASSIGN::lab_)))
+        {
+            parser = Box::new(ParserStatAssLab::init());
         } else {
             lex.until_term(false)?;
             return Ok(())
