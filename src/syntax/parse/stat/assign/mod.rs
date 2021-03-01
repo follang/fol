@@ -8,6 +8,7 @@ use super::Parse;
 pub mod opts;
 pub mod var;
 pub mod typ;
+pub mod imp;
 pub mod ali;
 pub mod r#use;
 pub mod fun;
@@ -16,6 +17,7 @@ use crate::syntax::parse::stat::assign::{
     opts::ParserStatAssOpts,
     var::ParserStatAssVar,
     typ::ParserStatAssTyp,
+    imp::ParserStatAssImp,
     ali::ParserStatAssAli,
     r#use::ParserStatAssUse,
     fun::ParserStatAssFun,
@@ -65,6 +67,11 @@ impl Parse for ParserStatAss {
                 && matches!(lex.peek(0, false)?.key(), KEYWORD::assign(ASSIGN::fun_)))
         {
             parser = Box::new(ParserStatAssFun::init());
+        } else if matches!(lex.curr(false)?.key(), KEYWORD::assign(ASSIGN::imp_))
+            || (matches!(lex.curr(false)?.key(), KEYWORD::symbol(_))
+                && matches!(lex.peek(0, false)?.key(), KEYWORD::assign(ASSIGN::imp_)))
+        {
+            parser = Box::new(ParserStatAssImp::init());
         } else if matches!(lex.curr(false)?.key(), KEYWORD::assign(ASSIGN::lab_))
             || (matches!(lex.curr(false)?.key(), KEYWORD::symbol(_))
                 && matches!(lex.peek(0, false)?.key(), KEYWORD::assign(ASSIGN::lab_)))
