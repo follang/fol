@@ -82,7 +82,7 @@ imp[][T: gen[]] Self: ID[T] = {
 var aval = ID[int]::init(5);
 imp[][T: gen[][Sized, Display]] Sized: ID[T] = {} 
 
-/types
+//types
 typ[get, set][T: gen[]] array(val: T; num: int): rec = { 
     var container: arr[val, num];
     var temp: int;
@@ -97,11 +97,12 @@ imp[][T: gen[]] Self: array[T, int] = {
     } 
 } 
 ~var arrayish: array[int, 5] = { container: {1, 2, 3, 4, 5 }; temp: 5; };
-var test = <c>arrayish.get(0)
+var test = arrayish<C>.get(0)
 arrayish.set(0) = { 0, 1, 2, 3, 4 }
 
-//funcall
+var test: box[box[array[int, 5]]] = ar
 
+//funcall
 ali fiveint: array[int, 5];
 var somevar: fiveint = {1, 2, 3, 4, 5}
 var somevar = fiveint{1, 2, 3, 4, 5}

@@ -1,6 +1,7 @@
 use std::fmt;
 use crate::types::*;
 use crate::syntax::token::*;
+use crate::syntax::point;
 use crate::syntax::lexer::stage2;
 use crate::syntax::lexer::stage3::Element;
 use crate::syntax::index;
@@ -105,8 +106,10 @@ impl Elements {
         Ok(())
     }
 
-    pub fn debug(&self, bol: bool) -> Vod {
-        println!("{}\t{}\t{}", self.curr(bol)?.loc(), self.curr(bol)?.key(), self.curr(bol)?.con());
+    pub fn debug(&self, bol: bool, ln: usize) -> Vod {
+        if self.curr(bol)?.loc().row() == ln || ln == 0 {
+            println!("{}\t{}\t{}", self.curr(bol)?.loc(), self.curr(bol)?.key(), self.curr(bol)?.con());
+        }
         Ok(())
     }
 }

@@ -39,9 +39,9 @@ impl Parser {
 impl Parse for Parser {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
-        if matches!(lex.curr(false)?.key(), KEYWORD::assign(_))
-            || (matches!(lex.curr(false)?.key(), KEYWORD::symbol(_))
-                && matches!(lex.peek(0, false)?.key(), KEYWORD::assign(_)))
+        if matches!(lex.curr(true)?.key(), KEYWORD::assign(_))
+            || (matches!(lex.curr(true)?.key(), KEYWORD::symbol(_))
+                && matches!(lex.peek(0, true)?.key(), KEYWORD::assign(_)))
         {
             let mut parse_stat = ParserStat::init();
             match parse_stat.parse(lex) {
@@ -49,6 +49,7 @@ impl Parse for Parser {
                 Err(err) => { self.errors.push(err) }
             }
         } else {
+            // check::expect(lex,  KEYWORD::assign(ASSIGN::ANY) , true)?;
             lex.until_term(false)?;
         }
         Ok(())

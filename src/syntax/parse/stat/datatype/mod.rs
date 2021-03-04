@@ -10,18 +10,19 @@ use crate::syntax::nodes::stat::datatype;
 use crate::syntax::parse::stat::assign::opts;
 pub mod rec;
 pub mod rut;
+pub mod r#box;
 
 
 pub struct ParserStatDatatypes {
     pub nodes: Nodes,
-    _inparam: bool,
+    _colon: bool,
 }
 
 impl ParserStatDatatypes {
-    pub fn init(inparam: bool) -> Self {
+    pub fn init(colon: bool) -> Self {
         Self { 
             nodes: Nodes::new(),
-            _inparam: inparam,
+            _colon: colon,
         } 
     }
 }
@@ -30,7 +31,7 @@ impl Parse for ParserStatDatatypes {
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
 
         // eat ":"
-        if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::colon_) {
+        if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::colon_) || self._colon == false {
             lex.jump(0, true)?; 
         } else {
             return Ok(())
@@ -45,6 +46,11 @@ impl Parse for ParserStatDatatypes {
                 },
                 "rut" => { 
                     let mut data = rut::ParserStatData::init(); 
+                    data.parse(lex)?;
+                    self.nodes.push(data.nodes().get(0));
+                }
+                "box" => { 
+                    let mut data = r#box::ParserStatData::init(); 
                     data.parse(lex)?;
                     self.nodes.push(data.nodes().get(0));
                 }
@@ -64,22 +70,16 @@ impl Parse for ParserStatDatatypes {
                     }
                     let id = Node::new(Box::new(node));
                     self.nodes.push(id);
+                    lex.debug(true, 0);
                 }
             }
-
-            if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::equal_)
-                || lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::semi_)
-                || lex.curr(true)?.key().is_eol()
-                || ((lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::roundC_)
-                    || lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::squarC_))
-                    && self._inparam)
-            {
+            if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::comma_) {
+                lex.jump(0, true)?; lex.eat();
+                lex.eat();
+            } else {
                 lex.eat();
                 break
-            } else if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::comma_) {
-                lex.jump(0, true)?; lex.eat();
             }
-            lex.eat();
         }
 
         Ok(())
