@@ -33,7 +33,7 @@ impl Parse for ParserStatAssImp {
         opts.parse(lex)?;
 
         // match "var"
-        check::expect(lex,  KEYWORD::assign(ASSIGN::imp_) , true)?;
+        check::expect(lex,  KEYWORD::buildin(BUILDIN::imp_) , true)?;
         node.set_string(lex.curr(true)?.con().to_string());
         lex.jump(0, false)?;
 

@@ -28,15 +28,6 @@ pub fn expect_many(lex: &mut lexer::Elements, keywords: Vec<KEYWORD>, ignore: bo
         src: lex.curr(ignore)?.loc().source().clone()
     }))
 }
-pub fn expect_assign(lex: &mut lexer::Elements, ignore: bool) -> Vod {
-    if matches!(lex.curr(ignore)?.key(), KEYWORD::assign(_)) { return Ok(()) };
-    Err( catch!( Typo::ParserUnexpected{ 
-        loc: Some(lex.curr(ignore)?.loc().clone()), 
-        key1: lex.curr(ignore)?.key(), 
-        key2: KEYWORD::assign(ASSIGN::ANY), 
-        src: lex.curr(ignore)?.loc().source().clone()
-    }))
-}
 pub fn expect_ident(lex: &mut lexer::Elements, ignore: bool) -> Vod {
     if matches!(lex.curr(ignore)?.key(), KEYWORD::ident) { return Ok(()) };
     Err( catch!( Typo::ParserUnexpected{ 

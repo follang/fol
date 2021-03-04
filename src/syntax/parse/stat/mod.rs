@@ -31,9 +31,8 @@ impl ParserStat {
 impl Parse for ParserStat {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
-        if matches!(lex.curr(false)?.key(), KEYWORD::assign(_))
-            || (matches!(lex.curr(false)?.key(), KEYWORD::symbol(_))
-                && matches!(lex.peek(0, false)?.key(), KEYWORD::assign(_)))
+        if lex.curr(true)?.key().is_assign()
+            || (matches!(lex.curr(true)?.key(), KEYWORD::symbol(_)) && lex.peek(0, true)?.key().is_assign())
         {
             let mut parse_ass = ParserStatAss::init();
             parse_ass.parse(lex)?;

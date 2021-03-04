@@ -39,7 +39,7 @@ impl Parse for ParserStatAssUse {
             opts.parse(lex)?;
 
             // match "use"
-            check::expect(lex, KEYWORD::assign(ASSIGN::use_) , true)?;
+            check::expect(lex, KEYWORD::buildin(BUILDIN::use_) , true)?;
             node.set_string(lex.curr(true)?.con().to_string());
             lex.jump(0, false)?;
 

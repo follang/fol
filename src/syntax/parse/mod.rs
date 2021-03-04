@@ -42,9 +42,8 @@ impl Parse for Parser {
         if lex.curr(true)?.key().is_comment() {
             lex.jump(0, true)?;
         }
-        if matches!(lex.curr(true)?.key(), KEYWORD::assign(_))
-            || (matches!(lex.curr(true)?.key(), KEYWORD::symbol(_))
-                && matches!(lex.peek(0, true)?.key(), KEYWORD::assign(_)))
+        if lex.curr(true)?.key().is_assign()
+            || (matches!(lex.curr(true)?.key(), KEYWORD::symbol(_)) && lex.peek(0, true)?.key().is_assign())
         {
             let mut parse_stat = ParserStat::init();
             match parse_stat.parse(lex) {

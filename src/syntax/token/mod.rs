@@ -14,7 +14,6 @@ pub mod void;
 pub mod symbol;
 pub mod operator;
 pub mod buildin;
-pub mod assign;
 
 
 pub use crate::syntax::token::{
@@ -23,12 +22,10 @@ pub use crate::syntax::token::{
     symbol::SYMBOL,
     operator::OPERATOR,
     buildin::BUILDIN,
-    assign::ASSIGN,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum KEYWORD {
-    assign(ASSIGN),
     literal(LITERAL),
     buildin(BUILDIN),
     symbol(SYMBOL),
@@ -40,6 +37,22 @@ pub enum KEYWORD {
 }
 
 impl KEYWORD {
+    pub fn is_assign(&self) -> bool {
+        match *self {
+            KEYWORD::buildin(BUILDIN::use_) => true,
+            KEYWORD::buildin(BUILDIN::def_) => true,
+            KEYWORD::buildin(BUILDIN::var_) => true,
+            KEYWORD::buildin(BUILDIN::fun_) => true,
+            KEYWORD::buildin(BUILDIN::pro_) => true,
+            KEYWORD::buildin(BUILDIN::log_) => true,
+            KEYWORD::buildin(BUILDIN::typ_) => true,
+            KEYWORD::buildin(BUILDIN::ali_) => true,
+            KEYWORD::buildin(BUILDIN::imp_) => true,
+            KEYWORD::buildin(BUILDIN::lab_) => true,
+            _ => false,
+        }
+    }
+
     pub fn is_ident(&self) -> bool {
         match *self {
             KEYWORD::ident => true,
@@ -204,7 +217,7 @@ impl fmt::Display for KEYWORD {
             KEYWORD::void(v) => write!(f, "{}", v),
             KEYWORD::symbol(v) => write!(f, "{}", v),
             KEYWORD::operator(v) => write!(f, "{}", v),
-            KEYWORD::assign(v) => write!(f, "{}", v),
+            // KEYWORD::assign(v) => write!(f, "{}", v),
             KEYWORD::buildin(v) => write!(f, "{}", v),
             KEYWORD::ident => write!(f, "{}", " IDENT    ".black().on_red()),
             KEYWORD::comment => write!(f, "{}", " COMMENT  ".black().on_red()),
@@ -215,6 +228,6 @@ impl fmt::Display for KEYWORD {
 
 pub fn get_keyword() -> HashMap<String, KEYWORD> {
     let mut keywords: HashMap<String, KEYWORD> = HashMap::new();
-    keywords.insert(String::from("use"), KEYWORD::assign(ASSIGN::use_));
+    keywords.insert(String::from("use"), KEYWORD::buildin(BUILDIN::use_));
     keywords
 }

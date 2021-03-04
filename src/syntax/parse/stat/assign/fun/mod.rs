@@ -33,7 +33,7 @@ impl Parse for ParserStatAssFun {
         opts.parse(lex)?;
 
         // match "fun"
-        // expect( KEYWORD::assign(ASSIGN::fun_) , true)?;
+        // expect( KEYWORD::buildin(BUILDIN::fun_) , true)?;
         node.set_string(lex.curr(true)?.con().to_string());
         lex.jump(0, false)?;
 

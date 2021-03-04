@@ -38,48 +38,48 @@ impl Parse for ParserStatAss {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
         let mut parser: Box<dyn Parse>;
-        if matches!(lex.curr(true)?.key(), KEYWORD::assign(ASSIGN::var_))
+        if matches!(lex.curr(true)?.key(), KEYWORD::buildin(BUILDIN::var_))
             || (matches!(lex.curr(true)?.key(), KEYWORD::symbol(_))
-                && matches!(lex.peek(0, true)?.key(), KEYWORD::assign(ASSIGN::var_)))
+                && matches!(lex.peek(0, true)?.key(), KEYWORD::buildin(BUILDIN::var_)))
         {
             parser = Box::new(ParserStatAssVar::init());
-        } else if matches!(lex.curr(true)?.key(), KEYWORD::assign(ASSIGN::typ_))
+        } else if matches!(lex.curr(true)?.key(), KEYWORD::buildin(BUILDIN::typ_))
             || (matches!(lex.curr(true)?.key(), KEYWORD::symbol(_))
-                && matches!(lex.peek(0, true)?.key(), KEYWORD::assign(ASSIGN::typ_)))
+                && matches!(lex.peek(0, true)?.key(), KEYWORD::buildin(BUILDIN::typ_)))
         {
             parser = Box::new(ParserStatAssTyp::init());
-        } else if matches!(lex.curr(true)?.key(), KEYWORD::assign(ASSIGN::ali_))
+        } else if matches!(lex.curr(true)?.key(), KEYWORD::buildin(BUILDIN::ali_))
             || (matches!(lex.curr(true)?.key(), KEYWORD::symbol(_))
-                && matches!(lex.peek(0, true)?.key(), KEYWORD::assign(ASSIGN::ali_)))
+                && matches!(lex.peek(0, true)?.key(), KEYWORD::buildin(BUILDIN::ali_)))
         {
             parser = Box::new(ParserStatAssAli::init());
-        } else if matches!(lex.curr(true)?.key(), KEYWORD::assign(ASSIGN::use_))
+        } else if matches!(lex.curr(true)?.key(), KEYWORD::buildin(BUILDIN::use_))
             || (matches!(lex.curr(true)?.key(), KEYWORD::symbol(_))
-                && matches!(lex.peek(0, true)?.key(), KEYWORD::assign(ASSIGN::use_)))
+                && matches!(lex.peek(0, true)?.key(), KEYWORD::buildin(BUILDIN::use_)))
         {
             parser = Box::new(ParserStatAssUse::init());
-        } else if matches!(lex.curr(true)?.key(), KEYWORD::assign(ASSIGN::pro_))
+        } else if matches!(lex.curr(true)?.key(), KEYWORD::buildin(BUILDIN::pro_))
             || (matches!(lex.curr(true)?.key(), KEYWORD::symbol(_))
-                && matches!(lex.peek(0, true)?.key(), KEYWORD::assign(ASSIGN::pro_)))
+                && matches!(lex.peek(0, true)?.key(), KEYWORD::buildin(BUILDIN::pro_)))
         {
             parser = Box::new(ParserStatAssFun::init());
-        } else if matches!(lex.curr(true)?.key(), KEYWORD::assign(ASSIGN::fun_))
+        } else if matches!(lex.curr(true)?.key(), KEYWORD::buildin(BUILDIN::fun_))
             || (matches!(lex.curr(true)?.key(), KEYWORD::symbol(_))
-                && matches!(lex.peek(0, true)?.key(), KEYWORD::assign(ASSIGN::fun_)))
+                && matches!(lex.peek(0, true)?.key(), KEYWORD::buildin(BUILDIN::fun_)))
         {
             parser = Box::new(ParserStatAssFun::init());
-        } else if matches!(lex.curr(true)?.key(), KEYWORD::assign(ASSIGN::imp_))
+        } else if matches!(lex.curr(true)?.key(), KEYWORD::buildin(BUILDIN::imp_))
             || (matches!(lex.curr(true)?.key(), KEYWORD::symbol(_))
-                && matches!(lex.peek(0, true)?.key(), KEYWORD::assign(ASSIGN::imp_)))
+                && matches!(lex.peek(0, true)?.key(), KEYWORD::buildin(BUILDIN::imp_)))
         {
             parser = Box::new(ParserStatAssImp::init());
-        } else if matches!(lex.curr(true)?.key(), KEYWORD::assign(ASSIGN::lab_))
+        } else if matches!(lex.curr(true)?.key(), KEYWORD::buildin(BUILDIN::lab_))
             || (matches!(lex.curr(true)?.key(), KEYWORD::symbol(_))
-                && matches!(lex.peek(0, true)?.key(), KEYWORD::assign(ASSIGN::lab_)))
+                && matches!(lex.peek(0, true)?.key(), KEYWORD::buildin(BUILDIN::lab_)))
         {
             parser = Box::new(ParserStatAssLab::init());
         } else {
-            check::expect(lex,  KEYWORD::assign(ASSIGN::ANY) , true)?;
+            check::expect(lex,  KEYWORD::buildin(BUILDIN::ANY) , true)?;
             lex.until_term(true)?;
             return Ok(())
         }

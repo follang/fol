@@ -32,7 +32,7 @@ impl Parse for ParserStatAssAli {
         opts.parse(lex)?;
 
         // match "typ"
-        check::expect(lex, KEYWORD::assign(ASSIGN::ali_) , true)?;
+        check::expect(lex, KEYWORD::buildin(BUILDIN::ali_) , true)?;
         node.set_string(lex.curr(true)?.con().to_string());
         lex.jump(0, false)?;
 

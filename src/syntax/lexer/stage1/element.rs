@@ -9,7 +9,6 @@ use crate::syntax::token::{
     symbol::SYMBOL,
     operator::OPERATOR,
     buildin::BUILDIN,
-    assign::ASSIGN,
 };
 use crate::syntax::token::{help::*, KEYWORD, KEYWORD::*};
 
@@ -259,16 +258,16 @@ impl Element {
             con.push(code.curr()?.0.clone());
         }
         match self.con().as_str() {
-            "use" => self.set_key(assign(ASSIGN::use_)),
-            "def" => self.set_key(assign(ASSIGN::def_)),
-            "var" => self.set_key(assign(ASSIGN::var_)),
-            "fun" => self.set_key(assign(ASSIGN::fun_)),
-            "pro" => self.set_key(assign(ASSIGN::pro_)),
-            "log" => self.set_key(assign(ASSIGN::log_)),
-            "typ" => self.set_key(assign(ASSIGN::typ_)),
-            "ali" => self.set_key(assign(ASSIGN::ali_)),
-            "imp" => self.set_key(assign(ASSIGN::imp_)),
-            "lab" => self.set_key(assign(ASSIGN::lab_)),
+            "use" => self.set_key(buildin(BUILDIN::use_)),
+            "def" => self.set_key(buildin(BUILDIN::def_)),
+            "var" => self.set_key(buildin(BUILDIN::var_)),
+            "fun" => self.set_key(buildin(BUILDIN::fun_)),
+            "pro" => self.set_key(buildin(BUILDIN::pro_)),
+            "log" => self.set_key(buildin(BUILDIN::log_)),
+            "typ" => self.set_key(buildin(BUILDIN::typ_)),
+            "ali" => self.set_key(buildin(BUILDIN::ali_)),
+            "imp" => self.set_key(buildin(BUILDIN::imp_)),
+            "lab" => self.set_key(buildin(BUILDIN::lab_)),
             "not" => self.set_key(buildin(BUILDIN::not_)),
             "or" => self.set_key(buildin(BUILDIN::or_)),
             "xor" => self.set_key(buildin(BUILDIN::xor_)),
