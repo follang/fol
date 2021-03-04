@@ -26,7 +26,7 @@ impl Lines {
                 lines = Box::new(string_lines(&s));
             }
             Input::Path(s, b) => {
-                lines = Box::new(source_lines2(s, b));
+                lines = Box::new(path_lines(s, b));
             }
         }
         Self {
@@ -72,7 +72,7 @@ pub fn source_lines(src: &Source) -> impl Iterator<Item = (String, Option<Source
     })
 }
 
-pub fn source_lines2(src: String, file: bool) -> impl Iterator<Item = (String, Option<Source>)> {
+pub fn path_lines(src: String, file: bool) -> impl Iterator<Item = (String, Option<Source>)> {
     let mut sources = source::sources(src, file);
     let source = sources.next().unwrap();
     let mut reader = reader::BufReader::open(source.path(true)).unwrap();
