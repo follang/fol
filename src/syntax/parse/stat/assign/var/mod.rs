@@ -78,6 +78,12 @@ impl Parse for ParserStatAssVar {
             id.set_loc(loc.clone());
             self.nodes.push(id);
         }
+
+        if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::semi_) 
+            || lex.curr(true)?.key() == KEYWORD::void(VOID::endline_) {
+                return Ok(())
+        }
+
         lex.until_term(false)?;
         Ok(())
     }

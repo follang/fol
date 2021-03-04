@@ -10,7 +10,6 @@ use crate::syntax::token::{
     symbol::SYMBOL,
     operator::OPERATOR,
     buildin::BUILDIN,
-    assign::ASSIGN,
 };
 use crate::syntax::token::{KEYWORD, KEYWORD::*};
 

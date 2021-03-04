@@ -96,7 +96,7 @@ imp[][T: gen[]] Self: array[T, int] = {
         result = self.container[0] + self.container[1]
     } 
 } 
-~var arrayish: array[int, 5] = { container: {1, 2, 3, 4, 5 }; temp: 5; };
+~var arrayish: array[int[5], 5] = { container: {1, 2, 3, 4, 5 }; temp: 5; };
 var test = arrayish<C>.get(0)
 arrayish.set(0) = { 0, 1, 2, 3, 4 }
 

@@ -4,6 +4,17 @@ use std::fmt;
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum BUILDIN {
     ANY,
+    use_,
+    def_,
+    var_,
+    fun_,
+    pro_,
+    log_,
+    typ_,
+    ali_,
+    imp_,
+    lab_,
+
     not_,
     or_,
     xor_,
@@ -35,6 +46,7 @@ pub enum BUILDIN {
     do_,
     go_,
     get_,
+    of_,
     let_,
 }
 
@@ -43,6 +55,17 @@ impl fmt::Display for BUILDIN {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let t;
         match self {
+            BUILDIN::use_ => { t = Some("use".to_string()); },
+            BUILDIN::var_ => { t = Some("var".to_string()); },
+            BUILDIN::def_ => { t = Some("def".to_string()); },
+            BUILDIN::fun_ => { t = Some("fun".to_string()); },
+            BUILDIN::pro_ => { t = Some("pro".to_string()); },
+            BUILDIN::log_ => { t = Some("log".to_string()); },
+            BUILDIN::typ_ => { t = Some("typ".to_string()); },
+            BUILDIN::ali_ => { t = Some("ali".to_string()); },
+            BUILDIN::imp_ => { t = Some("imp".to_string()); },
+            BUILDIN::lab_ => { t = Some("lab".to_string()); },
+
             BUILDIN::not_ => { t = Some("not".to_string()); },
             BUILDIN::or_ => { t = Some("or".to_string()); },
             BUILDIN::xor_ => { t = Some("xor".to_string()); },
@@ -51,6 +74,7 @@ impl fmt::Display for BUILDIN {
             BUILDIN::nand_ => { t = Some("nand".to_string()); },
             BUILDIN::as_ => { t = Some("as".to_string()); },
             BUILDIN::if_ => { t = Some("if".to_string()); },
+            BUILDIN::of_ => { t = Some("of".to_string()); },
             BUILDIN::when_ => { t = Some("when".to_string()); },
             BUILDIN::loop_ => { t = Some("loop".to_string()); },
             BUILDIN::is_ => { t = Some("is".to_string()); },

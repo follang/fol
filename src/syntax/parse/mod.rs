@@ -39,6 +39,9 @@ impl Parser {
 impl Parse for Parser {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
+        if lex.curr(true)?.key().is_comment() {
+            lex.jump(0, true)?;
+        }
         if matches!(lex.curr(true)?.key(), KEYWORD::assign(_))
             || (matches!(lex.curr(true)?.key(), KEYWORD::symbol(_))
                 && matches!(lex.peek(0, true)?.key(), KEYWORD::assign(_)))

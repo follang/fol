@@ -40,12 +40,6 @@ pub enum KEYWORD {
 }
 
 impl KEYWORD {
-    pub fn is_assign(&self) -> bool {
-        match *self {
-            KEYWORD::assign(_) => true,
-            _ => false,
-        }
-    }
     pub fn is_ident(&self) -> bool {
         match *self {
             KEYWORD::ident => true,
