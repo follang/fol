@@ -86,7 +86,7 @@ impl Iterator for Elements {
 
 impl fmt::Display for Elements {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if let Ok(ok) = self.win.1.clone() {
+        if let Ok(_) = self.win.1.clone() {
             write!(f, "{} {}", self.win.1.clone().unwrap().1, self.win.1.clone().unwrap().0)
         } else {
             write!(f, "ERROR")

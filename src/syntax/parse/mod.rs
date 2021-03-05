@@ -23,7 +23,7 @@ pub struct Parser {
 impl Parser {
     pub fn init (lex: &mut lexer::Elements) -> Self {
         let mut parser = Self { nodes: Nodes::new(), errors: Vec::new() };
-        while let Some(e) = lex.bump() {
+        while let Some(_) = lex.bump() {
             if let Err(err) = parser.parse(lex) {
                 parser.errors.push(err)
             }
@@ -49,7 +49,7 @@ impl Parse for Parser {
                 Err(err) => { self.errors.push(err) }
             }
         } else {
-            if let Err(e) = check::expect(lex,  KEYWORD::illegal, true) {
+            if let Err(_) = check::expect(lex,  KEYWORD::illegal, true) {
                 // lex.debug(true, 0);
                 lex.until_term(false)?;
                 // return Err(e)

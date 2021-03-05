@@ -136,7 +136,6 @@ impl Iterator for Elements {
 /// Creates a iterator that produces tokens from the input string.
 pub fn elements(file: &index::Input) -> impl Iterator<Item = Con<Element>>  {
     let mut stg = Box::new(stage2::Elements::init(file));
-    let src = file.clone();
     std::iter::from_fn(move || {
         if let Some(v) = stg.bump() {
             match v {

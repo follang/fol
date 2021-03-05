@@ -17,7 +17,6 @@ pub struct Lines {
 
 impl Lines {
     pub fn init(input: &Input) -> Self {
-        let lines: Box<dyn Iterator<Item = (String, Option<Source>)>>;
         match input.clone() {
             Input::Source(s) => { 
                 Self {lines: Box::new(source_lines(&s))}

@@ -56,7 +56,7 @@ impl Element {
         } else if is_eof(&code.curr()?.0) {
             self.endfile(&mut code)?;
         } else if is_eol(&code.curr()?.0) {
-            self.endline(&mut code, false)?;
+            self.endline(&mut code)?;
         } else if is_space(&code.curr()?.0) {
             self.space(&mut code)?;
         } else if code.curr()?.0 == '"' || code.curr()?.0 == '\'' || code.curr()?.0 == '`' {
@@ -100,7 +100,7 @@ impl Element {
         Ok(())
     }
 
-    pub fn endfile(&mut self, code: &mut stage0::Elements) -> Vod {
+    pub fn endfile(&mut self, _code: &mut stage0::Elements) -> Vod {
         self.key = void(VOID::endfile_);
         // while is_eol(&code.peek(0).0) || is_space(&code.peek(0).0) {
         //     self.loc.new_line();
@@ -110,7 +110,7 @@ impl Element {
         Ok(())
     }
 
-    pub fn endline(&mut self, code: &mut stage0::Elements, terminated: bool) -> Vod {
+    pub fn endline(&mut self, code: &mut stage0::Elements) -> Vod {
         self.push(code)?;
         self.key = void(VOID::endline_);
         while is_eol(&code.peek(0)?.0) || is_space(&code.peek(0)?.0) {
@@ -128,7 +128,7 @@ impl Element {
         }
         if is_eol(&code.peek(0)?.0) {
             self.bump(code)?;
-            self.endline(code, false)?;
+            self.endline(code)?;
             return Ok(());
         }
         self.key = void(VOID::space_);

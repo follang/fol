@@ -18,7 +18,7 @@ pub fn expect(lex: &mut lexer::Elements, keyword: KEYWORD, ignore: bool) -> Vod 
 }
 pub fn expect_many(lex: &mut lexer::Elements, keywords: Vec<KEYWORD>, ignore: bool) -> Vod {
     let currkey = &lex.curr(ignore)?.key();
-    if let Some(e) = keywords.iter().find(|&x| x == currkey) {
+    if let Some(_) = keywords.iter().find(|&x| x == currkey) {
         return Ok(())
     }
     Err( catch!( Typo::ParserManyUnexpected{ 

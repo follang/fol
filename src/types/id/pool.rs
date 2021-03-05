@@ -19,7 +19,7 @@ impl<T> Pool<T> {
     pub fn push(&self, item: T) {
         self.items.borrow_mut().push(item);
     }
-    pub fn pop(&self, item: T) {
+    pub fn pop(&self) {
         self.items.borrow_mut().pop();
     }
     pub fn iter(&self) -> impl Iterator<Item = T> + '_ {

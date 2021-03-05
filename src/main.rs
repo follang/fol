@@ -1,6 +1,3 @@
-// #![allow(unused_imports)]
-#![allow(unused_variables)]
-
 #[macro_use]
 mod types;
 mod syntax;
@@ -23,7 +20,7 @@ fn main() {
     //         Err(e) => { println!("\n{}", e); }
     //     }
     // }
-    let parser = parse::Parser::init(&mut elems);
+    let _parser = parse::Parser::init(&mut elems);
     // for e in Source::init(&path, false).iter() {
     //     let mut elems = lexer::Elements::init(&Input::SourceAlt(e.clone());
     //     let parser = parse::Parser::init(&mut elems);

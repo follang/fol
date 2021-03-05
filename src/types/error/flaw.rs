@@ -34,7 +34,6 @@ impl Glitch for Flaw {  }
 impl fmt::Display for Flaw {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let (v, s, m);
-        let width = 0;
         match self {
             Flaw::GettingWrongPath { msg } => { 
                 s = "getting".to_string();
