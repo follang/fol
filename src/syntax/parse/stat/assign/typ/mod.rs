@@ -78,12 +78,13 @@ impl Parse for ParserStatAssTyp {
         check::expect(lex, KEYWORD::symbol(SYMBOL::equal_), true)?;
         lex.jump(0, true)?;
 
+        check::expect(lex, KEYWORD::symbol(SYMBOL::curlyO_), true)?;
+        eater::expr_body(lex)?;
+
         let mut id = Node::new(Box::new(node.clone()));
         id.set_loc(loc.clone());
         self.nodes.push(id);
 
-        eater::expr_body(lex)?;
-        // eater::until_term(lex, false)?;
         Ok(())
     }
 }

@@ -106,6 +106,10 @@ impl Elements {
         println!("{}\t{}\t{}", self.curr(bol)?.loc(), self.curr(bol)?.key(), self.curr(bol)?.con());
         Ok(())
     }
+    pub fn window(&self, bol: bool) -> Vod {
+        println!("----\nseek: {}\ncurr: {}\npeek: {}", self.seek(0, bol)?, self.curr(bol)?, self.peek(0, bol)?);
+        Ok(())
+    }
 }
 
 impl Iterator for Elements {

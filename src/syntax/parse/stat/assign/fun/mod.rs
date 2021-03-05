@@ -62,18 +62,16 @@ impl Parse for ParserStatAssFun {
         dt.parse(lex)?;
         if dt.nodes.len() > 0 { node.set_datatype(Some(dt.nodes.get(0).clone())); }
 
-        check::expect_many(lex, vec![ 
-            KEYWORD::symbol(SYMBOL::semi_),
-            KEYWORD::symbol(SYMBOL::equal_),
-            KEYWORD::void(VOID::endline_)
-        ], true)?;
-        check::type_balance(idents.nodes.len(), dt.nodes.len(), &loc, &lex.curr(false)?.loc().source() )?;
+        check::expect(lex, KEYWORD::symbol(SYMBOL::equal_), true)?;
+        lex.jump(0, true)?;
+
+        check::expect(lex, KEYWORD::symbol(SYMBOL::curlyO_), true)?;
+        eater::expr_body(lex)?;
 
         let mut id = Node::new(Box::new(node.clone()));
         id.set_loc(loc.clone());
         self.nodes.push(id);
 
-        eater::until_term(lex, false)?;
         Ok(())
     }
 }

@@ -41,8 +41,7 @@ impl Parse for Parser {
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
         if lex.curr(true)?.key().is_comment() {
             lex.jump(0, true)?;
-        }
-        if lex.curr(true)?.key().is_assign()
+        } else if lex.curr(true)?.key().is_assign()
             || (matches!(lex.curr(true)?.key(), KEYWORD::symbol(_)) && lex.peek(0, true)?.key().is_assign())
         {
             let mut parse_stat = ParserStat::init();
@@ -51,8 +50,10 @@ impl Parse for Parser {
                 Err(err) => { self.errors.push(err) }
             }
         } else {
-            // check::expect(lex,  KEYWORD::assign(ASSIGN::ANY) , true)?;
-            lex.until_term(false)?;
+            if let Err(e) = check::expect(lex,  KEYWORD::illegal, true) {
+                lex.until_term(false)?;
+                // return Err(e)
+            }
         }
         Ok(())
     }

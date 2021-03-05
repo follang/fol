@@ -62,18 +62,14 @@ impl Element {
     }
 
     pub fn analyze(&mut self, el: &mut stage2::Elements) -> Vod {
-        // el.debug(false).ok();
-        // println!("{}   {}", el.curr(false)?.key(), el.seek(0, false)?.key());
         if el.curr(false)?.key().is_number() && el.seek(0, false)?.key().is_operator() {
             self.make_number(el)?;
         }else if el.curr(false)?.key().is_number() && !el.seek(0, false)?.key().is_void() {
             self.set_key(ident);
         }
-        else if (el.curr(false)?.key().is_numberish() && el.seek(0, false)?.key().is_continue())
-            && (el.peek(0, false)?.key().is_number() 
-            || el.seek(0, false)?.key().is_continue() 
-            || el.seek(0, false)?.key().is_operator() 
-            || el.seek(0, false)?.key().is_eol())
+        else if (el.curr(false)?.key().is_numberish() && el.seek(0, false)?.key().is_continue()) && 
+            (el.peek(0, false)?.key().is_number() 
+                && (el.seek(0, false)?.key().is_continue()  || el.seek(0, false)?.key().is_operator() || el.seek(0, false)?.key().is_eol()))
         {
             self.make_number(el)?;
         }

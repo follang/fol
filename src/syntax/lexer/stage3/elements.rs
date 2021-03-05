@@ -119,6 +119,12 @@ impl Elements {
         }
         Ok(())
     }
+    pub fn window(&self, bol: bool, ln: usize) -> Vod {
+        if self.curr(bol)?.loc().row() == ln || ln == 0 {
+            println!("----\nseek: {}\ncurr: {}\npeek: {}", self.seek(0, bol)?, self.curr(bol)?, self.peek(0, bol)?);
+        }
+        Ok(())
+    }
 }
 
 impl Iterator for Elements {

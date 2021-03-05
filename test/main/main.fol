@@ -5,14 +5,6 @@ use[] two: loc = { /bin/vendor_perl/GET }
     two: url = { url };
 )
 
-pro main(arg: int): int = {
-    -var[exp] (
-        four: int[exp], str;
-        four2, four3: arr[nor], int = <expression>
-        four4 : str[nor] = <expression>;
-    )
-}
-
 ~typ[set, get, nothing] (
     three: rec[] = { 
         var one: int,
@@ -24,6 +16,10 @@ pro main(arg: int): int = {
     }
 )
 
+-var[exp] (
+    four, four3: arr[int, 2], int = {  };
+    five: str[nor[]] = <expression>
+)
 
 fun[mut, three] one(two: int): int = { 
     -var[exp] (
