@@ -51,6 +51,7 @@ impl Parse for Parser {
             }
         } else {
             if let Err(e) = check::expect(lex,  KEYWORD::illegal, true) {
+                // lex.debug(true, 0);
                 lex.until_term(false)?;
                 // return Err(e)
             }

@@ -7,6 +7,7 @@ pub enum BUILDIN {
     use_,
     def_,
     var_,
+    con_,
     fun_,
     pro_,
     log_,
@@ -57,6 +58,7 @@ impl fmt::Display for BUILDIN {
         match self {
             BUILDIN::use_ => { t = Some("use".to_string()); },
             BUILDIN::var_ => { t = Some("var".to_string()); },
+            BUILDIN::con_ => { t = Some("con".to_string()); },
             BUILDIN::def_ => { t = Some("def".to_string()); },
             BUILDIN::fun_ => { t = Some("fun".to_string()); },
             BUILDIN::pro_ => { t = Some("pro".to_string()); },

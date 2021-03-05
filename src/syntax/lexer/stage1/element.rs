@@ -261,6 +261,7 @@ impl Element {
             "use" => self.set_key(buildin(BUILDIN::use_)),
             "def" => self.set_key(buildin(BUILDIN::def_)),
             "var" => self.set_key(buildin(BUILDIN::var_)),
+            "con" => self.set_key(buildin(BUILDIN::con_)),
             "fun" => self.set_key(buildin(BUILDIN::fun_)),
             "pro" => self.set_key(buildin(BUILDIN::pro_)),
             "log" => self.set_key(buildin(BUILDIN::log_)),

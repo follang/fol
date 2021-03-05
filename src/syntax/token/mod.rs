@@ -49,6 +49,7 @@ impl KEYWORD {
             KEYWORD::buildin(BUILDIN::ali_) => true,
             KEYWORD::buildin(BUILDIN::imp_) => true,
             KEYWORD::buildin(BUILDIN::lab_) => true,
+            KEYWORD::buildin(BUILDIN::con_) => true,
             _ => false,
         }
     }

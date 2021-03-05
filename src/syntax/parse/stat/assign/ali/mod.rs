@@ -1,6 +1,6 @@
 use crate::types::{Vod, List, error::*};
 use crate::syntax::index::Source;
-use crate::syntax::nodes::{Node, Nodes, NodeStatAssAli};
+use crate::syntax::nodes::{Node, Nodes, NodeStatAssVar};
 use crate::syntax::token::*;
 use crate::syntax::lexer;
 use super::Parse;
@@ -26,7 +26,7 @@ impl Parse for ParserStatAssAli {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
         let loc = lex.curr(true)?.loc().clone();
-        let mut node = NodeStatAssAli::default();
+        let mut node = NodeStatAssVar::default();
         // match symbol before var  -> "~"
         let mut opts = ParserStatAssOpts::init();
         opts.parse(lex)?;

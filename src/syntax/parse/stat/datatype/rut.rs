@@ -1,6 +1,6 @@
 use crate::types::*;
 use crate::syntax::index::Source;
-use crate::syntax::nodes::{Node, Nodes, NodeStatAssFun};
+use crate::syntax::nodes::{Node, Nodes, NodeStatAssTyp};
 use crate::syntax::nodes::*;
 use crate::syntax::token::*;
 use crate::syntax::lexer;
@@ -36,7 +36,7 @@ impl Parse for ParserStatData {
         // match options after type  -> "[opts]"
         if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::squarO_) {
             lex.jump(0, true)?; 
-            let mut lnode = fun::NodeStatAssFun::default();
+            let mut lnode = NodeStatAssTyp::default();
             // match parameters after (  -> "(one, two)"
             let mut parameters = parameters::ParserStatParameters::init();
             parameters.parse(lex)?; lex.eat();

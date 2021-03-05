@@ -16,6 +16,8 @@ use[] two: loc = { /bin/vendor_perl/GET }
     }
 )
 
+con leting: int = 5;
+
 -var[exp] (
     four, four3: arr[int, 2], int = {  };
     five: str[nor[]] = <expression>
@@ -49,6 +51,8 @@ typ[][T: gen] OP(type: T): enm = {
     lab None;
     lab Some: type
 }
+
+alt op: int = 5;
 
 fun makeOption(): OP[int] = {
     result = OP::Some(5)
