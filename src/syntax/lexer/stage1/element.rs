@@ -23,7 +23,7 @@ pub struct Element {
 impl std::default::Default for Element {
     fn default() -> Self {
         Self {
-            key: KEYWORD::void(VOID::endfile_),
+            key: KEYWORD::Void(VOID::EndFile),
             loc: point::Location::default(),
             con: String::new(),
         }
@@ -96,12 +96,12 @@ impl Element {
                 self.bump(code)?;
             }
         }
-        self.key = comment;
+        self.key = Comment;
         Ok(())
     }
 
     pub fn endfile(&mut self, _code: &mut stage0::Elements) -> Vod {
-        self.key = void(VOID::endfile_);
+        self.key = Void(VOID::EndFile);
         // while is_eol(&code.peek(0).0) || is_space(&code.peek(0).0) {
         //     self.loc.new_line();
         //     self.bump(code);
@@ -112,7 +112,7 @@ impl Element {
 
     pub fn endline(&mut self, code: &mut stage0::Elements) -> Vod {
         self.push(code)?;
-        self.key = void(VOID::endline_);
+        self.key = Void(VOID::EndLine);
         while is_eol(&code.peek(0)?.0) || is_space(&code.peek(0)?.0) {
             self.loc.new_line();
             self.bump(code)?;
@@ -131,7 +131,7 @@ impl Element {
             self.endline(code)?;
             return Ok(());
         }
-        self.key = void(VOID::space_);
+        self.key = Void(VOID::Space);
         self.con = " ".to_string();
         Ok(())
     }
@@ -143,19 +143,19 @@ impl Element {
             self.push(code)?;
             if code.peek(0)?.0 == 'x' {
                 self.bump(code)?;
-                self.key = literal(LITERAL::hexal_);
+                self.key = Literal(LITERAL::Hexal);
                 while is_hex_digit(&code.peek(0)?.0) {
                     self.bump(code)?;
                 }
             } else if code.peek(0)?.0 == 'o' {
                 self.bump(code)?;
-                self.key = literal(LITERAL::octal_);
+                self.key = Literal(LITERAL::Octal);
                 while is_oct_digit(&code.peek(0)?.0) {
                     self.bump(code)?;
                 }
             } else if code.peek(0)?.0 == 'b' {
                 self.bump(code)?;
-                self.key = literal(LITERAL::binary_);
+                self.key = Literal(LITERAL::Binary);
                 while code.peek(0)?.0 == '0' || code.peek(0)?.0 == '1' || code.peek(0)?.0 == '_'
                 {
                     self.bump(code)?;
@@ -163,7 +163,7 @@ impl Element {
             }
         } else {
             self.push(code)?;
-            self.key = literal(LITERAL::decimal_);
+            self.key = Literal(LITERAL::Deciaml);
             while is_digit(&code.peek(0)?.0) || code.peek(0)?.0 == '_' {
                 self.bump(code)?;
             }
@@ -174,18 +174,18 @@ impl Element {
     pub fn encap(&mut self, code: &mut stage0::Elements) -> Vod {
         let litsym = code.curr()?.0;
         if litsym == '`' {
-            self.key = operator(OPERATOR::ANY);
+            self.key = Operator(OPERATOR::ANY);
         // } else if litsym == '\'' {
             // self.key = makro;
             // self.key = literal(LITERAL::char_);
         } else {
-            self.key = literal(LITERAL::string_);
+            self.key = Literal(LITERAL::Stringy);
         }
         self.push(code)?;
         while code.peek(0)?.0 != litsym || (code.peek(0)?.0 == litsym && code.curr()?.0 == '\\')
         {
             if code.peek(0)?.0 != litsym && code.peek(0)?.0 == '\0' {
-                self.key = illegal;
+                self.key = Illegal;
                 break;
             }
             self.bump(code)?;
@@ -196,56 +196,56 @@ impl Element {
 
     pub fn symbol(&mut self, code: &mut stage0::Elements) -> Vod {
         self.push(code)?;
-        self.key = symbol(SYMBOL::curlyC_);
+        self.key = Symbol(SYMBOL::CurlyC);
         match code.curr()?.0 {
             '{' => {
-                self.key = symbol(SYMBOL::curlyO_)
+                self.key = Symbol(SYMBOL::CurlyO)
             }
             '}' => {
-                self.key = symbol(SYMBOL::curlyC_)
+                self.key = Symbol(SYMBOL::CurlyC)
             }
             '[' => {
-                self.key = symbol(SYMBOL::squarO_)
+                self.key = Symbol(SYMBOL::SquarO)
             }
             ']' => {
-                self.key = symbol(SYMBOL::squarC_)
+                self.key = Symbol(SYMBOL::SquarC)
             }
             '(' => {
-                self.key = symbol(SYMBOL::roundO_)
+                self.key = Symbol(SYMBOL::RoundO)
             }
             ')' => {
-                self.key = symbol(SYMBOL::roundC_)
+                self.key = Symbol(SYMBOL::RoundC)
             }
             '<' => {
-                self.key = symbol(SYMBOL::angleO_)
+                self.key = Symbol(SYMBOL::AngleO)
             }
             '>' => {
-                self.key = symbol(SYMBOL::angleC_)
+                self.key = Symbol(SYMBOL::AngleC)
             }
-            ';' => self.key = symbol(SYMBOL::semi_),
-            '\\' => self.key = symbol(SYMBOL::escape_),
-            '.' => self.key = symbol(SYMBOL::dot_),
-            ',' => self.key = symbol(SYMBOL::comma_),
-            ':' => self.key = symbol(SYMBOL::colon_),
-            '|' => self.key = symbol(SYMBOL::pipe_),
-            '=' => self.key = symbol(SYMBOL::equal_),
-            '+' => self.key = symbol(SYMBOL::plus_),
-            '-' => self.key = symbol(SYMBOL::minus_),
-            '_' => self.key = symbol(SYMBOL::under_),
-            '*' => self.key = symbol(SYMBOL::star_),
-            '~' => self.key = symbol(SYMBOL::home_),
-            '/' => self.key = symbol(SYMBOL::root_),
-            '%' => self.key = symbol(SYMBOL::percent_),
-            '^' => self.key = symbol(SYMBOL::carret_),
-            '?' => self.key = symbol(SYMBOL::query_),
-            '!' => self.key = symbol(SYMBOL::bang_),
-            '&' => self.key = symbol(SYMBOL::and_),
-            '@' => self.key = symbol(SYMBOL::at_),
-            '#' => self.key = symbol(SYMBOL::hash_),
-            '$' => self.key = symbol(SYMBOL::dollar_),
-            '°' => self.key = symbol(SYMBOL::degree_),
-            '§' => self.key = symbol(SYMBOL::sign_),
-            _ => self.key = illegal,
+            ';' => self.key = Symbol(SYMBOL::Semi),
+            '\\' => self.key = Symbol(SYMBOL::Escape),
+            '.' => self.key = Symbol(SYMBOL::Dot),
+            ',' => self.key = Symbol(SYMBOL::Comma),
+            ':' => self.key = Symbol(SYMBOL::Colon),
+            '|' => self.key = Symbol(SYMBOL::Pipe),
+            '=' => self.key = Symbol(SYMBOL::Equal),
+            '+' => self.key = Symbol(SYMBOL::Plus),
+            '-' => self.key = Symbol(SYMBOL::Minus),
+            '_' => self.key = Symbol(SYMBOL::Under),
+            '*' => self.key = Symbol(SYMBOL::Star),
+            '~' => self.key = Symbol(SYMBOL::Home),
+            '/' => self.key = Symbol(SYMBOL::Root),
+            '%' => self.key = Symbol(SYMBOL::Percent),
+            '^' => self.key = Symbol(SYMBOL::Carret),
+            '?' => self.key = Symbol(SYMBOL::Query),
+            '!' => self.key = Symbol(SYMBOL::Bang),
+            '&' => self.key = Symbol(SYMBOL::And),
+            '@' => self.key = Symbol(SYMBOL::At),
+            '#' => self.key = Symbol(SYMBOL::Hash),
+            '$' => self.key = Symbol(SYMBOL::Dollar),
+            '°' => self.key = Symbol(SYMBOL::Degree),
+            '§' => self.key = Symbol(SYMBOL::Sign),
+            _ => self.key = Illegal,
         }
         Ok(())
     }
@@ -258,47 +258,47 @@ impl Element {
             con.push(code.curr()?.0.clone());
         }
         match self.con().as_str() {
-            "use" => self.set_key(buildin(BUILDIN::use_)),
-            "def" => self.set_key(buildin(BUILDIN::def_)),
-            "var" => self.set_key(buildin(BUILDIN::var_)),
-            "con" => self.set_key(buildin(BUILDIN::con_)),
-            "fun" => self.set_key(buildin(BUILDIN::fun_)),
-            "pro" => self.set_key(buildin(BUILDIN::pro_)),
-            "log" => self.set_key(buildin(BUILDIN::log_)),
-            "typ" => self.set_key(buildin(BUILDIN::typ_)),
-            "ali" => self.set_key(buildin(BUILDIN::ali_)),
-            "imp" => self.set_key(buildin(BUILDIN::imp_)),
-            "lab" => self.set_key(buildin(BUILDIN::lab_)),
-            "not" => self.set_key(buildin(BUILDIN::not_)),
-            "or" => self.set_key(buildin(BUILDIN::or_)),
-            "xor" => self.set_key(buildin(BUILDIN::xor_)),
-            "and" => self.set_key(buildin(BUILDIN::and_)),
-            "nand" => self.set_key(buildin(BUILDIN::nand_)),
-            "as" => self.set_key(buildin(BUILDIN::as_)),
-            "if" => self.set_key(buildin(BUILDIN::if_)),
-            "when" => self.set_key(buildin(BUILDIN::when_)),
-            "loop" => self.set_key(buildin(BUILDIN::loop_)),
-            "is" => self.set_key(buildin(BUILDIN::is_)),
-            "has" => self.set_key(buildin(BUILDIN::has_)),
-            "in" => self.set_key(buildin(BUILDIN::in_)),
-            "case" => self.set_key(buildin(BUILDIN::case_)),
-            "this" => self.set_key(buildin(BUILDIN::this_)),
-            "self" => self.set_key(buildin(BUILDIN::self_)),
-            "break" => self.set_key(buildin(BUILDIN::break_)),
-            "return" => self.set_key(buildin(BUILDIN::return_)),
-            "yeild" => self.set_key(buildin(BUILDIN::yeild_)),
-            "panic" => self.set_key(buildin(BUILDIN::panic_)),
-            "report" => self.set_key(buildin(BUILDIN::report_)),
-            "check" => self.set_key(buildin(BUILDIN::check_)),
-            "assert" => self.set_key(buildin(BUILDIN::assert_)),
-            "where" => self.set_key(buildin(BUILDIN::where_)),
-            "true" => self.set_key(buildin(BUILDIN::true_)),
-            "false" => self.set_key(buildin(BUILDIN::false_)),
-            "each" => self.set_key(buildin(BUILDIN::each_)),
-            "for" => self.set_key(buildin(BUILDIN::for_)),
-            "do" => self.set_key(buildin(BUILDIN::do_)),
-            "go" => self.set_key(buildin(BUILDIN::go_)),
-            _ => self.set_key(ident),
+            "use" => self.set_key(Keyword(BUILDIN::Use)),
+            "def" => self.set_key(Keyword(BUILDIN::Def)),
+            "var" => self.set_key(Keyword(BUILDIN::Var)),
+            "con" => self.set_key(Keyword(BUILDIN::Con)),
+            "fun" => self.set_key(Keyword(BUILDIN::Fun)),
+            "pro" => self.set_key(Keyword(BUILDIN::Pro)),
+            "log" => self.set_key(Keyword(BUILDIN::Log)),
+            "typ" => self.set_key(Keyword(BUILDIN::Typ)),
+            "ali" => self.set_key(Keyword(BUILDIN::Ali)),
+            "imp" => self.set_key(Keyword(BUILDIN::Imp)),
+            "lab" => self.set_key(Keyword(BUILDIN::Lab)),
+            "not" => self.set_key(Keyword(BUILDIN::Not)),
+            "or" => self.set_key(Keyword(BUILDIN::Or)),
+            "xor" => self.set_key(Keyword(BUILDIN::Xor)),
+            "and" => self.set_key(Keyword(BUILDIN::And)),
+            "nand" => self.set_key(Keyword(BUILDIN::Nand)),
+            "as" => self.set_key(Keyword(BUILDIN::As)),
+            "if" => self.set_key(Keyword(BUILDIN::If)),
+            "when" => self.set_key(Keyword(BUILDIN::When)),
+            "loop" => self.set_key(Keyword(BUILDIN::Loop)),
+            "is" => self.set_key(Keyword(BUILDIN::Is)),
+            "has" => self.set_key(Keyword(BUILDIN::Has)),
+            "in" => self.set_key(Keyword(BUILDIN::In)),
+            "case" => self.set_key(Keyword(BUILDIN::Case)),
+            "this" => self.set_key(Keyword(BUILDIN::This)),
+            "self" => self.set_key(Keyword(BUILDIN::Selfi)),
+            "break" => self.set_key(Keyword(BUILDIN::Break)),
+            "return" => self.set_key(Keyword(BUILDIN::Return)),
+            "yeild" => self.set_key(Keyword(BUILDIN::Yeild)),
+            "panic" => self.set_key(Keyword(BUILDIN::Panic)),
+            "report" => self.set_key(Keyword(BUILDIN::Report)),
+            "check" => self.set_key(Keyword(BUILDIN::Check)),
+            "assert" => self.set_key(Keyword(BUILDIN::Assert)),
+            "where" => self.set_key(Keyword(BUILDIN::Where)),
+            "true" => self.set_key(Keyword(BUILDIN::True)),
+            "false" => self.set_key(Keyword(BUILDIN::False)),
+            "each" => self.set_key(Keyword(BUILDIN::Each)),
+            "for" => self.set_key(Keyword(BUILDIN::For)),
+            "do" => self.set_key(Keyword(BUILDIN::Do)),
+            "go" => self.set_key(Keyword(BUILDIN::Go)),
+            _ => self.set_key(Identifier),
         }
         Ok(())
     }

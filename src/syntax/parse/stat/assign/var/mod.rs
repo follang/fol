@@ -43,7 +43,7 @@ impl Parse for ParserStatAssVar {
             check::expect_void(lex)?;
 
             // march "(" to go recursively
-            if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::roundO_) {
+            if lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::RoundO) {
                 self.recurse(&node, lex)?;
                 return Ok(());
             }
@@ -60,13 +60,13 @@ impl Parse for ParserStatAssVar {
         dt.parse(lex)?;
 
         check::expect_many(lex, vec![ 
-            KEYWORD::symbol(SYMBOL::semi_),
-            KEYWORD::symbol(SYMBOL::equal_),
-            KEYWORD::void(VOID::endline_)
+            KEYWORD::Symbol(SYMBOL::Semi),
+            KEYWORD::Symbol(SYMBOL::Equal),
+            KEYWORD::Void(VOID::EndLine)
         ], true)?;
         check::type_balance(idents.nodes.len(), dt.nodes.len(), &loc, &lex.curr(false)?.loc().source() )?;
 
-        if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::semi_) || lex.curr(true)?.key() == KEYWORD::void(VOID::endline_) {
+        if lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::Semi) || lex.curr(true)?.key() == KEYWORD::Void(VOID::EndLine) {
             for i in 0..idents.nodes.len() {
                 if dt.nodes.len() > 0 {
                     let idx = if i >= dt.nodes.len() { dt.nodes.len()-1 } else { i };
@@ -80,7 +80,7 @@ impl Parse for ParserStatAssVar {
             return Ok(())
         }
 
-        check::expect(lex, KEYWORD::symbol(SYMBOL::equal_), true)?;
+        check::expect(lex, KEYWORD::Symbol(SYMBOL::Equal), true)?;
 
         for i in 0..idents.nodes.len() {
             if dt.nodes.len() > 0 {
@@ -100,7 +100,7 @@ impl Parse for ParserStatAssVar {
 
 impl ParserStatAssVar {
     fn recurse(&mut self, node: &NodeStatDecS, lex: &mut lexer::Elements) -> Vod {
-        if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::roundO_) {
+        if lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::RoundO) {
             lex.jump(0, true)?; lex.eat();
 
             let mut nodes: Nodes = List::new();
@@ -117,7 +117,7 @@ impl ParserStatAssVar {
                 lex.jump(0, false)?;
 
                 // match and eat ")"
-                if matches!(lex.curr(true)?.key(), KEYWORD::symbol(SYMBOL::roundC_)) {
+                if matches!(lex.curr(true)?.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
                     lex.jump(0, true)?;
                     //expect endline
                     check::expect_terminal(lex)?;

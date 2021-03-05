@@ -21,7 +21,7 @@ pub struct Element {
 impl std::default::Default for Element {
     fn default() -> Self {
         Self {
-            key: KEYWORD::void(VOID::endfile_),
+            key: KEYWORD::Void(VOID::EndFile),
             loc: point::Location::default(),
             con: String::new(),
         }
@@ -62,7 +62,7 @@ impl Element {
         if el.curr(false)?.key().is_number() && el.seek(0, false)?.key().is_operator() {
             self.make_number(el)?;
         }else if el.curr(false)?.key().is_number() && !el.seek(0, false)?.key().is_void() {
-            self.set_key(ident);
+            self.set_key(Identifier);
         }
         else if (el.curr(false)?.key().is_numberish() && el.seek(0, false)?.key().is_continue()) && 
             (el.peek(0, false)?.key().is_number() 
@@ -73,7 +73,7 @@ impl Element {
         Ok(())
     }
     pub fn make_number(&mut self, el: &mut stage2::Elements) -> Vod{
-        self.set_key(literal(LITERAL::decimal_));
+        self.set_key(Literal(LITERAL::Deciaml));
 
         // if el.curr(false)?.key().is_dot() && el.peek(0, false)?.key().is_symbol() {
             // self.make_multi_operator(el)?;
@@ -81,7 +81,7 @@ impl Element {
             // return Ok(());
         // }
 
-        if matches!(el.curr(false)?.key(), KEYWORD::symbol(SYMBOL::minus_)) && el.peek(0, false)?.key().is_decimal()
+        if matches!(el.curr(false)?.key(), KEYWORD::Symbol(SYMBOL::Minus)) && el.peek(0, false)?.key().is_decimal()
         {
             self.append(&el.peek(0, false)?.into());
             self.bump(el);
@@ -89,13 +89,13 @@ impl Element {
         }
 
         if el.curr(false)?.key().is_decimal() && el.peek(0, false)?.key().is_dot() && el.peek(1, false)?.key().is_decimal() {
-            self.set_key(literal(LITERAL::float_));
+            self.set_key(Literal(LITERAL::Float));
             self.append(&el.peek(0, false)?.into());
             self.bump(el);
         }
 
         if el.curr(false)?.key().is_dot() && el.peek(0, false)?.key().is_decimal() {
-            self.set_key(literal(LITERAL::float_));
+            self.set_key(Literal(LITERAL::Float));
             self.append(&el.peek(0, false)?.into());
             self.bump(el);
         }
@@ -105,7 +105,7 @@ impl Element {
             elem.append(&el.peek(1, false)?);
             self.bump(el);
             return Err(catch!(Typo::LexerSpaceAdd{ 
-                msg: Some(format!("Expected {} but {} was given", KEYWORD::void(VOID::space_), elem.key())),
+                msg: Some(format!("Expected {} but {} was given", KEYWORD::Void(VOID::Space), elem.key())),
                 loc: Some(elem.loc().clone()),
                 src: el.curr(false)?.loc().source(),
             }))

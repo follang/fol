@@ -62,10 +62,10 @@ impl Parse for ParserStatAssFun {
         dt.parse(lex)?;
         if dt.nodes.len() > 0 { node.set_datatype(Some(dt.nodes.get(0).clone())); }
 
-        check::expect(lex, KEYWORD::symbol(SYMBOL::equal_), true)?;
+        check::expect(lex, KEYWORD::Symbol(SYMBOL::Equal), true)?;
         lex.jump(0, true)?;
 
-        check::expect(lex, KEYWORD::symbol(SYMBOL::curlyO_), true)?;
+        check::expect(lex, KEYWORD::Symbol(SYMBOL::CurlyO), true)?;
         eater::expr_body(lex)?;
 
         let mut id = Node::new(Box::new(node.clone()));

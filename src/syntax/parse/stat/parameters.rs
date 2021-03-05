@@ -24,13 +24,13 @@ impl ParserStatParameters {
 impl Parse for ParserStatParameters {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
-        if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::roundO_) {
+        if lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::RoundO) {
             lex.jump(0, true)?;
         } else {
             return Ok(())
         }
 
-        if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::roundC_) {
+        if lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::RoundC) {
             lex.jump(0, true)?;
             return Ok(())
         } else {
@@ -39,9 +39,9 @@ impl Parse for ParserStatParameters {
                     Ok(ok) => self.nodes.extend(ok),
                     Err(err) => return Err(err)
                 };
-                if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::semi_) {
+                if lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::Semi) {
                     lex.jump(0, true)?;
-                } else if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::roundC_) {
+                } else if lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::RoundC) {
                     lex.jump(0, true)?;
                     break
                 }
@@ -79,10 +79,10 @@ impl ParserStatParameters {
         dt.parse(lex)?;
 
         check::expect_many(lex, vec![ 
-            KEYWORD::symbol(SYMBOL::semi_),
-            KEYWORD::symbol(SYMBOL::equal_),
-            KEYWORD::symbol(SYMBOL::roundC_),
-            KEYWORD::void(VOID::endline_)
+            KEYWORD::Symbol(SYMBOL::Semi),
+            KEYWORD::Symbol(SYMBOL::Equal),
+            KEYWORD::Symbol(SYMBOL::RoundC),
+            KEYWORD::Void(VOID::EndLine)
         ], true)?;
         check::type_balance(idents.nodes.len(), dt.nodes.len(), &loc, &lex.curr(false)?.loc().source() )?;
 
@@ -97,7 +97,7 @@ impl ParserStatParameters {
             id.set_loc(loc.clone());
             nodes.push(id);
         }
-        eater::until_key(lex, vec![KEYWORD::symbol(SYMBOL::roundC_), KEYWORD::symbol(SYMBOL::semi_)])?;
+        eater::until_key(lex, vec![KEYWORD::Symbol(SYMBOL::RoundC), KEYWORD::Symbol(SYMBOL::Semi)])?;
         Ok(nodes)
     }
 }

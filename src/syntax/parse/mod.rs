@@ -41,7 +41,7 @@ impl Parse for Parser {
         if lex.curr(true)?.key().is_comment() {
             lex.jump(0, true)?;
         } else if lex.curr(true)?.key().is_assign()
-            || (matches!(lex.curr(true)?.key(), KEYWORD::symbol(_)) && lex.peek(0, true)?.key().is_assign())
+            || (matches!(lex.curr(true)?.key(), KEYWORD::Symbol(_)) && lex.peek(0, true)?.key().is_assign())
         {
             let mut parse_stat = ParserStat::init();
             match parse_stat.parse(lex) {
@@ -49,7 +49,7 @@ impl Parse for Parser {
                 Err(err) => { self.errors.push(err) }
             }
         } else {
-            if let Err(_) = check::expect(lex,  KEYWORD::illegal, true) {
+            if let Err(_) = check::expect(lex,  KEYWORD::Illegal, true) {
                 // lex.debug(true, 0);
                 lex.until_term(false)?;
                 // return Err(e)

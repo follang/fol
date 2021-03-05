@@ -23,13 +23,13 @@ impl ParserStatGenerics {
 impl Parse for ParserStatGenerics {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
-        if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::squarO_) {
+        if lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::SquarO) {
             lex.jump(0, true)?;
         } else {
             return Ok(())
         }
 
-        if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::squarC_) {
+        if lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::SquarC) {
             lex.jump(0, true)?;
             return Ok(())
         } else {
@@ -38,9 +38,9 @@ impl Parse for ParserStatGenerics {
                     Ok(ok) => self.nodes.extend(ok),
                     Err(err) => return Err(err)
                 };
-                if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::semi_) {
+                if lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::Semi) {
                     lex.jump(0, true)?;
-                } else if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::squarC_) {
+                } else if lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::SquarC) {
                     lex.jump(0, true)?;
                     break
                 }
@@ -65,8 +65,8 @@ impl ParserStatGenerics {
         if dt.nodes.len() > 0 { node.set_datatype(Some(dt.nodes.get(0).clone())); }
 
         check::expect_many(lex, vec![ 
-            KEYWORD::symbol(SYMBOL::semi_),
-            KEYWORD::symbol(SYMBOL::squarC_),
+            KEYWORD::Symbol(SYMBOL::Semi),
+            KEYWORD::Symbol(SYMBOL::SquarC),
         ], true)?;
         check::type_balance(idents.nodes.len(), dt.nodes.len(), &loc, &lex.curr(false)?.loc().source() )?;
 
@@ -75,7 +75,7 @@ impl ParserStatGenerics {
         id.set_loc(loc.clone());
         self.nodes.push(id);
 
-        eater::until_key(lex, vec![KEYWORD::symbol(SYMBOL::squarC_), KEYWORD::symbol(SYMBOL::semi_)])?;
+        eater::until_key(lex, vec![KEYWORD::Symbol(SYMBOL::SquarC), KEYWORD::Symbol(SYMBOL::Semi)])?;
         Ok(nodes)
     }
 }

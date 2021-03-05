@@ -37,7 +37,7 @@ impl Parse for ParserStatData {
         if op.nodes.len() > 0 { node.set_form(Some(op.nodes.clone())); }
 
         // match restrictions after type  -> "[rest]"
-        if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::squarO_) {
+        if lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::SquarO) {
             eater::until_bracket(lex)?;
         }
         let id = Node::new(Box::new(node));

@@ -88,7 +88,7 @@ impl Elements {
     }
     pub fn eat(&mut self) {
         if let Ok(e) =  self.curr(false) {
-            if matches!(e.key(), KEYWORD::void(_)) && !e.key().is_terminal() { self.bump(); };
+            if matches!(e.key(), KEYWORD::Void(_)) && !e.key().is_terminal() { self.bump(); };
         } 
     }
     pub fn until_term(&mut self, term: bool) -> Vod {

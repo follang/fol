@@ -99,7 +99,7 @@ pub fn elements(file: &index::Input) -> impl Iterator<Item = Con<Element>>  {
 
                     loc.set_len(1);
                     loc.set_deep(deep);
-                    let mut result = Element::init(void(VOID::endfile_), loc, String::new());
+                    let mut result = Element::init(Void(VOID::EndFile), loc, String::new());
                     if let Err(err) = result.analyze(&mut txt) {
                         return Some(Err(err));
                     }

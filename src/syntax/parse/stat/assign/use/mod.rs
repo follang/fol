@@ -47,7 +47,7 @@ impl Parse for ParserStatAssUse {
             check::expect_void(lex)?;
 
             // march "(" to go recursively
-            if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::roundO_) {
+            if lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::RoundO) {
                 self.recurse(&node, lex)?;
                 return Ok(());
             }
@@ -65,7 +65,7 @@ impl Parse for ParserStatAssUse {
         dt.parse(lex)?;
         if dt.nodes.len() > 0 { node.set_datatype(Some(dt.nodes.get(0).clone())); }
 
-        check::expect(lex, KEYWORD::symbol(SYMBOL::equal_), true)?;
+        check::expect(lex, KEYWORD::Symbol(SYMBOL::Equal), true)?;
         lex.jump(0, true)?;
 
         let mut id = Node::new(Box::new(node.clone()));
@@ -80,7 +80,7 @@ impl Parse for ParserStatAssUse {
 
 impl ParserStatAssUse {
     fn recurse(&mut self, node: &NodeStatDecS, lex: &mut lexer::Elements) -> Vod {
-        if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::roundO_) {
+        if lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::RoundO) {
             lex.jump(0, true)?; lex.eat();
 
             let mut nodes: Nodes = List::new();
@@ -97,7 +97,7 @@ impl ParserStatAssUse {
                 lex.jump(0, false)?;
 
                 // match and eat ")"
-                if matches!(lex.curr(true)?.key(), KEYWORD::symbol(SYMBOL::roundC_)) {
+                if matches!(lex.curr(true)?.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
                     lex.jump(0, true)?;
                     //expect endline
                     check::expect_terminal(lex)?;

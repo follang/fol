@@ -21,7 +21,7 @@ pub struct Element {
 impl std::default::Default for Element {
     fn default() -> Self {
         Self {
-            key: KEYWORD::void(VOID::endfile_),
+            key: KEYWORD::Void(VOID::EndFile),
             loc: point::Location::default(),
             con: String::new(),
         }
@@ -65,46 +65,46 @@ impl Element {
                 || el.peek(0)?.key().is_dot()
                 || el.seek(0)?.key().is_operator())
         {
-            self.set_key(void(VOID::space_))
+            self.set_key(Void(VOID::Space))
         } 
         // EOL => SEMICOLON
-        else if matches!(el.curr()?.key(), KEYWORD::symbol(SYMBOL::semi_))
+        else if matches!(el.curr()?.key(), KEYWORD::Symbol(SYMBOL::Semi))
             && el.peek(0)?.key().is_void()
         {
             self.append(&el.peek(0)?.into());
             self.bump(el);
         }
         // EOL or SPACE => EOF
-        else if ( matches!(el.curr()?.key(), KEYWORD::void(VOID::space_))
-            || matches!(el.curr()?.key(), KEYWORD::void(VOID::endline_)) )
+        else if ( matches!(el.curr()?.key(), KEYWORD::Void(VOID::Space))
+            || matches!(el.curr()?.key(), KEYWORD::Void(VOID::EndLine)) )
             && el.peek(0)?.key().is_eof()
         {
             self.append(&el.peek(0)?.into());
-            self.set_key(void(VOID::endfile_));
+            self.set_key(Void(VOID::EndFile));
             self.bump(el);
         }
         // operators
         else if el.curr()?.key().is_dot() && el.peek(0)?.key().is_dot() {
             self.append(&el.peek(0)?.into());
             self.bump(el);
-            self.set_key(operator(OPERATOR::dd_));
+            self.set_key(Operator(OPERATOR::Dotdot));
             if el.peek(0)?.key().is_dot() {
                 self.append(&el.peek(0)?.into());
                 self.bump(el);
-                self.set_key(operator(OPERATOR::ddd_));
+                self.set_key(Operator(OPERATOR::Dotdotdot));
             }
         }
         else if el.curr()?.key().is_symbol()
             && el.peek(0)?.key().is_symbol()
-            && (!(matches!(el.curr()?.key(), KEYWORD::symbol(SYMBOL::semi_)))
-            || !(matches!(el.peek(0)?.key(), KEYWORD::symbol(SYMBOL::semi_))))
+            && (!(matches!(el.curr()?.key(), KEYWORD::Symbol(SYMBOL::Semi)))
+            || !(matches!(el.peek(0)?.key(), KEYWORD::Symbol(SYMBOL::Semi))))
             // && (el.seek(0)?.key().is_void() || el.seek(0)?.key().is_bracket())
         {
             self.make_multi_operator(el)?;
         }
-        else if matches!(el.curr()?.key(), KEYWORD::ident) 
+        else if matches!(el.curr()?.key(), KEYWORD::Identifier) 
         {
-            self.set_key(ident)
+            self.set_key(Identifier)
         }
         // if self.key().is_eol() { self.set_key(symbol(SYMBOL::semi_)) }
         Ok(())
@@ -115,20 +115,20 @@ impl Element {
         content.push_str(el.curr()?.con());
         content.push_str(el.peek(0)?.con());
         match content.as_str() {
-            ":=" => self.set_key(operator(OPERATOR::assign2_)),
-            "::" => self.set_key(operator(OPERATOR::path_)),
-            "=>" => self.set_key(operator(OPERATOR::flow_)),
-            "->" => self.set_key(operator(OPERATOR::flow2_)),
-            "==" => self.set_key(operator(OPERATOR::equal_)),
-            "!=" => self.set_key(operator(OPERATOR::noteq_)),
-            ">=" => self.set_key(operator(OPERATOR::greatereq_)),
-            "<=" => self.set_key(operator(OPERATOR::lesseq_)),
-            "+=" => self.set_key(operator(OPERATOR::addeq_)),
-            "-=" => self.set_key(operator(OPERATOR::subtracteq_)),
-            "*=" => self.set_key(operator(OPERATOR::multiplyeq_)),
-            "/=" => self.set_key(operator(OPERATOR::divideeq_)),
-            "<<" => self.set_key(operator(OPERATOR::lesser_)),
-            ">>" => self.set_key(operator(OPERATOR::greater_)),
+            ":=" => self.set_key(Operator(OPERATOR::Assign)),
+            "::" => self.set_key(Operator(OPERATOR::Path)),
+            "=>" => self.set_key(Operator(OPERATOR::Flow)),
+            "->" => self.set_key(Operator(OPERATOR::Flow2)),
+            "==" => self.set_key(Operator(OPERATOR::Equal)),
+            "!=" => self.set_key(Operator(OPERATOR::Noteq)),
+            ">=" => self.set_key(Operator(OPERATOR::Greateq)),
+            "<=" => self.set_key(Operator(OPERATOR::Lesseq)),
+            "+=" => self.set_key(Operator(OPERATOR::Addeq)),
+            "-=" => self.set_key(Operator(OPERATOR::Subeq)),
+            "*=" => self.set_key(Operator(OPERATOR::Multeq)),
+            "/=" => self.set_key(Operator(OPERATOR::Diveq)),
+            "<<" => self.set_key(Operator(OPERATOR::Lesser)),
+            ">>" => self.set_key(Operator(OPERATOR::Greater)),
             _ => return Ok(()),
         }
         self.append(&el.peek(0)?.into());
@@ -137,14 +137,14 @@ impl Element {
     }
 
     pub fn make_comment(&mut self, el: &mut stage1::Elements) -> Vod {
-        if matches!(el.peek(0)?.key(), KEYWORD::symbol(SYMBOL::root_)) {
+        if matches!(el.peek(0)?.key(), KEYWORD::Symbol(SYMBOL::Root)) {
             while !el.peek(0)?.key().is_eol() {
                 self.append(&el.peek(0)?.into());
                 self.bump(el);
             }
-        } else if matches!(el.peek(0)?.key(), KEYWORD::symbol(SYMBOL::star_)) {
-            while !(matches!(el.peek(0)?.key(), KEYWORD::symbol(SYMBOL::star_))
-                && matches!(el.peek(1)?.key(), KEYWORD::symbol(SYMBOL::root_)))
+        } else if matches!(el.peek(0)?.key(), KEYWORD::Symbol(SYMBOL::Star)) {
+            while !(matches!(el.peek(0)?.key(), KEYWORD::Symbol(SYMBOL::Star))
+                && matches!(el.peek(1)?.key(), KEYWORD::Symbol(SYMBOL::Root)))
                 || el.peek(0)?.key().is_eof()
             {
                 self.append(&el.peek(0)?.into());
@@ -153,7 +153,7 @@ impl Element {
             self.append(&el.peek(0)?.into());
             self.bump(el);
         };
-        self.set_key(comment);
+        self.set_key(Comment);
         Ok(())
     }
     pub fn bump(&mut self, el: &mut stage1::Elements) {

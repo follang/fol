@@ -51,8 +51,8 @@ impl Parse for ParserStatAssAli {
         if dt.nodes.len() > 0 { node.set_datatype(Some(dt.nodes.get(0).clone())); }
 
         check::expect_many(lex, vec![ 
-            KEYWORD::symbol(SYMBOL::semi_),
-            KEYWORD::void(VOID::endline_)
+            KEYWORD::Symbol(SYMBOL::Semi),
+            KEYWORD::Void(VOID::EndLine)
         ], true)?;
         lex.eat();
 

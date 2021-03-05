@@ -32,7 +32,7 @@ impl Parse for ParserStatData {
         lex.jump(0, false)?; 
 
         // match options after type  -> "[opts]"
-        if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::squarO_) {
+        if lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::SquarO) {
             lex.jump(0, true)?; 
             let mut lnode = NodeStatDecL::default();
             // match parameters after (  -> "(one, two)"
@@ -49,13 +49,13 @@ impl Parse for ParserStatData {
             let id = Node::new(Box::new(lnode));
             ids.push(id);
             node.set_form(Some(ids));
-            check::expect(lex, KEYWORD::symbol(SYMBOL::squarC_), true)?;
+            check::expect(lex, KEYWORD::Symbol(SYMBOL::SquarC), true)?;
             lex.jump(0, true)?;
 
         }
 
         // match restrictions after type  -> "[rest]"
-        if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::squarO_) {
+        if lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::SquarO) {
             eater::until_bracket(lex)?;
         }
         let id = Node::new(Box::new(node));

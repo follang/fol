@@ -22,11 +22,11 @@ impl Parse for ParserStatAssOpts {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
         // eat "["
-        if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::squarO_) {
+        if lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::SquarO) {
             lex.jump(0, false)?;
         // match symbol before var  -> "~" and return 
-        } else if matches!(lex.curr(true)?.key(), KEYWORD::symbol(_) )
-            && !matches!(lex.curr(true)?.key(), KEYWORD::symbol(SYMBOL::equal_) )
+        } else if matches!(lex.curr(true)?.key(), KEYWORD::Symbol(_) )
+            && !matches!(lex.curr(true)?.key(), KEYWORD::Symbol(SYMBOL::Equal) )
         {
             let assopt = NodeStatIdent::new(lex.curr(true)?.con().clone());
             let node = Node::new(Box::new(assopt));
@@ -38,7 +38,7 @@ impl Parse for ParserStatAssOpts {
         }
 
         // match "]" if there and return
-        if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::squarC_) {
+        if lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::SquarC) {
             lex.jump(0, true)?;
             return Ok(())
         }
@@ -50,13 +50,13 @@ impl Parse for ParserStatAssOpts {
             self.nodes.push(node);
             lex.jump(0, true)?;
 
-            if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::squarC_)
+            if lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::SquarC)
                 || lex.curr(true)?.key().is_eol()
             {
                 lex.jump(0, true)?;
                 break
-            } else if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::comma_) {
-                if lex.peek(0, true)?.key() == KEYWORD::symbol(SYMBOL::squarC_) 
+            } else if lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::Comma) {
+                if lex.peek(0, true)?.key() == KEYWORD::Symbol(SYMBOL::SquarC) 
                 {
                     lex.jump(1, true)?;
                     break

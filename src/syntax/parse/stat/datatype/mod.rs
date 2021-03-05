@@ -29,14 +29,14 @@ impl Parse for ParserStatDatatypes {
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
 
         // eat ":"
-        if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::colon_) || self._colon == false {
+        if lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::Colon) || self._colon == false {
             lex.jump(0, true)?; 
-        } else if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::squarO_) && self._colon == false {
+        } else if lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::SquarO) && self._colon == false {
             lex.jump(0, true)?; 
         } else {
             return Ok(())
         }
-        if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::squarC_) && self._colon == false { return Ok(()) }
+        if lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::SquarC) && self._colon == false { return Ok(()) }
 
         while !lex.curr(true)?.key().is_eof() {
             match lex.curr(true)?.con().as_str() {
@@ -56,25 +56,25 @@ impl Parse for ParserStatDatatypes {
                     lex.eat();
                     node.set_string(lex.curr(true)?.con().to_string());
                     lex.jump(0, false)?; 
-                    if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::squarO_) { 
+                    if lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::SquarO) { 
                         let mut op = ParserStatDatatypes::init();
                         op.nocolon();
                         op.parse(lex)?; 
                         if op.nodes.len() > 0 { node.set_form(Some(op.nodes.clone())); }
                     //eat "]"
-                    check::expect(lex, KEYWORD::symbol(SYMBOL::squarC_), true)?;
+                    check::expect(lex, KEYWORD::Symbol(SYMBOL::SquarC), true)?;
                     lex.jump(0, false)?; 
 
                     }
 
-                    if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::squarO_) { 
+                    if lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::SquarO) { 
                         eater::until_bracket(lex)?
                     }
                     let id = Node::new(Box::new(node));
                     self.nodes.push(id);
                 }
             }
-            if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::comma_) {
+            if lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::Comma) {
                 lex.jump(0, true)?; lex.eat();
                 lex.eat();
             } else {

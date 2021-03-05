@@ -29,65 +29,65 @@ pub fn expect_many(lex: &mut lexer::Elements, keywords: Vec<KEYWORD>, ignore: bo
     }))
 }
 pub fn expect_ident(lex: &mut lexer::Elements, ignore: bool) -> Vod {
-    if matches!(lex.curr(ignore)?.key(), KEYWORD::ident) { return Ok(()) };
+    if matches!(lex.curr(ignore)?.key(), KEYWORD::Identifier) { return Ok(()) };
     Err( catch!( Typo::ParserUnexpected{ 
         loc: Some(lex.curr(ignore)?.loc().clone()), 
         key1: lex.curr(ignore)?.key(), 
-        key2: KEYWORD::ident, 
+        key2: KEYWORD::Identifier, 
         src: lex.curr(ignore)?.loc().source().clone()
     }))
 }
 pub fn expect_ident_literal(lex: &mut lexer::Elements, ignore: bool) -> Vod {
-    if matches!(lex.curr(ignore)?.key(), KEYWORD::ident) || matches!(lex.curr(ignore)?.key(), KEYWORD::literal(_)) { return Ok(()) };
+    if matches!(lex.curr(ignore)?.key(), KEYWORD::Identifier) || matches!(lex.curr(ignore)?.key(), KEYWORD::Literal(_)) { return Ok(()) };
     Err( catch!( Typo::ParserUnexpected{ 
         loc: Some(lex.curr(ignore)?.loc().clone()), 
         key1: lex.curr(ignore)?.key(), 
-        key2: KEYWORD::ident, 
+        key2: KEYWORD::Identifier, 
         src: lex.curr(ignore)?.loc().source().clone()
     }))
 }
 pub fn expect_literal(lex: &mut lexer::Elements, ignore: bool) -> Vod {
-    if matches!(lex.curr(ignore)?.key(), KEYWORD::literal(_)) { return Ok(()) };
+    if matches!(lex.curr(ignore)?.key(), KEYWORD::Literal(_)) { return Ok(()) };
     Err( catch!( Typo::ParserUnexpected{ 
         loc: Some(lex.curr(ignore)?.loc().clone()), 
         key1: lex.curr(ignore)?.key(), 
-        key2: KEYWORD::literal(LITERAL::ANY), 
+        key2: KEYWORD::Literal(LITERAL::ANY), 
         src: lex.curr(ignore)?.loc().source().clone()
     }))
 }
 pub fn expect_buildin(lex: &mut lexer::Elements, ignore: bool) -> Vod {
-    if matches!(lex.curr(ignore)?.key(), KEYWORD::buildin(_)) { return Ok(()) };
+    if matches!(lex.curr(ignore)?.key(), KEYWORD::Keyword(_)) { return Ok(()) };
     Err( catch!( Typo::ParserUnexpected{ 
         loc: Some(lex.curr(ignore)?.loc().clone()), 
         key1: lex.curr(ignore)?.key(), 
-        key2: KEYWORD::buildin(BUILDIN::ANY), 
+        key2: KEYWORD::Keyword(BUILDIN::ANY), 
         src: lex.curr(ignore)?.loc().source().clone()
     }))
 }
 pub fn expect_symbol(lex: &mut lexer::Elements, ignore: bool) -> Vod {
-    if matches!(lex.curr(ignore)?.key(), KEYWORD::symbol(_)) { return Ok(()) };
+    if matches!(lex.curr(ignore)?.key(), KEYWORD::Symbol(_)) { return Ok(()) };
     Err( catch!( Typo::ParserUnexpected{ 
         loc: Some(lex.curr(ignore)?.loc().clone()), 
         key1: lex.curr(ignore)?.key(), 
-        key2: KEYWORD::symbol(SYMBOL::ANY), 
+        key2: KEYWORD::Symbol(SYMBOL::ANY), 
         src: lex.curr(ignore)?.loc().source().clone()
     }))
 }
 pub fn expect_operator(lex: &mut lexer::Elements, ignore: bool) -> Vod {
-    if matches!(lex.curr(ignore)?.key(), KEYWORD::operator(_)) { return Ok(()) };
+    if matches!(lex.curr(ignore)?.key(), KEYWORD::Operator(_)) { return Ok(()) };
     Err( catch!( Typo::ParserUnexpected{ 
         loc: Some(lex.curr(ignore)?.loc().clone()), 
         key1: lex.curr(ignore)?.key(), 
-        key2: KEYWORD::operator(OPERATOR::ANY), 
+        key2: KEYWORD::Operator(OPERATOR::ANY), 
         src: lex.curr(ignore)?.loc().source().clone()
     }))
 }
 pub fn expect_void(lex: &mut lexer::Elements) -> Vod {
-    if matches!(lex.curr(false)?.key(), KEYWORD::void(_)) { return Ok(()) };
+    if matches!(lex.curr(false)?.key(), KEYWORD::Void(_)) { return Ok(()) };
     Err( catch!( Typo::ParserUnexpected{ 
         loc: Some(lex.curr(false)?.loc().clone()), 
         key1: lex.curr(false)?.key(), 
-        key2: KEYWORD::void(VOID::ANY), 
+        key2: KEYWORD::Void(VOID::ANY), 
         src: lex.curr(false)?.loc().source().clone()
     }))
 }
@@ -96,7 +96,7 @@ pub fn expect_terminal(lex: &mut lexer::Elements) -> Vod {
     Err( catch!( Typo::ParserUnexpected{ 
         loc: Some(lex.curr(false)?.loc().clone()), 
         key1: lex.curr(false)?.key(), 
-        key2: KEYWORD::void(VOID::ANY), 
+        key2: KEYWORD::Void(VOID::ANY), 
         src: lex.curr(false)?.loc().source().clone()
     }))
 }

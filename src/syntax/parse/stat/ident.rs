@@ -27,13 +27,13 @@ impl Parse for ParserStatIdent {
             self.nodes.push(Node::new(Box::new(identnode)));
             lex.jump(0, true)?;
             if self._once { return Ok(()) }
-            if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::colon_) 
-                || lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::equal_)
-                || lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::roundO_)
+            if lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::Colon) 
+                || lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::Equal)
+                || lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::RoundO)
                 || lex.curr(true)?.key().is_terminal()
             {
                 break
-            } else if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::comma_) {
+            } else if lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::Comma) {
                 lex.jump(0, true)?; lex.eat();
             }
         }
