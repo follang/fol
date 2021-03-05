@@ -57,12 +57,12 @@ impl ParserStatGenerics {
         let mut node = NodeStatAssVar::default();
 
         // match indentifier "ident"
-        let mut idents = ParserStatIdent::init(true);
+        let mut idents = ParserStatIdent::init();
         idents.parse(lex)?; lex.eat();
         node.set_ident(Some(idents.nodes.get(0).clone()));
 
         // match datatypes after :  -> "int[opts][]"
-        let mut dt = ParserStatDatatypes::init(true);
+        let mut dt = ParserStatDatatypes::init();
         dt.parse(lex)?;
         if dt.nodes.len() > 0 { node.set_datatype(Some(dt.nodes.get(0).clone())); }
 

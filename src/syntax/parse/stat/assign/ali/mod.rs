@@ -28,7 +28,7 @@ impl Parse for ParserStatAssAli {
         let loc = lex.curr(true)?.loc().clone();
         let mut node = NodeStatAssAli::default();
         // match symbol before var  -> "~"
-        let mut opts = ParserStatAssOpts::init(false);
+        let mut opts = ParserStatAssOpts::init();
         opts.parse(lex)?;
 
         // add "ali"
@@ -41,28 +41,26 @@ impl Parse for ParserStatAssAli {
         check::expect_void(lex)?;
 
         // match indentifier "ident"
-        let mut idents = ParserStatIdent::init(true);
-        idents.only_one();
+        let mut idents = ParserStatIdent::init();
+        idents.once();
         idents.parse(lex)?; lex.eat();
         node.set_ident(Some(idents.nodes.get(0).clone()));
 
         // match datatypes after :  -> "int[opts][]"
-        let mut dt = ParserStatDatatypes::init(true);
+        let mut dt = ParserStatDatatypes::init();
         dt.parse(lex)?;
         if dt.nodes.len() > 0 { node.set_datatype(Some(dt.nodes.get(0).clone())); }
 
         check::expect_many(lex, vec![ 
             KEYWORD::symbol(SYMBOL::semi_),
-            KEYWORD::symbol(SYMBOL::equal_),
             KEYWORD::void(VOID::endline_)
         ], true)?;
-        check::type_balance(idents.nodes.len(), dt.nodes.len(), &loc, &lex.curr(false)?.loc().source() )?;
+        lex.eat();
 
         let mut id = Node::new(Box::new(node.clone()));
         id.set_loc(loc.clone());
         self.nodes.push(id);
 
-        eater::until_term(lex, false)?;
         Ok(())
     }
 }

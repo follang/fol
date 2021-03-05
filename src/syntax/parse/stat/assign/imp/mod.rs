@@ -29,7 +29,7 @@ impl Parse for ParserStatAssImp {
         let loc = lex.curr(true)?.loc().clone();
         let mut node = NodeStatAssTyp::default();
         // match symbol before var  -> "~"
-        let mut opts = ParserStatAssOpts::init(false);
+        let mut opts = ParserStatAssOpts::init();
         opts.parse(lex)?;
 
         // add "imp"
@@ -47,7 +47,8 @@ impl Parse for ParserStatAssImp {
         check::expect_void(lex)?;
 
         // match indentifier "ident"
-        let mut idents = ParserStatIdent::init(true);
+        let mut idents = ParserStatIdent::init();
+        idents.once();
         idents.parse(lex)?;
         node.set_ident(Some(idents.nodes.get(0).clone()));
 
@@ -57,19 +58,20 @@ impl Parse for ParserStatAssImp {
         if parameters.nodes.len() > 0 { node.set_parameters(Some(parameters.nodes.clone())) }
 
         // match datatypes after :  -> "int[opts][]"
-        let mut dt = ParserStatDatatypes::init(true);
+        let mut dt = ParserStatDatatypes::init();
         dt.parse(lex)?;
         if dt.nodes.len() > 0 { node.set_datatype(Some(dt.nodes.get(0).clone())); }
 
         check::expect(lex, KEYWORD::symbol(SYMBOL::equal_), true)?;
         lex.jump(0, true)?;
 
+        check::expect(lex, KEYWORD::symbol(SYMBOL::curlyO_), true)?;
+        eater::expr_body(lex)?;
+
         let mut id = Node::new(Box::new(node.clone()));
         id.set_loc(loc.clone());
         self.nodes.push(id);
 
-        eater::expr_body(lex)?;
-        // eater::until_term(lex, false)?;
         Ok(())
     }
 }

@@ -102,3 +102,24 @@ var test: box[box[array[int, 5]]] = ar
 ali fiveint: array[int, 5];
 var somevar: fiveint = {1, 2, 3, 4, 5}
 var somevar = fiveint{1, 2, 3, 4, 5}
+
+
+
+//control flow
+when(val){
+    is (5){  },
+    is (5){  },
+    is (_){  }
+}
+
+if(){} elif(){} else (){}
+
+match parse_stat.parse(lex) {
+    Ok(()) => { self.nodes.extend(parse_stat.nodes) },
+    Err(err) => { self.errors.push(err) }
+}
+
+when( parse_stat.parse(lex) ) has {
+    OK(()){},
+    Err(e){},
+}

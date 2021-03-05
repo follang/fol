@@ -29,7 +29,7 @@ impl Parse for ParserStatAssFun {
         let loc = lex.curr(true)?.loc().clone();
         let mut node = NodeStatAssFun::default();
         // match symbol before var  -> "~"
-        let mut opts = ParserStatAssOpts::init(true);
+        let mut opts = ParserStatAssOpts::init();
         opts.parse(lex)?;
 
         // add "fun"
@@ -48,7 +48,8 @@ impl Parse for ParserStatAssFun {
         check::expect_void(lex)?;
 
         // match indentifier "ident"
-        let mut idents = ParserStatIdent::init(true);
+        let mut idents = ParserStatIdent::init();
+        idents.once();
         idents.parse(lex)?; lex.eat();
         node.set_ident(Some(idents.nodes.get(0).clone()));
 
@@ -58,7 +59,7 @@ impl Parse for ParserStatAssFun {
         if parameters.nodes.len() > 0 { node.set_parameters(Some(parameters.nodes.clone())) }
 
         // match datatypes after :  -> "int[opts][]"
-        let mut dt = ParserStatDatatypes::init(true);
+        let mut dt = ParserStatDatatypes::init();
         dt.parse(lex)?;
         if dt.nodes.len() > 0 { node.set_datatype(Some(dt.nodes.get(0).clone())); }
 

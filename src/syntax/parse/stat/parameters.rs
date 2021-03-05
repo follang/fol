@@ -56,7 +56,7 @@ impl ParserStatParameters {
         let loc = lex.curr(true)?.loc().clone();
         let mut node = NodeStatAssVar::default();
         // match symbol before var  -> "~"
-        let mut opts = ParserStatAssOpts::init(false);
+        let mut opts = ParserStatAssOpts::init();
         opts.parse(lex)?;
 
         // match "var"
@@ -69,11 +69,11 @@ impl ParserStatParameters {
         if opts.nodes.len() > 0 { node.set_options(Some(opts.nodes.clone())); }
 
         // match indentifier "ident"
-        let mut idents = ParserStatIdent::init(false);
+        let mut idents = ParserStatIdent::init();
         idents.parse(lex)?; lex.eat();
 
         // match datatypes after :  -> "int[opts][]"
-        let mut dt = ParserStatDatatypes::init(true);
+        let mut dt = ParserStatDatatypes::init();
         dt.parse(lex)?;
 
         check::expect_many(lex, vec![ 

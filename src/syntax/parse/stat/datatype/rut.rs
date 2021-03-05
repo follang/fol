@@ -43,7 +43,7 @@ impl Parse for ParserStatData {
             if parameters.nodes.len() > 0 { lnode.set_parameters(Some(parameters.nodes.clone())) }
 
             // match datatypes after :  -> "int[opts][]"
-            let mut dt = datatype::ParserStatDatatypes::init(true);
+            let mut dt = datatype::ParserStatDatatypes::init();
             dt.parse(lex)?;
             if dt.nodes.len() > 0 { lnode.set_datatype(Some(dt.nodes.get(0).clone())); }
 

@@ -14,10 +14,10 @@ pub struct ParserStatIdent {
 }
 
 impl ParserStatIdent {
-    pub fn init(_once: bool) -> Self {
-        Self { nodes: Nodes::new(), _once } 
+    pub fn init() -> Self {
+        Self { nodes: Nodes::new(), _once: false } 
     }
-    pub fn only_one(&mut self) { self._once = true; }
+    pub fn once(&mut self) { self._once = true; }
 }
 impl Parse for ParserStatIdent {
     fn nodes(&self) -> Nodes { self.nodes.clone() }

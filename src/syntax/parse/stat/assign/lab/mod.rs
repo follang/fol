@@ -28,7 +28,7 @@ impl Parse for ParserStatAssLab {
         let loc = lex.curr(true)?.loc().clone();
         let mut node = NodeStatAssVar::default();
         // match symbol before var  -> "~"
-        let mut opts = ParserStatAssOpts::init(false);
+        let mut opts = ParserStatAssOpts::init();
         opts.parse(lex)?;
 
         // add "lab"
@@ -41,11 +41,11 @@ impl Parse for ParserStatAssLab {
         check::expect_void(lex)?;
 
         // match indentifier "ident"
-        let mut idents = ParserStatIdent::init(true);
+        let mut idents = ParserStatIdent::init();
         idents.parse(lex)?; lex.eat();
 
         // match datatypes after :  -> "int[opts][]"
-        let mut dt = ParserStatDatatypes::init(true);
+        let mut dt = ParserStatDatatypes::init();
         dt.parse(lex)?;
 
         check::expect_terminal(lex)?;
@@ -61,7 +61,6 @@ impl Parse for ParserStatAssLab {
             id.set_loc(loc.clone());
             self.nodes.push(id);
         }
-        lex.until_term(false)?;
         Ok(())
     }
 }

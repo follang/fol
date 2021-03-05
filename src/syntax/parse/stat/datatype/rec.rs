@@ -33,7 +33,7 @@ impl Parse for ParserStatData {
         lex.jump(0, false)?; 
 
         // match options after type  -> "[opts]"
-        let mut op = opts::ParserStatAssOpts::init(true);
+        let mut op = opts::ParserStatAssOpts::init();
         op.parse(lex)?;
         if op.nodes.len() > 0 { node.set_form(Some(op.nodes.clone())); }
 

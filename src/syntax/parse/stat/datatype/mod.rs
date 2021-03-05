@@ -19,12 +19,13 @@ pub struct ParserStatDatatypes {
 }
 
 impl ParserStatDatatypes {
-    pub fn init(colon: bool) -> Self {
+    pub fn init() -> Self {
         Self { 
             nodes: Nodes::new(),
-            _colon: colon,
+            _colon: true,
         } 
     }
+    pub fn nocolon(&mut self) { self._colon = false; }
 }
 impl Parse for ParserStatDatatypes {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
@@ -59,7 +60,8 @@ impl Parse for ParserStatDatatypes {
                     node.set_string(lex.curr(true)?.con().to_string());
                     lex.jump(0, false)?; 
                     if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::squarO_) { 
-                        let mut op = ParserStatDatatypes::init(false);
+                        let mut op = ParserStatDatatypes::init();
+                        op.nocolon();
                         op.parse(lex)?; 
                         if op.nodes.len() > 0 { node.set_form(Some(op.nodes.clone())); }
                     //eat "]"

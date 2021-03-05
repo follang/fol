@@ -32,7 +32,7 @@ impl Parse for ParserStatAssTyp {
         let mut node = NodeStatAssTyp::default();
         if !self._recurse {
             // match symbol before var  -> "~"
-            let mut opts = ParserStatAssOpts::init(false);
+            let mut opts = ParserStatAssOpts::init();
             opts.parse(lex)?;
 
             // add "typ"
@@ -61,7 +61,8 @@ impl Parse for ParserStatAssTyp {
         }
 
         // match indentifier "ident"
-        let mut idents = ParserStatIdent::init(true);
+        let mut idents = ParserStatIdent::init();
+        idents.once();
         idents.parse(lex)?;
         node.set_ident(Some(idents.nodes.get(0).clone()));
 
@@ -71,7 +72,7 @@ impl Parse for ParserStatAssTyp {
         if parameters.nodes.len() > 0 { node.set_parameters(Some(parameters.nodes.clone())) }
 
         // match datatypes after :  -> "int[opts][]"
-        let mut dt = ParserStatDatatypes::init(true);
+        let mut dt = ParserStatDatatypes::init();
         dt.parse(lex)?;
         if dt.nodes.len() > 0 { node.set_datatype(Some(dt.nodes.get(0).clone())); }
 

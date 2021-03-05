@@ -31,7 +31,7 @@ impl Parse for ParserStatAssVar {
         let mut node = NodeStatAssVar::default();
         if !self._recurse {
             // match symbol before var  -> "~"
-            let mut opts = ParserStatAssOpts::init(false);
+            let mut opts = ParserStatAssOpts::init();
             opts.parse(lex)?;
 
             // add "var"
@@ -53,11 +53,11 @@ impl Parse for ParserStatAssVar {
         }
 
         // match indentifier "ident"
-        let mut idents = ParserStatIdent::init(false);
+        let mut idents = ParserStatIdent::init();
         idents.parse(lex)?; lex.eat();
 
         // match datatypes after :  -> "int[opts][]"
-        let mut dt = ParserStatDatatypes::init(true);
+        let mut dt = ParserStatDatatypes::init();
         dt.parse(lex)?;
 
         check::expect_many(lex, vec![ 
