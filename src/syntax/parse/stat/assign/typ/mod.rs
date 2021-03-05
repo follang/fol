@@ -1,6 +1,5 @@
-use crate::types::{Vod, List, error::*};
-use crate::syntax::index::Source;
-use crate::syntax::nodes::{Node, Nodes, NodeStatAssTyp};
+use crate::types::{Vod, List};
+use crate::syntax::nodes::{Node, Nodes, NodeStatDecL};
 use crate::syntax::token::*;
 use crate::syntax::lexer;
 use super::Parse;
@@ -16,20 +15,20 @@ use crate::syntax::parse::stat::datatype::*;
 pub struct ParserStatAssTyp {
     pub nodes: Nodes,
     _recurse: bool,
-    _oldstat: NodeStatAssTyp,
+    _oldstat: NodeStatDecL,
 }
 
 impl ParserStatAssTyp {
     pub fn len(&self) -> usize { self.nodes.len() }
     pub fn init() -> Self {
-        Self { nodes: Nodes::new(), _recurse: false, _oldstat: NodeStatAssTyp::default() } 
+        Self { nodes: Nodes::new(), _recurse: false, _oldstat: NodeStatDecL::default() } 
     }
 }
 impl Parse for ParserStatAssTyp {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
         let loc = lex.curr(true)?.loc().clone();
-        let mut node = NodeStatAssTyp::default();
+        let mut node = NodeStatDecL::default();
         if !self._recurse {
             // match symbol before var  -> "~"
             let mut opts = ParserStatAssOpts::init();
@@ -91,7 +90,7 @@ impl Parse for ParserStatAssTyp {
 }
 
 impl ParserStatAssTyp {
-    fn recurse(&mut self, node: &NodeStatAssTyp, lex: &mut lexer::Elements) -> Vod {
+    fn recurse(&mut self, node: &NodeStatDecL, lex: &mut lexer::Elements) -> Vod {
         if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::roundO_) {
             lex.jump(0, true)?; lex.eat();
 

@@ -1,7 +1,5 @@
 use std::fmt;
 use std::ffi::OsStr;
-use std::fs::File;
-use std::io::Read;
 use std::path::Path;
 use regex::Regex;
 use crate::colored::Colorize;

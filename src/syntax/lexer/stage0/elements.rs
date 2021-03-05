@@ -1,8 +1,6 @@
 use std::fmt;
-use std::str::Chars;
 use crate::types::{Vod, Con, Win, SLIDER};
 use crate::syntax::point;
-use crate::syntax::token::help;
 use crate::syntax::index;
 
 type Part<T> = (T, point::Location);

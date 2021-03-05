@@ -2,7 +2,6 @@
 
 use std::fmt;
 use dyn_clone::DynClone;
-use crate::syntax::point;
 use crate::types::*;
 pub mod expr;
 pub mod stat;

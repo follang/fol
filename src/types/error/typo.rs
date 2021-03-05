@@ -5,8 +5,7 @@ use std::fmt;
 use colored::Colorize;
 use crate::syntax::point;
 use crate::syntax::token::KEYWORD;
-use super::{Glitch, border_up, border_down};
-use crate::types::*;
+use super::{Glitch, border_down};
 use crate::syntax::index::source::Source;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]

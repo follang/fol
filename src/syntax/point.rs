@@ -7,8 +7,6 @@ use std::io::BufRead;
 use std::io::BufReader;
 use std::path::Path;
 use colored::Colorize;
-
-use crate::types::*;
 use crate::syntax::index::source::Source;
 
 

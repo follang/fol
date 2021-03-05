@@ -1,5 +1,4 @@
 use crate::types::*;
-use crate::syntax::index::Source;
 use crate::syntax::nodes::*;
 use crate::syntax::token::*;
 use crate::syntax::lexer;

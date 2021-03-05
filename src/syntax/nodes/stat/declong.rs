@@ -2,7 +2,7 @@ use std::fmt;
 use crate::syntax::nodes::{NodeTrait, Node, Nodes};
 
 #[derive(Clone)]
-pub struct NodeStatAssTyp {
+pub struct NodeStatDecL {
     string: String,
     options: Option<Nodes>,
     generics: Option<Nodes>,
@@ -12,7 +12,7 @@ pub struct NodeStatAssTyp {
     body: Option<Node>,
 }
 
-impl Default for NodeStatAssTyp {
+impl Default for NodeStatDecL {
     fn default() -> Self {
         Self { 
             string: String::new(),
@@ -26,9 +26,9 @@ impl Default for NodeStatAssTyp {
     }
 }
 
-impl NodeTrait for NodeStatAssTyp {}
+impl NodeTrait for NodeStatDecL {}
 
-impl fmt::Display for NodeStatAssTyp {
+impl fmt::Display for NodeStatDecL {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let opts = match self.options { Some(ref e) => "[".to_string() + &e.to_string() + "]", None => String::new()  };
         let gen = match self.generics { Some(ref e) => "[".to_string() + &e.to_string() + "]", None => String::new()  };
@@ -39,7 +39,7 @@ impl fmt::Display for NodeStatAssTyp {
     }
 }
 
-impl NodeStatAssTyp {
+impl NodeStatDecL {
     pub fn set_string(&mut self, string: String) { self.string = string }
     pub fn set_options(&mut self, options: Option<Nodes>) {
         self.options = options;
@@ -58,8 +58,8 @@ impl NodeStatAssTyp {
     }
 }
 
-impl From<NodeStatAssTyp> for Node {
-    fn from(el: NodeStatAssTyp) -> Self {
+impl From<NodeStatDecL> for Node {
+    fn from(el: NodeStatDecL) -> Self {
         Self::new(Box::new(el)) 
     }
 }

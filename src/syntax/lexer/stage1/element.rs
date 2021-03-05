@@ -1,5 +1,5 @@
 use std::fmt;
-use crate::types::{Vod, Con, Win, SLIDER, error::*};
+use crate::types::{Vod, error::*};
 use crate::syntax::point;
 use crate::syntax::lexer::stage0;
 

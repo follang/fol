@@ -1,6 +1,5 @@
-use std::fmt;
 use crate::types::{Vod, Con, Win, SLIDER};
-use crate::syntax::token::{help, KEYWORD, KEYWORD::*};
+use crate::syntax::token::KEYWORD;
 use crate::syntax::lexer::stage1;
 use crate::syntax::lexer::stage2::Element;
 use crate::syntax::index;

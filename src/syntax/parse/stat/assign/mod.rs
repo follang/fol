@@ -1,10 +1,7 @@
 use crate::types::Vod;
-use crate::syntax::index::Source;
 use crate::syntax::nodes::*;
-use crate::syntax::token::*;
 use crate::syntax::lexer;
 use super::Parse;
-use crate::syntax::parse::{check, eater};
 
 pub mod opts;
 pub mod var;
@@ -15,7 +12,6 @@ pub mod r#use;
 pub mod fun;
 pub mod lab;
 use crate::syntax::parse::stat::assign::{
-    opts::ParserStatAssOpts,
     var::ParserStatAssVar,
     typ::ParserStatAssTyp,
     imp::ParserStatAssImp,

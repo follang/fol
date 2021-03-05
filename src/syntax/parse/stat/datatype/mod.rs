@@ -1,13 +1,10 @@
 use crate::types::*;
-use crate::syntax::index::Source;
 use crate::syntax::nodes::*;
 use crate::syntax::token::*;
 use crate::syntax::lexer;
 use super::Parse;
 use crate::syntax::parse::{eater, check};
 
-use crate::syntax::nodes::stat::datatype;
-use crate::syntax::parse::stat::assign::opts;
 pub mod rec;
 pub mod rut;
 pub mod r#box;
@@ -54,7 +51,7 @@ impl Parse for ParserStatDatatypes {
                     self.nodes.push(data.nodes().get(0));
                 }
                 _ => {
-                    let mut node = datatype::NodeStatDatatypes::default();
+                    let mut node = NodeStatDatatypes::default();
                     check::expect_ident_literal(lex, true)?;
                     lex.eat();
                     node.set_string(lex.curr(true)?.con().to_string());

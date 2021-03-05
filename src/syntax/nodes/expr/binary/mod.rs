@@ -1,5 +1,5 @@
 use std::fmt;
-use crate::syntax::nodes::{NodeTrait, Node, Nodes};
+use crate::syntax::nodes::{NodeTrait, Node};
 
 #[derive(Clone)]
 pub enum NodeExprBinary {

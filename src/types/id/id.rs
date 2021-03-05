@@ -1,5 +1,4 @@
 use crate::syntax::point;
-use crate::syntax::token;
 
 #[derive(Debug, Clone)]
 pub struct ID<T: ?Sized + std::fmt::Display> {

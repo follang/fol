@@ -1,4 +1,4 @@
-#![allow(unused_imports)]
+// #![allow(unused_imports)]
 #![allow(unused_variables)]
 
 #[macro_use]
@@ -6,13 +6,12 @@ mod types;
 mod syntax;
 mod helper;
 
-#[macro_use]
 extern crate regex;
 extern crate colored;
 extern crate dyn_clone;
 extern crate terminal_size;
 
-use crate::syntax::index::{ Input, Source };
+use crate::syntax::index::Input;
 use crate::syntax::lexer;
 use crate::syntax::parse;
 

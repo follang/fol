@@ -1,7 +1,5 @@
-use std::fmt;
 use crate::types::*;
 use crate::syntax::token::*;
-use crate::syntax::point;
 use crate::syntax::lexer::stage2;
 use crate::syntax::lexer::stage3::Element;
 use crate::syntax::index;

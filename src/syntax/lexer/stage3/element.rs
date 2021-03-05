@@ -1,15 +1,12 @@
 use std::fmt;
 use colored::Colorize;
 use crate::types::*;
-use crate::syntax::index::*;
 use crate::syntax::point;
 use crate::syntax::lexer::stage2;
 use crate::syntax::token::{
     literal::LITERAL,
     void::VOID,
     symbol::SYMBOL,
-    operator::OPERATOR,
-    buildin::BUILDIN,
 };
 use crate::syntax::token::{KEYWORD, KEYWORD::*};
 

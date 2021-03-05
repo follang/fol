@@ -1,9 +1,6 @@
-use colored::Colorize;
 use crate::types::Vod;
 use crate::syntax::lexer;
 use crate::syntax::token::*;
-// use crate::syntax::point;
-// use crate::syntax::index;
 use crate::syntax::parse::check;
 
 pub fn until_key(lex: &mut lexer::Elements, keywords: Vec<KEYWORD>) -> Vod {

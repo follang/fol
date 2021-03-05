@@ -1,10 +1,9 @@
 use crate::types::Vod;
-use crate::syntax::index::Source;
-use crate::syntax::nodes::{Node, Nodes};
+
+use crate::syntax::nodes::Nodes;
 use crate::syntax::token::*;
 use crate::syntax::lexer;
 use super::Parse;
-use crate::syntax::parse::{check, eater};
 
 pub mod parameters;
 pub mod generics;

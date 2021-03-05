@@ -1,6 +1,3 @@
-use dyn_clone::DynClone;
-use crate::types::*;
-
 pub mod container;
 pub mod letter;
 pub mod number;

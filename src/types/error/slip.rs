@@ -3,8 +3,7 @@
 
 use std::fmt;
 use colored::Colorize;
-use super::{Glitch, border_up, border_down};
-use crate::syntax::point;
+use super::{Glitch, border_down};
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Slip {
