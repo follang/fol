@@ -32,8 +32,7 @@ impl Parse for ParserStatAssImp {
         let mut opts = ParserStatAssOpts::init(false);
         opts.parse(lex)?;
 
-        // match "var"
-        check::expect(lex,  KEYWORD::buildin(BUILDIN::imp_) , true)?;
+        // add "imp"
         node.set_string(lex.curr(true)?.con().to_string());
         lex.jump(0, false)?;
 

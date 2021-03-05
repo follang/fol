@@ -60,7 +60,7 @@ impl ParserStatParameters {
         opts.parse(lex)?;
 
         // match "var"
-        if lex.curr(true)?.key() == KEYWORD::buildin(BUILDIN::var_) {
+        if lex.curr(true)?.con() == "var" {
             lex.jump(0, true)?;
         }
 

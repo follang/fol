@@ -34,6 +34,9 @@ impl Parse for ParserStat {
         if lex.curr(true)?.key().is_assign()
             || (matches!(lex.curr(true)?.key(), KEYWORD::symbol(_)) && lex.peek(0, true)?.key().is_assign())
         {
+            // if (matches!(lex.curr(true)?.key(), KEYWORD::symbol(_)) && lex.peek(0, true)?.key().is_assign()) {
+            //     lex.jump(0, true)?;
+            // }
             let mut parse_ass = ParserStatAss::init();
             parse_ass.parse(lex)?;
             self.nodes.extend(parse_ass.nodes);

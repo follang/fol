@@ -20,17 +20,14 @@ impl Lines {
         let lines: Box<dyn Iterator<Item = (String, Option<Source>)>>;
         match input.clone() {
             Input::Source(s) => { 
-                lines = Box::new(source_lines(&s));
+                Self {lines: Box::new(source_lines(&s))}
             },
             Input::String(s) => {
-                lines = Box::new(string_lines(&s));
+                Self {lines: Box::new(string_lines(&s))}
             }
             Input::Path(s, b) => {
-                lines = Box::new(path_lines(s, b));
+                Self {lines: Box::new(path_lines(s, b))}
             }
-        }
-        Self {
-            lines,
         }
     }
 }

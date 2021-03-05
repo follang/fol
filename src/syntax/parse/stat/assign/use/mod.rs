@@ -38,8 +38,7 @@ impl Parse for ParserStatAssUse {
             let mut opts = ParserStatAssOpts::init(false);
             opts.parse(lex)?;
 
-            // match "use"
-            check::expect(lex, KEYWORD::buildin(BUILDIN::use_) , true)?;
+            // add "use"
             node.set_string(lex.curr(true)?.con().to_string());
             lex.jump(0, false)?;
 
@@ -67,16 +66,13 @@ impl Parse for ParserStatAssUse {
         dt.parse(lex)?;
         if dt.nodes.len() > 0 { node.set_datatype(Some(dt.nodes.get(0).clone())); }
 
-        check::expect_many(lex, vec![ 
-            KEYWORD::symbol(SYMBOL::semi_),
-            KEYWORD::symbol(SYMBOL::equal_),
-            KEYWORD::void(VOID::endline_)
-        ], true)?;
-        check::type_balance(idents.nodes.len(), dt.nodes.len(), &loc, &lex.curr(false)?.loc().source() )?;
+        check::expect(lex, KEYWORD::symbol(SYMBOL::equal_), true)?;
+        lex.jump(0, true)?;
 
         let mut id = Node::new(Box::new(node.clone()));
         id.set_loc(loc.clone());
         self.nodes.push(id);
+
 
         eater::until_term(lex, false)?;
         Ok(())

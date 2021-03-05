@@ -34,8 +34,7 @@ impl Parse for ParserStatAssVar {
             let mut opts = ParserStatAssOpts::init(false);
             opts.parse(lex)?;
 
-            // match "var"
-            check::expect(lex, KEYWORD::buildin(BUILDIN::var_) , true)?;
+            // add "var"
             node.set_string(lex.curr(true)?.con().to_string());
             lex.jump(0, false)?;
 
@@ -68,6 +67,22 @@ impl Parse for ParserStatAssVar {
         ], true)?;
         check::type_balance(idents.nodes.len(), dt.nodes.len(), &loc, &lex.curr(false)?.loc().source() )?;
 
+        if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::semi_) || lex.curr(true)?.key() == KEYWORD::void(VOID::endline_) {
+            for i in 0..idents.nodes.len() {
+                if dt.nodes.len() > 0 {
+                    let idx = if i >= dt.nodes.len() { dt.nodes.len()-1 } else { i };
+                    node.set_datatype(Some(dt.nodes.get(idx).clone()));
+                }
+                node.set_ident(Some(idents.nodes.get(i).clone()));
+                let mut id = Node::new(Box::new(node.clone()));
+                id.set_loc(loc.clone());
+                self.nodes.push(id);
+            }
+            return Ok(())
+        }
+
+        check::expect(lex, KEYWORD::symbol(SYMBOL::equal_), true)?;
+
         for i in 0..idents.nodes.len() {
             if dt.nodes.len() > 0 {
                 let idx = if i >= dt.nodes.len() { dt.nodes.len()-1 } else { i };
@@ -77,11 +92,6 @@ impl Parse for ParserStatAssVar {
             let mut id = Node::new(Box::new(node.clone()));
             id.set_loc(loc.clone());
             self.nodes.push(id);
-        }
-
-        if lex.curr(true)?.key() == KEYWORD::symbol(SYMBOL::semi_) 
-            || lex.curr(true)?.key() == KEYWORD::void(VOID::endline_) {
-                return Ok(())
         }
 
         lex.until_term(false)?;

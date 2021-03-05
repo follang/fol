@@ -31,8 +31,7 @@ impl Parse for ParserStatAssAli {
         let mut opts = ParserStatAssOpts::init(false);
         opts.parse(lex)?;
 
-        // match "typ"
-        check::expect(lex, KEYWORD::buildin(BUILDIN::ali_) , true)?;
+        // add "ali"
         node.set_string(lex.curr(true)?.con().to_string());
         lex.jump(0, false)?;
 

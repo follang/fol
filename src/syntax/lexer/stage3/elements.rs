@@ -29,6 +29,13 @@ impl Elements {
         };
         newborn
     }
+    pub fn set_key(&mut self, key: KEYWORD) -> Vod {
+        if self.win.1.clone()?.key().is_space() || self.win.2[0].is_ok() { self.bump(); }
+        if let Ok(a) = &mut self.win.1 {
+            a.set_key(key);
+        }
+        Ok(())
+    }
     pub fn curr(&self, ignore: bool) -> Con<Element> {
         if ignore && self.win.1.clone()?.key().is_space() { self.peek(0, false) } else { self.win.1.clone() }
     }

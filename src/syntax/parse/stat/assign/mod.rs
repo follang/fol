@@ -38,48 +38,25 @@ impl Parse for ParserStatAss {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
         let mut parser: Box<dyn Parse>;
-        if matches!(lex.curr(true)?.key(), KEYWORD::buildin(BUILDIN::var_))
-            || (matches!(lex.curr(true)?.key(), KEYWORD::symbol(_))
-                && matches!(lex.peek(0, true)?.key(), KEYWORD::buildin(BUILDIN::var_)))
-        {
+        if lex.curr(true)?.con() == "var" || lex.peek(0, true)?.con() == "var" {
             parser = Box::new(ParserStatAssVar::init());
-        } else if matches!(lex.curr(true)?.key(), KEYWORD::buildin(BUILDIN::typ_))
-            || (matches!(lex.curr(true)?.key(), KEYWORD::symbol(_))
-                && matches!(lex.peek(0, true)?.key(), KEYWORD::buildin(BUILDIN::typ_)))
-        {
+        } else if lex.curr(true)?.con() == "typ" || lex.peek(0, true)?.con() == "typ" {
             parser = Box::new(ParserStatAssTyp::init());
-        } else if matches!(lex.curr(true)?.key(), KEYWORD::buildin(BUILDIN::ali_))
-            || (matches!(lex.curr(true)?.key(), KEYWORD::symbol(_))
-                && matches!(lex.peek(0, true)?.key(), KEYWORD::buildin(BUILDIN::ali_)))
-        {
+        } else if lex.curr(true)?.con() == "ali" || lex.peek(0, true)?.con() == "ali" {
             parser = Box::new(ParserStatAssAli::init());
-        } else if matches!(lex.curr(true)?.key(), KEYWORD::buildin(BUILDIN::use_))
-            || (matches!(lex.curr(true)?.key(), KEYWORD::symbol(_))
-                && matches!(lex.peek(0, true)?.key(), KEYWORD::buildin(BUILDIN::use_)))
-        {
+        } else if lex.curr(true)?.con() == "use" || lex.peek(0, true)?.con() == "use" {
             parser = Box::new(ParserStatAssUse::init());
-        } else if matches!(lex.curr(true)?.key(), KEYWORD::buildin(BUILDIN::pro_))
-            || (matches!(lex.curr(true)?.key(), KEYWORD::symbol(_))
-                && matches!(lex.peek(0, true)?.key(), KEYWORD::buildin(BUILDIN::pro_)))
-        {
+        } else if lex.curr(true)?.con() == "pro" || lex.peek(0, true)?.con() == "pro" {
             parser = Box::new(ParserStatAssFun::init());
-        } else if matches!(lex.curr(true)?.key(), KEYWORD::buildin(BUILDIN::fun_))
-            || (matches!(lex.curr(true)?.key(), KEYWORD::symbol(_))
-                && matches!(lex.peek(0, true)?.key(), KEYWORD::buildin(BUILDIN::fun_)))
-        {
+        } else if lex.curr(true)?.con() == "fun" || lex.peek(0, true)?.con() == "fun" {
             parser = Box::new(ParserStatAssFun::init());
-        } else if matches!(lex.curr(true)?.key(), KEYWORD::buildin(BUILDIN::imp_))
-            || (matches!(lex.curr(true)?.key(), KEYWORD::symbol(_))
-                && matches!(lex.peek(0, true)?.key(), KEYWORD::buildin(BUILDIN::imp_)))
-        {
+        } else if lex.curr(true)?.con() == "imp" || lex.peek(0, true)?.con() == "imp" {
             parser = Box::new(ParserStatAssImp::init());
-        } else if matches!(lex.curr(true)?.key(), KEYWORD::buildin(BUILDIN::lab_))
-            || (matches!(lex.curr(true)?.key(), KEYWORD::symbol(_))
-                && matches!(lex.peek(0, true)?.key(), KEYWORD::buildin(BUILDIN::lab_)))
-        {
+        } else if lex.curr(true)?.con() == "lab" || lex.peek(0, true)?.con() == "lab" {
             parser = Box::new(ParserStatAssLab::init());
         } else {
-            check::expect(lex,  KEYWORD::buildin(BUILDIN::ANY) , true)?;
+            //TODO: fix here
+            // check::expect(lex,  KEYWORD::buildin(BUILDIN::ANY) , true)?;
             lex.until_term(true)?;
             return Ok(())
         }

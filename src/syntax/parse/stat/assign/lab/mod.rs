@@ -31,8 +31,7 @@ impl Parse for ParserStatAssLab {
         let mut opts = ParserStatAssOpts::init(false);
         opts.parse(lex)?;
 
-        // match "var"
-        check::expect(lex, KEYWORD::buildin(BUILDIN::lab_) , true)?;
+        // add "lab"
         node.set_string(lex.curr(true)?.con().to_string());
         lex.jump(0, false)?;
 

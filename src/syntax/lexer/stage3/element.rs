@@ -119,6 +119,9 @@ impl Element {
         }
         Ok(())
     }
+    pub fn make_buildin(&mut self, el: &mut stage2::Elements) -> Vod {
+        Ok(())
+    }
     pub fn bump(&mut self, el: &mut stage2::Elements) {
         el.bump();
     }

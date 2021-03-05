@@ -1,8 +1,8 @@
 use[] one: loc = { /bin/vendor_perl/GET }
 use[] two: loc = { /bin/vendor_perl/GET }
 ~use[] (
-    one: url = <expression>;
-    two: url = <expression>;
+    one: url = { url };
+    two: url = { url };
 )
 
 pro main(arg: int): int = {

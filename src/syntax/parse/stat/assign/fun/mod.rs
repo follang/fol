@@ -32,8 +32,7 @@ impl Parse for ParserStatAssFun {
         let mut opts = ParserStatAssOpts::init(true);
         opts.parse(lex)?;
 
-        // match "fun"
-        // expect( KEYWORD::buildin(BUILDIN::fun_) , true)?;
+        // add "fun"
         node.set_string(lex.curr(true)?.con().to_string());
         lex.jump(0, false)?;
 
