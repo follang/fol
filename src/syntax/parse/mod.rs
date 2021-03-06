@@ -1,6 +1,6 @@
 use crate::types::*;
 use crate::syntax::nodes::Nodes;
-use crate::syntax::token::*;
+// use crate::syntax::token::*;
 use crate::syntax::lexer;
 
 pub mod check;
@@ -40,19 +40,11 @@ impl Parse for Parser {
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
         if lex.curr(true)?.key().is_comment() {
             lex.jump(0, true)?;
-        } else if lex.curr(true)?.key().is_assign()
-            || (matches!(lex.curr(true)?.key(), KEYWORD::Symbol(_)) && lex.peek(0, true)?.key().is_assign())
-        {
+        } else {
             let mut parse_stat = ParserStat::init();
             match parse_stat.parse(lex) {
                 Ok(()) => { self.nodes.extend(parse_stat.nodes) },
                 Err(err) => { self.errors.push(err) }
-            }
-        } else {
-            if let Err(_) = check::expect(lex,  KEYWORD::Illegal, true) {
-                // lex.debug(true, 0);
-                lex.until_term(false)?;
-                // return Err(e)
             }
         }
         Ok(())

@@ -4,6 +4,7 @@ use crate::syntax::nodes::Nodes;
 use crate::syntax::token::*;
 use crate::syntax::lexer;
 use super::Parse;
+use crate::syntax::parse::check;
 
 pub mod parameters;
 pub mod generics;
@@ -37,6 +38,12 @@ impl Parse for ParserStat {
             parse_ass.parse(lex)?;
             self.nodes.extend(parse_ass.nodes);
             return Ok(())
+        } else {
+            if let Err(_) = check::expect(lex,  KEYWORD::Illegal, true) {
+                // lex.debug(true, 0);
+                lex.until_term(false)?;
+                // return Err(e)
+            }
         }
         lex.until_term(false)?;
         Ok(())
