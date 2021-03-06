@@ -5,6 +5,7 @@ use crate::syntax::lexer;
 use super::Parse;
 use crate::syntax::parse::{check, eater};
 
+// use crate::syntax::parse::stat::ParserStat;
 use crate::syntax::parse::stat::assign::opts::*;
 use crate::syntax::parse::stat::ident::*;
 use crate::syntax::parse::stat::datatype::*;

@@ -113,3 +113,69 @@ pub fn type_balance(idents: usize, dt: usize, loc: &point::Location, src: &Optio
     }
     Ok(())
 }
+
+pub fn unexpected_top(lex: &mut lexer::Elements, el: lexer::Element) -> Vod {
+    lex.until_term(false)?;
+    Err( catch!( Typo::ParserManyUnexpected{ 
+        loc: Some(el.loc().clone()), 
+        key1: el.key().clone(), 
+        keys: vec![
+            KEYWORD::Keyword(BUILDIN::Use),
+            KEYWORD::Keyword(BUILDIN::Def),
+            KEYWORD::Keyword(BUILDIN::Fun),
+            KEYWORD::Keyword(BUILDIN::Pro),
+            KEYWORD::Keyword(BUILDIN::Log),
+            KEYWORD::Keyword(BUILDIN::Typ),
+            KEYWORD::Keyword(BUILDIN::Ali),
+            KEYWORD::Keyword(BUILDIN::Imp),
+            KEYWORD::Keyword(BUILDIN::Con),
+        ],
+        src: el.loc().clone().source()
+    }))
+}
+
+pub fn unexpected_imp(lex: &mut lexer::Elements, el: lexer::Element) -> Vod {
+    lex.until_term(false)?;
+    Err( catch!( Typo::ParserManyUnexpected{ 
+        loc: Some(el.loc().clone()), 
+        key1: el.key().clone(), 
+        keys: vec![
+            KEYWORD::Keyword(BUILDIN::Fun),
+            KEYWORD::Keyword(BUILDIN::Pro),
+            KEYWORD::Keyword(BUILDIN::Log),
+        ],
+        src: el.loc().clone().source()
+    }))
+}
+
+pub fn unexpected_typ(lex: &mut lexer::Elements, el: lexer::Element) -> Vod {
+    lex.until_term(false)?;
+    Err( catch!( Typo::ParserManyUnexpected{ 
+        loc: Some(el.loc().clone()), 
+        key1: el.key().clone(), 
+        keys: vec![
+            KEYWORD::Keyword(BUILDIN::Var),
+            KEYWORD::Keyword(BUILDIN::Fun),
+            KEYWORD::Keyword(BUILDIN::Pro),
+            KEYWORD::Keyword(BUILDIN::Log),
+            KEYWORD::Keyword(BUILDIN::Lab),
+        ],
+        src: el.loc().clone().source()
+    }))
+}
+
+pub fn unexpected_fun(lex: &mut lexer::Elements, el: lexer::Element) -> Vod {
+    lex.until_term(false)?;
+    Err( catch!( Typo::ParserManyUnexpected{ 
+        loc: Some(el.loc().clone()), 
+        key1: el.key().clone(), 
+        keys: vec![
+            KEYWORD::Keyword(BUILDIN::Var),
+            KEYWORD::Keyword(BUILDIN::Fun),
+            KEYWORD::Keyword(BUILDIN::Pro),
+            KEYWORD::Keyword(BUILDIN::Log),
+            KEYWORD::Keyword(BUILDIN::Lab),
+        ],
+        src: el.loc().clone().source()
+    }))
+}

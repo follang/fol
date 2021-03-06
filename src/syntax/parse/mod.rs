@@ -5,6 +5,7 @@ use crate::syntax::lexer;
 
 pub mod check;
 pub mod eater;
+pub mod branch;
 
 pub mod stat;
 pub mod expr;
