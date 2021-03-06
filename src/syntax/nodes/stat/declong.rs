@@ -9,7 +9,7 @@ pub struct NodeStatDecL {
     ident: Option<Node>,
     parameters: Option<Nodes>,
     data: Option<Node>,
-    body: Option<Node>,
+    body: Option<Nodes>,
 }
 
 impl Default for NodeStatDecL {
@@ -35,7 +35,8 @@ impl fmt::Display for NodeStatDecL {
         let ident = match self.ident { Some(ref e) => " ".to_string() + &e.to_string(), None => String::new()  };
         let contr = match self.parameters { Some(ref e) => e.to_string(), None => String::new()  };
         let data = match self.data { Some(ref e) => ": ".to_string() + &e.to_string(), None => String::new()  };
-        write!(f, "{}{}{}{}({}){}", self.string, opts, gen, ident, contr, data)
+        let body = match self.body { Some(ref e) => " = {\n\t".to_string() + &e.print_newline() + "\n}", None => String::new()  };
+        write!(f, "{}{}{}{}({}){}{}", self.string, opts, gen, ident, contr, data, body)
     }
 }
 
@@ -56,7 +57,7 @@ impl NodeStatDecL {
     pub fn set_datatype(&mut self, dt: Option<Node>) {
         self.data = dt;
     }
-    pub fn set_body(&mut self, body: Option<Node>) {
+    pub fn set_body(&mut self, body: Option<Nodes>) {
         self.body = body;
     }
 }

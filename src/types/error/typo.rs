@@ -80,6 +80,30 @@ pub enum Typo {
         loc: Option<point::Location>,
         src: Option<Source>,
     },
+    ParserTopForbid {
+        key1: KEYWORD,
+        keys: Vec<KEYWORD>,
+        loc: Option<point::Location>,
+        src: Option<Source>,
+    },
+    ParserImpForbid {
+        key1: KEYWORD,
+        keys: Vec<KEYWORD>,
+        loc: Option<point::Location>,
+        src: Option<Source>,
+    },
+    ParserTypForbid {
+        key1: KEYWORD,
+        keys: Vec<KEYWORD>,
+        loc: Option<point::Location>,
+        src: Option<Source>,
+    },
+    ParserFunForbid {
+        key1: KEYWORD,
+        keys: Vec<KEYWORD>,
+        loc: Option<point::Location>,
+        src: Option<Source>,
+    },
 }
 
 impl std::error::Error for Typo  {  }
@@ -91,7 +115,7 @@ impl fmt::Display for Typo {
         let mut comma_separated = String::new();
         match self {
             Typo::ParserUnexpected { loc, key1, key2, src } => { 
-                v = " UNEXPECTED TOKEN ".to_string(); 
+                v = " UNEXPECTED TOKEN ".on_red().bold().to_string(); 
                 s = "parsing".to_string();
                 l = loc.as_ref();
                 message = format!("expected: {} but got {}", key2, key1);
@@ -100,7 +124,7 @@ impl fmt::Display for Typo {
                 id = "TYPO001"
             },
             Typo::ParserNeedsBody { msg, loc, src } => {
-                v = " MISSING DECLARATATION ".to_string(); 
+                v = " MISSING DECLARATATION ".on_red().bold().to_string(); 
                 s = "parsing".to_string();
                 m = msg.as_ref();
                 l = loc.as_ref();
@@ -108,7 +132,7 @@ impl fmt::Display for Typo {
                 id = "TYPO002"
             },
             Typo::ParserBodyForbidden { msg, loc, src } => { 
-                v = " DECLARATATION FORBIDDEN ".to_string(); 
+                v = " DECLARATATION FORBIDDEN ".on_red().bold().to_string(); 
                 s = "parsing".to_string();
                 m = msg.as_ref();
                 l = loc.as_ref();
@@ -116,7 +140,7 @@ impl fmt::Display for Typo {
                 id = "TYPO003"
             },
             Typo::ParserMissmatch { msg, loc, src } => { 
-                v = " MISSMATCHED ARGUMENTS ".to_string(); 
+                v = " MISSMATCHED ARGUMENTS ".on_red().bold().to_string(); 
                 s = "parsing".to_string();
                 m = msg.as_ref();
                 l = loc.as_ref();
@@ -124,7 +148,7 @@ impl fmt::Display for Typo {
                 id = "TYPO004"
             },
             Typo::ParserSpaceAdd { msg, loc, src } => { 
-                v = " MISSING BLANK SPACE ".to_string(); 
+                v = " MISSING BLANK SPACE ".on_red().bold().to_string(); 
                 s = "parsing".to_string();
                 m = msg.as_ref();
                 l = loc.as_ref();
@@ -132,7 +156,7 @@ impl fmt::Display for Typo {
                 id = "TYPO005"
             },
             Typo::ParserSpaceRem { msg, loc, src } => { 
-                v = " OBSOLETE BLANK SPACE ".to_string(); 
+                v = " OBSOLETE BLANK SPACE ".on_red().bold().to_string(); 
                 s = "parsing".to_string();
                 m = msg.as_ref();
                 l = loc.as_ref();
@@ -140,7 +164,7 @@ impl fmt::Display for Typo {
                 id = "TYPO006"
             },
             Typo::ParserTypeDisbalance { msg, loc, src } => { 
-                v = " DISBALANCE OF TYPES ".to_string(); 
+                v = " DISBALANCE OF TYPES ".on_red().bold().to_string(); 
                 s = "parsing".to_string();
                 m = msg.as_ref();
                 l = loc.as_ref();
@@ -148,7 +172,7 @@ impl fmt::Display for Typo {
                 id = "TYPO007"
             },
             Typo::ParserNoType { msg, loc, src } => { 
-                v = " MISSING TYPE ANNOTATION ".to_string(); 
+                v = " MISSING TYPE ANNOTATION ".on_red().bold().to_string(); 
                 s = "parsing".to_string();
                 m = msg.as_ref();
                 l = loc.as_ref();
@@ -156,21 +180,21 @@ impl fmt::Display for Typo {
                 id = "TYPO008"
             },
             Typo::ParserManyUnexpected { loc, key1, keys, src } => { 
-                v = " UNEXPECTED TOKEN ".to_string(); 
+                v = " UNEXPECTED TOKEN ".on_red().bold().to_string(); 
                 s = "parsing".to_string();
                 l = loc.as_ref();
                 for num in &keys[0..keys.len() - 1] {
                     comma_separated.push_str(&num.to_string());
-                    comma_separated.push_str(", ");
+                    comma_separated.push_str(",\n");
                 }
                 comma_separated.push_str(&keys[keys.len() - 1].to_string());
-                message = format!("expected one of: {},\ninstead recieved {}", comma_separated, key1);
+                message = format!("expected one of: \n{}\n instead recieved:\n{}", comma_separated, key1);
                 m = Some(&message);
                 source = src;
                 id = "TYPO009"
             },
             Typo::LexerBracketUnmatch { msg, loc, src } => { 
-                v = " UNMATCHED BRACKET ".to_string(); 
+                v = " UNMATCHED BRACKET ".on_red().bold().to_string(); 
                 s = "lexing".to_string();
                 m = msg.as_ref();
                 l = loc.as_ref();
@@ -178,7 +202,7 @@ impl fmt::Display for Typo {
                 id = "TYPO010"
             },
             Typo::LexerSpaceAdd { msg, loc, src } => { 
-                v = " MISSING BLANK SPACE ".to_string(); 
+                v = " MISSING BLANK SPACE ".on_red().bold().to_string(); 
                 s = "lexing".to_string();
                 m = msg.as_ref();
                 l = loc.as_ref();
@@ -186,7 +210,7 @@ impl fmt::Display for Typo {
                 id = "TYPO011"
             },
             Typo::LexerPrimitiveAccess { msg, loc, src } => { 
-                v = " PRIMITIVE_ACCESS ".to_string(); 
+                v = " PRIMITIVE_ACCESS ".on_red().bold().to_string(); 
                 s = "lexing".to_string();
                 m = msg.as_ref();
                 l = loc.as_ref();
@@ -194,7 +218,7 @@ impl fmt::Display for Typo {
                 id = "TYPO012"
             },
             Typo::ParserUnimplemented { loc, src } => { 
-                v = " UNIMPLEMENTED TOKEN ".to_string(); 
+                v = " UNIMPLEMENTED TOKEN ".on_red().bold().to_string(); 
                 s = "parsing".to_string();
                 l = loc.as_ref();
                 message = format!(" This token is reserved but is not yet implemented ");
@@ -203,7 +227,7 @@ impl fmt::Display for Typo {
                 id = "TYPO013"
             },
             Typo::ParserNotparsed { loc, src } => { 
-                v = " TOKEN NOT PARSED".to_string(); 
+                v = " TOKEN NOT PARSED".on_red().bold().to_string(); 
                 s = "parsing".to_string();
                 l = loc.as_ref();
                 message = format!(" Parser did not parse this token ");
@@ -211,10 +235,78 @@ impl fmt::Display for Typo {
                 source = src;
                 id = "TYPO014"
             },
+            Typo::ParserTopForbid { key1, keys, loc, src } => { 
+                v = format!("{} in the body of {}", 
+                    " TOKEN NOT ALLOWED ".on_red().bold().to_string(), 
+                    " TOP LEVEL DECLARATION ".on_red().bold().to_string()
+                ); 
+                s = "parsing".to_string();
+                l = loc.as_ref();
+                for num in &keys[0..keys.len() - 1] {
+                    comma_separated.push_str(&num.to_string());
+                    comma_separated.push_str(",\n");
+                }
+                comma_separated.push_str(&keys[keys.len() - 1].to_string());
+                message = format!("expected one of: \n{}\n instead recieved:\n{}", comma_separated, key1);
+                m = Some(&message);
+                source = src;
+                id = "TYPO016"
+            },
+            Typo::ParserImpForbid { key1, keys, loc, src } => { 
+                v = format!("{} in the body of {}", 
+                    " TOKEN NOT ALLOWED ".on_red().bold().to_string(), 
+                    " IMPLEMENTATION DECLARATION ".on_red().bold().to_string()
+                ); 
+                s = "parsing".to_string();
+                l = loc.as_ref();
+                for num in &keys[0..keys.len() - 1] {
+                    comma_separated.push_str(&num.to_string());
+                    comma_separated.push_str(",\n");
+                }
+                comma_separated.push_str(&keys[keys.len() - 1].to_string());
+                message = format!("expected one of: \n{}\n instead recieved:\n{}", comma_separated, key1);
+                m = Some(&message);
+                source = src;
+                id = "TYPO016"
+            },
+            Typo::ParserTypForbid { key1, keys, loc, src } => { 
+                v = format!("{} in the body of {}", 
+                    " TOKEN NOT ALLOWED ".on_red().bold().to_string(), 
+                    " NEW TYPE DECLARATION ".on_red().bold().to_string()
+                ); 
+                s = "parsing".to_string();
+                l = loc.as_ref();
+                for num in &keys[0..keys.len() - 1] {
+                    comma_separated.push_str(&num.to_string());
+                    comma_separated.push_str(",\n");
+                }
+                comma_separated.push_str(&keys[keys.len() - 1].to_string());
+                message = format!("expected one of: \n{}\n instead recieved:\n{}", comma_separated, key1);
+                m = Some(&message);
+                source = src;
+                id = "TYPO016"
+            },
+            Typo::ParserFunForbid { key1, keys, loc, src } => { 
+                v = format!("{} in the body of {}", 
+                    " TOKEN NOT ALLOWED ".on_red().bold().to_string(), 
+                    " FUNCTION DECLARATION ".on_red().bold().to_string()
+                ); 
+                s = "parsing".to_string();
+                l = loc.as_ref();
+                for num in &keys[0..keys.len() - 1] {
+                    comma_separated.push_str(&num.to_string());
+                    comma_separated.push_str(",\n");
+                }
+                comma_separated.push_str(&keys[keys.len() - 1].to_string());
+                message = format!("expected one of: \n{}\n instead recieved:\n{}", comma_separated, key1);
+                m = Some(&message);
+                source = src;
+                id = "TYPO016"
+            },
         };
         write!(f, "{} >> {}:{}{}{}{}",
             " TYPO ".black().on_red(),
-            (" ".to_string() + &s + " stage ").black().on_white().to_string(), v.on_red().bold().to_string(),
+            (" ".to_string() + &s + " stage ").black().on_white().to_string(), v,
             match l { Some(val) => "\n".to_string() + &val.visualize(source), None => "".to_string() },
             match m { Some(val) => "\n".to_string() + &val.to_string(), None => "".to_string() },
             border_down("-", " fol --explain err#".to_string() + id + " ")

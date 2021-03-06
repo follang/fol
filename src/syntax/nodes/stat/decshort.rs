@@ -29,7 +29,8 @@ impl fmt::Display for NodeStatDecS {
         let opts = match self.options { Some(ref e) => "[".to_string() + &e.to_string() + "]", None => String::new()  };
         let ident = match self.ident { Some(ref e) => " ".to_string() + &e.to_string(), None => String::new()  };
         let data = match self.data { Some(ref e) => ": ".to_string() + &e.to_string(), None => String::new()  };
-        write!(f, "{}{}{}{}", self.string, opts, ident, data)
+        let body = match self.body { Some(ref e) => " = ".to_string() + &e.to_string(), None => String::new()  };
+        write!(f, "{}{}{}{}{}", self.string, opts, ident, data, body)
     }
 }
 
