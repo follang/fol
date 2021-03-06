@@ -75,7 +75,11 @@ impl Parse for ParserStat {
                     parse_ass.parse(lex)?;
                     self.nodes.extend(parse_ass.nodes);
                     return Ok(())
-                } else { return check::unexpected_fun(lex, token); }
+                } else {
+                    lex.until_term(false)?;
+                    return Ok(())
+                    // return check::unexpected_fun(lex, token); 
+                }
             }
         }
     }
