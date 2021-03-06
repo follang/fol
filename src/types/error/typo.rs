@@ -80,6 +80,13 @@ pub enum Typo {
         loc: Option<point::Location>,
         src: Option<Source>,
     },
+    ParserBodyCompat {
+        msg: Option<String>,
+        key1: KEYWORD,
+        keys: Vec<KEYWORD>,
+        loc: Option<point::Location>,
+        src: Option<Source>,
+    },
 }
 
 impl std::error::Error for Typo  {  }
@@ -161,10 +168,10 @@ impl fmt::Display for Typo {
                 l = loc.as_ref();
                 for num in &keys[0..keys.len() - 1] {
                     comma_separated.push_str(&num.to_string());
-                    comma_separated.push_str(", ");
+                    comma_separated.push_str(",\n");
                 }
                 comma_separated.push_str(&keys[keys.len() - 1].to_string());
-                message = format!("expected one of: {},\ninstead recieved {}", comma_separated, key1);
+                message = format!("expected one of: \n{}\n instead recieved:\n{}", comma_separated, key1);
                 m = Some(&message);
                 source = src;
                 id = "TYPO009"
@@ -210,6 +217,24 @@ impl fmt::Display for Typo {
                 m = Some(&message);
                 source = src;
                 id = "TYPO014"
+            },
+            Typo::ParserBodyCompat { msg, key1, keys, loc, src } => { 
+                let ident = match msg { 
+                    Some(ref e) => " in body of ".normal().clear().to_string() + &e.on_red().bold().to_string(), 
+                    None => String::new()  
+                };
+                v = format!("{}{}", " TOKEN NOT ALLOWED ".to_string(), ident); 
+                s = "parsing".to_string();
+                l = loc.as_ref();
+                for num in &keys[0..keys.len() - 1] {
+                    comma_separated.push_str(&num.to_string());
+                    comma_separated.push_str(",\n");
+                }
+                comma_separated.push_str(&keys[keys.len() - 1].to_string());
+                message = format!("expected one of: \n{}\n instead recieved:\n{}", comma_separated, key1);
+                m = Some(&message);
+                source = src;
+                id = "TYPO009"
             },
         };
         write!(f, "{} >> {}:{}{}{}{}",
