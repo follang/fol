@@ -116,8 +116,7 @@ pub fn type_balance(idents: usize, dt: usize, loc: &point::Location, src: &Optio
 
 pub fn unexpected_top(lex: &mut lexer::Elements, el: lexer::Element) -> Vod {
     lex.until_term(false)?;
-    Err( catch!( Typo::ParserBodyCompat{ 
-        msg: Some(" TOP LEVEL DECLARATION ".to_string()),
+    Err( catch!( Typo::ParserTopForbid{ 
         loc: Some(el.loc().clone()), 
         key1: el.key().clone(), 
         keys: vec![
@@ -137,8 +136,7 @@ pub fn unexpected_top(lex: &mut lexer::Elements, el: lexer::Element) -> Vod {
 
 pub fn unexpected_imp(lex: &mut lexer::Elements, el: lexer::Element) -> Vod {
     lex.until_term(false)?;
-    Err( catch!( Typo::ParserBodyCompat{ 
-        msg: Some(" IMPLEMENTATION DECLARATION ".to_string()),
+    Err( catch!( Typo::ParserImpForbid{ 
         loc: Some(el.loc().clone()), 
         key1: el.key().clone(), 
         keys: vec![
@@ -152,8 +150,7 @@ pub fn unexpected_imp(lex: &mut lexer::Elements, el: lexer::Element) -> Vod {
 
 pub fn unexpected_typ(lex: &mut lexer::Elements, el: lexer::Element) -> Vod {
     lex.until_term(false)?;
-    Err( catch!( Typo::ParserBodyCompat{ 
-        msg: Some(" NEW TYPE DECLARATION ".to_string()),
+    Err( catch!( Typo::ParserTypForbid{ 
         loc: Some(el.loc().clone()), 
         key1: el.key().clone(), 
         keys: vec![
@@ -169,8 +166,7 @@ pub fn unexpected_typ(lex: &mut lexer::Elements, el: lexer::Element) -> Vod {
 
 pub fn unexpected_fun(lex: &mut lexer::Elements, el: lexer::Element) -> Vod {
     lex.until_term(false)?;
-    Err( catch!( Typo::ParserBodyCompat{ 
-        msg: Some(" FUNCTION DECLARATION ".to_string()),
+    Err( catch!( Typo::ParserFunForbid{ 
         loc: Some(el.loc().clone()), 
         key1: el.key().clone(), 
         keys: vec![
