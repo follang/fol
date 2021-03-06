@@ -38,8 +38,8 @@ pub fn until_term(lex: &mut lexer::Elements, term: bool) -> Vod {
 }
 
 pub fn expr_body(lex: &mut lexer::Elements) -> Vod {
-    let deep = lex.curr(false)?.loc().deep();
     check::expect(lex, KEYWORD::Symbol(SYMBOL::CurlyO), true)?;
+    let deep = lex.curr(false)?.loc().deep();
     loop{
         // println!("{}\t{}", lex.curr(false)?.loc(), lex.curr(false)?.key());
         if (matches!(lex.curr(false)?.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) && lex.curr(false)?.loc().deep() == deep ) 
@@ -49,5 +49,17 @@ pub fn expr_body(lex: &mut lexer::Elements) -> Vod {
         lex.jump(0, false)?;
     }
     lex.jump(0, false)?;
+    Ok(())
+}
+
+pub fn expr_body2(lex: &mut lexer::Elements) -> Vod {
+    let deep = lex.curr(false)?.loc().deep() - 1;
+    loop{
+        if (matches!(lex.curr(false)?.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) && lex.curr(false)?.loc().deep() == deep ) 
+            || lex.curr(false)?.key().is_eof() {
+            break
+        }
+        lex.jump(0, false)?;
+    }
     Ok(())
 }

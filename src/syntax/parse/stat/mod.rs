@@ -4,7 +4,7 @@ use crate::syntax::nodes::Nodes;
 use crate::syntax::token::*;
 use crate::syntax::lexer;
 use super::Parse;
-use crate::syntax::parse::{check, branch, Body};
+use crate::syntax::parse::{check, branch, Body, eater};
 
 pub mod parameters;
 pub mod generics;
@@ -35,6 +35,7 @@ impl ParserStat {
 impl Parse for ParserStat {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
+        lex.eat();
         let token = lex.curr(true)?;
         match self._style {
             Body::Top => {
@@ -51,9 +52,10 @@ impl Parse for ParserStat {
                 if (lex.curr(true)?.key().is_assign()
                     || (matches!(lex.curr(true)?.key(), KEYWORD::Symbol(_)) && lex.peek(0, true)?.key().is_assign()))
                     && branch::body_typ(lex, true)? {
-                    let mut parse_ass = ParserStatAss::init();
-                    parse_ass.parse(lex)?;
-                    self.nodes.extend(parse_ass.nodes);
+                    eater::expr_body2(lex)?;
+                    // let mut parse_ass = ParserStatAss::init();
+                    // parse_ass.parse(lex)?;
+                    // self.nodes.extend(parse_ass.nodes);
                     return Ok(())
                 } else { return check::unexpected_typ(lex, token); }
             }
@@ -61,9 +63,10 @@ impl Parse for ParserStat {
                 if (lex.curr(true)?.key().is_assign()
                     || (matches!(lex.curr(true)?.key(), KEYWORD::Symbol(_)) && lex.peek(0, true)?.key().is_assign()))
                     && branch::body_imp(lex, true)? {
-                    let mut parse_ass = ParserStatAss::init();
-                    parse_ass.parse(lex)?;
-                    self.nodes.extend(parse_ass.nodes);
+                    eater::expr_body2(lex)?;
+                    // let mut parse_ass = ParserStatAss::init();
+                    // parse_ass.parse(lex)?;
+                    // self.nodes.extend(parse_ass.nodes);
                     return Ok(())
                 } else { return check::unexpected_imp(lex, token); }
             }
@@ -71,12 +74,13 @@ impl Parse for ParserStat {
                 if (lex.curr(true)?.key().is_assign()
                     || (matches!(lex.curr(true)?.key(), KEYWORD::Symbol(_)) && lex.peek(0, true)?.key().is_assign()))
                     && branch::body_fun(lex, true)? {
-                    let mut parse_ass = ParserStatAss::init();
-                    parse_ass.parse(lex)?;
-                    self.nodes.extend(parse_ass.nodes);
+                    eater::expr_body2(lex)?;
+                    // let mut parse_ass = ParserStatAss::init();
+                    // parse_ass.parse(lex)?;
+                    // self.nodes.extend(parse_ass.nodes);
                     return Ok(())
                 } else {
-                    lex.until_term(false)?;
+                    eater::expr_body2(lex)?;
                     return Ok(())
                     // return check::unexpected_fun(lex, token); 
                 }

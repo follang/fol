@@ -65,15 +65,17 @@ impl Parse for ParserStatAssFun {
 
         check::expect(lex, KEYWORD::Symbol(SYMBOL::Equal), true)?;
         lex.jump(0, true)?;
-
         check::expect(lex, KEYWORD::Symbol(SYMBOL::CurlyO), true)?;
         lex.jump(0, true)?;
-    
+
         // match indentifier "body"
         let mut body = ParserStat::init();
         body.style(Body::Fun);
         body.parse(lex)?; lex.eat();
         if body.nodes.len() > 0 { node.set_body(Some(body.nodes.get(0))); }
+
+        check::expect(lex, KEYWORD::Symbol(SYMBOL::CurlyC), true)?;
+        lex.jump(0, true)?;
 
         let mut id = Node::new(Box::new(node.clone()));
         id.set_loc(loc.clone());
