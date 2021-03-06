@@ -1,0 +1,96 @@
+use[] one: loc = { /bin/vendor_perl/GET }
+use[] two: loc = { /bin/vendor_perl/GET }
+~use[] (
+    one: url = { url };
+    two: url = { url };
+)
+
+~typ[set, get, nothing] (
+    three: rec[] = { 
+        var one: int
+        var two: str
+    }
+    three2: rec[] = {
+        var three: vec
+        var four: flt
+    }
+)
+
+con leting: int = 5;
+
+fun[mut, three] one(two: int): int = { 
+    -var[exp] (
+        four: int[exp];
+        four2, four3: arr[nor], int = <expression>
+        four4 : str[nor] = <expression>;
+    )
+    lab athing: int;
+    var intwrap = athing(5);
+    -var[exp] (
+        four, four3: arr[int, 2], int = {  };
+        five: str[nor[]] = <expression>
+    )
+}
+
+
+typ some(S: gen[three]; t: int): rec[] = {
+    var el: S;
+    var num: t;
+}
+
+
+typ[][T: gen] OP(type: T): enm = {
+    lab None;
+    lab Some: type
+}
+
+fun makeOption(): OP[int] = {
+    result = OP::Some(5)
+}
+
+//function genercs
+pro[][T: gen] max(a: T; b: rut[(a: int): T]): T = {
+    return a | a > b | b
+}
+
+
+// type generics
++typ[][T: gen[][Sized, Display]] ID(val: T): rec[Display] = {
+    +var loc: opt[point::Location]
+    +var node: val
+}
+imp[][T: gen[]] Self: ID[T] = {
+    +fun[] init(node: T): self = {
+        self{ loc = None, node = node }
+    }
+}
+
+//types
+typ[get, set][T: gen[]] array(val: T; num: int): rec = { 
+    var container: arr[val, num];
+    var temp: int;
+    lab gone: non;
+    +pro lasttwo(): val = { 
+        result = container[-0] + container[-1]
+    }
+};
+imp[][T: gen[]] Self: array[T, int] = {
+    +pro firsttwo(): T {
+        result = self.container[0] + self.container[1]
+    } 
+} 
+
+ali fiveint: array[int, 5];
+pro main(): int = {
+    ~var arrayish: array[int[5], 5] = { container: {1, 2, 3, 4, 5 }; temp: 5; };
+    var test = arrayish<C>.get(0)
+    arrayish.set(0) = { 0, 1, 2, 3, 4 }
+
+    var aval = ID[int]::init(5);
+    var test: box[box[array[int, 5]]] = ar
+
+    //funcall
+    var somevar: fiveint = {1, 2, 3, 4, 5}
+    var somevar = fiveint{1, 2, 3, 4, 5}
+
+}

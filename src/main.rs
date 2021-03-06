@@ -1,56 +1,33 @@
-#![allow(unused_imports)]
-#![allow(unused_variables)]
-
-mod scan;
-mod node;
-mod error;
 #[macro_use]
-extern crate getset;
-// extern crate enumeq;
+mod types;
+mod syntax;
+mod helper;
+
+extern crate regex;
 extern crate colored;
-// use crate::scan::token;
-// use crate::scan::parts;
-// use crate::scan::reader;
-// use crate::scan::scanner;
-// use crate::scan::stream;
-// use crate::node::ast;
-use crate::node::lexer;
-use crate::node::parser;
-use crate::error::flaw;
+extern crate dyn_clone;
+extern crate terminal_size;
 
-
+use crate::syntax::index::Input;
+use crate::syntax::lexer;
+use crate::syntax::parse;
 
 fn main() {
-    // for mut e in reader::iteratize("./etc") {
-        // for s in scanner::vectorize(&mut e) {
-            // println!("{}", s);
-        // }
+    let mut elems = lexer::Elements::init(&Input::Path("./test/main/main.fol".to_string(), true));
+    // while let Some(c) = elems.bump() {
+    //     match c {
+    //         Ok(e) => { println!("{}", e); },
+    //         Err(e) => { println!("\n{}", e); }
+    //     }
     // }
-
-    // let mut s = stream::STREAM::init("./etc");
-    // while !s.list().is_empty() {
-        // println!("{}", s);
-        // s.bump()
+    let _parser = parse::Parser::init(&mut elems);
+    // for e in Source::init(&path, false).iter() {
+    //     let mut elems = lexer::Elements::init(&Input::SourceAlt(e.clone());
+    //     let parser = parse::Parser::init(&mut elems);
     // }
+}
 
-    // let mut error = flaw::FLAW::init();
-    // let path = "./etc";
-    // let mut s = lexer::init(path, &mut error);
-    // while s.not_empty() {
-        // println!("{}", s);
-        // if s.curr().key().is_eol(){
-        // }
-        // s.bump()
-    // }
-
-    let path = "./etc";
-    let mut error = flaw::FLAW::init();
-    let mut tokens = lexer::init(path, &mut error);
-    let mut forest = parser::new();
-    forest.init(&mut tokens, &mut error);
-    for tree in forest.trees {
-        println!("{}\t{}", tree.loc(), tree.node());
-        // println!("{:?}", tree.node());
-    }
-    error.show();
+#[test]
+fn it_works() {
+    assert_eq!("0", "0")
 }

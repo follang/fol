@@ -1,0 +1,20 @@
+~var[nor,rac, exp, hid] one = <expression>;
+~var[exp,imu] two: str[exp,imu] = <expression>;
++var three: int = <expression>;
+~var[exp] (
+    four: int[exp] ;
+    five: int[nor] = <expression>;
+)
+~var[exp] six, six2, six3, six4: int[] = <expression>;
+var[] seven, seven2, seven3, seven4: int[exp,imu], flt[imu, exp], bol[], str;
+var[] eight;
+var nine;
+var ten[={<expression>};]   
+
+
+  t x ,	
+ 	.
+
+1    434:
+{[ (-) ]}
+" " ' '
