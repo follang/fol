@@ -3,8 +3,9 @@ use crate::syntax::nodes::{Node, Nodes, NodeStatDecS};
 use crate::syntax::token::*;
 use crate::syntax::lexer;
 use super::Parse;
+use crate::syntax::parse::expr::ParseExpr;
 
-use crate::syntax::parse::{check, eater};
+use crate::syntax::parse::check;
 use crate::syntax::parse::stat::assign::opts::*;
 use crate::syntax::parse::stat::ident::*;
 use crate::syntax::parse::stat::datatype::*;
@@ -68,12 +69,15 @@ impl Parse for ParserStatAssUse {
         check::expect(lex, KEYWORD::Symbol(SYMBOL::Equal), true)?;
         lex.jump(0, true)?;
 
+        // match indentifier "body"
+        let mut body = ParseExpr::init();
+        body.parse(lex)?; lex.eat();
+        if body.nodes.len() > 0 { node.set_body(Some(body.nodes.get(0))); }
+
         let mut id = Node::new(Box::new(node.clone()));
         id.set_loc(loc.clone());
         self.nodes.push(id);
 
-
-        eater::until_term(lex, false)?;
         Ok(())
     }
 }

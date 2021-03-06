@@ -56,6 +56,9 @@ impl NodeStatDecL {
     pub fn set_datatype(&mut self, dt: Option<Node>) {
         self.data = dt;
     }
+    pub fn set_body(&mut self, body: Option<Node>) {
+        self.body = body;
+    }
 }
 
 impl From<NodeStatDecL> for Node {
