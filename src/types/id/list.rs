@@ -44,11 +44,11 @@ impl<T: Clone + fmt::Display> List<T> {
         self.0[num].clone()
     }
 
-    pub fn print(&self) -> String {
+    pub fn print_newline(&self) -> String {
         let mut space_separated = String::new();
         for num in &self.0[0..self.0.len() - 1] {
             space_separated.push_str(&num.to_string());
-            space_separated.push_str(" ");
+            space_separated.push_str("\n\t");
         }
         space_separated.push_str(&self.0[self.0.len() - 1].to_string());
         format!("{}", space_separated)

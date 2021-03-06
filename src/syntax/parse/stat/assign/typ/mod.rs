@@ -83,7 +83,7 @@ impl Parse for ParserStatAssTyp {
         let mut body = ParserStat::init();
         body.style(Body::Typ);
         body.parse(lex)?; lex.eat();
-        if body.nodes.len() > 0 { node.set_body(Some(body.nodes.get(0))); }
+        if body.nodes.len() > 0 { node.set_body(Some(body.nodes)); }
 
         check::expect(lex, KEYWORD::Symbol(SYMBOL::CurlyC), true)?;
         lex.jump(0, true)?;
