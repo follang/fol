@@ -49,7 +49,6 @@ impl Parse for ParserStat {
                 // return Err(e)
             }
         }
-        lex.until_term(false)?;
         Ok(())
     }
 }

@@ -52,8 +52,6 @@ typ[][T: gen] OP(type: T): enm = {
     lab Some: type
 }
 
-alt op: int = 5;
-
 fun makeOption(): OP[int] = {
     result = OP::Some(5)
 }

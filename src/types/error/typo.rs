@@ -72,6 +72,14 @@ pub enum Typo {
         loc: Option<point::Location>,
         src: Option<Source>,
     },
+    ParserUnimplemented {
+        loc: Option<point::Location>,
+        src: Option<Source>,
+    },
+    ParserNotparsed {
+        loc: Option<point::Location>,
+        src: Option<Source>,
+    },
 }
 
 impl std::error::Error for Typo  {  }
@@ -184,6 +192,24 @@ impl fmt::Display for Typo {
                 l = loc.as_ref();
                 source = src;
                 id = "TYPO012"
+            },
+            Typo::ParserUnimplemented { loc, src } => { 
+                v = " UNIMPLEMENTED TOKEN ".to_string(); 
+                s = "parsing".to_string();
+                l = loc.as_ref();
+                message = format!(" This token is reserved but is not yet implemented ");
+                m = Some(&message);
+                source = src;
+                id = "TYPO013"
+            },
+            Typo::ParserNotparsed { loc, src } => { 
+                v = " TOKEN NOT PARSED".to_string(); 
+                s = "parsing".to_string();
+                l = loc.as_ref();
+                message = format!(" Parser did not parse this token ");
+                m = Some(&message);
+                source = src;
+                id = "TYPO014"
             },
         };
         write!(f, "{} >> {}:{}{}{}{}",

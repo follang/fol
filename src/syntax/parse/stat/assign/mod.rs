@@ -36,8 +36,8 @@ impl Parse for ParserStatAss {
         let mut parser: Box<dyn Parse>;
         if lex.curr(true)?.con() == "var" || lex.peek(0, true)?.con() == "var" {
             parser = Box::new(ParserStatAssVar::init());
-        // } else if lex.curr(true)?.con() == "con" || lex.peek(0, true)?.con() == "con" {
-        //     parser = Box::new(ParserStatAssTyp::init());
+        } else if lex.curr(true)?.con() == "con" || lex.peek(0, true)?.con() == "con" {
+            parser = Box::new(ParserStatAssTyp::init());
         } else if lex.curr(true)?.con() == "typ" || lex.peek(0, true)?.con() == "typ" {
             parser = Box::new(ParserStatAssTyp::init());
         } else if lex.curr(true)?.con() == "ali" || lex.peek(0, true)?.con() == "ali" {
