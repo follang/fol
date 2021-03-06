@@ -1,8 +1,10 @@
 use crate::types::Vod;
 
 use crate::syntax::nodes::Nodes;
+use crate::syntax::token::*;
 use crate::syntax::lexer;
 use super::Parse;
+use crate::syntax::parse::eater;
 use crate::syntax::parse::Body;
 
 
@@ -23,7 +25,11 @@ impl ParseExpr {
 impl Parse for ParseExpr {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
-        lex.until_term(false)?;
+        if lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::CurlyO) {
+            eater::expr_body(lex)?;
+        } else {
+            lex.until_term(false)?;
+        }
         Ok(())
     }
 }
