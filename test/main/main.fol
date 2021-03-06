@@ -7,11 +7,11 @@ use[] two: loc = { /bin/vendor_perl/GET }
 
 ~typ[set, get, nothing] (
     three: rec[] = { 
-        var one: int,
+        var one: int
         var two: str
     }
     three2: rec[] = {
-        var three: vec,
+        var three: vec
         var four: flt
     }
 )
