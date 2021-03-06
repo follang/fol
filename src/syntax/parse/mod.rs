@@ -15,6 +15,13 @@ pub trait Parse {
     fn nodes(&self) -> Nodes;
 }
 
+pub enum Body{
+    Top,
+    Fun,
+    Typ,
+    Imp,
+}
+
 pub struct Parser {
     pub nodes: Nodes,
     pub errors: Errors,
@@ -41,9 +48,10 @@ impl Parse for Parser {
         if lex.curr(true)?.key().is_comment() {
             lex.jump(0, true)?;
         } else {
-            let mut parse_stat = ParserStat::init();
-            match parse_stat.parse(lex) {
-                Ok(()) => { self.nodes.extend(parse_stat.nodes) },
+            let mut parser = ParserStat::init();
+            parser.style(Body::Top);
+            match parser.parse(lex) {
+                Ok(()) => { self.nodes.extend(parser.nodes) },
                 Err(err) => { self.errors.push(err) }
             }
         }

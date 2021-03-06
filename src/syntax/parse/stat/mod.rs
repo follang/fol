@@ -4,7 +4,7 @@ use crate::syntax::nodes::Nodes;
 use crate::syntax::token::*;
 use crate::syntax::lexer;
 use super::Parse;
-use crate::syntax::parse::check;
+use crate::syntax::parse::{check, Body};
 
 pub mod parameters;
 pub mod generics;
@@ -21,11 +21,15 @@ pub use crate::syntax::parse::stat::{
 
 pub struct ParserStat {
     pub nodes: Nodes,
+    _style: Body,
 }
 
 impl ParserStat {
     pub fn init() -> Self {
-        Self { nodes: Nodes::new()} 
+        Self { nodes: Nodes::new(), _style: Body::Top} 
+    }
+    pub fn style(&mut self, style: Body) {
+        self._style = style;
     }
 }
 impl Parse for ParserStat {
