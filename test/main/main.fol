@@ -5,23 +5,18 @@ use[] two: loc = { /bin/vendor_perl/GET }
     two: url = { url };
 )
 
-~typ[set, get, nothing] (
-    three: rec[] = { 
-        var one: int,
-        var two: str
-    }
-    three2: rec[] = {
-        three: vec,
-        four: flt
-    }
-)
+/* ~typ[set, get, nothing] ( */
+/*     three: rec[] = { */ 
+/*         var one: int, */
+/*         var two: str */
+/*     } */
+/*     three2: rec[] = { */
+/*         three: vec, */
+/*         four: flt */
+/*     } */
+/* ) */
 
 con leting: int = 5;
-
--var[exp] (
-    four, four3: arr[int, 2], int = {  };
-    five: str[nor[]] = <expression>
-)
 
 fun[mut, three] one(two: int): int = { 
     -var[exp] (
@@ -31,12 +26,16 @@ fun[mut, three] one(two: int): int = {
     )
     lab athing: int;
     var intwrap = athing(5);
+    -var[exp] (
+        four, four3: arr[int, 2], int = {  };
+        five: str[nor[]] = <expression>
+    )
 }
 
 
 typ some(S: gen[three]; t: int): rec[] = {
-    el: S;
-    num: t;
+    var el: S;
+    var num: t;
 }
 
 

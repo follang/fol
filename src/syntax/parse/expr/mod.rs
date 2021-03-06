@@ -4,7 +4,7 @@ use crate::syntax::nodes::Nodes;
 use crate::syntax::token::*;
 use crate::syntax::lexer;
 use super::Parse;
-use crate::syntax::parse::{check, eater};
+use crate::syntax::parse::eater;
 use crate::syntax::parse::Body;
 
 
