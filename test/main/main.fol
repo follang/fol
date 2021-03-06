@@ -5,16 +5,16 @@ use[] two: loc = { /bin/vendor_perl/GET }
     two: url = { url };
 )
 
-/* ~typ[set, get, nothing] ( */
-/*     three: rec[] = { */ 
-/*         var one: int, */
-/*         var two: str */
-/*     } */
-/*     three2: rec[] = { */
-/*         three: vec, */
-/*         four: flt */
-/*     } */
-/* ) */
+~typ[set, get, nothing] (
+    three: rec[] = { 
+        var one: int,
+        var two: str
+    }
+    three2: rec[] = {
+        var three: vec,
+        var four: flt
+    }
+)
 
 con leting: int = 5;
 

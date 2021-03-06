@@ -49,8 +49,6 @@ impl Parse for ParserStatAssTyp {
             if gen.nodes.len() > 0 { node.set_generics(Some(gen.nodes.clone())); }
             check::expect_void(lex)?;
 
-            // check::expect_void(lex)?;
-
             // march "(" to go recursively
             if lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::RoundO) {
                 self.recurse(&node, lex)?;
