@@ -30,6 +30,7 @@ pub fn expect_many(lex: &mut lexer::Elements, keywords: Vec<KEYWORD>, ignore: bo
 pub fn expect_ident(lex: &mut lexer::Elements, ignore: bool) -> Vod {
     if matches!(lex.curr(ignore)?.key(), KEYWORD::Identifier) { return Ok(()) };
     let wrong = lex.curr(ignore)?;
+    eater::until_term(lex, true)?;
     Err( catch!( Typo::ParserUnexpected{ 
         loc: Some(wrong.loc().clone()), 
         key1: wrong.key(), 
@@ -40,6 +41,7 @@ pub fn expect_ident(lex: &mut lexer::Elements, ignore: bool) -> Vod {
 pub fn expect_ident_literal(lex: &mut lexer::Elements, ignore: bool) -> Vod {
     if matches!(lex.curr(ignore)?.key(), KEYWORD::Identifier) || matches!(lex.curr(ignore)?.key(), KEYWORD::Literal(_)) { return Ok(()) };
     let wrong = lex.curr(ignore)?;
+    eater::until_term(lex, true)?;
     Err( catch!( Typo::ParserUnexpected{ 
         loc: Some(wrong.loc().clone()), 
         key1: wrong.key(), 
@@ -50,6 +52,7 @@ pub fn expect_ident_literal(lex: &mut lexer::Elements, ignore: bool) -> Vod {
 pub fn expect_literal(lex: &mut lexer::Elements, ignore: bool) -> Vod {
     if matches!(lex.curr(ignore)?.key(), KEYWORD::Literal(_)) { return Ok(()) };
     let wrong = lex.curr(ignore)?;
+    eater::until_term(lex, true)?;
     Err( catch!( Typo::ParserUnexpected{ 
         loc: Some(wrong.loc().clone()), 
         key1: wrong.key(), 
@@ -60,6 +63,7 @@ pub fn expect_literal(lex: &mut lexer::Elements, ignore: bool) -> Vod {
 pub fn expect_buildin(lex: &mut lexer::Elements, ignore: bool) -> Vod {
     if matches!(lex.curr(ignore)?.key(), KEYWORD::Keyword(_)) { return Ok(()) };
     let wrong = lex.curr(ignore)?;
+    eater::until_term(lex, true)?;
     Err( catch!( Typo::ParserUnexpected{ 
         loc: Some(wrong.loc().clone()), 
         key1: wrong.key(), 
@@ -70,6 +74,7 @@ pub fn expect_buildin(lex: &mut lexer::Elements, ignore: bool) -> Vod {
 pub fn expect_symbol(lex: &mut lexer::Elements, ignore: bool) -> Vod {
     if matches!(lex.curr(ignore)?.key(), KEYWORD::Symbol(_)) { return Ok(()) };
     let wrong = lex.curr(ignore)?;
+    eater::until_term(lex, true)?;
     Err( catch!( Typo::ParserUnexpected{ 
         loc: Some(wrong.loc().clone()), 
         key1: wrong.key(), 
@@ -80,6 +85,7 @@ pub fn expect_symbol(lex: &mut lexer::Elements, ignore: bool) -> Vod {
 pub fn expect_operator(lex: &mut lexer::Elements, ignore: bool) -> Vod {
     if matches!(lex.curr(ignore)?.key(), KEYWORD::Operator(_)) { return Ok(()) };
     let wrong = lex.curr(ignore)?;
+    eater::until_term(lex, true)?;
     Err( catch!( Typo::ParserUnexpected{ 
         loc: Some(wrong.loc().clone()), 
         key1: wrong.key(), 
@@ -90,6 +96,7 @@ pub fn expect_operator(lex: &mut lexer::Elements, ignore: bool) -> Vod {
 pub fn expect_void(lex: &mut lexer::Elements) -> Vod {
     if matches!(lex.curr(false)?.key(), KEYWORD::Void(_)) { return Ok(()) };
     let wrong = lex.curr(false)?;
+    eater::until_term(lex, true)?;
     Err( catch!( Typo::ParserUnexpected{ 
         loc: Some(wrong.loc().clone()), 
         key1: wrong.key(), 
@@ -100,6 +107,7 @@ pub fn expect_void(lex: &mut lexer::Elements) -> Vod {
 pub fn expect_terminal(lex: &mut lexer::Elements) -> Vod {
     if lex.curr(false)?.key().is_terminal() { return Ok(()) };
     let wrong = lex.curr(false)?;
+    eater::until_term(lex, true)?;
     Err( catch!( Typo::ParserUnexpected{ 
         loc: Some(wrong.loc().clone()), 
         key1: wrong.key(), 
