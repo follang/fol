@@ -45,13 +45,12 @@ impl Parse for Parser {
         while let Some(_) = lex.bump() {
             let mut parser = ParserStat::init();
             parser.style(Body::Top);
-            match parser.parse(lex) {
-                Ok(()) => { 
-                    self.nodes.extend(parser.nodes);
-                    self.errors.extend(parser.errors);
-                },
-                Err(err) => { self.errors.push(err) }
+            if let Err(err) = parser.parse(lex) {
+                self.errors.push(err)
             }
+            self.nodes.extend(parser.nodes);
+            self.errors.extend(parser.errors);
+
         }
         Ok(())
 

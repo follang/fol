@@ -2,6 +2,7 @@ use crate::types::{Vod, Errors};
 use crate::syntax::nodes::*;
 use crate::syntax::lexer;
 use super::Parse;
+// use crate::types::*;
 
 pub mod opts;
 pub mod var;
@@ -61,7 +62,8 @@ impl Parse for ParserStatAss {
             lex.until_term(true)?;
             return Ok(())
         }
-        parser.parse(lex)?;
+        // if let Err(err) = parser.parse(lex) { return Err(err) }
+        if let Err(err) = parser.parse(lex) { self.errors.push(err) }
         self.nodes.extend(parser.nodes());
         Ok(())
     }
