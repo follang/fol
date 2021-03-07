@@ -68,14 +68,8 @@ impl Parse for ParserStatAss {
             parser = Box::new(ParserStatAssImp::init(self.level()));
         } else if lex.curr(true)?.con() == "lab" || lex.peek(0, true)?.con() == "lab" {
             parser = Box::new(ParserStatAssLab::init(self.level(), self.style()));
-        } else {
-            //TODO: fix here
-            // check::expect(lex,  KEYWORD::buildin(BUILDIN::ANY) , true)?;
-            lex.until_term(true)?;
-            return Ok(())
-        }
-        // lex.debug(false, 0).ok();
-        // if let Err(err) = parser.parse(lex) { return Err(err) }
+        } else { unimplemented!(); }
+
         if let Err(err) = parser.parse(lex) { self.errors.push(err) }
         self.nodes.extend(parser.nodes());
         self.errors.extend(parser.errors());

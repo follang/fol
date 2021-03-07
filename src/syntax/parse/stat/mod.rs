@@ -61,6 +61,7 @@ impl Parse for ParserStat {
                     if let Err(err) = self.parse_fun(lex) { self.errors.push(err) }
                     if lex.curr(false)?.loc().deep() == locus - 1 { break }
                 },
+                _ => { unimplemented!() },
             }
         }
         Ok(())
