@@ -14,6 +14,7 @@ pub struct ParserStatAssAli {
     pub nodes: Nodes,
     pub errors: Errors,
     _alias: bool,
+    _level: usize,
 }
 
 impl ParserStatAssAli {
@@ -22,13 +23,11 @@ impl ParserStatAssAli {
         Self {
             nodes: Nodes::new(),
             errors: Vec::new(),
-            _alias: true
+            _alias: true,
+            _level: 0,
         } 
     }
-    pub fn extend(&mut self, parser: &dyn Parse) { 
-        self.nodes.extend(parser.nodes());
-        self.errors.extend(parser.errors());
-    }
+    pub fn level(&self) -> usize { self._level }
 }
 impl Parse for ParserStatAssAli {
     fn nodes(&self) -> Nodes { self.nodes.clone() }

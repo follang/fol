@@ -16,6 +16,7 @@ use crate::syntax::parse::stat::parameters::*;
 pub struct ParserStatAssFun {
     nodes: Nodes,
     errors: Errors,
+    _level: usize,
 }
 
 impl ParserStatAssFun {
@@ -23,9 +24,11 @@ impl ParserStatAssFun {
         pub fn init() -> Self {
         Self {
             nodes: Nodes::new(),
-            errors: Vec::new()
+            errors: Vec::new(),
+            _level: 0,
         } 
     }
+    pub fn level(&self) -> usize { self._level }
 }
 impl Parse for ParserStatAssFun {
     fn nodes(&self) -> Nodes { self.nodes.clone() }

@@ -27,12 +27,12 @@ pub struct ParserStat {
 }
 
 impl ParserStat {
-    pub fn init(_style: Body, _level: usize) -> Self {
+    pub fn init(style: Body, level: usize) -> Self {
         Self { 
             nodes: Nodes::new(),
             errors: Vec::new(),
-            _style,
-            _level
+            _style: style,
+            _level: level,
         } 
     }
     pub fn style(&self) -> &Body { &self._style }

@@ -16,6 +16,7 @@ pub struct ParserStatAssCon {
     pub nodes: Nodes,
     pub errors: Errors,
     _recurse: bool,
+    _level: usize,
     _oldstat: NodeStatDecS,
 }
 
@@ -26,13 +27,11 @@ impl ParserStatAssCon {
             nodes: Nodes::new(),
             errors: Vec::new(),
             _recurse: false,
-            _oldstat: NodeStatDecS::default()
+            _oldstat: NodeStatDecS::default(),
+            _level: 0,
         } 
     }
-    pub fn extend(&mut self, parser: &dyn Parse) { 
-        self.nodes.extend(parser.nodes());
-        self.errors.extend(parser.errors());
-    }
+    pub fn level(&self) -> usize { self._level }
 }
 impl Parse for ParserStatAssCon {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
