@@ -97,7 +97,7 @@ impl ParserStat {
             self.errors.extend(parser.errors());
         }
         else if lex.curr(false)?.key().is_void() { return Ok(()); } 
-        // else if matches!(lex.curr(true)?.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) { return Ok(()); } 
+        else if matches!(lex.curr(true)?.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) { return Ok(()); } 
         else if let Err(err) = check::unexpected_typ(lex, token) { self.errors.push(err) }
         return Ok(());
     }
@@ -114,7 +114,7 @@ impl ParserStat {
             self.errors.extend(parser.errors());
         }
         else if lex.curr(false)?.key().is_void() { return Ok(()); } 
-        // else if matches!(lex.curr(true)?.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) { return Ok(()); } 
+        else if matches!(lex.curr(true)?.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) { return Ok(()); } 
         else if let Err(err) = check::unexpected_imp(lex, token) { self.errors.push(err) }
         return Ok(());
     }
@@ -131,7 +131,7 @@ impl ParserStat {
             self.errors.extend(parser.errors());
         }
         else if lex.curr(false)?.key().is_void() { return Ok(()); } 
-        // else if matches!(lex.curr(true)?.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) { return Ok(()); } 
+        else if matches!(lex.curr(true)?.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) { return Ok(()); } 
         else { eater::until_term(lex, false)?; return Ok(()) }
         // else if let Err(err) = check::unexpected_fun(lex, token) { self.errors.push(err) }
         return Ok(());
