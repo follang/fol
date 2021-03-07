@@ -1,4 +1,4 @@
-use crate::types::Vod;
+use crate::types::{Vod, Errors};
 use crate::syntax::nodes::{Node, Nodes, NodeStatDecL};
 use crate::syntax::token::*;
 use crate::syntax::lexer;
@@ -25,6 +25,7 @@ impl ParserStatAssImp {
 }
 impl Parse for ParserStatAssImp {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
+    fn errors(&self) -> Errors { Vec::new() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
         let loc = lex.curr(true)?.loc().clone();
         let mut node = NodeStatDecL::default();

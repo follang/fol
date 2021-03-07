@@ -20,6 +20,7 @@ impl ParserStatIdent {
 }
 impl Parse for ParserStatIdent {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
+    fn errors(&self) -> Errors { Vec::new() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
         while !lex.curr(true)?.key().is_eof() {
             check::expect_ident(lex, true)?; lex.eat();

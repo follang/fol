@@ -36,6 +36,7 @@ impl ParserStatAss {
 }
 impl Parse for ParserStatAss {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
+    fn errors(&self) -> Errors { self.errors.clone() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
         let mut parser: Box<dyn Parse>;
         if lex.curr(true)?.con() == "var" || lex.peek(0, true)?.con() == "var" {

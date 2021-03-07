@@ -14,6 +14,7 @@ pub use crate::syntax::parse::stat::*;
 pub trait Parse {
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod;
     fn nodes(&self) -> Nodes;
+    fn errors(&self) -> Errors;
 }
 
 pub enum Body{
@@ -41,6 +42,7 @@ impl Parser {
 
 impl Parse for Parser {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
+    fn errors(&self) -> Errors { self.errors.clone() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
         while let Some(_) = lex.bump() {
             let mut parser = ParserStat::init();

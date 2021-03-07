@@ -32,10 +32,10 @@ impl ParserStat {
     pub fn style(&mut self, style: Body) {
         self._style = style;
     }
-    fn errors(&self) -> Errors { self.errors.clone() }
 }
 impl Parse for ParserStat {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
+    fn errors(&self) -> Errors { self.errors.clone() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
         self.parse_one(lex)?;
         Ok(())
