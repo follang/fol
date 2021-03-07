@@ -4,7 +4,7 @@ use crate::types::{Vod, Errors};
 use crate::syntax::nodes::*;
 use crate::syntax::lexer;
 use super::Parse;
-// use crate::types::*;
+use crate::syntax::parse::Body;
 
 pub mod opts;
 pub mod var;
@@ -29,12 +29,21 @@ use crate::syntax::parse::stat::assign::{
 pub struct ParserStatAss {
     nodes: Nodes,
     errors: Errors,
+    _level: usize,
+    _style: Body,
 }
 
 impl ParserStatAss {
-    pub fn init() -> Self {
-        Self { nodes: Nodes::new(), errors: Vec::new() } 
+    pub fn init(level: usize, style: &Body) -> Self {
+        Self {
+            nodes: Nodes::new(),
+            errors: Vec::new(),
+            _style: style.clone(),
+            _level: level,
+        }
     }
+    pub fn level(&self) -> usize { self._level }
+    pub fn style(&self) -> &Body { &self._style }
 }
 impl Parse for ParserStatAss {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
@@ -42,31 +51,25 @@ impl Parse for ParserStatAss {
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
         let mut parser: Box<dyn Parse>;
         if lex.curr(true)?.con() == "var" || lex.peek(0, true)?.con() == "var" {
-            parser = Box::new(ParserStatAssVar::init());
+            parser = Box::new(ParserStatAssVar::init(self.level(), self.style()));
         } else if lex.curr(true)?.con() == "con" || lex.peek(0, true)?.con() == "con" {
-            parser = Box::new(ParserStatAssCon::init());
+            parser = Box::new(ParserStatAssCon::init(self.level()));
         } else if lex.curr(true)?.con() == "typ" || lex.peek(0, true)?.con() == "typ" {
-            parser = Box::new(ParserStatAssTyp::init());
+            parser = Box::new(ParserStatAssTyp::init(self.level()));
         } else if lex.curr(true)?.con() == "ali" || lex.peek(0, true)?.con() == "ali" {
-            parser = Box::new(ParserStatAssAli::init());
+            parser = Box::new(ParserStatAssAli::init(self.level()));
         } else if lex.curr(true)?.con() == "use" || lex.peek(0, true)?.con() == "use" {
-            parser = Box::new(ParserStatAssUse::init());
+            parser = Box::new(ParserStatAssUse::init(self.level()));
         } else if lex.curr(true)?.con() == "pro" || lex.peek(0, true)?.con() == "pro" {
-            parser = Box::new(ParserStatAssFun::init());
+            parser = Box::new(ParserStatAssFun::init(self.level(), self.style()));
         } else if lex.curr(true)?.con() == "fun" || lex.peek(0, true)?.con() == "fun" {
-            parser = Box::new(ParserStatAssFun::init());
+            parser = Box::new(ParserStatAssFun::init(self.level(), self.style()));
         } else if lex.curr(true)?.con() == "imp" || lex.peek(0, true)?.con() == "imp" {
-            parser = Box::new(ParserStatAssImp::init());
+            parser = Box::new(ParserStatAssImp::init(self.level()));
         } else if lex.curr(true)?.con() == "lab" || lex.peek(0, true)?.con() == "lab" {
-            parser = Box::new(ParserStatAssLab::init());
-        } else {
-            //TODO: fix here
-            // check::expect(lex,  KEYWORD::buildin(BUILDIN::ANY) , true)?;
-            lex.until_term(true)?;
-            return Ok(())
-        }
-        // lex.debug(false, 0).ok();
-        // if let Err(err) = parser.parse(lex) { return Err(err) }
+            parser = Box::new(ParserStatAssLab::init(self.level(), self.style()));
+        } else { unimplemented!(); }
+
         if let Err(err) = parser.parse(lex) { self.errors.push(err) }
         self.nodes.extend(parser.nodes());
         self.errors.extend(parser.errors());

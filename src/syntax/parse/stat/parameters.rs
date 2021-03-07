@@ -53,7 +53,8 @@ impl Parse for ParserStatParameters {
 }
 impl ParserStatParameters {
     fn parse_each(&mut self, lex: &mut lexer::Elements) -> Con<Nodes> {
-        let loc = lex.curr(true)?.loc().clone();
+        let mut loc = lex.curr(true)?.loc().clone();
+        loc.set_deep(0);
         let mut node = NodeStatDecS::default();
         // match symbol before var  -> "~"
         let mut opts = ParserStatAssOpts::init();
@@ -94,8 +95,8 @@ impl ParserStatParameters {
                 node.set_datatype(Some(dt.nodes.get(idx).clone()));
             }
             node.set_ident(Some(idents.nodes.get(i).clone()));
-            let mut id = Node::new(Box::new(node.clone()));
-            id.set_loc(loc.clone());
+            let id = Node::new(Box::new(node.clone()));
+            // id.set_loc(loc.clone());
             nodes.push(id);
         }
         eater::until_key(lex, vec![KEYWORD::Symbol(SYMBOL::RoundC), KEYWORD::Symbol(SYMBOL::Semi)])?;

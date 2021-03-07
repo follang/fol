@@ -14,27 +14,27 @@ pub struct ParserStatAssAli {
     pub nodes: Nodes,
     pub errors: Errors,
     _alias: bool,
+    _level: usize,
 }
 
 impl ParserStatAssAli {
     pub fn len(&self) -> usize { self.nodes.len() }
-        pub fn init() -> Self {
+        pub fn init(level: usize) -> Self {
         Self {
             nodes: Nodes::new(),
             errors: Vec::new(),
-            _alias: true
+            _alias: true,
+            _level: level,
         } 
     }
-    pub fn extend(&mut self, parser: &dyn Parse) { 
-        self.nodes.extend(parser.nodes());
-        self.errors.extend(parser.errors());
-    }
+    pub fn level(&self) -> usize { self._level }
 }
 impl Parse for ParserStatAssAli {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
     fn errors(&self) -> Errors { Vec::new() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
-        let loc = lex.curr(true)?.loc().clone();
+        let mut loc = lex.curr(true)?.loc().clone();
+        loc.set_deep(self.level() as isize);
         let mut node = NodeStatDecS::default();
         // match symbol before var  -> "~"
         let mut opts = ParserStatAssOpts::init();

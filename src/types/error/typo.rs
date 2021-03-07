@@ -247,8 +247,8 @@ impl fmt::Display for Typo {
                     comma_separated.push_str(",\n");
                 }
                 comma_separated.push_str(&keys[keys.len() - 1].to_string());
-                comma_separated = String::new();
-                message = format!("expected one of: \n{}\n instead recieved:\n{}", comma_separated, key1);
+                // message = format!("expected one of: \n{}\n instead recieved:\n{}", comma_separated, key1);
+                message = format!("Token {} can not be assigned in {}", key1, " TOPLEVEL ".black().on_white().to_string());
                 m = Some(&message);
                 source = src;
                 id = "TYPO016"
@@ -265,8 +265,8 @@ impl fmt::Display for Typo {
                     comma_separated.push_str(",\n");
                 }
                 comma_separated.push_str(&keys[keys.len() - 1].to_string());
-                comma_separated = String::new();
-                message = format!("expected one of: \n{}\n instead recieved:\n{}", comma_separated, key1);
+                // message = format!("expected one of: \n{}\n instead recieved:\n{}", comma_separated, key1);
+                message = format!("Token {} can not be assigned in {}", key1, " IMPLEMENTATION BODY ".black().on_white().to_string());
                 m = Some(&message);
                 source = src;
                 id = "TYPO016"
@@ -283,8 +283,8 @@ impl fmt::Display for Typo {
                     comma_separated.push_str(",\n");
                 }
                 comma_separated.push_str(&keys[keys.len() - 1].to_string());
-                comma_separated = String::new();
-                message = format!("expected one of: \n{}\n instead recieved:\n{}", comma_separated, key1);
+                // message = format!("expected one of: \n{}\n instead recieved:\n{}", comma_separated, key1);
+                message = format!("Token {} can not be assigned in {}", key1, " NEWTYPE BODY ".black().on_white().to_string());
                 m = Some(&message);
                 source = src;
                 id = "TYPO016"
@@ -301,8 +301,8 @@ impl fmt::Display for Typo {
                     comma_separated.push_str(",\n");
                 }
                 comma_separated.push_str(&keys[keys.len() - 1].to_string());
-                comma_separated = String::new();
-                message = format!("expected one of: \n{}\n instead recieved:\n{}", comma_separated, key1);
+                // message = format!("expected one of: \n{}\n instead recieved:\n{}", comma_separated, key1);
+                message = format!("Token {} can not be assigned in {}", key1, " FUNCTION BODY ".black().on_white().to_string());
                 m = Some(&message);
                 source = src;
                 id = "TYPO016"

@@ -26,8 +26,9 @@ impl<T: std::fmt::Display> ID<T> {
 
 impl<T: std::fmt::Display> std::fmt::Display for ID<T> {
         fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        // let loc = if let Some(l) = &self.loc { l.to_string() + "\t" } else { String::new() };
-        write!(f, "{}", self.node())
+        let mut loc = 0;
+        if let Some(l) = &self.loc() { loc = (l.deep()+1)*2; }
+        write!(f, "{}{}", " ".repeat(loc as usize), self.node())
     }
 }
 

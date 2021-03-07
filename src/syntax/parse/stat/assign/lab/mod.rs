@@ -3,7 +3,7 @@ use crate::syntax::nodes::{Node, Nodes, NodeStatDecS};
 use crate::syntax::lexer;
 use super::Parse;
 
-use crate::syntax::parse::check;
+use crate::syntax::parse::{check, Body};
 use crate::syntax::parse::stat::assign::opts::*;
 use crate::syntax::parse::stat::ident::*;
 use crate::syntax::parse::stat::datatype::*;
@@ -13,26 +13,29 @@ use crate::syntax::parse::stat::datatype::*;
 pub struct ParserStatAssLab {
     pub nodes: Nodes,
     pub errors: Errors,
+    _style: Body,
+    _level: usize,
 }
 
 impl ParserStatAssLab {
     pub fn len(&self) -> usize { self.nodes.len() }
-    pub fn init() -> Self {
+    pub fn init(level: usize, style: &Body) -> Self {
         Self {
             nodes: Nodes::new(),
-            errors: Vec::new()
+            errors: Vec::new(),
+            _level: level,
+            _style: style.clone(),
         } 
     }
-    pub fn extend(&mut self, parser: &dyn Parse) { 
-        self.nodes.extend(parser.nodes());
-        self.errors.extend(parser.errors());
-    }
+    pub fn level(&self) -> usize { self._level }
+    pub fn style(&self) -> &Body { &self._style }
 }
 impl Parse for ParserStatAssLab {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
     fn errors(&self) -> Errors { Vec::new() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
-        let loc = lex.curr(true)?.loc().clone();
+        let mut loc = lex.curr(true)?.loc().clone();
+        loc.set_deep(self.level() as isize);
         let mut node = NodeStatDecS::default();
         // match symbol before var  -> "~"
         let mut opts = ParserStatAssOpts::init();
