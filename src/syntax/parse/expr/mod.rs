@@ -26,7 +26,7 @@ impl Parse for ParseExpr {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
         if lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::CurlyO) {
-            eater::expr_body(lex)?;
+            eater::expr_body3(lex)?;
         } else {
             lex.until_term(false)?;
         }

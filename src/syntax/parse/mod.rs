@@ -46,15 +46,11 @@ impl Parser {
 impl Parse for Parser {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
-        if lex.curr(true)?.key().is_comment() {
-            lex.jump(0, true)?;
-        } else {
-            let mut parser = ParserStat::init();
-            parser.style(Body::Top);
-            match parser.parse(lex) {
-                Ok(()) => { self.nodes.extend(parser.nodes) },
-                Err(err) => { self.errors.push(err) }
-            }
+        let mut parser = ParserStat::init();
+        parser.style(Body::Top);
+        match parser.parse(lex) {
+            Ok(()) => { self.nodes.extend(parser.nodes) },
+            Err(err) => { self.errors.push(err) }
         }
         Ok(())
     }

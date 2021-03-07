@@ -3,7 +3,7 @@ use crate::syntax::nodes::{Node, Nodes, NodeStatDecL};
 use crate::syntax::token::*;
 use crate::syntax::lexer;
 use super::Parse;
-use crate::syntax::parse::{check, Body};
+use crate::syntax::parse::{check, eater, Body};
 
 use crate::syntax::parse::stat::ParserStat;
 use crate::syntax::parse::stat::assign::opts::*;
@@ -82,7 +82,11 @@ impl Parse for ParserStatAssTyp {
         // match indentifier "body"
         let mut body = ParserStat::init();
         body.style(Body::Typ);
-        body.parse(lex)?; lex.eat();
+        let deep = lex.curr(false)?.loc().deep() -1;
+        if let Err(err) = body.parse(lex) {
+            eater::stat_body(lex, deep)?;
+            return Err(err)
+        } 
         if body.nodes.len() > 0 { node.set_body(Some(body.nodes)); }
 
         check::expect(lex, KEYWORD::Symbol(SYMBOL::CurlyC), true)?;
