@@ -85,8 +85,8 @@ typ[get, set][T: gen[]] array(val: T; num: int): rec = {
     }
 };
 imp[][T: gen[]] Self: array[T, int] = {
-    +pro firsttwo(): T {
-        result = self.container[0] + self.container[1]
+    +pro firsttwo(): T = {
+        var aval = ID[int]::init(5);
     } 
 } 
 

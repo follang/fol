@@ -4,7 +4,7 @@ use crate::syntax::nodes::Nodes;
 use crate::syntax::token::*;
 use crate::syntax::lexer;
 use super::Parse;
-use crate::syntax::parse::{check, branch, Body, eater};
+use crate::syntax::parse::{check, branch, Body};
 
 pub mod parameters;
 pub mod generics;
@@ -42,6 +42,7 @@ impl Parse for ParserStat {
             match self._style {
                 Body::Top => {
                     if let Err(err) = self.parse_top(lex) { self.errors.push(err) }
+                    // if lex.curr(true)?.key().is_eof() { break }
                 },
                 Body::Typ => {
                     if let Err(err) = self.parse_typ(lex) { self.errors.push(err) }
