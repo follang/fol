@@ -19,12 +19,12 @@ pub struct ParserStatAssLab {
 
 impl ParserStatAssLab {
     pub fn len(&self) -> usize { self.nodes.len() }
-    pub fn init(level: usize) -> Self {
+    pub fn init(level: usize, style: &Body) -> Self {
         Self {
             nodes: Nodes::new(),
             errors: Vec::new(),
             _level: level,
-            _style: Body::Top,
+            _style: style.clone(),
         } 
     }
     pub fn level(&self) -> usize { self._level }

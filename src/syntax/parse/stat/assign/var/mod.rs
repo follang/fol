@@ -23,11 +23,11 @@ pub struct ParserStatAssVar {
 
 impl ParserStatAssVar {
     pub fn len(&self) -> usize { self.nodes.len() }
-    pub fn init(level: usize) -> Self {
+    pub fn init(level: usize, style: &Body) -> Self {
         Self {
             nodes: Nodes::new(),
             errors: Vec::new(),
-            _style: Body::Fun,
+            _style: style.clone(),
             _recurse: false,
             _oldstat: NodeStatDecS::default(),
             _level: level,
