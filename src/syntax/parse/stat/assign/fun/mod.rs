@@ -17,6 +17,7 @@ pub struct ParserStatAssFun {
     nodes: Nodes,
     errors: Errors,
     _level: usize,
+    _style: Body,
 }
 
 impl ParserStatAssFun {
@@ -26,9 +27,11 @@ impl ParserStatAssFun {
             nodes: Nodes::new(),
             errors: Vec::new(),
             _level: level,
+            _style: Body::Top,
         } 
     }
     pub fn level(&self) -> usize { self._level }
+    pub fn style(&self) -> &Body { &self._style }
 }
 impl Parse for ParserStatAssFun {
     fn nodes(&self) -> Nodes { self.nodes.clone() }

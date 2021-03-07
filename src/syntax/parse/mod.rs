@@ -17,6 +17,7 @@ pub trait Parse {
     fn errors(&self) -> Errors;
 }
 
+#[derive(Clone)]
 pub enum Body{
     Top,
     Fun,

@@ -3,7 +3,7 @@ use crate::syntax::nodes::{Node, Nodes, NodeStatDecS};
 use crate::syntax::lexer;
 use super::Parse;
 
-use crate::syntax::parse::check;
+use crate::syntax::parse::{check, Body};
 use crate::syntax::parse::stat::assign::opts::*;
 use crate::syntax::parse::stat::ident::*;
 use crate::syntax::parse::stat::datatype::*;
@@ -13,6 +13,7 @@ use crate::syntax::parse::stat::datatype::*;
 pub struct ParserStatAssLab {
     pub nodes: Nodes,
     pub errors: Errors,
+    _style: Body,
     _level: usize,
 }
 
@@ -23,9 +24,11 @@ impl ParserStatAssLab {
             nodes: Nodes::new(),
             errors: Vec::new(),
             _level: level,
+            _style: Body::Top,
         } 
     }
     pub fn level(&self) -> usize { self._level }
+    pub fn style(&self) -> &Body { &self._style }
 }
 impl Parse for ParserStatAssLab {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
