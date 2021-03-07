@@ -61,6 +61,7 @@ impl Parse for ParserStat {
                     if let Err(err) = self.parse_fun(lex) { self.errors.push(err) }
                     if lex.curr(false)?.loc().deep() == locus - 1 { break }
                 },
+                _ => { unimplemented!() },
             }
         }
         Ok(())
@@ -74,7 +75,7 @@ impl ParserStat {
             || (matches!(lex.curr(true)?.key(), KEYWORD::Symbol(_)) && lex.peek(0, true)?.key().is_assign()))
             && branch::body_top(lex, true)? 
         {
-            let mut parser = ParserStatAss::init(self.level());
+            let mut parser = ParserStatAss::init(self.level(), self.style());
             if let Err(err) = parser.parse(lex) { self.errors.push(err) }
             self.nodes.extend(parser.nodes());
             self.errors.extend(parser.errors());
@@ -91,7 +92,7 @@ impl ParserStat {
             || (matches!(lex.curr(true)?.key(), KEYWORD::Symbol(_)) && lex.peek(0, true)?.key().is_assign()))
             && branch::body_typ(lex, true)? 
         {
-            let mut parser = ParserStatAss::init(self.level());
+            let mut parser = ParserStatAss::init(self.level(), self.style());
             if let Err(err) = parser.parse(lex) { self.errors.push(err) }
             self.nodes.extend(parser.nodes());
             self.errors.extend(parser.errors());
@@ -108,7 +109,7 @@ impl ParserStat {
             || (matches!(lex.curr(true)?.key(), KEYWORD::Symbol(_)) && lex.peek(0, true)?.key().is_assign()))
             && branch::body_imp(lex, true)? 
         {
-            let mut parser = ParserStatAss::init(self.level());
+            let mut parser = ParserStatAss::init(self.level(), self.style());
             if let Err(err) = parser.parse(lex) { self.errors.push(err) }
             self.nodes.extend(parser.nodes());
             self.errors.extend(parser.errors());
@@ -125,7 +126,7 @@ impl ParserStat {
             || (matches!(lex.curr(true)?.key(), KEYWORD::Symbol(_)) && lex.peek(0, true)?.key().is_assign()))
             && branch::body_fun(lex, true)? 
         {
-            let mut parser = ParserStatAss::init(self.level());
+            let mut parser = ParserStatAss::init(self.level(), self.style());
             if let Err(err) = parser.parse(lex) { self.errors.push(err) }
             self.nodes.extend(parser.nodes());
             self.errors.extend(parser.errors());

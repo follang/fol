@@ -17,11 +17,13 @@ pub trait Parse {
     fn errors(&self) -> Errors;
 }
 
+#[derive(Clone)]
 pub enum Body{
     Top,
     Fun,
     Typ,
     Imp,
+    Par,
 }
 
 pub struct Parser {
@@ -32,24 +34,19 @@ pub struct Parser {
 impl Parser {
     pub fn init (lex: &mut lexer::Elements) -> Self {
         let mut parser = Self { nodes: Nodes::new(), errors: Vec::new() };
-        if let Err(err) = parser.parse(lex) { parser.errors.push(err) }
+        // if let Err(err) = parser.parse(lex) { parser.errors.push(err) }
+
+        let mut stat = ParserStat::init(Body::Top, 1);
+        stat.parse(lex).ok();
+        parser.nodes.extend(stat.nodes());
+        parser.errors.extend(stat.errors());
+
+
         println!();
         noditer!(parser.nodes.clone());
         erriter!(parser.errors.clone());
         parser
     }
-}
-
-impl Parse for Parser {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
     fn errors(&self) -> Errors { self.errors.clone() }
-    fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
-        // while let Some(_) = lex.bump() {
-            let mut parser = ParserStat::init(Body::Top, 1);
-            parser.parse(lex).ok();
-            self.nodes.extend(parser.nodes());
-            self.errors.extend(parser.errors());
-        // }
-        Ok(())
-    }
 }
