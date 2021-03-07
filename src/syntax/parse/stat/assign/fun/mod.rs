@@ -83,8 +83,8 @@ impl Parse for ParserStatAssFun {
         body.style(Body::Fun);
         if let Err(err) = body.parse(lex) { self.errors.push(err) }
         self.errors.extend(body.errors());
-        check::needs_body(loc.clone(), lex, &body)?;
-        node.set_body(Some(body.nodes()));
+        // check::needs_body(loc.clone(), lex, &body)?;
+        if body.nodes().len() > 0 { node.set_body(Some(body.nodes())) };
 
         // check::expect(lex, KEYWORD::Symbol(SYMBOL::CurlyC), true)?;
         // lex.jump(0, true)?;
