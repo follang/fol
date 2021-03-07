@@ -16,6 +16,7 @@ use crate::syntax::parse::stat::datatype::*;
 pub struct ParserStatAssTyp {
     nodes: Nodes,
     errors: Errors,
+    // level: usize,
     _recurse: bool,
     _oldstat: NodeStatDecL,
 }
@@ -88,8 +89,7 @@ impl Parse for ParserStatAssTyp {
  
 
         // match indentifier "body"
-        let mut body = ParserStat::init();
-        body.style(Body::Typ);
+        let mut body = ParserStat::init(Body::Typ, 1);
         if let Err(err) = body.parse(lex) { self.errors.push(err) }
         self.errors.extend(body.errors());
         check::needs_body(loc.clone(), lex, &body)?;

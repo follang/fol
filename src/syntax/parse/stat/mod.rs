@@ -22,39 +22,40 @@ pub use crate::syntax::parse::stat::{
 pub struct ParserStat {
     nodes: Nodes,
     errors: Errors,
-    _style: Body,
+    style: Body,
+    level: usize,
 }
 
 impl ParserStat {
-    pub fn init() -> Self {
-        Self { nodes: Nodes::new(), errors: Vec::new() , _style: Body::Fun} 
+    pub fn init(style: Body, level: usize) -> Self {
+        Self { nodes: Nodes::new(), errors: Vec::new(), style, level} 
     }
     pub fn style(&mut self, style: Body) {
-        self._style = style;
+        self.style = style;
     }
 }
 impl Parse for ParserStat {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
     fn errors(&self) -> Errors { self.errors.clone() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
-        let locus = lex.curr(false)?.loc().deep() - 1;
+        let locus = lex.curr(false)?.loc().deep();
         while let Some(_) = lex.bump() {
-            match self._style {
+            match self.style {
                 Body::Top => {
                     if let Err(err) = self.parse_top(lex) { self.errors.push(err) }
-                    // if lex.curr(true)?.key().is_eof() { break }
+                    if lex.curr(true)?.key().is_eof() { break }
                 },
                 Body::Typ => {
                     if let Err(err) = self.parse_typ(lex) { self.errors.push(err) }
-                    if lex.curr(false)?.loc().deep() == locus { break }
+                    if lex.curr(false)?.loc().deep() == locus - 1 { break }
                 },
                 Body::Imp => {
                     if let Err(err) = self.parse_imp(lex) { self.errors.push(err) }
-                    if lex.curr(false)?.loc().deep() == locus { break }
+                    if lex.curr(false)?.loc().deep() == locus - 1 { break }
                 },
                 Body::Fun => {
                     if let Err(err) = self.parse_fun(lex) { self.errors.push(err) }
-                    if lex.curr(false)?.loc().deep() == locus { break }
+                    if lex.curr(false)?.loc().deep() == locus - 1 { break }
                 },
             }
         }
@@ -115,7 +116,7 @@ impl ParserStat {
     }
 
     fn parse_fun(&mut self, lex: &mut lexer::Elements) -> Vod {
-        let token = lex.curr(true)?; lex.eat();
+        // let token = lex.curr(true)?; lex.eat();
         if (lex.curr(true)?.key().is_assign()
             || (matches!(lex.curr(true)?.key(), KEYWORD::Symbol(_)) && lex.peek(0, true)?.key().is_assign()))
             && branch::body_fun(lex, true)? 

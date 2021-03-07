@@ -48,7 +48,7 @@ impl<T: Clone + fmt::Display> List<T> {
         let mut space_separated = String::new();
         for num in &self.0[0..self.0.len() - 1] {
             space_separated.push_str(&num.to_string());
-            space_separated.push_str("\n\t");
+            space_separated.push_str("\n");
         }
         space_separated.push_str(&self.0[self.0.len() - 1].to_string());
         format!("{}", space_separated)

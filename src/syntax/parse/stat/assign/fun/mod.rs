@@ -75,8 +75,7 @@ impl Parse for ParserStatAssFun {
 
 
         // match indentifier "body"
-        let mut body = ParserStat::init();
-        body.style(Body::Fun);
+        let mut body = ParserStat::init(Body::Fun, 1);
         if let Err(err) = body.parse(lex) { self.errors.push(err) }
         self.errors.extend(body.errors());
         // check::needs_body(loc.clone(), lex, &body)?;
