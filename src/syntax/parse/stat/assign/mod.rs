@@ -1,4 +1,4 @@
-use crate::types::Vod;
+use crate::types::{Vod, Errors};
 use crate::syntax::nodes::*;
 use crate::syntax::lexer;
 use super::Parse;
@@ -25,11 +25,12 @@ use crate::syntax::parse::stat::assign::{
 
 pub struct ParserStatAss {
     pub nodes: Nodes,
+    pub errors: Errors,
 }
 
 impl ParserStatAss {
     pub fn init() -> Self {
-        Self { nodes: Nodes::new() } 
+        Self { nodes: Nodes::new(), errors: Vec::new() } 
     }
 }
 impl Parse for ParserStatAss {

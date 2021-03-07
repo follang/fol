@@ -31,11 +31,7 @@ pub struct Parser {
 impl Parser {
     pub fn init (lex: &mut lexer::Elements) -> Self {
         let mut parser = Self { nodes: Nodes::new(), errors: Vec::new() };
-        while let Some(_) = lex.bump() {
-            if let Err(err) = parser.parse(lex) {
-                parser.errors.push(err)
-            }
-        }
+        if let Err(err) = parser.parse(lex) { parser.errors.push(err) }
         println!();
         nodinter!(parser.nodes.clone());
         errinter!(parser.errors.clone());
@@ -46,12 +42,18 @@ impl Parser {
 impl Parse for Parser {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
-        let mut parser = ParserStat::init();
-        parser.style(Body::Top);
-        match parser.parse(lex) {
-            Ok(()) => { self.nodes.extend(parser.nodes) },
-            Err(err) => { self.errors.push(err) }
+        while let Some(_) = lex.bump() {
+            let mut parser = ParserStat::init();
+            parser.style(Body::Top);
+            match parser.parse(lex) {
+                Ok(()) => { 
+                    self.nodes.extend(parser.nodes);
+                    self.errors.extend(parser.errors);
+                },
+                Err(err) => { self.errors.push(err) }
+            }
         }
         Ok(())
+
     }
 }
