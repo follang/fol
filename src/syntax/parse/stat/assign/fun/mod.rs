@@ -31,7 +31,7 @@ impl ParserStatAssFun {
         } 
     }
     pub fn level(&self) -> usize { self._level }
-    pub fn style(&self) -> &Body { &self._style }
+    pub fn style(&self) -> Body { self._style }
 }
 impl Parse for ParserStatAssFun {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
@@ -72,6 +72,7 @@ impl Parse for ParserStatAssFun {
 
         // match datatypes after :  -> "int[opts][]"
         let mut dt = ParserStatDatatypes::init();
+        if self.style() == Body::Imp || self.style() == Body::Typ { dt.letself(); }
         dt.parse(lex)?;
         if dt.nodes.len() > 0 { node.set_datatype(Some(dt.nodes.get(0).clone())); }
 

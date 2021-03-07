@@ -72,6 +72,7 @@ pro[][T: gen] max(a: T; b: rut[(a: int): T]): T = {
 imp[][T: gen[]] Self: ID[T] = {
     +fun[] init(node: T): self = {
         self{ loc = None, node = node }
+        var temp: int;
     }
 }
 

@@ -17,7 +17,7 @@ pub trait Parse {
     fn errors(&self) -> Errors;
 }
 
-#[derive(Clone)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Body{
     Top,
     Fun,

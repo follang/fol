@@ -13,6 +13,7 @@ pub mod r#box;
 pub struct ParserStatDatatypes {
     pub nodes: Nodes,
     _colon: bool,
+    _self: bool,
 }
 
 impl ParserStatDatatypes {
@@ -20,9 +21,11 @@ impl ParserStatDatatypes {
         Self { 
             nodes: Nodes::new(),
             _colon: true,
+            _self: false,
         } 
     }
     pub fn nocolon(&mut self) { self._colon = false; }
+    pub fn letself(&mut self) { self._self = true; }
 }
 impl Parse for ParserStatDatatypes {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
@@ -53,7 +56,9 @@ impl Parse for ParserStatDatatypes {
                 }
                 _ => {
                     let mut node = NodeStatDatatypes::default();
-                    check::expect_ident_literal(lex, true)?;
+                    if !(self._self && lex.curr(true)?.con().as_str() == "self") {
+                        check::expect_ident_literal(lex, true)?;
+                    }
                     lex.eat();
                     node.set_string(lex.curr(true)?.con().to_string());
                     lex.jump(0, false)?; 
