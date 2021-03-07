@@ -70,18 +70,19 @@ impl Parse for ParserStatAssImp {
         check::expect(lex, KEYWORD::Symbol(SYMBOL::Equal), true)?;
         lex.jump(0, true)?;
         check::expect(lex, KEYWORD::Symbol(SYMBOL::CurlyO), true)?;
-        eater::expr_body3(lex)?;
-        // lex.jump(0, true)?;
+        // eater::expr_body3(lex)?;
+        lex.jump(0, true)?;
 
 
-        // // match indentifier "body"
-        // let mut body = ParserStat::init();
-        // body.style(Body::Imp);
-        // if let Err(err) = body.parse(lex) { self.errors.push(err) }
-        // self.errors.extend(body.errors());
+        // match indentifier "body"
+        let mut body = ParserStat::init();
+        body.style(Body::Imp);
+        if let Err(err) = body.parse(lex) { self.errors.push(err) }
+        self.errors.extend(body.errors());
+        erriter!(self.nodes.clone());
+        check::needs_body(loc.clone(), lex, &body)?;
+        node.set_body(Some(body.nodes()));
 
-        // check::needs_body(lex, &body)?;
-        // node.set_body(Some(body.nodes()));
 
         // check::expect(lex, KEYWORD::Symbol(SYMBOL::CurlyC), true)?;
         // lex.jump(0, true)?;

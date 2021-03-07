@@ -115,12 +115,12 @@ pub fn expect_terminal(lex: &mut lexer::Elements) -> Vod {
         src: wrong.loc().source().clone()
     }))
 }
-pub fn needs_body(lex: &mut lexer::Elements, body: &dyn Parse) -> Vod {
+pub fn needs_body(pt: point::Location, lex: &mut lexer::Elements, body: &dyn Parse) -> Vod {
     let wrong = lex.curr(false)?;
     if body.nodes().len() > 0 { return Ok(()) };
     Err( catch!( Typo::ParserNeedsBody{ 
         msg: None,
-        loc: Some(wrong.loc().clone()), 
+        loc: Some(pt), 
         src: wrong.loc().source().clone()
     }))
 }

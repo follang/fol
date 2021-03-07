@@ -65,6 +65,7 @@ impl Parse for ParserStatAss {
             lex.until_term(true)?;
             return Ok(())
         }
+        // lex.debug(false, 0).ok();
         // if let Err(err) = parser.parse(lex) { return Err(err) }
         if let Err(err) = parser.parse(lex) { self.errors.push(err) }
         self.nodes.extend(parser.nodes());

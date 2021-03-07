@@ -12,7 +12,7 @@ use[] two: loc = { /bin/vendor_perl/GET }
     two: url = { url };
 )
 
-var one = 5;
+/* var one = 5; */
 
 ~typ[set, get, nothing] (
     three: rec[] = { 
