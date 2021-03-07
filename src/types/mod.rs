@@ -33,20 +33,20 @@ macro_rules! halt {
 
 
 #[macro_export]
-macro_rules! errinter {
+macro_rules! erriter {
     ($err:expr $(,)?) => ({ 
         for e in $err.iter().enumerate() { 
-            let bup = border_up("-", " FLAW: #".to_string() + &e.0.to_string() + " ");
-            println!("{}{}", bup, e.1)
+            // let bup = border_up("-", " FLAW: #".to_string() + &e.0.to_string() + " ");
+            println!("{}", e.1)
         } 
     });
 }
 
 #[macro_export]
-macro_rules! nodinter {
+macro_rules! noditer {
     ($nod:expr $(,)?) => ({ 
         for e in $nod { 
-            println!("{} {}\t{}", e.loc().unwrap().source().unwrap().path(false),  e.loc().unwrap(), e);
+            println!("{}", e);
         } 
     });
 }

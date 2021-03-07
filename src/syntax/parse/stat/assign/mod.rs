@@ -1,7 +1,10 @@
-use crate::types::Vod;
+// #![allow(unused_imports)]
+
+use crate::types::{Vod, Errors};
 use crate::syntax::nodes::*;
 use crate::syntax::lexer;
 use super::Parse;
+// use crate::types::*;
 
 pub mod opts;
 pub mod var;
@@ -24,16 +27,18 @@ use crate::syntax::parse::stat::assign::{
 };
 
 pub struct ParserStatAss {
-    pub nodes: Nodes,
+    nodes: Nodes,
+    errors: Errors,
 }
 
 impl ParserStatAss {
     pub fn init() -> Self {
-        Self { nodes: Nodes::new() } 
+        Self { nodes: Nodes::new(), errors: Vec::new() } 
     }
 }
 impl Parse for ParserStatAss {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
+    fn errors(&self) -> Errors { self.errors.clone() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
         let mut parser: Box<dyn Parse>;
         if lex.curr(true)?.con() == "var" || lex.peek(0, true)?.con() == "var" {
@@ -60,8 +65,11 @@ impl Parse for ParserStatAss {
             lex.until_term(true)?;
             return Ok(())
         }
-        parser.parse(lex)?;
+        // lex.debug(false, 0).ok();
+        // if let Err(err) = parser.parse(lex) { return Err(err) }
+        if let Err(err) = parser.parse(lex) { self.errors.push(err) }
         self.nodes.extend(parser.nodes());
+        self.errors.extend(parser.errors());
         Ok(())
     }
 }

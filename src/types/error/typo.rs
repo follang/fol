@@ -247,6 +247,7 @@ impl fmt::Display for Typo {
                     comma_separated.push_str(",\n");
                 }
                 comma_separated.push_str(&keys[keys.len() - 1].to_string());
+                comma_separated = String::new();
                 message = format!("expected one of: \n{}\n instead recieved:\n{}", comma_separated, key1);
                 m = Some(&message);
                 source = src;
@@ -264,6 +265,7 @@ impl fmt::Display for Typo {
                     comma_separated.push_str(",\n");
                 }
                 comma_separated.push_str(&keys[keys.len() - 1].to_string());
+                comma_separated = String::new();
                 message = format!("expected one of: \n{}\n instead recieved:\n{}", comma_separated, key1);
                 m = Some(&message);
                 source = src;
@@ -281,6 +283,7 @@ impl fmt::Display for Typo {
                     comma_separated.push_str(",\n");
                 }
                 comma_separated.push_str(&keys[keys.len() - 1].to_string());
+                comma_separated = String::new();
                 message = format!("expected one of: \n{}\n instead recieved:\n{}", comma_separated, key1);
                 m = Some(&message);
                 source = src;
@@ -298,6 +301,7 @@ impl fmt::Display for Typo {
                     comma_separated.push_str(",\n");
                 }
                 comma_separated.push_str(&keys[keys.len() - 1].to_string());
+                comma_separated = String::new();
                 message = format!("expected one of: \n{}\n instead recieved:\n{}", comma_separated, key1);
                 m = Some(&message);
                 source = src;

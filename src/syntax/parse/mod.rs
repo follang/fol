@@ -14,6 +14,7 @@ pub use crate::syntax::parse::stat::*;
 pub trait Parse {
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod;
     fn nodes(&self) -> Nodes;
+    fn errors(&self) -> Errors;
 }
 
 pub enum Body{
@@ -24,34 +25,33 @@ pub enum Body{
 }
 
 pub struct Parser {
-    pub nodes: Nodes,
-    pub errors: Errors,
+    nodes: Nodes,
+    errors: Errors,
 }
 
 impl Parser {
     pub fn init (lex: &mut lexer::Elements) -> Self {
         let mut parser = Self { nodes: Nodes::new(), errors: Vec::new() };
-        while let Some(_) = lex.bump() {
-            if let Err(err) = parser.parse(lex) {
-                parser.errors.push(err)
-            }
-        }
+        if let Err(err) = parser.parse(lex) { parser.errors.push(err) }
         println!();
-        nodinter!(parser.nodes.clone());
-        errinter!(parser.errors.clone());
+        noditer!(parser.nodes.clone());
+        erriter!(parser.errors.clone());
         parser
     }
 }
 
 impl Parse for Parser {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
+    fn errors(&self) -> Errors { self.errors.clone() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
-        let mut parser = ParserStat::init();
-        parser.style(Body::Top);
-        match parser.parse(lex) {
-            Ok(()) => { self.nodes.extend(parser.nodes) },
-            Err(err) => { self.errors.push(err) }
-        }
+        // while let Some(_) = lex.bump() {
+            let mut parser = ParserStat::init();
+            parser.style(Body::Top);
+            parser.parse(lex).ok();
+            self.nodes.extend(parser.nodes());
+            self.errors.extend(parser.errors());
+        // }
         Ok(())
+
     }
 }

@@ -24,6 +24,7 @@ impl ParserStatData {
 
 impl Parse for ParserStatData {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
+    fn errors(&self) -> Errors { Vec::new() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
         let mut node = datatype::NodeStatDatatypes::default();
         // match type
