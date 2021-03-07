@@ -21,7 +21,7 @@ pub struct Element {
 impl std::default::Default for Element {
     fn default() -> Self {
         Self {
-            key: KEYWORD::Void(VOID::EndFile),
+            key: KEYWORD::Void(VOID::Space),
             loc: point::Location::default(),
             con: String::new(),
         }
@@ -60,6 +60,13 @@ impl Element {
 
     pub fn analyze(&mut self, el: &mut stage1::Elements) -> Vod {
         // EOL => SPACE
+        if el.curr()?.key().is_eol() && el.peek(0)?.key().is_eol() {
+            while el.curr()?.key().is_eol() && el.peek(0)?.key().is_eol() { 
+                self.bump(el); 
+            }
+            self.set_key(Void(VOID::EndLine))
+        }
+
         if el.curr()?.key().is_eol()
             && (el.seek(0)?.key().is_nonterm()
                 || el.peek(0)?.key().is_dot()
@@ -105,7 +112,7 @@ impl Element {
         else if matches!(el.curr()?.key(), KEYWORD::Identifier) 
         {
             self.set_key(Identifier)
-        }
+        } 
         // if self.key().is_eol() { self.set_key(symbol(SYMBOL::semi_)) }
         Ok(())
     }

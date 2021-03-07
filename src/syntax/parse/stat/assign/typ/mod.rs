@@ -84,7 +84,7 @@ impl Parse for ParserStatAssTyp {
         body.style(Body::Typ);
         let deep = lex.curr(false)?.loc().deep() -1;
         if let Err(err) = body.parse(lex) {
-            eater::stat_body(lex, deep);
+            eater::stat_body(lex, deep)?;
             return Err(err)
         } 
         if body.nodes.len() > 0 { node.set_body(Some(body.nodes)); }

@@ -97,6 +97,8 @@ impl Element {
             }
         }
         self.key = Comment;
+        self.con = " ".to_string();
+        self.space(code)?;
         Ok(())
     }
 

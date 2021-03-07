@@ -21,7 +21,7 @@ pub struct Element {
 impl std::default::Default for Element {
     fn default() -> Self {
         Self {
-            key: KEYWORD::Void(VOID::EndFile),
+            key: KEYWORD::Void(VOID::Space),
             loc: point::Location::default(),
             con: String::new(),
         }
@@ -59,12 +59,12 @@ impl Element {
     }
 
     pub fn analyze(&mut self, el: &mut stage2::Elements) -> Vod {
+        while el.curr(false)?.loc().row() == 0 { self.bump(el); }
         if el.curr(false)?.key().is_number() && el.seek(0, false)?.key().is_operator() {
             self.make_number(el)?;
-        }else if el.curr(false)?.key().is_number() && !el.seek(0, false)?.key().is_void() {
+        } else if el.curr(false)?.key().is_number() && !el.seek(0, false)?.key().is_void() {
             self.set_key(Identifier);
-        }
-        else if (el.curr(false)?.key().is_numberish() && el.seek(0, false)?.key().is_continue()) && 
+        } else if (el.curr(false)?.key().is_numberish() && el.seek(0, false)?.key().is_continue()) && 
             (el.peek(0, false)?.key().is_number() 
                 && (el.seek(0, false)?.key().is_continue()  || el.seek(0, false)?.key().is_operator() || el.seek(0, false)?.key().is_eol()))
         {
