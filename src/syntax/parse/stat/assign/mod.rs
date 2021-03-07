@@ -1,3 +1,5 @@
+#![allow(unused_imports)]
+
 use crate::types::{Vod, Errors};
 use crate::syntax::nodes::*;
 use crate::syntax::lexer;
@@ -33,10 +35,6 @@ impl ParserStatAss {
     pub fn init() -> Self {
         Self { nodes: Nodes::new(), errors: Vec::new() } 
     }
-    pub fn extend(&mut self, parser: &dyn Parse) { 
-        self.nodes.extend(parser.nodes());
-        self.errors.extend(parser.errors());
-    }
 }
 impl Parse for ParserStatAss {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
@@ -69,7 +67,8 @@ impl Parse for ParserStatAss {
         }
         // if let Err(err) = parser.parse(lex) { return Err(err) }
         if let Err(err) = parser.parse(lex) { self.errors.push(err) }
-        self.extend(&(*parser));
+        self.nodes.extend(parser.nodes());
+        self.errors.extend(parser.errors());
         Ok(())
     }
 }

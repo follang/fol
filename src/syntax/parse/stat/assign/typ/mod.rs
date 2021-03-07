@@ -88,20 +88,21 @@ impl Parse for ParserStatAssTyp {
         check::expect(lex, KEYWORD::Symbol(SYMBOL::Equal), true)?;
         lex.jump(0, true)?;
         check::expect(lex, KEYWORD::Symbol(SYMBOL::CurlyO), true)?;
-        lex.jump(0, true)?;
+        // lex.jump(0, true)?;
 
-        // match indentifier "body"
-        let mut body = ParserStat::init();
-        body.style(Body::Typ);
-        let deep = lex.curr(false)?.loc().deep() -1;
-        if let Err(err) = body.parse(lex) {
-            eater::stat_body(lex, deep)?;
-            return Err(err)
-        } 
-        if body.nodes.len() > 0 { node.set_body(Some(body.nodes)); }
+        eater::expr_body3(lex)?;
 
-        check::expect(lex, KEYWORD::Symbol(SYMBOL::CurlyC), true)?;
-        lex.jump(0, true)?;
+//         // match indentifier "body"
+//         let mut body = ParserStat::init();
+//         body.style(Body::Typ);
+//         // if let Err(err) = body.parse(lex) { self.errors.push(err) }
+//         if let Err(err) = body.parse(lex) { eater::stat_body(lex, lex.curr(false)?.loc().deep() -1)?; return Err(err) }
+//         check::needs_body(lex, &body)?;
+//         self.extend(&body);
+//         if body.nodes.len() > 0 { node.set_body(Some(body.nodes)); }
+
+//         check::expect(lex, KEYWORD::Symbol(SYMBOL::CurlyC), true)?;
+//         lex.jump(0, true)?;
 
         let mut id = Node::new(Box::new(node.clone()));
         id.set_loc(loc.clone());

@@ -3,7 +3,7 @@ use crate::syntax::nodes::{Node, Nodes, NodeStatDecL};
 use crate::syntax::token::*;
 use crate::syntax::lexer;
 use super::Parse;
-use crate::syntax::parse::{check, Body};
+use crate::syntax::parse::{check, eater, Body};
 
 use crate::syntax::parse::stat::ParserStat;
 use crate::syntax::parse::stat::assign::opts::*;
@@ -75,16 +75,26 @@ impl Parse for ParserStatAssFun {
         check::expect(lex, KEYWORD::Symbol(SYMBOL::Equal), true)?;
         lex.jump(0, true)?;
         check::expect(lex, KEYWORD::Symbol(SYMBOL::CurlyO), true)?;
-        lex.jump(0, true)?;
+        // lex.jump(0, true)?;
 
-        // match indentifier "body"
-        let mut body = ParserStat::init();
-        body.style(Body::Fun);
-        body.parse(lex)?; lex.eat();
-        if body.nodes.len() > 0 { node.set_body(Some(body.nodes)); }
+        eater::expr_body3(lex)?;
 
-        check::expect(lex, KEYWORD::Symbol(SYMBOL::CurlyC), true)?;
-        lex.jump(0, true)?;
+        // // match indentifier "body"
+        // let mut body = ParserStat::init();
+        // body.style(Body::Fun);
+        // // if let Err(err) = body.parse(lex) { self.errors.push(err) }
+        // let deep = lex.curr(false)?.loc().deep() -1;
+        // println!("deep:{}", deep);
+        // if let Err(err) = body.parse(lex) { 
+        //     println!("{}", lex.curr(false)?.loc().deep());
+        //     eater::stat_body(lex, deep)?; return Err(err) 
+        // }
+        // check::needs_body(lex, &body)?;
+        // self.extend(&body);
+        // if body.nodes.len() > 0 { node.set_body(Some(body.nodes)); }
+
+        // check::expect(lex, KEYWORD::Symbol(SYMBOL::CurlyC), true)?;
+        // lex.jump(0, true)?;
 
         let mut id = Node::new(Box::new(node.clone()));
         id.set_loc(loc.clone());

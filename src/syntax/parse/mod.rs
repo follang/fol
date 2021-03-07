@@ -34,13 +34,9 @@ impl Parser {
         let mut parser = Self { nodes: Nodes::new(), errors: Vec::new() };
         if let Err(err) = parser.parse(lex) { parser.errors.push(err) }
         println!();
-        nodinter!(parser.nodes.clone());
-        errinter!(parser.errors.clone());
+        noditer!(parser.nodes.clone());
+        erriter!(parser.errors.clone());
         parser
-    }
-    pub fn extend(&mut self, parser: &dyn Parse) { 
-        self.nodes.extend(parser.nodes());
-        self.errors.extend(parser.errors());
     }
 }
 
@@ -48,13 +44,13 @@ impl Parse for Parser {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
     fn errors(&self) -> Errors { self.errors.clone() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
-        while let Some(_) = lex.bump() {
+        // while let Some(_) = lex.bump() {
             let mut parser = ParserStat::init();
             parser.style(Body::Top);
-            if let Err(err) = parser.parse(lex) { self.errors.push(err) }
-            self.extend(&parser);
-
-        }
+            parser.parse(lex).ok();
+            self.nodes.extend(parser.nodes());
+            self.errors.extend(parser.errors());
+        // }
         Ok(())
 
     }
