@@ -22,17 +22,21 @@ pub use crate::syntax::parse::stat::{
 pub struct ParserStat {
     nodes: Nodes,
     errors: Errors,
-    style: Body,
-    level: usize,
+    _style: Body,
+    _level: usize,
 }
 
 impl ParserStat {
-    pub fn init(style: Body, level: usize) -> Self {
-        Self { nodes: Nodes::new(), errors: Vec::new(), style, level} 
+    pub fn init(_style: Body, _level: usize) -> Self {
+        Self { 
+            nodes: Nodes::new(),
+            errors: Vec::new(),
+            _style,
+            _level
+        } 
     }
-    pub fn style(&mut self, style: Body) {
-        self.style = style;
-    }
+    pub fn style(&self) -> &Body { &self._style }
+    pub fn level(&self) -> usize { self._level }
 }
 impl Parse for ParserStat {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
@@ -40,7 +44,7 @@ impl Parse for ParserStat {
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
         let locus = lex.curr(false)?.loc().deep();
         while let Some(_) = lex.bump() {
-            match self.style {
+            match self.style() {
                 Body::Top => {
                     if let Err(err) = self.parse_top(lex) { self.errors.push(err) }
                     if lex.curr(true)?.key().is_eof() { break }
