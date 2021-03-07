@@ -52,7 +52,8 @@ impl Parse for ParserStatGenerics {
 }
 impl ParserStatGenerics {
     fn parse_each(&mut self, lex: &mut lexer::Elements) -> Con<Nodes> {
-        let loc = lex.curr(true)?.loc().clone();
+        let mut loc = lex.curr(true)?.loc().clone();
+        loc.set_deep(0);
         let mut node = NodeStatDecS::default();
 
         // match indentifier "ident"
@@ -72,8 +73,8 @@ impl ParserStatGenerics {
         check::type_balance(idents.nodes.len(), dt.nodes.len(), &loc, &lex.curr(false)?.loc().source() )?;
 
         let nodes: Nodes = List::new();
-        let mut id = Node::new(Box::new(node));
-        id.set_loc(loc.clone());
+        let id = Node::new(Box::new(node));
+        // id.set_loc(loc.clone());
         self.nodes.push(id);
 
         eater::until_key(lex, vec![KEYWORD::Symbol(SYMBOL::SquarC), KEYWORD::Symbol(SYMBOL::Semi)])?;

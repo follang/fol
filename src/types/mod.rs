@@ -46,8 +46,7 @@ macro_rules! erriter {
 macro_rules! noditer {
     ($nod:expr $(,)?) => ({ 
         for e in $nod { 
-            let opts = match e.loc { Some(ref e) => e.deep(), None => 0  };
-            println!("{}{}", " ".repeat(2*((opts + 1) as usize)), e);
+            println!("{}", e);
         } 
     });
 }

@@ -37,7 +37,8 @@ impl Parse for ParserStatAssUse {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
     fn errors(&self) -> Errors { Vec::new() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
-        let loc = lex.curr(true)?.loc().clone();
+        let mut loc = lex.curr(true)?.loc().clone();
+        loc.set_deep(self.level() as isize);
         let mut node = NodeStatDecS::default();
         if !self._recurse {
             // match symbol before var  -> "~"
