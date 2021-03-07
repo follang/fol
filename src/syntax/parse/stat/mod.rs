@@ -74,7 +74,7 @@ impl ParserStat {
             || (matches!(lex.curr(true)?.key(), KEYWORD::Symbol(_)) && lex.peek(0, true)?.key().is_assign()))
             && branch::body_top(lex, true)? 
         {
-            let mut parser = ParserStatAss::init();
+            let mut parser = ParserStatAss::init(self.level());
             if let Err(err) = parser.parse(lex) { self.errors.push(err) }
             self.nodes.extend(parser.nodes());
             self.errors.extend(parser.errors());
@@ -91,7 +91,7 @@ impl ParserStat {
             || (matches!(lex.curr(true)?.key(), KEYWORD::Symbol(_)) && lex.peek(0, true)?.key().is_assign()))
             && branch::body_typ(lex, true)? 
         {
-            let mut parser = ParserStatAss::init();
+            let mut parser = ParserStatAss::init(self.level());
             if let Err(err) = parser.parse(lex) { self.errors.push(err) }
             self.nodes.extend(parser.nodes());
             self.errors.extend(parser.errors());
@@ -108,7 +108,7 @@ impl ParserStat {
             || (matches!(lex.curr(true)?.key(), KEYWORD::Symbol(_)) && lex.peek(0, true)?.key().is_assign()))
             && branch::body_imp(lex, true)? 
         {
-            let mut parser = ParserStatAss::init();
+            let mut parser = ParserStatAss::init(self.level());
             if let Err(err) = parser.parse(lex) { self.errors.push(err) }
             self.nodes.extend(parser.nodes());
             self.errors.extend(parser.errors());
@@ -125,7 +125,7 @@ impl ParserStat {
             || (matches!(lex.curr(true)?.key(), KEYWORD::Symbol(_)) && lex.peek(0, true)?.key().is_assign()))
             && branch::body_fun(lex, true)? 
         {
-            let mut parser = ParserStatAss::init();
+            let mut parser = ParserStatAss::init(self.level());
             if let Err(err) = parser.parse(lex) { self.errors.push(err) }
             self.nodes.extend(parser.nodes());
             self.errors.extend(parser.errors());

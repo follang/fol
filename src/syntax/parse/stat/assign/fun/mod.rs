@@ -21,11 +21,11 @@ pub struct ParserStatAssFun {
 
 impl ParserStatAssFun {
     pub fn len(&self) -> usize { self.nodes.len() }
-        pub fn init() -> Self {
+        pub fn init(level: usize) -> Self {
         Self {
             nodes: Nodes::new(),
             errors: Vec::new(),
-            _level: 0,
+            _level: level,
         } 
     }
     pub fn level(&self) -> usize { self._level }

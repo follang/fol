@@ -19,12 +19,12 @@ pub struct ParserStatAssAli {
 
 impl ParserStatAssAli {
     pub fn len(&self) -> usize { self.nodes.len() }
-        pub fn init() -> Self {
+        pub fn init(level: usize) -> Self {
         Self {
             nodes: Nodes::new(),
             errors: Vec::new(),
             _alias: true,
-            _level: 0,
+            _level: level,
         } 
     }
     pub fn level(&self) -> usize { self._level }
