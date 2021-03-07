@@ -35,7 +35,7 @@ impl fmt::Display for NodeStatDecL {
         let ident = match self.ident { Some(ref e) => " ".to_string() + &e.to_string(), None => String::new()  };
         let contr = match self.parameters { Some(ref e) => e.to_string(), None => String::new()  };
         let data = match self.data { Some(ref e) => ": ".to_string() + &e.to_string(), None => String::new()  };
-        let body = match self.body { Some(ref e) => " = {\n\t".to_string() + &e.print_newline() + "\n}", None => String::new()  };
+        let body = match self.body { Some(ref e) => " = {\n".to_string() + &e.print_newline() + " }", None => String::new()  };
         write!(f, "{}{}{}{}({}){}{}", self.string, opts, gen, ident, contr, data, body)
     }
 }

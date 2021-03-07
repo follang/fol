@@ -45,8 +45,7 @@ impl Parse for Parser {
     fn errors(&self) -> Errors { self.errors.clone() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
         // while let Some(_) = lex.bump() {
-            let mut parser = ParserStat::init();
-            parser.style(Body::Top);
+            let mut parser = ParserStat::init(Body::Top, 1);
             parser.parse(lex).ok();
             self.nodes.extend(parser.nodes());
             self.errors.extend(parser.errors());

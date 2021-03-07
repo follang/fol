@@ -16,26 +16,30 @@ use crate::syntax::parse::stat::datatype::*;
 pub struct ParserStatAssTyp {
     nodes: Nodes,
     errors: Errors,
+    _level: usize,
     _recurse: bool,
     _oldstat: NodeStatDecL,
 }
 
 impl ParserStatAssTyp {
     pub fn len(&self) -> usize { self.nodes.len() }
-    pub fn init() -> Self {
+    pub fn init(level: usize) -> Self {
         Self {
             nodes: Nodes::new(),
             errors: Vec::new(),
             _recurse: false,
-            _oldstat: NodeStatDecL::default()
+            _oldstat: NodeStatDecL::default(),
+            _level: level,
         } 
     }
+    pub fn level(&self) -> usize { self._level }
 }
 impl Parse for ParserStatAssTyp {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
     fn errors(&self) -> Errors { self.errors.clone() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
-        let loc = lex.curr(true)?.loc().clone();
+        let mut loc = lex.curr(true)?.loc().clone();
+        loc.set_deep(self.level() as isize);
         let mut node = NodeStatDecL::default();
         if !self._recurse {
             // match symbol before var  -> "~"
@@ -88,8 +92,7 @@ impl Parse for ParserStatAssTyp {
  
 
         // match indentifier "body"
-        let mut body = ParserStat::init();
-        body.style(Body::Typ);
+        let mut body = ParserStat::init(Body::Typ, self.level() + 1);
         if let Err(err) = body.parse(lex) { self.errors.push(err) }
         self.errors.extend(body.errors());
         check::needs_body(loc.clone(), lex, &body)?;
