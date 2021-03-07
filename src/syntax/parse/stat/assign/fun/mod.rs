@@ -83,7 +83,7 @@ impl Parse for ParserStatAssFun {
         if body.nodes().len() > 0 { node.set_body(Some(body.nodes())) };
 
         // check::expect(lex, KEYWORD::Symbol(SYMBOL::CurlyC), true)?;
-        // lex.jump(0, true)?;
+        if matches!(lex.curr(true)?.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) { lex.jump(0, true)?; }
 
         let mut id = Node::new(Box::new(node.clone()));
         id.set_loc(loc.clone());

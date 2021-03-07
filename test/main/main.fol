@@ -45,7 +45,7 @@ fun[mut, three] one(two: int): int = {
 
 typ some(S: gen[three]; t: int): rec[] = {
     var el: S;
-    var num: t
+    /* var num: t */
 }
 
 
@@ -88,10 +88,10 @@ imp[][T: gen[]] Self: array[T, int] = {
     +pro firsttwo(): T = {
         var aval = ID[int]::init(5);
     } 
-    typ some(S: gen[three]; t: int): rec[] = {
-        var el: S;
-        var num: t;
-    }
+    /* typ some(S: gen[three]; t: int): rec[] = { */
+    /*     var el: S; */
+    /*     var num: t; */
+    /* } */
 } 
 
 ali fiveint: array[int, 5];

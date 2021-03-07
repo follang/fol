@@ -92,12 +92,11 @@ impl Parse for ParserStatAssTyp {
         body.style(Body::Typ);
         if let Err(err) = body.parse(lex) { self.errors.push(err) }
         self.errors.extend(body.errors());
-        erriter!(self.nodes.clone());
         check::needs_body(loc.clone(), lex, &body)?;
         node.set_body(Some(body.nodes()));
 
         // check::expect(lex, KEYWORD::Symbol(SYMBOL::CurlyC), true)?;
-        // lex.jump(0, true)?;
+        if matches!(lex.curr(true)?.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) { lex.jump(0, true)?; }
 
         let mut id = Node::new(Box::new(node.clone()));
         id.set_loc(loc.clone());
