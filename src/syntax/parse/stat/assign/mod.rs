@@ -27,8 +27,8 @@ use crate::syntax::parse::stat::assign::{
 };
 
 pub struct ParserStatAss {
-    pub nodes: Nodes,
-    pub errors: Errors,
+    nodes: Nodes,
+    errors: Errors,
 }
 
 impl ParserStatAss {

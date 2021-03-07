@@ -20,8 +20,8 @@ pub use crate::syntax::parse::stat::{
 };
 
 pub struct ParserStat {
-    pub nodes: Nodes,
-    pub errors: Errors,
+    nodes: Nodes,
+    errors: Errors,
     _style: Body,
 }
 
@@ -75,6 +75,7 @@ impl ParserStat {
             self.errors.extend(parser.errors());
         }
         else if lex.curr(false)?.key().is_void() { return Ok(()); } 
+        // else if matches!(lex.curr(true)?.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) { return Ok(()); } 
         else if let Err(err) = check::unexpected_top(lex, token) { self.errors.push(err) }
         return Ok(());
     }
@@ -90,6 +91,7 @@ impl ParserStat {
             self.errors.extend(parser.errors());
         }
         else if lex.curr(false)?.key().is_void() { return Ok(()); } 
+        // else if matches!(lex.curr(true)?.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) { return Ok(()); } 
         else if let Err(err) = check::unexpected_typ(lex, token) { self.errors.push(err) }
         return Ok(());
     }
@@ -101,11 +103,11 @@ impl ParserStat {
         {
             let mut parser = ParserStatAss::init();
             if let Err(err) = parser.parse(lex) { self.errors.push(err) }
-            // erriter!(parser.nodes());
             self.nodes.extend(parser.nodes());
             self.errors.extend(parser.errors());
         }
         else if lex.curr(false)?.key().is_void() { return Ok(()); } 
+        // else if matches!(lex.curr(true)?.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) { return Ok(()); } 
         else if let Err(err) = check::unexpected_imp(lex, token) { self.errors.push(err) }
         return Ok(());
     }
@@ -121,6 +123,7 @@ impl ParserStat {
             self.errors.extend(parser.errors());
         }
         else if lex.curr(false)?.key().is_void() { return Ok(()); } 
+        // else if matches!(lex.curr(true)?.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) { return Ok(()); } 
         else if let Err(err) = check::unexpected_fun(lex, token) { self.errors.push(err) }
         return Ok(());
     }

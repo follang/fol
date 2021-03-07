@@ -14,8 +14,8 @@ use crate::syntax::parse::stat::parameters::*;
 
 #[derive(Clone)]
 pub struct ParserStatAssFun {
-    pub nodes: Nodes,
-    pub errors: Errors,
+    nodes: Nodes,
+    errors: Errors,
 }
 
 impl ParserStatAssFun {
@@ -26,14 +26,10 @@ impl ParserStatAssFun {
             errors: Vec::new()
         } 
     }
-    pub fn extend(&mut self, parser: &dyn Parse) { 
-        self.nodes.extend(parser.nodes());
-        self.errors.extend(parser.errors());
-    }
 }
 impl Parse for ParserStatAssFun {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
-    fn errors(&self) -> Errors { Vec::new() }
+    fn errors(&self) -> Errors { self.errors.clone() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
         let loc = lex.curr(true)?.loc().clone();
         let mut node = NodeStatDecL::default();
