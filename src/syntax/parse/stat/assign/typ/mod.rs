@@ -15,6 +15,7 @@ use crate::syntax::parse::stat::datatype::*;
 #[derive(Clone)]
 pub struct ParserStatAssTyp {
     pub nodes: Nodes,
+    pub errors: Errors,
     _recurse: bool,
     _oldstat: NodeStatDecL,
 }
@@ -22,7 +23,16 @@ pub struct ParserStatAssTyp {
 impl ParserStatAssTyp {
     pub fn len(&self) -> usize { self.nodes.len() }
     pub fn init() -> Self {
-        Self { nodes: Nodes::new(), _recurse: false, _oldstat: NodeStatDecL::default() } 
+        Self {
+            nodes: Nodes::new(),
+            errors: Vec::new(),
+            _recurse: false,
+            _oldstat: NodeStatDecL::default()
+        } 
+    }
+    pub fn extend(&mut self, parser: &dyn Parse) { 
+        self.nodes.extend(parser.nodes());
+        self.errors.extend(parser.errors());
     }
 }
 impl Parse for ParserStatAssTyp {

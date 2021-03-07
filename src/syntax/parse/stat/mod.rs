@@ -29,6 +29,10 @@ impl ParserStat {
     pub fn init() -> Self {
         Self { nodes: Nodes::new(), errors: Vec::new() , _style: Body::Fun} 
     }
+    pub fn extend(&mut self, parser: &dyn Parse) { 
+        self.nodes.extend(parser.nodes());
+        self.errors.extend(parser.errors());
+    }
     pub fn style(&mut self, style: Body) {
         self._style = style;
     }
@@ -53,8 +57,7 @@ impl ParserStat {
                     let mut parser = ParserStatAss::init();
                     // if let Err(err) = parser.parse(lex) { return Err(err) }
                     if let Err(err) = parser.parse(lex) { self.errors.push(err) }
-                    self.nodes.extend(parser.nodes);
-                    self.errors.extend(parser.errors);
+                    self.extend(&parser);
                     return Ok(())
                 } else if lex.curr(false)?.key().is_void() { return Ok(());
                 } else { 
@@ -76,8 +79,7 @@ impl ParserStat {
                             let mut parser = ParserStatAss::init();
                             // if let Err(err) = parser.parse(lex) { return Err(err) }
                             if let Err(err) = parser.parse(lex) { self.errors.push(err) }
-                            self.nodes.extend(parser.nodes);
-                            self.errors.extend(parser.errors);
+                            self.extend(&parser);
                             lex.eat(); lex.jump(0, false)?;
                     } else if lex.curr(false)?.key().is_void() { lex.jump(0, false)?;
                     } else { 
@@ -100,8 +102,7 @@ impl ParserStat {
                             let mut parser = ParserStatAss::init();
                             // if let Err(err) = parser.parse(lex) { return Err(err) }
                             if let Err(err) = parser.parse(lex) { self.errors.push(err) }
-                            self.nodes.extend(parser.nodes);
-                            self.errors.extend(parser.errors);
+                            self.extend(&parser);
                             lex.eat(); lex.jump(0, false)?;
                     } else if lex.curr(false)?.key().is_void() { lex.jump(0, false)?;
                     } else { 
@@ -123,8 +124,7 @@ impl ParserStat {
                             let mut parser = ParserStatAss::init();
                             // if let Err(err) = parser.parse(lex) { return Err(err) }
                             if let Err(err) = parser.parse(lex) { self.errors.push(err) }
-                            self.nodes.extend(parser.nodes);
-                            self.errors.extend(parser.errors);
+                            self.extend(&parser);
                             lex.eat(); lex.jump(0, false)?;
                     } else if lex.curr(false)?.key().is_void() { lex.jump(0, false)?;
                     } else { 

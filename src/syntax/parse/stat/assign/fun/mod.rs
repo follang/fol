@@ -15,12 +15,20 @@ use crate::syntax::parse::stat::parameters::*;
 #[derive(Clone)]
 pub struct ParserStatAssFun {
     pub nodes: Nodes,
+    pub errors: Errors,
 }
 
 impl ParserStatAssFun {
     pub fn len(&self) -> usize { self.nodes.len() }
         pub fn init() -> Self {
-        Self { nodes: Nodes::new() } 
+        Self {
+            nodes: Nodes::new(),
+            errors: Vec::new()
+        } 
+    }
+    pub fn extend(&mut self, parser: &dyn Parse) { 
+        self.nodes.extend(parser.nodes());
+        self.errors.extend(parser.errors());
     }
 }
 impl Parse for ParserStatAssFun {
@@ -84,10 +92,4 @@ impl Parse for ParserStatAssFun {
 
         Ok(())
     }
-}
-
-impl ParserStatAssFun {
-        pub fn extend(&mut self, n: Nodes) {
-            self.nodes.extend(n)
-        }
 }

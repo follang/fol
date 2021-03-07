@@ -15,12 +15,20 @@ use crate::syntax::parse::stat::datatype::*;
 #[derive(Clone)]
 pub struct ParserStatAssImp {
     pub nodes: Nodes,
+    pub errors: Errors,
 }
 
 impl ParserStatAssImp {
     pub fn len(&self) -> usize { self.nodes.len() }
     pub fn init() -> Self {
-        Self { nodes: Nodes::new() } 
+        Self {
+            nodes: Nodes::new(),
+            errors: Vec::new()
+        } 
+    }
+    pub fn extend(&mut self, parser: &dyn Parse) { 
+        self.nodes.extend(parser.nodes());
+        self.errors.extend(parser.errors());
     }
 }
 impl Parse for ParserStatAssImp {

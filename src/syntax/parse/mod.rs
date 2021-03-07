@@ -38,6 +38,10 @@ impl Parser {
         errinter!(parser.errors.clone());
         parser
     }
+    pub fn extend(&mut self, parser: &dyn Parse) { 
+        self.nodes.extend(parser.nodes());
+        self.errors.extend(parser.errors());
+    }
 }
 
 impl Parse for Parser {
@@ -47,11 +51,8 @@ impl Parse for Parser {
         while let Some(_) = lex.bump() {
             let mut parser = ParserStat::init();
             parser.style(Body::Top);
-            if let Err(err) = parser.parse(lex) {
-                self.errors.push(err)
-            }
-            self.nodes.extend(parser.nodes);
-            self.errors.extend(parser.errors);
+            if let Err(err) = parser.parse(lex) { self.errors.push(err) }
+            self.extend(&parser);
 
         }
         Ok(())

@@ -12,13 +12,22 @@ use crate::syntax::parse::stat::datatype::*;
 #[derive(Clone)]
 pub struct ParserStatAssAli {
     pub nodes: Nodes,
+    pub errors: Errors,
     _alias: bool,
 }
 
 impl ParserStatAssAli {
     pub fn len(&self) -> usize { self.nodes.len() }
         pub fn init() -> Self {
-        Self { nodes: Nodes::new(), _alias: true } 
+        Self {
+            nodes: Nodes::new(),
+            errors: Vec::new(),
+            _alias: true
+        } 
+    }
+    pub fn extend(&mut self, parser: &dyn Parse) { 
+        self.nodes.extend(parser.nodes());
+        self.errors.extend(parser.errors());
     }
 }
 impl Parse for ParserStatAssAli {
@@ -63,10 +72,4 @@ impl Parse for ParserStatAssAli {
 
         Ok(())
     }
-}
-
-impl ParserStatAssAli {
-        pub fn extend(&mut self, n: Nodes) {
-            self.nodes.extend(n)
-        }
 }
