@@ -20,6 +20,7 @@ impl ParserStatAssOpts {
 }
 impl Parse for ParserStatAssOpts {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
+    fn errors(&self) -> Errors { Vec::new() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
         // eat "["
         if lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::SquarO) {

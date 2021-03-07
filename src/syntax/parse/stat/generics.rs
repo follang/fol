@@ -1,4 +1,4 @@
-use crate::types::{Vod, Con, List};
+use crate::types::{Vod, Con, List, Errors};
 use crate::syntax::nodes::{Node, Nodes, NodeStatDecS};
 use crate::syntax::token::*;
 use crate::syntax::lexer;
@@ -21,6 +21,7 @@ impl ParserStatGenerics {
     }
 }
 impl Parse for ParserStatGenerics {
+    fn errors(&self) -> Errors { Vec::new() }
     fn nodes(&self) -> Nodes { self.nodes.clone() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
         if lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::SquarO) {

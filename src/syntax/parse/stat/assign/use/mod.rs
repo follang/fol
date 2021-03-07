@@ -1,4 +1,4 @@
-use crate::types::{Vod, List};
+use crate::types::{Vod, List, Errors};
 use crate::syntax::nodes::{Node, Nodes, NodeStatDecS};
 use crate::syntax::token::*;
 use crate::syntax::lexer;
@@ -13,7 +13,8 @@ use crate::syntax::parse::stat::datatype::*;
 
 #[derive(Clone)]
 pub struct ParserStatAssUse {
-    nodes: Nodes,
+    pub nodes: Nodes,
+    pub errors: Errors,
     _recurse: bool,
     _oldstat: NodeStatDecS,
 }
@@ -22,14 +23,20 @@ impl ParserStatAssUse {
     pub fn len(&self) -> usize { self.nodes.len() }
     pub fn init() -> Self {
         Self { 
-            nodes: Nodes::new(), 
+            nodes: Nodes::new(),
+            errors: Vec::new(), 
             _recurse: false,
             _oldstat: NodeStatDecS::default()
         } 
     }
+    pub fn extend(&mut self, parser: &dyn Parse) { 
+        self.nodes.extend(parser.nodes());
+        self.errors.extend(parser.errors());
+    }
 }
 impl Parse for ParserStatAssUse {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
+    fn errors(&self) -> Errors { Vec::new() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
         let loc = lex.curr(true)?.loc().clone();
         let mut node = NodeStatDecS::default();

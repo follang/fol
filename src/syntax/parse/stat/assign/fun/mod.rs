@@ -1,4 +1,4 @@
-use crate::types::Vod;
+use crate::types::{Vod, Errors};
 use crate::syntax::nodes::{Node, Nodes, NodeStatDecL};
 use crate::syntax::token::*;
 use crate::syntax::lexer;
@@ -14,17 +14,22 @@ use crate::syntax::parse::stat::parameters::*;
 
 #[derive(Clone)]
 pub struct ParserStatAssFun {
-    pub nodes: Nodes,
+    nodes: Nodes,
+    errors: Errors,
 }
 
 impl ParserStatAssFun {
     pub fn len(&self) -> usize { self.nodes.len() }
         pub fn init() -> Self {
-        Self { nodes: Nodes::new() } 
+        Self {
+            nodes: Nodes::new(),
+            errors: Vec::new()
+        } 
     }
 }
 impl Parse for ParserStatAssFun {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
+    fn errors(&self) -> Errors { self.errors.clone() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
         let loc = lex.curr(true)?.loc().clone();
         let mut node = NodeStatDecL::default();
@@ -68,14 +73,17 @@ impl Parse for ParserStatAssFun {
         check::expect(lex, KEYWORD::Symbol(SYMBOL::CurlyO), true)?;
         lex.jump(0, true)?;
 
+
         // match indentifier "body"
         let mut body = ParserStat::init();
         body.style(Body::Fun);
-        body.parse(lex)?; lex.eat();
-        if body.nodes.len() > 0 { node.set_body(Some(body.nodes)); }
+        if let Err(err) = body.parse(lex) { self.errors.push(err) }
+        self.errors.extend(body.errors());
+        // check::needs_body(loc.clone(), lex, &body)?;
+        if body.nodes().len() > 0 { node.set_body(Some(body.nodes())) };
 
-        check::expect(lex, KEYWORD::Symbol(SYMBOL::CurlyC), true)?;
-        lex.jump(0, true)?;
+        // check::expect(lex, KEYWORD::Symbol(SYMBOL::CurlyC), true)?;
+        // lex.jump(0, true)?;
 
         let mut id = Node::new(Box::new(node.clone()));
         id.set_loc(loc.clone());
@@ -83,10 +91,4 @@ impl Parse for ParserStatAssFun {
 
         Ok(())
     }
-}
-
-impl ParserStatAssFun {
-        pub fn extend(&mut self, n: Nodes) {
-            self.nodes.extend(n)
-        }
 }

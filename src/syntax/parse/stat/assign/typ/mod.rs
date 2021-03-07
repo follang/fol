@@ -1,9 +1,9 @@
-use crate::types::{Vod, List};
+use crate::types::{Vod, List, Errors};
 use crate::syntax::nodes::{Node, Nodes, NodeStatDecL};
 use crate::syntax::token::*;
 use crate::syntax::lexer;
 use super::Parse;
-use crate::syntax::parse::{check, eater, Body};
+use crate::syntax::parse::{check, Body};
 
 use crate::syntax::parse::stat::ParserStat;
 use crate::syntax::parse::stat::assign::opts::*;
@@ -14,7 +14,8 @@ use crate::syntax::parse::stat::datatype::*;
 
 #[derive(Clone)]
 pub struct ParserStatAssTyp {
-    pub nodes: Nodes,
+    nodes: Nodes,
+    errors: Errors,
     _recurse: bool,
     _oldstat: NodeStatDecL,
 }
@@ -22,11 +23,17 @@ pub struct ParserStatAssTyp {
 impl ParserStatAssTyp {
     pub fn len(&self) -> usize { self.nodes.len() }
     pub fn init() -> Self {
-        Self { nodes: Nodes::new(), _recurse: false, _oldstat: NodeStatDecL::default() } 
+        Self {
+            nodes: Nodes::new(),
+            errors: Vec::new(),
+            _recurse: false,
+            _oldstat: NodeStatDecL::default()
+        } 
     }
 }
 impl Parse for ParserStatAssTyp {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
+    fn errors(&self) -> Errors { self.errors.clone() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
         let loc = lex.curr(true)?.loc().clone();
         let mut node = NodeStatDecL::default();
@@ -78,19 +85,19 @@ impl Parse for ParserStatAssTyp {
         lex.jump(0, true)?;
         check::expect(lex, KEYWORD::Symbol(SYMBOL::CurlyO), true)?;
         lex.jump(0, true)?;
+ 
 
         // match indentifier "body"
         let mut body = ParserStat::init();
         body.style(Body::Typ);
-        let deep = lex.curr(false)?.loc().deep() -1;
-        if let Err(err) = body.parse(lex) {
-            eater::stat_body(lex, deep)?;
-            return Err(err)
-        } 
-        if body.nodes.len() > 0 { node.set_body(Some(body.nodes)); }
+        if let Err(err) = body.parse(lex) { self.errors.push(err) }
+        self.errors.extend(body.errors());
+        erriter!(self.nodes.clone());
+        check::needs_body(loc.clone(), lex, &body)?;
+        node.set_body(Some(body.nodes()));
 
-        check::expect(lex, KEYWORD::Symbol(SYMBOL::CurlyC), true)?;
-        lex.jump(0, true)?;
+        // check::expect(lex, KEYWORD::Symbol(SYMBOL::CurlyC), true)?;
+        // lex.jump(0, true)?;
 
         let mut id = Node::new(Box::new(node.clone()));
         id.set_loc(loc.clone());

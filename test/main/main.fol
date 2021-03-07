@@ -12,6 +12,8 @@ use[] two: loc = { /bin/vendor_perl/GET }
     two: url = { url };
 )
 
+/* var one = 5; */
+
 ~typ[set, get, nothing] (
     three: rec[] = { 
         var one: int
@@ -20,6 +22,7 @@ use[] two: loc = { /bin/vendor_perl/GET }
     three2: rec[] = {
         var three: vec
         var four: flt
+        imp ore:
     }
 )
 
@@ -42,7 +45,7 @@ fun[mut, three] one(two: int): int = {
 
 typ some(S: gen[three]; t: int): rec[] = {
     var el: S;
-    var num: t;
+    var num: t
 }
 
 
@@ -82,9 +85,13 @@ typ[get, set][T: gen[]] array(val: T; num: int): rec = {
     }
 };
 imp[][T: gen[]] Self: array[T, int] = {
-    +pro firsttwo(): T {
-        result = self.container[0] + self.container[1]
+    +pro firsttwo(): T = {
+        var aval = ID[int]::init(5);
     } 
+    typ some(S: gen[three]; t: int): rec[] = {
+        var el: S;
+        var num: t;
+    }
 } 
 
 ali fiveint: array[int, 5];

@@ -4,7 +4,7 @@ use crate::syntax::lexer;
 use crate::syntax::token::*;
 use crate::syntax::point;
 use crate::syntax::index;
-use crate::syntax::parse::eater;
+use crate::syntax::parse::{eater, Parse};
 
 pub fn expect(lex: &mut lexer::Elements, keyword: KEYWORD, ignore: bool) -> Vod {
     if lex.curr(ignore)?.key() == keyword { return Ok(()) };
@@ -112,6 +112,15 @@ pub fn expect_terminal(lex: &mut lexer::Elements) -> Vod {
         loc: Some(wrong.loc().clone()), 
         key1: wrong.key(), 
         key2: KEYWORD::Void(VOID::ANY), 
+        src: wrong.loc().source().clone()
+    }))
+}
+pub fn needs_body(pt: point::Location, lex: &mut lexer::Elements, body: &dyn Parse) -> Vod {
+    let wrong = lex.curr(false)?;
+    if body.nodes().len() > 0 { return Ok(()) };
+    Err( catch!( Typo::ParserNeedsBody{ 
+        msg: None,
+        loc: Some(pt), 
         src: wrong.loc().source().clone()
     }))
 }
