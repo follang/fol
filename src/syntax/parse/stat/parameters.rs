@@ -44,7 +44,7 @@ impl Parse for ParserStatParameters {
                     Ok(ok) => self.nodes.extend(ok),
                     Err(err) => return Err(err)
                 };
-                if lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::Semi) {
+                if lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::Comma) {
                     lex.jump(0, true)?;
                 } else if lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::RoundC) {
                     lex.jump(0, true)?;
@@ -83,10 +83,11 @@ impl ParserStatParameters {
 
         // match datatypes after :  -> "int[opts][]"
         let mut dt = ParserStatDatatypes::init();
+        dt.once();
         dt.parse(lex)?;
 
         check::expect_many(lex, vec![ 
-            KEYWORD::Symbol(SYMBOL::Semi),
+            KEYWORD::Symbol(SYMBOL::Comma),
             KEYWORD::Symbol(SYMBOL::Equal),
             KEYWORD::Symbol(SYMBOL::RoundC),
             KEYWORD::Void(VOID::EndLine)
@@ -104,7 +105,7 @@ impl ParserStatParameters {
             // id.set_loc(loc.clone());
             nodes.push(id);
         }
-        eater::until_key(lex, vec![KEYWORD::Symbol(SYMBOL::RoundC), KEYWORD::Symbol(SYMBOL::Semi)])?;
+        eater::until_key(lex, vec![KEYWORD::Symbol(SYMBOL::RoundC), KEYWORD::Symbol(SYMBOL::Comma)])?;
         Ok(nodes)
     }
 }
