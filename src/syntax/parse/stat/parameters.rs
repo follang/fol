@@ -13,17 +13,21 @@ use crate::syntax::parse::stat::datatype::*;
 #[derive(Clone)]
 pub struct ParserStatParameters {
     pub nodes: Nodes,
+    errors: Errors,
 }
 
 impl ParserStatParameters {
     pub fn len(&self) -> usize { self.nodes.len() }
     pub fn init() -> Self {
-        Self { nodes: Nodes::new()} 
+        Self {
+            nodes: Nodes::new(),
+            errors: Vec::new(),
+        } 
     }
 }
 impl Parse for ParserStatParameters {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
-    fn errors(&self) -> Errors { unimplemented!() }
+    fn errors(&self) -> Errors { self.errors.clone() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
         if lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::RoundO) {
             lex.jump(0, true)?;
@@ -74,6 +78,7 @@ impl ParserStatParameters {
 
         // match indentifier "ident"
         let mut idents = ParserStatIdent::init();
+        idents.once();
         idents.parse(lex)?; lex.eat();
 
         // match datatypes after :  -> "int[opts][]"

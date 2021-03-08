@@ -66,7 +66,6 @@ pro[][T: gen] max(a: T; b: rut[(a: int): T]): T = {
 
 // type generics
 +typ[][T: gen[][Sized, Display]] ID(val: T): rec[Display] = {
-    +var loc: opt[point::Location]
     +var node: val
 }
 imp[][T: gen[]] Self: ID[T] = {

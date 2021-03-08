@@ -33,20 +33,18 @@ pub struct Parser {
 
 impl Parser {
     pub fn init (lex: &mut lexer::Elements) -> Self {
-        let mut parser = Self { nodes: Nodes::new(), errors: Vec::new() };
-        // if let Err(err) = parser.parse(lex) { parser.errors.push(err) }
-
+        let mut parser = Self {
+            nodes: Nodes::new(),
+            errors: Vec::new(),
+        };
         let mut stat = ParserStat::init(Body::Top, 1);
-        stat.parse(lex).ok();
+        if let Err(err) = stat.parse(lex) { 
+            parser.errors.push(err)
+        }
         parser.nodes.extend(stat.nodes());
         parser.errors.extend(stat.errors());
-
-
-        println!();
-        noditer!(parser.nodes.clone());
-        erriter!(parser.errors.clone());
         parser
     }
-    fn nodes(&self) -> Nodes { self.nodes.clone() }
-    fn errors(&self) -> Errors { self.errors.clone() }
+    pub fn nodes(&self) -> Nodes { self.nodes.clone() }
+    pub fn errors(&self) -> Errors { self.errors.clone() }
 }
