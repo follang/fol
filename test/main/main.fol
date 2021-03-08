@@ -88,14 +88,7 @@ typ[get, set][T: gen[]] array(val: T; num: int): rec = {
 imp[][T: gen[]] Self: array[T, int] = {
     +pro firsttwo(): T = {
         var aval = ID[int]::init(5);
-        +pro firsttwo(): T = {
-            var aval = ID[int]::init(5);
-        } 
     } 
-    /* typ some(S: gen[three]; t: int): rec[] = { */
-    /*     var el: S; */
-    /*     var num: t; */
-    /* } */
 } 
 
 ali fiveint: array[int, 5];
