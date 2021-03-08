@@ -14,6 +14,7 @@ pub struct ParserStatDatatypes {
     pub nodes: Nodes,
     _colon: bool,
     _self: bool,
+    _once: bool,
 }
 
 impl ParserStatDatatypes {
@@ -22,10 +23,12 @@ impl ParserStatDatatypes {
             nodes: Nodes::new(),
             _colon: true,
             _self: false,
+            _once: false,
         } 
     }
     pub fn nocolon(&mut self) { self._colon = false; }
     pub fn letself(&mut self) { self._self = true; }
+    pub fn once(&mut self) { self._once = true; }
 }
 impl Parse for ParserStatDatatypes {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
@@ -80,6 +83,7 @@ impl Parse for ParserStatDatatypes {
                     self.nodes.push(id);
                 }
             }
+            if self._once { lex.eat(); break }
             if lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::Comma) {
                 lex.jump(0, true)?; lex.eat();
                 lex.eat();

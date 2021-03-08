@@ -4,7 +4,7 @@ use crate::syntax::token::*;
 use crate::syntax::lexer;
 use super::Parse;
 
-use crate::syntax::parse::{eater, check};
+use crate::syntax::parse::check;
 use crate::syntax::parse::stat::assign::opts::*;
 use crate::syntax::parse::stat::ident::*;
 use crate::syntax::parse::stat::datatype::*;
@@ -13,17 +13,21 @@ use crate::syntax::parse::stat::datatype::*;
 #[derive(Clone)]
 pub struct ParserStatParameters {
     pub nodes: Nodes,
+    errors: Errors,
 }
 
 impl ParserStatParameters {
     pub fn len(&self) -> usize { self.nodes.len() }
     pub fn init() -> Self {
-        Self { nodes: Nodes::new()} 
+        Self {
+            nodes: Nodes::new(),
+            errors: Vec::new(),
+        } 
     }
 }
 impl Parse for ParserStatParameters {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
-    fn errors(&self) -> Errors { unimplemented!() }
+    fn errors(&self) -> Errors { self.errors.clone() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
         if lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::RoundO) {
             lex.jump(0, true)?;
@@ -40,7 +44,7 @@ impl Parse for ParserStatParameters {
                     Ok(ok) => self.nodes.extend(ok),
                     Err(err) => return Err(err)
                 };
-                if lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::Semi) {
+                if lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::Comma) {
                     lex.jump(0, true)?;
                 } else if lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::RoundC) {
                     lex.jump(0, true)?;
@@ -74,32 +78,31 @@ impl ParserStatParameters {
 
         // match indentifier "ident"
         let mut idents = ParserStatIdent::init();
+        idents.once();
         idents.parse(lex)?; lex.eat();
+        node.set_ident(Some(idents.nodes.get(0).clone()));
 
         // match datatypes after :  -> "int[opts][]"
+        check::expect(lex, KEYWORD::Symbol(SYMBOL::Colon), true)?;
         let mut dt = ParserStatDatatypes::init();
+        dt.once();
         dt.parse(lex)?;
+        node.set_datatype(Some(dt.nodes.get(0).clone()));
 
         check::expect_many(lex, vec![ 
-            KEYWORD::Symbol(SYMBOL::Semi),
-            KEYWORD::Symbol(SYMBOL::Equal),
+            KEYWORD::Symbol(SYMBOL::Comma),
+            // KEYWORD::Symbol(SYMBOL::Equal),
             KEYWORD::Symbol(SYMBOL::RoundC),
             KEYWORD::Void(VOID::EndLine)
         ], true)?;
         check::type_balance(idents.nodes.len(), dt.nodes.len(), &loc, &lex.curr(false)?.loc().source() )?;
 
-        let mut nodes: Nodes = List::new();
-        for i in 0..idents.nodes.len() {
-            if dt.nodes.len() > 0 {
-                let idx = if i >= dt.nodes.len() { dt.nodes.len()-1 } else { i };
-                node.set_datatype(Some(dt.nodes.get(idx).clone()));
-            }
-            node.set_ident(Some(idents.nodes.get(i).clone()));
-            let id = Node::new(Box::new(node.clone()));
-            // id.set_loc(loc.clone());
-            nodes.push(id);
-        }
-        eater::until_key(lex, vec![KEYWORD::Symbol(SYMBOL::RoundC), KEYWORD::Symbol(SYMBOL::Semi)])?;
+        let nodes: Nodes = List::new();
+        let id = Node::new(Box::new(node));
+        // id.set_loc(loc.clone());
+        self.nodes.push(id);
+
+        // eater::until_key(lex, vec![KEYWORD::Symbol(SYMBOL::RoundC), KEYWORD::Symbol(SYMBOL::Comma)])?;
         Ok(nodes)
     }
 }

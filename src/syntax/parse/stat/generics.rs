@@ -4,7 +4,7 @@ use crate::syntax::token::*;
 use crate::syntax::lexer;
 use super::Parse;
 
-use crate::syntax::parse::{eater, check};
+use crate::syntax::parse::check;
 use crate::syntax::parse::stat::ident::*;
 use crate::syntax::parse::stat::datatype::*;
 
@@ -39,7 +39,7 @@ impl Parse for ParserStatGenerics {
                     Ok(ok) => self.nodes.extend(ok),
                     Err(err) => return Err(err)
                 };
-                if lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::Semi) {
+                if lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::Comma) {
                     lex.jump(0, true)?;
                 } else if lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::SquarC) {
                     lex.jump(0, true)?;
@@ -58,16 +58,19 @@ impl ParserStatGenerics {
 
         // match indentifier "ident"
         let mut idents = ParserStatIdent::init();
+        idents.once();
         idents.parse(lex)?; lex.eat();
         node.set_ident(Some(idents.nodes.get(0).clone()));
 
         // match datatypes after :  -> "int[opts][]"
+        check::expect(lex, KEYWORD::Symbol(SYMBOL::Colon), true)?;
         let mut dt = ParserStatDatatypes::init();
+        dt.once();
         dt.parse(lex)?;
-        if dt.nodes.len() > 0 { node.set_datatype(Some(dt.nodes.get(0).clone())); }
+        node.set_datatype(Some(dt.nodes.get(0).clone()));
 
         check::expect_many(lex, vec![ 
-            KEYWORD::Symbol(SYMBOL::Semi),
+            KEYWORD::Symbol(SYMBOL::Comma),
             KEYWORD::Symbol(SYMBOL::SquarC),
         ], true)?;
         check::type_balance(idents.nodes.len(), dt.nodes.len(), &loc, &lex.curr(false)?.loc().source() )?;
@@ -76,8 +79,6 @@ impl ParserStatGenerics {
         let id = Node::new(Box::new(node));
         // id.set_loc(loc.clone());
         self.nodes.push(id);
-
-        eater::until_key(lex, vec![KEYWORD::Symbol(SYMBOL::SquarC), KEYWORD::Symbol(SYMBOL::Semi)])?;
         Ok(nodes)
     }
 }

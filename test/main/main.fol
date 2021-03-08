@@ -43,14 +43,14 @@ fun[mut, three] one(two: int): int = {
 }
 
 
-typ some(S: gen[three]; t: int): rec[] = {
+typ some(S: gen[three], t: int): rec[] = {
     var el: S;
     /* var num: t */
 }
 
 
-typ[][T: gen] OP(type: T): enm = {
-    lab None;
+typ[][T: gen, A: gen] OP(type: T): enm = {
+    lab None: non;
     lab Some: type
 }
 
@@ -59,14 +59,13 @@ fun makeOption(): OP[int] = {
 }
 
 //function genercs
-pro[][T: gen] max(a: T; b: rut[(a: int): T]): T = {
+pro[][T: gen] max(a: T, b: rut[(a: int): T]): T = {
     return a | a > b | b
 }
 
 
 // type generics
 +typ[][T: gen[][Sized, Display]] ID(val: T): rec[Display] = {
-    +var loc: opt[point::Location]
     +var node: val
 }
 imp[][T: gen[]] Self: ID[T] = {
@@ -77,7 +76,7 @@ imp[][T: gen[]] Self: ID[T] = {
 }
 
 //types
-typ[get, set][T: gen[]] array(val: T; num: int): rec = { 
+typ[get, set][T: gen[]] array(val: T, num: int): rec = { 
     var container: arr[val, num];
     var temp: int;
     lab gone: non;
