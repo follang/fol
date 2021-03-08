@@ -1,4 +1,4 @@
-use crate::types::{Vod, Errors};
+use crate::{syntax::token::{KEYWORD, SYMBOL}, types::{Vod, Errors}};
 use crate::syntax::nodes::{Node, Nodes, NodeStatDecS};
 use crate::syntax::lexer;
 use super::Parse;
@@ -55,6 +55,7 @@ impl Parse for ParserStatAssLab {
         idents.parse(lex)?; lex.eat();
 
         // match datatypes after :  -> "int[opts][]"
+        check::expect(lex, KEYWORD::Symbol(SYMBOL::Colon), true)?;
         let mut dt = ParserStatDatatypes::init();
         dt.parse(lex)?;
 

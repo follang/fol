@@ -50,7 +50,7 @@ typ some(S: gen[three], t: int): rec[] = {
 
 
 typ[][T: gen, A: gen] OP(type: T): enm = {
-    lab None;
+    lab None: non;
     lab Some: type
 }
 

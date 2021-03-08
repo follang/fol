@@ -68,6 +68,7 @@ impl Parse for ParserStatAssCon {
         idents.parse(lex)?; lex.eat();
 
         // match datatypes after :  -> "int[opts][]"
+        check::expect(lex, KEYWORD::Symbol(SYMBOL::Colon), true)?;
         let mut dt = ParserStatDatatypes::init();
         dt.parse(lex)?;
 

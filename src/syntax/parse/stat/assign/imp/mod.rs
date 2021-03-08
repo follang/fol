@@ -62,14 +62,16 @@ impl Parse for ParserStatAssImp {
         node.set_ident(Some(idents.nodes.get(0).clone()));
 
         // match parameters after (  -> "(one, two)"
+        check::expect(lex, KEYWORD::Symbol(SYMBOL::Colon), true)?;
         let mut parameters = ParserStatParameters::init();
         parameters.parse(lex)?; lex.eat();
         if parameters.nodes.len() > 0 { node.set_parameters(Some(parameters.nodes.clone())) }
 
         // match datatypes after :  -> "int[opts][]"
         let mut dt = ParserStatDatatypes::init();
+        dt.once();
         dt.parse(lex)?;
-        if dt.nodes.len() > 0 { node.set_datatype(Some(dt.nodes.get(0).clone())); }
+        node.set_datatype(Some(dt.nodes.get(0).clone()));
 
         check::expect(lex, KEYWORD::Symbol(SYMBOL::Equal), true)?;
         lex.jump(0, true)?;
