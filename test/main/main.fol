@@ -49,7 +49,7 @@ typ some(S: gen[three], t: int): rec[] = {
 }
 
 
-typ[][T: gen] OP(type: T): enm = {
+typ[][T: gen, A: gen] OP(type: T): enm = {
     lab None;
     lab Some: type
 }
