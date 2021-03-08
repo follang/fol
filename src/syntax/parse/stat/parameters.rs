@@ -83,10 +83,11 @@ impl ParserStatParameters {
         node.set_ident(Some(idents.nodes.get(0).clone()));
 
         // match datatypes after :  -> "int[opts][]"
+        check::expect(lex, KEYWORD::Symbol(SYMBOL::Colon), true)?;
         let mut dt = ParserStatDatatypes::init();
         dt.once();
         dt.parse(lex)?;
-        if dt.nodes.len() > 0 { node.set_datatype(Some(dt.nodes.get(0).clone())); }
+        node.set_datatype(Some(dt.nodes.get(0).clone()));
 
         check::expect_many(lex, vec![ 
             KEYWORD::Symbol(SYMBOL::Comma),
