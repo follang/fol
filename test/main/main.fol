@@ -18,6 +18,10 @@ use[] two: loc = { /bin/vendor_perl/GET }
     three: rec[] = { 
         var one: int
         var two: str
+        var[] (
+                four: int
+                six: int
+            )
     }
     three2: rec[] = {
         var three: vec
