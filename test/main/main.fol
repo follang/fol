@@ -103,8 +103,12 @@ pro main(): int = {
     var aval = ID[int]::init(5);
     var test: box[box[array[int, 5]]] = ar
 
-    //funcall
-    var somevar: fiveint = {1, 2, 3, 4, 5}
-    var somevar = fiveint{1, 2, 3, 4, 5}
+    when(){
 
+    }
+
+    var somevar: fiveint = {1, 2, 3, 4, 5}
+    //funcall
+    var somevar = fiveint{1, 2, 3, 4, 5}
 }
+

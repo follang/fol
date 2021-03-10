@@ -100,7 +100,7 @@ impl Parse for ParserStatAssTyp {
         check::needs_body(loc.clone(), lex, &body)?;
         node.set_body(Some(body.nodes()));
 
-        // check::expect(lex, KEYWORD::Symbol(SYMBOL::CurlyC), true)?;
+        check::expect(lex, KEYWORD::Symbol(SYMBOL::CurlyC), true)?;
         if matches!(lex.curr(true)?.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) { lex.jump(0, true)?; }
 
         let mut id = Node::new(Box::new(node.clone()));
