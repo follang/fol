@@ -39,6 +39,7 @@ impl KEYWORD {
             KEYWORD::Keyword(BUILDIN::Seg) => true,
             KEYWORD::Keyword(BUILDIN::Var) => true,
             KEYWORD::Keyword(BUILDIN::Fun) => true,
+            KEYWORD::Keyword(BUILDIN::Itr) => true,
             KEYWORD::Keyword(BUILDIN::Pro) => true,
             KEYWORD::Keyword(BUILDIN::Log) => true,
             KEYWORD::Keyword(BUILDIN::Typ) => true,

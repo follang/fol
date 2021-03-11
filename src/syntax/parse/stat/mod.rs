@@ -81,7 +81,7 @@ impl ParserStat {
             self.errors.extend(parser.errors());
         }
         else if lex.curr(false)?.key().is_void() { return Ok(()); } 
-        // else if matches!(lex.curr(true)?.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) { return Ok(()); } 
+        else if matches!(lex.curr(true)?.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) { return Ok(()); } 
         else if let Err(err) = check::unexpected_top(lex, token) { self.errors.push(err) }
         return Ok(());
     }
