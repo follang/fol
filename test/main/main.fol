@@ -94,6 +94,10 @@ imp[][T: gen[]] Self: array[T, int] = {
     } 
 } 
 
+/* def somepkg: blk = { */
+
+/* } */
+
 ali fiveint: array[int, 5];
 pro main(): int = {
     ~var arrayish: array[int[5], 5] = { container: {1, 2, 3, 4, 5 }; temp: 5; };
@@ -112,3 +116,6 @@ pro main(): int = {
     var somevar = fiveint{1, 2, 3, 4, 5}
 }
 
+//segements (used for modules, blocks, exernal and unsafe)
+seg goes: mod = {
+}

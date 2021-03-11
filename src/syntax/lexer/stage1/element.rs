@@ -262,6 +262,7 @@ impl Element {
         match self.con().as_str() {
             "use" => self.set_key(Keyword(BUILDIN::Use)),
             "def" => self.set_key(Keyword(BUILDIN::Def)),
+            "seg" => self.set_key(Keyword(BUILDIN::Seg)),
             "var" => self.set_key(Keyword(BUILDIN::Var)),
             "con" => self.set_key(Keyword(BUILDIN::Con)),
             "fun" => self.set_key(Keyword(BUILDIN::Fun)),

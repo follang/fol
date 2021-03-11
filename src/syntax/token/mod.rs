@@ -36,6 +36,7 @@ impl KEYWORD {
         match *self {
             KEYWORD::Keyword(BUILDIN::Use) => true,
             KEYWORD::Keyword(BUILDIN::Def) => true,
+            KEYWORD::Keyword(BUILDIN::Seg) => true,
             KEYWORD::Keyword(BUILDIN::Var) => true,
             KEYWORD::Keyword(BUILDIN::Fun) => true,
             KEYWORD::Keyword(BUILDIN::Pro) => true,
