@@ -117,5 +117,16 @@ pro main(): int = {
 }
 
 //segements (used for modules, blocks, exernal and unsafe)
-seg goes: mod = {
+seg goes: mod = {  }
+
+itr chars(sentence: str): opt[char] = {
+    var i = 0;
+    loop (i < .len(sentence)) {
+        yeild Some(sentence.get(i))
+        i ++
+    }
+}
+
+loop (chars("strange")) {
+    .echo(char)
 }

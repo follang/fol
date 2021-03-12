@@ -47,7 +47,8 @@ impl Parse for ParserStat {
             match self.style() {
                 Body::Top => {
                     if let Err(err) = self.parse_top(lex, locus - 1) { self.errors.push(err) }
-                    if lex.curr(true)?.key().is_eof() { break }
+                    if lex.curr(false)?.loc().deep() == locus - 1 { break }
+                    else if lex.curr(true)?.key().is_eof() { break }
                 },
                 Body::Typ => {
                     if let Err(err) = self.parse_typ(lex, locus - 1) { self.errors.push(err) }
@@ -81,7 +82,7 @@ impl ParserStat {
             self.errors.extend(parser.errors());
         }
         else if lex.curr(false)?.key().is_void() { return Ok(()); } 
-        // else if matches!(lex.curr(true)?.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) { return Ok(()); } 
+        else if matches!(lex.curr(true)?.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) { return Ok(()); } 
         else if let Err(err) = check::unexpected_top(lex, token) { self.errors.push(err) }
         return Ok(());
     }
