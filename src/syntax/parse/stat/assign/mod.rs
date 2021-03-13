@@ -28,6 +28,14 @@ use crate::syntax::parse::stat::assign::{
     lab::ParserStatAssLab,
 };
 
+
+pub mod generics;
+pub mod parameters;
+// use crate::syntax::parse::stat::assign::{
+    // parameters::ParserStatParameters,
+    // generics::ParserStatGenerics,
+// };
+
 pub struct ParserStatAss {
     nodes: Nodes,
     errors: Errors,

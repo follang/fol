@@ -13,7 +13,6 @@ pub mod r#box;
 pub struct ParserStatDatatypes {
     pub nodes: Nodes,
     _colon: bool,
-    _self: bool,
     _once: bool,
     _style: Body,
 }
@@ -23,22 +22,18 @@ impl ParserStatDatatypes {
         Self { 
             nodes: Nodes::new(),
             _colon: true,
-            _self: false,
             _once: false,
             _style: style,
         } 
     }
     pub fn nocolon(&mut self) { self._colon = false; }
-    pub fn letself(&mut self) { self._self = true; }
     pub fn once(&mut self) { self._once = true; }
-
     pub fn style(&self) -> Body { self._style }
 }
 impl Parse for ParserStatDatatypes {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
     fn errors(&self) -> Errors { Vec::new() }
     fn parse(&mut self, lex: &mut lexer::Elements) -> Vod {
-
         // eat ":"
         if lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::Colon) || self._colon == false {
             lex.jump(0, true)?; 
@@ -63,7 +58,7 @@ impl Parse for ParserStatDatatypes {
                 }
                 _ => {
                     let mut node = NodeStatDatatypes::default();
-                    if !(self._self && lex.curr(true)?.con().as_str() == "self") {
+                    if !(self.style() == Body::Imp && lex.curr(true)?.con().as_str() == "self") {
                         check::expect_ident_literal(lex, true)?;
                     }
                     lex.eat();

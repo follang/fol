@@ -6,14 +6,14 @@ use crate::syntax::lexer;
 use super::Parse;
 use crate::syntax::parse::{check, eater, branch, Body};
 
-pub mod parameters;
-pub mod generics;
+// pub mod parameters;
+// pub mod generics;
 pub mod datatype;
 pub mod assign;
 pub mod ident;
 pub use crate::syntax::parse::stat::{
-    parameters::*,
-    generics::*,
+    // parameters::*,
+    // generics::*,
     datatype::*,
     assign::*,
     ident::*,
