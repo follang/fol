@@ -131,6 +131,6 @@ pro get_chars(sting: str): itr[char] = {
     chars(string)
 }
 
-loop (chars("strange")) {
+loop (char in chars("strange")) {
     .echo(char)
 }
