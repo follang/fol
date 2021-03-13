@@ -34,7 +34,7 @@ impl ParserStatAssVar {
         } 
     }
     pub fn level(&self) -> usize { self._level }
-    pub fn style(&self) -> &Body { &self._style }
+    pub fn style(&self) -> Body { self._style }
 }
 impl Parse for ParserStatAssVar {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
@@ -71,7 +71,7 @@ impl Parse for ParserStatAssVar {
         idents.parse(lex)?; lex.eat();
 
         // match datatypes after :  -> "int[opts][]"
-        let mut dt = ParserStatDatatypes::init();
+        let mut dt = ParserStatDatatypes::init(self.style());
         dt.parse(lex)?;
 
         check::expect_many(lex, vec![ 

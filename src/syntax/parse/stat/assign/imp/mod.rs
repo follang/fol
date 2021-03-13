@@ -68,7 +68,7 @@ impl Parse for ParserStatAssImp {
         if parameters.nodes.len() > 0 { node.set_parameters(Some(parameters.nodes.clone())) }
 
         // match datatypes after :  -> "int[opts][]"
-        let mut dt = ParserStatDatatypes::init();
+        let mut dt = ParserStatDatatypes::init(Body::Top);
         dt.once();
         dt.parse(lex)?;
         node.set_datatype(Some(dt.nodes.get(0).clone()));

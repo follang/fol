@@ -28,7 +28,7 @@ impl ParserStatAssLab {
         } 
     }
     pub fn level(&self) -> usize { self._level }
-    pub fn style(&self) -> &Body { &self._style }
+    pub fn style(&self) -> Body { self._style }
 }
 impl Parse for ParserStatAssLab {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
@@ -56,7 +56,7 @@ impl Parse for ParserStatAssLab {
 
         // match datatypes after :  -> "int[opts][]"
         check::expect(lex, KEYWORD::Symbol(SYMBOL::Colon), true)?;
-        let mut dt = ParserStatDatatypes::init();
+        let mut dt = ParserStatDatatypes::init(self.style());
         dt.parse(lex)?;
 
         check::expect_terminal(lex)?;

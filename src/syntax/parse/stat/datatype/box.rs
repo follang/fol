@@ -3,7 +3,7 @@ use crate::syntax::nodes::*;
 use crate::syntax::token::*;
 use crate::syntax::lexer;
 use super::Parse;
-use crate::syntax::parse::{eater, check};
+use crate::syntax::parse::{eater, check, Body};
 use crate::syntax::nodes::stat::datatype;
 use crate::syntax::parse::stat::datatype::ParserStatDatatypes;
 
@@ -33,7 +33,7 @@ impl Parse for ParserStatData {
         lex.jump(0, false)?; 
 
         // match options after type  -> "[opts]"
-        let mut op = ParserStatDatatypes::init();
+        let mut op = ParserStatDatatypes::init(Body::Top);
         op.nocolon();
         op.parse(lex)?;
         if op.nodes.len() > 0 { node.set_form(Some(op.nodes.clone())); }

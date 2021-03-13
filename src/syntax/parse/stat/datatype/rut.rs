@@ -3,7 +3,7 @@ use crate::syntax::nodes::{Node, Nodes, NodeStatDecL};
 use crate::syntax::token::*;
 use crate::syntax::lexer;
 use super::Parse;
-use crate::syntax::parse::{eater, check};
+use crate::syntax::parse::{eater, check, Body};
 use crate::syntax::parse::stat::datatype;
 use crate::syntax::parse::stat::parameters;
 
@@ -42,7 +42,7 @@ impl Parse for ParserStatData {
             if parameters.nodes.len() > 0 { lnode.set_parameters(Some(parameters.nodes.clone())) }
 
             // match datatypes after :  -> "int[opts][]"
-            let mut dt = datatype::ParserStatDatatypes::init();
+            let mut dt = datatype::ParserStatDatatypes::init(Body::Top);
             dt.parse(lex)?;
             if dt.nodes.len() > 0 { lnode.set_datatype(Some(dt.nodes.get(0).clone())); }
 

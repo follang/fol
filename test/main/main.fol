@@ -127,6 +127,10 @@ itr chars(sentence: str): opt[char] = {
     }
 }
 
+pro get_chars(sting: str): itr[char] = {
+    chars(string)
+}
+
 loop (chars("strange")) {
     .echo(char)
 }

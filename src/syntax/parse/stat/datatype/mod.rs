@@ -3,7 +3,7 @@ use crate::syntax::nodes::*;
 use crate::syntax::token::*;
 use crate::syntax::lexer;
 use super::Parse;
-use crate::syntax::parse::{eater, check};
+use crate::syntax::parse::{eater, check, Body};
 
 pub mod rec;
 pub mod rut;
@@ -15,20 +15,24 @@ pub struct ParserStatDatatypes {
     _colon: bool,
     _self: bool,
     _once: bool,
+    _style: Body,
 }
 
 impl ParserStatDatatypes {
-    pub fn init() -> Self {
+    pub fn init(style: Body) -> Self {
         Self { 
             nodes: Nodes::new(),
             _colon: true,
             _self: false,
             _once: false,
+            _style: style,
         } 
     }
     pub fn nocolon(&mut self) { self._colon = false; }
     pub fn letself(&mut self) { self._self = true; }
     pub fn once(&mut self) { self._once = true; }
+
+    pub fn style(&self) -> Body { self._style }
 }
 impl Parse for ParserStatDatatypes {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
@@ -66,7 +70,7 @@ impl Parse for ParserStatDatatypes {
                     node.set_string(lex.curr(true)?.con().to_string());
                     lex.jump(0, false)?; 
                     if lex.curr(true)?.key() == KEYWORD::Symbol(SYMBOL::SquarO) { 
-                        let mut op = ParserStatDatatypes::init();
+                        let mut op = ParserStatDatatypes::init(self.style());
                         op.nocolon();
                         op.parse(lex)?; 
                         if op.nodes.len() > 0 { node.set_form(Some(op.nodes.clone())); }

@@ -4,7 +4,7 @@ use crate::syntax::token::*;
 use crate::syntax::lexer;
 use super::Parse;
 
-use crate::syntax::parse::check;
+use crate::syntax::parse::{check, Body};
 use crate::syntax::parse::stat::ident::*;
 use crate::syntax::parse::stat::datatype::*;
 
@@ -64,7 +64,7 @@ impl ParserStatGenerics {
 
         // match datatypes after :  -> "int[opts][]"
         check::expect(lex, KEYWORD::Symbol(SYMBOL::Colon), true)?;
-        let mut dt = ParserStatDatatypes::init();
+        let mut dt = ParserStatDatatypes::init(Body::Top);
         dt.once();
         dt.parse(lex)?;
         node.set_datatype(Some(dt.nodes.get(0).clone()));

@@ -69,7 +69,7 @@ impl Parse for ParserStatAss {
         } else if lex.curr(true)?.con() == "fun" || lex.peek(0, true)?.con() == "fun" {
             parser = Box::new(ParserStatAssFun::init(self.level(), self.style()));
         } else if lex.curr(true)?.con() == "seg" || lex.peek(0, true)?.con() == "seg" {
-            parser = Box::new(ParserStatAssSeg::init(self.level()));
+            parser = Box::new(ParserStatAssSeg::init(self.level(), self.style()));
         } else if lex.curr(true)?.con() == "imp" || lex.peek(0, true)?.con() == "imp" {
             parser = Box::new(ParserStatAssImp::init(self.level()));
         } else if lex.curr(true)?.con() == "lab" || lex.peek(0, true)?.con() == "lab" {

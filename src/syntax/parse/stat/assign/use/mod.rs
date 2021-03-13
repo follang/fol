@@ -5,7 +5,7 @@ use crate::syntax::lexer;
 use super::Parse;
 use crate::syntax::parse::expr::ParseExpr;
 
-use crate::syntax::parse::check;
+use crate::syntax::parse::{check, Body};
 use crate::syntax::parse::stat::assign::opts::*;
 use crate::syntax::parse::stat::ident::*;
 use crate::syntax::parse::stat::datatype::*;
@@ -69,7 +69,7 @@ impl Parse for ParserStatAssUse {
         node.set_ident(Some(idents.nodes.get(0).clone()));
 
         // match datatypes after :  -> "int[opts][]"
-        let mut dt = ParserStatDatatypes::init();
+        let mut dt = ParserStatDatatypes::init(Body::Top);
         dt.parse(lex)?;
         if dt.nodes.len() > 0 { node.set_datatype(Some(dt.nodes.get(0).clone())); }
 
