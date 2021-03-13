@@ -17,18 +17,21 @@ pub struct ParserStatAssImp {
     nodes: Nodes,
     errors: Errors,
     _level: usize,
+    _style: Body,
 }
 
 impl ParserStatAssImp {
     pub fn len(&self) -> usize { self.nodes.len() }
-    pub fn init(level: usize) -> Self {
+    pub fn init(level: usize, style: Body) -> Self {
         Self {
             nodes: Nodes::new(),
             errors: Vec::new(),
-            _level: level
+            _level: level,
+            _style: style.clone(),
         } 
     }
     pub fn level(&self) -> usize { self._level }
+    pub fn style(&self) -> Body { self._style }
 }
 impl Parse for ParserStatAssImp {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
@@ -68,7 +71,7 @@ impl Parse for ParserStatAssImp {
         if parameters.nodes.len() > 0 { node.set_parameters(Some(parameters.nodes.clone())) }
 
         // match datatypes after :  -> "int[opts][]"
-        let mut dt = ParserStatDatatypes::init(Body::Top);
+        let mut dt = ParserStatDatatypes::init(self.style());
         dt.once();
         dt.parse(lex)?;
         node.set_datatype(Some(dt.nodes.get(0).clone()));

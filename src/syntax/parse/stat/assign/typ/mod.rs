@@ -19,20 +19,23 @@ pub struct ParserStatAssTyp {
     _level: usize,
     _recurse: bool,
     _oldstat: NodeStatDecL,
+    _style: Body,
 }
 
 impl ParserStatAssTyp {
     pub fn len(&self) -> usize { self.nodes.len() }
-    pub fn init(level: usize) -> Self {
+    pub fn init(level: usize, style: Body) -> Self {
         Self {
             nodes: Nodes::new(),
             errors: Vec::new(),
             _recurse: false,
             _oldstat: NodeStatDecL::default(),
             _level: level,
+            _style: style.clone(),
         } 
     }
     pub fn level(&self) -> usize { self._level }
+    pub fn style(&self) -> Body { self._style }
 }
 impl Parse for ParserStatAssTyp {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
