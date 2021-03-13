@@ -123,20 +123,14 @@ impl ParserStat {
 
     fn parse_fun(&mut self, lex: &mut lexer::Elements, level: isize) -> Vod {
         let token = if matches!(lex.curr(true)?.key(), KEYWORD::Symbol(_)) { lex.peek(0,true)? } else { lex.curr(true)? }; lex.eat();
-        if (lex.curr(true)?.key().is_assign()
-            || (matches!(lex.curr(true)?.key(), KEYWORD::Symbol(_)) && lex.peek(0, true)?.key().is_assign()))
-            && branch::body_fun(lex, true)? 
-        {
-            let mut parser = ParserStatAss::init(self.level(), self.style());
-            if let Err(err) = parser.parse(lex) { self.errors.push(err) }
-            self.nodes.extend(parser.nodes());
-            self.errors.extend(parser.errors());
-        }
-        if (lex.curr(true)?.key().is_assign()
-            || (matches!(lex.curr(true)?.key(), KEYWORD::Symbol(_)) && lex.peek(0, true)?.key().is_assign()))
-            && !branch::body_fun(lex, true)? 
-        {
-            if let Err(err) = check::unexpected_fun(lex, token) { self.errors.push(err) } 
+        if lex.curr(true)?.key().is_assign() 
+            || (matches!(lex.curr(true)?.key(), KEYWORD::Symbol(_)) && lex.peek(0, true)?.key().is_assign()) {
+            if branch::body_fun(lex, true)? {
+                let mut parser = ParserStatAss::init(self.level(), self.style());
+                if let Err(err) = parser.parse(lex) { self.errors.push(err) }
+                self.nodes.extend(parser.nodes());
+                self.errors.extend(parser.errors());
+            } else if let Err(err) = check::unexpected_fun(lex, token.clone()) { self.errors.push(err) }
         }
         else if lex.curr(false)?.key().is_void() { return Ok(()); } 
         else if matches!(lex.curr(true)?.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) && lex.curr(false)?.loc().deep() == level { return Ok(()); } 
