@@ -34,6 +34,7 @@ impl ParserStatAssCon {
         } 
     }
     pub fn level(&self) -> usize { self._level }
+    pub fn style(&self) -> Body { self._style }
 }
 impl Parse for ParserStatAssCon {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
@@ -71,7 +72,7 @@ impl Parse for ParserStatAssCon {
 
         // match datatypes after :  -> "int[opts][]"
         check::expect(lex, KEYWORD::Symbol(SYMBOL::Colon), true)?;
-        let mut dt = ParserStatDatatypes::init(Body::Top);
+        let mut dt = ParserStatDatatypes::init(self.style());
         dt.parse(lex)?;
 
         check::type_balance(idents.nodes.len(), dt.nodes.len(), &loc, &lex.curr(false)?.loc().source() )?;

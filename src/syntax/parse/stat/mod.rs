@@ -35,7 +35,7 @@ impl ParserStat {
             _level: level,
         } 
     }
-    pub fn style(&self) -> &Body { &self._style }
+    pub fn style(&self) -> Body { self._style }
     pub fn level(&self) -> usize { self._level }
 }
 impl Parse for ParserStat {
@@ -72,10 +72,8 @@ impl Parse for ParserStat {
 impl ParserStat {
     fn parse_top(&mut self, lex: &mut lexer::Elements, _level: isize) -> Vod {
         let token = if matches!(lex.curr(true)?.key(), KEYWORD::Symbol(_)) { lex.peek(0,true)? } else { lex.curr(true)? }; lex.eat();
-        if (lex.curr(true)?.key().is_assign()
-            || (matches!(lex.curr(true)?.key(), KEYWORD::Symbol(_)) && lex.peek(0, true)?.key().is_assign()))
-            && branch::body_top(lex, true)? 
-        {
+        if (lex.curr(true)?.key().is_assign() || (matches!(lex.curr(true)?.key(), KEYWORD::Symbol(_)) && lex.peek(0, true)?.key().is_assign()))
+            && branch::body_top(lex, true)? {
             let mut parser = ParserStatAss::init(self.level(), self.style());
             if let Err(err) = parser.parse(lex) { self.errors.push(err) }
             self.nodes.extend(parser.nodes());
@@ -89,10 +87,8 @@ impl ParserStat {
 
     fn parse_typ(&mut self, lex: &mut lexer::Elements, level: isize) -> Vod {
         let token = if matches!(lex.curr(true)?.key(), KEYWORD::Symbol(_)) { lex.peek(0,true)? } else { lex.curr(true)? }; lex.eat();
-        if (lex.curr(true)?.key().is_assign()
-            || (matches!(lex.curr(true)?.key(), KEYWORD::Symbol(_)) && lex.peek(0, true)?.key().is_assign()))
-            && branch::body_typ(lex, true)? 
-        {
+        if (lex.curr(true)?.key().is_assign() || (matches!(lex.curr(true)?.key(), KEYWORD::Symbol(_)) && lex.peek(0, true)?.key().is_assign()))
+            && branch::body_typ(lex, true)? {
             let mut parser = ParserStatAss::init(self.level(), self.style());
             if let Err(err) = parser.parse(lex) { self.errors.push(err) }
             self.nodes.extend(parser.nodes());
@@ -106,10 +102,8 @@ impl ParserStat {
 
     fn parse_imp(&mut self, lex: &mut lexer::Elements, level: isize) -> Vod {
         let token = if matches!(lex.curr(true)?.key(), KEYWORD::Symbol(_)) { lex.peek(0,true)? } else { lex.curr(true)? }; lex.eat();
-        if (lex.curr(true)?.key().is_assign()
-            || (matches!(lex.curr(true)?.key(), KEYWORD::Symbol(_)) && lex.peek(0, true)?.key().is_assign()))
-            && branch::body_imp(lex, true)? 
-        {
+        if (lex.curr(true)?.key().is_assign() || (matches!(lex.curr(true)?.key(), KEYWORD::Symbol(_)) && lex.peek(0, true)?.key().is_assign()))
+            && branch::body_imp(lex, true)? {
             let mut parser = ParserStatAss::init(self.level(), self.style());
             if let Err(err) = parser.parse(lex) { self.errors.push(err) }
             self.nodes.extend(parser.nodes());
@@ -123,8 +117,7 @@ impl ParserStat {
 
     fn parse_fun(&mut self, lex: &mut lexer::Elements, level: isize) -> Vod {
         let token = if matches!(lex.curr(true)?.key(), KEYWORD::Symbol(_)) { lex.peek(0,true)? } else { lex.curr(true)? }; lex.eat();
-        if lex.curr(true)?.key().is_assign() 
-            || (matches!(lex.curr(true)?.key(), KEYWORD::Symbol(_)) && lex.peek(0, true)?.key().is_assign()) {
+        if lex.curr(true)?.key().is_assign() || (matches!(lex.curr(true)?.key(), KEYWORD::Symbol(_)) && lex.peek(0, true)?.key().is_assign()) {
             if branch::body_fun(lex, true)? {
                 let mut parser = ParserStatAss::init(self.level(), self.style());
                 if let Err(err) = parser.parse(lex) { self.errors.push(err) }

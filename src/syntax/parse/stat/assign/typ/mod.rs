@@ -85,7 +85,7 @@ impl Parse for ParserStatAssTyp {
 
         // match datatypes after :  -> "int[opts][]"
         check::expect(lex, KEYWORD::Symbol(SYMBOL::Colon), true)?;
-        let mut dt = ParserStatDatatypes::init(Body::Top);
+        let mut dt = ParserStatDatatypes::init(self.style());
         dt.once();
         dt.parse(lex)?;
         node.set_datatype(Some(dt.nodes.get(0).clone()));

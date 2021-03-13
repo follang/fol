@@ -36,7 +36,7 @@ pub struct ParserStatAss {
 }
 
 impl ParserStatAss {
-    pub fn init(level: usize, style: &Body) -> Self {
+    pub fn init(level: usize, style: Body) -> Self {
         Self {
             nodes: Nodes::new(),
             errors: Vec::new(),
