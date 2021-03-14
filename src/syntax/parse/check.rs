@@ -148,9 +148,7 @@ pub fn unexpected_top(lex: &mut lexer::Elements, el: lexer::Element) -> Vod {
             KEYWORD::Keyword(BUILDIN::Use),
             KEYWORD::Keyword(BUILDIN::Def),
             KEYWORD::Keyword(BUILDIN::Fun),
-            KEYWORD::Keyword(BUILDIN::Itr),
             KEYWORD::Keyword(BUILDIN::Pro),
-            KEYWORD::Keyword(BUILDIN::Log),
             KEYWORD::Keyword(BUILDIN::Typ),
             KEYWORD::Keyword(BUILDIN::Ali),
             KEYWORD::Keyword(BUILDIN::Imp),
@@ -167,9 +165,7 @@ pub fn unexpected_imp(lex: &mut lexer::Elements, el: lexer::Element) -> Vod {
         key1: el.key().clone(), 
         keys: vec![
             KEYWORD::Keyword(BUILDIN::Fun),
-            KEYWORD::Keyword(BUILDIN::Itr),
             KEYWORD::Keyword(BUILDIN::Pro),
-            KEYWORD::Keyword(BUILDIN::Log),
         ],
         src: el.loc().clone().source()
     }))
@@ -182,10 +178,8 @@ pub fn unexpected_typ(lex: &mut lexer::Elements, el: lexer::Element) -> Vod {
         key1: el.key().clone(), 
         keys: vec![
             KEYWORD::Keyword(BUILDIN::Var),
-            KEYWORD::Keyword(BUILDIN::Itr),
             KEYWORD::Keyword(BUILDIN::Fun),
             KEYWORD::Keyword(BUILDIN::Pro),
-            KEYWORD::Keyword(BUILDIN::Log),
             KEYWORD::Keyword(BUILDIN::Lab),
         ],
         src: el.loc().clone().source()

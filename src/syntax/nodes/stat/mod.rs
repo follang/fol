@@ -9,4 +9,6 @@ pub use crate::syntax::nodes::stat::{
         decshort::NodeStatDecS,
         datatype::NodeStatDatatypes,
         ident::NodeStatIdent,
+        conloop::NodeStatLoop,
+        conwhen::NodeStatWhen,
 };

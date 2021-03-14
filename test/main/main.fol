@@ -99,6 +99,7 @@ imp[][T: gen[]] Self: array[T, int] = {
 /* } */
 
 ali fiveint: array[int, 5];
+ali fiveint: array[int, 5];
 pro main(): int = {
     ~var arrayish: array[int[5], 5] = { container: {1, 2, 3, 4, 5 }; temp: 5; };
     var test = arrayish<C>.get(0)
@@ -119,7 +120,7 @@ pro main(): int = {
 //segements (used for modules, blocks, exernal and unsafe)
 seg goes: mod = {  }
 
-itr chars(sentence: str): opt[char] = {
+fun[itr] chars(sentence: str): opt[char] = {
     var i = 0;
     loop (i < .len(sentence)) {
         yeild Some(sentence.get(i))
