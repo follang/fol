@@ -21,8 +21,8 @@ impl NodeTrait for NodeStatLoop {}
 
 impl fmt::Display for NodeStatLoop {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let condition = match self.condition { Some(ref e) => "(".to_string() + &e.to_string() + ")", None => String::new()  };
-        let body = match self.body { Some(ref e) => " = ".to_string() + &e.to_string(), None => String::new()  };
+        let condition = match self.condition { Some(ref e) => "(".to_string() + &e.to_string() + ")", None => "()".to_string() };
+        let body = match self.body { Some(ref e) => "{\n".to_string() + &e.to_string() + " }", None => String::new()  };
         write!(f, "{}{}{}", "loop", condition, body)
     }
 }

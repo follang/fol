@@ -11,7 +11,7 @@ pub struct NodeStatWhen{
 impl Default for NodeStatWhen {
     fn default() -> Self {
         Self {
-            condition: None,
+            condition: None,  
             body: None
         }
     }
@@ -21,9 +21,9 @@ impl NodeTrait for NodeStatWhen {}
 
 impl fmt::Display for NodeStatWhen {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let condition = match self.condition { Some(ref e) => "(".to_string() + &e.to_string() + ")", None => String::new()  };
-        let body = match self.body { Some(ref e) => " = ".to_string() + &e.to_string(), None => String::new()  };
-        write!(f, "{}{}{}", "loop", condition, body)
+        let condition = match self.condition { Some(ref e) => "(".to_string() + &e.to_string() + ")", None => "()".to_string() };
+        let body = match self.body { Some(ref e) => "{\n".to_string() + &e.to_string() + " }", None => String::new()  };
+        write!(f, "{}{}{}", "when", condition, body)
     }
 }
 

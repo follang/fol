@@ -104,6 +104,7 @@ impl ParserStatAssCon {
             lex.jump(0, true)?; lex.eat();
 
             let mut nodes: Nodes = List::new();
+            let mut errors: Errors = List::new().to_vec();
             while !lex.curr(true)?.key().is_eof() {
                 // clone self and set recursive flag
                 let mut newself = self.clone();
@@ -111,6 +112,7 @@ impl ParserStatAssCon {
                 newself._oldstat = node.clone();
                 newself.parse(lex)?;
                 nodes.extend(newself.nodes);
+                errors.extend(newself.errors);
 
                 //go to next one
                 check::expect_terminal(lex, )?;
@@ -125,6 +127,7 @@ impl ParserStatAssCon {
                 }
             }
             self.nodes.extend(nodes);
+            self.errors.extend(errors);
         }
         return Ok(())
     }

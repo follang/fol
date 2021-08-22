@@ -18,6 +18,7 @@ use[] two: loc = { /bin/vendor_perl/GET }
     three: rec[] = { 
         var one: int
         var two: str
+        rvar two: str
         var[] (
                 four: int
                 six: int
@@ -108,8 +109,9 @@ pro main(): int = {
     var aval = ID[int]::init(5);
     var test: box[box[array[int, 5]]] = ar
 
-    when(){
-
+    when{
+        case( something ){  },
+        case( snother case ){  }
     }
 
     var somevar: fiveint = {1, 2, 3, 4, 5}
@@ -130,8 +132,10 @@ fun[itr] chars(sentence: str): opt[char] = {
 
 pro get_chars(sting: str): itr[char] = {
     chars(string)
-}
-
-loop (char in chars("strange")) {
-    .echo(char)
+    loop(char in chars("strange")) {
+        .echo(char)
+    }
+    loop( x in range(..100) | .filter(x in array) | .map(x * 2) ){
+        .echo(x)
+    }
 }

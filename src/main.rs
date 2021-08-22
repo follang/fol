@@ -16,22 +16,12 @@ use crate::syntax::parse;
 
 fn main() {
     let mut elems = lexer::stage3::Elements::init(&Input::Path("./test/main/main.fol".to_string(), true));
-    // while let Some(c) = elems.bump() {
-    //     match c {
-    //         Ok(e) => { println!("{}", e); },
-    //         Err(e) => { println!("\n{}", e); }
-    //     }
-    // }
     let parser = parse::Parser::init(&mut elems);
     for e in parser.nodes() { println!("{}", e) }
     for e in parser.errors().iter().enumerate() { 
         let bup = border_up("-", " FLAW: #".to_string() + &e.0.to_string() + " ");
         println!("{}{}", bup, e.1)
     }
-    // for e in Source::init(&path, false).iter() {
-    //     let mut elems = lexer::Elements::init(&Input::SourceAlt(e.clone());
-    //     let parser = parse::Parser::init(&mut elems);
-    // }
 }
 
 #[test]
