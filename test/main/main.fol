@@ -15,10 +15,10 @@ use[] two: loc = { /bin/vendor_perl/GET }
 /* var one = 5; */
 
 ~typ[set, get, nothing] (
-    three: rec[] = { 
+    three: rec[] = {
         var one: int
         var two: str
-        rvar two: str
+        var two: str
         var[] (
                 four: int
                 six: int
@@ -27,7 +27,6 @@ use[] two: loc = { /bin/vendor_perl/GET }
     three2: rec[] = {
         var three: vec
         var four: flt
-        imp ore:
     }
 )
 
@@ -52,7 +51,6 @@ typ some(S: gen[three], t: int): rec[] = {
     var el: S;
     /* var num: t */
 }
-
 
 typ[][T: gen, A: gen] OP(type: T): enm = {
     lab None: non;

@@ -32,11 +32,12 @@ impl ParserStatAssTyp {
             _oldstat: NodeStatDecL::default(),
             _level: level,
             _style: style.clone(),
-        } 
+        }
     }
     pub fn level(&self) -> usize { self._level }
     pub fn style(&self) -> Body { self._style }
 }
+
 impl Parse for ParserStatAssTyp {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
     fn errors(&self) -> Errors { self.errors.clone() }
@@ -94,7 +95,7 @@ impl Parse for ParserStatAssTyp {
         lex.jump(0, true)?;
         check::expect(lex, KEYWORD::Symbol(SYMBOL::CurlyO), true)?;
         lex.jump(0, true)?;
- 
+
 
         // match indentifier "body"
         let mut body = ParserStat::init(Body::Typ, self.level() + 1);

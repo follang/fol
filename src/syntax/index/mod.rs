@@ -1,11 +1,11 @@
 pub mod source;
 pub mod reader;
 
-pub use crate::syntax::index::source::Source;
+pub use crate::syntax::index::source::{Source, SourceType};
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)] 
 pub enum Input {
-    Path(String, bool),
+    Path(String, SourceType),
     String(String),
     Source(Source),
 }
@@ -68,7 +68,7 @@ pub fn source_lines(src: &Source) -> impl Iterator<Item = (String, Option<Source
     })
 }
 
-pub fn path_lines(src: String, file: bool) -> impl Iterator<Item = (String, Option<Source>)> {
+pub fn path_lines(src: String, file: SourceType) -> impl Iterator<Item = (String, Option<Source>)> {
     let mut sources = source::sources(src, file);
     let source = sources.next().unwrap();
     let mut reader = reader::BufReader::open(source.path(true)).unwrap();

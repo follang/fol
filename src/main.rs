@@ -10,12 +10,12 @@ extern crate terminal_size;
 
 use types::border_up;
 
-use crate::syntax::index::Input;
+use crate::syntax::index::{Input, SourceType};
 use crate::syntax::lexer;
 use crate::syntax::parse;
 
 fn main() {
-    let mut elems = lexer::stage3::Elements::init(&Input::Path("./test/main/main.fol".to_string(), true));
+    let mut elems = lexer::stage3::Elements::init(&Input::Path("./test/main/main.fol".to_string(), SourceType::File));
     let parser = parse::Parser::init(&mut elems);
     for e in parser.nodes() { println!("{}", e) }
     for e in parser.errors().iter().enumerate() { 
