@@ -12,4 +12,3 @@ dyn_clone::clone_trait_object!(NodeTrait);
 
 pub type Node = id::ID<Box<dyn NodeTrait>>;
 pub type Nodes = List<Node>;
-pub type Pools = Pool<Node>;

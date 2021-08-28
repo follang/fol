@@ -4,5 +4,3 @@ pub mod list;
 pub use crate::types::id::list::*;
 pub mod neo;
 pub use crate::types::id::neo::*;
-pub mod pool;
-pub use crate::types::id::pool::*;
