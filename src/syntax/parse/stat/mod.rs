@@ -6,15 +6,12 @@ use crate::syntax::lexer;
 use super::Parse;
 use crate::syntax::parse::{check, eater, branch, Body};
 
-// pub mod parameters;
-// pub mod generics;
 pub mod datatype;
 pub mod assign;
 pub mod ident;
 pub use crate::syntax::parse::stat::{
-    // parameters::*,
-    // generics::*,
     datatype::*,
+    // control::*,
     assign::*,
     ident::*,
 };
@@ -94,9 +91,9 @@ impl ParserStat {
             self.nodes.extend(parser.nodes());
             self.errors.extend(parser.errors());
         }
-        else if lex.curr(false)?.key().is_void() { return Ok(()); } 
-        else if matches!(lex.curr(true)?.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) && lex.curr(false)?.loc().deep() == level { return Ok(()); } 
-        else if let Err(err) = check::unexpected_typ(lex, token) { self.errors.push(err) }
+        else if lex.curr(false)?.key().is_void() { return Ok(()); }
+        else if matches!(lex.curr(true)?.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) && lex.curr(false)?.loc().deep() == level { return Ok(()); }
+        else if let Err(err) = check::unexpected_typ(lex, token) { self.errors.push(err); }
         return Ok(());
     }
 
@@ -127,6 +124,7 @@ impl ParserStat {
         }
         else if lex.curr(false)?.key().is_void() { return Ok(()); } 
         else if matches!(lex.curr(true)?.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) && lex.curr(false)?.loc().deep() == level { return Ok(()); } 
+        // else if let Err(err) = check::unexpected_fun(lex, token) { self.errors.push(err) }
         else { eater::until_term(lex, false)?; return Ok(()) }
         return Ok(());
     }

@@ -11,8 +11,14 @@ pub struct Source {
     path: String,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum SourceType {
+    File,
+    Folder
+}
+
 impl Source {
-    pub fn init(input: &str, file: bool) -> Vec<Self> {
+    pub fn init(input: &str, file: SourceType) -> Vec<Self> {
         match source(input, file) {
             Ok(s) => { s }
             Err(e) => { crash!(e) }
@@ -73,27 +79,30 @@ impl fmt::Display for Source {
 }
 
 pub fn from_file(input: &str) -> Con<Vec<Source>> {
-    let e = check_validity(input, true)?;
+    let e = check_validity(input, SourceType::File)?;
     Ok(vec![Source {
         call: input.to_string(),
         path: full_path(&e)?,
     }])
 }
 
-pub fn source(input: &str, file: bool) -> Con<Vec<Source>> {
+pub fn source(input: &str, file: SourceType) -> Con<Vec<Source>> {
     let mut vec = Vec::new();
-    let e = check_validity(input, file)?;
-    if file {
-        vec.push( Source {
-            call: input.to_string(),
-            path: full_path(&e)?,
-        });
-    } else {
-        for f in from_dir(&e)? {
+    let e = check_validity(input, file.clone())?;
+    match file.clone() {
+        SourceType::File => { 
             vec.push( Source {
                 call: input.to_string(),
-                path: full_path(&f)?,
-            } );
+                path: full_path(&e)?,
+            });
+        }
+        SourceType::Folder => { 
+            for f in from_dir(&e)? {
+                vec.push( Source {
+                    call: input.to_string(),
+                    path: full_path(&f)?,
+                } );
+            }
         }
     }
     Ok(vec)
@@ -138,17 +147,17 @@ fn from_dir(s: &str) -> Con<Vec<String>> {
     }
 }
 
-fn check_validity(s: &str, file: bool) -> Con<String> {
+fn check_validity(s: &str, source_type: SourceType) -> Con<String> {
     let path = std::path::Path::new(s);
     if !path.exists() { 
         let msg = format!("path: {} is not a valid path", s.red());
         return Err( catch!(Flaw::GettingWrongPath{msg: Some(msg)}) );
     };
-    if path.is_dir() && !file {
+    if path.is_dir() && matches!(source_type, SourceType::Folder) {
         Ok(full_path(s)?)
-    } else if path.is_file() && !file {
+    } else if path.is_file() && matches!(source_type, SourceType::Folder) {
         Ok(full_path(&path.parent().unwrap().to_str().unwrap().to_string())?)
-    } else if path.is_file() && file {
+    } else if path.is_file() && matches!(source_type, SourceType::File) {
         Ok(full_path(s)?)
     } else {
         let msg = format!("path: {} is not a valid file", s.red());
@@ -156,7 +165,7 @@ fn check_validity(s: &str, file: bool) -> Con<String> {
     }
 }
 
-pub fn sources(input: String, file:bool) -> impl Iterator<Item = Source> {
+pub fn sources(input: String, file: SourceType) -> impl Iterator<Item = Source> {
     let red: Vec<Source> = Source::init(&input, file);
     let mut index: usize = 0;
     std::iter::from_fn(move || {

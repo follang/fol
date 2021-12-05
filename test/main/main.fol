@@ -15,8 +15,9 @@ use[] two: loc = { /bin/vendor_perl/GET }
 /* var one = 5; */
 
 ~typ[set, get, nothing] (
-    three: rec[] = { 
+    three: rec[] = {
         var one: int
+        var two: str
         var two: str
         var[] (
                 four: int
@@ -26,7 +27,6 @@ use[] two: loc = { /bin/vendor_perl/GET }
     three2: rec[] = {
         var three: vec
         var four: flt
-        imp ore:
     }
 )
 
@@ -51,7 +51,6 @@ typ some(S: gen[three], t: int): rec[] = {
     var el: S;
     /* var num: t */
 }
-
 
 typ[][T: gen, A: gen] OP(type: T): enm = {
     lab None: non;
@@ -99,6 +98,7 @@ imp[][T: gen[]] Self: array[T, int] = {
 /* } */
 
 ali fiveint: array[int, 5];
+ali fiveint: array[int, 5];
 pro main(): int = {
     ~var arrayish: array[int[5], 5] = { container: {1, 2, 3, 4, 5 }; temp: 5; };
     var test = arrayish<C>.get(0)
@@ -107,8 +107,9 @@ pro main(): int = {
     var aval = ID[int]::init(5);
     var test: box[box[array[int, 5]]] = ar
 
-    when(){
-
+    when{
+        case( something ){  },
+        case( snother case ){  }
     }
 
     var somevar: fiveint = {1, 2, 3, 4, 5}
@@ -119,7 +120,7 @@ pro main(): int = {
 //segements (used for modules, blocks, exernal and unsafe)
 seg goes: mod = {  }
 
-itr chars(sentence: str): opt[char] = {
+fun[itr] chars(sentence: str): opt[char] = {
     var i = 0;
     loop (i < .len(sentence)) {
         yeild Some(sentence.get(i))
@@ -129,8 +130,10 @@ itr chars(sentence: str): opt[char] = {
 
 pro get_chars(sting: str): itr[char] = {
     chars(string)
-}
-
-loop (chars("strange")) {
-    .echo(char)
+    loop(char in chars("strange")) {
+        .echo(char)
+    }
+    loop( x in range(..100) | .filter(x in array) | .map(x * 2) ){
+        .echo(x)
+    }
 }

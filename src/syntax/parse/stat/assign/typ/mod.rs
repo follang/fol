@@ -32,11 +32,12 @@ impl ParserStatAssTyp {
             _oldstat: NodeStatDecL::default(),
             _level: level,
             _style: style.clone(),
-        } 
+        }
     }
     pub fn level(&self) -> usize { self._level }
     pub fn style(&self) -> Body { self._style }
 }
+
 impl Parse for ParserStatAssTyp {
     fn nodes(&self) -> Nodes { self.nodes.clone() }
     fn errors(&self) -> Errors { self.errors.clone() }
@@ -94,7 +95,7 @@ impl Parse for ParserStatAssTyp {
         lex.jump(0, true)?;
         check::expect(lex, KEYWORD::Symbol(SYMBOL::CurlyO), true)?;
         lex.jump(0, true)?;
- 
+
 
         // match indentifier "body"
         let mut body = ParserStat::init(Body::Typ, self.level() + 1);
@@ -109,7 +110,6 @@ impl Parse for ParserStatAssTyp {
         let mut id = Node::new(Box::new(node.clone()));
         id.set_loc(loc.clone());
         self.nodes.push(id);
-
         Ok(())
     }
 }
@@ -120,6 +120,7 @@ impl ParserStatAssTyp {
             lex.jump(0, true)?; lex.eat();
 
             let mut nodes: Nodes = List::new();
+            let mut errors: Errors = List::new().to_vec();
             while !lex.curr(true)?.key().is_eof() {
                 // clone self and set recursive flag
                 let mut newself = self.clone();
@@ -127,6 +128,7 @@ impl ParserStatAssTyp {
                 newself._oldstat = node.clone();
                 newself.parse(lex)?;
                 nodes.extend(newself.nodes);
+                errors.extend(newself.errors);
 
                 //go to next one
                 check::expect_terminal(lex, )?;
@@ -141,6 +143,7 @@ impl ParserStatAssTyp {
                 }
             }
             self.nodes.extend(nodes);
+            self.errors.extend(errors);
         }
         return Ok(())
     }
