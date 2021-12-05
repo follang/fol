@@ -32,11 +32,11 @@
         buildInputs =  with pkgs; [
           # packages.fol
           rust
-          lldb
+          # lldb
           rls
           lld_10
           rust-analyzer
-          vscode-extensions.llvm-org.lldb-vscode
+          # vscode-extensions.llvm-org.lldb-vscode
           # vscode-extensions.vadimcn.vscode-lldb
         ];
         RUSTFLAGS = "-C link-arg=-fuse-ld=lld -C target-cpu=native";

@@ -23,7 +23,6 @@ fn main() {
     //         Err(e) => { println!("{}", e);}
     //     }
     // }
-
     let parser = parse::Parser::init(&mut elems);
     for e in parser.nodes() { println!("{}", e) }
     for e in parser.errors().iter().enumerate() { 
