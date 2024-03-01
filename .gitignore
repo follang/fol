@@ -3,3 +3,5 @@
 .dirnev
 .direnv
 flake.lock
+.devbox
+.direnv
