@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.2] - 2024-03-01
+
+### <!-- 7 -->⚙️ Miscellaneous Tasks
+
+- Refactor project structure and documentation
+
 ## [0.1.1] - 2024-03-01
 
 ### <!-- 7 -->⚙️ Miscellaneous Tasks
