@@ -1,9 +1,9 @@
 <p align="center">
-    <img alt="logo" src="./etc/logo.svg" width="300px">
+    <img alt="logo" src="./book/src/images/logo.svg" width="300px">
 </p>
 
 
-<a href="http://www.follang.org" style="color: rgb(179, 128, 255)"></a><h2><p align="center" style="color: rgb(179, 128, 255)">www.follang.org</p></h2></a>
+<a href="https://follang.github.io/" style="color: rgb(179, 128, 255)"></a><h2><p align="center" style="color: rgb(179, 128, 255)">https://follang.github.io/</p></h2></a>
 
 <p align="center">
   <a href="https://github.com/follang/fol/blob/develop/LICENSE.md"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
@@ -36,45 +36,39 @@ __*Everything*__ in **FOL** is declared like below:
 
 #### four top-most declarations are:
 ```
-	def<>		// preporcesr, iports, includes, macros, bocks, definitions ...
-	var<>		// all variables, ints, strings, bools, arrays, vecotrs ...
-	typ<>  		// new types, structs, objects, interfaces, enums ...
-	fun<>		// all methods, functions, rutines and subrutines ...
+	use    // imports, includes ...
+	def    // macros, bocks, definitions ...
+
+	var    // all variables: ordinal, container, complex, special
+
+	pro    // subporgrams with side effects - procedures
+	fun    // subporgrams with no side effects - functions
+	log    // subporgrams with logic only - logicals
+
+	typ    // new types: records, entries, blueprints ...
+	ali    // aiased types and extensions
 ```
 #### a control flow and keywords:
 ```
-	if(condition){} orif(condition){} else{};
-	loop(condition){};
-	for(){};
-	each(){};
-	case(variable){like(){}; like(){}; else{}};
-	case(variable){type(){}; type(){}; else{}};
-	jump();
-	continue; break; return; yeild;
+	when(condition){ case (){}; case (){}; * {}; };
+	loop(condition){  };
 
 ```
 
-#### keywords:
+#### example:
 
 ```
-	result;			// the default return type of function (already made when a subroutine is created)
-	default;		// a default value for function (in case of error or unreachable)
-	error;			// each routine carries an error variable and can be checked if was raised during call
-	check();		// checking a function for error
+use log: mod[std] = {fmt::log};
+
+
+def argo: mod[init] = {
+    -var const: str = "something here"
+
+    +pro main: int = {
+        log.warn("Last warning!...");
+        .echo(add(3, 5));
+    }
+
+    fun add(a, b: int): int = { a + b }
+}
 ```
-
-## Contributors ✨
-
-Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/docs/en/emoji-key)):
-
-<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
-<!-- prettier-ignore -->
-<table>
-  <tr>
-    <td align="center"><a href="http://www.bresilla.com"><img src="https://avatars0.githubusercontent.com/u/10802141?v=4" width="100px;" alt="Trim Bresilla"/><br /><sub><b>Trim Bresilla</b></sub></a><br /><a href="#infra-bresilla" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a> <a href="https://github.com/follang/fol/commits?author=bresilla" title="Tests">⚠️</a> <a href="https://github.com/follang/fol/commits?author=bresilla" title="Code">💻</a></td>
-  </tr>
-</table>
-
-<!-- ALL-CONTRIBUTORS-LIST:END -->
-
-This project follows the [all-contributors](https://github.com/all-contributors/all-contributors) specification. Contributions of any kind welcome!
