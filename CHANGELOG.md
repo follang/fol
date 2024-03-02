@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.1.4] - 2024-03-02
+
+### <!-- 1 -->🐛 Bug Fixes
+
+- Remove docs folder
+
+### <!-- 3 -->📚 Documentation
+
+- Building website/mdbook
+- Building website/mdbook
+
+### <!-- 7 -->⚙️ Miscellaneous Tasks
+
+- Refactor and reorganize doc structure
+
 ## [0.1.2] - 2024-03-01
 
 ### <!-- 7 -->⚙️ Miscellaneous Tasks
