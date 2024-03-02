@@ -6,7 +6,6 @@ edition = "2018"
 
 [dependencies]
 regex = "1"
-syn = "1"
 colored = "1"
 dyn-clone = "1"
 terminal_size = "0.1.16"

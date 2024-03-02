@@ -1,5 +1,3 @@
-# Summary
-
 ## Everything in FOL follows the same structure:
 
 ```
@@ -45,7 +43,3 @@ def argo: mod[init] = {
     fun add(a, b: int): int = { a + b }
 }
 ```
-
-
-- [Intro](./chapter_1.md)
-- [Installation](./chapter_2.md)
