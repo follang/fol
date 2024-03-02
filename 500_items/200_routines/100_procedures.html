@@ -1,0 +1,351 @@
+<!DOCTYPE HTML>
+<html lang="en" class="navy" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Procedures</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../../favicon.svg">
+        <link rel="shortcut icon" href="../../favicon.png">
+        <link rel="stylesheet" href="../../css/variables.css">
+        <link rel="stylesheet" href="../../css/general.css">
+        <link rel="stylesheet" href="../../css/chrome.css">
+        <link rel="stylesheet" href="../../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../../highlight.css">
+        <link rel="stylesheet" href="../../tomorrow-night.css">
+        <link rel="stylesheet" href="../../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "navy";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('navy')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded "><a href="../../follang.html"><strong aria-hidden="true">1.</strong> Intro</a></li><li class="chapter-item expanded "><a href="../../100_lexical/_index.html"><strong aria-hidden="true">2.</strong> Lexical</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../100_lexical/100_keywords.html"><strong aria-hidden="true">2.1.</strong> Keywords</a></li><li class="chapter-item expanded "><a href="../../100_lexical/200_identifiers.html"><strong aria-hidden="true">2.2.</strong> Identifiers</a></li><li class="chapter-item expanded "><a href="../../100_lexical/300_comments.html"><strong aria-hidden="true">2.3.</strong> Comments</a></li><li class="chapter-item expanded "><a href="../../100_lexical/400_whitespaces.html"><strong aria-hidden="true">2.4.</strong> Whitespaces</a></li><li class="chapter-item expanded "><a href="../../100_lexical/500_letters.html"><strong aria-hidden="true">2.5.</strong> Letters</a></li><li class="chapter-item expanded "><a href="../../100_lexical/600_numbers.html"><strong aria-hidden="true">2.6.</strong> Numbers</a></li><li class="chapter-item expanded "><a href="../../100_lexical/700_symbols.html"><strong aria-hidden="true">2.7.</strong> Symbols</a></li></ol></li><li class="chapter-item expanded "><a href="../../200_expressions/_index.html"><strong aria-hidden="true">3.</strong> Code blocks</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../200_expressions/200_sta/_index.html"><strong aria-hidden="true">3.1.</strong> Statements</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../200_expressions/200_sta/100_control.html"><strong aria-hidden="true">3.1.1.</strong> Control</a></li></ol></li><li class="chapter-item expanded "><a href="../../200_expressions/300_exp/_index.html"><strong aria-hidden="true">3.2.</strong> Exporessions</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../200_expressions/300_exp/100_arithmetics.html"><strong aria-hidden="true">3.2.1.</strong> Arithmetic</a></li><li class="chapter-item expanded "><a href="../../200_expressions/300_exp/200_literals.html"><strong aria-hidden="true">3.2.2.</strong> Literals</a></li><li class="chapter-item expanded "><a href="../../200_expressions/300_exp/300_ranges.html"><strong aria-hidden="true">3.2.3.</strong> Ranges</a></li><li class="chapter-item expanded "><a href="../../200_expressions/300_exp/400_access.html"><strong aria-hidden="true">3.2.4.</strong> Access</a></li></ol></li></ol></li><li class="chapter-item expanded "><a href="../../300_meta/_index.html"><strong aria-hidden="true">4.</strong> Meta programming</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../300_meta/100_buildin.html"><strong aria-hidden="true">4.1.</strong> Build-In</a></li><li class="chapter-item expanded "><a href="../../300_meta/200_macros.html"><strong aria-hidden="true">4.2.</strong> Macros</a></li><li class="chapter-item expanded "><a href="../../300_meta/300_alternatives.html"><strong aria-hidden="true">4.3.</strong> Alternatives</a></li><li class="chapter-item expanded "><a href="../../300_meta/400_defaults.html"><strong aria-hidden="true">4.4.</strong> Defaults</a></li><li class="chapter-item expanded "><a href="../../300_meta/500_templates.html"><strong aria-hidden="true">4.5.</strong> Templates</a></li></ol></li><li class="chapter-item expanded "><a href="../../400_type/_index.html"><strong aria-hidden="true">5.</strong> Type system</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../400_type/100_ordinal.html"><strong aria-hidden="true">5.1.</strong> Ordinal</a></li><li class="chapter-item expanded "><a href="../../400_type/200_container.html"><strong aria-hidden="true">5.2.</strong> Container</a></li><li class="chapter-item expanded "><a href="../../400_type/300_complex.html"><strong aria-hidden="true">5.3.</strong> Complex</a></li><li class="chapter-item expanded "><a href="../../400_type/400_special.html"><strong aria-hidden="true">5.4.</strong> Special</a></li></ol></li><li class="chapter-item expanded "><a href="../../500_items/_index.html"><strong aria-hidden="true">6.</strong> Syntax items</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../500_items/100_variables.html"><strong aria-hidden="true">6.1.</strong> Variables</a></li><li class="chapter-item expanded "><a href="../../500_items/200_routines/_index.html"><strong aria-hidden="true">6.2.</strong> Routines</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../500_items/200_routines/100_procedures.html" class="active"><strong aria-hidden="true">6.2.1.</strong> Procedures</a></li><li class="chapter-item expanded "><a href="../../500_items/200_routines/200_functions.html"><strong aria-hidden="true">6.2.2.</strong> Functions</a></li><li class="chapter-item expanded "><a href="../../500_items/200_routines/300_methods.html"><strong aria-hidden="true">6.2.3.</strong> Methods</a></li><li class="chapter-item expanded "><a href="../../500_items/200_routines/400_logicals.html"><strong aria-hidden="true">6.2.4.</strong> Logicals</a></li></ol></li><li class="chapter-item expanded "><a href="../../500_items/300_constructs/_index.html"><strong aria-hidden="true">6.3.</strong> Constructs</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../500_items/300_constructs/100_aliases.html"><strong aria-hidden="true">6.3.1.</strong> Aliases</a></li><li class="chapter-item expanded "><a href="../../500_items/300_constructs/200_structs.html"><strong aria-hidden="true">6.3.2.</strong> Structs</a></li></ol></li><li class="chapter-item expanded "><a href="../../500_items/400_standards.html"><strong aria-hidden="true">6.4.</strong> Standards</a></li><li class="chapter-item expanded "><a href="../../500_items/500_generics.html"><strong aria-hidden="true">6.5.</strong> Generics</a></li></ol></li><li class="chapter-item expanded "><a href="../../600_modules/_index.html"><strong aria-hidden="true">7.</strong> Modules tree</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../600_modules/100_import.html"><strong aria-hidden="true">7.1.</strong> Imports</a></li><li class="chapter-item expanded "><a href="../../600_modules/200_blocks.html"><strong aria-hidden="true">7.2.</strong> Declarations</a></li><li class="chapter-item expanded "><a href="../../600_modules/300_tests.html"><strong aria-hidden="true">7.3.</strong> Tests</a></li></ol></li><li class="chapter-item expanded "><a href="../../650_errors/_index.html"><strong aria-hidden="true">8.</strong> Error handling</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../650_errors/100_braking.html"><strong aria-hidden="true">8.1.</strong> Braking</a></li><li class="chapter-item expanded "><a href="../../650_errors/200_recover.html"><strong aria-hidden="true">8.2.</strong> Recover</a></li></ol></li><li class="chapter-item expanded "><a href="../../700_sugar/_index.html"><strong aria-hidden="true">9.</strong> Language sugar</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../700_sugar/100_silents.html"><strong aria-hidden="true">9.1.</strong> Silents</a></li><li class="chapter-item expanded "><a href="../../700_sugar/200_pipes.html"><strong aria-hidden="true">9.2.</strong> Pipes</a></li><li class="chapter-item expanded "><a href="../../700_sugar/300_mixture.html"><strong aria-hidden="true">9.3.</strong> Mixture</a></li><li class="chapter-item expanded "><a href="../../700_sugar/400_limits.html"><strong aria-hidden="true">9.4.</strong> Limits</a></li><li class="chapter-item expanded "><a href="../../700_sugar/450_matching.html"><strong aria-hidden="true">9.5.</strong> Matching</a></li><li class="chapter-item expanded "><a href="../../700_sugar/500_rolling.html"><strong aria-hidden="true">9.6.</strong> Rolling</a></li><li class="chapter-item expanded "><a href="../../700_sugar/600_unpacking.html"><strong aria-hidden="true">9.7.</strong> Unpacking</a></li><li class="chapter-item expanded "><a href="../../700_sugar/700_inquiry.html"><strong aria-hidden="true">9.8.</strong> Inquiry</a></li><li class="chapter-item expanded "><a href="../../700_sugar/800_chaining.html"><strong aria-hidden="true">9.9.</strong> Chaining</a></li></ol></li><li class="chapter-item expanded "><a href="../../750_conversion/_index.html"><strong aria-hidden="true">10.</strong> Conversion</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../750_conversion/100_coercion.html"><strong aria-hidden="true">10.1.</strong> Coercion</a></li><li class="chapter-item expanded "><a href="../../750_conversion/200_casting.html"><strong aria-hidden="true">10.2.</strong> Casting</a></li></ol></li><li class="chapter-item expanded "><a href="../../800_memory/_index.html"><strong aria-hidden="true">11.</strong> Memory model</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../800_memory/100_ownership.html"><strong aria-hidden="true">11.1.</strong> Ownership</a></li><li class="chapter-item expanded "><a href="../../800_memory/200_pointers.html"><strong aria-hidden="true">11.2.</strong> Pointers</a></li></ol></li><li class="chapter-item expanded "><a href="../../900_processor/_index.html"><strong aria-hidden="true">12.</strong> Multi Threading</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../900_processor/100_eventuals.html"><strong aria-hidden="true">12.1.</strong> Eventuals</a></li><li class="chapter-item expanded "><a href="../../900_processor/200_corutines.html"><strong aria-hidden="true">12.2.</strong> Corutines</a></li></ol></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title"></h1>
+
+                    <div class="right-buttons">
+                        <a href="../../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="procedures"><a class="header" href="#procedures">Procedures</a></h1>
+<p>Procedures are most common type of routines in Fol. When a procedure is "called" the program "leaves" the current section of code and begins to execute the first line inside the procedure. Thus the procedure "flow of control" is:</p>
+<ul>
+<li>The program comes to a line of code containing a "procedure call".</li>
+<li>The program enters the procedure (starts at the first line in the procedure code).</li>
+<li>All instructions inside of the procedure are executed from top to bottom.</li>
+<li>The program leaves the procedure and goes back to where it started from.</li>
+<li>Any data computed and RETURNED by the procedure is used in place of the procedure in the original line of code.</li>
+</ul>
+<p>Procedures have side-effects, it can modifies some state variable value(s) outside its local environment, that is to say has an observable effect besides returning a value (the main effect) to the invoker of the operation. State data updated "outside" of the operation may be maintained "inside" a stateful object or a wider stateful system within which the operation is performed.</p>
+<h3 id="passing-values"><a class="header" href="#passing-values">Passing values</a></h3>
+<p>The semantics for passing a value to a procedure are similar to those for assigning a value to a variable. Passing a variable to a procedure will move or copy, just as assignment does. If the procedure is stack-based, it will automatically copy the value. If it is heap-based, it will move the value.</p>
+<pre><code>pro[] modifyValue(someStr: str) = {
+    someStr = someStr + " world!"
+}
+
+pro[] main: int =  {
+                                        //case1
+    var[mut] aString: str = "hello";                        // a string varibale $aString is declared (in stack as default)
+    modifyValue(aString);                                   // the value is passed to a procedure, since $aVar is in stack, the value is copied
+    .echo(aString)                                          // this prints: "hello", 
+                                                            // value is not changed and still exists here, because was copied
+
+                                        //case2
+    @var[mut] aString: str = "hello";                       // a string varibale $bString is declared (in stack with '@')
+    modifyValue(bString);                                   // the value is passed to a procedure, since $aVar is in heap, the value is moved
+    .echo(bString)                                          // this throws ERROR, 
+                                                            // value does not exists anymore since it moved and ownership wasn't return
+}
+</code></pre>
+<p>As you can see from above, in both cases, the <code>.echo(varable)</code> does not reach the desired procedure, to print <code>hello world!</code>. In first case is not changed (because is coped), in second case is changed but never returned. To fix the second case, we can just use the <code>.give_back()</code> procedure to return the ownership:</p>
+<pre><code>pro[] modifyValue(someStr: str) = {
+    someStr = someStr + " world!"
+    .give_back(someStr)                                     // this returns the ownership (if there is an owner, if not just ignores it)
+}
+
+pro[] main: int =  {
+                                        //case1
+    var[mut] aString: str = "hello";                        // a string varibale $aString is declared (in stack as default)
+    modifyValue(aString);                                   // the value is passed to a procedure, since $aVar is in stack, the value is copied
+    .echo(aString)                                          // this still prints: "hello", 
+                                                            // value is not changed and still exists here, because was copied
+
+                                        //case2
+    @var[mut] aString: str = "hello";                       // a string varibale $bString is declared (in stack with '@')
+    modifyValue(bString);                                   // the value is passed to a procedure, since $aVar is in heap, the value is moved
+    .echo(aString)                                          // this now prints: "hello world!", 
+                                                            // value now exists since the ownership is return
+}
+</code></pre>
+<h3 id="lend-parameters"><a class="header" href="#lend-parameters">Lend parameters</a></h3>
+<p>But now, we were able to change just the variable that is defined in heap (case two), by moving back the ownership. In case one, since the value is copied, the owner of newly copied value is the procedure itself. So the <code>.give_back()</code> is ignored. To fix this, we use <a href="/docs/spec/050_pointers/#borrowing">borrowing</a> to lend a value to the procedure</p>
+<pre><code>pro[] modifyValue(SOMESTR: str) = {                         // we use allcaps `SOMESTR` to mark it as borrowable
+    somestr = someStr + " world!"                           // when we refer, we can both refer with ALLCAPS or lowecaps
+}
+
+pro[] main: int =  {
+                                        //case1
+    var[mut] aString: str = "hello";                        // a string varibale $aString is declared (in stack as default)
+    modifyValue(aString);                                   // the value is lended to the procedure
+    .echo(aString)                                          // this now prints: "hello world!", 
+
+                                        //case2
+    @var[mut] aString: str = "hello";                       // a string varibale $bString is declared (in heap with '@')
+    modifyValue(aString);                                   // the value is lended to the procedure
+    .echo(aString)                                          // this now prints: "hello world!", 
+}
+</code></pre>
+<p>{{% notice warn %}}</p>
+<p>So to make a procedure borrow a varibale it uses all caps name <code>A_VAR</code>.
+Remember that two variables are the same if have same characters (does not matter the caps)</p>
+<p>{{% /notice %}}</p>
+<pre><code>pro[] borrowingProcedure(aVar: str; BVAR: bol; cVar, DVAR: int)
+</code></pre>
+<p>To call this procedure, the borrowed parameters always shoud be a variable name and not a direct value:</p>
+<pre><code>var aBool, anInt = true, 5
+borrowingProcedure("get", true, 4, 5)                        // this will throw an error, cos it expects borrowable not direct value
+borrowingProcedure("get", aBool, 4, anInt)                   // this is the proper way
+
+</code></pre>
+<p>When the value is passed as borrowable in procedure, by default it gives premission to change, so the same as <code>var[mut, bor]</code> as <a href="/docs/spec/050_pointers/#borrowing">disscussed here</a>.</p>
+<h3 id="return-ownership"><a class="header" href="#return-ownership">Return ownership</a></h3>
+<p>Return values can be though as return of ownership too. The ownership of a variable follows the same pattern every time: assigning a value to another variable moves or copies it.</p>
+<pre><code>pro main(): int = {
+    var s1 = givesOwnership();                              // the variable $s1 is given the ownership of the procedure's $givesOwnership return
+    .echo(s1)                                               // prints "hi"
+    var s2 = returnACopy();                                 // the variable $s2 is given the ownership of the procedure's $returnACopy return
+    .echo(s2)                                               // prints: "there"
+}
+pro givesOwnership(): str = {                               // This procedure will move its return value into the procedure that calls it
+    @var someString = "hi";                                 // $someString comes into scope
+    return someString                                       // $someString is returned and MOVES out to the calling procedure
+}
+pro returnACopy(): int = {                                  // This procedure will move its return value into the procedure that calls it
+    var anotherString = "there"                             // $anotherString comes into scope
+    return anotherString                                    // $anotherString is returned and COPIES out to the calling procedure
+}
+</code></pre>
+<p>When a variable that includes data on the heap goes out of scope, the value will be cleaned up automatically by <code>.de_alloc()</code> unless the data has been moved to be owned by another variable, in this case we give the ownership to return value. If the procedure with the retun value is not assigned to a variable, the memory will be freed again.</p>
+<p>We can even do a transfer of ownership by using this logic:</p>
+<pre><code>pro main(): int = {
+    @var s2 = "hi";                                         // $s2 comes into scope (allocatd in the heap)
+    var s3 = transferOwnership(s2);                         // $s2 is moved into $transferOwnership procedure, which also gives its return ownership to $s3
+    .echo(s3)                                               // prints: "hi"
+    .echo(s2)                                               // this throws an error, $s2 is not the owner of anything anymore
+}
+
+pro transferOwnership(aString: str): str = {                // $aString comes into scope
+    return aString                                          // $aString is returned and moves out to the calling procedure
+}
+</code></pre>
+<p>This does not work with borrowing though. When a variable is lended to a procedure, it has permissions to change, but not lend to someone else. The only thing it can do is make a <code>.deep_copy()</code> of it:</p>
+<pre><code>pro main(): int = {
+    @var s2 = "hi";                                         // $s2 comes into scope (allocatd in the heap)
+    var s3 = transferOwnership(s2);                         // $s2 is moved into $transferOwnership procedure, which also gives its return ownership to $s3
+    .echo(s3)                                               // prints: "hi"
+    .echo(s2)                                               // prints: "hi" too
+}
+
+pro transferOwnership((aString: str)): str = {              // $aString comes into scope which is borrowed
+    return aString                                          // $aString is borrowed, thus cant be lended to someone else
+                                                            // thus, the return is a deep_copy() of $aString
+}
+</code></pre>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../../500_items/200_routines/_index.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../../500_items/200_routines/200_functions.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../../500_items/200_routines/_index.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../../500_items/200_routines/200_functions.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../../elasticlunr.min.js"></script>
+        <script src="../../mark.min.js"></script>
+        <script src="../../searcher.js"></script>
+
+        <script src="../../clipboard.min.js"></script>
+        <script src="../../highlight.js"></script>
+        <script src="../../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>

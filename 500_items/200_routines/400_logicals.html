@@ -1,0 +1,382 @@
+<!DOCTYPE HTML>
+<html lang="en" class="navy" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Logicals</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../../favicon.svg">
+        <link rel="shortcut icon" href="../../favicon.png">
+        <link rel="stylesheet" href="../../css/variables.css">
+        <link rel="stylesheet" href="../../css/general.css">
+        <link rel="stylesheet" href="../../css/chrome.css">
+        <link rel="stylesheet" href="../../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../../highlight.css">
+        <link rel="stylesheet" href="../../tomorrow-night.css">
+        <link rel="stylesheet" href="../../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "navy";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('navy')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded "><a href="../../follang.html"><strong aria-hidden="true">1.</strong> Intro</a></li><li class="chapter-item expanded "><a href="../../100_lexical/_index.html"><strong aria-hidden="true">2.</strong> Lexical</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../100_lexical/100_keywords.html"><strong aria-hidden="true">2.1.</strong> Keywords</a></li><li class="chapter-item expanded "><a href="../../100_lexical/200_identifiers.html"><strong aria-hidden="true">2.2.</strong> Identifiers</a></li><li class="chapter-item expanded "><a href="../../100_lexical/300_comments.html"><strong aria-hidden="true">2.3.</strong> Comments</a></li><li class="chapter-item expanded "><a href="../../100_lexical/400_whitespaces.html"><strong aria-hidden="true">2.4.</strong> Whitespaces</a></li><li class="chapter-item expanded "><a href="../../100_lexical/500_letters.html"><strong aria-hidden="true">2.5.</strong> Letters</a></li><li class="chapter-item expanded "><a href="../../100_lexical/600_numbers.html"><strong aria-hidden="true">2.6.</strong> Numbers</a></li><li class="chapter-item expanded "><a href="../../100_lexical/700_symbols.html"><strong aria-hidden="true">2.7.</strong> Symbols</a></li></ol></li><li class="chapter-item expanded "><a href="../../200_expressions/_index.html"><strong aria-hidden="true">3.</strong> Code blocks</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../200_expressions/200_sta/_index.html"><strong aria-hidden="true">3.1.</strong> Statements</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../200_expressions/200_sta/100_control.html"><strong aria-hidden="true">3.1.1.</strong> Control</a></li></ol></li><li class="chapter-item expanded "><a href="../../200_expressions/300_exp/_index.html"><strong aria-hidden="true">3.2.</strong> Exporessions</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../200_expressions/300_exp/100_arithmetics.html"><strong aria-hidden="true">3.2.1.</strong> Arithmetic</a></li><li class="chapter-item expanded "><a href="../../200_expressions/300_exp/200_literals.html"><strong aria-hidden="true">3.2.2.</strong> Literals</a></li><li class="chapter-item expanded "><a href="../../200_expressions/300_exp/300_ranges.html"><strong aria-hidden="true">3.2.3.</strong> Ranges</a></li><li class="chapter-item expanded "><a href="../../200_expressions/300_exp/400_access.html"><strong aria-hidden="true">3.2.4.</strong> Access</a></li></ol></li></ol></li><li class="chapter-item expanded "><a href="../../300_meta/_index.html"><strong aria-hidden="true">4.</strong> Meta programming</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../300_meta/100_buildin.html"><strong aria-hidden="true">4.1.</strong> Build-In</a></li><li class="chapter-item expanded "><a href="../../300_meta/200_macros.html"><strong aria-hidden="true">4.2.</strong> Macros</a></li><li class="chapter-item expanded "><a href="../../300_meta/300_alternatives.html"><strong aria-hidden="true">4.3.</strong> Alternatives</a></li><li class="chapter-item expanded "><a href="../../300_meta/400_defaults.html"><strong aria-hidden="true">4.4.</strong> Defaults</a></li><li class="chapter-item expanded "><a href="../../300_meta/500_templates.html"><strong aria-hidden="true">4.5.</strong> Templates</a></li></ol></li><li class="chapter-item expanded "><a href="../../400_type/_index.html"><strong aria-hidden="true">5.</strong> Type system</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../400_type/100_ordinal.html"><strong aria-hidden="true">5.1.</strong> Ordinal</a></li><li class="chapter-item expanded "><a href="../../400_type/200_container.html"><strong aria-hidden="true">5.2.</strong> Container</a></li><li class="chapter-item expanded "><a href="../../400_type/300_complex.html"><strong aria-hidden="true">5.3.</strong> Complex</a></li><li class="chapter-item expanded "><a href="../../400_type/400_special.html"><strong aria-hidden="true">5.4.</strong> Special</a></li></ol></li><li class="chapter-item expanded "><a href="../../500_items/_index.html"><strong aria-hidden="true">6.</strong> Syntax items</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../500_items/100_variables.html"><strong aria-hidden="true">6.1.</strong> Variables</a></li><li class="chapter-item expanded "><a href="../../500_items/200_routines/_index.html"><strong aria-hidden="true">6.2.</strong> Routines</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../500_items/200_routines/100_procedures.html"><strong aria-hidden="true">6.2.1.</strong> Procedures</a></li><li class="chapter-item expanded "><a href="../../500_items/200_routines/200_functions.html"><strong aria-hidden="true">6.2.2.</strong> Functions</a></li><li class="chapter-item expanded "><a href="../../500_items/200_routines/300_methods.html"><strong aria-hidden="true">6.2.3.</strong> Methods</a></li><li class="chapter-item expanded "><a href="../../500_items/200_routines/400_logicals.html" class="active"><strong aria-hidden="true">6.2.4.</strong> Logicals</a></li></ol></li><li class="chapter-item expanded "><a href="../../500_items/300_constructs/_index.html"><strong aria-hidden="true">6.3.</strong> Constructs</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../500_items/300_constructs/100_aliases.html"><strong aria-hidden="true">6.3.1.</strong> Aliases</a></li><li class="chapter-item expanded "><a href="../../500_items/300_constructs/200_structs.html"><strong aria-hidden="true">6.3.2.</strong> Structs</a></li></ol></li><li class="chapter-item expanded "><a href="../../500_items/400_standards.html"><strong aria-hidden="true">6.4.</strong> Standards</a></li><li class="chapter-item expanded "><a href="../../500_items/500_generics.html"><strong aria-hidden="true">6.5.</strong> Generics</a></li></ol></li><li class="chapter-item expanded "><a href="../../600_modules/_index.html"><strong aria-hidden="true">7.</strong> Modules tree</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../600_modules/100_import.html"><strong aria-hidden="true">7.1.</strong> Imports</a></li><li class="chapter-item expanded "><a href="../../600_modules/200_blocks.html"><strong aria-hidden="true">7.2.</strong> Declarations</a></li><li class="chapter-item expanded "><a href="../../600_modules/300_tests.html"><strong aria-hidden="true">7.3.</strong> Tests</a></li></ol></li><li class="chapter-item expanded "><a href="../../650_errors/_index.html"><strong aria-hidden="true">8.</strong> Error handling</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../650_errors/100_braking.html"><strong aria-hidden="true">8.1.</strong> Braking</a></li><li class="chapter-item expanded "><a href="../../650_errors/200_recover.html"><strong aria-hidden="true">8.2.</strong> Recover</a></li></ol></li><li class="chapter-item expanded "><a href="../../700_sugar/_index.html"><strong aria-hidden="true">9.</strong> Language sugar</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../700_sugar/100_silents.html"><strong aria-hidden="true">9.1.</strong> Silents</a></li><li class="chapter-item expanded "><a href="../../700_sugar/200_pipes.html"><strong aria-hidden="true">9.2.</strong> Pipes</a></li><li class="chapter-item expanded "><a href="../../700_sugar/300_mixture.html"><strong aria-hidden="true">9.3.</strong> Mixture</a></li><li class="chapter-item expanded "><a href="../../700_sugar/400_limits.html"><strong aria-hidden="true">9.4.</strong> Limits</a></li><li class="chapter-item expanded "><a href="../../700_sugar/450_matching.html"><strong aria-hidden="true">9.5.</strong> Matching</a></li><li class="chapter-item expanded "><a href="../../700_sugar/500_rolling.html"><strong aria-hidden="true">9.6.</strong> Rolling</a></li><li class="chapter-item expanded "><a href="../../700_sugar/600_unpacking.html"><strong aria-hidden="true">9.7.</strong> Unpacking</a></li><li class="chapter-item expanded "><a href="../../700_sugar/700_inquiry.html"><strong aria-hidden="true">9.8.</strong> Inquiry</a></li><li class="chapter-item expanded "><a href="../../700_sugar/800_chaining.html"><strong aria-hidden="true">9.9.</strong> Chaining</a></li></ol></li><li class="chapter-item expanded "><a href="../../750_conversion/_index.html"><strong aria-hidden="true">10.</strong> Conversion</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../750_conversion/100_coercion.html"><strong aria-hidden="true">10.1.</strong> Coercion</a></li><li class="chapter-item expanded "><a href="../../750_conversion/200_casting.html"><strong aria-hidden="true">10.2.</strong> Casting</a></li></ol></li><li class="chapter-item expanded "><a href="../../800_memory/_index.html"><strong aria-hidden="true">11.</strong> Memory model</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../800_memory/100_ownership.html"><strong aria-hidden="true">11.1.</strong> Ownership</a></li><li class="chapter-item expanded "><a href="../../800_memory/200_pointers.html"><strong aria-hidden="true">11.2.</strong> Pointers</a></li></ol></li><li class="chapter-item expanded "><a href="../../900_processor/_index.html"><strong aria-hidden="true">12.</strong> Multi Threading</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../900_processor/100_eventuals.html"><strong aria-hidden="true">12.1.</strong> Eventuals</a></li><li class="chapter-item expanded "><a href="../../900_processor/200_corutines.html"><strong aria-hidden="true">12.2.</strong> Corutines</a></li></ol></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title"></h1>
+
+                    <div class="right-buttons">
+                        <a href="../../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="logicals"><a class="header" href="#logicals">Logicals</a></h1>
+<p>Logicals, which are logic routines, and represent logic programming, state the routine as a set of logical relations (e.g., a grandparent is the parent of a parent of someone). Such rutines are similar to the database languages. A program is executed by an “inference engine” that answers a query by searching these relations systematically to make inferences that will answer a query.</p>
+<p>{{% notice info %}}</p>
+<p>One of the main goals of the development of symbolic logic hasbeen to capture the notion of logical consequence with formal, mechanical, means. If the conditions for a certain class of problems can be formalized within a suitable logic as a set of premises, and if a problem to be solved can bestated as a sentence in the logic, then a solution might be found by constructing a formal proof of the problem statement from the premises</p>
+<p>{{% /notice %}}</p>
+<h2 id="declaration"><a class="header" href="#declaration">Declaration</a></h2>
+<p>In FOL, logic programming is considered as a first class citzen with axioms (<code>axi</code>) as facts and logicals (<code>log</code>) as rules, thus resembling Prolog language. For example:</p>
+<h3 id="facts"><a class="header" href="#facts">Facts</a></h3>
+<p>Declaring a list of facts (axioms)</p>
+<pre><code>var likes: axi[str, str] = { {"bob","alice"} , {"alice","bob"}, {"dan","sally"} };
+</code></pre>
+<h3 id="rules"><a class="header" href="#rules">Rules</a></h3>
+<p>Declaring a rule that states if A likes B and B likes A, they are dating</p>
+<pre><code>log dating(a, b: str): bol = {
+    likes:[a,b] and
+    likes:[b,a]
+}
+</code></pre>
+<p>Declaring a rule that states if A likes B and B likes A, they are just friends</p>
+<pre><code>log frends(a, b): bol = {
+    likes:[a,b] or
+    likes:[b,a]
+}
+
+</code></pre>
+<p>{{% notice warn %}}</p>
+<p>Rules can have <strong>only</strong> facts and varibles within</p>
+<p>{{% /notice %}}</p>
+<h2 id="return"><a class="header" href="#return">Return</a></h2>
+<p>A logical <code>log</code> can return different values, but they are either of type <code>bol</code>, or of type container (axioms <code>axi</code> or vectors <code>vec</code>):</p>
+<p>Lets define a axiom of parents and childrens called <code>parents</code> and another one of parents that can dance called <code>dances</code>:</p>
+<pre><code>var parent: axi[str, str] = { {"albert","bob"}, 
+                              {"albert","betty"},
+                              {"albert","bill"},
+                              {"alice","bob"},
+                              {"alice","betty"},
+                              {"alice","bill"},
+                              {"bob","carl"},
+                              {"bob","tom"} };
+var dances axi[str] = { "albert", "alice", "carl" };
+</code></pre>
+<h3 id="boolean"><a class="header" href="#boolean">Boolean</a></h3>
+<p>Here we return a boolean <code>bol</code>. This rule check if a parent can dance:</p>
+<pre><code>log can_parent_dance(a: str): bol = {
+    parent:[a,_] and dances:[a]
+}
+
+can_parent_dance("albert")          // return true, "albert" is both a parent and can dance
+can_parent_dance("bob")             // return false, "bob" is a parent but can't dance
+can_parent_dance("carl")            // return false, "carl" is not a parent
+</code></pre>
+<p>Lets examine this:
+<code>parent:[a,_] and dances:[a]</code>
+this is a combintion of two facts. Here we say if <code>a</code> is parent of anyone (we dont care whose, that's why we use meh symbol <code>[a,_]</code>) and if true, then we check if parent <code>a</code> (since he is a parent now, we fact-checked) can dance.</p>
+<h3 id="vector"><a class="header" href="#vector">Vector</a></h3>
+<p>The same, we can create a vector of elements. For example, if we want to get the list of parents that dance:</p>
+<pre><code>log all_parents_that_dance(): vec[str] = {
+    parent:[*-&gt;X,_] and
+    dances:[X-&gt;Y]
+    Y
+}
+
+all_parents_that_dance()            // this will return a string vector {"albert", "alice"}
+</code></pre>
+<p>Now lets analyze the body of the rule:</p>
+<pre><code>parent:[*-&gt;X,_] and
+dances:[X-&gt;Y]
+Y
+</code></pre>
+<p>Here are a combination of facts and variable assignment through <a href="/docs/700_sugar/silents/"><strong>silents</strong></a>. Silents are a single letter identifiers. If a silent constant is not declared, it gets declared and assigned <strong>in-place</strong>.</p>
+<p>Taking a look each line:
+<code>parent:[X,_] and</code>
+this gets all parents (<code>[*-&gt;X,_]</code>),and assign them to <strong>silent</strong> <code>X</code>. So, <code>X</code> is a list of all parents.
+then:
+<code>dances[X-&gt;Y]:</code>
+this takes the list of parents <code>X</code> and checks each if they can dance, and filter it by assigning it to <code>Y</code> so <code>[X-&gt;Y]</code> it will have only the parents that can dance.
+then:
+<code>Y</code>
+this just returns the list <code>Y</code> of parents that can dance.</p>
+<h2 id="relationship"><a class="header" href="#relationship">Relationship</a></h2>
+<p>If <code>A</code> is <code>object</code> and <code>objects</code> can be destroyed, then <code>A</code> can be destroyed. As a result axioms can be related or conditioned to other axioms too, much like facts.</p>
+<p>For example: if <code>carl</code> is the son of <code>bob</code> and <code>bob</code> is the son of <code>albert</code> then <code>carl</code> must be the grandson of <code>albert</code>:</p>
+<pre><code>log grandparent(a: str): vec[str] = {
+    parent[*-&gt;X,a]: and 
+    parent[*-&gt;Y,X]:
+    Y
+}
+</code></pre>
+<p>Or: if <code>bob</code> is the son of <code>albert</code> and <code>betty</code> is the doughter of <code>albert</code>, then <code>bob</code> and <code>betty</code> must be syblings:</p>
+<pre><code>log are_syblings(a, b: str): vec[str] = {
+    parent[*-&gt;X,a]: and
+    parent[X-&gt;Y,b]:
+    Y
+}
+</code></pre>
+<p>Same with uncle relationship:</p>
+<pre><code>var brothers: axi[str] = { {"bob":"bill"}, {"bill","bob"} };
+
+log has_uncle(a: str): vec[str] = {
+    parent[*-&gt;Y,a]: and
+    brothers[Y,*-&gt;Z]:;
+    Z
+}
+</code></pre>
+<h2 id="conditional-facts"><a class="header" href="#conditional-facts">Conditional facts</a></h2>
+<p>Here an example, the axioms <code>hates</code> will add a memeber <code>romeo</code> only if the relation <code>x</code> is satisfied:</p>
+<pre><code>var stabs: axi = {{"tybalt","mercutio","sword"}}
+var hates: axi;
+
+log romeHates(X: str): bol = {
+    stabs[X,"mercutio",_]:
+}
+
+hates+["romeo",X] if (romeHates(X));
+</code></pre>
+<h3 id="anonymous-logicals"><a class="header" href="#anonymous-logicals">Anonymous logicals</a></h3>
+<p>Conditional facts can be added with the help of anonymous logicals/rules:</p>
+<pre><code>eats+[x,"cheesburger"] if (eats[x,"bread"] and eats[X,"cheese"]);
+
+eats+[x:"cheesburger"] if (log (a: str): bol = {
+    eats[a,"bread"]: and
+    eats[a,"cheese"]:
+}(x));
+
+</code></pre>
+<h2 id="nested-facts"><a class="header" href="#nested-facts">Nested facts</a></h2>
+<pre><code>var line: axi = { {{4,5},{4,8}}, {{8,5},{4,5}} }
+
+log vertical(line: axi): bol = {
+    line[*-&gt;A,*-&gt;B]: and 
+    A[*-&gt;X,Y*-&gt;]: and
+    B[X,*-&gt;Y2]:
+}
+
+log horizontal(line: axi): bol = {
+    line[*-&gt;A,*-&gt;B]: and 
+    A[*-&gt;X,*-&gt;Y]: and
+    B[*-&gt;X2,Y]:
+}
+
+assert(vertical(line.at(0))
+assert(horizontal(line.at(1))
+</code></pre>
+<h2 id="filtering"><a class="header" href="#filtering">Filtering</a></h2>
+<p>Another example of filtering a more complex axion:</p>
+<pre><code>var class: axi;
+
+class.add({"cs340","spring",{"tue","thur"},{12,13},"john","coor_5"})
+class.add({"cs340",winter,{"wed","fri"},{15,16},"bruce","coor_3"})
+
+log instructor(class: str): vec[str] = {
+    class[class,_,[_,"fri"],_,*-&gt;X,_]
+    X
+}
+</code></pre>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../../500_items/200_routines/300_methods.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../../500_items/300_constructs/_index.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../../500_items/200_routines/300_methods.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../../500_items/300_constructs/_index.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../../elasticlunr.min.js"></script>
+        <script src="../../mark.min.js"></script>
+        <script src="../../searcher.js"></script>
+
+        <script src="../../clipboard.min.js"></script>
+        <script src="../../highlight.js"></script>
+        <script src="../../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>

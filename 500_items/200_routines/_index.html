@@ -1,0 +1,388 @@
+<!DOCTYPE HTML>
+<html lang="en" class="navy" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Routines</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../../favicon.svg">
+        <link rel="shortcut icon" href="../../favicon.png">
+        <link rel="stylesheet" href="../../css/variables.css">
+        <link rel="stylesheet" href="../../css/general.css">
+        <link rel="stylesheet" href="../../css/chrome.css">
+        <link rel="stylesheet" href="../../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../../highlight.css">
+        <link rel="stylesheet" href="../../tomorrow-night.css">
+        <link rel="stylesheet" href="../../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "navy";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('navy')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded "><a href="../../follang.html"><strong aria-hidden="true">1.</strong> Intro</a></li><li class="chapter-item expanded "><a href="../../100_lexical/_index.html"><strong aria-hidden="true">2.</strong> Lexical</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../100_lexical/100_keywords.html"><strong aria-hidden="true">2.1.</strong> Keywords</a></li><li class="chapter-item expanded "><a href="../../100_lexical/200_identifiers.html"><strong aria-hidden="true">2.2.</strong> Identifiers</a></li><li class="chapter-item expanded "><a href="../../100_lexical/300_comments.html"><strong aria-hidden="true">2.3.</strong> Comments</a></li><li class="chapter-item expanded "><a href="../../100_lexical/400_whitespaces.html"><strong aria-hidden="true">2.4.</strong> Whitespaces</a></li><li class="chapter-item expanded "><a href="../../100_lexical/500_letters.html"><strong aria-hidden="true">2.5.</strong> Letters</a></li><li class="chapter-item expanded "><a href="../../100_lexical/600_numbers.html"><strong aria-hidden="true">2.6.</strong> Numbers</a></li><li class="chapter-item expanded "><a href="../../100_lexical/700_symbols.html"><strong aria-hidden="true">2.7.</strong> Symbols</a></li></ol></li><li class="chapter-item expanded "><a href="../../200_expressions/_index.html"><strong aria-hidden="true">3.</strong> Code blocks</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../200_expressions/200_sta/_index.html"><strong aria-hidden="true">3.1.</strong> Statements</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../200_expressions/200_sta/100_control.html"><strong aria-hidden="true">3.1.1.</strong> Control</a></li></ol></li><li class="chapter-item expanded "><a href="../../200_expressions/300_exp/_index.html"><strong aria-hidden="true">3.2.</strong> Exporessions</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../200_expressions/300_exp/100_arithmetics.html"><strong aria-hidden="true">3.2.1.</strong> Arithmetic</a></li><li class="chapter-item expanded "><a href="../../200_expressions/300_exp/200_literals.html"><strong aria-hidden="true">3.2.2.</strong> Literals</a></li><li class="chapter-item expanded "><a href="../../200_expressions/300_exp/300_ranges.html"><strong aria-hidden="true">3.2.3.</strong> Ranges</a></li><li class="chapter-item expanded "><a href="../../200_expressions/300_exp/400_access.html"><strong aria-hidden="true">3.2.4.</strong> Access</a></li></ol></li></ol></li><li class="chapter-item expanded "><a href="../../300_meta/_index.html"><strong aria-hidden="true">4.</strong> Meta programming</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../300_meta/100_buildin.html"><strong aria-hidden="true">4.1.</strong> Build-In</a></li><li class="chapter-item expanded "><a href="../../300_meta/200_macros.html"><strong aria-hidden="true">4.2.</strong> Macros</a></li><li class="chapter-item expanded "><a href="../../300_meta/300_alternatives.html"><strong aria-hidden="true">4.3.</strong> Alternatives</a></li><li class="chapter-item expanded "><a href="../../300_meta/400_defaults.html"><strong aria-hidden="true">4.4.</strong> Defaults</a></li><li class="chapter-item expanded "><a href="../../300_meta/500_templates.html"><strong aria-hidden="true">4.5.</strong> Templates</a></li></ol></li><li class="chapter-item expanded "><a href="../../400_type/_index.html"><strong aria-hidden="true">5.</strong> Type system</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../400_type/100_ordinal.html"><strong aria-hidden="true">5.1.</strong> Ordinal</a></li><li class="chapter-item expanded "><a href="../../400_type/200_container.html"><strong aria-hidden="true">5.2.</strong> Container</a></li><li class="chapter-item expanded "><a href="../../400_type/300_complex.html"><strong aria-hidden="true">5.3.</strong> Complex</a></li><li class="chapter-item expanded "><a href="../../400_type/400_special.html"><strong aria-hidden="true">5.4.</strong> Special</a></li></ol></li><li class="chapter-item expanded "><a href="../../500_items/_index.html"><strong aria-hidden="true">6.</strong> Syntax items</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../500_items/100_variables.html"><strong aria-hidden="true">6.1.</strong> Variables</a></li><li class="chapter-item expanded "><a href="../../500_items/200_routines/_index.html" class="active"><strong aria-hidden="true">6.2.</strong> Routines</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../500_items/200_routines/100_procedures.html"><strong aria-hidden="true">6.2.1.</strong> Procedures</a></li><li class="chapter-item expanded "><a href="../../500_items/200_routines/200_functions.html"><strong aria-hidden="true">6.2.2.</strong> Functions</a></li><li class="chapter-item expanded "><a href="../../500_items/200_routines/300_methods.html"><strong aria-hidden="true">6.2.3.</strong> Methods</a></li><li class="chapter-item expanded "><a href="../../500_items/200_routines/400_logicals.html"><strong aria-hidden="true">6.2.4.</strong> Logicals</a></li></ol></li><li class="chapter-item expanded "><a href="../../500_items/300_constructs/_index.html"><strong aria-hidden="true">6.3.</strong> Constructs</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../500_items/300_constructs/100_aliases.html"><strong aria-hidden="true">6.3.1.</strong> Aliases</a></li><li class="chapter-item expanded "><a href="../../500_items/300_constructs/200_structs.html"><strong aria-hidden="true">6.3.2.</strong> Structs</a></li></ol></li><li class="chapter-item expanded "><a href="../../500_items/400_standards.html"><strong aria-hidden="true">6.4.</strong> Standards</a></li><li class="chapter-item expanded "><a href="../../500_items/500_generics.html"><strong aria-hidden="true">6.5.</strong> Generics</a></li></ol></li><li class="chapter-item expanded "><a href="../../600_modules/_index.html"><strong aria-hidden="true">7.</strong> Modules tree</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../600_modules/100_import.html"><strong aria-hidden="true">7.1.</strong> Imports</a></li><li class="chapter-item expanded "><a href="../../600_modules/200_blocks.html"><strong aria-hidden="true">7.2.</strong> Declarations</a></li><li class="chapter-item expanded "><a href="../../600_modules/300_tests.html"><strong aria-hidden="true">7.3.</strong> Tests</a></li></ol></li><li class="chapter-item expanded "><a href="../../650_errors/_index.html"><strong aria-hidden="true">8.</strong> Error handling</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../650_errors/100_braking.html"><strong aria-hidden="true">8.1.</strong> Braking</a></li><li class="chapter-item expanded "><a href="../../650_errors/200_recover.html"><strong aria-hidden="true">8.2.</strong> Recover</a></li></ol></li><li class="chapter-item expanded "><a href="../../700_sugar/_index.html"><strong aria-hidden="true">9.</strong> Language sugar</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../700_sugar/100_silents.html"><strong aria-hidden="true">9.1.</strong> Silents</a></li><li class="chapter-item expanded "><a href="../../700_sugar/200_pipes.html"><strong aria-hidden="true">9.2.</strong> Pipes</a></li><li class="chapter-item expanded "><a href="../../700_sugar/300_mixture.html"><strong aria-hidden="true">9.3.</strong> Mixture</a></li><li class="chapter-item expanded "><a href="../../700_sugar/400_limits.html"><strong aria-hidden="true">9.4.</strong> Limits</a></li><li class="chapter-item expanded "><a href="../../700_sugar/450_matching.html"><strong aria-hidden="true">9.5.</strong> Matching</a></li><li class="chapter-item expanded "><a href="../../700_sugar/500_rolling.html"><strong aria-hidden="true">9.6.</strong> Rolling</a></li><li class="chapter-item expanded "><a href="../../700_sugar/600_unpacking.html"><strong aria-hidden="true">9.7.</strong> Unpacking</a></li><li class="chapter-item expanded "><a href="../../700_sugar/700_inquiry.html"><strong aria-hidden="true">9.8.</strong> Inquiry</a></li><li class="chapter-item expanded "><a href="../../700_sugar/800_chaining.html"><strong aria-hidden="true">9.9.</strong> Chaining</a></li></ol></li><li class="chapter-item expanded "><a href="../../750_conversion/_index.html"><strong aria-hidden="true">10.</strong> Conversion</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../750_conversion/100_coercion.html"><strong aria-hidden="true">10.1.</strong> Coercion</a></li><li class="chapter-item expanded "><a href="../../750_conversion/200_casting.html"><strong aria-hidden="true">10.2.</strong> Casting</a></li></ol></li><li class="chapter-item expanded "><a href="../../800_memory/_index.html"><strong aria-hidden="true">11.</strong> Memory model</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../800_memory/100_ownership.html"><strong aria-hidden="true">11.1.</strong> Ownership</a></li><li class="chapter-item expanded "><a href="../../800_memory/200_pointers.html"><strong aria-hidden="true">11.2.</strong> Pointers</a></li></ol></li><li class="chapter-item expanded "><a href="../../900_processor/_index.html"><strong aria-hidden="true">12.</strong> Multi Threading</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../900_processor/100_eventuals.html"><strong aria-hidden="true">12.1.</strong> Eventuals</a></li><li class="chapter-item expanded "><a href="../../900_processor/200_corutines.html"><strong aria-hidden="true">12.2.</strong> Corutines</a></li></ol></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title"></h1>
+
+                    <div class="right-buttons">
+                        <a href="../../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="routines"><a class="header" href="#routines">Routines</a></h1>
+<p>A rutine definition describes the interface to and the actions of the routine abstraction. A routine call is the explicit request that a specific routine be executed. A routine is said to be active if, after having been called, it has begun execution but has not yet completed that execution. A routine declaration consists of an identifier, zero or more argument parameters, a return value type and a block of code.</p>
+<pre><code>// version 1
+fun[] add(el1, el2: int[64]): int[64] = { result = el1 + el2 }
+
+// version 2
+fun[] add: int[64] = (el1, el2: int[64]){ result = el1 + el2 }
+</code></pre>
+<p>You’ve already seen one of the most important routines in the language: the main routine, which is the entry point of many programs. You’ve also seen the <code>fun</code> or <code>pro</code> keyword, which allows you to declare new routine.</p>
+<h2 id="types"><a class="header" href="#types">Types</a></h2>
+<p>There are two main types of routines in fol:</p>
+<ul>
+<li>
+<p>Procedurues</p>
+<p>A procedure is a piece of code that is called by name. It can be passed data to operate on (i.e. the parameters) and can optionally return data (the return value). All data that is passed to a procedure is explicitly passed.</p>
+</li>
+<li>
+<p>Functions</p>
+<p>A function is called pure function if it always returns the same result for same argument values and it has no side effects like modifying an argument (or global variable) or outputting to I/O. The only result of calling a pure function is the return value.</p>
+</li>
+</ul>
+<h2 id="parameters"><a class="header" href="#parameters">Parameters</a></h2>
+<h3 id="formal-parameters"><a class="header" href="#formal-parameters">Formal parameters</a></h3>
+<p>Routines typically describe computations. There are two ways that a routine can gain access to the data that it is to process: through direct access to nonlocal variables (declared elsewhere but visible in the routine) or through parameter passing. Data passed through parameters are accessed using names that are local to the routine. Routine create their own unnamed namespace. Every routine has its own Workspace. This means that every variable inside the routine is only usable during the execution of the routine (and then the variables go away).</p>
+<p>Parameter passing is more flexible than direct access to nonlocal variables. Prrameters are special variables that are part of a routine’s signature. When a routine has parameters, you can provide it with concrete values for those parameters. The parameters in the routine header are called formal parameters. They are sometimes thought of as dummy variables because they are not variables in the usual sense: In most cases, they are bound to storage only when the routine is called, and that binding is often through some other program variables.</p>
+<p>Parameters are declared as a list of identifiers separated by semicolon (or by a colon, but for code cleanness, the semicolon is preferred). A parameter is given a type by : typename. If after the parameter the <code>:</code> is not declared, but <code>,</code> colon to identfy another paremeter, of which both parameters are of the same type if after the second one the <code>:</code> and the type is placed. Then the same type parameters continue to grow with <code>,</code> until <code>:</code> is reached.</p>
+<pre><code>fun[] calc(el1, el2, el3: int[64]; changed: bol = true): int[64] = { result = el1 + el2 - el3 }
+</code></pre>
+<p>In routine signatures, you must declare the type of each parameter. Requiring type annotations in routine definitions is obligatory, which means the compiler almost never needs you to use them elsewhere in the code to figure out what you mean. Routine can parameter overloaded too. It makes possible to create multiple routine of the same name with different implementations. Calls to an overloaded routine will run a specific implementation of that routine appropriate to the context of the call, allowing one routine call to perform different tasks depending on context:</p>
+<pre><code>fun retBigger(el2, el2: int): int = { return el1 | this &gt; el2 | el2 }
+fun retBigger(el2, el2: flt): flt = { return el1 | this &gt; el2 | el2 }
+
+pro main: int = {
+    retBigger(4, 5);                                        // calling a routine with intigers
+    retBigger(4.5, .3);                                     // calling another routine with same name but floats
+}
+</code></pre>
+<p>The overloading resolution algorithm determines which routine is the best match for the arguments. Example:</p>
+<pre><code>pro toLower(c: char): char = {                              // toLower for characters
+    if (c in {'A' ... 'Z'}){
+        result = chr(ord(c) + (ord('a') - ord('A')))
+    } else {
+        result = c
+    }
+}
+
+pro toLower(s: str): str = {                                // toLower for strings
+    result = newString(.len(s))
+    for i in {0 ... len(s) - 1}:
+        result[i] = toLower(s[i])                           // calls toLower for characters; no recursion!
+}
+</code></pre>
+<h3 id="actual-parameters"><a class="header" href="#actual-parameters">Actual parameters</a></h3>
+<p>routine call statements must include the name of the routine and a list of parameters to be bound to the formal parameters of the routine. These parameters are called actual parameters. They must be distinguished from formal parameters, because the two usually have different restrictions on their forms.</p>
+<h4 id="positional-parameters"><a class="header" href="#positional-parameters">Positional parameters</a></h4>
+<p>The correspondence between actual and formal parameters, or the binding of actual parameters to formal parameters - is done by position: The first actual parameter is bound to the first formal parameter and so forth. Such parameters are called positional parameters. This is an effective and safe method of relating actual parameters to their corresponding formal parameters, as long as the parameter lists are relatively short.</p>
+<pre><code>fun[] calc(el1, el2, el3: int): int = { result = el1 + el2 - el3 }
+
+pro main: int = {
+    calc(3,4,5);                                            // calling routine with positional arguments
+}
+</code></pre>
+<h4 id="keyword-parameters"><a class="header" href="#keyword-parameters">Keyword parameters</a></h4>
+<p>When parameter lists are long, however, it is easy to make mistakes in the order of actual parameters in the list. One solution to this problem is with keyword parameters, in which the name of the formal parameter to which an actual parameter is to be bound is specified with the actual parameter in a call. The advantage of keyword parameters is that they can appear in any order in the actual parameter list.</p>
+<pre><code>fun[] calc(el1, el2, el3: int): int = { result = el1 + el2 - el3 }
+
+pro main: int = {
+    calc(el3 = 5, el2 = 4, el1 = 3);                        // calling routine with keywords arguments
+}
+</code></pre>
+<h4 id="mixed-parameters"><a class="header" href="#mixed-parameters">Mixed parameters</a></h4>
+<p>Keyword and positional arguments can be used at the same time too. The only restriction with this approach is that after a keyword parameter appears in the list, all remaining parameters must be keyworded. This restriction is necessary because a position may no longer be well defined after a keyword parameter has appeared.</p>
+<pre><code>fun[] calc(el1, el2, el3: int, el4, el5: flt): int = { result[0] = ((el1 + el2) * el4 ) - (el3 ** el5);  }
+
+pro main: int = {
+    calc(3, 4, el5 = 2, el4 = 5, el3 = 6);                  // element $el3 needs to be keyeorded at the end because 
+                                                            // its positional place is taken by keyword argument $el5
+}
+</code></pre>
+<h3 id="default-arguments"><a class="header" href="#default-arguments">Default arguments</a></h3>
+<p>Formal parameters can have default values too. A default value is used if no actual parameter is passed to the formal parameter. The default parameter is assigned directly after the formal parameter declaration. The compiler converts the list of arguments to an array implicitly. The number of parameters needs to be known at compile time.</p>
+<pre><code>fun[] calc(el1, el2, el3: rise: bool = true): int = { result[0] = el1 + el2 * el3 | this | el1 + el2;  }
+
+pro main: int = {
+    calc(3,3,2);                                            // this returns 6, last positional parameter is not passed but 
+                                                            // the default `true` is used from the routine declaration
+    calc(3,3,2,false)                                       // this returns 12
+}
+</code></pre>
+<h3 id="variadic-routine"><a class="header" href="#variadic-routine">Variadic routine</a></h3>
+<p>The use of <code>...</code> as the type of argument at the end of the argument list declares the routine as variadic. This must appear as the last argument of the routine. When variadic routine is used, the default arguments can not be used at the same time.</p>
+<pre><code>fun[] calc(rise: bool; ints: ... int): int = { result[0] = ints[0] + ints[1] + ints[2] * ints[3] | this | ints[0] + ints[1];  }
+
+pro main: int = {
+    calc(true,3,3,3,2);                                     // this returns 81, four parmeters are passed as variadic arguments
+    calc(true,3,3,2)                                        // this returns 0, as the routine multiplies with the forth varadic parameter
+                                                            // and we have given only three (thus the forth is initialized as zero)
+}
+</code></pre>
+<p><code>...</code> is called unpack operator - just like in Golang. In the routine above, you see <code>...</code>, which means pack all incoming arguments into <code>seq[int]</code> after the first argument. The sequence then is turned into a list at compile time.</p>
+<p>{{% notice warn %}}</p>
+<p>Nested procedures don't have access to the outer scope, while nested function have but can't change the state of it.</p>
+<p>{{% /notice %}}</p>
+<h2 id="return"><a class="header" href="#return">Return</a></h2>
+<p>The return type of the routine has to always be defined, just after the formal parameter definition. Following the general rule of <strong>FOL</strong>:</p>
+<pre><code>fun[] add(el1, el2: int[64]): int[64] = { result = el1 + el2 }
+</code></pre>
+<p>To make it shorter (so we don't have to type <code>int[64]</code> two times), we can use a <em>short form</em> by omitting the return type. The compiler then will assign the returntype the same as the functions return value.</p>
+<pre><code>fun[] add(el1, el2: int[64]) = { result = el1 + el2 }
+</code></pre>
+<p>{{% notice info %}}</p>
+<p>Each function in FOL has two defined variables that are automatically returned at the end of the function.</p>
+<p>{{% /notice %}}</p>
+<p>Those variables are:</p>
+<ul>
+<li>a variable called <code>result</code>, which is the one that is returned and is same type as return type</li>
+<li>an error variable (called <code>error</code>), that can be reported from the funciton</li>
+</ul>
+<p>{{% notice info %}}</p>
+<p>Internally, those are a set of two variables, <em>set[result: any, eror: err]</em>. The result is of type any, and the any type shoud be known at compile time.</p>
+<p>{{% /notice %}}</p>
+<p>The implicitly declared variable <code>result</code> is of the same type of the return type. For it top be implicitly declared, the return type of the function shoud be always declared, and not use the short form. The variable is initialized with zero value, and if not changed during the body implementation, the same value will return (so zero).</p>
+<pre><code>pro main(): int = {
+    fun[] add(el1, el2: int[64]): int[64] = { result = el1 + el2 }          // using the implicitly declared $result variable
+    fun[] sub(el1, el2: int[64]) = { return el1 - el2 }                     // can't access the result variable, thus we use return
+}
+</code></pre>
+<p>In addition, another implicitly decpared variable <code>error</code> of ype <code>err</code> is declared too. We talk for errors in <a href="/docs/spec/060_errors">details here</a>, but here is a short example:</p>
+<pre><code>pro main(): int = {
+    fun[] add(el1, el2: int[64]): int[64] = { result = el1 + el2 }          // using the implicitly declared $result variable
+    check(add(5,6))                                                         // this will check if the error is nil
+}
+</code></pre>
+<p>The final expression in the function will be used as return value. For this to be used, the return type of the function needs to be defined (so the function cnat be in the short form)). ver this can be used only in one statement body.</p>
+<pre><code>pro main(): int = {
+    fun[] add(el1, el2: int[64]): int[64] = { el1 + el2 }                   // This is tha last statement, this will serve as return
+    fun[] someting(el1,el2: int): int = {
+        if (condition) {
+
+        } else {
+
+        }
+        el1 + el2                                                           // this will throw an error, cand be used in kulti statement body
+    }
+    fun[] add(el1, el2: int[64]) = { el1 + el2 }                            // this will throw an error, we can't use the short form of funciton in this way
+</code></pre>
+<p>Alternatively, the <code>return</code> and <code>report</code> statements can be used to return a value or error earlier from within the function, even from inside loops or other control flow mechanisms.
+<strong>The example below is just to show the <code>return</code> and <code>report</code> statements, there is a better way to handle errors as shown in <a href="/docs/spec/error">error section</a></strong></p>
+<pre><code>use file: mod[std] = { std::fs::File }
+
+pro main(): int = {
+    fun[] fileReader(path: str): str = {
+        var aFile = file.readfile(path)
+        if ( check(aFile) ) {
+            report "File could not be opened" + file                        // report will not break the program, but will return the error here, and the funciton will stop
+        } else {
+            return file | stringify(this) | return $                        // this will be executed only if file was oopened without error
+        }
+    }
+}
+</code></pre>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../../500_items/100_variables.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../../500_items/200_routines/100_procedures.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../../500_items/100_variables.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../../500_items/200_routines/100_procedures.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../../elasticlunr.min.js"></script>
+        <script src="../../mark.min.js"></script>
+        <script src="../../searcher.js"></script>
+
+        <script src="../../clipboard.min.js"></script>
+        <script src="../../highlight.js"></script>
+        <script src="../../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>

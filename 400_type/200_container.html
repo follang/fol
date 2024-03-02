@@ -1,0 +1,379 @@
+<!DOCTYPE HTML>
+<html lang="en" class="navy" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Container</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "navy";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('navy')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded "><a href="../follang.html"><strong aria-hidden="true">1.</strong> Intro</a></li><li class="chapter-item expanded "><a href="../100_lexical/_index.html"><strong aria-hidden="true">2.</strong> Lexical</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../100_lexical/100_keywords.html"><strong aria-hidden="true">2.1.</strong> Keywords</a></li><li class="chapter-item expanded "><a href="../100_lexical/200_identifiers.html"><strong aria-hidden="true">2.2.</strong> Identifiers</a></li><li class="chapter-item expanded "><a href="../100_lexical/300_comments.html"><strong aria-hidden="true">2.3.</strong> Comments</a></li><li class="chapter-item expanded "><a href="../100_lexical/400_whitespaces.html"><strong aria-hidden="true">2.4.</strong> Whitespaces</a></li><li class="chapter-item expanded "><a href="../100_lexical/500_letters.html"><strong aria-hidden="true">2.5.</strong> Letters</a></li><li class="chapter-item expanded "><a href="../100_lexical/600_numbers.html"><strong aria-hidden="true">2.6.</strong> Numbers</a></li><li class="chapter-item expanded "><a href="../100_lexical/700_symbols.html"><strong aria-hidden="true">2.7.</strong> Symbols</a></li></ol></li><li class="chapter-item expanded "><a href="../200_expressions/_index.html"><strong aria-hidden="true">3.</strong> Code blocks</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../200_expressions/200_sta/_index.html"><strong aria-hidden="true">3.1.</strong> Statements</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../200_expressions/200_sta/100_control.html"><strong aria-hidden="true">3.1.1.</strong> Control</a></li></ol></li><li class="chapter-item expanded "><a href="../200_expressions/300_exp/_index.html"><strong aria-hidden="true">3.2.</strong> Exporessions</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../200_expressions/300_exp/100_arithmetics.html"><strong aria-hidden="true">3.2.1.</strong> Arithmetic</a></li><li class="chapter-item expanded "><a href="../200_expressions/300_exp/200_literals.html"><strong aria-hidden="true">3.2.2.</strong> Literals</a></li><li class="chapter-item expanded "><a href="../200_expressions/300_exp/300_ranges.html"><strong aria-hidden="true">3.2.3.</strong> Ranges</a></li><li class="chapter-item expanded "><a href="../200_expressions/300_exp/400_access.html"><strong aria-hidden="true">3.2.4.</strong> Access</a></li></ol></li></ol></li><li class="chapter-item expanded "><a href="../300_meta/_index.html"><strong aria-hidden="true">4.</strong> Meta programming</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../300_meta/100_buildin.html"><strong aria-hidden="true">4.1.</strong> Build-In</a></li><li class="chapter-item expanded "><a href="../300_meta/200_macros.html"><strong aria-hidden="true">4.2.</strong> Macros</a></li><li class="chapter-item expanded "><a href="../300_meta/300_alternatives.html"><strong aria-hidden="true">4.3.</strong> Alternatives</a></li><li class="chapter-item expanded "><a href="../300_meta/400_defaults.html"><strong aria-hidden="true">4.4.</strong> Defaults</a></li><li class="chapter-item expanded "><a href="../300_meta/500_templates.html"><strong aria-hidden="true">4.5.</strong> Templates</a></li></ol></li><li class="chapter-item expanded "><a href="../400_type/_index.html"><strong aria-hidden="true">5.</strong> Type system</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../400_type/100_ordinal.html"><strong aria-hidden="true">5.1.</strong> Ordinal</a></li><li class="chapter-item expanded "><a href="../400_type/200_container.html" class="active"><strong aria-hidden="true">5.2.</strong> Container</a></li><li class="chapter-item expanded "><a href="../400_type/300_complex.html"><strong aria-hidden="true">5.3.</strong> Complex</a></li><li class="chapter-item expanded "><a href="../400_type/400_special.html"><strong aria-hidden="true">5.4.</strong> Special</a></li></ol></li><li class="chapter-item expanded "><a href="../500_items/_index.html"><strong aria-hidden="true">6.</strong> Syntax items</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../500_items/100_variables.html"><strong aria-hidden="true">6.1.</strong> Variables</a></li><li class="chapter-item expanded "><a href="../500_items/200_routines/_index.html"><strong aria-hidden="true">6.2.</strong> Routines</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../500_items/200_routines/100_procedures.html"><strong aria-hidden="true">6.2.1.</strong> Procedures</a></li><li class="chapter-item expanded "><a href="../500_items/200_routines/200_functions.html"><strong aria-hidden="true">6.2.2.</strong> Functions</a></li><li class="chapter-item expanded "><a href="../500_items/200_routines/300_methods.html"><strong aria-hidden="true">6.2.3.</strong> Methods</a></li><li class="chapter-item expanded "><a href="../500_items/200_routines/400_logicals.html"><strong aria-hidden="true">6.2.4.</strong> Logicals</a></li></ol></li><li class="chapter-item expanded "><a href="../500_items/300_constructs/_index.html"><strong aria-hidden="true">6.3.</strong> Constructs</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../500_items/300_constructs/100_aliases.html"><strong aria-hidden="true">6.3.1.</strong> Aliases</a></li><li class="chapter-item expanded "><a href="../500_items/300_constructs/200_structs.html"><strong aria-hidden="true">6.3.2.</strong> Structs</a></li></ol></li><li class="chapter-item expanded "><a href="../500_items/400_standards.html"><strong aria-hidden="true">6.4.</strong> Standards</a></li><li class="chapter-item expanded "><a href="../500_items/500_generics.html"><strong aria-hidden="true">6.5.</strong> Generics</a></li></ol></li><li class="chapter-item expanded "><a href="../600_modules/_index.html"><strong aria-hidden="true">7.</strong> Modules tree</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../600_modules/100_import.html"><strong aria-hidden="true">7.1.</strong> Imports</a></li><li class="chapter-item expanded "><a href="../600_modules/200_blocks.html"><strong aria-hidden="true">7.2.</strong> Declarations</a></li><li class="chapter-item expanded "><a href="../600_modules/300_tests.html"><strong aria-hidden="true">7.3.</strong> Tests</a></li></ol></li><li class="chapter-item expanded "><a href="../650_errors/_index.html"><strong aria-hidden="true">8.</strong> Error handling</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../650_errors/100_braking.html"><strong aria-hidden="true">8.1.</strong> Braking</a></li><li class="chapter-item expanded "><a href="../650_errors/200_recover.html"><strong aria-hidden="true">8.2.</strong> Recover</a></li></ol></li><li class="chapter-item expanded "><a href="../700_sugar/_index.html"><strong aria-hidden="true">9.</strong> Language sugar</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../700_sugar/100_silents.html"><strong aria-hidden="true">9.1.</strong> Silents</a></li><li class="chapter-item expanded "><a href="../700_sugar/200_pipes.html"><strong aria-hidden="true">9.2.</strong> Pipes</a></li><li class="chapter-item expanded "><a href="../700_sugar/300_mixture.html"><strong aria-hidden="true">9.3.</strong> Mixture</a></li><li class="chapter-item expanded "><a href="../700_sugar/400_limits.html"><strong aria-hidden="true">9.4.</strong> Limits</a></li><li class="chapter-item expanded "><a href="../700_sugar/450_matching.html"><strong aria-hidden="true">9.5.</strong> Matching</a></li><li class="chapter-item expanded "><a href="../700_sugar/500_rolling.html"><strong aria-hidden="true">9.6.</strong> Rolling</a></li><li class="chapter-item expanded "><a href="../700_sugar/600_unpacking.html"><strong aria-hidden="true">9.7.</strong> Unpacking</a></li><li class="chapter-item expanded "><a href="../700_sugar/700_inquiry.html"><strong aria-hidden="true">9.8.</strong> Inquiry</a></li><li class="chapter-item expanded "><a href="../700_sugar/800_chaining.html"><strong aria-hidden="true">9.9.</strong> Chaining</a></li></ol></li><li class="chapter-item expanded "><a href="../750_conversion/_index.html"><strong aria-hidden="true">10.</strong> Conversion</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../750_conversion/100_coercion.html"><strong aria-hidden="true">10.1.</strong> Coercion</a></li><li class="chapter-item expanded "><a href="../750_conversion/200_casting.html"><strong aria-hidden="true">10.2.</strong> Casting</a></li></ol></li><li class="chapter-item expanded "><a href="../800_memory/_index.html"><strong aria-hidden="true">11.</strong> Memory model</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../800_memory/100_ownership.html"><strong aria-hidden="true">11.1.</strong> Ownership</a></li><li class="chapter-item expanded "><a href="../800_memory/200_pointers.html"><strong aria-hidden="true">11.2.</strong> Pointers</a></li></ol></li><li class="chapter-item expanded "><a href="../900_processor/_index.html"><strong aria-hidden="true">12.</strong> Multi Threading</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../900_processor/100_eventuals.html"><strong aria-hidden="true">12.1.</strong> Eventuals</a></li><li class="chapter-item expanded "><a href="../900_processor/200_corutines.html"><strong aria-hidden="true">12.2.</strong> Corutines</a></li></ol></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title"></h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="container"><a class="header" href="#container">Container</a></h1>
+<p>Containers are of compound types. They contain other primitive or constructed types. To access the types in container those brackets are used: <code>[]</code>, so:</p>
+<pre><code>var container: type = { element, element, element }             // declaring a container
+var varable: type = container[2]                                // accessing the last element
+</code></pre>
+<p>{{% notice note %}}</p>
+<p>Containers are always zero indexed</p>
+<p>{{% /notice %}}</p>
+<h3 id="static-arrays"><a class="header" href="#static-arrays">Static Arrays</a></h3>
+<h4 id="arrays"><a class="header" href="#arrays">Arrays</a></h4>
+<pre><code>arr[type,size]
+</code></pre>
+<p>Arrays are the most simple type of container. They contain homogeneous type, meaning that each element in the array has the same type. Arrays always have a fixed length specified as a constant expression <code>arr[type, size]</code>. They can be indexed by any ordinal type to acces its members.</p>
+<pre><code>pro[] main: int = {
+    var anArray: arr[int, 5] = { 0, 1, 2, 3, 4 };             // declare an array of intigers of five elements
+    var element = anArray[3];                                 // accessing the element
+    .echo(element)                                            // prints: 3
+}
+</code></pre>
+<p>To allocate memory on heap, the <code>var[new]</code> is used <a href="/std/spec/050_pointers/"> more about memory, ownreship and pointer </a>:</p>
+<pre><code>pro[] main: int = {
+    var[new] aSequence: arr[str] = { "get", "over", "it" };   // this array is stored in stack
+}
+</code></pre>
+<h3 id="dynamic-arrays"><a class="header" href="#dynamic-arrays">Dynamic arrays</a></h3>
+<p>Dynamic are similar to arrays but of dynamic length which may change during runtime (like strings). A dynamic array <code>s</code> is always indexed by integers from <code>0</code> to <code>.len(s)-1</code> and its bounds are checked.
+The lower bound of an array or sequence may be received by the built-in <code>.low()</code>, the higher bound by <code>.high()</code>. The length may be received by <code>.len()</code>.</p>
+<p>{{% notice tip %}}</p>
+<p>Dynamic arrays are a dynamically allocated (hence the name), thus if not allocated in heap but in stack, the size will be defined automatically in compile time and will be changed to static array.</p>
+<p>{{% /notice %}}</p>
+<p>There are two implementations of dynamic arrays:</p>
+<ul>
+<li>vectors <code>vec[]</code></li>
+<li>sequences <code>seq[]</code></li>
+</ul>
+<h4 id="vecotors"><a class="header" href="#vecotors">Vecotors</a></h4>
+<p>Vectors are dynamic arrays, that resizes itself up or down depending on the number of content.</p>
+<p>Advantage:</p>
+<ul>
+<li>accessing and assignment by index is very fast O(1) process, since internally index access is just [address of first member] + [offset].</li>
+<li>appending object (inserting at the end of array) is relatively fast amortized O(1). Same performance characteristic as removing objects at the end of the array. Note: appending and removing objects near the end of array is also known as push and pop.</li>
+</ul>
+<p>Disadvantage:</p>
+<ul>
+<li>inserting or removing objects in a random position in a dynamic array is very slow O(n/2), as it must shift (on average) half of the array every time. Especially poor is insertion and removal near the start of the array, as it must copy the whole array.</li>
+<li>Unpredictable performance when insertion or removal requires resizing</li>
+<li>There is a bit of unused space, since dynamic array implementation usually allocates more memory than necessary (since resize is a very slow operation)</li>
+</ul>
+<p>In FOL vecotrs are represented like this:</p>
+<pre><code>vec[type]
+</code></pre>
+<p>Example:</p>
+<pre><code>pro[] main: int = {
+    var[new] aSequence: seq[str] = { "get", "over", "it" };   // declare an array of intigers of five elements
+    var element = aSequence[3];                               // accessing the element
+}
+</code></pre>
+<h4 id="sequences"><a class="header" href="#sequences">Sequences</a></h4>
+<p>Sequences are linked list, that have a general structure of [head, [tail]], head is the data, and tail is another Linked List. There are many versions of linked list: singular, double, circular etc...</p>
+<p>Advantage:</p>
+<ul>
+<li>fast O(1) insertion and removal at any position in the list, as insertion in linked list is only breaking the list, inserting, and repairing it back together (no need to copy the tails)</li>
+<li>linked list is a persistent data structure, rather hard to explain in short sentence, see: wiki-link . This advantage allow tail sharing between two linked list. Tail sharing makes it easy to use linked list as copy-on-write data structure.</li>
+</ul>
+<p>Disadvantage:</p>
+<ul>
+<li>Slow O(n) index access (random access), since accessing linked list by index means you have to recursively loop over the list.</li>
+<li>poor locality, the memory used for linked list is scattered around in a mess. In contrast with, arrays which uses a contiguous addresses in memory. Arrays (slightly) benefits from processor caching since they are all near each other</li>
+</ul>
+<p>In FOL sequneces are represented like this:</p>
+<pre><code>seq[type]
+</code></pre>
+<p>Example:</p>
+<pre><code>pro[] main: int = {
+    var[new] aSequence: seq[str] = { "get", "over", "it" };   // declare an array of intigers of five elements
+    var element = aSequence[3];                               // accessing the element
+}
+</code></pre>
+<h3 id="simd"><a class="header" href="#simd">SIMD</a></h3>
+<p>Matrixes are of type SIMD (single instruction, multiple data )</p>
+<h4 id="matrix"><a class="header" href="#matrix">Matrix</a></h4>
+<pre><code>mat[sizex]
+mat[sizex,sizey]
+mat[sizex,sizey,sizez]
+</code></pre>
+<h3 id="sets"><a class="header" href="#sets">Sets</a></h3>
+<pre><code>set[type,type,type..]
+</code></pre>
+<p>A set is a general way of grouping together a number of values with a variety of types into one compound type. Sets have a fixed length: once declared, they cannot grow or shrink in size. In other programming languages they usually are referenced as tuples.</p>
+<pre><code>pro[] main: int = {
+    var aSet: set[str, flt, arr[int, 2]] = { "go", .3, { 0, 5, 3 } };
+    var element = aSet[2][1];                                 // accessing the [1] element of the `arr` in the set
+    .echo(element)                                            // prints: 5
+}
+</code></pre>
+<h3 id="maps"><a class="header" href="#maps">Maps</a></h3>
+<pre><code>map[key,value]
+</code></pre>
+<p>A map is an unordered group of elements of one type, called the element type, indexed by a set of unique keys of another type, called the key type.</p>
+<pre><code>pro[] main: int = {
+    var aMap: map[str, int] = { {"US",45}, {"DE",82}, {"AL",54} };
+    var element = aMap["US"];                                 // accessing the "US" key
+    .echo(element)                                            // prints: 45
+}
+</code></pre>
+<p>The number of map elements is called its length. For a map <code>aMap</code>, it can be discovered using the built-in function <code>.len</code> and may change during execution To add a new element, we use <code>name+[element]</code> or <code>add</code>function:</p>
+<pre><code>.echo(.len(aMap))           // prints: 3
+aMap.add( {"IT",55} )
+aMap+[{"RU",24}]
+.echo(.len(aMap))           // prints: 4
+</code></pre>
+<p>The comparison operators <code>==</code> and <code>!=</code> must be fully defined for operands of the key type; thus the key type must not be a function, map, or sequence.</p>
+<p>{{% notice tip %}}</p>
+<p>Maps are a growable containers too, thus if not allocated in heap but in stack, the size will be defined automatically in compile time and will be changet to static containers</p>
+<p>{{% /notice %}}</p>
+<h3 id="axiom"><a class="header" href="#axiom">Axiom</a></h3>
+<pre><code>axi[typ, typ]
+</code></pre>
+<p>A axiom is a list of facts. A fact is a predicate expression that makes a declarative statement about the problem domain. And whenever a variable occurs in a expression, it is assumed to be universally quantified as <a href="/docs/700_sugar/silents/"><strong>silent</strong></a>.</p>
+<pre><code>var likes: axi[str, str] = { {"bob","alice"} , {"alice","bob"}, {"dan","sally"} };
+</code></pre>
+<p>{{% notice info %}}</p>
+<p>Accesing any container always returns the value, but if we put an <code>:</code> before the access symbol so <code>:[]</code>, then it will return  <code>true</code> or <code>false</code> if there is data or not on the specified access.</p>
+<p>{{% /notice %}}</p>
+<pre><code>likes["bob","alice"]                // will return {"bob","alice"}
+likes:["bob","alice"]               // will return true
+likes["sally","dan"]                // will return {}
+likes:["sally","dan"]               // will return false
+</code></pre>
+<p>Axioms are a data types that are meant to be used with logic programming. There are containers where facts are stated, and when we want to acces the data, they are always served as containers.</p>
+<pre><code>var parent: axi[str, str] = { {"albert","bob"}, {"alice","bob"}, {"bob","carl"}, {"bob","tom"} };
+
+parent["bob",*]                     // this gets all elements that "bob" relates to
+{"carl", "tom"}
+parent[*,"bob"]                     // this gets all elements that "bob" relates from
+{"albert", "alice"}
+</code></pre>
+<p>Adding new element can be done like in other containers:</p>
+<pre><code>var parent: axi[str, str] = { {"albert","bob"}, {"alice","bob"}, {"bob","carl"}, {"bob","tom"} };
+parent.add({"albert","betty"})
+parent.add({"albert","bill"})
+parent.add({"alice","betty"})
+parent.add({"alice","bill"})
+</code></pre>
+<p>And they can be nesetd too:</p>
+<pre><code>var line: axi[axi[int, int], axi[int, int]] = {{{4,5},{4,8}},{{8,5},{4,5}}}
+
+</code></pre>
+<p>And we can use the simplified form too, just <code>axi</code> instead of all the type. We let the compiler fill in the for us:</p>
+<pre><code>var line: axi = {{{4,5},{4,8}},{{8,5},{4,5}}}
+
+</code></pre>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../400_type/100_ordinal.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../400_type/300_complex.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../400_type/100_ordinal.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../400_type/300_complex.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>
