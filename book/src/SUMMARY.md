@@ -1,51 +1,67 @@
 # Summary
-
-## Everything in FOL follows the same structure:
-
-```
-declaration[options] name: type[options] = { implementation; };
-```
-
-## declarations
-```
-use    // imports, includes ...
-def    // preporcesr, macros, bocks, definitions ...
-
-var    // all variables: ordinal, container, complex, special
-
-pro    // subporgrams with side effects - procedures
-fun    // subporgrams with no side effects - functions
-log    // subporgrams with logic only - logicals
-
-typ    // new types: records, entries, classes, aiases, extensions
-std    // standards: protocols, blueprints
-```
-## control flow
-```
-when(condition){ case (){}; case (){}; * {}; };
-loop(condition){  };
-```
-
-
-<hr>
-
-## example
-```
-use log: mod[std] = {fmt::log};
-
-def argo: mod[init] = {
-    
-    -var const: str = "something here"
-
-    +pro main: int = {
-        log.warn("Last warning!...");
-        .echo(add(3, 5));
-    }
-
-    fun add(a, b: int): int = { a + b }
-}
-```
-
-
-- [Intro](./chapter_1.md)
-- [Installation](./chapter_2.md)
+- [Intro](./follang.md)
+- [Lexical](./100_lexical/_index.md)
+    - [Keywords](./100_lexical/100_keywords.md)
+    - [Identifiers](./100_lexical/200_identifiers.md)
+    - [Comments](./100_lexical/300_comments.md)
+    - [Whitespaces](./100_lexical/400_whitespaces.md)
+    - [Letters](./100_lexical/500_letters.md)
+    - [Numbers](./100_lexical/600_numbers.md)
+    - [Symbols](./100_lexical/700_symbols.md)
+- [Code blocks](./200_expressions/_index.md)
+    - [Statements](./200_expressions/200_sta/_index.md)
+        - [Control](./200_expressions/200_sta/100_control.md)
+    - [Exporessions](./200_expressions/300_exp/_index.md)
+        - [Arithmetic](./200_expressions/300_exp/100_arithmetics.md)
+        - [Literals](./200_expressions/300_exp/200_literals.md)
+        - [Ranges](./200_expressions/300_exp/300_ranges.md)
+        - [Access](./200_expressions/300_exp/400_access.md)
+- [Meta programming](./300_meta/_index.md)
+    - [Build-In](./300_meta/100_buildin.md)
+    - [Macros](./300_meta/200_macros.md)
+    - [Alternatives](./300_meta/300_alternatives.md)
+    - [Defaults](./300_meta/400_defaults.md)
+    - [Templates](./300_meta/500_templates.md)
+- [Type system](./400_type/_index.md)
+    - [Ordinal](./400_type/100_ordinal.md)
+    - [Container](./400_type/200_container.md)
+    - [Complex](./400_type/300_complex.md)
+    - [Special](./400_type/400_special.md)
+- [Syntax items](./500_items/_index.md)
+    - [Variables](./500_items/100_variables.md)
+    - [Routines](./500_items/200_routines/_index.md)
+        - [Procedures](./500_items/200_routines/100_procedures.md)
+        - [Functions](./500_items/200_routines/200_functions.md)
+        - [Methods](./500_items/200_routines/300_methods.md)
+        - [Logicals](./500_items/200_routines/400_logicals.md)
+    - [Constructs](./500_items/300_constructs/_index.md)
+        - [Aliases](./500_items/300_constructs/100_aliases.md)
+        - [Structs](./500_items/300_constructs/200_structs.md)
+    - [Standards](./500_items/400_standards.md)
+    - [Generics](./500_items/500_generics.md)
+- [Modules tree](./600_modules/_index.md)
+    - [Imports](./600_modules/100_import.md)
+    - [Declarations](./600_modules/200_blocks.md)
+    - [Tests](./600_modules/300_tests.md)
+- [Error handling](./650_errors/_index.md)
+    - [Braking](./650_errors/100_braking.md)
+    - [Recover](./650_errors/200_recover.md)
+- [Language sugar](./700_sugar/_index.md)
+    - [Silents](./700_sugar/100_silents.md)
+    - [Pipes](./700_sugar/200_pipes.md)
+    - [Mixture](./700_sugar/300_mixture.md)
+    - [Limits](./700_sugar/400_limits.md)
+    - [Matching](./700_sugar/450_matching.md)
+    - [Rolling](./700_sugar/500_rolling.md)
+    - [Unpacking](./700_sugar/600_unpacking.md)
+    - [Inquiry](./700_sugar/700_inquiry.md)
+    - [Chaining](./700_sugar/800_chaining.md)
+- [Conversion](./750_conversion/_index.md)
+    - [Coercion](./750_conversion/100_coercion.md)
+    - [Casting](./750_conversion/200_casting.md)
+- [Memory model](./800_memory/_index.md)
+    - [Ownership](./800_memory/100_ownership.md)
+    - [Pointers](./800_memory/200_pointers.md)
+- [Multi Threading](./900_processor/_index.md)
+    - [Eventuals](./900_processor/100_eventuals.md)
+    - [Corutines](./900_processor/200_corutines.md)

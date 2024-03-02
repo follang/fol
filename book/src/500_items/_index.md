@@ -1,10 +1,4 @@
----
-title: "Syntax items"
-description: 
-draft: false
-collapsible: true
-weight: 500
----
+# Syntax items
 
 FOL uses different keywords to bind functionality and data to variables.
 

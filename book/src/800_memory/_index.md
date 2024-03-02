@@ -1,10 +1,4 @@
----
-title: "Memory model"
-description: 
-draft: false
-collapsible: true
-weight: 800
----
+# Memory model
 
 ## The Stack
 

@@ -1,10 +1,4 @@
----
-title: "Language sugar"
-description: 
-draft: false
-collapsible: true
-weight: 700
----
+# Language Sugar
 
 Language sugar, is a visually or logically-appealing "shortcut" provided by the language, which reduces the amount of code that must be written in some common situation. It makes the language "sweeter" for human use: things can be expressed more clearly, more concisely, or in an alternative style that some may prefer.
 

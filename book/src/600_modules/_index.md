@@ -1,10 +1,4 @@
----
-title: "Modules tree"
-description: 
-draft: false
-collapsible: true
-weight: 600
----
+# Modules
 
 FOL programs are constructed by linking together packages. A package in turn is constructed from one or more source files that together declare constants, types, variables and functions belonging to the package and which are accessible in all files of the same package. Those elements may be exported and used in another package. 
 

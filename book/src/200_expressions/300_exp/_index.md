@@ -1,10 +1,4 @@
----
-title: "Expressions"
-description: 
-draft: false
-collapsible: true
-weight: 300
----
+# Expressions
 
 An expression is a sequence of operators and their operands, that specifies a computation. It is a sequence of one or more operands and zero or more operators that can be evaluated to a single value, object, routine, or namespace. Expressions can consist of a literal value, a routine invocation, an operator and its operands, or a simple name. Simple names can be the name of a variable, type member, routine parameter, namespace or type.
 

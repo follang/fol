@@ -1,10 +1,4 @@
----
-title: "Lexical analysis"
-description: 
-draft: false
-collapsible: true
-weight: 100
----
+# Lexical Analysis
 
 A lexical analyzer is essentially a pattern matcher. A pattern matcher attempts to find a substring of a given string of characters that matches a given character pattern. All FOL's input is interpreted as a sequence of **UNICODE** code points encoded in UTF-8. A lexical analyzer serves as the front end of a syntax analyzer. Technically, lexical analysis is a part of syntax analysis. A lexical analyzer performs syntax analysis at the lowest level of program structure. An input program appears to a compiler as a single string of characters. The lexical analyzer collects characters into logical groupings and assigns internal codes to the groupings according to their structure.
 

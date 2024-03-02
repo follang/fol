@@ -1,10 +1,4 @@
----
-title: "Value conversion"
-description: 
-draft: false
-collapsible: true
-weight: 750
----
+# Value Conversion
 
 A type cast converts a value of one type to another. 
 

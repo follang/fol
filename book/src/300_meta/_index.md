@@ -1,10 +1,4 @@
----
-title: "Meta programming"
-description: 
-draft: false
-collapsible: true
-weight: 300
----
+# Metaprogramming
 
 Metaprogramming is a programming technique in which computer programs have the ability to treat other programs as their data. It means that a program can be designed to read, generate, analyze or transform other programs, and even modify itself while running. In some cases, this allows programmers to minimize the number of lines of code to express a solution, in turn reducing development time. It also allows programs greater flexibility to efficiently handle new situations without recompilation. 
 

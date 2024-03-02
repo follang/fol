@@ -1,10 +1,4 @@
----
-title: "Multi Threading"
-description: 
-draft: false
-collapsible: true
-weight: 900
----
+# Concurrency
 
 Concurrency is the ability of different tasks of a program to be executed out-of-order or in partial order, without affecting the final outcome. This allows for parallel execution of the concurrent tasks, which can significantly improve overall speed of the execution in multi-processor and multi-core systems. In more technical terms, concurrency refers to the decomposability property of a program into order-independent or partially-ordered tasks.
 

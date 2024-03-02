@@ -1,10 +1,4 @@
----
-title: "Type system"
-description: 
-draft: false
-collapsible: true
-weight: 400
----
+# Type system
 
 A data type defines a collection of data values and a set of predefined operations on those values. Computer programs produce results by manipulating data. An important factor in determining the ease with which they can perform this task is how well the data types available in the language being used match the objects in the real world of the problem being addressed. Therefore, it is crucial that a FOL supports an appropriate collection of data types and structures.
 

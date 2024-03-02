@@ -1,10 +1,4 @@
----
-title: "Statements"
-description: 
-draft: false
-collapsible: true
-weight: 200
----
+# Statements
 
 The actions that a program takes are expressed in statements. Common actions include declaring variables, assigning values, calling routines, looping through collections, and branching to one or another block of code, depending on a given condition. The order in which statements are executed in a program is called the flow of control or flow of execution. The flow of control may vary every time that a program is run, depending on how the program reacts to input that it receives at run time.
 
