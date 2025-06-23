@@ -2,7 +2,7 @@ use std::fmt;
 use std::ffi::OsStr;
 use std::path::Path;
 use regex::Regex;
-use crate::colored::Colorize;
+use colored::Colorize;
 use crate::types::{Con, Flaw};
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]

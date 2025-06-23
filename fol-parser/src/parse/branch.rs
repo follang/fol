@@ -1,6 +1,6 @@
-use crate::types::*;
-use crate::syntax::lexer;
-use crate::syntax::token::*;
+use fol_types::*;
+use fol_lexer;
+use crate::token::*;
 
 pub fn body_top(lex: &mut lexer::Elements, ignore: bool) -> Con<bool> {
     let key = if matches!(lex.curr(ignore)?.key(), KEYWORD::Symbol(_)) { lex.peek(0, ignore)?.key() } else { lex.curr(ignore)?.key() };

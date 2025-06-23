@@ -1,97 +1,123 @@
+// Legacy modules for now (will migrate to new structure)
 #[macro_use]
 mod types;
 mod syntax;
 mod helper;
 mod semantic;
-mod ast; // Add proper AST module
 
-extern crate regex;
-extern crate colored;
-extern crate dyn_clone;
-extern crate terminal_size;
-
+use clap::{Arg, Command};
+use fol_diagnostics::{DiagnosticReport, OutputFormat, DiagnosticLocation};
 use crate::syntax::index;
 use crate::syntax::lexer;
 use crate::syntax::parse;
 
 fn main() {
-    println!("=== FOL Compiler with Proper AST ===");
+    let matches = Command::new("fol")
+        .version("0.1.4")
+        .about("FOL Programming Language Compiler")
+        .arg(
+            Arg::new("file")
+                .help("Input FOL file to compile")
+                .value_name("FILE")
+                .index(1)
+        )
+        .arg(
+            Arg::new("json")
+                .long("json")
+                .help("Output diagnostics in JSON format")
+                .action(clap::ArgAction::SetTrue)
+        )
+        .get_matches();
 
-    // Get the file path from command line arguments
-    let args: Vec<String> = std::env::args().collect();
-    let file_path = if args.len() > 1 {
-        &args[1]
-    } else {
-        "./test/main/main.fol" // Default fallback
-    };
+    let file_path = matches.get_one::<String>("file")
+        .map(|s| s.as_str())
+        .unwrap_or("./test/main/main.fol");
+    
+    let json_output = matches.get_flag("json");
+    let output_format = if json_output { OutputFormat::Json } else { OutputFormat::Human };
 
-    // 1. Original parser output (for comparison)
-    println!("\n1. Original Parser Output:");
+    // Initialize diagnostic report
+    let mut diagnostics = DiagnosticReport::new();
+
+    if !json_output {
+        println!("=== FOL Compiler ===");
+        println!("Compiling: {}", file_path);
+    }
+
+    // Try to compile the file
+    match compile_file(file_path, &mut diagnostics) {
+        Ok(_) => {
+            if !json_output && !diagnostics.has_errors() {
+                println!("✓ Compilation successful!");
+            }
+        }
+        Err(_) => {
+            // Errors are already added to diagnostics
+        }
+    }
+
+    // Output diagnostics
+    let output = diagnostics.output(output_format);
+    if !output.trim().is_empty() {
+        println!("{}", output);
+    }
+
+    // Exit with error code if there were compilation errors
+    if diagnostics.has_errors() {
+        std::process::exit(1);
+    }
+}
+
+fn compile_file(file_path: &str, diagnostics: &mut DiagnosticReport) -> Result<(), ()> {
+    // Check if file exists
+    if !std::path::Path::new(file_path).exists() {
+        let error = fol_types::BasicError {
+            message: format!("File not found: {}", file_path)
+        };
+        diagnostics.add_error(&error, None);
+        return Err(());
+    }
+
+    // 1. Lexical Analysis
     let input = index::Input::Path(file_path.to_string(), index::SourceType::File);
-    let mut elems = lexer::stage3::Elements::init(&input);
+    let mut elems = match std::panic::catch_unwind(|| {
+        lexer::stage3::Elements::init(&input)
+    }) {
+        Ok(elems) => elems,
+        Err(_) => {
+            let error = fol_types::BasicError {
+                message: "Failed to initialize lexer".to_string()
+            };
+            let location = DiagnosticLocation {
+                file: Some(file_path.to_string()),
+                line: 1,
+                column: 1,
+                length: None,
+            };
+            diagnostics.add_error(&error, Some(location));
+            return Err(());
+        }
+    };
+
+    // 2. Parsing
     let parser = parse::Parser::init(&mut elems);
-    for e in parser.nodes() { 
-        println!("{}\n", e) 
+    let mut node_count = 0;
+    
+    for node in parser.nodes() {
+        node_count += 1;
+        // Successfully parsed a node - could add to AST here
+        // Note: parser.nodes() returns ID<Box<dyn NodeTrait>>, not Result
     }
 
-    // 2. New AST Parser Integration
-    println!("\n2. New AST Parser (Real Integration):");
-    let input2 = index::Input::Path(file_path.to_string(), index::SourceType::File);
-    let mut lexed = lexer::stage3::Elements::init(&input2);
-    let mut ast_parser = crate::ast::parser::AstParser::new();
-    
-    match ast_parser.parse(&mut lexed) {
-        Ok(ast) => {
-            println!("Successfully parsed AST:");
-            println!("{:#?}", ast);
-            
-            // 3. Analyze the AST
-            println!("\n3. AST Analysis:");
-            if let crate::ast::AstNode::Program { declarations } = &ast {
-                println!("Program has {} declarations:", declarations.len());
-                for (i, decl) in declarations.iter().enumerate() {
-                    match decl {
-                        crate::ast::AstNode::VarDecl { name, type_hint, .. } => {
-                            println!("  [{}] Variable '{}' of type {:?}", i, name, type_hint);
-                        }
-                        crate::ast::AstNode::FunDecl { name, params, return_type, .. } => {
-                            println!("  [{}] Function '{}' with {} params, returns {:?}", 
-                                    i, name, params.len(), return_type);
-                        }
-                        _ => {
-                            println!("  [{}] Other declaration", i);
-                        }
-                    }
-                }
-                
-                // 4. Type inference demo
-                println!("\n4. Type Inference:");
-                for (i, decl) in declarations.iter().enumerate() {
-                    if let Some(inferred_type) = decl.get_type() {
-                        println!("  [{}] Inferred type: {:?}", i, inferred_type);
-                    }
-                }
-            }
-        }
-        Err(errors) => {
-            println!("AST parsing had errors:");
-            for (i, error) in errors.iter().enumerate() {
-                println!("  [{}] Error: {}", i, error);
-            }
-        }
+    if node_count == 0 {
+        let error = fol_types::BasicError {
+            message: "No valid syntax nodes found in file".to_string()
+        };
+        diagnostics.add_error(&error, None);
+        return Err(());
     }
-    
-    // 5. Demonstrate AST utility methods
-    println!("\n5. AST Utility Demo:");
-    let sample_expr = crate::ast::AstNode::BinaryOp {
-        op: crate::ast::BinaryOperator::Add,
-        left: Box::new(crate::ast::AstNode::Identifier { name: "x".to_string() }),
-        right: Box::new(crate::ast::AstNode::Literal(crate::ast::Literal::Integer(10))),
-    };
-    println!("Sample expression: {:#?}", sample_expr);
-    if let Some(expr_type) = sample_expr.get_type() {
-        println!("Expression type: {:?}", expr_type);
-    }
+
+    Ok(())
 }
 
 #[test]

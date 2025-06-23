@@ -1,0 +1,12 @@
+[package]
+name = "fol-diagnostics"
+version = "0.1.4"
+authors = ["Trim Bresilla <trim.bresilla@gmail.com>"]
+edition = "2021"
+description = "Error formatting and diagnostics for FOL language"
+
+[dependencies]
+fol-types = { path = "../fol-types" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+colored = "1.9"

@@ -1,8 +1,8 @@
 // STEP 1: Parse functions with integer bodies
 
 use crate::ast::*;
-use crate::syntax::lexer;
-use crate::types::*;
+use fol_lexer;
+use fol_types::*;
 
 // Import our parsers
 pub mod integer;
@@ -42,7 +42,7 @@ impl AstParser {
             println!("DEBUG: Parsing top-level, current token: {:?}", current.key());
             
             // Check for end of file
-            if matches!(current.key(), crate::syntax::token::KEYWORD::Void(crate::syntax::token::void::VOID::EndFile)) {
+            if matches!(current.key(), crate::token::KEYWORD::Void(crate::token::void::VOID::EndFile)) {
                 break;
             }
             
@@ -68,7 +68,7 @@ impl AstParser {
                 self.errors.push(catch!(Typo::ParserUnexpected {
                     loc: Some(loc),
                     key1: current.key(),
-                    key2: crate::syntax::token::KEYWORD::Keyword(crate::syntax::token::buildin::BUILDIN::Use),
+                    key2: crate::token::KEYWORD::Keyword(crate::token::buildin::BUILDIN::Use),
                     src,
                 }));
                 break;
@@ -106,9 +106,9 @@ impl AstParser {
     fn skip_whitespace_and_comments(&self, tokens: &mut lexer::Elements) -> Result<(), Box<dyn Glitch>> {
         while let Ok(current) = tokens.curr(true) {
             match current.key() {
-                crate::syntax::token::KEYWORD::Comment |
-                crate::syntax::token::KEYWORD::Void(crate::syntax::token::void::VOID::Space) |
-                crate::syntax::token::KEYWORD::Void(crate::syntax::token::void::VOID::EndLine) => {
+                crate::token::KEYWORD::Comment |
+                crate::token::KEYWORD::Void(crate::token::void::VOID::Space) |
+                crate::token::KEYWORD::Void(crate::token::void::VOID::EndLine) => {
                     tokens.bump(); // Skip these tokens
                 }
                 _ => break, // Found a meaningful token
@@ -122,7 +122,7 @@ impl AstParser {
     /// Check if current token starts a use declaration: use[]
     fn is_use_declaration(&self, tokens: &lexer::Elements) -> bool {
         if let Ok(current) = tokens.curr(true) {
-            matches!(current.key(), crate::syntax::token::KEYWORD::Keyword(crate::syntax::token::buildin::BUILDIN::Use))
+            matches!(current.key(), crate::token::KEYWORD::Keyword(crate::token::buildin::BUILDIN::Use))
         } else {
             false
         }
@@ -137,11 +137,11 @@ impl AstParser {
         
         // Skip [] options for now
         if let Ok(current) = tokens.curr(true) {
-            if let crate::syntax::token::KEYWORD::Symbol(crate::syntax::token::symbol::SYMBOL::SquarO) = current.key() {
+            if let crate::token::KEYWORD::Symbol(crate::token::symbol::SYMBOL::SquarO) = current.key() {
                 tokens.bump(); // consume '['
                 // Skip to closing bracket
                 while let Ok(current) = tokens.curr(true) {
-                    if let crate::syntax::token::KEYWORD::Symbol(crate::syntax::token::symbol::SYMBOL::SquarC) = current.key() {
+                    if let crate::token::KEYWORD::Symbol(crate::token::symbol::SYMBOL::SquarC) = current.key() {
                         tokens.bump(); // consume ']'
                         break;
                     }
@@ -156,7 +156,7 @@ impl AstParser {
         
         // Check if this is a grouped declaration with parentheses
         if let Ok(current) = tokens.curr(true) {
-            if let crate::syntax::token::KEYWORD::Symbol(crate::syntax::token::symbol::SYMBOL::RoundO) = current.key() {
+            if let crate::token::KEYWORD::Symbol(crate::token::symbol::SYMBOL::RoundO) = current.key() {
                 // This is a grouped use declaration: use[] ( name: type = { path }; ... )
                 return self.parse_grouped_use_declaration(tokens);
             }
@@ -170,7 +170,7 @@ impl AstParser {
     fn parse_single_use_declaration(&mut self, tokens: &mut lexer::Elements) -> Result<AstNode, Box<dyn Glitch>> {
         // Get name
         let name = if let Ok(name_token) = tokens.curr(true) {
-            if let crate::syntax::token::KEYWORD::Identifier = name_token.key() {
+            if let crate::token::KEYWORD::Identifier = name_token.key() {
                 let name = name_token.con().clone();
                 tokens.bump();
                 name
@@ -195,7 +195,7 @@ impl AstParser {
         
         // Expect colon
         if let Ok(colon_token) = tokens.curr(true) {
-            if let crate::syntax::token::KEYWORD::Symbol(crate::syntax::token::symbol::SYMBOL::Colon) = colon_token.key() {
+            if let crate::token::KEYWORD::Symbol(crate::token::symbol::SYMBOL::Colon) = colon_token.key() {
                 tokens.bump(); // consume ':'
                 if let Err(e) = self.skip_whitespace_and_comments(tokens) {
                 return Err(vec![e]);
@@ -203,7 +203,7 @@ impl AstParser {
                 
                 // Get type (loc, url, std, mod, etc.)
                 let path_type = if let Ok(type_token) = tokens.curr(true) {
-                    if let crate::syntax::token::KEYWORD::Identifier = type_token.key() {
+                    if let crate::token::KEYWORD::Identifier = type_token.key() {
                         let type_name = type_token.con().clone();
                         tokens.bump();
                         match type_name.as_str() {
@@ -267,11 +267,11 @@ impl AstParser {
         let mut paren_depth = 1;
         while let Ok(current) = tokens.curr(true) {
             match current.key() {
-                crate::syntax::token::KEYWORD::Symbol(crate::syntax::token::symbol::SYMBOL::RoundO) => {
+                crate::token::KEYWORD::Symbol(crate::token::symbol::SYMBOL::RoundO) => {
                     paren_depth += 1;
                     tokens.bump();
                 }
-                crate::syntax::token::KEYWORD::Symbol(crate::syntax::token::symbol::SYMBOL::RoundC) => {
+                crate::token::KEYWORD::Symbol(crate::token::symbol::SYMBOL::RoundC) => {
                     paren_depth -= 1;
                     tokens.bump();
                     if paren_depth == 0 {
@@ -297,8 +297,8 @@ impl AstParser {
     fn is_type_declaration(&self, tokens: &lexer::Elements) -> bool {
         if let Ok(current) = tokens.curr(true) {
             matches!(current.key(), 
-                crate::syntax::token::KEYWORD::Keyword(crate::syntax::token::buildin::BUILDIN::Typ) |
-                crate::syntax::token::KEYWORD::Symbol(crate::syntax::token::symbol::SYMBOL::Home)
+                crate::token::KEYWORD::Keyword(crate::token::buildin::BUILDIN::Typ) |
+                crate::token::KEYWORD::Symbol(crate::token::symbol::SYMBOL::Home)
             )
         } else {
             false
@@ -309,7 +309,7 @@ impl AstParser {
     fn parse_type_declaration(&mut self, tokens: &mut lexer::Elements) -> Result<AstNode, Box<dyn Glitch>> {
         // Handle optional ~ prefix
         if let Ok(current) = tokens.curr(true) {
-            if let crate::syntax::token::KEYWORD::Symbol(crate::syntax::token::symbol::SYMBOL::Home) = current.key() {
+            if let crate::token::KEYWORD::Symbol(crate::token::symbol::SYMBOL::Home) = current.key() {
                 tokens.bump(); // consume '~'
                 if let Err(e) = self.skip_whitespace_and_comments(tokens) {
                 return Err(vec![e]);
@@ -324,11 +324,11 @@ impl AstParser {
         
         // Skip [] options
         if let Ok(current) = tokens.curr(true) {
-            if let crate::syntax::token::KEYWORD::Symbol(crate::syntax::token::symbol::SYMBOL::SquarO) = current.key() {
+            if let crate::token::KEYWORD::Symbol(crate::token::symbol::SYMBOL::SquarO) = current.key() {
                 tokens.bump(); // consume '['
                 // Skip to closing bracket
                 while let Ok(current) = tokens.curr(true) {
-                    if let crate::syntax::token::KEYWORD::Symbol(crate::syntax::token::symbol::SYMBOL::SquarC) = current.key() {
+                    if let crate::token::KEYWORD::Symbol(crate::token::symbol::SYMBOL::SquarC) = current.key() {
                         tokens.bump(); // consume ']'
                         break;
                     }
@@ -343,7 +343,7 @@ impl AstParser {
         
         // Get name  
         let name = if let Ok(name_token) = tokens.curr(true) {
-            if let crate::syntax::token::KEYWORD::Identifier = name_token.key() {
+            if let crate::token::KEYWORD::Identifier = name_token.key() {
                 let name = name_token.con().clone();
                 println!("DEBUG: Found name: {}", name);
                 tokens.bump();
@@ -373,7 +373,7 @@ impl AstParser {
         // Expect colon
         if let Ok(colon_token) = tokens.curr(true) {
             println!("DEBUG: Found token after name in type decl: {:?} with content: '{}'", colon_token.key(), colon_token.con());
-            if let crate::syntax::token::KEYWORD::Symbol(crate::syntax::token::symbol::SYMBOL::Colon) = colon_token.key() {
+            if let crate::token::KEYWORD::Symbol(crate::token::symbol::SYMBOL::Colon) = colon_token.key() {
                 tokens.bump(); // consume ':'
                 if let Err(e) = self.skip_whitespace_and_comments(tokens) {
                 return Err(vec![e]);
@@ -381,7 +381,7 @@ impl AstParser {
                 
                 // Get type definition (rec, ent, etc.)
                 let type_def = if let Ok(type_token) = tokens.curr(true) {
-                    if let crate::syntax::token::KEYWORD::Identifier = type_token.key() {
+                    if let crate::token::KEYWORD::Identifier = type_token.key() {
                         let type_name = type_token.con().clone();
                         tokens.bump();
                         match type_name.as_str() {
@@ -434,7 +434,7 @@ impl AstParser {
     /// Check if current token starts a const declaration: con
     fn is_const_declaration(&self, tokens: &lexer::Elements) -> bool {
         if let Ok(current) = tokens.curr(true) {
-            matches!(current.key(), crate::syntax::token::KEYWORD::Keyword(crate::syntax::token::buildin::BUILDIN::Con))
+            matches!(current.key(), crate::token::KEYWORD::Keyword(crate::token::buildin::BUILDIN::Con))
         } else {
             false
         }
@@ -449,7 +449,7 @@ impl AstParser {
         
         // Get name
         let name = if let Ok(name_token) = tokens.curr(true) {
-            if let crate::syntax::token::KEYWORD::Identifier = name_token.key() {
+            if let crate::token::KEYWORD::Identifier = name_token.key() {
                 let name = name_token.con().clone();
                 tokens.bump();
                 name
@@ -474,7 +474,7 @@ impl AstParser {
         
         // Expect colon
         let type_hint = if let Ok(colon_token) = tokens.curr(true) {
-            if let crate::syntax::token::KEYWORD::Symbol(crate::syntax::token::symbol::SYMBOL::Colon) = colon_token.key() {
+            if let crate::token::KEYWORD::Symbol(crate::token::symbol::SYMBOL::Colon) = colon_token.key() {
                 tokens.bump(); // consume ':'
                 if let Err(e) = self.skip_whitespace_and_comments(tokens) {
                 return Err(vec![e]);
@@ -482,7 +482,7 @@ impl AstParser {
                 
                 // Get type
                 if let Ok(type_token) = tokens.curr(true) {
-                    if let crate::syntax::token::KEYWORD::Identifier = type_token.key() {
+                    if let crate::token::KEYWORD::Identifier = type_token.key() {
                         let type_name = type_token.con().clone();
                         tokens.bump();
                         Some(FolType::Named { name: type_name })
@@ -514,7 +514,7 @@ impl AstParser {
     /// Check if current token starts an alias declaration: ali
     fn is_alias_declaration(&self, tokens: &lexer::Elements) -> bool {
         if let Ok(current) = tokens.curr(true) {
-            matches!(current.key(), crate::syntax::token::KEYWORD::Keyword(crate::syntax::token::buildin::BUILDIN::Ali))
+            matches!(current.key(), crate::token::KEYWORD::Keyword(crate::token::buildin::BUILDIN::Ali))
         } else {
             false
         }
@@ -529,7 +529,7 @@ impl AstParser {
         
         // Get name
         let name = if let Ok(name_token) = tokens.curr(true) {
-            if let crate::syntax::token::KEYWORD::Identifier = name_token.key() {
+            if let crate::token::KEYWORD::Identifier = name_token.key() {
                 let name = name_token.con().clone();
                 tokens.bump();
                 name
@@ -554,7 +554,7 @@ impl AstParser {
         
         // Expect colon
         let target = if let Ok(colon_token) = tokens.curr(true) {
-            if let crate::syntax::token::KEYWORD::Symbol(crate::syntax::token::symbol::SYMBOL::Colon) = colon_token.key() {
+            if let crate::token::KEYWORD::Symbol(crate::token::symbol::SYMBOL::Colon) = colon_token.key() {
                 tokens.bump(); // consume ':'
                 if let Err(e) = self.skip_whitespace_and_comments(tokens) {
                 return Err(vec![e]);
@@ -562,7 +562,7 @@ impl AstParser {
                 
                 // Get target type
                 if let Ok(type_token) = tokens.curr(true) {
-                    if let crate::syntax::token::KEYWORD::Identifier = type_token.key() {
+                    if let crate::token::KEYWORD::Identifier = type_token.key() {
                         let type_name = type_token.con().clone();
                         tokens.bump();
                         FolType::Named { name: type_name }
@@ -591,7 +591,7 @@ impl AstParser {
     /// Check if current token starts an impl declaration: imp
     fn is_impl_declaration(&self, tokens: &lexer::Elements) -> bool {
         if let Ok(current) = tokens.curr(true) {
-            matches!(current.key(), crate::syntax::token::KEYWORD::Keyword(crate::syntax::token::buildin::BUILDIN::Imp))
+            matches!(current.key(), crate::token::KEYWORD::Keyword(crate::token::buildin::BUILDIN::Imp))
         } else {
             false
         }
@@ -616,7 +616,7 @@ impl AstParser {
     /// Check if current token starts a segment declaration: seg
     fn is_segment_declaration(&self, tokens: &lexer::Elements) -> bool {
         if let Ok(current) = tokens.curr(true) {
-            matches!(current.key(), crate::syntax::token::KEYWORD::Keyword(crate::syntax::token::buildin::BUILDIN::Seg))
+            matches!(current.key(), crate::token::KEYWORD::Keyword(crate::token::buildin::BUILDIN::Seg))
         } else {
             false
         }
@@ -628,7 +628,7 @@ impl AstParser {
         
         // Get name
         let name = if let Ok(name_token) = tokens.curr(true) {
-            if let crate::syntax::token::KEYWORD::Identifier = name_token.key() {
+            if let crate::token::KEYWORD::Identifier = name_token.key() {
                 let name = name_token.con().clone();
                 tokens.bump();
                 name
@@ -667,11 +667,11 @@ impl AstParser {
         while let Ok(current) = tokens.curr(true) {
             match current.key() {
                 // Track braces and parens to skip properly
-                crate::syntax::token::KEYWORD::Symbol(crate::syntax::token::symbol::SYMBOL::CurlyO) => {
+                crate::token::KEYWORD::Symbol(crate::token::symbol::SYMBOL::CurlyO) => {
                     brace_depth += 1;
                     tokens.bump();
                 }
-                crate::syntax::token::KEYWORD::Symbol(crate::syntax::token::symbol::SYMBOL::CurlyC) => {
+                crate::token::KEYWORD::Symbol(crate::token::symbol::SYMBOL::CurlyC) => {
                     if brace_depth > 0 {
                         brace_depth -= 1;
                     }
@@ -680,38 +680,38 @@ impl AstParser {
                         break; // End of declaration
                     }
                 }
-                crate::syntax::token::KEYWORD::Symbol(crate::syntax::token::symbol::SYMBOL::RoundO) => {
+                crate::token::KEYWORD::Symbol(crate::token::symbol::SYMBOL::RoundO) => {
                     paren_depth += 1;
                     tokens.bump();
                 }
-                crate::syntax::token::KEYWORD::Symbol(crate::syntax::token::symbol::SYMBOL::RoundC) => {
+                crate::token::KEYWORD::Symbol(crate::token::symbol::SYMBOL::RoundC) => {
                     if paren_depth > 0 {
                         paren_depth -= 1;
                     }
                     tokens.bump();
                 }
                 // Check for next top-level keyword
-                crate::syntax::token::KEYWORD::Keyword(keyword) if brace_depth == 0 && paren_depth == 0 => {
+                crate::token::KEYWORD::Keyword(keyword) if brace_depth == 0 && paren_depth == 0 => {
                     match keyword {
-                        crate::syntax::token::buildin::BUILDIN::Use |
-                        crate::syntax::token::buildin::BUILDIN::Typ |
-                        crate::syntax::token::buildin::BUILDIN::Con |
-                        crate::syntax::token::buildin::BUILDIN::Fun |
-                        crate::syntax::token::buildin::BUILDIN::Pro |
-                        crate::syntax::token::buildin::BUILDIN::Ali |
-                        crate::syntax::token::buildin::BUILDIN::Imp |
-                        crate::syntax::token::buildin::BUILDIN::Seg => {
+                        crate::token::buildin::BUILDIN::Use |
+                        crate::token::buildin::BUILDIN::Typ |
+                        crate::token::buildin::BUILDIN::Con |
+                        crate::token::buildin::BUILDIN::Fun |
+                        crate::token::buildin::BUILDIN::Pro |
+                        crate::token::buildin::BUILDIN::Ali |
+                        crate::token::buildin::BUILDIN::Imp |
+                        crate::token::buildin::BUILDIN::Seg => {
                             break; // Found next declaration
                         }
                         _ => { tokens.bump(); }
                     }
                 }
                 // Check for ~ (tilde) prefix
-                crate::syntax::token::KEYWORD::Symbol(crate::syntax::token::symbol::SYMBOL::Home) if brace_depth == 0 && paren_depth == 0 => {
+                crate::token::KEYWORD::Symbol(crate::token::symbol::SYMBOL::Home) if brace_depth == 0 && paren_depth == 0 => {
                     break; // Found ~typ declaration
                 }
                 // End of file
-                crate::syntax::token::KEYWORD::Void(crate::syntax::token::void::VOID::EndFile) => {
+                crate::token::KEYWORD::Void(crate::token::void::VOID::EndFile) => {
                     break;
                 }
                 _ => {

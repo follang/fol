@@ -1,0 +1,124 @@
+use std::fmt;
+use fol_types::{Vod, Con, Win, SLIDER};
+use fol_stream::{FileStream, CharacterProvider};
+use crate::point;
+
+type Part<T> = (T, point::Location);
+
+pub struct Elements {
+    chars: Box<dyn Iterator<Item = Con<Part<char>>>>,
+    win: Win<Con<Part<char>>>,
+    _in_count: usize,
+}
+
+impl Elements {
+    pub fn curr(&self) -> Con<Part<char>> {
+        self.win.1.clone()
+    }
+    ///next vector
+    pub fn next_vec(&self) -> Vec<Con<Part<char>>> {
+        self.win.2.clone()
+    }
+    pub fn peek(&self, index: usize) -> Con<Part<char>> { 
+        let u = if index > SLIDER { 0 } else { index };
+        self.next_vec()[u].clone() 
+    }
+    ///prev vector
+    pub fn prev_vec(&self) -> Vec<Con<Part<char>>> {
+        let mut rev = self.win.0.clone();
+        rev.reverse();
+        rev
+    }
+    pub fn seek(&self, index: usize) -> Con<Part<char>> { 
+        let u = if index > SLIDER { 0 } else { index };
+        self.prev_vec()[u].clone() 
+    }
+
+    pub fn init(file: &mut FileStream) -> Self {
+        let mut prev = Vec::with_capacity(SLIDER);
+        let mut next = Vec::with_capacity(SLIDER);
+        let mut chars = Box::new(gen(file));
+        for _ in 0..SLIDER { prev.push(Ok(('\0', point::Location::default()))) }
+        for _ in 0..SLIDER { next.push(chars.next().unwrap_or(Ok(('\0', point::Location::default())))) }
+        Self {
+            chars,
+            win: (prev, Ok(('\0', point::Location::default())), next),
+            _in_count: SLIDER,
+        }
+    }
+
+    pub fn bump(&mut self) -> Option<Con<Part<char>>> {
+        match self.chars.next() {
+            Some(v) => {
+                    // TODO: Handle better .ok()
+                    self.win.0.remove(0).ok(); self.win.0.push(self.win.1.clone());
+                    self.win.1 = self.win.2[0].clone();
+                    // TODO: Handle better .ok()
+                    self.win.2.remove(0).ok(); self.win.2.push(v);
+                    return Some(self.win.1.clone());
+            },
+            None => {
+                if self._in_count > 0 {
+                    // TODO: Handle better .ok()
+                    self.win.0.remove(0).ok(); self.win.0.push(self.win.1.clone());
+                    self.win.1 = self.win.2[0].clone();
+                    // TODO: Handle better .ok()
+                    self.win.2.remove(0).ok(); self.win.2.push(Ok(('\0', point::Location::default())));
+                    self._in_count -= 1;
+                    return Some(self.win.1.clone());
+                } else { return None }
+            }
+        }
+    }
+    pub fn debug(&self) -> Vod {
+        println!("{}\t{}", self.curr()?.1, self.curr()?.0);
+        Ok(())
+    }
+}
+
+impl Iterator for Elements {
+    type Item = Con<Part<char>>;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.bump()
+    }
+}
+
+
+impl fmt::Display for Elements {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if let Ok(_) = self.win.1.clone() {
+            write!(f, "{} {}", self.win.1.clone().unwrap().1, self.win.1.clone().unwrap().0)
+        } else {
+            write!(f, "ERROR")
+        }
+    }
+}
+
+
+pub fn gen(file: &mut FileStream) -> impl Iterator<Item = Con<Part<char>>> {
+    // Collect all characters from the file stream
+    let mut chars = Vec::new();
+    while let Some((ch, stream_loc)) = file.next_char() {
+        let loc = point::Location::from_stream_location(&stream_loc);
+        chars.push(Ok((ch, loc)));
+    }
+    
+    // Add EOF marker
+    let mut eof_loc = point::Location::default();
+    eof_loc.adjust(1, 0);
+    chars.push(Ok(('\0', eof_loc)));
+    
+    chars.into_iter()
+}
+
+
+fn get_chars(src: String) -> impl Iterator<Item = char> {
+    let mut chrs = src.clone();
+    std::iter::from_fn(move || {
+        if let Some(ch) =  chrs.chars().next() {
+            chrs.remove(0);
+            return Some(ch.clone()) 
+        };
+        None
+    })
+}

@@ -1,0 +1,42 @@
+// Test file for variable and constant declaration parsing
+
+// Basic variable declarations
+var x: int;
+var y: flt = 3.14;
+var name: str = "hello";
+
+// Variables with options
+var[mut] counter: int = 0;
+var[new] buffer: arr[int, 100];
+~var temp: int = 42;
+
+// Multiple variables in one declaration
+var a, b, c: int;
+var first, second: str = "test";
+
+// Constants
+con PI: flt = 3.14159;
+con MAX_SIZE: int = 1000;
+con VERSION: str = "1.0.0";
+
+// Constants with options
+con[pub] DEFAULT_TIMEOUT: int = 30;
+
+// Grouped variable declarations
+var (
+    width: int = 800;
+    height: int = 600;
+    title: str = "Window"
+)
+
+// Grouped constant declarations  
+con (
+    RED: int = 255;
+    GREEN: int = 255;
+    BLUE: int = 255
+)
+
+// Complex types
+var point: rec = { x: 10; y: 20 };
+var numbers: arr[int, 5] = { 1, 2, 3, 4, 5 };
+var mapping: map[str, int] = { {"key1", 100}, {"key2", 200} };

@@ -34,8 +34,13 @@ pub fn border_up(chr: &str, msg: String) -> String {
 }
 
 fn border_down(chr: &str, msg: String) -> String {
-    let mut width = if let Some((Width(w), Height(_))) = terminal_size() { w as usize } else { 5 };
-    width = width - msg.len();
+    let mut width = if let Some((Width(w), Height(_))) = terminal_size() { w as usize } else { 80 };
+    let msg_len = msg.len();
+    if width <= msg_len {
+        width = msg_len + 10; // Ensure we have enough space
+    }
+    width = width - msg_len;
     let middle = 5;
-    format!("\n{}{}{}", chr.repeat(width - middle).bright_black(), msg.red(), chr.repeat(middle).bright_black())
+    let remaining = if width > middle { width - middle } else { 0 };
+    format!("\n{}{}{}", chr.repeat(remaining).bright_black(), msg.red(), chr.repeat(middle).bright_black())
 }

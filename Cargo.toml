@@ -1,13 +1,32 @@
+[workspace]
+members = [
+    "fol-types",
+    "fol-stream", 
+    "fol-lexer",
+    "fol-parser",
+    "fol-diagnostics",
+]
+
 [package]
 name = "fol"
 version = "0.1.4"
 authors = ["Trim Bresilla <trim.bresilla@gmail.com>"]
-edition = "2018"
+edition = "2021"
+
+[[bin]]
+name = "fol"
+path = "src/main.rs"
 
 [dependencies]
+fol-types = { path = "fol-types" }
+# fol-stream = { path = "fol-stream" }  
+# fol-lexer = { path = "fol-lexer" }
+# fol-parser = { path = "fol-parser" }
+fol-diagnostics = { path = "fol-diagnostics" }
 regex = "1"
 colored = "1"
 dyn-clone = "1"
 terminal_size = "0.1.16"
 lazy_static = "1.4.0"
+clap = { version = "4.0", features = ["derive"] }
 
