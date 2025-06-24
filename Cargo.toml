@@ -19,9 +19,9 @@ path = "src/main.rs"
 
 [dependencies]
 fol-types = { path = "fol-types" }
-# fol-stream = { path = "fol-stream" }  
-# fol-lexer = { path = "fol-lexer" }
-# fol-parser = { path = "fol-parser" }
+fol-stream = { path = "fol-stream" }  
+fol-lexer = { path = "fol-lexer" }
+fol-parser = { path = "fol-parser" }
 fol-diagnostics = { path = "fol-diagnostics" }
 regex = "1"
 colored = "1"
@@ -29,4 +29,8 @@ dyn-clone = "1"
 terminal_size = "0.1.16"
 lazy_static = "1.4.0"
 clap = { version = "4.0", features = ["derive"] }
+
+[[test]]
+name = "integration"
+path = "test/run_tests.rs"
 

@@ -1,15 +1,9 @@
-// Legacy modules for now (will migrate to new structure)
-#[macro_use]
-mod types;
-mod syntax;
-mod helper;
-mod semantic;
-
+// FOL Compiler - Clean modular implementation
 use clap::{Arg, Command};
 use fol_diagnostics::{DiagnosticReport, OutputFormat, DiagnosticLocation};
-use crate::syntax::index;
-use crate::syntax::lexer;
-use crate::syntax::parse;
+use fol_stream::FileStream;
+use fol_lexer;
+use fol_parser::ast::AstParser;
 
 fn main() {
     let matches = Command::new("fol")
@@ -17,8 +11,8 @@ fn main() {
         .about("FOL Programming Language Compiler")
         .arg(
             Arg::new("file")
-                .help("Input FOL file to compile")
-                .value_name("FILE")
+                .help("Input FOL file or folder to compile (.mod directories are handled specially)")
+                .value_name("FILE_OR_FOLDER")
                 .index(1)
         )
         .arg(
@@ -40,7 +34,7 @@ fn main() {
     let mut diagnostics = DiagnosticReport::new();
 
     if !json_output {
-        println!("=== FOL Compiler ===");
+        println!("=== FOL Compiler (Modular) ===");
         println!("Compiling: {}", file_path);
     }
 
@@ -78,43 +72,61 @@ fn compile_file(file_path: &str, diagnostics: &mut DiagnosticReport) -> Result<(
         return Err(());
     }
 
-    // 1. Lexical Analysis
-    let input = index::Input::Path(file_path.to_string(), index::SourceType::File);
-    let mut elems = match std::panic::catch_unwind(|| {
-        lexer::stage3::Elements::init(&input)
-    }) {
-        Ok(elems) => elems,
-        Err(_) => {
-            let error = fol_types::BasicError {
-                message: "Failed to initialize lexer".to_string()
-            };
-            let location = DiagnosticLocation {
-                file: Some(file_path.to_string()),
-                line: 1,
-                column: 1,
-                length: None,
-            };
-            diagnostics.add_error(&error, Some(location));
-            return Err(());
+    // 1. Create stream (supports both files and folders with .mod handling)
+    let mut file_stream = if std::path::Path::new(file_path).is_dir() {
+        match FileStream::from_folder(file_path) {
+            Ok(stream) => stream,
+            Err(e) => {
+                diagnostics.add_error(e.as_ref(), Some(DiagnosticLocation {
+                    file: Some(file_path.to_string()),
+                    line: 1,
+                    column: 1,
+                    length: None,
+                }));
+                return Err(());
+            }
+        }
+    } else {
+        match FileStream::from_file(file_path) {
+            Ok(stream) => stream,
+            Err(e) => {
+                diagnostics.add_error(e.as_ref(), Some(DiagnosticLocation {
+                    file: Some(file_path.to_string()),
+                    line: 1,
+                    column: 1,
+                    length: None,
+                }));
+                return Err(());
+            }
         }
     };
 
-    // 2. Parsing
-    let parser = parse::Parser::init(&mut elems);
-    let mut node_count = 0;
-    
-    for node in parser.nodes() {
-        node_count += 1;
-        // Successfully parsed a node - could add to AST here
-        // Note: parser.nodes() returns ID<Box<dyn NodeTrait>>, not Result
-    }
+    // 2. Lexical Analysis
+    let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut file_stream);
 
-    if node_count == 0 {
-        let error = fol_types::BasicError {
-            message: "No valid syntax nodes found in file".to_string()
-        };
-        diagnostics.add_error(&error, None);
-        return Err(());
+    // 3. Parse with new AST parser
+    let mut ast_parser = AstParser::new();
+    match ast_parser.parse(&mut lexer) {
+        Ok(_ast) => {
+            // Successfully parsed AST
+            if !diagnostics.has_errors() {
+                // Could add semantic analysis, type checking, etc. here
+                return Ok(());
+            }
+        }
+        Err(parse_errors) => {
+            // Add parse errors to diagnostics
+            for error in parse_errors {
+                // TODO: Extract location information from error
+                diagnostics.add_error(error.as_ref(), Some(DiagnosticLocation {
+                    file: Some(file_path.to_string()),
+                    line: 1, // TODO: Get actual line from error
+                    column: 1, // TODO: Get actual column from error
+                    length: None,
+                }));
+            }
+            return Err(());
+        }
     }
 
     Ok(())

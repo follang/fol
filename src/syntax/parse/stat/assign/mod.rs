@@ -16,6 +16,7 @@ pub mod ali;
 pub mod r#use;
 pub mod fun;
 pub mod lab;
+pub mod def;
 use crate::syntax::parse::stat::assign::{
     var::ParserStatAssVar,
     con::ParserStatAssCon,
@@ -26,6 +27,7 @@ use crate::syntax::parse::stat::assign::{
     seg::ParserStatAssSeg,
     fun::ParserStatAssFun,
     lab::ParserStatAssLab,
+    def::ParserStatAssDef,
 };
 
 
@@ -80,6 +82,8 @@ impl Parse for ParserStatAss {
             parser = Box::new(ParserStatAssImp::init(self.level(), self.style()));
         } else if lex.curr(true)?.con() == "lab" || lex.peek(0, true)?.con() == "lab" {
             parser = Box::new(ParserStatAssLab::init(self.level(), self.style()));
+        } else if lex.curr(true)?.con() == "def" || lex.peek(0, true)?.con() == "def" {
+            parser = Box::new(ParserStatAssDef::init(self.level(), self.style()));
         } else { unimplemented!(); }
 
         if let Err(err) = parser.parse(lex) { self.errors.push(err) }

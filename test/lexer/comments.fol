@@ -1,0 +1,4 @@
+// single line comment
+/* multi-line
+   comment */
+var x = 5; // end of line comment
