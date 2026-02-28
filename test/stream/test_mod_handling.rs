@@ -172,8 +172,8 @@ mod mod_handling_tests {
         let test_dir = "test/stream/test_empty_with_mod";
         if !std::path::Path::new(test_dir).exists() {
             fs::create_dir_all(test_dir).expect("Should create test directory");
-            fs::create_dir_all(&format!("{}/empty.mod", test_dir)).expect("Should create .mod dir");
-            fs::write(&format!("{}/empty.mod/test.txt", test_dir), "test content")
+            fs::create_dir_all(format!("{}/empty.mod", test_dir)).expect("Should create .mod dir");
+            fs::write(format!("{}/empty.mod/test.txt", test_dir), "test content")
                 .expect("Should create file in .mod dir");
         }
 

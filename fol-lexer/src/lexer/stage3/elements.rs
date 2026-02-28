@@ -24,12 +24,11 @@ impl Elements {
         for _ in 0..SLIDER {
             next.push(elem.next().unwrap_or(Ok(Element::default())))
         }
-        let newborn = Self {
+        Self {
             elem,
             win: (prev, Ok(Element::default()), next),
             _in_count: SLIDER,
-        };
-        newborn
+        }
     }
     pub fn set_key(&mut self, key: KEYWORD) -> Vod {
         if self.win.1.clone()?.key().is_space() || self.win.2[0].is_ok() {
@@ -79,7 +78,7 @@ impl Elements {
                 // TODO: Handle better .ok()
                 self.win.2.remove(0).ok();
                 self.win.2.push(v);
-                return Some(self.win.1.clone());
+                Some(self.win.1.clone())
             }
             None => {
                 if self._in_count > 0 {
@@ -91,9 +90,9 @@ impl Elements {
                     self.win.2.remove(0).ok();
                     self.win.2.push(Ok(Element::default()));
                     self._in_count -= 1;
-                    return Some(self.win.1.clone());
+                    Some(self.win.1.clone())
                 } else {
-                    return None;
+                    None
                 }
             }
         }

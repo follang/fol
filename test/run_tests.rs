@@ -32,7 +32,10 @@ mod integration_tests {
                 println!("Integration test: First token = '{}'", token.con());
                 // Check that we get a valid token (even if empty content like spaces)
                 // or EOF - this verifies the integration is working
-                assert!(true, "Integration working - got token: {:?}", token.key());
+                assert!(
+                    !token.key().is_illegal(),
+                    "Integration token should be valid"
+                );
             }
             Err(e) => panic!("Stream to lexer integration failed: {:?}", e),
         }
@@ -104,6 +107,9 @@ mod integration_tests {
         println!("Diagnostic output: {}", output);
 
         // The test passes if we get through the pipeline without crashing
-        assert!(true, "Full pipeline should complete without crashing");
+        assert!(
+            diagnostics.error_count <= diagnostics.diagnostics.len(),
+            "Diagnostic counters should remain consistent"
+        );
     }
 }

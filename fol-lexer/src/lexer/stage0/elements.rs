@@ -65,7 +65,7 @@ impl Elements {
                 // TODO: Handle better .ok()
                 self.win.2.remove(0).ok();
                 self.win.2.push(v);
-                return Some(self.win.1.clone());
+                Some(self.win.1.clone())
             }
             None => {
                 if self._in_count > 0 {
@@ -77,9 +77,9 @@ impl Elements {
                     self.win.2.remove(0).ok();
                     self.win.2.push(Ok(('\0', point::Location::default())));
                     self._in_count -= 1;
-                    return Some(self.win.1.clone());
+                    Some(self.win.1.clone())
                 } else {
-                    return None;
+                    None
                 }
             }
         }
@@ -99,7 +99,7 @@ impl Iterator for Elements {
 
 impl fmt::Display for Elements {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if let Ok(_) = self.win.1.clone() {
+        if self.win.1.clone().is_ok() {
             write!(
                 f,
                 "{} {}",

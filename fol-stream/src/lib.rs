@@ -27,7 +27,7 @@ pub struct Location {
 }
 
 /// Source file representation with namespace information
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub struct Source {
     pub call: String,      // Original call path
     pub path: String,      // Absolute file path
@@ -99,18 +99,6 @@ impl Source {
             .unwrap_or(".")
             .trim_start_matches(&self.abs_path())
             .to_string()
-    }
-}
-
-impl Default for Source {
-    fn default() -> Self {
-        Self {
-            call: String::new(),
-            path: String::new(),
-            data: String::new(),
-            namespace: String::new(),
-            package: String::new(),
-        }
     }
 }
 

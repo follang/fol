@@ -96,34 +96,36 @@ impl DiagnosticReport {
         if self.error_count > 0 || self.warning_count > 0 {
             output.push('\n');
             if self.error_count > 0 {
+                let label = if self.error_count == 1 { "" } else { "s" };
                 output.push_str(&format!(
-                    "{} {}",
+                    "{} found {} error{}",
                     "error:".red().bold(),
-                    format!(
-                        "found {} error{}",
-                        self.error_count,
-                        if self.error_count == 1 { "" } else { "s" }
-                    )
+                    self.error_count,
+                    label
                 ));
             }
             if self.warning_count > 0 {
                 if self.error_count > 0 {
                     output.push_str(", ");
                 }
+                let label = if self.warning_count == 1 { "" } else { "s" };
                 output.push_str(&format!(
-                    "{} {}",
+                    "{} {} warning{}",
                     "warning:".yellow().bold(),
-                    format!(
-                        "{} warning{}",
-                        self.warning_count,
-                        if self.warning_count == 1 { "" } else { "s" }
-                    )
+                    self.warning_count,
+                    label
                 ));
             }
             output.push('\n');
         }
 
         output
+    }
+}
+
+impl Default for DiagnosticReport {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

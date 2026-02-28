@@ -5,7 +5,7 @@ use fol_stream::FileStream;
 
 fn tokenize_file(path: &str) -> Vec<(KEYWORD, String)> {
     let mut file_stream =
-        FileStream::from_file(path).expect(&format!("Should be able to read {}", path));
+        FileStream::from_file(path).unwrap_or_else(|_| panic!("Should be able to read {}", path));
 
     let mut lexer = Elements::init(&mut file_stream);
     let mut tokens = Vec::new();
@@ -101,7 +101,7 @@ mod lexer_tests {
         // Filter out spaces and EOF
         let literals: Vec<_> = tokens.iter().filter(|(key, _)| key.is_literal()).collect();
 
-        assert!(literals.len() > 0, "Should have literal tokens");
+        assert!(!literals.is_empty(), "Should have literal tokens");
 
         let literal_strings: Vec<String> = literals
             .iter()
@@ -130,7 +130,7 @@ mod lexer_tests {
             .filter(|(key, _)| matches!(key, KEYWORD::Symbol(_)))
             .collect();
 
-        assert!(symbols.len() > 0, "Should have symbol tokens");
+        assert!(!symbols.is_empty(), "Should have symbol tokens");
 
         let symbol_strings: Vec<String> =
             symbols.iter().map(|(_, content)| content.clone()).collect();
@@ -162,7 +162,7 @@ mod lexer_tests {
 
         let identifiers: Vec<_> = tokens.iter().filter(|(key, _)| key.is_ident()).collect();
 
-        assert!(identifiers.len() > 0, "Should have identifier tokens");
+        assert!(!identifiers.is_empty(), "Should have identifier tokens");
 
         let identifier_strings: Vec<String> = identifiers
             .iter()
@@ -189,7 +189,7 @@ mod lexer_tests {
         // Comments might be filtered out at lexer level, so this test verifies
         // that the lexer can handle files with comments without errors
         assert!(
-            tokens.len() > 0,
+            !tokens.is_empty(),
             "Should successfully tokenize file with comments"
         );
 
@@ -200,7 +200,7 @@ mod lexer_tests {
             .collect();
 
         assert!(
-            non_void_tokens.len() > 0,
+            !non_void_tokens.is_empty(),
             "Should have actual code tokens besides comments"
         );
 
@@ -352,8 +352,11 @@ mod lexer_performance_tests {
         // Test Stage 3 (final stage)
         let _lexer = Elements::init(&mut file_stream);
 
-        // Just verify we can create the lexer without errors
-        assert!(true, "Should be able to create stage 3 lexer");
+        // Just verify we can create the lexer without errors by reading current token.
+        assert!(
+            _lexer.curr(false).is_ok(),
+            "Should be able to read current token in stage 3 lexer"
+        );
     }
 }
 
@@ -367,7 +370,7 @@ mod lexer_error_tests {
         let tokens = tokenize_file("test/stream/empty.fol");
 
         // Should have at least EOF token
-        assert!(tokens.len() >= 1, "Should have at least EOF token");
+        assert!(!tokens.is_empty(), "Should have at least EOF token");
 
         let last_token = &tokens[tokens.len() - 1];
         assert!(last_token.0.is_eof(), "Last token should be EOF");

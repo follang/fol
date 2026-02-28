@@ -104,19 +104,19 @@ mod namespace_tests {
 
         let test_dir = "test/stream/namespace_test";
         if !std::path::Path::new(test_dir).exists() {
-            fs::create_dir_all(&format!("{}/math/vector", test_dir)).ok();
-            fs::create_dir_all(&format!("{}/utils", test_dir)).ok();
+            fs::create_dir_all(format!("{}/math/vector", test_dir)).ok();
+            fs::create_dir_all(format!("{}/utils", test_dir)).ok();
 
             // Create test files
-            fs::write(&format!("{}/main.fol", test_dir), "// Root file").ok();
-            fs::write(&format!("{}/math/mod.fol", test_dir), "// Math module").ok();
+            fs::write(format!("{}/main.fol", test_dir), "// Root file").ok();
+            fs::write(format!("{}/math/mod.fol", test_dir), "// Math module").ok();
             fs::write(
-                &format!("{}/math/vector/vec3.fol", test_dir),
+                format!("{}/math/vector/vec3.fol", test_dir),
                 "// Vector3 implementation",
             )
             .ok();
             fs::write(
-                &format!("{}/utils/helper.fol", test_dir),
+                format!("{}/utils/helper.fol", test_dir),
                 "// Utility functions",
             )
             .ok();

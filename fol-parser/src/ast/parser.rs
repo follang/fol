@@ -8,6 +8,12 @@ pub struct AstParser {
     // Parser state can be added here later
 }
 
+impl Default for AstParser {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AstParser {
     pub fn new() -> Self {
         Self {}

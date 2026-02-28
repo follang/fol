@@ -24,25 +24,13 @@ impl Source {
 }
 
 /// A location somewhere in the sourcecode.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub struct Location {
     row: usize,
     col: usize,
     len: usize,
     deep: isize,
     src: Option<Source>,
-}
-
-impl std::default::Default for Location {
-    fn default() -> Self {
-        Self {
-            row: 0,
-            col: 0,
-            len: 0,
-            deep: 0,
-            src: None,
-        }
-    }
 }
 
 impl fmt::Display for Location {
@@ -104,6 +92,10 @@ impl Location {
 
     pub fn len(&self) -> usize {
         self.len
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
     }
 
     pub fn set_len(&mut self, l: usize) {

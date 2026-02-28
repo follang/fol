@@ -112,7 +112,7 @@ mod stream_tests {
 
         let content: String = chars.iter().collect();
         assert!(content.contains("世界"), "Should handle Chinese characters");
-        assert!(content.contains("🌍"), "Should handle emoji");
+        assert!(content.contains('🌍'), "Should handle emoji");
         assert!(
             content.contains("café"),
             "Should handle accented characters"

@@ -59,23 +59,23 @@ impl Element {
         self.loc.longer(&other.loc.len())
     }
 
-    pub fn analyze(&mut self, mut code: &mut stage0::Elements) -> Vod {
+    pub fn analyze(&mut self, code: &mut stage0::Elements) -> Vod {
         if code.curr()?.0 == '/' && (code.peek(0)?.0 == '/' || code.peek(0)?.0 == '*') {
-            self.comment(&mut code)?;
+            self.comment(code)?;
         } else if is_eof(&code.curr()?.0) {
-            self.endfile(&mut code)?;
+            self.endfile(code)?;
         } else if is_eol(&code.curr()?.0) {
-            self.endline(&mut code)?;
+            self.endline(code)?;
         } else if is_space(&code.curr()?.0) {
-            self.space(&mut code)?;
+            self.space(code)?;
         } else if code.curr()?.0 == '"' || code.curr()?.0 == '\'' || code.curr()?.0 == '`' {
-            self.encap(&mut code)?;
+            self.encap(code)?;
         } else if is_digit(&code.curr()?.0) {
-            self.digit(&mut code)?;
+            self.digit(code)?;
         } else if is_symbol(&code.curr()?.0) {
-            self.symbol(&mut code)?;
+            self.symbol(code)?;
         } else if is_alpha(&code.curr()?.0) {
-            self.alpha(&mut code)?;
+            self.alpha(code)?;
         } else {
             let msg = format!("{} {}", code.curr()?.0, "is not a recognized character");
             return Err(catch!(Flaw::ReadingBadContent { msg: Some(msg) }));
@@ -252,7 +252,7 @@ impl Element {
         self.push(code)?;
         while is_alpha(&code.peek(0)?.0) || is_digit(&code.peek(0)?.0) {
             self.bump(code)?;
-            con.push(code.curr()?.0.clone());
+            con.push(code.curr()?.0);
         }
         match self.con().as_str() {
             "use" => self.set_key(Keyword(BUILDIN::Use)),
