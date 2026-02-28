@@ -14,7 +14,7 @@ use std::path::Path;
 
 fn main() {
     let matches = Command::new("fol")
-        .version("0.1.4")
+        .version(env!("CARGO_PKG_VERSION"))
         .about("FOL Programming Language Compiler")
         .arg(
             Arg::new("file")
