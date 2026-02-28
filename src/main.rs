@@ -10,6 +10,7 @@ use clap::{Arg, Command};
 use fol_diagnostics::{DiagnosticLocation, DiagnosticReport, OutputFormat};
 use fol_parser::ast::AstParser;
 use fol_stream::FileStream;
+use std::path::Path;
 
 fn main() {
     let matches = Command::new("fol")
@@ -77,7 +78,8 @@ fn main() {
 
 fn compile_file(file_path: &str, diagnostics: &mut DiagnosticReport) -> Result<(), ()> {
     // Check if file exists
-    if !std::path::Path::new(file_path).exists() {
+    let path = Path::new(file_path);
+    if !path.exists() {
         let error = fol_types::BasicError {
             message: format!("File not found: {}", file_path),
         };
@@ -86,7 +88,7 @@ fn compile_file(file_path: &str, diagnostics: &mut DiagnosticReport) -> Result<(
     }
 
     // 1. Create stream (supports both files and folders with .mod handling)
-    let mut file_stream = if std::path::Path::new(file_path).is_dir() {
+    let mut file_stream = if path.is_dir() {
         match FileStream::from_folder(file_path) {
             Ok(stream) => stream,
             Err(e) => {
@@ -136,16 +138,7 @@ fn compile_file(file_path: &str, diagnostics: &mut DiagnosticReport) -> Result<(
         Err(parse_errors) => {
             // Add parse errors to diagnostics
             for error in parse_errors {
-                // TODO: Extract location information from error
-                diagnostics.add_error(
-                    error.as_ref(),
-                    Some(DiagnosticLocation {
-                        file: Some(file_path.to_string()),
-                        line: 1,   // TODO: Get actual line from error
-                        column: 1, // TODO: Get actual column from error
-                        length: None,
-                    }),
-                );
+                diagnostics.add_error(error.as_ref(), None);
             }
             return Err(());
         }
