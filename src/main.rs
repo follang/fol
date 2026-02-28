@@ -92,15 +92,7 @@ fn compile_file(file_path: &str, diagnostics: &mut DiagnosticReport) -> Result<(
         match FileStream::from_folder(file_path) {
             Ok(stream) => stream,
             Err(e) => {
-                diagnostics.add_error(
-                    e.as_ref(),
-                    Some(DiagnosticLocation {
-                        file: Some(file_path.to_string()),
-                        line: 1,
-                        column: 1,
-                        length: None,
-                    }),
-                );
+                report_input_error(diagnostics, e.as_ref(), file_path);
                 return Err(());
             }
         }
@@ -108,15 +100,7 @@ fn compile_file(file_path: &str, diagnostics: &mut DiagnosticReport) -> Result<(
         match FileStream::from_file(file_path) {
             Ok(stream) => stream,
             Err(e) => {
-                diagnostics.add_error(
-                    e.as_ref(),
-                    Some(DiagnosticLocation {
-                        file: Some(file_path.to_string()),
-                        line: 1,
-                        column: 1,
-                        length: None,
-                    }),
-                );
+                report_input_error(diagnostics, e.as_ref(), file_path);
                 return Err(());
             }
         }
@@ -145,6 +129,22 @@ fn compile_file(file_path: &str, diagnostics: &mut DiagnosticReport) -> Result<(
     }
 
     Ok(())
+}
+
+fn report_input_error(
+    diagnostics: &mut DiagnosticReport,
+    error: &dyn fol_types::Glitch,
+    file: &str,
+) {
+    diagnostics.add_error(
+        error,
+        Some(DiagnosticLocation {
+            file: Some(file.to_string()),
+            line: 1,
+            column: 1,
+            length: None,
+        }),
+    );
 }
 
 #[test]
