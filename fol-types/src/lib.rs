@@ -5,8 +5,8 @@ pub mod r#mod;
 pub mod error;
 
 // Basic types
-pub use r#mod::*;
 pub use error::*;
+pub use r#mod::*;
 
 // Placeholder error trait for now
 pub trait Glitch: std::error::Error + Send + Sync {

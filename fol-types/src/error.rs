@@ -44,13 +44,25 @@ impl fmt::Display for Flaw {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Flaw::ReadingBadContent { msg } => {
-                write!(f, "ReadingBadContent: {}", msg.as_ref().unwrap_or(&"".to_string()))
+                write!(
+                    f,
+                    "ReadingBadContent: {}",
+                    msg.as_ref().unwrap_or(&"".to_string())
+                )
             }
             Flaw::GettingNoEntry { msg } => {
-                write!(f, "GettingNoEntry: {}", msg.as_ref().unwrap_or(&"".to_string()))
+                write!(
+                    f,
+                    "GettingNoEntry: {}",
+                    msg.as_ref().unwrap_or(&"".to_string())
+                )
             }
             Flaw::GettingWrongPath { msg } => {
-                write!(f, "GettingWrongPath: {}", msg.as_ref().unwrap_or(&"".to_string()))
+                write!(
+                    f,
+                    "GettingWrongPath: {}",
+                    msg.as_ref().unwrap_or(&"".to_string())
+                )
             }
         }
     }
@@ -60,10 +72,18 @@ impl fmt::Display for Typo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Typo::LexerSpaceAdd { msg } => {
-                write!(f, "LexerSpaceAdd: {}", msg.as_ref().unwrap_or(&"".to_string()))
+                write!(
+                    f,
+                    "LexerSpaceAdd: {}",
+                    msg.as_ref().unwrap_or(&"".to_string())
+                )
             }
             Typo::ParserMissmatch { msg } => {
-                write!(f, "ParserMissmatch: {}", msg.as_ref().unwrap_or(&"".to_string()))
+                write!(
+                    f,
+                    "ParserMissmatch: {}",
+                    msg.as_ref().unwrap_or(&"".to_string())
+                )
             }
         }
     }

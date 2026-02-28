@@ -1,17 +1,12 @@
-use std::fmt;
-use fol_types::{Vod, error::*, catch};
-use crate::point;
 use crate::lexer::stage0;
+use crate::point;
+use fol_types::{catch, error::*, Vod};
+use std::fmt;
 
 use crate::token::{
-    literal::LITERAL,
-    void::VOID,
-    symbol::SYMBOL,
-    operator::OPERATOR,
-    buildin::BUILDIN,
+    buildin::BUILDIN, literal::LITERAL, operator::OPERATOR, symbol::SYMBOL, void::VOID,
 };
 use crate::token::{help::*, KEYWORD, KEYWORD::*};
-
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Element {
@@ -37,13 +32,27 @@ impl fmt::Display for Element {
 }
 
 impl Element {
-    pub fn init(key: KEYWORD, loc: point::Location, con: String) -> Self { Self{ key, loc, con } }
-    pub fn key(&self) -> &KEYWORD { &self.key }
-    pub fn set_key(&mut self, k: KEYWORD) { self.key = k; }
-    pub fn loc(&self) -> &point::Location { &self.loc }
-    pub fn set_loc(&mut self, l: point::Location) { self.loc = l; }
-    pub fn con(&self) -> &String { &self.con }
-    pub fn set_con(&mut self, c: String) { self.con = c; }
+    pub fn init(key: KEYWORD, loc: point::Location, con: String) -> Self {
+        Self { key, loc, con }
+    }
+    pub fn key(&self) -> &KEYWORD {
+        &self.key
+    }
+    pub fn set_key(&mut self, k: KEYWORD) {
+        self.key = k;
+    }
+    pub fn loc(&self) -> &point::Location {
+        &self.loc
+    }
+    pub fn set_loc(&mut self, l: point::Location) {
+        self.loc = l;
+    }
+    pub fn con(&self) -> &String {
+        &self.con
+    }
+    pub fn set_con(&mut self, c: String) {
+        self.con = c;
+    }
 
     pub fn append(&mut self, other: &Element) {
         self.con.push_str(&other.con);
@@ -69,7 +78,7 @@ impl Element {
             self.alpha(&mut code)?;
         } else {
             let msg = format!("{} {}", code.curr()?.0, "is not a recognized character");
-            return Err(catch!(Flaw::ReadingBadContent{ msg: Some(msg) }));
+            return Err(catch!(Flaw::ReadingBadContent { msg: Some(msg) }));
         }
         Ok(())
     }
@@ -81,13 +90,17 @@ impl Element {
         if code.curr()?.0 == '/' {
             self.bump(code)?;
             while !is_eol(&code.peek(0)?.0) {
-                if is_eof(&code.peek(0)?.0) { break };
+                if is_eof(&code.peek(0)?.0) {
+                    break;
+                };
                 self.bump(code)?;
             }
         }
         if code.curr()?.0 == '*' {
             while !(code.curr()?.0 == '*' && code.peek(0)?.0 == '/') {
-                if is_eof(&code.peek(0)?.0) { break };
+                if is_eof(&code.peek(0)?.0) {
+                    break;
+                };
                 self.bump(code)?;
             }
             self.bump(code)?;
@@ -158,8 +171,7 @@ impl Element {
             } else if code.peek(0)?.0 == 'b' {
                 self.bump(code)?;
                 self.key = Literal(LITERAL::Binary);
-                while code.peek(0)?.0 == '0' || code.peek(0)?.0 == '1' || code.peek(0)?.0 == '_'
-                {
+                while code.peek(0)?.0 == '0' || code.peek(0)?.0 == '1' || code.peek(0)?.0 == '_' {
                     self.bump(code)?;
                 }
             }
@@ -178,14 +190,13 @@ impl Element {
         if litsym == '`' {
             self.key = Operator(OPERATOR::ANY);
         // } else if litsym == '\'' {
-            // self.key = makro;
-            // self.key = literal(LITERAL::char_);
+        // self.key = makro;
+        // self.key = literal(LITERAL::char_);
         } else {
             self.key = Literal(LITERAL::Stringy);
         }
         self.push(code)?;
-        while code.peek(0)?.0 != litsym || (code.peek(0)?.0 == litsym && code.curr()?.0 == '\\')
-        {
+        while code.peek(0)?.0 != litsym || (code.peek(0)?.0 == litsym && code.curr()?.0 == '\\') {
             if code.peek(0)?.0 != litsym && code.peek(0)?.0 == '\0' {
                 self.key = Illegal;
                 break;
@@ -200,30 +211,14 @@ impl Element {
         self.push(code)?;
         self.key = Symbol(SYMBOL::CurlyC);
         match code.curr()?.0 {
-            '{' => {
-                self.key = Symbol(SYMBOL::CurlyO)
-            }
-            '}' => {
-                self.key = Symbol(SYMBOL::CurlyC)
-            }
-            '[' => {
-                self.key = Symbol(SYMBOL::SquarO)
-            }
-            ']' => {
-                self.key = Symbol(SYMBOL::SquarC)
-            }
-            '(' => {
-                self.key = Symbol(SYMBOL::RoundO)
-            }
-            ')' => {
-                self.key = Symbol(SYMBOL::RoundC)
-            }
-            '<' => {
-                self.key = Symbol(SYMBOL::AngleO)
-            }
-            '>' => {
-                self.key = Symbol(SYMBOL::AngleC)
-            }
+            '{' => self.key = Symbol(SYMBOL::CurlyO),
+            '}' => self.key = Symbol(SYMBOL::CurlyC),
+            '[' => self.key = Symbol(SYMBOL::SquarO),
+            ']' => self.key = Symbol(SYMBOL::SquarC),
+            '(' => self.key = Symbol(SYMBOL::RoundO),
+            ')' => self.key = Symbol(SYMBOL::RoundC),
+            '<' => self.key = Symbol(SYMBOL::AngleO),
+            '>' => self.key = Symbol(SYMBOL::AngleC),
             ';' => self.key = Symbol(SYMBOL::Semi),
             '\\' => self.key = Symbol(SYMBOL::Escape),
             '.' => self.key = Symbol(SYMBOL::Dot),

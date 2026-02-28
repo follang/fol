@@ -1,15 +1,10 @@
-use std::fmt;
+use crate::lexer::stage1;
+use crate::point;
+use crate::token::{operator::OPERATOR, symbol::SYMBOL, void::VOID};
+use crate::token::{KEYWORD, KEYWORD::*};
 use colored::Colorize;
 use fol_types::Vod;
-use crate::point;
-use crate::lexer::stage1;
-use crate::token::{
-    void::VOID,
-    symbol::SYMBOL,
-    operator::OPERATOR,
-};
-use crate::token::{KEYWORD, KEYWORD::*};
-
+use std::fmt;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Element {
@@ -30,28 +25,47 @@ impl std::default::Default for Element {
 
 impl From<stage1::Element> for Element {
     fn from(stg1: stage1::Element) -> Self {
-        Self { key: stg1.key().clone(), loc: stg1.loc().clone(), con: stg1.con().clone() }
+        Self {
+            key: stg1.key().clone(),
+            loc: stg1.loc().clone(),
+            con: stg1.con().clone(),
+        }
     }
 }
 
 impl fmt::Display for Element {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let con = if self.key().is_literal()
-            || self.key().is_comment()
-            || self.key().is_ident() { " ".to_string() + &self.con + " " } else { "".to_string() };
+        let con = if self.key().is_literal() || self.key().is_comment() || self.key().is_ident() {
+            " ".to_string() + &self.con + " "
+        } else {
+            "".to_string()
+        };
         write!(f, "{}\t{}{}", self.loc, self.key, con.black().on_red())
     }
 }
 
-
 impl Element {
-    pub fn init(key: KEYWORD, loc: point::Location, con: String) -> Self { Self{ key, loc, con } }
-    pub fn key(&self) -> KEYWORD { self.key.clone() }
-    pub fn set_key(&mut self, k: KEYWORD) { self.key = k; }
-    pub fn loc(&self) -> &point::Location { &self.loc }
-    pub fn set_loc(&mut self, l: point::Location) { self.loc = l; }
-    pub fn con(&self) -> &String { &self.con }
-    pub fn set_con(&mut self, c: String) { self.con = c; }
+    pub fn init(key: KEYWORD, loc: point::Location, con: String) -> Self {
+        Self { key, loc, con }
+    }
+    pub fn key(&self) -> KEYWORD {
+        self.key.clone()
+    }
+    pub fn set_key(&mut self, k: KEYWORD) {
+        self.key = k;
+    }
+    pub fn loc(&self) -> &point::Location {
+        &self.loc
+    }
+    pub fn set_loc(&mut self, l: point::Location) {
+        self.loc = l;
+    }
+    pub fn con(&self) -> &String {
+        &self.con
+    }
+    pub fn set_con(&mut self, c: String) {
+        self.con = c;
+    }
 
     pub fn append(&mut self, other: &Element) {
         self.con.push_str(&other.con);
@@ -61,8 +75,8 @@ impl Element {
     pub fn analyze(&mut self, el: &mut stage1::Elements) -> Vod {
         // EOL => SPACE
         if el.curr()?.key().is_eol() && el.peek(0)?.key().is_eol() {
-            while el.curr()?.key().is_eol() && el.peek(0)?.key().is_eol() { 
-                self.bump(el); 
+            while el.curr()?.key().is_eol() && el.peek(0)?.key().is_eol() {
+                self.bump(el);
             }
             self.set_key(Void(VOID::EndLine))
         }
@@ -73,7 +87,7 @@ impl Element {
                 || el.seek(0)?.key().is_operator())
         {
             self.set_key(Void(VOID::Space))
-        } 
+        }
         // EOL => SEMICOLON
         else if matches!(el.curr()?.key(), KEYWORD::Symbol(SYMBOL::Semi))
             && el.peek(0)?.key().is_void()
@@ -82,8 +96,8 @@ impl Element {
             self.bump(el);
         }
         // EOL or SPACE => EOF
-        else if ( matches!(el.curr()?.key(), KEYWORD::Void(VOID::Space))
-            || matches!(el.curr()?.key(), KEYWORD::Void(VOID::EndLine)) )
+        else if (matches!(el.curr()?.key(), KEYWORD::Void(VOID::Space))
+            || matches!(el.curr()?.key(), KEYWORD::Void(VOID::EndLine)))
             && el.peek(0)?.key().is_eof()
         {
             self.append(&el.peek(0)?.into());
@@ -100,19 +114,16 @@ impl Element {
                 self.bump(el);
                 self.set_key(Operator(OPERATOR::Dotdotdot));
             }
-        }
-        else if el.curr()?.key().is_symbol()
+        } else if el.curr()?.key().is_symbol()
             && el.peek(0)?.key().is_symbol()
             && (!(matches!(el.curr()?.key(), KEYWORD::Symbol(SYMBOL::Semi)))
-            || !(matches!(el.peek(0)?.key(), KEYWORD::Symbol(SYMBOL::Semi))))
-            // && (el.seek(0)?.key().is_void() || el.seek(0)?.key().is_bracket())
+                || !(matches!(el.peek(0)?.key(), KEYWORD::Symbol(SYMBOL::Semi))))
+        // && (el.seek(0)?.key().is_void() || el.seek(0)?.key().is_bracket())
         {
             self.make_multi_operator(el)?;
-        }
-        else if matches!(el.curr()?.key(), KEYWORD::Identifier) 
-        {
+        } else if matches!(el.curr()?.key(), KEYWORD::Identifier) {
             self.set_key(Identifier)
-        } 
+        }
         // if self.key().is_eol() { self.set_key(symbol(SYMBOL::semi_)) }
         Ok(())
     }

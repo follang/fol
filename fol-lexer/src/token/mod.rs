@@ -4,19 +4,14 @@ use std::fmt;
 
 pub mod help;
 
-pub mod literal;
-pub mod void;
-pub mod symbol;
-pub mod operator;
 pub mod buildin;
-
+pub mod literal;
+pub mod operator;
+pub mod symbol;
+pub mod void;
 
 pub use crate::token::{
-    literal::LITERAL,
-    void::VOID,
-    symbol::SYMBOL,
-    operator::OPERATOR,
-    buildin::BUILDIN,
+    buildin::BUILDIN, literal::LITERAL, operator::OPERATOR, symbol::SYMBOL, void::VOID,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -98,7 +93,9 @@ impl KEYWORD {
     pub fn is_bracket(&self) -> bool {
         if self.is_open_bracket() || self.is_close_bracket() {
             true
-        } else { false }
+        } else {
+            false
+        }
     }
     pub fn is_decimal(&self) -> bool {
         match *self {
@@ -120,8 +117,12 @@ impl KEYWORD {
     pub fn is_numberish(&self) -> bool {
         if self.is_number()
             || matches!(self, KEYWORD::Symbol(SYMBOL::Dot))
-            || matches!(self, KEYWORD::Symbol(SYMBOL::Minus)) 
-        { true } else { false }
+            || matches!(self, KEYWORD::Symbol(SYMBOL::Minus))
+        {
+            true
+        } else {
+            false
+        }
     }
     pub fn is_symbol(&self) -> bool {
         if self.is_bracket() {
@@ -195,11 +196,8 @@ impl KEYWORD {
         }
     }
     pub fn is_continue(&self) -> bool {
-        if self.is_void() 
-            || self.is_bracket()
-            || self.is_terminal()
-            || self.is_comma() {
-                true
+        if self.is_void() || self.is_bracket() || self.is_terminal() || self.is_comma() {
+            true
         } else {
             false
         }

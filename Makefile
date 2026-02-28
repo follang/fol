@@ -37,7 +37,7 @@ r: run
 
 # Run the built binary directly (like run.sh does)
 run-binary:
-	@./target/release/roc
+	@./target/release/fol
 
 rb: run-binary
 

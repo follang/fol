@@ -1,9 +1,15 @@
-// FOL Compiler - Clean modular implementation
+// FOL Compiler entrypoint.
+//
+// Core compiler functionality is implemented in workspace crates:
+// - fol-stream
+// - fol-lexer
+// - fol-parser
+// - fol-diagnostics
+// - fol-types
 use clap::{Arg, Command};
-use fol_diagnostics::{DiagnosticReport, OutputFormat, DiagnosticLocation};
-use fol_stream::FileStream;
-use fol_lexer;
+use fol_diagnostics::{DiagnosticLocation, DiagnosticReport, OutputFormat};
 use fol_parser::ast::AstParser;
+use fol_stream::FileStream;
 
 fn main() {
     let matches = Command::new("fol")
@@ -11,24 +17,31 @@ fn main() {
         .about("FOL Programming Language Compiler")
         .arg(
             Arg::new("file")
-                .help("Input FOL file or folder to compile (.mod directories are handled specially)")
+                .help(
+                    "Input FOL file or folder to compile (.mod directories are handled specially)",
+                )
                 .value_name("FILE_OR_FOLDER")
-                .index(1)
+                .index(1),
         )
         .arg(
             Arg::new("json")
                 .long("json")
                 .help("Output diagnostics in JSON format")
-                .action(clap::ArgAction::SetTrue)
+                .action(clap::ArgAction::SetTrue),
         )
         .get_matches();
 
-    let file_path = matches.get_one::<String>("file")
+    let file_path = matches
+        .get_one::<String>("file")
         .map(|s| s.as_str())
         .unwrap_or("./test/main/main.fol");
-    
+
     let json_output = matches.get_flag("json");
-    let output_format = if json_output { OutputFormat::Json } else { OutputFormat::Human };
+    let output_format = if json_output {
+        OutputFormat::Json
+    } else {
+        OutputFormat::Human
+    };
 
     // Initialize diagnostic report
     let mut diagnostics = DiagnosticReport::new();
@@ -66,7 +79,7 @@ fn compile_file(file_path: &str, diagnostics: &mut DiagnosticReport) -> Result<(
     // Check if file exists
     if !std::path::Path::new(file_path).exists() {
         let error = fol_types::BasicError {
-            message: format!("File not found: {}", file_path)
+            message: format!("File not found: {}", file_path),
         };
         diagnostics.add_error(&error, None);
         return Err(());
@@ -77,12 +90,15 @@ fn compile_file(file_path: &str, diagnostics: &mut DiagnosticReport) -> Result<(
         match FileStream::from_folder(file_path) {
             Ok(stream) => stream,
             Err(e) => {
-                diagnostics.add_error(e.as_ref(), Some(DiagnosticLocation {
-                    file: Some(file_path.to_string()),
-                    line: 1,
-                    column: 1,
-                    length: None,
-                }));
+                diagnostics.add_error(
+                    e.as_ref(),
+                    Some(DiagnosticLocation {
+                        file: Some(file_path.to_string()),
+                        line: 1,
+                        column: 1,
+                        length: None,
+                    }),
+                );
                 return Err(());
             }
         }
@@ -90,12 +106,15 @@ fn compile_file(file_path: &str, diagnostics: &mut DiagnosticReport) -> Result<(
         match FileStream::from_file(file_path) {
             Ok(stream) => stream,
             Err(e) => {
-                diagnostics.add_error(e.as_ref(), Some(DiagnosticLocation {
-                    file: Some(file_path.to_string()),
-                    line: 1,
-                    column: 1,
-                    length: None,
-                }));
+                diagnostics.add_error(
+                    e.as_ref(),
+                    Some(DiagnosticLocation {
+                        file: Some(file_path.to_string()),
+                        line: 1,
+                        column: 1,
+                        length: None,
+                    }),
+                );
                 return Err(());
             }
         }
@@ -118,12 +137,15 @@ fn compile_file(file_path: &str, diagnostics: &mut DiagnosticReport) -> Result<(
             // Add parse errors to diagnostics
             for error in parse_errors {
                 // TODO: Extract location information from error
-                diagnostics.add_error(error.as_ref(), Some(DiagnosticLocation {
-                    file: Some(file_path.to_string()),
-                    line: 1, // TODO: Get actual line from error
-                    column: 1, // TODO: Get actual column from error
-                    length: None,
-                }));
+                diagnostics.add_error(
+                    error.as_ref(),
+                    Some(DiagnosticLocation {
+                        file: Some(file_path.to_string()),
+                        line: 1,   // TODO: Get actual line from error
+                        column: 1, // TODO: Get actual column from error
+                        length: None,
+                    }),
+                );
             }
             return Err(());
         }

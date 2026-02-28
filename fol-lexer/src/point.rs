@@ -1,12 +1,12 @@
 #![allow(unused_variables)]
 #![allow(dead_code)]
 
+use colored::Colorize;
 use std::fmt;
 use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::path::Path;
-use colored::Colorize;
 // Simple Source type for location tracking
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Source {
@@ -17,12 +17,11 @@ impl Source {
     pub fn new(path: String) -> Self {
         Self { path }
     }
-    
+
     pub fn path(&self, _abs: bool) -> String {
         self.path.clone()
     }
 }
-
 
 /// A location somewhere in the sourcecode.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -48,11 +47,7 @@ impl std::default::Default for Location {
 
 impl fmt::Display for Location {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "[{: <2}:{: <2} | {}]",
-            self.row, self.col, self.deep
-        )
+        write!(f, "[{: <2}:{: <2} | {}]", self.row, self.col, self.deep)
     }
 }
 
@@ -73,22 +68,16 @@ impl Location {
                 "^".repeat(self.len()),
             )
         } else {
-            format!(
-                "at line: {:>6}",
-                self,
-            )
+            format!("at line: {:>6}", self,)
         }
     }
 
     pub fn print(&self, source: &Source) -> String {
-        format!(
-            "{: <4} {}",
-            source.path(false), self
-        )
+        format!("{: <4} {}", source.path(false), self)
     }
 
-    pub fn set_source(&mut self, source: &Option<Source>) { 
-        self.src = source.clone() 
+    pub fn set_source(&mut self, source: &Option<Source>) {
+        self.src = source.clone()
     }
 
     pub fn from_stream_location(stream_loc: &fol_stream::Location) -> Self {
@@ -101,8 +90,8 @@ impl Location {
         }
     }
 
-    pub fn source(&self) -> Option<Source> { 
-        self.src.clone() 
+    pub fn source(&self) -> Option<Source> {
+        self.src.clone()
     }
 
     pub fn row(&self) -> usize {
