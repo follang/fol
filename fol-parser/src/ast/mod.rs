@@ -658,4 +658,4 @@ pub trait AstVisitor {
 
 // Re-export modules
 pub mod parser;
-pub use parser::AstParser;
+pub use parser::{AstParser, ParseError};

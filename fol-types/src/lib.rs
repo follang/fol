@@ -9,8 +9,9 @@ pub use error::*;
 pub use r#mod::*;
 
 // Placeholder error trait for now
-pub trait Glitch: std::error::Error + Send + Sync {
+pub trait Glitch: std::error::Error + Send + Sync + 'static {
     fn clone_box(&self) -> Box<dyn Glitch>;
+    fn as_any(&self) -> &dyn std::any::Any;
 }
 
 // Basic implementations will be added later
@@ -29,6 +30,10 @@ impl std::error::Error for BasicError {}
 impl Glitch for BasicError {
     fn clone_box(&self) -> Box<dyn Glitch> {
         Box::new(self.clone())
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 

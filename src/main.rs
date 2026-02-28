@@ -8,7 +8,7 @@
 // - fol-types
 use clap::{Arg, Command};
 use fol_diagnostics::{DiagnosticLocation, DiagnosticReport, OutputFormat};
-use fol_parser::ast::AstParser;
+use fol_parser::ast::{AstParser, ParseError};
 use fol_stream::FileStream;
 use std::path::Path;
 
@@ -122,7 +122,7 @@ fn compile_file(file_path: &str, diagnostics: &mut DiagnosticReport) -> Result<(
         Err(parse_errors) => {
             // Add parse errors to diagnostics
             for error in parse_errors {
-                diagnostics.add_error(error.as_ref(), None);
+                diagnostics.add_error(error.as_ref(), parser_error_location(error.as_ref()));
             }
             return Err(());
         }
@@ -145,6 +145,18 @@ fn report_input_error(
             length: None,
         }),
     );
+}
+
+fn parser_error_location(error: &dyn fol_types::Glitch) -> Option<DiagnosticLocation> {
+    error
+        .as_any()
+        .downcast_ref::<ParseError>()
+        .map(|parse_error| DiagnosticLocation {
+            file: parse_error.file(),
+            line: parse_error.line(),
+            column: parse_error.column(),
+            length: Some(parse_error.length()),
+        })
 }
 
 #[test]

@@ -28,15 +28,27 @@ impl crate::Glitch for Flaw {
     fn clone_box(&self) -> Box<dyn crate::Glitch> {
         Box::new(self.clone())
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 impl crate::Glitch for Typo {
     fn clone_box(&self) -> Box<dyn crate::Glitch> {
         Box::new(self.clone())
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 impl crate::Glitch for Slip {
     fn clone_box(&self) -> Box<dyn crate::Glitch> {
         Box::new(self.clone())
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 

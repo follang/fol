@@ -2,6 +2,63 @@
 
 use super::{AstNode, Literal};
 use fol_types::*;
+use std::fmt;
+
+#[derive(Debug, Clone)]
+pub struct ParseError {
+    message: String,
+    file: Option<String>,
+    line: usize,
+    column: usize,
+    length: usize,
+}
+
+impl ParseError {
+    pub fn from_token(token: &fol_lexer::lexer::stage3::element::Element, message: String) -> Self {
+        let loc = token.loc();
+        Self {
+            message,
+            file: loc.source().map(|src| src.path(true)),
+            line: loc.row(),
+            column: loc.col(),
+            length: loc.len(),
+        }
+    }
+
+    pub fn file(&self) -> Option<String> {
+        self.file.clone()
+    }
+
+    pub fn line(&self) -> usize {
+        self.line
+    }
+
+    pub fn column(&self) -> usize {
+        self.column
+    }
+
+    pub fn length(&self) -> usize {
+        self.length
+    }
+}
+
+impl fmt::Display for ParseError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.message)
+    }
+}
+
+impl std::error::Error for ParseError {}
+
+impl Glitch for ParseError {
+    fn clone_box(&self) -> Box<dyn Glitch> {
+        Box::new(self.clone())
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+}
 
 /// Simple AST Parser for FOL
 pub struct AstParser {
@@ -22,8 +79,18 @@ impl AstParser {
     /// Parse a token stream into an AST
     pub fn parse(
         &mut self,
-        _tokens: &mut fol_lexer::lexer::stage3::Elements,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Vec<Box<dyn Glitch>>> {
+        if let Ok(token) = tokens.curr(false) {
+            if token.key().is_illegal() {
+                let error = ParseError::from_token(
+                    &token,
+                    format!("Parser encountered illegal token '{}'", token.con()),
+                );
+                return Err(vec![Box::new(error)]);
+            }
+        }
+
         // For now, return a simple program node
         // This is a minimal implementation to get compilation working
         Ok(AstNode::Program {
