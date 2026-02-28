@@ -42,105 +42,40 @@ pub enum SYMBOL {
 
 impl fmt::Display for SYMBOL {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let t;
-        match self {
-            SYMBOL::CurlyC => {
-                t = Some("}".to_string());
-            }
-            SYMBOL::CurlyO => {
-                t = Some("{".to_string());
-            }
-            SYMBOL::SquarC => {
-                t = Some("]".to_string());
-            }
-            SYMBOL::SquarO => {
-                t = Some("[".to_string());
-            }
-            SYMBOL::RoundC => {
-                t = Some(")".to_string());
-            }
-            SYMBOL::RoundO => {
-                t = Some("(".to_string());
-            }
-            SYMBOL::AngleC => {
-                t = Some(">".to_string());
-            }
-            SYMBOL::AngleO => {
-                t = Some("<".to_string());
-            }
-            SYMBOL::Dot => {
-                t = Some(".".to_string());
-            }
-            SYMBOL::Comma => {
-                t = Some(",".to_string());
-            }
-            SYMBOL::Colon => {
-                t = Some(":".to_string());
-            }
-            SYMBOL::Semi => {
-                t = Some(";".to_string());
-            }
-            SYMBOL::Escape => {
-                t = Some("\\".to_string());
-            }
-            SYMBOL::Pipe => {
-                t = Some("|".to_string());
-            }
-            SYMBOL::Equal => {
-                t = Some("=".to_string());
-            }
-            SYMBOL::Plus => {
-                t = Some("+".to_string());
-            }
-            SYMBOL::Minus => {
-                t = Some("-".to_string());
-            }
-            SYMBOL::Under => {
-                t = Some("_".to_string());
-            }
-            SYMBOL::Star => {
-                t = Some("*".to_string());
-            }
-            SYMBOL::Home => {
-                t = Some("~".to_string());
-            }
-            SYMBOL::Root => {
-                t = Some("/".to_string());
-            }
-            SYMBOL::Percent => {
-                t = Some("%".to_string());
-            }
-            SYMBOL::Carret => {
-                t = Some("^".to_string());
-            }
-            SYMBOL::Query => {
-                t = Some("?".to_string());
-            }
-            SYMBOL::Bang => {
-                t = Some("!".to_string());
-            }
-            SYMBOL::And => {
-                t = Some("&".to_string());
-            }
-            SYMBOL::At => {
-                t = Some("@".to_string());
-            }
-            SYMBOL::Hash => {
-                t = Some("#".to_string());
-            }
-            SYMBOL::Dollar => {
-                t = Some("$".to_string());
-            }
-            SYMBOL::Degree => {
-                t = Some("°".to_string());
-            }
-            SYMBOL::Sign => {
-                t = Some("§".to_string());
-            }
-            SYMBOL::Tik => {
-                t = Some("`".to_string());
-            }
-            _ => t = None,
+        let t = match self {
+            SYMBOL::CurlyC => Some("}"),
+            SYMBOL::CurlyO => Some("{"),
+            SYMBOL::SquarC => Some("]"),
+            SYMBOL::SquarO => Some("["),
+            SYMBOL::RoundC => Some(")"),
+            SYMBOL::RoundO => Some("("),
+            SYMBOL::AngleC => Some(">"),
+            SYMBOL::AngleO => Some("<"),
+            SYMBOL::Dot => Some("."),
+            SYMBOL::Comma => Some(","),
+            SYMBOL::Colon => Some(":"),
+            SYMBOL::Semi => Some(";"),
+            SYMBOL::Escape => Some("\\"),
+            SYMBOL::Pipe => Some("|"),
+            SYMBOL::Equal => Some("="),
+            SYMBOL::Plus => Some("+"),
+            SYMBOL::Minus => Some("-"),
+            SYMBOL::Under => Some("_"),
+            SYMBOL::Star => Some("*"),
+            SYMBOL::Home => Some("~"),
+            SYMBOL::Root => Some("/"),
+            SYMBOL::Percent => Some("%"),
+            SYMBOL::Carret => Some("^"),
+            SYMBOL::Query => Some("?"),
+            SYMBOL::Bang => Some("!"),
+            SYMBOL::And => Some("&"),
+            SYMBOL::At => Some("@"),
+            SYMBOL::Hash => Some("#"),
+            SYMBOL::Dollar => Some("$"),
+            SYMBOL::Degree => Some("°"),
+            SYMBOL::Sign => Some("§"),
+            SYMBOL::Tik => Some("`"),
+            _ => None,
         };
         write!(
             f,

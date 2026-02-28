@@ -11,18 +11,11 @@ pub enum VOID {
 
 impl fmt::Display for VOID {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let t;
-        match self {
-            VOID::Space => {
-                t = Some("space".to_string());
-            }
-            VOID::EndFile => {
-                t = Some("EOF".to_string());
-            }
-            VOID::EndLine => {
-                t = Some("eol".to_string());
-            }
-            _ => t = None,
+        let t = match self {
+            VOID::Space => Some("space"),
+            VOID::EndFile => Some("EOF"),
+            VOID::EndLine => Some("eol"),
+            _ => None,
         };
         write!(
             f,

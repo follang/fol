@@ -54,145 +54,53 @@ pub enum BUILDIN {
 
 impl fmt::Display for BUILDIN {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let t;
-        match self {
-            BUILDIN::Use => {
-                t = Some("use".to_string());
-            }
-            BUILDIN::Var => {
-                t = Some("var".to_string());
-            }
-            BUILDIN::Con => {
-                t = Some("con".to_string());
-            }
-            BUILDIN::Def => {
-                t = Some("def".to_string());
-            }
-            BUILDIN::Seg => {
-                t = Some("seg".to_string());
-            }
-            BUILDIN::Fun => {
-                t = Some("fun".to_string());
-            }
-            BUILDIN::Pro => {
-                t = Some("pro".to_string());
-            }
-            BUILDIN::Typ => {
-                t = Some("typ".to_string());
-            }
-            BUILDIN::Ali => {
-                t = Some("ali".to_string());
-            }
-            BUILDIN::Imp => {
-                t = Some("imp".to_string());
-            }
-            BUILDIN::Lab => {
-                t = Some("lab".to_string());
-            }
-
-            BUILDIN::Not => {
-                t = Some("not".to_string());
-            }
-            BUILDIN::Or => {
-                t = Some("or".to_string());
-            }
-            BUILDIN::Xor => {
-                t = Some("xor".to_string());
-            }
-            BUILDIN::Nor => {
-                t = Some("nor".to_string());
-            }
-            BUILDIN::And => {
-                t = Some("and".to_string());
-            }
-            BUILDIN::Nand => {
-                t = Some("nand".to_string());
-            }
-            BUILDIN::As => {
-                t = Some("as".to_string());
-            }
-            BUILDIN::If => {
-                t = Some("if".to_string());
-            }
-            BUILDIN::Of => {
-                t = Some("of".to_string());
-            }
-            BUILDIN::When => {
-                t = Some("when".to_string());
-            }
-            BUILDIN::Loop => {
-                t = Some("loop".to_string());
-            }
-            BUILDIN::Is => {
-                t = Some("is".to_string());
-            }
-            BUILDIN::Has => {
-                t = Some("has".to_string());
-            }
-            BUILDIN::In => {
-                t = Some("in".to_string());
-            }
-            BUILDIN::At => {
-                t = Some("at".to_string());
-            }
-            BUILDIN::Case => {
-                t = Some("case".to_string());
-            }
-            BUILDIN::This => {
-                t = Some("this".to_string());
-            }
-            BUILDIN::Selfi => {
-                t = Some("self".to_string());
-            }
-            BUILDIN::Break => {
-                t = Some("break".to_string());
-            }
-            BUILDIN::Return => {
-                t = Some("return".to_string());
-            }
-            BUILDIN::Yeild => {
-                t = Some("yeild".to_string());
-            }
-            BUILDIN::Panic => {
-                t = Some("panic".to_string());
-            }
-            BUILDIN::Report => {
-                t = Some("report".to_string());
-            }
-            BUILDIN::Check => {
-                t = Some("check".to_string());
-            }
-            BUILDIN::Assert => {
-                t = Some("assert".to_string());
-            }
-            BUILDIN::Where => {
-                t = Some("where".to_string());
-            }
-            BUILDIN::True => {
-                t = Some("true".to_string());
-            }
-            BUILDIN::False => {
-                t = Some("false".to_string());
-            }
-            BUILDIN::Each => {
-                t = Some("each".to_string());
-            }
-            BUILDIN::For => {
-                t = Some("for".to_string());
-            }
-            BUILDIN::Do => {
-                t = Some("do".to_string());
-            }
-            BUILDIN::Go => {
-                t = Some("go".to_string());
-            }
-            BUILDIN::Get => {
-                t = Some("get".to_string());
-            }
-            BUILDIN::Let => {
-                t = Some("let".to_string());
-            }
-            _ => t = None,
+        let t = match self {
+            BUILDIN::Use => Some("use"),
+            BUILDIN::Var => Some("var"),
+            BUILDIN::Con => Some("con"),
+            BUILDIN::Def => Some("def"),
+            BUILDIN::Seg => Some("seg"),
+            BUILDIN::Fun => Some("fun"),
+            BUILDIN::Pro => Some("pro"),
+            BUILDIN::Typ => Some("typ"),
+            BUILDIN::Ali => Some("ali"),
+            BUILDIN::Imp => Some("imp"),
+            BUILDIN::Lab => Some("lab"),
+            BUILDIN::Not => Some("not"),
+            BUILDIN::Or => Some("or"),
+            BUILDIN::Xor => Some("xor"),
+            BUILDIN::Nor => Some("nor"),
+            BUILDIN::And => Some("and"),
+            BUILDIN::Nand => Some("nand"),
+            BUILDIN::As => Some("as"),
+            BUILDIN::If => Some("if"),
+            BUILDIN::Of => Some("of"),
+            BUILDIN::When => Some("when"),
+            BUILDIN::Loop => Some("loop"),
+            BUILDIN::Is => Some("is"),
+            BUILDIN::Has => Some("has"),
+            BUILDIN::In => Some("in"),
+            BUILDIN::At => Some("at"),
+            BUILDIN::Case => Some("case"),
+            BUILDIN::This => Some("this"),
+            BUILDIN::Selfi => Some("self"),
+            BUILDIN::Break => Some("break"),
+            BUILDIN::Return => Some("return"),
+            BUILDIN::Yeild => Some("yeild"),
+            BUILDIN::Panic => Some("panic"),
+            BUILDIN::Report => Some("report"),
+            BUILDIN::Check => Some("check"),
+            BUILDIN::Assert => Some("assert"),
+            BUILDIN::Where => Some("where"),
+            BUILDIN::True => Some("true"),
+            BUILDIN::False => Some("false"),
+            BUILDIN::Each => Some("each"),
+            BUILDIN::For => Some("for"),
+            BUILDIN::Do => Some("do"),
+            BUILDIN::Go => Some("go"),
+            BUILDIN::Get => Some("get"),
+            BUILDIN::Let => Some("let"),
+            _ => None,
         };
         write!(
             f,

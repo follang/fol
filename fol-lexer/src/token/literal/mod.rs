@@ -15,30 +15,15 @@ pub enum LITERAL {
 
 impl fmt::Display for LITERAL {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let t;
-        match self {
-            LITERAL::Stringy => {
-                t = Some("string".to_string());
-            }
-            LITERAL::Float => {
-                t = Some("float".to_string());
-            }
-            LITERAL::Bool => {
-                t = Some("bool".to_string());
-            }
-            LITERAL::Deciaml => {
-                t = Some("decimal".to_string());
-            }
-            LITERAL::Hexal => {
-                t = Some("hexal".to_string());
-            }
-            LITERAL::Octal => {
-                t = Some("octal".to_string());
-            }
-            LITERAL::Binary => {
-                t = Some("binary".to_string());
-            }
-            _ => t = None,
+        let t = match self {
+            LITERAL::Stringy => Some("string"),
+            LITERAL::Float => Some("float"),
+            LITERAL::Bool => Some("bool"),
+            LITERAL::Deciaml => Some("decimal"),
+            LITERAL::Hexal => Some("hexal"),
+            LITERAL::Octal => Some("octal"),
+            LITERAL::Binary => Some("binary"),
+            _ => None,
         };
         write!(
             f,

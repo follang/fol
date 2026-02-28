@@ -28,179 +28,125 @@ pub enum KEYWORD {
 
 impl KEYWORD {
     pub fn is_assign(&self) -> bool {
-        match *self {
-            KEYWORD::Keyword(BUILDIN::Use) => true,
-            KEYWORD::Keyword(BUILDIN::Def) => true,
-            KEYWORD::Keyword(BUILDIN::Seg) => true,
-            KEYWORD::Keyword(BUILDIN::Var) => true,
-            KEYWORD::Keyword(BUILDIN::Fun) => true,
-            KEYWORD::Keyword(BUILDIN::Pro) => true,
-            KEYWORD::Keyword(BUILDIN::Typ) => true,
-            KEYWORD::Keyword(BUILDIN::Ali) => true,
-            KEYWORD::Keyword(BUILDIN::Imp) => true,
-            KEYWORD::Keyword(BUILDIN::Lab) => true,
-            KEYWORD::Keyword(BUILDIN::Con) => true,
-            _ => false,
-        }
+        matches!(
+            *self,
+            KEYWORD::Keyword(BUILDIN::Use)
+                | KEYWORD::Keyword(BUILDIN::Def)
+                | KEYWORD::Keyword(BUILDIN::Seg)
+                | KEYWORD::Keyword(BUILDIN::Var)
+                | KEYWORD::Keyword(BUILDIN::Fun)
+                | KEYWORD::Keyword(BUILDIN::Pro)
+                | KEYWORD::Keyword(BUILDIN::Typ)
+                | KEYWORD::Keyword(BUILDIN::Ali)
+                | KEYWORD::Keyword(BUILDIN::Imp)
+                | KEYWORD::Keyword(BUILDIN::Lab)
+                | KEYWORD::Keyword(BUILDIN::Con)
+        )
     }
 
     pub fn is_ident(&self) -> bool {
-        match *self {
-            KEYWORD::Identifier => true,
-            _ => false,
-        }
+        matches!(*self, KEYWORD::Identifier)
     }
     pub fn is_literal(&self) -> bool {
-        match *self {
-            KEYWORD::Literal(_) => true,
-            _ => false,
-        }
+        matches!(*self, KEYWORD::Literal(_))
     }
     pub fn is_buildin(&self) -> bool {
-        match *self {
-            KEYWORD::Keyword(_) => true,
-            _ => false,
-        }
+        matches!(*self, KEYWORD::Keyword(_))
     }
     pub fn is_illegal(&self) -> bool {
-        match *self {
-            KEYWORD::Illegal => true,
-            _ => false,
-        }
+        matches!(*self, KEYWORD::Illegal)
     }
     pub fn is_comment(&self) -> bool {
-        match *self {
-            KEYWORD::Comment => true,
-            _ => false,
-        }
+        matches!(*self, KEYWORD::Comment)
     }
     pub fn is_open_bracket(&self) -> bool {
-        match *self {
-            KEYWORD::Symbol(SYMBOL::CurlyO) => true,
-            KEYWORD::Symbol(SYMBOL::SquarO) => true,
-            KEYWORD::Symbol(SYMBOL::RoundO) => true,
-            _ => false,
-        }
+        matches!(
+            *self,
+            KEYWORD::Symbol(SYMBOL::CurlyO)
+                | KEYWORD::Symbol(SYMBOL::SquarO)
+                | KEYWORD::Symbol(SYMBOL::RoundO)
+        )
     }
     pub fn is_close_bracket(&self) -> bool {
-        match *self {
-            KEYWORD::Symbol(SYMBOL::CurlyC) => true,
-            KEYWORD::Symbol(SYMBOL::SquarC) => true,
-            KEYWORD::Symbol(SYMBOL::RoundC) => true,
-            _ => false,
-        }
+        matches!(
+            *self,
+            KEYWORD::Symbol(SYMBOL::CurlyC)
+                | KEYWORD::Symbol(SYMBOL::SquarC)
+                | KEYWORD::Symbol(SYMBOL::RoundC)
+        )
     }
     pub fn is_bracket(&self) -> bool {
-        if self.is_open_bracket() || self.is_close_bracket() {
-            true
-        } else {
-            false
-        }
+        self.is_open_bracket() || self.is_close_bracket()
     }
     pub fn is_decimal(&self) -> bool {
-        match *self {
-            KEYWORD::Literal(LITERAL::Deciaml) => true,
-            KEYWORD::Literal(LITERAL::Float) => true,
-            _ => false,
-        }
+        matches!(
+            *self,
+            KEYWORD::Literal(LITERAL::Deciaml) | KEYWORD::Literal(LITERAL::Float)
+        )
     }
     pub fn is_number(&self) -> bool {
-        match *self {
-            KEYWORD::Literal(LITERAL::Deciaml) => true,
-            KEYWORD::Literal(LITERAL::Float) => true,
-            KEYWORD::Literal(LITERAL::Hexal) => true,
-            KEYWORD::Literal(LITERAL::Octal) => true,
-            KEYWORD::Literal(LITERAL::Binary) => true,
-            _ => false,
-        }
+        matches!(
+            *self,
+            KEYWORD::Literal(LITERAL::Deciaml)
+                | KEYWORD::Literal(LITERAL::Float)
+                | KEYWORD::Literal(LITERAL::Hexal)
+                | KEYWORD::Literal(LITERAL::Octal)
+                | KEYWORD::Literal(LITERAL::Binary)
+        )
     }
     pub fn is_numberish(&self) -> bool {
-        if self.is_number()
+        self.is_number()
             || matches!(self, KEYWORD::Symbol(SYMBOL::Dot))
             || matches!(self, KEYWORD::Symbol(SYMBOL::Minus))
-        {
-            true
-        } else {
-            false
-        }
     }
     pub fn is_symbol(&self) -> bool {
         if self.is_bracket() {
             false
         } else {
-            match *self {
-                KEYWORD::Symbol(_) => true,
-                _ => false,
-            }
+            matches!(*self, KEYWORD::Symbol(_))
         }
     }
     pub fn is_operator(&self) -> bool {
-        match *self {
-            KEYWORD::Operator(_) => true,
-            _ => false,
-        }
+        matches!(*self, KEYWORD::Operator(_))
     }
     pub fn is_void(&self) -> bool {
-        match *self {
-            KEYWORD::Void(_) => true,
-            KEYWORD::Illegal => true,
-            _ => false,
-        }
+        matches!(*self, KEYWORD::Void(_) | KEYWORD::Illegal)
     }
     pub fn is_eof(&self) -> bool {
-        match *self {
-            KEYWORD::Void(VOID::EndFile) => true,
-            _ => false,
-        }
+        matches!(*self, KEYWORD::Void(VOID::EndFile))
     }
     pub fn is_space(&self) -> bool {
-        match *self {
-            KEYWORD::Void(VOID::Space) => true,
-            _ => false,
-        }
+        matches!(*self, KEYWORD::Void(VOID::Space))
     }
     pub fn is_eol(&self) -> bool {
-        match *self {
-            KEYWORD::Void(VOID::EndLine) => true,
-            _ => false,
-        }
+        matches!(*self, KEYWORD::Void(VOID::EndLine))
     }
     pub fn is_nonterm(&self) -> bool {
-        match *self {
-            KEYWORD::Symbol(SYMBOL::CurlyO) => true,
-            KEYWORD::Symbol(SYMBOL::SquarO) => true,
-            KEYWORD::Symbol(SYMBOL::RoundO) => true,
-            KEYWORD::Symbol(SYMBOL::Dot) => true,
-            KEYWORD::Symbol(SYMBOL::Comma) => true,
-            _ => false,
-        }
+        matches!(
+            *self,
+            KEYWORD::Symbol(SYMBOL::CurlyO)
+                | KEYWORD::Symbol(SYMBOL::SquarO)
+                | KEYWORD::Symbol(SYMBOL::RoundO)
+                | KEYWORD::Symbol(SYMBOL::Dot)
+                | KEYWORD::Symbol(SYMBOL::Comma)
+        )
     }
     pub fn is_terminal(&self) -> bool {
-        match *self {
-            KEYWORD::Void(VOID::EndLine) => true,
-            KEYWORD::Void(VOID::EndFile) => true,
-            KEYWORD::Symbol(SYMBOL::Semi) => true,
-            _ => false,
-        }
+        matches!(
+            *self,
+            KEYWORD::Void(VOID::EndLine)
+                | KEYWORD::Void(VOID::EndFile)
+                | KEYWORD::Symbol(SYMBOL::Semi)
+        )
     }
     pub fn is_dot(&self) -> bool {
-        match *self {
-            KEYWORD::Symbol(SYMBOL::Dot) => true,
-            _ => false,
-        }
+        matches!(*self, KEYWORD::Symbol(SYMBOL::Dot))
     }
     pub fn is_comma(&self) -> bool {
-        match *self {
-            KEYWORD::Symbol(SYMBOL::Comma) => true,
-            _ => false,
-        }
+        matches!(*self, KEYWORD::Symbol(SYMBOL::Comma))
     }
     pub fn is_continue(&self) -> bool {
-        if self.is_void() || self.is_bracket() || self.is_terminal() || self.is_comma() {
-            true
-        } else {
-            false
-        }
+        self.is_void() || self.is_bracket() || self.is_terminal() || self.is_comma()
     }
 }
 

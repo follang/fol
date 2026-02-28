@@ -28,69 +28,28 @@ pub enum OPERATOR {
 
 impl fmt::Display for OPERATOR {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let t;
-        match self {
-            OPERATOR::Dotdotdot => {
-                t = Some("...".to_string());
-            }
-            OPERATOR::Dotdot => {
-                t = Some("..".to_string());
-            }
-            OPERATOR::Path => {
-                t = Some("::".to_string());
-            }
-            OPERATOR::Assign => {
-                t = Some(":=".to_string());
-            }
-            OPERATOR::Flow => {
-                t = Some("=>".to_string());
-            }
-            OPERATOR::Flow2 => {
-                t = Some("->".to_string());
-            }
-            OPERATOR::Add => {
-                t = Some("+".to_string());
-            }
-            OPERATOR::Abstract => {
-                t = Some("-".to_string());
-            }
-            OPERATOR::Multiply => {
-                t = Some("*".to_string());
-            }
-            OPERATOR::Divide => {
-                t = Some("/".to_string());
-            }
-            OPERATOR::Equal => {
-                t = Some("==".to_string());
-            }
-            OPERATOR::Noteq => {
-                t = Some("!=".to_string());
-            }
-            OPERATOR::Greateq => {
-                t = Some(">=".to_string());
-            }
-            OPERATOR::Lesseq => {
-                t = Some("<=".to_string());
-            }
-            OPERATOR::Addeq => {
-                t = Some("+=".to_string());
-            }
-            OPERATOR::Subeq => {
-                t = Some("-=".to_string());
-            }
-            OPERATOR::Multeq => {
-                t = Some("*=".to_string());
-            }
-            OPERATOR::Diveq => {
-                t = Some("/=".to_string());
-            }
-            OPERATOR::Lesser => {
-                t = Some("<<".to_string());
-            }
-            OPERATOR::Greater => {
-                t = Some(">>".to_string());
-            }
-            _ => t = None,
+        let t = match self {
+            OPERATOR::Dotdotdot => Some("..."),
+            OPERATOR::Dotdot => Some(".."),
+            OPERATOR::Path => Some("::"),
+            OPERATOR::Assign => Some(":="),
+            OPERATOR::Flow => Some("=>"),
+            OPERATOR::Flow2 => Some("->"),
+            OPERATOR::Add => Some("+"),
+            OPERATOR::Abstract => Some("-"),
+            OPERATOR::Multiply => Some("*"),
+            OPERATOR::Divide => Some("/"),
+            OPERATOR::Equal => Some("=="),
+            OPERATOR::Noteq => Some("!="),
+            OPERATOR::Greateq => Some(">="),
+            OPERATOR::Lesseq => Some("<="),
+            OPERATOR::Addeq => Some("+="),
+            OPERATOR::Subeq => Some("-="),
+            OPERATOR::Multeq => Some("*="),
+            OPERATOR::Diveq => Some("/="),
+            OPERATOR::Lesser => Some("<<"),
+            OPERATOR::Greater => Some(">>"),
+            _ => None,
         };
         write!(
             f,
