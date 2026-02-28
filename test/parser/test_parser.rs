@@ -67,10 +67,15 @@ mod parser_tests {
                             "Function source should produce parser nodes"
                         );
                         assert!(
-                            declarations
-                                .iter()
-                                .any(|node| matches!(node, AstNode::Return { .. })),
-                            "Function source should include at least one return node"
+                            declarations.iter().any(|node| {
+                                matches!(
+                                    node,
+                                    AstNode::Return {
+                                        value: Some(value)
+                                    } if matches!(value.as_ref(), AstNode::BinaryOp { .. })
+                                )
+                            }),
+                            "Function source should include a return node with binary expression"
                         );
                     }
                     _ => panic!("Should return Program node"),

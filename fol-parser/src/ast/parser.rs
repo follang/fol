@@ -1,7 +1,7 @@
 // AST Parser Implementation for FOL
 
-use super::{AstNode, FolType, Literal, VarOption};
-use fol_lexer::token::{BUILDIN, KEYWORD, LITERAL, SYMBOL};
+use super::{AstNode, BinaryOperator, FolType, Literal, VarOption};
+use fol_lexer::token::{BUILDIN, KEYWORD, LITERAL, OPERATOR, SYMBOL};
 use fol_types::*;
 use std::fmt;
 
@@ -296,13 +296,7 @@ impl AstParser {
 
         let value = match tokens.curr(false) {
             Ok(token) if token.key().is_terminal() => None,
-            Ok(token) if token.key().is_literal() => {
-                Some(Box::new(self.parse_lexer_literal(&token)?))
-            }
-            Ok(token) if token.key().is_ident() => Some(Box::new(AstNode::Identifier {
-                name: token.con().trim().to_string(),
-            })),
-            Ok(_) => None,
+            Ok(_) => Some(Box::new(self.parse_simple_expression(tokens)?)),
             Err(_) => None,
         };
 
@@ -323,6 +317,69 @@ impl AstParser {
         }
 
         Ok(AstNode::Return { value })
+    }
+
+    fn parse_simple_expression(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
+        let lhs_token = tokens.curr(false)?;
+        let mut lhs = self.parse_primary(&lhs_token)?;
+        let _ = tokens.bump();
+
+        self.skip_ignorable(tokens);
+
+        let op_token = match tokens.curr(false) {
+            Ok(token) => token,
+            Err(_) => return Ok(lhs),
+        };
+
+        let binary_op = match op_token.key() {
+            KEYWORD::Operator(OPERATOR::Add) | KEYWORD::Symbol(SYMBOL::Plus) => {
+                Some(BinaryOperator::Add)
+            }
+            KEYWORD::Operator(OPERATOR::Abstract) | KEYWORD::Symbol(SYMBOL::Minus) => {
+                Some(BinaryOperator::Sub)
+            }
+            _ => None,
+        };
+
+        if let Some(op) = binary_op {
+            let _ = tokens.bump();
+            self.skip_ignorable(tokens);
+
+            let rhs_token = tokens.curr(false)?;
+            let rhs = self.parse_primary(&rhs_token)?;
+            let _ = tokens.bump();
+
+            lhs = AstNode::BinaryOp {
+                op,
+                left: Box::new(lhs),
+                right: Box::new(rhs),
+            };
+        }
+
+        Ok(lhs)
+    }
+
+    fn parse_primary(
+        &self,
+        token: &fol_lexer::lexer::stage3::element::Element,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
+        if token.key().is_literal() {
+            return self.parse_lexer_literal(token);
+        }
+
+        if token.key().is_ident() {
+            return Ok(AstNode::Identifier {
+                name: token.con().trim().to_string(),
+            });
+        }
+
+        Err(Box::new(ParseError::from_token(
+            token,
+            format!("Unsupported expression token '{}'", token.con()),
+        )))
     }
 
     fn skip_ignorable(&self, tokens: &mut fol_lexer::lexer::stage3::Elements) {
