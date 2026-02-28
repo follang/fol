@@ -79,6 +79,45 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_var_parsing_without_type_hint() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_var_infer.fol")
+            .expect("Should read infer var test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse var declaration without type hint");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                let var_decl = declarations
+                    .iter()
+                    .find_map(|node| {
+                        if let AstNode::VarDecl {
+                            name,
+                            type_hint,
+                            value,
+                            ..
+                        } = node
+                        {
+                            Some((name, type_hint, value))
+                        } else {
+                            None
+                        }
+                    })
+                    .expect("Program should contain a variable declaration");
+
+                assert_eq!(var_decl.0, "message");
+                assert!(var_decl.1.is_none(), "Type hint should be omitted");
+                assert!(var_decl.2.is_some(), "Value should be parsed");
+            }
+            _ => panic!("Expected program node"),
+        }
+    }
+
+    #[test]
     fn test_literal_parsing() {
         let parser = AstParser::new();
 
