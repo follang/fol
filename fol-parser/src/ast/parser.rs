@@ -1,7 +1,7 @@
 // AST Parser Implementation for FOL
 
-use super::{AstNode, Literal};
-use fol_lexer::token::LITERAL;
+use super::{AstNode, FolType, Literal, VarOption};
+use fol_lexer::token::{BUILDIN, KEYWORD, LITERAL, SYMBOL};
 use fol_types::*;
 use std::fmt;
 
@@ -111,6 +111,14 @@ impl AstParser {
                 continue;
             }
 
+            if matches!(key, KEYWORD::Keyword(BUILDIN::Var)) {
+                match self.parse_var_decl(tokens) {
+                    Ok(node) => declarations.push(node),
+                    Err(error) => errors.push(error),
+                }
+                continue;
+            }
+
             if key.is_ident() {
                 declarations.push(AstNode::Identifier {
                     name: token.con().trim().to_string(),
@@ -158,6 +166,115 @@ impl AstParser {
                 }),
             },
             _ => self.parse_literal(raw),
+        }
+    }
+
+    fn parse_var_decl(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
+        let mut type_hint = None;
+        let mut value = None;
+
+        if tokens.bump().is_none() {
+            return Err(Box::new(ParseError {
+                message: "Unexpected EOF after 'var' declaration".to_string(),
+                file: None,
+                line: 1,
+                column: 1,
+                length: 1,
+            }));
+        }
+        self.skip_ignorable(tokens);
+
+        let name_token = tokens.curr(false)?;
+        let name = if name_token.key().is_ident() {
+            let parsed_name = name_token.con().trim().to_string();
+            let _ = tokens.bump();
+            parsed_name
+        } else {
+            return Err(Box::new(ParseError::from_token(
+                &name_token,
+                "Expected identifier after 'var'".to_string(),
+            )));
+        };
+
+        self.skip_ignorable(tokens);
+
+        if let Ok(token) = tokens.curr(false) {
+            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
+                let _ = tokens.bump();
+                self.skip_ignorable(tokens);
+
+                let hint_token = tokens.curr(false)?;
+                let hint_name = hint_token.con().trim().to_string();
+                if hint_token.key().is_ident() || hint_token.key().is_buildin() {
+                    type_hint = Some(FolType::Named { name: hint_name });
+                    let _ = tokens.bump();
+                } else {
+                    return Err(Box::new(ParseError::from_token(
+                        &hint_token,
+                        "Expected type hint after ':' in var declaration".to_string(),
+                    )));
+                }
+            }
+        }
+
+        self.skip_ignorable(tokens);
+
+        if let Ok(token) = tokens.curr(false) {
+            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
+                let _ = tokens.bump();
+                self.skip_ignorable(tokens);
+
+                let value_token = tokens.curr(false)?;
+                let parsed_value = if value_token.key().is_literal() {
+                    self.parse_lexer_literal(&value_token)?
+                } else if value_token.key().is_ident() {
+                    AstNode::Identifier {
+                        name: value_token.con().trim().to_string(),
+                    }
+                } else {
+                    return Err(Box::new(ParseError::from_token(
+                        &value_token,
+                        "Expected literal or identifier after '=' in var declaration".to_string(),
+                    )));
+                };
+                value = Some(Box::new(parsed_value));
+                let _ = tokens.bump();
+            }
+        }
+
+        self.skip_ignorable(tokens);
+        if let Ok(token) = tokens.curr(false) {
+            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Semi)) {
+                let _ = tokens.bump();
+            }
+        }
+
+        Ok(AstNode::VarDecl {
+            options: vec![VarOption::Normal],
+            name,
+            type_hint,
+            value,
+        })
+    }
+
+    fn skip_ignorable(&self, tokens: &mut fol_lexer::lexer::stage3::Elements) {
+        for _ in 0..1024 {
+            let token = match tokens.curr(false) {
+                Ok(token) => token,
+                Err(_) => break,
+            };
+
+            if token.key().is_void() || token.key().is_comment() {
+                if tokens.bump().is_none() {
+                    break;
+                }
+                continue;
+            }
+
+            break;
         }
     }
 

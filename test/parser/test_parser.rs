@@ -25,6 +25,20 @@ mod parser_tests {
                             !declarations.is_empty(),
                             "Parser should collect at least identifiers/literals"
                         );
+                        assert!(
+                            declarations.iter().any(|node| {
+                                matches!(
+                                    node,
+                                    AstNode::VarDecl {
+                                        name,
+                                        type_hint: Some(_),
+                                        value: Some(_),
+                                        ..
+                                    } if name == "x"
+                                )
+                            }),
+                            "Parser should build a var declaration node for simple_var.fol"
+                        );
                     }
                     _ => panic!("Should return Program node"),
                 }
