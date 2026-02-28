@@ -1,6 +1,7 @@
 // AST Parser Implementation for FOL
 
 use super::{AstNode, Literal};
+use fol_lexer::token::LITERAL;
 use fol_types::*;
 use std::fmt;
 
@@ -81,21 +82,83 @@ impl AstParser {
         &mut self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Vec<Box<dyn Glitch>>> {
-        if let Ok(token) = tokens.curr(false) {
-            if token.key().is_illegal() {
-                let error = ParseError::from_token(
+        let mut declarations = Vec::new();
+        let mut errors: Vec<Box<dyn Glitch>> = Vec::new();
+
+        for _ in 0..100_000 {
+            let token = match tokens.curr(false) {
+                Ok(token) => token,
+                Err(error) => {
+                    errors.push(error);
+                    break;
+                }
+            };
+
+            let key = token.key();
+
+            if key.is_eof() {
+                break;
+            }
+
+            if key.is_illegal() {
+                errors.push(Box::new(ParseError::from_token(
                     &token,
                     format!("Parser encountered illegal token '{}'", token.con()),
-                );
-                return Err(vec![Box::new(error)]);
+                )));
+                if tokens.bump().is_none() {
+                    break;
+                }
+                continue;
+            }
+
+            if key.is_ident() {
+                declarations.push(AstNode::Identifier {
+                    name: token.con().trim().to_string(),
+                });
+                if tokens.bump().is_none() {
+                    break;
+                }
+                continue;
+            }
+
+            if key.is_literal() {
+                match self.parse_lexer_literal(&token) {
+                    Ok(node) => declarations.push(node),
+                    Err(error) => errors.push(error),
+                }
+            }
+
+            if tokens.bump().is_none() {
+                break;
             }
         }
 
-        // For now, return a simple program node
-        // This is a minimal implementation to get compilation working
-        Ok(AstNode::Program {
-            declarations: vec![],
-        })
+        if errors.is_empty() {
+            Ok(AstNode::Program { declarations })
+        } else {
+            Err(errors)
+        }
+    }
+
+    fn parse_lexer_literal(
+        &self,
+        token: &fol_lexer::lexer::stage3::element::Element,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
+        let raw = token.con().trim();
+
+        match token.key() {
+            fol_lexer::token::KEYWORD::Literal(LITERAL::Stringy) => {
+                Ok(AstNode::Literal(Literal::String(raw.to_string())))
+            }
+            fol_lexer::token::KEYWORD::Literal(LITERAL::Bool) => match raw {
+                "true" => Ok(AstNode::Literal(Literal::Boolean(true))),
+                "false" => Ok(AstNode::Literal(Literal::Boolean(false))),
+                _ => Ok(AstNode::Identifier {
+                    name: raw.to_string(),
+                }),
+            },
+            _ => self.parse_literal(raw),
+        }
     }
 
     /// Parse a simple literal for testing

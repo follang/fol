@@ -19,10 +19,15 @@ mod parser_tests {
 
         match parser.parse(&mut lexer) {
             Ok(ast) => {
-                assert!(
-                    matches!(ast, AstNode::Program { .. }),
-                    "Should return Program node"
-                );
+                match &ast {
+                    AstNode::Program { declarations } => {
+                        assert!(
+                            !declarations.is_empty(),
+                            "Parser should collect at least identifiers/literals"
+                        );
+                    }
+                    _ => panic!("Should return Program node"),
+                }
                 println!("Successfully parsed AST: {:?}", ast);
             }
             Err(errors) => {
@@ -41,10 +46,15 @@ mod parser_tests {
 
         match parser.parse(&mut lexer) {
             Ok(ast) => {
-                assert!(
-                    matches!(ast, AstNode::Program { .. }),
-                    "Should return Program node"
-                );
+                match &ast {
+                    AstNode::Program { declarations } => {
+                        assert!(
+                            !declarations.is_empty(),
+                            "Function source should produce parser nodes"
+                        );
+                    }
+                    _ => panic!("Should return Program node"),
+                }
                 println!("Successfully parsed function AST: {:?}", ast);
             }
             Err(errors) => {
@@ -109,7 +119,7 @@ mod parser_tests {
 
         let parse_error = errors
             .first()
-            .and_then(|e| e.as_any().downcast_ref::<ParseError>())
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
             .expect("First parser error should be ParseError");
 
         assert!(parse_error.line() > 0, "Line should be non-zero");
