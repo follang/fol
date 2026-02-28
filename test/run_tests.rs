@@ -112,4 +112,62 @@ mod integration_tests {
             "Diagnostic counters should remain consistent"
         );
     }
+
+    #[test]
+    fn test_parser_error_locations_reach_diagnostics_outputs() {
+        use fol_diagnostics::{DiagnosticLocation, DiagnosticReport, OutputFormat};
+        use fol_lexer::lexer::stage3::Elements;
+        use fol_lexer::token::KEYWORD;
+        use fol_parser::ast::{AstParser, ParseError};
+        use fol_stream::FileStream;
+
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_var.fol").expect("Should read test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        lexer
+            .set_key(KEYWORD::Illegal)
+            .expect("Should force illegal token");
+
+        let mut parser = AstParser::new();
+        let mut diagnostics = DiagnosticReport::new();
+
+        let parse_errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should fail on illegal token");
+
+        for error in parse_errors {
+            let location = error
+                .as_any()
+                .downcast_ref::<ParseError>()
+                .map(|parse_error| DiagnosticLocation {
+                    file: parse_error.file(),
+                    line: parse_error.line(),
+                    column: parse_error.column(),
+                    length: Some(parse_error.length()),
+                });
+
+            diagnostics.add_error(error.as_ref(), location);
+        }
+
+        let human = diagnostics.output(OutputFormat::Human);
+        assert!(
+            human.contains("-->"),
+            "Human diagnostics should include location"
+        );
+        assert!(
+            human.contains("simple_var.fol"),
+            "Human diagnostics should include source file"
+        );
+
+        let json = diagnostics.output(OutputFormat::Json);
+        assert!(
+            json.contains("\"line\""),
+            "JSON diagnostics should include line field"
+        );
+        assert!(
+            json.contains("\"column\""),
+            "JSON diagnostics should include column field"
+        );
+    }
 }
