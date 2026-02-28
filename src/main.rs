@@ -148,6 +148,13 @@ fn report_input_error(
 }
 
 #[test]
-fn it_works() {
-    assert_eq!("0", "0")
+fn compile_missing_file_reports_error() {
+    let mut diagnostics = DiagnosticReport::new();
+    let result = compile_file("./test/does-not-exist.fol", &mut diagnostics);
+
+    assert!(result.is_err(), "Missing file should fail compilation");
+    assert!(
+        diagnostics.has_errors(),
+        "Missing file should emit diagnostics"
+    );
 }
