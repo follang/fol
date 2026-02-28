@@ -1,6 +1,6 @@
 // AST Parser Implementation for FOL
 
-use super::{AstNode, BinaryOperator, FolType, Literal, VarOption};
+use super::{AstNode, BinaryOperator, FolType, Literal, UnaryOperator, VarOption};
 use fol_lexer::token::{BUILDIN, KEYWORD, LITERAL, OPERATOR, SYMBOL};
 use fol_types::*;
 use std::fmt;
@@ -408,6 +408,18 @@ impl AstParser {
     ) -> Result<AstNode, Box<dyn Glitch>> {
         self.skip_ignorable(tokens);
         let token = tokens.curr(false)?;
+
+        if matches!(
+            token.key(),
+            KEYWORD::Operator(OPERATOR::Abstract) | KEYWORD::Symbol(SYMBOL::Minus)
+        ) {
+            let _ = tokens.bump();
+            let operand = self.parse_primary_expression(tokens)?;
+            return Ok(AstNode::UnaryOp {
+                op: UnaryOperator::Neg,
+                operand: Box::new(operand),
+            });
+        }
 
         if matches!(token.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
             let _ = tokens.bump();
