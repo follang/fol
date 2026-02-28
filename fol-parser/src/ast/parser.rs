@@ -135,6 +135,14 @@ impl AstParser {
                 continue;
             }
 
+            if matches!(key, KEYWORD::Keyword(BUILDIN::Return)) {
+                match self.parse_return_stmt(tokens) {
+                    Ok(node) => declarations.push(node),
+                    Err(error) => errors.push(error),
+                }
+                continue;
+            }
+
             if key.is_ident() {
                 declarations.push(AstNode::Identifier {
                     name: token.con().trim().to_string(),
@@ -274,6 +282,47 @@ impl AstParser {
             type_hint,
             value,
         })
+    }
+
+    fn parse_return_stmt(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
+        if tokens.bump().is_none() {
+            return Ok(AstNode::Return { value: None });
+        }
+
+        self.skip_ignorable(tokens);
+
+        let value = match tokens.curr(false) {
+            Ok(token) if token.key().is_terminal() => None,
+            Ok(token) if token.key().is_literal() => {
+                Some(Box::new(self.parse_lexer_literal(&token)?))
+            }
+            Ok(token) if token.key().is_ident() => Some(Box::new(AstNode::Identifier {
+                name: token.con().trim().to_string(),
+            })),
+            Ok(_) => None,
+            Err(_) => None,
+        };
+
+        for _ in 0..64 {
+            let token = match tokens.curr(false) {
+                Ok(token) => token,
+                Err(_) => break,
+            };
+
+            if token.key().is_terminal() {
+                let _ = tokens.bump();
+                break;
+            }
+
+            if tokens.bump().is_none() {
+                break;
+            }
+        }
+
+        Ok(AstNode::Return { value })
     }
 
     fn skip_ignorable(&self, tokens: &mut fol_lexer::lexer::stage3::Elements) {

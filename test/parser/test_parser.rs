@@ -66,6 +66,12 @@ mod parser_tests {
                             !declarations.is_empty(),
                             "Function source should produce parser nodes"
                         );
+                        assert!(
+                            declarations
+                                .iter()
+                                .any(|node| matches!(node, AstNode::Return { .. })),
+                            "Function source should include at least one return node"
+                        );
                     }
                     _ => panic!("Should return Program node"),
                 }
