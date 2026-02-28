@@ -127,38 +127,16 @@ test_old/main/
 
 **Location**: `fol-parser/`
 
-#### Declaration Parsing
-Complete implementation for all FOL declaration types:
+#### Current Implementation Status
+- **AST model**: Rich AST data structures are defined and available for incremental parser work.
+- **Parser entrypoint**: `AstParser::parse` currently provides a minimal program parse and error plumbing.
+- **Literal helper**: `parse_literal` supports integers, strings, and identifiers for baseline parser tests.
+- **Error locations**: Parser errors can now carry file/line/column/length metadata into diagnostics.
 
-- **`use` declarations**: Module imports and dependencies
-- **`ali` declarations**: Type aliases and abstractions
-- **`imp` declarations**: Interface implementations
-- **`seg` declarations**: Code segments and blocks
-- **`lab` declarations**: Labels for control flow
-- **`def` declarations**: Function definitions
-
-#### Expression Parsing
-- **Literal expressions**: Numbers, strings, booleans
-- **Identifier expressions**: Variable and function references
-- **Binary expressions**: Arithmetic and logical operations
-- **Unary expressions**: Negation and logical not
-- **Parenthesized expressions**: Grouping and precedence
-
-#### Statement Parsing
-- **Expression statements**: Standalone expressions
-- **Assignment statements**: Variable assignments
-- **Block statements**: Grouped statements
-- **Control flow statements**: Conditional and loop constructs
-
-#### AST Node Types
-```rust
-pub enum AstNode {
-    Program(Vec<Declaration>),
-    Declaration(DeclarationKind),
-    Expression(ExpressionKind),
-    Statement(StatementKind),
-}
-```
+#### In Progress
+- Full declaration parsing (`use`, `var`, `fun`, `pro`, `typ`, `ali`, etc.)
+- Expression precedence and grouping
+- Statement-level parsing and recovery
 
 ### 5. Structured Diagnostic System
 
@@ -196,10 +174,9 @@ fol project/ --json
 
 #### Error Hierarchy
 ```rust
-pub trait Glitch: std::error::Error + Send + Sync + CloneBox {
-    fn message(&self) -> String;
-    fn code(&self) -> Option<String>;
-    fn severity(&self) -> Severity;
+pub trait Glitch: std::error::Error + Send + Sync + 'static {
+    fn clone_box(&self) -> Box<dyn Glitch>;
+    fn as_any(&self) -> &dyn std::any::Any;
 }
 ```
 
@@ -299,7 +276,7 @@ def main() {
 - Complete file streaming with sophisticated .mod handling
 - Full namespace system with directory-based namespaces
 - Multi-stage lexical analysis with comprehensive token support
-- Basic AST parser with declaration parsing
+- Basic AST parser scaffold with location-aware parser errors
 - Structured diagnostic system with dual output formats
 - Comprehensive type system with error hierarchy
 - Advanced CLI with flexible input handling
@@ -313,4 +290,4 @@ def main() {
 - Unicode and international character support
 - Performance optimizations for large projects
 
-The FOL programming language has a solid foundation with sophisticated features that provide a robust base for completing the AST implementation and advancing to semantic analysis and code generation.
+The FOL programming language has a solid streaming/lexing foundation and is actively transitioning the parser from scaffold mode to full AST construction.

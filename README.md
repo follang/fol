@@ -21,6 +21,8 @@ FOL is a general-purpose, systems programming language designed for robustness, 
 
 <p align="center">  ** FOL IS STILL JUST AN IDEA **  </p>
 
+Current compiler status: streaming and lexer pipeline are implemented and tested; parser implementation is in active incremental development.
+
 <hr>
 
 ## BUILDING BLOCKS
