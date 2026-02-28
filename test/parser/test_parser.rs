@@ -129,6 +129,50 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_return_expression_precedence_mul_before_add() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_fun_precedence.fol")
+            .expect("Should read precedence function test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse precedence function");
+
+        let return_value = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .find_map(|node| {
+                    if let AstNode::Return { value: Some(value) } = node {
+                        Some(value.as_ref().clone())
+                    } else {
+                        None
+                    }
+                })
+                .expect("Program should contain a return value"),
+            _ => panic!("Expected program node"),
+        };
+
+        match &return_value {
+            AstNode::BinaryOp { op, left: _, right } => {
+                assert!(matches!(op, fol_parser::ast::BinaryOperator::Add));
+                assert!(
+                    matches!(
+                        right.as_ref(),
+                        AstNode::BinaryOp {
+                            op: fol_parser::ast::BinaryOperator::Mul,
+                            ..
+                        }
+                    ),
+                    "Right side should be multiplication subtree"
+                );
+            }
+            _ => panic!("Return value should be binary add expression"),
+        }
+    }
+
+    #[test]
     fn test_literal_parsing() {
         let parser = AstParser::new();
 
