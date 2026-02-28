@@ -365,7 +365,7 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Box<dyn Glitch>> {
-        let mut lhs = self.parse_primary_with_advance(tokens)?;
+        let mut lhs = self.parse_primary_expression(tokens)?;
 
         for _ in 0..32 {
             self.skip_ignorable(tokens);
@@ -387,7 +387,7 @@ impl AstParser {
 
             if let Some(op) = binary_op {
                 let _ = tokens.bump();
-                let rhs = self.parse_primary_with_advance(tokens)?;
+                let rhs = self.parse_primary_expression(tokens)?;
                 lhs = AstNode::BinaryOp {
                     op,
                     left: Box::new(lhs),
@@ -402,12 +402,30 @@ impl AstParser {
         Ok(lhs)
     }
 
-    fn parse_primary_with_advance(
+    fn parse_primary_expression(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Box<dyn Glitch>> {
         self.skip_ignorable(tokens);
         let token = tokens.curr(false)?;
+
+        if matches!(token.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
+            let _ = tokens.bump();
+            let inner = self.parse_add_sub_expression(tokens)?;
+            self.skip_ignorable(tokens);
+
+            let close = tokens.curr(false)?;
+            if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
+                return Err(Box::new(ParseError::from_token(
+                    &close,
+                    "Expected closing ')' for parenthesized expression".to_string(),
+                )));
+            }
+
+            let _ = tokens.bump();
+            return Ok(inner);
+        }
+
         let node = self.parse_primary(&token)?;
         let _ = tokens.bump();
         Ok(node)

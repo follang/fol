@@ -173,6 +173,50 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_return_expression_parentheses_override_precedence() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_fun_paren_precedence.fol")
+            .expect("Should read parenthesized precedence function test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse parenthesized precedence function");
+
+        let return_value = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .find_map(|node| {
+                    if let AstNode::Return { value: Some(value) } = node {
+                        Some(value.as_ref().clone())
+                    } else {
+                        None
+                    }
+                })
+                .expect("Program should contain a return value"),
+            _ => panic!("Expected program node"),
+        };
+
+        match &return_value {
+            AstNode::BinaryOp { op, left, right: _ } => {
+                assert!(matches!(op, fol_parser::ast::BinaryOperator::Mul));
+                assert!(
+                    matches!(
+                        left.as_ref(),
+                        AstNode::BinaryOp {
+                            op: fol_parser::ast::BinaryOperator::Add,
+                            ..
+                        }
+                    ),
+                    "Left side should be parenthesized addition subtree"
+                );
+            }
+            _ => panic!("Return value should be binary multiplication expression"),
+        }
+    }
+
+    #[test]
     fn test_literal_parsing() {
         let parser = AstParser::new();
 
