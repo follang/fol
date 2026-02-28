@@ -85,7 +85,7 @@ impl AstParser {
         let mut declarations = Vec::new();
         let mut errors: Vec<Box<dyn Glitch>> = Vec::new();
 
-        for _ in 0..100_000 {
+        for _ in 0..8_192 {
             let token = match tokens.curr(false) {
                 Ok(token) => token,
                 Err(error) => {
@@ -112,9 +112,25 @@ impl AstParser {
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Var)) {
+                let before = (
+                    token.loc().row(),
+                    token.loc().col(),
+                    token.con().to_string(),
+                );
                 match self.parse_var_decl(tokens) {
                     Ok(node) => declarations.push(node),
                     Err(error) => errors.push(error),
+                }
+
+                if let Ok(current) = tokens.curr(false) {
+                    let after = (
+                        current.loc().row(),
+                        current.loc().col(),
+                        current.con().to_string(),
+                    );
+                    if before == after && tokens.bump().is_none() {
+                        break;
+                    }
                 }
                 continue;
             }
@@ -261,7 +277,7 @@ impl AstParser {
     }
 
     fn skip_ignorable(&self, tokens: &mut fol_lexer::lexer::stage3::Elements) {
-        for _ in 0..1024 {
+        for _ in 0..128 {
             let token = match tokens.curr(false) {
                 Ok(token) => token,
                 Err(_) => break,
