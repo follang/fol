@@ -1,0 +1,5 @@
+fun call_trailing_comma(a: int, b: int): int = {
+    ping(a, b,);
+    obj.run(a,);
+    return emit(a,);
+}

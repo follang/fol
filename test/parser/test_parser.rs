@@ -1321,6 +1321,63 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_call_argument_lists_accept_trailing_commas() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_call_trailing_comma.fol")
+                .expect("Should read trailing comma call test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse call arguments with trailing commas");
+
+        let (has_ping_two_args, has_run_one_arg, has_emit_one_arg) = match ast {
+            AstNode::Program { declarations } => {
+                let has_ping_two_args = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::FunctionCall { name, args }
+                        if name == "ping" && args.len() == 2
+                    )
+                });
+
+                let has_run_one_arg = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::MethodCall { method, args, .. }
+                        if method == "run" && args.len() == 1
+                    )
+                });
+
+                let has_emit_one_arg = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::Return { value: Some(value) }
+                        if matches!(value.as_ref(), AstNode::FunctionCall { name, args } if name == "emit" && args.len() == 1)
+                    )
+                });
+
+                (has_ping_two_args, has_run_one_arg, has_emit_one_arg)
+            }
+            _ => panic!("Expected program node"),
+        };
+
+        assert!(
+            has_ping_two_args,
+            "ping(a, b,) should parse with two arguments"
+        );
+        assert!(
+            has_run_one_arg,
+            "obj.run(a,) should parse with one argument"
+        );
+        assert!(
+            has_emit_one_arg,
+            "return emit(a,) should parse with one argument"
+        );
+    }
+
+    #[test]
     fn test_top_level_loop_iteration_shape_matches_function_loop_shape() {
         let mut file_stream = FileStream::from_file("test/parser/simple_loop_top_level.fol")
             .expect("Should read top-level loop test file");
