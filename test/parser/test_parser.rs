@@ -1264,6 +1264,63 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_nested_function_and_method_calls_in_expression_positions() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_fun_nested_calls.fol")
+            .expect("Should read nested calls test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse nested function/method calls");
+
+        let (has_wrapped_method_assignment, has_nested_return_emit) = match ast {
+            AstNode::Program { declarations } => {
+                let has_wrapped_method_assignment = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::Assignment { value, .. }
+                        if matches!(
+                            value.as_ref(),
+                            AstNode::FunctionCall { name, args }
+                            if name == "wrap"
+                                && args.len() == 1
+                                && matches!(args[0], AstNode::MethodCall { ref method, .. } if method == "get")
+                        )
+                    )
+                });
+
+                let has_nested_return_emit = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::Return { value: Some(value) }
+                        if matches!(
+                            value.as_ref(),
+                            AstNode::FunctionCall { name, args }
+                            if name == "emit"
+                                && args.len() == 2
+                                && matches!(args[0], AstNode::FunctionCall { ref name, .. } if name == "process")
+                                && matches!(args[1], AstNode::MethodCall { ref method, .. } if method == "done")
+                        )
+                    )
+                });
+
+                (has_wrapped_method_assignment, has_nested_return_emit)
+            }
+            _ => panic!("Expected program node"),
+        };
+
+        assert!(
+            has_wrapped_method_assignment,
+            "Assignment should parse wrap(obj.get()) nesting"
+        );
+        assert!(
+            has_nested_return_emit,
+            "Return should parse emit(process(a), obj.done()) nesting"
+        );
+    }
+
+    #[test]
     fn test_top_level_loop_iteration_shape_matches_function_loop_shape() {
         let mut file_stream = FileStream::from_file("test/parser/simple_loop_top_level.fol")
             .expect("Should read top-level loop test file");
