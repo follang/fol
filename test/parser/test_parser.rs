@@ -3575,4 +3575,100 @@ mod parser_tests {
             "Mixed malformed top-level second arg should point to unmatched-close expression line"
         );
     }
+
+    #[test]
+    fn test_function_mixed_unmatched_close_in_first_arg_reports_first_error() {
+        let mut file_stream = FileStream::from_file(
+            "test/parser/simple_fun_call_mixed_unmatched_close_first_arg.fol",
+        )
+        .expect("Should read malformed mixed function unmatched-close first-arg test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser.parse(&mut lexer).expect_err(
+            "Parser should fail when function call first arg mixes unmatched ')' in nested expression",
+        );
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+
+        assert!(
+            first_message.contains("Unsupported expression token ')'"),
+            "Mixed malformed function first arg should prioritize unsupported ')' error, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            4,
+            "Mixed malformed function first arg should point to unmatched-close expression line"
+        );
+    }
+
+    #[test]
+    fn test_method_mixed_unmatched_close_in_first_arg_reports_first_error() {
+        let mut file_stream = FileStream::from_file(
+            "test/parser/simple_fun_method_call_mixed_unmatched_close_first_arg.fol",
+        )
+        .expect("Should read malformed mixed method unmatched-close first-arg test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser.parse(&mut lexer).expect_err(
+            "Parser should fail when method call first arg mixes unmatched ')' in nested expression",
+        );
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+
+        assert!(
+            first_message.contains("Unsupported expression token ')'"),
+            "Mixed malformed method first arg should prioritize unsupported ')' error, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            4,
+            "Mixed malformed method first arg should point to unmatched-close expression line"
+        );
+    }
+
+    #[test]
+    fn test_top_level_mixed_unmatched_close_in_first_arg_reports_first_error() {
+        let mut file_stream = FileStream::from_file(
+            "test/parser/simple_call_top_level_mixed_unmatched_close_first_arg.fol",
+        )
+        .expect("Should read malformed mixed top-level unmatched-close first-arg test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser.parse(&mut lexer).expect_err(
+            "Parser should fail when top-level call first arg mixes unmatched ')' in nested expression",
+        );
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+
+        assert!(
+            first_message.contains("Unsupported expression token ')'"),
+            "Mixed malformed top-level first arg should prioritize unsupported ')' error, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            3,
+            "Mixed malformed top-level first arg should point to unmatched-close expression line"
+        );
+    }
 }
