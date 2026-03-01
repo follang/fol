@@ -1,0 +1,4 @@
+fun method_call(obj: int, value: int): int = {
+    obj.update(value);
+    return obj.get();
+}

@@ -947,7 +947,9 @@ impl AstParser {
                 continue;
             }
 
-            if key.is_ident() && self.lookahead_is_call(tokens) && self.can_start_assignment(tokens)
+            if key.is_ident()
+                && (self.lookahead_is_call(tokens) || self.lookahead_is_method_call(tokens))
+                && self.can_start_assignment(tokens)
             {
                 body.push(self.parse_call_stmt(tokens)?);
                 continue;
@@ -1494,7 +1496,11 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Box<dyn Glitch>> {
-        let call = self.parse_call_expr(tokens)?;
+        let call = if self.lookahead_is_method_call(tokens) {
+            self.parse_method_call_expr(tokens)?
+        } else {
+            self.parse_call_expr(tokens)?
+        };
 
         self.skip_ignorable(tokens);
         if let Ok(token) = tokens.curr(false) {
@@ -1529,7 +1535,71 @@ impl AstParser {
             )));
         }
         let _ = tokens.bump();
+        let args = self.parse_call_args(tokens)?;
 
+        Ok(AstNode::FunctionCall { name, args })
+    }
+
+    fn parse_method_call_expr(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
+        let object_token = tokens.curr(false)?;
+        if !object_token.key().is_ident() {
+            return Err(Box::new(ParseError::from_token(
+                &object_token,
+                "Expected object identifier for method call".to_string(),
+            )));
+        }
+
+        let object = AstNode::Identifier {
+            name: object_token.con().trim().to_string(),
+        };
+        let _ = tokens.bump();
+        self.skip_ignorable(tokens);
+
+        let dot = tokens.curr(false)?;
+        if !matches!(dot.key(), KEYWORD::Symbol(SYMBOL::Dot)) {
+            return Err(Box::new(ParseError::from_token(
+                &dot,
+                "Expected '.' after object identifier".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+        self.skip_ignorable(tokens);
+
+        let method_token = tokens.curr(false)?;
+        if !method_token.key().is_ident() {
+            return Err(Box::new(ParseError::from_token(
+                &method_token,
+                "Expected method name after '.'".to_string(),
+            )));
+        }
+        let method = method_token.con().trim().to_string();
+        let _ = tokens.bump();
+        self.skip_ignorable(tokens);
+
+        let open = tokens.curr(false)?;
+        if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
+            return Err(Box::new(ParseError::from_token(
+                &open,
+                "Expected '(' after method name".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+        let args = self.parse_call_args(tokens)?;
+
+        Ok(AstNode::MethodCall {
+            object: Box::new(object),
+            method,
+            args,
+        })
+    }
+
+    fn parse_call_args(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
         let mut args = Vec::new();
         for _ in 0..256 {
             self.skip_ignorable(tokens);
@@ -1555,11 +1625,11 @@ impl AstParser {
 
             return Err(Box::new(ParseError::from_token(
                 &sep,
-                "Expected ',' or ')' in function call arguments".to_string(),
+                "Expected ',' or ')' in call arguments".to_string(),
             )));
         }
 
-        Ok(AstNode::FunctionCall { name, args })
+        Ok(args)
     }
 
     fn lookahead_is_assignment(&self, tokens: &fol_lexer::lexer::stage3::Elements) -> bool {
@@ -1600,6 +1670,37 @@ impl AstParser {
 
             let key = token.key();
             if key.is_void() || key.is_comment() {
+                continue;
+            }
+
+            return matches!(key, KEYWORD::Symbol(SYMBOL::RoundO));
+        }
+
+        false
+    }
+
+    fn lookahead_is_method_call(&self, tokens: &fol_lexer::lexer::stage3::Elements) -> bool {
+        let mut saw_dot = false;
+        for candidate in tokens.next_vec() {
+            let token = match candidate {
+                Ok(token) => token,
+                Err(_) => continue,
+            };
+
+            let key = token.key();
+            if key.is_void() || key.is_comment() {
+                continue;
+            }
+
+            if !saw_dot {
+                if matches!(key, KEYWORD::Symbol(SYMBOL::Dot)) {
+                    saw_dot = true;
+                    continue;
+                }
+                return false;
+            }
+
+            if key.is_ident() {
                 continue;
             }
 
@@ -2056,6 +2157,10 @@ impl AstParser {
 
             let _ = tokens.bump();
             return Ok(inner);
+        }
+
+        if token.key().is_ident() && self.lookahead_is_method_call(tokens) {
+            return self.parse_method_call_expr(tokens);
         }
 
         if token.key().is_ident() && self.lookahead_is_call(tokens) {

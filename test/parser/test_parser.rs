@@ -1060,6 +1060,49 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_method_calls_in_statement_and_return_positions() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_fun_method_call.fol")
+            .expect("Should read method call test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse method calls");
+
+        let (has_update_stmt, has_get_return) = match ast {
+            AstNode::Program { declarations } => {
+                let has_update_stmt = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::MethodCall { method, .. } if method == "update"
+                    )
+                });
+
+                let has_get_return = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::Return { value: Some(value) }
+                        if matches!(value.as_ref(), AstNode::MethodCall { method, .. } if method == "get")
+                    )
+                });
+
+                (has_update_stmt, has_get_return)
+            }
+            _ => panic!("Expected program node"),
+        };
+
+        assert!(
+            has_update_stmt,
+            "Should parse object.update(value) method call"
+        );
+        assert!(
+            has_get_return,
+            "Should parse return object.get() method call"
+        );
+    }
+
+    #[test]
     fn test_top_level_loop_iteration_shape_matches_function_loop_shape() {
         let mut file_stream = FileStream::from_file("test/parser/simple_loop_top_level.fol")
             .expect("Should read top-level loop test file");
