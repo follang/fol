@@ -473,6 +473,82 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_multi_else_if_chain_lowers_to_recursive_when_defaults() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_fun_else_if_multi.fol")
+            .expect("Should read multi else-if test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse multi else-if chain");
+
+        let top_when = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .find_map(|node| {
+                    if let AstNode::When { cases, default, .. } = node {
+                        Some((cases.clone(), default.clone()))
+                    } else {
+                        None
+                    }
+                })
+                .expect("Program should include top-level lowered when node"),
+            _ => panic!("Expected program node"),
+        };
+
+        assert_eq!(top_when.0.len(), 1, "Top if should have one case");
+
+        let first_default = top_when
+            .1
+            .expect("First else-if step should produce default branch");
+        let nested_when_1 = first_default
+            .iter()
+            .find_map(|node| {
+                if let AstNode::When { cases, default, .. } = node {
+                    Some((cases.clone(), default.clone()))
+                } else {
+                    None
+                }
+            })
+            .expect("First default should contain nested when");
+        assert_eq!(
+            nested_when_1.0.len(),
+            1,
+            "First nested else-if should have one case"
+        );
+
+        let second_default = nested_when_1
+            .1
+            .expect("Second else-if step should produce default branch");
+        let nested_when_2 = second_default
+            .iter()
+            .find_map(|node| {
+                if let AstNode::When { cases, default, .. } = node {
+                    Some((cases.clone(), default.clone()))
+                } else {
+                    None
+                }
+            })
+            .expect("Second default should contain nested when");
+        assert_eq!(
+            nested_when_2.0.len(),
+            1,
+            "Second nested else-if should have one case"
+        );
+
+        let final_default = nested_when_2
+            .1
+            .expect("Final else branch should exist at deepest nested default");
+        assert!(
+            final_default
+                .iter()
+                .any(|node| matches!(node, AstNode::Return { .. })),
+            "Final else branch should contain return statement"
+        );
+    }
+
+    #[test]
     fn test_loop_statement_parsing_with_condition_body() {
         let mut file_stream = FileStream::from_file("test/parser/simple_fun_loop.fol")
             .expect("Should read loop test file");

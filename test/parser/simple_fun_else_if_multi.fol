@@ -1,0 +1,11 @@
+fun choose_else_if_multi(a: int, b: int, c: int): int = {
+    if (a == b) {
+        return a;
+    } else if (a < b) {
+        return b;
+    } else if (b < c) {
+        return c;
+    } else {
+        return a;
+    }
+}
