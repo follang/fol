@@ -1209,6 +1209,61 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_zero_argument_method_calls_with_optional_semicolons() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_method_call_no_args.fol")
+                .expect("Should read zero-arg method call test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse zero-argument method calls");
+
+        let (has_start_stmt, has_stop_stmt, has_done_return) = match ast {
+            AstNode::Program { declarations } => {
+                let has_start_stmt = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::MethodCall { method, args, .. } if method == "start" && args.is_empty()
+                    )
+                });
+
+                let has_stop_stmt = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::MethodCall { method, args, .. } if method == "stop" && args.is_empty()
+                    )
+                });
+
+                let has_done_return = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::Return { value: Some(value) }
+                        if matches!(value.as_ref(), AstNode::MethodCall { method, args, .. } if method == "done" && args.is_empty())
+                    )
+                });
+
+                (has_start_stmt, has_stop_stmt, has_done_return)
+            }
+            _ => panic!("Expected program node"),
+        };
+
+        assert!(
+            has_start_stmt,
+            "Should parse obj.start() as zero-arg statement method call"
+        );
+        assert!(
+            has_stop_stmt,
+            "Should parse obj.stop() without semicolon as zero-arg statement method call"
+        );
+        assert!(
+            has_done_return,
+            "Should parse return obj.done() as zero-arg return method call"
+        );
+    }
+
+    #[test]
     fn test_top_level_loop_iteration_shape_matches_function_loop_shape() {
         let mut file_stream = FileStream::from_file("test/parser/simple_loop_top_level.fol")
             .expect("Should read top-level loop test file");
