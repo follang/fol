@@ -318,6 +318,53 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_if_statement_without_else_has_no_default_branch() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_fun_if_no_else.fol")
+            .expect("Should read if-no-else test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse if statement without else");
+
+        let lowered_if = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .find_map(|node| {
+                    if let AstNode::When {
+                        expr,
+                        cases,
+                        default,
+                    } = node
+                    {
+                        Some((expr.as_ref().clone(), cases.clone(), default.clone()))
+                    } else {
+                        None
+                    }
+                })
+                .expect("Program should include lowered if/when node"),
+            _ => panic!("Expected program node"),
+        };
+
+        assert!(
+            matches!(
+                lowered_if.0,
+                AstNode::BinaryOp {
+                    op: fol_parser::ast::BinaryOperator::Lt,
+                    ..
+                }
+            ),
+            "If condition should parse less-than expression"
+        );
+        assert_eq!(lowered_if.1.len(), 1, "If should include one case");
+        assert!(
+            lowered_if.2.is_none(),
+            "If without else should not include default branch"
+        );
+    }
+
+    #[test]
     fn test_loop_statement_parsing_with_condition_body() {
         let mut file_stream = FileStream::from_file("test/parser/simple_fun_loop.fol")
             .expect("Should read loop test file");
