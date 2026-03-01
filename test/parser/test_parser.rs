@@ -506,6 +506,51 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_top_level_loop_iteration_shape_matches_function_loop_shape() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_loop_top_level.fol")
+            .expect("Should read top-level loop test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse top-level loop statement");
+
+        let loop_stmt = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .find_map(|node| {
+                    if let AstNode::Loop { condition, body } = node {
+                        Some((condition.as_ref().clone(), body.clone()))
+                    } else {
+                        None
+                    }
+                })
+                .expect("Program should include top-level loop statement"),
+            _ => panic!("Expected program node"),
+        };
+
+        assert!(
+            matches!(
+                loop_stmt.0,
+                fol_parser::ast::LoopCondition::Iteration {
+                    var,
+                    condition: Some(_),
+                    ..
+                } if var == "i"
+            ),
+            "Top-level loop should parse as guarded iteration"
+        );
+        assert!(
+            loop_stmt
+                .1
+                .iter()
+                .any(|node| matches!(node, AstNode::Break)),
+            "Top-level loop body should contain break statement"
+        );
+    }
+
+    #[test]
     fn test_use_declaration_parsing() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_use.fol").expect("Should read use test file");

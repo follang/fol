@@ -1,0 +1,3 @@
+loop (i in items when i < max) {
+    break;
+}
