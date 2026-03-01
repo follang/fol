@@ -1,0 +1,10 @@
+fun choose(a: int, b: int): int = {
+    when (a) {
+        case (b) {
+            return b;
+        }
+        {
+            return a;
+        }
+    }
+}

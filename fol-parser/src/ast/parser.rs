@@ -2,7 +2,7 @@
 
 use super::{
     AstNode, BinaryOperator, FolType, FunOption, Generic, Literal, Parameter, UnaryOperator,
-    UseOption, VarOption,
+    UseOption, VarOption, WhenCase,
 };
 use fol_lexer::token::{BUILDIN, KEYWORD, LITERAL, OPERATOR, SYMBOL};
 use fol_types::*;
@@ -206,6 +206,23 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_return_stmt(tokens) {
+                    Ok(node) => declarations.push(node),
+                    Err(error) => errors.push(error),
+                }
+                self.bump_if_no_progress(tokens, before);
+                if tokens.curr(false).is_err() {
+                    break;
+                }
+                continue;
+            }
+
+            if matches!(key, KEYWORD::Keyword(BUILDIN::When)) {
+                let before = (
+                    token.loc().row(),
+                    token.loc().col(),
+                    token.con().to_string(),
+                );
+                match self.parse_when_stmt(tokens) {
                     Ok(node) => declarations.push(node),
                     Err(error) => errors.push(error),
                 }
@@ -759,6 +776,17 @@ impl AstParser {
                 continue;
             }
 
+            if matches!(key, KEYWORD::Keyword(BUILDIN::When)) {
+                let before = (
+                    token.loc().row(),
+                    token.loc().col(),
+                    token.con().to_string(),
+                );
+                body.push(self.parse_when_stmt(tokens)?);
+                self.bump_if_no_progress(tokens, before);
+                continue;
+            }
+
             if key.is_ident()
                 && self.lookahead_is_assignment(tokens)
                 && self.can_start_assignment(tokens)
@@ -816,6 +844,126 @@ impl AstParser {
         }
 
         Ok(AstNode::Return { value })
+    }
+
+    fn parse_when_stmt(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
+        let when_token = tokens.curr(false)?;
+        if !matches!(when_token.key(), KEYWORD::Keyword(BUILDIN::When)) {
+            return Err(Box::new(ParseError::from_token(
+                &when_token,
+                "Expected 'when' statement".to_string(),
+            )));
+        }
+
+        let _ = tokens.bump();
+        self.skip_ignorable(tokens);
+
+        let open_expr = tokens.curr(false)?;
+        if !matches!(open_expr.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
+            return Err(Box::new(ParseError::from_token(
+                &open_expr,
+                "Expected '(' after 'when'".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+
+        let expr = self.parse_logical_expression(tokens)?;
+        self.skip_ignorable(tokens);
+
+        let close_expr = tokens.curr(false)?;
+        if !matches!(close_expr.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
+            return Err(Box::new(ParseError::from_token(
+                &close_expr,
+                "Expected ')' after when expression".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+
+        self.skip_ignorable(tokens);
+        let open_cases = tokens.curr(false)?;
+        if !matches!(open_cases.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
+            return Err(Box::new(ParseError::from_token(
+                &open_cases,
+                "Expected '{' to start when cases".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+
+        let mut cases = Vec::new();
+        let mut default = None;
+
+        for _ in 0..1024 {
+            self.skip_ignorable(tokens);
+            let token = tokens.curr(false)?;
+
+            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) {
+                let _ = tokens.bump();
+                break;
+            }
+
+            if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Case)) {
+                let _ = tokens.bump();
+                self.skip_ignorable(tokens);
+
+                let open_cond = tokens.curr(false)?;
+                if !matches!(open_cond.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
+                    return Err(Box::new(ParseError::from_token(
+                        &open_cond,
+                        "Expected '(' after case".to_string(),
+                    )));
+                }
+                let _ = tokens.bump();
+
+                let condition = self.parse_logical_expression(tokens)?;
+                self.skip_ignorable(tokens);
+                let close_cond = tokens.curr(false)?;
+                if !matches!(close_cond.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
+                    return Err(Box::new(ParseError::from_token(
+                        &close_cond,
+                        "Expected ')' after case condition".to_string(),
+                    )));
+                }
+                let _ = tokens.bump();
+
+                self.skip_ignorable(tokens);
+                let body = self.parse_case_body(tokens)?;
+                cases.push(WhenCase::Case { condition, body });
+                continue;
+            }
+
+            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
+                let body = self.parse_case_body(tokens)?;
+                default = Some(body);
+                continue;
+            }
+
+            let _ = tokens.bump();
+        }
+
+        Ok(AstNode::When {
+            expr: Box::new(expr),
+            cases,
+            default,
+        })
+    }
+
+    fn parse_case_body(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
+        self.skip_ignorable(tokens);
+        let open = tokens.curr(false)?;
+        if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
+            return Err(Box::new(ParseError::from_token(
+                &open,
+                "Expected '{' to start case/default body".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+        self.parse_block_body(tokens)
     }
 
     fn parse_assignment_stmt(

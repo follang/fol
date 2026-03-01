@@ -182,6 +182,44 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_when_statement_parsing_with_case_and_default() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_fun_when.fol")
+            .expect("Should read when test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse when statement");
+
+        let when_stmt = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .find_map(|node| {
+                    if let AstNode::When {
+                        expr,
+                        cases,
+                        default,
+                    } = node
+                    {
+                        Some((expr.as_ref().clone(), cases.clone(), default.clone()))
+                    } else {
+                        None
+                    }
+                })
+                .expect("Program should include a when statement"),
+            _ => panic!("Expected program node"),
+        };
+
+        assert!(
+            matches!(when_stmt.0, AstNode::Identifier { name } if name == "a"),
+            "When expression should parse identifier a"
+        );
+        assert_eq!(when_stmt.1.len(), 1, "When should include one case");
+        assert!(when_stmt.2.is_some(), "When should include default body");
+    }
+
+    #[test]
     fn test_use_declaration_parsing() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_use.fol").expect("Should read use test file");
