@@ -1,0 +1,6 @@
+fun iterate_in_when(items: int, limit: int): int = {
+    loop (i in items when i < limit) {
+        yeild i;
+    }
+    return items;
+}

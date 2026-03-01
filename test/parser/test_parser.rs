@@ -468,6 +468,44 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_loop_iteration_condition_with_when_guard() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_fun_loop_in_when.fol")
+            .expect("Should read guarded iteration loop test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse iteration loop with when guard");
+
+        let loop_condition = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .find_map(|node| {
+                    if let AstNode::Loop { condition, .. } = node {
+                        Some(condition.as_ref().clone())
+                    } else {
+                        None
+                    }
+                })
+                .expect("Program should include a loop statement"),
+            _ => panic!("Expected program node"),
+        };
+
+        assert!(
+            matches!(
+                loop_condition,
+                fol_parser::ast::LoopCondition::Iteration {
+                    var,
+                    condition: Some(_),
+                    ..
+                } if var == "i"
+            ),
+            "Iteration loop should include variable and parsed when-guard condition"
+        );
+    }
+
+    #[test]
     fn test_use_declaration_parsing() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_use.fol").expect("Should read use test file");
