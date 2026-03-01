@@ -1,0 +1,11 @@
+fun nested_empty_slot(a: int, b: int): int = {
+    value = outer(
+        inner(
+            a,
+            ,
+        ),
+        b,
+    );
+
+    return value;
+}

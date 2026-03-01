@@ -2841,4 +2841,72 @@ mod parser_tests {
             "Method empty-slot parse error should point to the comma line"
         );
     }
+
+    #[test]
+    fn test_nested_call_with_empty_argument_slot_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_call_nested_empty_slot.fol")
+                .expect("Should read malformed nested empty-slot call test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should fail when nested call has an empty argument slot");
+
+        let first_message = errors
+            .first()
+            .map(|e| e.to_string())
+            .unwrap_or_else(|| "<no error message>".to_string());
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        assert!(
+            first_message.contains("Unsupported expression token"),
+            "Nested call with empty argument slot should report unsupported expression token, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            5,
+            "Nested empty-slot parse error should point to the comma line"
+        );
+    }
+
+    #[test]
+    fn test_method_call_with_nested_empty_argument_slot_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_method_call_nested_empty_slot.fol")
+                .expect("Should read malformed method nested empty-slot call test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should fail when method call has nested empty argument slot");
+
+        let first_message = errors
+            .first()
+            .map(|e| e.to_string())
+            .unwrap_or_else(|| "<no error message>".to_string());
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        assert!(
+            first_message.contains("Unsupported expression token"),
+            "Method call with nested empty argument slot should report unsupported expression token, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            5,
+            "Method nested empty-slot parse error should point to the comma line"
+        );
+    }
 }
