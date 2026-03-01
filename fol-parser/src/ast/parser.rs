@@ -143,6 +143,17 @@ impl AstParser {
                 continue;
             }
 
+            if key.is_ident()
+                && self.lookahead_is_assignment(tokens)
+                && self.can_start_assignment(tokens)
+            {
+                match self.parse_assignment_stmt(tokens) {
+                    Ok(node) => declarations.push(node),
+                    Err(error) => errors.push(error),
+                }
+                continue;
+            }
+
             if key.is_ident() {
                 declarations.push(AstNode::Identifier {
                     name: token.con().trim().to_string(),
@@ -317,6 +328,101 @@ impl AstParser {
         }
 
         Ok(AstNode::Return { value })
+    }
+
+    fn parse_assignment_stmt(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
+        let target_token = tokens.curr(false)?;
+        let target = AstNode::Identifier {
+            name: target_token.con().trim().to_string(),
+        };
+
+        let _ = tokens.bump();
+        self.skip_ignorable(tokens);
+
+        let assign_token = tokens.curr(false)?;
+        if !matches!(assign_token.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
+            return Err(Box::new(ParseError::from_token(
+                &assign_token,
+                "Expected '=' in assignment statement".to_string(),
+            )));
+        }
+
+        let _ = tokens.bump();
+        self.skip_ignorable(tokens);
+        let value = self.parse_add_sub_expression(tokens)?;
+
+        for _ in 0..64 {
+            let token = match tokens.curr(false) {
+                Ok(token) => token,
+                Err(_) => break,
+            };
+
+            if token.key().is_terminal() {
+                let _ = tokens.bump();
+                break;
+            }
+
+            if tokens.bump().is_none() {
+                break;
+            }
+        }
+
+        Ok(AstNode::Assignment {
+            target: Box::new(target),
+            value: Box::new(value),
+        })
+    }
+
+    fn lookahead_is_assignment(&self, tokens: &fol_lexer::lexer::stage3::Elements) -> bool {
+        for candidate in tokens.next_vec() {
+            let token = match candidate {
+                Ok(token) => token,
+                Err(_) => continue,
+            };
+
+            let key = token.key();
+            if key.is_void() || key.is_comment() {
+                continue;
+            }
+
+            return matches!(key, KEYWORD::Symbol(SYMBOL::Equal));
+        }
+
+        false
+    }
+
+    fn can_start_assignment(&self, tokens: &fol_lexer::lexer::stage3::Elements) -> bool {
+        match self.previous_significant_key(tokens) {
+            None => true,
+            Some(KEYWORD::Symbol(SYMBOL::CurlyO)) => true,
+            Some(KEYWORD::Symbol(SYMBOL::Semi)) => true,
+            Some(key) if key.is_terminal() => true,
+            _ => false,
+        }
+    }
+
+    fn previous_significant_key(
+        &self,
+        tokens: &fol_lexer::lexer::stage3::Elements,
+    ) -> Option<KEYWORD> {
+        for candidate in tokens.prev_vec() {
+            let token = match candidate {
+                Ok(token) => token,
+                Err(_) => continue,
+            };
+
+            let key = token.key();
+            if key.is_void() || key.is_comment() {
+                continue;
+            }
+
+            return Some(key);
+        }
+
+        None
     }
 
     fn parse_add_sub_expression(

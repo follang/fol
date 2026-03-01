@@ -484,6 +484,42 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_assignment_statement_parsing_with_expression_value() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_fun_assignment.fol")
+            .expect("Should read assignment function test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse assignment statement");
+
+        let assignment = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .find_map(|node| {
+                    if let AstNode::Assignment { target, value } = node {
+                        Some((target.as_ref().clone(), value.as_ref().clone()))
+                    } else {
+                        None
+                    }
+                })
+                .expect("Program should contain an assignment statement"),
+            _ => panic!("Expected program node"),
+        };
+
+        assert!(
+            matches!(assignment.0, AstNode::Identifier { name } if name == "result"),
+            "Assignment target should be identifier 'result'"
+        );
+        assert!(
+            matches!(assignment.1, AstNode::BinaryOp { .. }),
+            "Assignment value should be parsed as expression tree"
+        );
+    }
+
+    #[test]
     fn test_literal_parsing() {
         let parser = AstParser::new();
 
