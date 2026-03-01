@@ -1151,7 +1151,9 @@ impl AstParser {
 
         self.skip_ignorable(tokens);
         let else_body = if let Ok(token) = tokens.curr(false) {
-            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
+            if matches!(token.key(), KEYWORD::Keyword(BUILDIN::If)) {
+                Some(vec![self.parse_if_stmt(tokens)?])
+            } else if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
                 Some(self.parse_case_body(tokens)?)
             } else {
                 None
