@@ -220,6 +220,44 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_loop_statement_parsing_with_condition_body() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_fun_loop.fol")
+            .expect("Should read loop test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse loop statement");
+
+        let loop_stmt = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .find_map(|node| {
+                    if let AstNode::Loop { condition, body } = node {
+                        Some((condition.as_ref().clone(), body.clone()))
+                    } else {
+                        None
+                    }
+                })
+                .expect("Program should include a loop statement"),
+            _ => panic!("Expected program node"),
+        };
+
+        assert!(
+            matches!(loop_stmt.0, fol_parser::ast::LoopCondition::Condition(_)),
+            "Loop should parse condition expression"
+        );
+        assert!(
+            loop_stmt
+                .1
+                .iter()
+                .any(|node| matches!(node, AstNode::Assignment { .. })),
+            "Loop body should contain assignment statement"
+        );
+    }
+
+    #[test]
     fn test_use_declaration_parsing() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_use.fol").expect("Should read use test file");

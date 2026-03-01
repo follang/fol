@@ -1,0 +1,6 @@
+fun iterate(a: int, b: int): int = {
+    loop (a < b) {
+        a += 1;
+    }
+    return a;
+}

@@ -1,8 +1,8 @@
 // AST Parser Implementation for FOL
 
 use super::{
-    AstNode, BinaryOperator, FolType, FunOption, Generic, Literal, Parameter, UnaryOperator,
-    UseOption, VarOption, WhenCase,
+    AstNode, BinaryOperator, FolType, FunOption, Generic, Literal, LoopCondition, Parameter,
+    UnaryOperator, UseOption, VarOption, WhenCase,
 };
 use fol_lexer::token::{BUILDIN, KEYWORD, LITERAL, OPERATOR, SYMBOL};
 use fol_types::*;
@@ -223,6 +223,23 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_when_stmt(tokens) {
+                    Ok(node) => declarations.push(node),
+                    Err(error) => errors.push(error),
+                }
+                self.bump_if_no_progress(tokens, before);
+                if tokens.curr(false).is_err() {
+                    break;
+                }
+                continue;
+            }
+
+            if matches!(key, KEYWORD::Keyword(BUILDIN::Loop)) {
+                let before = (
+                    token.loc().row(),
+                    token.loc().col(),
+                    token.con().to_string(),
+                );
+                match self.parse_loop_stmt(tokens) {
                     Ok(node) => declarations.push(node),
                     Err(error) => errors.push(error),
                 }
@@ -787,6 +804,17 @@ impl AstParser {
                 continue;
             }
 
+            if matches!(key, KEYWORD::Keyword(BUILDIN::Loop)) {
+                let before = (
+                    token.loc().row(),
+                    token.loc().col(),
+                    token.con().to_string(),
+                );
+                body.push(self.parse_loop_stmt(tokens)?);
+                self.bump_if_no_progress(tokens, before);
+                continue;
+            }
+
             if key.is_ident()
                 && self.lookahead_is_assignment(tokens)
                 && self.can_start_assignment(tokens)
@@ -964,6 +992,60 @@ impl AstParser {
         }
         let _ = tokens.bump();
         self.parse_block_body(tokens)
+    }
+
+    fn parse_loop_stmt(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
+        let loop_token = tokens.curr(false)?;
+        if !matches!(loop_token.key(), KEYWORD::Keyword(BUILDIN::Loop)) {
+            return Err(Box::new(ParseError::from_token(
+                &loop_token,
+                "Expected 'loop' statement".to_string(),
+            )));
+        }
+
+        let _ = tokens.bump();
+        self.skip_ignorable(tokens);
+
+        let open_cond = tokens.curr(false)?;
+        if !matches!(open_cond.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
+            return Err(Box::new(ParseError::from_token(
+                &open_cond,
+                "Expected '(' after 'loop'".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+
+        let condition_expr = self.parse_logical_expression(tokens)?;
+        self.skip_ignorable(tokens);
+
+        let close_cond = tokens.curr(false)?;
+        if !matches!(close_cond.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
+            return Err(Box::new(ParseError::from_token(
+                &close_cond,
+                "Expected ')' after loop condition".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+
+        self.skip_ignorable(tokens);
+        let open_body = tokens.curr(false)?;
+        if !matches!(open_body.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
+            return Err(Box::new(ParseError::from_token(
+                &open_body,
+                "Expected '{' to start loop body".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+
+        let body = self.parse_block_body(tokens)?;
+
+        Ok(AstNode::Loop {
+            condition: Box::new(LoopCondition::Condition(Box::new(condition_expr))),
+            body,
+        })
     }
 
     fn parse_assignment_stmt(
