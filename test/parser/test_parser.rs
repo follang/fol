@@ -3319,4 +3319,68 @@ mod parser_tests {
             "Mixed malformed call should point to the unmatched-open parenthesized expression line"
         );
     }
+
+    #[test]
+    fn test_method_mixed_unmatched_open_and_trailing_comma_reports_first_error() {
+        let mut file_stream = FileStream::from_file(
+            "test/parser/simple_fun_method_call_mixed_unmatched_open_and_trailing_comma.fol",
+        )
+        .expect("Should read malformed mixed method call-argument test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser.parse(&mut lexer).expect_err(
+            "Parser should fail when method call nested args mix unmatched '(' with trailing comma",
+        );
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+
+        assert!(
+            first_message.contains("Expected closing ')' for parenthesized expression"),
+            "Mixed malformed method call should prioritize missing close-paren error, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            4,
+            "Mixed malformed method call should point to unmatched-open parenthesized expression line"
+        );
+    }
+
+    #[test]
+    fn test_top_level_mixed_unmatched_open_and_trailing_comma_reports_first_error() {
+        let mut file_stream = FileStream::from_file(
+            "test/parser/simple_call_top_level_mixed_unmatched_open_and_trailing_comma.fol",
+        )
+        .expect("Should read malformed mixed top-level call-argument test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser.parse(&mut lexer).expect_err(
+            "Parser should fail when top-level nested args mix unmatched '(' with trailing comma",
+        );
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+
+        assert!(
+            first_message.contains("Expected closing ')' for parenthesized expression"),
+            "Mixed malformed top-level call should prioritize missing close-paren error, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            3,
+            "Mixed malformed top-level call should point to unmatched-open parenthesized expression line"
+        );
+    }
 }
