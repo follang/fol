@@ -1,0 +1,11 @@
+fun nested_bad_sep(a: int, b: int): int = {
+    value = outer(
+        inner(
+            a
+            b,
+        ),
+        b,
+    );
+
+    return value;
+}

@@ -1,0 +1,8 @@
+fun method_bad_sep(obj: int, a: int, b: int): int = {
+    obj.run(
+        a
+        b,
+    );
+
+    return 0;
+}

@@ -1,0 +1,18 @@
+fun multiline_calls(a: int, b: int, c: int): int = {
+    value = compose(
+        a,
+        wrap(
+            b,
+        ),
+        c,
+    );
+
+    obj.update(
+        value,
+        c,
+    );
+
+    return emit(
+        value,
+    );
+}

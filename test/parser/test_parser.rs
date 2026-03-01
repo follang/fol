@@ -2,7 +2,7 @@
 
 use fol_lexer::lexer::stage3::Elements;
 use fol_lexer::token::KEYWORD;
-use fol_parser::ast::{AstNode, AstParser, FolType, ParseError};
+use fol_parser::ast::{AstNode, AstParser, FolType, Literal, ParseError};
 use fol_stream::FileStream;
 
 #[cfg(test)]
@@ -1068,6 +1068,39 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_top_level_multiline_identifier_call_parsing() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_call_top_level_multiline.fol")
+                .expect("Should read top-level multiline call test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse top-level multiline identifier call");
+
+        let call = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .find_map(|node| {
+                    if let AstNode::FunctionCall { name, args } = node {
+                        Some((name.clone(), args.len()))
+                    } else {
+                        None
+                    }
+                })
+                .expect("Program should include top-level multiline function call"),
+            _ => panic!("Expected program node"),
+        };
+
+        assert_eq!(call.0, "run");
+        assert_eq!(
+            call.1, 3,
+            "Top-level multiline call should include three arguments"
+        );
+    }
+
+    #[test]
     fn test_call_expressions_in_assignment_and_return() {
         let mut file_stream = FileStream::from_file("test/parser/simple_fun_call_expr.fol")
             .expect("Should read call expression test file");
@@ -1426,6 +1459,120 @@ mod parser_tests {
         assert!(
             has_done_one_arg,
             "done(value,) should parse with one argument"
+        );
+    }
+
+    #[test]
+    fn test_multiline_call_arguments_parse_with_expected_shapes() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_fun_call_multiline.fol")
+            .expect("Should read multiline call test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse multiline call arguments");
+
+        let (has_compose_assignment, has_update_call, has_emit_return) = match ast {
+            AstNode::Program { declarations } => {
+                let has_compose_assignment = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::Assignment { value, .. }
+                        if matches!(
+                            value.as_ref(),
+                            AstNode::FunctionCall { name, args }
+                            if name == "compose"
+                                && args.len() == 3
+                                && matches!(args[1], AstNode::FunctionCall { ref name, args: ref inner_args } if name == "wrap" && inner_args.len() == 1)
+                        )
+                    )
+                });
+
+                let has_update_call = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::MethodCall { method, args, .. }
+                        if method == "update" && args.len() == 2
+                    )
+                });
+
+                let has_emit_return = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::Return { value: Some(value) }
+                        if matches!(value.as_ref(), AstNode::FunctionCall { name, args } if name == "emit" && args.len() == 1)
+                    )
+                });
+
+                (has_compose_assignment, has_update_call, has_emit_return)
+            }
+            _ => panic!("Expected program node"),
+        };
+
+        assert!(
+            has_compose_assignment,
+            "Multiline compose(...) assignment should parse with nested wrap(...) argument"
+        );
+        assert!(
+            has_update_call,
+            "Multiline obj.update(...) call should parse with two arguments"
+        );
+        assert!(
+            has_emit_return,
+            "Multiline return emit(...) call should parse with one argument"
+        );
+    }
+
+    #[test]
+    fn test_multiline_call_arguments_with_comments_parse_with_expected_shapes() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_call_comments_multiline.fol")
+                .expect("Should read multiline call-with-comments test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse multiline call arguments with comments");
+
+        let (has_combine_assignment, has_emit_return) = match ast {
+            AstNode::Program { declarations } => {
+                let has_combine_assignment = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::Assignment { value, .. }
+                        if matches!(
+                            value.as_ref(),
+                            AstNode::FunctionCall { name, args }
+                            if name == "combine"
+                                && args.len() == 3
+                                && matches!(args[1], AstNode::FunctionCall { ref name, args: ref inner_args } if name == "wrap" && inner_args.len() == 1)
+                                && matches!(args[2], AstNode::Literal(Literal::Integer(42)))
+                        )
+                    )
+                });
+
+                let has_emit_return = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::Return { value: Some(value) }
+                        if matches!(value.as_ref(), AstNode::FunctionCall { name, args } if name == "emit" && args.len() == 1)
+                    )
+                });
+
+                (has_combine_assignment, has_emit_return)
+            }
+            _ => panic!("Expected program node"),
+        };
+
+        assert!(
+            has_combine_assignment,
+            "combine(...) should parse with three arguments including nested wrap(...) and integer literal"
+        );
+        assert!(
+            has_emit_return,
+            "return emit(...) should parse with one argument after commented multiline call"
         );
     }
 
@@ -2471,13 +2618,227 @@ mod parser_tests {
             "Token length should be non-zero for diagnostics"
         );
     }
-}
 
-// TODO: Expand these tests when full parser is implemented
-// - Variable declarations
-// - Function declarations
-// - Type declarations
-// - Expressions
-// - Statements
-// - Error recovery
-// - AST structure validation
+    #[test]
+    fn test_missing_call_closing_paren_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_call_missing_paren.fol")
+                .expect("Should read missing call paren test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should fail when a call is missing a closing ')' ");
+
+        let first_message = errors
+            .first()
+            .map(|e| e.to_string())
+            .unwrap_or_else(|| "<no error message>".to_string());
+
+        assert!(
+            first_message.contains("Expected ',' or ')' in call arguments")
+                || first_message.contains("Unsupported expression token '; '"),
+            "Missing call ')' should report a call-argument parse error, got: {}",
+            first_message
+        );
+    }
+
+    #[test]
+    fn test_missing_call_argument_separator_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_call_bad_separator.fol")
+                .expect("Should read bad call separator test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should fail when call arguments are missing a separator");
+
+        let first_message = errors
+            .first()
+            .map(|e| e.to_string())
+            .unwrap_or_else(|| "<no error message>".to_string());
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        assert!(
+            first_message.contains("Expected ',' or ')' in call arguments"),
+            "Missing call separator should report argument-separator parse error, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            4,
+            "Missing call separator parse error should point to the next argument token line"
+        );
+    }
+
+    #[test]
+    fn test_top_level_call_with_leading_comma_argument_reports_location() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_call_top_level_leading_comma_arg.fol")
+                .expect("Should read top-level malformed call test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should fail when call arguments start with a comma");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = errors
+            .first()
+            .map(|e| e.to_string())
+            .unwrap_or_else(|| "<no error message>".to_string());
+
+        assert!(
+            first_message.contains("Unsupported expression token"),
+            "Leading comma argument should report unsupported expression token, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            2,
+            "Leading comma parse error should point to the comma line"
+        );
+        assert!(
+            parse_error.column() > 0,
+            "Leading comma parse error should include a non-zero column"
+        );
+    }
+
+    #[test]
+    fn test_method_call_missing_argument_separator_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_method_call_bad_separator.fol")
+                .expect("Should read malformed method call test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should fail when method call arguments are missing a separator");
+
+        let first_message = errors
+            .first()
+            .map(|e| e.to_string())
+            .unwrap_or_else(|| "<no error message>".to_string());
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        assert!(
+            first_message.contains("Expected ',' or ')' in call arguments"),
+            "Method call with missing separator should report argument-separator parse error, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            4,
+            "Method missing-separator parse error should point to the next argument token line"
+        );
+    }
+
+    #[test]
+    fn test_nested_call_missing_argument_separator_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_call_nested_bad_separator.fol")
+                .expect("Should read malformed nested call test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should fail when nested call arguments are missing a separator");
+
+        let first_message = errors
+            .first()
+            .map(|e| e.to_string())
+            .unwrap_or_else(|| "<no error message>".to_string());
+
+        assert!(
+            first_message.contains("Expected ',' or ')' in call arguments"),
+            "Nested call with missing separator should report argument-separator parse error, got: {}",
+            first_message
+        );
+    }
+
+    #[test]
+    fn test_top_level_call_with_double_comma_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_call_top_level_double_comma_arg.fol")
+                .expect("Should read malformed top-level double-comma call test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should fail when top-level call has an empty argument slot");
+
+        let first_message = errors
+            .first()
+            .map(|e| e.to_string())
+            .unwrap_or_else(|| "<no error message>".to_string());
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        assert!(
+            first_message.contains("Unsupported expression token"),
+            "Top-level call with double comma should report unsupported expression token, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            3,
+            "Top-level double-comma parse error should point to empty argument slot line"
+        );
+    }
+
+    #[test]
+    fn test_method_call_with_empty_argument_slot_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_method_call_empty_argument_slot.fol")
+                .expect("Should read malformed method empty-slot call test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should fail when method call starts argument list with comma");
+
+        let first_message = errors
+            .first()
+            .map(|e| e.to_string())
+            .unwrap_or_else(|| "<no error message>".to_string());
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        assert!(
+            first_message.contains("Unsupported expression token"),
+            "Method call with empty argument slot should report unsupported expression token, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            3,
+            "Method empty-slot parse error should point to the comma line"
+        );
+    }
+}

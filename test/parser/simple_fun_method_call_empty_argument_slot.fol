@@ -1,0 +1,7 @@
+fun method_empty_slot(obj: int, a: int): int = {
+    obj.run(
+        ,
+    );
+
+    return a;
+}

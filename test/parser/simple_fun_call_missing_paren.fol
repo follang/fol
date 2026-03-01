@@ -1,0 +1,7 @@
+fun broken_missing_paren(a: int): int = {
+    value = compose(
+        a,
+        2,
+    ;
+    return value;
+}
