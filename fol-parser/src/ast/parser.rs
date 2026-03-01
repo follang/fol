@@ -1267,6 +1267,15 @@ impl AstParser {
             });
         }
 
+        if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Not)) {
+            let _ = tokens.bump();
+            let operand = self.parse_primary_expression(tokens)?;
+            return Ok(AstNode::UnaryOp {
+                op: UnaryOperator::Not,
+                operand: Box::new(operand),
+            });
+        }
+
         if matches!(token.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
             let _ = tokens.bump();
             let inner = self.parse_logical_expression(tokens)?;

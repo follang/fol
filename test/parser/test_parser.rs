@@ -880,6 +880,44 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_logical_not_parses_as_unary_expression() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_fun_logical_not.fol")
+            .expect("Should read logical not function test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse logical not expression");
+
+        let return_value = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .find_map(|node| {
+                    if let AstNode::Return { value: Some(value) } = node {
+                        Some(value.as_ref().clone())
+                    } else {
+                        None
+                    }
+                })
+                .expect("Program should contain a return value"),
+            _ => panic!("Expected program node"),
+        };
+
+        assert!(
+            matches!(
+                return_value,
+                AstNode::UnaryOp {
+                    op: fol_parser::ast::UnaryOperator::Not,
+                    ..
+                }
+            ),
+            "Return value should be unary logical-not expression"
+        );
+    }
+
+    #[test]
     fn test_literal_parsing() {
         let parser = AstParser::new();
 
