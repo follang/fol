@@ -1151,7 +1151,22 @@ impl AstParser {
 
         self.skip_ignorable(tokens);
         let else_body = if let Ok(token) = tokens.curr(false) {
-            if matches!(token.key(), KEYWORD::Keyword(BUILDIN::If)) {
+            if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Else)) {
+                let _ = tokens.bump();
+                self.skip_ignorable(tokens);
+
+                let else_target = tokens.curr(false)?;
+                if matches!(else_target.key(), KEYWORD::Keyword(BUILDIN::If)) {
+                    Some(vec![self.parse_if_stmt(tokens)?])
+                } else if matches!(else_target.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
+                    Some(self.parse_case_body(tokens)?)
+                } else {
+                    return Err(Box::new(ParseError::from_token(
+                        &else_target,
+                        "Expected 'if' or '{' after else".to_string(),
+                    )));
+                }
+            } else if matches!(token.key(), KEYWORD::Keyword(BUILDIN::If)) {
                 Some(vec![self.parse_if_stmt(tokens)?])
             } else if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
                 Some(self.parse_case_body(tokens)?)

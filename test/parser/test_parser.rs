@@ -365,6 +365,57 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_else_if_keyword_chain_lowers_to_nested_when_default() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_fun_else_if.fol")
+            .expect("Should read else-if test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse else-if keyword chain");
+
+        let lowered_if = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .find_map(|node| {
+                    if let AstNode::When {
+                        expr,
+                        cases,
+                        default,
+                    } = node
+                    {
+                        Some((expr.as_ref().clone(), cases.clone(), default.clone()))
+                    } else {
+                        None
+                    }
+                })
+                .expect("Program should include lowered if/when node"),
+            _ => panic!("Expected program node"),
+        };
+
+        assert!(
+            matches!(
+                lowered_if.0,
+                AstNode::BinaryOp {
+                    op: fol_parser::ast::BinaryOperator::Eq,
+                    ..
+                }
+            ),
+            "Outer if condition should parse equality expression"
+        );
+        let default = lowered_if
+            .2
+            .expect("Else-if chain should include default branch body");
+        assert!(
+            default
+                .iter()
+                .any(|node| matches!(node, AstNode::When { .. })),
+            "Else-if should lower to nested when in default branch"
+        );
+    }
+
+    #[test]
     fn test_loop_statement_parsing_with_condition_body() {
         let mut file_stream = FileStream::from_file("test/parser/simple_fun_loop.fol")
             .expect("Should read loop test file");

@@ -273,6 +273,7 @@ impl Element {
             "nand" => self.set_key(Keyword(BUILDIN::Nand)),
             "as" => self.set_key(Keyword(BUILDIN::As)),
             "if" => self.set_key(Keyword(BUILDIN::If)),
+            "else" => self.set_key(Keyword(BUILDIN::Else)),
             "when" => self.set_key(Keyword(BUILDIN::When)),
             "loop" => self.set_key(Keyword(BUILDIN::Loop)),
             "is" => self.set_key(Keyword(BUILDIN::Is)),
