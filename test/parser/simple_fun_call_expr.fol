@@ -1,0 +1,4 @@
+fun call_expr(a: int, b: int): int = {
+    value = compute(a, b);
+    return emit(value);
+}

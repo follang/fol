@@ -1494,6 +1494,22 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Box<dyn Glitch>> {
+        let call = self.parse_call_expr(tokens)?;
+
+        self.skip_ignorable(tokens);
+        if let Ok(token) = tokens.curr(false) {
+            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Semi)) {
+                let _ = tokens.bump();
+            }
+        }
+
+        Ok(call)
+    }
+
+    fn parse_call_expr(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
         let name_token = tokens.curr(false)?;
         if !name_token.key().is_ident() {
             return Err(Box::new(ParseError::from_token(
@@ -1541,13 +1557,6 @@ impl AstParser {
                 &sep,
                 "Expected ',' or ')' in function call arguments".to_string(),
             )));
-        }
-
-        self.skip_ignorable(tokens);
-        if let Ok(token) = tokens.curr(false) {
-            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Semi)) {
-                let _ = tokens.bump();
-            }
         }
 
         Ok(AstNode::FunctionCall { name, args })
@@ -2047,6 +2056,10 @@ impl AstParser {
 
             let _ = tokens.bump();
             return Ok(inner);
+        }
+
+        if token.key().is_ident() && self.lookahead_is_call(tokens) {
+            return self.parse_call_expr(tokens);
         }
 
         let node = self.parse_primary(&token)?;
