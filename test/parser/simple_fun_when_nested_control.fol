@@ -1,0 +1,16 @@
+fun choose_when_nested(a: int, b: int): int = {
+    when (a) {
+        case (b) {
+            if (a < b) {
+                return b;
+            } else {
+                loop (a < b) {
+                    break;
+                }
+            }
+        }
+        {
+            return a;
+        }
+    }
+}

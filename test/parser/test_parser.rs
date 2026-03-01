@@ -262,6 +262,70 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_when_case_body_supports_nested_if_and_loop() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_when_nested_control.fol")
+                .expect("Should read nested-control when test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse nested control flow inside when case body");
+
+        let when_cases = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .find_map(|node| {
+                    if let AstNode::When { cases, .. } = node {
+                        Some(cases.clone())
+                    } else {
+                        None
+                    }
+                })
+                .expect("Program should include a when statement"),
+            _ => panic!("Expected program node"),
+        };
+
+        let first_case_body = when_cases
+            .iter()
+            .find_map(|case| {
+                if let fol_parser::ast::WhenCase::Case { body, .. } = case {
+                    Some(body.clone())
+                } else {
+                    None
+                }
+            })
+            .expect("When should include at least one case body");
+
+        assert!(
+            first_case_body
+                .iter()
+                .any(|node| matches!(node, AstNode::When { .. })),
+            "Case body should include lowered if statement"
+        );
+
+        let lowered_if = first_case_body
+            .iter()
+            .find_map(|node| {
+                if let AstNode::When { default, .. } = node {
+                    Some(default.clone())
+                } else {
+                    None
+                }
+            })
+            .expect("Case body should include lowered if node");
+
+        let default_body = lowered_if.expect("Lowered if should include else/default body");
+        assert!(
+            default_body
+                .iter()
+                .any(|node| matches!(node, AstNode::Loop { .. })),
+            "Case body should include loop statement from else branch"
+        );
+    }
+
+    #[test]
     fn test_if_statement_lowers_to_when_shape() {
         let mut file_stream = FileStream::from_file("test/parser/simple_fun_if.fol")
             .expect("Should read if test file");
