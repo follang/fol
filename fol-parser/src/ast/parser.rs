@@ -1212,7 +1212,7 @@ impl AstParser {
         }
         let _ = tokens.bump();
 
-        let condition_expr = self.parse_logical_expression(tokens)?;
+        let condition = self.parse_loop_condition(tokens)?;
         self.skip_ignorable(tokens);
 
         let close_cond = tokens.curr(false)?;
@@ -1237,9 +1237,48 @@ impl AstParser {
         let body = self.parse_block_body(tokens)?;
 
         Ok(AstNode::Loop {
-            condition: Box::new(LoopCondition::Condition(Box::new(condition_expr))),
+            condition: Box::new(condition),
             body,
         })
+    }
+
+    fn parse_loop_condition(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<LoopCondition, Box<dyn Glitch>> {
+        self.skip_ignorable(tokens);
+
+        let current = tokens.curr(false)?;
+        if current.key().is_ident()
+            && matches!(
+                self.next_significant_key_from_window(tokens),
+                Some(KEYWORD::Keyword(BUILDIN::In))
+            )
+        {
+            let var = current.con().trim().to_string();
+            let _ = tokens.bump();
+            self.skip_ignorable(tokens);
+
+            let in_token = tokens.curr(false)?;
+            if !matches!(in_token.key(), KEYWORD::Keyword(BUILDIN::In)) {
+                return Err(Box::new(ParseError::from_token(
+                    &in_token,
+                    "Expected 'in' in loop iteration condition".to_string(),
+                )));
+            }
+            let _ = tokens.bump();
+            self.skip_ignorable(tokens);
+
+            let iterable = self.parse_logical_expression(tokens)?;
+            return Ok(LoopCondition::Iteration {
+                var,
+                iterable: Box::new(iterable),
+                condition: None,
+            });
+        }
+
+        let condition_expr = self.parse_logical_expression(tokens)?;
+        Ok(LoopCondition::Condition(Box::new(condition_expr)))
     }
 
     fn parse_assignment_stmt(

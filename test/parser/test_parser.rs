@@ -420,6 +420,54 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_loop_iteration_condition_parsing_with_in() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_fun_loop_in.fol")
+            .expect("Should read loop iteration test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse loop iteration condition");
+
+        let loop_stmt = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .find_map(|node| {
+                    if let AstNode::Loop { condition, body } = node {
+                        Some((condition.as_ref().clone(), body.clone()))
+                    } else {
+                        None
+                    }
+                })
+                .expect("Program should include a loop statement"),
+            _ => panic!("Expected program node"),
+        };
+
+        assert!(
+            matches!(
+                loop_stmt.0,
+                fol_parser::ast::LoopCondition::Iteration { var, .. } if var == "i"
+            ),
+            "Loop should parse iteration form with variable i"
+        );
+        assert!(
+            loop_stmt
+                .1
+                .iter()
+                .any(|node| matches!(node, AstNode::Yield { .. })),
+            "Iteration loop body should contain yield statement"
+        );
+        assert!(
+            loop_stmt
+                .1
+                .iter()
+                .any(|node| matches!(node, AstNode::Break)),
+            "Iteration loop body should contain break statement"
+        );
+    }
+
+    #[test]
     fn test_use_declaration_parsing() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_use.fol").expect("Should read use test file");
