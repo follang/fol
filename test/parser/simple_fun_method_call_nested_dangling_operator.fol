@@ -1,0 +1,10 @@
+fun method_nested_dangling_operator(obj: int, a: int, b: int): int = {
+    obj.run(
+        inner(
+            a +,
+        ),
+        b,
+    );
+
+    return b;
+}
