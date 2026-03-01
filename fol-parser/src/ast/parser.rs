@@ -233,6 +233,23 @@ impl AstParser {
                 continue;
             }
 
+            if matches!(key, KEYWORD::Keyword(BUILDIN::Yeild)) {
+                let before = (
+                    token.loc().row(),
+                    token.loc().col(),
+                    token.con().to_string(),
+                );
+                match self.parse_yield_stmt(tokens) {
+                    Ok(node) => declarations.push(node),
+                    Err(error) => errors.push(error),
+                }
+                self.bump_if_no_progress(tokens, before);
+                if tokens.curr(false).is_err() {
+                    break;
+                }
+                continue;
+            }
+
             if matches!(key, KEYWORD::Keyword(BUILDIN::When)) {
                 let before = (
                     token.loc().row(),
@@ -810,6 +827,11 @@ impl AstParser {
                 continue;
             }
 
+            if matches!(key, KEYWORD::Keyword(BUILDIN::Yeild)) {
+                body.push(self.parse_yield_stmt(tokens)?);
+                continue;
+            }
+
             if matches!(key, KEYWORD::Keyword(BUILDIN::Var)) {
                 body.push(self.parse_var_decl(tokens)?);
                 continue;
@@ -917,6 +939,43 @@ impl AstParser {
         }
 
         Ok(AstNode::Break)
+    }
+
+    fn parse_yield_stmt(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
+        let yield_token = tokens.curr(false)?;
+        if !matches!(yield_token.key(), KEYWORD::Keyword(BUILDIN::Yeild)) {
+            return Err(Box::new(ParseError::from_token(
+                &yield_token,
+                "Expected 'yield' statement".to_string(),
+            )));
+        }
+
+        let _ = tokens.bump();
+        self.skip_ignorable(tokens);
+        let value = self.parse_logical_expression(tokens)?;
+
+        for _ in 0..64 {
+            let token = match tokens.curr(false) {
+                Ok(token) => token,
+                Err(_) => break,
+            };
+
+            if token.key().is_terminal() {
+                let _ = tokens.bump();
+                break;
+            }
+
+            if tokens.bump().is_none() {
+                break;
+            }
+        }
+
+        Ok(AstNode::Yield {
+            value: Box::new(value),
+        })
     }
 
     fn parse_when_stmt(
