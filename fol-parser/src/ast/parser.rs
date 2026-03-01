@@ -2,7 +2,7 @@
 
 use super::{
     AstNode, BinaryOperator, FolType, FunOption, Generic, Literal, Parameter, UnaryOperator,
-    VarOption,
+    UseOption, VarOption,
 };
 use fol_lexer::token::{BUILDIN, KEYWORD, LITERAL, OPERATOR, SYMBOL};
 use fol_types::*;
@@ -134,6 +134,14 @@ impl AstParser {
                     if before == after && tokens.bump().is_none() {
                         break;
                     }
+                }
+                continue;
+            }
+
+            if matches!(key, KEYWORD::Keyword(BUILDIN::Use)) {
+                match self.parse_use_decl(tokens) {
+                    Ok(node) => declarations.push(node),
+                    Err(error) => errors.push(error),
                 }
                 continue;
             }
@@ -309,6 +317,117 @@ impl AstParser {
             type_hint,
             value,
         })
+    }
+
+    fn parse_use_decl(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
+        let use_token = tokens.curr(false)?;
+        if !matches!(use_token.key(), KEYWORD::Keyword(BUILDIN::Use)) {
+            return Err(Box::new(ParseError::from_token(
+                &use_token,
+                "Expected 'use' declaration".to_string(),
+            )));
+        }
+
+        let _ = tokens.bump();
+        self.skip_ignorable(tokens);
+
+        let name_token = tokens.curr(false)?;
+        if !name_token.key().is_ident() {
+            return Err(Box::new(ParseError::from_token(
+                &name_token,
+                "Expected use declaration name".to_string(),
+            )));
+        }
+        let name = name_token.con().trim().to_string();
+        let _ = tokens.bump();
+
+        self.skip_ignorable(tokens);
+        let colon = tokens.curr(false)?;
+        if !matches!(colon.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
+            return Err(Box::new(ParseError::from_token(
+                &colon,
+                "Expected ':' after use name".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+
+        self.skip_ignorable(tokens);
+        let type_token = tokens.curr(false)?;
+        let path_type = self.parse_type_reference(&type_token)?;
+        let _ = tokens.bump();
+
+        self.skip_ignorable(tokens);
+        let assign = tokens.curr(false)?;
+        if !matches!(assign.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
+            return Err(Box::new(ParseError::from_token(
+                &assign,
+                "Expected '=' in use declaration".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+
+        self.skip_ignorable(tokens);
+        let open = tokens.curr(false)?;
+        if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
+            return Err(Box::new(ParseError::from_token(
+                &open,
+                "Expected '{' to start use path".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+
+        let path = self.parse_use_path(tokens)?;
+
+        self.skip_ignorable(tokens);
+        if let Ok(token) = tokens.curr(false) {
+            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Semi)) {
+                let _ = tokens.bump();
+            }
+        }
+
+        Ok(AstNode::UseDecl {
+            options: Vec::<UseOption>::new(),
+            name,
+            path_type,
+            path,
+        })
+    }
+
+    fn parse_use_path(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<String, Box<dyn Glitch>> {
+        let mut path = String::new();
+
+        for _ in 0..512 {
+            self.skip_ignorable(tokens);
+            let token = tokens.curr(false)?;
+
+            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) {
+                let _ = tokens.bump();
+                return Ok(path);
+            }
+
+            let segment = token.con().trim();
+            if !segment.is_empty() {
+                path.push_str(segment);
+            }
+
+            if tokens.bump().is_none() {
+                break;
+            }
+        }
+
+        Err(Box::new(ParseError {
+            message: "Use path parsing exceeded safety bound".to_string(),
+            file: None,
+            line: 1,
+            column: 1,
+            length: 1,
+        }))
     }
 
     fn parse_fun_decl(

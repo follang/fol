@@ -2,7 +2,7 @@
 
 use fol_lexer::lexer::stage3::Elements;
 use fol_lexer::token::KEYWORD;
-use fol_parser::ast::{AstNode, AstParser, ParseError};
+use fol_parser::ast::{AstNode, AstParser, FolType, ParseError};
 use fol_stream::FileStream;
 
 #[cfg(test)]
@@ -179,6 +179,45 @@ mod parser_tests {
             procedure_decl.3 > 0,
             "Procedure body should include parsed statements"
         );
+    }
+
+    #[test]
+    fn test_use_declaration_parsing() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_use.fol").expect("Should read use test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse use declaration");
+
+        let use_decl = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .find_map(|node| {
+                    if let AstNode::UseDecl {
+                        name,
+                        path_type,
+                        path,
+                        ..
+                    } = node
+                    {
+                        Some((name.clone(), path_type.clone(), path.clone()))
+                    } else {
+                        None
+                    }
+                })
+                .expect("Program should include use declaration"),
+            _ => panic!("Expected program node"),
+        };
+
+        assert_eq!(use_decl.0, "math");
+        assert!(
+            matches!(use_decl.1, FolType::Named { name } if name == "path"),
+            "Use declaration should parse path type"
+        );
+        assert_eq!(use_decl.2, "core::math");
     }
 
     #[test]
