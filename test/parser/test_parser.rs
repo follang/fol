@@ -952,6 +952,70 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_function_body_identifier_calls_parse_as_functioncall_nodes() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_fun_call_stmt.fol")
+            .expect("Should read function call statement test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse identifier call statements");
+
+        let call_names = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .filter_map(|node| {
+                    if let AstNode::FunctionCall { name, .. } = node {
+                        Some(name.clone())
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<_>>(),
+            _ => panic!("Expected program node"),
+        };
+
+        assert!(
+            call_names.contains(&"process".to_string()),
+            "Should parse process(a, b) as function call"
+        );
+        assert!(
+            call_names.contains(&"ping".to_string()),
+            "Should parse ping() as function call"
+        );
+    }
+
+    #[test]
+    fn test_top_level_identifier_call_parsing() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_call_top_level.fol")
+            .expect("Should read top-level call test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse top-level identifier call");
+
+        let call = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .find_map(|node| {
+                    if let AstNode::FunctionCall { name, args } = node {
+                        Some((name.clone(), args.len()))
+                    } else {
+                        None
+                    }
+                })
+                .expect("Program should include top-level function call"),
+            _ => panic!("Expected program node"),
+        };
+
+        assert_eq!(call.0, "run");
+        assert_eq!(call.1, 2, "Top-level call should include two arguments");
+    }
+
+    #[test]
     fn test_top_level_loop_iteration_shape_matches_function_loop_shape() {
         let mut file_stream = FileStream::from_file("test/parser/simple_loop_top_level.fol")
             .expect("Should read top-level loop test file");

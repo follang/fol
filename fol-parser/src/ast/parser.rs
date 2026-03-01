@@ -216,6 +216,24 @@ impl AstParser {
                 continue;
             }
 
+            if key.is_ident() && self.lookahead_is_call(tokens) && self.can_start_assignment(tokens)
+            {
+                let before = (
+                    token.loc().row(),
+                    token.loc().col(),
+                    token.con().to_string(),
+                );
+                match self.parse_call_stmt(tokens) {
+                    Ok(node) => declarations.push(node),
+                    Err(error) => errors.push(error),
+                }
+                self.bump_if_no_progress(tokens, before);
+                if tokens.curr(false).is_err() {
+                    break;
+                }
+                continue;
+            }
+
             if matches!(key, KEYWORD::Keyword(BUILDIN::Break)) {
                 let before = (
                     token.loc().row(),
@@ -929,6 +947,12 @@ impl AstParser {
                 continue;
             }
 
+            if key.is_ident() && self.lookahead_is_call(tokens) && self.can_start_assignment(tokens)
+            {
+                body.push(self.parse_call_stmt(tokens)?);
+                continue;
+            }
+
             if key.is_ident() {
                 body.push(AstNode::Identifier {
                     name: token.con().trim().to_string(),
@@ -1466,6 +1490,69 @@ impl AstParser {
         })
     }
 
+    fn parse_call_stmt(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
+        let name_token = tokens.curr(false)?;
+        if !name_token.key().is_ident() {
+            return Err(Box::new(ParseError::from_token(
+                &name_token,
+                "Expected identifier for function call".to_string(),
+            )));
+        }
+        let name = name_token.con().trim().to_string();
+        let _ = tokens.bump();
+        self.skip_ignorable(tokens);
+
+        let open = tokens.curr(false)?;
+        if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
+            return Err(Box::new(ParseError::from_token(
+                &open,
+                "Expected '(' after function name".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+
+        let mut args = Vec::new();
+        for _ in 0..256 {
+            self.skip_ignorable(tokens);
+            let token = tokens.curr(false)?;
+
+            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
+                let _ = tokens.bump();
+                break;
+            }
+
+            args.push(self.parse_logical_expression(tokens)?);
+            self.skip_ignorable(tokens);
+
+            let sep = tokens.curr(false)?;
+            if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
+                let _ = tokens.bump();
+                continue;
+            }
+            if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
+                let _ = tokens.bump();
+                break;
+            }
+
+            return Err(Box::new(ParseError::from_token(
+                &sep,
+                "Expected ',' or ')' in function call arguments".to_string(),
+            )));
+        }
+
+        self.skip_ignorable(tokens);
+        if let Ok(token) = tokens.curr(false) {
+            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Semi)) {
+                let _ = tokens.bump();
+            }
+        }
+
+        Ok(AstNode::FunctionCall { name, args })
+    }
+
     fn lookahead_is_assignment(&self, tokens: &fol_lexer::lexer::stage3::Elements) -> bool {
         let mut found_percent = false;
         for candidate in tokens.next_vec() {
@@ -1490,6 +1577,24 @@ impl AstParser {
 
             return matches!(key, KEYWORD::Symbol(SYMBOL::Equal))
                 || self.compound_assignment_op(&key).is_some();
+        }
+
+        false
+    }
+
+    fn lookahead_is_call(&self, tokens: &fol_lexer::lexer::stage3::Elements) -> bool {
+        for candidate in tokens.next_vec() {
+            let token = match candidate {
+                Ok(token) => token,
+                Err(_) => continue,
+            };
+
+            let key = token.key();
+            if key.is_void() || key.is_comment() {
+                continue;
+            }
+
+            return matches!(key, KEYWORD::Symbol(SYMBOL::RoundO));
         }
 
         false

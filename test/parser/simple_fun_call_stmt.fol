@@ -1,0 +1,5 @@
+fun invoke(a: int, b: int): int = {
+    process(a, b);
+    ping();
+    return a;
+}
