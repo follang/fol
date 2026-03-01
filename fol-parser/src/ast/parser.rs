@@ -139,14 +139,28 @@ impl AstParser {
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Use)) {
+                let before = (
+                    token.loc().row(),
+                    token.loc().col(),
+                    token.con().to_string(),
+                );
                 match self.parse_use_decl(tokens) {
                     Ok(node) => declarations.push(node),
                     Err(error) => errors.push(error),
+                }
+                self.bump_if_no_progress(tokens, before);
+                if tokens.curr(false).is_err() {
+                    break;
                 }
                 continue;
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Fun)) {
+                let before = (
+                    token.loc().row(),
+                    token.loc().col(),
+                    token.con().to_string(),
+                );
                 match self.parse_fun_decl(tokens) {
                     Ok(node) => {
                         if let AstNode::FunDecl { body, .. } = &node {
@@ -156,10 +170,19 @@ impl AstParser {
                     }
                     Err(error) => errors.push(error),
                 }
+                self.bump_if_no_progress(tokens, before);
+                if tokens.curr(false).is_err() {
+                    break;
+                }
                 continue;
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Pro)) {
+                let before = (
+                    token.loc().row(),
+                    token.loc().col(),
+                    token.con().to_string(),
+                );
                 match self.parse_pro_decl(tokens) {
                     Ok(node) => {
                         if let AstNode::ProDecl { body, .. } = &node {
@@ -169,13 +192,26 @@ impl AstParser {
                     }
                     Err(error) => errors.push(error),
                 }
+                self.bump_if_no_progress(tokens, before);
+                if tokens.curr(false).is_err() {
+                    break;
+                }
                 continue;
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Return)) {
+                let before = (
+                    token.loc().row(),
+                    token.loc().col(),
+                    token.con().to_string(),
+                );
                 match self.parse_return_stmt(tokens) {
                     Ok(node) => declarations.push(node),
                     Err(error) => errors.push(error),
+                }
+                self.bump_if_no_progress(tokens, before);
+                if tokens.curr(false).is_err() {
+                    break;
                 }
                 continue;
             }
@@ -184,9 +220,18 @@ impl AstParser {
                 && self.lookahead_is_assignment(tokens)
                 && self.can_start_assignment(tokens)
             {
+                let before = (
+                    token.loc().row(),
+                    token.loc().col(),
+                    token.con().to_string(),
+                );
                 match self.parse_assignment_stmt(tokens) {
                     Ok(node) => declarations.push(node),
                     Err(error) => errors.push(error),
+                }
+                self.bump_if_no_progress(tokens, before);
+                if tokens.curr(false).is_err() {
+                    break;
                 }
                 continue;
             }
@@ -904,6 +949,23 @@ impl AstParser {
         }
 
         None
+    }
+
+    fn bump_if_no_progress(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+        before: (usize, usize, String),
+    ) {
+        if let Ok(current) = tokens.curr(false) {
+            let after = (
+                current.loc().row(),
+                current.loc().col(),
+                current.con().to_string(),
+            );
+            if before == after {
+                let _ = tokens.bump();
+            }
+        }
     }
 
     fn compound_assignment_op(&self, key: &KEYWORD) -> Option<BinaryOperator> {
