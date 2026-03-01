@@ -220,6 +220,48 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_when_statement_parsing_with_multiple_cases() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_fun_when_multi_case.fol")
+            .expect("Should read multi-case when test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse when statement with multiple cases");
+
+        let when_stmt = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .find_map(|node| {
+                    if let AstNode::When {
+                        expr,
+                        cases,
+                        default,
+                    } = node
+                    {
+                        Some((expr.as_ref().clone(), cases.clone(), default.clone()))
+                    } else {
+                        None
+                    }
+                })
+                .expect("Program should include a when statement"),
+            _ => panic!("Expected program node"),
+        };
+
+        assert!(
+            matches!(when_stmt.0, AstNode::Identifier { name } if name == "a"),
+            "When expression should parse identifier a"
+        );
+        assert_eq!(
+            when_stmt.1.len(),
+            2,
+            "When should include two case branches"
+        );
+        assert!(when_stmt.2.is_some(), "When should include default body");
+    }
+
+    #[test]
     fn test_if_statement_lowers_to_when_shape() {
         let mut file_stream = FileStream::from_file("test/parser/simple_fun_if.fol")
             .expect("Should read if test file");
