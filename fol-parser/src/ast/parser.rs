@@ -262,21 +262,8 @@ impl AstParser {
                 let _ = tokens.bump();
                 self.skip_ignorable(tokens);
 
-                let value_token = tokens.curr(false)?;
-                let parsed_value = if value_token.key().is_literal() {
-                    self.parse_lexer_literal(&value_token)?
-                } else if value_token.key().is_ident() {
-                    AstNode::Identifier {
-                        name: value_token.con().trim().to_string(),
-                    }
-                } else {
-                    return Err(Box::new(ParseError::from_token(
-                        &value_token,
-                        "Expected literal or identifier after '=' in var declaration".to_string(),
-                    )));
-                };
+                let parsed_value = self.parse_comparison_expression(tokens)?;
                 value = Some(Box::new(parsed_value));
-                let _ = tokens.bump();
             }
         }
 
@@ -307,7 +294,7 @@ impl AstParser {
 
         let value = match tokens.curr(false) {
             Ok(token) if token.key().is_terminal() => None,
-            Ok(_) => Some(Box::new(self.parse_add_sub_expression(tokens)?)),
+            Ok(_) => Some(Box::new(self.parse_comparison_expression(tokens)?)),
             Err(_) => None,
         };
 
@@ -343,8 +330,24 @@ impl AstParser {
         self.skip_ignorable(tokens);
 
         let assign_token = tokens.curr(false)?;
-        let compound_op = self.compound_assignment_op(&assign_token.key());
-        let is_simple_assign = matches!(assign_token.key(), KEYWORD::Symbol(SYMBOL::Equal));
+        let mut compound_op = self.compound_assignment_op(&assign_token.key());
+        let mut is_simple_assign = matches!(assign_token.key(), KEYWORD::Symbol(SYMBOL::Equal));
+
+        if matches!(assign_token.key(), KEYWORD::Symbol(SYMBOL::Percent)) {
+            let _ = tokens.bump();
+            self.skip_ignorable(tokens);
+            let eq_token = tokens.curr(false)?;
+            if matches!(eq_token.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
+                compound_op = Some(BinaryOperator::Mod);
+                is_simple_assign = false;
+            } else {
+                return Err(Box::new(ParseError::from_token(
+                    &eq_token,
+                    "Expected '=' after '%' in compound assignment".to_string(),
+                )));
+            }
+        }
+
         if !is_simple_assign && compound_op.is_none() {
             return Err(Box::new(ParseError::from_token(
                 &assign_token,
@@ -354,7 +357,7 @@ impl AstParser {
 
         let _ = tokens.bump();
         self.skip_ignorable(tokens);
-        let parsed_value = self.parse_add_sub_expression(tokens)?;
+        let parsed_value = self.parse_comparison_expression(tokens)?;
         let value = if let Some(op) = compound_op {
             AstNode::BinaryOp {
                 op,
@@ -388,6 +391,7 @@ impl AstParser {
     }
 
     fn lookahead_is_assignment(&self, tokens: &fol_lexer::lexer::stage3::Elements) -> bool {
+        let mut found_percent = false;
         for candidate in tokens.next_vec() {
             let token = match candidate {
                 Ok(token) => token,
@@ -396,6 +400,15 @@ impl AstParser {
 
             let key = token.key();
             if key.is_void() || key.is_comment() {
+                continue;
+            }
+
+            if found_percent {
+                return matches!(key, KEYWORD::Symbol(SYMBOL::Equal));
+            }
+
+            if matches!(key, KEYWORD::Symbol(SYMBOL::Percent)) {
+                found_percent = true;
                 continue;
             }
 
@@ -444,6 +457,123 @@ impl AstParser {
             KEYWORD::Operator(OPERATOR::Multeq) => Some(BinaryOperator::Mul),
             KEYWORD::Operator(OPERATOR::Diveq) => Some(BinaryOperator::Div),
             _ => None,
+        }
+    }
+
+    fn parse_comparison_expression(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
+        let mut lhs = self.parse_add_sub_expression(tokens)?;
+
+        for _ in 0..32 {
+            self.skip_ignorable(tokens);
+
+            let op_token = match tokens.curr(false) {
+                Ok(token) => token,
+                Err(_) => return Ok(lhs),
+            };
+
+            let next_key = self.next_significant_key_from_window(tokens);
+            let op_text = op_token.con().trim().to_string();
+            let (binary_op, consume_count) = match op_token.key() {
+                KEYWORD::Operator(OPERATOR::Equal) => (Some(BinaryOperator::Eq), 1),
+                KEYWORD::Operator(OPERATOR::Noteq) => (Some(BinaryOperator::Ne), 1),
+                KEYWORD::Operator(OPERATOR::Greateq) => (Some(BinaryOperator::Ge), 1),
+                KEYWORD::Operator(OPERATOR::Lesseq) => (Some(BinaryOperator::Le), 1),
+                KEYWORD::Symbol(SYMBOL::AngleC) => {
+                    if matches!(next_key, Some(KEYWORD::Symbol(SYMBOL::Equal))) {
+                        (Some(BinaryOperator::Ge), 2)
+                    } else {
+                        (Some(BinaryOperator::Gt), 1)
+                    }
+                }
+                KEYWORD::Symbol(SYMBOL::AngleO) => {
+                    if matches!(next_key, Some(KEYWORD::Symbol(SYMBOL::Equal))) {
+                        (Some(BinaryOperator::Le), 2)
+                    } else {
+                        (Some(BinaryOperator::Lt), 1)
+                    }
+                }
+                KEYWORD::Symbol(SYMBOL::Equal) => {
+                    if matches!(next_key, Some(KEYWORD::Symbol(SYMBOL::Equal))) {
+                        (Some(BinaryOperator::Eq), 2)
+                    } else {
+                        (None, 0)
+                    }
+                }
+                KEYWORD::Symbol(SYMBOL::Bang) => {
+                    if matches!(next_key, Some(KEYWORD::Symbol(SYMBOL::Equal))) {
+                        (Some(BinaryOperator::Ne), 2)
+                    } else {
+                        (None, 0)
+                    }
+                }
+                _ => match op_text.as_str() {
+                    ">=" => (Some(BinaryOperator::Ge), 1),
+                    "<=" => (Some(BinaryOperator::Le), 1),
+                    "==" => (Some(BinaryOperator::Eq), 1),
+                    "!=" => (Some(BinaryOperator::Ne), 1),
+                    ">" => (Some(BinaryOperator::Gt), 1),
+                    "<" => (Some(BinaryOperator::Lt), 1),
+                    _ => (None, 0),
+                },
+            };
+
+            if let Some(op) = binary_op {
+                for _ in 0..consume_count {
+                    self.consume_significant_token(tokens);
+                }
+                let rhs = self.parse_add_sub_expression(tokens)?;
+                lhs = AstNode::BinaryOp {
+                    op,
+                    left: Box::new(lhs),
+                    right: Box::new(rhs),
+                };
+                continue;
+            }
+
+            break;
+        }
+
+        Ok(lhs)
+    }
+
+    fn next_significant_key_from_window(
+        &self,
+        tokens: &fol_lexer::lexer::stage3::Elements,
+    ) -> Option<KEYWORD> {
+        for candidate in tokens.next_vec() {
+            let token = match candidate {
+                Ok(token) => token,
+                Err(_) => continue,
+            };
+
+            let key = token.key();
+            if key.is_void() || key.is_comment() {
+                continue;
+            }
+
+            return Some(key);
+        }
+
+        None
+    }
+
+    fn consume_significant_token(&self, tokens: &mut fol_lexer::lexer::stage3::Elements) {
+        for _ in 0..16 {
+            if tokens.bump().is_none() {
+                break;
+            }
+
+            let token = match tokens.curr(false) {
+                Ok(token) => token,
+                Err(_) => break,
+            };
+
+            if !(token.key().is_void() || token.key().is_comment()) {
+                break;
+            }
         }
     }
 
@@ -510,6 +640,7 @@ impl AstParser {
                 KEYWORD::Operator(OPERATOR::Divide) | KEYWORD::Symbol(SYMBOL::Root) => {
                     Some(BinaryOperator::Div)
                 }
+                KEYWORD::Symbol(SYMBOL::Percent) => Some(BinaryOperator::Mod),
                 _ => None,
             };
 
@@ -551,7 +682,7 @@ impl AstParser {
 
         if matches!(token.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
             let _ = tokens.bump();
-            let inner = self.parse_add_sub_expression(tokens)?;
+            let inner = self.parse_comparison_expression(tokens)?;
             self.skip_ignorable(tokens);
 
             let close = tokens.curr(false)?;

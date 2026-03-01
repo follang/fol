@@ -573,6 +573,73 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_mod_assignment_and_comparison_expressions() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_fun_mod_and_compare.fol")
+            .expect("Should read mod and comparison function test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse modulo and comparison expressions");
+
+        let (has_mod_assignment, return_ops, return_values) = match ast {
+            AstNode::Program { declarations } => {
+                let has_mod_assignment = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::Assignment { value, .. }
+                        if matches!(value.as_ref(), AstNode::BinaryOp { op: fol_parser::ast::BinaryOperator::Mod, .. })
+                    )
+                });
+
+                let return_ops = declarations
+                    .iter()
+                    .filter_map(|node| {
+                        if let AstNode::Return { value: Some(value) } = node {
+                            if let AstNode::BinaryOp { op, .. } = value.as_ref() {
+                                Some(op.clone())
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        }
+                    })
+                    .collect::<Vec<_>>();
+
+                let return_values = declarations
+                    .iter()
+                    .filter_map(|node| {
+                        if let AstNode::Return { value } = node {
+                            Some(format!("{:?}", value))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect::<Vec<_>>();
+
+                (has_mod_assignment, return_ops, return_values)
+            }
+            _ => panic!("Expected program node"),
+        };
+
+        assert!(
+            has_mod_assignment,
+            "Expected assignment lowered/parsed with modulo binary operator"
+        );
+        assert!(
+            return_ops
+                .iter()
+                .any(|op| matches!(op, fol_parser::ast::BinaryOperator::Eq)),
+            "Expected return expression parsed with equality operator, got ops {:?} and return values {:?}",
+            return_ops,
+            return_values
+        );
+    }
+
+    #[test]
     fn test_literal_parsing() {
         let parser = AstParser::new();
 
