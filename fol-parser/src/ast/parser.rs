@@ -262,7 +262,7 @@ impl AstParser {
                 let _ = tokens.bump();
                 self.skip_ignorable(tokens);
 
-                let parsed_value = self.parse_comparison_expression(tokens)?;
+                let parsed_value = self.parse_logical_expression(tokens)?;
                 value = Some(Box::new(parsed_value));
             }
         }
@@ -294,7 +294,7 @@ impl AstParser {
 
         let value = match tokens.curr(false) {
             Ok(token) if token.key().is_terminal() => None,
-            Ok(_) => Some(Box::new(self.parse_comparison_expression(tokens)?)),
+            Ok(_) => Some(Box::new(self.parse_logical_expression(tokens)?)),
             Err(_) => None,
         };
 
@@ -357,7 +357,7 @@ impl AstParser {
 
         let _ = tokens.bump();
         self.skip_ignorable(tokens);
-        let parsed_value = self.parse_comparison_expression(tokens)?;
+        let parsed_value = self.parse_logical_expression(tokens)?;
         let value = if let Some(op) = compound_op {
             AstNode::BinaryOp {
                 op,
@@ -458,6 +458,43 @@ impl AstParser {
             KEYWORD::Operator(OPERATOR::Diveq) => Some(BinaryOperator::Div),
             _ => None,
         }
+    }
+
+    fn parse_logical_expression(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
+        let mut lhs = self.parse_comparison_expression(tokens)?;
+
+        for _ in 0..32 {
+            self.skip_ignorable(tokens);
+
+            let op_token = match tokens.curr(false) {
+                Ok(token) => token,
+                Err(_) => return Ok(lhs),
+            };
+
+            let binary_op = match op_token.key() {
+                KEYWORD::Keyword(BUILDIN::And) => Some(BinaryOperator::And),
+                KEYWORD::Keyword(BUILDIN::Or) => Some(BinaryOperator::Or),
+                _ => None,
+            };
+
+            if let Some(op) = binary_op {
+                self.consume_significant_token(tokens);
+                let rhs = self.parse_comparison_expression(tokens)?;
+                lhs = AstNode::BinaryOp {
+                    op,
+                    left: Box::new(lhs),
+                    right: Box::new(rhs),
+                };
+                continue;
+            }
+
+            break;
+        }
+
+        Ok(lhs)
     }
 
     fn parse_comparison_expression(
@@ -682,7 +719,7 @@ impl AstParser {
 
         if matches!(token.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
             let _ = tokens.bump();
-            let inner = self.parse_comparison_expression(tokens)?;
+            let inner = self.parse_logical_expression(tokens)?;
             self.skip_ignorable(tokens);
 
             let close = tokens.curr(false)?;
