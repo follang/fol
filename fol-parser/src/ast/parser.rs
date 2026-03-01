@@ -267,6 +267,23 @@ impl AstParser {
                 continue;
             }
 
+            if matches!(key, KEYWORD::Keyword(BUILDIN::If)) {
+                let before = (
+                    token.loc().row(),
+                    token.loc().col(),
+                    token.con().to_string(),
+                );
+                match self.parse_if_stmt(tokens) {
+                    Ok(node) => declarations.push(node),
+                    Err(error) => errors.push(error),
+                }
+                self.bump_if_no_progress(tokens, before);
+                if tokens.curr(false).is_err() {
+                    break;
+                }
+                continue;
+            }
+
             if matches!(key, KEYWORD::Keyword(BUILDIN::Loop)) {
                 let before = (
                     token.loc().row(),
@@ -848,6 +865,17 @@ impl AstParser {
                 continue;
             }
 
+            if matches!(key, KEYWORD::Keyword(BUILDIN::If)) {
+                let before = (
+                    token.loc().row(),
+                    token.loc().col(),
+                    token.con().to_string(),
+                );
+                body.push(self.parse_if_stmt(tokens)?);
+                self.bump_if_no_progress(tokens, before);
+                continue;
+            }
+
             if matches!(key, KEYWORD::Keyword(BUILDIN::Loop)) {
                 let before = (
                     token.loc().row(),
@@ -1079,6 +1107,66 @@ impl AstParser {
             expr: Box::new(expr),
             cases,
             default,
+        })
+    }
+
+    fn parse_if_stmt(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
+        let if_token = tokens.curr(false)?;
+        if !matches!(if_token.key(), KEYWORD::Keyword(BUILDIN::If)) {
+            return Err(Box::new(ParseError::from_token(
+                &if_token,
+                "Expected 'if' statement".to_string(),
+            )));
+        }
+
+        let _ = tokens.bump();
+        self.skip_ignorable(tokens);
+
+        let open_cond = tokens.curr(false)?;
+        if !matches!(open_cond.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
+            return Err(Box::new(ParseError::from_token(
+                &open_cond,
+                "Expected '(' after 'if'".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+
+        let condition = self.parse_logical_expression(tokens)?;
+        self.skip_ignorable(tokens);
+
+        let close_cond = tokens.curr(false)?;
+        if !matches!(close_cond.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
+            return Err(Box::new(ParseError::from_token(
+                &close_cond,
+                "Expected ')' after if condition".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+
+        self.skip_ignorable(tokens);
+        let then_body = self.parse_case_body(tokens)?;
+
+        self.skip_ignorable(tokens);
+        let else_body = if let Ok(token) = tokens.curr(false) {
+            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
+                Some(self.parse_case_body(tokens)?)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        Ok(AstNode::When {
+            expr: Box::new(condition.clone()),
+            cases: vec![WhenCase::Case {
+                condition,
+                body: then_body,
+            }],
+            default: else_body,
         })
     }
 

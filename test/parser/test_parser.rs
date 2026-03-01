@@ -220,6 +220,53 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_if_statement_lowers_to_when_shape() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_fun_if.fol")
+            .expect("Should read if test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse if statement");
+
+        let lowered_if = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .find_map(|node| {
+                    if let AstNode::When {
+                        expr,
+                        cases,
+                        default,
+                    } = node
+                    {
+                        Some((expr.as_ref().clone(), cases.clone(), default.clone()))
+                    } else {
+                        None
+                    }
+                })
+                .expect("Program should include lowered if/when node"),
+            _ => panic!("Expected program node"),
+        };
+
+        assert!(
+            matches!(
+                lowered_if.0,
+                AstNode::BinaryOp {
+                    op: fol_parser::ast::BinaryOperator::Eq,
+                    ..
+                }
+            ),
+            "If condition should parse equality expression"
+        );
+        assert_eq!(lowered_if.1.len(), 1, "Lowered if should include one case");
+        assert!(
+            lowered_if.2.is_some(),
+            "Lowered if should include default branch body"
+        );
+    }
+
+    #[test]
     fn test_loop_statement_parsing_with_condition_body() {
         let mut file_stream = FileStream::from_file("test/parser/simple_fun_loop.fol")
             .expect("Should read loop test file");
