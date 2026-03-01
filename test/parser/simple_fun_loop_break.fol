@@ -1,0 +1,6 @@
+fun iterate_break(a: int, b: int): int = {
+    loop (a < b) {
+        break;
+    }
+    return a;
+}

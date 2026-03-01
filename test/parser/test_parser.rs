@@ -258,6 +258,37 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_loop_statement_parsing_with_break_body() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_fun_loop_break.fol")
+            .expect("Should read loop break test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse loop with break statement");
+
+        let loop_body = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .find_map(|node| {
+                    if let AstNode::Loop { body, .. } = node {
+                        Some(body.clone())
+                    } else {
+                        None
+                    }
+                })
+                .expect("Program should include a loop statement"),
+            _ => panic!("Expected program node"),
+        };
+
+        assert!(
+            loop_body.iter().any(|node| matches!(node, AstNode::Break)),
+            "Loop body should contain break statement"
+        );
+    }
+
+    #[test]
     fn test_use_declaration_parsing() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_use.fol").expect("Should read use test file");

@@ -216,6 +216,23 @@ impl AstParser {
                 continue;
             }
 
+            if matches!(key, KEYWORD::Keyword(BUILDIN::Break)) {
+                let before = (
+                    token.loc().row(),
+                    token.loc().col(),
+                    token.con().to_string(),
+                );
+                match self.parse_break_stmt(tokens) {
+                    Ok(node) => declarations.push(node),
+                    Err(error) => errors.push(error),
+                }
+                self.bump_if_no_progress(tokens, before);
+                if tokens.curr(false).is_err() {
+                    break;
+                }
+                continue;
+            }
+
             if matches!(key, KEYWORD::Keyword(BUILDIN::When)) {
                 let before = (
                     token.loc().row(),
@@ -788,6 +805,11 @@ impl AstParser {
                 continue;
             }
 
+            if matches!(key, KEYWORD::Keyword(BUILDIN::Break)) {
+                body.push(self.parse_break_stmt(tokens)?);
+                continue;
+            }
+
             if matches!(key, KEYWORD::Keyword(BUILDIN::Var)) {
                 body.push(self.parse_var_decl(tokens)?);
                 continue;
@@ -872,6 +894,29 @@ impl AstParser {
         }
 
         Ok(AstNode::Return { value })
+    }
+
+    fn parse_break_stmt(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
+        let break_token = tokens.curr(false)?;
+        if !matches!(break_token.key(), KEYWORD::Keyword(BUILDIN::Break)) {
+            return Err(Box::new(ParseError::from_token(
+                &break_token,
+                "Expected 'break' statement".to_string(),
+            )));
+        }
+
+        let _ = tokens.bump();
+        self.skip_ignorable(tokens);
+        if let Ok(token) = tokens.curr(false) {
+            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Semi)) {
+                let _ = tokens.bump();
+            }
+        }
+
+        Ok(AstNode::Break)
     }
 
     fn parse_when_stmt(
