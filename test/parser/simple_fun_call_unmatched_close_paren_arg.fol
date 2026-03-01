@@ -1,0 +1,8 @@
+fun unmatched_close_paren_arg(a: int, b: int): int = {
+    value = outer(
+        inner(a) + ),
+        b,
+    );
+
+    return value;
+}

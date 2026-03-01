@@ -3080,4 +3080,38 @@ mod parser_tests {
             "Top-level nested empty-slot parse error should point to inner empty-slot comma line"
         );
     }
+
+    #[test]
+    fn test_function_call_with_unmatched_close_paren_argument_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_call_unmatched_close_paren_arg.fol")
+                .expect("Should read malformed unmatched-close-paren call test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser.parse(&mut lexer).expect_err(
+            "Parser should fail when function call argument list contains unmatched ')' token",
+        );
+
+        let first_message = errors
+            .first()
+            .map(|e| e.to_string())
+            .unwrap_or_else(|| "<no error message>".to_string());
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        assert!(
+            first_message.contains("Unsupported expression token ')'"),
+            "Unmatched ')' argument should report unsupported close-paren token, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            3,
+            "Unmatched close-paren argument parse error should point to the malformed expression line"
+        );
+    }
 }
