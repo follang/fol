@@ -440,6 +440,50 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_return_expression_division_with_grouped_rhs() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_fun_div_paren_rhs.fol")
+            .expect("Should read grouped division function test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse division with grouped rhs");
+
+        let return_value = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .find_map(|node| {
+                    if let AstNode::Return { value: Some(value) } = node {
+                        Some(value.as_ref().clone())
+                    } else {
+                        None
+                    }
+                })
+                .expect("Program should contain a return value"),
+            _ => panic!("Expected program node"),
+        };
+
+        match &return_value {
+            AstNode::BinaryOp { op, left: _, right } => {
+                assert!(matches!(op, fol_parser::ast::BinaryOperator::Div));
+                assert!(
+                    matches!(
+                        right.as_ref(),
+                        AstNode::BinaryOp {
+                            op: fol_parser::ast::BinaryOperator::Add,
+                            ..
+                        }
+                    ),
+                    "Right side should be grouped addition subtree"
+                );
+            }
+            _ => panic!("Return value should be division expression"),
+        }
+    }
+
+    #[test]
     fn test_literal_parsing() {
         let parser = AstParser::new();
 
