@@ -1,0 +1,6 @@
+fun iterate_yield_nosemi(a: int, b: int): int = {
+    loop (a < b) {
+        yeild a
+    }
+    return a;
+}
