@@ -909,6 +909,49 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_builtin_diagnostic_statements_parse_as_function_calls() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_fun_builtin_diag.fol")
+            .expect("Should read builtin diagnostic test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse builtin diagnostic statements");
+
+        let call_names = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .filter_map(|node| {
+                    if let AstNode::FunctionCall { name, .. } = node {
+                        Some(name.clone())
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<_>>(),
+            _ => panic!("Expected program node"),
+        };
+
+        assert!(
+            call_names.contains(&"check".to_string()),
+            "Should parse check statement as function call"
+        );
+        assert!(
+            call_names.contains(&"report".to_string()),
+            "Should parse report statement as function call"
+        );
+        assert!(
+            call_names.contains(&"assert".to_string()),
+            "Should parse assert statement as function call"
+        );
+        assert!(
+            call_names.contains(&"panic".to_string()),
+            "Should parse panic statement as function call"
+        );
+    }
+
+    #[test]
     fn test_top_level_loop_iteration_shape_matches_function_loop_shape() {
         let mut file_stream = FileStream::from_file("test/parser/simple_loop_top_level.fol")
             .expect("Should read top-level loop test file");

@@ -1,0 +1,7 @@
+fun builtin_diag(a: int, b: int): int = {
+    check a == b;
+    report a;
+    assert a < b;
+    panic b;
+    return a;
+}

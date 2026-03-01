@@ -250,6 +250,29 @@ impl AstParser {
                 continue;
             }
 
+            if matches!(
+                key,
+                KEYWORD::Keyword(BUILDIN::Panic)
+                    | KEYWORD::Keyword(BUILDIN::Report)
+                    | KEYWORD::Keyword(BUILDIN::Check)
+                    | KEYWORD::Keyword(BUILDIN::Assert)
+            ) {
+                let before = (
+                    token.loc().row(),
+                    token.loc().col(),
+                    token.con().to_string(),
+                );
+                match self.parse_builtin_call_stmt(tokens) {
+                    Ok(node) => declarations.push(node),
+                    Err(error) => errors.push(error),
+                }
+                self.bump_if_no_progress(tokens, before);
+                if tokens.curr(false).is_err() {
+                    break;
+                }
+                continue;
+            }
+
             if matches!(key, KEYWORD::Keyword(BUILDIN::When)) {
                 let before = (
                     token.loc().row(),
@@ -849,6 +872,17 @@ impl AstParser {
                 continue;
             }
 
+            if matches!(
+                key,
+                KEYWORD::Keyword(BUILDIN::Panic)
+                    | KEYWORD::Keyword(BUILDIN::Report)
+                    | KEYWORD::Keyword(BUILDIN::Check)
+                    | KEYWORD::Keyword(BUILDIN::Assert)
+            ) {
+                body.push(self.parse_builtin_call_stmt(tokens)?);
+                continue;
+            }
+
             if matches!(key, KEYWORD::Keyword(BUILDIN::Var)) {
                 body.push(self.parse_var_decl(tokens)?);
                 continue;
@@ -1004,6 +1038,55 @@ impl AstParser {
         Ok(AstNode::Yield {
             value: Box::new(value),
         })
+    }
+
+    fn parse_builtin_call_stmt(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
+        let keyword_token = tokens.curr(false)?;
+        let name = match keyword_token.key() {
+            KEYWORD::Keyword(BUILDIN::Panic) => "panic",
+            KEYWORD::Keyword(BUILDIN::Report) => "report",
+            KEYWORD::Keyword(BUILDIN::Check) => "check",
+            KEYWORD::Keyword(BUILDIN::Assert) => "assert",
+            _ => {
+                return Err(Box::new(ParseError::from_token(
+                    &keyword_token,
+                    "Expected builtin diagnostic statement".to_string(),
+                )));
+            }
+        }
+        .to_string();
+
+        let _ = tokens.bump();
+        self.skip_ignorable(tokens);
+
+        let mut args = Vec::new();
+        if let Ok(token) = tokens.curr(false) {
+            if !token.key().is_terminal() {
+                let expr = self.parse_logical_expression(tokens)?;
+                args.push(expr);
+            }
+        }
+
+        for _ in 0..64 {
+            let token = match tokens.curr(false) {
+                Ok(token) => token,
+                Err(_) => break,
+            };
+
+            if token.key().is_terminal() {
+                let _ = tokens.bump();
+                break;
+            }
+
+            if tokens.bump().is_none() {
+                break;
+            }
+        }
+
+        Ok(AstNode::FunctionCall { name, args })
     }
 
     fn parse_when_stmt(
