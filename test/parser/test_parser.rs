@@ -952,6 +952,58 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_builtin_diagnostic_statements_without_args_parse_as_empty_calls() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_builtin_diag_no_args.fol")
+                .expect("Should read builtin diagnostic no-args test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse builtin diagnostic statements without args");
+
+        let calls = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .filter_map(|node| {
+                    if let AstNode::FunctionCall { name, args } = node {
+                        Some((name.clone(), args.len()))
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<_>>(),
+            _ => panic!("Expected program node"),
+        };
+
+        assert!(
+            calls
+                .iter()
+                .any(|(name, argc)| name == "check" && *argc == 0),
+            "check without args should parse as zero-arg call"
+        );
+        assert!(
+            calls
+                .iter()
+                .any(|(name, argc)| name == "report" && *argc == 0),
+            "report without args should parse as zero-arg call"
+        );
+        assert!(
+            calls
+                .iter()
+                .any(|(name, argc)| name == "assert" && *argc == 0),
+            "assert without args should parse as zero-arg call"
+        );
+        assert!(
+            calls
+                .iter()
+                .any(|(name, argc)| name == "panic" && *argc == 0),
+            "panic without args should parse as zero-arg call"
+        );
+    }
+
+    #[test]
     fn test_function_body_identifier_calls_parse_as_functioncall_nodes() {
         let mut file_stream = FileStream::from_file("test/parser/simple_fun_call_stmt.fol")
             .expect("Should read function call statement test file");

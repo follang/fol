@@ -1,0 +1,7 @@
+fun builtin_diag_no_args(a: int): int = {
+    check;
+    report;
+    assert;
+    panic;
+    return a;
+}
