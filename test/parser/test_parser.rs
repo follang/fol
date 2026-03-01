@@ -1112,6 +1112,60 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_zero_argument_calls_in_statement_and_return_positions() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_fun_call_no_args.fol")
+            .expect("Should read zero-argument call test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse zero-argument calls");
+
+        let (has_ping_stmt, has_pong_stmt, has_emit_return) = match ast {
+            AstNode::Program { declarations } => {
+                let has_ping_stmt = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::FunctionCall { name, args } if name == "ping" && args.is_empty()
+                    )
+                });
+
+                let has_pong_stmt = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::FunctionCall { name, args } if name == "pong" && args.is_empty()
+                    )
+                });
+
+                let has_emit_return = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::Return { value: Some(value) }
+                        if matches!(value.as_ref(), AstNode::FunctionCall { name, args } if name == "emit" && args.is_empty())
+                    )
+                });
+
+                (has_ping_stmt, has_pong_stmt, has_emit_return)
+            }
+            _ => panic!("Expected program node"),
+        };
+
+        assert!(
+            has_ping_stmt,
+            "Should parse ping() as zero-arg statement call"
+        );
+        assert!(
+            has_pong_stmt,
+            "Should parse pong() without semicolon as zero-arg statement call"
+        );
+        assert!(
+            has_emit_return,
+            "Should parse return emit() as zero-arg return call"
+        );
+    }
+
+    #[test]
     fn test_method_calls_in_statement_and_return_positions() {
         let mut file_stream = FileStream::from_file("test/parser/simple_fun_method_call.fol")
             .expect("Should read method call test file");

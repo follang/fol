@@ -1,0 +1,5 @@
+fun invoke_zero(a: int): int = {
+    ping();
+    pong()
+    return emit();
+}
