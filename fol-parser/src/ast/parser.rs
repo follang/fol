@@ -982,6 +982,44 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Box<dyn Glitch>> {
+        self.parse_logical_or_expression(tokens)
+    }
+
+    fn parse_logical_or_expression(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
+        let mut lhs = self.parse_logical_and_expression(tokens)?;
+
+        for _ in 0..32 {
+            self.skip_ignorable(tokens);
+
+            let op_token = match tokens.curr(false) {
+                Ok(token) => token,
+                Err(_) => return Ok(lhs),
+            };
+
+            if matches!(op_token.key(), KEYWORD::Keyword(BUILDIN::Or)) {
+                self.consume_significant_token(tokens);
+                let rhs = self.parse_logical_and_expression(tokens)?;
+                lhs = AstNode::BinaryOp {
+                    op: BinaryOperator::Or,
+                    left: Box::new(lhs),
+                    right: Box::new(rhs),
+                };
+                continue;
+            }
+
+            break;
+        }
+
+        Ok(lhs)
+    }
+
+    fn parse_logical_and_expression(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
         let mut lhs = self.parse_comparison_expression(tokens)?;
 
         for _ in 0..32 {
@@ -992,17 +1030,11 @@ impl AstParser {
                 Err(_) => return Ok(lhs),
             };
 
-            let binary_op = match op_token.key() {
-                KEYWORD::Keyword(BUILDIN::And) => Some(BinaryOperator::And),
-                KEYWORD::Keyword(BUILDIN::Or) => Some(BinaryOperator::Or),
-                _ => None,
-            };
-
-            if let Some(op) = binary_op {
+            if matches!(op_token.key(), KEYWORD::Keyword(BUILDIN::And)) {
                 self.consume_significant_token(tokens);
                 let rhs = self.parse_comparison_expression(tokens)?;
                 lhs = AstNode::BinaryOp {
-                    op,
+                    op: BinaryOperator::And,
                     left: Box::new(lhs),
                     right: Box::new(rhs),
                 };
