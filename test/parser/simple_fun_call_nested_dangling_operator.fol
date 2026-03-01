@@ -1,0 +1,10 @@
+fun nested_dangling_operator(a: int, b: int): int = {
+    value = outer(
+        inner(
+            a +,
+        ),
+        b,
+    );
+
+    return value;
+}
