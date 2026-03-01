@@ -1,0 +1,7 @@
+fun compound(a: int, b: int): int = {
+    result += a * b;
+    total -= a;
+    factor *= b;
+    ratio /= a;
+    return result;
+}

@@ -520,6 +520,59 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_compound_assignment_statements_are_lowered_to_binary_ops() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_compound_assignment.fol")
+                .expect("Should read compound assignment function test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse compound assignment statements");
+
+        let assignment_ops = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .filter_map(|node| {
+                    if let AstNode::Assignment { value, .. } = node {
+                        if let AstNode::BinaryOp { op, .. } = value.as_ref() {
+                            Some(op.clone())
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<_>>(),
+            _ => panic!("Expected program node"),
+        };
+
+        assert!(
+            assignment_ops.len() >= 4,
+            "Expected compound assignments to produce binary expression values"
+        );
+        assert!(
+            matches!(assignment_ops[0], fol_parser::ast::BinaryOperator::Add),
+            "'+=' should lower to Add"
+        );
+        assert!(
+            matches!(assignment_ops[1], fol_parser::ast::BinaryOperator::Sub),
+            "'-=' should lower to Sub"
+        );
+        assert!(
+            matches!(assignment_ops[2], fol_parser::ast::BinaryOperator::Mul),
+            "'*=' should lower to Mul"
+        );
+        assert!(
+            matches!(assignment_ops[3], fol_parser::ast::BinaryOperator::Div),
+            "'/=' should lower to Div"
+        );
+    }
+
+    #[test]
     fn test_literal_parsing() {
         let parser = AstParser::new();
 

@@ -343,16 +343,27 @@ impl AstParser {
         self.skip_ignorable(tokens);
 
         let assign_token = tokens.curr(false)?;
-        if !matches!(assign_token.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
+        let compound_op = self.compound_assignment_op(&assign_token.key());
+        let is_simple_assign = matches!(assign_token.key(), KEYWORD::Symbol(SYMBOL::Equal));
+        if !is_simple_assign && compound_op.is_none() {
             return Err(Box::new(ParseError::from_token(
                 &assign_token,
-                "Expected '=' in assignment statement".to_string(),
+                "Expected assignment operator in assignment statement".to_string(),
             )));
         }
 
         let _ = tokens.bump();
         self.skip_ignorable(tokens);
-        let value = self.parse_add_sub_expression(tokens)?;
+        let parsed_value = self.parse_add_sub_expression(tokens)?;
+        let value = if let Some(op) = compound_op {
+            AstNode::BinaryOp {
+                op,
+                left: Box::new(target.clone()),
+                right: Box::new(parsed_value),
+            }
+        } else {
+            parsed_value
+        };
 
         for _ in 0..64 {
             let token = match tokens.curr(false) {
@@ -388,7 +399,8 @@ impl AstParser {
                 continue;
             }
 
-            return matches!(key, KEYWORD::Symbol(SYMBOL::Equal));
+            return matches!(key, KEYWORD::Symbol(SYMBOL::Equal))
+                || self.compound_assignment_op(&key).is_some();
         }
 
         false
@@ -423,6 +435,16 @@ impl AstParser {
         }
 
         None
+    }
+
+    fn compound_assignment_op(&self, key: &KEYWORD) -> Option<BinaryOperator> {
+        match key {
+            KEYWORD::Operator(OPERATOR::Addeq) => Some(BinaryOperator::Add),
+            KEYWORD::Operator(OPERATOR::Subeq) => Some(BinaryOperator::Sub),
+            KEYWORD::Operator(OPERATOR::Multeq) => Some(BinaryOperator::Mul),
+            KEYWORD::Operator(OPERATOR::Diveq) => Some(BinaryOperator::Div),
+            _ => None,
+        }
     }
 
     fn parse_add_sub_expression(
