@@ -1644,6 +1644,96 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_logical_nand_lowers_to_not_of_and() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_fun_logical_nand_nor.fol")
+            .expect("Should read logical nand/nor function test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse logical nand/nor expression");
+
+        let return_value = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .find_map(|node| {
+                    if let AstNode::Return { value: Some(value) } = node {
+                        Some(value.as_ref().clone())
+                    } else {
+                        None
+                    }
+                })
+                .expect("Program should contain a return value"),
+            _ => panic!("Expected program node"),
+        };
+
+        assert!(
+            matches!(
+                &return_value,
+                AstNode::UnaryOp {
+                    op: fol_parser::ast::UnaryOperator::Not,
+                    operand
+                } if matches!(
+                    operand.as_ref(),
+                    AstNode::BinaryOp {
+                        op: fol_parser::ast::BinaryOperator::And,
+                        ..
+                    }
+                )
+            ),
+            "Nand should lower to not(and(...)), got {:?}",
+            return_value
+        );
+    }
+
+    #[test]
+    fn test_logical_nor_lowers_to_not_of_or() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_fun_logical_nor.fol")
+            .expect("Should read logical nor function test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse logical nor expression");
+
+        let return_value = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .find_map(|node| {
+                    if let AstNode::Return { value: Some(value) } = node {
+                        Some(value.as_ref().clone())
+                    } else {
+                        None
+                    }
+                })
+                .expect("Program should contain a return value"),
+            _ => panic!("Expected program node"),
+        };
+
+        assert!(
+            matches!(
+                &return_value,
+                AstNode::UnaryOp {
+                    op: fol_parser::ast::UnaryOperator::Not,
+                    operand
+                } if matches!(
+                    operand.as_ref(),
+                    AstNode::BinaryOp {
+                        op: fol_parser::ast::BinaryOperator::Or,
+                        ..
+                    }
+                )
+            ),
+            "Nor should lower to not(or(...)), got {:?}",
+            return_value
+        );
+    }
+
+    #[test]
     fn test_logical_not_precedence_over_comparison_and_and() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_fun_logical_not_precedence.fol")

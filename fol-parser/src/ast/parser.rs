@@ -1460,6 +1460,23 @@ impl AstParser {
         }
     }
 
+    fn token_is_word(
+        &self,
+        token: &fol_lexer::lexer::stage3::element::Element,
+        word: &str,
+    ) -> bool {
+        token.con().trim() == word
+            || matches!(
+                (token.key(), word),
+                (KEYWORD::Keyword(BUILDIN::And), "and")
+                    | (KEYWORD::Keyword(BUILDIN::Or), "or")
+                    | (KEYWORD::Keyword(BUILDIN::Xor), "xor")
+                    | (KEYWORD::Keyword(BUILDIN::Nand), "nand")
+                    | (KEYWORD::Keyword(BUILDIN::Nor), "nor")
+                    | (KEYWORD::Keyword(BUILDIN::Not), "not")
+            )
+    }
+
     fn compound_assignment_op(&self, key: &KEYWORD) -> Option<BinaryOperator> {
         match key {
             KEYWORD::Operator(OPERATOR::Addeq) => Some(BinaryOperator::Add),
@@ -1491,13 +1508,27 @@ impl AstParser {
                 Err(_) => return Ok(lhs),
             };
 
-            if matches!(op_token.key(), KEYWORD::Keyword(BUILDIN::Or)) {
+            if self.token_is_word(&op_token, "or") {
                 self.consume_significant_token(tokens);
                 let rhs = self.parse_logical_xor_expression(tokens)?;
                 lhs = AstNode::BinaryOp {
                     op: BinaryOperator::Or,
                     left: Box::new(lhs),
                     right: Box::new(rhs),
+                };
+                continue;
+            }
+
+            if self.token_is_word(&op_token, "nor") {
+                self.consume_significant_token(tokens);
+                let rhs = self.parse_logical_xor_expression(tokens)?;
+                lhs = AstNode::UnaryOp {
+                    op: UnaryOperator::Not,
+                    operand: Box::new(AstNode::BinaryOp {
+                        op: BinaryOperator::Or,
+                        left: Box::new(lhs),
+                        right: Box::new(rhs),
+                    }),
                 };
                 continue;
             }
@@ -1522,7 +1553,7 @@ impl AstParser {
                 Err(_) => return Ok(lhs),
             };
 
-            if matches!(op_token.key(), KEYWORD::Keyword(BUILDIN::Xor)) {
+            if self.token_is_word(&op_token, "xor") {
                 self.consume_significant_token(tokens);
                 let rhs = self.parse_logical_and_expression(tokens)?;
                 lhs = AstNode::BinaryOp {
@@ -1553,13 +1584,27 @@ impl AstParser {
                 Err(_) => return Ok(lhs),
             };
 
-            if matches!(op_token.key(), KEYWORD::Keyword(BUILDIN::And)) {
+            if self.token_is_word(&op_token, "and") {
                 self.consume_significant_token(tokens);
                 let rhs = self.parse_comparison_expression(tokens)?;
                 lhs = AstNode::BinaryOp {
                     op: BinaryOperator::And,
                     left: Box::new(lhs),
                     right: Box::new(rhs),
+                };
+                continue;
+            }
+
+            if self.token_is_word(&op_token, "nand") {
+                self.consume_significant_token(tokens);
+                let rhs = self.parse_comparison_expression(tokens)?;
+                lhs = AstNode::UnaryOp {
+                    op: UnaryOperator::Not,
+                    operand: Box::new(AstNode::BinaryOp {
+                        op: BinaryOperator::And,
+                        left: Box::new(lhs),
+                        right: Box::new(rhs),
+                    }),
                 };
                 continue;
             }
@@ -1790,7 +1835,7 @@ impl AstParser {
             });
         }
 
-        if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Not)) {
+        if self.token_is_word(&token, "not") {
             let _ = tokens.bump();
             let operand = self.parse_primary_expression(tokens)?;
             return Ok(AstNode::UnaryOp {
