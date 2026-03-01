@@ -90,6 +90,52 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_function_declaration_header_parsing() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun.fol").expect("Should read test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse function declaration");
+
+        let function_decl = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .find_map(|node| {
+                    if let AstNode::FunDecl {
+                        name,
+                        params,
+                        return_type,
+                        body,
+                        ..
+                    } = node
+                    {
+                        Some((
+                            name.clone(),
+                            params.len(),
+                            return_type.is_some(),
+                            body.len(),
+                        ))
+                    } else {
+                        None
+                    }
+                })
+                .expect("Program should include function declaration"),
+            _ => panic!("Expected program node"),
+        };
+
+        assert_eq!(function_decl.0, "add");
+        assert_eq!(function_decl.1, 2, "Function should have two parameters");
+        assert!(function_decl.2, "Function should have return type");
+        assert!(
+            function_decl.3 > 0,
+            "Function body should include parsed statements"
+        );
+    }
+
+    #[test]
     fn test_var_parsing_without_type_hint() {
         let mut file_stream = FileStream::from_file("test/parser/simple_var_infer.fol")
             .expect("Should read infer var test file");

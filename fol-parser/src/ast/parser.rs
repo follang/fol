@@ -1,6 +1,9 @@
 // AST Parser Implementation for FOL
 
-use super::{AstNode, BinaryOperator, FolType, Literal, UnaryOperator, VarOption};
+use super::{
+    AstNode, BinaryOperator, FolType, FunOption, Generic, Literal, Parameter, UnaryOperator,
+    VarOption,
+};
 use fol_lexer::token::{BUILDIN, KEYWORD, LITERAL, OPERATOR, SYMBOL};
 use fol_types::*;
 use std::fmt;
@@ -131,6 +134,19 @@ impl AstParser {
                     if before == after && tokens.bump().is_none() {
                         break;
                     }
+                }
+                continue;
+            }
+
+            if matches!(key, KEYWORD::Keyword(BUILDIN::Fun)) {
+                match self.parse_fun_decl(tokens) {
+                    Ok(node) => {
+                        if let AstNode::FunDecl { body, .. } = &node {
+                            declarations.extend(body.clone());
+                        }
+                        declarations.push(node);
+                    }
+                    Err(error) => errors.push(error),
                 }
                 continue;
             }
@@ -280,6 +296,233 @@ impl AstParser {
             type_hint,
             value,
         })
+    }
+
+    fn parse_fun_decl(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
+        let fun_token = tokens.curr(false)?;
+        if !matches!(fun_token.key(), KEYWORD::Keyword(BUILDIN::Fun)) {
+            return Err(Box::new(ParseError::from_token(
+                &fun_token,
+                "Expected 'fun' declaration".to_string(),
+            )));
+        }
+
+        let _ = tokens.bump();
+        self.skip_ignorable(tokens);
+
+        let name_token = tokens.curr(false)?;
+        if !name_token.key().is_ident() {
+            return Err(Box::new(ParseError::from_token(
+                &name_token,
+                "Expected function name after 'fun'".to_string(),
+            )));
+        }
+        let name = name_token.con().trim().to_string();
+        let _ = tokens.bump();
+
+        self.skip_ignorable(tokens);
+        let open_paren = tokens.curr(false)?;
+        if !matches!(open_paren.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
+            return Err(Box::new(ParseError::from_token(
+                &open_paren,
+                "Expected '(' after function name".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+
+        let params = self.parse_parameter_list(tokens)?;
+
+        self.skip_ignorable(tokens);
+        let mut return_type = None;
+        if let Ok(token) = tokens.curr(false) {
+            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
+                let _ = tokens.bump();
+                self.skip_ignorable(tokens);
+                let typ_token = tokens.curr(false)?;
+                return_type = Some(self.parse_type_reference(&typ_token)?);
+                let _ = tokens.bump();
+            }
+        }
+
+        self.skip_ignorable(tokens);
+        let assign = tokens.curr(false)?;
+        if !matches!(assign.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
+            return Err(Box::new(ParseError::from_token(
+                &assign,
+                "Expected '=' before function body".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+
+        self.skip_ignorable(tokens);
+        let open_body = tokens.curr(false)?;
+        if !matches!(open_body.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
+            return Err(Box::new(ParseError::from_token(
+                &open_body,
+                "Expected '{' to start function body".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+
+        let body = self.parse_block_body(tokens)?;
+
+        Ok(AstNode::FunDecl {
+            options: vec![FunOption::Mutable],
+            generics: Vec::<Generic>::new(),
+            name,
+            params,
+            return_type,
+            body,
+        })
+    }
+
+    fn parse_parameter_list(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<Vec<Parameter>, Box<dyn Glitch>> {
+        let mut params = Vec::new();
+
+        for _ in 0..512 {
+            self.skip_ignorable(tokens);
+            let token = tokens.curr(false)?;
+
+            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
+                let _ = tokens.bump();
+                return Ok(params);
+            }
+
+            if !token.key().is_ident() {
+                return Err(Box::new(ParseError::from_token(
+                    &token,
+                    "Expected parameter name".to_string(),
+                )));
+            }
+
+            let param_name = token.con().trim().to_string();
+            let _ = tokens.bump();
+            self.skip_ignorable(tokens);
+
+            let colon = tokens.curr(false)?;
+            if !matches!(colon.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
+                return Err(Box::new(ParseError::from_token(
+                    &colon,
+                    "Expected ':' after parameter name".to_string(),
+                )));
+            }
+            let _ = tokens.bump();
+            self.skip_ignorable(tokens);
+
+            let type_token = tokens.curr(false)?;
+            let param_type = self.parse_type_reference(&type_token)?;
+            let _ = tokens.bump();
+
+            params.push(Parameter {
+                name: param_name.clone(),
+                param_type,
+                is_borrowable: param_name.chars().all(|ch| {
+                    !ch.is_ascii_lowercase() && (ch.is_ascii_alphanumeric() || ch == '_')
+                }),
+                default: None,
+            });
+
+            self.skip_ignorable(tokens);
+            let sep = tokens.curr(false)?;
+            if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
+                let _ = tokens.bump();
+                continue;
+            }
+            if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
+                let _ = tokens.bump();
+                return Ok(params);
+            }
+
+            return Err(Box::new(ParseError::from_token(
+                &sep,
+                "Expected ',' or ')' after parameter".to_string(),
+            )));
+        }
+
+        Err(Box::new(ParseError {
+            message: "Parameter parsing exceeded safety bound".to_string(),
+            file: None,
+            line: 1,
+            column: 1,
+            length: 1,
+        }))
+    }
+
+    fn parse_type_reference(
+        &self,
+        token: &fol_lexer::lexer::stage3::element::Element,
+    ) -> Result<FolType, Box<dyn Glitch>> {
+        if token.key().is_ident() || token.key().is_buildin() {
+            return Ok(FolType::Named {
+                name: token.con().trim().to_string(),
+            });
+        }
+
+        Err(Box::new(ParseError::from_token(
+            token,
+            "Expected type reference".to_string(),
+        )))
+    }
+
+    fn parse_block_body(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
+        let mut body = Vec::new();
+
+        for _ in 0..8_192 {
+            self.skip_ignorable(tokens);
+
+            let token = tokens.curr(false)?;
+            let key = token.key();
+
+            if matches!(key, KEYWORD::Symbol(SYMBOL::CurlyC)) {
+                let _ = tokens.bump();
+                return Ok(body);
+            }
+
+            if key.is_eof() {
+                return Ok(body);
+            }
+
+            if matches!(key, KEYWORD::Keyword(BUILDIN::Return)) {
+                body.push(self.parse_return_stmt(tokens)?);
+                continue;
+            }
+
+            if matches!(key, KEYWORD::Keyword(BUILDIN::Var)) {
+                body.push(self.parse_var_decl(tokens)?);
+                continue;
+            }
+
+            if key.is_ident()
+                && self.lookahead_is_assignment(tokens)
+                && self.can_start_assignment(tokens)
+            {
+                body.push(self.parse_assignment_stmt(tokens)?);
+                continue;
+            }
+
+            if key.is_ident() {
+                body.push(AstNode::Identifier {
+                    name: token.con().trim().to_string(),
+                });
+            } else if key.is_literal() {
+                body.push(self.parse_lexer_literal(&token)?);
+            }
+
+            if tokens.bump().is_none() {
+                break;
+            }
+        }
+
+        Ok(body)
     }
 
     fn parse_return_stmt(
