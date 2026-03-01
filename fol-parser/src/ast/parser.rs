@@ -151,6 +151,19 @@ impl AstParser {
                 continue;
             }
 
+            if matches!(key, KEYWORD::Keyword(BUILDIN::Pro)) {
+                match self.parse_pro_decl(tokens) {
+                    Ok(node) => {
+                        if let AstNode::ProDecl { body, .. } = &node {
+                            declarations.extend(body.clone());
+                        }
+                        declarations.push(node);
+                    }
+                    Err(error) => errors.push(error),
+                }
+                continue;
+            }
+
             if matches!(key, KEYWORD::Keyword(BUILDIN::Return)) {
                 match self.parse_return_stmt(tokens) {
                     Ok(node) => declarations.push(node),
@@ -370,6 +383,87 @@ impl AstParser {
         let body = self.parse_block_body(tokens)?;
 
         Ok(AstNode::FunDecl {
+            options: vec![FunOption::Mutable],
+            generics: Vec::<Generic>::new(),
+            name,
+            params,
+            return_type,
+            body,
+        })
+    }
+
+    fn parse_pro_decl(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
+        let pro_token = tokens.curr(false)?;
+        if !matches!(pro_token.key(), KEYWORD::Keyword(BUILDIN::Pro)) {
+            return Err(Box::new(ParseError::from_token(
+                &pro_token,
+                "Expected 'pro' declaration".to_string(),
+            )));
+        }
+
+        let _ = tokens.bump();
+        self.skip_ignorable(tokens);
+
+        let name_token = tokens.curr(false)?;
+        if !name_token.key().is_ident() {
+            return Err(Box::new(ParseError::from_token(
+                &name_token,
+                "Expected procedure name after 'pro'".to_string(),
+            )));
+        }
+        let name = name_token.con().trim().to_string();
+        let _ = tokens.bump();
+
+        self.skip_ignorable(tokens);
+        let open_paren = tokens.curr(false)?;
+        if !matches!(open_paren.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
+            return Err(Box::new(ParseError::from_token(
+                &open_paren,
+                "Expected '(' after procedure name".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+
+        let params = self.parse_parameter_list(tokens)?;
+
+        self.skip_ignorable(tokens);
+        let mut return_type = None;
+        if let Ok(token) = tokens.curr(false) {
+            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
+                let _ = tokens.bump();
+                self.skip_ignorable(tokens);
+                let typ_token = tokens.curr(false)?;
+                return_type = Some(self.parse_type_reference(&typ_token)?);
+                let _ = tokens.bump();
+            }
+        }
+
+        self.skip_ignorable(tokens);
+        let assign = tokens.curr(false)?;
+        if !matches!(assign.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
+            return Err(Box::new(ParseError::from_token(
+                &assign,
+                "Expected '=' before procedure body".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+
+        self.skip_ignorable(tokens);
+        let open_body = tokens.curr(false)?;
+        if !matches!(open_body.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
+            return Err(Box::new(ParseError::from_token(
+                &open_body,
+                "Expected '{' to start procedure body".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+
+        let body = self.parse_block_body(tokens)?;
+
+        Ok(AstNode::ProDecl {
             options: vec![FunOption::Mutable],
             generics: Vec::<Generic>::new(),
             name,

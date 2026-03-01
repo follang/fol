@@ -136,6 +136,52 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_procedure_declaration_header_parsing() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_pro.fol").expect("Should read test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse procedure declaration");
+
+        let procedure_decl = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .find_map(|node| {
+                    if let AstNode::ProDecl {
+                        name,
+                        params,
+                        return_type,
+                        body,
+                        ..
+                    } = node
+                    {
+                        Some((
+                            name.clone(),
+                            params.len(),
+                            return_type.is_some(),
+                            body.len(),
+                        ))
+                    } else {
+                        None
+                    }
+                })
+                .expect("Program should include procedure declaration"),
+            _ => panic!("Expected program node"),
+        };
+
+        assert_eq!(procedure_decl.0, "update");
+        assert_eq!(procedure_decl.1, 2, "Procedure should have two parameters");
+        assert!(procedure_decl.2, "Procedure should have return type");
+        assert!(
+            procedure_decl.3 > 0,
+            "Procedure body should include parsed statements"
+        );
+    }
+
+    #[test]
     fn test_var_parsing_without_type_hint() {
         let mut file_stream = FileStream::from_file("test/parser/simple_var_infer.fol")
             .expect("Should read infer var test file");
