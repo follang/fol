@@ -3046,4 +3046,38 @@ mod parser_tests {
             "Nested function dangling-operator parse error should point to inner expression line"
         );
     }
+
+    #[test]
+    fn test_top_level_nested_call_with_empty_argument_slot_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_call_top_level_nested_empty_slot.fol")
+                .expect("Should read malformed top-level nested empty-slot call test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should fail when top-level nested call has an empty argument slot");
+
+        let first_message = errors
+            .first()
+            .map(|e| e.to_string())
+            .unwrap_or_else(|| "<no error message>".to_string());
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        assert!(
+            first_message.contains("Unsupported expression token"),
+            "Top-level nested empty-slot call should report unsupported expression token, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            4,
+            "Top-level nested empty-slot parse error should point to inner empty-slot comma line"
+        );
+    }
 }
