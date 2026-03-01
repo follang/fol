@@ -3114,4 +3114,74 @@ mod parser_tests {
             "Unmatched close-paren argument parse error should point to the malformed expression line"
         );
     }
+
+    #[test]
+    fn test_method_call_with_unmatched_close_paren_argument_reports_parse_error() {
+        let mut file_stream = FileStream::from_file(
+            "test/parser/simple_fun_method_call_unmatched_close_paren_arg.fol",
+        )
+        .expect("Should read malformed unmatched-close-paren method call test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser.parse(&mut lexer).expect_err(
+            "Parser should fail when method call argument list contains unmatched ')' token",
+        );
+
+        let first_message = errors
+            .first()
+            .map(|e| e.to_string())
+            .unwrap_or_else(|| "<no error message>".to_string());
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        assert!(
+            first_message.contains("Unsupported expression token ')'"),
+            "Unmatched ')' in method call argument should report unsupported close-paren token, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            3,
+            "Method unmatched close-paren parse error should point to malformed expression line"
+        );
+    }
+
+    #[test]
+    fn test_top_level_call_with_unmatched_close_paren_argument_reports_parse_error() {
+        let mut file_stream = FileStream::from_file(
+            "test/parser/simple_call_top_level_unmatched_close_paren_arg.fol",
+        )
+        .expect("Should read malformed unmatched-close-paren top-level call test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser.parse(&mut lexer).expect_err(
+            "Parser should fail when top-level call argument list contains unmatched ')' token",
+        );
+
+        let first_message = errors
+            .first()
+            .map(|e| e.to_string())
+            .unwrap_or_else(|| "<no error message>".to_string());
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        assert!(
+            first_message.contains("Unsupported expression token ')'"),
+            "Unmatched ')' in top-level call argument should report unsupported close-paren token, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            2,
+            "Top-level unmatched close-paren parse error should point to malformed expression line"
+        );
+    }
 }

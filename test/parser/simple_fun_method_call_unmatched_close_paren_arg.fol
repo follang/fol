@@ -1,0 +1,8 @@
+fun method_unmatched_close_paren_arg(obj: int, a: int, b: int): int = {
+    obj.run(
+        inner(a) + ),
+        b,
+    );
+
+    return b;
+}
