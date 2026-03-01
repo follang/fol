@@ -1,0 +1,11 @@
+fun mixed_unmatched_open_second_arg(a: int, b: int): int = {
+    value = outer(
+        a,
+        inner(
+            (b + c,
+            d,
+        ),
+    );
+
+    return value;
+}
