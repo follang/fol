@@ -416,6 +416,63 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_else_keyword_block_maps_to_direct_default_body() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_fun_else_only.fol")
+            .expect("Should read else-only test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse if-else keyword block");
+
+        let lowered_if = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .find_map(|node| {
+                    if let AstNode::When {
+                        expr,
+                        cases,
+                        default,
+                    } = node
+                    {
+                        Some((expr.as_ref().clone(), cases.clone(), default.clone()))
+                    } else {
+                        None
+                    }
+                })
+                .expect("Program should include lowered if/when node"),
+            _ => panic!("Expected program node"),
+        };
+
+        assert!(
+            matches!(
+                lowered_if.0,
+                AstNode::BinaryOp {
+                    op: fol_parser::ast::BinaryOperator::Lt,
+                    ..
+                }
+            ),
+            "If condition should parse less-than expression"
+        );
+        let default = lowered_if
+            .2
+            .expect("Else block should produce default body");
+        assert!(
+            default
+                .iter()
+                .all(|node| !matches!(node, AstNode::When { .. })),
+            "Else-only block should not introduce nested when nodes"
+        );
+        assert!(
+            default
+                .iter()
+                .any(|node| matches!(node, AstNode::Return { .. })),
+            "Else-only default body should include return statement"
+        );
+    }
+
+    #[test]
     fn test_loop_statement_parsing_with_condition_body() {
         let mut file_stream = FileStream::from_file("test/parser/simple_fun_loop.fol")
             .expect("Should read loop test file");

@@ -1,0 +1,7 @@
+fun choose_else_only(a: int, b: int): int = {
+    if (a < b) {
+        return a;
+    } else {
+        return b;
+    }
+}
