@@ -2909,4 +2909,38 @@ mod parser_tests {
             "Method nested empty-slot parse error should point to the comma line"
         );
     }
+
+    #[test]
+    fn test_call_argument_with_dangling_operator_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_call_dangling_operator.fol")
+                .expect("Should read malformed dangling-operator call test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser.parse(&mut lexer).expect_err(
+            "Parser should fail when a call argument expression has a dangling operator",
+        );
+
+        let first_message = errors
+            .first()
+            .map(|e| e.to_string())
+            .unwrap_or_else(|| "<no error message>".to_string());
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        assert!(
+            first_message.contains("Unsupported expression token ','"),
+            "Dangling operator in call argument should report unsupported comma token, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            3,
+            "Dangling operator parse error should point to the expression line"
+        );
+    }
 }

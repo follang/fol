@@ -1,0 +1,8 @@
+fun dangling_operator(a: int, b: int): int = {
+    value = compose(
+        a +,
+        b,
+    );
+
+    return value;
+}
