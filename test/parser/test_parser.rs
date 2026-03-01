@@ -918,6 +918,66 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_logical_xor_precedence_between_or_and_and() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_logical_xor_precedence.fol")
+                .expect("Should read logical xor precedence function test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse logical xor precedence expression");
+
+        let return_value = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .find_map(|node| {
+                    if let AstNode::Return { value: Some(value) } = node {
+                        Some(value.as_ref().clone())
+                    } else {
+                        None
+                    }
+                })
+                .expect("Program should contain a return value"),
+            _ => panic!("Expected program node"),
+        };
+
+        match &return_value {
+            AstNode::BinaryOp { op, left: _, right } => {
+                assert!(matches!(op, fol_parser::ast::BinaryOperator::Or));
+                assert!(
+                    matches!(
+                        right.as_ref(),
+                        AstNode::BinaryOp {
+                            op: fol_parser::ast::BinaryOperator::Xor,
+                            ..
+                        }
+                    ),
+                    "Right side should be logical xor subtree"
+                );
+                if let AstNode::BinaryOp {
+                    right: xor_right, ..
+                } = right.as_ref()
+                {
+                    assert!(
+                        matches!(
+                            xor_right.as_ref(),
+                            AstNode::BinaryOp {
+                                op: fol_parser::ast::BinaryOperator::And,
+                                ..
+                            }
+                        ),
+                        "Xor right side should keep tighter logical and subtree"
+                    );
+                }
+            }
+            _ => panic!("Return value should be logical or expression"),
+        }
+    }
+
+    #[test]
     fn test_literal_parsing() {
         let parser = AstParser::new();
 

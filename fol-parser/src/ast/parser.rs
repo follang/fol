@@ -989,7 +989,7 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Box<dyn Glitch>> {
-        let mut lhs = self.parse_logical_and_expression(tokens)?;
+        let mut lhs = self.parse_logical_xor_expression(tokens)?;
 
         for _ in 0..32 {
             self.skip_ignorable(tokens);
@@ -1001,9 +1001,40 @@ impl AstParser {
 
             if matches!(op_token.key(), KEYWORD::Keyword(BUILDIN::Or)) {
                 self.consume_significant_token(tokens);
-                let rhs = self.parse_logical_and_expression(tokens)?;
+                let rhs = self.parse_logical_xor_expression(tokens)?;
                 lhs = AstNode::BinaryOp {
                     op: BinaryOperator::Or,
+                    left: Box::new(lhs),
+                    right: Box::new(rhs),
+                };
+                continue;
+            }
+
+            break;
+        }
+
+        Ok(lhs)
+    }
+
+    fn parse_logical_xor_expression(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
+        let mut lhs = self.parse_logical_and_expression(tokens)?;
+
+        for _ in 0..32 {
+            self.skip_ignorable(tokens);
+
+            let op_token = match tokens.curr(false) {
+                Ok(token) => token,
+                Err(_) => return Ok(lhs),
+            };
+
+            if matches!(op_token.key(), KEYWORD::Keyword(BUILDIN::Xor)) {
+                self.consume_significant_token(tokens);
+                let rhs = self.parse_logical_and_expression(tokens)?;
+                lhs = AstNode::BinaryOp {
+                    op: BinaryOperator::Xor,
                     left: Box::new(lhs),
                     right: Box::new(rhs),
                 };
