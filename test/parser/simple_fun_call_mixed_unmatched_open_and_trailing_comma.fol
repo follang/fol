@@ -1,0 +1,11 @@
+fun mixed_unmatched_open_and_trailing_comma(a: int, b: int): int = {
+    value = outer(
+        inner(
+            (a + b,
+            c,
+        ),
+        b,
+    );
+
+    return value;
+}

@@ -3287,4 +3287,36 @@ mod parser_tests {
             "Top-level unmatched open-paren parse error should point to malformed expression line"
         );
     }
+
+    #[test]
+    fn test_mixed_unmatched_open_and_trailing_comma_reports_first_error_deterministically() {
+        let mut file_stream = FileStream::from_file(
+            "test/parser/simple_fun_call_mixed_unmatched_open_and_trailing_comma.fol",
+        )
+        .expect("Should read malformed mixed call-argument test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser.parse(&mut lexer).expect_err(
+            "Parser should fail when nested call mixes unmatched '(' with trailing comma",
+        );
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+
+        assert!(
+            first_message.contains("Expected closing ')' for parenthesized expression"),
+            "Mixed malformed call should prioritize missing close-paren error, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            4,
+            "Mixed malformed call should point to the unmatched-open parenthesized expression line"
+        );
+    }
 }
