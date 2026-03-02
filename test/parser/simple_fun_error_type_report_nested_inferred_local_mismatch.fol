@@ -1,0 +1,13 @@
+fun nested_inferred_bad(flag: int): str : bol = {
+    when(flag) {
+        case(1) {
+            var err_msg = "missing";
+            report err_msg;
+        }
+        * {
+            report false;
+        }
+    }
+
+    return "done";
+}

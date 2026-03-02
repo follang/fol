@@ -1,0 +1,13 @@
+fun nested_inferred_ok(flag: int): str : str = {
+    when(flag) {
+        case(1) {
+            var err_msg = "missing";
+            report err_msg;
+        }
+        * {
+            report "fallback";
+        }
+    }
+
+    return "done";
+}

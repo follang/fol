@@ -517,6 +517,47 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_function_custom_error_type_accepts_nested_inferred_local_report() {
+        let mut file_stream = FileStream::from_file(
+            "test/parser/simple_fun_error_type_report_nested_inferred_local_ok.fol",
+        )
+        .expect("Should read nested inferred-local compatible report file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        parser.parse(&mut lexer).expect(
+            "Parser should accept nested inferred-local report compatible with custom error type",
+        );
+    }
+
+    #[test]
+    fn test_function_custom_error_type_rejects_nested_inferred_local_report_mismatch() {
+        let mut file_stream = FileStream::from_file(
+            "test/parser/simple_fun_error_type_report_nested_inferred_local_mismatch.fol",
+        )
+        .expect("Should read nested inferred-local mismatch report file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser.parse(&mut lexer).expect_err(
+            "Parser should reject nested inferred-local report incompatible with custom error type",
+        );
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Reported identifier")
+                && first_message.contains("incompatible with routine error type"),
+            "Nested inferred-local mismatch should report incompatible identifier type, got: {}",
+            first_message
+        );
+    }
+
+    #[test]
     fn test_function_custom_error_type_accepts_nested_shadowed_report_identifier() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_fun_error_type_report_nested_shadow_ok.fol")
