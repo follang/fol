@@ -2125,7 +2125,33 @@ impl AstParser {
             token.key(),
             KEYWORD::Operator(OPERATOR::Abstract) | KEYWORD::Symbol(SYMBOL::Minus)
         ) {
+            let minus_token = token.clone();
             let _ = tokens.bump();
+
+            self.skip_ignorable(tokens);
+            match tokens.curr(false) {
+                Ok(next) => {
+                    if matches!(
+                        next.key(),
+                        KEYWORD::Symbol(SYMBOL::Semi)
+                            | KEYWORD::Symbol(SYMBOL::Comma)
+                            | KEYWORD::Symbol(SYMBOL::RoundC)
+                            | KEYWORD::Symbol(SYMBOL::CurlyC)
+                    ) {
+                        return Err(Box::new(ParseError::from_token(
+                            &next,
+                            "Expected expression after unary '-'".to_string(),
+                        )));
+                    }
+                }
+                Err(_) => {
+                    return Err(Box::new(ParseError::from_token(
+                        &minus_token,
+                        "Expected expression after unary '-'".to_string(),
+                    )));
+                }
+            }
+
             let operand = self.parse_primary_expression(tokens)?;
             return Ok(AstNode::UnaryOp {
                 op: UnaryOperator::Neg,
@@ -2168,7 +2194,33 @@ impl AstParser {
         }
 
         if self.token_is_word(&token, "not") {
+            let not_token = token.clone();
             let _ = tokens.bump();
+
+            self.skip_ignorable(tokens);
+            match tokens.curr(false) {
+                Ok(next) => {
+                    if matches!(
+                        next.key(),
+                        KEYWORD::Symbol(SYMBOL::Semi)
+                            | KEYWORD::Symbol(SYMBOL::Comma)
+                            | KEYWORD::Symbol(SYMBOL::RoundC)
+                            | KEYWORD::Symbol(SYMBOL::CurlyC)
+                    ) {
+                        return Err(Box::new(ParseError::from_token(
+                            &next,
+                            "Expected expression after unary 'not'".to_string(),
+                        )));
+                    }
+                }
+                Err(_) => {
+                    return Err(Box::new(ParseError::from_token(
+                        &not_token,
+                        "Expected expression after unary 'not'".to_string(),
+                    )));
+                }
+            }
+
             let operand = self.parse_primary_expression(tokens)?;
             return Ok(AstNode::UnaryOp {
                 op: UnaryOperator::Not,

@@ -2948,6 +2948,68 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_unary_minus_missing_operand_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_unary_minus_missing_operand.fol")
+                .expect("Should read unary-minus missing operand test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should fail when unary minus is missing its operand");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+
+        assert!(
+            first_message.contains("Expected expression after unary '-'"),
+            "Unary minus without operand should report explicit unary-minus operand error, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            2,
+            "Unary minus missing-operand parse error should point to return line"
+        );
+    }
+
+    #[test]
+    fn test_unary_not_missing_operand_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_unary_not_missing_operand.fol")
+                .expect("Should read unary-not missing operand test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should fail when unary not is missing its operand");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+
+        assert!(
+            first_message.contains("Expected expression after unary 'not'"),
+            "Unary not without operand should report explicit unary-not operand error, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            2,
+            "Unary not missing-operand parse error should point to return line"
+        );
+    }
+
+    #[test]
     fn test_missing_call_closing_paren_reports_parse_error() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_fun_call_missing_paren.fol")
