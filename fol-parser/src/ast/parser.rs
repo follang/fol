@@ -6,6 +6,7 @@ use super::{
 };
 use fol_lexer::token::{BUILDIN, KEYWORD, LITERAL, OPERATOR, SYMBOL};
 use fol_types::*;
+use std::collections::HashMap;
 use std::fmt;
 
 #[derive(Debug, Clone)]
@@ -673,7 +674,8 @@ impl AstParser {
         let _ = tokens.bump();
 
         let body = self.parse_block_body(tokens)?;
-        Self::validate_report_usage(&body, error_type.as_ref(), &fun_token)?;
+        let parameter_types = Self::parameter_type_map(&params);
+        Self::validate_report_usage(&body, error_type.as_ref(), &parameter_types, &fun_token)?;
 
         Ok(AstNode::FunDecl {
             options: vec![FunOption::Mutable],
@@ -768,7 +770,8 @@ impl AstParser {
         let _ = tokens.bump();
 
         let body = self.parse_block_body(tokens)?;
-        Self::validate_report_usage(&body, error_type.as_ref(), &pro_token)?;
+        let parameter_types = Self::parameter_type_map(&params);
+        Self::validate_report_usage(&body, error_type.as_ref(), &parameter_types, &pro_token)?;
 
         Ok(AstNode::ProDecl {
             options: vec![FunOption::Mutable],
@@ -2292,6 +2295,7 @@ impl AstParser {
     fn validate_report_usage(
         nodes: &[AstNode],
         routine_error_type: Option<&FolType>,
+        parameter_types: &HashMap<String, FolType>,
         routine_token: &fol_lexer::lexer::stage3::element::Element,
     ) -> Result<(), Box<dyn Glitch>> {
         if routine_error_type.is_none() {
@@ -2315,6 +2319,14 @@ impl AstParser {
                         {
                             return Err(Box::new(ParseError::from_token(routine_token, mismatch)));
                         }
+
+                        if let Some(mismatch) = Self::report_identifier_type_mismatch(
+                            &args[0],
+                            expected_type,
+                            parameter_types,
+                        ) {
+                            return Err(Box::new(ParseError::from_token(routine_token, mismatch)));
+                        }
                     }
                 }
                 AstNode::When { cases, default, .. } => {
@@ -2329,6 +2341,7 @@ impl AstParser {
                                 Self::validate_report_usage(
                                     body,
                                     routine_error_type,
+                                    parameter_types,
                                     routine_token,
                                 )?;
                             }
@@ -2338,12 +2351,18 @@ impl AstParser {
                         Self::validate_report_usage(
                             default_body,
                             routine_error_type,
+                            parameter_types,
                             routine_token,
                         )?;
                     }
                 }
                 AstNode::Loop { body, .. } => {
-                    Self::validate_report_usage(body, routine_error_type, routine_token)?;
+                    Self::validate_report_usage(
+                        body,
+                        routine_error_type,
+                        parameter_types,
+                        routine_token,
+                    )?;
                 }
                 _ => {}
             }
@@ -2373,6 +2392,40 @@ impl AstParser {
             Some(format!(
                 "Reported literal value is incompatible with routine error type '{}'",
                 expected_name
+            ))
+        }
+    }
+
+    fn report_identifier_type_mismatch(
+        value: &AstNode,
+        expected_type: &FolType,
+        parameter_types: &HashMap<String, FolType>,
+    ) -> Option<String> {
+        let expected_name = match expected_type {
+            FolType::Named { name } => name.as_str(),
+            _ => return None,
+        };
+
+        if !Self::is_builtin_scalar_type_name(expected_name) {
+            return None;
+        }
+
+        let identifier_name = match value {
+            AstNode::Identifier { name } => name,
+            _ => return None,
+        };
+
+        let found_type_name = match parameter_types.get(identifier_name) {
+            Some(FolType::Named { name }) => name.as_str(),
+            _ => return None,
+        };
+
+        if Self::named_types_compatible(found_type_name, expected_name) {
+            None
+        } else {
+            Some(format!(
+                "Reported identifier '{}' has type '{}' incompatible with routine error type '{}'",
+                identifier_name, found_type_name, expected_name
             ))
         }
     }
@@ -2410,6 +2463,29 @@ impl AstParser {
                 | "chr"
                 | "char"
         )
+    }
+
+    fn parameter_type_map(params: &[Parameter]) -> HashMap<String, FolType> {
+        params
+            .iter()
+            .map(|parameter| (parameter.name.clone(), parameter.param_type.clone()))
+            .collect()
+    }
+
+    fn named_types_compatible(found_name: &str, expected_name: &str) -> bool {
+        if found_name == expected_name {
+            return true;
+        }
+
+        match found_name {
+            "bool" => matches!(expected_name, "bol"),
+            "bol" => matches!(expected_name, "bool"),
+            "float" => matches!(expected_name, "flt"),
+            "flt" => matches!(expected_name, "float"),
+            "char" => matches!(expected_name, "chr"),
+            "chr" => matches!(expected_name, "char"),
+            _ => false,
+        }
     }
 
     fn consume_optional_semicolon(&self, tokens: &mut fol_lexer::lexer::stage3::Elements) {
