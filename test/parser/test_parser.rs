@@ -1997,6 +1997,48 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_return_expression_chained_unary_plus_precedence() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_fun_unary_plus_chain.fol")
+            .expect("Should read chained unary plus precedence function test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse chained unary plus precedence function");
+
+        let return_value = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .find_map(|node| {
+                    if let AstNode::Return { value: Some(value) } = node {
+                        Some(value.as_ref().clone())
+                    } else {
+                        None
+                    }
+                })
+                .expect("Program should contain a return value"),
+            _ => panic!("Expected program node"),
+        };
+
+        match &return_value {
+            AstNode::BinaryOp { op, left, right } => {
+                assert!(matches!(op, fol_parser::ast::BinaryOperator::Mul));
+                assert!(
+                    matches!(left.as_ref(), AstNode::Identifier { name } if name == "a"),
+                    "Left side should parse to identifier 'a' under chained unary plus"
+                );
+                assert!(
+                    matches!(right.as_ref(), AstNode::Identifier { name } if name == "b"),
+                    "Right side should parse to identifier 'b'"
+                );
+            }
+            _ => panic!("Return value should be binary multiplication expression"),
+        }
+    }
+
+    #[test]
     fn test_return_expression_unary_minus_parenthesized_addition() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_fun_unary_paren_precedence.fol")
@@ -2781,6 +2823,68 @@ mod parser_tests {
         assert!(
             parse_error.length() > 0,
             "Token length should be non-zero for diagnostics"
+        );
+    }
+
+    #[test]
+    fn test_unary_plus_missing_operand_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_unary_plus_missing_operand.fol")
+                .expect("Should read unary-plus missing operand test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should fail when unary plus is missing its operand");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+
+        assert!(
+            first_message.contains("Unsupported expression token ';"),
+            "Unary plus without operand should report unsupported semicolon token, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            2,
+            "Unary plus missing-operand parse error should point to return line"
+        );
+    }
+
+    #[test]
+    fn test_call_argument_unary_plus_missing_operand_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_call_unary_plus_missing_operand.fol")
+                .expect("Should read unary-plus missing operand call-arg test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should fail when call arg unary plus is missing an operand");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+
+        assert!(
+            first_message.contains("Unsupported expression token ')'"),
+            "Unary plus without operand in call arg should report unsupported close-paren token, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            2,
+            "Call-arg unary plus missing-operand parse error should point to call line"
         );
     }
 
