@@ -2295,15 +2295,31 @@ impl AstParser {
     fn validate_report_usage(
         nodes: &[AstNode],
         routine_error_type: Option<&FolType>,
-        parameter_types: &HashMap<String, FolType>,
+        visible_types: &HashMap<String, FolType>,
         routine_token: &fol_lexer::lexer::stage3::element::Element,
     ) -> Result<(), Box<dyn Glitch>> {
         if routine_error_type.is_none() {
             return Ok(());
         }
 
+        let mut scope_types = visible_types.clone();
+
         for node in nodes {
             match node {
+                AstNode::VarDecl {
+                    name,
+                    type_hint,
+                    value,
+                    ..
+                } => {
+                    if let Some(typ) = type_hint.clone() {
+                        scope_types.insert(name.clone(), typ);
+                    } else if let Some(val) = value {
+                        if let Some(inferred) = Self::infer_named_type_from_node(val.as_ref()) {
+                            scope_types.insert(name.clone(), inferred);
+                        }
+                    }
+                }
                 AstNode::FunctionCall { name, args } if name == "report" => {
                     if args.len() != 1 {
                         return Err(Box::new(ParseError::from_token(
@@ -2323,7 +2339,7 @@ impl AstParser {
                         if let Some(mismatch) = Self::report_identifier_type_mismatch(
                             &args[0],
                             expected_type,
-                            parameter_types,
+                            &scope_types,
                         ) {
                             return Err(Box::new(ParseError::from_token(routine_token, mismatch)));
                         }
@@ -2341,7 +2357,7 @@ impl AstParser {
                                 Self::validate_report_usage(
                                     body,
                                     routine_error_type,
-                                    parameter_types,
+                                    &scope_types,
                                     routine_token,
                                 )?;
                             }
@@ -2351,7 +2367,7 @@ impl AstParser {
                         Self::validate_report_usage(
                             default_body,
                             routine_error_type,
-                            parameter_types,
+                            &scope_types,
                             routine_token,
                         )?;
                     }
@@ -2360,7 +2376,7 @@ impl AstParser {
                     Self::validate_report_usage(
                         body,
                         routine_error_type,
-                        parameter_types,
+                        &scope_types,
                         routine_token,
                     )?;
                 }
@@ -2399,7 +2415,7 @@ impl AstParser {
     fn report_identifier_type_mismatch(
         value: &AstNode,
         expected_type: &FolType,
-        parameter_types: &HashMap<String, FolType>,
+        visible_types: &HashMap<String, FolType>,
     ) -> Option<String> {
         let expected_name = match expected_type {
             FolType::Named { name } => name.as_str(),
@@ -2415,7 +2431,7 @@ impl AstParser {
             _ => return None,
         };
 
-        let found_type_name = match parameter_types.get(identifier_name) {
+        let found_type_name = match visible_types.get(identifier_name) {
             Some(FolType::Named { name }) => name.as_str(),
             _ => return None,
         };
@@ -2470,6 +2486,27 @@ impl AstParser {
             .iter()
             .map(|parameter| (parameter.name.clone(), parameter.param_type.clone()))
             .collect()
+    }
+
+    fn infer_named_type_from_node(node: &AstNode) -> Option<FolType> {
+        match node {
+            AstNode::Literal(Literal::String(_)) => Some(FolType::Named {
+                name: "str".to_string(),
+            }),
+            AstNode::Literal(Literal::Boolean(_)) => Some(FolType::Named {
+                name: "bol".to_string(),
+            }),
+            AstNode::Literal(Literal::Integer(_)) => Some(FolType::Named {
+                name: "int".to_string(),
+            }),
+            AstNode::Literal(Literal::Float(_)) => Some(FolType::Named {
+                name: "flt".to_string(),
+            }),
+            AstNode::Literal(Literal::Character(_)) => Some(FolType::Named {
+                name: "chr".to_string(),
+            }),
+            _ => None,
+        }
     }
 
     fn named_types_compatible(found_name: &str, expected_name: &str) -> bool {

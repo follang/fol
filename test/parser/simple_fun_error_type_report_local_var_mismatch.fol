@@ -1,0 +1,4 @@
+fun report_local_bad(path: str): str : bol = {
+    var err_msg: str = "missing";
+    report err_msg;
+}
