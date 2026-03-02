@@ -2182,6 +2182,14 @@ impl AstParser {
         &self,
         token: &fol_lexer::lexer::stage3::element::Element,
     ) -> Result<AstNode, Box<dyn Glitch>> {
+        if matches!(token.key(), KEYWORD::Keyword(BUILDIN::True)) {
+            return Ok(AstNode::Literal(Literal::Boolean(true)));
+        }
+
+        if matches!(token.key(), KEYWORD::Keyword(BUILDIN::False)) {
+            return Ok(AstNode::Literal(Literal::Boolean(false)));
+        }
+
         if token.key().is_literal() {
             return self.parse_lexer_literal(token);
         }

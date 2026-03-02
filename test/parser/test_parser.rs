@@ -2235,6 +2235,52 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_boolean_keyword_literals_parse_in_var_and_return() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_fun_bool_literals.fol")
+            .expect("Should read boolean literal function test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse boolean keyword literals");
+
+        let (has_true_var, has_false_return) = match ast {
+            AstNode::Program { declarations } => {
+                let has_true_var = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::VarDecl { name, value: Some(value), .. }
+                        if name == "flag"
+                            && matches!(value.as_ref(), AstNode::Literal(Literal::Boolean(true)))
+                    )
+                });
+
+                let has_false_return = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::Return { value: Some(value) }
+                        if matches!(value.as_ref(), AstNode::Literal(Literal::Boolean(false)))
+                    )
+                });
+
+                (has_true_var, has_false_return)
+            }
+            _ => panic!("Expected program node"),
+        };
+
+        assert!(
+            has_true_var,
+            "Function body should include var assignment with true literal"
+        );
+        assert!(
+            has_false_return,
+            "Function body should include return with false literal"
+        );
+    }
+
+    #[test]
     fn test_return_expression_precedence_mul_before_add() {
         let mut file_stream = FileStream::from_file("test/parser/simple_fun_precedence.fol")
             .expect("Should read precedence function test file");
