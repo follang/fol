@@ -2127,32 +2127,7 @@ impl AstParser {
         ) {
             let minus_token = token.clone();
             let _ = tokens.bump();
-
-            self.skip_ignorable(tokens);
-            match tokens.curr(false) {
-                Ok(next) => {
-                    if next.key().is_void()
-                        || matches!(
-                            next.key(),
-                            KEYWORD::Symbol(SYMBOL::Semi)
-                                | KEYWORD::Symbol(SYMBOL::Comma)
-                                | KEYWORD::Symbol(SYMBOL::RoundC)
-                                | KEYWORD::Symbol(SYMBOL::CurlyC)
-                        )
-                    {
-                        return Err(Box::new(ParseError::from_token(
-                            &next,
-                            "Expected expression after unary '-'".to_string(),
-                        )));
-                    }
-                }
-                Err(_) => {
-                    return Err(Box::new(ParseError::from_token(
-                        &minus_token,
-                        "Expected expression after unary '-'".to_string(),
-                    )));
-                }
-            }
+            self.ensure_unary_operand(tokens, &minus_token, "Expected expression after unary '-'")?;
 
             let operand = self.parse_primary_expression(tokens)?;
             return Ok(AstNode::UnaryOp {
@@ -2167,32 +2142,7 @@ impl AstParser {
         ) {
             let plus_token = token.clone();
             let _ = tokens.bump();
-
-            self.skip_ignorable(tokens);
-            match tokens.curr(false) {
-                Ok(next) => {
-                    if next.key().is_void()
-                        || matches!(
-                            next.key(),
-                            KEYWORD::Symbol(SYMBOL::Semi)
-                                | KEYWORD::Symbol(SYMBOL::Comma)
-                                | KEYWORD::Symbol(SYMBOL::RoundC)
-                                | KEYWORD::Symbol(SYMBOL::CurlyC)
-                        )
-                    {
-                        return Err(Box::new(ParseError::from_token(
-                            &next,
-                            "Expected expression after unary '+'".to_string(),
-                        )));
-                    }
-                }
-                Err(_) => {
-                    return Err(Box::new(ParseError::from_token(
-                        &plus_token,
-                        "Expected expression after unary '+'".to_string(),
-                    )));
-                }
-            }
+            self.ensure_unary_operand(tokens, &plus_token, "Expected expression after unary '+'")?;
 
             return self.parse_primary_expression(tokens);
         }
@@ -2200,32 +2150,7 @@ impl AstParser {
         if self.token_is_word(&token, "not") {
             let not_token = token.clone();
             let _ = tokens.bump();
-
-            self.skip_ignorable(tokens);
-            match tokens.curr(false) {
-                Ok(next) => {
-                    if next.key().is_void()
-                        || matches!(
-                            next.key(),
-                            KEYWORD::Symbol(SYMBOL::Semi)
-                                | KEYWORD::Symbol(SYMBOL::Comma)
-                                | KEYWORD::Symbol(SYMBOL::RoundC)
-                                | KEYWORD::Symbol(SYMBOL::CurlyC)
-                        )
-                    {
-                        return Err(Box::new(ParseError::from_token(
-                            &next,
-                            "Expected expression after unary 'not'".to_string(),
-                        )));
-                    }
-                }
-                Err(_) => {
-                    return Err(Box::new(ParseError::from_token(
-                        &not_token,
-                        "Expected expression after unary 'not'".to_string(),
-                    )));
-                }
-            }
+            self.ensure_unary_operand(tokens, &not_token, "Expected expression after unary 'not'")?;
 
             let operand = self.parse_primary_expression(tokens)?;
             return Ok(AstNode::UnaryOp {
@@ -2240,38 +2165,12 @@ impl AstParser {
         ) {
             let unary_token = token.clone();
             let _ = tokens.bump();
-
-            self.skip_ignorable(tokens);
-            match tokens.curr(false) {
-                Ok(next) => {
-                    if next.key().is_void()
-                        || matches!(
-                            next.key(),
-                            KEYWORD::Symbol(SYMBOL::Semi)
-                                | KEYWORD::Symbol(SYMBOL::Comma)
-                                | KEYWORD::Symbol(SYMBOL::RoundC)
-                                | KEYWORD::Symbol(SYMBOL::CurlyC)
-                        )
-                    {
-                        let message = if matches!(unary_token.key(), KEYWORD::Symbol(SYMBOL::And)) {
-                            "Expected expression after unary '&'".to_string()
-                        } else {
-                            "Expected expression after unary '*'".to_string()
-                        };
-
-                        return Err(Box::new(ParseError::from_token(&next, message)));
-                    }
-                }
-                Err(_) => {
-                    let message = if matches!(unary_token.key(), KEYWORD::Symbol(SYMBOL::And)) {
-                        "Expected expression after unary '&'".to_string()
-                    } else {
-                        "Expected expression after unary '*'".to_string()
-                    };
-
-                    return Err(Box::new(ParseError::from_token(&unary_token, message)));
-                }
-            }
+            let message = if matches!(unary_token.key(), KEYWORD::Symbol(SYMBOL::And)) {
+                "Expected expression after unary '&'"
+            } else {
+                "Expected expression after unary '*'"
+            };
+            self.ensure_unary_operand(tokens, &unary_token, message)?;
 
             let operand = self.parse_primary_expression(tokens)?;
             let op = if matches!(unary_token.key(), KEYWORD::Symbol(SYMBOL::And)) {
@@ -2351,6 +2250,37 @@ impl AstParser {
             }
 
             break;
+        }
+    }
+
+    fn ensure_unary_operand(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+        operator_token: &fol_lexer::lexer::stage3::element::Element,
+        message: &str,
+    ) -> Result<(), Box<dyn Glitch>> {
+        self.skip_ignorable(tokens);
+
+        match tokens.curr(false) {
+            Ok(next) => {
+                if next.key().is_void()
+                    || matches!(
+                        next.key(),
+                        KEYWORD::Symbol(SYMBOL::Semi)
+                            | KEYWORD::Symbol(SYMBOL::Comma)
+                            | KEYWORD::Symbol(SYMBOL::RoundC)
+                            | KEYWORD::Symbol(SYMBOL::CurlyC)
+                    )
+                {
+                    return Err(Box::new(ParseError::from_token(&next, message.to_string())));
+                }
+
+                Ok(())
+            }
+            Err(_) => Err(Box::new(ParseError::from_token(
+                operator_token,
+                message.to_string(),
+            ))),
         }
     }
 
