@@ -2299,6 +2299,78 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_unary_ref_deref_chains_parse_with_expected_shape() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_unary_ref_deref_chain.fol")
+                .expect("Should read unary ref/deref chain function test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse unary ref/deref chain function");
+
+        let (has_chain_assignment, has_chain_return) = match ast {
+            AstNode::Program { declarations } => {
+                let has_chain_assignment = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::Assignment { value, .. }
+                        if matches!(
+                            value.as_ref(),
+                            AstNode::UnaryOp {
+                                op: fol_parser::ast::UnaryOperator::Deref,
+                                operand,
+                            }
+                            if matches!(
+                                operand.as_ref(),
+                                AstNode::UnaryOp {
+                                    op: fol_parser::ast::UnaryOperator::Ref,
+                                    operand,
+                                } if matches!(operand.as_ref(), AstNode::Identifier { name } if name == "a")
+                            )
+                        )
+                    )
+                });
+
+                let has_chain_return = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::Return { value: Some(value) }
+                        if matches!(
+                            value.as_ref(),
+                            AstNode::UnaryOp {
+                                op: fol_parser::ast::UnaryOperator::Ref,
+                                operand,
+                            }
+                            if matches!(
+                                operand.as_ref(),
+                                AstNode::UnaryOp {
+                                    op: fol_parser::ast::UnaryOperator::Deref,
+                                    operand,
+                                } if matches!(operand.as_ref(), AstNode::Identifier { name } if name == "a")
+                            )
+                        )
+                    )
+                });
+
+                (has_chain_assignment, has_chain_return)
+            }
+            _ => panic!("Expected program node"),
+        };
+
+        assert!(
+            has_chain_assignment,
+            "Assignment should parse as unary deref over unary ref chain"
+        );
+        assert!(
+            has_chain_return,
+            "Return should parse as unary ref over unary deref chain"
+        );
+    }
+
+    #[test]
     fn test_return_expression_unary_minus_parenthesized_addition() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_fun_unary_paren_precedence.fol")
