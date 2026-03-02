@@ -1,0 +1,14 @@
+fun mixed_unmatched_open_fifth_arg(a: int, b: int, c: int, d: int, e: int): int = {
+    value = outer(
+        a,
+        b,
+        c,
+        d,
+        inner(
+            (e + f,
+            g,
+        ),
+    );
+
+    return value;
+}
