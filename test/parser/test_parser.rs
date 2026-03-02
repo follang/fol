@@ -3335,6 +3335,70 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_top_level_call_argument_unary_ref_missing_operand_reports_parse_error() {
+        let mut file_stream = FileStream::from_file(
+            "test/parser/simple_call_top_level_unary_ref_missing_operand.fol",
+        )
+        .expect("Should read top-level unary-ref missing operand call-arg test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser.parse(&mut lexer).expect_err(
+            "Parser should fail when top-level call arg unary ref is missing an operand",
+        );
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+
+        assert!(
+            first_message.contains("Expected expression after unary '&'"),
+            "Top-level unary ref without operand should report explicit unary-ref operand error, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            1,
+            "Top-level call-arg unary ref missing-operand parse error should point to call line"
+        );
+    }
+
+    #[test]
+    fn test_top_level_call_argument_unary_deref_missing_operand_reports_parse_error() {
+        let mut file_stream = FileStream::from_file(
+            "test/parser/simple_call_top_level_unary_deref_missing_operand.fol",
+        )
+        .expect("Should read top-level unary-deref missing operand call-arg test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser.parse(&mut lexer).expect_err(
+            "Parser should fail when top-level call arg unary deref is missing an operand",
+        );
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+
+        assert!(
+            first_message.contains("Expected expression after unary '*'"),
+            "Top-level unary deref without operand should report explicit unary-deref operand error, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            1,
+            "Top-level call-arg unary deref missing-operand parse error should point to call line"
+        );
+    }
+
+    #[test]
     fn test_missing_call_closing_paren_reports_parse_error() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_fun_call_missing_paren.fol")
