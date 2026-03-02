@@ -2098,6 +2098,91 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_return_expression_unary_ref_parses_as_unary_expression() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_fun_unary_ref.fol")
+            .expect("Should read unary ref function test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse unary ref function");
+
+        let return_value = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .find_map(|node| {
+                    if let AstNode::Return { value: Some(value) } = node {
+                        Some(value.as_ref().clone())
+                    } else {
+                        None
+                    }
+                })
+                .expect("Program should contain a return value"),
+            _ => panic!("Expected program node"),
+        };
+
+        assert!(
+            matches!(
+                &return_value,
+                AstNode::UnaryOp {
+                    op: fol_parser::ast::UnaryOperator::Ref,
+                    operand
+                } if matches!(operand.as_ref(), AstNode::Identifier { name } if name == "a")
+            ),
+            "Return value should be unary ref of identifier 'a'"
+        );
+    }
+
+    #[test]
+    fn test_return_expression_unary_deref_precedence() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_unary_deref_precedence.fol")
+                .expect("Should read unary deref precedence function test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse unary deref precedence function");
+
+        let return_value = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .find_map(|node| {
+                    if let AstNode::Return { value: Some(value) } = node {
+                        Some(value.as_ref().clone())
+                    } else {
+                        None
+                    }
+                })
+                .expect("Program should contain a return value"),
+            _ => panic!("Expected program node"),
+        };
+
+        assert!(
+            matches!(
+                &return_value,
+                AstNode::BinaryOp {
+                    op: fol_parser::ast::BinaryOperator::Mul,
+                    left,
+                    right
+                }
+                if matches!(
+                    left.as_ref(),
+                    AstNode::UnaryOp {
+                        op: fol_parser::ast::UnaryOperator::Deref,
+                        operand
+                    } if matches!(operand.as_ref(), AstNode::Identifier { name } if name == "a")
+                ) && matches!(right.as_ref(), AstNode::Identifier { name } if name == "b")
+            ),
+            "Return value should be multiplication with unary deref on left operand"
+        );
+    }
+
+    #[test]
     fn test_return_expression_unary_minus_parenthesized_addition() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_fun_unary_paren_precedence.fol")
@@ -3006,6 +3091,68 @@ mod parser_tests {
             parse_error.line(),
             2,
             "Unary not missing-operand parse error should point to return line"
+        );
+    }
+
+    #[test]
+    fn test_unary_ref_missing_operand_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_unary_ref_missing_operand.fol")
+                .expect("Should read unary-ref missing operand test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should fail when unary ref is missing its operand");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+
+        assert!(
+            first_message.contains("Expected expression after unary '&'"),
+            "Unary ref without operand should report explicit unary-ref operand error, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            2,
+            "Unary ref missing-operand parse error should point to return line"
+        );
+    }
+
+    #[test]
+    fn test_unary_deref_missing_operand_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_unary_deref_missing_operand.fol")
+                .expect("Should read unary-deref missing operand test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should fail when unary deref is missing its operand");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+
+        assert!(
+            first_message.contains("Expected expression after unary '*'"),
+            "Unary deref without operand should report explicit unary-deref operand error, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            2,
+            "Unary deref missing-operand parse error should point to return line"
         );
     }
 

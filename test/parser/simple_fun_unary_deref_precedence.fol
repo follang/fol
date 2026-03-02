@@ -1,0 +1,3 @@
+fun deref_precedence(a: int, b: int): int = {
+    return *a * b;
+}

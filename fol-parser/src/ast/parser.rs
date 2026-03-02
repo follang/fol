@@ -2228,6 +2228,56 @@ impl AstParser {
             });
         }
 
+        if matches!(
+            token.key(),
+            KEYWORD::Symbol(SYMBOL::And) | KEYWORD::Symbol(SYMBOL::Star)
+        ) {
+            let unary_token = token.clone();
+            let _ = tokens.bump();
+
+            self.skip_ignorable(tokens);
+            match tokens.curr(false) {
+                Ok(next) => {
+                    if matches!(
+                        next.key(),
+                        KEYWORD::Symbol(SYMBOL::Semi)
+                            | KEYWORD::Symbol(SYMBOL::Comma)
+                            | KEYWORD::Symbol(SYMBOL::RoundC)
+                            | KEYWORD::Symbol(SYMBOL::CurlyC)
+                    ) {
+                        let message = if matches!(unary_token.key(), KEYWORD::Symbol(SYMBOL::And)) {
+                            "Expected expression after unary '&'".to_string()
+                        } else {
+                            "Expected expression after unary '*'".to_string()
+                        };
+
+                        return Err(Box::new(ParseError::from_token(&next, message)));
+                    }
+                }
+                Err(_) => {
+                    let message = if matches!(unary_token.key(), KEYWORD::Symbol(SYMBOL::And)) {
+                        "Expected expression after unary '&'".to_string()
+                    } else {
+                        "Expected expression after unary '*'".to_string()
+                    };
+
+                    return Err(Box::new(ParseError::from_token(&unary_token, message)));
+                }
+            }
+
+            let operand = self.parse_primary_expression(tokens)?;
+            let op = if matches!(unary_token.key(), KEYWORD::Symbol(SYMBOL::And)) {
+                UnaryOperator::Ref
+            } else {
+                UnaryOperator::Deref
+            };
+
+            return Ok(AstNode::UnaryOp {
+                op,
+                operand: Box::new(operand),
+            });
+        }
+
         if matches!(token.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
             let _ = tokens.bump();
             let inner = self.parse_logical_expression(tokens)?;
