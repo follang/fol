@@ -1,0 +1,13 @@
+fun method_mixed_unmatched_open_fourth_arg(obj: int, a: int, b: int, c: int, d: int): int = {
+    obj.run(
+        a,
+        b,
+        c,
+        inner(
+            (d + e,
+            f,
+        ),
+    );
+
+    return d;
+}
