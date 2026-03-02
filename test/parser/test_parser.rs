@@ -182,6 +182,120 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_function_declaration_error_type_parsing() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_fun_error_type.fol")
+            .expect("Should read function error type test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse function error type signature");
+
+        let function_decl = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .find_map(|node| {
+                    if let AstNode::FunDecl {
+                        name,
+                        return_type,
+                        error_type,
+                        ..
+                    } = node
+                    {
+                        Some((name.clone(), return_type.clone(), error_type.clone()))
+                    } else {
+                        None
+                    }
+                })
+                .expect("Program should include function declaration"),
+            _ => panic!("Expected program node"),
+        };
+
+        assert_eq!(function_decl.0, "read_data");
+        assert!(
+            matches!(function_decl.1, Some(FolType::Named { name }) if name == "str"),
+            "Function should parse return type in first ':' slot"
+        );
+        assert!(
+            matches!(function_decl.2, Some(FolType::Named { name }) if name == "io_err"),
+            "Function should parse error type in second ':' slot"
+        );
+    }
+
+    #[test]
+    fn test_procedure_declaration_error_type_parsing() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_pro_error_type.fol")
+            .expect("Should read procedure error type test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse procedure error type signature");
+
+        let procedure_decl = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .find_map(|node| {
+                    if let AstNode::ProDecl {
+                        name,
+                        return_type,
+                        error_type,
+                        ..
+                    } = node
+                    {
+                        Some((name.clone(), return_type.clone(), error_type.clone()))
+                    } else {
+                        None
+                    }
+                })
+                .expect("Program should include procedure declaration"),
+            _ => panic!("Expected program node"),
+        };
+
+        assert_eq!(procedure_decl.0, "write_data");
+        assert!(
+            matches!(procedure_decl.1, Some(FolType::Named { name }) if name == "int"),
+            "Procedure should parse return type in first ':' slot"
+        );
+        assert!(
+            matches!(procedure_decl.2, Some(FolType::Named { name }) if name == "io_err"),
+            "Procedure should parse error type in second ':' slot"
+        );
+    }
+
+    #[test]
+    fn test_function_declaration_missing_error_type_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_error_type_missing_type.fol")
+                .expect("Should read malformed function error type file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should fail when second ':' has no error type");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Expected type reference"),
+            "Missing error type after second ':' should report type reference error, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            1,
+            "Missing error type parse error should point to signature line"
+        );
+    }
+
+    #[test]
     fn test_when_statement_parsing_with_case_and_default() {
         let mut file_stream = FileStream::from_file("test/parser/simple_fun_when.fol")
             .expect("Should read when test file");

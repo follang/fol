@@ -10,6 +10,16 @@ Procedures are most common type of routines in Fol. When a procedure is "called"
 
 Procedures have side-effects, it can modifies some state variable value(s) outside its local environment, that is to say has an observable effect besides returning a value (the main effect) to the invoker of the operation. State data updated "outside" of the operation may be maintained "inside" a stateful object or a wider stateful system within which the operation is performed.
 
+Procedures can also declare a custom recoverable error type with a second `:` in the signature:
+
+```
+pro[] write(path: str): int : io_err = {
+    report "permission denied";
+}
+```
+
+The first `:` declares result type, the second `:` declares the routine error type.
+
 ### Passing values
 
 The semantics for passing a value to a procedure are similar to those for assigning a value to a variable. Passing a variable to a procedure will move or copy, just as assignment does. If the procedure is stack-based, it will automatically copy the value. If it is heap-based, it will move the value. 

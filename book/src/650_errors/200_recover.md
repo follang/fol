@@ -2,6 +2,14 @@
 
 `report` can be used to handle recoverable errors. As [discussed here](/docs/spec/functions/#return), FOL uses two variables `result` nd `error` in return of each routine. As name implies, `result` represents the type of the value that will be returned in a success case, and `error` represents the type of the error `err[]` that will be returned in a failure case.
 
+To declare routine-local custom error type, use function/procedure signature form:
+
+```
+fun/pro name(args): ResultType : ErrorType = { ... }
+```
+
+`report expr` should produce a value compatible with `ErrorType`.
+
 When we use the keyword `report`, the error is returned to the routine's error variable and the routine qutis executing (the routine, not the program).
 ```
 use file: mod[std] = { std::fs::File }

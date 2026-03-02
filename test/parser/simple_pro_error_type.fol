@@ -1,0 +1,3 @@
+pro write_data(path: str): int : io_err = {
+    return 0;
+}

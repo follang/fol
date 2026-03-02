@@ -630,6 +630,7 @@ impl AstParser {
 
         self.skip_ignorable(tokens);
         let mut return_type = None;
+        let mut error_type = None;
         if let Ok(token) = tokens.curr(false) {
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
                 let _ = tokens.bump();
@@ -637,6 +638,17 @@ impl AstParser {
                 let typ_token = tokens.curr(false)?;
                 return_type = Some(self.parse_type_reference(&typ_token)?);
                 let _ = tokens.bump();
+
+                self.skip_ignorable(tokens);
+                if let Ok(err_sep) = tokens.curr(false) {
+                    if matches!(err_sep.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
+                        let _ = tokens.bump();
+                        self.skip_ignorable(tokens);
+                        let err_type_token = tokens.curr(false)?;
+                        error_type = Some(self.parse_type_reference(&err_type_token)?);
+                        let _ = tokens.bump();
+                    }
+                }
             }
         }
 
@@ -668,6 +680,7 @@ impl AstParser {
             name,
             params,
             return_type,
+            error_type,
             body,
         })
     }
@@ -711,6 +724,7 @@ impl AstParser {
 
         self.skip_ignorable(tokens);
         let mut return_type = None;
+        let mut error_type = None;
         if let Ok(token) = tokens.curr(false) {
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
                 let _ = tokens.bump();
@@ -718,6 +732,17 @@ impl AstParser {
                 let typ_token = tokens.curr(false)?;
                 return_type = Some(self.parse_type_reference(&typ_token)?);
                 let _ = tokens.bump();
+
+                self.skip_ignorable(tokens);
+                if let Ok(err_sep) = tokens.curr(false) {
+                    if matches!(err_sep.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
+                        let _ = tokens.bump();
+                        self.skip_ignorable(tokens);
+                        let err_type_token = tokens.curr(false)?;
+                        error_type = Some(self.parse_type_reference(&err_type_token)?);
+                        let _ = tokens.bump();
+                    }
+                }
             }
         }
 
@@ -749,6 +774,7 @@ impl AstParser {
             name,
             params,
             return_type,
+            error_type,
             body,
         })
     }

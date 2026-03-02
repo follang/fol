@@ -9,6 +9,16 @@ Thus a pure function is a computational analogue of a mathematical function. Pur
 ```
 fun[] add(el1, el2: int[64]): int[64] = { result = el1 + el2 }
 ```
+
+When a function has a custom recoverable error type, use a second `:` in the signature:
+
+```
+fun[] read(path: str): str : io_err = {
+    report "file not found";
+}
+```
+
+The first `:` declares result type, the second `:` declares the routine error type.
 {{% notice warn %}}
 
 Functions in FOL are lazy-initialized. 

@@ -22,6 +22,7 @@ pub enum AstNode {
         name: String,
         params: Vec<Parameter>,
         return_type: Option<FolType>,
+        error_type: Option<FolType>,
         body: Vec<AstNode>,
     },
 
@@ -32,6 +33,7 @@ pub enum AstNode {
         name: String,
         params: Vec<Parameter>,
         return_type: Option<FolType>,
+        error_type: Option<FolType>,
         body: Vec<AstNode>,
     },
 
