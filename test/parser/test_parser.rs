@@ -359,6 +359,44 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_function_custom_error_type_accepts_boolean_report_literal() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_error_type_report_bool_ok.fol")
+                .expect("Should read boolean-compatible custom-error report file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        parser
+            .parse(&mut lexer)
+            .expect("Parser should accept boolean report literal for bol error type");
+    }
+
+    #[test]
+    fn test_function_custom_error_type_rejects_integer_report_for_boolean_error_type() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_error_type_report_bool_mismatch.fol")
+                .expect("Should read boolean mismatch custom-error report file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should reject integer report literal for bol error type");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("incompatible with routine error type"),
+            "Boolean error type should reject integer report literal, got: {}",
+            first_message
+        );
+    }
+
+    #[test]
     fn test_function_custom_error_type_accepts_compatible_report_identifier() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_fun_error_type_report_identifier_ok.fol")
