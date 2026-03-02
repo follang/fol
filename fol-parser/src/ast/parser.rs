@@ -475,12 +475,7 @@ impl AstParser {
             }
         }
 
-        self.skip_ignorable(tokens);
-        if let Ok(token) = tokens.curr(false) {
-            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Semi)) {
-                let _ = tokens.bump();
-            }
-        }
+        self.consume_optional_semicolon(tokens);
 
         Ok(AstNode::VarDecl {
             options: vec![VarOption::Normal],
@@ -552,12 +547,7 @@ impl AstParser {
 
         let path = self.parse_use_path(tokens)?;
 
-        self.skip_ignorable(tokens);
-        if let Ok(token) = tokens.curr(false) {
-            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Semi)) {
-                let _ = tokens.bump();
-            }
-        }
+        self.consume_optional_semicolon(tokens);
 
         Ok(AstNode::UseDecl {
             options: Vec::<UseOption>::new(),
@@ -1019,12 +1009,7 @@ impl AstParser {
         }
 
         let _ = tokens.bump();
-        self.skip_ignorable(tokens);
-        if let Ok(token) = tokens.curr(false) {
-            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Semi)) {
-                let _ = tokens.bump();
-            }
-        }
+        self.consume_optional_semicolon(tokens);
 
         Ok(AstNode::Break)
     }
@@ -1502,12 +1487,7 @@ impl AstParser {
             self.parse_call_expr(tokens)?
         };
 
-        self.skip_ignorable(tokens);
-        if let Ok(token) = tokens.curr(false) {
-            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Semi)) {
-                let _ = tokens.bump();
-            }
-        }
+        self.consume_optional_semicolon(tokens);
 
         Ok(call)
     }
@@ -2278,6 +2258,15 @@ impl AstParser {
                 operator_token,
                 message.to_string(),
             ))),
+        }
+    }
+
+    fn consume_optional_semicolon(&self, tokens: &mut fol_lexer::lexer::stage3::Elements) {
+        self.skip_ignorable(tokens);
+        if let Ok(token) = tokens.curr(false) {
+            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Semi)) {
+                let _ = tokens.bump();
+            }
         }
     }
 
