@@ -2039,6 +2039,65 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_unary_plus_preserves_call_and_method_call_expression_shapes() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_unary_plus_call_exprs.fol")
+                .expect("Should read unary-plus call expression fixture");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse unary-plus call expressions");
+
+        let (has_call_assignment, has_method_return) = match ast {
+            AstNode::Program { declarations } => {
+                let has_call_assignment = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::Assignment { value, .. }
+                        if matches!(
+                            value.as_ref(),
+                            AstNode::FunctionCall { name, args }
+                            if name == "compute"
+                                && args.len() == 1
+                                && matches!(&args[0], AstNode::Identifier { name } if name == "a")
+                        )
+                    )
+                });
+
+                let has_method_return = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::Return { value: Some(value) }
+                        if matches!(
+                            value.as_ref(),
+                            AstNode::MethodCall { object, method, args }
+                            if matches!(object.as_ref(), AstNode::Identifier { name } if name == "obj")
+                                && method == "get"
+                                && args.len() == 1
+                                && matches!(&args[0], AstNode::Identifier { name } if name == "a")
+                        )
+                    )
+                });
+
+                (has_call_assignment, has_method_return)
+            }
+            _ => panic!("Expected program node"),
+        };
+
+        assert!(
+            has_call_assignment,
+            "Unary plus on compute(a) should preserve function-call assignment shape"
+        );
+        assert!(
+            has_method_return,
+            "Unary plus on obj.get(a) should preserve method-call return shape"
+        );
+    }
+
+    #[test]
     fn test_return_expression_unary_minus_parenthesized_addition() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_fun_unary_paren_precedence.fol")

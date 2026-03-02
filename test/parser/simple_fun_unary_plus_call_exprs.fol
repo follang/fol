@@ -1,0 +1,4 @@
+fun unary_plus_call_exprs(obj: int, a: int): int = {
+    value = +compute(a);
+    return +(obj.get(a));
+}
