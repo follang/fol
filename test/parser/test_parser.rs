@@ -3329,6 +3329,9 @@ mod parser_tests {
         );
     }
 
+    const EXPECT_MISSING_CLOSE_PAREN: &str = "Expected closing ')' for parenthesized expression";
+    const EXPECT_UNSUPPORTED_CLOSE_PAREN_TOKEN: &str = "Unsupported expression token ')'";
+
     #[test]
     fn test_mixed_unmatched_open_error_matrix_representative_cases() {
         let cases = [
@@ -3359,11 +3362,7 @@ mod parser_tests {
         ];
 
         for (path, line) in cases {
-            assert_first_parse_error(
-                path,
-                "Expected closing ')' for parenthesized expression",
-                line,
-            );
+            assert_first_parse_error(path, EXPECT_MISSING_CLOSE_PAREN, line);
         }
     }
 
@@ -3397,7 +3396,7 @@ mod parser_tests {
         ];
 
         for (path, line) in cases {
-            assert_first_parse_error(path, "Unsupported expression token ')'", line);
+            assert_first_parse_error(path, EXPECT_UNSUPPORTED_CLOSE_PAREN_TOKEN, line);
         }
     }
 }
