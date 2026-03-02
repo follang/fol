@@ -92,6 +92,18 @@ mod lexer_tests {
             keyword_strings.contains(&"typ".to_string()),
             "Should contain 'typ' keyword"
         );
+        assert!(
+            keyword_strings.contains(&"std".to_string()),
+            "Should contain 'std' keyword"
+        );
+        assert!(
+            keyword_strings.contains(&"log".to_string()),
+            "Should contain 'log' keyword"
+        );
+        assert!(
+            keyword_strings.contains(&"cast".to_string()),
+            "Should contain 'cast' keyword"
+        );
     }
 
     #[test]
