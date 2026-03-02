@@ -128,15 +128,18 @@ test_old/main/
 **Location**: `fol-parser/`
 
 #### Current Implementation Status
-- **AST model**: Rich AST data structures are defined and available for incremental parser work.
-- **Parser entrypoint**: `AstParser::parse` currently provides a minimal program parse and error plumbing.
+- **Declaration support**: Parser handles `use`, `var`, `fun`, and `pro` declarations.
+- **Expression support**: Precedence-aware parsing for arithmetic, comparison, logical operators, calls, method calls, and assignments.
+- **Control flow support**: `return`, `break`, `yeild`, `when`, `if`/`else if` lowering, and `loop` forms are parsed into AST nodes.
+- **Unary operators**: `-`, `+`, `not`, `&` (ref), and `*` (deref) are parsed with recursive prefix chaining support.
+- **Error locations**: Parser errors carry file/line/column/length metadata into diagnostics.
+- **Unary diagnostics**: Missing unary operands produce explicit diagnostics (including delimiter and EOF cases).
 - **Literal helper**: `parse_literal` supports integers, strings, and identifiers for baseline parser tests.
-- **Error locations**: Parser errors can now carry file/line/column/length metadata into diagnostics.
 
 #### In Progress
-- Full declaration parsing (`use`, `var`, `fun`, `pro`, `typ`, `ali`, etc.)
-- Expression precedence and grouping
-- Statement-level parsing and recovery
+- Remaining declaration work (`typ`, `ali`, and advanced declaration options)
+- Broader recovery strategy for malformed declaration and block boundaries
+- Continued parser normalization/refactoring as feature coverage grows
 
 ### 5. Structured Diagnostic System
 
