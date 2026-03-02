@@ -1,0 +1,15 @@
+fun nested_shadow_bad(flag: int): str : int = {
+    var err: int = 0;
+
+    when(flag) {
+        case(1) {
+            var err: str = "bad";
+            report err;
+        }
+        * {
+            report 0;
+        }
+    }
+
+    return "done";
+}
