@@ -296,6 +296,31 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_function_custom_error_type_requires_report_value() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_error_type_report_no_arg.fol")
+                .expect("Should read malformed custom-error report file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should fail when custom-error routine has 'report' with no value");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("must report exactly one error value"),
+            "Custom-error routine should enforce report value arity, got: {}",
+            first_message
+        );
+    }
+
+    #[test]
     fn test_when_statement_parsing_with_case_and_default() {
         let mut file_stream = FileStream::from_file("test/parser/simple_fun_when.fol")
             .expect("Should read when test file");

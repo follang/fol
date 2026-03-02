@@ -673,6 +673,7 @@ impl AstParser {
         let _ = tokens.bump();
 
         let body = self.parse_block_body(tokens)?;
+        Self::validate_report_usage(&body, error_type.as_ref(), &fun_token)?;
 
         Ok(AstNode::FunDecl {
             options: vec![FunOption::Mutable],
@@ -767,6 +768,7 @@ impl AstParser {
         let _ = tokens.bump();
 
         let body = self.parse_block_body(tokens)?;
+        Self::validate_report_usage(&body, error_type.as_ref(), &pro_token)?;
 
         Ok(AstNode::ProDecl {
             options: vec![FunOption::Mutable],
@@ -2285,6 +2287,61 @@ impl AstParser {
                 message.to_string(),
             ))),
         }
+    }
+
+    fn validate_report_usage(
+        nodes: &[AstNode],
+        routine_error_type: Option<&FolType>,
+        routine_token: &fol_lexer::lexer::stage3::element::Element,
+    ) -> Result<(), Box<dyn Glitch>> {
+        if routine_error_type.is_none() {
+            return Ok(());
+        }
+
+        for node in nodes {
+            match node {
+                AstNode::FunctionCall { name, args } if name == "report" => {
+                    if args.len() != 1 {
+                        return Err(Box::new(ParseError::from_token(
+                            routine_token,
+                            "Routine with custom error type must report exactly one error value"
+                                .to_string(),
+                        )));
+                    }
+                }
+                AstNode::When { cases, default, .. } => {
+                    for case in cases {
+                        match case {
+                            WhenCase::Case { body, .. }
+                            | WhenCase::Is { body, .. }
+                            | WhenCase::In { body, .. }
+                            | WhenCase::Has { body, .. }
+                            | WhenCase::Of { body, .. }
+                            | WhenCase::On { body, .. } => {
+                                Self::validate_report_usage(
+                                    body,
+                                    routine_error_type,
+                                    routine_token,
+                                )?;
+                            }
+                        }
+                    }
+                    if let Some(default_body) = default {
+                        Self::validate_report_usage(
+                            default_body,
+                            routine_error_type,
+                            routine_token,
+                        )?;
+                    }
+                }
+                AstNode::Loop { body, .. } => {
+                    Self::validate_report_usage(body, routine_error_type, routine_token)?;
+                }
+                _ => {}
+            }
+        }
+
+        Ok(())
     }
 
     fn consume_optional_semicolon(&self, tokens: &mut fol_lexer::lexer::stage3::Elements) {

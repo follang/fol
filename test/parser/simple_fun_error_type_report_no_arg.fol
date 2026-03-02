@@ -1,0 +1,3 @@
+fun broken_report(path: str): str : io_err = {
+    report;
+}
