@@ -1,0 +1,2 @@
+fun broken_unary_plus_eof(a: int): int = {
+    value = run(+a, +

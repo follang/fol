@@ -3567,6 +3567,55 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_unary_missing_operand_at_eof_reports_explicit_errors() {
+        let cases = [
+            (
+                "test/parser/simple_fun_unary_plus_eof_operand.fol",
+                "Expected expression after unary '+'",
+            ),
+            (
+                "test/parser/simple_fun_unary_not_eof_operand.fol",
+                "Expected expression after unary 'not'",
+            ),
+            (
+                "test/parser/simple_fun_unary_deref_eof_operand.fol",
+                "Expected expression after unary '*'",
+            ),
+        ];
+
+        for (path, expected_message) in cases {
+            let mut file_stream = FileStream::from_file(path)
+                .unwrap_or_else(|_| panic!("Should read fixture: {}", path));
+
+            let mut lexer = Elements::init(&mut file_stream);
+            let mut parser = AstParser::new();
+            let errors = parser
+                .parse(&mut lexer)
+                .expect_err("Parser should fail when unary operand is missing at EOF");
+
+            let parse_error = errors
+                .first()
+                .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+                .expect("First parser error should be ParseError");
+
+            let first_message = parse_error.to_string();
+            assert!(
+                first_message.contains(expected_message),
+                "Fixture {} should report '{}', got: {}",
+                path,
+                expected_message,
+                first_message
+            );
+            assert_eq!(
+                parse_error.line(),
+                2,
+                "Fixture {} should report unary EOF error on second line",
+                path
+            );
+        }
+    }
+
+    #[test]
     fn test_missing_call_closing_paren_reports_parse_error() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_fun_call_missing_paren.fol")

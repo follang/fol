@@ -1,0 +1,2 @@
+fun broken_unary_not_eof(a: int): int = {
+    value = run(not a, not

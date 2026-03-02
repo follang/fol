@@ -2131,13 +2131,15 @@ impl AstParser {
             self.skip_ignorable(tokens);
             match tokens.curr(false) {
                 Ok(next) => {
-                    if matches!(
-                        next.key(),
-                        KEYWORD::Symbol(SYMBOL::Semi)
-                            | KEYWORD::Symbol(SYMBOL::Comma)
-                            | KEYWORD::Symbol(SYMBOL::RoundC)
-                            | KEYWORD::Symbol(SYMBOL::CurlyC)
-                    ) {
+                    if next.key().is_void()
+                        || matches!(
+                            next.key(),
+                            KEYWORD::Symbol(SYMBOL::Semi)
+                                | KEYWORD::Symbol(SYMBOL::Comma)
+                                | KEYWORD::Symbol(SYMBOL::RoundC)
+                                | KEYWORD::Symbol(SYMBOL::CurlyC)
+                        )
+                    {
                         return Err(Box::new(ParseError::from_token(
                             &next,
                             "Expected expression after unary '-'".to_string(),
@@ -2169,13 +2171,15 @@ impl AstParser {
             self.skip_ignorable(tokens);
             match tokens.curr(false) {
                 Ok(next) => {
-                    if matches!(
-                        next.key(),
-                        KEYWORD::Symbol(SYMBOL::Semi)
-                            | KEYWORD::Symbol(SYMBOL::Comma)
-                            | KEYWORD::Symbol(SYMBOL::RoundC)
-                            | KEYWORD::Symbol(SYMBOL::CurlyC)
-                    ) {
+                    if next.key().is_void()
+                        || matches!(
+                            next.key(),
+                            KEYWORD::Symbol(SYMBOL::Semi)
+                                | KEYWORD::Symbol(SYMBOL::Comma)
+                                | KEYWORD::Symbol(SYMBOL::RoundC)
+                                | KEYWORD::Symbol(SYMBOL::CurlyC)
+                        )
+                    {
                         return Err(Box::new(ParseError::from_token(
                             &next,
                             "Expected expression after unary '+'".to_string(),
@@ -2200,13 +2204,15 @@ impl AstParser {
             self.skip_ignorable(tokens);
             match tokens.curr(false) {
                 Ok(next) => {
-                    if matches!(
-                        next.key(),
-                        KEYWORD::Symbol(SYMBOL::Semi)
-                            | KEYWORD::Symbol(SYMBOL::Comma)
-                            | KEYWORD::Symbol(SYMBOL::RoundC)
-                            | KEYWORD::Symbol(SYMBOL::CurlyC)
-                    ) {
+                    if next.key().is_void()
+                        || matches!(
+                            next.key(),
+                            KEYWORD::Symbol(SYMBOL::Semi)
+                                | KEYWORD::Symbol(SYMBOL::Comma)
+                                | KEYWORD::Symbol(SYMBOL::RoundC)
+                                | KEYWORD::Symbol(SYMBOL::CurlyC)
+                        )
+                    {
                         return Err(Box::new(ParseError::from_token(
                             &next,
                             "Expected expression after unary 'not'".to_string(),
@@ -2238,13 +2244,15 @@ impl AstParser {
             self.skip_ignorable(tokens);
             match tokens.curr(false) {
                 Ok(next) => {
-                    if matches!(
-                        next.key(),
-                        KEYWORD::Symbol(SYMBOL::Semi)
-                            | KEYWORD::Symbol(SYMBOL::Comma)
-                            | KEYWORD::Symbol(SYMBOL::RoundC)
-                            | KEYWORD::Symbol(SYMBOL::CurlyC)
-                    ) {
+                    if next.key().is_void()
+                        || matches!(
+                            next.key(),
+                            KEYWORD::Symbol(SYMBOL::Semi)
+                                | KEYWORD::Symbol(SYMBOL::Comma)
+                                | KEYWORD::Symbol(SYMBOL::RoundC)
+                                | KEYWORD::Symbol(SYMBOL::CurlyC)
+                        )
+                    {
                         let message = if matches!(unary_token.key(), KEYWORD::Symbol(SYMBOL::And)) {
                             "Expected expression after unary '&'".to_string()
                         } else {
