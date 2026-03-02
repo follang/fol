@@ -2121,68 +2121,20 @@ impl AstParser {
         self.skip_ignorable(tokens);
         let token = tokens.curr(false)?;
 
-        if matches!(
-            token.key(),
-            KEYWORD::Operator(OPERATOR::Abstract) | KEYWORD::Symbol(SYMBOL::Minus)
-        ) {
-            let minus_token = token.clone();
+        if let Some((message, unary_op)) = self.unary_prefix_info(&token) {
+            let operator_token = token.clone();
             let _ = tokens.bump();
-            self.ensure_unary_operand(tokens, &minus_token, "Expected expression after unary '-'")?;
+            self.ensure_unary_operand(tokens, &operator_token, message)?;
 
             let operand = self.parse_primary_expression(tokens)?;
-            return Ok(AstNode::UnaryOp {
-                op: UnaryOperator::Neg,
-                operand: Box::new(operand),
-            });
-        }
+            if let Some(op) = unary_op {
+                return Ok(AstNode::UnaryOp {
+                    op,
+                    operand: Box::new(operand),
+                });
+            }
 
-        if matches!(
-            token.key(),
-            KEYWORD::Operator(OPERATOR::Add) | KEYWORD::Symbol(SYMBOL::Plus)
-        ) {
-            let plus_token = token.clone();
-            let _ = tokens.bump();
-            self.ensure_unary_operand(tokens, &plus_token, "Expected expression after unary '+'")?;
-
-            return self.parse_primary_expression(tokens);
-        }
-
-        if self.token_is_word(&token, "not") {
-            let not_token = token.clone();
-            let _ = tokens.bump();
-            self.ensure_unary_operand(tokens, &not_token, "Expected expression after unary 'not'")?;
-
-            let operand = self.parse_primary_expression(tokens)?;
-            return Ok(AstNode::UnaryOp {
-                op: UnaryOperator::Not,
-                operand: Box::new(operand),
-            });
-        }
-
-        if matches!(
-            token.key(),
-            KEYWORD::Symbol(SYMBOL::And) | KEYWORD::Symbol(SYMBOL::Star)
-        ) {
-            let unary_token = token.clone();
-            let _ = tokens.bump();
-            let message = if matches!(unary_token.key(), KEYWORD::Symbol(SYMBOL::And)) {
-                "Expected expression after unary '&'"
-            } else {
-                "Expected expression after unary '*'"
-            };
-            self.ensure_unary_operand(tokens, &unary_token, message)?;
-
-            let operand = self.parse_primary_expression(tokens)?;
-            let op = if matches!(unary_token.key(), KEYWORD::Symbol(SYMBOL::And)) {
-                UnaryOperator::Ref
-            } else {
-                UnaryOperator::Deref
-            };
-
-            return Ok(AstNode::UnaryOp {
-                op,
-                operand: Box::new(operand),
-            });
+            return Ok(operand);
         }
 
         if matches!(token.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
@@ -2251,6 +2203,51 @@ impl AstParser {
 
             break;
         }
+    }
+
+    fn unary_prefix_info(
+        &self,
+        token: &fol_lexer::lexer::stage3::element::Element,
+    ) -> Option<(&'static str, Option<UnaryOperator>)> {
+        if matches!(
+            token.key(),
+            KEYWORD::Operator(OPERATOR::Abstract) | KEYWORD::Symbol(SYMBOL::Minus)
+        ) {
+            return Some((
+                "Expected expression after unary '-'",
+                Some(UnaryOperator::Neg),
+            ));
+        }
+
+        if matches!(
+            token.key(),
+            KEYWORD::Operator(OPERATOR::Add) | KEYWORD::Symbol(SYMBOL::Plus)
+        ) {
+            return Some(("Expected expression after unary '+'", None));
+        }
+
+        if self.token_is_word(token, "not") {
+            return Some((
+                "Expected expression after unary 'not'",
+                Some(UnaryOperator::Not),
+            ));
+        }
+
+        if matches!(token.key(), KEYWORD::Symbol(SYMBOL::And)) {
+            return Some((
+                "Expected expression after unary '&'",
+                Some(UnaryOperator::Ref),
+            ));
+        }
+
+        if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Star)) {
+            return Some((
+                "Expected expression after unary '*'",
+                Some(UnaryOperator::Deref),
+            ));
+        }
+
+        None
     }
 
     fn ensure_unary_operand(
