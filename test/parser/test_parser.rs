@@ -3581,6 +3581,14 @@ mod parser_tests {
                 "test/parser/simple_fun_unary_deref_eof_operand.fol",
                 "Expected expression after unary '*'",
             ),
+            (
+                "test/parser/simple_fun_unary_minus_eof_operand.fol",
+                "Expected expression after unary '-'",
+            ),
+            (
+                "test/parser/simple_fun_unary_ref_eof_operand.fol",
+                "Expected expression after unary '&'",
+            ),
         ];
 
         for (path, expected_message) in cases {
