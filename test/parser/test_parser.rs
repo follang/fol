@@ -1101,6 +1101,128 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_top_level_call_with_unary_plus_arguments_parsing() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_call_top_level_unary_plus_args.fol")
+                .expect("Should read top-level unary-plus call test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse top-level unary-plus call arguments");
+
+        let call = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .find_map(|node| {
+                    if let AstNode::FunctionCall { name, args } = node {
+                        Some((name.clone(), args.clone()))
+                    } else {
+                        None
+                    }
+                })
+                .expect("Program should include top-level function call"),
+            _ => panic!("Expected program node"),
+        };
+
+        assert_eq!(call.0, "run");
+        assert_eq!(
+            call.1.len(),
+            2,
+            "Top-level unary-plus call should have two args"
+        );
+        assert!(
+            matches!(&call.1[0], AstNode::Identifier { name } if name == "a"),
+            "Unary plus on first arg should fold to identifier 'a'"
+        );
+        assert!(
+            matches!(
+                &call.1[1],
+                AstNode::BinaryOp {
+                    op: fol_parser::ast::BinaryOperator::Add,
+                    ..
+                }
+            ),
+            "Unary plus on parenthesized second arg should preserve inner addition expression"
+        );
+    }
+
+    #[test]
+    fn test_call_and_method_call_with_unary_plus_arguments_parsing() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_call_unary_plus_args.fol")
+                .expect("Should read unary-plus call args fixture");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse unary-plus arguments in call and method-call contexts");
+
+        let (has_run_assignment, has_update_method_call, has_emit_return) = match ast {
+            AstNode::Program { declarations } => {
+                let has_run_assignment = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::Assignment { value, .. }
+                        if matches!(
+                            value.as_ref(),
+                            AstNode::FunctionCall { name, args }
+                            if name == "run"
+                                && args.len() == 2
+                                && matches!(&args[0], AstNode::Identifier { name } if name == "a")
+                                && matches!(&args[1], AstNode::BinaryOp { op: fol_parser::ast::BinaryOperator::Add, .. })
+                        )
+                    )
+                });
+
+                let has_update_method_call = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::MethodCall { method, args, .. }
+                        if method == "update"
+                            && args.len() == 2
+                            && matches!(&args[0], AstNode::Identifier { name } if name == "a")
+                            && matches!(&args[1], AstNode::BinaryOp { op: fol_parser::ast::BinaryOperator::Add, .. })
+                    )
+                });
+
+                let has_emit_return = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::Return { value: Some(value) }
+                        if matches!(
+                            value.as_ref(),
+                            AstNode::FunctionCall { name, args }
+                            if name == "emit"
+                                && args.len() == 2
+                                && matches!(&args[0], AstNode::Identifier { name } if name == "a")
+                                && matches!(&args[1], AstNode::BinaryOp { op: fol_parser::ast::BinaryOperator::Add, .. })
+                        )
+                    )
+                });
+
+                (has_run_assignment, has_update_method_call, has_emit_return)
+            }
+            _ => panic!("Expected program node"),
+        };
+
+        assert!(
+            has_run_assignment,
+            "Function call assignment should parse unary-plus args with expected shapes"
+        );
+        assert!(
+            has_update_method_call,
+            "Method call should parse unary-plus args with expected shapes"
+        );
+        assert!(
+            has_emit_return,
+            "Return call should parse unary-plus args with expected shapes"
+        );
+    }
+
+    #[test]
     fn test_call_expressions_in_assignment_and_return() {
         let mut file_stream = FileStream::from_file("test/parser/simple_fun_call_expr.fol")
             .expect("Should read call expression test file");
