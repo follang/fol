@@ -3463,6 +3463,38 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_top_level_call_argument_unary_plus_missing_operand_reports_parse_error() {
+        let mut file_stream = FileStream::from_file(
+            "test/parser/simple_call_top_level_unary_plus_missing_operand.fol",
+        )
+        .expect("Should read top-level unary-plus missing operand call-arg test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser.parse(&mut lexer).expect_err(
+            "Parser should fail when top-level call arg unary plus is missing an operand",
+        );
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+
+        assert!(
+            first_message.contains("Expected expression after unary '+'"),
+            "Top-level unary plus without operand should report explicit unary-plus operand error, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            1,
+            "Top-level call-arg unary plus missing-operand parse error should point to call line"
+        );
+    }
+
+    #[test]
     fn test_missing_call_closing_paren_reports_parse_error() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_fun_call_missing_paren.fol")
