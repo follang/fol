@@ -1525,17 +1525,8 @@ impl AstParser {
         }
         let name = name_token.con().trim().to_string();
         let _ = tokens.bump();
-        self.skip_ignorable(tokens);
-
-        let open = tokens.curr(false)?;
-        if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
-            return Err(Box::new(ParseError::from_token(
-                &open,
-                "Expected '(' after function name".to_string(),
-            )));
-        }
-        let _ = tokens.bump();
-        let args = self.parse_call_args(tokens)?;
+        let args =
+            self.parse_open_paren_and_call_args(tokens, "Expected '(' after function name")?;
 
         Ok(AstNode::FunctionCall { name, args })
     }
@@ -1577,23 +1568,32 @@ impl AstParser {
         }
         let method = method_token.con().trim().to_string();
         let _ = tokens.bump();
-        self.skip_ignorable(tokens);
-
-        let open = tokens.curr(false)?;
-        if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
-            return Err(Box::new(ParseError::from_token(
-                &open,
-                "Expected '(' after method name".to_string(),
-            )));
-        }
-        let _ = tokens.bump();
-        let args = self.parse_call_args(tokens)?;
+        let args = self.parse_open_paren_and_call_args(tokens, "Expected '(' after method name")?;
 
         Ok(AstNode::MethodCall {
             object: Box::new(object),
             method,
             args,
         })
+    }
+
+    fn parse_open_paren_and_call_args(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+        expected_open_error: &str,
+    ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
+        self.skip_ignorable(tokens);
+
+        let open = tokens.curr(false)?;
+        if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
+            return Err(Box::new(ParseError::from_token(
+                &open,
+                expected_open_error.to_string(),
+            )));
+        }
+
+        let _ = tokens.bump();
+        self.parse_call_args(tokens)
     }
 
     fn parse_call_args(
