@@ -2308,6 +2308,14 @@ impl AstParser {
                                 .to_string(),
                         )));
                     }
+
+                    if let Some(expected_type) = routine_error_type {
+                        if let Some(mismatch) =
+                            Self::report_literal_type_mismatch(&args[0], expected_type)
+                        {
+                            return Err(Box::new(ParseError::from_token(routine_token, mismatch)));
+                        }
+                    }
                 }
                 AstNode::When { cases, default, .. } => {
                     for case in cases {
@@ -2342,6 +2350,66 @@ impl AstParser {
         }
 
         Ok(())
+    }
+
+    fn report_literal_type_mismatch(value: &AstNode, expected_type: &FolType) -> Option<String> {
+        let expected_name = match expected_type {
+            FolType::Named { name } => name.as_str(),
+            _ => return None,
+        };
+
+        if !Self::is_builtin_scalar_type_name(expected_name) {
+            return None;
+        }
+
+        let literal = match value {
+            AstNode::Literal(lit) => lit,
+            _ => return None,
+        };
+
+        if Self::literal_matches_named_type(literal, expected_name) {
+            None
+        } else {
+            Some(format!(
+                "Reported literal value is incompatible with routine error type '{}'",
+                expected_name
+            ))
+        }
+    }
+
+    fn literal_matches_named_type(literal: &Literal, expected_name: &str) -> bool {
+        match literal {
+            Literal::Integer(_) => matches!(
+                expected_name,
+                "int" | "num" | "i8" | "i16" | "i32" | "i64" | "i128"
+            ),
+            Literal::Float(_) => matches!(expected_name, "flt" | "float" | "num" | "f32" | "f64"),
+            Literal::Boolean(_) => matches!(expected_name, "bol" | "bool"),
+            Literal::String(_) => matches!(expected_name, "str"),
+            Literal::Character(_) => matches!(expected_name, "chr" | "char"),
+        }
+    }
+
+    fn is_builtin_scalar_type_name(name: &str) -> bool {
+        matches!(
+            name,
+            "int"
+                | "num"
+                | "i8"
+                | "i16"
+                | "i32"
+                | "i64"
+                | "i128"
+                | "flt"
+                | "float"
+                | "f32"
+                | "f64"
+                | "bol"
+                | "bool"
+                | "str"
+                | "chr"
+                | "char"
+        )
     }
 
     fn consume_optional_semicolon(&self, tokens: &mut fol_lexer::lexer::stage3::Elements) {
