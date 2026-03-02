@@ -322,6 +322,60 @@ mod lexer_tests {
             }
         }
     }
+
+    #[test]
+    fn test_fun_error_signature_tokens() {
+        let tokens = tokenize_file("test/lexer/fun_error_signature.fol");
+
+        let significant: Vec<(KEYWORD, String)> = tokens
+            .into_iter()
+            .filter(|(key, _)| !key.is_space() && !key.is_eof())
+            .collect();
+
+        assert!(
+            significant
+                .iter()
+                .any(|(k, c)| { matches!(k, KEYWORD::Keyword(BUILDIN::Fun)) && c.trim() == "fun" }),
+            "Should tokenize 'fun' as buildin keyword"
+        );
+        assert!(
+            significant
+                .iter()
+                .any(|(k, c)| k.is_ident() && c.trim() == "foo"),
+            "Should tokenize function name as identifier"
+        );
+        assert!(
+            significant
+                .iter()
+                .any(|(k, _)| matches!(k, KEYWORD::Operator(OPERATOR::Dotdotdot))),
+            "Should tokenize '...' as Dotdotdot operator"
+        );
+
+        let colon_count = significant
+            .iter()
+            .filter(|(k, _)| matches!(k, KEYWORD::Symbol(SYMBOL::Colon)))
+            .count();
+        assert_eq!(colon_count, 2, "Should tokenize both ':' separators");
+
+        assert!(
+            significant
+                .iter()
+                .any(|(k, c)| k.is_ident() && c.trim() == "T"),
+            "Should tokenize return type identifier T"
+        );
+        assert!(
+            significant
+                .iter()
+                .any(|(k, c)| k.is_ident() && c.trim() == "E"),
+            "Should tokenize error type identifier E"
+        );
+        assert!(
+            significant
+                .iter()
+                .any(|(k, _)| matches!(k, KEYWORD::Symbol(SYMBOL::Equal))),
+            "Should tokenize '='"
+        );
+    }
 }
 
 // Performance tests for lexer
