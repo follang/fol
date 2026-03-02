@@ -3288,1056 +3288,116 @@ mod parser_tests {
         );
     }
 
-    #[test]
-    fn test_mixed_unmatched_open_and_trailing_comma_reports_first_error_deterministically() {
-        let mut file_stream = FileStream::from_file(
-            "test/parser/simple_fun_call_mixed_unmatched_open_and_trailing_comma.fol",
-        )
-        .expect("Should read malformed mixed call-argument test file");
-
-        let mut lexer = Elements::init(&mut file_stream);
-        let mut parser = AstParser::new();
-        let errors = parser.parse(&mut lexer).expect_err(
-            "Parser should fail when nested call mixes unmatched '(' with trailing comma",
-        );
-
-        let parse_error = errors
-            .first()
-            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
-            .expect("First parser error should be ParseError");
-
-        let first_message = parse_error.to_string();
-
-        assert!(
-            first_message.contains("Expected closing ')' for parenthesized expression"),
-            "Mixed malformed call should prioritize missing close-paren error, got: {}",
-            first_message
-        );
-        assert_eq!(
-            parse_error.line(),
-            4,
-            "Mixed malformed call should point to the unmatched-open parenthesized expression line"
-        );
-    }
-
-    #[test]
-    fn test_method_mixed_unmatched_open_and_trailing_comma_reports_first_error() {
-        let mut file_stream = FileStream::from_file(
-            "test/parser/simple_fun_method_call_mixed_unmatched_open_and_trailing_comma.fol",
-        )
-        .expect("Should read malformed mixed method call-argument test file");
-
-        let mut lexer = Elements::init(&mut file_stream);
-        let mut parser = AstParser::new();
-        let errors = parser.parse(&mut lexer).expect_err(
-            "Parser should fail when method call nested args mix unmatched '(' with trailing comma",
-        );
-
-        let parse_error = errors
-            .first()
-            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
-            .expect("First parser error should be ParseError");
-
-        let first_message = parse_error.to_string();
-
-        assert!(
-            first_message.contains("Expected closing ')' for parenthesized expression"),
-            "Mixed malformed method call should prioritize missing close-paren error, got: {}",
-            first_message
-        );
-        assert_eq!(
-            parse_error.line(),
-            4,
-            "Mixed malformed method call should point to unmatched-open parenthesized expression line"
-        );
-    }
-
-    #[test]
-    fn test_top_level_mixed_unmatched_open_and_trailing_comma_reports_first_error() {
-        let mut file_stream = FileStream::from_file(
-            "test/parser/simple_call_top_level_mixed_unmatched_open_and_trailing_comma.fol",
-        )
-        .expect("Should read malformed mixed top-level call-argument test file");
-
-        let mut lexer = Elements::init(&mut file_stream);
-        let mut parser = AstParser::new();
-        let errors = parser.parse(&mut lexer).expect_err(
-            "Parser should fail when top-level nested args mix unmatched '(' with trailing comma",
-        );
-
-        let parse_error = errors
-            .first()
-            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
-            .expect("First parser error should be ParseError");
-
-        let first_message = parse_error.to_string();
-
-        assert!(
-            first_message.contains("Expected closing ')' for parenthesized expression"),
-            "Mixed malformed top-level call should prioritize missing close-paren error, got: {}",
-            first_message
-        );
-        assert_eq!(
-            parse_error.line(),
-            3,
-            "Mixed malformed top-level call should point to unmatched-open parenthesized expression line"
-        );
-    }
-
-    #[test]
-    fn test_function_mixed_unmatched_open_in_second_arg_reports_first_error() {
-        let mut file_stream = FileStream::from_file(
-            "test/parser/simple_fun_call_mixed_unmatched_open_second_arg.fol",
-        )
-        .expect("Should read malformed mixed function second-arg test file");
-
-        let mut lexer = Elements::init(&mut file_stream);
-        let mut parser = AstParser::new();
-        let errors = parser.parse(&mut lexer).expect_err(
-            "Parser should fail when function call second arg mixes unmatched '(' with trailing comma",
-        );
-
-        let parse_error = errors
-            .first()
-            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
-            .expect("First parser error should be ParseError");
-
-        let first_message = parse_error.to_string();
-
-        assert!(
-            first_message.contains("Expected closing ')' for parenthesized expression"),
-            "Mixed malformed function second arg should prioritize missing close-paren error, got: {}",
-            first_message
-        );
-        assert_eq!(
-            parse_error.line(),
-            5,
-            "Mixed malformed function second arg should point to unmatched-open expression line"
-        );
-    }
-
-    #[test]
-    fn test_method_mixed_unmatched_open_in_second_arg_reports_first_error() {
-        let mut file_stream = FileStream::from_file(
-            "test/parser/simple_fun_method_call_mixed_unmatched_open_second_arg.fol",
-        )
-        .expect("Should read malformed mixed method second-arg test file");
-
-        let mut lexer = Elements::init(&mut file_stream);
-        let mut parser = AstParser::new();
-        let errors = parser.parse(&mut lexer).expect_err(
-            "Parser should fail when method call second arg mixes unmatched '(' with trailing comma",
-        );
-
-        let parse_error = errors
-            .first()
-            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
-            .expect("First parser error should be ParseError");
-
-        let first_message = parse_error.to_string();
-
-        assert!(
-            first_message.contains("Expected closing ')' for parenthesized expression"),
-            "Mixed malformed method second arg should prioritize missing close-paren error, got: {}",
-            first_message
-        );
-        assert_eq!(
-            parse_error.line(),
-            5,
-            "Mixed malformed method second arg should point to unmatched-open expression line"
-        );
-    }
-
-    #[test]
-    fn test_top_level_mixed_unmatched_open_in_second_arg_reports_first_error() {
-        let mut file_stream = FileStream::from_file(
-            "test/parser/simple_call_top_level_mixed_unmatched_open_second_arg.fol",
-        )
-        .expect("Should read malformed mixed top-level second-arg test file");
-
-        let mut lexer = Elements::init(&mut file_stream);
-        let mut parser = AstParser::new();
-        let errors = parser.parse(&mut lexer).expect_err(
-            "Parser should fail when top-level call second arg mixes unmatched '(' with trailing comma",
-        );
-
-        let parse_error = errors
-            .first()
-            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
-            .expect("First parser error should be ParseError");
-
-        let first_message = parse_error.to_string();
-
-        assert!(
-            first_message.contains("Expected closing ')' for parenthesized expression"),
-            "Mixed malformed top-level second arg should prioritize missing close-paren error, got: {}",
-            first_message
-        );
-        assert_eq!(
-            parse_error.line(),
-            4,
-            "Mixed malformed top-level second arg should point to unmatched-open expression line"
-        );
-    }
-
-    #[test]
-    fn test_function_mixed_unmatched_close_in_second_arg_reports_first_error() {
-        let mut file_stream = FileStream::from_file(
-            "test/parser/simple_fun_call_mixed_unmatched_close_second_arg.fol",
-        )
-        .expect("Should read malformed mixed function unmatched-close second-arg test file");
-
-        let mut lexer = Elements::init(&mut file_stream);
-        let mut parser = AstParser::new();
-        let errors = parser.parse(&mut lexer).expect_err(
-            "Parser should fail when function call second arg mixes unmatched ')' in nested expression",
-        );
-
-        let parse_error = errors
-            .first()
-            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
-            .expect("First parser error should be ParseError");
-
-        let first_message = parse_error.to_string();
-
-        assert!(
-            first_message.contains("Unsupported expression token ')'"),
-            "Mixed malformed function second arg should prioritize unsupported ')' error, got: {}",
-            first_message
-        );
-        assert_eq!(
-            parse_error.line(),
-            5,
-            "Mixed malformed function second arg should point to unmatched-close expression line"
-        );
-    }
-
-    #[test]
-    fn test_method_mixed_unmatched_close_in_second_arg_reports_first_error() {
-        let mut file_stream = FileStream::from_file(
-            "test/parser/simple_fun_method_call_mixed_unmatched_close_second_arg.fol",
-        )
-        .expect("Should read malformed mixed method unmatched-close second-arg test file");
-
-        let mut lexer = Elements::init(&mut file_stream);
-        let mut parser = AstParser::new();
-        let errors = parser.parse(&mut lexer).expect_err(
-            "Parser should fail when method call second arg mixes unmatched ')' in nested expression",
-        );
-
-        let parse_error = errors
-            .first()
-            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
-            .expect("First parser error should be ParseError");
-
-        let first_message = parse_error.to_string();
-
-        assert!(
-            first_message.contains("Unsupported expression token ')'"),
-            "Mixed malformed method second arg should prioritize unsupported ')' error, got: {}",
-            first_message
-        );
-        assert_eq!(
-            parse_error.line(),
-            5,
-            "Mixed malformed method second arg should point to unmatched-close expression line"
-        );
-    }
-
-    #[test]
-    fn test_top_level_mixed_unmatched_close_in_second_arg_reports_first_error() {
-        let mut file_stream = FileStream::from_file(
-            "test/parser/simple_call_top_level_mixed_unmatched_close_second_arg.fol",
-        )
-        .expect("Should read malformed mixed top-level unmatched-close second-arg test file");
-
-        let mut lexer = Elements::init(&mut file_stream);
-        let mut parser = AstParser::new();
-        let errors = parser.parse(&mut lexer).expect_err(
-            "Parser should fail when top-level call second arg mixes unmatched ')' in nested expression",
-        );
-
-        let parse_error = errors
-            .first()
-            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
-            .expect("First parser error should be ParseError");
-
-        let first_message = parse_error.to_string();
-
-        assert!(
-            first_message.contains("Unsupported expression token ')'"),
-            "Mixed malformed top-level second arg should prioritize unsupported ')' error, got: {}",
-            first_message
-        );
-        assert_eq!(
-            parse_error.line(),
-            4,
-            "Mixed malformed top-level second arg should point to unmatched-close expression line"
-        );
-    }
-
-    #[test]
-    fn test_function_mixed_unmatched_close_in_first_arg_reports_first_error() {
-        let mut file_stream = FileStream::from_file(
-            "test/parser/simple_fun_call_mixed_unmatched_close_first_arg.fol",
-        )
-        .expect("Should read malformed mixed function unmatched-close first-arg test file");
-
-        let mut lexer = Elements::init(&mut file_stream);
-        let mut parser = AstParser::new();
-        let errors = parser.parse(&mut lexer).expect_err(
-            "Parser should fail when function call first arg mixes unmatched ')' in nested expression",
-        );
-
-        let parse_error = errors
-            .first()
-            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
-            .expect("First parser error should be ParseError");
-
-        let first_message = parse_error.to_string();
-
-        assert!(
-            first_message.contains("Unsupported expression token ')'"),
-            "Mixed malformed function first arg should prioritize unsupported ')' error, got: {}",
-            first_message
-        );
-        assert_eq!(
-            parse_error.line(),
-            4,
-            "Mixed malformed function first arg should point to unmatched-close expression line"
-        );
-    }
-
-    #[test]
-    fn test_method_mixed_unmatched_close_in_first_arg_reports_first_error() {
-        let mut file_stream = FileStream::from_file(
-            "test/parser/simple_fun_method_call_mixed_unmatched_close_first_arg.fol",
-        )
-        .expect("Should read malformed mixed method unmatched-close first-arg test file");
-
-        let mut lexer = Elements::init(&mut file_stream);
-        let mut parser = AstParser::new();
-        let errors = parser.parse(&mut lexer).expect_err(
-            "Parser should fail when method call first arg mixes unmatched ')' in nested expression",
-        );
-
-        let parse_error = errors
-            .first()
-            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
-            .expect("First parser error should be ParseError");
-
-        let first_message = parse_error.to_string();
-
-        assert!(
-            first_message.contains("Unsupported expression token ')'"),
-            "Mixed malformed method first arg should prioritize unsupported ')' error, got: {}",
-            first_message
-        );
-        assert_eq!(
-            parse_error.line(),
-            4,
-            "Mixed malformed method first arg should point to unmatched-close expression line"
-        );
-    }
-
-    #[test]
-    fn test_top_level_mixed_unmatched_close_in_first_arg_reports_first_error() {
-        let mut file_stream = FileStream::from_file(
-            "test/parser/simple_call_top_level_mixed_unmatched_close_first_arg.fol",
-        )
-        .expect("Should read malformed mixed top-level unmatched-close first-arg test file");
-
-        let mut lexer = Elements::init(&mut file_stream);
-        let mut parser = AstParser::new();
-        let errors = parser.parse(&mut lexer).expect_err(
-            "Parser should fail when top-level call first arg mixes unmatched ')' in nested expression",
-        );
-
-        let parse_error = errors
-            .first()
-            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
-            .expect("First parser error should be ParseError");
-
-        let first_message = parse_error.to_string();
-
-        assert!(
-            first_message.contains("Unsupported expression token ')'"),
-            "Mixed malformed top-level first arg should prioritize unsupported ')' error, got: {}",
-            first_message
-        );
-        assert_eq!(
-            parse_error.line(),
-            3,
-            "Mixed malformed top-level first arg should point to unmatched-close expression line"
-        );
-    }
-
-    #[test]
-    fn test_function_mixed_unmatched_open_in_third_arg_reports_first_error() {
+    fn assert_first_parse_error(
+        path: &str,
+        expected_message_substring: &str,
+        expected_line: usize,
+    ) {
         let mut file_stream =
-            FileStream::from_file("test/parser/simple_fun_call_mixed_unmatched_open_third_arg.fol")
-                .expect("Should read malformed mixed function unmatched-open third-arg test file");
+            FileStream::from_file(path).unwrap_or_else(|_| panic!("Should read fixture: {}", path));
 
         let mut lexer = Elements::init(&mut file_stream);
         let mut parser = AstParser::new();
-        let errors = parser.parse(&mut lexer).expect_err(
-            "Parser should fail when function call third arg mixes unmatched '(' with trailing comma",
-        );
+        let errors = parser.parse(&mut lexer).expect_err(&format!(
+            "Parser should fail for malformed fixture: {}",
+            path
+        ));
 
         let parse_error = errors
             .first()
             .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
-            .expect("First parser error should be ParseError");
+            .unwrap_or_else(|| {
+                panic!(
+                    "First parser error should be ParseError for fixture: {}",
+                    path
+                )
+            });
 
         let first_message = parse_error.to_string();
-
         assert!(
-            first_message.contains("Expected closing ')' for parenthesized expression"),
-            "Mixed malformed function third arg should prioritize missing close-paren error, got: {}",
+            first_message.contains(expected_message_substring),
+            "Fixture {} should report '{}', got: {}",
+            path,
+            expected_message_substring,
             first_message
         );
         assert_eq!(
             parse_error.line(),
-            6,
-            "Mixed malformed function third arg should point to unmatched-open expression line"
+            expected_line,
+            "Fixture {} should report expected error line",
+            path
         );
     }
 
     #[test]
-    fn test_method_mixed_unmatched_open_in_third_arg_reports_first_error() {
-        let mut file_stream = FileStream::from_file(
-            "test/parser/simple_fun_method_call_mixed_unmatched_open_third_arg.fol",
-        )
-        .expect("Should read malformed mixed method unmatched-open third-arg test file");
+    fn test_mixed_unmatched_open_error_matrix_representative_cases() {
+        let cases = [
+            (
+                "test/parser/simple_fun_call_mixed_unmatched_open_and_trailing_comma.fol",
+                4usize,
+            ),
+            (
+                "test/parser/simple_fun_method_call_mixed_unmatched_open_and_trailing_comma.fol",
+                4usize,
+            ),
+            (
+                "test/parser/simple_call_top_level_mixed_unmatched_open_and_trailing_comma.fol",
+                3usize,
+            ),
+            (
+                "test/parser/simple_fun_call_mixed_unmatched_open_sixth_arg.fol",
+                9usize,
+            ),
+            (
+                "test/parser/simple_fun_method_call_mixed_unmatched_open_sixth_arg.fol",
+                9usize,
+            ),
+            (
+                "test/parser/simple_call_top_level_mixed_unmatched_open_sixth_arg.fol",
+                8usize,
+            ),
+        ];
 
-        let mut lexer = Elements::init(&mut file_stream);
-        let mut parser = AstParser::new();
-        let errors = parser.parse(&mut lexer).expect_err(
-            "Parser should fail when method call third arg mixes unmatched '(' with trailing comma",
-        );
-
-        let parse_error = errors
-            .first()
-            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
-            .expect("First parser error should be ParseError");
-
-        let first_message = parse_error.to_string();
-
-        assert!(
-            first_message.contains("Expected closing ')' for parenthesized expression"),
-            "Mixed malformed method third arg should prioritize missing close-paren error, got: {}",
-            first_message
-        );
-        assert_eq!(
-            parse_error.line(),
-            6,
-            "Mixed malformed method third arg should point to unmatched-open expression line"
-        );
+        for (path, line) in cases {
+            assert_first_parse_error(
+                path,
+                "Expected closing ')' for parenthesized expression",
+                line,
+            );
+        }
     }
 
     #[test]
-    fn test_top_level_mixed_unmatched_open_in_third_arg_reports_first_error() {
-        let mut file_stream = FileStream::from_file(
-            "test/parser/simple_call_top_level_mixed_unmatched_open_third_arg.fol",
-        )
-        .expect("Should read malformed mixed top-level unmatched-open third-arg test file");
-
-        let mut lexer = Elements::init(&mut file_stream);
-        let mut parser = AstParser::new();
-        let errors = parser.parse(&mut lexer).expect_err(
-            "Parser should fail when top-level call third arg mixes unmatched '(' with trailing comma",
-        );
-
-        let parse_error = errors
-            .first()
-            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
-            .expect("First parser error should be ParseError");
-
-        let first_message = parse_error.to_string();
-
-        assert!(
-            first_message.contains("Expected closing ')' for parenthesized expression"),
-            "Mixed malformed top-level third arg should prioritize missing close-paren error, got: {}",
-            first_message
-        );
-        assert_eq!(
-            parse_error.line(),
-            5,
-            "Mixed malformed top-level third arg should point to unmatched-open expression line"
-        );
-    }
-
-    #[test]
-    fn test_function_mixed_unmatched_close_in_third_arg_reports_first_error() {
-        let mut file_stream = FileStream::from_file(
-            "test/parser/simple_fun_call_mixed_unmatched_close_third_arg.fol",
-        )
-        .expect("Should read malformed mixed function unmatched-close third-arg test file");
-
-        let mut lexer = Elements::init(&mut file_stream);
-        let mut parser = AstParser::new();
-        let errors = parser.parse(&mut lexer).expect_err(
-            "Parser should fail when function call third arg mixes unmatched ')' in nested expression",
-        );
-
-        let parse_error = errors
-            .first()
-            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
-            .expect("First parser error should be ParseError");
-
-        let first_message = parse_error.to_string();
-
-        assert!(
-            first_message.contains("Unsupported expression token ')'"),
-            "Mixed malformed function third arg should prioritize unsupported ')' error, got: {}",
-            first_message
-        );
-        assert_eq!(
-            parse_error.line(),
-            6,
-            "Mixed malformed function third arg should point to unmatched-close expression line"
-        );
-    }
-
-    #[test]
-    fn test_method_mixed_unmatched_close_in_third_arg_reports_first_error() {
-        let mut file_stream = FileStream::from_file(
-            "test/parser/simple_fun_method_call_mixed_unmatched_close_third_arg.fol",
-        )
-        .expect("Should read malformed mixed method unmatched-close third-arg test file");
-
-        let mut lexer = Elements::init(&mut file_stream);
-        let mut parser = AstParser::new();
-        let errors = parser.parse(&mut lexer).expect_err(
-            "Parser should fail when method call third arg mixes unmatched ')' in nested expression",
-        );
-
-        let parse_error = errors
-            .first()
-            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
-            .expect("First parser error should be ParseError");
-
-        let first_message = parse_error.to_string();
-
-        assert!(
-            first_message.contains("Unsupported expression token ')'"),
-            "Mixed malformed method third arg should prioritize unsupported ')' error, got: {}",
-            first_message
-        );
-        assert_eq!(
-            parse_error.line(),
-            6,
-            "Mixed malformed method third arg should point to unmatched-close expression line"
-        );
-    }
-
-    #[test]
-    fn test_top_level_mixed_unmatched_close_in_third_arg_reports_first_error() {
-        let mut file_stream = FileStream::from_file(
-            "test/parser/simple_call_top_level_mixed_unmatched_close_third_arg.fol",
-        )
-        .expect("Should read malformed mixed top-level unmatched-close third-arg test file");
-
-        let mut lexer = Elements::init(&mut file_stream);
-        let mut parser = AstParser::new();
-        let errors = parser.parse(&mut lexer).expect_err(
-            "Parser should fail when top-level call third arg mixes unmatched ')' in nested expression",
-        );
-
-        let parse_error = errors
-            .first()
-            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
-            .expect("First parser error should be ParseError");
-
-        let first_message = parse_error.to_string();
-
-        assert!(
-            first_message.contains("Unsupported expression token ')'"),
-            "Mixed malformed top-level third arg should prioritize unsupported ')' error, got: {}",
-            first_message
-        );
-        assert_eq!(
-            parse_error.line(),
-            5,
-            "Mixed malformed top-level third arg should point to unmatched-close expression line"
-        );
-    }
-
-    #[test]
-    fn test_function_mixed_unmatched_open_in_fourth_arg_reports_first_error() {
-        let mut file_stream = FileStream::from_file(
-            "test/parser/simple_fun_call_mixed_unmatched_open_fourth_arg.fol",
-        )
-        .expect("Should read malformed mixed function unmatched-open fourth-arg test file");
-
-        let mut lexer = Elements::init(&mut file_stream);
-        let mut parser = AstParser::new();
-        let errors = parser.parse(&mut lexer).expect_err(
-            "Parser should fail when function call fourth arg mixes unmatched '(' with trailing comma",
-        );
-
-        let parse_error = errors
-            .first()
-            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
-            .expect("First parser error should be ParseError");
-
-        let first_message = parse_error.to_string();
-
-        assert!(
-            first_message.contains("Expected closing ')' for parenthesized expression"),
-            "Mixed malformed function fourth arg should prioritize missing close-paren error, got: {}",
-            first_message
-        );
-        assert_eq!(
-            parse_error.line(),
-            7,
-            "Mixed malformed function fourth arg should point to unmatched-open expression line"
-        );
-    }
-
-    #[test]
-    fn test_method_mixed_unmatched_open_in_fourth_arg_reports_first_error() {
-        let mut file_stream = FileStream::from_file(
-            "test/parser/simple_fun_method_call_mixed_unmatched_open_fourth_arg.fol",
-        )
-        .expect("Should read malformed mixed method unmatched-open fourth-arg test file");
-
-        let mut lexer = Elements::init(&mut file_stream);
-        let mut parser = AstParser::new();
-        let errors = parser.parse(&mut lexer).expect_err(
-            "Parser should fail when method call fourth arg mixes unmatched '(' with trailing comma",
-        );
-
-        let parse_error = errors
-            .first()
-            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
-            .expect("First parser error should be ParseError");
-
-        let first_message = parse_error.to_string();
-
-        assert!(
-            first_message.contains("Expected closing ')' for parenthesized expression"),
-            "Mixed malformed method fourth arg should prioritize missing close-paren error, got: {}",
-            first_message
-        );
-        assert_eq!(
-            parse_error.line(),
-            7,
-            "Mixed malformed method fourth arg should point to unmatched-open expression line"
-        );
-    }
-
-    #[test]
-    fn test_top_level_mixed_unmatched_open_in_fourth_arg_reports_first_error() {
-        let mut file_stream = FileStream::from_file(
-            "test/parser/simple_call_top_level_mixed_unmatched_open_fourth_arg.fol",
-        )
-        .expect("Should read malformed mixed top-level unmatched-open fourth-arg test file");
-
-        let mut lexer = Elements::init(&mut file_stream);
-        let mut parser = AstParser::new();
-        let errors = parser.parse(&mut lexer).expect_err(
-            "Parser should fail when top-level call fourth arg mixes unmatched '(' with trailing comma",
-        );
-
-        let parse_error = errors
-            .first()
-            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
-            .expect("First parser error should be ParseError");
-
-        let first_message = parse_error.to_string();
-
-        assert!(
-            first_message.contains("Expected closing ')' for parenthesized expression"),
-            "Mixed malformed top-level fourth arg should prioritize missing close-paren error, got: {}",
-            first_message
-        );
-        assert_eq!(
-            parse_error.line(),
-            6,
-            "Mixed malformed top-level fourth arg should point to unmatched-open expression line"
-        );
-    }
-
-    #[test]
-    fn test_function_mixed_unmatched_close_in_fourth_arg_reports_first_error() {
-        let mut file_stream = FileStream::from_file(
-            "test/parser/simple_fun_call_mixed_unmatched_close_fourth_arg.fol",
-        )
-        .expect("Should read malformed mixed function unmatched-close fourth-arg test file");
-
-        let mut lexer = Elements::init(&mut file_stream);
-        let mut parser = AstParser::new();
-        let errors = parser.parse(&mut lexer).expect_err(
-            "Parser should fail when function call fourth arg mixes unmatched ')' in nested expression",
-        );
-
-        let parse_error = errors
-            .first()
-            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
-            .expect("First parser error should be ParseError");
-
-        let first_message = parse_error.to_string();
-
-        assert!(
-            first_message.contains("Unsupported expression token ')'"),
-            "Mixed malformed function fourth arg should prioritize unsupported ')' error, got: {}",
-            first_message
-        );
-        assert_eq!(
-            parse_error.line(),
-            7,
-            "Mixed malformed function fourth arg should point to unmatched-close expression line"
-        );
-    }
-
-    #[test]
-    fn test_method_mixed_unmatched_close_in_fourth_arg_reports_first_error() {
-        let mut file_stream = FileStream::from_file(
-            "test/parser/simple_fun_method_call_mixed_unmatched_close_fourth_arg.fol",
-        )
-        .expect("Should read malformed mixed method unmatched-close fourth-arg test file");
-
-        let mut lexer = Elements::init(&mut file_stream);
-        let mut parser = AstParser::new();
-        let errors = parser.parse(&mut lexer).expect_err(
-            "Parser should fail when method call fourth arg mixes unmatched ')' in nested expression",
-        );
-
-        let parse_error = errors
-            .first()
-            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
-            .expect("First parser error should be ParseError");
-
-        let first_message = parse_error.to_string();
-
-        assert!(
-            first_message.contains("Unsupported expression token ')'"),
-            "Mixed malformed method fourth arg should prioritize unsupported ')' error, got: {}",
-            first_message
-        );
-        assert_eq!(
-            parse_error.line(),
-            7,
-            "Mixed malformed method fourth arg should point to unmatched-close expression line"
-        );
-    }
-
-    #[test]
-    fn test_top_level_mixed_unmatched_close_in_fourth_arg_reports_first_error() {
-        let mut file_stream = FileStream::from_file(
-            "test/parser/simple_call_top_level_mixed_unmatched_close_fourth_arg.fol",
-        )
-        .expect("Should read malformed mixed top-level unmatched-close fourth-arg test file");
-
-        let mut lexer = Elements::init(&mut file_stream);
-        let mut parser = AstParser::new();
-        let errors = parser.parse(&mut lexer).expect_err(
-            "Parser should fail when top-level call fourth arg mixes unmatched ')' in nested expression",
-        );
-
-        let parse_error = errors
-            .first()
-            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
-            .expect("First parser error should be ParseError");
-
-        let first_message = parse_error.to_string();
-
-        assert!(
-            first_message.contains("Unsupported expression token ')'"),
-            "Mixed malformed top-level fourth arg should prioritize unsupported ')' error, got: {}",
-            first_message
-        );
-        assert_eq!(
-            parse_error.line(),
-            6,
-            "Mixed malformed top-level fourth arg should point to unmatched-close expression line"
-        );
-    }
-
-    #[test]
-    fn test_function_mixed_unmatched_open_in_fifth_arg_reports_first_error() {
-        let mut file_stream =
-            FileStream::from_file("test/parser/simple_fun_call_mixed_unmatched_open_fifth_arg.fol")
-                .expect("Should read malformed mixed function unmatched-open fifth-arg test file");
-
-        let mut lexer = Elements::init(&mut file_stream);
-        let mut parser = AstParser::new();
-        let errors = parser.parse(&mut lexer).expect_err(
-            "Parser should fail when function call fifth arg mixes unmatched '(' with trailing comma",
-        );
-
-        let parse_error = errors
-            .first()
-            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
-            .expect("First parser error should be ParseError");
-
-        let first_message = parse_error.to_string();
-
-        assert!(
-            first_message.contains("Expected closing ')' for parenthesized expression"),
-            "Mixed malformed function fifth arg should prioritize missing close-paren error, got: {}",
-            first_message
-        );
-        assert_eq!(
-            parse_error.line(),
-            8,
-            "Mixed malformed function fifth arg should point to unmatched-open expression line"
-        );
-    }
-
-    #[test]
-    fn test_method_mixed_unmatched_open_in_fifth_arg_reports_first_error() {
-        let mut file_stream = FileStream::from_file(
-            "test/parser/simple_fun_method_call_mixed_unmatched_open_fifth_arg.fol",
-        )
-        .expect("Should read malformed mixed method unmatched-open fifth-arg test file");
-
-        let mut lexer = Elements::init(&mut file_stream);
-        let mut parser = AstParser::new();
-        let errors = parser.parse(&mut lexer).expect_err(
-            "Parser should fail when method call fifth arg mixes unmatched '(' with trailing comma",
-        );
-
-        let parse_error = errors
-            .first()
-            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
-            .expect("First parser error should be ParseError");
-
-        let first_message = parse_error.to_string();
-
-        assert!(
-            first_message.contains("Expected closing ')' for parenthesized expression"),
-            "Mixed malformed method fifth arg should prioritize missing close-paren error, got: {}",
-            first_message
-        );
-        assert_eq!(
-            parse_error.line(),
-            8,
-            "Mixed malformed method fifth arg should point to unmatched-open expression line"
-        );
-    }
-
-    #[test]
-    fn test_top_level_mixed_unmatched_open_in_fifth_arg_reports_first_error() {
-        let mut file_stream = FileStream::from_file(
-            "test/parser/simple_call_top_level_mixed_unmatched_open_fifth_arg.fol",
-        )
-        .expect("Should read malformed mixed top-level unmatched-open fifth-arg test file");
-
-        let mut lexer = Elements::init(&mut file_stream);
-        let mut parser = AstParser::new();
-        let errors = parser.parse(&mut lexer).expect_err(
-            "Parser should fail when top-level call fifth arg mixes unmatched '(' with trailing comma",
-        );
-
-        let parse_error = errors
-            .first()
-            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
-            .expect("First parser error should be ParseError");
-
-        let first_message = parse_error.to_string();
-
-        assert!(
-            first_message.contains("Expected closing ')' for parenthesized expression"),
-            "Mixed malformed top-level fifth arg should prioritize missing close-paren error, got: {}",
-            first_message
-        );
-        assert_eq!(
-            parse_error.line(),
-            7,
-            "Mixed malformed top-level fifth arg should point to unmatched-open expression line"
-        );
-    }
-
-    #[test]
-    fn test_function_mixed_unmatched_close_in_fifth_arg_reports_first_error() {
-        let mut file_stream = FileStream::from_file(
-            "test/parser/simple_fun_call_mixed_unmatched_close_fifth_arg.fol",
-        )
-        .expect("Should read malformed mixed function unmatched-close fifth-arg test file");
-
-        let mut lexer = Elements::init(&mut file_stream);
-        let mut parser = AstParser::new();
-        let errors = parser.parse(&mut lexer).expect_err(
-            "Parser should fail when function call fifth arg mixes unmatched ')' in nested expression",
-        );
-
-        let parse_error = errors
-            .first()
-            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
-            .expect("First parser error should be ParseError");
-
-        let first_message = parse_error.to_string();
-
-        assert!(
-            first_message.contains("Unsupported expression token ')'"),
-            "Mixed malformed function fifth arg should prioritize unsupported ')' error, got: {}",
-            first_message
-        );
-        assert_eq!(
-            parse_error.line(),
-            8,
-            "Mixed malformed function fifth arg should point to unmatched-close expression line"
-        );
-    }
-
-    #[test]
-    fn test_method_mixed_unmatched_close_in_fifth_arg_reports_first_error() {
-        let mut file_stream = FileStream::from_file(
-            "test/parser/simple_fun_method_call_mixed_unmatched_close_fifth_arg.fol",
-        )
-        .expect("Should read malformed mixed method unmatched-close fifth-arg test file");
-
-        let mut lexer = Elements::init(&mut file_stream);
-        let mut parser = AstParser::new();
-        let errors = parser.parse(&mut lexer).expect_err(
-            "Parser should fail when method call fifth arg mixes unmatched ')' in nested expression",
-        );
-
-        let parse_error = errors
-            .first()
-            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
-            .expect("First parser error should be ParseError");
-
-        let first_message = parse_error.to_string();
-
-        assert!(
-            first_message.contains("Unsupported expression token ')'"),
-            "Mixed malformed method fifth arg should prioritize unsupported ')' error, got: {}",
-            first_message
-        );
-        assert_eq!(
-            parse_error.line(),
-            8,
-            "Mixed malformed method fifth arg should point to unmatched-close expression line"
-        );
-    }
-
-    #[test]
-    fn test_top_level_mixed_unmatched_close_in_fifth_arg_reports_first_error() {
-        let mut file_stream = FileStream::from_file(
-            "test/parser/simple_call_top_level_mixed_unmatched_close_fifth_arg.fol",
-        )
-        .expect("Should read malformed mixed top-level unmatched-close fifth-arg test file");
-
-        let mut lexer = Elements::init(&mut file_stream);
-        let mut parser = AstParser::new();
-        let errors = parser.parse(&mut lexer).expect_err(
-            "Parser should fail when top-level call fifth arg mixes unmatched ')' in nested expression",
-        );
-
-        let parse_error = errors
-            .first()
-            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
-            .expect("First parser error should be ParseError");
-
-        let first_message = parse_error.to_string();
-
-        assert!(
-            first_message.contains("Unsupported expression token ')'"),
-            "Mixed malformed top-level fifth arg should prioritize unsupported ')' error, got: {}",
-            first_message
-        );
-        assert_eq!(
-            parse_error.line(),
-            7,
-            "Mixed malformed top-level fifth arg should point to unmatched-close expression line"
-        );
-    }
-
-    #[test]
-    fn test_function_mixed_unmatched_open_in_sixth_arg_reports_first_error() {
-        let mut file_stream =
-            FileStream::from_file("test/parser/simple_fun_call_mixed_unmatched_open_sixth_arg.fol")
-                .expect("Should read malformed mixed function unmatched-open sixth-arg test file");
-
-        let mut lexer = Elements::init(&mut file_stream);
-        let mut parser = AstParser::new();
-        let errors = parser.parse(&mut lexer).expect_err(
-            "Parser should fail when function call sixth arg mixes unmatched '(' with trailing comma",
-        );
-
-        let parse_error = errors
-            .first()
-            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
-            .expect("First parser error should be ParseError");
-
-        let first_message = parse_error.to_string();
-
-        assert!(
-            first_message.contains("Expected closing ')' for parenthesized expression"),
-            "Mixed malformed function sixth arg should prioritize missing close-paren error, got: {}",
-            first_message
-        );
-        assert_eq!(
-            parse_error.line(),
-            9,
-            "Mixed malformed function sixth arg should point to unmatched-open expression line"
-        );
-    }
-
-    #[test]
-    fn test_method_mixed_unmatched_open_in_sixth_arg_reports_first_error() {
-        let mut file_stream = FileStream::from_file(
-            "test/parser/simple_fun_method_call_mixed_unmatched_open_sixth_arg.fol",
-        )
-        .expect("Should read malformed mixed method unmatched-open sixth-arg test file");
-
-        let mut lexer = Elements::init(&mut file_stream);
-        let mut parser = AstParser::new();
-        let errors = parser.parse(&mut lexer).expect_err(
-            "Parser should fail when method call sixth arg mixes unmatched '(' with trailing comma",
-        );
-
-        let parse_error = errors
-            .first()
-            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
-            .expect("First parser error should be ParseError");
-
-        let first_message = parse_error.to_string();
-
-        assert!(
-            first_message.contains("Expected closing ')' for parenthesized expression"),
-            "Mixed malformed method sixth arg should prioritize missing close-paren error, got: {}",
-            first_message
-        );
-        assert_eq!(
-            parse_error.line(),
-            9,
-            "Mixed malformed method sixth arg should point to unmatched-open expression line"
-        );
-    }
-
-    #[test]
-    fn test_top_level_mixed_unmatched_open_in_sixth_arg_reports_first_error() {
-        let mut file_stream = FileStream::from_file(
-            "test/parser/simple_call_top_level_mixed_unmatched_open_sixth_arg.fol",
-        )
-        .expect("Should read malformed mixed top-level unmatched-open sixth-arg test file");
-
-        let mut lexer = Elements::init(&mut file_stream);
-        let mut parser = AstParser::new();
-        let errors = parser.parse(&mut lexer).expect_err(
-            "Parser should fail when top-level call sixth arg mixes unmatched '(' with trailing comma",
-        );
-
-        let parse_error = errors
-            .first()
-            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
-            .expect("First parser error should be ParseError");
-
-        let first_message = parse_error.to_string();
-
-        assert!(
-            first_message.contains("Expected closing ')' for parenthesized expression"),
-            "Mixed malformed top-level sixth arg should prioritize missing close-paren error, got: {}",
-            first_message
-        );
-        assert_eq!(
-            parse_error.line(),
-            8,
-            "Mixed malformed top-level sixth arg should point to unmatched-open expression line"
-        );
+    fn test_mixed_unmatched_close_error_matrix_representative_cases() {
+        let cases = [
+            (
+                "test/parser/simple_fun_call_mixed_unmatched_close_first_arg.fol",
+                4usize,
+            ),
+            (
+                "test/parser/simple_fun_method_call_mixed_unmatched_close_first_arg.fol",
+                4usize,
+            ),
+            (
+                "test/parser/simple_call_top_level_mixed_unmatched_close_first_arg.fol",
+                3usize,
+            ),
+            (
+                "test/parser/simple_fun_call_mixed_unmatched_close_fifth_arg.fol",
+                8usize,
+            ),
+            (
+                "test/parser/simple_fun_method_call_mixed_unmatched_close_fifth_arg.fol",
+                8usize,
+            ),
+            (
+                "test/parser/simple_call_top_level_mixed_unmatched_close_fifth_arg.fol",
+                7usize,
+            ),
+        ];
+
+        for (path, line) in cases {
+            assert_first_parse_error(path, "Unsupported expression token ')'", line);
+        }
     }
 }
