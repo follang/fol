@@ -2133,6 +2133,14 @@ impl AstParser {
             });
         }
 
+        if matches!(
+            token.key(),
+            KEYWORD::Operator(OPERATOR::Add) | KEYWORD::Symbol(SYMBOL::Plus)
+        ) {
+            let _ = tokens.bump();
+            return self.parse_primary_expression(tokens);
+        }
+
         if self.token_is_word(&token, "not") {
             let _ = tokens.bump();
             let operand = self.parse_primary_expression(tokens)?;

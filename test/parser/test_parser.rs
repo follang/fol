@@ -1832,6 +1832,49 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_return_expression_unary_plus_precedence() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_unary_plus_precedence.fol")
+                .expect("Should read unary plus precedence function test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse unary plus precedence function");
+
+        let return_value = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .find_map(|node| {
+                    if let AstNode::Return { value: Some(value) } = node {
+                        Some(value.as_ref().clone())
+                    } else {
+                        None
+                    }
+                })
+                .expect("Program should contain a return value"),
+            _ => panic!("Expected program node"),
+        };
+
+        match &return_value {
+            AstNode::BinaryOp { op, left, right } => {
+                assert!(matches!(op, fol_parser::ast::BinaryOperator::Mul));
+                assert!(
+                    matches!(left.as_ref(), AstNode::Identifier { name } if name == "a"),
+                    "Left side should parse to identifier 'a' under unary plus"
+                );
+                assert!(
+                    matches!(right.as_ref(), AstNode::Identifier { name } if name == "b"),
+                    "Right side should parse to identifier 'b'"
+                );
+            }
+            _ => panic!("Return value should be binary multiplication expression"),
+        }
+    }
+
+    #[test]
     fn test_return_expression_unary_minus_parenthesized_addition() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_fun_unary_paren_precedence.fol")
