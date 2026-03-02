@@ -2905,8 +2905,8 @@ mod parser_tests {
         let first_message = parse_error.to_string();
 
         assert!(
-            first_message.contains("Unsupported expression token ';"),
-            "Unary plus without operand should report unsupported semicolon token, got: {}",
+            first_message.contains("Expected expression after unary '+'"),
+            "Unary plus without operand should report explicit unary-plus operand error, got: {}",
             first_message
         );
         assert_eq!(
@@ -2936,8 +2936,8 @@ mod parser_tests {
         let first_message = parse_error.to_string();
 
         assert!(
-            first_message.contains("Unsupported expression token ')'"),
-            "Unary plus without operand in call arg should report unsupported close-paren token, got: {}",
+            first_message.contains("Expected expression after unary '+'"),
+            "Unary plus without operand in call arg should report explicit unary-plus operand error, got: {}",
             first_message
         );
         assert_eq!(

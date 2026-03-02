@@ -2137,7 +2137,33 @@ impl AstParser {
             token.key(),
             KEYWORD::Operator(OPERATOR::Add) | KEYWORD::Symbol(SYMBOL::Plus)
         ) {
+            let plus_token = token.clone();
             let _ = tokens.bump();
+
+            self.skip_ignorable(tokens);
+            match tokens.curr(false) {
+                Ok(next) => {
+                    if matches!(
+                        next.key(),
+                        KEYWORD::Symbol(SYMBOL::Semi)
+                            | KEYWORD::Symbol(SYMBOL::Comma)
+                            | KEYWORD::Symbol(SYMBOL::RoundC)
+                            | KEYWORD::Symbol(SYMBOL::CurlyC)
+                    ) {
+                        return Err(Box::new(ParseError::from_token(
+                            &next,
+                            "Expected expression after unary '+'".to_string(),
+                        )));
+                    }
+                }
+                Err(_) => {
+                    return Err(Box::new(ParseError::from_token(
+                        &plus_token,
+                        "Expected expression after unary '+'".to_string(),
+                    )));
+                }
+            }
+
             return self.parse_primary_expression(tokens);
         }
 
