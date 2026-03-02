@@ -1,0 +1,15 @@
+fun method_mixed_unmatched_open_sixth_arg(obj: int, a: int, b: int, c: int, d: int, e: int, f: int): int = {
+    obj.run(
+        a,
+        b,
+        c,
+        d,
+        e,
+        inner(
+            (f + g,
+            h,
+        ),
+    );
+
+    return f;
+}
