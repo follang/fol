@@ -1,0 +1,12 @@
+fun mixed_unmatched_close_third_arg(a: int, b: int, c: int): int = {
+    value = outer(
+        a,
+        b,
+        inner(
+            c + ),
+            e,
+        ),
+    );
+
+    return value;
+}
