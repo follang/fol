@@ -978,6 +978,81 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_function_method_receiver_syntax_rejects_missing_receiver_close_paren() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_method_receiver_missing_close_paren.fol")
+                .expect("Should read function missing receiver close paren fixture");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should reject function receiver syntax missing ')' token");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Expected ')' after method receiver type"),
+            "Missing receiver close paren should report explicit receiver syntax error, got: {}",
+            first_message
+        );
+    }
+
+    #[test]
+    fn test_function_method_receiver_syntax_rejects_missing_receiver_type() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_method_receiver_missing_type.fol")
+                .expect("Should read function missing receiver type fixture");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should reject function receiver syntax missing receiver type");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Expected type reference"),
+            "Missing receiver type should report type-reference parsing error, got: {}",
+            first_message
+        );
+    }
+
+    #[test]
+    fn test_procedure_method_receiver_syntax_rejects_missing_method_name() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_pro_method_receiver_missing_name.fol")
+                .expect("Should read procedure missing receiver method-name fixture");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should reject procedure receiver syntax missing method name");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Expected procedure name after 'pro'"),
+            "Missing procedure method name should report expected-name parse error, got: {}",
+            first_message
+        );
+    }
+
+    #[test]
     fn test_function_custom_error_type_accepts_compatible_report_local_var() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_fun_error_type_report_local_var_ok.fol")

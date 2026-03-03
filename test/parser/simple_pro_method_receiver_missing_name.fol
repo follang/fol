@@ -1,0 +1,3 @@
+pro (parser): int = {
+    return 0;
+}
