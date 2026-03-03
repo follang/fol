@@ -2522,6 +2522,12 @@ impl AstParser {
             return true;
         }
 
+        let found_numeric = Self::is_numeric_named_type(found_name);
+        let expected_numeric = Self::is_numeric_named_type(expected_name);
+        if found_numeric && expected_numeric {
+            return true;
+        }
+
         match found_name {
             "bool" => matches!(expected_name, "bol"),
             "bol" => matches!(expected_name, "bool"),
@@ -2531,6 +2537,13 @@ impl AstParser {
             "chr" => matches!(expected_name, "char"),
             _ => false,
         }
+    }
+
+    fn is_numeric_named_type(name: &str) -> bool {
+        matches!(
+            name,
+            "num" | "int" | "flt" | "float" | "i8" | "i16" | "i32" | "i64" | "i128" | "f32" | "f64"
+        )
     }
 
     fn consume_optional_semicolon(&self, tokens: &mut fol_lexer::lexer::stage3::Elements) {

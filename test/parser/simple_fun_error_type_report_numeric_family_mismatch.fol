@@ -1,0 +1,3 @@
+fun report_numeric_bad(err_code: int): str : bol = {
+    report err_code;
+}
