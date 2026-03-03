@@ -583,6 +583,32 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_function_custom_error_type_rejects_unknown_identifier_inside_report_expression() {
+        let mut file_stream = FileStream::from_file(
+            "test/parser/simple_fun_error_type_report_unknown_identifier_expression.fol",
+        )
+        .expect("Should read unknown report identifier expression fixture");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser.parse(&mut lexer).expect_err(
+            "Parser should reject unknown identifier inside report expression in custom-error routine",
+        );
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Unknown reported identifier 'missing_err'"),
+            "Unknown identifier inside report expression should produce explicit diagnostic, got: {}",
+            first_message
+        );
+    }
+
+    #[test]
     fn test_function_custom_error_type_accepts_compatible_report_local_var() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_fun_error_type_report_local_var_ok.fol")
