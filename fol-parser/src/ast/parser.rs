@@ -2590,6 +2590,31 @@ impl AstParser {
                 })
             }
             AstNode::MethodCall { object, args, .. } => {
+                if let AstNode::MethodCall { object, method, .. } = value {
+                    if let Some(FolType::Named { name: object_type }) =
+                        Self::infer_named_type_from_node(
+                            object,
+                            visible_types,
+                            routine_return_types,
+                        )
+                    {
+                        let qualified_method_name = format!("{}.{}", object_type, method);
+                        if !routine_return_types.contains_key(&qualified_method_name)
+                            && !routine_return_types.contains_key(method)
+                        {
+                            return Some(format!(
+                                "Unknown reported method '{}.{}' in custom-error routine",
+                                object_type, method
+                            ));
+                        }
+                    } else if !routine_return_types.contains_key(method) {
+                        return Some(format!(
+                            "Unknown reported method '{}' in custom-error routine",
+                            method
+                        ));
+                    }
+                }
+
                 Self::report_unknown_identifier_in_expression(
                     object,
                     visible_types,

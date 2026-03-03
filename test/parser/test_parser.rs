@@ -927,6 +927,58 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_function_custom_error_type_rejects_report_unknown_called_method() {
+        let mut file_stream = FileStream::from_file(
+            "test/parser/simple_fun_error_type_report_unknown_method_call.fol",
+        )
+        .expect("Should read unknown report method-call fixture");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser.parse(&mut lexer).expect_err(
+            "Parser should reject unknown called method in report expression for custom-error routine",
+        );
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Unknown reported method 'parser.missing_err_source'"),
+            "Unknown called method in report should produce explicit diagnostic, got: {}",
+            first_message
+        );
+    }
+
+    #[test]
+    fn test_procedure_custom_error_type_rejects_report_unknown_called_method() {
+        let mut file_stream = FileStream::from_file(
+            "test/parser/simple_pro_error_type_report_unknown_method_call.fol",
+        )
+        .expect("Should read unknown procedure report method-call fixture");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser.parse(&mut lexer).expect_err(
+            "Parser should reject unknown called method in procedure report expression for custom-error routine",
+        );
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Unknown reported method 'parser.missing_err_source'"),
+            "Unknown called method in procedure report should produce explicit diagnostic, got: {}",
+            first_message
+        );
+    }
+
+    #[test]
     fn test_function_custom_error_type_accepts_compatible_report_local_var() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_fun_error_type_report_local_var_ok.fol")
