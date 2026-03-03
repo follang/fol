@@ -610,15 +610,10 @@ impl AstParser {
         let _ = tokens.bump();
         self.skip_ignorable(tokens);
 
-        let name_token = tokens.curr(false)?;
-        if !name_token.key().is_ident() {
-            return Err(Box::new(ParseError::from_token(
-                &name_token,
-                "Expected function name after 'fun'".to_string(),
-            )));
-        }
-        let name = name_token.con().trim().to_string();
-        let _ = tokens.bump();
+        let (receiver_type, name) = self.parse_routine_name_with_optional_receiver(
+            tokens,
+            "Expected function name after 'fun'",
+        )?;
 
         self.skip_ignorable(tokens);
         let open_paren = tokens.curr(false)?;
@@ -657,9 +652,14 @@ impl AstParser {
         }
 
         if let Some(rt) = return_type.clone() {
-            self.routine_return_types
-                .borrow_mut()
-                .insert(name.clone(), rt);
+            let mut registry = self.routine_return_types.borrow_mut();
+            registry.insert(name.clone(), rt.clone());
+            if let Some(FolType::Named {
+                name: receiver_name,
+            }) = receiver_type.as_ref()
+            {
+                registry.insert(format!("{}.{}", receiver_name, name), rt);
+            }
         }
 
         self.skip_ignorable(tokens);
@@ -719,15 +719,10 @@ impl AstParser {
         let _ = tokens.bump();
         self.skip_ignorable(tokens);
 
-        let name_token = tokens.curr(false)?;
-        if !name_token.key().is_ident() {
-            return Err(Box::new(ParseError::from_token(
-                &name_token,
-                "Expected procedure name after 'pro'".to_string(),
-            )));
-        }
-        let name = name_token.con().trim().to_string();
-        let _ = tokens.bump();
+        let (receiver_type, name) = self.parse_routine_name_with_optional_receiver(
+            tokens,
+            "Expected procedure name after 'pro'",
+        )?;
 
         self.skip_ignorable(tokens);
         let open_paren = tokens.curr(false)?;
@@ -766,9 +761,14 @@ impl AstParser {
         }
 
         if let Some(rt) = return_type.clone() {
-            self.routine_return_types
-                .borrow_mut()
-                .insert(name.clone(), rt);
+            let mut registry = self.routine_return_types.borrow_mut();
+            registry.insert(name.clone(), rt.clone());
+            if let Some(FolType::Named {
+                name: receiver_name,
+            }) = receiver_type.as_ref()
+            {
+                registry.insert(format!("{}.{}", receiver_name, name), rt);
+            }
         }
 
         self.skip_ignorable(tokens);
@@ -886,6 +886,47 @@ impl AstParser {
             column: 1,
             length: 1,
         }))
+    }
+
+    fn parse_routine_name_with_optional_receiver(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+        missing_name_message: &str,
+    ) -> Result<(Option<FolType>, String), Box<dyn Glitch>> {
+        let mut receiver_type = None;
+        let current = tokens.curr(false)?;
+
+        if matches!(current.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
+            let _ = tokens.bump();
+            self.skip_ignorable(tokens);
+
+            let receiver_token = tokens.curr(false)?;
+            receiver_type = Some(self.parse_type_reference(&receiver_token)?);
+            let _ = tokens.bump();
+
+            self.skip_ignorable(tokens);
+            let close = tokens.curr(false)?;
+            if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
+                return Err(Box::new(ParseError::from_token(
+                    &close,
+                    "Expected ')' after method receiver type".to_string(),
+                )));
+            }
+            let _ = tokens.bump();
+            self.skip_ignorable(tokens);
+        }
+
+        let name_token = tokens.curr(false)?;
+        if !name_token.key().is_ident() {
+            return Err(Box::new(ParseError::from_token(
+                &name_token,
+                missing_name_message.to_string(),
+            )));
+        }
+
+        let name = name_token.con().trim().to_string();
+        let _ = tokens.bump();
+        Ok((receiver_type, name))
     }
 
     fn parse_type_reference(

@@ -1,0 +1,8 @@
+fun (parser)parse_num(code: int): int = {
+    return code;
+}
+
+fun caller_method_bad(tool: parser, code: int): int : str = {
+    report tool.parse_num(code);
+    return 0;
+}
