@@ -2340,6 +2340,15 @@ impl AstParser {
                     }
 
                     if let Some(expected_type) = routine_error_type {
+                        if let Some(unknown_identifier) =
+                            Self::report_unknown_identifier_error(&args[0], &scope_types)
+                        {
+                            return Err(Box::new(ParseError::from_token(
+                                routine_token,
+                                unknown_identifier,
+                            )));
+                        }
+
                         if let Some(mismatch) = Self::report_identifier_type_mismatch(
                             &args[0],
                             expected_type,
@@ -2460,6 +2469,25 @@ impl AstParser {
             Some(format!(
                 "Reported identifier '{}' has type '{}' incompatible with routine error type '{}'",
                 identifier_name, found_type_name, expected_name
+            ))
+        }
+    }
+
+    fn report_unknown_identifier_error(
+        value: &AstNode,
+        visible_types: &HashMap<String, FolType>,
+    ) -> Option<String> {
+        let identifier_name = match value {
+            AstNode::Identifier { name } => name,
+            _ => return None,
+        };
+
+        if visible_types.contains_key(identifier_name) {
+            None
+        } else {
+            Some(format!(
+                "Unknown reported identifier '{}' in custom-error routine",
+                identifier_name
             ))
         }
     }
