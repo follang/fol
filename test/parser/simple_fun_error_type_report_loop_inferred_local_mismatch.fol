@@ -1,0 +1,8 @@
+fun loop_inferred_bad(limit: int): str : bol = {
+    loop(limit) {
+        var err_msg = "loop-fail";
+        report err_msg;
+    }
+
+    return "done";
+}

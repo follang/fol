@@ -1,0 +1,8 @@
+fun loop_inferred_ok(limit: int): str : str = {
+    loop(limit) {
+        var err_msg = "loop-fail";
+        report err_msg;
+    }
+
+    return "done";
+}
