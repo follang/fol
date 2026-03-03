@@ -2599,19 +2599,12 @@ impl AstParser {
                         )
                     {
                         let qualified_method_name = format!("{}.{}", object_type, method);
-                        if !routine_return_types.contains_key(&qualified_method_name)
-                            && !routine_return_types.contains_key(method)
-                        {
+                        if !routine_return_types.contains_key(&qualified_method_name) {
                             return Some(format!(
                                 "Unknown reported method '{}.{}' in custom-error routine",
                                 object_type, method
                             ));
                         }
-                    } else if !routine_return_types.contains_key(method) {
-                        return Some(format!(
-                            "Unknown reported method '{}' in custom-error routine",
-                            method
-                        ));
                     }
                 }
 
@@ -2746,13 +2739,11 @@ impl AstParser {
                     Self::infer_named_type_from_node(object, visible_types, routine_return_types)
                 {
                     let qualified_method_name = format!("{}.{}", object_type, method);
-                    if let Some(found) = routine_return_types.get(&qualified_method_name) {
-                        return Self::fol_type_to_named_family(found.clone());
-                    }
+                    let found = routine_return_types.get(&qualified_method_name)?;
+                    return Self::fol_type_to_named_family(found.clone());
                 }
 
-                let found = routine_return_types.get(method)?;
-                Self::fol_type_to_named_family(found.clone())
+                None
             }
             AstNode::Literal(Literal::String(_)) => Some(FolType::Named {
                 name: "str".to_string(),
