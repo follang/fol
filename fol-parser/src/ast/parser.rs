@@ -2344,6 +2344,12 @@ impl AstParser {
                             return Err(Box::new(ParseError::from_token(routine_token, mismatch)));
                         }
 
+                        if let Some(mismatch) =
+                            Self::report_expression_type_mismatch(&args[0], expected_type)
+                        {
+                            return Err(Box::new(ParseError::from_token(routine_token, mismatch)));
+                        }
+
                         if let Some(mismatch) = Self::report_identifier_type_mismatch(
                             &args[0],
                             expected_type,
@@ -2454,6 +2460,32 @@ impl AstParser {
         }
     }
 
+    fn report_expression_type_mismatch(value: &AstNode, expected_type: &FolType) -> Option<String> {
+        let expected_name = match expected_type {
+            FolType::Named { name } => name.as_str(),
+            _ => return None,
+        };
+
+        if !Self::is_builtin_scalar_type_name(expected_name) {
+            return None;
+        }
+
+        let found_name = Self::infer_named_type_from_node(value)?;
+        let found = match &found_name {
+            FolType::Named { name } => name.as_str(),
+            _ => return None,
+        };
+
+        if Self::named_types_compatible(found, expected_name) {
+            None
+        } else {
+            Some(format!(
+                "Reported expression type '{}' is incompatible with routine error type '{}'",
+                found, expected_name
+            ))
+        }
+    }
+
     fn literal_matches_named_type(literal: &Literal, expected_name: &str) -> bool {
         match literal {
             Literal::Integer(_) => matches!(
@@ -2513,6 +2545,25 @@ impl AstParser {
             AstNode::Literal(Literal::Character(_)) => Some(FolType::Named {
                 name: "chr".to_string(),
             }),
+            _ => Self::fol_type_to_named_family(node.get_type()?),
+        }
+    }
+
+    fn fol_type_to_named_family(typ: FolType) -> Option<FolType> {
+        match typ {
+            FolType::Int { .. } => Some(FolType::Named {
+                name: "int".to_string(),
+            }),
+            FolType::Float { .. } => Some(FolType::Named {
+                name: "flt".to_string(),
+            }),
+            FolType::Bool => Some(FolType::Named {
+                name: "bol".to_string(),
+            }),
+            FolType::Char { .. } => Some(FolType::Named {
+                name: "chr".to_string(),
+            }),
+            FolType::Named { name } => Some(FolType::Named { name }),
             _ => None,
         }
     }
