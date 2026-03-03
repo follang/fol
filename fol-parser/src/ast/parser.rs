@@ -2400,7 +2400,11 @@ impl AstParser {
 
                     if let Some(expected_type) = routine_error_type {
                         if let Some(unknown_identifier) =
-                            Self::report_unknown_identifier_in_expression(&args[0], &scope_types)
+                            Self::report_unknown_identifier_in_expression(
+                                &args[0],
+                                &scope_types,
+                                routine_return_types,
+                            )
                         {
                             return Err(Box::new(ParseError::from_token(
                                 routine_token,
@@ -2539,6 +2543,7 @@ impl AstParser {
     fn report_unknown_identifier_in_expression(
         value: &AstNode,
         visible_types: &HashMap<String, FolType>,
+        routine_return_types: &HashMap<String, FolType>,
     ) -> Option<String> {
         match value {
             AstNode::Identifier { name } => {
@@ -2551,30 +2556,74 @@ impl AstParser {
                     ))
                 }
             }
-            AstNode::BinaryOp { left, right, .. } => {
-                Self::report_unknown_identifier_in_expression(left, visible_types)
-                    .or_else(|| Self::report_unknown_identifier_in_expression(right, visible_types))
+            AstNode::BinaryOp { left, right, .. } => Self::report_unknown_identifier_in_expression(
+                left,
+                visible_types,
+                routine_return_types,
+            )
+            .or_else(|| {
+                Self::report_unknown_identifier_in_expression(
+                    right,
+                    visible_types,
+                    routine_return_types,
+                )
+            }),
+            AstNode::UnaryOp { operand, .. } => Self::report_unknown_identifier_in_expression(
+                operand,
+                visible_types,
+                routine_return_types,
+            ),
+            AstNode::FunctionCall { name, args } => {
+                if !routine_return_types.contains_key(name) {
+                    return Some(format!(
+                        "Unknown reported routine '{}' in custom-error routine",
+                        name
+                    ));
+                }
+
+                args.iter().find_map(|arg| {
+                    Self::report_unknown_identifier_in_expression(
+                        arg,
+                        visible_types,
+                        routine_return_types,
+                    )
+                })
             }
-            AstNode::UnaryOp { operand, .. } => {
-                Self::report_unknown_identifier_in_expression(operand, visible_types)
-            }
-            AstNode::FunctionCall { args, .. } => args
-                .iter()
-                .find_map(|arg| Self::report_unknown_identifier_in_expression(arg, visible_types)),
             AstNode::MethodCall { object, args, .. } => {
-                Self::report_unknown_identifier_in_expression(object, visible_types).or_else(|| {
+                Self::report_unknown_identifier_in_expression(
+                    object,
+                    visible_types,
+                    routine_return_types,
+                )
+                .or_else(|| {
                     args.iter().find_map(|arg| {
-                        Self::report_unknown_identifier_in_expression(arg, visible_types)
+                        Self::report_unknown_identifier_in_expression(
+                            arg,
+                            visible_types,
+                            routine_return_types,
+                        )
                     })
                 })
             }
             AstNode::IndexAccess { container, index } => {
-                Self::report_unknown_identifier_in_expression(container, visible_types)
-                    .or_else(|| Self::report_unknown_identifier_in_expression(index, visible_types))
+                Self::report_unknown_identifier_in_expression(
+                    container,
+                    visible_types,
+                    routine_return_types,
+                )
+                .or_else(|| {
+                    Self::report_unknown_identifier_in_expression(
+                        index,
+                        visible_types,
+                        routine_return_types,
+                    )
+                })
             }
-            AstNode::FieldAccess { object, .. } => {
-                Self::report_unknown_identifier_in_expression(object, visible_types)
-            }
+            AstNode::FieldAccess { object, .. } => Self::report_unknown_identifier_in_expression(
+                object,
+                visible_types,
+                routine_return_types,
+            ),
             _ => None,
         }
     }
