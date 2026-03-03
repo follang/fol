@@ -1109,6 +1109,33 @@ impl AstParser {
             if !token.key().is_terminal() {
                 let expr = self.parse_logical_expression(tokens)?;
                 args.push(expr);
+
+                loop {
+                    self.skip_ignorable(tokens);
+                    let comma = match tokens.curr(false) {
+                        Ok(token) => token,
+                        Err(_) => break,
+                    };
+
+                    if !matches!(comma.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
+                        break;
+                    }
+
+                    let _ = tokens.bump();
+                    self.skip_ignorable(tokens);
+
+                    let next = tokens.curr(false)?;
+                    if next.key().is_terminal() {
+                        return Err(Box::new(ParseError::from_token(
+                            &next,
+                            "Expected expression after ',' in builtin diagnostic statement"
+                                .to_string(),
+                        )));
+                    }
+
+                    let expr = self.parse_logical_expression(tokens)?;
+                    args.push(expr);
+                }
             }
         }
 

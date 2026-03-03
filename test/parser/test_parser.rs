@@ -321,6 +321,31 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_function_custom_error_type_rejects_report_with_two_values() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_error_type_report_two_args.fol")
+                .expect("Should read malformed custom-error report two-args file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should fail when custom-error routine reports two values");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("must report exactly one error value"),
+            "Custom-error routine should reject report with two values, got: {}",
+            first_message
+        );
+    }
+
+    #[test]
     fn test_function_custom_error_type_accepts_compatible_report_literal() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_fun_error_type_report_literal_ok.fol")
