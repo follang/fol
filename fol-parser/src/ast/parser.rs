@@ -6,6 +6,7 @@ use super::{
 };
 use fol_lexer::token::{BUILDIN, KEYWORD, LITERAL, OPERATOR, SYMBOL};
 use fol_types::*;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt;
 
@@ -67,7 +68,7 @@ impl Glitch for ParseError {
 
 /// Simple AST Parser for FOL
 pub struct AstParser {
-    // Parser state can be added here later
+    routine_return_types: RefCell<HashMap<String, FolType>>,
 }
 
 impl Default for AstParser {
@@ -78,7 +79,9 @@ impl Default for AstParser {
 
 impl AstParser {
     pub fn new() -> Self {
-        Self {}
+        Self {
+            routine_return_types: RefCell::new(HashMap::new()),
+        }
     }
 
     /// Parse a token stream into an AST
@@ -653,6 +656,12 @@ impl AstParser {
             }
         }
 
+        if let Some(rt) = return_type.clone() {
+            self.routine_return_types
+                .borrow_mut()
+                .insert(name.clone(), rt);
+        }
+
         self.skip_ignorable(tokens);
         let assign = tokens.curr(false)?;
         if !matches!(assign.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
@@ -675,7 +684,14 @@ impl AstParser {
 
         let body = self.parse_block_body(tokens)?;
         let parameter_types = Self::parameter_type_map(&params);
-        Self::validate_report_usage(&body, error_type.as_ref(), &parameter_types, &fun_token)?;
+        let routine_returns = self.routine_return_types.borrow().clone();
+        Self::validate_report_usage(
+            &body,
+            error_type.as_ref(),
+            &parameter_types,
+            &routine_returns,
+            &fun_token,
+        )?;
 
         Ok(AstNode::FunDecl {
             options: vec![FunOption::Mutable],
@@ -749,6 +765,12 @@ impl AstParser {
             }
         }
 
+        if let Some(rt) = return_type.clone() {
+            self.routine_return_types
+                .borrow_mut()
+                .insert(name.clone(), rt);
+        }
+
         self.skip_ignorable(tokens);
         let assign = tokens.curr(false)?;
         if !matches!(assign.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
@@ -771,7 +793,14 @@ impl AstParser {
 
         let body = self.parse_block_body(tokens)?;
         let parameter_types = Self::parameter_type_map(&params);
-        Self::validate_report_usage(&body, error_type.as_ref(), &parameter_types, &pro_token)?;
+        let routine_returns = self.routine_return_types.borrow().clone();
+        Self::validate_report_usage(
+            &body,
+            error_type.as_ref(),
+            &parameter_types,
+            &routine_returns,
+            &pro_token,
+        )?;
 
         Ok(AstNode::ProDecl {
             options: vec![FunOption::Mutable],
@@ -2331,6 +2360,7 @@ impl AstParser {
         nodes: &[AstNode],
         routine_error_type: Option<&FolType>,
         visible_types: &HashMap<String, FolType>,
+        routine_return_types: &HashMap<String, FolType>,
         routine_token: &fol_lexer::lexer::stage3::element::Element,
     ) -> Result<(), Box<dyn Glitch>> {
         if routine_error_type.is_none() {
@@ -2350,9 +2380,11 @@ impl AstParser {
                     if let Some(typ) = type_hint.clone() {
                         scope_types.insert(name.clone(), typ);
                     } else if let Some(val) = value {
-                        if let Some(inferred) =
-                            Self::infer_named_type_from_node(val.as_ref(), &scope_types)
-                        {
+                        if let Some(inferred) = Self::infer_named_type_from_node(
+                            val.as_ref(),
+                            &scope_types,
+                            routine_return_types,
+                        ) {
                             scope_types.insert(name.clone(), inferred);
                         }
                     }
@@ -2394,6 +2426,7 @@ impl AstParser {
                             &args[0],
                             expected_type,
                             &scope_types,
+                            routine_return_types,
                         ) {
                             return Err(Box::new(ParseError::from_token(routine_token, mismatch)));
                         }
@@ -2412,6 +2445,7 @@ impl AstParser {
                                     body,
                                     routine_error_type,
                                     &scope_types,
+                                    routine_return_types,
                                     routine_token,
                                 )?;
                             }
@@ -2422,6 +2456,7 @@ impl AstParser {
                             default_body,
                             routine_error_type,
                             &scope_types,
+                            routine_return_types,
                             routine_token,
                         )?;
                     }
@@ -2431,6 +2466,7 @@ impl AstParser {
                         body,
                         routine_error_type,
                         &scope_types,
+                        routine_return_types,
                         routine_token,
                     )?;
                 }
@@ -2547,6 +2583,7 @@ impl AstParser {
         value: &AstNode,
         expected_type: &FolType,
         visible_types: &HashMap<String, FolType>,
+        routine_return_types: &HashMap<String, FolType>,
     ) -> Option<String> {
         let expected_name = match expected_type {
             FolType::Named { name } => name.as_str(),
@@ -2557,7 +2594,8 @@ impl AstParser {
             return None;
         }
 
-        let found_name = Self::infer_named_type_from_node(value, visible_types)?;
+        let found_name =
+            Self::infer_named_type_from_node(value, visible_types, routine_return_types)?;
         let found = match &found_name {
             FolType::Named { name } => name.as_str(),
             _ => return None,
@@ -2618,10 +2656,15 @@ impl AstParser {
     fn infer_named_type_from_node(
         node: &AstNode,
         visible_types: &HashMap<String, FolType>,
+        routine_return_types: &HashMap<String, FolType>,
     ) -> Option<FolType> {
         match node {
             AstNode::Identifier { name } => {
                 let found = visible_types.get(name)?;
+                Self::fol_type_to_named_family(found.clone())
+            }
+            AstNode::FunctionCall { name, .. } => {
+                let found = routine_return_types.get(name)?;
                 Self::fol_type_to_named_family(found.clone())
             }
             AstNode::Literal(Literal::String(_)) => Some(FolType::Named {
@@ -2640,8 +2683,10 @@ impl AstParser {
                 name: "chr".to_string(),
             }),
             AstNode::BinaryOp { left, right, .. } => {
-                let left_type = Self::infer_named_type_from_node(left, visible_types);
-                let right_type = Self::infer_named_type_from_node(right, visible_types);
+                let left_type =
+                    Self::infer_named_type_from_node(left, visible_types, routine_return_types);
+                let right_type =
+                    Self::infer_named_type_from_node(right, visible_types, routine_return_types);
 
                 match (left_type, right_type) {
                     (Some(FolType::Named { name: l }), Some(FolType::Named { name: r })) => {
@@ -2664,7 +2709,7 @@ impl AstParser {
                 }
             }
             AstNode::UnaryOp { operand, .. } => {
-                Self::infer_named_type_from_node(operand, visible_types)
+                Self::infer_named_type_from_node(operand, visible_types, routine_return_types)
             }
             _ => Self::fol_type_to_named_family(node.get_type()?),
         }
