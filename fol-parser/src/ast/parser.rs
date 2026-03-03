@@ -2323,7 +2323,9 @@ impl AstParser {
                     if let Some(typ) = type_hint.clone() {
                         scope_types.insert(name.clone(), typ);
                     } else if let Some(val) = value {
-                        if let Some(inferred) = Self::infer_named_type_from_node(val.as_ref()) {
+                        if let Some(inferred) =
+                            Self::infer_named_type_from_node(val.as_ref(), &scope_types)
+                        {
                             scope_types.insert(name.clone(), inferred);
                         }
                     }
@@ -2338,19 +2340,21 @@ impl AstParser {
                     }
 
                     if let Some(expected_type) = routine_error_type {
+                        if let Some(mismatch) = Self::report_identifier_type_mismatch(
+                            &args[0],
+                            expected_type,
+                            &scope_types,
+                        ) {
+                            return Err(Box::new(ParseError::from_token(routine_token, mismatch)));
+                        }
+
                         if let Some(mismatch) =
                             Self::report_literal_type_mismatch(&args[0], expected_type)
                         {
                             return Err(Box::new(ParseError::from_token(routine_token, mismatch)));
                         }
 
-                        if let Some(mismatch) =
-                            Self::report_expression_type_mismatch(&args[0], expected_type)
-                        {
-                            return Err(Box::new(ParseError::from_token(routine_token, mismatch)));
-                        }
-
-                        if let Some(mismatch) = Self::report_identifier_type_mismatch(
+                        if let Some(mismatch) = Self::report_expression_type_mismatch(
                             &args[0],
                             expected_type,
                             &scope_types,
@@ -2460,7 +2464,11 @@ impl AstParser {
         }
     }
 
-    fn report_expression_type_mismatch(value: &AstNode, expected_type: &FolType) -> Option<String> {
+    fn report_expression_type_mismatch(
+        value: &AstNode,
+        expected_type: &FolType,
+        visible_types: &HashMap<String, FolType>,
+    ) -> Option<String> {
         let expected_name = match expected_type {
             FolType::Named { name } => name.as_str(),
             _ => return None,
@@ -2470,7 +2478,7 @@ impl AstParser {
             return None;
         }
 
-        let found_name = Self::infer_named_type_from_node(value)?;
+        let found_name = Self::infer_named_type_from_node(value, visible_types)?;
         let found = match &found_name {
             FolType::Named { name } => name.as_str(),
             _ => return None,
@@ -2528,8 +2536,15 @@ impl AstParser {
             .collect()
     }
 
-    fn infer_named_type_from_node(node: &AstNode) -> Option<FolType> {
+    fn infer_named_type_from_node(
+        node: &AstNode,
+        visible_types: &HashMap<String, FolType>,
+    ) -> Option<FolType> {
         match node {
+            AstNode::Identifier { name } => {
+                let found = visible_types.get(name)?;
+                Self::fol_type_to_named_family(found.clone())
+            }
             AstNode::Literal(Literal::String(_)) => Some(FolType::Named {
                 name: "str".to_string(),
             }),
@@ -2545,6 +2560,33 @@ impl AstParser {
             AstNode::Literal(Literal::Character(_)) => Some(FolType::Named {
                 name: "chr".to_string(),
             }),
+            AstNode::BinaryOp { left, right, .. } => {
+                let left_type = Self::infer_named_type_from_node(left, visible_types);
+                let right_type = Self::infer_named_type_from_node(right, visible_types);
+
+                match (left_type, right_type) {
+                    (Some(FolType::Named { name: l }), Some(FolType::Named { name: r })) => {
+                        if Self::is_numeric_named_type(&l) && Self::is_numeric_named_type(&r) {
+                            Some(FolType::Named {
+                                name: if l == "num" || r == "num" {
+                                    "num".to_string()
+                                } else {
+                                    l
+                                },
+                            })
+                        } else if l == r {
+                            Some(FolType::Named { name: l })
+                        } else {
+                            None
+                        }
+                    }
+                    (Some(t), None) | (None, Some(t)) => Some(t),
+                    _ => None,
+                }
+            }
+            AstNode::UnaryOp { operand, .. } => {
+                Self::infer_named_type_from_node(operand, visible_types)
+            }
             _ => Self::fol_type_to_named_family(node.get_type()?),
         }
     }
