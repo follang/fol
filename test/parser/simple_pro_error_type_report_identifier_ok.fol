@@ -1,0 +1,4 @@
+pro report_id_ok(err_msg: str): int : str = {
+    report err_msg;
+    return 0;
+}

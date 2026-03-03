@@ -1,0 +1,4 @@
+pro report_id_bad(err_msg: str): int : bol = {
+    report err_msg;
+    return 0;
+}
