@@ -1,0 +1,4 @@
+fun report_expr_local_bad(a: int, b: int): str : bol = {
+    var err_code = a + b;
+    report err_code;
+}
