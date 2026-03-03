@@ -2716,6 +2716,19 @@ impl AstParser {
                 let found = routine_return_types.get(name)?;
                 Self::fol_type_to_named_family(found.clone())
             }
+            AstNode::MethodCall { object, method, .. } => {
+                if let Some(FolType::Named { name: object_type }) =
+                    Self::infer_named_type_from_node(object, visible_types, routine_return_types)
+                {
+                    let qualified_method_name = format!("{}.{}", object_type, method);
+                    if let Some(found) = routine_return_types.get(&qualified_method_name) {
+                        return Self::fol_type_to_named_family(found.clone());
+                    }
+                }
+
+                let found = routine_return_types.get(method)?;
+                Self::fol_type_to_named_family(found.clone())
+            }
             AstNode::Literal(Literal::String(_)) => Some(FolType::Named {
                 name: "str".to_string(),
             }),

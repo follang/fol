@@ -884,6 +884,49 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_function_custom_error_type_accepts_report_method_call_result_compatible_with_error_type(
+    ) {
+        let mut file_stream = FileStream::from_file(
+            "test/parser/simple_fun_error_type_report_method_call_result_ok.fol",
+        )
+        .expect("Should read compatible report method-call result file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        parser.parse(&mut lexer).expect(
+            "Parser should accept report method call result compatible with custom error type",
+        );
+    }
+
+    #[test]
+    fn test_function_custom_error_type_rejects_report_method_call_result_incompatible_with_error_type(
+    ) {
+        let mut file_stream = FileStream::from_file(
+            "test/parser/simple_fun_error_type_report_method_call_result_mismatch.fol",
+        )
+        .expect("Should read incompatible report method-call result file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser.parse(&mut lexer).expect_err(
+            "Parser should reject report method call result incompatible with custom error type",
+        );
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Reported expression type")
+                && first_message.contains("incompatible with routine error type"),
+            "Method-call result mismatch should report incompatible expression type, got: {}",
+            first_message
+        );
+    }
+
+    #[test]
     fn test_function_custom_error_type_accepts_compatible_report_local_var() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_fun_error_type_report_local_var_ok.fol")
