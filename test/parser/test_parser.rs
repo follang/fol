@@ -1324,6 +1324,33 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_function_accepts_same_name_different_arity_with_different_return_types() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_overload_arity_distinct_returns.fol")
+                .expect("Should read overloaded function-by-arity fixture");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        parser.parse(&mut lexer).expect(
+            "Parser should accept same function name with different arity and return types",
+        );
+    }
+
+    #[test]
+    fn test_receiver_method_accepts_same_name_different_arity_with_different_return_types() {
+        let mut file_stream = FileStream::from_file(
+            "test/parser/simple_fun_receiver_overload_arity_distinct_returns.fol",
+        )
+        .expect("Should read overloaded receiver method-by-arity fixture");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        parser.parse(&mut lexer).expect(
+            "Parser should accept same receiver method name with different arity and return types",
+        );
+    }
+
+    #[test]
     fn test_function_method_receiver_syntax_rejects_missing_receiver_close_paren() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_fun_method_receiver_missing_close_paren.fol")

@@ -1,0 +1,7 @@
+fun (parser)parse(code: int): str = {
+    return "ok";
+}
+
+fun (parser)parse(code: int, mode: int): int = {
+    return code + mode;
+}

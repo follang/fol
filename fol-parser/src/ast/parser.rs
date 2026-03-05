@@ -513,9 +513,10 @@ impl AstParser {
             };
 
             self.skip_ignorable(tokens);
+            let mut param_arity = 0usize;
             if let Ok(open_params) = tokens.curr(false) {
                 if matches!(open_params.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
-                    self.skip_balanced_round_group(tokens);
+                    param_arity = self.scan_parameter_arity(tokens);
                 }
             }
 
@@ -538,10 +539,15 @@ impl AstParser {
             }
 
             if let Some(rt) = return_type {
-                signatures.entry(routine_name.clone()).or_insert(rt.clone());
+                signatures
+                    .entry(Self::callable_key(&routine_name, param_arity))
+                    .or_insert(rt.clone());
                 if let Some(receiver) = receiver_name {
                     signatures
-                        .entry(format!("{}.{}", receiver, routine_name))
+                        .entry(Self::callable_key(
+                            &format!("{}.{}", receiver, routine_name),
+                            param_arity,
+                        ))
                         .or_insert(rt);
                 }
             }
@@ -550,34 +556,67 @@ impl AstParser {
         signatures
     }
 
-    fn skip_balanced_round_group(&self, tokens: &mut fol_lexer::lexer::stage3::Elements) {
+    fn scan_parameter_arity(&self, tokens: &mut fol_lexer::lexer::stage3::Elements) -> usize {
         let mut depth: usize = 0;
+        let mut count: usize = 0;
+        let mut saw_token_in_slot = false;
 
         for _ in 0..8_192 {
             let token = match tokens.curr(false) {
                 Ok(token) => token,
-                Err(_) => return,
+                Err(_) => return count,
             };
 
+            if token.key().is_space() {
+                if tokens.bump().is_none() {
+                    return count;
+                }
+                continue;
+            }
+
             match token.key() {
-                KEYWORD::Symbol(SYMBOL::RoundO) => depth += 1,
+                KEYWORD::Symbol(SYMBOL::RoundO) => {
+                    depth += 1;
+                    if depth > 1 {
+                        saw_token_in_slot = true;
+                    }
+                }
                 KEYWORD::Symbol(SYMBOL::RoundC) => {
+                    if depth == 1 {
+                        if saw_token_in_slot {
+                            count += 1;
+                        }
+                        let _ = tokens.bump();
+                        return count;
+                    }
                     if depth == 0 {
-                        return;
+                        return count;
                     }
                     depth -= 1;
                 }
-                _ => {}
+                KEYWORD::Symbol(SYMBOL::Comma) => {
+                    if depth == 1 {
+                        if saw_token_in_slot {
+                            count += 1;
+                        }
+                        saw_token_in_slot = false;
+                    } else {
+                        saw_token_in_slot = true;
+                    }
+                }
+                _ => {
+                    if depth >= 1 {
+                        saw_token_in_slot = true;
+                    }
+                }
             }
 
             if tokens.bump().is_none() {
-                return;
-            }
-
-            if depth == 0 {
-                return;
+                return count;
             }
         }
+
+        count
     }
 
     fn parse_lexer_literal(
@@ -837,7 +876,13 @@ impl AstParser {
         }
 
         if let Some(rt) = return_type.as_ref() {
-            self.register_routine_return_type(&name, receiver_type.as_ref(), rt, &fun_token)?;
+            self.register_routine_return_type(
+                &name,
+                params.len(),
+                receiver_type.as_ref(),
+                rt,
+                &fun_token,
+            )?;
         }
 
         self.skip_ignorable(tokens);
@@ -939,7 +984,13 @@ impl AstParser {
         }
 
         if let Some(rt) = return_type.as_ref() {
-            self.register_routine_return_type(&name, receiver_type.as_ref(), rt, &pro_token)?;
+            self.register_routine_return_type(
+                &name,
+                params.len(),
+                receiver_type.as_ref(),
+                rt,
+                &pro_token,
+            )?;
         }
 
         self.skip_ignorable(tokens);
@@ -1118,18 +1169,26 @@ impl AstParser {
     fn register_routine_return_type(
         &self,
         routine_name: &str,
+        arity: usize,
         receiver_type: Option<&FolType>,
         return_type: &FolType,
         token: &fol_lexer::lexer::stage3::element::Element,
     ) -> Result<(), Box<dyn Glitch>> {
-        self.register_routine_return_type_key(routine_name.to_string(), return_type, token)?;
+        self.register_routine_return_type_key(
+            Self::callable_key(routine_name, arity),
+            routine_name.to_string(),
+            return_type,
+            token,
+        )?;
 
         if let Some(FolType::Named {
             name: receiver_name,
         }) = receiver_type
         {
+            let qualified_name = format!("{}.{}", receiver_name, routine_name);
             self.register_routine_return_type_key(
-                format!("{}.{}", receiver_name, routine_name),
+                Self::callable_key(&qualified_name, arity),
+                qualified_name,
                 return_type,
                 token,
             )?;
@@ -1141,6 +1200,7 @@ impl AstParser {
     fn register_routine_return_type_key(
         &self,
         key: String,
+        label: String,
         return_type: &FolType,
         token: &fol_lexer::lexer::stage3::element::Element,
     ) -> Result<(), Box<dyn Glitch>> {
@@ -1151,7 +1211,7 @@ impl AstParser {
                     token,
                     format!(
                         "Conflicting return type for routine '{}': '{}' vs '{}'",
-                        key,
+                        label,
                         Self::fol_type_label(existing),
                         Self::fol_type_label(return_type)
                     ),
@@ -1162,6 +1222,10 @@ impl AstParser {
 
         registry.insert(key, return_type.clone());
         Ok(())
+    }
+
+    fn callable_key(name: &str, arity: usize) -> String {
+        format!("{}#{}", name, arity)
     }
 
     fn fol_type_label(typ: &FolType) -> String {
@@ -2857,7 +2921,8 @@ impl AstParser {
                 routine_return_types,
             ),
             AstNode::FunctionCall { name, args } => {
-                if !routine_return_types.contains_key(name) {
+                let callable_key = Self::callable_key(name, args.len());
+                if !routine_return_types.contains_key(&callable_key) {
                     return Some(format!(
                         "Unknown reported routine '{}' in custom-error routine",
                         name
@@ -2881,7 +2946,8 @@ impl AstParser {
                             routine_return_types,
                         )
                     {
-                        let qualified_method_name = format!("{}.{}", object_type, method);
+                        let qualified_method_name =
+                            Self::callable_key(&format!("{}.{}", object_type, method), args.len());
                         if !routine_return_types.contains_key(&qualified_method_name) {
                             return Some(format!(
                                 "Unknown reported method '{}.{}' in custom-error routine",
@@ -3013,15 +3079,20 @@ impl AstParser {
                 let found = visible_types.get(name)?;
                 Self::fol_type_to_named_family(found.clone())
             }
-            AstNode::FunctionCall { name, .. } => {
-                let found = routine_return_types.get(name)?;
+            AstNode::FunctionCall { name, args } => {
+                let found = routine_return_types.get(&Self::callable_key(name, args.len()))?;
                 Self::fol_type_to_named_family(found.clone())
             }
-            AstNode::MethodCall { object, method, .. } => {
+            AstNode::MethodCall {
+                object,
+                method,
+                args,
+            } => {
                 if let Some(FolType::Named { name: object_type }) =
                     Self::infer_named_type_from_node(object, visible_types, routine_return_types)
                 {
-                    let qualified_method_name = format!("{}.{}", object_type, method);
+                    let qualified_method_name =
+                        Self::callable_key(&format!("{}.{}", object_type, method), args.len());
                     let found = routine_return_types.get(&qualified_method_name)?;
                     return Self::fol_type_to_named_family(found.clone());
                 }
