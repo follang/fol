@@ -10,6 +10,32 @@ fun/pro name(args): ResultType : ErrorType = { ... }
 
 `report expr` should produce a value compatible with `ErrorType`.
 
+Parser type checks support forward routine declarations, so a reported routine/method can be declared later in the same file.
+
+```fol
+fun load(path: str): int : str = {
+    report make_err(path)
+    return 0
+}
+
+fun make_err(path: str): str = {
+    return "missing: " + path
+}
+```
+
+The same rule applies to receiver methods:
+
+```fol
+fun run(tool: parser, code: int): int : str = {
+    report tool.parse_err(code)
+    return 0
+}
+
+fun (parser)parse_err(code: int): str = {
+    return "bad-input"
+}
+```
+
 When we use the keyword `report`, the error is returned to the routine's error variable and the routine qutis executing (the routine, not the program).
 ```
 use file: mod[std] = { std::fs::File }
