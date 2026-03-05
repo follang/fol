@@ -1,0 +1,7 @@
+pro parse(code: int): str = {
+    return "ok";
+}
+
+pro parse(code: int): str = {
+    return "still-ok";
+}

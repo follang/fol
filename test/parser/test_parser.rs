@@ -1244,6 +1244,86 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_procedure_rejects_conflicting_duplicate_return_type_signature() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_pro_conflicting_return_signature.fol")
+                .expect("Should read conflicting duplicate procedure return signature fixture");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should reject conflicting duplicate procedure return signatures");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Conflicting return type for routine 'parse'"),
+            "Duplicate conflicting procedure signature should report explicit conflict, got: {}",
+            first_message
+        );
+    }
+
+    #[test]
+    fn test_receiver_procedure_method_rejects_conflicting_duplicate_return_type_signature() {
+        let mut file_stream = FileStream::from_file(
+            "test/parser/simple_pro_receiver_conflicting_return_signature.fol",
+        )
+        .expect(
+            "Should read conflicting duplicate receiver procedure method return signature fixture",
+        );
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser.parse(&mut lexer).expect_err(
+            "Parser should reject conflicting duplicate receiver procedure method return signatures",
+        );
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Conflicting return type for routine")
+                && first_message.contains("parse"),
+            "Duplicate conflicting receiver procedure method signature should report explicit conflict, got: {}",
+            first_message
+        );
+    }
+
+    #[test]
+    fn test_function_accepts_duplicate_signature_with_same_return_type() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_duplicate_same_return_signature.fol")
+                .expect("Should read duplicate same-return function signature fixture");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        parser.parse(&mut lexer).expect(
+            "Parser should accept duplicate function signature when return type is the same",
+        );
+    }
+
+    #[test]
+    fn test_procedure_accepts_duplicate_signature_with_same_return_type() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_pro_duplicate_same_return_signature.fol")
+                .expect("Should read duplicate same-return procedure signature fixture");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        parser.parse(&mut lexer).expect(
+            "Parser should accept duplicate procedure signature when return type is the same",
+        );
+    }
+
+    #[test]
     fn test_function_method_receiver_syntax_rejects_missing_receiver_close_paren() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_fun_method_receiver_missing_close_paren.fol")
