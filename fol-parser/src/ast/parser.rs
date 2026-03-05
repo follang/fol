@@ -538,9 +538,11 @@ impl AstParser {
             }
 
             if let Some(rt) = return_type {
-                signatures.insert(routine_name.clone(), rt.clone());
+                signatures.entry(routine_name.clone()).or_insert(rt.clone());
                 if let Some(receiver) = receiver_name {
-                    signatures.insert(format!("{}.{}", receiver, routine_name), rt);
+                    signatures
+                        .entry(format!("{}.{}", receiver, routine_name))
+                        .or_insert(rt);
                 }
             }
         }
@@ -834,15 +836,8 @@ impl AstParser {
             }
         }
 
-        if let Some(rt) = return_type.clone() {
-            let mut registry = self.routine_return_types.borrow_mut();
-            registry.insert(name.clone(), rt.clone());
-            if let Some(FolType::Named {
-                name: receiver_name,
-            }) = receiver_type.as_ref()
-            {
-                registry.insert(format!("{}.{}", receiver_name, name), rt);
-            }
+        if let Some(rt) = return_type.as_ref() {
+            self.register_routine_return_type(&name, receiver_type.as_ref(), rt, &fun_token)?;
         }
 
         self.skip_ignorable(tokens);
@@ -943,15 +938,8 @@ impl AstParser {
             }
         }
 
-        if let Some(rt) = return_type.clone() {
-            let mut registry = self.routine_return_types.borrow_mut();
-            registry.insert(name.clone(), rt.clone());
-            if let Some(FolType::Named {
-                name: receiver_name,
-            }) = receiver_type.as_ref()
-            {
-                registry.insert(format!("{}.{}", receiver_name, name), rt);
-            }
+        if let Some(rt) = return_type.as_ref() {
+            self.register_routine_return_type(&name, receiver_type.as_ref(), rt, &pro_token)?;
         }
 
         self.skip_ignorable(tokens);
@@ -1125,6 +1113,62 @@ impl AstParser {
         let name = name_token.con().trim().to_string();
         let _ = tokens.bump();
         Ok((receiver_type, name))
+    }
+
+    fn register_routine_return_type(
+        &self,
+        routine_name: &str,
+        receiver_type: Option<&FolType>,
+        return_type: &FolType,
+        token: &fol_lexer::lexer::stage3::element::Element,
+    ) -> Result<(), Box<dyn Glitch>> {
+        self.register_routine_return_type_key(routine_name.to_string(), return_type, token)?;
+
+        if let Some(FolType::Named {
+            name: receiver_name,
+        }) = receiver_type
+        {
+            self.register_routine_return_type_key(
+                format!("{}.{}", receiver_name, routine_name),
+                return_type,
+                token,
+            )?;
+        }
+
+        Ok(())
+    }
+
+    fn register_routine_return_type_key(
+        &self,
+        key: String,
+        return_type: &FolType,
+        token: &fol_lexer::lexer::stage3::element::Element,
+    ) -> Result<(), Box<dyn Glitch>> {
+        let mut registry = self.routine_return_types.borrow_mut();
+        if let Some(existing) = registry.get(&key) {
+            if existing != return_type {
+                return Err(Box::new(ParseError::from_token(
+                    token,
+                    format!(
+                        "Conflicting return type for routine '{}': '{}' vs '{}'",
+                        key,
+                        Self::fol_type_label(existing),
+                        Self::fol_type_label(return_type)
+                    ),
+                )));
+            }
+            return Ok(());
+        }
+
+        registry.insert(key, return_type.clone());
+        Ok(())
+    }
+
+    fn fol_type_label(typ: &FolType) -> String {
+        match typ {
+            FolType::Named { name } => name.clone(),
+            _ => format!("{:?}", typ),
+        }
     }
 
     fn parse_type_reference(

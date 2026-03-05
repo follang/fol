@@ -139,6 +139,7 @@ test_old/main/
 - **Literal helper**: `parse_literal` supports integers, strings, and identifiers for baseline parser tests.
 - **Custom-error report checks**: Parser validates `report` arity/type compatibility against declared routine error type, including identifier/literal/expression/routine-call/method-call paths with explicit unknown routine/method diagnostics.
 - **Forward declaration support in report checks**: Report expression typing resolves routine/method return signatures even when callee declarations appear later in the same file.
+- **Signature conflict diagnostics**: Parser reports conflicting duplicate routine/method return signatures for the same callable key.
 
 #### In Progress
 - Remaining declaration work (`typ`, `ali`, and advanced declaration options)

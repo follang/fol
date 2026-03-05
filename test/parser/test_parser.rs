@@ -1192,6 +1192,58 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_function_rejects_conflicting_duplicate_return_type_signature() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_conflicting_return_signature.fol")
+                .expect("Should read conflicting duplicate function return signature fixture");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should reject conflicting duplicate function return signatures");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Conflicting return type for routine 'parse'"),
+            "Duplicate conflicting function signature should report explicit conflict, got: {}",
+            first_message
+        );
+    }
+
+    #[test]
+    fn test_receiver_method_rejects_conflicting_duplicate_return_type_signature() {
+        let mut file_stream = FileStream::from_file(
+            "test/parser/simple_fun_receiver_conflicting_return_signature.fol",
+        )
+        .expect("Should read conflicting duplicate receiver method return signature fixture");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser.parse(&mut lexer).expect_err(
+            "Parser should reject conflicting duplicate receiver method return signatures",
+        );
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Conflicting return type for routine")
+                && first_message.contains("parse"),
+            "Duplicate conflicting receiver method signature should report explicit conflict, got: {}",
+            first_message
+        );
+    }
+
+    #[test]
     fn test_function_method_receiver_syntax_rejects_missing_receiver_close_paren() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_fun_method_receiver_missing_close_paren.fol")
