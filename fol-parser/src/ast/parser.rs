@@ -1228,6 +1228,47 @@ impl AstParser {
         format!("{}#{}", name, arity)
     }
 
+    fn reported_callable_arity_mismatch_message(
+        name: &str,
+        arity: usize,
+        routine_return_types: &HashMap<String, FolType>,
+    ) -> Option<String> {
+        let mut arities: Vec<usize> = routine_return_types
+            .keys()
+            .filter_map(|key| Self::parse_callable_key(key))
+            .filter_map(|(candidate_name, candidate_arity)| {
+                if candidate_name == name {
+                    Some(candidate_arity)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        if arities.is_empty() {
+            return None;
+        }
+
+        arities.sort_unstable();
+        arities.dedup();
+        let available = arities
+            .iter()
+            .map(|value| value.to_string())
+            .collect::<Vec<_>>()
+            .join(", ");
+
+        Some(format!(
+            "Unknown reported callable '{}' with {} argument(s); available arity(s): {}",
+            name, arity, available
+        ))
+    }
+
+    fn parse_callable_key(key: &str) -> Option<(String, usize)> {
+        let (name, arity) = key.rsplit_once('#')?;
+        let parsed_arity = arity.parse::<usize>().ok()?;
+        Some((name.to_string(), parsed_arity))
+    }
+
     fn fol_type_label(typ: &FolType) -> String {
         match typ {
             FolType::Named { name } => name.clone(),
@@ -2923,6 +2964,14 @@ impl AstParser {
             AstNode::FunctionCall { name, args } => {
                 let callable_key = Self::callable_key(name, args.len());
                 if !routine_return_types.contains_key(&callable_key) {
+                    if let Some(arity_message) = Self::reported_callable_arity_mismatch_message(
+                        name,
+                        args.len(),
+                        routine_return_types,
+                    ) {
+                        return Some(arity_message);
+                    }
+
                     return Some(format!(
                         "Unknown reported routine '{}' in custom-error routine",
                         name
@@ -2946,9 +2995,20 @@ impl AstParser {
                             routine_return_types,
                         )
                     {
+                        let qualified_method = format!("{}.{}", object_type, method);
                         let qualified_method_name =
-                            Self::callable_key(&format!("{}.{}", object_type, method), args.len());
+                            Self::callable_key(&qualified_method, args.len());
                         if !routine_return_types.contains_key(&qualified_method_name) {
+                            if let Some(arity_message) =
+                                Self::reported_callable_arity_mismatch_message(
+                                    &qualified_method,
+                                    args.len(),
+                                    routine_return_types,
+                                )
+                            {
+                                return Some(arity_message);
+                            }
+
                             return Some(format!(
                                 "Unknown reported method '{}.{}' in custom-error routine",
                                 object_type, method

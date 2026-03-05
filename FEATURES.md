@@ -138,6 +138,7 @@ test_old/main/
 - **Unary diagnostics**: Missing unary operands produce explicit diagnostics (including delimiter and EOF cases).
 - **Literal helper**: `parse_literal` supports integers, strings, and identifiers for baseline parser tests.
 - **Custom-error report checks**: Parser validates `report` arity/type compatibility against declared routine error type, including identifier/literal/expression/routine-call/method-call paths with explicit unknown routine/method diagnostics.
+- **Callable arity diagnostics in report checks**: Unknown report routine/method calls include available overload arities when the callable exists but arity does not match.
 - **Forward declaration support in report checks**: Report expression typing resolves routine/method return signatures even when callee declarations appear later in the same file.
 - **Signature conflict diagnostics**: Parser tracks callable keys with arity (`name#N`) and reports conflicting duplicate return signatures for the same key (`fun`/`pro`, plain and receiver-qualified), while allowing duplicates when return type is consistent.
 

@@ -1,0 +1,8 @@
+fun make_err(code: int): str = {
+    return "err";
+}
+
+fun caller_arity_bad(a: int, b: int): int : str = {
+    report make_err(a, b);
+    return 0;
+}

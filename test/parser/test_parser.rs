@@ -970,6 +970,60 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_function_custom_error_type_rejects_report_call_with_unknown_arity() {
+        let mut file_stream = FileStream::from_file(
+            "test/parser/simple_fun_error_type_report_unknown_arity_call.fol",
+        )
+        .expect("Should read unknown-arity report routine-call fixture");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser.parse(&mut lexer).expect_err(
+            "Parser should reject report routine call with unknown arity in custom-error routine",
+        );
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Unknown reported callable 'make_err' with 2 argument(s)")
+                && first_message.contains("available arity(s): 1"),
+            "Unknown-arity report routine call should include available arities, got: {}",
+            first_message
+        );
+    }
+
+    #[test]
+    fn test_procedure_custom_error_type_rejects_report_call_with_unknown_arity() {
+        let mut file_stream = FileStream::from_file(
+            "test/parser/simple_pro_error_type_report_unknown_arity_call.fol",
+        )
+        .expect("Should read procedure unknown-arity report routine-call fixture");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser.parse(&mut lexer).expect_err(
+            "Parser should reject procedure report routine call with unknown arity in custom-error routine",
+        );
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Unknown reported callable 'make_err' with 2 argument(s)")
+                && first_message.contains("available arity(s): 1"),
+            "Procedure unknown-arity report routine call should include available arities, got: {}",
+            first_message
+        );
+    }
+
+    #[test]
     fn test_function_custom_error_type_rejects_report_unknown_called_method() {
         let mut file_stream = FileStream::from_file(
             "test/parser/simple_fun_error_type_report_unknown_method_call.fol",
@@ -1017,6 +1071,62 @@ mod parser_tests {
         assert!(
             first_message.contains("Unknown reported method 'parser.missing_err_source'"),
             "Unknown called method in procedure report should produce explicit diagnostic, got: {}",
+            first_message
+        );
+    }
+
+    #[test]
+    fn test_function_custom_error_type_rejects_report_method_call_with_unknown_arity() {
+        let mut file_stream = FileStream::from_file(
+            "test/parser/simple_fun_error_type_report_unknown_arity_method_call.fol",
+        )
+        .expect("Should read unknown-arity report method-call fixture");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser.parse(&mut lexer).expect_err(
+            "Parser should reject report method call with unknown arity in custom-error routine",
+        );
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message
+                .contains("Unknown reported callable 'parser.make_err' with 2 argument(s)")
+                && first_message.contains("available arity(s): 1"),
+            "Unknown-arity report method call should include available arities, got: {}",
+            first_message
+        );
+    }
+
+    #[test]
+    fn test_procedure_custom_error_type_rejects_report_method_call_with_unknown_arity() {
+        let mut file_stream = FileStream::from_file(
+            "test/parser/simple_pro_error_type_report_unknown_arity_method_call.fol",
+        )
+        .expect("Should read procedure unknown-arity report method-call fixture");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser.parse(&mut lexer).expect_err(
+            "Parser should reject procedure report method call with unknown arity in custom-error routine",
+        );
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message
+                .contains("Unknown reported callable 'parser.make_err' with 2 argument(s)")
+                && first_message.contains("available arity(s): 1"),
+            "Procedure unknown-arity report method call should include available arities, got: {}",
             first_message
         );
     }
