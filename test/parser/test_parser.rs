@@ -978,6 +978,48 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_procedure_custom_error_type_accepts_report_method_call_result_from_receiver_decl() {
+        let mut file_stream = FileStream::from_file(
+            "test/parser/simple_pro_error_type_report_method_call_result_ok.fol",
+        )
+        .expect("Should read compatible procedure report method-call result file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        parser.parse(&mut lexer).expect(
+            "Parser should accept procedure report method call result compatible via receiver declaration",
+        );
+    }
+
+    #[test]
+    fn test_procedure_custom_error_type_rejects_report_method_call_result_mismatch_from_receiver_decl(
+    ) {
+        let mut file_stream = FileStream::from_file(
+            "test/parser/simple_pro_error_type_report_method_call_result_mismatch.fol",
+        )
+        .expect("Should read incompatible procedure report method-call result file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser.parse(&mut lexer).expect_err(
+            "Parser should reject procedure report method call result incompatible via receiver declaration",
+        );
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Reported expression type")
+                && first_message.contains("incompatible with routine error type"),
+            "Procedure method-call result mismatch via receiver declaration should report incompatible expression type, got: {}",
+            first_message
+        );
+    }
+
+    #[test]
     fn test_function_method_receiver_syntax_rejects_missing_receiver_close_paren() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_fun_method_receiver_missing_close_paren.fol")
