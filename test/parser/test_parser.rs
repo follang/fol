@@ -1466,6 +1466,180 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_function_custom_error_type_accepts_report_forward_overloaded_call_result_by_arity() {
+        let mut file_stream = FileStream::from_file(
+            "test/parser/simple_fun_error_type_report_forward_overload_arity_ok.fol",
+        )
+        .expect("Should read forward overloaded report call-result compatible fixture");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        parser.parse(&mut lexer).expect(
+            "Parser should accept forward overloaded report call result when selected arity return type is compatible",
+        );
+    }
+
+    #[test]
+    fn test_function_custom_error_type_rejects_report_forward_overloaded_call_result_by_arity_mismatch(
+    ) {
+        let mut file_stream = FileStream::from_file(
+            "test/parser/simple_fun_error_type_report_forward_overload_arity_mismatch.fol",
+        )
+        .expect("Should read forward overloaded report call-result mismatch fixture");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser.parse(&mut lexer).expect_err(
+            "Parser should reject forward overloaded report call result when selected arity return type is incompatible",
+        );
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Reported expression type")
+                && first_message.contains("incompatible with routine error type"),
+            "Forward overloaded call-result mismatch should report incompatible expression type, got: {}",
+            first_message
+        );
+    }
+
+    #[test]
+    fn test_procedure_custom_error_type_accepts_report_forward_overloaded_call_result_by_arity() {
+        let mut file_stream = FileStream::from_file(
+            "test/parser/simple_pro_error_type_report_forward_overload_arity_ok.fol",
+        )
+        .expect("Should read forward overloaded procedure report call-result compatible fixture");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        parser.parse(&mut lexer).expect(
+            "Parser should accept forward overloaded procedure report call result when selected arity return type is compatible",
+        );
+    }
+
+    #[test]
+    fn test_procedure_custom_error_type_rejects_report_forward_overloaded_call_result_by_arity_mismatch(
+    ) {
+        let mut file_stream = FileStream::from_file(
+            "test/parser/simple_pro_error_type_report_forward_overload_arity_mismatch.fol",
+        )
+        .expect("Should read forward overloaded procedure report call-result mismatch fixture");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser.parse(&mut lexer).expect_err(
+            "Parser should reject forward overloaded procedure report call result when selected arity return type is incompatible",
+        );
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Reported expression type")
+                && first_message.contains("incompatible with routine error type"),
+            "Forward overloaded procedure call-result mismatch should report incompatible expression type, got: {}",
+            first_message
+        );
+    }
+
+    #[test]
+    fn test_function_custom_error_type_accepts_report_forward_overloaded_method_call_result_by_arity(
+    ) {
+        let mut file_stream = FileStream::from_file(
+            "test/parser/simple_fun_error_type_report_forward_method_overload_arity_ok.fol",
+        )
+        .expect("Should read forward overloaded report method-call result compatible fixture");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        parser.parse(&mut lexer).expect(
+            "Parser should accept forward overloaded report method call result when selected arity return type is compatible",
+        );
+    }
+
+    #[test]
+    fn test_function_custom_error_type_rejects_report_forward_overloaded_method_call_result_by_arity_mismatch(
+    ) {
+        let mut file_stream = FileStream::from_file(
+            "test/parser/simple_fun_error_type_report_forward_method_overload_arity_mismatch.fol",
+        )
+        .expect("Should read forward overloaded report method-call result mismatch fixture");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser.parse(&mut lexer).expect_err(
+            "Parser should reject forward overloaded report method call result when selected arity return type is incompatible",
+        );
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Reported expression type")
+                && first_message.contains("incompatible with routine error type"),
+            "Forward overloaded method-call result mismatch should report incompatible expression type, got: {}",
+            first_message
+        );
+    }
+
+    #[test]
+    fn test_procedure_custom_error_type_accepts_report_forward_overloaded_method_call_result_by_arity(
+    ) {
+        let mut file_stream = FileStream::from_file(
+            "test/parser/simple_pro_error_type_report_forward_method_overload_arity_ok.fol",
+        )
+        .expect(
+            "Should read forward overloaded procedure report method-call result compatible fixture",
+        );
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        parser.parse(&mut lexer).expect(
+            "Parser should accept forward overloaded procedure report method call result when selected arity return type is compatible",
+        );
+    }
+
+    #[test]
+    fn test_procedure_custom_error_type_rejects_report_forward_overloaded_method_call_result_by_arity_mismatch(
+    ) {
+        let mut file_stream = FileStream::from_file(
+            "test/parser/simple_pro_error_type_report_forward_method_overload_arity_mismatch.fol",
+        )
+        .expect(
+            "Should read forward overloaded procedure report method-call result mismatch fixture",
+        );
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser.parse(&mut lexer).expect_err(
+            "Parser should reject forward overloaded procedure report method call result when selected arity return type is incompatible",
+        );
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Reported expression type")
+                && first_message.contains("incompatible with routine error type"),
+            "Forward overloaded procedure method-call result mismatch should report incompatible expression type, got: {}",
+            first_message
+        );
+    }
+
+    #[test]
     fn test_function_rejects_conflicting_duplicate_return_type_signature() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_fun_conflicting_return_signature.fol")

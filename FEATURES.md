@@ -140,6 +140,7 @@ test_old/main/
 - **Custom-error report checks**: Parser validates `report` arity/type compatibility against declared routine error type, including identifier/literal/expression/routine-call/method-call paths with explicit unknown routine/method diagnostics.
 - **Callable arity diagnostics in report checks**: Unknown report routine/method calls include available overload arities when the callable exists but arity does not match.
 - **Overload-aware report typing**: `report` call/method compatibility checks resolve return types by callable name and argument arity.
+- **Forward overload support**: Report typing resolves overloaded routine/method return signatures by arity even when overload declarations appear later in file.
 - **Forward declaration support in report checks**: Report expression typing resolves routine/method return signatures even when callee declarations appear later in the same file.
 - **Signature conflict diagnostics**: Parser tracks callable keys with arity (`name#N`) and reports conflicting duplicate return signatures for the same key (`fun`/`pro`, plain and receiver-qualified), while allowing duplicates when return type is consistent.
 
