@@ -902,6 +902,14 @@ impl AstParser {
 
             let receiver_token = tokens.curr(false)?;
             receiver_type = Some(self.parse_type_reference(&receiver_token)?);
+            if let Some(FolType::Named { name }) = receiver_type.as_ref() {
+                if Self::is_builtin_scalar_type_name(name) {
+                    return Err(Box::new(ParseError::from_token(
+                        &receiver_token,
+                        "Method receiver type must be a user-defined named type".to_string(),
+                    )));
+                }
+            }
             let _ = tokens.bump();
 
             self.skip_ignorable(tokens);
