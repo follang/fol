@@ -36,6 +36,21 @@ fun (parser)parse_err(code: int): str = {
 }
 ```
 
+If the forward-declared callee return type is incompatible with the routine error type, parser validation fails.
+
+```fol
+fun load_bad(path: str): int : str = {
+    report make_code(path)
+    return 0
+}
+
+fun make_code(path: str): int = {
+    return 1
+}
+```
+
+This fails because `report make_code(path)` produces `int` while the routine error type is `str`.
+
 When we use the keyword `report`, the error is returned to the routine's error variable and the routine qutis executing (the routine, not the program).
 ```
 use file: mod[std] = { std::fs::File }
