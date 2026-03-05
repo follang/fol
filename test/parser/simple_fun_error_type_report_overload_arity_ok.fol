@@ -1,0 +1,12 @@
+fun make_err(code: int): int = {
+    return code;
+}
+
+fun make_err(code: int, mode: int): str = {
+    return "err";
+}
+
+fun caller_overload_ok(a: int, b: int): int : str = {
+    report make_err(a, b);
+    return 0;
+}

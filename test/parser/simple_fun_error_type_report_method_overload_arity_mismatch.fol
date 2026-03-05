@@ -1,0 +1,12 @@
+fun (parser)make_err(code: int): int = {
+    return code;
+}
+
+fun (parser)make_err(code: int, mode: int): str = {
+    return "err";
+}
+
+fun caller_method_overload_bad(tool: parser, a: int): int : str = {
+    report tool.make_err(a);
+    return 0;
+}
