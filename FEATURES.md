@@ -130,11 +130,13 @@ test_old/main/
 #### Current Implementation Status
 - **Declaration support**: Parser handles `use`, `var`, `fun`, and `pro` declarations.
 - **Expression support**: Precedence-aware parsing for arithmetic, comparison, logical operators, calls, method calls, and assignments.
+- **Receiver methods**: Parser accepts receiver-form routine declarations (`fun (Type)name(...)` / `pro (Type)name(...)`) and tracks receiver-qualified return signatures.
 - **Control flow support**: `return`, `break`, `yeild`, `when`, `if`/`else if` lowering, and `loop` forms are parsed into AST nodes.
 - **Unary operators**: `-`, `+`, `not`, `&` (ref), and `*` (deref) are parsed with recursive prefix chaining support.
 - **Error locations**: Parser errors carry file/line/column/length metadata into diagnostics.
 - **Unary diagnostics**: Missing unary operands produce explicit diagnostics (including delimiter and EOF cases).
 - **Literal helper**: `parse_literal` supports integers, strings, and identifiers for baseline parser tests.
+- **Custom-error report checks**: Parser validates `report` arity/type compatibility against declared routine error type, including identifier/literal/expression/routine-call/method-call paths with explicit unknown routine/method diagnostics.
 
 #### In Progress
 - Remaining declaration work (`typ`, `ali`, and advanced declaration options)

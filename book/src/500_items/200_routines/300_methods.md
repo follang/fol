@@ -1,9 +1,37 @@
 # Methods
 
-There is another type of routine, called method, but it can be either a pure function either a procedure. A method is a piece of code that is called by a name that is associated with an object where it is implicitly passed the object on which it was called and is able to operate on data that is contained within the object.
+A method is a routine associated with a receiver type. In FOL, methods can be declared as either `fun` or `pro` and called with dot syntax (`value.method(...)`).
 
-They either are defined inside the object, or outside the object then the object in which they operate is passed like so (just like in [Golang]()):
-```
-pro (object)getDir(): str = { result = self.dir; };
+Current parser-supported receiver declaration syntax is:
+
+```fol
+fun (parser)parse_msg(code: int): str = {
+    return "ok";
+}
+
+pro (parser)update(code: int): int = {
+    return code;
+}
 ```
 
+The receiver type appears in parentheses right after `fun` or `pro`, followed by the method name.
+
+Method calls use standard dot syntax:
+
+```fol
+var tool: parser = parser.new()
+var msg: str = tool.parse_msg(10)
+```
+
+Custom error routines also support reporting method call results when receiver-qualified signatures are available:
+
+```fol
+fun (parser)parse_err(code: int): str = {
+    return "bad-input";
+}
+
+fun run(tool: parser, code: int): int : str = {
+    report tool.parse_err(code)
+    return 0
+}
+```
