@@ -131,6 +131,7 @@ test_old/main/
 - **Declaration support**: Parser handles `use`, `var`, `fun`, and `pro` declarations.
 - **Expression support**: Precedence-aware parsing for arithmetic, comparison, logical operators, calls, method calls, and assignments.
 - **Receiver methods**: Parser accepts receiver-form routine declarations (`fun (Type)name(...)` / `pro (Type)name(...)`) and tracks receiver-qualified return signatures.
+- **Receiver type validation**: Builtin scalar receiver types are rejected; receiver declarations require user-defined named types.
 - **Control flow support**: `return`, `break`, `yeild`, `when`, `if`/`else if` lowering, and `loop` forms are parsed into AST nodes.
 - **Unary operators**: `-`, `+`, `not`, `&` (ref), and `*` (deref) are parsed with recursive prefix chaining support.
 - **Error locations**: Parser errors carry file/line/column/length metadata into diagnostics.
