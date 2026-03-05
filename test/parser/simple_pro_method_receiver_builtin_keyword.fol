@@ -1,0 +1,3 @@
+pro (true)parse_msg(code: int): str = {
+    return "ok";
+}

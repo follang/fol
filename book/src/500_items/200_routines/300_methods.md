@@ -16,7 +16,7 @@ pro (parser)update(code: int): int = {
 
 The receiver type appears in parentheses right after `fun` or `pro`, followed by the method name.
 
-Receiver types must be user-defined named types. Builtin scalar types (like `int`, `bol`, `str`, `flt`) are rejected for method receiver declarations.
+Receiver types must be user-defined named types. Builtin scalar/special language types (like `int`, `bol`, `str`, `flt`, and keyword-like builtins) are rejected for method receiver declarations.
 
 Invalid example:
 

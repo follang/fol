@@ -1220,6 +1220,56 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_function_method_receiver_syntax_rejects_builtin_keyword_receiver_type() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_method_receiver_builtin_keyword.fol")
+                .expect("Should read function builtin-keyword receiver type fixture");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser.parse(&mut lexer).expect_err(
+            "Parser should reject function receiver syntax with builtin keyword receiver type",
+        );
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Method receiver type must be a user-defined named type"),
+            "Builtin keyword receiver type should report explicit receiver-type diagnostic, got: {}",
+            first_message
+        );
+    }
+
+    #[test]
+    fn test_procedure_method_receiver_syntax_rejects_builtin_keyword_receiver_type() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_pro_method_receiver_builtin_keyword.fol")
+                .expect("Should read procedure builtin-keyword receiver type fixture");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser.parse(&mut lexer).expect_err(
+            "Parser should reject procedure receiver syntax with builtin keyword receiver type",
+        );
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Method receiver type must be a user-defined named type"),
+            "Procedure builtin keyword receiver type should report explicit receiver-type diagnostic, got: {}",
+            first_message
+        );
+    }
+
+    #[test]
     fn test_function_custom_error_type_accepts_compatible_report_local_var() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_fun_error_type_report_local_var_ok.fol")
