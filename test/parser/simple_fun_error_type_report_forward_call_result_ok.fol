@@ -1,0 +1,8 @@
+fun caller_forward_ok(code: int): int : str = {
+    report make_err(code);
+    return 0;
+}
+
+fun make_err(code: int): str = {
+    return "err";
+}

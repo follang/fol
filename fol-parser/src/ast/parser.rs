@@ -89,6 +89,9 @@ impl AstParser {
         &mut self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Vec<Box<dyn Glitch>>> {
+        self.routine_return_types.borrow_mut().clear();
+        self.seed_routine_return_types(tokens);
+
         let mut declarations = Vec::new();
         let mut errors: Vec<Box<dyn Glitch>> = Vec::new();
 
@@ -392,6 +395,186 @@ impl AstParser {
             Ok(AstNode::Program { declarations })
         } else {
             Err(errors)
+        }
+    }
+
+    fn seed_routine_return_types(&self, tokens: &mut fol_lexer::lexer::stage3::Elements) {
+        let source_path = Self::extract_source_path(tokens);
+
+        let Some(path) = source_path else {
+            return;
+        };
+
+        let mut file_stream = match fol_stream::FileStream::from_file(&path) {
+            Ok(stream) => stream,
+            Err(_) => return,
+        };
+
+        let mut scan_tokens = fol_lexer::lexer::stage3::Elements::init(&mut file_stream);
+        let signatures = self.collect_routine_signatures(&mut scan_tokens);
+        self.routine_return_types.borrow_mut().extend(signatures);
+    }
+
+    fn extract_source_path(tokens: &fol_lexer::lexer::stage3::Elements) -> Option<String> {
+        if let Ok(token) = tokens.curr(false) {
+            if let Some(path) = token.loc().source().map(|src| src.path(true)) {
+                return Some(path);
+            }
+        }
+
+        if let Ok(token) = tokens.curr(true) {
+            if let Some(path) = token.loc().source().map(|src| src.path(true)) {
+                return Some(path);
+            }
+        }
+
+        for index in 0..16 {
+            if let Ok(token) = tokens.peek(index, false) {
+                if let Some(path) = token.loc().source().map(|src| src.path(true)) {
+                    return Some(path);
+                }
+            }
+
+            if let Ok(token) = tokens.peek(index, true) {
+                if let Some(path) = token.loc().source().map(|src| src.path(true)) {
+                    return Some(path);
+                }
+            }
+        }
+
+        None
+    }
+
+    fn collect_routine_signatures(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> HashMap<String, FolType> {
+        let mut signatures = HashMap::new();
+
+        for _ in 0..16_384 {
+            self.skip_ignorable(tokens);
+            let token = match tokens.curr(false) {
+                Ok(token) => token,
+                Err(_) => break,
+            };
+
+            if token.key().is_eof() {
+                break;
+            }
+
+            if !matches!(
+                token.key(),
+                KEYWORD::Keyword(BUILDIN::Fun) | KEYWORD::Keyword(BUILDIN::Pro)
+            ) {
+                if tokens.bump().is_none() {
+                    break;
+                }
+                continue;
+            }
+
+            let _ = tokens.bump();
+            self.skip_ignorable(tokens);
+
+            let mut receiver_name: Option<String> = None;
+            if let Ok(open) = tokens.curr(false) {
+                if matches!(open.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
+                    let _ = tokens.bump();
+                    self.skip_ignorable(tokens);
+
+                    if let Ok(receiver) = tokens.curr(false) {
+                        if receiver.key().is_ident() || receiver.key().is_buildin() {
+                            receiver_name = Some(receiver.con().trim().to_string());
+                            let _ = tokens.bump();
+                        }
+                    }
+
+                    self.skip_ignorable(tokens);
+                    if let Ok(close) = tokens.curr(false) {
+                        if matches!(close.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
+                            let _ = tokens.bump();
+                        }
+                    }
+                    self.skip_ignorable(tokens);
+                }
+            }
+
+            let routine_name = match tokens.curr(false) {
+                Ok(name) if name.key().is_ident() => {
+                    let parsed = name.con().trim().to_string();
+                    let _ = tokens.bump();
+                    parsed
+                }
+                _ => {
+                    if tokens.bump().is_none() {
+                        break;
+                    }
+                    continue;
+                }
+            };
+
+            self.skip_ignorable(tokens);
+            if let Ok(open_params) = tokens.curr(false) {
+                if matches!(open_params.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
+                    self.skip_balanced_round_group(tokens);
+                }
+            }
+
+            self.skip_ignorable(tokens);
+            let mut return_type = None;
+            if let Ok(colon) = tokens.curr(false) {
+                if matches!(colon.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
+                    let _ = tokens.bump();
+                    self.skip_ignorable(tokens);
+
+                    if let Ok(ret) = tokens.curr(false) {
+                        if ret.key().is_ident() || ret.key().is_buildin() {
+                            return_type = Some(FolType::Named {
+                                name: ret.con().trim().to_string(),
+                            });
+                            let _ = tokens.bump();
+                        }
+                    }
+                }
+            }
+
+            if let Some(rt) = return_type {
+                signatures.insert(routine_name.clone(), rt.clone());
+                if let Some(receiver) = receiver_name {
+                    signatures.insert(format!("{}.{}", receiver, routine_name), rt);
+                }
+            }
+        }
+
+        signatures
+    }
+
+    fn skip_balanced_round_group(&self, tokens: &mut fol_lexer::lexer::stage3::Elements) {
+        let mut depth: usize = 0;
+
+        for _ in 0..8_192 {
+            let token = match tokens.curr(false) {
+                Ok(token) => token,
+                Err(_) => return,
+            };
+
+            match token.key() {
+                KEYWORD::Symbol(SYMBOL::RoundO) => depth += 1,
+                KEYWORD::Symbol(SYMBOL::RoundC) => {
+                    if depth == 0 {
+                        return;
+                    }
+                    depth -= 1;
+                }
+                _ => {}
+            }
+
+            if tokens.bump().is_none() {
+                return;
+            }
+
+            if depth == 0 {
+                return;
+            }
         }
     }
 
