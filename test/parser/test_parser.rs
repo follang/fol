@@ -2,7 +2,7 @@
 
 use fol_lexer::lexer::stage3::Elements;
 use fol_lexer::token::KEYWORD;
-use fol_parser::ast::{AstNode, AstParser, FolType, Literal, ParseError};
+use fol_parser::ast::{AstNode, AstParser, FolType, Literal, ParseError, TypeDefinition};
 use fol_stream::FileStream;
 
 #[cfg(test)]
@@ -122,6 +122,56 @@ mod parser_tests {
 
                 assert!(has_text_alias, "Parser should build alias declaration for Text: str");
                 assert!(has_count_alias, "Parser should build alias declaration for Count: int");
+            }
+            _ => panic!("Should return Program node"),
+        }
+    }
+
+    #[test]
+    fn test_top_level_type_alias_parsing() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_typ_alias.fol")
+            .expect("Should read type alias test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse minimal typ alias declarations");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                let has_text_type_alias = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::TypeDecl {
+                            name,
+                            type_def: TypeDefinition::Alias { target: FolType::Named { name: target_name } },
+                            ..
+                        }
+                        if name == "Text" && target_name == "str"
+                    )
+                });
+
+                let has_counter_type_alias = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::TypeDecl {
+                            name,
+                            type_def: TypeDefinition::Alias { target: FolType::Named { name: target_name } },
+                            ..
+                        }
+                        if name == "Counter" && target_name == "int"
+                    )
+                });
+
+                assert!(
+                    has_text_type_alias,
+                    "Parser should build TypeDecl alias for Text: str"
+                );
+                assert!(
+                    has_counter_type_alias,
+                    "Parser should build TypeDecl alias for Counter: int"
+                );
             }
             _ => panic!("Should return Program node"),
         }
