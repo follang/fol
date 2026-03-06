@@ -92,6 +92,42 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_top_level_alias_parsing() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_ali.fol").expect("Should read alias test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse top-level alias declarations");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                let has_text_alias = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::AliasDecl { name, target: FolType::Named { name: target_name } }
+                        if name == "Text" && target_name == "str"
+                    )
+                });
+
+                let has_count_alias = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::AliasDecl { name, target: FolType::Named { name: target_name } }
+                        if name == "Count" && target_name == "int"
+                    )
+                });
+
+                assert!(has_text_alias, "Parser should build alias declaration for Text: str");
+                assert!(has_count_alias, "Parser should build alias declaration for Count: int");
+            }
+            _ => panic!("Should return Program node"),
+        }
+    }
+
+    #[test]
     fn test_function_parsing() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_fun.fol").expect("Should read test file");

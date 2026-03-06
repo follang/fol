@@ -186,6 +186,23 @@ impl AstParser {
                 continue;
             }
 
+            if matches!(key, KEYWORD::Keyword(BUILDIN::Ali)) {
+                let before = (
+                    token.loc().row(),
+                    token.loc().col(),
+                    token.con().to_string(),
+                );
+                match self.parse_alias_decl(tokens) {
+                    Ok(node) => declarations.push(node),
+                    Err(error) => errors.push(error),
+                }
+                self.bump_if_no_progress(tokens, before);
+                if tokens.curr(false).is_err() {
+                    break;
+                }
+                continue;
+            }
+
             if matches!(key, KEYWORD::Keyword(BUILDIN::Fun)) {
                 let before = (
                     token.loc().row(),
@@ -831,6 +848,51 @@ impl AstParser {
             path_type,
             path,
         })
+    }
+
+    fn parse_alias_decl(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
+        let ali_token = tokens.curr(false)?;
+        if !matches!(ali_token.key(), KEYWORD::Keyword(BUILDIN::Ali)) {
+            return Err(Box::new(ParseError::from_token(
+                &ali_token,
+                "Expected 'ali' declaration".to_string(),
+            )));
+        }
+
+        let _ = tokens.bump();
+        self.skip_ignorable(tokens);
+
+        let name_token = tokens.curr(false)?;
+        if !name_token.key().is_ident() {
+            return Err(Box::new(ParseError::from_token(
+                &name_token,
+                "Expected alias declaration name".to_string(),
+            )));
+        }
+        let name = name_token.con().trim().to_string();
+        let _ = tokens.bump();
+
+        self.skip_ignorable(tokens);
+        let colon = tokens.curr(false)?;
+        if !matches!(colon.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
+            return Err(Box::new(ParseError::from_token(
+                &colon,
+                "Expected ':' after alias name".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+
+        self.skip_ignorable(tokens);
+        let target_token = tokens.curr(false)?;
+        let target = self.parse_type_reference(&target_token)?;
+        let _ = tokens.bump();
+
+        self.consume_optional_semicolon(tokens);
+
+        Ok(AstNode::AliasDecl { name, target })
     }
 
     fn parse_use_path(
