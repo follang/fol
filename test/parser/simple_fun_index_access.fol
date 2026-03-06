@@ -1,0 +1,4 @@
+fun index_access(items: int, idx: int): int = {
+    value = items[idx];
+    return items[idx + 1];
+}

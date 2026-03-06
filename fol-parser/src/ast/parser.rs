@@ -145,6 +145,30 @@ impl AstParser {
                 continue;
             }
 
+            if matches!(key, KEYWORD::Keyword(BUILDIN::Let)) {
+                let before = (
+                    token.loc().row(),
+                    token.loc().col(),
+                    token.con().to_string(),
+                );
+                match self.parse_let_decl(tokens) {
+                    Ok(node) => declarations.push(node),
+                    Err(error) => errors.push(error),
+                }
+
+                if let Ok(current) = tokens.curr(false) {
+                    let after = (
+                        current.loc().row(),
+                        current.loc().col(),
+                        current.con().to_string(),
+                    );
+                    if before == after && tokens.bump().is_none() {
+                        break;
+                    }
+                }
+                continue;
+            }
+
             if matches!(key, KEYWORD::Keyword(BUILDIN::Use)) {
                 let before = (
                     token.loc().row(),
@@ -644,12 +668,36 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Box<dyn Glitch>> {
+        self.parse_binding_decl(
+            tokens,
+            "var",
+            vec![VarOption::Mutable, VarOption::Normal],
+        )
+    }
+
+    fn parse_let_decl(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
+        self.parse_binding_decl(
+            tokens,
+            "let",
+            vec![VarOption::Immutable, VarOption::Normal],
+        )
+    }
+
+    fn parse_binding_decl(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+        keyword: &str,
+        options: Vec<VarOption>,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
         let mut type_hint = None;
         let mut value = None;
 
         if tokens.bump().is_none() {
             return Err(Box::new(ParseError {
-                message: "Unexpected EOF after 'var' declaration".to_string(),
+                message: format!("Unexpected EOF after '{}' declaration", keyword),
                 file: None,
                 line: 1,
                 column: 1,
@@ -666,7 +714,7 @@ impl AstParser {
         } else {
             return Err(Box::new(ParseError::from_token(
                 &name_token,
-                "Expected identifier after 'var'".to_string(),
+                format!("Expected identifier after '{}'", keyword),
             )));
         };
 
@@ -706,7 +754,7 @@ impl AstParser {
         self.consume_optional_semicolon(tokens);
 
         Ok(AstNode::VarDecl {
-            options: vec![VarOption::Normal],
+            options,
             name,
             type_hint,
             value,
@@ -1341,6 +1389,11 @@ impl AstParser {
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Var)) {
                 body.push(self.parse_var_decl(tokens)?);
+                continue;
+            }
+
+            if matches!(key, KEYWORD::Keyword(BUILDIN::Let)) {
+                body.push(self.parse_let_decl(tokens)?);
                 continue;
             }
 
@@ -2592,7 +2645,7 @@ impl AstParser {
             return Ok(operand);
         }
 
-        if matches!(token.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
+        let node = if matches!(token.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
             let _ = tokens.bump();
             let inner = self.parse_logical_expression(tokens)?;
             self.skip_ignorable(tokens);
@@ -2606,19 +2659,100 @@ impl AstParser {
             }
 
             let _ = tokens.bump();
-            return Ok(inner);
+            inner
+        } else {
+            let node = self.parse_primary(&token)?;
+            let _ = tokens.bump();
+            node
+        };
+
+        self.parse_postfix_expression(tokens, node)
+    }
+
+    fn parse_postfix_expression(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+        mut node: AstNode,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
+        for _ in 0..256 {
+            self.skip_ignorable(tokens);
+
+            let token = match tokens.curr(false) {
+                Ok(token) => token,
+                Err(_) => return Ok(node),
+            };
+
+            match token.key() {
+                KEYWORD::Symbol(SYMBOL::RoundO) => {
+                    let name = match &node {
+                        AstNode::Identifier { name } => name.clone(),
+                        _ => break,
+                    };
+                    let _ = tokens.bump();
+                    let args = self.parse_call_args(tokens)?;
+                    node = AstNode::FunctionCall { name, args };
+                }
+                KEYWORD::Symbol(SYMBOL::Dot) => {
+                    let _ = tokens.bump();
+                    self.skip_ignorable(tokens);
+
+                    let member_token = tokens.curr(false)?;
+                    if !member_token.key().is_ident() {
+                        return Err(Box::new(ParseError::from_token(
+                            &member_token,
+                            "Expected field or method name after '.'".to_string(),
+                        )));
+                    }
+
+                    let member = member_token.con().trim().to_string();
+                    let _ = tokens.bump();
+                    self.skip_ignorable(tokens);
+
+                    let is_method_call = matches!(
+                        tokens.curr(false).map(|token| token.key()),
+                        Ok(KEYWORD::Symbol(SYMBOL::RoundO))
+                    );
+
+                    if is_method_call {
+                        let _ = tokens.bump();
+                        let args = self.parse_call_args(tokens)?;
+                        node = AstNode::MethodCall {
+                            object: Box::new(node),
+                            method: member,
+                            args,
+                        };
+                    } else {
+                        node = AstNode::FieldAccess {
+                            object: Box::new(node),
+                            field: member,
+                        };
+                    }
+                }
+                KEYWORD::Symbol(SYMBOL::SquarO) => {
+                    let _ = tokens.bump();
+                    self.skip_ignorable(tokens);
+
+                    let index = self.parse_logical_expression(tokens)?;
+                    self.skip_ignorable(tokens);
+
+                    let close = tokens.curr(false)?;
+                    if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
+                        return Err(Box::new(ParseError::from_token(
+                            &close,
+                            "Expected closing ']' for index expression".to_string(),
+                        )));
+                    }
+
+                    let _ = tokens.bump();
+                    node = AstNode::IndexAccess {
+                        container: Box::new(node),
+                        index: Box::new(index),
+                    };
+                }
+                _ => break,
+            }
         }
 
-        if token.key().is_ident() && self.lookahead_is_method_call(tokens) {
-            return self.parse_method_call_expr(tokens);
-        }
-
-        if token.key().is_ident() && self.lookahead_is_call(tokens) {
-            return self.parse_call_expr(tokens);
-        }
-
-        let node = self.parse_primary(&token)?;
-        let _ = tokens.bump();
         Ok(node)
     }
 

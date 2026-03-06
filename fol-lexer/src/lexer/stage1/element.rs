@@ -299,6 +299,7 @@ impl Element {
             "for" => self.set_key(Keyword(BUILDIN::For)),
             "do" => self.set_key(Keyword(BUILDIN::Do)),
             "go" => self.set_key(Keyword(BUILDIN::Go)),
+            "let" => self.set_key(Keyword(BUILDIN::Let)),
             _ => self.set_key(Identifier),
         }
         Ok(())

@@ -1,0 +1,4 @@
+fun postfix_chain(obj: int, idx: int): int = {
+    value = obj.items[idx].format();
+    return obj.items[idx].format().bytes[idx];
+}

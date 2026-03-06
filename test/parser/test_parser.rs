@@ -51,6 +51,47 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_top_level_let_parsing() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_let.fol").expect("Should read let test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse top-level let declarations");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                let has_inferred_let = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::VarDecl { name, type_hint, value, options }
+                        if name == "message"
+                            && type_hint.is_none()
+                            && value.is_some()
+                            && options.contains(&fol_parser::ast::VarOption::Immutable)
+                    )
+                });
+
+                let has_typed_let = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::VarDecl { name, type_hint: Some(FolType::Named { name: type_name }), value: Some(_), options }
+                        if name == "count"
+                            && type_name == "int"
+                            && options.contains(&fol_parser::ast::VarOption::Immutable)
+                    )
+                });
+
+                assert!(has_inferred_let, "Parser should lower let message = ... into immutable VarDecl");
+                assert!(has_typed_let, "Parser should parse typed let declaration");
+            }
+            _ => panic!("Should return Program node"),
+        }
+    }
+
+    #[test]
     fn test_function_parsing() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_fun.fol").expect("Should read test file");
@@ -87,6 +128,67 @@ mod parser_tests {
                 // For now, we expect the minimal parser to work
             }
         }
+    }
+
+    #[test]
+    fn test_function_body_let_parsing() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_fun_let.fol")
+            .expect("Should read function let test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse let declarations inside function bodies");
+
+        let (has_inferred_local, has_typed_local, has_return_identifier) = match ast {
+            AstNode::Program { declarations } => {
+                let has_inferred_local = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::VarDecl { name, type_hint, value, options }
+                        if name == "base"
+                            && type_hint.is_none()
+                            && value.is_some()
+                            && options.contains(&fol_parser::ast::VarOption::Immutable)
+                    )
+                });
+
+                let has_typed_local = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::VarDecl { name, type_hint: Some(FolType::Named { name: type_name }), value: Some(_), options }
+                        if name == "next"
+                            && type_name == "int"
+                            && options.contains(&fol_parser::ast::VarOption::Immutable)
+                    )
+                });
+
+                let has_return_identifier = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::Return { value: Some(value) }
+                        if matches!(value.as_ref(), AstNode::Identifier { name } if name == "next")
+                    )
+                });
+
+                (has_inferred_local, has_typed_local, has_return_identifier)
+            }
+            _ => panic!("Expected program node"),
+        };
+
+        assert!(
+            has_inferred_local,
+            "Function body should include immutable let local without explicit type"
+        );
+        assert!(
+            has_typed_local,
+            "Function body should include immutable typed let local"
+        );
+        assert!(
+            has_return_identifier,
+            "Return should still parse after let locals"
+        );
     }
 
     #[test]
@@ -3600,6 +3702,193 @@ mod parser_tests {
         assert!(
             has_done_return,
             "Should parse return obj.done() as zero-arg return method call"
+        );
+    }
+
+    #[test]
+    fn test_field_access_expressions_in_assignment_and_return() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_fun_field_access.fol")
+            .expect("Should read field access test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse field access expressions");
+
+        let (has_field_assignment, has_nested_field_return) = match ast {
+            AstNode::Program { declarations } => {
+                let has_field_assignment = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::Assignment { value, .. }
+                        if matches!(
+                            value.as_ref(),
+                            AstNode::FieldAccess { object, field }
+                            if field == "inner"
+                                && matches!(object.as_ref(), AstNode::Identifier { name } if name == "obj")
+                        )
+                    )
+                });
+
+                let has_nested_field_return = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::Return { value: Some(value) }
+                        if matches!(
+                            value.as_ref(),
+                            AstNode::FieldAccess { object, field }
+                            if field == "size"
+                                && matches!(
+                                    object.as_ref(),
+                                    AstNode::FieldAccess { object, field }
+                                    if field == "inner"
+                                        && matches!(object.as_ref(), AstNode::Identifier { name } if name == "obj")
+                                )
+                        )
+                    )
+                });
+
+                (has_field_assignment, has_nested_field_return)
+            }
+            _ => panic!("Expected program node"),
+        };
+
+        assert!(
+            has_field_assignment,
+            "Assignment value should parse as field access"
+        );
+        assert!(
+            has_nested_field_return,
+            "Return value should parse as chained field access"
+        );
+    }
+
+    #[test]
+    fn test_index_access_expressions_in_assignment_and_return() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_fun_index_access.fol")
+            .expect("Should read index access test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse index access expressions");
+
+        let (has_index_assignment, has_index_return) = match ast {
+            AstNode::Program { declarations } => {
+                let has_index_assignment = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::Assignment { value, .. }
+                        if matches!(
+                            value.as_ref(),
+                            AstNode::IndexAccess { container, index }
+                            if matches!(container.as_ref(), AstNode::Identifier { name } if name == "items")
+                                && matches!(index.as_ref(), AstNode::Identifier { name } if name == "idx")
+                        )
+                    )
+                });
+
+                let has_index_return = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::Return { value: Some(value) }
+                        if matches!(
+                            value.as_ref(),
+                            AstNode::IndexAccess { container, index }
+                            if matches!(container.as_ref(), AstNode::Identifier { name } if name == "items")
+                                && matches!(index.as_ref(), AstNode::BinaryOp { .. })
+                        )
+                    )
+                });
+
+                (has_index_assignment, has_index_return)
+            }
+            _ => panic!("Expected program node"),
+        };
+
+        assert!(
+            has_index_assignment,
+            "Assignment value should parse as index access"
+        );
+        assert!(
+            has_index_return,
+            "Return value should parse indexed expression with nested arithmetic"
+        );
+    }
+
+    #[test]
+    fn test_chained_postfix_expressions_mix_fields_indexes_and_methods() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_fun_postfix_chain.fol")
+            .expect("Should read postfix chain test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse chained postfix expressions");
+
+        let (has_chained_assignment, has_chained_return) = match ast {
+            AstNode::Program { declarations } => {
+                let has_chained_assignment = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::Assignment { value, .. }
+                        if matches!(
+                            value.as_ref(),
+                            AstNode::MethodCall { object, method, args }
+                            if method == "format"
+                                && args.is_empty()
+                                && matches!(
+                                    object.as_ref(),
+                                    AstNode::IndexAccess { container, index }
+                                    if matches!(
+                                        container.as_ref(),
+                                        AstNode::FieldAccess { object, field }
+                                        if field == "items"
+                                            && matches!(object.as_ref(), AstNode::Identifier { name } if name == "obj")
+                                    )
+                                        && matches!(index.as_ref(), AstNode::Identifier { name } if name == "idx")
+                                )
+                        )
+                    )
+                });
+
+                let has_chained_return = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::Return { value: Some(value) }
+                        if matches!(
+                            value.as_ref(),
+                            AstNode::IndexAccess { container, index }
+                            if matches!(
+                                container.as_ref(),
+                                AstNode::FieldAccess { object, field }
+                                if field == "bytes"
+                                    && matches!(
+                                        object.as_ref(),
+                                        AstNode::MethodCall { method, .. }
+                                        if method == "format"
+                                    )
+                            )
+                                && matches!(index.as_ref(), AstNode::Identifier { name } if name == "idx")
+                        )
+                    )
+                });
+
+                (has_chained_assignment, has_chained_return)
+            }
+            _ => panic!("Expected program node"),
+        };
+
+        assert!(
+            has_chained_assignment,
+            "Assignment should parse chained field/index/method expression"
+        );
+        assert!(
+            has_chained_return,
+            "Return should parse chained method result field/index expression"
         );
     }
 

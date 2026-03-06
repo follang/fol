@@ -1,0 +1,4 @@
+fun field_access(obj: int): int = {
+    value = obj.inner;
+    return obj.inner.size;
+}

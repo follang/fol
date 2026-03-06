@@ -89,6 +89,10 @@ mod lexer_tests {
             "Should contain 'pro' keyword"
         );
         assert!(
+            keyword_strings.contains(&"let".to_string()),
+            "Should contain 'let' keyword"
+        );
+        assert!(
             keyword_strings.contains(&"typ".to_string()),
             "Should contain 'typ' keyword"
         );
