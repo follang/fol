@@ -1,0 +1,2 @@
+typ Bytes: arr[int, 16]
+typ MatrixRow: arr[vec[pkg::Value], 4]

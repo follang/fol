@@ -597,6 +597,92 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_type_alias_parsing_supports_array_types() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_typ_array_types.fol")
+            .expect("Should read array type alias test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse array typ aliases");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::TypeDecl {
+                                name,
+                                type_def: TypeDefinition::Alias {
+                                    target: FolType::Array { element_type, size: Some(16) }
+                                },
+                                ..
+                            }
+                            if name == "Bytes"
+                                && matches!(element_type.as_ref(), FolType::Named { name } if name == "int")
+                        )
+                    }),
+                    "Type alias should lower arr[T, N] to FolType::Array"
+                );
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::TypeDecl {
+                                name,
+                                type_def: TypeDefinition::Alias {
+                                    target: FolType::Array { element_type, size: Some(4) }
+                                },
+                                ..
+                            }
+                            if name == "MatrixRow"
+                                && matches!(
+                                    element_type.as_ref(),
+                                    FolType::Vector { element_type }
+                                    if matches!(element_type.as_ref(), FolType::Named { name } if name == "pkg::Value")
+                                )
+                        )
+                    }),
+                    "Array element type should support nested structured container types"
+                );
+            }
+            _ => panic!("Should return Program node"),
+        }
+    }
+
+    #[test]
+    fn test_array_type_bad_size_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_typ_array_types_bad_size.fol")
+                .expect("Should read malformed array type alias test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should fail when arr[...] size is not a decimal literal");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Expected decimal array size in arr[...]"),
+            "Malformed array type should report bad size, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            1,
+            "Array type bad-size parse error should point to the declaration line"
+        );
+    }
+
+    #[test]
     fn test_function_parsing() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_fun.fol").expect("Should read test file");

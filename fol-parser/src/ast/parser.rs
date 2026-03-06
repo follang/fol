@@ -1658,6 +1658,13 @@ impl AstParser {
                     element_type: Box::new(args.into_iter().next().expect("vec arg exists")),
                 }))
             }
+            "arr" => {
+                let (element_type, size) = self.parse_array_type_arguments(tokens)?;
+                Ok(Some(FolType::Array {
+                    element_type: Box::new(element_type),
+                    size: Some(size),
+                }))
+            }
             "seq" => {
                 let args = self.parse_type_argument_list(tokens)?;
                 if args.len() != 1 {
@@ -1756,6 +1763,65 @@ impl AstParser {
             column: 0,
             length: 0,
         }))
+    }
+
+    fn parse_array_type_arguments(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<(FolType, usize), Box<dyn Glitch>> {
+        let open = tokens.curr(false)?;
+        if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::SquarO)) {
+            return Err(Box::new(ParseError::from_token(
+                &open,
+                "Expected '[' to start array type arguments".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+
+        self.skip_ignorable(tokens);
+        let element_type = self.parse_type_reference_tokens(tokens)?;
+        self.skip_ignorable(tokens);
+
+        let comma = tokens.curr(false)?;
+        if !matches!(comma.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
+            return Err(Box::new(ParseError::from_token(
+                &comma,
+                "Expected ',' after array element type".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+
+        self.skip_ignorable(tokens);
+        let size_token = tokens.curr(false)?;
+        let size = match size_token.key() {
+            KEYWORD::Literal(LITERAL::Deciaml) => size_token.con().trim().parse::<usize>().map_err(
+                |_| {
+                    Box::new(ParseError::from_token(
+                        &size_token,
+                        "Expected decimal array size in arr[...]".to_string(),
+                    )) as Box<dyn Glitch>
+                },
+            )?,
+            _ => {
+                return Err(Box::new(ParseError::from_token(
+                    &size_token,
+                    "Expected decimal array size in arr[...]".to_string(),
+                )))
+            }
+        };
+        let _ = tokens.bump();
+
+        self.skip_ignorable(tokens);
+        let close = tokens.curr(false)?;
+        if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
+            return Err(Box::new(ParseError::from_token(
+                &close,
+                "Expected closing ']' in type reference".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+
+        Ok((element_type, size))
     }
 
     fn parse_balanced_type_suffix(
