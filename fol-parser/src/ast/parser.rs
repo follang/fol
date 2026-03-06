@@ -1645,6 +1645,58 @@ impl AstParser {
                     inner: args.into_iter().next().map(Box::new),
                 }))
             }
+            "vec" => {
+                let args = self.parse_type_argument_list(tokens)?;
+                if args.len() != 1 {
+                    let token = tokens.curr(false)?;
+                    return Err(Box::new(ParseError::from_token(
+                        &token,
+                        "Expected exactly one type argument for vec[...]".to_string(),
+                    )));
+                }
+                Ok(Some(FolType::Vector {
+                    element_type: Box::new(args.into_iter().next().expect("vec arg exists")),
+                }))
+            }
+            "seq" => {
+                let args = self.parse_type_argument_list(tokens)?;
+                if args.len() != 1 {
+                    let token = tokens.curr(false)?;
+                    return Err(Box::new(ParseError::from_token(
+                        &token,
+                        "Expected exactly one type argument for seq[...]".to_string(),
+                    )));
+                }
+                Ok(Some(FolType::Sequence {
+                    element_type: Box::new(args.into_iter().next().expect("seq arg exists")),
+                }))
+            }
+            "set" => {
+                let args = self.parse_type_argument_list(tokens)?;
+                if args.is_empty() {
+                    let token = tokens.curr(false)?;
+                    return Err(Box::new(ParseError::from_token(
+                        &token,
+                        "Expected at least one type argument for set[...]".to_string(),
+                    )));
+                }
+                Ok(Some(FolType::Set { types: args }))
+            }
+            "map" => {
+                let args = self.parse_type_argument_list(tokens)?;
+                if args.len() != 2 {
+                    let token = tokens.curr(false)?;
+                    return Err(Box::new(ParseError::from_token(
+                        &token,
+                        "Expected exactly two type arguments for map[...]".to_string(),
+                    )));
+                }
+                let mut args = args.into_iter();
+                Ok(Some(FolType::Map {
+                    key_type: Box::new(args.next().expect("map key exists")),
+                    value_type: Box::new(args.next().expect("map value exists")),
+                }))
+            }
             _ => Ok(None),
         }
     }
@@ -1684,10 +1736,16 @@ impl AstParser {
                 let _ = tokens.bump();
                 return Ok(args);
             }
+            if sep.key().is_terminal() || matches!(sep.key(), KEYWORD::Void(_)) {
+                return Err(Box::new(ParseError::from_token(
+                    &sep,
+                    "Expected closing ']' in type reference".to_string(),
+                )));
+            }
 
             return Err(Box::new(ParseError::from_token(
                 &sep,
-                "Expected ',' or ']' in type argument list".to_string(),
+                "Expected closing ']' in type reference".to_string(),
             )));
         }
 

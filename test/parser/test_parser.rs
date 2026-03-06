@@ -226,11 +226,18 @@ mod parser_tests {
                             node,
                             AstNode::TypeDecl {
                                 name,
-                                type_def: TypeDefinition::Alias { target: FolType::Named { name: target_name } },
+                                type_def: TypeDefinition::Alias {
+                                    target: FolType::Map { key_type, value_type }
+                                },
                                 ..
                             }
                             if name == "OutputMap"
-                                && target_name == "map[str,vec[pkg::Output]]"
+                                && matches!(key_type.as_ref(), FolType::Named { name } if name == "str")
+                                && matches!(
+                                    value_type.as_ref(),
+                                    FolType::Vector { element_type }
+                                    if matches!(element_type.as_ref(), FolType::Named { name } if name == "pkg::Output")
+                                )
                         )
                     }),
                     "Type alias target should preserve nested bracketed syntax"
@@ -465,6 +472,127 @@ mod parser_tests {
             parse_error.line(),
             1,
             "Special type bad-arity parse error should point to the declaration line"
+        );
+    }
+
+    #[test]
+    fn test_type_alias_parsing_supports_container_types() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_typ_container_types.fol")
+            .expect("Should read container type alias test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse container typ aliases");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::TypeDecl {
+                                name,
+                                type_def: TypeDefinition::Alias {
+                                    target: FolType::Vector { element_type }
+                                },
+                                ..
+                            }
+                            if name == "Names"
+                                && matches!(element_type.as_ref(), FolType::Named { name } if name == "str")
+                        )
+                    }),
+                    "Type alias should lower vec[...] to FolType::Vector"
+                );
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::TypeDecl {
+                                name,
+                                type_def: TypeDefinition::Alias {
+                                    target: FolType::Sequence { element_type }
+                                },
+                                ..
+                            }
+                            if name == "Queue"
+                                && matches!(element_type.as_ref(), FolType::Named { name } if name == "pkg::Task")
+                        )
+                    }),
+                    "Type alias should lower seq[...] to FolType::Sequence"
+                );
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::TypeDecl {
+                                name,
+                                type_def: TypeDefinition::Alias {
+                                    target: FolType::Set { types }
+                                },
+                                ..
+                            }
+                            if name == "Palette"
+                                && types.len() == 2
+                        )
+                    }),
+                    "Type alias should lower set[...] to FolType::Set"
+                );
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::TypeDecl {
+                                name,
+                                type_def: TypeDefinition::Alias {
+                                    target: FolType::Map { key_type, value_type }
+                                },
+                                ..
+                            }
+                            if name == "Lookup"
+                                && matches!(key_type.as_ref(), FolType::Named { name } if name == "str")
+                                && matches!(
+                                    value_type.as_ref(),
+                                    FolType::Vector { element_type }
+                                    if matches!(element_type.as_ref(), FolType::Named { name } if name == "pkg::Output")
+                                )
+                        )
+                    }),
+                    "Type alias should lower map[...] to FolType::Map"
+                );
+            }
+            _ => panic!("Should return Program node"),
+        }
+    }
+
+    #[test]
+    fn test_container_type_bad_arity_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_typ_container_types_bad_arity.fol")
+                .expect("Should read malformed container type alias test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should fail when map[...] has the wrong number of arguments");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Expected exactly two type arguments for map[...]"),
+            "Malformed map type should report bad arity, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            1,
+            "Container type bad-arity parse error should point to the declaration line"
         );
     }
 
@@ -721,16 +849,22 @@ mod parser_tests {
             matches!(
                 function_decl.1.as_slice(),
                 [Parameter {
-                    param_type: FolType::Named { name },
+                    param_type: FolType::Sequence { element_type },
                     ..
-                }] if name == "seq[pkg::Input]"
+                }] if matches!(element_type.as_ref(), FolType::Named { name } if name == "pkg::Input")
             ),
             "Parameter type should preserve bracketed syntax"
         );
         assert!(
             matches!(
                 function_decl.2,
-                Some(FolType::Named { name }) if name == "map[str,vec[pkg::Output]]"
+                Some(FolType::Map { key_type, value_type })
+                    if matches!(key_type.as_ref(), FolType::Named { name } if name == "str")
+                        && matches!(
+                            value_type.as_ref(),
+                            FolType::Vector { element_type }
+                            if matches!(element_type.as_ref(), FolType::Named { name } if name == "pkg::Output")
+                        )
             ),
             "Return type should preserve nested bracketed syntax"
         );
@@ -782,9 +916,15 @@ mod parser_tests {
                         matches!(
                             case,
                             fol_parser::ast::WhenCase::Of {
-                                type_match: FolType::Named { name },
+                                type_match: FolType::Map { key_type, value_type },
                                 ..
-                            } if name == "map[str,vec[pkg::Output]]"
+                            }
+                                if matches!(key_type.as_ref(), FolType::Named { name } if name == "str")
+                                    && matches!(
+                                        value_type.as_ref(),
+                                        FolType::Vector { element_type }
+                                        if matches!(element_type.as_ref(), FolType::Named { name } if name == "pkg::Output")
+                                    )
                         )
                     }),
                     "When statement should preserve nested bracketed type in of-case"
@@ -5159,7 +5299,12 @@ mod parser_tests {
 
         assert_eq!(use_decl.0, "results");
         assert!(
-            matches!(use_decl.1, FolType::Named { name } if name == "map[str,pkg::Value]"),
+            matches!(
+                use_decl.1,
+                FolType::Map { key_type, value_type }
+                    if matches!(key_type.as_ref(), FolType::Named { name } if name == "str")
+                        && matches!(value_type.as_ref(), FolType::Named { name } if name == "pkg::Value")
+            ),
             "Use declaration should preserve qualified bracketed path type"
         );
         assert_eq!(use_decl.2, "core::results");
@@ -5270,7 +5415,9 @@ mod parser_tests {
                 assert!(
                     matches!(
                         var_decl.1,
-                        Some(FolType::Named { name }) if name == "map[str,pkg::Value]"
+                        Some(FolType::Map { key_type, value_type })
+                            if matches!(key_type.as_ref(), FolType::Named { name } if name == "str")
+                                && matches!(value_type.as_ref(), FolType::Named { name } if name == "pkg::Value")
                     ),
                     "Var type hint should preserve qualified bracketed syntax"
                 );
@@ -5300,11 +5447,16 @@ mod parser_tests {
                             node,
                             AstNode::VarDecl {
                                 name,
-                                type_hint: Some(FolType::Named { name: type_name }),
+                                type_hint: Some(FolType::Map { key_type, value_type }),
                                 ..
                             }
                             if name == "cache"
-                                && type_name == "map[str,vec[pkg::Value]]"
+                                && matches!(key_type.as_ref(), FolType::Named { name } if name == "str")
+                                && matches!(
+                                    value_type.as_ref(),
+                                    FolType::Vector { element_type }
+                                    if matches!(element_type.as_ref(), FolType::Named { name } if name == "pkg::Value")
+                                )
                         )
                     }),
                     "Let type hint should preserve nested bracketed syntax"

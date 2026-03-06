@@ -1,0 +1,4 @@
+typ Names: vec[str]
+typ Queue: seq[pkg::Task]
+typ Palette: set[str, int]
+typ Lookup: map[str, vec[pkg::Output]]
