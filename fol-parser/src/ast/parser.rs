@@ -2899,7 +2899,7 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Box<dyn Glitch>> {
-        let mut lhs = self.parse_add_sub_expression(tokens)?;
+        let mut lhs = self.parse_range_expression(tokens)?;
 
         for _ in 0..32 {
             self.skip_ignorable(tokens);
@@ -2959,7 +2959,7 @@ impl AstParser {
                 for _ in 0..consume_count {
                     self.consume_significant_token(tokens);
                 }
-                let rhs = self.parse_add_sub_expression(tokens)?;
+                let rhs = self.parse_range_expression(tokens)?;
                 lhs = AstNode::BinaryOp {
                     op,
                     left: Box::new(lhs),
@@ -2972,6 +2972,52 @@ impl AstParser {
         }
 
         Ok(lhs)
+    }
+
+    fn parse_range_expression(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
+        let lhs = self.parse_add_sub_expression(tokens)?;
+        self.skip_ignorable(tokens);
+
+        let op_token = match tokens.curr(false) {
+            Ok(token) => token,
+            Err(_) => return Ok(lhs),
+        };
+
+        let is_range = matches!(op_token.key(), KEYWORD::Operator(OPERATOR::Dotdot))
+            || op_token.con().trim() == "..";
+        if !is_range {
+            return Ok(lhs);
+        }
+
+        let operator_token = op_token.clone();
+        let _ = tokens.bump();
+        self.skip_ignorable(tokens);
+
+        let next = tokens.curr(false)?;
+        if next.key().is_terminal()
+            || matches!(
+                next.key(),
+                KEYWORD::Symbol(SYMBOL::Comma)
+                    | KEYWORD::Symbol(SYMBOL::RoundC)
+                    | KEYWORD::Symbol(SYMBOL::CurlyC)
+                    | KEYWORD::Symbol(SYMBOL::SquarC)
+            )
+        {
+            return Err(Box::new(ParseError::from_token(
+                &operator_token,
+                "Expected expression after '..'".to_string(),
+            )));
+        }
+
+        let rhs = self.parse_add_sub_expression(tokens)?;
+        Ok(AstNode::Range {
+            start: Some(Box::new(lhs)),
+            end: Some(Box::new(rhs)),
+            inclusive: true,
+        })
     }
 
     fn next_significant_key_from_window(

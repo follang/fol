@@ -1,0 +1,4 @@
+fun make_range(a: int, b: int): int = {
+    span = a..b;
+    return a + 1..b + 2;
+}
