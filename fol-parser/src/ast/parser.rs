@@ -1953,6 +1953,96 @@ impl AstParser {
                 continue;
             }
 
+            if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Is)) {
+                let _ = tokens.bump();
+                self.skip_ignorable(tokens);
+
+                let open_value = tokens.curr(false)?;
+                if !matches!(open_value.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
+                    return Err(Box::new(ParseError::from_token(
+                        &open_value,
+                        "Expected '(' after is".to_string(),
+                    )));
+                }
+                let _ = tokens.bump();
+
+                let value = self.parse_logical_expression(tokens)?;
+                self.skip_ignorable(tokens);
+                let close_value = tokens.curr(false)?;
+                if !matches!(close_value.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
+                    return Err(Box::new(ParseError::from_token(
+                        &close_value,
+                        "Expected ')' after is value".to_string(),
+                    )));
+                }
+                let _ = tokens.bump();
+
+                self.skip_ignorable(tokens);
+                let body = self.parse_case_body(tokens)?;
+                cases.push(WhenCase::Is { value, body });
+                continue;
+            }
+
+            if matches!(token.key(), KEYWORD::Keyword(BUILDIN::In)) {
+                let _ = tokens.bump();
+                self.skip_ignorable(tokens);
+
+                let open_range = tokens.curr(false)?;
+                if !matches!(open_range.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
+                    return Err(Box::new(ParseError::from_token(
+                        &open_range,
+                        "Expected '(' after in".to_string(),
+                    )));
+                }
+                let _ = tokens.bump();
+
+                let range = self.parse_logical_expression(tokens)?;
+                self.skip_ignorable(tokens);
+                let close_range = tokens.curr(false)?;
+                if !matches!(close_range.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
+                    return Err(Box::new(ParseError::from_token(
+                        &close_range,
+                        "Expected ')' after in range".to_string(),
+                    )));
+                }
+                let _ = tokens.bump();
+
+                self.skip_ignorable(tokens);
+                let body = self.parse_case_body(tokens)?;
+                cases.push(WhenCase::In { range, body });
+                continue;
+            }
+
+            if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Has)) {
+                let _ = tokens.bump();
+                self.skip_ignorable(tokens);
+
+                let open_member = tokens.curr(false)?;
+                if !matches!(open_member.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
+                    return Err(Box::new(ParseError::from_token(
+                        &open_member,
+                        "Expected '(' after has".to_string(),
+                    )));
+                }
+                let _ = tokens.bump();
+
+                let member = self.parse_logical_expression(tokens)?;
+                self.skip_ignorable(tokens);
+                let close_member = tokens.curr(false)?;
+                if !matches!(close_member.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
+                    return Err(Box::new(ParseError::from_token(
+                        &close_member,
+                        "Expected ')' after has member".to_string(),
+                    )));
+                }
+                let _ = tokens.bump();
+
+                self.skip_ignorable(tokens);
+                let body = self.parse_case_body(tokens)?;
+                cases.push(WhenCase::Has { member, body });
+                continue;
+            }
+
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
                 let body = self.parse_case_body(tokens)?;
                 default = Some(body);

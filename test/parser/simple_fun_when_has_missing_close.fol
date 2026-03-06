@@ -1,0 +1,6 @@
+fun classify(value: int, needle: int): int = {
+    when(value) {
+        has(needle { return 1; }
+        { return 0; }
+    }
+}

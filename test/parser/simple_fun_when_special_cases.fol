@@ -1,0 +1,8 @@
+fun classify(value: int, limit: int, needle: int): int = {
+    when(value) {
+        is(needle) { return 1; }
+        in(limit) { return 2; }
+        has(needle + 1) { return 3; }
+        { return 0; }
+    }
+}

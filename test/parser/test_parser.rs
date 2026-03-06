@@ -598,6 +598,71 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_when_statement_supports_is_in_and_has_cases() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_when_special_cases.fol")
+                .expect("Should read when-special-cases test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse when is/in/has cases");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                let when_stmt = declarations.iter().find_map(|node| {
+                    if let AstNode::When { cases, default, .. } = node {
+                        Some((cases.clone(), default.clone()))
+                    } else {
+                        None
+                    }
+                });
+
+                let (cases, default) = when_stmt.expect("Program should include when statement");
+                assert!(
+                    cases.iter().any(|case| {
+                        matches!(
+                            case,
+                            fol_parser::ast::WhenCase::Is {
+                                value: AstNode::Identifier { name },
+                                ..
+                            } if name == "needle"
+                        )
+                    }),
+                    "When statement should preserve is(...) case expression"
+                );
+                assert!(
+                    cases.iter().any(|case| {
+                        matches!(
+                            case,
+                            fol_parser::ast::WhenCase::In {
+                                range: AstNode::Identifier { name },
+                                ..
+                            } if name == "limit"
+                        )
+                    }),
+                    "When statement should preserve in(...) case expression"
+                );
+                assert!(
+                    cases.iter().any(|case| {
+                        matches!(
+                            case,
+                            fol_parser::ast::WhenCase::Has {
+                                member: AstNode::BinaryOp { .. },
+                                ..
+                            }
+                        )
+                    }),
+                    "When statement should preserve has(...) case expression"
+                );
+                assert!(default.is_some(), "When statement should still parse default body");
+            }
+            _ => panic!("Expected program node"),
+        }
+    }
+
+    #[test]
     fn test_when_of_case_missing_bracket_close_reports_parse_error() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_fun_when_of_type_missing_close.fol")
@@ -624,6 +689,36 @@ mod parser_tests {
             parse_error.line(),
             3,
             "Malformed when-of type parse error should point to the case line"
+        );
+    }
+
+    #[test]
+    fn test_when_has_case_missing_close_paren_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_when_has_missing_close.fol")
+                .expect("Should read malformed when-has fixture");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should reject when-has case missing closing ')'");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Expected ')' after has member"),
+            "Malformed when-has case should report missing close paren, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            3,
+            "Malformed when-has case parse error should point to the case line"
         );
     }
 
