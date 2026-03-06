@@ -1,8 +1,8 @@
 // AST Parser Implementation for FOL
 
 use super::{
-    AstNode, BinaryOperator, FolType, FunOption, Generic, Literal, LoopCondition, Parameter,
-    UnaryOperator, UseOption, VarOption, WhenCase,
+    AstNode, BinaryOperator, ContainerType, FolType, FunOption, Generic, Literal,
+    LoopCondition, Parameter, UnaryOperator, UseOption, VarOption, WhenCase,
 };
 use fol_lexer::token::{BUILDIN, KEYWORD, LITERAL, OPERATOR, SYMBOL};
 use fol_types::*;
@@ -3165,6 +3165,10 @@ impl AstParser {
             return Ok(operand);
         }
 
+        if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
+            return self.parse_container_expression(tokens);
+        }
+
         let node = if matches!(token.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
             let _ = tokens.bump();
             let inner = self.parse_logical_expression(tokens)?;
@@ -3187,6 +3191,66 @@ impl AstParser {
         };
 
         self.parse_postfix_expression(tokens, node)
+    }
+
+    fn parse_container_expression(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
+        let open = tokens.curr(false)?;
+        if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
+            return Err(Box::new(ParseError::from_token(
+                &open,
+                "Expected '{' to start container expression".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+
+        let mut elements = Vec::new();
+        for _ in 0..256 {
+            self.skip_ignorable(tokens);
+            let token = tokens.curr(false)?;
+
+            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) {
+                let _ = tokens.bump();
+                break;
+            }
+
+            elements.push(self.parse_logical_expression(tokens)?);
+            self.skip_ignorable(tokens);
+
+            let sep = tokens.curr(false)?;
+            if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
+                let _ = tokens.bump();
+                continue;
+            }
+            if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) {
+                let _ = tokens.bump();
+                break;
+            }
+
+            return Err(Box::new(ParseError::from_token(
+                &sep,
+                "Expected ',' or '}' in container expression".to_string(),
+            )));
+        }
+
+        if elements.len() == 1 {
+            if let Some(range) = elements.pop() {
+                if matches!(range, AstNode::Range { .. }) {
+                    return Ok(range);
+                }
+                return Ok(AstNode::ContainerLiteral {
+                    container_type: ContainerType::Array,
+                    elements: vec![range],
+                });
+            }
+        }
+
+        Ok(AstNode::ContainerLiteral {
+            container_type: ContainerType::Array,
+            elements,
+        })
     }
 
     fn parse_postfix_expression(

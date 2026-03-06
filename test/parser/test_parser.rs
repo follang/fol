@@ -5325,6 +5325,116 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_container_literals_parse_in_assignment_and_return() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_fun_container_literal.fol")
+            .expect("Should read container literal test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse container literals");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                let has_container_assignment = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::Assignment { value, .. }
+                        if matches!(
+                            value.as_ref(),
+                            AstNode::ContainerLiteral { elements, .. } if elements.len() == 3
+                        )
+                    )
+                });
+
+                let has_container_return = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::Return { value: Some(value) }
+                        if matches!(
+                            value.as_ref(),
+                            AstNode::ContainerLiteral { elements, .. } if elements.len() == 2
+                        )
+                    )
+                });
+
+                assert!(has_container_assignment, "Assignment should parse braced container literal");
+                assert!(has_container_return, "Return should parse braced container literal");
+            }
+            _ => panic!("Expected program node"),
+        }
+    }
+
+    #[test]
+    fn test_braced_range_expressions_parse_in_assignment_and_return() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_fun_braced_range_expr.fol")
+            .expect("Should read braced range expression test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse braced range expressions");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                let has_range_assignment = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::Assignment { value, .. }
+                        if matches!(value.as_ref(), AstNode::Range { .. })
+                    )
+                });
+
+                let has_range_return = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::Return { value: Some(value) }
+                        if matches!(value.as_ref(), AstNode::Range { .. })
+                    )
+                });
+
+                assert!(has_range_assignment, "Assignment should parse braced range expression");
+                assert!(has_range_return, "Return should parse braced range expression");
+            }
+            _ => panic!("Expected program node"),
+        }
+    }
+
+    #[test]
+    fn test_container_literal_bad_separator_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_container_literal_bad_separator.fol")
+                .expect("Should read malformed container literal test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should reject container literal with missing separator");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Expected ',' or '}' in container expression"),
+            "Malformed container literal should report missing separator, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            2,
+            "Malformed container literal should report the assignment line"
+        );
+    }
+
+    #[test]
     fn test_return_expression_unary_minus_precedence() {
         let mut file_stream = FileStream::from_file("test/parser/simple_fun_unary_precedence.fol")
             .expect("Should read unary precedence function test file");
