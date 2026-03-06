@@ -2263,12 +2263,7 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Box<dyn Glitch>> {
-        let target_token = tokens.curr(false)?;
-        let target = AstNode::Identifier {
-            name: target_token.con().trim().to_string(),
-        };
-
-        let _ = tokens.bump();
+        let target = self.parse_assignment_target(tokens)?;
         self.skip_ignorable(tokens);
 
         let assign_token = tokens.curr(false)?;
@@ -2330,6 +2325,90 @@ impl AstParser {
             target: Box::new(target),
             value: Box::new(value),
         })
+    }
+
+    fn parse_assignment_target(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
+        let target_token = tokens.curr(false)?;
+        if !target_token.key().is_ident() {
+            return Err(Box::new(ParseError::from_token(
+                &target_token,
+                "Expected assignment target".to_string(),
+            )));
+        }
+
+        let mut target = AstNode::Identifier {
+            name: target_token.con().trim().to_string(),
+        };
+        let _ = tokens.bump();
+
+        for _ in 0..128 {
+            self.skip_ignorable(tokens);
+            let token = match tokens.curr(false) {
+                Ok(token) => token,
+                Err(_) => return Ok(target),
+            };
+
+            match token.key() {
+                KEYWORD::Symbol(SYMBOL::Dot) => {
+                    let _ = tokens.bump();
+                    self.skip_ignorable(tokens);
+
+                    let field_token = tokens.curr(false)?;
+                    if !field_token.key().is_ident() {
+                        return Err(Box::new(ParseError::from_token(
+                            &field_token,
+                            "Expected field name after '.' in assignment target".to_string(),
+                        )));
+                    }
+
+                    let field = field_token.con().trim().to_string();
+                    let _ = tokens.bump();
+                    self.skip_ignorable(tokens);
+
+                    if matches!(
+                        tokens.curr(false).map(|token| token.key()),
+                        Ok(KEYWORD::Symbol(SYMBOL::RoundO))
+                    ) {
+                        return Err(Box::new(ParseError::from_token(
+                            &field_token,
+                            "Method call cannot be used as an assignment target".to_string(),
+                        )));
+                    }
+
+                    target = AstNode::FieldAccess {
+                        object: Box::new(target),
+                        field,
+                    };
+                }
+                KEYWORD::Symbol(SYMBOL::SquarO) => {
+                    let _ = tokens.bump();
+                    self.skip_ignorable(tokens);
+
+                    let index = self.parse_logical_expression(tokens)?;
+                    self.skip_ignorable(tokens);
+
+                    let close = tokens.curr(false)?;
+                    if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
+                        return Err(Box::new(ParseError::from_token(
+                            &close,
+                            "Expected closing ']' for index assignment target".to_string(),
+                        )));
+                    }
+
+                    let _ = tokens.bump();
+                    target = AstNode::IndexAccess {
+                        container: Box::new(target),
+                        index: Box::new(index),
+                    };
+                }
+                _ => break,
+            }
+        }
+
+        Ok(target)
     }
 
     fn parse_call_stmt(
@@ -2469,6 +2548,9 @@ impl AstParser {
 
     fn lookahead_is_assignment(&self, tokens: &fol_lexer::lexer::stage3::Elements) -> bool {
         let mut found_percent = false;
+        let mut square_depth = 0usize;
+        let mut round_depth = 0usize;
+        let mut expect_member_ident = false;
         for candidate in tokens.next_vec() {
             let token = match candidate {
                 Ok(token) => token,
@@ -2480,8 +2562,48 @@ impl AstParser {
                 continue;
             }
 
+            if matches!(key, KEYWORD::Symbol(SYMBOL::SquarO)) {
+                square_depth += 1;
+                continue;
+            }
+
+            if matches!(key, KEYWORD::Symbol(SYMBOL::SquarC)) {
+                if square_depth == 0 {
+                    return false;
+                }
+                square_depth -= 1;
+                continue;
+            }
+
+            if square_depth > 0 {
+                if matches!(key, KEYWORD::Symbol(SYMBOL::Equal))
+                    || self.compound_assignment_op(&key).is_some()
+                {
+                    return true;
+                }
+                if matches!(key, KEYWORD::Symbol(SYMBOL::RoundO)) {
+                    round_depth += 1;
+                } else if matches!(key, KEYWORD::Symbol(SYMBOL::RoundC)) && round_depth > 0 {
+                    round_depth -= 1;
+                }
+                continue;
+            }
+
             if found_percent {
                 return matches!(key, KEYWORD::Symbol(SYMBOL::Equal));
+            }
+
+            if expect_member_ident {
+                if key.is_ident() {
+                    expect_member_ident = false;
+                    continue;
+                }
+                return false;
+            }
+
+            if matches!(key, KEYWORD::Symbol(SYMBOL::Dot)) {
+                expect_member_ident = true;
+                continue;
             }
 
             if matches!(key, KEYWORD::Symbol(SYMBOL::Percent)) {

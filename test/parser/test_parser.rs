@@ -5918,6 +5918,109 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_field_assignment_target_parsing() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_field_assignment.fol")
+                .expect("Should read field assignment function test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse field assignment target");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::Assignment { target, value }
+                            if matches!(
+                                target.as_ref(),
+                                AstNode::FieldAccess { object, field }
+                                if field == "current"
+                                    && matches!(object.as_ref(), AstNode::Identifier { name } if name == "obj")
+                            )
+                                && matches!(value.as_ref(), AstNode::Identifier { name } if name == "value")
+                        )
+                    }),
+                    "Assignment target should parse as field access"
+                );
+            }
+            _ => panic!("Expected program node"),
+        }
+    }
+
+    #[test]
+    fn test_index_assignment_target_parsing() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_index_assignment.fol")
+                .expect("Should read index assignment function test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse index assignment target");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::Assignment { target, value }
+                            if matches!(
+                                target.as_ref(),
+                                AstNode::IndexAccess { container, index }
+                                if matches!(container.as_ref(), AstNode::Identifier { name } if name == "items")
+                                    && matches!(index.as_ref(), AstNode::Identifier { name } if name == "idx")
+                            )
+                                && matches!(value.as_ref(), AstNode::Identifier { name } if name == "value")
+                        )
+                    }),
+                    "Assignment target should parse as index access"
+                );
+            }
+            _ => panic!("Expected program node"),
+        }
+    }
+
+    #[test]
+    fn test_index_assignment_target_missing_close_reports_parse_error() {
+        let mut file_stream = FileStream::from_file(
+            "test/parser/simple_fun_index_assignment_missing_close.fol",
+        )
+        .expect("Should read malformed index assignment function test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should reject index assignment target missing closing ']'");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Expected closing ']' for index assignment target"),
+            "Malformed index assignment target should report missing close bracket, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            2,
+            "Malformed index assignment target should report the assignment line"
+        );
+    }
+
+    #[test]
     fn test_compound_assignment_statements_are_lowered_to_binary_ops() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_fun_compound_assignment.fol")
