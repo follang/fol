@@ -1,0 +1,4 @@
+fun make_open_span(b: int): int = {
+    values = {..b};
+    return {..b + 2};
+}

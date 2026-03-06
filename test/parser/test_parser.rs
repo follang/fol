@@ -5325,6 +5325,96 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_open_start_range_expressions_parse_in_assignment_and_return() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_open_start_range_expr.fol")
+                .expect("Should read open-start range expression test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse open-start range expressions");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                let has_open_start_assignment = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::Assignment { value, .. }
+                        if matches!(
+                            value.as_ref(),
+                            AstNode::Range {
+                                start: None,
+                                end: Some(end),
+                                inclusive: true
+                            }
+                            if matches!(end.as_ref(), AstNode::Identifier { name } if name == "b")
+                        )
+                    )
+                });
+
+                let has_open_start_return = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::Return { value: Some(value) }
+                        if matches!(
+                            value.as_ref(),
+                            AstNode::Range {
+                                start: None,
+                                end: Some(end),
+                                inclusive: true
+                            }
+                            if matches!(end.as_ref(), AstNode::BinaryOp { .. })
+                        )
+                    )
+                });
+
+                assert!(
+                    has_open_start_assignment,
+                    "Assignment should parse open-start range expression"
+                );
+                assert!(
+                    has_open_start_return,
+                    "Return should parse open-start range expression with arithmetic rhs"
+                );
+            }
+            _ => panic!("Expected program node"),
+        }
+    }
+
+    #[test]
+    fn test_open_start_range_expression_missing_rhs_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_open_start_range_missing_rhs.fol")
+                .expect("Should read malformed open-start range expression test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should reject open-start range expression missing rhs");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Expected expression after '..'"),
+            "Malformed open-start range expression should report missing rhs, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            2,
+            "Malformed open-start range expression should report the return line"
+        );
+    }
+
+    #[test]
     fn test_container_literals_parse_in_assignment_and_return() {
         let mut file_stream = FileStream::from_file("test/parser/simple_fun_container_literal.fol")
             .expect("Should read container literal test file");

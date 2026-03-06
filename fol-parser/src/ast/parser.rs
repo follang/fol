@@ -2978,6 +2978,40 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Box<dyn Glitch>> {
+        self.skip_ignorable(tokens);
+        if let Ok(token) = tokens.curr(false) {
+            let is_open_start_range = matches!(token.key(), KEYWORD::Operator(OPERATOR::Dotdot))
+                || token.con().trim() == "..";
+            if is_open_start_range {
+                let operator_token = token.clone();
+                let _ = tokens.bump();
+                self.skip_ignorable(tokens);
+
+                let next = tokens.curr(false)?;
+                if next.key().is_terminal()
+                    || matches!(
+                        next.key(),
+                        KEYWORD::Symbol(SYMBOL::Comma)
+                            | KEYWORD::Symbol(SYMBOL::RoundC)
+                            | KEYWORD::Symbol(SYMBOL::CurlyC)
+                            | KEYWORD::Symbol(SYMBOL::SquarC)
+                    )
+                {
+                    return Err(Box::new(ParseError::from_token(
+                        &operator_token,
+                        "Expected expression after '..'".to_string(),
+                    )));
+                }
+
+                let rhs = self.parse_add_sub_expression(tokens)?;
+                return Ok(AstNode::Range {
+                    start: None,
+                    end: Some(Box::new(rhs)),
+                    inclusive: true,
+                });
+            }
+        }
+
         let lhs = self.parse_add_sub_expression(tokens)?;
         self.skip_ignorable(tokens);
 
