@@ -683,6 +683,94 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_type_alias_parsing_supports_matrix_types() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_typ_matrix_types.fol")
+            .expect("Should read matrix type alias test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse matrix typ aliases");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::TypeDecl {
+                                name,
+                                type_def: TypeDefinition::Alias {
+                                    target: FolType::Matrix { element_type, dimensions }
+                                },
+                                ..
+                            }
+                            if name == "Grid"
+                                && dimensions.as_slice() == [3, 4]
+                                && matches!(element_type.as_ref(), FolType::Named { name } if name == "int")
+                        )
+                    }),
+                    "Type alias should lower mat[T, dims...] to FolType::Matrix"
+                );
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::TypeDecl {
+                                name,
+                                type_def: TypeDefinition::Alias {
+                                    target: FolType::Matrix { element_type, dimensions }
+                                },
+                                ..
+                            }
+                            if name == "Tensor"
+                                && dimensions.as_slice() == [2, 2, 2]
+                                && matches!(
+                                    element_type.as_ref(),
+                                    FolType::Vector { element_type }
+                                    if matches!(element_type.as_ref(), FolType::Named { name } if name == "pkg::Value")
+                                )
+                        )
+                    }),
+                    "Matrix element type should support nested structured container types"
+                );
+            }
+            _ => panic!("Should return Program node"),
+        }
+    }
+
+    #[test]
+    fn test_matrix_type_bad_dimension_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_typ_matrix_types_bad_dim.fol")
+                .expect("Should read malformed matrix type alias test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should fail when mat[...] dimension is not a decimal literal");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Expected decimal matrix dimension in mat[...]"),
+            "Malformed matrix type should report bad dimension, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            1,
+            "Matrix type bad-dimension parse error should point to the declaration line"
+        );
+    }
+
+    #[test]
     fn test_function_parsing() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_fun.fol").expect("Should read test file");

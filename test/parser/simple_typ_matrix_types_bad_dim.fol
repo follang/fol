@@ -1,0 +1,1 @@
+typ BrokenGrid: mat[int, rows, 4]
