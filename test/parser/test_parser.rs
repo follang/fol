@@ -2389,6 +2389,93 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_function_method_receiver_supports_qualified_type_references() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_method_receiver_qualified.fol")
+                .expect("Should read qualified function receiver fixture");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should accept qualified method receiver type");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::FunDecl { name, .. } if name == "parse_msg"
+                        )
+                    }),
+                    "Qualified receiver function should parse as a function declaration"
+                );
+            }
+            _ => panic!("Expected program node"),
+        }
+    }
+
+    #[test]
+    fn test_procedure_method_receiver_supports_bracketed_type_references() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_pro_method_receiver_bracketed.fol")
+                .expect("Should read bracketed procedure receiver fixture");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should accept bracketed method receiver type");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::ProDecl { name, .. } if name == "store"
+                        )
+                    }),
+                    "Bracketed receiver procedure should parse as a procedure declaration"
+                );
+            }
+            _ => panic!("Expected program node"),
+        }
+    }
+
+    #[test]
+    fn test_function_method_receiver_missing_bracket_close_reports_parse_error() {
+        let mut file_stream = FileStream::from_file(
+            "test/parser/simple_fun_method_receiver_bracket_missing_close.fol",
+        )
+        .expect("Should read malformed bracketed function receiver fixture");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should reject receiver type missing closing ']'");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Expected closing ']' in type reference"),
+            "Malformed bracketed receiver type should report missing close bracket, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            1,
+            "Malformed receiver type parse error should point to the signature line"
+        );
+    }
+
+    #[test]
     fn test_function_method_receiver_syntax_rejects_builtin_receiver_type() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_fun_method_receiver_builtin_type.fol")
