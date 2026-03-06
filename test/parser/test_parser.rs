@@ -335,6 +335,140 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_type_alias_parsing_supports_special_boxed_types() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_typ_special_types.fol")
+            .expect("Should read special type alias test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse special boxed typ aliases");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::TypeDecl {
+                                name,
+                                type_def: TypeDefinition::Alias {
+                                    target: FolType::Optional { inner }
+                                },
+                                ..
+                            }
+                            if name == "MaybeText"
+                                && matches!(inner.as_ref(), FolType::Named { name } if name == "str")
+                        )
+                    }),
+                    "Type alias should lower opt[...] to FolType::Optional"
+                );
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::TypeDecl {
+                                name,
+                                type_def: TypeDefinition::Alias {
+                                    target: FolType::Multiple { types }
+                                },
+                                ..
+                            }
+                            if name == "Pair"
+                                && types.len() == 2
+                                && matches!(types.first(), Some(FolType::Named { name }) if name == "int")
+                                && matches!(types.get(1), Some(FolType::Named { name }) if name == "str")
+                        )
+                    }),
+                    "Type alias should lower mul[...] to FolType::Multiple"
+                );
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::TypeDecl {
+                                name,
+                                type_def: TypeDefinition::Alias {
+                                    target: FolType::Pointer { target }
+                                },
+                                ..
+                            }
+                            if name == "CounterPtr"
+                                && matches!(target.as_ref(), FolType::Named { name } if name == "int")
+                        )
+                    }),
+                    "Type alias should lower ptr[...] to FolType::Pointer"
+                );
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::TypeDecl {
+                                name,
+                                type_def: TypeDefinition::Alias {
+                                    target: FolType::Error { inner: Some(inner) }
+                                },
+                                ..
+                            }
+                            if name == "Failure"
+                                && matches!(inner.as_ref(), FolType::Named { name } if name == "str")
+                        )
+                    }),
+                    "Type alias should lower err[T] to FolType::Error with payload"
+                );
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::TypeDecl {
+                                name,
+                                type_def: TypeDefinition::Alias {
+                                    target: FolType::Error { inner: None }
+                                },
+                                ..
+                            }
+                            if name == "BareFailure"
+                        )
+                    }),
+                    "Type alias should lower err[] to FolType::Error without payload"
+                );
+            }
+            _ => panic!("Should return Program node"),
+        }
+    }
+
+    #[test]
+    fn test_special_boxed_type_bad_arity_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_typ_special_types_bad_arity.fol")
+                .expect("Should read malformed special type alias test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should fail when opt[...] has the wrong number of arguments");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Expected exactly one type argument for opt[...]"),
+            "Malformed opt type should report bad arity, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            1,
+            "Special type bad-arity parse error should point to the declaration line"
+        );
+    }
+
+    #[test]
     fn test_function_parsing() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_fun.fol").expect("Should read test file");

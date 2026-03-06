@@ -1562,6 +1562,7 @@ impl AstParser {
             let _ = tokens.bump();
         }
 
+        let base_name = name.clone();
         for _ in 0..32 {
             self.skip_ignorable(tokens);
             let open = match tokens.curr(false) {
@@ -1573,6 +1574,10 @@ impl AstParser {
                 break;
             }
 
+            if let Some(parsed) = self.try_parse_special_type_suffix(tokens, &base_name)? {
+                return Ok(parsed);
+            }
+
             name.push_str(&self.parse_balanced_type_suffix(
                 tokens,
                 KEYWORD::Symbol(SYMBOL::SquarO),
@@ -1582,6 +1587,117 @@ impl AstParser {
         }
 
         Ok(FolType::Named { name })
+    }
+
+    fn try_parse_special_type_suffix(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+        base_name: &str,
+    ) -> Result<Option<FolType>, Box<dyn Glitch>> {
+        match base_name {
+            "opt" => {
+                let args = self.parse_type_argument_list(tokens)?;
+                if args.len() != 1 {
+                    let token = tokens.curr(false)?;
+                    return Err(Box::new(ParseError::from_token(
+                        &token,
+                        "Expected exactly one type argument for opt[...]".to_string(),
+                    )));
+                }
+                Ok(Some(FolType::Optional {
+                    inner: Box::new(args.into_iter().next().expect("opt arg exists")),
+                }))
+            }
+            "mul" => {
+                let args = self.parse_type_argument_list(tokens)?;
+                if args.is_empty() {
+                    let token = tokens.curr(false)?;
+                    return Err(Box::new(ParseError::from_token(
+                        &token,
+                        "Expected at least one type argument for mul[...]".to_string(),
+                    )));
+                }
+                Ok(Some(FolType::Multiple { types: args }))
+            }
+            "ptr" => {
+                let args = self.parse_type_argument_list(tokens)?;
+                if args.len() != 1 {
+                    let token = tokens.curr(false)?;
+                    return Err(Box::new(ParseError::from_token(
+                        &token,
+                        "Expected exactly one type argument for ptr[...]".to_string(),
+                    )));
+                }
+                Ok(Some(FolType::Pointer {
+                    target: Box::new(args.into_iter().next().expect("ptr arg exists")),
+                }))
+            }
+            "err" => {
+                let args = self.parse_type_argument_list(tokens)?;
+                if args.len() > 1 {
+                    let token = tokens.curr(false)?;
+                    return Err(Box::new(ParseError::from_token(
+                        &token,
+                        "Expected zero or one type argument for err[...]".to_string(),
+                    )));
+                }
+                Ok(Some(FolType::Error {
+                    inner: args.into_iter().next().map(Box::new),
+                }))
+            }
+            _ => Ok(None),
+        }
+    }
+
+    fn parse_type_argument_list(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<Vec<FolType>, Box<dyn Glitch>> {
+        let open = tokens.curr(false)?;
+        if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::SquarO)) {
+            return Err(Box::new(ParseError::from_token(
+                &open,
+                "Expected '[' to start type argument list".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+
+        let mut args = Vec::new();
+        for _ in 0..64 {
+            self.skip_ignorable(tokens);
+            let token = tokens.curr(false)?;
+
+            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
+                let _ = tokens.bump();
+                return Ok(args);
+            }
+
+            args.push(self.parse_type_reference_tokens(tokens)?);
+            self.skip_ignorable(tokens);
+
+            let sep = tokens.curr(false)?;
+            if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
+                let _ = tokens.bump();
+                continue;
+            }
+            if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
+                let _ = tokens.bump();
+                return Ok(args);
+            }
+
+            return Err(Box::new(ParseError::from_token(
+                &sep,
+                "Expected ',' or ']' in type argument list".to_string(),
+            )));
+        }
+
+        Err(Box::new(ParseError {
+            message: "Type argument list exceeded parser limit".to_string(),
+            file: None,
+            line: 0,
+            column: 0,
+            length: 0,
+        }))
     }
 
     fn parse_balanced_type_suffix(

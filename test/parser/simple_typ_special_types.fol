@@ -1,0 +1,5 @@
+typ MaybeText: opt[str]
+typ Pair: mul[int, str]
+typ CounterPtr: ptr[int]
+typ Failure: err[str]
+typ BareFailure: err[]
