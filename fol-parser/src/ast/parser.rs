@@ -1471,7 +1471,71 @@ impl AstParser {
             let _ = tokens.bump();
         }
 
+        for _ in 0..32 {
+            self.skip_ignorable(tokens);
+            let open = match tokens.curr(false) {
+                Ok(token) => token,
+                Err(_) => break,
+            };
+
+            if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::SquarO)) {
+                break;
+            }
+
+            name.push_str(&self.parse_balanced_type_suffix(
+                tokens,
+                KEYWORD::Symbol(SYMBOL::SquarO),
+                KEYWORD::Symbol(SYMBOL::SquarC),
+                "Expected closing ']' in type reference",
+            )?);
+        }
+
         Ok(FolType::Named { name })
+    }
+
+    fn parse_balanced_type_suffix(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+        open_key: KEYWORD,
+        close_key: KEYWORD,
+        missing_close_message: &str,
+    ) -> Result<String, Box<dyn Glitch>> {
+        let mut depth = 0usize;
+        let mut rendered = String::new();
+
+        for _ in 0..512 {
+            self.skip_ignorable(tokens);
+            let token = tokens.curr(false)?;
+            let key = token.key();
+
+            if key == open_key {
+                depth += 1;
+            } else if key == close_key {
+                if depth == 0 {
+                    return Err(Box::new(ParseError::from_token(
+                        &token,
+                        missing_close_message.to_string(),
+                    )));
+                }
+                depth -= 1;
+            }
+
+            let fragment = token.con().trim();
+            if !fragment.is_empty() {
+                rendered.push_str(fragment);
+            }
+            let _ = tokens.bump();
+
+            if depth == 0 {
+                return Ok(rendered);
+            }
+        }
+
+        let token = tokens.curr(false)?;
+        Err(Box::new(ParseError::from_token(
+            &token,
+            missing_close_message.to_string(),
+        )))
     }
 
     fn parse_block_body(

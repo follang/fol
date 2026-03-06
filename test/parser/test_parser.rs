@@ -208,6 +208,39 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_type_alias_parsing_supports_bracketed_target_types() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_typ_bracket_alias.fol")
+            .expect("Should read bracketed type alias test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse typ aliases with bracketed target types");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::TypeDecl {
+                                name,
+                                type_def: TypeDefinition::Alias { target: FolType::Named { name: target_name } },
+                                ..
+                            }
+                            if name == "OutputMap"
+                                && target_name == "map[str,vec[pkg::Output]]"
+                        )
+                    }),
+                    "Type alias target should preserve nested bracketed syntax"
+                );
+            }
+            _ => panic!("Should return Program node"),
+        }
+    }
+
+    #[test]
     fn test_function_parsing() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_fun.fol").expect("Should read test file");
@@ -415,6 +448,70 @@ mod parser_tests {
                 Some(FolType::Named { name }) if name == "errs::Failure"
             ),
             "Error type should preserve qualified path"
+        );
+    }
+
+    #[test]
+    fn test_function_declaration_supports_bracketed_type_references() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_fun_bracket_types.fol")
+            .expect("Should read bracketed function type test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse bracketed type references in function declarations");
+
+        let function_decl = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .find_map(|node| {
+                    if let AstNode::FunDecl {
+                        name,
+                        params,
+                        return_type,
+                        error_type,
+                        ..
+                    } = node
+                    {
+                        Some((
+                            name.clone(),
+                            params.clone(),
+                            return_type.clone(),
+                            error_type.clone(),
+                        ))
+                    } else {
+                        None
+                    }
+                })
+                .expect("Program should include function declaration"),
+            _ => panic!("Expected program node"),
+        };
+
+        assert_eq!(function_decl.0, "collect");
+        assert!(
+            matches!(
+                function_decl.1.as_slice(),
+                [Parameter {
+                    param_type: FolType::Named { name },
+                    ..
+                }] if name == "seq[pkg::Input]"
+            ),
+            "Parameter type should preserve bracketed syntax"
+        );
+        assert!(
+            matches!(
+                function_decl.2,
+                Some(FolType::Named { name }) if name == "map[str,vec[pkg::Output]]"
+            ),
+            "Return type should preserve nested bracketed syntax"
+        );
+        assert!(
+            matches!(
+                function_decl.3,
+                Some(FolType::Named { name }) if name == "errs::Failure"
+            ),
+            "Error type should remain intact alongside bracketed types"
         );
     }
 
