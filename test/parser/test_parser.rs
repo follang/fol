@@ -6074,6 +6074,90 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_field_compound_assignment_target_parsing() {
+        let mut file_stream = FileStream::from_file(
+            "test/parser/simple_fun_field_compound_assignment.fol",
+        )
+        .expect("Should read field compound assignment test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse field compound assignment target");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::Assignment { target, value }
+                            if matches!(
+                                target.as_ref(),
+                                AstNode::FieldAccess { object, field }
+                                if field == "current"
+                                    && matches!(object.as_ref(), AstNode::Identifier { name } if name == "obj")
+                            )
+                                && matches!(
+                                    value.as_ref(),
+                                    AstNode::BinaryOp {
+                                        op: fol_parser::ast::BinaryOperator::Add,
+                                        ..
+                                    }
+                                )
+                        )
+                    }),
+                    "Field compound assignment should preserve field target and lower to Add"
+                );
+            }
+            _ => panic!("Expected program node"),
+        }
+    }
+
+    #[test]
+    fn test_index_compound_assignment_target_parsing() {
+        let mut file_stream = FileStream::from_file(
+            "test/parser/simple_fun_index_compound_assignment.fol",
+        )
+        .expect("Should read index compound assignment test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse index compound assignment target");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::Assignment { target, value }
+                            if matches!(
+                                target.as_ref(),
+                                AstNode::IndexAccess { container, index }
+                                if matches!(container.as_ref(), AstNode::Identifier { name } if name == "items")
+                                    && matches!(index.as_ref(), AstNode::Identifier { name } if name == "idx")
+                            )
+                                && matches!(
+                                    value.as_ref(),
+                                    AstNode::BinaryOp {
+                                        op: fol_parser::ast::BinaryOperator::Mod,
+                                        ..
+                                    }
+                                )
+                        )
+                    }),
+                    "Index compound assignment should preserve index target and lower to Mod"
+                );
+            }
+            _ => panic!("Expected program node"),
+        }
+    }
+
+    #[test]
     fn test_mod_assignment_and_comparison_expressions() {
         let mut file_stream = FileStream::from_file("test/parser/simple_fun_mod_and_compare.fol")
             .expect("Should read mod and comparison function test file");

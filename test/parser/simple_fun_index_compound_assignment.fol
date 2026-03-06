@@ -1,0 +1,4 @@
+fun update_index(items: int, idx: int, value: int): int = {
+    items[idx] %= value;
+    return items[idx];
+}
