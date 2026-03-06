@@ -539,11 +539,8 @@ impl AstParser {
                     let _ = tokens.bump();
                     self.skip_ignorable(tokens);
 
-                    if let Ok(receiver) = tokens.curr(false) {
-                        if receiver.key().is_ident() || receiver.key().is_buildin() {
-                            receiver_name = Some(receiver.con().trim().to_string());
-                            let _ = tokens.bump();
-                        }
+                    if let Ok(FolType::Named { name }) = self.parse_type_reference_tokens(tokens) {
+                        receiver_name = Some(name);
                     }
 
                     self.skip_ignorable(tokens);
@@ -584,15 +581,7 @@ impl AstParser {
                 if matches!(colon.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
                     let _ = tokens.bump();
                     self.skip_ignorable(tokens);
-
-                    if let Ok(ret) = tokens.curr(false) {
-                        if ret.key().is_ident() || ret.key().is_buildin() {
-                            return_type = Some(FolType::Named {
-                                name: ret.con().trim().to_string(),
-                            });
-                            let _ = tokens.bump();
-                        }
-                    }
+                    return_type = self.parse_type_reference_tokens(tokens).ok();
                 }
             }
 
@@ -759,17 +748,7 @@ impl AstParser {
                 let _ = tokens.bump();
                 self.skip_ignorable(tokens);
 
-                let hint_token = tokens.curr(false)?;
-                let hint_name = hint_token.con().trim().to_string();
-                if hint_token.key().is_ident() || hint_token.key().is_buildin() {
-                    type_hint = Some(FolType::Named { name: hint_name });
-                    let _ = tokens.bump();
-                } else {
-                    return Err(Box::new(ParseError::from_token(
-                        &hint_token,
-                        "Expected type hint after ':' in var declaration".to_string(),
-                    )));
-                }
+                type_hint = Some(self.parse_type_reference_tokens(tokens)?);
             }
         }
 
@@ -831,9 +810,7 @@ impl AstParser {
         let _ = tokens.bump();
 
         self.skip_ignorable(tokens);
-        let type_token = tokens.curr(false)?;
-        let path_type = self.parse_type_reference(&type_token)?;
-        let _ = tokens.bump();
+        let path_type = self.parse_type_reference_tokens(tokens)?;
 
         self.skip_ignorable(tokens);
         let assign = tokens.curr(false)?;
@@ -903,9 +880,7 @@ impl AstParser {
         let _ = tokens.bump();
 
         self.skip_ignorable(tokens);
-        let target_token = tokens.curr(false)?;
-        let target = self.parse_type_reference(&target_token)?;
-        let _ = tokens.bump();
+        let target = self.parse_type_reference_tokens(tokens)?;
 
         self.consume_optional_semicolon(tokens);
 
@@ -948,9 +923,7 @@ impl AstParser {
         let _ = tokens.bump();
 
         self.skip_ignorable(tokens);
-        let target_token = tokens.curr(false)?;
-        let target = self.parse_type_reference(&target_token)?;
-        let _ = tokens.bump();
+        let target = self.parse_type_reference_tokens(tokens)?;
 
         self.consume_optional_semicolon(tokens);
 
@@ -1035,18 +1008,14 @@ impl AstParser {
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
                 let _ = tokens.bump();
                 self.skip_ignorable(tokens);
-                let typ_token = tokens.curr(false)?;
-                return_type = Some(self.parse_type_reference(&typ_token)?);
-                let _ = tokens.bump();
+                return_type = Some(self.parse_type_reference_tokens(tokens)?);
 
                 self.skip_ignorable(tokens);
                 if let Ok(err_sep) = tokens.curr(false) {
                     if matches!(err_sep.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
                         let _ = tokens.bump();
                         self.skip_ignorable(tokens);
-                        let err_type_token = tokens.curr(false)?;
-                        error_type = Some(self.parse_type_reference(&err_type_token)?);
-                        let _ = tokens.bump();
+                        error_type = Some(self.parse_type_reference_tokens(tokens)?);
                     }
                 }
             }
@@ -1143,18 +1112,14 @@ impl AstParser {
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
                 let _ = tokens.bump();
                 self.skip_ignorable(tokens);
-                let typ_token = tokens.curr(false)?;
-                return_type = Some(self.parse_type_reference(&typ_token)?);
-                let _ = tokens.bump();
+                return_type = Some(self.parse_type_reference_tokens(tokens)?);
 
                 self.skip_ignorable(tokens);
                 if let Ok(err_sep) = tokens.curr(false) {
                     if matches!(err_sep.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
                         let _ = tokens.bump();
                         self.skip_ignorable(tokens);
-                        let err_type_token = tokens.curr(false)?;
-                        error_type = Some(self.parse_type_reference(&err_type_token)?);
-                        let _ = tokens.bump();
+                        error_type = Some(self.parse_type_reference_tokens(tokens)?);
                     }
                 }
             }
@@ -1248,9 +1213,7 @@ impl AstParser {
             let _ = tokens.bump();
             self.skip_ignorable(tokens);
 
-            let type_token = tokens.curr(false)?;
-            let param_type = self.parse_type_reference(&type_token)?;
-            let _ = tokens.bump();
+            let param_type = self.parse_type_reference_tokens(tokens)?;
 
             params.push(Parameter {
                 name: param_name.clone(),
@@ -1307,7 +1270,7 @@ impl AstParser {
                 )));
             }
 
-            receiver_type = Some(self.parse_type_reference(&receiver_token)?);
+            receiver_type = Some(self.parse_type_reference_tokens(tokens)?);
             if let Some(FolType::Named { name }) = receiver_type.as_ref() {
                 if Self::is_builtin_scalar_type_name(name) {
                     return Err(Box::new(ParseError::from_token(
@@ -1316,7 +1279,6 @@ impl AstParser {
                     )));
                 }
             }
-            let _ = tokens.bump();
 
             self.skip_ignorable(tokens);
             let close = tokens.curr(false)?;
@@ -1453,20 +1415,63 @@ impl AstParser {
         }
     }
 
-    fn parse_type_reference(
+    fn parse_type_reference_tokens(
         &self,
-        token: &fol_lexer::lexer::stage3::element::Element,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<FolType, Box<dyn Glitch>> {
-        if token.key().is_ident() || token.key().is_buildin() {
-            return Ok(FolType::Named {
-                name: token.con().trim().to_string(),
-            });
+        self.skip_ignorable(tokens);
+        let token = tokens.curr(false)?;
+
+        if !(token.key().is_ident() || token.key().is_buildin()) {
+            return Err(Box::new(ParseError::from_token(
+                &token,
+                "Expected type reference".to_string(),
+            )));
         }
 
-        Err(Box::new(ParseError::from_token(
-            token,
-            "Expected type reference".to_string(),
-        )))
+        let mut name = token.con().trim().to_string();
+        let _ = tokens.bump();
+
+        for _ in 0..64 {
+            self.skip_ignorable(tokens);
+            let separator = match tokens.curr(false) {
+                Ok(token) => token,
+                Err(_) => break,
+            };
+
+            let is_path = matches!(separator.key(), KEYWORD::Operator(OPERATOR::Path))
+                || matches!(separator.key(), KEYWORD::Symbol(SYMBOL::Colon))
+                    && matches!(
+                        self.next_significant_key_from_window(tokens),
+                        Some(KEYWORD::Symbol(SYMBOL::Colon))
+                    );
+
+            if !is_path {
+                break;
+            }
+
+            if matches!(separator.key(), KEYWORD::Operator(OPERATOR::Path)) {
+                let _ = tokens.bump();
+            } else {
+                self.consume_significant_token(tokens);
+                self.consume_significant_token(tokens);
+            }
+
+            self.skip_ignorable(tokens);
+            let segment = tokens.curr(false)?;
+            if !(segment.key().is_ident() || segment.key().is_buildin()) {
+                return Err(Box::new(ParseError::from_token(
+                    &segment,
+                    "Expected type segment after '::'".to_string(),
+                )));
+            }
+
+            name.push_str("::");
+            name.push_str(segment.con().trim());
+            let _ = tokens.bump();
+        }
+
+        Ok(FolType::Named { name })
     }
 
     fn parse_block_body(

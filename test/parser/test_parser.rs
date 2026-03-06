@@ -2,7 +2,7 @@
 
 use fol_lexer::lexer::stage3::Elements;
 use fol_lexer::token::KEYWORD;
-use fol_parser::ast::{AstNode, AstParser, FolType, Literal, ParseError, TypeDefinition};
+use fol_parser::ast::{AstNode, AstParser, FolType, Literal, Parameter, ParseError, TypeDefinition};
 use fol_stream::FileStream;
 
 #[cfg(test)]
@@ -122,6 +122,36 @@ mod parser_tests {
 
                 assert!(has_text_alias, "Parser should build alias declaration for Text: str");
                 assert!(has_count_alias, "Parser should build alias declaration for Count: int");
+            }
+            _ => panic!("Should return Program node"),
+        }
+    }
+
+    #[test]
+    fn test_alias_parsing_supports_qualified_target_types() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_ali_qualified.fol")
+            .expect("Should read qualified alias test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse alias declarations with qualified target types");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::AliasDecl {
+                                name,
+                                target: FolType::Named { name: target_name }
+                            } if name == "ResultAlias" && target_name == "pkg::result::Value"
+                        )
+                    }),
+                    "Alias target type should preserve qualified path segments"
+                );
             }
             _ => panic!("Should return Program node"),
         }
@@ -320,6 +350,71 @@ mod parser_tests {
         assert!(
             function_decl.3 > 0,
             "Function body should include parsed statements"
+        );
+    }
+
+    #[test]
+    fn test_function_declaration_supports_qualified_type_references() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_qualified_types.fol")
+                .expect("Should read qualified function type test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse qualified type references in function declarations");
+
+        let function_decl = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .find_map(|node| {
+                    if let AstNode::FunDecl {
+                        name,
+                        params,
+                        return_type,
+                        error_type,
+                        ..
+                    } = node
+                    {
+                        Some((
+                            name.clone(),
+                            params.clone(),
+                            return_type.clone(),
+                            error_type.clone(),
+                        ))
+                    } else {
+                        None
+                    }
+                })
+                .expect("Program should include function declaration"),
+            _ => panic!("Expected program node"),
+        };
+
+        assert_eq!(function_decl.0, "convert");
+        assert!(
+            matches!(
+                function_decl.1.as_slice(),
+                [Parameter {
+                    param_type: FolType::Named { name },
+                    ..
+                }] if name == "pkg::Input"
+            ),
+            "Parameter type should preserve qualified path"
+        );
+        assert!(
+            matches!(
+                function_decl.2,
+                Some(FolType::Named { name }) if name == "pkg::Output"
+            ),
+            "Return type should preserve qualified path"
+        );
+        assert!(
+            matches!(
+                function_decl.3,
+                Some(FolType::Named { name }) if name == "errs::Failure"
+            ),
+            "Error type should preserve qualified path"
         );
     }
 
