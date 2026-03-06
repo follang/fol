@@ -2043,6 +2043,36 @@ impl AstParser {
                 continue;
             }
 
+            if matches!(token.key(), KEYWORD::Keyword(BUILDIN::On)) {
+                let _ = tokens.bump();
+                self.skip_ignorable(tokens);
+
+                let open_channel = tokens.curr(false)?;
+                if !matches!(open_channel.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
+                    return Err(Box::new(ParseError::from_token(
+                        &open_channel,
+                        "Expected '(' after on".to_string(),
+                    )));
+                }
+                let _ = tokens.bump();
+
+                let channel = self.parse_logical_expression(tokens)?;
+                self.skip_ignorable(tokens);
+                let close_channel = tokens.curr(false)?;
+                if !matches!(close_channel.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
+                    return Err(Box::new(ParseError::from_token(
+                        &close_channel,
+                        "Expected ')' after on channel".to_string(),
+                    )));
+                }
+                let _ = tokens.bump();
+
+                self.skip_ignorable(tokens);
+                let body = self.parse_case_body(tokens)?;
+                cases.push(WhenCase::On { channel, body });
+                continue;
+            }
+
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
                 let body = self.parse_case_body(tokens)?;
                 default = Some(body);

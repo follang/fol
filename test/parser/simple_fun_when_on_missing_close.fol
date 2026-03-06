@@ -1,0 +1,6 @@
+fun broken_channel_case(value: int, stream: int): int = {
+    when(value) {
+        on(stream { return 1; }
+        { return 0; }
+    }
+}

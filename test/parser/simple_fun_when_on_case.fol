@@ -1,0 +1,6 @@
+fun classify_channel(value: int, stream: int): int = {
+    when(value) {
+        on(stream) { return 1; }
+        { return 0; }
+    }
+}

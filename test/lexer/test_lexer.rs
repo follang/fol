@@ -108,6 +108,10 @@ mod lexer_tests {
             keyword_strings.contains(&"cast".to_string()),
             "Should contain 'cast' keyword"
         );
+        assert!(
+            keyword_strings.contains(&"on".to_string()),
+            "Should contain 'on' keyword"
+        );
     }
 
     #[test]
