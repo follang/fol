@@ -4595,6 +4595,75 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_use_declaration_supports_qualified_and_bracketed_types() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_use_qualified_type.fol")
+            .expect("Should read qualified use type test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse use declaration with qualified bracketed path type");
+
+        let use_decl = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .find_map(|node| {
+                    if let AstNode::UseDecl {
+                        name,
+                        path_type,
+                        path,
+                        ..
+                    } = node
+                    {
+                        Some((name.clone(), path_type.clone(), path.clone()))
+                    } else {
+                        None
+                    }
+                })
+                .expect("Program should include use declaration"),
+            _ => panic!("Expected program node"),
+        };
+
+        assert_eq!(use_decl.0, "results");
+        assert!(
+            matches!(use_decl.1, FolType::Named { name } if name == "map[str,pkg::Value]"),
+            "Use declaration should preserve qualified bracketed path type"
+        );
+        assert_eq!(use_decl.2, "core::results");
+    }
+
+    #[test]
+    fn test_use_declaration_missing_bracket_close_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_use_missing_bracket_close.fol")
+                .expect("Should read malformed use declaration test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should fail when use path type is missing closing ']'");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Expected closing ']' in type reference"),
+            "Malformed use path type should report missing close bracket, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            1,
+            "Malformed use declaration should report the declaration line"
+        );
+    }
+
+    #[test]
     fn test_var_parsing_without_type_hint() {
         let mut file_stream = FileStream::from_file("test/parser/simple_var_infer.fol")
             .expect("Should read infer var test file");
