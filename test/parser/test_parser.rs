@@ -4790,6 +4790,146 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_var_parsing_supports_qualified_and_bracketed_type_hints() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_var_qualified_type.fol")
+                .expect("Should read qualified var type hint test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse var declaration with qualified bracketed type hint");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                let var_decl = declarations
+                    .iter()
+                    .find_map(|node| {
+                        if let AstNode::VarDecl {
+                            name,
+                            type_hint,
+                            value,
+                            ..
+                        } = node
+                        {
+                            Some((name, type_hint, value))
+                        } else {
+                            None
+                        }
+                    })
+                    .expect("Program should contain a variable declaration");
+
+                assert_eq!(var_decl.0, "cache");
+                assert!(
+                    matches!(
+                        var_decl.1,
+                        Some(FolType::Named { name }) if name == "map[str,pkg::Value]"
+                    ),
+                    "Var type hint should preserve qualified bracketed syntax"
+                );
+                assert!(var_decl.2.is_some(), "Value should still be parsed");
+            }
+            _ => panic!("Expected program node"),
+        }
+    }
+
+    #[test]
+    fn test_let_parsing_supports_bracketed_type_hints() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_let_bracket_type.fol")
+                .expect("Should read bracketed let type hint test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse let declaration with bracketed type hint");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::VarDecl {
+                                name,
+                                type_hint: Some(FolType::Named { name: type_name }),
+                                ..
+                            }
+                            if name == "cache"
+                                && type_name == "map[str,vec[pkg::Value]]"
+                        )
+                    }),
+                    "Let type hint should preserve nested bracketed syntax"
+                );
+            }
+            _ => panic!("Expected program node"),
+        }
+    }
+
+    #[test]
+    fn test_var_type_hint_missing_bracket_close_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_var_type_missing_close.fol")
+                .expect("Should read malformed var type hint test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should fail when var type hint is missing closing ']'");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Expected closing ']' in type reference"),
+            "Malformed var type hint should report missing close bracket, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            1,
+            "Malformed var type hint should report the declaration line"
+        );
+    }
+
+    #[test]
+    fn test_let_type_hint_missing_bracket_close_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_let_type_missing_close.fol")
+                .expect("Should read malformed let type hint test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should fail when let type hint is missing closing ']'");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Expected closing ']' in type reference"),
+            "Malformed let type hint should report missing close bracket, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            2,
+            "Malformed let type hint should report the local declaration line"
+        );
+    }
+
+    #[test]
     fn test_boolean_keyword_literals_parse_in_var_and_return() {
         let mut file_stream = FileStream::from_file("test/parser/simple_fun_bool_literals.fol")
             .expect("Should read boolean literal function test file");
