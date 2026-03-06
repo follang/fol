@@ -5485,6 +5485,66 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_open_end_range_expressions_parse_in_assignment_and_return() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_open_end_range_expr.fol")
+                .expect("Should read open-end range expression test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse open-end range expressions");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                let has_open_end_assignment = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::Assignment { value, .. }
+                        if matches!(
+                            value.as_ref(),
+                            AstNode::Range {
+                                start: Some(start),
+                                end: None,
+                                inclusive: true
+                            }
+                            if matches!(start.as_ref(), AstNode::Identifier { name } if name == "a")
+                        )
+                    )
+                });
+
+                let has_open_end_return = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::Return { value: Some(value) }
+                        if matches!(
+                            value.as_ref(),
+                            AstNode::Range {
+                                start: Some(start),
+                                end: None,
+                                inclusive: true
+                            }
+                            if matches!(start.as_ref(), AstNode::BinaryOp { .. })
+                        )
+                    )
+                });
+
+                assert!(
+                    has_open_end_assignment,
+                    "Assignment should parse open-end range expression"
+                );
+                assert!(
+                    has_open_end_return,
+                    "Return should parse open-end range expression with arithmetic lhs"
+                );
+            }
+            _ => panic!("Expected program node"),
+        }
+    }
+
+    #[test]
     fn test_container_literals_parse_in_assignment_and_return() {
         let mut file_stream = FileStream::from_file("test/parser/simple_fun_container_literal.fol")
             .expect("Should read container literal test file");

@@ -3056,22 +3056,26 @@ impl AstParser {
             return Ok(lhs);
         }
 
-        let operator_token = op_token.clone();
         let _ = tokens.bump();
         self.skip_ignorable(tokens);
 
         let next = tokens.curr(false)?;
-        if next.key().is_terminal()
-            || matches!(
-                next.key(),
-                KEYWORD::Symbol(SYMBOL::Comma)
-                    | KEYWORD::Symbol(SYMBOL::RoundC)
-                    | KEYWORD::Symbol(SYMBOL::CurlyC)
-                    | KEYWORD::Symbol(SYMBOL::SquarC)
-            )
-        {
+        if matches!(
+            next.key(),
+            KEYWORD::Symbol(SYMBOL::Comma)
+                | KEYWORD::Symbol(SYMBOL::RoundC)
+                | KEYWORD::Symbol(SYMBOL::CurlyC)
+                | KEYWORD::Symbol(SYMBOL::SquarC)
+        ) {
+            return Ok(AstNode::Range {
+                start: Some(Box::new(lhs)),
+                end: None,
+                inclusive: true,
+            });
+        }
+        if next.key().is_terminal() {
             return Err(Box::new(ParseError::from_token(
-                &operator_token,
+                &op_token,
                 "Expected expression after '..'".to_string(),
             )));
         }
