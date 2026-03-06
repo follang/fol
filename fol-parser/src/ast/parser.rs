@@ -923,7 +923,12 @@ impl AstParser {
         let _ = tokens.bump();
 
         self.skip_ignorable(tokens);
-        let target = self.parse_type_reference_tokens(tokens)?;
+        let type_def = if matches!(tokens.curr(false)?.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
+            self.parse_record_type_definition(tokens)?
+        } else {
+            let target = self.parse_type_reference_tokens(tokens)?;
+            super::TypeDefinition::Alias { target }
+        };
 
         self.consume_optional_semicolon(tokens);
 
@@ -931,8 +936,94 @@ impl AstParser {
             options: Vec::new(),
             generics: Vec::new(),
             name,
-            type_def: super::TypeDefinition::Alias { target },
+            type_def,
         })
+    }
+
+    fn parse_record_type_definition(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<super::TypeDefinition, Box<dyn Glitch>> {
+        let open = tokens.curr(false)?;
+        if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
+            return Err(Box::new(ParseError::from_token(
+                &open,
+                "Expected '{' to start type record definition".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+
+        let mut fields = HashMap::new();
+        for _ in 0..256 {
+            self.skip_ignorable(tokens);
+            let token = tokens.curr(false)?;
+
+            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) {
+                let _ = tokens.bump();
+                return Ok(super::TypeDefinition::Record { fields });
+            }
+
+            if token.key().is_terminal() || matches!(token.key(), KEYWORD::Void(_)) {
+                return Err(Box::new(ParseError::from_token(
+                    &token,
+                    "Expected '}' to close type record definition".to_string(),
+                )));
+            }
+
+            if !token.key().is_ident() {
+                return Err(Box::new(ParseError::from_token(
+                    &token,
+                    "Expected field name in type record definition".to_string(),
+                )));
+            }
+
+            let field_name = token.con().trim().to_string();
+            let _ = tokens.bump();
+            self.skip_ignorable(tokens);
+
+            let colon = tokens.curr(false)?;
+            if !matches!(colon.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
+                return Err(Box::new(ParseError::from_token(
+                    &colon,
+                    "Expected ':' after record field name".to_string(),
+                )));
+            }
+            let _ = tokens.bump();
+
+            self.skip_ignorable(tokens);
+            let field_type = self.parse_type_reference_tokens(tokens)?;
+            fields.insert(field_name, field_type);
+
+            self.skip_ignorable(tokens);
+            let sep = tokens.curr(false)?;
+            if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
+                let _ = tokens.bump();
+                continue;
+            }
+            if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) {
+                let _ = tokens.bump();
+                return Ok(super::TypeDefinition::Record { fields });
+            }
+            if sep.key().is_terminal() || matches!(sep.key(), KEYWORD::Void(_)) {
+                return Err(Box::new(ParseError::from_token(
+                    &sep,
+                    "Expected '}' to close type record definition".to_string(),
+                )));
+            }
+
+            return Err(Box::new(ParseError::from_token(
+                &sep,
+                "Expected ',' or '}' in type record definition".to_string(),
+            )));
+        }
+
+        Err(Box::new(ParseError {
+            message: "Type record definition exceeded parser limit".to_string(),
+            file: None,
+            line: 0,
+            column: 0,
+            length: 0,
+        }))
     }
 
     fn parse_use_path(

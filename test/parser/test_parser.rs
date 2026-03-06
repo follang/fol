@@ -271,6 +271,70 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_top_level_type_record_parsing() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_typ_record.fol")
+            .expect("Should read type record test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse minimal typ record declarations");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::TypeDecl {
+                                name,
+                                type_def: TypeDefinition::Record { fields },
+                                ..
+                            }
+                            if name == "Person"
+                                && matches!(fields.get("name"), Some(FolType::Named { name }) if name == "str")
+                                && matches!(fields.get("age"), Some(FolType::Named { name }) if name == "int")
+                        )
+                    }),
+                    "Parser should build TypeDecl record with named fields"
+                );
+            }
+            _ => panic!("Should return Program node"),
+        }
+    }
+
+    #[test]
+    fn test_type_record_missing_close_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_typ_record_missing_close.fol")
+                .expect("Should read malformed type record test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should fail when type record is missing closing '}'");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Expected '}' to close type record definition"),
+            "Malformed type record should report missing close brace, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            3,
+            "Type record parse error should point to the end of the declaration"
+        );
+    }
+
+    #[test]
     fn test_function_parsing() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_fun.fol").expect("Should read test file");
