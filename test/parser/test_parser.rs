@@ -241,6 +241,36 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_type_alias_missing_bracket_close_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_typ_bracket_alias_missing_close.fol")
+                .expect("Should read malformed bracketed type alias test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should fail when typ alias target is missing closing ']'");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Expected closing ']' in type reference"),
+            "Malformed bracketed typ alias should report missing close bracket, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            1,
+            "Bracketed typ alias parse error should point to the declaration line"
+        );
+    }
+
+    #[test]
     fn test_function_parsing() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_fun.fol").expect("Should read test file");
@@ -512,6 +542,36 @@ mod parser_tests {
                 Some(FolType::Named { name }) if name == "errs::Failure"
             ),
             "Error type should remain intact alongside bracketed types"
+        );
+    }
+
+    #[test]
+    fn test_function_declaration_missing_bracket_close_in_parameter_type_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_bracket_types_missing_close.fol")
+                .expect("Should read malformed bracketed function type test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser.parse(&mut lexer).expect_err(
+            "Parser should fail when function parameter type is missing closing ']'",
+        );
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Expected closing ']' in type reference"),
+            "Malformed bracketed function type should report missing close bracket, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            1,
+            "Bracketed function type parse error should point to the signature line"
         );
     }
 

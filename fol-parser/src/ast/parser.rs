@@ -1502,6 +1502,7 @@ impl AstParser {
     ) -> Result<String, Box<dyn Glitch>> {
         let mut depth = 0usize;
         let mut rendered = String::new();
+        let mut anchor_token = None;
 
         for _ in 0..512 {
             self.skip_ignorable(tokens);
@@ -1509,6 +1510,9 @@ impl AstParser {
             let key = token.key();
 
             if key == open_key {
+                if anchor_token.is_none() {
+                    anchor_token = Some(token.clone());
+                }
                 depth += 1;
             } else if key == close_key {
                 if depth == 0 {
@@ -1531,7 +1535,10 @@ impl AstParser {
             }
         }
 
-        let token = tokens.curr(false)?;
+        let token = match anchor_token {
+            Some(token) => token,
+            None => tokens.curr(false)?,
+        };
         Err(Box::new(ParseError::from_token(
             &token,
             missing_close_message.to_string(),
