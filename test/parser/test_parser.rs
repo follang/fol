@@ -6021,6 +6021,67 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_method_call_assignment_target_reports_parse_error() {
+        let mut file_stream = FileStream::from_file(
+            "test/parser/simple_fun_method_call_assignment_target.fol",
+        )
+        .expect("Should read method-call assignment target fixture");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should reject method call assignment target");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Method call cannot be used as an assignment target"),
+            "Method-call assignment target should report explicit target diagnostic, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            2,
+            "Method-call assignment target should report the assignment line"
+        );
+    }
+
+    #[test]
+    fn test_function_call_assignment_target_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_call_assignment_target.fol")
+                .expect("Should read function-call assignment target fixture");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should reject function call assignment target");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Function call cannot be used as an assignment target"),
+            "Function-call assignment target should report explicit target diagnostic, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            2,
+            "Function-call assignment target should report the assignment line"
+        );
+    }
+
+    #[test]
     fn test_compound_assignment_statements_are_lowered_to_binary_ops() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_fun_compound_assignment.fol")

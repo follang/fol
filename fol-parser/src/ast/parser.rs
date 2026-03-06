@@ -2352,6 +2352,12 @@ impl AstParser {
             };
 
             match token.key() {
+                KEYWORD::Symbol(SYMBOL::RoundO) => {
+                    return Err(Box::new(ParseError::from_token(
+                        &token,
+                        "Function call cannot be used as an assignment target".to_string(),
+                    )));
+                }
                 KEYWORD::Symbol(SYMBOL::Dot) => {
                     let _ = tokens.bump();
                     self.skip_ignorable(tokens);
@@ -2589,6 +2595,15 @@ impl AstParser {
                 continue;
             }
 
+            if round_depth > 0 {
+                if matches!(key, KEYWORD::Symbol(SYMBOL::RoundO)) {
+                    round_depth += 1;
+                } else if matches!(key, KEYWORD::Symbol(SYMBOL::RoundC)) {
+                    round_depth -= 1;
+                }
+                continue;
+            }
+
             if found_percent {
                 return matches!(key, KEYWORD::Symbol(SYMBOL::Equal));
             }
@@ -2603,6 +2618,11 @@ impl AstParser {
 
             if matches!(key, KEYWORD::Symbol(SYMBOL::Dot)) {
                 expect_member_ident = true;
+                continue;
+            }
+
+            if matches!(key, KEYWORD::Symbol(SYMBOL::RoundO)) {
+                round_depth = 1;
                 continue;
             }
 
