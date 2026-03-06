@@ -282,6 +282,7 @@ impl Element {
             "is" => self.set_key(Keyword(BUILDIN::Is)),
             "has" => self.set_key(Keyword(BUILDIN::Has)),
             "in" => self.set_key(Keyword(BUILDIN::In)),
+            "of" => self.set_key(Keyword(BUILDIN::Of)),
             "case" => self.set_key(Keyword(BUILDIN::Case)),
             "this" => self.set_key(Keyword(BUILDIN::This)),
             "self" => self.set_key(Keyword(BUILDIN::Selfi)),

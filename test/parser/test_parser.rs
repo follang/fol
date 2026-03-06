@@ -546,6 +546,88 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_when_statement_supports_of_cases_with_complex_types() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_fun_when_of_types.fol")
+            .expect("Should read when-of type test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse when-of cases with qualified and bracketed types");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                let when_stmt = declarations.iter().find_map(|node| {
+                    if let AstNode::When { cases, default, .. } = node {
+                        Some((cases.clone(), default.clone()))
+                    } else {
+                        None
+                    }
+                });
+
+                let (cases, default) = when_stmt.expect("Program should include when statement");
+                assert!(
+                    cases.iter().any(|case| {
+                        matches!(
+                            case,
+                            fol_parser::ast::WhenCase::Of {
+                                type_match: FolType::Named { name },
+                                ..
+                            } if name == "pkg::Input"
+                        )
+                    }),
+                    "When statement should preserve qualified type in of-case"
+                );
+                assert!(
+                    cases.iter().any(|case| {
+                        matches!(
+                            case,
+                            fol_parser::ast::WhenCase::Of {
+                                type_match: FolType::Named { name },
+                                ..
+                            } if name == "map[str,vec[pkg::Output]]"
+                        )
+                    }),
+                    "When statement should preserve nested bracketed type in of-case"
+                );
+                assert!(default.is_some(), "When statement should still parse default body");
+            }
+            _ => panic!("Expected program node"),
+        }
+    }
+
+    #[test]
+    fn test_when_of_case_missing_bracket_close_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_when_of_type_missing_close.fol")
+                .expect("Should read malformed when-of type fixture");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should reject when-of type missing closing ']'");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Expected closing ']' in type reference"),
+            "Malformed when-of type should report missing close bracket, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            3,
+            "Malformed when-of type parse error should point to the case line"
+        );
+    }
+
+    #[test]
     fn test_function_declaration_missing_bracket_close_in_parameter_type_reports_parse_error() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_fun_bracket_types_missing_close.fol")

@@ -1,0 +1,7 @@
+fun classify(value: any): int = {
+    when(value) {
+        of(pkg::Input) { return 1; }
+        of(map[str, vec[pkg::Output]]) { return 2; }
+        { return 0; }
+    }
+}
