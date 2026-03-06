@@ -6021,6 +6021,81 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_chained_assignment_target_parsing() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_chained_assignment_target.fol")
+                .expect("Should read chained assignment target fixture");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse chained assignment target");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::Assignment { target, value }
+                            if matches!(
+                                target.as_ref(),
+                                AstNode::FieldAccess { object, field }
+                                if field == "current"
+                                    && matches!(
+                                        object.as_ref(),
+                                        AstNode::IndexAccess { container, index }
+                                        if matches!(
+                                            container.as_ref(),
+                                            AstNode::FieldAccess { object, field }
+                                            if field == "items"
+                                                && matches!(object.as_ref(), AstNode::Identifier { name } if name == "obj")
+                                        )
+                                            && matches!(index.as_ref(), AstNode::Identifier { name } if name == "idx")
+                                    )
+                            )
+                                && matches!(value.as_ref(), AstNode::Identifier { name } if name == "value")
+                        )
+                    }),
+                    "Assignment target should parse as chained field/index access"
+                );
+            }
+            _ => panic!("Expected program node"),
+        }
+    }
+
+    #[test]
+    fn test_field_assignment_target_missing_name_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_field_assignment_missing_name.fol")
+                .expect("Should read malformed field assignment target fixture");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should reject field assignment target missing field name");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Expected field name after '.' in assignment target"),
+            "Malformed field assignment target should report missing field name, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            2,
+            "Malformed field assignment target should report the assignment line"
+        );
+    }
+
+    #[test]
     fn test_method_call_assignment_target_reports_parse_error() {
         let mut file_stream = FileStream::from_file(
             "test/parser/simple_fun_method_call_assignment_target.fol",

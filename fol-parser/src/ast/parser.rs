@@ -2613,6 +2613,11 @@ impl AstParser {
                     expect_member_ident = false;
                     continue;
                 }
+                if matches!(key, KEYWORD::Symbol(SYMBOL::Equal))
+                    || self.compound_assignment_op(&key).is_some()
+                {
+                    return true;
+                }
                 return false;
             }
 
