@@ -2734,6 +2734,42 @@ mod parser_tests {
             "Duplicate routine generic should report the repeated name, got: {}",
             first_message
         );
+        assert_eq!(
+            parse_error.line(),
+            1,
+            "Duplicate routine generic parse error should point to the declaration line"
+        );
+    }
+
+    #[test]
+    fn test_routine_generic_headers_reject_default_values() {
+        let mut file_stream = FileStream::from_file(
+            "test/parser/simple_routine_generics_default_forbidden.fol",
+        )
+        .expect("Should read routine generic default-value test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should reject default values in routine generic headers");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Default values are not allowed in routine generic headers"),
+            "Routine generic defaults should report the dedicated diagnostic, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            1,
+            "Routine generic default parse error should point to the declaration line"
+        );
     }
 
     #[test]

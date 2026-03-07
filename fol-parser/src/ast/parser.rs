@@ -1944,9 +1944,9 @@ impl AstParser {
                         message: "Default values are not allowed in routine generic headers"
                             .to_string(),
                         file: None,
-                        line: 0,
-                        column: 0,
-                        length: 0,
+                        line: 1,
+                        column: 1,
+                        length: 1,
                     }) as Box<dyn Glitch>);
                 }
 
