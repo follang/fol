@@ -2,7 +2,10 @@
 
 use fol_lexer::lexer::stage3::Elements;
 use fol_lexer::token::KEYWORD;
-use fol_parser::ast::{AstNode, AstParser, FolType, Literal, Parameter, ParseError, TypeDefinition};
+use fol_parser::ast::{
+    AstNode, AstParser, CharEncoding, FloatSize, FolType, IntSize, Literal, Parameter,
+    ParseError, TypeDefinition,
+};
 use fol_stream::FileStream;
 
 #[cfg(test)]
@@ -1301,6 +1304,213 @@ mod parser_tests {
             }
             _ => panic!("Should return Program node"),
         }
+    }
+
+    #[test]
+    fn test_type_alias_parsing_lowers_scalar_types() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_typ_scalar_types.fol")
+            .expect("Should read scalar type alias test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should lower scalar type aliases");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::TypeDecl {
+                                name,
+                                type_def:
+                                    TypeDefinition::Alias {
+                                        target: FolType::Int {
+                                            size: Some(IntSize::I32),
+                                            signed: false,
+                                        }
+                                    },
+                                ..
+                            } if name == "UnsignedWord"
+                        )
+                    }),
+                    "int[u32] alias should lower to unsigned I32"
+                );
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::TypeDecl {
+                                name,
+                                type_def:
+                                    TypeDefinition::Alias {
+                                        target: FolType::Int {
+                                            size: Some(IntSize::I64),
+                                            signed: true,
+                                        }
+                                    },
+                                ..
+                            } if name == "SignedWord"
+                        )
+                    }),
+                    "int[64] alias should lower to signed I64"
+                );
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::TypeDecl {
+                                name,
+                                type_def:
+                                    TypeDefinition::Alias {
+                                        target: FolType::Float {
+                                            size: Some(FloatSize::F32)
+                                        }
+                                    },
+                                ..
+                            } if name == "FloatSmall" || name == "BareF32"
+                        )
+                    }),
+                    "flt[32] and bare f32 aliases should lower to F32"
+                );
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::TypeDecl {
+                                name,
+                                type_def:
+                                    TypeDefinition::Alias {
+                                        target: FolType::Char {
+                                            encoding: CharEncoding::Utf16
+                                        }
+                                    },
+                                ..
+                            } if name == "WideRune"
+                        )
+                    }),
+                    "chr[utf16] alias should lower to Utf16 chars"
+                );
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::TypeDecl {
+                                name,
+                                type_def:
+                                    TypeDefinition::Alias {
+                                        target: FolType::Int {
+                                            size: Some(IntSize::I64),
+                                            signed: false,
+                                        }
+                                    },
+                                ..
+                            } if name == "BareU64"
+                        )
+                    }),
+                    "bare u64 alias should lower to unsigned I64"
+                );
+            }
+            _ => panic!("Should return Program node"),
+        }
+    }
+
+    #[test]
+    fn test_routine_signatures_support_scalar_types() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_fun_scalar_types.fol")
+            .expect("Should read scalar-typed routine test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should lower scalar types in routine signatures");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                let function = declarations.iter().find_map(|node| match node {
+                    AstNode::FunDecl {
+                        name,
+                        params,
+                        return_type,
+                        error_type,
+                        ..
+                    } if name == "convert" => Some((params, return_type, error_type)),
+                    _ => None,
+                });
+
+                let (params, return_type, error_type) =
+                    function.expect("Program should contain convert function");
+
+                assert!(matches!(
+                    params.first(),
+                    Some(Parameter {
+                        param_type: FolType::Int {
+                            size: Some(IntSize::I16),
+                            signed: false,
+                        },
+                        ..
+                    })
+                ));
+                assert!(matches!(
+                    params.get(1),
+                    Some(Parameter {
+                        param_type: FolType::Float {
+                            size: Some(FloatSize::F32),
+                        },
+                        ..
+                    })
+                ));
+                assert!(matches!(
+                    params.get(2),
+                    Some(Parameter {
+                        param_type: FolType::Char {
+                            encoding: CharEncoding::Utf32,
+                        },
+                        ..
+                    })
+                ));
+                assert!(matches!(
+                    return_type,
+                    Some(FolType::Int {
+                        size: Some(IntSize::I64),
+                        signed: true,
+                    })
+                ));
+                assert!(matches!(
+                    error_type,
+                    Some(FolType::Named { name }) if name == "bol"
+                ));
+            }
+            _ => panic!("Should return Program node"),
+        }
+    }
+
+    #[test]
+    fn test_type_alias_parsing_rejects_unknown_scalar_type_option() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_typ_scalar_type_bad_option.fol")
+                .expect("Should read malformed scalar type alias test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should reject unknown scalar type options");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Unknown integer type option 'wat'"),
+            "Malformed scalar type alias should report unknown option, got: {}",
+            first_message
+        );
     }
 
     #[test]

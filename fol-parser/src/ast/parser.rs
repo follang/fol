@@ -1,8 +1,9 @@
 // AST Parser Implementation for FOL
 
 use super::{
-    AstNode, BinaryOperator, ContainerType, FolType, FunOption, Generic, Literal,
-    LoopCondition, Parameter, TypeOption, UnaryOperator, UseOption, VarOption, WhenCase,
+    AstNode, BinaryOperator, CharEncoding, ContainerType, FloatSize, FolType, FunOption,
+    Generic, IntSize, Literal, LoopCondition, Parameter, TypeOption, UnaryOperator, UseOption,
+    VarOption, WhenCase,
 };
 use fol_lexer::token::{BUILDIN, KEYWORD, LITERAL, OPERATOR, SYMBOL};
 use fol_types::*;
@@ -2037,13 +2038,22 @@ impl AstParser {
             }
 
             receiver_type = Some(self.parse_type_reference_tokens(tokens)?);
-            if let Some(FolType::Named { name }) = receiver_type.as_ref() {
-                if Self::is_builtin_scalar_type_name(name) {
+            match receiver_type.as_ref() {
+                Some(FolType::Named { name }) if !Self::is_builtin_scalar_type_name(name) => {}
+                Some(FolType::Named { .. })
+                | Some(FolType::Int { .. })
+                | Some(FolType::Float { .. })
+                | Some(FolType::Bool)
+                | Some(FolType::Char { .. })
+                | Some(FolType::Any)
+                | Some(FolType::None) => {
                     return Err(Box::new(ParseError::from_token(
                         &receiver_token,
                         "Method receiver type must be a user-defined named type".to_string(),
                     )));
                 }
+                Some(_) => {}
+                None => unreachable!("receiver_type is set above"),
             }
 
             self.skip_ignorable(tokens);
@@ -2181,6 +2191,102 @@ impl AstParser {
         }
     }
 
+    fn lower_bare_scalar_type_name(name: &str) -> Option<FolType> {
+        match name {
+            "i8" => Some(FolType::Int {
+                size: Some(IntSize::I8),
+                signed: true,
+            }),
+            "i16" => Some(FolType::Int {
+                size: Some(IntSize::I16),
+                signed: true,
+            }),
+            "i32" => Some(FolType::Int {
+                size: Some(IntSize::I32),
+                signed: true,
+            }),
+            "i64" => Some(FolType::Int {
+                size: Some(IntSize::I64),
+                signed: true,
+            }),
+            "i128" => Some(FolType::Int {
+                size: Some(IntSize::I128),
+                signed: true,
+            }),
+            "u8" => Some(FolType::Int {
+                size: Some(IntSize::I8),
+                signed: false,
+            }),
+            "u16" => Some(FolType::Int {
+                size: Some(IntSize::I16),
+                signed: false,
+            }),
+            "u32" => Some(FolType::Int {
+                size: Some(IntSize::I32),
+                signed: false,
+            }),
+            "u64" => Some(FolType::Int {
+                size: Some(IntSize::I64),
+                signed: false,
+            }),
+            "u128" => Some(FolType::Int {
+                size: Some(IntSize::I128),
+                signed: false,
+            }),
+            "arch" => Some(FolType::Int {
+                size: Some(IntSize::Arch),
+                signed: true,
+            }),
+            "uarch" => Some(FolType::Int {
+                size: Some(IntSize::Arch),
+                signed: false,
+            }),
+            "f32" => Some(FolType::Float {
+                size: Some(FloatSize::F32),
+            }),
+            "f64" => Some(FolType::Float {
+                size: Some(FloatSize::F64),
+            }),
+            _ => None,
+        }
+    }
+
+    fn lower_integer_option(option: &str) -> Option<(IntSize, bool)> {
+        match option {
+            "8" | "i8" => Some((IntSize::I8, true)),
+            "16" | "i16" => Some((IntSize::I16, true)),
+            "32" | "i32" => Some((IntSize::I32, true)),
+            "64" | "i64" => Some((IntSize::I64, true)),
+            "128" | "i128" => Some((IntSize::I128, true)),
+            "arch" => Some((IntSize::Arch, true)),
+            "u8" => Some((IntSize::I8, false)),
+            "u16" => Some((IntSize::I16, false)),
+            "u32" => Some((IntSize::I32, false)),
+            "u64" => Some((IntSize::I64, false)),
+            "u128" => Some((IntSize::I128, false)),
+            "uarch" => Some((IntSize::Arch, false)),
+            _ => None,
+        }
+    }
+
+    fn lower_float_option(option: &str) -> Option<FloatSize> {
+        match option {
+            "32" | "f32" => Some(FloatSize::F32),
+            "64" | "f64" => Some(FloatSize::F64),
+            "arch" => Some(FloatSize::Arch),
+            _ => None,
+        }
+    }
+
+    fn lower_char_option(option: &str) -> Option<CharEncoding> {
+        match option {
+            "utf8" => Some(CharEncoding::Utf8),
+            "utf16" => Some(CharEncoding::Utf16),
+            "utf32" => Some(CharEncoding::Utf32),
+            _ => None,
+        }
+    }
+
     fn parse_type_reference_tokens(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
@@ -2283,6 +2389,10 @@ impl AstParser {
 
         if matches!(name.as_str(), "non" | "none") {
             return Ok(FolType::None);
+        }
+
+        if let Some(lowered) = Self::lower_bare_scalar_type_name(&name) {
+            return Ok(lowered);
         }
 
         Ok(FolType::Named { name })
@@ -2519,8 +2629,162 @@ impl AstParser {
                 };
                 Ok(Some(FolType::Block { name }))
             }
+            "int" => Ok(Some(self.parse_integer_type_reference(tokens)?)),
+            "flt" | "float" => Ok(Some(self.parse_float_type_reference(tokens)?)),
+            "chr" | "char" => Ok(Some(self.parse_char_type_reference(tokens)?)),
             _ => Ok(None),
         }
+    }
+
+    fn parse_integer_type_reference(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<FolType, Box<dyn Glitch>> {
+        let args = self.parse_scalar_type_options(
+            tokens,
+            "Expected closing ']' in integer type reference",
+        )?;
+
+        if args.len() != 1 {
+            let token = tokens.curr(false)?;
+            return Err(Box::new(ParseError::from_token(
+                &token,
+                "Expected exactly one integer type option in int[...]".to_string(),
+            )));
+        }
+
+        let Some((size, signed)) = Self::lower_integer_option(&args[0]) else {
+            let token = tokens.curr(false)?;
+            return Err(Box::new(ParseError::from_token(
+                &token,
+                format!("Unknown integer type option '{}'", args[0]),
+            )));
+        };
+
+        Ok(FolType::Int {
+            size: Some(size),
+            signed,
+        })
+    }
+
+    fn parse_float_type_reference(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<FolType, Box<dyn Glitch>> {
+        let args = self.parse_scalar_type_options(
+            tokens,
+            "Expected closing ']' in float type reference",
+        )?;
+
+        if args.len() != 1 {
+            let token = tokens.curr(false)?;
+            return Err(Box::new(ParseError::from_token(
+                &token,
+                "Expected exactly one float type option in flt[...]".to_string(),
+            )));
+        }
+
+        let Some(size) = Self::lower_float_option(&args[0]) else {
+            let token = tokens.curr(false)?;
+            return Err(Box::new(ParseError::from_token(
+                &token,
+                format!("Unknown float type option '{}'", args[0]),
+            )));
+        };
+
+        Ok(FolType::Float { size: Some(size) })
+    }
+
+    fn parse_char_type_reference(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<FolType, Box<dyn Glitch>> {
+        let args = self.parse_scalar_type_options(
+            tokens,
+            "Expected closing ']' in character type reference",
+        )?;
+
+        if args.len() != 1 {
+            let token = tokens.curr(false)?;
+            return Err(Box::new(ParseError::from_token(
+                &token,
+                "Expected exactly one character encoding in chr[...]".to_string(),
+            )));
+        }
+
+        let Some(encoding) = Self::lower_char_option(&args[0]) else {
+            let token = tokens.curr(false)?;
+            return Err(Box::new(ParseError::from_token(
+                &token,
+                format!("Unknown character type option '{}'", args[0]),
+            )));
+        };
+
+        Ok(FolType::Char { encoding })
+    }
+
+    fn parse_scalar_type_options(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+        missing_close_message: &str,
+    ) -> Result<Vec<String>, Box<dyn Glitch>> {
+        let open = tokens.curr(false)?;
+        if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::SquarO)) {
+            return Err(Box::new(ParseError::from_token(
+                &open,
+                "Expected '[' to start scalar type options".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+
+        let mut args = Vec::new();
+        for _ in 0..16 {
+            self.skip_ignorable(tokens);
+            let token = tokens.curr(false)?;
+
+            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
+                let _ = tokens.bump();
+                return Ok(args);
+            }
+
+            let option = if token.key().is_ident()
+                || token.key().is_buildin()
+                || token.key().is_number()
+            {
+                token.con().trim().to_string()
+            } else {
+                return Err(Box::new(ParseError::from_token(
+                    &token,
+                    "Expected scalar type option".to_string(),
+                )));
+            };
+            args.push(option);
+            let _ = tokens.bump();
+
+            self.skip_ignorable(tokens);
+            let sep = tokens.curr(false)?;
+            if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
+                let _ = tokens.bump();
+                continue;
+            }
+            if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
+                let _ = tokens.bump();
+                return Ok(args);
+            }
+
+            return Err(Box::new(ParseError::from_token(
+                &sep,
+                missing_close_message.to_string(),
+            )));
+        }
+
+        Err(Box::new(ParseError {
+            message: "Scalar type option list exceeded parser limit".to_string(),
+            file: None,
+            line: 0,
+            column: 0,
+            length: 0,
+        }))
     }
 
     fn parse_type_argument_list(

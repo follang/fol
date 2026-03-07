@@ -1,0 +1,6 @@
+typ UnsignedWord: int[u32]
+typ SignedWord: int[64]
+typ FloatSmall: flt[32]
+typ WideRune: chr[utf16]
+typ BareU64: u64
+typ BareF32: f32
