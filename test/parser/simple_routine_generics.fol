@@ -1,0 +1,7 @@
+fun lift(T: foo)(value: T): T = {
+    return value;
+}
+
+pro call_bar(T: foo, U: bar)(value: T, other: U): int = {
+    return 1;
+}

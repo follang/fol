@@ -1044,6 +1044,64 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_routine_generic_headers_parse_for_functions_and_procedures() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_routine_generics.fol")
+            .expect("Should read routine generics test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse routine generic headers");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::FunDecl { name, generics, params, .. }
+                            if name == "lift"
+                                && generics.len() == 1
+                                && matches!(
+                                    generics.first(),
+                                    Some(fol_parser::ast::Generic { name, constraints })
+                                        if name == "T"
+                                            && matches!(
+                                                constraints.as_slice(),
+                                                [FolType::Named { name }] if name == "foo"
+                                            )
+                                )
+                                && matches!(
+                                    params.as_slice(),
+                                    [Parameter {
+                                        name,
+                                        param_type: FolType::Named { name: type_name },
+                                        ..
+                                    }] if name == "value" && type_name == "T"
+                                )
+                        )
+                    }),
+                    "Function generic header should populate generics separately from params"
+                );
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::ProDecl { name, generics, params, .. }
+                            if name == "call_bar"
+                                && generics.len() == 2
+                                && params.len() == 2
+                        )
+                    }),
+                    "Procedure generic header should parse multiple generics and params"
+                );
+            }
+            _ => panic!("Expected program node"),
+        }
+    }
+
+    #[test]
     fn test_unknown_routine_option_reports_parse_error() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_routine_options_unknown.fol")
@@ -1070,6 +1128,36 @@ mod parser_tests {
             parse_error.line(),
             1,
             "Routine option parse error should point to the signature line"
+        );
+    }
+
+    #[test]
+    fn test_routine_generic_header_missing_separator_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_routine_generics_missing_separator.fol")
+                .expect("Should read malformed routine generics test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should fail when generic header items are missing a separator");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Expected ',' or ')' after parameter"),
+            "Malformed generic header should report missing separator, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            1,
+            "Generic header parse error should point to the signature line"
         );
     }
 

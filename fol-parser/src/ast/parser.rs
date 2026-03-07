@@ -1150,17 +1150,10 @@ impl AstParser {
             "Expected function name after 'fun'",
         )?;
 
-        self.skip_ignorable(tokens);
-        let open_paren = tokens.curr(false)?;
-        if !matches!(open_paren.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
-            return Err(Box::new(ParseError::from_token(
-                &open_paren,
-                "Expected '(' after function name".to_string(),
-            )));
-        }
-        let _ = tokens.bump();
-
-        let params = self.parse_parameter_list(tokens)?;
+        let (generics, params) = self.parse_routine_generics_and_params(
+            tokens,
+            "Expected '(' after function name",
+        )?;
 
         self.skip_ignorable(tokens);
         let mut return_type = None;
@@ -1225,7 +1218,7 @@ impl AstParser {
 
         Ok(AstNode::FunDecl {
             options,
-            generics: Vec::<Generic>::new(),
+            generics,
             name,
             params,
             return_type,
@@ -1256,17 +1249,10 @@ impl AstParser {
             "Expected procedure name after 'pro'",
         )?;
 
-        self.skip_ignorable(tokens);
-        let open_paren = tokens.curr(false)?;
-        if !matches!(open_paren.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
-            return Err(Box::new(ParseError::from_token(
-                &open_paren,
-                "Expected '(' after procedure name".to_string(),
-            )));
-        }
-        let _ = tokens.bump();
-
-        let params = self.parse_parameter_list(tokens)?;
+        let (generics, params) = self.parse_routine_generics_and_params(
+            tokens,
+            "Expected '(' after procedure name",
+        )?;
 
         self.skip_ignorable(tokens);
         let mut return_type = None;
@@ -1331,13 +1317,53 @@ impl AstParser {
 
         Ok(AstNode::ProDecl {
             options,
-            generics: Vec::<Generic>::new(),
+            generics,
             name,
             params,
             return_type,
             error_type,
             body,
         })
+    }
+
+    fn parse_routine_generics_and_params(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+        missing_open_message: &str,
+    ) -> Result<(Vec<Generic>, Vec<Parameter>), Box<dyn Glitch>> {
+        self.skip_ignorable(tokens);
+        let open_paren = tokens.curr(false)?;
+        if !matches!(open_paren.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
+            return Err(Box::new(ParseError::from_token(
+                &open_paren,
+                missing_open_message.to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+
+        let first_list = self.parse_parameter_list(tokens)?;
+        self.skip_ignorable(tokens);
+
+        let next = match tokens.curr(false) {
+            Ok(token) => token,
+            Err(_) => return Ok((Vec::new(), first_list)),
+        };
+
+        if !matches!(next.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
+            return Ok((Vec::new(), first_list));
+        }
+
+        let generics = first_list
+            .into_iter()
+            .map(|param| Generic {
+                name: param.name,
+                constraints: vec![param.param_type],
+            })
+            .collect::<Vec<_>>();
+
+        let _ = tokens.bump();
+        let params = self.parse_parameter_list(tokens)?;
+        Ok((generics, params))
     }
 
     fn parse_routine_options(
