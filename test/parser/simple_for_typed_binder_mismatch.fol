@@ -1,0 +1,3 @@
+for(var item: str; entry in items when ready) {
+    yeild entry;
+}
