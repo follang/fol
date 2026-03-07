@@ -42,6 +42,9 @@ mod call_and_postfix_expressions;
 #[path = "test_parser_parts/loops_use_bindings_and_ranges.rs"]
 mod loops_use_bindings_and_ranges;
 #[cfg(test)]
+#[path = "test_parser_parts/typed_iteration_binders.rs"]
+mod typed_iteration_binders;
+#[cfg(test)]
 #[path = "test_parser_parts/container_and_unary_expressions.rs"]
 mod container_and_unary_expressions;
 #[cfg(test)]

@@ -1,0 +1,3 @@
+each(var _: str; _ in entries when ready) {
+    yeild _;
+}

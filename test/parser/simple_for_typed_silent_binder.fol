@@ -1,0 +1,3 @@
+for(var _: str; _ in items when ready) {
+    yeild _;
+}
