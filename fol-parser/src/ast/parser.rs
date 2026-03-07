@@ -2265,6 +2265,18 @@ impl AstParser {
             )?);
         }
 
+        if name == "mod" {
+            return Ok(FolType::Module {
+                name: String::new(),
+            });
+        }
+
+        if name == "blk" {
+            return Ok(FolType::Block {
+                name: String::new(),
+            });
+        }
+
         Ok(FolType::Named { name })
     }
 

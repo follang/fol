@@ -1211,6 +1211,53 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_type_alias_parsing_supports_bare_module_and_block_types() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_typ_bare_module_block_types.fol")
+                .expect("Should read bare module/block type alias test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse bare module and block typ aliases");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::TypeDecl {
+                                name,
+                                type_def: TypeDefinition::Alias { target: FolType::Module { name: module_name } },
+                                ..
+                            }
+                            if name == "BareModule" && module_name.is_empty()
+                        )
+                    }),
+                    "Type alias should lower bare mod to FolType::Module"
+                );
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::TypeDecl {
+                                name,
+                                type_def: TypeDefinition::Alias { target: FolType::Block { name: block_name } },
+                                ..
+                            }
+                            if name == "BareBlock" && block_name.is_empty()
+                        )
+                    }),
+                    "Type alias should lower bare blk to FolType::Block"
+                );
+            }
+            _ => panic!("Should return Program node"),
+        }
+    }
+
+    #[test]
     fn test_use_declarations_support_module_types() {
         let mut file_stream = FileStream::from_file("test/parser/simple_use_mod_type_lowering.fol")
             .expect("Should read module-typed use declaration test file");
@@ -1237,6 +1284,39 @@ mod parser_tests {
                         )
                     }),
                     "Use declarations should lower mod[...] path types to FolType::Module"
+                );
+            }
+            _ => panic!("Should return Program node"),
+        }
+    }
+
+    #[test]
+    fn test_use_declarations_support_bare_module_types() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_use_bare_mod_type.fol")
+            .expect("Should read bare module-typed use declaration test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse use declarations with bare module path types");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::UseDecl {
+                                name,
+                                path_type: FolType::Module { name: module_name },
+                                path,
+                                ..
+                            }
+                            if name == "fmt" && module_name.is_empty() && path == "core::fmt"
+                        )
+                    }),
+                    "Use declarations should lower bare mod path types to FolType::Module"
                 );
             }
             _ => panic!("Should return Program node"),
