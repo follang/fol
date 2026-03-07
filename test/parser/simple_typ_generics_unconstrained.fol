@@ -1,0 +1,4 @@
+typ Rect(geo): rec[] = {
+    width: int,
+    height: int
+}

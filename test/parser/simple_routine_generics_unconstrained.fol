@@ -1,0 +1,7 @@
+fun identity(T)(value: T): T = {
+    return value;
+}
+
+pro passthrough(T, U)(left: T, right: U): int = {
+    return 1;
+}

@@ -439,6 +439,45 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_type_generic_headers_accept_unconstrained_names() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_typ_generics_unconstrained.fol")
+                .expect("Should read unconstrained type generics test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse unconstrained type generic headers");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::TypeDecl {
+                                name,
+                                generics,
+                                type_def: TypeDefinition::Record { .. },
+                                ..
+                            }
+                            if name == "Rect"
+                                && matches!(
+                                    generics.as_slice(),
+                                    [fol_parser::ast::Generic { name, constraints }]
+                                        if name == "geo" && constraints.is_empty()
+                                )
+                        )
+                    }),
+                    "Type generic header should allow bare generic names"
+                );
+            }
+            _ => panic!("Should return Program node"),
+        }
+    }
+
+    #[test]
     fn test_type_declaration_option_brackets_parse() {
         let mut file_stream = FileStream::from_file("test/parser/simple_typ_options.fol")
             .expect("Should read type option test file");
@@ -734,7 +773,7 @@ mod parser_tests {
 
         let first_message = parse_error.to_string();
         assert!(
-            first_message.contains("Expected ',' or ')' after parameter"),
+            first_message.contains("Expected ',' or ')' after generic parameter"),
             "Malformed type generic header should report missing separator, got: {}",
             first_message
         );
@@ -1452,6 +1491,54 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_routine_generic_headers_accept_unconstrained_names() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_routine_generics_unconstrained.fol")
+                .expect("Should read unconstrained routine generics test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse unconstrained routine generic headers");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::FunDecl { name, generics, params, .. }
+                            if name == "identity"
+                                && matches!(
+                                    generics.as_slice(),
+                                    [fol_parser::ast::Generic { name, constraints }]
+                                        if name == "T" && constraints.is_empty()
+                                )
+                                && params.len() == 1
+                        )
+                    }),
+                    "Function generic header should allow bare generic names"
+                );
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::ProDecl { name, generics, params, .. }
+                            if name == "passthrough"
+                                && generics.len() == 2
+                                && generics.iter().all(|generic| generic.constraints.is_empty())
+                                && params.len() == 2
+                        )
+                    }),
+                    "Procedure generic header should allow multiple bare generic names"
+                );
+            }
+            _ => panic!("Expected program node"),
+        }
+    }
+
+    #[test]
     fn test_unknown_routine_option_reports_parse_error() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_routine_options_unknown.fol")
@@ -1500,7 +1587,7 @@ mod parser_tests {
 
         let first_message = parse_error.to_string();
         assert!(
-            first_message.contains("Expected ',' or ')' after parameter"),
+            first_message.contains("Expected ',' or ')' after generic parameter"),
             "Malformed generic header should report missing separator, got: {}",
             first_message
         );

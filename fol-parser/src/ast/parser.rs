@@ -1050,16 +1050,7 @@ impl AstParser {
         }
         let _ = tokens.bump();
 
-        let generics = self
-            .parse_parameter_list(tokens)?
-            .into_iter()
-            .map(|param| Generic {
-                name: param.name,
-                constraints: vec![param.param_type],
-            })
-            .collect();
-
-        Ok(generics)
+        self.parse_generic_list(tokens)
     }
 
     fn parse_type_options(
@@ -1548,29 +1539,121 @@ impl AstParser {
         }
         let _ = tokens.bump();
 
-        let first_list = self.parse_parameter_list(tokens)?;
+        let first_list = self.parse_generic_list(tokens)?;
         self.skip_ignorable(tokens);
 
         let next = match tokens.curr(false) {
             Ok(token) => token,
-            Err(_) => return Ok((Vec::new(), first_list)),
+            Err(_) => {
+                return Ok((
+                    Vec::new(),
+                    first_list
+                        .into_iter()
+                        .map(|generic| Parameter {
+                            name: generic.name,
+                            param_type: generic
+                                .constraints
+                                .into_iter()
+                                .next()
+                                .unwrap_or(FolType::Named {
+                                    name: "any".to_string(),
+                                }),
+                            is_borrowable: false,
+                            default: None,
+                        })
+                        .collect(),
+                ))
+            }
         };
 
         if !matches!(next.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
-            return Ok((Vec::new(), first_list));
+            return Ok((
+                Vec::new(),
+                first_list
+                    .into_iter()
+                    .map(|generic| Parameter {
+                        name: generic.name,
+                        param_type: generic
+                            .constraints
+                            .into_iter()
+                            .next()
+                            .unwrap_or(FolType::Named {
+                                name: "any".to_string(),
+                            }),
+                        is_borrowable: false,
+                        default: None,
+                    })
+                    .collect(),
+            ));
         }
 
-        let generics = first_list
-            .into_iter()
-            .map(|param| Generic {
-                name: param.name,
-                constraints: vec![param.param_type],
-            })
-            .collect::<Vec<_>>();
-
+        let generics = first_list;
         let _ = tokens.bump();
         let params = self.parse_parameter_list(tokens)?;
         Ok((generics, params))
+    }
+
+    fn parse_generic_list(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<Vec<Generic>, Box<dyn Glitch>> {
+        let mut generics = Vec::new();
+
+        for _ in 0..128 {
+            self.skip_ignorable(tokens);
+            let token = tokens.curr(false)?;
+
+            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
+                let _ = tokens.bump();
+                return Ok(generics);
+            }
+
+            if !token.key().is_ident() {
+                return Err(Box::new(ParseError::from_token(
+                    &token,
+                    "Expected generic parameter name".to_string(),
+                )));
+            }
+
+            let name = token.con().trim().to_string();
+            let _ = tokens.bump();
+
+            self.skip_ignorable(tokens);
+            let mut constraints = Vec::new();
+            if let Ok(token) = tokens.curr(false) {
+                if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
+                    let _ = tokens.bump();
+                    self.skip_ignorable(tokens);
+                    constraints.push(self.parse_type_reference_tokens(tokens)?);
+                }
+            }
+
+            generics.push(Generic { name, constraints });
+
+            self.skip_ignorable(tokens);
+            let sep = tokens.curr(false)?;
+            if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
+                let _ = tokens.bump();
+                continue;
+            }
+            if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
+                let _ = tokens.bump();
+                return Ok(generics);
+            }
+
+            return Err(Box::new(ParseError::from_token(
+                &sep,
+                "Expected ',' or ')' after generic parameter".to_string(),
+            )));
+        }
+
+        Err(Box::new(ParseError {
+            message: "Generic parsing exceeded safety bound".to_string(),
+            file: None,
+            line: 1,
+            column: 1,
+            length: 1,
+        }))
     }
 
     fn parse_routine_options(
