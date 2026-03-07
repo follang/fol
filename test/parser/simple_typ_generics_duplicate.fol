@@ -1,0 +1,3 @@
+typ Pair(T: left, T: right): rec = {
+    first: T;
+}

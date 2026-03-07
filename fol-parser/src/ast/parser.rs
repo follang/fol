@@ -1980,6 +1980,7 @@ impl AstParser {
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<Vec<Generic>, Box<dyn Glitch>> {
         let mut generics = Vec::new();
+        let mut seen_names = HashSet::new();
 
         for _ in 0..128 {
             self.skip_ignorable(tokens);
@@ -1998,6 +1999,12 @@ impl AstParser {
             }
 
             let name = token.con().trim().to_string();
+            if !seen_names.insert(name.clone()) {
+                return Err(Box::new(ParseError::from_token(
+                    &token,
+                    format!("Duplicate generic name '{}'", name),
+                )));
+            }
             let _ = tokens.bump();
 
             self.skip_ignorable(tokens);

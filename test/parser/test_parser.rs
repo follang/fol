@@ -632,6 +632,36 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_type_generic_headers_reject_duplicate_names() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_typ_generics_duplicate.fol")
+                .expect("Should read duplicate type generics test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should reject duplicate type generic names");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Duplicate generic name 'T'"),
+            "Duplicate type generic should report the repeated name, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            1,
+            "Duplicate type generic parse error should point to the declaration line"
+        );
+    }
+
+    #[test]
     fn test_type_declaration_option_brackets_parse() {
         let mut file_stream = FileStream::from_file("test/parser/simple_typ_options.fol")
             .expect("Should read type option test file");
