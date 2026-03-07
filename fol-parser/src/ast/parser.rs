@@ -1768,6 +1768,7 @@ impl AstParser {
                         "Expected ':' after parameter name".to_string(),
                     )));
                 }
+                self.ensure_unique_parameter_names(&first_list, "parameter")?;
                 return Ok((Vec::new(), first_list));
             }
         };
@@ -1775,13 +1776,15 @@ impl AstParser {
         if !matches!(next.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
             if let Some(token) = first_untyped {
                 return Err(Box::new(ParseError::from_token(
-                    &token,
-                    "Expected ':' after parameter name".to_string(),
-                )));
-            }
+                        &token,
+                        "Expected ':' after parameter name".to_string(),
+                    )));
+                }
+            self.ensure_unique_parameter_names(&first_list, "parameter")?;
             return Ok((Vec::new(), first_list));
         }
 
+        self.ensure_unique_parameter_names(&first_list, "generic")?;
         let generics = self.parameters_to_generics(first_list)?;
         let _ = tokens.bump();
         let params = self.parse_parameter_list(tokens)?;
@@ -1800,7 +1803,6 @@ impl AstParser {
     > {
         let mut params = Vec::new();
         let mut first_untyped = None;
-        let mut seen_names = HashSet::new();
 
         for _ in 0..128 {
             self.skip_ignorable(tokens);
@@ -1818,14 +1820,7 @@ impl AstParser {
                 )));
             }
 
-            let first_name = token.con().trim().to_string();
-            if !seen_names.insert(first_name.clone()) {
-                return Err(Box::new(ParseError::from_token(
-                    &token,
-                    format!("Duplicate parameter name '{}'", first_name),
-                )));
-            }
-            let mut names = vec![first_name];
+            let mut names = vec![token.con().trim().to_string()];
             let _ = tokens.bump();
 
             self.skip_ignorable(tokens);
@@ -1845,14 +1840,7 @@ impl AstParser {
                             "Expected parameter name after ','".to_string(),
                         )));
                     }
-                    let grouped_name = name_token.con().trim().to_string();
-                    if !seen_names.insert(grouped_name.clone()) {
-                        return Err(Box::new(ParseError::from_token(
-                            &name_token,
-                            format!("Duplicate parameter name '{}'", grouped_name),
-                        )));
-                    }
-                    names.push(grouped_name);
+                    names.push(name_token.con().trim().to_string());
                     let _ = tokens.bump();
                     self.skip_ignorable(tokens);
                     continue;
@@ -1973,6 +1961,26 @@ impl AstParser {
                 })
             })
             .collect()
+    }
+
+    fn ensure_unique_parameter_names(
+        &self,
+        params: &[Parameter],
+        kind: &str,
+    ) -> Result<(), Box<dyn Glitch>> {
+        let mut seen_names = HashSet::new();
+        for param in params {
+            if !seen_names.insert(param.name.clone()) {
+                return Err(Box::new(ParseError {
+                    message: format!("Duplicate {} name '{}'", kind, param.name),
+                    file: None,
+                    line: 1,
+                    column: 1,
+                    length: 1,
+                }));
+            }
+        }
+        Ok(())
     }
 
     fn parse_generic_list(
