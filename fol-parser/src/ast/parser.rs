@@ -393,7 +393,9 @@ impl AstParser {
 
             if matches!(
                 key,
-                KEYWORD::Keyword(BUILDIN::Loop) | KEYWORD::Keyword(BUILDIN::For)
+                KEYWORD::Keyword(BUILDIN::Loop)
+                    | KEYWORD::Keyword(BUILDIN::For)
+                    | KEYWORD::Keyword(BUILDIN::Each)
             ) {
                 let before = (
                     token.loc().row(),
@@ -3133,7 +3135,9 @@ impl AstParser {
 
             if matches!(
                 key,
-                KEYWORD::Keyword(BUILDIN::Loop) | KEYWORD::Keyword(BUILDIN::For)
+                KEYWORD::Keyword(BUILDIN::Loop)
+                    | KEYWORD::Keyword(BUILDIN::For)
+                    | KEYWORD::Keyword(BUILDIN::Each)
             ) {
                 let before = (
                     token.loc().row(),
@@ -3703,6 +3707,7 @@ impl AstParser {
         let keyword_name = match loop_token.key() {
             KEYWORD::Keyword(BUILDIN::Loop) => "loop",
             KEYWORD::Keyword(BUILDIN::For) => "for",
+            KEYWORD::Keyword(BUILDIN::Each) => "each",
             _ => "",
         };
         if keyword_name.is_empty() {

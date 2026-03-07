@@ -1,0 +1,7 @@
+fun iterate(items: int): int = {
+    each (item in items) {
+        yeild item;
+        break;
+    }
+    return items;
+}
