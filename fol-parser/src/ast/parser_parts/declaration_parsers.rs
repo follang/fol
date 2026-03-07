@@ -81,6 +81,7 @@ impl AstParser {
         let _ = tokens.bump();
 
         let body = self.parse_block_body(tokens, "Expected '}' to close definition body")?;
+        self.consume_optional_semicolon(tokens);
 
         Ok(AstNode::DefDecl {
             name,

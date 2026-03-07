@@ -79,6 +79,43 @@ fn test_top_level_def_block_parsing() {
 }
 
 #[test]
+fn test_top_level_def_module_parsing_with_trailing_semicolon() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_def_module_with_semi.fol")
+        .expect("Should read semicolon-terminated module definition test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse semicolon-terminated module definitions");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(
+                declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::DefDecl {
+                            name,
+                            def_type: FolType::Module { name: module_name },
+                            body,
+                        }
+                        if name == "argo"
+                            && module_name == "init"
+                            && body.iter().any(|stmt| matches!(
+                                stmt,
+                                AstNode::VarDecl { name, .. } if name == "name"
+                            ))
+                    )
+                }),
+                "Program should include parsed semicolon-terminated module definition"
+            );
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
 fn test_def_with_quoted_name_parsing() {
     let mut file_stream = FileStream::from_file("test/parser/simple_def_quoted_name.fol")
         .expect("Should read quoted-name definition test file");
@@ -141,6 +178,39 @@ fn test_def_block_marker_without_body_parsing() {
                     )
                 }),
                 "Program should include parsed empty-body block marker definition"
+            );
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_def_block_marker_without_body_parsing_with_trailing_semicolon() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_def_block_marker_with_semi.fol")
+            .expect("Should read block-marker-with-semicolon test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse block marker definitions with trailing semicolons");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(
+                declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::DefDecl {
+                            name,
+                            def_type: FolType::Block { name: block_name },
+                            body,
+                        }
+                        if name == "mark" && block_name.is_empty() && body.is_empty()
+                    )
+                }),
+                "Program should include parsed semicolon-terminated empty-body block marker definition"
             );
         }
         _ => panic!("Expected program node"),

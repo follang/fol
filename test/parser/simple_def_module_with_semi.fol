@@ -1,0 +1,3 @@
+def argo: mod[init] = {
+    var name: str = "fol";
+};
