@@ -2467,6 +2467,38 @@ impl AstParser {
                     value_type: Box::new(args.next().expect("map value exists")),
                 }))
             }
+            "mod" => {
+                let args = self.parse_type_argument_list(tokens)?;
+                if args.len() > 1 {
+                    let token = tokens.curr(false)?;
+                    return Err(Box::new(ParseError::from_token(
+                        &token,
+                        "Expected zero or one type argument for mod[...]".to_string(),
+                    )));
+                }
+                let name = match args.into_iter().next() {
+                    None => String::new(),
+                    Some(FolType::Named { name }) => name,
+                    Some(other) => Self::fol_type_label(&other),
+                };
+                Ok(Some(FolType::Module { name }))
+            }
+            "blk" => {
+                let args = self.parse_type_argument_list(tokens)?;
+                if args.len() > 1 {
+                    let token = tokens.curr(false)?;
+                    return Err(Box::new(ParseError::from_token(
+                        &token,
+                        "Expected zero or one type argument for blk[...]".to_string(),
+                    )));
+                }
+                let name = match args.into_iter().next() {
+                    None => String::new(),
+                    Some(FolType::Named { name }) => name,
+                    Some(other) => Self::fol_type_label(&other),
+                };
+                Ok(Some(FolType::Block { name }))
+            }
             _ => Ok(None),
         }
     }

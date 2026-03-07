@@ -1137,6 +1137,143 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_type_alias_parsing_supports_module_and_block_types() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_typ_module_block_types.fol")
+            .expect("Should read module/block type alias test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse module and block typ aliases");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::TypeDecl {
+                                name,
+                                type_def: TypeDefinition::Alias { target: FolType::Module { name: module_name } },
+                                ..
+                            }
+                            if name == "StdModule" && module_name == "std"
+                        )
+                    }),
+                    "Type alias should lower mod[std] to FolType::Module"
+                );
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::TypeDecl {
+                                name,
+                                type_def: TypeDefinition::Alias { target: FolType::Module { name: module_name } },
+                                ..
+                            }
+                            if name == "InitModule" && module_name.is_empty()
+                        )
+                    }),
+                    "Type alias should lower mod[] to an empty FolType::Module name"
+                );
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::TypeDecl {
+                                name,
+                                type_def: TypeDefinition::Alias { target: FolType::Block { name: block_name } },
+                                ..
+                            }
+                            if name == "JumpBlock" && block_name == "label"
+                        )
+                    }),
+                    "Type alias should lower blk[label] to FolType::Block"
+                );
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::TypeDecl {
+                                name,
+                                type_def: TypeDefinition::Alias { target: FolType::Block { name: block_name } },
+                                ..
+                            }
+                            if name == "EmptyBlock" && block_name.is_empty()
+                        )
+                    }),
+                    "Type alias should lower blk[] to an empty FolType::Block name"
+                );
+            }
+            _ => panic!("Should return Program node"),
+        }
+    }
+
+    #[test]
+    fn test_use_declarations_support_module_types() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_use_mod_type_lowering.fol")
+            .expect("Should read module-typed use declaration test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse use declarations with module path types");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::UseDecl {
+                                name,
+                                path_type: FolType::Module { name: module_name },
+                                path,
+                                ..
+                            }
+                            if name == "file" && module_name == "std" && path == "std::fs::File"
+                        )
+                    }),
+                    "Use declarations should lower mod[...] path types to FolType::Module"
+                );
+            }
+            _ => panic!("Should return Program node"),
+        }
+    }
+
+    #[test]
+    fn test_module_type_bad_arity_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_typ_module_type_bad_arity.fol")
+                .expect("Should read malformed module type alias test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should fail when mod[...] has too many arguments");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Expected zero or one type argument for mod[...]"),
+            "Malformed module type should report bad arity, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            1,
+            "Module type bad-arity parse error should point to the declaration line"
+        );
+    }
+
+    #[test]
     fn test_type_alias_parsing_supports_array_types() {
         let mut file_stream = FileStream::from_file("test/parser/simple_typ_array_types.fol")
             .expect("Should read array type alias test file");
