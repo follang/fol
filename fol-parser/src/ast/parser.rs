@@ -1264,7 +1264,29 @@ impl AstParser {
                 variants.insert(name, variant_type.clone());
             }
 
-            self.consume_optional_semicolon(tokens);
+            self.skip_ignorable(tokens);
+            let sep = tokens.curr(false)?;
+            if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma))
+                || matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Semi))
+            {
+                let _ = tokens.bump();
+                continue;
+            }
+            if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) {
+                let _ = tokens.bump();
+                return Ok(super::TypeDefinition::Entry { variants });
+            }
+            if sep.key().is_terminal() || matches!(sep.key(), KEYWORD::Void(_)) {
+                return Err(Box::new(ParseError::from_token(
+                    &sep,
+                    "Expected '}' to close type entry definition".to_string(),
+                )));
+            }
+
+            return Err(Box::new(ParseError::from_token(
+                &sep,
+                "Expected ',', ';', or '}' in type entry definition".to_string(),
+            )));
         }
 
         Err(Box::new(ParseError {

@@ -692,6 +692,42 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_top_level_type_entry_parsing_accepts_comma_separators() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_typ_entry_commas.fol")
+            .expect("Should read comma-separated type entry test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse entry type declarations with comma separators");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::TypeDecl {
+                                name,
+                                type_def: TypeDefinition::Entry { variants },
+                                ..
+                            }
+                            if name == "ColorCodes"
+                                && matches!(variants.get("BLUE"), Some(Some(FolType::Named { name })) if name == "str")
+                                && matches!(variants.get("RED"), Some(Some(FolType::Named { name })) if name == "str")
+                                && matches!(variants.get("BLACK"), Some(Some(FolType::Named { name })) if name == "str")
+                                && matches!(variants.get("WHITE"), Some(Some(FolType::Named { name })) if name == "str")
+                        )
+                    }),
+                    "Parser should accept comma-separated entry variants, including trailing comma"
+                );
+            }
+            _ => panic!("Should return Program node"),
+        }
+    }
+
+    #[test]
     fn test_top_level_type_entry_marker_accepts_empty_brackets() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_typ_entry_marker_empty_options.fol")
