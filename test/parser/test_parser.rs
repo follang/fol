@@ -6079,6 +6079,51 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_loop_iteration_condition_supports_silent_binder() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_fun_loop_silent_in.fol")
+            .expect("Should read silent-binder loop test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse iteration loop with '_' binder");
+
+        let loop_stmt = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .find_map(|node| {
+                    if let AstNode::Loop { condition, body } = node {
+                        Some((condition.as_ref().clone(), body.clone()))
+                    } else {
+                        None
+                    }
+                })
+                .expect("Program should include a loop statement"),
+            _ => panic!("Expected program node"),
+        };
+
+        assert!(
+            matches!(
+                loop_stmt.0,
+                fol_parser::ast::LoopCondition::Iteration {
+                    var,
+                    condition: Some(_),
+                    ..
+                } if var == "_"
+            ),
+            "loop(_ in iterable when guard) should preserve '_' binder"
+        );
+        assert!(
+            loop_stmt
+                .1
+                .iter()
+                .any(|node| matches!(node, AstNode::Yield { .. })),
+            "silent-binder loop body should contain yield statement"
+        );
+    }
+
+    #[test]
     fn test_for_statement_parsing_with_condition_body() {
         let mut file_stream = FileStream::from_file("test/parser/simple_fun_for.fol")
             .expect("Should read for-loop test file");
@@ -7403,6 +7448,51 @@ mod parser_tests {
                 .iter()
                 .any(|node| matches!(node, AstNode::Break)),
             "Top-level each body should contain break statement"
+        );
+    }
+
+    #[test]
+    fn test_top_level_each_iteration_supports_silent_binder() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_each_top_level_silent.fol")
+            .expect("Should read top-level silent each-loop test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse top-level each with '_' binder");
+
+        let loop_stmt = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .find_map(|node| {
+                    if let AstNode::Loop { condition, body } = node {
+                        Some((condition.as_ref().clone(), body.clone()))
+                    } else {
+                        None
+                    }
+                })
+                .expect("Program should include top-level lowered loop statement"),
+            _ => panic!("Expected program node"),
+        };
+
+        assert!(
+            matches!(
+                loop_stmt.0,
+                fol_parser::ast::LoopCondition::Iteration {
+                    var,
+                    condition: Some(_),
+                    ..
+                } if var == "_"
+            ),
+            "Top-level each should preserve '_' binder in iteration form"
+        );
+        assert!(
+            loop_stmt
+                .1
+                .iter()
+                .any(|node| matches!(node, AstNode::Break)),
+            "Top-level silent each body should contain break statement"
         );
     }
 

@@ -3766,13 +3766,17 @@ impl AstParser {
         self.skip_ignorable(tokens);
 
         let current = tokens.curr(false)?;
-        if current.key().is_ident()
+        if (current.key().is_ident() || matches!(current.key(), KEYWORD::Symbol(SYMBOL::Under)))
             && matches!(
                 self.next_significant_key_from_window(tokens),
                 Some(KEYWORD::Keyword(BUILDIN::In))
             )
         {
-            let var = current.con().trim().to_string();
+            let var = if matches!(current.key(), KEYWORD::Symbol(SYMBOL::Under)) {
+                "_".to_string()
+            } else {
+                current.con().trim().to_string()
+            };
             let _ = tokens.bump();
             self.skip_ignorable(tokens);
 

@@ -1,0 +1,7 @@
+fun iterate_hidden(items: int, limit: int): int = {
+    loop (_ in items when limit) {
+        yeild 1;
+        break;
+    }
+    return items;
+}
