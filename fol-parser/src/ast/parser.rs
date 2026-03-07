@@ -960,6 +960,8 @@ impl AstParser {
         let type_def = if tokens.curr(false)?.con().trim() == "ent" {
             let _ = tokens.bump();
             self.skip_ignorable(tokens);
+            self.parse_empty_type_marker_brackets(tokens, "entry")?;
+            self.skip_ignorable(tokens);
 
             let assign = tokens.curr(false)?;
             if !matches!(assign.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
@@ -973,6 +975,8 @@ impl AstParser {
             self.parse_entry_type_definition(tokens)?
         } else if tokens.curr(false)?.con().trim() == "rec" {
             let _ = tokens.bump();
+            self.skip_ignorable(tokens);
+            self.parse_empty_type_marker_brackets(tokens, "record")?;
             self.skip_ignorable(tokens);
 
             let assign = tokens.curr(false)?;
@@ -1000,6 +1004,35 @@ impl AstParser {
             name,
             type_def,
         })
+    }
+
+    fn parse_empty_type_marker_brackets(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+        marker_name: &str,
+    ) -> Result<(), Box<dyn Glitch>> {
+        self.skip_ignorable(tokens);
+        let open = match tokens.curr(false) {
+            Ok(token) => token,
+            Err(_) => return Ok(()),
+        };
+
+        if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::SquarO)) {
+            return Ok(());
+        }
+        let _ = tokens.bump();
+
+        self.skip_ignorable(tokens);
+        let token = tokens.curr(false)?;
+        if matches!(token.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
+            let _ = tokens.bump();
+            return Ok(());
+        }
+
+        Err(Box::new(ParseError::from_token(
+            &token,
+            format!("Unknown {} type marker option", marker_name),
+        )))
     }
 
     fn parse_type_generic_header(

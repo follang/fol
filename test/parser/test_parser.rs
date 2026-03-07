@@ -346,6 +346,41 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_top_level_type_record_marker_accepts_empty_brackets() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_typ_record_marker_empty_options.fol")
+                .expect("Should read empty record marker option test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse typ Name: rec[] = { ... } declarations");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::TypeDecl {
+                                name,
+                                type_def: TypeDefinition::Record { fields },
+                                ..
+                            }
+                            if name == "User"
+                                && matches!(fields.get("name"), Some(FolType::Named { name }) if name == "str")
+                                && matches!(fields.get("age"), Some(FolType::Named { name }) if name == "int")
+                        )
+                    }),
+                    "Parser should treat rec[] marker the same as rec marker"
+                );
+            }
+            _ => panic!("Should return Program node"),
+        }
+    }
+
+    #[test]
     fn test_type_generic_headers_parse() {
         let mut file_stream = FileStream::from_file("test/parser/simple_typ_generics.fol")
             .expect("Should read type generics test file");
@@ -580,6 +615,36 @@ mod parser_tests {
             parse_error.line(),
             1,
             "Record marker parse error should point to the declaration line"
+        );
+    }
+
+    #[test]
+    fn test_type_record_marker_unknown_option_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_typ_record_marker_unknown_option.fol")
+                .expect("Should read malformed record marker option test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should fail when rec marker uses an unknown option");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Unknown record type marker option"),
+            "Malformed rec marker option should report unknown option, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            1,
+            "Record marker option parse error should point to the declaration line"
         );
     }
 
