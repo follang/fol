@@ -1340,6 +1340,105 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_function_types_are_supported_in_use_and_binding_declarations() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_function_type_bindings_and_use.fol")
+                .expect("Should read function type binding/use test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should accept function types in use and binding declarations");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::UseDecl {
+                                name,
+                                path_type: FolType::Function { params, return_type },
+                                ..
+                            }
+                            if name == "callback"
+                                && matches!(params.as_slice(), [FolType::Named { name }] if name == "str")
+                                && matches!(return_type.as_ref(), FolType::Named { name } if name == "int")
+                        )
+                    }),
+                    "Use declarations should preserve function path types"
+                );
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::VarDecl {
+                                name,
+                                type_hint: Some(FolType::Function { params, return_type }),
+                                value: None,
+                                ..
+                            }
+                            if name == "transform"
+                                && matches!(params.as_slice(), [FolType::Named { name }] if name == "int")
+                                && matches!(return_type.as_ref(), FolType::Named { name } if name == "int")
+                        )
+                    }),
+                    "Top-level bindings should accept function type hints"
+                );
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::VarDecl {
+                                name,
+                                type_hint: Some(FolType::Function { params, return_type }),
+                                value: Some(_),
+                                ..
+                            }
+                            if name == "formatter"
+                                && matches!(params.as_slice(), [FolType::Named { name }] if name == "str")
+                                && matches!(return_type.as_ref(), FolType::Named { name } if name == "str")
+                        )
+                    }),
+                    "Local let bindings should accept function type hints"
+                );
+            }
+            _ => panic!("Should return Program node"),
+        }
+    }
+
+    #[test]
+    fn test_function_type_defaults_are_rejected() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_function_type_default_param_forbidden.fol")
+                .expect("Should read malformed function type default test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should reject defaults inside function types");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Default values are not allowed in function types"),
+            "Malformed function type default should report the dedicated diagnostic, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            1,
+            "Function type default parse error should point to the declaration line"
+        );
+    }
+
+    #[test]
     fn test_function_parsing() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_fun.fol").expect("Should read test file");

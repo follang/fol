@@ -1,0 +1,1 @@
+typ BrokenFn: {fun (value: int = 1): int}
