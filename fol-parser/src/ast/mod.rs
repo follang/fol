@@ -56,6 +56,13 @@ pub enum AstNode {
     /// Alias declaration: ali name: target_type
     AliasDecl { name: String, target: FolType },
 
+    /// Definition declaration: def name: mod[...] = { body } / def name: blk[...] = { body }
+    DefDecl {
+        name: String,
+        def_type: FolType,
+        body: Vec<AstNode>,
+    },
+
     // ==== EXPRESSIONS ====
     /// Binary operation: (left op right)
     BinaryOp {
@@ -446,6 +453,7 @@ impl AstNode {
             AstNode::VarDecl { type_hint, .. } => type_hint.clone(),
             AstNode::FunDecl { return_type, .. } => return_type.clone(),
             AstNode::ProDecl { return_type, .. } => return_type.clone(),
+            AstNode::DefDecl { def_type, .. } => Some(def_type.clone()),
 
             AstNode::BinaryOp { op, left, right } => {
                 // Type inference for binary operations
@@ -501,7 +509,9 @@ impl AstNode {
             AstNode::VarDecl { value, .. } => {
                 value.as_ref().map(|v| vec![v.as_ref()]).unwrap_or_default()
             }
-            AstNode::FunDecl { body, .. } | AstNode::ProDecl { body, .. } => body.iter().collect(),
+            AstNode::FunDecl { body, .. }
+            | AstNode::ProDecl { body, .. }
+            | AstNode::DefDecl { body, .. } => body.iter().collect(),
             AstNode::BinaryOp { left, right, .. } => {
                 vec![left.as_ref(), right.as_ref()]
             }
