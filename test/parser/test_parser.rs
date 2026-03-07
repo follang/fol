@@ -7954,7 +7954,46 @@ mod parser_tests {
             matches!(use_decl.1, FolType::Named { name } if name == "std"),
             "Colonless use declaration should still parse path type"
         );
-        assert_eq!(use_decl.2, "\"fmt/log.warn\"");
+        assert_eq!(use_decl.2, "fmt/log.warn");
+    }
+
+    #[test]
+    fn test_use_declaration_unwraps_quoted_paths() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_use_quoted_path.fol")
+            .expect("Should read quoted use path test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse use declaration with quoted path");
+
+        let use_decl = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .find_map(|node| {
+                    if let AstNode::UseDecl {
+                        name,
+                        path_type,
+                        path,
+                        ..
+                    } = node
+                    {
+                        Some((name.clone(), path_type.clone(), path.clone()))
+                    } else {
+                        None
+                    }
+                })
+                .expect("Program should include use declaration"),
+            _ => panic!("Expected program node"),
+        };
+
+        assert_eq!(use_decl.0, "fmt");
+        assert!(
+            matches!(use_decl.1, FolType::Named { name } if name == "std"),
+            "Quoted-path use declaration should still parse path type"
+        );
+        assert_eq!(use_decl.2, "fmt/log");
     }
 
     #[test]

@@ -1424,7 +1424,10 @@ impl AstParser {
                 return Ok(path);
             }
 
-            let segment = token.con().trim();
+            let segment = match token.key() {
+                KEYWORD::Literal(LITERAL::Stringy) => token.con().trim().trim_matches('"'),
+                _ => token.con().trim(),
+            };
             if !segment.is_empty() {
                 path.push_str(segment);
             }
