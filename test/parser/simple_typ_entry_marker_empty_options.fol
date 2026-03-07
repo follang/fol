@@ -1,0 +1,4 @@
+typ Color: ent[] = {
+    var BLUE: str = "#0037cd";
+    var RED, BLACK, WHITE: str = "#ffffff";
+}
