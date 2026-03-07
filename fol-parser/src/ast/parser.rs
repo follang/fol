@@ -989,7 +989,12 @@ impl AstParser {
             let _ = tokens.bump();
             self.skip_ignorable(tokens);
             self.parse_record_type_definition(tokens)?
-        } else if matches!(tokens.curr(false)?.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
+        } else if matches!(tokens.curr(false)?.key(), KEYWORD::Symbol(SYMBOL::CurlyO))
+            && !matches!(
+                self.next_significant_key_from_window(tokens),
+                Some(KEYWORD::Keyword(BUILDIN::Fun))
+            )
+        {
             self.parse_record_type_definition(tokens)?
         } else {
             let target = self.parse_type_reference_tokens(tokens)?;
@@ -2090,6 +2095,10 @@ impl AstParser {
         self.skip_ignorable(tokens);
         let token = tokens.curr(false)?;
 
+        if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
+            return self.parse_function_type_reference(tokens);
+        }
+
         if !(token.key().is_ident() || token.key().is_buildin()) {
             return Err(Box::new(ParseError::from_token(
                 &token,
@@ -2164,6 +2173,83 @@ impl AstParser {
         }
 
         Ok(FolType::Named { name })
+    }
+
+    fn parse_function_type_reference(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<FolType, Box<dyn Glitch>> {
+        let open = tokens.curr(false)?;
+        if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
+            return Err(Box::new(ParseError::from_token(
+                &open,
+                "Expected '{' to start function type".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+
+        self.skip_ignorable(tokens);
+        let fun_token = tokens.curr(false)?;
+        if !matches!(fun_token.key(), KEYWORD::Keyword(BUILDIN::Fun)) {
+            return Err(Box::new(ParseError::from_token(
+                &fun_token,
+                "Expected 'fun' in function type".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+
+        self.skip_ignorable(tokens);
+        if let Ok(token) = tokens.curr(false) {
+            if token.key().is_ident() {
+                let _ = tokens.bump();
+            }
+        }
+
+        self.skip_ignorable(tokens);
+        let open_params = tokens.curr(false)?;
+        if !matches!(open_params.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
+            return Err(Box::new(ParseError::from_token(
+                &open_params,
+                "Expected '(' in function type".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+
+        let params = self.parse_parameter_list(tokens)?;
+        if params.iter().any(|param| param.default.is_some()) {
+            return Err(Box::new(ParseError::from_token(
+                &fun_token,
+                "Default values are not allowed in function types".to_string(),
+            )));
+        }
+
+        self.skip_ignorable(tokens);
+        let colon = tokens.curr(false)?;
+        if !matches!(colon.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
+            return Err(Box::new(ParseError::from_token(
+                &colon,
+                "Expected ':' before function type return type".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+
+        self.skip_ignorable(tokens);
+        let return_type = self.parse_type_reference_tokens(tokens)?;
+
+        self.skip_ignorable(tokens);
+        let close = tokens.curr(false)?;
+        if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) {
+            return Err(Box::new(ParseError::from_token(
+                &close,
+                "Expected '}' to close function type".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+
+        Ok(FolType::Function {
+            params: params.into_iter().map(|param| param.param_type).collect(),
+            return_type: Box::new(return_type),
+        })
     }
 
     fn try_parse_special_type_suffix(

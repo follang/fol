@@ -1244,6 +1244,102 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_type_references_support_braced_function_types() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_function_type_refs.fol")
+                .expect("Should read function type reference test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse braced function type references");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::TypeDecl {
+                                name,
+                                type_def: TypeDefinition::Alias {
+                                    target: FolType::Function { params, return_type }
+                                },
+                                ..
+                            }
+                            if name == "Adder"
+                                && matches!(
+                                    params.as_slice(),
+                                    [
+                                        FolType::Named { name: first },
+                                        FolType::Named { name: second }
+                                    ] if first == "int" && second == "int"
+                                )
+                                && matches!(return_type.as_ref(), FolType::Named { name } if name == "int")
+                        )
+                    }),
+                    "Type alias should lower braced function types into FolType::Function"
+                );
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::FunDecl { name, params, .. }
+                            if name == "apply"
+                                && matches!(
+                                    params.as_slice(),
+                                    [
+                                        Parameter {
+                                            name: param_name,
+                                            param_type: FolType::Function { params, return_type },
+                                            ..
+                                        },
+                                        ..
+                                    ] if param_name == "op"
+                                        && matches!(params.as_slice(), [FolType::Named { name }] if name == "int")
+                                        && matches!(return_type.as_ref(), FolType::Named { name } if name == "int")
+                                )
+                        )
+                    }),
+                    "Routine parameters should accept braced function type references"
+                );
+            }
+            _ => panic!("Should return Program node"),
+        }
+    }
+
+    #[test]
+    fn test_function_type_missing_close_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_function_type_missing_close.fol")
+                .expect("Should read malformed function type test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should reject function types missing the closing '}'");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Expected '}' to close function type"),
+            "Malformed function type should report missing close brace, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            1,
+            "Function type parse error should point to the declaration line"
+        );
+    }
+
+    #[test]
     fn test_function_parsing() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_fun.fol").expect("Should read test file");

@@ -1,0 +1,5 @@
+typ Adder: {fun adder(x: int, y: int): int}
+
+fun apply(op: {fun (value: int): int}, value: int): int = {
+    return value;
+}
