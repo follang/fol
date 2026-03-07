@@ -1624,6 +1624,102 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_routine_parameters_support_default_values() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_routine_default_params.fol")
+            .expect("Should read routine default parameters test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse routine parameter default values");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::FunDecl { name, params, .. }
+                            if name == "add_bias"
+                                && matches!(params.as_slice(),
+                                    [
+                                        Parameter { name: first_name, default: None, .. },
+                                        Parameter {
+                                            name: second_name,
+                                            param_type: FolType::Named { name: type_name },
+                                            default: Some(AstNode::BinaryOp { .. }),
+                                            ..
+                                        }
+                                    ] if first_name == "a"
+                                        && second_name == "bias"
+                                        && type_name == "int"
+                                )
+                        )
+                    }),
+                    "Function parameters should preserve default expressions in the AST"
+                );
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::ProDecl { name, params, .. }
+                            if name == "log_value"
+                                && matches!(params.as_slice(),
+                                    [
+                                        Parameter {
+                                            name: label_name,
+                                            default: Some(AstNode::Literal(Literal::String(_))),
+                                            ..
+                                        },
+                                        Parameter {
+                                            name: amount_name,
+                                            default: Some(AstNode::Literal(Literal::Integer(1))),
+                                            ..
+                                        }
+                                    ] if label_name == "label"
+                                        && amount_name == "amount"
+                                )
+                        )
+                    }),
+                    "Procedure parameters should support literal default expressions"
+                );
+            }
+            _ => panic!("Expected program node"),
+        }
+    }
+
+    #[test]
+    fn test_parameter_default_missing_value_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_routine_default_param_missing_value.fol")
+                .expect("Should read malformed routine default parameter test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should reject parameter defaults without a value expression");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Expected default value expression after '=' in parameter"),
+            "Malformed parameter default should report missing value, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            1,
+            "Parameter default parse error should point to the signature line"
+        );
+    }
+
+    #[test]
     fn test_unknown_routine_option_reports_parse_error() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_routine_options_unknown.fol")

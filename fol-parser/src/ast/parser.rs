@@ -1539,58 +1539,156 @@ impl AstParser {
         }
         let _ = tokens.bump();
 
-        let first_list = self.parse_generic_list(tokens)?;
+        let first_list = self.parse_routine_header_list(tokens)?;
         self.skip_ignorable(tokens);
 
         let next = match tokens.curr(false) {
             Ok(token) => token,
-            Err(_) => {
-                return Ok((
-                    Vec::new(),
-                    first_list
-                        .into_iter()
-                        .map(|generic| Parameter {
-                            name: generic.name,
-                            param_type: generic
-                                .constraints
-                                .into_iter()
-                                .next()
-                                .unwrap_or(FolType::Named {
-                                    name: "any".to_string(),
-                                }),
-                            is_borrowable: false,
-                            default: None,
-                        })
-                        .collect(),
-                ))
-            }
+            Err(_) => return Ok((Vec::new(), first_list)),
         };
 
         if !matches!(next.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
-            return Ok((
-                Vec::new(),
-                first_list
-                    .into_iter()
-                    .map(|generic| Parameter {
-                        name: generic.name,
-                        param_type: generic
-                            .constraints
-                            .into_iter()
-                            .next()
-                            .unwrap_or(FolType::Named {
-                                name: "any".to_string(),
-                            }),
-                        is_borrowable: false,
-                        default: None,
-                    })
-                    .collect(),
-            ));
+            return Ok((Vec::new(), first_list));
         }
 
-        let generics = first_list;
+        let generics = self.parameters_to_generics(first_list)?;
         let _ = tokens.bump();
         let params = self.parse_parameter_list(tokens)?;
         Ok((generics, params))
+    }
+
+    fn parse_routine_header_list(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<Vec<Parameter>, Box<dyn Glitch>> {
+        let mut params = Vec::new();
+
+        for _ in 0..128 {
+            self.skip_ignorable(tokens);
+            let token = tokens.curr(false)?;
+
+            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
+                let _ = tokens.bump();
+                return Ok(params);
+            }
+
+            if !token.key().is_ident() {
+                return Err(Box::new(ParseError::from_token(
+                    &token,
+                    "Expected generic parameter name".to_string(),
+                )));
+            }
+
+            let name = token.con().trim().to_string();
+            let _ = tokens.bump();
+
+            self.skip_ignorable(tokens);
+            let param_type = if let Ok(token) = tokens.curr(false) {
+                if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
+                    let _ = tokens.bump();
+                    self.skip_ignorable(tokens);
+                    self.parse_type_reference_tokens(tokens)?
+                } else {
+                    FolType::Named {
+                        name: "any".to_string(),
+                    }
+                }
+            } else {
+                FolType::Named {
+                    name: "any".to_string(),
+                }
+            };
+
+            self.skip_ignorable(tokens);
+            let default = if let Ok(token) = tokens.curr(false) {
+                if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
+                    let _ = tokens.bump();
+                    self.skip_ignorable(tokens);
+
+                    let next = tokens.curr(false)?;
+                    if matches!(next.key(), KEYWORD::Symbol(SYMBOL::Comma))
+                        || matches!(next.key(), KEYWORD::Symbol(SYMBOL::RoundC))
+                        || next.key().is_terminal()
+                    {
+                        return Err(Box::new(ParseError::from_token(
+                            &next,
+                            "Expected default value expression after '=' in parameter"
+                                .to_string(),
+                        )));
+                    }
+
+                    Some(self.parse_logical_expression(tokens)?)
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
+
+            params.push(Parameter {
+                name: name.clone(),
+                param_type,
+                is_borrowable: name.chars().all(|ch| {
+                    !ch.is_ascii_lowercase() && (ch.is_ascii_alphanumeric() || ch == '_')
+                }),
+                default,
+            });
+
+            self.skip_ignorable(tokens);
+            let sep = tokens.curr(false)?;
+            if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
+                let _ = tokens.bump();
+                continue;
+            }
+            if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
+                let _ = tokens.bump();
+                return Ok(params);
+            }
+
+            return Err(Box::new(ParseError::from_token(
+                &sep,
+                "Expected ',' or ')' after generic parameter".to_string(),
+            )));
+        }
+
+        Err(Box::new(ParseError {
+            message: "Generic parsing exceeded safety bound".to_string(),
+            file: None,
+            line: 1,
+            column: 1,
+            length: 1,
+        }))
+    }
+
+    fn parameters_to_generics(
+        &self,
+        params: Vec<Parameter>,
+    ) -> Result<Vec<Generic>, Box<dyn Glitch>> {
+        params
+            .into_iter()
+            .map(|param| {
+                if param.default.is_some() {
+                    return Err(Box::new(ParseError {
+                        message: "Default values are not allowed in routine generic headers"
+                            .to_string(),
+                        file: None,
+                        line: 0,
+                        column: 0,
+                        length: 0,
+                    }) as Box<dyn Glitch>);
+                }
+
+                let constraints = match param.param_type {
+                    FolType::Named { name } if name == "any" => Vec::new(),
+                    other => vec![other],
+                };
+
+                Ok(Generic {
+                    name: param.name,
+                    constraints,
+                })
+            })
+            .collect()
     }
 
     fn parse_generic_list(
@@ -1758,6 +1856,32 @@ impl AstParser {
             self.skip_ignorable(tokens);
 
             let param_type = self.parse_type_reference_tokens(tokens)?;
+            self.skip_ignorable(tokens);
+
+            let default = if let Ok(token) = tokens.curr(false) {
+                if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
+                    let _ = tokens.bump();
+                    self.skip_ignorable(tokens);
+
+                    let next = tokens.curr(false)?;
+                    if matches!(next.key(), KEYWORD::Symbol(SYMBOL::Comma))
+                        || matches!(next.key(), KEYWORD::Symbol(SYMBOL::RoundC))
+                        || next.key().is_terminal()
+                    {
+                        return Err(Box::new(ParseError::from_token(
+                            &next,
+                            "Expected default value expression after '=' in parameter"
+                                .to_string(),
+                        )));
+                    }
+
+                    Some(self.parse_logical_expression(tokens)?)
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
 
             params.push(Parameter {
                 name: param_name.clone(),
@@ -1765,7 +1889,7 @@ impl AstParser {
                 is_borrowable: param_name.chars().all(|ch| {
                     !ch.is_ascii_lowercase() && (ch.is_ascii_alphanumeric() || ch == '_')
                 }),
-                default: None,
+                default,
             });
 
             self.skip_ignorable(tokens);

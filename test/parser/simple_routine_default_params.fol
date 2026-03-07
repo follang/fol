@@ -1,0 +1,7 @@
+fun add_bias(a: int, bias: int = 2 + 3): int = {
+    return a + bias;
+}
+
+pro log_value(label: str = "value", amount: int = 1) = {
+    report label;
+}
