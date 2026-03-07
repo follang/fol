@@ -1460,6 +1460,40 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_when_statement_supports_star_default_case() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_when_star_default.fol")
+                .expect("Should read when-star-default test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse when * default case syntax");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                let when_stmt = declarations.iter().find_map(|node| {
+                    if let AstNode::When { default, .. } = node {
+                        default.clone()
+                    } else {
+                        None
+                    }
+                });
+
+                let default_body = when_stmt.expect("When statement should include default body");
+                assert!(
+                    default_body
+                        .iter()
+                        .any(|node| matches!(node, AstNode::Return { .. })),
+                    "Star default case should parse its block body"
+                );
+            }
+            _ => panic!("Expected program node"),
+        }
+    }
+
+    #[test]
     fn test_when_of_case_missing_bracket_close_reports_parse_error() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_fun_when_of_type_missing_close.fol")
@@ -1486,6 +1520,36 @@ mod parser_tests {
             parse_error.line(),
             3,
             "Malformed when-of type parse error should point to the case line"
+        );
+    }
+
+    #[test]
+    fn test_when_star_default_missing_body_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_when_star_default_missing_body.fol")
+                .expect("Should read malformed when-star-default fixture");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should reject when '*' default without a block body");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Expected '{' after when default '*'"),
+            "Malformed when '*' default should report missing body, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            4,
+            "Malformed when '*' default parse error should point to the default line"
         );
     }
 
