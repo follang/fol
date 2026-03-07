@@ -7859,6 +7859,45 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_use_declaration_allows_omitted_colon_before_path_type() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_use_no_colon.fol")
+            .expect("Should read colonless use declaration test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse use declaration without colon after name");
+
+        let use_decl = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .find_map(|node| {
+                    if let AstNode::UseDecl {
+                        name,
+                        path_type,
+                        path,
+                        ..
+                    } = node
+                    {
+                        Some((name.clone(), path_type.clone(), path.clone()))
+                    } else {
+                        None
+                    }
+                })
+                .expect("Program should include use declaration"),
+            _ => panic!("Expected program node"),
+        };
+
+        assert_eq!(use_decl.0, "warn");
+        assert!(
+            matches!(use_decl.1, FolType::Named { name } if name == "std"),
+            "Colonless use declaration should still parse path type"
+        );
+        assert_eq!(use_decl.2, "\"fmt/log.warn\"");
+    }
+
+    #[test]
     fn test_use_declaration_supports_qualified_and_bracketed_types() {
         let mut file_stream = FileStream::from_file("test/parser/simple_use_qualified_type.fol")
             .expect("Should read qualified use type test file");

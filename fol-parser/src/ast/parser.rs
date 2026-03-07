@@ -867,16 +867,12 @@ impl AstParser {
         let _ = tokens.bump();
 
         self.skip_ignorable(tokens);
-        let colon = tokens.curr(false)?;
-        if !matches!(colon.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
-            return Err(Box::new(ParseError::from_token(
-                &colon,
-                "Expected ':' after use name".to_string(),
-            )));
+        if let Ok(token) = tokens.curr(false) {
+            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
+                let _ = tokens.bump();
+                self.skip_ignorable(tokens);
+            }
         }
-        let _ = tokens.bump();
-
-        self.skip_ignorable(tokens);
         let path_type = self.parse_type_reference_tokens(tokens)?;
 
         self.skip_ignorable(tokens);
