@@ -2277,6 +2277,14 @@ impl AstParser {
             });
         }
 
+        if name == "any" {
+            return Ok(FolType::Any);
+        }
+
+        if matches!(name.as_str(), "non" | "none") {
+            return Ok(FolType::None);
+        }
+
         Ok(FolType::Named { name })
     }
 

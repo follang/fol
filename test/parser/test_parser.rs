@@ -1258,6 +1258,52 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_type_alias_parsing_supports_any_and_none_types() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_typ_any_none.fol")
+            .expect("Should read any/none type alias test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse any/non typ aliases");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::TypeDecl {
+                                name,
+                                type_def: TypeDefinition::Alias { target: FolType::Any },
+                                ..
+                            }
+                            if name == "Anything"
+                        )
+                    }),
+                    "Type alias should lower any to FolType::Any"
+                );
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::TypeDecl {
+                                name,
+                                type_def: TypeDefinition::Alias { target: FolType::None },
+                                ..
+                            }
+                            if name == "Nothing"
+                        )
+                    }),
+                    "Type alias should lower non to FolType::None"
+                );
+            }
+            _ => panic!("Should return Program node"),
+        }
+    }
+
+    #[test]
     fn test_use_declarations_support_module_types() {
         let mut file_stream = FileStream::from_file("test/parser/simple_use_mod_type_lowering.fol")
             .expect("Should read module-typed use declaration test file");
@@ -2494,6 +2540,49 @@ mod parser_tests {
             ),
             "Error type should remain intact alongside bracketed types"
         );
+    }
+
+    #[test]
+    fn test_routine_declarations_support_any_and_none_types() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_fun_any_none_types.fol")
+            .expect("Should read any/none routine type test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse any/non in routine signatures");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::FunDecl { name, params, return_type, .. }
+                            if name == "classify"
+                                && matches!(
+                                    params.as_slice(),
+                                    [Parameter { param_type: FolType::Any, .. }]
+                                )
+                                && matches!(return_type, Some(FolType::Named { name }) if name == "int")
+                        )
+                    }),
+                    "Routine parameters should lower any to FolType::Any"
+                );
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::ProDecl { name, return_type, .. }
+                            if name == "finish" && matches!(return_type, Some(FolType::None))
+                        )
+                    }),
+                    "Routine return types should lower non to FolType::None"
+                );
+            }
+            _ => panic!("Expected program node"),
+        }
     }
 
     #[test]
