@@ -470,6 +470,36 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_duplicate_record_field_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_typ_record_duplicate_field.fol")
+                .expect("Should read duplicate record field test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should reject duplicate record fields");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Duplicate record field 'user'"),
+            "Duplicate record field should report the field name, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            3,
+            "Duplicate record field parse error should point to the duplicate field line"
+        );
+    }
+
+    #[test]
     fn test_top_level_type_record_marker_accepts_empty_brackets() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_typ_record_marker_empty_options.fol")
@@ -821,6 +851,36 @@ mod parser_tests {
             parse_error.line(),
             2,
             "Type entry parse error should point to the malformed variant line"
+        );
+    }
+
+    #[test]
+    fn test_duplicate_entry_variant_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_typ_entry_duplicate_variant.fol")
+                .expect("Should read duplicate type entry test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should reject duplicate entry variants");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Duplicate entry variant 'BLUE'"),
+            "Duplicate entry variant should report the variant name, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            3,
+            "Type entry duplicate parse error should point to the duplicate variant line"
         );
     }
 

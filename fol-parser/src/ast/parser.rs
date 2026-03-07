@@ -1257,7 +1257,13 @@ impl AstParser {
             }
 
             for name in names {
-                variants.insert(name, variant_type.clone());
+                if variants.insert(name.clone(), variant_type.clone()).is_some() {
+                    let token = tokens.curr(false)?;
+                    return Err(Box::new(ParseError::from_token(
+                        &token,
+                        format!("Duplicate entry variant '{}'", name),
+                    )));
+                }
             }
 
             self.skip_ignorable(tokens);
@@ -1352,7 +1358,13 @@ impl AstParser {
 
             self.skip_ignorable(tokens);
             let field_type = self.parse_type_reference_tokens(tokens)?;
-            fields.insert(field_name, field_type);
+            if fields.insert(field_name.clone(), field_type).is_some() {
+                let token = tokens.curr(false)?;
+                return Err(Box::new(ParseError::from_token(
+                    &token,
+                    format!("Duplicate record field '{}'", field_name),
+                )));
+            }
 
             self.skip_ignorable(tokens);
             if let Ok(token) = tokens.curr(false) {

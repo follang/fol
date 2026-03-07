@@ -1,0 +1,4 @@
+typ Access: rec = {
+    user: str;
+    user: int;
+}
