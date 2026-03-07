@@ -732,6 +732,47 @@ use super::*;
     }
 
     #[test]
+    fn test_procedure_custom_error_type_accepts_nested_block_report_local() {
+        let mut file_stream = FileStream::from_file(
+            "test/parser/simple_pro_error_type_report_nested_block_ok.fol",
+        )
+        .expect("Should read nested-block procedure local report compatible file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        parser
+            .parse(&mut lexer)
+            .expect("Parser should accept compatible procedure report local inside nested block");
+    }
+
+    #[test]
+    fn test_procedure_custom_error_type_rejects_nested_block_report_local_mismatch() {
+        let mut file_stream = FileStream::from_file(
+            "test/parser/simple_pro_error_type_report_nested_block_mismatch.fol",
+        )
+        .expect("Should read nested-block procedure local report mismatch file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should reject incompatible procedure report local inside nested block");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Reported identifier")
+                && first_message.contains("incompatible with routine error type"),
+            "Nested-block procedure report mismatch should report incompatible identifier type, got: {}",
+            first_message
+        );
+    }
+
+    #[test]
     fn test_procedure_custom_error_type_accepts_report_local_inferred_from_expression() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_pro_error_type_report_inferred_local_ok.fol")
