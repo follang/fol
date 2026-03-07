@@ -1,0 +1,3 @@
+loop(var line: str; item in lines when ready) {
+    yeild item;
+}
