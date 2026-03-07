@@ -420,6 +420,7 @@ pub enum LoopCondition {
     /// loop(var in iterable) - for-like loop
     Iteration {
         var: String,
+        type_hint: Option<FolType>,
         iterable: Box<AstNode>,
         condition: Option<Box<AstNode>>,
     },

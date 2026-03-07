@@ -1,0 +1,4 @@
+each (var line: str; line in lines when ready) {
+    yeild line;
+    break;
+}

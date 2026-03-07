@@ -3766,16 +3766,88 @@ impl AstParser {
         self.skip_ignorable(tokens);
 
         let current = tokens.curr(false)?;
-        if (current.key().is_ident() || matches!(current.key(), KEYWORD::Symbol(SYMBOL::Under)))
+        let mut type_hint = None;
+        let mut current_var_token = current.clone();
+
+        if matches!(current.key(), KEYWORD::Keyword(BUILDIN::Var)) {
+            let _ = tokens.bump();
+            self.skip_ignorable(tokens);
+
+            current_var_token = tokens.curr(false)?;
+            if !(current_var_token.key().is_ident()
+                || matches!(current_var_token.key(), KEYWORD::Symbol(SYMBOL::Under)))
+            {
+                return Err(Box::new(ParseError::from_token(
+                    &current_var_token,
+                    "Expected iteration binder name after 'var'".to_string(),
+                )));
+            }
+
+            let declared_var = if matches!(current_var_token.key(), KEYWORD::Symbol(SYMBOL::Under)) {
+                "_".to_string()
+            } else {
+                current_var_token.con().trim().to_string()
+            };
+            let _ = tokens.bump();
+            self.skip_ignorable(tokens);
+
+            let colon = tokens.curr(false)?;
+            if !matches!(colon.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
+                return Err(Box::new(ParseError::from_token(
+                    &colon,
+                    "Expected ':' after typed iteration binder name".to_string(),
+                )));
+            }
+            let _ = tokens.bump();
+            self.skip_ignorable(tokens);
+
+            type_hint = Some(self.parse_type_reference_tokens(tokens)?);
+            self.skip_ignorable(tokens);
+
+            let semi = tokens.curr(false)?;
+            if !matches!(semi.key(), KEYWORD::Symbol(SYMBOL::Semi)) {
+                return Err(Box::new(ParseError::from_token(
+                    &semi,
+                    "Expected ';' after typed iteration binder declaration".to_string(),
+                )));
+            }
+            let _ = tokens.bump();
+            self.skip_ignorable(tokens);
+
+            current_var_token = tokens.curr(false)?;
+            let iteration_var = if matches!(current_var_token.key(), KEYWORD::Symbol(SYMBOL::Under)) {
+                "_".to_string()
+            } else if current_var_token.key().is_ident() {
+                current_var_token.con().trim().to_string()
+            } else {
+                return Err(Box::new(ParseError::from_token(
+                    &current_var_token,
+                    "Expected typed iteration binder usage before 'in'".to_string(),
+                )));
+            };
+
+            if iteration_var != declared_var {
+                return Err(Box::new(ParseError::from_token(
+                    &current_var_token,
+                    format!(
+                        "Typed iteration binder '{}' must match the iteration variable before 'in'",
+                        declared_var
+                    ),
+                )));
+            }
+        }
+
+        if (current_var_token.key().is_ident()
+            || matches!(current_var_token.key(), KEYWORD::Symbol(SYMBOL::Under)))
             && matches!(
                 self.next_significant_key_from_window(tokens),
                 Some(KEYWORD::Keyword(BUILDIN::In))
             )
         {
-            let var = if matches!(current.key(), KEYWORD::Symbol(SYMBOL::Under)) {
+            let var = if matches!(current_var_token.key(), KEYWORD::Symbol(SYMBOL::Under)) {
                 "_".to_string()
             } else {
-                current.con().trim().to_string()
+                current_var_token.con().trim().to_string()
             };
             let _ = tokens.bump();
             self.skip_ignorable(tokens);
@@ -3807,6 +3879,7 @@ impl AstParser {
 
             return Ok(LoopCondition::Iteration {
                 var,
+                type_hint,
                 iterable: Box::new(iterable),
                 condition,
             });
