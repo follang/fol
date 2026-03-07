@@ -346,6 +346,64 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_type_generic_headers_parse() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_typ_generics.fol")
+            .expect("Should read type generics test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse type generic headers");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::TypeDecl {
+                                name,
+                                generics,
+                                type_def: TypeDefinition::Record { .. },
+                                ..
+                            }
+                            if name == "Box"
+                                && generics.len() == 1
+                                && matches!(
+                                    generics.first(),
+                                    Some(fol_parser::ast::Generic { name, constraints })
+                                        if name == "T"
+                                            && matches!(
+                                                constraints.as_slice(),
+                                                [FolType::Named { name }] if name == "item"
+                                            )
+                                )
+                        )
+                    }),
+                    "Type generic header should populate TypeDecl generics for record types"
+                );
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::TypeDecl {
+                                name,
+                                generics,
+                                type_def: TypeDefinition::Alias { .. },
+                                ..
+                            }
+                            if name == "Pair" && generics.len() == 2
+                        )
+                    }),
+                    "Type generic header should parse multiple generic constraints"
+                );
+            }
+            _ => panic!("Should return Program node"),
+        }
+    }
+
+    #[test]
     fn test_type_declaration_option_brackets_parse() {
         let mut file_stream = FileStream::from_file("test/parser/simple_typ_options.fol")
             .expect("Should read type option test file");
@@ -522,6 +580,36 @@ mod parser_tests {
             parse_error.line(),
             1,
             "Record marker parse error should point to the declaration line"
+        );
+    }
+
+    #[test]
+    fn test_type_generic_header_missing_separator_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_typ_generics_missing_separator.fol")
+                .expect("Should read malformed type generics test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should fail when type generic items are missing a separator");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Expected ',' or ')' after parameter"),
+            "Malformed type generic header should report missing separator, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            1,
+            "Type generic header parse error should point to the declaration line"
         );
     }
 

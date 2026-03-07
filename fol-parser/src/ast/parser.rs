@@ -945,6 +945,8 @@ impl AstParser {
         let _ = tokens.bump();
 
         self.skip_ignorable(tokens);
+        let generics = self.parse_type_generic_header(tokens)?;
+        self.skip_ignorable(tokens);
         let colon = tokens.curr(false)?;
         if !matches!(colon.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
             return Err(Box::new(ParseError::from_token(
@@ -994,10 +996,37 @@ impl AstParser {
 
         Ok(AstNode::TypeDecl {
             options,
-            generics: Vec::new(),
+            generics,
             name,
             type_def,
         })
+    }
+
+    fn parse_type_generic_header(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<Vec<Generic>, Box<dyn Glitch>> {
+        self.skip_ignorable(tokens);
+        let open = match tokens.curr(false) {
+            Ok(token) => token,
+            Err(_) => return Ok(Vec::new()),
+        };
+
+        if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
+            return Ok(Vec::new());
+        }
+        let _ = tokens.bump();
+
+        let generics = self
+            .parse_parameter_list(tokens)?
+            .into_iter()
+            .map(|param| Generic {
+                name: param.name,
+                constraints: vec![param.param_type],
+            })
+            .collect();
+
+        Ok(generics)
     }
 
     fn parse_type_options(
