@@ -346,6 +346,73 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_top_level_type_record_fields_support_var_prefix_and_defaults() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_typ_record_var_fields.fol")
+                .expect("Should read record var-field test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse record fields declared with 'var' and defaults");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::TypeDecl {
+                                name,
+                                type_def: TypeDefinition::Record { fields },
+                                ..
+                            }
+                            if name == "User"
+                                && matches!(fields.get("username"), Some(FolType::Named { name }) if name == "str")
+                                && matches!(fields.get("email"), Some(FolType::Named { name }) if name == "str")
+                                && matches!(fields.get("sign_in_count"), Some(FolType::Named { name }) if name == "int")
+                                && matches!(fields.get("active"), Some(FolType::Named { name }) if name == "bol")
+                        )
+                    }),
+                    "Record fields should accept 'var' prefixes and ignore default initializers"
+                );
+            }
+            _ => panic!("Should return Program node"),
+        }
+    }
+
+    #[test]
+    fn test_record_var_field_missing_colon_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_typ_record_var_field_missing_colon.fol")
+                .expect("Should read malformed record var-field test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should reject record fields missing ':' after the name");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Expected ':' after record field name"),
+            "Malformed record field should report missing ':', got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            2,
+            "Record field parse error should point to the bad field line"
+        );
+    }
+
+    #[test]
     fn test_top_level_type_record_marker_accepts_empty_brackets() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_typ_record_marker_empty_options.fol")

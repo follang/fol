@@ -1241,6 +1241,12 @@ impl AstParser {
                 )));
             }
 
+            if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Var)) {
+                let _ = tokens.bump();
+                self.skip_ignorable(tokens);
+            }
+
+            let token = tokens.curr(false)?;
             if !token.key().is_ident() {
                 return Err(Box::new(ParseError::from_token(
                     &token,
@@ -1266,8 +1272,19 @@ impl AstParser {
             fields.insert(field_name, field_type);
 
             self.skip_ignorable(tokens);
+            if let Ok(token) = tokens.curr(false) {
+                if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
+                    let _ = tokens.bump();
+                    let _ = self.parse_logical_expression(tokens)?;
+                    self.skip_ignorable(tokens);
+                }
+            }
+
+            self.skip_ignorable(tokens);
             let sep = tokens.curr(false)?;
-            if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
+            if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma))
+                || matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Semi))
+            {
                 let _ = tokens.bump();
                 continue;
             }
@@ -1284,7 +1301,7 @@ impl AstParser {
 
             return Err(Box::new(ParseError::from_token(
                 &sep,
-                "Expected ',' or '}' in type record definition".to_string(),
+                "Expected ',', ';', or '}' in type record definition".to_string(),
             )));
         }
 

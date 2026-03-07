@@ -1,0 +1,6 @@
+typ User: rec = {
+    var username: str;
+    var email: str;
+    var sign_in_count: int = 1;
+    var active: bol = true;
+}
