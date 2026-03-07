@@ -430,6 +430,31 @@ impl AstParser {
                 visible_types,
                 routine_return_types,
             ),
+            AstNode::ContainerLiteral { elements, .. } => elements.iter().find_map(|element| {
+                Self::report_unknown_identifier_in_expression(
+                    element,
+                    visible_types,
+                    routine_return_types,
+                )
+            }),
+            AstNode::Range { start, end, .. } => start
+                .as_ref()
+                .and_then(|expr| {
+                    Self::report_unknown_identifier_in_expression(
+                        expr,
+                        visible_types,
+                        routine_return_types,
+                    )
+                })
+                .or_else(|| {
+                    end.as_ref().and_then(|expr| {
+                        Self::report_unknown_identifier_in_expression(
+                            expr,
+                            visible_types,
+                            routine_return_types,
+                        )
+                    })
+                }),
             _ => None,
         }
     }
