@@ -1,0 +1,1 @@
+typ Pair(T: left; U: right): map[T, U]

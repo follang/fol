@@ -662,6 +662,52 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_type_generic_headers_accept_semicolon_separators() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_typ_generics_semicolon.fol")
+                .expect("Should read semicolon-separated type generics test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse type generic headers with ';' separators");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::TypeDecl {
+                                name,
+                                generics,
+                                type_def: TypeDefinition::Alias { .. },
+                                ..
+                            }
+                            if name == "Pair"
+                                && generics.len() == 2
+                                && matches!(
+                                    generics.as_slice(),
+                                    [
+                                        fol_parser::ast::Generic { name: first, constraints: first_constraints },
+                                        fol_parser::ast::Generic { name: second, constraints: second_constraints }
+                                    ]
+                                    if first == "T"
+                                        && second == "U"
+                                        && matches!(first_constraints.as_slice(), [FolType::Named { name }] if name == "left")
+                                        && matches!(second_constraints.as_slice(), [FolType::Named { name }] if name == "right")
+                                )
+                        )
+                    }),
+                    "Type generic headers should accept ';' separators between generic items"
+                );
+            }
+            _ => panic!("Should return Program node"),
+        }
+    }
+
+    #[test]
     fn test_type_declaration_option_brackets_parse() {
         let mut file_stream = FileStream::from_file("test/parser/simple_typ_options.fol")
             .expect("Should read type option test file");
@@ -1023,7 +1069,7 @@ mod parser_tests {
 
         let first_message = parse_error.to_string();
         assert!(
-            first_message.contains("Expected ',' or ')' after generic parameter"),
+            first_message.contains("Expected ',', ';', or ')' after generic parameter"),
             "Malformed type generic header should report missing separator, got: {}",
             first_message
         );

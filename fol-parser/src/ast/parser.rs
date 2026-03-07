@@ -2021,7 +2021,9 @@ impl AstParser {
 
             self.skip_ignorable(tokens);
             let sep = tokens.curr(false)?;
-            if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
+            if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma))
+                || matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Semi))
+            {
                 let _ = tokens.bump();
                 continue;
             }
@@ -2032,7 +2034,7 @@ impl AstParser {
 
             return Err(Box::new(ParseError::from_token(
                 &sep,
-                "Expected ',' or ')' after generic parameter".to_string(),
+                "Expected ',', ';', or ')' after generic parameter".to_string(),
             )));
         }
 
