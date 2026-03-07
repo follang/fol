@@ -52,10 +52,19 @@ impl AstParser {
         }
 
         self.skip_ignorable(tokens);
-        let assign = tokens.curr(false)?;
-        if !matches!(assign.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
+        let next = tokens.curr(false)?;
+        if !matches!(next.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
+            if matches!(def_type, FolType::Block { .. }) {
+                self.consume_optional_semicolon(tokens);
+                return Ok(AstNode::DefDecl {
+                    name,
+                    def_type,
+                    body: Vec::new(),
+                });
+            }
+
             return Err(Box::new(ParseError::from_token(
-                &assign,
+                &next,
                 "Expected '=' before definition body".to_string(),
             )));
         }
