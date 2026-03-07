@@ -2,7 +2,7 @@
 
 use super::{
     AstNode, BinaryOperator, ContainerType, FolType, FunOption, Generic, Literal,
-    LoopCondition, Parameter, UnaryOperator, UseOption, VarOption, WhenCase,
+    LoopCondition, Parameter, TypeOption, UnaryOperator, UseOption, VarOption, WhenCase,
 };
 use fol_lexer::token::{BUILDIN, KEYWORD, LITERAL, OPERATOR, SYMBOL};
 use fol_types::*;
@@ -901,6 +901,8 @@ impl AstParser {
 
         let _ = tokens.bump();
         self.skip_ignorable(tokens);
+        let options = self.parse_type_options(tokens)?;
+        self.skip_ignorable(tokens);
 
         let name_token = tokens.curr(false)?;
         if !name_token.key().is_ident() {
@@ -933,11 +935,77 @@ impl AstParser {
         self.consume_optional_semicolon(tokens);
 
         Ok(AstNode::TypeDecl {
-            options: Vec::new(),
+            options,
             generics: Vec::new(),
             name,
             type_def,
         })
+    }
+
+    fn parse_type_options(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<Vec<TypeOption>, Box<dyn Glitch>> {
+        self.skip_ignorable(tokens);
+        let open = match tokens.curr(false) {
+            Ok(token) => token,
+            Err(_) => return Ok(Vec::new()),
+        };
+
+        if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::SquarO)) {
+            return Ok(Vec::new());
+        }
+        let _ = tokens.bump();
+
+        let mut options = Vec::new();
+        for _ in 0..16 {
+            self.skip_ignorable(tokens);
+            let token = tokens.curr(false)?;
+
+            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
+                let _ = tokens.bump();
+                return Ok(options);
+            }
+
+            let option = match token.con().trim() {
+                "+" | "pub" | "exp" | "export" => TypeOption::Export,
+                "set" => TypeOption::Set,
+                "get" => TypeOption::Get,
+                "nothing" | "non" => TypeOption::Nothing,
+                _ => {
+                    return Err(Box::new(ParseError::from_token(
+                        &token,
+                        "Unknown type option".to_string(),
+                    )))
+                }
+            };
+            options.push(option);
+            let _ = tokens.bump();
+
+            self.skip_ignorable(tokens);
+            let sep = tokens.curr(false)?;
+            if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
+                let _ = tokens.bump();
+                continue;
+            }
+            if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
+                let _ = tokens.bump();
+                return Ok(options);
+            }
+
+            return Err(Box::new(ParseError::from_token(
+                &sep,
+                "Expected ',' or ']' in type options".to_string(),
+            )));
+        }
+
+        Err(Box::new(ParseError {
+            message: "Type options exceeded parser limit".to_string(),
+            file: None,
+            line: 0,
+            column: 0,
+            length: 0,
+        }))
     }
 
     fn parse_record_type_definition(

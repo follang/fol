@@ -1,0 +1,4 @@
+typ[+] PublicText: str
+typ[set, get] Accessors: {
+    value: int
+}

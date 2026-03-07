@@ -312,6 +312,90 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_type_declaration_option_brackets_parse() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_typ_options.fol")
+            .expect("Should read type option test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse type option brackets");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::TypeDecl {
+                                name,
+                                options,
+                                type_def: TypeDefinition::Alias { .. },
+                                ..
+                            }
+                            if name == "PublicText"
+                                && options == &vec![fol_parser::ast::TypeOption::Export]
+                        )
+                    }),
+                    "typ[+] should parse export type option"
+                );
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::TypeDecl {
+                                name,
+                                options,
+                                type_def: TypeDefinition::Record { .. },
+                                ..
+                            }
+                            if name == "Accessors"
+                                && options
+                                    == &vec![
+                                        fol_parser::ast::TypeOption::Set,
+                                        fol_parser::ast::TypeOption::Get
+                                    ]
+                        )
+                    }),
+                    "typ[set, get] should parse multiple type options"
+                );
+            }
+            _ => panic!("Should return Program node"),
+        }
+    }
+
+    #[test]
+    fn test_unknown_type_option_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_typ_options_unknown.fol")
+                .expect("Should read malformed type options test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should fail when type options contain an unknown item");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Unknown type option"),
+            "Malformed type option should report unknown option, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            1,
+            "Type option parse error should point to the declaration line"
+        );
+    }
+
+    #[test]
     fn test_type_record_missing_close_reports_parse_error() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_typ_record_missing_close.fol")
