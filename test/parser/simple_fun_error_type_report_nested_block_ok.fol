@@ -1,0 +1,6 @@
+fun parse_msg(): int: str = {
+    {
+        let msg = "ok";
+        report(msg);
+    }
+}

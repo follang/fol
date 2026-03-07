@@ -241,6 +241,15 @@ impl AstParser {
                         routine_token,
                     )?;
                 }
+                AstNode::Block { statements } => {
+                    Self::validate_report_usage(
+                        statements,
+                        routine_error_type,
+                        &scope_types,
+                        routine_return_types,
+                        routine_token,
+                    )?;
+                }
                 _ => {}
             }
         }
