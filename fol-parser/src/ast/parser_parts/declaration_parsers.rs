@@ -17,13 +17,18 @@ impl AstParser {
         self.skip_ignorable(tokens);
 
         let name_token = tokens.curr(false)?;
-        if !name_token.key().is_ident() {
-            return Err(Box::new(ParseError::from_token(
-                &name_token,
-                "Expected definition name".to_string(),
-            )));
-        }
-        let name = name_token.con().trim().to_string();
+        let name = match name_token.key() {
+            key if key.is_ident() => name_token.con().trim().to_string(),
+            KEYWORD::Literal(LITERAL::Stringy) => {
+                name_token.con().trim().trim_matches('"').to_string()
+            }
+            _ => {
+                return Err(Box::new(ParseError::from_token(
+                    &name_token,
+                    "Expected definition name".to_string(),
+                )));
+            }
+        };
         let _ = tokens.bump();
 
         self.skip_ignorable(tokens);

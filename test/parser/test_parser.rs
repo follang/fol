@@ -12,6 +12,9 @@ use fol_stream::FileStream;
 #[path = "test_parser_parts/basic_declarations.rs"]
 mod basic_declarations;
 #[cfg(test)]
+#[path = "test_parser_parts/definition_declarations.rs"]
+mod definition_declarations;
+#[cfg(test)]
 #[path = "test_parser_parts/type_definition_validation.rs"]
 mod type_definition_validation;
 #[cfg(test)]

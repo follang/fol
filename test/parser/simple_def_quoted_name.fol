@@ -1,0 +1,3 @@
+def "startup block": blk[] = {
+    var ready: bol = true;
+}
