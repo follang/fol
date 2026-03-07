@@ -1,0 +1,7 @@
+def outer: mod[root] = {
+    def inner: blk[] = {
+        var count: int = 1;
+    };
+
+    def "jump mark": blk[];
+}

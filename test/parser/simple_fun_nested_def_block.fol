@@ -1,0 +1,7 @@
+fun build(): int = {
+    {
+        def helper: blk[];
+    }
+
+    return 1;
+}

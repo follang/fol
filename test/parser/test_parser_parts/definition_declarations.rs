@@ -284,6 +284,103 @@ fn test_def_quoted_block_marker_without_body_parsing_with_trailing_semicolon() {
 }
 
 #[test]
+fn test_def_bodies_support_nested_definitions() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_def_nested_defs.fol")
+        .expect("Should read nested definition test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse nested definitions inside def bodies");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(
+                declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::DefDecl {
+                            name,
+                            def_type: FolType::Module { name: module_name },
+                            body,
+                        }
+                        if name == "outer"
+                            && module_name == "root"
+                            && body.iter().any(|stmt| matches!(
+                                stmt,
+                                AstNode::DefDecl {
+                                    name,
+                                    def_type: FolType::Block { name: block_name },
+                                    body,
+                                }
+                                if name == "inner"
+                                    && block_name.is_empty()
+                                    && body.iter().any(|nested| matches!(
+                                        nested,
+                                        AstNode::VarDecl { name, .. } if name == "count"
+                                    ))
+                            ))
+                            && body.iter().any(|stmt| matches!(
+                                stmt,
+                                AstNode::DefDecl {
+                                    name,
+                                    def_type: FolType::Block { name: block_name },
+                                    body,
+                                }
+                                if name == "jump mark" && block_name.is_empty() && body.is_empty()
+                            ))
+                    )
+                }),
+                "Module def bodies should preserve nested block definitions"
+            );
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_regular_blocks_support_nested_definitions() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_fun_nested_def_block.fol")
+        .expect("Should read nested def-in-block test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse nested definitions inside regular blocks");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(
+                declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::FunDecl { name, body, .. }
+                        if name == "build"
+                            && body.iter().any(|stmt| matches!(
+                                stmt,
+                                AstNode::Block { statements }
+                                if statements.iter().any(|nested| matches!(
+                                    nested,
+                                    AstNode::DefDecl {
+                                        name,
+                                        def_type: FolType::Block { name: block_name },
+                                        body,
+                                    }
+                                    if name == "helper" && block_name.is_empty() && body.is_empty()
+                                ))
+                            ))
+                    )
+                }),
+                "Regular nested blocks should preserve nested def declarations"
+            );
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
 fn test_def_invalid_type_reports_parse_error() {
     let mut file_stream = FileStream::from_file("test/parser/simple_def_invalid_type.fol")
         .expect("Should read malformed def fixture");
