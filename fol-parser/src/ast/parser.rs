@@ -939,6 +939,20 @@ impl AstParser {
             let _ = tokens.bump();
             self.skip_ignorable(tokens);
             self.parse_entry_type_definition(tokens)?
+        } else if tokens.curr(false)?.con().trim() == "rec" {
+            let _ = tokens.bump();
+            self.skip_ignorable(tokens);
+
+            let assign = tokens.curr(false)?;
+            if !matches!(assign.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
+                return Err(Box::new(ParseError::from_token(
+                    &assign,
+                    "Expected '=' after record type marker".to_string(),
+                )));
+            }
+            let _ = tokens.bump();
+            self.skip_ignorable(tokens);
+            self.parse_record_type_definition(tokens)?
         } else if matches!(tokens.curr(false)?.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
             self.parse_record_type_definition(tokens)?
         } else {
