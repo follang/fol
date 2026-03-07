@@ -1,0 +1,5 @@
+pro store(): int: str = {
+    var start: int = 1;
+    var finish: int = 2;
+    report({start..finish});
+}

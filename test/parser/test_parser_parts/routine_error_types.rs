@@ -879,6 +879,60 @@ use super::*;
     }
 
     #[test]
+    fn test_procedure_custom_error_type_rejects_report_container_expression() {
+        let mut file_stream = FileStream::from_file(
+            "test/parser/simple_pro_error_type_report_container_mismatch.fol",
+        )
+        .expect("Should read procedure report container mismatch fixture");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser.parse(&mut lexer).expect_err(
+            "Parser should reject procedure report container expression incompatible with custom error type",
+        );
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Reported expression type 'container'")
+                && first_message.contains("incompatible with routine error type"),
+            "Procedure container report mismatch should report incompatible expression type, got: {}",
+            first_message
+        );
+    }
+
+    #[test]
+    fn test_procedure_custom_error_type_rejects_report_range_expression() {
+        let mut file_stream = FileStream::from_file(
+            "test/parser/simple_pro_error_type_report_range_mismatch.fol",
+        )
+        .expect("Should read procedure report range mismatch fixture");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser.parse(&mut lexer).expect_err(
+            "Parser should reject procedure report range incompatible with custom error type",
+        );
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Reported expression type 'range'")
+                && first_message.contains("incompatible with routine error type"),
+            "Procedure range report mismatch should report incompatible expression type, got: {}",
+            first_message
+        );
+    }
+
+    #[test]
     fn test_procedure_custom_error_type_accepts_report_local_inferred_from_expression() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_pro_error_type_report_inferred_local_ok.fol")
