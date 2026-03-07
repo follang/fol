@@ -80,9 +80,13 @@ mod parser_tests {
                 let has_typed_let = declarations.iter().any(|node| {
                     matches!(
                         node,
-                        AstNode::VarDecl { name, type_hint: Some(FolType::Named { name: type_name }), value: Some(_), options }
+                        AstNode::VarDecl {
+                            name,
+                            type_hint: Some(FolType::Int { size: None, signed: true }),
+                            value: Some(_),
+                            options
+                        }
                         if name == "count"
-                            && type_name == "int"
                             && options.contains(&fol_parser::ast::VarOption::Immutable)
                     )
                 });
@@ -118,8 +122,11 @@ mod parser_tests {
                 let has_count_alias = declarations.iter().any(|node| {
                     matches!(
                         node,
-                        AstNode::AliasDecl { name, target: FolType::Named { name: target_name } }
-                        if name == "Count" && target_name == "int"
+                        AstNode::AliasDecl {
+                            name,
+                            target: FolType::Int { size: None, signed: true }
+                        }
+                        if name == "Count"
                     )
                 });
 
@@ -190,10 +197,12 @@ mod parser_tests {
                         node,
                         AstNode::TypeDecl {
                             name,
-                            type_def: TypeDefinition::Alias { target: FolType::Named { name: target_name } },
+                            type_def: TypeDefinition::Alias {
+                                target: FolType::Int { size: None, signed: true }
+                            },
                             ..
                         }
-                        if name == "Counter" && target_name == "int"
+                        if name == "Counter"
                     )
                 });
 
@@ -304,7 +313,7 @@ mod parser_tests {
                             }
                             if name == "Person"
                                 && matches!(fields.get("name"), Some(FolType::Named { name }) if name == "str")
-                                && matches!(fields.get("age"), Some(FolType::Named { name }) if name == "int")
+                                && matches!(fields.get("age"), Some(FolType::Int { size: None, signed: true }))
                         )
                     }),
                     "Parser should build TypeDecl record with named fields"
@@ -338,7 +347,7 @@ mod parser_tests {
                             }
                             if name == "User"
                                 && matches!(fields.get("name"), Some(FolType::Named { name }) if name == "str")
-                                && matches!(fields.get("age"), Some(FolType::Named { name }) if name == "int")
+                                && matches!(fields.get("age"), Some(FolType::Int { size: None, signed: true }))
                         )
                     }),
                     "Parser should build TypeDecl record from explicit rec marker syntax"
@@ -374,8 +383,8 @@ mod parser_tests {
                             if name == "User"
                                 && matches!(fields.get("username"), Some(FolType::Named { name }) if name == "str")
                                 && matches!(fields.get("email"), Some(FolType::Named { name }) if name == "str")
-                                && matches!(fields.get("sign_in_count"), Some(FolType::Named { name }) if name == "int")
-                                && matches!(fields.get("active"), Some(FolType::Named { name }) if name == "bol")
+                                && matches!(fields.get("sign_in_count"), Some(FolType::Int { size: None, signed: true }))
+                                && matches!(fields.get("active"), Some(FolType::Bool))
                         )
                     }),
                     "Record fields should accept 'var' prefixes and ignore default initializers"
@@ -440,7 +449,7 @@ mod parser_tests {
                             }
                             if name == "User"
                                 && matches!(fields.get("name"), Some(FolType::Named { name }) if name == "str")
-                                && matches!(fields.get("age"), Some(FolType::Named { name }) if name == "int")
+                                && matches!(fields.get("age"), Some(FolType::Int { size: None, signed: true }))
                         )
                     }),
                     "Parser should treat rec[] marker the same as rec marker"
@@ -927,7 +936,7 @@ mod parser_tests {
                             }
                             if name == "Pair"
                                 && types.len() == 2
-                                && matches!(types.first(), Some(FolType::Named { name }) if name == "int")
+                                && matches!(types.first(), Some(FolType::Int { size: None, signed: true }))
                                 && matches!(types.get(1), Some(FolType::Named { name }) if name == "str")
                         )
                     }),
@@ -945,7 +954,7 @@ mod parser_tests {
                                 ..
                             }
                             if name == "CounterPtr"
-                                && matches!(target.as_ref(), FolType::Named { name } if name == "int")
+                                && matches!(target.as_ref(), FolType::Int { size: None, signed: true })
                         )
                     }),
                     "Type alias should lower ptr[...] to FolType::Pointer"
@@ -1479,10 +1488,7 @@ mod parser_tests {
                         signed: true,
                     })
                 ));
-                assert!(matches!(
-                    error_type,
-                    Some(FolType::Named { name }) if name == "bol"
-                ));
+                assert!(matches!(error_type, Some(FolType::Bool)));
             }
             _ => panic!("Should return Program node"),
         }
@@ -1634,7 +1640,7 @@ mod parser_tests {
                                 ..
                             }
                             if name == "Bytes"
-                                && matches!(element_type.as_ref(), FolType::Named { name } if name == "int")
+                                && matches!(element_type.as_ref(), FolType::Int { size: None, signed: true })
                         )
                     }),
                     "Type alias should lower arr[T, N] to FolType::Array"
@@ -1721,7 +1727,7 @@ mod parser_tests {
                             }
                             if name == "Grid"
                                 && dimensions.as_slice() == [3, 4]
-                                && matches!(element_type.as_ref(), FolType::Named { name } if name == "int")
+                                && matches!(element_type.as_ref(), FolType::Int { size: None, signed: true })
                         )
                     }),
                     "Type alias should lower mat[T, dims...] to FolType::Matrix"
@@ -1812,11 +1818,11 @@ mod parser_tests {
                                 && matches!(
                                     params.as_slice(),
                                     [
-                                        FolType::Named { name: first },
-                                        FolType::Named { name: second }
-                                    ] if first == "int" && second == "int"
+                                        FolType::Int { size: None, signed: true },
+                                        FolType::Int { size: None, signed: true }
+                                    ]
                                 )
-                                && matches!(return_type.as_ref(), FolType::Named { name } if name == "int")
+                                && matches!(return_type.as_ref(), FolType::Int { size: None, signed: true })
                         )
                     }),
                     "Type alias should lower braced function types into FolType::Function"
@@ -1837,8 +1843,8 @@ mod parser_tests {
                                         },
                                         ..
                                     ] if param_name == "op"
-                                        && matches!(params.as_slice(), [FolType::Named { name }] if name == "int")
-                                        && matches!(return_type.as_ref(), FolType::Named { name } if name == "int")
+                                        && matches!(params.as_slice(), [FolType::Int { size: None, signed: true }])
+                                        && matches!(return_type.as_ref(), FolType::Int { size: None, signed: true })
                                 )
                         )
                     }),
@@ -1904,7 +1910,7 @@ mod parser_tests {
                             }
                             if name == "callback"
                                 && matches!(params.as_slice(), [FolType::Named { name }] if name == "str")
-                                && matches!(return_type.as_ref(), FolType::Named { name } if name == "int")
+                                && matches!(return_type.as_ref(), FolType::Int { size: None, signed: true })
                         )
                     }),
                     "Use declarations should preserve function path types"
@@ -1920,8 +1926,8 @@ mod parser_tests {
                                 ..
                             }
                             if name == "transform"
-                                && matches!(params.as_slice(), [FolType::Named { name }] if name == "int")
-                                && matches!(return_type.as_ref(), FolType::Named { name } if name == "int")
+                                && matches!(params.as_slice(), [FolType::Int { size: None, signed: true }])
+                                && matches!(return_type.as_ref(), FolType::Int { size: None, signed: true })
                         )
                     }),
                     "Top-level bindings should accept function type hints"
@@ -2044,9 +2050,13 @@ mod parser_tests {
                 let has_typed_local = declarations.iter().any(|node| {
                     matches!(
                         node,
-                        AstNode::VarDecl { name, type_hint: Some(FolType::Named { name: type_name }), value: Some(_), options }
+                        AstNode::VarDecl {
+                            name,
+                            type_hint: Some(FolType::Int { size: None, signed: true }),
+                            value: Some(_),
+                            options
+                        }
                         if name == "next"
-                            && type_name == "int"
                             && options.contains(&fol_parser::ast::VarOption::Immutable)
                     )
                 });
@@ -2382,13 +2392,12 @@ mod parser_tests {
                                         Parameter { name: first_name, default: None, .. },
                                         Parameter {
                                             name: second_name,
-                                            param_type: FolType::Named { name: type_name },
+                                            param_type: FolType::Int { size: None, signed: true },
                                             default: Some(AstNode::BinaryOp { .. }),
                                             ..
                                         }
                                     ] if first_name == "a"
                                         && second_name == "bias"
-                                        && type_name == "int"
                                 )
                         )
                     }),
@@ -2446,13 +2455,11 @@ mod parser_tests {
                                 && matches!(
                                     params.as_slice(),
                                     [
-                                        Parameter { name: first, param_type: FolType::Named { name: first_ty }, default: None, .. },
-                                        Parameter { name: second, param_type: FolType::Named { name: second_ty }, default: None, .. },
+                                        Parameter { name: first, param_type: FolType::Int { size: None, signed: true }, default: None, .. },
+                                        Parameter { name: second, param_type: FolType::Int { size: None, signed: true }, default: None, .. },
                                         Parameter { name: label, param_type: FolType::Named { name: label_ty }, default: Some(AstNode::Literal(Literal::String(_))), .. }
                                     ] if first == "a"
                                         && second == "b"
-                                        && first_ty == "int"
-                                        && second_ty == "int"
                                         && label == "label"
                                         && label_ty == "str"
                                 )
@@ -2474,19 +2481,19 @@ mod parser_tests {
                                             param_type: FolType::Function { params: fn_params, return_type },
                                             ..
                                         },
-                                        Parameter { name: left, param_type: FolType::Named { name: left_ty }, .. },
-                                        Parameter { name: right, param_type: FolType::Named { name: right_ty }, .. }
+                                        Parameter { name: left, param_type: FolType::Int { size: None, signed: true }, .. },
+                                        Parameter { name: right, param_type: FolType::Int { size: None, signed: true }, .. }
                                     ] if op_name == "op"
                                         && matches!(
                                             fn_params.as_slice(),
-                                            [FolType::Named { name: a_ty }, FolType::Named { name: b_ty }]
-                                                if a_ty == "int" && b_ty == "int"
+                                            [
+                                                FolType::Int { size: None, signed: true },
+                                                FolType::Int { size: None, signed: true }
+                                            ]
                                         )
-                                        && matches!(return_type.as_ref(), FolType::Named { name } if name == "int")
+                                        && matches!(return_type.as_ref(), FolType::Int { size: None, signed: true })
                                         && left == "left"
                                         && right == "right"
-                                        && left_ty == "int"
-                                        && right_ty == "int"
                                 )
                         )
                     }),
@@ -2775,7 +2782,7 @@ mod parser_tests {
                                     params.as_slice(),
                                     [Parameter { param_type: FolType::Any, .. }]
                                 )
-                                && matches!(return_type, Some(FolType::Named { name }) if name == "int")
+                                && matches!(return_type, Some(FolType::Int { size: None, signed: true }))
                         )
                     }),
                     "Routine parameters should lower any to FolType::Any"
@@ -3263,7 +3270,7 @@ mod parser_tests {
 
         assert_eq!(procedure_decl.0, "write_data");
         assert!(
-            matches!(procedure_decl.1, Some(FolType::Named { name }) if name == "int"),
+            matches!(procedure_decl.1, Some(FolType::Int { size: None, signed: true })),
             "Procedure should parse return type in first ':' slot"
         );
         assert!(

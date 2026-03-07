@@ -2193,6 +2193,15 @@ impl AstParser {
 
     fn lower_bare_scalar_type_name(name: &str) -> Option<FolType> {
         match name {
+            "int" => Some(FolType::Int {
+                size: None,
+                signed: true,
+            }),
+            "flt" | "float" => Some(FolType::Float { size: None }),
+            "bol" | "bool" => Some(FolType::Bool),
+            "chr" | "char" => Some(FolType::Char {
+                encoding: CharEncoding::Utf8,
+            }),
             "i8" => Some(FolType::Int {
                 size: Some(IntSize::I8),
                 signed: true,
@@ -5154,12 +5163,9 @@ impl AstParser {
     }
 
     fn report_literal_type_mismatch(value: &AstNode, expected_type: &FolType) -> Option<String> {
-        let expected_name = match expected_type {
-            FolType::Named { name } => name.as_str(),
-            _ => return None,
-        };
+        let expected_name = Self::type_family_name(expected_type)?;
 
-        if !Self::is_builtin_scalar_type_name(expected_name) {
+        if !Self::is_builtin_scalar_type_name(&expected_name) {
             return None;
         }
 
@@ -5168,7 +5174,7 @@ impl AstParser {
             _ => return None,
         };
 
-        if Self::literal_matches_named_type(literal, expected_name) {
+        if Self::literal_matches_named_type(literal, &expected_name) {
             None
         } else {
             Some(format!(
@@ -5183,12 +5189,9 @@ impl AstParser {
         expected_type: &FolType,
         visible_types: &HashMap<String, FolType>,
     ) -> Option<String> {
-        let expected_name = match expected_type {
-            FolType::Named { name } => name.as_str(),
-            _ => return None,
-        };
+        let expected_name = Self::type_family_name(expected_type)?;
 
-        if !Self::is_builtin_scalar_type_name(expected_name) {
+        if !Self::is_builtin_scalar_type_name(&expected_name) {
             return None;
         }
 
@@ -5197,12 +5200,9 @@ impl AstParser {
             _ => return None,
         };
 
-        let found_type_name = match visible_types.get(identifier_name) {
-            Some(FolType::Named { name }) => name.as_str(),
-            _ => return None,
-        };
+        let found_type_name = Self::type_family_name(visible_types.get(identifier_name)?)?;
 
-        if Self::named_types_compatible(found_type_name, expected_name) {
+        if Self::named_types_compatible(&found_type_name, &expected_name) {
             None
         } else {
             Some(format!(
@@ -5345,23 +5345,17 @@ impl AstParser {
         visible_types: &HashMap<String, FolType>,
         routine_return_types: &HashMap<String, FolType>,
     ) -> Option<String> {
-        let expected_name = match expected_type {
-            FolType::Named { name } => name.as_str(),
-            _ => return None,
-        };
+        let expected_name = Self::type_family_name(expected_type)?;
 
-        if !Self::is_builtin_scalar_type_name(expected_name) {
+        if !Self::is_builtin_scalar_type_name(&expected_name) {
             return None;
         }
 
         let found_name =
             Self::infer_named_type_from_node(value, visible_types, routine_return_types)?;
-        let found = match &found_name {
-            FolType::Named { name } => name.as_str(),
-            _ => return None,
-        };
+        let found = Self::type_family_name(&found_name)?;
 
-        if Self::named_types_compatible(found, expected_name) {
+        if Self::named_types_compatible(&found, &expected_name) {
             None
         } else {
             Some(format!(
@@ -5506,6 +5500,13 @@ impl AstParser {
                 name: "chr".to_string(),
             }),
             FolType::Named { name } => Some(FolType::Named { name }),
+            _ => None,
+        }
+    }
+
+    fn type_family_name(typ: &FolType) -> Option<String> {
+        match Self::fol_type_to_named_family(typ.clone())? {
+            FolType::Named { name } => Some(name),
             _ => None,
         }
     }
