@@ -1,0 +1,7 @@
+fun[] pure_add(a: int, b: int): int = {
+    return a + b;
+}
+
+pro[+, itr] publish(path: str): int = {
+    return 1;
+}

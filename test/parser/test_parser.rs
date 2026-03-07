@@ -917,6 +917,79 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_routine_option_brackets_parse_for_functions_and_procedures() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_routine_options.fol")
+            .expect("Should read routine options test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse routine option brackets");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::FunDecl { name, options, .. }
+                            if name == "pure_add" && options.is_empty()
+                        )
+                    }),
+                    "fun[] should parse with an explicit empty options list"
+                );
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::ProDecl { name, options, .. }
+                            if name == "publish"
+                                && options
+                                    == &vec![
+                                        fol_parser::ast::FunOption::Export,
+                                        fol_parser::ast::FunOption::Iterator
+                                    ]
+                        )
+                    }),
+                    "pro[+, itr] should parse export and iterator routine options"
+                );
+            }
+            _ => panic!("Expected program node"),
+        }
+    }
+
+    #[test]
+    fn test_unknown_routine_option_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_routine_options_unknown.fol")
+                .expect("Should read malformed routine options test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should fail when routine options contain an unknown item");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Unknown routine option"),
+            "Malformed routine option should report unknown option, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            1,
+            "Routine option parse error should point to the signature line"
+        );
+    }
+
+    #[test]
     fn test_function_declaration_supports_qualified_type_references() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_fun_qualified_types.fol")
