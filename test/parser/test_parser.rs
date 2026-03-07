@@ -2220,6 +2220,67 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_logical_declaration_parsing() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_log.fol").expect("Should read log test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse logical declaration");
+
+        let logical_decl = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .find_map(|node| {
+                    if let AstNode::FunDecl {
+                        name,
+                        params,
+                        return_type,
+                        body,
+                        ..
+                    } = node
+                    {
+                        if name == "dating" {
+                            return Some((
+                                params.len(),
+                                return_type.clone(),
+                                body.iter().any(|statement| {
+                                    matches!(
+                                        statement,
+                                        AstNode::Return {
+                                            value: Some(value)
+                                        } if matches!(
+                                            value.as_ref(),
+                                            AstNode::BinaryOp {
+                                                op: fol_parser::ast::BinaryOperator::Eq,
+                                                ..
+                                            }
+                                        )
+                                    )
+                                }),
+                            ));
+                        }
+                    }
+                    None
+                })
+                .expect("Program should include logical declaration lowered as function"),
+            _ => panic!("Expected program node"),
+        };
+
+        assert_eq!(logical_decl.0, 2, "Logical should have two parameters");
+        assert!(
+            matches!(logical_decl.1, Some(FolType::Bool)),
+            "Logical return type should lower to bol/bool"
+        );
+        assert!(
+            logical_decl.2,
+            "Logical body should include equality return expression"
+        );
+    }
+
+    #[test]
     fn test_routine_option_brackets_parse_for_functions_and_procedures() {
         let mut file_stream = FileStream::from_file("test/parser/simple_routine_options.fol")
             .expect("Should read routine options test file");

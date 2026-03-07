@@ -243,6 +243,28 @@ impl AstParser {
                 continue;
             }
 
+            if matches!(key, KEYWORD::Keyword(BUILDIN::Log)) {
+                let before = (
+                    token.loc().row(),
+                    token.loc().col(),
+                    token.con().to_string(),
+                );
+                match self.parse_log_decl(tokens) {
+                    Ok(node) => {
+                        if let AstNode::FunDecl { body, .. } = &node {
+                            declarations.extend(body.clone());
+                        }
+                        declarations.push(node);
+                    }
+                    Err(error) => errors.push(error),
+                }
+                self.bump_if_no_progress(tokens, before);
+                if tokens.curr(false).is_err() {
+                    break;
+                }
+                continue;
+            }
+
             if matches!(key, KEYWORD::Keyword(BUILDIN::Pro)) {
                 let before = (
                     token.loc().row(),
@@ -528,7 +550,9 @@ impl AstParser {
 
             if !matches!(
                 token.key(),
-                KEYWORD::Keyword(BUILDIN::Fun) | KEYWORD::Keyword(BUILDIN::Pro)
+                KEYWORD::Keyword(BUILDIN::Fun)
+                    | KEYWORD::Keyword(BUILDIN::Log)
+                    | KEYWORD::Keyword(BUILDIN::Pro)
             ) {
                 if tokens.bump().is_none() {
                     break;
@@ -1440,6 +1464,103 @@ impl AstParser {
             &parameter_types,
             &routine_returns,
             &fun_token,
+        )?;
+
+        Ok(AstNode::FunDecl {
+            options,
+            generics,
+            name,
+            params,
+            return_type,
+            error_type,
+            body,
+        })
+    }
+
+    fn parse_log_decl(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
+        let log_token = tokens.curr(false)?;
+        if !matches!(log_token.key(), KEYWORD::Keyword(BUILDIN::Log)) {
+            return Err(Box::new(ParseError::from_token(
+                &log_token,
+                "Expected 'log' declaration".to_string(),
+            )));
+        }
+
+        let _ = tokens.bump();
+        self.skip_ignorable(tokens);
+        let options = self.parse_routine_options(tokens)?;
+        self.skip_ignorable(tokens);
+
+        let (receiver_type, name) = self.parse_routine_name_with_optional_receiver(
+            tokens,
+            "Expected logical name after 'log'",
+        )?;
+
+        let (generics, params) =
+            self.parse_routine_generics_and_params(tokens, "Expected '(' after logical name")?;
+
+        self.skip_ignorable(tokens);
+        let mut return_type = None;
+        let mut error_type = None;
+        if let Ok(token) = tokens.curr(false) {
+            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
+                let _ = tokens.bump();
+                self.skip_ignorable(tokens);
+                return_type = Some(self.parse_type_reference_tokens(tokens)?);
+
+                self.skip_ignorable(tokens);
+                if let Ok(err_sep) = tokens.curr(false) {
+                    if matches!(err_sep.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
+                        let _ = tokens.bump();
+                        self.skip_ignorable(tokens);
+                        error_type = Some(self.parse_type_reference_tokens(tokens)?);
+                    }
+                }
+            }
+        }
+
+        if let Some(rt) = return_type.as_ref() {
+            self.register_routine_return_type(
+                &name,
+                params.len(),
+                receiver_type.as_ref(),
+                rt,
+                &log_token,
+            )?;
+        }
+
+        self.skip_ignorable(tokens);
+        let assign = tokens.curr(false)?;
+        if !matches!(assign.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
+            return Err(Box::new(ParseError::from_token(
+                &assign,
+                "Expected '=' before logical body".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+
+        self.skip_ignorable(tokens);
+        let open_body = tokens.curr(false)?;
+        if !matches!(open_body.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
+            return Err(Box::new(ParseError::from_token(
+                &open_body,
+                "Expected '{' to start logical body".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+
+        let body = self.parse_block_body(tokens, "Expected '}' to close logical body")?;
+        let parameter_types = Self::parameter_type_map(&params);
+        let routine_returns = self.routine_return_types.borrow().clone();
+        Self::validate_report_usage(
+            &body,
+            error_type.as_ref(),
+            &parameter_types,
+            &routine_returns,
+            &log_token,
         )?;
 
         Ok(AstNode::FunDecl {
