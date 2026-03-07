@@ -1403,7 +1403,7 @@ impl AstParser {
         }
         let _ = tokens.bump();
 
-        let body = self.parse_block_body(tokens)?;
+        let body = self.parse_block_body(tokens, "Expected '}' to close function body")?;
         let parameter_types = Self::parameter_type_map(&params);
         let routine_returns = self.routine_return_types.borrow().clone();
         Self::validate_report_usage(
@@ -1502,7 +1502,7 @@ impl AstParser {
         }
         let _ = tokens.bump();
 
-        let body = self.parse_block_body(tokens)?;
+        let body = self.parse_block_body(tokens, "Expected '}' to close procedure body")?;
         let parameter_types = Self::parameter_type_map(&params);
         let routine_returns = self.routine_return_types.borrow().clone();
         Self::validate_report_usage(
@@ -2415,13 +2415,18 @@ impl AstParser {
     fn parse_block_body(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
+        missing_close_message: &str,
     ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
         let mut body = Vec::new();
+        let mut anchor_token = None;
 
         for _ in 0..8_192 {
             self.skip_ignorable(tokens);
 
             let token = tokens.curr(false)?;
+            if anchor_token.is_none() {
+                anchor_token = Some(token.clone());
+            }
             let key = token.key();
 
             if matches!(key, KEYWORD::Symbol(SYMBOL::CurlyC)) {
@@ -2430,7 +2435,11 @@ impl AstParser {
             }
 
             if key.is_eof() {
-                return Ok(body);
+                let anchor = anchor_token.unwrap_or(token);
+                return Err(Box::new(ParseError::from_token(
+                    &anchor,
+                    missing_close_message.to_string(),
+                )));
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Return)) {
@@ -2502,6 +2511,11 @@ impl AstParser {
                 continue;
             }
 
+            if matches!(key, KEYWORD::Symbol(SYMBOL::CurlyO)) {
+                body.push(self.parse_block_stmt(tokens)?);
+                continue;
+            }
+
             if key.is_ident()
                 && self.lookahead_is_assignment(tokens)
                 && self.can_start_assignment(tokens)
@@ -2531,7 +2545,30 @@ impl AstParser {
             }
         }
 
-        Ok(body)
+        let anchor = match anchor_token {
+            Some(token) => token,
+            None => tokens.curr(false)?,
+        };
+        Err(Box::new(ParseError::from_token(
+            &anchor,
+            missing_close_message.to_string(),
+        )))
+    }
+
+    fn parse_block_stmt(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
+        let open = tokens.curr(false)?;
+        if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
+            return Err(Box::new(ParseError::from_token(
+                &open,
+                "Expected '{' to start block".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+        let statements = self.parse_block_body(tokens, "Expected '}' to close block")?;
+        Ok(AstNode::Block { statements })
     }
 
     fn parse_return_stmt(
@@ -2550,21 +2587,7 @@ impl AstParser {
             Err(_) => None,
         };
 
-        for _ in 0..64 {
-            let token = match tokens.curr(false) {
-                Ok(token) => token,
-                Err(_) => break,
-            };
-
-            if token.key().is_terminal() {
-                let _ = tokens.bump();
-                break;
-            }
-
-            if tokens.bump().is_none() {
-                break;
-            }
-        }
+        self.consume_optional_semicolon(tokens);
 
         Ok(AstNode::Return { value })
     }
@@ -2603,21 +2626,7 @@ impl AstParser {
         self.skip_ignorable(tokens);
         let value = self.parse_logical_expression(tokens)?;
 
-        for _ in 0..64 {
-            let token = match tokens.curr(false) {
-                Ok(token) => token,
-                Err(_) => break,
-            };
-
-            if token.key().is_terminal() {
-                let _ = tokens.bump();
-                break;
-            }
-
-            if tokens.bump().is_none() {
-                break;
-            }
-        }
+        self.consume_optional_semicolon(tokens);
 
         Ok(AstNode::Yield {
             value: Box::new(value),
@@ -2681,21 +2690,7 @@ impl AstParser {
             }
         }
 
-        for _ in 0..64 {
-            let token = match tokens.curr(false) {
-                Ok(token) => token,
-                Err(_) => break,
-            };
-
-            if token.key().is_terminal() {
-                let _ = tokens.bump();
-                break;
-            }
-
-            if tokens.bump().is_none() {
-                break;
-            }
-        }
+        self.consume_optional_semicolon(tokens);
 
         Ok(AstNode::FunctionCall { name, args })
     }
@@ -3063,7 +3058,7 @@ impl AstParser {
             )));
         }
         let _ = tokens.bump();
-        self.parse_block_body(tokens)
+        self.parse_block_body(tokens, "Expected '}' to close case/default body")
     }
 
     fn parse_loop_stmt(
@@ -3112,7 +3107,7 @@ impl AstParser {
         }
         let _ = tokens.bump();
 
-        let body = self.parse_block_body(tokens)?;
+        let body = self.parse_block_body(tokens, "Expected '}' to close loop body")?;
 
         Ok(AstNode::Loop {
             condition: Box::new(condition),

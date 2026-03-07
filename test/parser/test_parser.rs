@@ -1344,6 +1344,91 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_nested_block_statements_parse_inside_function_bodies() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_fun_nested_block_stmt.fol")
+            .expect("Should read nested block fixture");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse nested block statements in function bodies");
+
+        let nested_block = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .find_map(|node| {
+                    if let AstNode::FunDecl { name, body, .. } = node {
+                        if name == "blocky" {
+                            return body.iter().find_map(|statement| {
+                                if let AstNode::Block { statements } = statement {
+                                    Some(statements.clone())
+                                } else {
+                                    None
+                                }
+                            });
+                        }
+                    }
+                    None
+                })
+                .expect("Function body should contain a nested block statement"),
+            _ => panic!("Expected program node"),
+        };
+
+        assert!(
+            nested_block.iter().any(|statement| {
+                matches!(
+                    statement,
+                    AstNode::VarDecl { name, options, .. }
+                    if name == "inner"
+                        && options.contains(&fol_parser::ast::VarOption::Immutable)
+                )
+            }),
+            "Nested block should preserve inner let declarations"
+        );
+        assert!(
+            nested_block.iter().any(|statement| {
+                matches!(
+                    statement,
+                    AstNode::Return { value: Some(value) }
+                    if matches!(value.as_ref(), AstNode::Identifier { name } if name == "inner")
+                )
+            }),
+            "Nested block should preserve return statements"
+        );
+    }
+
+    #[test]
+    fn test_nested_block_missing_close_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_nested_block_missing_close.fol")
+                .expect("Should read malformed nested block fixture");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should reject nested blocks missing closing '}'");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Expected '}' to close block"),
+            "Malformed nested block should report missing close brace, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            3,
+            "Malformed nested block parse error should point to the nested block line"
+        );
+    }
+
+    #[test]
     fn test_function_declaration_header_parsing() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_fun.fol").expect("Should read test file");
