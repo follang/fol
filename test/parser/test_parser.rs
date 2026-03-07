@@ -5880,6 +5880,51 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_use_declaration_accepts_empty_option_brackets() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_use_empty_options.fol")
+            .expect("Should read empty use options test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse use[] declarations");
+
+        let use_decl = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .find_map(|node| {
+                    if let AstNode::UseDecl {
+                        name,
+                        options,
+                        path_type,
+                        path,
+                    } = node
+                    {
+                        Some((
+                            name.clone(),
+                            options.clone(),
+                            path_type.clone(),
+                            path.clone(),
+                        ))
+                    } else {
+                        None
+                    }
+                })
+                .expect("Program should include use declaration"),
+            _ => panic!("Expected program node"),
+        };
+
+        assert_eq!(use_decl.0, "math");
+        assert!(use_decl.1.is_empty(), "use[] should parse as explicit empty options");
+        assert!(
+            matches!(use_decl.2, FolType::Named { name } if name == "path"),
+            "Use declaration should still parse path type"
+        );
+        assert_eq!(use_decl.3, "core::math");
+    }
+
+    #[test]
     fn test_use_declaration_supports_qualified_and_bracketed_types() {
         let mut file_stream = FileStream::from_file("test/parser/simple_use_qualified_type.fol")
             .expect("Should read qualified use type test file");
@@ -5921,6 +5966,36 @@ mod parser_tests {
             "Use declaration should preserve qualified bracketed path type"
         );
         assert_eq!(use_decl.2, "core::results");
+    }
+
+    #[test]
+    fn test_unknown_use_option_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_use_unknown_option.fol")
+                .expect("Should read malformed use option test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should fail when use options contain an unknown item");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Unknown use option"),
+            "Malformed use option should report unknown option, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            1,
+            "Use option parse error should point to the declaration line"
+        );
     }
 
     #[test]
