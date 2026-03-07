@@ -1,0 +1,4 @@
+fun bump(power: int, base: int): int = {
+    power ^= base;
+    return power;
+}

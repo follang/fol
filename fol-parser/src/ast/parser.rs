@@ -3900,17 +3900,17 @@ impl AstParser {
         let mut compound_op = self.compound_assignment_op(&assign_token.key());
         let mut is_simple_assign = matches!(assign_token.key(), KEYWORD::Symbol(SYMBOL::Equal));
 
-        if matches!(assign_token.key(), KEYWORD::Symbol(SYMBOL::Percent)) {
+        if let Some(symbol_op) = self.compound_assignment_symbol_op(&assign_token.key()) {
             let _ = tokens.bump();
             self.skip_ignorable(tokens);
             let eq_token = tokens.curr(false)?;
             if matches!(eq_token.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
-                compound_op = Some(BinaryOperator::Mod);
+                compound_op = Some(symbol_op);
                 is_simple_assign = false;
             } else {
                 return Err(Box::new(ParseError::from_token(
                     &eq_token,
-                    "Expected '=' after '%' in compound assignment".to_string(),
+                    "Expected '=' after operator in compound assignment".to_string(),
                 )));
             }
         }
@@ -4183,7 +4183,7 @@ impl AstParser {
     }
 
     fn lookahead_is_assignment(&self, tokens: &fol_lexer::lexer::stage3::Elements) -> bool {
-        let mut found_percent = false;
+        let mut found_compound_symbol = false;
         let mut square_depth = 0usize;
         let mut round_depth = 0usize;
         let mut expect_member_ident = false;
@@ -4234,7 +4234,7 @@ impl AstParser {
                 continue;
             }
 
-            if found_percent {
+            if found_compound_symbol {
                 return matches!(key, KEYWORD::Symbol(SYMBOL::Equal));
             }
 
@@ -4261,8 +4261,8 @@ impl AstParser {
                 continue;
             }
 
-            if matches!(key, KEYWORD::Symbol(SYMBOL::Percent)) {
-                found_percent = true;
+            if self.compound_assignment_symbol_op(&key).is_some() {
+                found_compound_symbol = true;
                 continue;
             }
 
@@ -4393,6 +4393,14 @@ impl AstParser {
             KEYWORD::Operator(OPERATOR::Subeq) => Some(BinaryOperator::Sub),
             KEYWORD::Operator(OPERATOR::Multeq) => Some(BinaryOperator::Mul),
             KEYWORD::Operator(OPERATOR::Diveq) => Some(BinaryOperator::Div),
+            _ => None,
+        }
+    }
+
+    fn compound_assignment_symbol_op(&self, key: &KEYWORD) -> Option<BinaryOperator> {
+        match key {
+            KEYWORD::Symbol(SYMBOL::Percent) => Some(BinaryOperator::Mod),
+            KEYWORD::Symbol(SYMBOL::Carret) => Some(BinaryOperator::Pow),
             _ => None,
         }
     }
@@ -4772,7 +4780,7 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Box<dyn Glitch>> {
-        let mut lhs = self.parse_primary_expression(tokens)?;
+        let mut lhs = self.parse_pow_expression(tokens)?;
 
         for _ in 0..32 {
             self.skip_ignorable(tokens);
@@ -4795,7 +4803,7 @@ impl AstParser {
 
             if let Some(op) = binary_op {
                 let _ = tokens.bump();
-                let rhs = self.parse_primary_expression(tokens)?;
+                let rhs = self.parse_pow_expression(tokens)?;
                 lhs = AstNode::BinaryOp {
                     op,
                     left: Box::new(lhs),
@@ -4808,6 +4816,31 @@ impl AstParser {
         }
 
         Ok(lhs)
+    }
+
+    fn parse_pow_expression(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
+        let lhs = self.parse_primary_expression(tokens)?;
+        self.skip_ignorable(tokens);
+
+        let op_token = match tokens.curr(false) {
+            Ok(token) => token,
+            Err(_) => return Ok(lhs),
+        };
+
+        if !matches!(op_token.key(), KEYWORD::Symbol(SYMBOL::Carret)) {
+            return Ok(lhs);
+        }
+
+        let _ = tokens.bump();
+        let rhs = self.parse_pow_expression(tokens)?;
+        Ok(AstNode::BinaryOp {
+            op: BinaryOperator::Pow,
+            left: Box::new(lhs),
+            right: Box::new(rhs),
+        })
     }
 
     fn parse_primary_expression(

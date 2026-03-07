@@ -9540,6 +9540,93 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_pow_expression_parsing_is_right_associative() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_fun_pow_expr.fol")
+            .expect("Should read power expression test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse exponent expressions");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::Return {
+                                value: Some(value)
+                            }
+                            if matches!(
+                                value.as_ref(),
+                                AstNode::BinaryOp {
+                                    op: fol_parser::ast::BinaryOperator::Pow,
+                                    left,
+                                    right,
+                                }
+                                if matches!(left.as_ref(), AstNode::Identifier { name } if name == "a")
+                                    && matches!(
+                                        right.as_ref(),
+                                        AstNode::BinaryOp {
+                                            op: fol_parser::ast::BinaryOperator::Pow,
+                                            left,
+                                            right,
+                                        }
+                                        if matches!(left.as_ref(), AstNode::Identifier { name } if name == "b")
+                                            && matches!(right.as_ref(), AstNode::Identifier { name } if name == "c")
+                                    )
+                            )
+                        )
+                    }),
+                    "Exponent expressions should parse as right-associative binary trees"
+                );
+            }
+            _ => panic!("Expected program node"),
+        }
+    }
+
+    #[test]
+    fn test_pow_compound_assignment_parsing() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_pow_compound_assignment.fol")
+                .expect("Should read power compound assignment test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse exponent compound assignment");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::Assignment { target, value }
+                            if matches!(target.as_ref(), AstNode::Identifier { name } if name == "power")
+                                && matches!(
+                                    value.as_ref(),
+                                    AstNode::BinaryOp {
+                                        op: fol_parser::ast::BinaryOperator::Pow,
+                                        left,
+                                        right,
+                                    }
+                                    if matches!(left.as_ref(), AstNode::Identifier { name } if name == "power")
+                                        && matches!(right.as_ref(), AstNode::Identifier { name } if name == "base")
+                                )
+                        )
+                    }),
+                    "Exponent compound assignments should lower to Pow binary expressions"
+                );
+            }
+            _ => panic!("Expected program node"),
+        }
+    }
+
+    #[test]
     fn test_logical_and_has_lower_precedence_than_comparison() {
         let mut file_stream = FileStream::from_file("test/parser/simple_fun_logical.fol")
             .expect("Should read logical expression function test file");
