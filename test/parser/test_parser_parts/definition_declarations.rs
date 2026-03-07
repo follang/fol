@@ -153,6 +153,43 @@ fn test_def_with_quoted_name_parsing() {
 }
 
 #[test]
+fn test_def_with_single_quoted_name_parsing() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_def_single_quoted_name.fol")
+        .expect("Should read single-quoted definition test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse single-quoted definition names");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(
+                declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::DefDecl {
+                            name,
+                            def_type: FolType::Block { name: block_name },
+                            body,
+                        }
+                        if name == "startup block"
+                            && block_name.is_empty()
+                            && body.iter().any(|stmt| matches!(
+                                stmt,
+                                AstNode::VarDecl { name, .. } if name == "ready"
+                            ))
+                    )
+                }),
+                "Program should include parsed single-quoted block definition"
+            );
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
 fn test_def_block_marker_without_body_parsing() {
     let mut file_stream = FileStream::from_file("test/parser/simple_def_block_marker.fol")
         .expect("Should read block-marker definition test file");
@@ -244,6 +281,39 @@ fn test_def_block_marker_without_body_parsing_with_trailing_semicolon() {
                     )
                 }),
                 "Program should include parsed semicolon-terminated empty-body block marker definition"
+            );
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_def_single_quoted_block_marker_without_body_parsing_with_trailing_semicolon() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_def_single_quoted_block_marker.fol")
+            .expect("Should read single-quoted block-marker test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse single-quoted block marker definitions");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(
+                declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::DefDecl {
+                            name,
+                            def_type: FolType::Block { name: block_name },
+                            body,
+                        }
+                        if name == "jump mark" && block_name.is_empty() && body.is_empty()
+                    )
+                }),
+                "Program should include parsed single-quoted empty-body block marker definition"
             );
         }
         _ => panic!("Expected program node"),

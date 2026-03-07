@@ -20,7 +20,11 @@ impl AstParser {
         let name = match name_token.key() {
             key if key.is_ident() => name_token.con().trim().to_string(),
             KEYWORD::Literal(LITERAL::Stringy) => {
-                name_token.con().trim().trim_matches('"').to_string()
+                name_token
+                    .con()
+                    .trim()
+                    .trim_matches(|c| c == '"' || c == '\'')
+                    .to_string()
             }
             _ => {
                 return Err(Box::new(ParseError::from_token(
