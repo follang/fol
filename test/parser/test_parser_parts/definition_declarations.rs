@@ -469,10 +469,20 @@ fn test_def_invalid_type_reports_parse_error() {
     let first_message = parse_error.to_string();
     assert!(
         first_message.contains(
-            "Definition declarations currently support only mod[...] or blk[...] types"
-        ),
+            "Definition declarations currently support only mod[...] or blk[...] types, found"
+        ) && first_message.contains("Int"),
         "Invalid definition type should report the supported def target kinds, got: {}",
         first_message
+    );
+    assert_eq!(
+        parse_error.line(),
+        1,
+        "Invalid def type parse error should stay on the declaration line"
+    );
+    assert!(
+        parse_error.column() >= 13,
+        "Invalid def type parse error should anchor at the type site, got column {}",
+        parse_error.column()
     );
 }
 
