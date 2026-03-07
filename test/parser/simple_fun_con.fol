@@ -1,0 +1,5 @@
+fun stable(): int = {
+    con base = 2;
+    con next: int = 4;
+    return next;
+}

@@ -99,6 +99,51 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_top_level_con_parsing() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_con.fol").expect("Should read con test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse top-level con declarations");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                let has_inferred_con = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::VarDecl { name, type_hint, value, options }
+                        if name == "message"
+                            && type_hint.is_none()
+                            && value.is_some()
+                            && options.contains(&fol_parser::ast::VarOption::Immutable)
+                    )
+                });
+
+                let has_typed_con = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::VarDecl {
+                            name,
+                            type_hint: Some(FolType::Int { size: None, signed: true }),
+                            value: Some(_),
+                            options
+                        }
+                        if name == "count"
+                            && options.contains(&fol_parser::ast::VarOption::Immutable)
+                    )
+                });
+
+                assert!(has_inferred_con, "Parser should lower con message = ... into immutable VarDecl");
+                assert!(has_typed_con, "Parser should parse typed con declaration");
+            }
+            _ => panic!("Should return Program node"),
+        }
+    }
+
+    #[test]
     fn test_top_level_alias_parsing() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_ali.fol").expect("Should read alias test file");
@@ -2085,6 +2130,71 @@ mod parser_tests {
         assert!(
             has_return_identifier,
             "Return should still parse after let locals"
+        );
+    }
+
+    #[test]
+    fn test_function_body_con_parsing() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_fun_con.fol")
+            .expect("Should read function con test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse con declarations inside function bodies");
+
+        let (has_inferred_local, has_typed_local, has_return_identifier) = match ast {
+            AstNode::Program { declarations } => {
+                let has_inferred_local = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::VarDecl { name, type_hint, value, options }
+                        if name == "base"
+                            && type_hint.is_none()
+                            && value.is_some()
+                            && options.contains(&fol_parser::ast::VarOption::Immutable)
+                    )
+                });
+
+                let has_typed_local = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::VarDecl {
+                            name,
+                            type_hint: Some(FolType::Int { size: None, signed: true }),
+                            value: Some(_),
+                            options
+                        }
+                        if name == "next"
+                            && options.contains(&fol_parser::ast::VarOption::Immutable)
+                    )
+                });
+
+                let has_return_identifier = declarations.iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::Return { value: Some(value) }
+                        if matches!(value.as_ref(), AstNode::Identifier { name } if name == "next")
+                    )
+                });
+
+                (has_inferred_local, has_typed_local, has_return_identifier)
+            }
+            _ => panic!("Expected program node"),
+        };
+
+        assert!(
+            has_inferred_local,
+            "Function body should include immutable con local without explicit type"
+        );
+        assert!(
+            has_typed_local,
+            "Function body should include immutable typed con local"
+        );
+        assert!(
+            has_return_identifier,
+            "Return should still parse after con locals"
         );
     }
 

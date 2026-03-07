@@ -1,0 +1,2 @@
+con message = "fixed";
+con count: int = 4;

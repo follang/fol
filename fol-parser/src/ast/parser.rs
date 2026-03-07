@@ -170,6 +170,30 @@ impl AstParser {
                 continue;
             }
 
+            if matches!(key, KEYWORD::Keyword(BUILDIN::Con)) {
+                let before = (
+                    token.loc().row(),
+                    token.loc().col(),
+                    token.con().to_string(),
+                );
+                match self.parse_con_decl(tokens) {
+                    Ok(node) => declarations.push(node),
+                    Err(error) => errors.push(error),
+                }
+
+                if let Ok(current) = tokens.curr(false) {
+                    let after = (
+                        current.loc().row(),
+                        current.loc().col(),
+                        current.con().to_string(),
+                    );
+                    if before == after && tokens.bump().is_none() {
+                        break;
+                    }
+                }
+                continue;
+            }
+
             if matches!(key, KEYWORD::Keyword(BUILDIN::Use)) {
                 let before = (
                     token.loc().row(),
@@ -735,6 +759,17 @@ impl AstParser {
         self.parse_binding_decl(
             tokens,
             "let",
+            vec![VarOption::Immutable, VarOption::Normal],
+        )
+    }
+
+    fn parse_con_decl(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
+        self.parse_binding_decl(
+            tokens,
+            "con",
             vec![VarOption::Immutable, VarOption::Normal],
         )
     }
@@ -3229,6 +3264,11 @@ impl AstParser {
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Let)) {
                 body.push(self.parse_let_decl(tokens)?);
+                continue;
+            }
+
+            if matches!(key, KEYWORD::Keyword(BUILDIN::Con)) {
+                body.push(self.parse_con_decl(tokens)?);
                 continue;
             }
 
