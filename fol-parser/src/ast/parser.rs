@@ -391,7 +391,10 @@ impl AstParser {
                 continue;
             }
 
-            if matches!(key, KEYWORD::Keyword(BUILDIN::Loop)) {
+            if matches!(
+                key,
+                KEYWORD::Keyword(BUILDIN::Loop) | KEYWORD::Keyword(BUILDIN::For)
+            ) {
                 let before = (
                     token.loc().row(),
                     token.loc().col(),
@@ -3128,7 +3131,10 @@ impl AstParser {
                 continue;
             }
 
-            if matches!(key, KEYWORD::Keyword(BUILDIN::Loop)) {
+            if matches!(
+                key,
+                KEYWORD::Keyword(BUILDIN::Loop) | KEYWORD::Keyword(BUILDIN::For)
+            ) {
                 let before = (
                     token.loc().row(),
                     token.loc().col(),
@@ -3694,10 +3700,15 @@ impl AstParser {
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Box<dyn Glitch>> {
         let loop_token = tokens.curr(false)?;
-        if !matches!(loop_token.key(), KEYWORD::Keyword(BUILDIN::Loop)) {
+        let keyword_name = match loop_token.key() {
+            KEYWORD::Keyword(BUILDIN::Loop) => "loop",
+            KEYWORD::Keyword(BUILDIN::For) => "for",
+            _ => "",
+        };
+        if keyword_name.is_empty() {
             return Err(Box::new(ParseError::from_token(
                 &loop_token,
-                "Expected 'loop' statement".to_string(),
+                "Expected loop-like statement".to_string(),
             )));
         }
 
@@ -3708,7 +3719,7 @@ impl AstParser {
         if !matches!(open_cond.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
             return Err(Box::new(ParseError::from_token(
                 &open_cond,
-                "Expected '(' after 'loop'".to_string(),
+                format!("Expected '(' after '{}'", keyword_name),
             )));
         }
         let _ = tokens.bump();
@@ -3720,7 +3731,7 @@ impl AstParser {
         if !matches!(close_cond.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
             return Err(Box::new(ParseError::from_token(
                 &close_cond,
-                "Expected ')' after loop condition".to_string(),
+                format!("Expected ')' after {} condition", keyword_name),
             )));
         }
         let _ = tokens.bump();
@@ -3730,7 +3741,7 @@ impl AstParser {
         if !matches!(open_body.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
             return Err(Box::new(ParseError::from_token(
                 &open_body,
-                "Expected '{' to start loop body".to_string(),
+                format!("Expected '{{' to start {} body", keyword_name),
             )));
         }
         let _ = tokens.bump();

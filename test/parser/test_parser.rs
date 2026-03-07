@@ -6079,6 +6079,44 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_for_statement_parsing_with_condition_body() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_fun_for.fol")
+            .expect("Should read for-loop test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse for statement");
+
+        let loop_stmt = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .find_map(|node| {
+                    if let AstNode::Loop { condition, body } = node {
+                        Some((condition.as_ref().clone(), body.clone()))
+                    } else {
+                        None
+                    }
+                })
+                .expect("Program should include a lowered loop statement"),
+            _ => panic!("Expected program node"),
+        };
+
+        assert!(
+            matches!(loop_stmt.0, fol_parser::ast::LoopCondition::Condition(_)),
+            "for(condition) should lower to LoopCondition::Condition"
+        );
+        assert!(
+            loop_stmt
+                .1
+                .iter()
+                .any(|node| matches!(node, AstNode::Assignment { .. })),
+            "for body should contain assignment statement"
+        );
+    }
+
+    #[test]
     fn test_builtin_diagnostic_statements_parse_as_function_calls() {
         let mut file_stream = FileStream::from_file("test/parser/simple_fun_builtin_diag.fol")
             .expect("Should read builtin diagnostic test file");
@@ -7213,6 +7251,58 @@ mod parser_tests {
                 .iter()
                 .any(|node| matches!(node, AstNode::Break)),
             "Top-level loop body should contain break statement"
+        );
+    }
+
+    #[test]
+    fn test_top_level_for_iteration_shape_matches_loop_shape() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_for_top_level.fol")
+            .expect("Should read top-level for-loop test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse top-level for statement");
+
+        let loop_stmt = match ast {
+            AstNode::Program { declarations } => declarations
+                .iter()
+                .find_map(|node| {
+                    if let AstNode::Loop { condition, body } = node {
+                        Some((condition.as_ref().clone(), body.clone()))
+                    } else {
+                        None
+                    }
+                })
+                .expect("Program should include top-level lowered loop statement"),
+            _ => panic!("Expected program node"),
+        };
+
+        assert!(
+            matches!(
+                loop_stmt.0,
+                fol_parser::ast::LoopCondition::Iteration {
+                    var,
+                    condition: Some(_),
+                    ..
+                } if var == "item"
+            ),
+            "Top-level for should parse as guarded iteration"
+        );
+        assert!(
+            loop_stmt
+                .1
+                .iter()
+                .any(|node| matches!(node, AstNode::Yield { .. })),
+            "Top-level for body should contain yield statement"
+        );
+        assert!(
+            loop_stmt
+                .1
+                .iter()
+                .any(|node| matches!(node, AstNode::Break)),
+            "Top-level for body should contain break statement"
         );
     }
 

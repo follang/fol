@@ -1,0 +1,6 @@
+fun iterate(limit: int): int = {
+    for (limit) {
+        limit = limit - 1;
+    }
+    return limit;
+}
