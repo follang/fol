@@ -8,7 +8,7 @@ use super::{
 use fol_lexer::token::{BUILDIN, KEYWORD, LITERAL, OPERATOR, SYMBOL};
 use fol_types::*;
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt;
 
 #[derive(Debug, Clone)]
@@ -1800,6 +1800,7 @@ impl AstParser {
     > {
         let mut params = Vec::new();
         let mut first_untyped = None;
+        let mut seen_names = HashSet::new();
 
         for _ in 0..128 {
             self.skip_ignorable(tokens);
@@ -1817,7 +1818,14 @@ impl AstParser {
                 )));
             }
 
-            let mut names = vec![token.con().trim().to_string()];
+            let first_name = token.con().trim().to_string();
+            if !seen_names.insert(first_name.clone()) {
+                return Err(Box::new(ParseError::from_token(
+                    &token,
+                    format!("Duplicate parameter name '{}'", first_name),
+                )));
+            }
+            let mut names = vec![first_name];
             let _ = tokens.bump();
 
             self.skip_ignorable(tokens);
@@ -1837,7 +1845,14 @@ impl AstParser {
                             "Expected parameter name after ','".to_string(),
                         )));
                     }
-                    names.push(name_token.con().trim().to_string());
+                    let grouped_name = name_token.con().trim().to_string();
+                    if !seen_names.insert(grouped_name.clone()) {
+                        return Err(Box::new(ParseError::from_token(
+                            &name_token,
+                            format!("Duplicate parameter name '{}'", grouped_name),
+                        )));
+                    }
+                    names.push(grouped_name);
                     let _ = tokens.bump();
                     self.skip_ignorable(tokens);
                     continue;
@@ -2093,6 +2108,7 @@ impl AstParser {
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<Vec<Parameter>, Box<dyn Glitch>> {
         let mut params = Vec::new();
+        let mut seen_names = HashSet::new();
 
         for _ in 0..512 {
             self.skip_ignorable(tokens);
@@ -2110,7 +2126,14 @@ impl AstParser {
                 )));
             }
 
-            let mut names = vec![token.con().trim().to_string()];
+            let first_name = token.con().trim().to_string();
+            if !seen_names.insert(first_name.clone()) {
+                return Err(Box::new(ParseError::from_token(
+                    &token,
+                    format!("Duplicate parameter name '{}'", first_name),
+                )));
+            }
+            let mut names = vec![first_name];
             let _ = tokens.bump();
 
             loop {
@@ -2135,7 +2158,14 @@ impl AstParser {
                         "Expected parameter name after ','".to_string(),
                     )));
                 }
-                names.push(name_token.con().trim().to_string());
+                let grouped_name = name_token.con().trim().to_string();
+                if !seen_names.insert(grouped_name.clone()) {
+                    return Err(Box::new(ParseError::from_token(
+                        &name_token,
+                        format!("Duplicate parameter name '{}'", grouped_name),
+                    )));
+                }
+                names.push(grouped_name);
                 let _ = tokens.bump();
             }
 

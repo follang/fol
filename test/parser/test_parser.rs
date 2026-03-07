@@ -2802,6 +2802,65 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_duplicate_routine_parameter_reports_parse_error() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_fun_duplicate_param.fol")
+            .expect("Should read duplicate parameter routine test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should reject duplicate routine parameter names");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Duplicate parameter name 'a'"),
+            "Duplicate routine parameter should report the repeated name, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            1,
+            "Duplicate routine parameter parse error should point to the signature line"
+        );
+    }
+
+    #[test]
+    fn test_duplicate_function_type_parameter_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_fun_function_type_duplicate_param.fol")
+                .expect("Should read duplicate function-type parameter test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should reject duplicate function-type parameter names");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Duplicate parameter name 'x'"),
+            "Duplicate function-type parameter should report the repeated name, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            1,
+            "Duplicate function-type parameter parse error should point to the signature line"
+        );
+    }
+
+    #[test]
     fn test_parameter_default_missing_value_reports_parse_error() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_routine_default_param_missing_value.fol")
