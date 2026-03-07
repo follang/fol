@@ -1,0 +1,7 @@
+fun combine(a, b: int; label: str = "x"): int = {
+    return a + b;
+}
+
+pro apply(op: {fun (x, y: int): int}, left, right: int) = {
+    report left;
+}

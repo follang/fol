@@ -1544,15 +1544,29 @@ impl AstParser {
         }
         let _ = tokens.bump();
 
-        let first_list = self.parse_routine_header_list(tokens)?;
+        let (first_list, first_untyped) = self.parse_routine_header_list(tokens)?;
         self.skip_ignorable(tokens);
 
         let next = match tokens.curr(false) {
             Ok(token) => token,
-            Err(_) => return Ok((Vec::new(), first_list)),
+            Err(_) => {
+                if let Some(token) = first_untyped {
+                    return Err(Box::new(ParseError::from_token(
+                        &token,
+                        "Expected ':' after parameter name".to_string(),
+                    )));
+                }
+                return Ok((Vec::new(), first_list));
+            }
         };
 
         if !matches!(next.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
+            if let Some(token) = first_untyped {
+                return Err(Box::new(ParseError::from_token(
+                    &token,
+                    "Expected ':' after parameter name".to_string(),
+                )));
+            }
             return Ok((Vec::new(), first_list));
         }
 
@@ -1565,8 +1579,15 @@ impl AstParser {
     fn parse_routine_header_list(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<Vec<Parameter>, Box<dyn Glitch>> {
+    ) -> Result<
+        (
+            Vec<Parameter>,
+            Option<fol_lexer::lexer::stage3::element::Element>,
+        ),
+        Box<dyn Glitch>,
+    > {
         let mut params = Vec::new();
+        let mut first_untyped = None;
 
         for _ in 0..128 {
             self.skip_ignorable(tokens);
@@ -1574,7 +1595,7 @@ impl AstParser {
 
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
                 let _ = tokens.bump();
-                return Ok(params);
+                return Ok((params, first_untyped));
             }
 
             if !token.key().is_ident() {
@@ -1584,16 +1605,43 @@ impl AstParser {
                 )));
             }
 
-            let name = token.con().trim().to_string();
+            let mut names = vec![token.con().trim().to_string()];
             let _ = tokens.bump();
 
             self.skip_ignorable(tokens);
+
+            loop {
+                let next = tokens.curr(false)?;
+                if matches!(next.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
+                    break;
+                }
+                if matches!(next.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
+                    let _ = tokens.bump();
+                    self.skip_ignorable(tokens);
+                    let name_token = tokens.curr(false)?;
+                    if !name_token.key().is_ident() {
+                        return Err(Box::new(ParseError::from_token(
+                            &name_token,
+                            "Expected parameter name after ','".to_string(),
+                        )));
+                    }
+                    names.push(name_token.con().trim().to_string());
+                    let _ = tokens.bump();
+                    self.skip_ignorable(tokens);
+                    continue;
+                }
+                break;
+            }
+
             let param_type = if let Ok(token) = tokens.curr(false) {
                 if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
                     let _ = tokens.bump();
                     self.skip_ignorable(tokens);
                     self.parse_type_reference_tokens(tokens)?
                 } else {
+                    if first_untyped.is_none() {
+                        first_untyped = Some(token.clone());
+                    }
                     FolType::Named {
                         name: "any".to_string(),
                     }
@@ -1630,29 +1678,33 @@ impl AstParser {
                 None
             };
 
-            params.push(Parameter {
-                name: name.clone(),
-                param_type,
-                is_borrowable: name.chars().all(|ch| {
-                    !ch.is_ascii_lowercase() && (ch.is_ascii_alphanumeric() || ch == '_')
-                }),
-                default,
-            });
+            for name in names {
+                params.push(Parameter {
+                    name: name.clone(),
+                    param_type: param_type.clone(),
+                    is_borrowable: name.chars().all(|ch| {
+                        !ch.is_ascii_lowercase() && (ch.is_ascii_alphanumeric() || ch == '_')
+                    }),
+                    default: default.clone(),
+                });
+            }
 
             self.skip_ignorable(tokens);
             let sep = tokens.curr(false)?;
-            if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
+            if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma))
+                || matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Semi))
+            {
                 let _ = tokens.bump();
                 continue;
             }
             if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
                 let _ = tokens.bump();
-                return Ok(params);
+                return Ok((params, first_untyped));
             }
 
             return Err(Box::new(ParseError::from_token(
                 &sep,
-                "Expected ',' or ')' after generic parameter".to_string(),
+                "Expected ',', ';', or ')' after generic parameter".to_string(),
             )));
         }
 
@@ -1846,17 +1898,36 @@ impl AstParser {
                 )));
             }
 
-            let param_name = token.con().trim().to_string();
+            let mut names = vec![token.con().trim().to_string()];
             let _ = tokens.bump();
-            self.skip_ignorable(tokens);
 
-            let colon = tokens.curr(false)?;
-            if !matches!(colon.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
-                return Err(Box::new(ParseError::from_token(
-                    &colon,
-                    "Expected ':' after parameter name".to_string(),
-                )));
+            loop {
+                self.skip_ignorable(tokens);
+                let next = tokens.curr(false)?;
+                if matches!(next.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
+                    break;
+                }
+                if !matches!(next.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
+                    return Err(Box::new(ParseError::from_token(
+                        &next,
+                        "Expected ':' after parameter name".to_string(),
+                    )));
+                }
+                let _ = tokens.bump();
+                self.skip_ignorable(tokens);
+
+                let name_token = tokens.curr(false)?;
+                if !name_token.key().is_ident() {
+                    return Err(Box::new(ParseError::from_token(
+                        &name_token,
+                        "Expected parameter name after ','".to_string(),
+                    )));
+                }
+                names.push(name_token.con().trim().to_string());
+                let _ = tokens.bump();
             }
+
+            let _colon = tokens.curr(false)?;
             let _ = tokens.bump();
             self.skip_ignorable(tokens);
 
@@ -1870,6 +1941,7 @@ impl AstParser {
 
                     let next = tokens.curr(false)?;
                     if matches!(next.key(), KEYWORD::Symbol(SYMBOL::Comma))
+                        || matches!(next.key(), KEYWORD::Symbol(SYMBOL::Semi))
                         || matches!(next.key(), KEYWORD::Symbol(SYMBOL::RoundC))
                         || next.key().is_terminal()
                     {
@@ -1888,18 +1960,22 @@ impl AstParser {
                 None
             };
 
-            params.push(Parameter {
-                name: param_name.clone(),
-                param_type,
-                is_borrowable: param_name.chars().all(|ch| {
-                    !ch.is_ascii_lowercase() && (ch.is_ascii_alphanumeric() || ch == '_')
-                }),
-                default,
-            });
+            for param_name in names {
+                params.push(Parameter {
+                    name: param_name.clone(),
+                    param_type: param_type.clone(),
+                    is_borrowable: param_name.chars().all(|ch| {
+                        !ch.is_ascii_lowercase() && (ch.is_ascii_alphanumeric() || ch == '_')
+                    }),
+                    default: default.clone(),
+                });
+            }
 
             self.skip_ignorable(tokens);
             let sep = tokens.curr(false)?;
-            if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
+            if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma))
+                || matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Semi))
+            {
                 let _ = tokens.bump();
                 continue;
             }
@@ -1910,7 +1986,7 @@ impl AstParser {
 
             return Err(Box::new(ParseError::from_token(
                 &sep,
-                "Expected ',' or ')' after parameter".to_string(),
+                "Expected ',', ';', or ')' after parameter".to_string(),
             )));
         }
 

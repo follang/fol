@@ -1885,6 +1885,109 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_routine_parameters_support_grouped_names_and_semicolon_separators() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_routine_grouped_params.fol")
+            .expect("Should read grouped routine parameters test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse grouped routine parameter declarations");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::FunDecl { name, params, .. }
+                            if name == "combine"
+                                && matches!(
+                                    params.as_slice(),
+                                    [
+                                        Parameter { name: first, param_type: FolType::Named { name: first_ty }, default: None, .. },
+                                        Parameter { name: second, param_type: FolType::Named { name: second_ty }, default: None, .. },
+                                        Parameter { name: label, param_type: FolType::Named { name: label_ty }, default: Some(AstNode::Literal(Literal::String(_))), .. }
+                                    ] if first == "a"
+                                        && second == "b"
+                                        && first_ty == "int"
+                                        && second_ty == "int"
+                                        && label == "label"
+                                        && label_ty == "str"
+                                )
+                        )
+                    }),
+                    "Routine headers should expand grouped parameter names and accept ';' separators"
+                );
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::ProDecl { name, params, .. }
+                            if name == "apply"
+                                && matches!(
+                                    params.as_slice(),
+                                    [
+                                        Parameter {
+                                            name: op_name,
+                                            param_type: FolType::Function { params: fn_params, return_type },
+                                            ..
+                                        },
+                                        Parameter { name: left, param_type: FolType::Named { name: left_ty }, .. },
+                                        Parameter { name: right, param_type: FolType::Named { name: right_ty }, .. }
+                                    ] if op_name == "op"
+                                        && matches!(
+                                            fn_params.as_slice(),
+                                            [FolType::Named { name: a_ty }, FolType::Named { name: b_ty }]
+                                                if a_ty == "int" && b_ty == "int"
+                                        )
+                                        && matches!(return_type.as_ref(), FolType::Named { name } if name == "int")
+                                        && left == "left"
+                                        && right == "right"
+                                        && left_ty == "int"
+                                        && right_ty == "int"
+                                )
+                        )
+                    }),
+                    "Grouped parameter parsing should also work inside braced function types"
+                );
+            }
+            _ => panic!("Expected program node"),
+        }
+    }
+
+    #[test]
+    fn test_grouped_parameters_missing_colon_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_routine_grouped_params_missing_colon.fol")
+                .expect("Should read malformed grouped routine parameters test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should reject grouped parameters without a shared type");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Expected ':' after parameter name"),
+            "Malformed grouped parameters should report the missing type separator, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            1,
+            "Grouped parameter parse error should point to the signature line"
+        );
+    }
+
+    #[test]
     fn test_parameter_default_missing_value_reports_parse_error() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_routine_default_param_missing_value.fol")
@@ -1963,7 +2066,7 @@ mod parser_tests {
 
         let first_message = parse_error.to_string();
         assert!(
-            first_message.contains("Expected ',' or ')' after generic parameter"),
+            first_message.contains("Expected ',', ';', or ')' after generic parameter"),
             "Malformed generic header should report missing separator, got: {}",
             first_message
         );
