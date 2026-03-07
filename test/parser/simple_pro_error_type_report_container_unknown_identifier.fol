@@ -1,0 +1,3 @@
+pro store(): int: str = {
+    report({missing_err});
+}
