@@ -471,6 +471,13 @@ impl AstParser {
             return None;
         }
 
+        if let Some(found_shape) = Self::non_scalar_report_expression_label(value) {
+            return Some(format!(
+                "Reported expression type '{}' is incompatible with routine error type '{}'",
+                found_shape, expected_name
+            ));
+        }
+
         let found_name =
             Self::infer_named_type_from_node(value, visible_types, routine_return_types)?;
         let found = Self::type_family_name(&found_name)?;
@@ -658,6 +665,14 @@ impl AstParser {
             name,
             "num" | "int" | "flt" | "float" | "i8" | "i16" | "i32" | "i64" | "i128" | "f32" | "f64"
         )
+    }
+
+    pub(super) fn non_scalar_report_expression_label(node: &AstNode) -> Option<&'static str> {
+        match node {
+            AstNode::ContainerLiteral { .. } => Some("container"),
+            AstNode::Range { .. } => Some("range"),
+            _ => None,
+        }
     }
 
     pub(super) fn consume_optional_semicolon(&self, tokens: &mut fol_lexer::lexer::stage3::Elements) {
