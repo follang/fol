@@ -366,6 +366,42 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_top_level_type_entry_parsing() {
+        let mut file_stream = FileStream::from_file("test/parser/simple_typ_entry.fol")
+            .expect("Should read type entry test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should parse entry type declarations");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                assert!(
+                    declarations.iter().any(|node| {
+                        matches!(
+                            node,
+                            AstNode::TypeDecl {
+                                name,
+                                type_def: TypeDefinition::Entry { variants },
+                                ..
+                            }
+                            if name == "Color"
+                                && matches!(variants.get("BLUE"), Some(Some(FolType::Named { name })) if name == "str")
+                                && matches!(variants.get("RED"), Some(Some(FolType::Named { name })) if name == "str")
+                                && matches!(variants.get("BLACK"), Some(Some(FolType::Named { name })) if name == "str")
+                                && matches!(variants.get("WHITE"), Some(Some(FolType::Named { name })) if name == "str")
+                        )
+                    }),
+                    "Parser should build TypeDecl entry variants with shared type hints"
+                );
+            }
+            _ => panic!("Should return Program node"),
+        }
+    }
+
+    #[test]
     fn test_unknown_type_option_reports_parse_error() {
         let mut file_stream =
             FileStream::from_file("test/parser/simple_typ_options_unknown.fol")
@@ -392,6 +428,36 @@ mod parser_tests {
             parse_error.line(),
             1,
             "Type option parse error should point to the declaration line"
+        );
+    }
+
+    #[test]
+    fn test_type_entry_missing_variant_name_reports_parse_error() {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_typ_entry_missing_variant_name.fol")
+                .expect("Should read malformed type entry test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should fail when an entry variant name is missing");
+
+        let parse_error = errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError");
+
+        let first_message = parse_error.to_string();
+        assert!(
+            first_message.contains("Expected entry variant name"),
+            "Malformed type entry should report missing variant name, got: {}",
+            first_message
+        );
+        assert_eq!(
+            parse_error.line(),
+            2,
+            "Type entry parse error should point to the malformed variant line"
         );
     }
 

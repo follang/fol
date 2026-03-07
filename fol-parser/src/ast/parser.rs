@@ -925,7 +925,21 @@ impl AstParser {
         let _ = tokens.bump();
 
         self.skip_ignorable(tokens);
-        let type_def = if matches!(tokens.curr(false)?.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
+        let type_def = if tokens.curr(false)?.con().trim() == "ent" {
+            let _ = tokens.bump();
+            self.skip_ignorable(tokens);
+
+            let assign = tokens.curr(false)?;
+            if !matches!(assign.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
+                return Err(Box::new(ParseError::from_token(
+                    &assign,
+                    "Expected '=' after entry type marker".to_string(),
+                )));
+            }
+            let _ = tokens.bump();
+            self.skip_ignorable(tokens);
+            self.parse_entry_type_definition(tokens)?
+        } else if matches!(tokens.curr(false)?.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
             self.parse_record_type_definition(tokens)?
         } else {
             let target = self.parse_type_reference_tokens(tokens)?;
@@ -1001,6 +1015,93 @@ impl AstParser {
 
         Err(Box::new(ParseError {
             message: "Type options exceeded parser limit".to_string(),
+            file: None,
+            line: 0,
+            column: 0,
+            length: 0,
+        }))
+    }
+
+    fn parse_entry_type_definition(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<super::TypeDefinition, Box<dyn Glitch>> {
+        let open = tokens.curr(false)?;
+        if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
+            return Err(Box::new(ParseError::from_token(
+                &open,
+                "Expected '{' to start type entry definition".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+
+        let mut variants = HashMap::new();
+        for _ in 0..256 {
+            self.skip_ignorable(tokens);
+            let token = tokens.curr(false)?;
+
+            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) {
+                let _ = tokens.bump();
+                return Ok(super::TypeDefinition::Entry { variants });
+            }
+
+            if !matches!(token.key(), KEYWORD::Keyword(BUILDIN::Var)) {
+                return Err(Box::new(ParseError::from_token(
+                    &token,
+                    "Expected 'var' in type entry definition".to_string(),
+                )));
+            }
+            let _ = tokens.bump();
+
+            let mut names = Vec::new();
+            for _ in 0..64 {
+                self.skip_ignorable(tokens);
+                let name_token = tokens.curr(false)?;
+                if !name_token.key().is_ident() {
+                    return Err(Box::new(ParseError::from_token(
+                        &name_token,
+                        "Expected entry variant name".to_string(),
+                    )));
+                }
+                names.push(name_token.con().trim().to_string());
+                let _ = tokens.bump();
+
+                self.skip_ignorable(tokens);
+                let sep = tokens.curr(false)?;
+                if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
+                    let _ = tokens.bump();
+                    continue;
+                }
+                break;
+            }
+
+            self.skip_ignorable(tokens);
+            let mut variant_type = None;
+            if let Ok(token) = tokens.curr(false) {
+                if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
+                    let _ = tokens.bump();
+                    self.skip_ignorable(tokens);
+                    variant_type = Some(self.parse_type_reference_tokens(tokens)?);
+                }
+            }
+
+            self.skip_ignorable(tokens);
+            if let Ok(token) = tokens.curr(false) {
+                if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
+                    let _ = tokens.bump();
+                    let _ = self.parse_logical_expression(tokens)?;
+                }
+            }
+
+            for name in names {
+                variants.insert(name, variant_type.clone());
+            }
+
+            self.consume_optional_semicolon(tokens);
+        }
+
+        Err(Box::new(ParseError {
+            message: "Type entry definition exceeded parser limit".to_string(),
             file: None,
             line: 0,
             column: 0,
