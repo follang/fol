@@ -105,8 +105,34 @@ impl AstParser {
             }
         }
 
-        let binding = self.parse_rolling_binding(tokens)?;
-        Ok(vec![binding])
+        let mut bindings = Vec::new();
+        let mut seen_names = HashSet::new();
+        for _ in 0..64 {
+            let binding = self.parse_rolling_binding(tokens)?;
+            if !seen_names.insert(binding.name.clone()) {
+                return Err(Box::new(ParseError {
+                    message: format!("Duplicate rolling binding '{}'", binding.name),
+                    file: None,
+                    line: 0,
+                    column: 0,
+                    length: 0,
+                }));
+            }
+            bindings.push(binding);
+            self.skip_ignorable(tokens);
+
+            let Ok(sep) = tokens.curr(false) else {
+                break;
+            };
+            if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
+                let _ = tokens.bump();
+                self.skip_ignorable(tokens);
+                continue;
+            }
+            break;
+        }
+
+        Ok(bindings)
     }
 
     pub(super) fn parse_rolling_binding(

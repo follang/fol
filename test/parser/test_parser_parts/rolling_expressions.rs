@@ -71,6 +71,41 @@ fn test_parenthesized_multi_binding_rolling_expression_parses() {
 }
 
 #[test]
+fn test_bare_multi_binding_rolling_expression_parses() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_rolling_bare_multi_binding.fol")
+            .expect("Should read bare multi-binding rolling expression fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept bare multi-binding rolling expressions");
+
+    let return_value = match ast {
+        AstNode::Program { declarations } => declarations
+            .iter()
+            .find_map(|node| match node {
+                AstNode::Return { value: Some(value) } => Some(value.as_ref().clone()),
+                _ => None,
+            })
+            .expect("Program should contain return value"),
+        _ => panic!("Expected program node"),
+    };
+
+    assert!(
+        matches!(
+            return_value,
+            AstNode::Rolling { bindings, .. }
+                if bindings.len() == 2
+                    && bindings[0].name == "x"
+                    && bindings[1].name == "y"
+        ),
+        "Bare rolling syntax should keep both binders"
+    );
+}
+
+#[test]
 fn test_rolling_expression_supports_optional_filter() {
     let mut file_stream =
         FileStream::from_file("test/parser/simple_fun_rolling_filtered.fol")
