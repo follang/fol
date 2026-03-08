@@ -8,6 +8,10 @@ impl AstParser {
         self.skip_ignorable(tokens);
         let token = tokens.curr(false)?;
 
+        if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Return)) {
+            return self.parse_return_stmt(tokens);
+        }
+
         if matches!(
             token.key(),
             KEYWORD::Keyword(BUILDIN::Panic)
