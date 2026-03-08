@@ -1,5 +1,5 @@
 use super::*;
-use fol_parser::ast::StandardKind;
+use fol_parser::ast::{DeclOption, StandardKind};
 
 #[test]
 fn test_protocol_standard_declaration_parsing() {
@@ -83,6 +83,54 @@ fn test_extended_standard_declaration_parsing() {
         }
         _ => panic!("Expected program node"),
     }
+}
+
+#[test]
+fn test_standard_declaration_visibility_options_parse() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_std_visibility_options.fol")
+        .expect("Should read visibility-option standard test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse standard visibility options");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::StdDecl { name, options, .. }
+                if name == "geometry" && options == &vec![DeclOption::Export]
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_standard_declaration_rejects_conflicting_visibility_options() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_std_conflicting_options.fol")
+        .expect("Should read conflicting standard option test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject conflicting standard options");
+
+    let parse_error = errors
+        .first()
+        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        .expect("First parser error should be ParseError");
+
+    assert!(
+        parse_error
+            .to_string()
+            .contains("Conflicting standard visibility options"),
+        "Conflicting std options should report a targeted error, got: {}",
+        parse_error
+    );
 }
 
 #[test]
@@ -308,7 +356,7 @@ fn test_standard_rejects_unknown_declaration_options() {
     assert!(
         parse_error
             .to_string()
-            .contains("Standard options currently support only empty brackets"),
+            .contains("Unknown standard option"),
         "Expected std option error, got: {}",
         parse_error
     );

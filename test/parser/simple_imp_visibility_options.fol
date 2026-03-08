@@ -1,2 +1,2 @@
-imp[export, normal] Self: ID = {
+imp[export] Self: ID = {
 }

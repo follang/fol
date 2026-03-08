@@ -1,6 +1,69 @@
 use super::*;
 
 impl AstParser {
+    pub(super) fn validate_decl_visibility_options(
+        &self,
+        options: &[DeclOption],
+        context: &str,
+    ) -> Result<(), Box<dyn Glitch>> {
+        let mut saw_export = false;
+        let mut saw_hidden = false;
+        let mut saw_normal = false;
+
+        for option in options {
+            match option {
+                DeclOption::Export => {
+                    if saw_export {
+                        return Err(Box::new(ParseError {
+                            message: format!("Duplicate {} option 'export'", context),
+                            file: None,
+                            line: 1,
+                            column: 1,
+                            length: 1,
+                        }));
+                    }
+                    saw_export = true;
+                }
+                DeclOption::Hidden => {
+                    if saw_hidden {
+                        return Err(Box::new(ParseError {
+                            message: format!("Duplicate {} option 'hidden'", context),
+                            file: None,
+                            line: 1,
+                            column: 1,
+                            length: 1,
+                        }));
+                    }
+                    saw_hidden = true;
+                }
+                DeclOption::Normal => {
+                    if saw_normal {
+                        return Err(Box::new(ParseError {
+                            message: format!("Duplicate {} option 'normal'", context),
+                            file: None,
+                            line: 1,
+                            column: 1,
+                            length: 1,
+                        }));
+                    }
+                    saw_normal = true;
+                }
+            }
+        }
+
+        if (saw_export as u8 + saw_hidden as u8 + saw_normal as u8) > 1 {
+            return Err(Box::new(ParseError {
+                message: format!("Conflicting {} visibility options", context),
+                file: None,
+                line: 1,
+                column: 1,
+                length: 1,
+            }));
+        }
+
+        Ok(())
+    }
+
     pub(super) fn parse_decl_visibility_options(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
@@ -23,6 +86,7 @@ impl AstParser {
 
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
                 let _ = tokens.bump();
+                self.validate_decl_visibility_options(&options, context)?;
                 return Ok(options);
             }
 
@@ -48,6 +112,7 @@ impl AstParser {
             }
             if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
                 let _ = tokens.bump();
+                self.validate_decl_visibility_options(&options, context)?;
                 return Ok(options);
             }
 

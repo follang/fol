@@ -146,11 +146,37 @@ fn test_implementation_declaration_visibility_options_parse() {
             assert!(declarations.iter().any(|node| matches!(
                 node,
                 AstNode::ImpDecl { name, options, .. }
-                if name == "Self" && options == &vec![DeclOption::Export, DeclOption::Normal]
+                if name == "Self" && options == &vec![DeclOption::Export]
             )));
         }
         _ => panic!("Expected program node"),
     }
+}
+
+#[test]
+fn test_implementation_declaration_rejects_conflicting_visibility_options() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_imp_conflicting_options.fol")
+            .expect("Should read conflicting imp option test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject conflicting implementation options");
+
+    let parse_error = errors
+        .first()
+        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        .expect("First parser error should be ParseError");
+
+    assert!(
+        parse_error
+            .to_string()
+            .contains("Conflicting implementation visibility options"),
+        "Conflicting imp options should report a targeted error, got: {}",
+        parse_error
+    );
 }
 
 #[test]
