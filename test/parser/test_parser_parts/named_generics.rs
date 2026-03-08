@@ -101,3 +101,37 @@ fn test_single_quoted_generic_headers_parse() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_named_generic_constraints_accept_quoted_type_references() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_named_generic_constraints.fol")
+            .expect("Should read named generic constraints fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept quoted type references in generic constraints");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            let has_expected_constraints = |generics: &Vec<fol_parser::ast::Generic>| {
+                generics.len() == 2
+                    && matches!(generics[0].constraints.as_slice(), [FolType::Named { name }] if name == "Bound")
+                    && matches!(generics[1].constraints.as_slice(), [FolType::Named { name }] if name == "pkg::Shape")
+            };
+
+            assert!(declarations.iter().any(|node| {
+                matches!(node, AstNode::FunDecl { generics, .. } if has_expected_constraints(generics))
+            }));
+            assert!(declarations.iter().any(|node| {
+                matches!(node, AstNode::TypeDecl { generics, .. } if has_expected_constraints(generics))
+            }));
+            assert!(declarations.iter().any(|node| {
+                matches!(node, AstNode::ImpDecl { generics, .. } if has_expected_constraints(generics))
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
