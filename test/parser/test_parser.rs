@@ -81,6 +81,9 @@ mod quoted_member_access;
 #[path = "test_parser_parts/quoted_call_expressions.rs"]
 mod quoted_call_expressions;
 #[cfg(test)]
+#[path = "test_parser_parts/quoted_bindings.rs"]
+mod quoted_bindings;
+#[cfg(test)]
 #[path = "test_parser_parts/quoted_root_statements.rs"]
 mod quoted_root_statements;
 #[cfg(test)]

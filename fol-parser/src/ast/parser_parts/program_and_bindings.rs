@@ -886,13 +886,13 @@ impl AstParser {
 
         for _ in 0..256 {
             let name_token = tokens.curr(false)?;
-            if !Self::token_can_be_logical_name(&name_token.key()) {
-                return Err(Box::new(ParseError::from_token(
+            let name = Self::token_to_named_label(&name_token).ok_or_else(|| {
+                Box::new(ParseError::from_token(
                     &name_token,
                     format!("Expected identifier after '{}'", keyword),
-                )));
-            }
-            names.push(name_token.con().trim().to_string());
+                )) as Box<dyn Glitch>
+            })?;
+            names.push(name);
             let _ = tokens.bump();
 
             self.skip_ignorable(tokens);
