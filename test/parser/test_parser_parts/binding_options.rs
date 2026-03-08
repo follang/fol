@@ -213,3 +213,51 @@ fn test_binding_storage_and_ownership_options_parse() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_binding_conflicting_options_report_parse_error() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_binding_option_conflicts.fol")
+        .expect("Should read conflicting binding options fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject conflicting binding options");
+
+    let parse_error = errors
+        .first()
+        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        .expect("First parser error should be ParseError");
+
+    let first_message = parse_error.to_string();
+    assert!(
+        first_message.contains("Conflicting binding option 'mut' with 'imu'"),
+        "Conflicting binding options should report the option conflict, got: {}",
+        first_message
+    );
+}
+
+#[test]
+fn test_binding_unknown_option_reports_parse_error() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_binding_unknown_option.fol")
+        .expect("Should read unknown binding option fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject unknown binding options");
+
+    let parse_error = errors
+        .first()
+        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        .expect("First parser error should be ParseError");
+
+    let first_message = parse_error.to_string();
+    assert!(
+        first_message.contains("Unknown binding option"),
+        "Unknown binding option should produce explicit diagnostic, got: {}",
+        first_message
+    );
+}

@@ -43,6 +43,21 @@ impl AstParser {
                     )));
                 }
             };
+
+            if let Some(existing) = parsed_options
+                .iter()
+                .find(|existing| self.binding_options_conflict(existing, &option))
+            {
+                return Err(Box::new(ParseError::from_token(
+                    &token,
+                    format!(
+                        "Conflicting binding option '{}' with '{}'",
+                        Self::binding_option_label(existing),
+                        Self::binding_option_label(&option)
+                    ),
+                )));
+            }
+
             parsed_options.push(option);
             let _ = tokens.bump();
 
@@ -101,5 +116,34 @@ impl AstParser {
         }
 
         base
+    }
+
+    pub(super) fn binding_options_conflict(&self, lhs: &VarOption, rhs: &VarOption) -> bool {
+        lhs == rhs
+            || matches!(
+                (lhs, rhs),
+                (VarOption::Mutable, VarOption::Immutable)
+                    | (VarOption::Immutable, VarOption::Mutable)
+                    | (VarOption::Export, VarOption::Hidden)
+                    | (VarOption::Export, VarOption::Normal)
+                    | (VarOption::Hidden, VarOption::Export)
+                    | (VarOption::Hidden, VarOption::Normal)
+                    | (VarOption::Normal, VarOption::Export)
+                    | (VarOption::Normal, VarOption::Hidden)
+            )
+    }
+
+    pub(super) fn binding_option_label(option: &VarOption) -> &'static str {
+        match option {
+            VarOption::Mutable => "mut",
+            VarOption::Immutable => "imu",
+            VarOption::Static => "sta",
+            VarOption::Reactive => "rac",
+            VarOption::Export => "exp",
+            VarOption::Normal => "nor",
+            VarOption::Hidden => "hid",
+            VarOption::New => "new",
+            VarOption::Borrowing => "bor",
+        }
     }
 }
