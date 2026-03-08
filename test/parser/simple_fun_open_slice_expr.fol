@@ -1,0 +1,11 @@
+fun take_head(values: vec[int]): vec[int] = {
+    return values[:4];
+}
+
+fun take_tail(values: vec[int]): vec[int] = {
+    return values[2:];
+}
+
+fun take_all(values: vec[int]): vec[int] = {
+    return values[:];
+}
