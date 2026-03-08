@@ -102,6 +102,9 @@ mod quoted_use_names;
 #[path = "test_parser_parts/quoted_type_members.rs"]
 mod quoted_type_members;
 #[cfg(test)]
+#[path = "test_parser_parts/quoted_receiver_types.rs"]
+mod quoted_receiver_types;
+#[cfg(test)]
 #[path = "test_parser_parts/quoted_type_references.rs"]
 mod quoted_type_references;
 #[cfg(test)]
