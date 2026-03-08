@@ -261,23 +261,42 @@ impl AstParser {
         let _ = tokens.bump();
         self.skip_ignorable(tokens);
 
-        let pattern = self.parse_logical_expression(tokens)?;
-        self.skip_ignorable(tokens);
+        let mut patterns = Vec::new();
+        for _ in 0..64 {
+            patterns.push(self.parse_logical_expression(tokens)?);
+            self.skip_ignorable(tokens);
 
-        let close = tokens.curr(false)?;
-        if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
+            let token = tokens.curr(false)?;
+            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
+                let _ = tokens.bump();
+                self.skip_ignorable(tokens);
+                continue;
+            }
+            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
+                let _ = tokens.bump();
+                break;
+            }
+
             return Err(Box::new(ParseError::from_token(
-                &close,
-                "Expected closing ']' for availability expression".to_string(),
+                &token,
+                "Expected ',' or ']' in availability expression".to_string(),
             )));
         }
-        let _ = tokens.bump();
+
+        let target = if patterns.len() == 1 {
+            AstNode::IndexAccess {
+                container: Box::new(node),
+                index: Box::new(patterns.pop().expect("single pattern")),
+            }
+        } else {
+            AstNode::PatternAccess {
+                container: Box::new(node),
+                patterns,
+            }
+        };
 
         Ok(AstNode::AvailabilityAccess {
-            target: Box::new(AstNode::IndexAccess {
-                container: Box::new(node),
-                index: Box::new(pattern),
-            }),
+            target: Box::new(target),
         })
     }
 }

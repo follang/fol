@@ -124,6 +124,12 @@ pub enum AstNode {
         reverse: bool,
     },
 
+    /// Pattern access: container[a, b, ...]
+    PatternAccess {
+        container: Box<AstNode>,
+        patterns: Vec<AstNode>,
+    },
+
     /// Availability access: container:[pattern] / access_expr:
     AvailabilityAccess { target: Box<AstNode> },
 
@@ -702,6 +708,14 @@ impl AstNode {
                 if let Some(end) = end {
                     children.push(end.as_ref());
                 }
+                children
+            }
+            AstNode::PatternAccess {
+                container,
+                patterns,
+            } => {
+                let mut children = vec![container.as_ref()];
+                children.extend(patterns.iter());
                 children
             }
             AstNode::AvailabilityAccess { target } => {
