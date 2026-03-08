@@ -146,7 +146,7 @@ impl AstParser {
                 let _ = tokens.bump();
 
                 self.skip_ignorable(tokens);
-                let body = self.parse_case_body(tokens)?;
+                let body = self.parse_branch_body(tokens)?;
                 cases.push(WhenCase::Case { condition, body });
                 continue;
             }
@@ -178,7 +178,7 @@ impl AstParser {
                 let _ = tokens.bump();
 
                 self.skip_ignorable(tokens);
-                let body = self.parse_case_body(tokens)?;
+                let body = self.parse_branch_body(tokens)?;
                 cases.push(WhenCase::Of { type_match, body });
                 continue;
             }
@@ -208,7 +208,7 @@ impl AstParser {
                 let _ = tokens.bump();
 
                 self.skip_ignorable(tokens);
-                let body = self.parse_case_body(tokens)?;
+                let body = self.parse_branch_body(tokens)?;
                 cases.push(WhenCase::Is { value, body });
                 continue;
             }
@@ -238,7 +238,7 @@ impl AstParser {
                 let _ = tokens.bump();
 
                 self.skip_ignorable(tokens);
-                let body = self.parse_case_body(tokens)?;
+                let body = self.parse_branch_body(tokens)?;
                 cases.push(WhenCase::In { range, body });
                 continue;
             }
@@ -268,7 +268,7 @@ impl AstParser {
                 let _ = tokens.bump();
 
                 self.skip_ignorable(tokens);
-                let body = self.parse_case_body(tokens)?;
+                let body = self.parse_branch_body(tokens)?;
                 cases.push(WhenCase::Has { member, body });
                 continue;
             }
@@ -298,13 +298,13 @@ impl AstParser {
                 let _ = tokens.bump();
 
                 self.skip_ignorable(tokens);
-                let body = self.parse_case_body(tokens)?;
+                let body = self.parse_branch_body(tokens)?;
                 cases.push(WhenCase::On { channel, body });
                 continue;
             }
 
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
-                let body = self.parse_case_body(tokens)?;
+                let body = self.parse_branch_body(tokens)?;
                 default = Some(body);
                 continue;
             }
@@ -321,7 +321,7 @@ impl AstParser {
                     )));
                 }
 
-                let body = self.parse_case_body(tokens)?;
+                let body = self.parse_branch_body(tokens)?;
                 default = Some(body);
                 continue;
             }
@@ -373,7 +373,7 @@ impl AstParser {
         let _ = tokens.bump();
 
         self.skip_ignorable(tokens);
-        let then_body = self.parse_case_body(tokens)?;
+        let then_body = self.parse_branch_body(tokens)?;
 
         self.skip_ignorable(tokens);
         let else_body = if let Ok(token) = tokens.curr(false) {
@@ -384,18 +384,24 @@ impl AstParser {
                 let else_target = tokens.curr(false)?;
                 if matches!(else_target.key(), KEYWORD::Keyword(BUILDIN::If)) {
                     Some(vec![self.parse_if_stmt(tokens)?])
-                } else if matches!(else_target.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
-                    Some(self.parse_case_body(tokens)?)
+                } else if matches!(
+                    else_target.key(),
+                    KEYWORD::Symbol(SYMBOL::CurlyO) | KEYWORD::Operator(OPERATOR::Flow)
+                ) {
+                    Some(self.parse_branch_body(tokens)?)
                 } else {
                     return Err(Box::new(ParseError::from_token(
                         &else_target,
-                        "Expected 'if' or '{' after else".to_string(),
+                        "Expected 'if', '{', or '=>' after else".to_string(),
                     )));
                 }
             } else if matches!(token.key(), KEYWORD::Keyword(BUILDIN::If)) {
                 Some(vec![self.parse_if_stmt(tokens)?])
-            } else if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
-                Some(self.parse_case_body(tokens)?)
+            } else if matches!(
+                token.key(),
+                KEYWORD::Symbol(SYMBOL::CurlyO) | KEYWORD::Operator(OPERATOR::Flow)
+            ) {
+                Some(self.parse_branch_body(tokens)?)
             } else {
                 None
             }
@@ -413,16 +419,25 @@ impl AstParser {
         })
     }
 
-    pub(super) fn parse_case_body(
+    pub(super) fn parse_branch_body(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
         self.skip_ignorable(tokens);
-        let open = tokens.curr(false)?;
-        if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
+        let token = tokens.curr(false)?;
+        if matches!(token.key(), KEYWORD::Operator(OPERATOR::Flow)) {
+            let _ = tokens.bump();
+            self.skip_ignorable(tokens);
+
+            let expr = self.parse_logical_expression(tokens)?;
+            self.consume_optional_semicolon(tokens);
+            return Ok(vec![expr]);
+        }
+
+        if !matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
             return Err(Box::new(ParseError::from_token(
-                &open,
-                "Expected '{' to start case/default body".to_string(),
+                &token,
+                "Expected '{' or '=>' to start case/default body".to_string(),
             )));
         }
         let _ = tokens.bump();
