@@ -758,6 +758,20 @@ impl AstParser {
 
             let _ = tokens.bump();
             inner
+        } else if matches!(token.key(), KEYWORD::Literal(LITERAL::Stringy))
+            && matches!(
+                self.next_significant_key_from_window(tokens),
+                Some(KEYWORD::Symbol(SYMBOL::RoundO))
+            )
+        {
+            let name = Self::token_to_named_label(&token).ok_or_else(|| {
+                Box::new(ParseError::from_token(
+                    &token,
+                    "Expected quoted callable name".to_string(),
+                )) as Box<dyn Glitch>
+            })?;
+            let _ = tokens.bump();
+            AstNode::Identifier { name }
         } else {
             let node = self.parse_primary(&token)?;
             let _ = tokens.bump();
