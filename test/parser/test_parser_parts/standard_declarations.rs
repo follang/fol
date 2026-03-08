@@ -56,3 +56,31 @@ fn test_blueprint_standard_declaration_parsing() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_extended_standard_declaration_parsing() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_std_extended.fol")
+        .expect("Should read extended standard test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse extended standards");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::StdDecl { name, kind: StandardKind::Extended, body }
+                    if name == "geometry"
+                        && body.len() == 2
+                        && matches!(&body[0], AstNode::FunDecl { name, .. } if name == "area")
+                        && matches!(&body[1], AstNode::VarDecl { name, .. } if name == "color")
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
