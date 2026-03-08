@@ -1,0 +1,14 @@
+typ Parser: rec = { }
+
+fun caller_forward_quoted_method_overload_mismatch(tool: Parser, a: int, b: int): int : str = {
+    report tool."$make_err"(a, b);
+    return 0;
+}
+
+fun (Parser)"$make_err"(code: int): str = {
+    return "ok";
+}
+
+fun (Parser)"$make_err"(code: int, mode: int): int = {
+    return code + mode;
+}
