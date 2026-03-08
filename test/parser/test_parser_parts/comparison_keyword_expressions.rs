@@ -49,3 +49,53 @@ fn test_function_return_parses_in_expression() {
         "'in' expressions should infer bool type",
     );
 }
+
+#[test]
+fn test_function_return_parses_has_expression() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_fun_has_expr.fol")
+        .expect("Should read has-expression fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept 'has' expressions");
+
+    let return_expr = match ast {
+        AstNode::Program { declarations } => declarations
+            .iter()
+            .find_map(|node| {
+                if let AstNode::FunDecl { body, .. } = node {
+                    body.iter().find_map(|stmt| {
+                        if let AstNode::Return { value: Some(value) } = stmt {
+                            Some(value.as_ref().clone())
+                        } else {
+                            None
+                        }
+                    })
+                } else {
+                    None
+                }
+            })
+            .expect("Function body should include return expression"),
+        _ => panic!("Expected program node"),
+    };
+
+    assert!(
+        matches!(
+            return_expr,
+            AstNode::BinaryOp {
+                op: fol_parser::ast::BinaryOperator::Has,
+                ref left,
+                ref right,
+            } if matches!(left.as_ref(), AstNode::Identifier { name } if name == "user")
+                && matches!(right.as_ref(), AstNode::Identifier { name } if name == "name")
+        ),
+        "Return expression should lower into BinaryOperator::Has",
+    );
+    assert_eq!(
+        return_expr.get_type(),
+        Some(FolType::Bool),
+        "'has' expressions should infer bool type",
+    );
+}

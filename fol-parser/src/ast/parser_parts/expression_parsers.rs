@@ -411,6 +411,7 @@ impl AstParser {
             let next_key = self.next_significant_key_from_window(tokens);
             let op_text = op_token.con().trim().to_string();
             let (binary_op, consume_count) = match op_token.key() {
+                KEYWORD::Keyword(BUILDIN::Has) => (Some(BinaryOperator::Has), 1),
                 KEYWORD::Keyword(BUILDIN::In) => (Some(BinaryOperator::In), 1),
                 KEYWORD::Operator(OPERATOR::Equal) => (Some(BinaryOperator::Eq), 1),
                 KEYWORD::Operator(OPERATOR::Noteq) => (Some(BinaryOperator::Ne), 1),
