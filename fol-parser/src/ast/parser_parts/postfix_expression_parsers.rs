@@ -64,7 +64,22 @@ impl AstParser {
                     node = self.parse_index_or_slice_expression(tokens, node)?;
                 }
                 KEYWORD::Symbol(SYMBOL::Colon) => {
-                    node = self.parse_prefix_availability_expression(tokens, node)?;
+                    let next_key = self.next_significant_key_from_window(tokens);
+                    if matches!(next_key, Some(KEYWORD::Symbol(SYMBOL::SquarO))) {
+                        node = self.parse_prefix_availability_expression(tokens, node)?;
+                    } else if matches!(
+                        node,
+                        AstNode::IndexAccess { .. }
+                            | AstNode::SliceAccess { .. }
+                            | AstNode::PatternAccess { .. }
+                    ) {
+                        let _ = tokens.bump();
+                        node = AstNode::AvailabilityAccess {
+                            target: Box::new(node),
+                        };
+                    } else {
+                        break;
+                    }
                 }
                 _ => break,
             }

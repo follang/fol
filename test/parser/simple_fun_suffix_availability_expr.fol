@@ -1,0 +1,7 @@
+fun can_find(parent: any, values: any): bol = {
+    return parent["bob", "alice"]:;
+}
+
+fun has_window(values: any): bol = {
+    return values[2:4]:;
+}
