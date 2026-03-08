@@ -229,6 +229,9 @@ pub enum AstNode {
     /// Block: { statements }
     Block { statements: Vec<AstNode> },
 
+    /// Inquiry clause attached to a routine
+    Inquiry { target: String, body: Vec<AstNode> },
+
     /// Program root
     Program { declarations: Vec<AstNode> },
 }
@@ -661,6 +664,7 @@ impl AstNode {
                 return_type: Box::new(return_type.clone().unwrap_or(FolType::Any)),
             }),
             AstNode::AvailabilityAccess { .. } => Some(FolType::Bool),
+            AstNode::Inquiry { .. } => None,
 
             _ => None,
         }
@@ -686,6 +690,7 @@ impl AstNode {
             | AstNode::SegDecl { body, .. }
             | AstNode::ImpDecl { body, .. }
             | AstNode::StdDecl { body, .. } => body.iter().collect(),
+            AstNode::Inquiry { body, .. } => body.iter().collect(),
             AstNode::BinaryOp { left, right, .. } => {
                 vec![left.as_ref(), right.as_ref()]
             }

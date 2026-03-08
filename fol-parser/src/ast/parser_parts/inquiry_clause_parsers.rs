@@ -280,6 +280,7 @@ impl AstParser {
                 "Expected 'self' in inquiry clause".to_string(),
             )));
         }
+        let target_name = target.con().trim().to_string();
         let _ = tokens.bump();
 
         self.skip_ignorable(tokens);
@@ -302,7 +303,10 @@ impl AstParser {
         }
         let _ = tokens.bump();
 
-        self.parse_inquiry_body(tokens)
+        Ok(vec![AstNode::Inquiry {
+            target: target_name,
+            body: self.parse_inquiry_body(tokens)?,
+        }])
     }
 
     fn parse_inquiry_body(
