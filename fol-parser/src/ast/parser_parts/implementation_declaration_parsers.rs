@@ -15,6 +15,8 @@ impl AstParser {
 
         let _ = tokens.bump();
         self.skip_ignorable(tokens);
+        self.parse_empty_imp_options(tokens)?;
+        self.skip_ignorable(tokens);
 
         let name_token = tokens.curr(false)?;
         if !Self::token_can_be_logical_name(&name_token.key()) {
@@ -68,5 +70,32 @@ impl AstParser {
             target,
             body,
         })
+    }
+
+    fn parse_empty_imp_options(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<(), Box<dyn Glitch>> {
+        let open = match tokens.curr(false) {
+            Ok(token) => token,
+            Err(_) => return Ok(()),
+        };
+
+        if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::SquarO)) {
+            return Ok(());
+        }
+
+        let _ = tokens.bump();
+        self.skip_ignorable(tokens);
+
+        let close = tokens.curr(false)?;
+        if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
+            return Err(Box::new(ParseError::from_token(
+                &close,
+                "Implementation options currently support only empty brackets".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+        Ok(())
     }
 }

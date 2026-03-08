@@ -52,3 +52,49 @@ fn test_implementation_declaration_parsing_inside_function_bodies() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_implementation_declaration_accepts_empty_option_brackets() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_imp_empty_options.fol")
+        .expect("Should read empty-option implementation declaration test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept imp[] declarations");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(node, AstNode::ImpDecl { name, .. } if name == "Self")
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_implementation_declaration_rejects_unknown_options() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_imp_unknown_option.fol")
+        .expect("Should read malformed imp option test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject non-empty imp option lists");
+
+    let parse_error = errors
+        .first()
+        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        .expect("First parser error should be ParseError");
+
+    assert!(
+        parse_error
+            .to_string()
+            .contains("Implementation options currently support only empty brackets"),
+        "Malformed imp option list should report unsupported options, got: {}",
+        parse_error
+    );
+}
