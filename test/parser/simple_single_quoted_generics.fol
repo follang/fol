@@ -1,0 +1,13 @@
+fun demo('get', 'item')(value: int): int = {
+    return value;
+}
+
+typ Box('get', 'item'): rec = {
+    value: int;
+}
+
+imp('get', 'item') Self: Pair = {
+    fun run(): int = {
+        return 1;
+    }
+}

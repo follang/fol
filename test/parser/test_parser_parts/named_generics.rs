@@ -74,3 +74,30 @@ fn test_implementation_generic_headers_accept_keyword_and_quoted_names() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_single_quoted_generic_headers_parse() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_single_quoted_generics.fol")
+        .expect("Should read single-quoted generic-header fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept single-quoted generic names");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(node, AstNode::FunDecl { generics, .. } if generics.len() == 2 && generics[0].name == "get" && generics[1].name == "item")
+            }));
+            assert!(declarations.iter().any(|node| {
+                matches!(node, AstNode::TypeDecl { generics, .. } if generics.len() == 2 && generics[0].name == "get" && generics[1].name == "item")
+            }));
+            assert!(declarations.iter().any(|node| {
+                matches!(node, AstNode::ImpDecl { generics, .. } if generics.len() == 2 && generics[0].name == "get" && generics[1].name == "item")
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
