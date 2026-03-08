@@ -1,0 +1,4 @@
+fun demo(value: int): int = {
+    var result: int = value | check(this);
+    return result;
+}
