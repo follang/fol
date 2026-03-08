@@ -288,6 +288,57 @@ fn test_def_with_single_quoted_name_parsing() {
 }
 
 #[test]
+fn test_def_with_empty_option_brackets_parsing() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_def_empty_options.fol")
+        .expect("Should read empty-options definition test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept empty def option brackets");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::DefDecl {
+                    name,
+                    def_type: FolType::Block { name: block_name },
+                    body,
+                }
+                if name == "mark" && block_name.is_empty() && body.is_empty()
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_def_rejects_non_empty_option_brackets() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_def_unknown_option.fol")
+        .expect("Should read invalid def option test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject non-empty def options");
+
+    let parse_error = errors
+        .first()
+        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        .expect("First parser error should be ParseError");
+
+    let message = parse_error.to_string();
+    assert!(
+        message.contains("Definition options currently support only empty brackets"),
+        "Non-empty def option brackets should be rejected, got: {}",
+        message
+    );
+}
+
+#[test]
 fn test_def_block_marker_without_body_parsing() {
     let mut file_stream = FileStream::from_file("test/parser/simple_def_block_marker.fol")
         .expect("Should read block-marker definition test file");

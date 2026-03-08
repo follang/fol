@@ -15,6 +15,8 @@ impl AstParser {
 
         let _ = tokens.bump();
         self.skip_ignorable(tokens);
+        self.parse_empty_def_options(tokens)?;
+        self.skip_ignorable(tokens);
 
         let name_token = tokens.curr(false)?;
         let name = match name_token.key() {
@@ -96,6 +98,32 @@ impl AstParser {
             def_type,
             body,
         })
+    }
+
+    pub(super) fn parse_empty_def_options(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<(), Box<dyn Glitch>> {
+        let open = match tokens.curr(false) {
+            Ok(token) => token,
+            Err(_) => return Ok(()),
+        };
+
+        if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::SquarO)) {
+            return Ok(());
+        }
+        let _ = tokens.bump();
+        self.skip_ignorable(tokens);
+
+        let close = tokens.curr(false)?;
+        if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
+            return Err(Box::new(ParseError::from_token(
+                &close,
+                "Definition options currently support only empty brackets".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+        Ok(())
     }
 
     pub(super) fn parse_alias_decl(
