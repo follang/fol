@@ -29,6 +29,9 @@ impl AstParser {
             let option = match token.con().trim() {
                 "mut" | "mutable" => VarOption::Mutable,
                 "imu" | "immutable" => VarOption::Immutable,
+                "exp" | "export" | "pub" => VarOption::Export,
+                "hid" | "hidden" => VarOption::Hidden,
+                "nor" | "normal" => VarOption::Normal,
                 _ => {
                     return Err(Box::new(ParseError::from_token(
                         &token,

@@ -72,3 +72,49 @@ fn test_binding_mutability_options_override_defaults() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_binding_visibility_word_options_override_defaults() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_binding_visibility_words.fol")
+        .expect("Should read binding visibility-word options fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept word-form binding visibility options");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::VarDecl { name, options, .. }
+                    if name == "exported"
+                        && options.contains(&fol_parser::ast::VarOption::Export)
+                        && !options.contains(&fol_parser::ast::VarOption::Normal)
+                )
+            }));
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::VarDecl { name, options, .. }
+                    if name == "hidden"
+                        && options.contains(&fol_parser::ast::VarOption::Hidden)
+                        && !options.contains(&fol_parser::ast::VarOption::Normal)
+                )
+            }));
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::VarDecl { name, options, .. }
+                    if name == "local"
+                        && options.contains(&fol_parser::ast::VarOption::Normal)
+                        && !options.contains(&fol_parser::ast::VarOption::Export)
+                        && !options.contains(&fol_parser::ast::VarOption::Hidden)
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
