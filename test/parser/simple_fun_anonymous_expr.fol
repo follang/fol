@@ -1,0 +1,5 @@
+fun make_adder(): any = {
+    return fun[] (a, b: int): int = {
+        return a + b;
+    };
+}

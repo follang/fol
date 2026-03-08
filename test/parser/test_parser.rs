@@ -12,6 +12,9 @@ use fol_stream::FileStream;
 #[path = "test_parser_parts/assignments_and_logical_expressions.rs"]
 mod assignments_and_logical_expressions;
 #[cfg(test)]
+#[path = "test_parser_parts/anonymous_function_expressions.rs"]
+mod anonymous_function_expressions;
+#[cfg(test)]
 #[path = "test_parser_parts/basic_declarations.rs"]
 mod basic_declarations;
 #[cfg(test)]
