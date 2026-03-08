@@ -1,6 +1,49 @@
 use super::*;
 
 impl AstParser {
+    fn lookahead_is_shorthand_anonymous_fun(
+        &self,
+        tokens: &fol_lexer::lexer::stage3::Elements,
+    ) -> bool {
+        let mut depth = 1usize;
+        let saw_open = true;
+        for candidate in tokens.next_vec() {
+            let token = match candidate {
+                Ok(token) => token,
+                Err(_) => continue,
+            };
+
+            let key = token.key();
+            if key.is_void() || key.is_comment() {
+                continue;
+            }
+
+            match key {
+                KEYWORD::Symbol(SYMBOL::RoundO) => {
+                    depth += 1;
+                }
+                KEYWORD::Symbol(SYMBOL::RoundC) => {
+                    if depth == 0 {
+                        return false;
+                    }
+                    depth -= 1;
+                    if saw_open && depth == 0 {
+                        continue;
+                    }
+                }
+                KEYWORD::Symbol(SYMBOL::CurlyO) if saw_open && depth == 0 => {
+                    return true;
+                }
+                _ if saw_open && depth == 0 => {
+                    return false;
+                }
+                _ => {}
+            }
+        }
+
+        false
+    }
+
     pub(super) fn parse_primary_expression(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
@@ -30,6 +73,10 @@ impl AstParser {
             self.parse_anonymous_pro_expr(tokens)?
         } else if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
             return self.parse_container_expression(tokens);
+        } else if matches!(token.key(), KEYWORD::Symbol(SYMBOL::RoundO))
+            && self.lookahead_is_shorthand_anonymous_fun(tokens)
+        {
+            self.parse_shorthand_anonymous_fun_expr(tokens)?
         } else if matches!(token.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
             let _ = tokens.bump();
             let inner = self.parse_logical_expression(tokens)?;
@@ -280,5 +327,51 @@ impl AstParser {
                 body,
             })
         }
+    }
+
+    pub(super) fn parse_shorthand_anonymous_fun_expr(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
+        let open_params = tokens.curr(false)?;
+        if !matches!(open_params.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
+            return Err(Box::new(ParseError::from_token(
+                &open_params,
+                "Expected '(' to start shorthand anonymous function".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+
+        let (params, first_untyped) = self.parse_routine_header_list(tokens)?;
+        if let Some(token) = first_untyped {
+            return Err(Box::new(ParseError::from_token(
+                &token,
+                "Expected ':' after function parameter name".to_string(),
+            )));
+        }
+        self.ensure_unique_parameter_names(&params, "parameter")?;
+
+        self.skip_ignorable(tokens);
+        let open_body = tokens.curr(false)?;
+        if !matches!(open_body.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
+            return Err(Box::new(ParseError::from_token(
+                &open_body,
+                "Expected '{' to start shorthand anonymous function body".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+
+        let (body, _inquiries) = self.parse_routine_body_with_inquiries(
+            tokens,
+            "Expected '}' to close shorthand anonymous function body",
+        )?;
+
+        Ok(AstNode::AnonymousFun {
+            options: Vec::new(),
+            params,
+            return_type: None,
+            error_type: None,
+            body,
+        })
     }
 }

@@ -1,0 +1,5 @@
+fun make_short(): any = {
+    return (a, b: int){
+        return a + b;
+    };
+}
