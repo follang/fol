@@ -173,7 +173,9 @@ impl AstParser {
                 return false;
             }
 
-            if key.is_ident() {
+            if Self::token_can_be_logical_name(&key)
+                || matches!(key, KEYWORD::Literal(LITERAL::Stringy))
+            {
                 continue;
             }
 
@@ -851,14 +853,12 @@ impl AstParser {
                     self.skip_ignorable(tokens);
 
                     let member_token = tokens.curr(false)?;
-                    if !Self::token_can_be_logical_name(&member_token.key()) {
-                        return Err(Box::new(ParseError::from_token(
+                    let member = Self::token_to_named_label(&member_token).ok_or_else(|| {
+                        Box::new(ParseError::from_token(
                             &member_token,
                             "Expected field or method name after '.'".to_string(),
-                        )));
-                    }
-
-                    let member = member_token.con().trim().to_string();
+                        )) as Box<dyn Glitch>
+                    })?;
                     let _ = tokens.bump();
                     self.skip_ignorable(tokens);
 

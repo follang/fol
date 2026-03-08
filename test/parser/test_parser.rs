@@ -69,6 +69,9 @@ mod reference_keywords;
 #[path = "test_parser_parts/quoted_routine_names.rs"]
 mod quoted_routine_names;
 #[cfg(test)]
+#[path = "test_parser_parts/quoted_member_access.rs"]
+mod quoted_member_access;
+#[cfg(test)]
 #[path = "test_parser_parts/segment_declarations.rs"]
 mod segment_declarations;
 #[cfg(test)]

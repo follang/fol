@@ -842,13 +842,12 @@ impl AstParser {
         self.skip_ignorable(tokens);
 
         let method_token = tokens.curr(false)?;
-        if !Self::token_can_be_logical_name(&method_token.key()) {
-            return Err(Box::new(ParseError::from_token(
+        let method = Self::token_to_named_label(&method_token).ok_or_else(|| {
+            Box::new(ParseError::from_token(
                 &method_token,
                 "Expected method name after '.'".to_string(),
-            )));
-        }
-        let method = method_token.con().trim().to_string();
+            )) as Box<dyn Glitch>
+        })?;
         let _ = tokens.bump();
         let args = self.parse_open_paren_and_call_args(tokens, "Expected '(' after method name")?;
 
