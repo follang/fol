@@ -138,3 +138,46 @@ fn test_quoted_type_references_parse_in_type_member_hints() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_single_quoted_type_references_parse_in_type_member_hints() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_single_quoted_type_member_hints.fol")
+            .expect("Should read single-quoted type-member hint fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept single-quoted type refs in type member hints");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::TypeDecl {
+                        name,
+                        type_def: TypeDefinition::Record { fields },
+                        ..
+                    } if name == "Data"
+                        && matches!(fields.get("id"), Some(FolType::Named { name }) if name == "Item")
+                        && matches!(fields.get("label"), Some(FolType::Named { name }) if name == "pkg::Label")
+                )
+            }));
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::TypeDecl {
+                        name,
+                        type_def: TypeDefinition::Entry { variants },
+                        ..
+                    } if name == "Result"
+                        && matches!(variants.get("ok"), Some(Some(FolType::Named { name })) if name == "Success")
+                        && matches!(variants.get("err"), Some(Some(FolType::Named { name })) if name == "errs::Failure")
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
