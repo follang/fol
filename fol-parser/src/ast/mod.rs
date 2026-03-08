@@ -323,6 +323,9 @@ pub enum FolType {
     Url {
         name: String,
     },
+    Location {
+        name: String,
+    },
 
     // User-defined type reference
     Named {
