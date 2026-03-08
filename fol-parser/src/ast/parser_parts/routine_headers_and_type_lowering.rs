@@ -518,7 +518,7 @@ impl AstParser {
         }
 
         let name_token = tokens.curr(false)?;
-        if !name_token.key().is_ident() {
+        if !Self::token_can_be_logical_name(&name_token.key()) {
             return Err(Box::new(ParseError::from_token(
                 &name_token,
                 missing_name_message.to_string(),

@@ -17,16 +17,7 @@ impl AstParser {
             return self.parse_lexer_literal(token);
         }
 
-        if token.key().is_ident() {
-            return Ok(AstNode::Identifier {
-                name: token.con().trim().to_string(),
-            });
-        }
-
-        if matches!(
-            token.key(),
-            KEYWORD::Keyword(BUILDIN::This) | KEYWORD::Keyword(BUILDIN::Selfi)
-        ) {
+        if Self::token_can_be_logical_name(&token.key()) {
             return Ok(AstNode::Identifier {
                 name: token.con().trim().to_string(),
             });
@@ -54,6 +45,31 @@ impl AstParser {
 
             break;
         }
+    }
+
+    pub(super) fn token_can_be_logical_name(key: &KEYWORD) -> bool {
+        key.is_ident()
+            || matches!(
+                key,
+                KEYWORD::Keyword(BUILDIN::Use)
+                    | KEYWORD::Keyword(BUILDIN::Def)
+                    | KEYWORD::Keyword(BUILDIN::Seg)
+                    | KEYWORD::Keyword(BUILDIN::Var)
+                    | KEYWORD::Keyword(BUILDIN::Log)
+                    | KEYWORD::Keyword(BUILDIN::Con)
+                    | KEYWORD::Keyword(BUILDIN::Fun)
+                    | KEYWORD::Keyword(BUILDIN::Pro)
+                    | KEYWORD::Keyword(BUILDIN::Typ)
+                    | KEYWORD::Keyword(BUILDIN::Std)
+                    | KEYWORD::Keyword(BUILDIN::Ali)
+                    | KEYWORD::Keyword(BUILDIN::Imp)
+                    | KEYWORD::Keyword(BUILDIN::Lab)
+                    | KEYWORD::Keyword(BUILDIN::This)
+                    | KEYWORD::Keyword(BUILDIN::Selfi)
+                    | KEYWORD::Keyword(BUILDIN::Go)
+                    | KEYWORD::Keyword(BUILDIN::Get)
+                    | KEYWORD::Keyword(BUILDIN::Let)
+            )
     }
 
     pub(super) fn unary_prefix_info(

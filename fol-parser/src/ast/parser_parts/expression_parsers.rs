@@ -851,7 +851,7 @@ impl AstParser {
                     self.skip_ignorable(tokens);
 
                     let member_token = tokens.curr(false)?;
-                    if !member_token.key().is_ident() {
+                    if !Self::token_can_be_logical_name(&member_token.key()) {
                         return Err(Box::new(ParseError::from_token(
                             &member_token,
                             "Expected field or method name after '.'".to_string(),

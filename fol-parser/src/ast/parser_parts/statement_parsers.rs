@@ -799,7 +799,7 @@ impl AstParser {
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Box<dyn Glitch>> {
         let name_token = tokens.curr(false)?;
-        if !name_token.key().is_ident() {
+        if !Self::token_can_be_logical_name(&name_token.key()) {
             return Err(Box::new(ParseError::from_token(
                 &name_token,
                 "Expected identifier for function call".to_string(),
@@ -842,7 +842,7 @@ impl AstParser {
         self.skip_ignorable(tokens);
 
         let method_token = tokens.curr(false)?;
-        if !method_token.key().is_ident() {
+        if !Self::token_can_be_logical_name(&method_token.key()) {
             return Err(Box::new(ParseError::from_token(
                 &method_token,
                 "Expected method name after '.'".to_string(),

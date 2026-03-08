@@ -39,6 +39,9 @@ mod custom_error_report_validation;
 #[path = "test_parser_parts/definition_declarations.rs"]
 mod definition_declarations;
 #[cfg(test)]
+#[path = "test_parser_parts/keyword_named_routines.rs"]
+mod keyword_named_routines;
+#[cfg(test)]
 #[path = "test_parser_parts/loops_use_bindings_and_ranges.rs"]
 mod loops_use_bindings_and_ranges;
 #[cfg(test)]

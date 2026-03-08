@@ -1,0 +1,14 @@
+typ Box: rec = { }
+
+fun get(value: int): int = {
+    return value;
+}
+
+fun (Box)log(): int = {
+    return 1;
+}
+
+fun demo(box: Box): int = {
+    first = get(1);
+    return box.log();
+}
