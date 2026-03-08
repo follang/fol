@@ -6,6 +6,7 @@ impl AstParser {
         tokens: &fol_lexer::lexer::stage3::Elements,
     ) -> bool {
         let mut depth = 1usize;
+        let mut capture_depth = 0usize;
         let saw_open = true;
         for candidate in tokens.next_vec() {
             let token = match candidate {
@@ -19,6 +20,15 @@ impl AstParser {
             }
 
             match key {
+                KEYWORD::Symbol(SYMBOL::SquarO) if saw_open && depth == 0 => {
+                    capture_depth += 1;
+                }
+                KEYWORD::Symbol(SYMBOL::SquarC) if saw_open && depth == 0 => {
+                    if capture_depth == 0 {
+                        return false;
+                    }
+                    capture_depth -= 1;
+                }
                 KEYWORD::Symbol(SYMBOL::RoundO) => {
                     depth += 1;
                 }
@@ -31,10 +41,10 @@ impl AstParser {
                         continue;
                     }
                 }
-                KEYWORD::Symbol(SYMBOL::CurlyO) if saw_open && depth == 0 => {
+                KEYWORD::Symbol(SYMBOL::CurlyO) if saw_open && depth == 0 && capture_depth == 0 => {
                     return true;
                 }
-                _ if saw_open && depth == 0 => {
+                _ if saw_open && depth == 0 && capture_depth == 0 => {
                     return false;
                 }
                 _ => {}
@@ -394,6 +404,9 @@ impl AstParser {
         }
         self.ensure_unique_parameter_names(&params, "parameter")?;
 
+        let captures = self.parse_optional_routine_capture_list(tokens)?;
+        self.ensure_unique_capture_names(&captures)?;
+
         self.skip_ignorable(tokens);
         let open_body = tokens.curr(false)?;
         if !matches!(open_body.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
@@ -411,7 +424,7 @@ impl AstParser {
 
         Ok(AstNode::AnonymousFun {
             options: Vec::new(),
-            captures: Vec::new(),
+            captures,
             params,
             return_type: None,
             error_type: None,

@@ -1,0 +1,5 @@
+fun outer(): any = {
+    return ()[left, right] {
+        return left;
+    };
+}
