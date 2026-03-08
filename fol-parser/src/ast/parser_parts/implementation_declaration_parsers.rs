@@ -17,6 +17,8 @@ impl AstParser {
         self.skip_ignorable(tokens);
         self.parse_empty_imp_options(tokens)?;
         self.skip_ignorable(tokens);
+        let generics = self.parse_type_generic_header(tokens)?;
+        self.skip_ignorable(tokens);
 
         let name_token = tokens.curr(false)?;
         if !Self::token_can_be_logical_name(&name_token.key()) {
@@ -65,7 +67,7 @@ impl AstParser {
         self.consume_optional_semicolon(tokens);
 
         Ok(AstNode::ImpDecl {
-            generics: Vec::new(),
+            generics,
             name,
             target,
             body,

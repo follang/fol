@@ -98,3 +98,61 @@ fn test_implementation_declaration_rejects_unknown_options() {
         parse_error
     );
 }
+
+#[test]
+fn test_implementation_declaration_supports_generic_headers() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_imp_generics.fol")
+        .expect("Should read generic implementation declaration test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse implementation generic headers");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::ImpDecl { name, generics, target, .. }
+                    if name == "Self"
+                        && generics.len() == 2
+                        && generics[0].name == "T"
+                        && generics[1].name == "U"
+                        && matches!(target, FolType::Named { name } if name == "Pair[T,U]")
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_implementation_generic_header_missing_separator_reports_parse_error() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_imp_generics_missing_separator.fol")
+            .expect("Should read malformed imp generic header test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject malformed imp generic headers");
+
+    let parse_error = errors
+        .first()
+        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        .expect("First parser error should be ParseError");
+
+    assert!(
+        parse_error
+            .to_string()
+            .contains("Expected ','; ';', or ')' after generic parameter")
+            || parse_error
+                .to_string()
+                .contains("Expected ',', ';', or ')' after generic parameter"),
+        "Malformed imp generic header should report separator error, got: {}",
+        parse_error
+    );
+}
