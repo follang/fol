@@ -18,9 +18,8 @@ fn test_function_inquiry_clause_parsing() {
                     node,
                     AstNode::FunDecl { name, inquiries, .. }
                     if name == "sum"
-                        && inquiries.len() == 6
-                        && matches!(&inquiries[0], AstNode::FunctionCall { .. })
-                        && matches!(&inquiries[1], AstNode::Literal(Literal::Integer(0)))
+                        && inquiries.len() == 3
+                        && matches!(&inquiries[0], AstNode::BinaryOp { .. })
                 )
             }));
         }
@@ -46,9 +45,8 @@ fn test_procedure_inquiry_clause_parsing() {
                     node,
                     AstNode::ProDecl { name, inquiries, .. }
                     if name == "store"
-                        && inquiries.len() == 4
-                        && matches!(&inquiries[0], AstNode::FunctionCall { .. })
-                        && matches!(&inquiries[1], AstNode::Literal(Literal::Integer(1)))
+                        && inquiries.len() == 2
+                        && matches!(&inquiries[0], AstNode::BinaryOp { .. })
                 )
             }));
         }

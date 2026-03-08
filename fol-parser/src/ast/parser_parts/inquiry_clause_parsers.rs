@@ -287,6 +287,47 @@ impl AstParser {
         }
         let _ = tokens.bump();
 
-        self.parse_block_body(tokens, "Expected '}' to close inquiry body")
+        self.parse_inquiry_body(tokens)
+    }
+
+    fn parse_inquiry_body(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
+        let mut body = Vec::new();
+        let mut anchor_token = None;
+
+        for _ in 0..512 {
+            self.skip_ignorable(tokens);
+            let token = tokens.curr(false)?;
+            if anchor_token.is_none() {
+                anchor_token = Some(token.clone());
+            }
+
+            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) {
+                let _ = tokens.bump();
+                return Ok(body);
+            }
+
+            if token.key().is_eof() {
+                let anchor = anchor_token.unwrap_or(token);
+                return Err(Box::new(ParseError::from_token(
+                    &anchor,
+                    "Expected '}' to close inquiry body".to_string(),
+                )));
+            }
+
+            body.push(self.parse_logical_expression(tokens)?);
+            self.consume_optional_semicolon(tokens);
+        }
+
+        let anchor = match anchor_token {
+            Some(token) => token,
+            None => tokens.curr(false)?,
+        };
+        Err(Box::new(ParseError::from_token(
+            &anchor,
+            "Inquiry body exceeded parser limit".to_string(),
+        )))
     }
 }
