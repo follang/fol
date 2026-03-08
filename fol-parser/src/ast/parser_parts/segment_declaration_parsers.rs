@@ -17,7 +17,7 @@ impl AstParser {
         self.skip_ignorable(tokens);
 
         let name_token = tokens.curr(false)?;
-        if !name_token.key().is_ident() {
+        if !(name_token.key().is_ident() || name_token.key().is_buildin()) {
             return Err(Box::new(ParseError::from_token(
                 &name_token,
                 "Expected segment name after 'seg'".to_string(),

@@ -75,3 +75,28 @@ fn test_segment_declaration_rejects_non_module_types() {
         first_message
     );
 }
+
+#[test]
+fn test_segment_declaration_accepts_keyword_names() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_seg_keyword_name.fol")
+        .expect("Should read keyword-name segment declaration test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse builtin-token segment names");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::DefDecl { name, def_type, .. }
+                    if name == "get" && matches!(def_type, FolType::Module { .. })
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}

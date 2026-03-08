@@ -18,7 +18,7 @@ impl AstParser {
 
         let name_token = tokens.curr(false)?;
         let name = match name_token.key() {
-            key if key.is_ident() => name_token.con().trim().to_string(),
+            key if key.is_ident() || key.is_buildin() => name_token.con().trim().to_string(),
             KEYWORD::Literal(LITERAL::Stringy) => name_token
                 .con()
                 .trim()
