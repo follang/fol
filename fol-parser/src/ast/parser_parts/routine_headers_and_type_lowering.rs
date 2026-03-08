@@ -208,14 +208,12 @@ impl AstParser {
                 return Ok(generics);
             }
 
-            if !token.key().is_ident() {
-                return Err(Box::new(ParseError::from_token(
+            let name = Self::token_to_named_label(&token).ok_or_else(|| {
+                Box::new(ParseError::from_token(
                     &token,
                     "Expected generic parameter name".to_string(),
-                )));
-            }
-
-            let name = token.con().trim().to_string();
+                )) as Box<dyn Glitch>
+            })?;
             if !seen_names.insert(name.clone()) {
                 return Err(Box::new(ParseError::from_token(
                     &token,

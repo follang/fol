@@ -1,0 +1,5 @@
+imp(get, "item") Self: Pair = {
+    fun run(): int = {
+        return 1;
+    }
+}
