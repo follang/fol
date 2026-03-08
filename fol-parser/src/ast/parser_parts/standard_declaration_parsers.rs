@@ -137,6 +137,7 @@ impl AstParser {
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
         let mut body = Vec::new();
+        let mut seen_members = HashSet::new();
         let mut anchor_token = None;
 
         for _ in 0..256 {
@@ -165,7 +166,15 @@ impl AstParser {
                     | KEYWORD::Keyword(BUILDIN::Log)
                     | KEYWORD::Keyword(BUILDIN::Pro)
             ) {
-                body.push(self.parse_standard_routine_signature(tokens)?);
+                let member = self.parse_standard_routine_signature(tokens)?;
+                let key = self.standard_member_key(&member);
+                if !seen_members.insert(key.clone()) {
+                    return Err(Box::new(ParseError::from_token(
+                        &token,
+                        format!("Duplicate standard member '{}'", key),
+                    )));
+                }
+                body.push(member);
                 continue;
             }
 
@@ -372,6 +381,16 @@ impl AstParser {
                 inquiries: Vec::new(),
             },
         })
+    }
+
+    fn standard_member_key(&self, node: &AstNode) -> String {
+        match node {
+            AstNode::FunDecl { name, params, .. } | AstNode::ProDecl { name, params, .. } => {
+                format!("{}#{}", name, params.len())
+            }
+            AstNode::VarDecl { name, .. } => name.clone(),
+            _ => String::new(),
+        }
     }
 
     fn parse_empty_std_options(
