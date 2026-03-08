@@ -58,3 +58,32 @@ fn test_entry_type_retains_variant_defaults_and_options() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_record_const_field_metadata_is_retained() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_typ_record_const_fields.fol")
+        .expect("Should read const record field fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should retain const record field metadata");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::TypeDecl {
+                    name,
+                    type_def: TypeDefinition::Record { field_meta, .. },
+                    ..
+                }
+                if name == "Config"
+                    && matches!(field_meta.get("host"), Some(RecordFieldMeta { default: Some(_), options }) if options.contains(&VarOption::Immutable))
+                    && matches!(field_meta.get("port"), Some(RecordFieldMeta { default: Some(_), options }) if options.contains(&VarOption::Immutable))
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}

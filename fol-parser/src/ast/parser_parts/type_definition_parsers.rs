@@ -183,6 +183,11 @@ impl AstParser {
                     self.skip_ignorable(tokens);
                     vec![VarOption::Immutable, VarOption::Normal]
                 }
+                KEYWORD::Keyword(BUILDIN::Con) => {
+                    let _ = tokens.bump();
+                    self.skip_ignorable(tokens);
+                    vec![VarOption::Immutable, VarOption::Normal]
+                }
                 _ => Vec::new(),
             };
 
