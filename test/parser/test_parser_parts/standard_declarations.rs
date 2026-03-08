@@ -261,3 +261,29 @@ fn test_blueprint_standard_rejects_duplicate_fields() {
         parse_error
     );
 }
+
+#[test]
+fn test_extended_standard_rejects_duplicate_members() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_std_extended_duplicate_member.fol")
+            .expect("Should read duplicate extended standard fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject duplicate extended members");
+
+    let parse_error = errors
+        .first()
+        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        .expect("First parser error should be ParseError");
+
+    assert!(
+        parse_error
+            .to_string()
+            .contains("Duplicate standard member 'area#0'"),
+        "Expected duplicate extended member error, got: {}",
+        parse_error
+    );
+}

@@ -273,6 +273,7 @@ impl AstParser {
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
         let mut body = Vec::new();
+        let mut seen_members = HashSet::new();
         let mut anchor_token = None;
 
         for _ in 0..256 {
@@ -301,17 +302,45 @@ impl AstParser {
                     | KEYWORD::Keyword(BUILDIN::Log)
                     | KEYWORD::Keyword(BUILDIN::Pro)
             ) {
-                body.push(self.parse_standard_routine_signature(tokens)?);
+                let member = self.parse_standard_routine_signature(tokens)?;
+                let key = self.standard_member_key(&member);
+                if !seen_members.insert(key.clone()) {
+                    return Err(Box::new(ParseError::from_token(
+                        &token,
+                        format!("Duplicate standard member '{}'", key),
+                    )));
+                }
+                body.push(member);
                 continue;
             }
 
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Var)) {
-                body.extend(self.parse_var_decl(tokens)?);
+                let members = self.parse_var_decl(tokens)?;
+                for member in members {
+                    let key = self.standard_member_key(&member);
+                    if !seen_members.insert(key.clone()) {
+                        return Err(Box::new(ParseError::from_token(
+                            &token,
+                            format!("Duplicate standard member '{}'", key),
+                        )));
+                    }
+                    body.push(member);
+                }
                 continue;
             }
 
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Lab)) {
-                body.extend(self.parse_lab_decl(tokens)?);
+                let members = self.parse_lab_decl(tokens)?;
+                for member in members {
+                    let key = self.standard_member_key(&member);
+                    if !seen_members.insert(key.clone()) {
+                        return Err(Box::new(ParseError::from_token(
+                            &token,
+                            format!("Duplicate standard member '{}'", key),
+                        )));
+                    }
+                    body.push(member);
+                }
                 continue;
             }
 
