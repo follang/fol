@@ -61,3 +61,30 @@ fn test_function_body_let_declaration_accepts_quoted_name() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_grouped_quoted_binding_names_parse() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_var_grouped_quoted_names.fol")
+            .expect("Should read grouped quoted-binding fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept grouped quoted binding names");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            let names: Vec<_> = declarations
+                .iter()
+                .filter_map(|node| match node {
+                    AstNode::VarDecl { name, .. } => Some(name.as_str()),
+                    _ => None,
+                })
+                .collect();
+            assert_eq!(names, vec!["left", "right"]);
+        }
+        _ => panic!("Expected program node"),
+    }
+}
