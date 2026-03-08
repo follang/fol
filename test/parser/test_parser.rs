@@ -108,6 +108,9 @@ mod quoted_bindings;
 #[path = "test_parser_parts/quoted_binding_type_hints.rs"]
 mod quoted_binding_type_hints;
 #[cfg(test)]
+#[path = "test_parser_parts/quoted_alias_names.rs"]
+mod quoted_alias_names;
+#[cfg(test)]
 #[path = "test_parser_parts/quoted_root_statements.rs"]
 mod quoted_root_statements;
 #[cfg(test)]
