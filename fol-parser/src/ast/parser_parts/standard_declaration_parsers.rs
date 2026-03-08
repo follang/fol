@@ -39,6 +39,7 @@ impl AstParser {
         let kind_token = tokens.curr(false)?;
         let kind = match kind_token.con().trim() {
             "pro" => StandardKind::Protocol,
+            "blu" => StandardKind::Blueprint,
             other => {
                 return Err(Box::new(ParseError::from_token(
                     &kind_token,
@@ -68,7 +69,11 @@ impl AstParser {
         }
         let _ = tokens.bump();
 
-        let body = self.parse_standard_protocol_body(tokens)?;
+        let body = match kind {
+            StandardKind::Protocol => self.parse_standard_protocol_body(tokens)?,
+            StandardKind::Blueprint => self.parse_standard_blueprint_body(tokens)?,
+            StandardKind::Extended => Vec::new(),
+        };
         self.consume_optional_semicolon(tokens);
 
         Ok(AstNode::StdDecl { name, kind, body })
@@ -114,6 +119,59 @@ impl AstParser {
             return Err(Box::new(ParseError::from_token(
                 &token,
                 "Protocol standards currently support only routine signatures".to_string(),
+            )));
+        }
+
+        let anchor = match anchor_token {
+            Some(token) => token,
+            None => tokens.curr(false)?,
+        };
+        Err(Box::new(ParseError::from_token(
+            &anchor,
+            "Standard body exceeded parser limit".to_string(),
+        )))
+    }
+
+    fn parse_standard_blueprint_body(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
+        let mut body = Vec::new();
+        let mut anchor_token = None;
+
+        for _ in 0..256 {
+            self.skip_ignorable(tokens);
+            let token = tokens.curr(false)?;
+            if anchor_token.is_none() {
+                anchor_token = Some(token.clone());
+            }
+
+            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) {
+                let _ = tokens.bump();
+                return Ok(body);
+            }
+
+            if token.key().is_eof() {
+                let anchor = anchor_token.unwrap_or(token);
+                return Err(Box::new(ParseError::from_token(
+                    &anchor,
+                    "Expected '}' to close standard body".to_string(),
+                )));
+            }
+
+            if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Var)) {
+                body.extend(self.parse_var_decl(tokens)?);
+                continue;
+            }
+
+            if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Lab)) {
+                body.extend(self.parse_lab_decl(tokens)?);
+                continue;
+            }
+
+            return Err(Box::new(ParseError::from_token(
+                &token,
+                "Blueprint standards currently support only field declarations".to_string(),
             )));
         }
 

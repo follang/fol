@@ -1,0 +1,4 @@
+std geometry: blu = {
+    var color: rgb;
+    var size: int;
+}
