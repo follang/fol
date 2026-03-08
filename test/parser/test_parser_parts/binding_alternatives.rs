@@ -500,3 +500,34 @@ fn test_export_let_alternative_parses_in_function_body() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_hidden_const_alternative_parses_in_function_body() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_fun_minus_con.fol")
+        .expect("Should read function-body -con fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept -con inside function bodies");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::FunDecl { body, .. }
+                    if body.iter().any(|stmt| matches!(
+                        stmt,
+                        AstNode::VarDecl { name, options, .. }
+                        if name == "secret"
+                            && options.contains(&fol_parser::ast::VarOption::Hidden)
+                            && options.contains(&fol_parser::ast::VarOption::Immutable)
+                    ))
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
