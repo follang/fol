@@ -63,6 +63,14 @@ pub enum AstNode {
         body: Vec<AstNode>,
     },
 
+    /// Implementation declaration: imp name: target_type = { body }
+    ImpDecl {
+        generics: Vec<Generic>,
+        name: String,
+        target: FolType,
+        body: Vec<AstNode>,
+    },
+
     // ==== EXPRESSIONS ====
     /// Binary operation: (left op right)
     BinaryOp {
@@ -454,6 +462,7 @@ impl AstNode {
             AstNode::FunDecl { return_type, .. } => return_type.clone(),
             AstNode::ProDecl { return_type, .. } => return_type.clone(),
             AstNode::DefDecl { def_type, .. } => Some(def_type.clone()),
+            AstNode::ImpDecl { target, .. } => Some(target.clone()),
 
             AstNode::BinaryOp { op, left, right } => {
                 // Type inference for binary operations
@@ -514,7 +523,8 @@ impl AstNode {
             }
             AstNode::FunDecl { body, .. }
             | AstNode::ProDecl { body, .. }
-            | AstNode::DefDecl { body, .. } => body.iter().collect(),
+            | AstNode::DefDecl { body, .. }
+            | AstNode::ImpDecl { body, .. } => body.iter().collect(),
             AstNode::BinaryOp { left, right, .. } => {
                 vec![left.as_ref(), right.as_ref()]
             }
