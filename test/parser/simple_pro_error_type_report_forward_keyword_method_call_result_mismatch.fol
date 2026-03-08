@@ -1,0 +1,10 @@
+typ Parser: rec = { }
+
+pro caller_forward_keyword_method_mismatch(tool: Parser): int : str = {
+    report tool.log();
+    return 0;
+}
+
+fun (Parser)log(): int = {
+    return 1;
+}
