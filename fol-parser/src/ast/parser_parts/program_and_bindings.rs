@@ -603,6 +603,7 @@ impl AstParser {
             match self.previous_significant_key(tokens) {
                 None
                 | Some(KEYWORD::Symbol(SYMBOL::CurlyO))
+                | Some(KEYWORD::Symbol(SYMBOL::CurlyC))
                 | Some(KEYWORD::Symbol(SYMBOL::Semi))
                 | Some(KEYWORD::Void(VOID::EndLine)) => {}
                 _ => {
@@ -637,17 +638,19 @@ impl AstParser {
             }
 
             let routine_name = match tokens.curr(false) {
-                Ok(name) if name.key().is_ident() => {
-                    let parsed = name.con().trim().to_string();
-                    let _ = tokens.bump();
-                    parsed
-                }
-                _ => {
-                    if tokens.bump().is_none() {
-                        break;
+                Ok(name) => match Self::token_to_named_label(&name) {
+                    Some(parsed) => {
+                        let _ = tokens.bump();
+                        parsed
                     }
-                    continue;
-                }
+                    None => {
+                        if tokens.bump().is_none() {
+                            break;
+                        }
+                        continue;
+                    }
+                },
+                Err(_) => break,
             };
 
             self.skip_ignorable(tokens);

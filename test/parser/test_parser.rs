@@ -96,6 +96,9 @@ mod quoted_member_access;
 #[path = "test_parser_parts/quoted_call_expressions.rs"]
 mod quoted_call_expressions;
 #[cfg(test)]
+#[path = "test_parser_parts/quoted_report_call_resolution.rs"]
+mod quoted_report_call_resolution;
+#[cfg(test)]
 #[path = "test_parser_parts/quoted_bindings.rs"]
 mod quoted_bindings;
 #[cfg(test)]

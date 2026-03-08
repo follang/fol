@@ -1,0 +1,85 @@
+use super::*;
+
+#[test]
+fn test_function_custom_error_type_accepts_report_forward_quoted_call_result() {
+    let mut file_stream = FileStream::from_file(
+        "test/parser/simple_fun_error_type_report_forward_quoted_call_result_ok.fol",
+    )
+    .expect("Should read forward quoted report call-result compatible fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    parser.parse(&mut lexer).expect(
+        "Parser should accept forward quoted report call result when return type is compatible",
+    );
+}
+
+#[test]
+fn test_function_custom_error_type_rejects_report_forward_quoted_call_result_mismatch() {
+    let mut file_stream = FileStream::from_file(
+        "test/parser/simple_fun_error_type_report_forward_quoted_call_result_mismatch.fol",
+    )
+    .expect("Should read forward quoted report call-result mismatch fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser.parse(&mut lexer).expect_err(
+        "Parser should reject forward quoted report call result when return type is incompatible",
+    );
+
+    let parse_error = errors
+        .first()
+        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        .expect("First parser error should be ParseError");
+
+    assert!(
+        parse_error.to_string().contains("Reported expression type")
+            && parse_error
+                .to_string()
+                .contains("incompatible with routine error type"),
+        "Forward quoted call-result mismatch should report incompatible expression type, got: {}",
+        parse_error
+    );
+}
+
+#[test]
+fn test_procedure_custom_error_type_accepts_report_forward_quoted_call_result() {
+    let mut file_stream = FileStream::from_file(
+        "test/parser/simple_pro_error_type_report_forward_quoted_call_result_ok.fol",
+    )
+    .expect("Should read forward quoted procedure report call-result compatible fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    parser.parse(&mut lexer).expect(
+        "Parser should accept forward quoted procedure report call result when return type is compatible",
+    );
+}
+
+#[test]
+fn test_procedure_custom_error_type_rejects_report_forward_quoted_call_result_mismatch() {
+    let mut file_stream = FileStream::from_file(
+        "test/parser/simple_pro_error_type_report_forward_quoted_call_result_mismatch.fol",
+    )
+    .expect("Should read forward quoted procedure report call-result mismatch fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser.parse(&mut lexer).expect_err(
+        "Parser should reject forward quoted procedure report call result when return type is incompatible",
+    );
+
+    let parse_error = errors
+        .first()
+        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        .expect("First parser error should be ParseError");
+
+    assert!(
+        parse_error.to_string().contains("Reported expression type")
+            && parse_error
+                .to_string()
+                .contains("incompatible with routine error type"),
+        "Forward quoted procedure call-result mismatch should report incompatible expression type, got: {}",
+        parse_error
+    );
+}
