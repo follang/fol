@@ -1,0 +1,3 @@
+use warn: 'Module' = {'std/warn'};
+
+use trace: pkg::'Module' = {'std/trace'};
