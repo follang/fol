@@ -1,0 +1,7 @@
+ali Alias: "Target";
+
+typ Boxed: "Payload";
+
+fun demo(value: "Input"): "Output" = {
+    return value;
+}

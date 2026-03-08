@@ -749,14 +749,12 @@ impl AstParser {
             return self.parse_function_type_reference(tokens);
         }
 
-        if !(token.key().is_ident() || token.key().is_buildin()) {
-            return Err(Box::new(ParseError::from_token(
+        let mut name = Self::token_to_named_label(&token).ok_or_else(|| {
+            Box::new(ParseError::from_token(
                 &token,
                 "Expected type reference".to_string(),
-            )));
-        }
-
-        let mut name = token.con().trim().to_string();
+            )) as Box<dyn Glitch>
+        })?;
         let _ = tokens.bump();
 
         for _ in 0..64 {
