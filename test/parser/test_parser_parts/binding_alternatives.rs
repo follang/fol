@@ -80,3 +80,29 @@ fn test_hidden_binding_alternative_parses_top_level() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_static_binding_alternative_parses_top_level() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_bang_var.fol").expect("Should read !var fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept !var binding alternative");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::VarDecl { name, options, .. }
+                    if name == "cached"
+                        && options.contains(&fol_parser::ast::VarOption::Static)
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
