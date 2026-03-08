@@ -618,6 +618,36 @@ fn test_top_level_identifier_call_parsing() {
 }
 
 #[test]
+fn test_top_level_keyword_named_call_and_assignment_parsing() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_top_level_keyword_call_and_assignment.fol")
+            .expect("Should read top-level keyword call/assignment test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse top-level keyword-named calls and assignments");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(node, AstNode::FunctionCall { name, args } if name == "get" && args.is_empty())
+            }));
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::Assignment { target, value }
+                    if matches!(target.as_ref(), AstNode::Identifier { name } if name == "std")
+                        && matches!(value.as_ref(), AstNode::Identifier { name } if name == "ready")
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
 fn test_top_level_multiline_identifier_call_parsing() {
     let mut file_stream = FileStream::from_file("test/parser/simple_call_top_level_multiline.fol")
         .expect("Should read top-level multiline call test file");

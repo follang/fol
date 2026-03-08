@@ -335,7 +335,9 @@ impl AstParser {
                 continue;
             }
 
-            if key.is_ident() && self.lookahead_is_call(tokens) && self.can_start_assignment(tokens)
+            if AstParser::token_can_be_logical_name(&key)
+                && self.lookahead_is_call(tokens)
+                && self.can_start_assignment(tokens)
             {
                 let before = (
                     token.loc().row(),
@@ -466,7 +468,7 @@ impl AstParser {
                 continue;
             }
 
-            if key.is_ident()
+            if AstParser::token_can_be_logical_name(&key)
                 && self.lookahead_is_assignment(tokens)
                 && self.can_start_assignment(tokens)
             {
@@ -486,7 +488,7 @@ impl AstParser {
                 continue;
             }
 
-            if key.is_ident() {
+            if AstParser::token_can_be_logical_name(&key) {
                 declarations.push(AstNode::Identifier {
                     name: token.con().trim().to_string(),
                 });
