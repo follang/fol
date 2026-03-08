@@ -1,0 +1,10 @@
+typ Parser: rec = { }
+
+pro caller_forward_single_quoted_method_ok(tool: Parser): int : str = {
+    report tool.'$make_err'();
+    return 0;
+}
+
+fun (Parser)'$make_err'(): str = {
+    return "ok";
+}
