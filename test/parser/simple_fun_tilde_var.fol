@@ -1,0 +1,4 @@
+fun demo(): int = {
+    ~var counter: int = 1;
+    return counter;
+}
