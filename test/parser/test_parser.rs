@@ -75,6 +75,9 @@ mod quoted_routine_names;
 #[path = "test_parser_parts/quoted_member_access.rs"]
 mod quoted_member_access;
 #[cfg(test)]
+#[path = "test_parser_parts/quoted_root_statements.rs"]
+mod quoted_root_statements;
+#[cfg(test)]
 #[path = "test_parser_parts/segment_declarations.rs"]
 mod segment_declarations;
 #[cfg(test)]

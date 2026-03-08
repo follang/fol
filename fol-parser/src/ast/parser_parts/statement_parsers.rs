@@ -694,16 +694,14 @@ impl AstParser {
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Box<dyn Glitch>> {
         let target_token = tokens.curr(false)?;
-        if !Self::token_can_be_logical_name(&target_token.key()) {
-            return Err(Box::new(ParseError::from_token(
+        let target_name = Self::token_to_named_label(&target_token).ok_or_else(|| {
+            Box::new(ParseError::from_token(
                 &target_token,
                 "Expected assignment target".to_string(),
-            )));
-        }
+            )) as Box<dyn Glitch>
+        })?;
 
-        let mut target = AstNode::Identifier {
-            name: target_token.con().trim().to_string(),
-        };
+        let mut target = AstNode::Identifier { name: target_name };
         let _ = tokens.bump();
 
         for _ in 0..128 {
@@ -797,13 +795,12 @@ impl AstParser {
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Box<dyn Glitch>> {
         let name_token = tokens.curr(false)?;
-        if !Self::token_can_be_logical_name(&name_token.key()) {
-            return Err(Box::new(ParseError::from_token(
+        let name = Self::token_to_named_label(&name_token).ok_or_else(|| {
+            Box::new(ParseError::from_token(
                 &name_token,
                 "Expected identifier for function call".to_string(),
-            )));
-        }
-        let name = name_token.con().trim().to_string();
+            )) as Box<dyn Glitch>
+        })?;
         let _ = tokens.bump();
         let args =
             self.parse_open_paren_and_call_args(tokens, "Expected '(' after function name")?;

@@ -795,7 +795,8 @@ impl AstParser {
                 continue;
             }
 
-            if AstParser::token_can_be_logical_name(&key)
+            if (AstParser::token_can_be_logical_name(&key)
+                || matches!(key, KEYWORD::Literal(LITERAL::Stringy)))
                 && self.lookahead_is_assignment(tokens)
                 && self.can_start_assignment(tokens)
             {
@@ -803,7 +804,8 @@ impl AstParser {
                 continue;
             }
 
-            if AstParser::token_can_be_logical_name(&key)
+            if (AstParser::token_can_be_logical_name(&key)
+                || matches!(key, KEYWORD::Literal(LITERAL::Stringy)))
                 && (self.lookahead_is_call(tokens) || self.lookahead_is_method_call(tokens))
                 && self.can_start_assignment(tokens)
             {
