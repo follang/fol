@@ -732,9 +732,6 @@ impl AstParser {
         keyword: &str,
         default_options: Vec<VarOption>,
     ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
-        let mut type_hint = None;
-        let mut values = Vec::new();
-
         if tokens.bump().is_none() {
             return Err(Box::new(ParseError {
                 message: format!("Unexpected EOF after '{}' declaration", keyword),
@@ -754,33 +751,55 @@ impl AstParser {
             }
         }
 
-        let names = self.parse_binding_names(tokens, keyword)?;
+        let mut nodes = Vec::new();
+        for _ in 0..256 {
+            let names = self.parse_binding_names(tokens, keyword)?;
+            self.skip_ignorable(tokens);
 
-        self.skip_ignorable(tokens);
+            let mut type_hint = None;
+            if let Ok(token) = tokens.curr(false) {
+                if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
+                    let _ = tokens.bump();
+                    self.skip_ignorable(tokens);
+                    type_hint = Some(self.parse_type_reference_tokens(tokens)?);
+                }
+            }
 
-        if let Ok(token) = tokens.curr(false) {
-            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
+            self.skip_ignorable(tokens);
+            let mut values = Vec::new();
+            if let Ok(token) = tokens.curr(false) {
+                if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
+                    let _ = tokens.bump();
+                    self.skip_ignorable(tokens);
+                    values = self.parse_binding_values(tokens, names.len() == 1)?;
+                }
+            }
+
+            nodes.extend(self.build_binding_nodes(options.clone(), names, type_hint, values)?);
+
+            self.skip_ignorable(tokens);
+            let next = match tokens.curr(false) {
+                Ok(token) => token,
+                Err(_) => break,
+            };
+
+            if matches!(next.key(), KEYWORD::Symbol(SYMBOL::Semi)) {
+                let _ = tokens.bump();
+                break;
+            }
+            if matches!(next.key(), KEYWORD::Symbol(SYMBOL::Comma))
+                && self.lookahead_starts_binding_segment(tokens)
+            {
                 let _ = tokens.bump();
                 self.skip_ignorable(tokens);
-
-                type_hint = Some(self.parse_type_reference_tokens(tokens)?);
+                continue;
             }
-        }
 
-        self.skip_ignorable(tokens);
-
-        if let Ok(token) = tokens.curr(false) {
-            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
-                let _ = tokens.bump();
-                self.skip_ignorable(tokens);
-
-                values = self.parse_binding_values(tokens)?;
-            }
+            break;
         }
 
         self.consume_optional_semicolon(tokens);
-
-        self.build_binding_nodes(options, names, type_hint, values)
+        Ok(nodes)
     }
 
     pub(super) fn parse_binding_names(
@@ -817,33 +836,6 @@ impl AstParser {
         }
 
         Ok(names)
-    }
-
-    pub(super) fn parse_binding_values(
-        &self,
-        tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
-        let mut values = Vec::new();
-
-        for _ in 0..256 {
-            values.push(self.parse_logical_expression(tokens)?);
-            self.skip_ignorable(tokens);
-
-            let next = match tokens.curr(false) {
-                Ok(token) => token,
-                Err(_) => break,
-            };
-
-            if matches!(next.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
-                let _ = tokens.bump();
-                self.skip_ignorable(tokens);
-                continue;
-            }
-
-            break;
-        }
-
-        Ok(values)
     }
 
     pub(super) fn build_binding_nodes(

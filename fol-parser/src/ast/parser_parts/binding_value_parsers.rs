@@ -1,0 +1,67 @@
+use super::*;
+
+impl AstParser {
+    pub(super) fn parse_binding_values(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+        allow_segment_break: bool,
+    ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
+        let mut values = Vec::new();
+
+        for _ in 0..256 {
+            values.push(self.parse_logical_expression(tokens)?);
+            self.skip_ignorable(tokens);
+
+            let next = match tokens.curr(false) {
+                Ok(token) => token,
+                Err(_) => break,
+            };
+
+            if matches!(next.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
+                if allow_segment_break && self.lookahead_starts_binding_segment(tokens) {
+                    break;
+                }
+                let _ = tokens.bump();
+                self.skip_ignorable(tokens);
+                continue;
+            }
+
+            break;
+        }
+
+        Ok(values)
+    }
+
+    pub(super) fn lookahead_starts_binding_segment(
+        &self,
+        tokens: &fol_lexer::lexer::stage3::Elements,
+    ) -> bool {
+        let mut iter = tokens
+            .next_vec()
+            .into_iter()
+            .filter_map(Result::ok)
+            .filter(|token| {
+                let key = token.key();
+                !(key.is_void() || key.is_comment())
+            });
+
+        let first = match iter.next() {
+            Some(token) => token,
+            None => return false,
+        };
+        if !first.key().is_ident() {
+            return false;
+        }
+
+        matches!(
+            iter.next(),
+            Some(token)
+                if matches!(
+                    token.key(),
+                    KEYWORD::Symbol(SYMBOL::Colon)
+                        | KEYWORD::Symbol(SYMBOL::Equal)
+                        | KEYWORD::Symbol(SYMBOL::Comma)
+                )
+        )
+    }
+}

@@ -81,6 +81,8 @@ impl Default for AstParser {
 mod binding_alternative_parsers;
 #[path = "parser_parts/binding_option_parsers.rs"]
 mod binding_option_parsers;
+#[path = "parser_parts/binding_value_parsers.rs"]
+mod binding_value_parsers;
 #[path = "parser_parts/declaration_parsers.rs"]
 mod declaration_parsers;
 #[path = "parser_parts/expression_atoms_and_report_validation.rs"]

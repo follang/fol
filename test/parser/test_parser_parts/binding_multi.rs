@@ -160,3 +160,92 @@ fn test_grouped_binding_alternatives_preserve_shared_options() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_mixed_binding_entries_expand_in_order() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_var_mixed_multi.fol")
+        .expect("Should read mixed multi-binding fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept mixed binding entries");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            let vars: Vec<_> = declarations
+                .iter()
+                .filter_map(|node| {
+                    if let AstNode::VarDecl {
+                        name,
+                        type_hint,
+                        value,
+                        ..
+                    } = node
+                    {
+                        Some((
+                            name.as_str(),
+                            type_hint.clone(),
+                            value.as_ref().map(|v| v.as_ref().clone()),
+                        ))
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+            assert_eq!(vars.len(), 3);
+            assert!(matches!(
+                vars[0],
+                (
+                    "one",
+                    Some(FolType::Int {
+                        size: None,
+                        signed: true
+                    }),
+                    Some(AstNode::Literal(Literal::Integer(24)))
+                )
+            ));
+            assert!(matches!(
+                vars[1],
+                ("two", None, Some(AstNode::Literal(Literal::Integer(13))))
+            ));
+            assert!(matches!(vars[2].0, "three"));
+            assert!(matches!(
+                vars[2].1.as_ref(),
+                Some(FolType::Named { name }) if name == "str"
+            ));
+            assert!(matches!(
+                vars[2].2.as_ref(),
+                Some(AstNode::Literal(Literal::String(_)))
+            ));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_mixed_binding_entries_work_in_function_bodies() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_fun_var_mixed_multi.fol")
+        .expect("Should read function mixed multi-binding fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept mixed binding entries in function bodies");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::FunDecl { body, .. }
+                    if body.iter().filter(|stmt| matches!(stmt, AstNode::VarDecl { .. })).count() == 3
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
