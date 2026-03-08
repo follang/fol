@@ -1,5 +1,5 @@
 use super::*;
-use fol_parser::ast::{DeclOption, StandardKind};
+use fol_parser::ast::{DeclOption, StandardKind, VarOption};
 
 #[test]
 fn test_protocol_standard_declaration_parsing() {
@@ -225,6 +225,32 @@ fn test_blueprint_standard_accepts_empty_kind_brackets() {
                     node,
                     AstNode::StdDecl { name, kind: StandardKind::Blueprint, .. }
                     if name == "geometry"
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_blueprint_standard_accepts_const_fields() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_std_blueprint_const_field.fol")
+        .expect("Should read const blueprint standard fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse const fields in blueprint standards");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::StdDecl { name, kind: StandardKind::Blueprint, body, .. }
+                    if name == "geometry"
+                        && body.iter().any(|stmt| matches!(stmt, AstNode::VarDecl { name, options, .. } if name == "theme" && options.contains(&VarOption::Immutable)))
                 )
             }));
         }
