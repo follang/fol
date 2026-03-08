@@ -89,6 +89,8 @@ mod declaration_parsers;
 mod expression_atoms_and_report_validation;
 #[path = "parser_parts/expression_parsers.rs"]
 mod expression_parsers;
+#[path = "parser_parts/pipe_expression_parsers.rs"]
+mod pipe_expression_parsers;
 #[path = "parser_parts/rolling_expression_parsers.rs"]
 mod rolling_expression_parsers;
 #[path = "parser_parts/grouped_binding_parsers.rs"]

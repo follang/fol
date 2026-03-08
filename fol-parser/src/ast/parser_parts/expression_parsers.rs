@@ -274,7 +274,7 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Box<dyn Glitch>> {
-        self.parse_logical_or_expression(tokens)
+        self.parse_pipe_expression(tokens)
     }
 
     pub(super) fn parse_logical_or_expression(

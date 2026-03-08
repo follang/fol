@@ -69,6 +69,10 @@ impl AstParser {
                     | KEYWORD::Keyword(BUILDIN::Go)
                     | KEYWORD::Keyword(BUILDIN::Get)
                     | KEYWORD::Keyword(BUILDIN::Let)
+                    | KEYWORD::Keyword(BUILDIN::Check)
+                    | KEYWORD::Keyword(BUILDIN::Panic)
+                    | KEYWORD::Keyword(BUILDIN::Report)
+                    | KEYWORD::Keyword(BUILDIN::Assert)
             )
     }
 

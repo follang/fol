@@ -1,0 +1,33 @@
+use super::*;
+use fol_parser::ast::BinaryOperator;
+
+#[test]
+fn test_single_pipe_expression_parsing() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_fun_pipe_expr.fol")
+        .expect("Should read pipe expression fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse single pipe expressions");
+
+    let return_value = match ast {
+        AstNode::Program { declarations } => declarations
+            .iter()
+            .find_map(|node| match node {
+                AstNode::FunDecl { body, .. } => body.iter().find_map(|stmt| match stmt {
+                    AstNode::Return { value: Some(value) } => Some(value.as_ref().clone()),
+                    _ => None,
+                }),
+                _ => None,
+            })
+            .expect("Expected return statement"),
+        _ => panic!("Expected program node"),
+    };
+
+    assert!(matches!(
+        return_value,
+        AstNode::BinaryOp { op: BinaryOperator::Pipe, .. }
+    ));
+}

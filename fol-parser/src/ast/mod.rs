@@ -380,6 +380,8 @@ pub enum BinaryOperator {
     Is,
     As,
     Cast,
+    Pipe,
+    PipeOr,
 }
 
 /// Unary operators
