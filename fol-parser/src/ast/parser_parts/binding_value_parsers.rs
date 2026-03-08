@@ -64,7 +64,7 @@ impl AstParser {
             Some(token) => token,
             None => return false,
         };
-        if !first.key().is_ident() {
+        if !Self::token_can_be_logical_name(&first.key()) {
             return false;
         }
 

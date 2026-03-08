@@ -235,6 +235,66 @@ fn test_grouped_binding_entry_supports_parallel_values_in_function_body() {
 }
 
 #[test]
+fn test_keyword_named_binding_segments_expand_at_top_level() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_var_keyword_segment_multi.fol")
+        .expect("Should read keyword-named top-level binding segment fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept keyword-named binding segments at top level");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            let names: Vec<_> = declarations
+                .iter()
+                .filter_map(|node| match node {
+                    AstNode::VarDecl { name, .. } => Some(name.as_str()),
+                    _ => None,
+                })
+                .collect();
+            assert_eq!(names, vec!["left", "get"]);
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_keyword_named_binding_segments_expand_in_function_bodies() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_var_keyword_segment_multi.fol")
+            .expect("Should read keyword-named function-body binding segment fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept keyword-named binding segments in function bodies");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            let body = declarations
+                .iter()
+                .find_map(|node| match node {
+                    AstNode::FunDecl { body, .. } => Some(body),
+                    _ => None,
+                })
+                .expect("Program should include function body");
+            let names: Vec<_> = body
+                .iter()
+                .filter_map(|node| match node {
+                    AstNode::VarDecl { name, .. } => Some(name.as_str()),
+                    _ => None,
+                })
+                .collect();
+            assert_eq!(names, vec!["left", "get"]);
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
 fn test_mixed_binding_entries_expand_in_order() {
     let mut file_stream = FileStream::from_file("test/parser/simple_var_mixed_multi.fol")
         .expect("Should read mixed multi-binding fixture");
