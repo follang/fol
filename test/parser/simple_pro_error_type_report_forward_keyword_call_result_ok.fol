@@ -1,0 +1,8 @@
+pro caller_forward_keyword_ok(): int : str = {
+    report get();
+    return 0;
+}
+
+fun get(): str = {
+    return "ok";
+}
