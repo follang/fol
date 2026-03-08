@@ -1,0 +1,1 @@
+typ Handler: {fun (value: 'Input'): pkg::'Output'};
