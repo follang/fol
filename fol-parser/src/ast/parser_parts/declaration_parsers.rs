@@ -383,7 +383,7 @@ impl AstParser {
             for _ in 0..64 {
                 self.skip_ignorable(tokens);
                 let name_token = tokens.curr(false)?;
-                if !name_token.key().is_ident() {
+                if !Self::token_can_be_logical_name(&name_token.key()) {
                     return Err(Box::new(ParseError::from_token(
                         &name_token,
                         "Expected entry variant name".to_string(),

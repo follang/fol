@@ -1,0 +1,4 @@
+typ Events: ent = {
+    var get: int;
+    var log: str;
+}
