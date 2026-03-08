@@ -1,0 +1,9 @@
+fun sum(values: seq[int]): int = {
+    return values.length();
+    where(self) {
+        sum({}) is 0;
+    }
+    where(self) {
+        sum({1}) is 1;
+    }
+}

@@ -21,6 +21,12 @@ impl AstParser {
                 inquiries = self.parse_optional_inquiry_clause(tokens)?;
                 self.skip_ignorable(tokens);
                 let close = tokens.curr(false)?;
+                if matches!(close.key(), KEYWORD::Keyword(BUILDIN::Where)) {
+                    return Err(Box::new(ParseError::from_token(
+                        &close,
+                        "Duplicate inquiry clause".to_string(),
+                    )));
+                }
                 if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) {
                     return Err(Box::new(ParseError::from_token(
                         &close,

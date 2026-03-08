@@ -55,3 +55,51 @@ fn test_procedure_inquiry_clause_parsing() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_duplicate_function_inquiry_clause_rejected() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_duplicate_inquiry_clause.fol")
+            .expect("Should read duplicate function inquiry clause test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject duplicate inquiry clauses on functions");
+
+    let parse_error = errors
+        .first()
+        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        .expect("First parser error should be ParseError");
+
+    assert!(
+        parse_error.to_string().contains("Duplicate inquiry clause"),
+        "Expected duplicate inquiry error, got: {}",
+        parse_error
+    );
+}
+
+#[test]
+fn test_duplicate_procedure_inquiry_clause_rejected() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_pro_duplicate_inquiry_clause.fol")
+            .expect("Should read duplicate procedure inquiry clause test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject duplicate inquiry clauses on procedures");
+
+    let parse_error = errors
+        .first()
+        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        .expect("First parser error should be ParseError");
+
+    assert!(
+        parse_error.to_string().contains("Duplicate inquiry clause"),
+        "Expected duplicate inquiry error, got: {}",
+        parse_error
+    );
+}
