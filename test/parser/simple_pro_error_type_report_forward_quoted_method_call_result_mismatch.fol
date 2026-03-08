@@ -1,0 +1,10 @@
+typ Parser: rec = { }
+
+pro caller_forward_quoted_method_mismatch(tool: Parser): int : str = {
+    report tool."$make_err"();
+    return 0;
+}
+
+fun (Parser)"$make_err"(): int = {
+    return 1;
+}
