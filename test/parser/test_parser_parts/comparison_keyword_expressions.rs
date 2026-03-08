@@ -149,3 +149,48 @@ fn test_function_return_parses_is_expression() {
         "'is' expressions should infer bool type",
     );
 }
+
+#[test]
+fn test_function_return_parses_as_expression() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_fun_as_expr.fol")
+        .expect("Should read as-expression fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept 'as' expressions");
+
+    let return_expr = match ast {
+        AstNode::Program { declarations } => declarations
+            .iter()
+            .find_map(|node| {
+                if let AstNode::FunDecl { body, .. } = node {
+                    body.iter().find_map(|stmt| {
+                        if let AstNode::Return { value: Some(value) } = stmt {
+                            Some(value.as_ref().clone())
+                        } else {
+                            None
+                        }
+                    })
+                } else {
+                    None
+                }
+            })
+            .expect("Function body should include return expression"),
+        _ => panic!("Expected program node"),
+    };
+
+    assert!(
+        matches!(
+            return_expr,
+            AstNode::BinaryOp {
+                op: fol_parser::ast::BinaryOperator::As,
+                ref left,
+                ref right,
+            } if matches!(left.as_ref(), AstNode::Identifier { name } if name == "value")
+                && matches!(right.as_ref(), AstNode::Identifier { name } if name == "text")
+        ),
+        "Return expression should lower into BinaryOperator::As",
+    );
+}
