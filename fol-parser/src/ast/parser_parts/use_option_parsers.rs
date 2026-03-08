@@ -17,6 +17,9 @@ impl AstParser {
         let _ = tokens.bump();
 
         let mut options = Vec::new();
+        let mut saw_export = false;
+        let mut saw_hidden = false;
+        let mut saw_normal = false;
         for _ in 0..16 {
             self.skip_ignorable(tokens);
             let token = tokens.curr(false)?;
@@ -37,6 +40,47 @@ impl AstParser {
                     )))
                 }
             };
+            match option {
+                UseOption::Export => {
+                    if saw_export {
+                        return Err(Box::new(ParseError::from_token(
+                            &token,
+                            "Duplicate use option 'export'".to_string(),
+                        )));
+                    }
+                    if saw_hidden {
+                        return Err(Box::new(ParseError::from_token(
+                            &token,
+                            "Conflicting use options 'export' and 'hidden'".to_string(),
+                        )));
+                    }
+                    saw_export = true;
+                }
+                UseOption::Hidden => {
+                    if saw_hidden {
+                        return Err(Box::new(ParseError::from_token(
+                            &token,
+                            "Duplicate use option 'hidden'".to_string(),
+                        )));
+                    }
+                    if saw_export {
+                        return Err(Box::new(ParseError::from_token(
+                            &token,
+                            "Conflicting use options 'export' and 'hidden'".to_string(),
+                        )));
+                    }
+                    saw_hidden = true;
+                }
+                UseOption::Normal => {
+                    if saw_normal {
+                        return Err(Box::new(ParseError::from_token(
+                            &token,
+                            "Duplicate use option 'normal'".to_string(),
+                        )));
+                    }
+                    saw_normal = true;
+                }
+            }
             options.push(option);
             let _ = tokens.bump();
 

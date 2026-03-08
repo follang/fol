@@ -104,3 +104,55 @@ fn test_use_declaration_accepts_multiple_visibility_options() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_use_declaration_rejects_conflicting_visibility_options() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_use_conflicting_options.fol")
+            .expect("Should read conflicting use-option fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject conflicting use visibility options");
+
+    let parse_error = errors
+        .first()
+        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        .expect("First parser error should be ParseError");
+
+    assert!(
+        parse_error
+            .to_string()
+            .contains("Conflicting use options 'export' and 'hidden'"),
+        "Conflicting use options should report explicit visibility conflict, got: {}",
+        parse_error
+    );
+}
+
+#[test]
+fn test_use_declaration_rejects_duplicate_visibility_options() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_use_duplicate_options.fol")
+            .expect("Should read duplicate use-option fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject duplicate use visibility options");
+
+    let parse_error = errors
+        .first()
+        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        .expect("First parser error should be ParseError");
+
+    assert!(
+        parse_error
+            .to_string()
+            .contains("Duplicate use option 'export'"),
+        "Duplicate use options should report the duplicated item, got: {}",
+        parse_error
+    );
+}
