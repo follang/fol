@@ -139,6 +139,36 @@ impl AstParser {
         let start = self.parse_logical_expression(tokens)?;
         self.skip_ignorable(tokens);
 
+        if matches!(
+            tokens.curr(false).map(|token| token.key()),
+            Ok(KEYWORD::Symbol(SYMBOL::Comma))
+        ) {
+            let mut patterns = vec![start.clone()];
+            for _ in 0..64 {
+                let _ = tokens.bump();
+                self.skip_ignorable(tokens);
+                patterns.push(self.parse_logical_expression(tokens)?);
+                self.skip_ignorable(tokens);
+
+                let token = tokens.curr(false)?;
+                if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
+                    continue;
+                }
+                if matches!(token.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
+                    let _ = tokens.bump();
+                    return Ok(AstNode::PatternAccess {
+                        container: Box::new(node),
+                        patterns,
+                    });
+                }
+
+                return Err(Box::new(ParseError::from_token(
+                    &token,
+                    "Expected ',' or ']' in pattern access".to_string(),
+                )));
+            }
+        }
+
         if let Some(reverse) = self.consume_slice_separator(tokens)? {
             let end = self.parse_optional_slice_end(tokens)?;
             self.skip_ignorable(tokens);
