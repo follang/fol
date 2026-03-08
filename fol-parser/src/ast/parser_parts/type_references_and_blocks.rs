@@ -822,6 +822,16 @@ impl AstParser {
                 continue;
             }
 
+            if (matches!(key, KEYWORD::Symbol(SYMBOL::RoundO))
+                || AstParser::token_can_be_logical_name(&key)
+                || matches!(key, KEYWORD::Literal(LITERAL::Stringy)))
+                && self.lookahead_is_general_invoke(tokens, matches!(key, KEYWORD::Symbol(SYMBOL::RoundO)))
+                && self.can_start_assignment(tokens)
+            {
+                body.push(self.parse_invoke_stmt(tokens)?);
+                continue;
+            }
+
             if AstParser::token_can_be_logical_name(&key) {
                 body.push(AstNode::Identifier {
                     name: token.con().trim().to_string(),

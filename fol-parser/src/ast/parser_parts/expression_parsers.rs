@@ -234,6 +234,103 @@ impl AstParser {
         false
     }
 
+    pub(super) fn lookahead_is_general_invoke(
+        &self,
+        tokens: &fol_lexer::lexer::stage3::Elements,
+        starts_grouped: bool,
+    ) -> bool {
+        let mut round_depth = if starts_grouped { 1usize } else { 0usize };
+        let mut square_depth = 0usize;
+        let mut saw_postfix_base = starts_grouped;
+        let mut expect_path_segment = false;
+        let mut expect_member_name = false;
+
+        for candidate in tokens.next_vec() {
+            let token = match candidate {
+                Ok(token) => token,
+                Err(_) => continue,
+            };
+
+            let key = token.key();
+            if key.is_void() || key.is_comment() {
+                continue;
+            }
+
+            if round_depth > 0 {
+                if matches!(key, KEYWORD::Symbol(SYMBOL::RoundO)) {
+                    round_depth += 1;
+                } else if matches!(key, KEYWORD::Symbol(SYMBOL::RoundC)) {
+                    round_depth -= 1;
+                    if round_depth == 0 {
+                        saw_postfix_base = true;
+                    }
+                } else if matches!(key, KEYWORD::Symbol(SYMBOL::SquarO)) {
+                    square_depth = 1;
+                }
+                continue;
+            }
+
+            if square_depth > 0 {
+                if matches!(key, KEYWORD::Symbol(SYMBOL::SquarO)) {
+                    square_depth += 1;
+                } else if matches!(key, KEYWORD::Symbol(SYMBOL::SquarC)) {
+                    square_depth -= 1;
+                    if square_depth == 0 {
+                        saw_postfix_base = true;
+                    }
+                } else if matches!(key, KEYWORD::Symbol(SYMBOL::RoundO)) {
+                    round_depth = 1;
+                }
+                continue;
+            }
+
+            if expect_path_segment {
+                if Self::token_can_be_logical_name(&key)
+                    || matches!(key, KEYWORD::Literal(LITERAL::Stringy))
+                {
+                    expect_path_segment = false;
+                    continue;
+                }
+                return false;
+            }
+
+            if expect_member_name {
+                if Self::token_can_be_logical_name(&key)
+                    || matches!(key, KEYWORD::Literal(LITERAL::Stringy))
+                {
+                    expect_member_name = false;
+                    continue;
+                }
+                return false;
+            }
+
+            if matches!(key, KEYWORD::Operator(OPERATOR::Path)) {
+                expect_path_segment = true;
+                continue;
+            }
+
+            if matches!(key, KEYWORD::Symbol(SYMBOL::Dot)) {
+                expect_member_name = true;
+                saw_postfix_base = true;
+                continue;
+            }
+
+            if matches!(key, KEYWORD::Symbol(SYMBOL::SquarO)) {
+                square_depth = 1;
+                saw_postfix_base = true;
+                continue;
+            }
+
+            if saw_postfix_base && matches!(key, KEYWORD::Symbol(SYMBOL::RoundO)) {
+                return true;
+            }
+
+            return false;
+        }
+
+        false
+    }
+
     pub(super) fn can_start_assignment(&self, tokens: &fol_lexer::lexer::stage3::Elements) -> bool {
         match self.previous_significant_key(tokens) {
             None => true,

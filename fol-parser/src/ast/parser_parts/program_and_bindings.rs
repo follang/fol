@@ -373,6 +373,28 @@ impl AstParser {
                 continue;
             }
 
+            if (matches!(key, KEYWORD::Symbol(SYMBOL::RoundO))
+                || AstParser::token_can_be_logical_name(&key)
+                || matches!(key, KEYWORD::Literal(LITERAL::Stringy)))
+                && self.lookahead_is_general_invoke(tokens, matches!(key, KEYWORD::Symbol(SYMBOL::RoundO)))
+                && self.can_start_assignment(tokens)
+            {
+                let before = (
+                    token.loc().row(),
+                    token.loc().col(),
+                    token.con().to_string(),
+                );
+                match self.parse_invoke_stmt(tokens) {
+                    Ok(node) => declarations.push(node),
+                    Err(error) => errors.push(error),
+                }
+                self.bump_if_no_progress(tokens, before);
+                if tokens.curr(false).is_err() {
+                    break;
+                }
+                continue;
+            }
+
             if matches!(key, KEYWORD::Keyword(BUILDIN::Break)) {
                 let before = (
                     token.loc().row(),

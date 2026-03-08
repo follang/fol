@@ -789,6 +789,26 @@ impl AstParser {
         Ok(call)
     }
 
+    pub(super) fn parse_invoke_stmt(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
+        let start_token = tokens.curr(false)?;
+        let expr = self.parse_logical_expression(tokens)?;
+        if !matches!(
+            expr,
+            AstNode::FunctionCall { .. } | AstNode::MethodCall { .. } | AstNode::Invoke { .. }
+        ) {
+            return Err(Box::new(ParseError::from_token(
+                &start_token,
+                "Expected invocable statement expression".to_string(),
+            )));
+        }
+
+        self.consume_optional_semicolon(tokens);
+        Ok(expr)
+    }
+
     pub(super) fn parse_call_expr(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,

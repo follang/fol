@@ -67,3 +67,55 @@ fn test_nested_invoke_expression_parsing() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_indexed_invoke_statement_parsing() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_indexed_invoke_stmt.fol")
+            .expect("Should read indexed invoke statement fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse indexed invoke statements");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::FunDecl { body, .. }
+                    if body.iter().any(|stmt| matches!(stmt, AstNode::Invoke { .. }))
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_grouped_invoke_statement_parsing() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_grouped_invoke_stmt.fol")
+            .expect("Should read grouped invoke statement fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse grouped invoke statements");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::FunDecl { body, .. }
+                    if body.iter().any(|stmt| matches!(stmt, AstNode::Invoke { .. }))
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
