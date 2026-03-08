@@ -51,6 +51,7 @@ fn test_named_test_block_definition_parsing() {
                         name,
                         def_type: FolType::Test { name: Some(label), access },
                         body,
+                        ..
                     }
                     if name == "test1"
                         && label == "sometest"

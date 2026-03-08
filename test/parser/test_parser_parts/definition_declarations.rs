@@ -1,4 +1,5 @@
 use super::*;
+use fol_parser::ast::DeclOption;
 
 #[test]
 fn test_top_level_def_module_parsing() {
@@ -21,6 +22,7 @@ fn test_top_level_def_module_parsing() {
                             name,
                             def_type: FolType::Module { name: module_name },
                             body,
+                            ..
                         }
                         if name == "argo"
                             && module_name == "init"
@@ -62,6 +64,7 @@ fn test_top_level_def_bare_module_parsing() {
                             name,
                             def_type: FolType::Module { name: module_name },
                             body,
+                            ..
                         }
                         if name == "argo"
                             && module_name.is_empty()
@@ -99,6 +102,7 @@ fn test_top_level_def_block_parsing() {
                             name,
                             def_type: FolType::Block { name: block_name },
                             body,
+                            ..
                         }
                         if name == "marker"
                             && block_name.is_empty()
@@ -136,6 +140,7 @@ fn test_def_bare_block_marker_without_body_parsing() {
                             name,
                             def_type: FolType::Block { name: block_name },
                             body,
+                            ..
                         }
                         if name == "mark" && block_name.is_empty() && body.is_empty()
                     )
@@ -168,6 +173,7 @@ fn test_top_level_def_module_parsing_with_trailing_semicolon() {
                             name,
                             def_type: FolType::Module { name: module_name },
                             body,
+                            ..
                         }
                         if name == "argo"
                             && module_name == "init"
@@ -205,6 +211,7 @@ fn test_def_with_quoted_name_parsing() {
                             name,
                             def_type: FolType::Block { name: block_name },
                             body,
+                            ..
                         }
                         if name == "startup block"
                             && block_name.is_empty()
@@ -241,6 +248,7 @@ fn test_def_with_keyword_name_parsing() {
                         name,
                         def_type: FolType::Block { name: block_name },
                         body,
+                        ..
                     }
                     if name == "log" && block_name.is_empty() && body.is_empty()
                 )
@@ -271,6 +279,7 @@ fn test_def_with_single_quoted_name_parsing() {
                             name,
                             def_type: FolType::Block { name: block_name },
                             body,
+                            ..
                         }
                         if name == "startup block"
                             && block_name.is_empty()
@@ -306,6 +315,7 @@ fn test_def_with_empty_option_brackets_parsing() {
                     name,
                     def_type: FolType::Block { name: block_name },
                     body,
+                    ..
                 }
                 if name == "mark" && block_name.is_empty() && body.is_empty()
             )));
@@ -332,10 +342,33 @@ fn test_def_rejects_non_empty_option_brackets() {
 
     let message = parse_error.to_string();
     assert!(
-        message.contains("Definition options currently support only empty brackets"),
+        message.contains("Unknown definition option"),
         "Non-empty def option brackets should be rejected, got: {}",
         message
     );
+}
+
+#[test]
+fn test_def_visibility_options_parse() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_def_visibility_options.fol")
+        .expect("Should read visibility-option definition test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse definition visibility options");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::DefDecl { name, options, .. }
+                if name == "mark" && options == &vec![DeclOption::Export]
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
 }
 
 #[test]
@@ -359,6 +392,7 @@ fn test_def_block_marker_without_body_parsing() {
                             name,
                             def_type: FolType::Block { name: block_name },
                             body,
+                            ..
                         }
                         if name == "mark" && block_name.is_empty() && body.is_empty()
                     )
@@ -391,6 +425,7 @@ fn test_def_quoted_block_marker_without_body_parsing() {
                             name,
                             def_type: FolType::Block { name: block_name },
                             body,
+                            ..
                         }
                         if name == "jump mark" && block_name.is_empty() && body.is_empty()
                     )
@@ -424,6 +459,7 @@ fn test_def_block_marker_without_body_parsing_with_trailing_semicolon() {
                             name,
                             def_type: FolType::Block { name: block_name },
                             body,
+                            ..
                         }
                         if name == "mark" && block_name.is_empty() && body.is_empty()
                     )
@@ -457,6 +493,7 @@ fn test_def_single_quoted_block_marker_without_body_parsing_with_trailing_semico
                             name,
                             def_type: FolType::Block { name: block_name },
                             body,
+                            ..
                         }
                         if name == "jump mark" && block_name.is_empty() && body.is_empty()
                     )
@@ -490,6 +527,7 @@ fn test_def_quoted_block_marker_without_body_parsing_with_trailing_semicolon() {
                             name,
                             def_type: FolType::Block { name: block_name },
                             body,
+                            ..
                         }
                         if name == "jump mark" && block_name.is_empty() && body.is_empty()
                     )
@@ -522,6 +560,7 @@ fn test_def_bodies_support_nested_definitions() {
                             name,
                             def_type: FolType::Module { name: module_name },
                             body,
+                            ..
                         }
                         if name == "outer"
                             && module_name == "root"
@@ -531,6 +570,7 @@ fn test_def_bodies_support_nested_definitions() {
                                     name,
                                     def_type: FolType::Block { name: block_name },
                                     body,
+                                    ..
                                 }
                                 if name == "inner"
                                     && block_name.is_empty()
@@ -545,6 +585,7 @@ fn test_def_bodies_support_nested_definitions() {
                                     name,
                                     def_type: FolType::Block { name: block_name },
                                     body,
+                                    ..
                                 }
                                 if name == "jump mark" && block_name.is_empty() && body.is_empty()
                             ))
@@ -585,6 +626,7 @@ fn test_regular_blocks_support_nested_definitions() {
                                         name,
                                         def_type: FolType::Block { name: block_name },
                                         body,
+                                        ..
                                     }
                                     if name == "helper" && block_name.is_empty() && body.is_empty()
                                 ))

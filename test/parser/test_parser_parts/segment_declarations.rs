@@ -1,4 +1,5 @@
 use super::*;
+use fol_parser::ast::DeclOption;
 
 #[test]
 fn test_top_level_segment_declaration_parsing() {
@@ -16,7 +17,7 @@ fn test_top_level_segment_declaration_parsing() {
             assert!(declarations.iter().any(|node| {
                 matches!(
                     node,
-                    AstNode::SegDecl { name, seg_type, body }
+                    AstNode::SegDecl { name, seg_type, body, .. }
                     if name == "core"
                         && matches!(seg_type, FolType::Module { .. })
                         && body.iter().any(|stmt| matches!(stmt, AstNode::DefDecl { name, .. } if name == "helper"))
@@ -117,7 +118,7 @@ fn test_segment_declaration_accepts_quoted_names() {
             assert!(declarations.iter().any(|node| {
                 matches!(
                     node,
-                    AstNode::SegDecl { name, seg_type, body }
+                    AstNode::SegDecl { name, seg_type, body, .. }
                     if name == "core"
                         && matches!(seg_type, FolType::Module { .. })
                         && body.iter().any(|stmt| matches!(stmt, AstNode::DefDecl { name, .. } if name == "helper"))
@@ -143,7 +144,7 @@ fn test_segment_declaration_accepts_empty_option_brackets() {
         AstNode::Program { declarations } => {
             assert!(declarations.iter().any(|node| matches!(
                 node,
-                AstNode::SegDecl { name, seg_type, body }
+                AstNode::SegDecl { name, seg_type, body, .. }
                 if name == "core" && matches!(seg_type, FolType::Module { .. }) && body.is_empty()
             )));
         }
@@ -169,8 +170,31 @@ fn test_segment_declaration_rejects_non_empty_option_brackets() {
 
     let message = parse_error.to_string();
     assert!(
-        message.contains("Segment options currently support only empty brackets"),
+        message.contains("Unknown segment option"),
         "Non-empty segment option brackets should be rejected, got: {}",
         message
     );
+}
+
+#[test]
+fn test_segment_declaration_visibility_options_parse() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_seg_visibility_options.fol")
+        .expect("Should read visibility-option segment declaration test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse segment visibility options");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::SegDecl { name, options, .. }
+                if name == "core" && options == &vec![DeclOption::Export]
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
 }

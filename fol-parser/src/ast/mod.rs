@@ -62,6 +62,7 @@ pub enum AstNode {
 
     /// Definition declaration: def name: mod[...] = { body } / def name: blk[...] = { body }
     DefDecl {
+        options: Vec<DeclOption>,
         name: String,
         def_type: FolType,
         body: Vec<AstNode>,
@@ -69,6 +70,7 @@ pub enum AstNode {
 
     /// Segment declaration: seg name: mod[...] = { body }
     SegDecl {
+        options: Vec<DeclOption>,
         name: String,
         seg_type: FolType,
         body: Vec<AstNode>,

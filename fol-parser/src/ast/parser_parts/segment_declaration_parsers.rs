@@ -15,7 +15,7 @@ impl AstParser {
 
         let _ = tokens.bump();
         self.skip_ignorable(tokens);
-        self.parse_empty_seg_options(tokens)?;
+        let options = self.parse_decl_visibility_options(tokens, "segment")?;
         self.skip_ignorable(tokens);
 
         let name_token = tokens.curr(false)?;
@@ -73,35 +73,10 @@ impl AstParser {
         self.consume_optional_semicolon(tokens);
 
         Ok(AstNode::SegDecl {
+            options,
             name,
             seg_type: def_type,
             body,
         })
-    }
-
-    fn parse_empty_seg_options(
-        &self,
-        tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<(), Box<dyn Glitch>> {
-        let open = match tokens.curr(false) {
-            Ok(token) => token,
-            Err(_) => return Ok(()),
-        };
-
-        if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::SquarO)) {
-            return Ok(());
-        }
-        let _ = tokens.bump();
-        self.skip_ignorable(tokens);
-
-        let close = tokens.curr(false)?;
-        if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
-            return Err(Box::new(ParseError::from_token(
-                &close,
-                "Segment options currently support only empty brackets".to_string(),
-            )));
-        }
-        let _ = tokens.bump();
-        Ok(())
     }
 }
