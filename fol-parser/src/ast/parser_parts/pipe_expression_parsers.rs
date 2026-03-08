@@ -19,6 +19,12 @@ impl AstParser {
                 | KEYWORD::Keyword(BUILDIN::Check)
                 | KEYWORD::Keyword(BUILDIN::Assert)
         ) {
+            if matches!(
+                self.next_significant_key_from_window(tokens),
+                Some(KEYWORD::Symbol(SYMBOL::RoundO))
+            ) {
+                return self.parse_logical_or_expression(tokens);
+            }
             return self.parse_builtin_call_stmt(tokens);
         }
 
