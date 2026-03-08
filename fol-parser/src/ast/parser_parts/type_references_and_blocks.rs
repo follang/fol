@@ -683,22 +683,22 @@ impl AstParser {
             }
 
             if self.lookahead_binding_alternative(tokens).is_some() {
-                body.push(self.parse_binding_alternative_decl(tokens)?);
+                body.extend(self.parse_binding_alternative_decl(tokens)?);
                 continue;
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Var)) {
-                body.push(self.parse_var_decl(tokens)?);
+                body.extend(self.parse_var_decl(tokens)?);
                 continue;
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Let)) {
-                body.push(self.parse_let_decl(tokens)?);
+                body.extend(self.parse_let_decl(tokens)?);
                 continue;
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Con)) {
-                body.push(self.parse_con_decl(tokens)?);
+                body.extend(self.parse_con_decl(tokens)?);
                 continue;
             }
 

@@ -51,7 +51,7 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_binding_alternative_decl(tokens) {
-                    Ok(node) => declarations.push(node),
+                    Ok(nodes) => declarations.extend(nodes),
                     Err(error) => errors.push(error),
                 }
                 self.bump_if_no_progress(tokens, before);
@@ -68,7 +68,7 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_var_decl(tokens) {
-                    Ok(node) => declarations.push(node),
+                    Ok(nodes) => declarations.extend(nodes),
                     Err(error) => errors.push(error),
                 }
 
@@ -92,7 +92,7 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_let_decl(tokens) {
-                    Ok(node) => declarations.push(node),
+                    Ok(nodes) => declarations.extend(nodes),
                     Err(error) => errors.push(error),
                 }
 
@@ -116,7 +116,7 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_con_decl(tokens) {
-                    Ok(node) => declarations.push(node),
+                    Ok(nodes) => declarations.extend(nodes),
                     Err(error) => errors.push(error),
                 }
 
@@ -708,21 +708,21 @@ impl AstParser {
     pub(super) fn parse_var_decl(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
         self.parse_binding_decl(tokens, "var", vec![VarOption::Mutable, VarOption::Normal])
     }
 
     pub(super) fn parse_let_decl(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
         self.parse_binding_decl(tokens, "let", vec![VarOption::Immutable, VarOption::Normal])
     }
 
     pub(super) fn parse_con_decl(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
         self.parse_binding_decl(tokens, "con", vec![VarOption::Immutable, VarOption::Normal])
     }
 
@@ -731,9 +731,9 @@ impl AstParser {
         tokens: &mut fol_lexer::lexer::stage3::Elements,
         keyword: &str,
         default_options: Vec<VarOption>,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
         let mut type_hint = None;
-        let mut value = None;
+        let mut values = Vec::new();
 
         if tokens.bump().is_none() {
             return Err(Box::new(ParseError {
@@ -748,17 +748,7 @@ impl AstParser {
         let options = self.parse_binding_options(tokens, default_options)?;
         self.skip_ignorable(tokens);
 
-        let name_token = tokens.curr(false)?;
-        let name = if name_token.key().is_ident() {
-            let parsed_name = name_token.con().trim().to_string();
-            let _ = tokens.bump();
-            parsed_name
-        } else {
-            return Err(Box::new(ParseError::from_token(
-                &name_token,
-                format!("Expected identifier after '{}'", keyword),
-            )));
-        };
+        let names = self.parse_binding_names(tokens, keyword)?;
 
         self.skip_ignorable(tokens);
 
@@ -778,19 +768,110 @@ impl AstParser {
                 let _ = tokens.bump();
                 self.skip_ignorable(tokens);
 
-                let parsed_value = self.parse_logical_expression(tokens)?;
-                value = Some(Box::new(parsed_value));
+                values = self.parse_binding_values(tokens)?;
             }
         }
 
         self.consume_optional_semicolon(tokens);
 
-        Ok(AstNode::VarDecl {
-            options,
-            name,
-            type_hint,
-            value,
-        })
+        self.build_binding_nodes(options, names, type_hint, values)
+    }
+
+    pub(super) fn parse_binding_names(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+        keyword: &str,
+    ) -> Result<Vec<String>, Box<dyn Glitch>> {
+        let mut names = Vec::new();
+
+        for _ in 0..256 {
+            let name_token = tokens.curr(false)?;
+            if !name_token.key().is_ident() {
+                return Err(Box::new(ParseError::from_token(
+                    &name_token,
+                    format!("Expected identifier after '{}'", keyword),
+                )));
+            }
+            names.push(name_token.con().trim().to_string());
+            let _ = tokens.bump();
+
+            self.skip_ignorable(tokens);
+            let next = match tokens.curr(false) {
+                Ok(token) => token,
+                Err(_) => break,
+            };
+
+            if matches!(next.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
+                let _ = tokens.bump();
+                self.skip_ignorable(tokens);
+                continue;
+            }
+
+            break;
+        }
+
+        Ok(names)
+    }
+
+    pub(super) fn parse_binding_values(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
+        let mut values = Vec::new();
+
+        for _ in 0..256 {
+            values.push(self.parse_logical_expression(tokens)?);
+            self.skip_ignorable(tokens);
+
+            let next = match tokens.curr(false) {
+                Ok(token) => token,
+                Err(_) => break,
+            };
+
+            if matches!(next.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
+                let _ = tokens.bump();
+                self.skip_ignorable(tokens);
+                continue;
+            }
+
+            break;
+        }
+
+        Ok(values)
+    }
+
+    pub(super) fn build_binding_nodes(
+        &self,
+        options: Vec<VarOption>,
+        names: Vec<String>,
+        type_hint: Option<FolType>,
+        values: Vec<AstNode>,
+    ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
+        let assigned_values = match values.len() {
+            0 => vec![None; names.len()],
+            1 => vec![Some(values[0].clone()); names.len()],
+            n if n == names.len() => values.into_iter().map(Some).collect(),
+            _ => return Err(Box::new(ParseError {
+                message:
+                    "Binding value count must match declared names or provide a single shared value"
+                        .to_string(),
+                file: None,
+                line: 0,
+                column: 0,
+                length: 0,
+            })),
+        };
+
+        Ok(names
+            .into_iter()
+            .zip(assigned_values)
+            .map(|(name, value)| AstNode::VarDecl {
+                options: options.clone(),
+                name,
+                type_hint: type_hint.clone(),
+                value: value.map(Box::new),
+            })
+            .collect())
     }
 
     pub(super) fn parse_use_decl(

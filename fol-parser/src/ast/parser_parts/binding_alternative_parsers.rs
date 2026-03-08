@@ -37,7 +37,7 @@ impl AstParser {
     pub(super) fn parse_binding_alternative_decl(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
         let (keyword, options) = self.lookahead_binding_alternative(tokens).ok_or_else(|| {
             Box::new(ParseError {
                 message: "Expected binding alternative".to_string(),

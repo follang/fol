@@ -18,6 +18,9 @@ mod basic_declarations;
 #[path = "test_parser_parts/binding_alternatives.rs"]
 mod binding_alternatives;
 #[cfg(test)]
+#[path = "test_parser_parts/binding_multi.rs"]
+mod binding_multi;
+#[cfg(test)]
 #[path = "test_parser_parts/binding_options.rs"]
 mod binding_options;
 #[cfg(test)]
