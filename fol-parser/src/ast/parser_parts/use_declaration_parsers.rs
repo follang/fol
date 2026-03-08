@@ -52,16 +52,25 @@ impl AstParser {
 
         for _ in 0..256 {
             self.skip_ignorable(tokens);
-            let open = tokens.curr(false)?;
-            if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
+            let token = tokens.curr(false)?;
+            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
+                let _ = tokens.bump();
+                paths.push(self.parse_use_path(tokens)?);
+            } else if matches!(token.key(), KEYWORD::Literal(LITERAL::Stringy)) {
+                paths.push(
+                    token
+                        .con()
+                        .trim()
+                        .trim_matches(|c| c == '"' || c == '\'')
+                        .to_string(),
+                );
+                let _ = tokens.bump();
+            } else {
                 return Err(Box::new(ParseError::from_token(
-                    &open,
-                    "Expected '{' to start use path".to_string(),
+                    &token,
+                    "Expected '{' or quoted use path".to_string(),
                 )));
             }
-            let _ = tokens.bump();
-
-            paths.push(self.parse_use_path(tokens)?);
             self.skip_ignorable(tokens);
 
             let next = match tokens.curr(false) {
