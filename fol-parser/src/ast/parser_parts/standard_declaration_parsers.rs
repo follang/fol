@@ -92,6 +92,9 @@ impl AstParser {
             }
         };
         let _ = tokens.bump();
+        if matches!(kind, StandardKind::Protocol) {
+            self.parse_empty_standard_kind_options(tokens, "protocol")?;
+        }
 
         self.skip_ignorable(tokens);
         let assign = tokens.curr(false)?;
@@ -385,6 +388,37 @@ impl AstParser {
             return Err(Box::new(ParseError::from_token(
                 &close,
                 "Standard options currently support only empty brackets".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+        Ok(())
+    }
+
+    fn parse_empty_standard_kind_options(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+        kind_name: &str,
+    ) -> Result<(), Box<dyn Glitch>> {
+        self.skip_ignorable(tokens);
+        let open = match tokens.curr(false) {
+            Ok(token) => token,
+            Err(_) => return Ok(()),
+        };
+
+        if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::SquarO)) {
+            return Ok(());
+        }
+        let _ = tokens.bump();
+        self.skip_ignorable(tokens);
+
+        let close = tokens.curr(false)?;
+        if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
+            return Err(Box::new(ParseError::from_token(
+                &close,
+                format!(
+                    "{} standard kind options currently support only empty brackets",
+                    kind_name
+                ),
             )));
         }
         let _ = tokens.bump();

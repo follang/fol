@@ -131,3 +131,29 @@ fn test_standard_declaration_accepts_empty_options() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_protocol_standard_accepts_empty_kind_brackets() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_std_protocol_kind_options.fol")
+            .expect("Should read pro[] standard test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse pro[] standard declarations");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::StdDecl { name, kind: StandardKind::Protocol, .. }
+                    if name == "geometry"
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
