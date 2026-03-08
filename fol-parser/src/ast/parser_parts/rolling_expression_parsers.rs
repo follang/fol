@@ -56,6 +56,7 @@ impl AstParser {
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
                 let _ = tokens.bump();
                 let mut bindings = Vec::new();
+                let mut seen_names = HashSet::new();
 
                 for _ in 0..64 {
                     self.skip_ignorable(tokens);
@@ -65,7 +66,17 @@ impl AstParser {
                         return Ok(bindings);
                     }
 
-                    bindings.push(self.parse_rolling_binding(tokens)?);
+                    let binding = self.parse_rolling_binding(tokens)?;
+                    if !seen_names.insert(binding.name.clone()) {
+                        return Err(Box::new(ParseError {
+                            message: format!("Duplicate rolling binding '{}'", binding.name),
+                            file: None,
+                            line: 0,
+                            column: 0,
+                            length: 0,
+                        }));
+                    }
+                    bindings.push(binding);
                     self.skip_ignorable(tokens);
 
                     let sep = tokens.curr(false)?;
@@ -94,7 +105,8 @@ impl AstParser {
             }
         }
 
-        Ok(vec![self.parse_rolling_binding(tokens)?])
+        let binding = self.parse_rolling_binding(tokens)?;
+        Ok(vec![binding])
     }
 
     pub(super) fn parse_rolling_binding(

@@ -130,3 +130,29 @@ fn test_rolling_expression_requires_in_keyword() {
         parse_error
     );
 }
+
+#[test]
+fn test_rolling_expression_rejects_duplicate_binders() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_rolling_duplicate_binders.fol")
+            .expect("Should read duplicate rolling binder fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject duplicate rolling binders");
+
+    let parse_error = errors
+        .first()
+        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        .expect("First parser error should be ParseError");
+
+    assert!(
+        parse_error
+            .to_string()
+            .contains("Duplicate rolling binding 'x'"),
+        "Duplicate rolling binders should report the repeated name, got: {}",
+        parse_error
+    );
+}
