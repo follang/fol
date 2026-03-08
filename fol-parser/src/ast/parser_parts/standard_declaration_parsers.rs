@@ -369,6 +369,21 @@ impl AstParser {
                 continue;
             }
 
+            if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Con)) {
+                let members = self.parse_con_decl(tokens)?;
+                for member in members {
+                    let key = self.standard_member_key(&member);
+                    if !seen_members.insert(key.clone()) {
+                        return Err(Box::new(ParseError::from_token(
+                            &token,
+                            format!("Duplicate standard member '{}'", key),
+                        )));
+                    }
+                    body.push(member);
+                }
+                continue;
+            }
+
             return Err(Box::new(ParseError::from_token(
                 &token,
                 "Extended standards currently support only routine signatures and field declarations"

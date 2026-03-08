@@ -1,0 +1,4 @@
+std geometry: ext = {
+    fun area(): int;
+    con theme: str = "light";
+}

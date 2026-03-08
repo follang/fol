@@ -285,6 +285,33 @@ fn test_extended_standard_accepts_empty_kind_brackets() {
 }
 
 #[test]
+fn test_extended_standard_accepts_const_fields() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_std_extended_const_field.fol")
+        .expect("Should read const extended standard fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse const members in extended standards");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::StdDecl { name, kind: StandardKind::Extended, body, .. }
+                    if name == "geometry"
+                        && body.iter().any(|stmt| matches!(stmt, AstNode::VarDecl { name, options, .. } if name == "theme" && options.contains(&VarOption::Immutable)))
+                        && body.iter().any(|stmt| matches!(stmt, AstNode::FunDecl { name, .. } if name == "area"))
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
 fn test_protocol_standard_rejects_duplicate_signatures() {
     let mut file_stream =
         FileStream::from_file("test/parser/simple_std_protocol_duplicate_signature.fol")
