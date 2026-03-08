@@ -1,0 +1,9 @@
+typ Data: rec = {
+    'id': int;
+    'label': str;
+}
+
+typ Result: ent = {
+    var 'ok': str,
+    var 'err': int,
+}
