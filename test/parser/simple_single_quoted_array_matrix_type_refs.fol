@@ -1,0 +1,2 @@
+typ Buffer: arr['Byte', 16];
+typ Grid: mat[pkg::'Cell', 4, 8];
