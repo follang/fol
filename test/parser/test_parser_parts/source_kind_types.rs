@@ -107,3 +107,39 @@ fn test_loc_type_references_lower_structurally() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_std_type_references_lower_structurally() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_source_std_types.fol")
+        .expect("Should read std source-kind type fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should lower std source-kind types");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::UseDecl {
+                    name,
+                    path_type: FolType::Standard { name: kind_name },
+                    ..
+                } if name == "fmt" && kind_name.is_empty()
+            )));
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::TypeDecl {
+                    name,
+                    type_def: TypeDefinition::Alias {
+                        target: FolType::Standard { name: kind_name }
+                    },
+                    ..
+                } if name == "StdPkg" && kind_name == "pkg"
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}

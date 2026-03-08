@@ -98,15 +98,15 @@ fn test_use_declaration_supports_multiple_names_and_paths() {
             assert!(matches!(
                 imports.as_slice(),
                 [
-                    (log, FolType::Named { name: type_name_a }, path_a),
-                    (sync, FolType::Named { name: type_name_b }, path_b),
-                    (color, FolType::Named { name: type_name_c }, path_c),
+                    (log, FolType::Standard { name: type_name_a }, path_a),
+                    (sync, FolType::Standard { name: type_name_b }, path_b),
+                    (color, FolType::Standard { name: type_name_c }, path_c),
                 ] if log == "log"
                     && sync == "sync"
                     && color == "color"
-                    && type_name_a == "std"
-                    && type_name_b == "std"
-                    && type_name_c == "std"
+                    && type_name_a.is_empty()
+                    && type_name_b.is_empty()
+                    && type_name_c.is_empty()
                     && path_a == "fmt/log"
                     && path_b == "os/sync"
                     && path_c == "fmt/color"
@@ -222,7 +222,7 @@ fn test_use_declaration_allows_omitted_colon_before_path_type() {
 
     assert_eq!(use_decl.0, "warn");
     assert!(
-        matches!(use_decl.1, FolType::Named { name } if name == "std"),
+        matches!(use_decl.1, FolType::Standard { name } if name.is_empty()),
         "Colonless use declaration should still parse path type"
     );
     assert_eq!(use_decl.2, "fmt/log.warn");
@@ -261,7 +261,7 @@ fn test_use_declaration_unwraps_quoted_paths() {
 
     assert_eq!(use_decl.0, "fmt");
     assert!(
-        matches!(use_decl.1, FolType::Named { name } if name == "std"),
+        matches!(use_decl.1, FolType::Standard { name } if name.is_empty()),
         "Quoted-path use declaration should still parse path type"
     );
     assert_eq!(use_decl.2, "fmt/log");

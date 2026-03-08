@@ -55,6 +55,22 @@ impl AstParser {
                 };
                 Ok(Some(FolType::Location { name }))
             }
+            "std" => {
+                let args = self.parse_type_argument_list(tokens)?;
+                if args.len() > 1 {
+                    let token = tokens.curr(false)?;
+                    return Err(Box::new(ParseError::from_token(
+                        &token,
+                        "Expected zero or one type argument for std[...]".to_string(),
+                    )));
+                }
+                let name = match args.into_iter().next() {
+                    None => String::new(),
+                    Some(FolType::Named { name }) => name,
+                    Some(other) => Self::fol_type_label(&other),
+                };
+                Ok(Some(FolType::Standard { name }))
+            }
             _ => Ok(None),
         }
     }
@@ -68,6 +84,9 @@ impl AstParser {
                 name: String::new(),
             }),
             "loc" => Some(FolType::Location {
+                name: String::new(),
+            }),
+            "std" => Some(FolType::Standard {
                 name: String::new(),
             }),
             _ => None,
