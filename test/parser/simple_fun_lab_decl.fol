@@ -1,0 +1,4 @@
+fun demo(): int = {
+    lab label: int = 1;
+    return label;
+}

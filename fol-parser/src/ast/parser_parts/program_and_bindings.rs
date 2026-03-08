@@ -133,6 +133,23 @@ impl AstParser {
                 continue;
             }
 
+            if matches!(key, KEYWORD::Keyword(BUILDIN::Lab)) {
+                let before = (
+                    token.loc().row(),
+                    token.loc().col(),
+                    token.con().to_string(),
+                );
+                match self.parse_lab_decl(tokens) {
+                    Ok(nodes) => declarations.extend(nodes),
+                    Err(error) => errors.push(error),
+                }
+                self.bump_if_no_progress(tokens, before);
+                if tokens.curr(false).is_err() {
+                    break;
+                }
+                continue;
+            }
+
             if matches!(key, KEYWORD::Keyword(BUILDIN::Use)) {
                 let before = (
                     token.loc().row(),
@@ -758,6 +775,13 @@ impl AstParser {
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
         self.parse_binding_decl(tokens, "con", vec![VarOption::Immutable, VarOption::Normal])
+    }
+
+    pub(super) fn parse_lab_decl(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
+        self.parse_binding_decl(tokens, "lab", vec![VarOption::Immutable, VarOption::Normal])
     }
 
     pub(super) fn parse_binding_decl(

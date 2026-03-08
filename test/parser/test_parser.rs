@@ -48,6 +48,9 @@ mod keyword_named_routines;
 #[path = "test_parser_parts/keyword_named_types.rs"]
 mod keyword_named_types;
 #[cfg(test)]
+#[path = "test_parser_parts/lab_declarations.rs"]
+mod lab_declarations;
+#[cfg(test)]
 #[path = "test_parser_parts/keyword_named_bindings.rs"]
 mod keyword_named_bindings;
 #[cfg(test)]
