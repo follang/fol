@@ -26,7 +26,7 @@ impl AstParser {
 
         self.skip_ignorable(tokens);
         if let Ok(token) = tokens.curr(false) {
-            if token.key().is_ident() {
+            if Self::token_to_named_label(&token).is_some() {
                 let _ = tokens.bump();
             }
         }
