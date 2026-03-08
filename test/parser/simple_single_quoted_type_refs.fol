@@ -1,0 +1,5 @@
+ali Alias: 'Target';
+
+fun demo(value: pkg::'Input'): errs::'Output' = {
+    return value;
+}
