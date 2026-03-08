@@ -1,0 +1,3 @@
+fun[] build(): any = {
+    return |x: int, y: pkg::Score| x + 1;
+}

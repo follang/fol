@@ -26,13 +26,22 @@ impl AstParser {
                         "Expected lambda parameter name".to_string(),
                     )) as Box<dyn Glitch>
                 })?;
+                let _ = tokens.bump();
+                self.skip_ignorable(tokens);
+                let mut param_type = FolType::Any;
+                if let Ok(token) = tokens.curr(false) {
+                    if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
+                        let _ = tokens.bump();
+                        self.skip_ignorable(tokens);
+                        param_type = self.parse_type_reference_tokens(tokens)?;
+                    }
+                }
                 params.push(Parameter {
                     name,
-                    param_type: FolType::Any,
+                    param_type,
                     is_borrowable: false,
                     default: None,
                 });
-                let _ = tokens.bump();
 
                 self.skip_ignorable(tokens);
                 let token = tokens.curr(false)?;
