@@ -45,6 +45,7 @@ impl AstParser {
         let mut square_depth = 0usize;
         let mut round_depth = 0usize;
         let mut expect_member_ident = false;
+        let mut expect_path_ident = false;
         for candidate in tokens.next_vec() {
             let token = match candidate {
                 Ok(token) => token,
@@ -96,6 +97,16 @@ impl AstParser {
                 return matches!(key, KEYWORD::Symbol(SYMBOL::Equal));
             }
 
+            if expect_path_ident {
+                if Self::token_can_be_logical_name(&key)
+                    || matches!(key, KEYWORD::Literal(LITERAL::Stringy))
+                {
+                    expect_path_ident = false;
+                    continue;
+                }
+                return false;
+            }
+
             if expect_member_ident {
                 if Self::token_can_be_logical_name(&key)
                     || matches!(key, KEYWORD::Literal(LITERAL::Stringy))
@@ -109,6 +120,11 @@ impl AstParser {
                     return true;
                 }
                 return false;
+            }
+
+            if matches!(key, KEYWORD::Operator(OPERATOR::Path)) {
+                expect_path_ident = true;
+                continue;
             }
 
             if matches!(key, KEYWORD::Symbol(SYMBOL::Dot)) {

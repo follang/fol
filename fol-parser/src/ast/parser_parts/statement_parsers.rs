@@ -703,16 +703,13 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Box<dyn Glitch>> {
-        let target_token = tokens.curr(false)?;
-        let target_name = Self::token_to_named_label(&target_token).ok_or_else(|| {
-            Box::new(ParseError::from_token(
-                &target_token,
-                "Expected assignment target".to_string(),
-            )) as Box<dyn Glitch>
-        })?;
-
-        let mut target = AstNode::Identifier { name: target_name };
-        let _ = tokens.bump();
+        let mut target = AstNode::Identifier {
+            name: self.parse_named_path(
+                tokens,
+                "Expected assignment target",
+                "Expected name after '::' in assignment target",
+            )?,
+        };
 
         for _ in 0..128 {
             self.skip_ignorable(tokens);
