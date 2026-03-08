@@ -1,6 +1,35 @@
 use super::*;
 
 impl AstParser {
+    pub(super) fn lookahead_is_std_decl(
+        &self,
+        tokens: &fol_lexer::lexer::stage3::Elements,
+    ) -> bool {
+        if !matches!(
+            tokens.curr(false).map(|token| token.key().clone()),
+            Ok(KEYWORD::Keyword(BUILDIN::Std))
+        ) {
+            return false;
+        }
+
+        let mut significant = tokens.next_vec().into_iter().filter_map(Result::ok).filter(|token| {
+            let key = token.key();
+            !key.is_void() && !key.is_comment()
+        });
+
+        let Some(name_token) = significant.next() else {
+            return false;
+        };
+        if Self::token_to_named_label(&name_token).is_none() {
+            return false;
+        }
+
+        matches!(
+            significant.next().map(|token| token.key().clone()),
+            Some(KEYWORD::Symbol(SYMBOL::Colon))
+        )
+    }
+
     pub(super) fn parse_std_decl(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,

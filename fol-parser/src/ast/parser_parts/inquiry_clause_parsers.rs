@@ -118,7 +118,7 @@ impl AstParser {
                 continue;
             }
 
-            if matches!(key, KEYWORD::Keyword(BUILDIN::Std)) {
+            if matches!(key, KEYWORD::Keyword(BUILDIN::Std)) && self.lookahead_is_std_decl(tokens) {
                 body.push(self.parse_std_decl(tokens)?);
                 continue;
             }
