@@ -60,3 +60,64 @@ fn test_typed_pipe_lambda_expression_parsing() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_zero_and_multi_param_pipe_lambda_parsing() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_pipe_lambda_multi_expr.fol")
+            .expect("Should read zero/multi pipe lambda fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse zero and multi-param pipe lambdas");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::FunDecl { body, .. }
+                if body.iter().filter(|stmt| matches!(
+                    stmt,
+                    AstNode::Return { value: Some(value) }
+                    if matches!(value.as_ref(), AstNode::AnonymousFun { params, .. } if params.is_empty())
+                )).count() == 1
+                    && body.iter().filter(|stmt| matches!(
+                        stmt,
+                        AstNode::Return { value: Some(value) }
+                        if matches!(value.as_ref(), AstNode::AnonymousFun { params, .. } if params.len() == 2)
+                    )).count() == 1
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_block_bodied_pipe_lambda_parsing() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_pipe_lambda_block.fol")
+            .expect("Should read block-bodied pipe lambda fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse block-bodied pipe lambdas");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::FunDecl { body, .. }
+                if body.iter().any(|stmt| matches!(
+                    stmt,
+                    AstNode::Return { value: Some(value) }
+                    if matches!(value.as_ref(), AstNode::AnonymousFun { body, .. } if body.iter().any(|node| matches!(node, AstNode::Return { .. })))
+                ))
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}

@@ -1,0 +1,4 @@
+fun[] build(): any = {
+    return || 1;
+    return |x, y| x + y;
+}

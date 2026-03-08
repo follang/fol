@@ -65,16 +65,21 @@ impl AstParser {
         let _ = tokens.bump();
 
         self.skip_ignorable(tokens);
-        let expr = self.parse_logical_expression(tokens)?;
+        let body = if matches!(tokens.curr(false)?.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
+            let _ = tokens.bump();
+            self.parse_block_body(tokens, "Expected '}' to close lambda body")?
+        } else {
+            vec![AstNode::Return {
+                value: Some(Box::new(self.parse_logical_expression(tokens)?)),
+            }]
+        };
 
         Ok(AstNode::AnonymousFun {
             options: vec![FunOption::Mutable],
             params,
             return_type: None,
             error_type: None,
-            body: vec![AstNode::Return {
-                value: Some(Box::new(expr)),
-            }],
+            body,
         })
     }
 }

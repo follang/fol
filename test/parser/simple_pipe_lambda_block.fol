@@ -1,0 +1,5 @@
+fun[] build(): any = {
+    return |x| {
+        return x + 1;
+    };
+}
