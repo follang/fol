@@ -918,6 +918,10 @@ impl AstParser {
             return Ok(lowered);
         }
 
+        if let Some(lowered) = Self::lower_bare_source_kind_type_name(&name) {
+            return Ok(lowered);
+        }
+
         Ok(FolType::Named { name })
     }
 }

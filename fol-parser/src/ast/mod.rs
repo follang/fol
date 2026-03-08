@@ -317,6 +317,9 @@ pub enum FolType {
         name: Option<String>,
         access: Vec<String>,
     },
+    Path {
+        name: String,
+    },
 
     // User-defined type reference
     Named {

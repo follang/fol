@@ -123,5 +123,7 @@ mod postfix_expression_parsers;
 mod primary_expression_parsers;
 #[path = "parser_parts/standard_declaration_parsers.rs"]
 mod standard_declaration_parsers;
+#[path = "parser_parts/source_kind_type_parsers.rs"]
+mod source_kind_type_parsers;
 #[path = "parser_parts/test_type_parsers.rs"]
 mod test_type_parsers;

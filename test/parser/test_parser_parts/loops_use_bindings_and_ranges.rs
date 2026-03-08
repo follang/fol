@@ -59,7 +59,7 @@ fn test_use_declaration_parsing() {
 
     assert_eq!(use_decl.0, "math");
     assert!(
-        matches!(use_decl.1, FolType::Named { name } if name == "path"),
+        matches!(use_decl.1, FolType::Path { name } if name.is_empty()),
         "Use declaration should parse path type"
     );
     assert_eq!(use_decl.2, "core::math");
@@ -183,7 +183,7 @@ fn test_use_declaration_accepts_empty_option_brackets() {
         "use[] should parse as explicit empty options"
     );
     assert!(
-        matches!(use_decl.2, FolType::Named { name } if name == "path"),
+        matches!(use_decl.2, FolType::Path { name } if name.is_empty()),
         "Use declaration should still parse path type"
     );
     assert_eq!(use_decl.3, "core::math");

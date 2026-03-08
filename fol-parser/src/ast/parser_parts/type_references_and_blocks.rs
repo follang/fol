@@ -83,6 +83,10 @@ impl AstParser {
         tokens: &mut fol_lexer::lexer::stage3::Elements,
         base_name: &str,
     ) -> Result<Option<FolType>, Box<dyn Glitch>> {
+        if let Some(parsed) = self.try_parse_source_kind_type_suffix(tokens, base_name)? {
+            return Ok(Some(parsed));
+        }
+
         match base_name {
             "opt" => {
                 let args = self.parse_type_argument_list(tokens)?;

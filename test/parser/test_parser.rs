@@ -177,6 +177,9 @@ mod slice_assignment_targets;
 #[path = "test_parser_parts/standard_declarations.rs"]
 mod standard_declarations;
 #[cfg(test)]
+#[path = "test_parser_parts/source_kind_types.rs"]
+mod source_kind_types;
+#[cfg(test)]
 #[path = "test_parser_parts/test_block_declarations.rs"]
 mod test_block_declarations;
 #[cfg(test)]

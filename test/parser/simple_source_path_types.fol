@@ -1,0 +1,2 @@
+use math: path = {core::math};
+typ PkgPath: path[core];
