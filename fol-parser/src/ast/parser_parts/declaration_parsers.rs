@@ -642,6 +642,8 @@ impl AstParser {
 
         let (generics, params) =
             self.parse_routine_generics_and_params(tokens, "Expected '(' after function name")?;
+        self.skip_ignorable(tokens);
+        let captures = self.parse_optional_routine_capture_list(tokens)?;
 
         self.skip_ignorable(tokens);
         let mut return_type = None;
@@ -709,6 +711,7 @@ impl AstParser {
             options,
             generics,
             name,
+            captures,
             params,
             return_type,
             error_type,
@@ -741,6 +744,8 @@ impl AstParser {
 
         let (generics, params) =
             self.parse_routine_generics_and_params(tokens, "Expected '(' after logical name")?;
+        self.skip_ignorable(tokens);
+        let captures = self.parse_optional_routine_capture_list(tokens)?;
 
         self.skip_ignorable(tokens);
         let mut return_type = None;
@@ -808,6 +813,7 @@ impl AstParser {
             options,
             generics,
             name,
+            captures,
             params,
             return_type,
             error_type,
@@ -840,6 +846,8 @@ impl AstParser {
 
         let (generics, params) =
             self.parse_routine_generics_and_params(tokens, "Expected '(' after procedure name")?;
+        self.skip_ignorable(tokens);
+        let captures = self.parse_optional_routine_capture_list(tokens)?;
 
         self.skip_ignorable(tokens);
         let mut return_type = None;
@@ -907,6 +915,7 @@ impl AstParser {
             options,
             generics,
             name,
+            captures,
             params,
             return_type,
             error_type,

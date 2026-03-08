@@ -183,6 +183,9 @@ mod test_block_declarations;
 #[path = "test_parser_parts/routine_error_types.rs"]
 mod routine_error_types;
 #[cfg(test)]
+#[path = "test_parser_parts/routine_closure_captures.rs"]
+mod routine_closure_captures;
+#[cfg(test)]
 #[path = "test_parser_parts/use_options.rs"]
 mod use_options;
 #[cfg(test)]

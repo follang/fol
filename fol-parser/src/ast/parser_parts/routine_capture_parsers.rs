@@ -1,0 +1,63 @@
+use super::*;
+
+impl AstParser {
+    pub(super) fn parse_optional_routine_capture_list(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<Vec<String>, Box<dyn Glitch>> {
+        self.skip_ignorable(tokens);
+        let open = match tokens.curr(false) {
+            Ok(token) => token,
+            Err(_) => return Ok(Vec::new()),
+        };
+
+        if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::SquarO)) {
+            return Ok(Vec::new());
+        }
+        let _ = tokens.bump();
+
+        let mut captures = Vec::new();
+        for _ in 0..128 {
+            self.skip_ignorable(tokens);
+            let token = tokens.curr(false)?;
+
+            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
+                let _ = tokens.bump();
+                return Ok(captures);
+            }
+
+            let name = Self::token_to_named_label(&token).ok_or_else(|| {
+                Box::new(ParseError::from_token(
+                    &token,
+                    "Expected capture name in routine capture list".to_string(),
+                )) as Box<dyn Glitch>
+            })?;
+            captures.push(name);
+            let _ = tokens.bump();
+
+            self.skip_ignorable(tokens);
+            let sep = tokens.curr(false)?;
+            if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
+                let _ = tokens.bump();
+                continue;
+            }
+            if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
+                let _ = tokens.bump();
+                return Ok(captures);
+            }
+
+            return Err(Box::new(ParseError::from_token(
+                &sep,
+                "Expected ',' or ']' in routine capture list".to_string(),
+            )));
+        }
+
+        Err(Box::new(ParseError {
+            message: "Routine capture parsing exceeded safety bound".to_string(),
+            file: None,
+            line: 1,
+            column: 1,
+            length: 1,
+        }))
+    }
+}
