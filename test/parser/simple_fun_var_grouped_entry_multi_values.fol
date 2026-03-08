@@ -1,0 +1,7 @@
+fun demo(): int = {
+    var (
+        left, right: int = 1, 2,
+        shared_a, shared_b: int = 3,
+    );
+    return left;
+}

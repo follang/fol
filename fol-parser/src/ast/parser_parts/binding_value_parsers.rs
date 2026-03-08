@@ -18,6 +18,9 @@ impl AstParser {
             };
 
             if matches!(next.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
+                if allow_segment_break && self.lookahead_closes_binding_values(tokens) {
+                    break;
+                }
                 if allow_segment_break && self.lookahead_starts_binding_segment(tokens) {
                     break;
                 }
@@ -30,6 +33,18 @@ impl AstParser {
         }
 
         Ok(values)
+    }
+
+    pub(super) fn lookahead_closes_binding_values(
+        &self,
+        tokens: &fol_lexer::lexer::stage3::Elements,
+    ) -> bool {
+        matches!(
+            self.next_significant_key_from_window(tokens),
+            Some(KEYWORD::Symbol(SYMBOL::RoundC))
+                | Some(KEYWORD::Symbol(SYMBOL::Semi))
+                | Some(KEYWORD::Symbol(SYMBOL::CurlyC))
+        )
     }
 
     pub(super) fn lookahead_starts_binding_segment(

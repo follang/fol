@@ -44,7 +44,7 @@ impl AstParser {
                 if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
                     let _ = tokens.bump();
                     self.skip_ignorable(tokens);
-                    values.push(self.parse_logical_expression(tokens)?);
+                    values = self.parse_binding_values(tokens, true)?;
                 }
             }
 

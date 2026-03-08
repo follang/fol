@@ -162,6 +162,79 @@ fn test_grouped_binding_alternatives_preserve_shared_options() {
 }
 
 #[test]
+fn test_grouped_binding_entry_supports_shared_and_parallel_values() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_var_grouped_entry_multi_values.fol")
+            .expect("Should read grouped entry multi-value fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept grouped entries with shared and parallel values");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            let vars: Vec<_> = declarations
+                .iter()
+                .filter_map(|node| {
+                    if let AstNode::VarDecl {
+                        name,
+                        value: Some(value),
+                        ..
+                    } = node
+                    {
+                        Some((name.clone(), value.as_ref().clone()))
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+            assert!(matches!(
+                vars.as_slice(),
+                [
+                    (a, AstNode::Literal(Literal::Integer(1))),
+                    (b, AstNode::Literal(Literal::Integer(2))),
+                    (c, AstNode::Literal(Literal::Integer(3))),
+                    (d, AstNode::Literal(Literal::Integer(3))),
+                ] if a == "left"
+                    && b == "right"
+                    && c == "shared_a"
+                    && d == "shared_b"
+            ));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_grouped_binding_entry_supports_parallel_values_in_function_body() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_var_grouped_entry_multi_values.fol")
+            .expect("Should read grouped function-body multi-value fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept grouped multi-values in function bodies");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::FunDecl { body, .. }
+                    if body.iter().filter(|stmt| matches!(stmt, AstNode::VarDecl { .. })).count() == 4
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
 fn test_mixed_binding_entries_expand_in_order() {
     let mut file_stream = FileStream::from_file("test/parser/simple_var_mixed_multi.fol")
         .expect("Should read mixed multi-binding fixture");
