@@ -91,6 +91,61 @@ fn test_type_entry_marker_unknown_option_reports_parse_error() {
 }
 
 #[test]
+fn test_type_entry_definition_supports_lab_variants() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_typ_entry_lab_variants.fol")
+        .expect("Should read lab entry variant test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse entry definitions with lab variants");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::TypeDecl {
+                        type_def: TypeDefinition::Entry { variants },
+                        ..
+                    }
+                    if matches!(variants.get("None"), Some(Some(FolType::None)))
+                        && matches!(variants.get("Some"), Some(Some(FolType::Named { name })) if name == "str")
+                        && matches!(variants.get("Many"), Some(Some(FolType::Int { size: None, signed: true })))
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_type_entry_definition_reports_missing_lab_variant_name() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_typ_entry_missing_variant_label.fol")
+            .expect("Should read malformed lab entry variant test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject lab variants without names");
+
+    let parse_error = errors
+        .first()
+        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        .expect("First parser error should be ParseError");
+
+    let first_message = parse_error.to_string();
+    assert!(
+        first_message.contains("Expected entry variant name"),
+        "Malformed lab variant should report the missing name, got: {}",
+        first_message
+    );
+}
+
+#[test]
 fn test_type_record_marker_missing_assign_reports_parse_error() {
     let mut file_stream =
         FileStream::from_file("test/parser/simple_typ_record_marker_missing_assign.fol")

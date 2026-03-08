@@ -1,0 +1,5 @@
+typ Result: ent = {
+    lab None: non;
+    lab Some: str;
+    var Many: int;
+}

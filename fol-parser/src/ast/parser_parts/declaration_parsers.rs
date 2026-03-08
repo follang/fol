@@ -368,10 +368,13 @@ impl AstParser {
                 return Ok(TypeDefinition::Entry { variants });
             }
 
-            if !matches!(token.key(), KEYWORD::Keyword(BUILDIN::Var)) {
+            if !matches!(
+                token.key(),
+                KEYWORD::Keyword(BUILDIN::Var) | KEYWORD::Keyword(BUILDIN::Lab)
+            ) {
                 return Err(Box::new(ParseError::from_token(
                     &token,
-                    "Expected 'var' in type entry definition".to_string(),
+                    "Expected 'var' or 'lab' in type entry definition".to_string(),
                 )));
             }
             let _ = tokens.bump();
