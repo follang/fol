@@ -828,7 +828,7 @@ impl AstParser {
 
         for _ in 0..256 {
             let name_token = tokens.curr(false)?;
-            if !name_token.key().is_ident() {
+            if !Self::token_can_be_logical_name(&name_token.key()) {
                 return Err(Box::new(ParseError::from_token(
                     &name_token,
                     format!("Expected identifier after '{}'", keyword),

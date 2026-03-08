@@ -1,0 +1,3 @@
+var get: int = 1;
+let log: int = 2;
+con seg: int = 3;

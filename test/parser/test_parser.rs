@@ -42,6 +42,9 @@ mod definition_declarations;
 #[path = "test_parser_parts/keyword_named_routines.rs"]
 mod keyword_named_routines;
 #[cfg(test)]
+#[path = "test_parser_parts/keyword_named_bindings.rs"]
+mod keyword_named_bindings;
+#[cfg(test)]
 #[path = "test_parser_parts/loops_use_bindings_and_ranges.rs"]
 mod loops_use_bindings_and_ranges;
 #[cfg(test)]
