@@ -48,6 +48,9 @@ mod method_receivers_and_branching;
 #[path = "test_parser_parts/report_call_resolution.rs"]
 mod report_call_resolution;
 #[cfg(test)]
+#[path = "test_parser_parts/segment_declarations.rs"]
+mod segment_declarations;
+#[cfg(test)]
 #[path = "test_parser_parts/routine_error_types.rs"]
 mod routine_error_types;
 #[cfg(test)]

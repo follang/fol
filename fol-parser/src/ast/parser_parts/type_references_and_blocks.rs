@@ -707,6 +707,11 @@ impl AstParser {
                 continue;
             }
 
+            if matches!(key, KEYWORD::Keyword(BUILDIN::Seg)) {
+                body.push(self.parse_seg_decl(tokens)?);
+                continue;
+            }
+
             if matches!(key, KEYWORD::Keyword(BUILDIN::Ali)) {
                 body.push(self.parse_alias_decl(tokens)?);
                 continue;

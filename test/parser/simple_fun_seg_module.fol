@@ -1,0 +1,6 @@
+fun demo(): int = {
+    seg local: mod = {
+        def helper: blk[] = { }
+    };
+    return 1;
+}

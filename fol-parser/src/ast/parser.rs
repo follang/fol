@@ -101,3 +101,5 @@ mod statement_parsers;
 mod type_references_and_blocks;
 #[path = "parser_parts/use_declaration_parsers.rs"]
 mod use_declaration_parsers;
+#[path = "parser_parts/segment_declaration_parsers.rs"]
+mod segment_declaration_parsers;
