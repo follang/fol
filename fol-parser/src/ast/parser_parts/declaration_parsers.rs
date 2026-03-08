@@ -689,7 +689,8 @@ impl AstParser {
         }
         let _ = tokens.bump();
 
-        let body = self.parse_block_body(tokens, "Expected '}' to close function body")?;
+        let (body, inquiries) =
+            self.parse_routine_body_with_inquiries(tokens, "Expected '}' to close function body")?;
         let parameter_types = Self::parameter_type_map(&params);
         let routine_returns = self.routine_return_types.borrow().clone();
         Self::validate_report_usage(
@@ -708,6 +709,7 @@ impl AstParser {
             return_type,
             error_type,
             body,
+            inquiries,
         })
     }
 
@@ -786,7 +788,8 @@ impl AstParser {
         }
         let _ = tokens.bump();
 
-        let body = self.parse_block_body(tokens, "Expected '}' to close logical body")?;
+        let (body, inquiries) =
+            self.parse_routine_body_with_inquiries(tokens, "Expected '}' to close logical body")?;
         let parameter_types = Self::parameter_type_map(&params);
         let routine_returns = self.routine_return_types.borrow().clone();
         Self::validate_report_usage(
@@ -805,6 +808,7 @@ impl AstParser {
             return_type,
             error_type,
             body,
+            inquiries,
         })
     }
 
@@ -883,7 +887,8 @@ impl AstParser {
         }
         let _ = tokens.bump();
 
-        let body = self.parse_block_body(tokens, "Expected '}' to close procedure body")?;
+        let (body, inquiries) =
+            self.parse_routine_body_with_inquiries(tokens, "Expected '}' to close procedure body")?;
         let parameter_types = Self::parameter_type_map(&params);
         let routine_returns = self.routine_return_types.borrow().clone();
         Self::validate_report_usage(
@@ -902,6 +907,7 @@ impl AstParser {
             return_type,
             error_type,
             body,
+            inquiries,
         })
     }
 

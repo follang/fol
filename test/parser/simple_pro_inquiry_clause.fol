@@ -1,0 +1,7 @@
+pro store(value: int): int = {
+    return value;
+    where(self) {
+        store(1) is 1;
+        store(9) is 9;
+    }
+}

@@ -109,3 +109,5 @@ mod use_option_parsers;
 mod segment_declaration_parsers;
 #[path = "parser_parts/implementation_declaration_parsers.rs"]
 mod implementation_declaration_parsers;
+#[path = "parser_parts/inquiry_clause_parsers.rs"]
+mod inquiry_clause_parsers;

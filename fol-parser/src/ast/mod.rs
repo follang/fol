@@ -24,6 +24,7 @@ pub enum AstNode {
         return_type: Option<FolType>,
         error_type: Option<FolType>,
         body: Vec<AstNode>,
+        inquiries: Vec<AstNode>,
     },
 
     /// Procedure declaration: pro[options] name(params): return_type = { body }
@@ -35,6 +36,7 @@ pub enum AstNode {
         return_type: Option<FolType>,
         error_type: Option<FolType>,
         body: Vec<AstNode>,
+        inquiries: Vec<AstNode>,
     },
 
     /// Type declaration: typ name: definition
@@ -537,10 +539,17 @@ impl AstNode {
             AstNode::VarDecl { value, .. } => {
                 value.as_ref().map(|v| vec![v.as_ref()]).unwrap_or_default()
             }
-            AstNode::FunDecl { body, .. }
-            | AstNode::ProDecl { body, .. }
-            | AstNode::DefDecl { body, .. }
-            | AstNode::ImpDecl { body, .. } => body.iter().collect(),
+            AstNode::FunDecl {
+                body, inquiries, ..
+            }
+            | AstNode::ProDecl {
+                body, inquiries, ..
+            } => {
+                let mut children: Vec<&AstNode> = body.iter().collect();
+                children.extend(inquiries.iter());
+                children
+            }
+            AstNode::DefDecl { body, .. } | AstNode::ImpDecl { body, .. } => body.iter().collect(),
             AstNode::BinaryOp { left, right, .. } => {
                 vec![left.as_ref(), right.as_ref()]
             }

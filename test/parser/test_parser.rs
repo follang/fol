@@ -51,6 +51,9 @@ mod quoted_iteration_binders;
 #[path = "test_parser_parts/implementation_declarations.rs"]
 mod implementation_declarations;
 #[cfg(test)]
+#[path = "test_parser_parts/inquiry_clauses.rs"]
+mod inquiry_clauses;
+#[cfg(test)]
 #[path = "test_parser_parts/keyword_named_routines.rs"]
 mod keyword_named_routines;
 #[cfg(test)]
