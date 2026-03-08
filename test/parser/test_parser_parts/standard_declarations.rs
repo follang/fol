@@ -287,3 +287,55 @@ fn test_extended_standard_rejects_duplicate_members() {
         parse_error
     );
 }
+
+#[test]
+fn test_standard_rejects_unknown_declaration_options() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_std_unknown_options.fol")
+            .expect("Should read malformed std[] fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject unknown std declaration options");
+
+    let parse_error = errors
+        .first()
+        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        .expect("First parser error should be ParseError");
+
+    assert!(
+        parse_error
+            .to_string()
+            .contains("Standard options currently support only empty brackets"),
+        "Expected std option error, got: {}",
+        parse_error
+    );
+}
+
+#[test]
+fn test_standard_rejects_unknown_kind_options() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_std_unknown_kind_options.fol")
+            .expect("Should read malformed standard kind fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject unknown standard kind options");
+
+    let parse_error = errors
+        .first()
+        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        .expect("First parser error should be ParseError");
+
+    assert!(
+        parse_error
+            .to_string()
+            .contains("protocol standard kind options currently support only empty brackets"),
+        "Expected standard kind option error, got: {}",
+        parse_error
+    );
+}

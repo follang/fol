@@ -21,11 +21,16 @@ impl AstParser {
             return false;
         };
         if matches!(name_token.key(), KEYWORD::Symbol(SYMBOL::SquarO)) {
-            let Some(close) = significant.next() else {
-                return false;
-            };
-            if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
-                return false;
+            let mut depth = 1usize;
+            while depth > 0 {
+                let Some(token) = significant.next() else {
+                    return false;
+                };
+                match token.key() {
+                    KEYWORD::Symbol(SYMBOL::SquarO) => depth += 1,
+                    KEYWORD::Symbol(SYMBOL::SquarC) => depth -= 1,
+                    _ => {}
+                }
             }
             let Some(next_name) = significant.next() else {
                 return false;
