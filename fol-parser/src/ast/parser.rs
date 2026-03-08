@@ -113,3 +113,5 @@ mod implementation_declaration_parsers;
 mod inquiry_clause_parsers;
 #[path = "parser_parts/standard_declaration_parsers.rs"]
 mod standard_declaration_parsers;
+#[path = "parser_parts/test_type_parsers.rs"]
+mod test_type_parsers;
