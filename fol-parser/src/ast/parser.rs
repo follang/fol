@@ -77,6 +77,8 @@ impl Default for AstParser {
         Self::new()
     }
 }
+#[path = "parser_parts/binding_option_parsers.rs"]
+mod binding_option_parsers;
 #[path = "parser_parts/declaration_parsers.rs"]
 mod declaration_parsers;
 #[path = "parser_parts/expression_atoms_and_report_validation.rs"]
