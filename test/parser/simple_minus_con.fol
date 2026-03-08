@@ -1,0 +1,1 @@
+-con secret: int = 7;
