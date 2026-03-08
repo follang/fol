@@ -76,6 +76,7 @@ impl AstParser {
 
         Ok(AstNode::AnonymousFun {
             options: vec![FunOption::Mutable],
+            captures: Vec::new(),
             params,
             return_type: None,
             error_type: None,

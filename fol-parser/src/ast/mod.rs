@@ -119,6 +119,7 @@ pub enum AstNode {
     /// Anonymous function expression: fun (...) : T = { ... }
     AnonymousFun {
         options: Vec<FunOption>,
+        captures: Vec<String>,
         params: Vec<Parameter>,
         return_type: Option<FolType>,
         error_type: Option<FolType>,
@@ -128,6 +129,7 @@ pub enum AstNode {
     /// Anonymous procedure expression: pro (...) : T = { ... }
     AnonymousPro {
         options: Vec<FunOption>,
+        captures: Vec<String>,
         params: Vec<Parameter>,
         return_type: Option<FolType>,
         error_type: Option<FolType>,

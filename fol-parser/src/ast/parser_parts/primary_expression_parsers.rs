@@ -255,12 +255,14 @@ impl AstParser {
         match node {
             AstNode::AnonymousFun {
                 options,
+                captures,
                 params,
                 return_type,
                 error_type,
                 body,
             } => Ok(AstNode::AnonymousFun {
                 options,
+                captures,
                 params,
                 return_type: Some(return_type.unwrap_or(FolType::Bool)),
                 error_type,
@@ -296,6 +298,9 @@ impl AstParser {
             )));
         }
         self.ensure_unique_parameter_names(&params, "parameter")?;
+
+        let captures = self.parse_optional_routine_capture_list(tokens)?;
+        self.ensure_unique_capture_names(&captures)?;
 
         self.skip_ignorable(tokens);
         let mut return_type = None;
@@ -349,6 +354,7 @@ impl AstParser {
         if is_function {
             Ok(AstNode::AnonymousFun {
                 options,
+                captures,
                 params,
                 return_type,
                 error_type,
@@ -357,6 +363,7 @@ impl AstParser {
         } else {
             Ok(AstNode::AnonymousPro {
                 options,
+                captures,
                 params,
                 return_type,
                 error_type,
@@ -404,6 +411,7 @@ impl AstParser {
 
         Ok(AstNode::AnonymousFun {
             options: Vec::new(),
+            captures: Vec::new(),
             params,
             return_type: None,
             error_type: None,
