@@ -1,0 +1,9 @@
+typ Box: rec = { }
+
+fun '$'(): int = {
+    return 1;
+}
+
+fun (Box)'%'(): int = {
+    return 2;
+}

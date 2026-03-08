@@ -66,6 +66,9 @@ mod report_call_resolution;
 #[path = "test_parser_parts/reference_keywords.rs"]
 mod reference_keywords;
 #[cfg(test)]
+#[path = "test_parser_parts/quoted_routine_names.rs"]
+mod quoted_routine_names;
+#[cfg(test)]
 #[path = "test_parser_parts/segment_declarations.rs"]
 mod segment_declarations;
 #[cfg(test)]

@@ -72,6 +72,25 @@ impl AstParser {
             )
     }
 
+    pub(super) fn token_to_named_label(
+        token: &fol_lexer::lexer::stage3::element::Element,
+    ) -> Option<String> {
+        if Self::token_can_be_logical_name(&token.key()) {
+            return Some(token.con().trim().to_string());
+        }
+
+        match token.key() {
+            KEYWORD::Literal(LITERAL::Stringy) => Some(
+                token
+                    .con()
+                    .trim()
+                    .trim_matches(|c| c == '"' || c == '\'')
+                    .to_string(),
+            ),
+            _ => None,
+        }
+    }
+
     pub(super) fn unary_prefix_info(
         &self,
         token: &fol_lexer::lexer::stage3::element::Element,
