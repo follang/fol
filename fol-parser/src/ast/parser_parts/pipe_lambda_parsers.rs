@@ -65,6 +65,10 @@ impl AstParser {
         let _ = tokens.bump();
 
         self.skip_ignorable(tokens);
+        let captures = self.parse_optional_routine_capture_list(tokens)?;
+        self.ensure_unique_capture_names(&captures)?;
+
+        self.skip_ignorable(tokens);
         let body = if matches!(tokens.curr(false)?.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
             let _ = tokens.bump();
             self.parse_block_body(tokens, "Expected '}' to close lambda body")?
@@ -76,7 +80,7 @@ impl AstParser {
 
         Ok(AstNode::AnonymousFun {
             options: vec![FunOption::Mutable],
-            captures: Vec::new(),
+            captures,
             params,
             return_type: None,
             error_type: None,
