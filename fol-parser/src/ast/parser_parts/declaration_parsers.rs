@@ -592,7 +592,10 @@ impl AstParser {
             }
 
             let segment = match token.key() {
-                KEYWORD::Literal(LITERAL::Stringy) => token.con().trim().trim_matches('"'),
+                KEYWORD::Literal(LITERAL::Stringy) => token
+                    .con()
+                    .trim()
+                    .trim_matches(|c| c == '"' || c == '\''),
                 _ => token.con().trim(),
             };
             if !segment.is_empty() {
