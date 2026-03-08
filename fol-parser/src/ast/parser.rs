@@ -115,6 +115,8 @@ mod segment_declaration_parsers;
 mod implementation_declaration_parsers;
 #[path = "parser_parts/inquiry_clause_parsers.rs"]
 mod inquiry_clause_parsers;
+#[path = "parser_parts/postfix_expression_parsers.rs"]
+mod postfix_expression_parsers;
 #[path = "parser_parts/standard_declaration_parsers.rs"]
 mod standard_declaration_parsers;
 #[path = "parser_parts/test_type_parsers.rs"]

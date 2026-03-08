@@ -57,6 +57,9 @@ mod implementation_declarations;
 #[path = "test_parser_parts/inquiry_clauses.rs"]
 mod inquiry_clauses;
 #[cfg(test)]
+#[path = "test_parser_parts/invoke_expressions.rs"]
+mod invoke_expressions;
+#[cfg(test)]
 #[path = "test_parser_parts/keyword_named_routines.rs"]
 mod keyword_named_routines;
 #[cfg(test)]

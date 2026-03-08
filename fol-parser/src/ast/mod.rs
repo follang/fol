@@ -97,6 +97,12 @@ pub enum AstNode {
     /// Function call: function_name(args)
     FunctionCall { name: String, args: Vec<AstNode> },
 
+    /// General invocation: callee(args)
+    Invoke {
+        callee: Box<AstNode>,
+        args: Vec<AstNode>,
+    },
+
     /// Method call: object.method(args)
     MethodCall {
         object: Box<AstNode>,
@@ -558,6 +564,13 @@ impl AstNode {
                     }
                 }
             },
+            AstNode::Invoke { callee, .. } => {
+                if let Some(FolType::Function { return_type, .. }) = callee.get_type() {
+                    Some(*return_type)
+                } else {
+                    None
+                }
+            }
 
             _ => None,
         }
@@ -590,6 +603,11 @@ impl AstNode {
             }
             AstNode::FunctionCall { args, .. } | AstNode::MethodCall { args, .. } => {
                 args.iter().collect()
+            }
+            AstNode::Invoke { callee, args } => {
+                let mut children = vec![callee.as_ref()];
+                children.extend(args.iter());
+                children
             }
             AstNode::Assignment { target, value } => {
                 vec![target.as_ref(), value.as_ref()]
