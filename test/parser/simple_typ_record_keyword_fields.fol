@@ -1,0 +1,4 @@
+typ Config: rec = {
+    get: int;
+    log: str;
+}

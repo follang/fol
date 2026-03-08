@@ -505,7 +505,7 @@ impl AstParser {
             }
 
             let token = tokens.curr(false)?;
-            if !token.key().is_ident() {
+            if !Self::token_can_be_logical_name(&token.key()) {
                 return Err(Box::new(ParseError::from_token(
                     &token,
                     "Expected field name in type record definition".to_string(),

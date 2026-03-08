@@ -554,6 +554,62 @@ fn test_record_lab_field_missing_name_reports_parse_error() {
 }
 
 #[test]
+fn test_top_level_type_record_fields_support_keyword_names() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_typ_record_keyword_fields.fol")
+            .expect("Should read keyword-named record field test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse record definitions with keyword field names");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::TypeDecl {
+                        type_def: TypeDefinition::Record { fields },
+                        ..
+                    }
+                    if matches!(fields.get("get"), Some(FolType::Int { size: None, signed: true }))
+                        && matches!(fields.get("log"), Some(FolType::Named { name }) if name == "str")
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_duplicate_keyword_named_record_field_reports_parse_error() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_typ_record_duplicate_keyword_field.fol")
+            .expect("Should read duplicate keyword record field test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject duplicate keyword-named record fields");
+
+    let parse_error = errors
+        .first()
+        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        .expect("First parser error should be ParseError");
+
+    assert!(
+        parse_error
+            .to_string()
+            .contains("Duplicate record field 'get'"),
+        "Duplicate keyword field should report the duplicate name, got: {}",
+        parse_error
+    );
+}
+
+#[test]
 fn test_top_level_type_record_marker_accepts_empty_brackets() {
     let mut file_stream =
         FileStream::from_file("test/parser/simple_typ_record_marker_empty_options.fol")
