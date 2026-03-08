@@ -416,10 +416,11 @@ pub enum FunOption {
 /// Type declaration options
 #[derive(Debug, Clone, PartialEq)]
 pub enum TypeOption {
-    Export,  // exp or +
-    Set,     // set
-    Get,     // get
-    Nothing, // nothing
+    Export,    // exp or +
+    Set,       // set
+    Get,       // get
+    Nothing,   // nothing
+    Extension, // ext
 }
 
 /// Use declaration options

@@ -814,6 +814,32 @@ fn test_type_declaration_option_brackets_parse() {
 }
 
 #[test]
+fn test_extension_type_option_parsing() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_typ_extension_option.fol")
+        .expect("Should read extension type option test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse typ[ext] declarations");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::TypeDecl { name, options, .. }
+                    if name == "StrExt"
+                        && options.contains(&fol_parser::ast::TypeOption::Extension)
+                )
+            }));
+        }
+        _ => panic!("Should return Program node"),
+    }
+}
+
+#[test]
 fn test_top_level_type_entry_parsing() {
     let mut file_stream = FileStream::from_file("test/parser/simple_typ_entry.fol")
         .expect("Should read type entry test file");

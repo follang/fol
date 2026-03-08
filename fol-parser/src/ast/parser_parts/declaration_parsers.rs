@@ -310,6 +310,7 @@ impl AstParser {
                 "set" => TypeOption::Set,
                 "get" => TypeOption::Get,
                 "nothing" | "non" => TypeOption::Nothing,
+                "ext" => TypeOption::Extension,
                 _ => {
                     return Err(Box::new(ParseError::from_token(
                         &token,
