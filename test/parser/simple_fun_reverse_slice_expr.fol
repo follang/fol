@@ -1,0 +1,11 @@
+fun reverse_all(values: vec[int]): vec[int] = {
+    return values[::];
+}
+
+fun reverse_window(values: vec[int]): vec[int] = {
+    return values[2::5];
+}
+
+fun reverse_tail(values: vec[int]): vec[int] = {
+    return values[-2::];
+}

@@ -10,7 +10,11 @@ impl AstParser {
         self.skip_ignorable(tokens);
 
         let next = tokens.curr(false)?;
-        if matches!(next.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
+        if matches!(
+            next.key(),
+            KEYWORD::Symbol(SYMBOL::Colon) | KEYWORD::Operator(OPERATOR::Path)
+        ) {
+            let reverse = matches!(next.key(), KEYWORD::Operator(OPERATOR::Path));
             let _ = tokens.bump();
             self.skip_ignorable(tokens);
 
@@ -37,7 +41,7 @@ impl AstParser {
                 container: Box::new(node),
                 start: None,
                 end,
-                reverse: false,
+                reverse,
             });
         }
 
@@ -45,7 +49,11 @@ impl AstParser {
         self.skip_ignorable(tokens);
 
         let next = tokens.curr(false)?;
-        if matches!(next.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
+        if matches!(
+            next.key(),
+            KEYWORD::Symbol(SYMBOL::Colon) | KEYWORD::Operator(OPERATOR::Path)
+        ) {
+            let reverse = matches!(next.key(), KEYWORD::Operator(OPERATOR::Path));
             let _ = tokens.bump();
             self.skip_ignorable(tokens);
 
@@ -72,7 +80,7 @@ impl AstParser {
                 container: Box::new(node),
                 start: Some(Box::new(start)),
                 end,
-                reverse: false,
+                reverse,
             });
         }
 
