@@ -153,6 +153,9 @@ mod use_options;
 #[path = "test_parser_parts/use_paths.rs"]
 mod use_paths;
 #[cfg(test)]
+#[path = "test_parser_parts/variadic_parameters.rs"]
+mod variadic_parameters;
+#[cfg(test)]
 #[path = "test_parser_parts/routine_headers_and_when_forms.rs"]
 mod routine_headers_and_when_forms;
 #[cfg(test)]
