@@ -442,3 +442,30 @@ fn test_binding_alternative_composes_with_visibility_options() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_heap_binding_alternative_composes_with_borrowing() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_at_var_bor.fol")
+        .expect("Should read @var[bor] fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept @var[bor] composed binding alternatives");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::VarDecl { name, options, .. }
+                    if name == "heap_borrow"
+                        && options.contains(&fol_parser::ast::VarOption::New)
+                        && options.contains(&fol_parser::ast::VarOption::Borrowing)
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
