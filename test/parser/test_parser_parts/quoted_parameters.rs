@@ -98,3 +98,33 @@ fn test_single_quoted_parameters_parse() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_grouped_quoted_parameters_parse() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_grouped_quoted_params.fol")
+            .expect("Should read grouped quoted-parameter fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept grouped quoted parameters");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::FunDecl { params, .. }
+                    if params.len() == 2
+                        && params[0].name == "left"
+                        && params[1].name == "right"
+                        && matches!(params[0].param_type, FolType::Int { .. })
+                        && matches!(params[1].param_type, FolType::Int { .. })
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
