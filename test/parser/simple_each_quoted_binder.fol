@@ -1,0 +1,3 @@
+each ("line" in lines when ready) {
+    yeild line;
+}

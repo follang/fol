@@ -504,20 +504,15 @@ impl AstParser {
             self.skip_ignorable(tokens);
 
             current_var_token = tokens.curr(false)?;
-            if !(Self::token_can_be_logical_name(&current_var_token.key())
-                || matches!(current_var_token.key(), KEYWORD::Symbol(SYMBOL::Under)))
-            {
-                return Err(Box::new(ParseError::from_token(
-                    &current_var_token,
-                    "Expected iteration binder name after 'var'".to_string(),
-                )));
-            }
-
-            let declared_var = if matches!(current_var_token.key(), KEYWORD::Symbol(SYMBOL::Under))
-            {
+            let declared_var = if matches!(current_var_token.key(), KEYWORD::Symbol(SYMBOL::Under)) {
                 "_".to_string()
             } else {
-                current_var_token.con().trim().to_string()
+                Self::token_to_named_label(&current_var_token).ok_or_else(|| {
+                    Box::new(ParseError::from_token(
+                        &current_var_token,
+                        "Expected iteration binder name after 'var'".to_string(),
+                    )) as Box<dyn Glitch>
+                })?
             };
             let _ = tokens.bump();
             self.skip_ignorable(tokens);
@@ -549,13 +544,13 @@ impl AstParser {
             let iteration_var = if matches!(current_var_token.key(), KEYWORD::Symbol(SYMBOL::Under))
             {
                 "_".to_string()
-            } else if Self::token_can_be_logical_name(&current_var_token.key()) {
-                current_var_token.con().trim().to_string()
             } else {
-                return Err(Box::new(ParseError::from_token(
-                    &current_var_token,
-                    "Expected typed iteration binder usage before 'in'".to_string(),
-                )));
+                Self::token_to_named_label(&current_var_token).ok_or_else(|| {
+                    Box::new(ParseError::from_token(
+                        &current_var_token,
+                        "Expected typed iteration binder usage before 'in'".to_string(),
+                    )) as Box<dyn Glitch>
+                })?
             };
 
             if iteration_var != declared_var {
@@ -569,7 +564,7 @@ impl AstParser {
             }
         }
 
-        if (Self::token_can_be_logical_name(&current_var_token.key())
+        if (Self::token_to_named_label(&current_var_token).is_some()
             || matches!(current_var_token.key(), KEYWORD::Symbol(SYMBOL::Under)))
             && matches!(
                 self.next_significant_key_from_window(tokens),
@@ -579,7 +574,8 @@ impl AstParser {
             let var = if matches!(current_var_token.key(), KEYWORD::Symbol(SYMBOL::Under)) {
                 "_".to_string()
             } else {
-                current_var_token.con().trim().to_string()
+                Self::token_to_named_label(&current_var_token)
+                    .expect("guard above ensured named iteration binder")
             };
             let _ = tokens.bump();
             self.skip_ignorable(tokens);
