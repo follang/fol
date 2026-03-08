@@ -1,0 +1,4 @@
+typ Data: rec = {
+    "id": int;
+    "label": str;
+}

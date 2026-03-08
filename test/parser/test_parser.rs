@@ -84,6 +84,9 @@ mod quoted_root_statements;
 #[path = "test_parser_parts/quoted_use_names.rs"]
 mod quoted_use_names;
 #[cfg(test)]
+#[path = "test_parser_parts/quoted_type_members.rs"]
+mod quoted_type_members;
+#[cfg(test)]
 #[path = "test_parser_parts/segment_declarations.rs"]
 mod segment_declarations;
 #[cfg(test)]

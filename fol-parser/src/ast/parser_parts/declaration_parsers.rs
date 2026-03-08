@@ -383,13 +383,13 @@ impl AstParser {
             for _ in 0..64 {
                 self.skip_ignorable(tokens);
                 let name_token = tokens.curr(false)?;
-                if !Self::token_can_be_logical_name(&name_token.key()) {
-                    return Err(Box::new(ParseError::from_token(
+                let name = Self::token_to_named_label(&name_token).ok_or_else(|| {
+                    Box::new(ParseError::from_token(
                         &name_token,
                         "Expected entry variant name".to_string(),
-                    )));
-                }
-                names.push(name_token.con().trim().to_string());
+                    )) as Box<dyn Glitch>
+                })?;
+                names.push(name);
                 let _ = tokens.bump();
 
                 self.skip_ignorable(tokens);
@@ -505,14 +505,12 @@ impl AstParser {
             }
 
             let token = tokens.curr(false)?;
-            if !Self::token_can_be_logical_name(&token.key()) {
-                return Err(Box::new(ParseError::from_token(
+            let field_name = Self::token_to_named_label(&token).ok_or_else(|| {
+                Box::new(ParseError::from_token(
                     &token,
                     "Expected field name in type record definition".to_string(),
-                )));
-            }
-
-            let field_name = token.con().trim().to_string();
+                )) as Box<dyn Glitch>
+            })?;
             let _ = tokens.bump();
             self.skip_ignorable(tokens);
 
