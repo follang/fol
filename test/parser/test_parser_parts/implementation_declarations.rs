@@ -156,3 +156,30 @@ fn test_implementation_generic_header_missing_separator_reports_parse_error() {
         parse_error
     );
 }
+
+#[test]
+fn test_implementation_declaration_accepts_quoted_names() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_imp_quoted_name.fol")
+        .expect("Should read quoted-name implementation declaration test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse quoted implementation names");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::ImpDecl { name, target, body, .. }
+                    if name == "math"
+                        && matches!(target, FolType::Named { name } if name == "Number")
+                        && body.iter().any(|stmt| matches!(stmt, AstNode::FunDecl { name, .. } if name == "run"))
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}

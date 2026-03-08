@@ -1,0 +1,3 @@
+seg "core": mod = {
+    def helper: blk[];
+}

@@ -100,3 +100,30 @@ fn test_segment_declaration_accepts_keyword_names() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_segment_declaration_accepts_quoted_names() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_seg_quoted_name.fol")
+        .expect("Should read quoted-name segment declaration test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse quoted segment names");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::DefDecl { name, def_type, body }
+                    if name == "core"
+                        && matches!(def_type, FolType::Module { .. })
+                        && body.iter().any(|stmt| matches!(stmt, AstNode::DefDecl { name, .. } if name == "helper"))
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
