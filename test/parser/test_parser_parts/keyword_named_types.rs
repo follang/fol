@@ -26,7 +26,7 @@ fn test_keyword_named_alias_and_type_declarations_parse() {
                     node,
                     AstNode::TypeDecl {
                         name,
-                        type_def: TypeDefinition::Record { fields },
+                        type_def: TypeDefinition::Record { fields, .. },
                         ..
                     }
                     if name == "get"

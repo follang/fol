@@ -1,0 +1,60 @@
+use super::*;
+use fol_parser::ast::{EntryVariantMeta, RecordFieldMeta, VarOption};
+
+#[test]
+fn test_record_type_retains_field_defaults_and_options() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_typ_record_metadata.fol")
+        .expect("Should read record metadata fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should retain record field metadata");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::TypeDecl {
+                    name,
+                    type_def: TypeDefinition::Record { field_meta, .. },
+                    ..
+                }
+                if name == "Widget"
+                    && matches!(field_meta.get("size"), Some(RecordFieldMeta { default: Some(_), options }) if options.contains(&VarOption::Mutable))
+                    && matches!(field_meta.get("name"), Some(RecordFieldMeta { default: None, options }) if options.contains(&VarOption::Immutable))
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_entry_type_retains_variant_defaults_and_options() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_typ_entry_metadata.fol")
+        .expect("Should read entry metadata fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should retain entry variant metadata");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::TypeDecl {
+                    name,
+                    type_def: TypeDefinition::Entry { variant_meta, .. },
+                    ..
+                }
+                if name == "Maybe"
+                    && matches!(variant_meta.get("None"), Some(EntryVariantMeta { default: None, options }) if options.contains(&VarOption::Immutable))
+                    && matches!(variant_meta.get("Some"), Some(EntryVariantMeta { default: Some(_), options }) if options.contains(&VarOption::Mutable))
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}

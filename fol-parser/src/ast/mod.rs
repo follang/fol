@@ -396,14 +396,28 @@ pub struct Generic {
     pub constraints: Vec<FolType>,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct RecordFieldMeta {
+    pub default: Option<AstNode>,
+    pub options: Vec<VarOption>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct EntryVariantMeta {
+    pub default: Option<AstNode>,
+    pub options: Vec<VarOption>,
+}
+
 /// Type definitions for structs/records/entries
 #[derive(Debug, Clone, PartialEq)]
 pub enum TypeDefinition {
     Record {
         fields: HashMap<String, FolType>,
+        field_meta: HashMap<String, RecordFieldMeta>,
     },
     Entry {
         variants: HashMap<String, Option<FolType>>,
+        variant_meta: HashMap<String, EntryVariantMeta>,
     },
     Alias {
         target: FolType,

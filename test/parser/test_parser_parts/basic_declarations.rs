@@ -353,7 +353,7 @@ fn test_top_level_type_record_parsing() {
                             node,
                             AstNode::TypeDecl {
                                 name,
-                                type_def: TypeDefinition::Record { fields },
+                                type_def: TypeDefinition::Record { fields, .. },
                                 ..
                             }
                             if name == "Person"
@@ -387,7 +387,7 @@ fn test_top_level_type_record_marker_parsing() {
                             node,
                             AstNode::TypeDecl {
                                 name,
-                                type_def: TypeDefinition::Record { fields },
+                                type_def: TypeDefinition::Record { fields, .. },
                                 ..
                             }
                             if name == "User"
@@ -421,7 +421,7 @@ fn test_top_level_type_record_fields_support_var_prefix_and_defaults() {
                             node,
                             AstNode::TypeDecl {
                                 name,
-                                type_def: TypeDefinition::Record { fields },
+                                type_def: TypeDefinition::Record { fields, .. },
                                 ..
                             }
                             if name == "User"
@@ -515,7 +515,7 @@ fn test_top_level_type_record_fields_support_lab_prefix() {
                 matches!(
                     node,
                     AstNode::TypeDecl {
-                        type_def: TypeDefinition::Record { fields },
+                        type_def: TypeDefinition::Record { fields, .. },
                         ..
                     }
                     if matches!(fields.get("name"), Some(FolType::Named { name }) if name == "str")
@@ -573,7 +573,7 @@ fn test_top_level_type_record_marker_accepts_empty_brackets() {
                             node,
                             AstNode::TypeDecl {
                                 name,
-                                type_def: TypeDefinition::Record { fields },
+                                type_def: TypeDefinition::Record { fields, .. },
                                 ..
                             }
                             if name == "User"
@@ -858,7 +858,7 @@ fn test_top_level_type_entry_parsing() {
                             node,
                             AstNode::TypeDecl {
                                 name,
-                                type_def: TypeDefinition::Entry { variants },
+                                type_def: TypeDefinition::Entry { variants, .. },
                                 ..
                             }
                             if name == "Color"
@@ -894,7 +894,7 @@ fn test_top_level_type_entry_parsing_accepts_comma_separators() {
                             node,
                             AstNode::TypeDecl {
                                 name,
-                                type_def: TypeDefinition::Entry { variants },
+                                type_def: TypeDefinition::Entry { variants, .. },
                                 ..
                             }
                             if name == "ColorCodes"
@@ -931,7 +931,7 @@ fn test_top_level_type_entry_marker_accepts_empty_brackets() {
                             node,
                             AstNode::TypeDecl {
                                 name,
-                                type_def: TypeDefinition::Entry { variants },
+                                type_def: TypeDefinition::Entry { variants, .. },
                                 ..
                             }
                             if name == "Color"

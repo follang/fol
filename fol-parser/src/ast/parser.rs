@@ -1,9 +1,10 @@
 // AST Parser Implementation for FOL
 
 use super::{
-    AstNode, BinaryOperator, CharEncoding, ContainerType, FloatSize, FolType, FunOption, Generic,
-    IntSize, Literal, LoopCondition, Parameter, RollingBinding, StandardKind, TypeDefinition,
-    TypeOption, UnaryOperator, UseOption, VarOption, WhenCase,
+    AstNode, BinaryOperator, CharEncoding, ContainerType, EntryVariantMeta, FloatSize, FolType,
+    FunOption, Generic, IntSize, Literal, LoopCondition, Parameter, RecordFieldMeta,
+    RollingBinding, StandardKind, TypeDefinition, TypeOption, UnaryOperator, UseOption,
+    VarOption, WhenCase,
 };
 use fol_lexer::token::{BUILDIN, KEYWORD, LITERAL, OPERATOR, SYMBOL, VOID};
 use fol_types::*;
@@ -85,6 +86,8 @@ mod binding_option_parsers;
 mod binding_value_parsers;
 #[path = "parser_parts/declaration_parsers.rs"]
 mod declaration_parsers;
+#[path = "parser_parts/type_definition_parsers.rs"]
+mod type_definition_parsers;
 #[path = "parser_parts/expression_atoms_and_report_validation.rs"]
 mod expression_atoms_and_report_validation;
 #[path = "parser_parts/access_expression_parsers.rs"]

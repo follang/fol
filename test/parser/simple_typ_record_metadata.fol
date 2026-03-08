@@ -1,0 +1,4 @@
+typ Widget: rec = {
+    lab name: str;
+    var size: int = 1;
+}

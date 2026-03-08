@@ -18,7 +18,7 @@ fn test_top_level_type_record_fields_support_keyword_names() {
                 matches!(
                     node,
                     AstNode::TypeDecl {
-                        type_def: TypeDefinition::Record { fields },
+                        type_def: TypeDefinition::Record { fields, .. },
                         ..
                     }
                     if matches!(fields.get("get"), Some(FolType::Int { size: None, signed: true }))
@@ -74,7 +74,7 @@ fn test_type_entry_definition_supports_keyword_variant_names() {
                 matches!(
                     node,
                     AstNode::TypeDecl {
-                        type_def: TypeDefinition::Entry { variants },
+                        type_def: TypeDefinition::Entry { variants, .. },
                         ..
                     }
                     if matches!(variants.get("get"), Some(Some(FolType::Int { size: None, signed: true })))

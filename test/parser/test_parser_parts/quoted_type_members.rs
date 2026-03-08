@@ -18,7 +18,7 @@ fn test_record_type_definition_accepts_quoted_fields() {
                     node,
                     AstNode::TypeDecl {
                         name,
-                        type_def: TypeDefinition::Record { fields },
+                        type_def: TypeDefinition::Record { fields, .. },
                         ..
                     } if name == "Data" && fields.contains_key("id") && fields.contains_key("label")
                 )
@@ -47,7 +47,7 @@ fn test_entry_type_definition_accepts_quoted_variants() {
                     node,
                     AstNode::TypeDecl {
                         name,
-                        type_def: TypeDefinition::Entry { variants },
+                        type_def: TypeDefinition::Entry { variants, .. },
                         ..
                     } if name == "Result" && variants.contains_key("ok") && variants.contains_key("err")
                 )
@@ -76,7 +76,7 @@ fn test_single_quoted_type_members_parse() {
                     node,
                     AstNode::TypeDecl {
                         name,
-                        type_def: TypeDefinition::Record { fields },
+                        type_def: TypeDefinition::Record { fields, .. },
                         ..
                     } if name == "Data" && fields.contains_key("id") && fields.contains_key("label")
                 )
@@ -86,7 +86,7 @@ fn test_single_quoted_type_members_parse() {
                     node,
                     AstNode::TypeDecl {
                         name,
-                        type_def: TypeDefinition::Entry { variants },
+                        type_def: TypeDefinition::Entry { variants, .. },
                         ..
                     } if name == "Result" && variants.contains_key("ok") && variants.contains_key("err")
                 )
@@ -115,7 +115,7 @@ fn test_quoted_type_references_parse_in_type_member_hints() {
                     node,
                     AstNode::TypeDecl {
                         name,
-                        type_def: TypeDefinition::Record { fields },
+                        type_def: TypeDefinition::Record { fields, .. },
                         ..
                     } if name == "Data"
                         && matches!(fields.get("id"), Some(FolType::Named { name }) if name == "Item")
@@ -127,7 +127,7 @@ fn test_quoted_type_references_parse_in_type_member_hints() {
                     node,
                     AstNode::TypeDecl {
                         name,
-                        type_def: TypeDefinition::Entry { variants },
+                        type_def: TypeDefinition::Entry { variants, .. },
                         ..
                     } if name == "Result"
                         && matches!(variants.get("ok"), Some(Some(FolType::Named { name })) if name == "Success")
@@ -158,7 +158,7 @@ fn test_single_quoted_type_references_parse_in_type_member_hints() {
                     node,
                     AstNode::TypeDecl {
                         name,
-                        type_def: TypeDefinition::Record { fields },
+                        type_def: TypeDefinition::Record { fields, .. },
                         ..
                     } if name == "Data"
                         && matches!(fields.get("id"), Some(FolType::Named { name }) if name == "Item")
@@ -170,7 +170,7 @@ fn test_single_quoted_type_references_parse_in_type_member_hints() {
                     node,
                     AstNode::TypeDecl {
                         name,
-                        type_def: TypeDefinition::Entry { variants },
+                        type_def: TypeDefinition::Entry { variants, .. },
                         ..
                     } if name == "Result"
                         && matches!(variants.get("ok"), Some(Some(FolType::Named { name })) if name == "Success")

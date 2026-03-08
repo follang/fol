@@ -1,0 +1,4 @@
+typ Maybe: ent = {
+    lab None: non;
+    var Some: str = "x";
+}

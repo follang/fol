@@ -107,7 +107,7 @@ fn test_type_entry_definition_supports_lab_variants() {
                 matches!(
                     node,
                     AstNode::TypeDecl {
-                        type_def: TypeDefinition::Entry { variants },
+                        type_def: TypeDefinition::Entry { variants, .. },
                         ..
                     }
                     if matches!(variants.get("None"), Some(Some(FolType::None)))
