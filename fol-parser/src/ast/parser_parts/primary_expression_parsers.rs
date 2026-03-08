@@ -69,6 +69,8 @@ impl AstParser {
 
         let node = if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Fun)) {
             self.parse_anonymous_fun_expr(tokens)?
+        } else if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Log)) {
+            self.parse_anonymous_log_expr(tokens)?
         } else if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Pro)) {
             self.parse_anonymous_pro_expr(tokens)?
         } else if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
@@ -232,6 +234,38 @@ impl AstParser {
 
         let _ = tokens.bump();
         self.parse_anonymous_routine_after_keyword(tokens, false)
+    }
+
+    pub(super) fn parse_anonymous_log_expr(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
+        let routine_token = tokens.curr(false)?;
+        if !matches!(routine_token.key(), KEYWORD::Keyword(BUILDIN::Log)) {
+            return Err(Box::new(ParseError::from_token(
+                &routine_token,
+                "Expected anonymous logical expression".to_string(),
+            )));
+        }
+
+        let _ = tokens.bump();
+        let node = self.parse_anonymous_routine_after_keyword(tokens, true)?;
+        match node {
+            AstNode::AnonymousFun {
+                options,
+                params,
+                return_type,
+                error_type,
+                body,
+            } => Ok(AstNode::AnonymousFun {
+                options,
+                params,
+                return_type: Some(return_type.unwrap_or(FolType::Bool)),
+                error_type,
+                body,
+            }),
+            other => Ok(other),
+        }
     }
 
     fn parse_anonymous_routine_after_keyword(

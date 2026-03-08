@@ -202,3 +202,74 @@ fn test_shorthand_anonymous_function_immediate_invocation_parsing() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_anonymous_logical_expression() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_log_anonymous_expr.fol")
+        .expect("Should read anonymous logical expression fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse anonymous logical expressions");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::FunDecl { body, .. }
+                    if body.iter().any(|stmt| matches!(
+                        stmt,
+                        AstNode::Return { value: Some(value) }
+                        if matches!(
+                            value.as_ref(),
+                            AstNode::AnonymousFun { params, return_type: Some(FolType::Bool), .. }
+                            if params.len() == 1 && params[0].name == "a"
+                        )
+                    ))
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_anonymous_logical_immediate_invocation_parsing() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_log_anonymous_invoke_expr.fol")
+            .expect("Should read anonymous logical invoke fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse invoked anonymous logical expressions");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::FunDecl { body, .. }
+                    if body.iter().any(|stmt| matches!(
+                        stmt,
+                        AstNode::Return { value: Some(value) }
+                        if matches!(
+                            value.as_ref(),
+                            AstNode::Invoke { callee, args }
+                            if args.len() == 1
+                                && matches!(
+                                    callee.as_ref(),
+                                    AstNode::AnonymousFun { return_type: Some(FolType::Bool), .. }
+                                )
+                        )
+                    ))
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
