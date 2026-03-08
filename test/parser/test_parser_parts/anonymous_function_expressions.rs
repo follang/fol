@@ -377,3 +377,57 @@ fn test_shorthand_anonymous_function_capture_lists_parsing() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_anonymous_routine_inquiry_clauses_parsing() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_anonymous_routine_inquiries.fol")
+            .expect("Should read anonymous routine inquiry fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should preserve inquiry clauses on anonymous routines");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::FunDecl { name, body, .. }
+                    if name == "make"
+                        && body.iter().any(|stmt| matches!(
+                            stmt,
+                            AstNode::Return { value: Some(value) }
+                            if matches!(
+                                value.as_ref(),
+                                AstNode::AnonymousFun { inquiries, .. }
+                                if inquiries.len() == 1
+                                    && matches!(&inquiries[0], AstNode::Inquiry { target, body } if target == "self" && body.len() == 1)
+                            )
+                        ))
+                )
+            }));
+
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::ProDecl { name, body, .. }
+                    if name == "build"
+                        && body.iter().any(|stmt| matches!(
+                            stmt,
+                            AstNode::Return { value: Some(value) }
+                            if matches!(
+                                value.as_ref(),
+                                AstNode::AnonymousPro { inquiries, .. }
+                                if inquiries.len() == 1
+                                    && matches!(&inquiries[0], AstNode::Inquiry { target, body } if target == "this" && body.len() == 1)
+                            )
+                        ))
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}

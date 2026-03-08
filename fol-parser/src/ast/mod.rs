@@ -124,6 +124,7 @@ pub enum AstNode {
         return_type: Option<FolType>,
         error_type: Option<FolType>,
         body: Vec<AstNode>,
+        inquiries: Vec<AstNode>,
     },
 
     /// Anonymous procedure expression: pro (...) : T = { ... }
@@ -134,6 +135,7 @@ pub enum AstNode {
         return_type: Option<FolType>,
         error_type: Option<FolType>,
         body: Vec<AstNode>,
+        inquiries: Vec<AstNode>,
     },
 
     /// Method call: object.method(args)
@@ -718,8 +720,16 @@ impl AstNode {
                 children.extend(args.iter());
                 children
             }
-            AstNode::AnonymousFun { body, .. } => body.iter().collect(),
-            AstNode::AnonymousPro { body, .. } => body.iter().collect(),
+            AstNode::AnonymousFun {
+                body, inquiries, ..
+            }
+            | AstNode::AnonymousPro {
+                body, inquiries, ..
+            } => {
+                let mut children: Vec<&AstNode> = body.iter().collect();
+                children.extend(inquiries.iter());
+                children
+            }
             AstNode::Assignment { target, value } => {
                 vec![target.as_ref(), value.as_ref()]
             }

@@ -270,6 +270,7 @@ impl AstParser {
                 return_type,
                 error_type,
                 body,
+                inquiries,
             } => Ok(AstNode::AnonymousFun {
                 options,
                 captures,
@@ -277,6 +278,7 @@ impl AstParser {
                 return_type: Some(return_type.unwrap_or(FolType::Bool)),
                 error_type,
                 body,
+                inquiries,
             }),
             other => Ok(other),
         }
@@ -352,7 +354,7 @@ impl AstParser {
         }
         let _ = tokens.bump();
 
-        let (body, _inquiries) = self.parse_routine_body_with_inquiries(
+        let (body, inquiries) = self.parse_routine_body_with_inquiries(
             tokens,
             if is_function {
                 "Expected '}' to close anonymous function body"
@@ -369,6 +371,7 @@ impl AstParser {
                 return_type,
                 error_type,
                 body,
+                inquiries,
             })
         } else {
             Ok(AstNode::AnonymousPro {
@@ -378,6 +381,7 @@ impl AstParser {
                 return_type,
                 error_type,
                 body,
+                inquiries,
             })
         }
     }
@@ -429,6 +433,7 @@ impl AstParser {
             return_type: None,
             error_type: None,
             body,
+            inquiries: Vec::new(),
         })
     }
 }

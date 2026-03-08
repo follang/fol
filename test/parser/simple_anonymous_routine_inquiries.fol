@@ -1,0 +1,17 @@
+fun make(): any = {
+    return fun[](x: int): int = {
+        return x;
+        where(self) {
+            check(x);
+        }
+    };
+}
+
+pro build(): int = {
+    return pro[](x: int): int = {
+        return x;
+        where(this) {
+            report(x);
+        }
+    };
+}

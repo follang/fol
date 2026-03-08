@@ -85,6 +85,7 @@ impl AstParser {
             return_type: None,
             error_type: None,
             body,
+            inquiries: Vec::new(),
         })
     }
 }
