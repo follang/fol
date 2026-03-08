@@ -98,6 +98,9 @@ impl AstParser {
         if matches!(kind, StandardKind::Blueprint) {
             self.parse_empty_standard_kind_options(tokens, "blueprint")?;
         }
+        if matches!(kind, StandardKind::Extended) {
+            self.parse_empty_standard_kind_options(tokens, "extended")?;
+        }
 
         self.skip_ignorable(tokens);
         let assign = tokens.curr(false)?;
