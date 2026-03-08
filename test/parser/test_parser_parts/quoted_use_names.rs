@@ -71,3 +71,28 @@ fn test_use_declaration_normalizes_single_quoted_paths() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_use_declaration_accepts_multiple_single_quoted_names() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_use_multi_single_quoted_names.fol")
+            .expect("Should read multi single-quoted use declaration fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept multiple single-quoted use names");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(node, AstNode::UseDecl { name, path, .. } if name == "warn" && path == "std/warn")
+            }));
+            assert!(declarations.iter().any(|node| {
+                matches!(node, AstNode::UseDecl { name, path, .. } if name == "trace" && path == "std/trace")
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
