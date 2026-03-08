@@ -784,15 +784,15 @@ impl AstParser {
 
             self.skip_ignorable(tokens);
             let segment = tokens.curr(false)?;
-            if !(segment.key().is_ident() || segment.key().is_buildin()) {
-                return Err(Box::new(ParseError::from_token(
+            let segment_name = Self::token_to_named_label(&segment).ok_or_else(|| {
+                Box::new(ParseError::from_token(
                     &segment,
                     "Expected type segment after '::'".to_string(),
-                )));
-            }
+                )) as Box<dyn Glitch>
+            })?;
 
             name.push_str("::");
-            name.push_str(segment.con().trim());
+            name.push_str(&segment_name);
             let _ = tokens.bump();
         }
 
