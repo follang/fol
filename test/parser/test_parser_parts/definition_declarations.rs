@@ -117,9 +117,8 @@ fn test_top_level_def_block_parsing() {
 
 #[test]
 fn test_def_bare_block_marker_without_body_parsing() {
-    let mut file_stream =
-        FileStream::from_file("test/parser/simple_def_bare_block_marker.fol")
-            .expect("Should read bare block-marker definition test file");
+    let mut file_stream = FileStream::from_file("test/parser/simple_def_bare_block_marker.fol")
+        .expect("Should read bare block-marker definition test file");
 
     let mut lexer = Elements::init(&mut file_stream);
     let mut parser = AstParser::new();
@@ -293,9 +292,8 @@ fn test_def_block_marker_without_body_parsing() {
 
 #[test]
 fn test_def_quoted_block_marker_without_body_parsing() {
-    let mut file_stream =
-        FileStream::from_file("test/parser/simple_def_quoted_block_marker.fol")
-            .expect("Should read quoted block-marker definition test file");
+    let mut file_stream = FileStream::from_file("test/parser/simple_def_quoted_block_marker.fol")
+        .expect("Should read quoted block-marker definition test file");
 
     let mut lexer = Elements::init(&mut file_stream);
     let mut parser = AstParser::new();
@@ -558,9 +556,8 @@ fn test_def_invalid_type_reports_parse_error() {
 
 #[test]
 fn test_def_module_without_body_reports_parse_error() {
-    let mut file_stream =
-        FileStream::from_file("test/parser/simple_def_module_missing_body.fol")
-            .expect("Should read module-missing-body def fixture");
+    let mut file_stream = FileStream::from_file("test/parser/simple_def_module_missing_body.fol")
+        .expect("Should read module-missing-body def fixture");
 
     let mut lexer = Elements::init(&mut file_stream);
     let mut parser = AstParser::new();
