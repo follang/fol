@@ -53,3 +53,30 @@ fn test_mutable_binding_alternative_parses_top_level() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_hidden_binding_alternative_parses_top_level() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_minus_var.fol")
+        .expect("Should read -var fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept -var binding alternative");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::VarDecl { name, options, .. }
+                    if name == "hidden"
+                        && options.contains(&fol_parser::ast::VarOption::Hidden)
+                        && !options.contains(&fol_parser::ast::VarOption::Normal)
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
