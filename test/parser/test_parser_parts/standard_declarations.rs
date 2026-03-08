@@ -157,3 +157,29 @@ fn test_protocol_standard_accepts_empty_kind_brackets() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_blueprint_standard_accepts_empty_kind_brackets() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_std_blueprint_kind_options.fol")
+            .expect("Should read blu[] standard test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse blu[] standard declarations");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::StdDecl { name, kind: StandardKind::Blueprint, .. }
+                    if name == "geometry"
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}

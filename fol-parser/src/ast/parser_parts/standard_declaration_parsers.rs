@@ -95,6 +95,9 @@ impl AstParser {
         if matches!(kind, StandardKind::Protocol) {
             self.parse_empty_standard_kind_options(tokens, "protocol")?;
         }
+        if matches!(kind, StandardKind::Blueprint) {
+            self.parse_empty_standard_kind_options(tokens, "blueprint")?;
+        }
 
         self.skip_ignorable(tokens);
         let assign = tokens.curr(false)?;
