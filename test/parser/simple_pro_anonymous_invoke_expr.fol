@@ -1,0 +1,5 @@
+pro run_now(): int = {
+    return pro[] (a: int): int = {
+        return a;
+    }(5);
+}

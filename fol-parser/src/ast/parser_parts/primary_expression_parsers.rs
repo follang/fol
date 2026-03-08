@@ -26,6 +26,8 @@ impl AstParser {
 
         let node = if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Fun)) {
             self.parse_anonymous_fun_expr(tokens)?
+        } else if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Pro)) {
+            self.parse_anonymous_pro_expr(tokens)?
         } else if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
             return self.parse_container_expression(tokens);
         } else if matches!(token.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
@@ -157,15 +159,39 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Box<dyn Glitch>> {
-        let fun_token = tokens.curr(false)?;
-        if !matches!(fun_token.key(), KEYWORD::Keyword(BUILDIN::Fun)) {
+        let routine_token = tokens.curr(false)?;
+        if !matches!(routine_token.key(), KEYWORD::Keyword(BUILDIN::Fun)) {
             return Err(Box::new(ParseError::from_token(
-                &fun_token,
+                &routine_token,
                 "Expected anonymous function expression".to_string(),
             )));
         }
 
         let _ = tokens.bump();
+        self.parse_anonymous_routine_after_keyword(tokens, true)
+    }
+
+    pub(super) fn parse_anonymous_pro_expr(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
+        let routine_token = tokens.curr(false)?;
+        if !matches!(routine_token.key(), KEYWORD::Keyword(BUILDIN::Pro)) {
+            return Err(Box::new(ParseError::from_token(
+                &routine_token,
+                "Expected anonymous procedure expression".to_string(),
+            )));
+        }
+
+        let _ = tokens.bump();
+        self.parse_anonymous_routine_after_keyword(tokens, false)
+    }
+
+    fn parse_anonymous_routine_after_keyword(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+        is_function: bool,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
         self.skip_ignorable(tokens);
         let options = self.parse_routine_options(tokens)?;
         self.skip_ignorable(tokens);
@@ -230,15 +256,29 @@ impl AstParser {
 
         let (body, _inquiries) = self.parse_routine_body_with_inquiries(
             tokens,
-            "Expected '}' to close anonymous function body",
+            if is_function {
+                "Expected '}' to close anonymous function body"
+            } else {
+                "Expected '}' to close anonymous procedure body"
+            },
         )?;
 
-        Ok(AstNode::AnonymousFun {
-            options,
-            params,
-            return_type,
-            error_type,
-            body,
-        })
+        if is_function {
+            Ok(AstNode::AnonymousFun {
+                options,
+                params,
+                return_type,
+                error_type,
+                body,
+            })
+        } else {
+            Ok(AstNode::AnonymousPro {
+                options,
+                params,
+                return_type,
+                error_type,
+                body,
+            })
+        }
     }
 }

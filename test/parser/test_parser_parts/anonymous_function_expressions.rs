@@ -69,3 +69,73 @@ fn test_anonymous_function_immediate_invocation_parsing() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_anonymous_procedure_expression_parsing() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_pro_anonymous_expr.fol")
+        .expect("Should read anonymous procedure fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse anonymous procedure expressions");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::ProDecl { body, .. }
+                    if body.iter().any(|stmt| matches!(
+                        stmt,
+                        AstNode::Return { value: Some(value) }
+                        if matches!(
+                            value.as_ref(),
+                            AstNode::AnonymousPro { params, return_type, body, .. }
+                            if params.len() == 1
+                                && matches!(return_type, Some(FolType::Int { .. }))
+                                && !body.is_empty()
+                        )
+                    ))
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_anonymous_procedure_immediate_invocation_parsing() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_pro_anonymous_invoke_expr.fol")
+            .expect("Should read anonymous procedure invoke fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse immediate anonymous procedure invocation");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::ProDecl { body, .. }
+                    if body.iter().any(|stmt| matches!(
+                        stmt,
+                        AstNode::Return { value: Some(value) }
+                        if matches!(
+                            value.as_ref(),
+                            AstNode::Invoke { callee, args }
+                            if args.len() == 1
+                                && matches!(callee.as_ref(), AstNode::AnonymousPro { .. })
+                        )
+                    ))
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
