@@ -98,3 +98,65 @@ fn test_parallel_binding_values_expand_in_order() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_grouped_bindings_expand_to_multiple_declarations() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_var_grouped_multi.fol")
+        .expect("Should read grouped multi-binding fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept grouped bindings");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            let names: Vec<_> = declarations
+                .iter()
+                .filter_map(|node| {
+                    if let AstNode::VarDecl { name, .. } = node {
+                        Some(name.as_str())
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+            assert_eq!(names, vec!["first", "second", "third"]);
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_grouped_binding_alternatives_preserve_shared_options() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_plus_var_grouped.fol")
+        .expect("Should read grouped alternative binding fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept grouped binding alternatives");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            let exported_count = declarations
+                .iter()
+                .filter(|node| {
+                    matches!(
+                        node,
+                        AstNode::VarDecl { options, .. }
+                        if options.contains(&fol_parser::ast::VarOption::Export)
+                    )
+                })
+                .count();
+            assert_eq!(
+                exported_count, 2,
+                "Shared grouped options should apply to each item"
+            );
+        }
+        _ => panic!("Expected program node"),
+    }
+}

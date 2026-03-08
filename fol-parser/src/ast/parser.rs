@@ -87,6 +87,8 @@ mod declaration_parsers;
 mod expression_atoms_and_report_validation;
 #[path = "parser_parts/expression_parsers.rs"]
 mod expression_parsers;
+#[path = "parser_parts/grouped_binding_parsers.rs"]
+mod grouped_binding_parsers;
 #[path = "parser_parts/program_and_bindings.rs"]
 mod program_and_bindings;
 #[path = "parser_parts/routine_headers_and_type_lowering.rs"]

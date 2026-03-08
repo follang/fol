@@ -748,6 +748,12 @@ impl AstParser {
         let options = self.parse_binding_options(tokens, default_options)?;
         self.skip_ignorable(tokens);
 
+        if let Ok(open_group) = tokens.curr(false) {
+            if matches!(open_group.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
+                return self.parse_binding_group(tokens, options);
+            }
+        }
+
         let names = self.parse_binding_names(tokens, keyword)?;
 
         self.skip_ignorable(tokens);
