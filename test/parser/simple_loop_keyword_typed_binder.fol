@@ -1,0 +1,3 @@
+loop (var std: str; std in values when ready) {
+    yeild std;
+}

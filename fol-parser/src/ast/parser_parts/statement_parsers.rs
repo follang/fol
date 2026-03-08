@@ -504,7 +504,7 @@ impl AstParser {
             self.skip_ignorable(tokens);
 
             current_var_token = tokens.curr(false)?;
-            if !(current_var_token.key().is_ident()
+            if !(Self::token_can_be_logical_name(&current_var_token.key())
                 || matches!(current_var_token.key(), KEYWORD::Symbol(SYMBOL::Under)))
             {
                 return Err(Box::new(ParseError::from_token(
@@ -549,7 +549,7 @@ impl AstParser {
             let iteration_var = if matches!(current_var_token.key(), KEYWORD::Symbol(SYMBOL::Under))
             {
                 "_".to_string()
-            } else if current_var_token.key().is_ident() {
+            } else if Self::token_can_be_logical_name(&current_var_token.key()) {
                 current_var_token.con().trim().to_string()
             } else {
                 return Err(Box::new(ParseError::from_token(
@@ -569,7 +569,7 @@ impl AstParser {
             }
         }
 
-        if (current_var_token.key().is_ident()
+        if (Self::token_can_be_logical_name(&current_var_token.key())
             || matches!(current_var_token.key(), KEYWORD::Symbol(SYMBOL::Under)))
             && matches!(
                 self.next_significant_key_from_window(tokens),

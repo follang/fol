@@ -1,0 +1,3 @@
+each (var get: str; get in items when ready) {
+    yeild get;
+}

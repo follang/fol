@@ -1,0 +1,3 @@
+for (var get: str; std in values) {
+    yeild get;
+}
