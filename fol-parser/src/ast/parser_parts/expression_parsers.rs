@@ -97,7 +97,9 @@ impl AstParser {
             }
 
             if expect_member_ident {
-                if key.is_ident() {
+                if Self::token_can_be_logical_name(&key)
+                    || matches!(key, KEYWORD::Literal(LITERAL::Stringy))
+                {
                     expect_member_ident = false;
                     continue;
                 }

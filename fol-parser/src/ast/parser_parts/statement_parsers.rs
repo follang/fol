@@ -725,14 +725,12 @@ impl AstParser {
                     self.skip_ignorable(tokens);
 
                     let field_token = tokens.curr(false)?;
-                    if !field_token.key().is_ident() {
-                        return Err(Box::new(ParseError::from_token(
+                    let field = Self::token_to_named_label(&field_token).ok_or_else(|| {
+                        Box::new(ParseError::from_token(
                             &field_token,
                             "Expected field name after '.' in assignment target".to_string(),
-                        )));
-                    }
-
-                    let field = field_token.con().trim().to_string();
+                        )) as Box<dyn Glitch>
+                    })?;
                     let _ = tokens.bump();
                     self.skip_ignorable(tokens);
 

@@ -46,6 +46,41 @@ fn test_chained_assignment_target_parsing() {
 }
 
 #[test]
+fn test_quoted_field_assignment_target_parsing() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_quoted_assignment_target.fol")
+            .expect("Should read quoted assignment-target test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse quoted field assignment targets");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::FunDecl { body, .. }
+                    if body.iter().any(|stmt| matches!(
+                        stmt,
+                        AstNode::Assignment { target, .. }
+                        if matches!(
+                            target.as_ref(),
+                            AstNode::FieldAccess { object, field }
+                            if field == "$"
+                                && matches!(object.as_ref(), AstNode::Identifier { name } if name == "box")
+                        )
+                    ))
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
 fn test_field_assignment_target_missing_name_reports_parse_error() {
     let mut file_stream =
         FileStream::from_file("test/parser/simple_fun_field_assignment_missing_name.fol")
