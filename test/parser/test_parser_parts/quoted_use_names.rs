@@ -96,3 +96,27 @@ fn test_use_declaration_accepts_multiple_single_quoted_names() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_quoted_type_references_parse_in_use_declarations() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_quoted_use_type_refs.fol")
+        .expect("Should read quoted use-type fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept quoted type references in use declarations");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(node, AstNode::UseDecl { name, path_type: FolType::Named { name: hint }, .. } if name == "warn" && hint == "Module")
+            }));
+            assert!(declarations.iter().any(|node| {
+                matches!(node, AstNode::UseDecl { name, path_type: FolType::Named { name: hint }, .. } if name == "trace" && hint == "pkg::Module")
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
