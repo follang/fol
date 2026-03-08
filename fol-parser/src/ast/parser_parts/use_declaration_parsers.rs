@@ -121,14 +121,14 @@ impl AstParser {
 
         for _ in 0..256 {
             let name_token = tokens.curr(false)?;
-            if !(name_token.key().is_ident() || name_token.key().is_buildin()) {
-                return Err(Box::new(ParseError::from_token(
+            let name = Self::token_to_named_label(&name_token).ok_or_else(|| {
+                Box::new(ParseError::from_token(
                     &name_token,
                     "Expected identifier after 'use'".to_string(),
-                )));
-            }
+                )) as Box<dyn Glitch>
+            })?;
 
-            names.push(name_token.con().trim().to_string());
+            names.push(name);
             let _ = tokens.bump();
             self.skip_ignorable(tokens);
 
