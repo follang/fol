@@ -1,0 +1,4 @@
+ali log: int
+typ get: rec = {
+    value: int;
+}

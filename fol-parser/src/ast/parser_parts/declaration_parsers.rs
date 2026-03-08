@@ -111,7 +111,7 @@ impl AstParser {
         self.skip_ignorable(tokens);
 
         let name_token = tokens.curr(false)?;
-        if !name_token.key().is_ident() {
+        if !Self::token_can_be_logical_name(&name_token.key()) {
             return Err(Box::new(ParseError::from_token(
                 &name_token,
                 "Expected alias declaration name".to_string(),
@@ -156,7 +156,7 @@ impl AstParser {
         self.skip_ignorable(tokens);
 
         let name_token = tokens.curr(false)?;
-        if !name_token.key().is_ident() {
+        if !Self::token_can_be_logical_name(&name_token.key()) {
             return Err(Box::new(ParseError::from_token(
                 &name_token,
                 "Expected type declaration name".to_string(),
