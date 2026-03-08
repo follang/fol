@@ -415,3 +415,30 @@ fn test_binding_alternative_composes_with_mutability_options() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_binding_alternative_composes_with_visibility_options() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_tilde_var_exp.fol")
+        .expect("Should read ~var[exp] fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept ~var[exp] composed binding alternatives");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::VarDecl { name, options, .. }
+                    if name == "exported"
+                        && options.contains(&fol_parser::ast::VarOption::Mutable)
+                        && options.contains(&fol_parser::ast::VarOption::Export)
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
