@@ -156,6 +156,9 @@ mod single_quoted_names;
 #[path = "test_parser_parts/slice_access_expressions.rs"]
 mod slice_access_expressions;
 #[cfg(test)]
+#[path = "test_parser_parts/slice_assignment_targets.rs"]
+mod slice_assignment_targets;
+#[cfg(test)]
 #[path = "test_parser_parts/standard_declarations.rs"]
 mod standard_declarations;
 #[cfg(test)]
