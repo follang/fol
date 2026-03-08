@@ -1,6 +1,26 @@
 use super::*;
 
 impl AstParser {
+    fn parse_pipe_stage_expression(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
+        self.skip_ignorable(tokens);
+        let token = tokens.curr(false)?;
+
+        if matches!(
+            token.key(),
+            KEYWORD::Keyword(BUILDIN::Panic)
+                | KEYWORD::Keyword(BUILDIN::Report)
+                | KEYWORD::Keyword(BUILDIN::Check)
+                | KEYWORD::Keyword(BUILDIN::Assert)
+        ) {
+            return self.parse_builtin_call_stmt(tokens);
+        }
+
+        self.parse_logical_or_expression(tokens)
+    }
+
     pub(super) fn parse_pipe_expression(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
@@ -31,7 +51,7 @@ impl AstParser {
                 self.consume_significant_token(tokens);
             }
 
-            let rhs = self.parse_logical_or_expression(tokens)?;
+            let rhs = self.parse_pipe_stage_expression(tokens)?;
             lhs = AstNode::BinaryOp {
                 op: if consume_count == 2 {
                     BinaryOperator::PipeOr
