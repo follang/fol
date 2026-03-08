@@ -156,3 +156,27 @@ fn test_use_declaration_rejects_duplicate_visibility_options() {
         parse_error
     );
 }
+
+#[test]
+fn test_use_declaration_rejects_duplicate_names() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_use_duplicate_names.fol")
+            .expect("Should read duplicate use-name fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject duplicate names in one use declaration");
+
+    let parse_error = errors
+        .first()
+        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        .expect("First parser error should be ParseError");
+
+    assert!(
+        parse_error.to_string().contains("Duplicate use name 'math'"),
+        "Duplicate use names should report the repeated name, got: {}",
+        parse_error
+    );
+}

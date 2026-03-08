@@ -118,6 +118,7 @@ impl AstParser {
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<Vec<String>, Box<dyn Glitch>> {
         let mut names = Vec::new();
+        let mut seen_names = HashSet::new();
 
         for _ in 0..256 {
             let name_token = tokens.curr(false)?;
@@ -127,6 +128,12 @@ impl AstParser {
                     "Expected identifier after 'use'".to_string(),
                 )) as Box<dyn Glitch>
             })?;
+            if !seen_names.insert(name.clone()) {
+                return Err(Box::new(ParseError::from_token(
+                    &name_token,
+                    format!("Duplicate use name '{}'", name),
+                )));
+            }
 
             names.push(name);
             let _ = tokens.bump();
