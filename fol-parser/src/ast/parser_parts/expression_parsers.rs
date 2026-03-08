@@ -134,6 +134,7 @@ impl AstParser {
     }
 
     pub(super) fn lookahead_is_call(&self, tokens: &fol_lexer::lexer::stage3::Elements) -> bool {
+        let mut allow_path_segment = false;
         for candidate in tokens.next_vec() {
             let token = match candidate {
                 Ok(token) => token,
@@ -142,6 +143,21 @@ impl AstParser {
 
             let key = token.key();
             if key.is_void() || key.is_comment() {
+                continue;
+            }
+
+            if allow_path_segment {
+                if Self::token_can_be_logical_name(&key)
+                    || matches!(key, KEYWORD::Literal(LITERAL::Stringy))
+                {
+                    allow_path_segment = false;
+                    continue;
+                }
+                return false;
+            }
+
+            if matches!(key, KEYWORD::Operator(OPERATOR::Path)) {
+                allow_path_segment = true;
                 continue;
             }
 
@@ -156,6 +172,7 @@ impl AstParser {
         tokens: &fol_lexer::lexer::stage3::Elements,
     ) -> bool {
         let mut saw_dot = false;
+        let mut allow_path_segment = false;
         for candidate in tokens.next_vec() {
             let token = match candidate {
                 Ok(token) => token,
@@ -167,7 +184,21 @@ impl AstParser {
                 continue;
             }
 
+            if allow_path_segment {
+                if Self::token_can_be_logical_name(&key)
+                    || matches!(key, KEYWORD::Literal(LITERAL::Stringy))
+                {
+                    allow_path_segment = false;
+                    continue;
+                }
+                return false;
+            }
+
             if !saw_dot {
+                if matches!(key, KEYWORD::Operator(OPERATOR::Path)) {
+                    allow_path_segment = true;
+                    continue;
+                }
                 if matches!(key, KEYWORD::Symbol(SYMBOL::Dot)) {
                     saw_dot = true;
                     continue;

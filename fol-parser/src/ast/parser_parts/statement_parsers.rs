@@ -786,14 +786,11 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Box<dyn Glitch>> {
-        let name_token = tokens.curr(false)?;
-        let name = Self::token_to_named_label(&name_token).ok_or_else(|| {
-            Box::new(ParseError::from_token(
-                &name_token,
-                "Expected identifier for function call".to_string(),
-            )) as Box<dyn Glitch>
-        })?;
-        let _ = tokens.bump();
+        let name = self.parse_named_path(
+            tokens,
+            "Expected identifier for function call",
+            "Expected name after '::' in function call",
+        )?;
         let args =
             self.parse_open_paren_and_call_args(tokens, "Expected '(' after function name")?;
 
@@ -804,18 +801,13 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Box<dyn Glitch>> {
-        let object_token = tokens.curr(false)?;
-        if !Self::token_can_be_logical_name(&object_token.key()) {
-            return Err(Box::new(ParseError::from_token(
-                &object_token,
-                "Expected object identifier for method call".to_string(),
-            )));
-        }
-
         let object = AstNode::Identifier {
-            name: object_token.con().trim().to_string(),
+            name: self.parse_named_path(
+                tokens,
+                "Expected object identifier for method call",
+                "Expected name after '::' in method call",
+            )?,
         };
-        let _ = tokens.bump();
         self.skip_ignorable(tokens);
 
         let dot = tokens.curr(false)?;
