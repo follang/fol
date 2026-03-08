@@ -87,3 +87,33 @@ fn test_record_const_field_metadata_is_retained() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_entry_const_variant_metadata_is_retained() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_typ_entry_const_variants.fol")
+            .expect("Should read const entry variant fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should retain const entry variant metadata");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::TypeDecl {
+                    name,
+                    type_def: TypeDefinition::Entry { variant_meta, .. },
+                    ..
+                }
+                if name == "Result"
+                    && matches!(variant_meta.get("Ok"), Some(EntryVariantMeta { default: Some(_), options }) if options.contains(&VarOption::Immutable))
+                    && matches!(variant_meta.get("Err"), Some(EntryVariantMeta { default: Some(_), options }) if options.contains(&VarOption::Immutable))
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}

@@ -37,10 +37,14 @@ impl AstParser {
                     let _ = tokens.bump();
                     vec![VarOption::Immutable, VarOption::Normal]
                 }
+                KEYWORD::Keyword(BUILDIN::Con) => {
+                    let _ = tokens.bump();
+                    vec![VarOption::Immutable, VarOption::Normal]
+                }
                 _ => {
                     return Err(Box::new(ParseError::from_token(
                         &token,
-                        "Expected 'var' or 'lab' in type entry definition".to_string(),
+                        "Expected 'var', 'lab', or 'con' in type entry definition".to_string(),
                     )))
                 }
             };

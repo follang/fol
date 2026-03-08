@@ -1,0 +1,4 @@
+typ Result: ent = {
+    con Ok: str = "ok";
+    con Err: int = 500;
+}
