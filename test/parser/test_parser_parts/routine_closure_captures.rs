@@ -57,3 +57,28 @@ fn test_named_logical_and_procedure_closure_captures() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_duplicate_routine_closure_captures_are_rejected() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_duplicate_closure_capture.fol")
+            .expect("Should read duplicate closure capture test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject duplicate capture names");
+
+    let parse_error = errors
+        .first()
+        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        .expect("First parser error should be ParseError");
+
+    let message = parse_error.to_string();
+    assert!(
+        message.contains("Duplicate capture name 'n'"),
+        "Duplicate capture names should be rejected, got: {}",
+        message
+    );
+}

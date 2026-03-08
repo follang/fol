@@ -1,6 +1,26 @@
 use super::*;
 
 impl AstParser {
+    pub(super) fn ensure_unique_capture_names(
+        &self,
+        captures: &[String],
+    ) -> Result<(), Box<dyn Glitch>> {
+        let mut seen = HashSet::new();
+        for capture in captures {
+            if !seen.insert(capture.clone()) {
+                return Err(Box::new(ParseError {
+                    message: format!("Duplicate capture name '{}'", capture),
+                    file: None,
+                    line: 1,
+                    column: 1,
+                    length: 1,
+                }));
+            }
+        }
+
+        Ok(())
+    }
+
     pub(super) fn parse_optional_routine_capture_list(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
