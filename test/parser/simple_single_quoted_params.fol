@@ -1,0 +1,7 @@
+fun demo('left': int, 'right': str): int = {
+    return 0;
+}
+
+fun takes(handler: {fun ('left': int, 'right': str): int}): int = {
+    return 0;
+}
