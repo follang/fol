@@ -67,7 +67,9 @@ impl AstParser {
             return Ok(operand);
         }
 
-        let node = if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Fun)) {
+        let node = if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Pipe)) {
+            self.parse_pipe_lambda_expr(tokens)?
+        } else if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Fun)) {
             self.parse_anonymous_fun_expr(tokens)?
         } else if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Log)) {
             self.parse_anonymous_log_expr(tokens)?

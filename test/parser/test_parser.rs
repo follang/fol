@@ -144,6 +144,9 @@ mod quoted_use_names;
 #[path = "test_parser_parts/pipe_expressions.rs"]
 mod pipe_expressions;
 #[cfg(test)]
+#[path = "test_parser_parts/pipe_lambda_expressions.rs"]
+mod pipe_lambda_expressions;
+#[cfg(test)]
 #[path = "test_parser_parts/pattern_access_expressions.rs"]
 mod pattern_access_expressions;
 #[cfg(test)]

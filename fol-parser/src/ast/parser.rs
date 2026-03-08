@@ -96,6 +96,8 @@ mod access_expression_parsers;
 mod expression_parsers;
 #[path = "parser_parts/pipe_expression_parsers.rs"]
 mod pipe_expression_parsers;
+#[path = "parser_parts/pipe_lambda_parsers.rs"]
+mod pipe_lambda_parsers;
 #[path = "parser_parts/rolling_expression_parsers.rs"]
 mod rolling_expression_parsers;
 #[path = "parser_parts/grouped_binding_parsers.rs"]
