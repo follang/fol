@@ -110,3 +110,24 @@ fn test_standard_declaration_parsing_inside_function_bodies() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_standard_declaration_accepts_empty_options() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_std_empty_options.fol")
+        .expect("Should read std[] test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse std declarations with empty options");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(node, AstNode::StdDecl { name, .. } if name == "geometry")
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}

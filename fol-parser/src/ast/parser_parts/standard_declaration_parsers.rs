@@ -17,9 +17,21 @@ impl AstParser {
             !key.is_void() && !key.is_comment()
         });
 
-        let Some(name_token) = significant.next() else {
+        let Some(mut name_token) = significant.next() else {
             return false;
         };
+        if matches!(name_token.key(), KEYWORD::Symbol(SYMBOL::SquarO)) {
+            let Some(close) = significant.next() else {
+                return false;
+            };
+            if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
+                return false;
+            }
+            let Some(next_name) = significant.next() else {
+                return false;
+            };
+            name_token = next_name;
+        }
         if Self::token_to_named_label(&name_token).is_none() {
             return false;
         }
@@ -43,6 +55,8 @@ impl AstParser {
         }
 
         let _ = tokens.bump();
+        self.skip_ignorable(tokens);
+        self.parse_empty_std_options(tokens)?;
         self.skip_ignorable(tokens);
 
         let name_token = tokens.curr(false)?;
@@ -349,5 +363,31 @@ impl AstParser {
                 inquiries: Vec::new(),
             },
         })
+    }
+
+    fn parse_empty_std_options(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<(), Box<dyn Glitch>> {
+        let open = match tokens.curr(false) {
+            Ok(token) => token,
+            Err(_) => return Ok(()),
+        };
+
+        if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::SquarO)) {
+            return Ok(());
+        }
+        let _ = tokens.bump();
+        self.skip_ignorable(tokens);
+
+        let close = tokens.curr(false)?;
+        if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
+            return Err(Box::new(ParseError::from_token(
+                &close,
+                "Standard options currently support only empty brackets".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+        Ok(())
     }
 }
