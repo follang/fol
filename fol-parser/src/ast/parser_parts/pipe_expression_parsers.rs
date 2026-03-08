@@ -55,6 +55,19 @@ impl AstParser {
                 self.consume_significant_token(tokens);
             }
 
+            self.skip_ignorable(tokens);
+            let next = tokens.curr(false)?;
+            if next.key().is_terminal() || next.key().is_eof() {
+                return Err(Box::new(ParseError::from_token(
+                    &next,
+                    if consume_count == 2 {
+                        "Expected expression after '||'".to_string()
+                    } else {
+                        "Expected expression after '|'".to_string()
+                    },
+                )));
+            }
+
             let rhs = self.parse_pipe_stage_expression(tokens)?;
             lhs = AstNode::BinaryOp {
                 op: if consume_count == 2 {

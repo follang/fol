@@ -136,3 +136,49 @@ fn test_pipe_expression_supports_return_stage() {
         } if matches!(right.as_ref(), AstNode::Return { value: Some(_) })
     ));
 }
+
+#[test]
+fn test_pipe_expression_rejects_missing_rhs() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_fun_pipe_missing_rhs.fol")
+        .expect("Should read malformed pipe fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject missing pipe RHS");
+
+    let parse_error = errors
+        .first()
+        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        .expect("First parser error should be ParseError");
+
+    assert!(
+        parse_error.to_string().contains("Expected expression after '|'"),
+        "Expected missing pipe RHS error, got: {}",
+        parse_error
+    );
+}
+
+#[test]
+fn test_pipe_or_expression_rejects_missing_rhs() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_fun_pipe_or_missing_rhs.fol")
+        .expect("Should read malformed pipe-or fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject missing pipe-or RHS");
+
+    let parse_error = errors
+        .first()
+        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        .expect("First parser error should be ParseError");
+
+    assert!(
+        parse_error.to_string().contains("Expected expression after '||'"),
+        "Expected missing pipe-or RHS error, got: {}",
+        parse_error
+    );
+}
