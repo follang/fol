@@ -2,8 +2,8 @@
 
 use super::{
     AstNode, BinaryOperator, CharEncoding, ContainerType, FloatSize, FolType, FunOption, Generic,
-    IntSize, Literal, LoopCondition, Parameter, TypeDefinition, TypeOption, UnaryOperator,
-    UseOption, VarOption, WhenCase,
+    IntSize, Literal, LoopCondition, Parameter, RollingBinding, TypeDefinition, TypeOption,
+    UnaryOperator, UseOption, VarOption, WhenCase,
 };
 use fol_lexer::token::{BUILDIN, KEYWORD, LITERAL, OPERATOR, SYMBOL, VOID};
 use fol_types::*;
@@ -89,6 +89,8 @@ mod declaration_parsers;
 mod expression_atoms_and_report_validation;
 #[path = "parser_parts/expression_parsers.rs"]
 mod expression_parsers;
+#[path = "parser_parts/rolling_expression_parsers.rs"]
+mod rolling_expression_parsers;
 #[path = "parser_parts/grouped_binding_parsers.rs"]
 mod grouped_binding_parsers;
 #[path = "parser_parts/program_and_bindings.rs"]

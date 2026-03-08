@@ -804,8 +804,23 @@ impl AstParser {
                 break;
             }
 
-            elements.push(self.parse_logical_expression(tokens)?);
+            let expr = self.parse_logical_expression(tokens)?;
             self.skip_ignorable(tokens);
+
+            if let Ok(next) = tokens.curr(false) {
+                if matches!(next.key(), KEYWORD::Keyword(BUILDIN::For)) {
+                    if !elements.is_empty() {
+                        return Err(Box::new(ParseError::from_token(
+                            &next,
+                            "Rolling expressions must contain exactly one output expression"
+                                .to_string(),
+                        )));
+                    }
+                    return self.parse_rolling_expression(tokens, expr);
+                }
+            }
+
+            elements.push(expr);
 
             let sep = tokens.curr(false)?;
             if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma)) {

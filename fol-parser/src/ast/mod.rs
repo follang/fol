@@ -116,6 +116,13 @@ pub enum AstNode {
         elements: Vec<AstNode>,
     },
 
+    /// Rolling/list-comprehension expression: { expr for x in iterable if cond }
+    Rolling {
+        expr: Box<AstNode>,
+        bindings: Vec<RollingBinding>,
+        condition: Option<Box<AstNode>>,
+    },
+
     /// Range expression: {start..end}
     Range {
         start: Option<Box<AstNode>>,
@@ -441,6 +448,13 @@ pub enum LoopCondition {
     },
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct RollingBinding {
+    pub name: String,
+    pub type_hint: Option<FolType>,
+    pub iterable: AstNode,
+}
+
 impl AstNode {
     /// Get the type of this AST node (for type inference)
     pub fn get_type(&self) -> Option<FolType> {
@@ -595,6 +609,18 @@ impl AstNode {
             AstNode::Block { statements } => statements.iter().collect(),
             AstNode::Program { declarations } => declarations.iter().collect(),
             AstNode::ContainerLiteral { elements, .. } => elements.iter().collect(),
+            AstNode::Rolling {
+                expr,
+                bindings,
+                condition,
+            } => {
+                let mut children = vec![expr.as_ref()];
+                children.extend(bindings.iter().map(|binding| &binding.iterable));
+                if let Some(cond) = condition {
+                    children.push(cond.as_ref());
+                }
+                children
+            }
             AstNode::IndexAccess { container, index } => {
                 vec![container.as_ref(), index.as_ref()]
             }
