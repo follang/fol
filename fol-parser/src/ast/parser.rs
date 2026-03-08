@@ -2,8 +2,8 @@
 
 use super::{
     AstNode, BinaryOperator, CharEncoding, ContainerType, FloatSize, FolType, FunOption, Generic,
-    IntSize, Literal, LoopCondition, Parameter, RollingBinding, TypeDefinition, TypeOption,
-    UnaryOperator, UseOption, VarOption, WhenCase,
+    IntSize, Literal, LoopCondition, Parameter, RollingBinding, StandardKind, TypeDefinition,
+    TypeOption, UnaryOperator, UseOption, VarOption, WhenCase,
 };
 use fol_lexer::token::{BUILDIN, KEYWORD, LITERAL, OPERATOR, SYMBOL, VOID};
 use fol_types::*;
@@ -111,3 +111,5 @@ mod segment_declaration_parsers;
 mod implementation_declaration_parsers;
 #[path = "parser_parts/inquiry_clause_parsers.rs"]
 mod inquiry_clause_parsers;
+#[path = "parser_parts/standard_declaration_parsers.rs"]
+mod standard_declaration_parsers;

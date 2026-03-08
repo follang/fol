@@ -73,6 +73,13 @@ pub enum AstNode {
         body: Vec<AstNode>,
     },
 
+    /// Standard declaration: std name: pro|blu|ext = { body }
+    StdDecl {
+        name: String,
+        kind: StandardKind,
+        body: Vec<AstNode>,
+    },
+
     // ==== EXPRESSIONS ====
     /// Binary operation: (left op right)
     BinaryOp {
@@ -253,6 +260,13 @@ pub enum FolType {
     Named {
         name: String,
     },
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum StandardKind {
+    Protocol,
+    Blueprint,
+    Extended,
 }
 
 /// Integer sizes
@@ -481,6 +495,7 @@ impl AstNode {
             AstNode::ProDecl { return_type, .. } => return_type.clone(),
             AstNode::DefDecl { def_type, .. } => Some(def_type.clone()),
             AstNode::ImpDecl { target, .. } => Some(target.clone()),
+            AstNode::StdDecl { .. } => None,
 
             AstNode::BinaryOp { op, left, right } => {
                 // Type inference for binary operations
@@ -549,7 +564,9 @@ impl AstNode {
                 children.extend(inquiries.iter());
                 children
             }
-            AstNode::DefDecl { body, .. } | AstNode::ImpDecl { body, .. } => body.iter().collect(),
+            AstNode::DefDecl { body, .. }
+            | AstNode::ImpDecl { body, .. }
+            | AstNode::StdDecl { body, .. } => body.iter().collect(),
             AstNode::BinaryOp { left, right, .. } => {
                 vec![left.as_ref(), right.as_ref()]
             }
