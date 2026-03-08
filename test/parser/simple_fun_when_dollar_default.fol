@@ -1,0 +1,6 @@
+fun keep(value: int): int = {
+    when(value) {
+        is(0) => 0;
+        $ => value;
+    }
+}

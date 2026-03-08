@@ -312,15 +312,14 @@ impl AstParser {
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Star)) {
                 let _ = tokens.bump();
                 self.skip_ignorable(tokens);
+                let body = self.parse_branch_body(tokens)?;
+                default = Some(body);
+                continue;
+            }
 
-                let open_default = tokens.curr(false)?;
-                if !matches!(open_default.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
-                    return Err(Box::new(ParseError::from_token(
-                        &open_default,
-                        "Expected '{' after when default '*'".to_string(),
-                    )));
-                }
-
+            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Dollar)) {
+                let _ = tokens.bump();
+                self.skip_ignorable(tokens);
                 let body = self.parse_branch_body(tokens)?;
                 default = Some(body);
                 continue;
