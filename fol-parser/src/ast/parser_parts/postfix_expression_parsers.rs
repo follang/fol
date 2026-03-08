@@ -63,6 +63,9 @@ impl AstParser {
                 KEYWORD::Symbol(SYMBOL::SquarO) => {
                     node = self.parse_index_or_slice_expression(tokens, node)?;
                 }
+                KEYWORD::Symbol(SYMBOL::Colon) => {
+                    node = self.parse_prefix_availability_expression(tokens, node)?;
+                }
                 _ => break,
             }
         }

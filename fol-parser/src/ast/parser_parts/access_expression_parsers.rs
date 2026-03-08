@@ -242,4 +242,42 @@ impl AstParser {
             index: Box::new(start),
         })
     }
+
+    pub(super) fn parse_prefix_availability_expression(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+        node: AstNode,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
+        let _ = tokens.bump();
+        self.skip_ignorable(tokens);
+
+        let open = tokens.curr(false)?;
+        if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::SquarO)) {
+            return Err(Box::new(ParseError::from_token(
+                &open,
+                "Expected '[' after ':' in availability expression".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+        self.skip_ignorable(tokens);
+
+        let pattern = self.parse_logical_expression(tokens)?;
+        self.skip_ignorable(tokens);
+
+        let close = tokens.curr(false)?;
+        if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
+            return Err(Box::new(ParseError::from_token(
+                &close,
+                "Expected closing ']' for availability expression".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+
+        Ok(AstNode::AvailabilityAccess {
+            target: Box::new(AstNode::IndexAccess {
+                container: Box::new(node),
+                index: Box::new(pattern),
+            }),
+        })
+    }
 }

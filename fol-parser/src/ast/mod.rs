@@ -124,6 +124,9 @@ pub enum AstNode {
         reverse: bool,
     },
 
+    /// Availability access: container:[pattern] / access_expr:
+    AvailabilityAccess { target: Box<AstNode> },
+
     /// Field access: object.field
     FieldAccess { object: Box<AstNode>, field: String },
 
@@ -571,6 +574,7 @@ impl AstNode {
                     None
                 }
             }
+            AstNode::AvailabilityAccess { .. } => Some(FolType::Bool),
 
             _ => None,
         }
@@ -699,6 +703,9 @@ impl AstNode {
                     children.push(end.as_ref());
                 }
                 children
+            }
+            AstNode::AvailabilityAccess { target } => {
+                vec![target.as_ref()]
             }
             AstNode::FieldAccess { object, .. } => {
                 vec![object.as_ref()]
