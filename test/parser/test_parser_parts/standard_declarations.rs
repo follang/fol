@@ -17,7 +17,7 @@ fn test_protocol_standard_declaration_parsing() {
             assert!(declarations.iter().any(|node| {
                 matches!(
                     node,
-                    AstNode::StdDecl { name, kind: StandardKind::Protocol, body }
+                    AstNode::StdDecl { name, kind: StandardKind::Protocol, body, .. }
                     if name == "geometry"
                         && body.len() == 2
                         && matches!(&body[0], AstNode::FunDecl { name, body, .. } if name == "area" && body.is_empty())
@@ -45,7 +45,7 @@ fn test_blueprint_standard_declaration_parsing() {
             assert!(declarations.iter().any(|node| {
                 matches!(
                     node,
-                    AstNode::StdDecl { name, kind: StandardKind::Blueprint, body }
+                    AstNode::StdDecl { name, kind: StandardKind::Blueprint, body, .. }
                     if name == "geometry"
                         && body.len() == 2
                         && matches!(&body[0], AstNode::VarDecl { name, .. } if name == "color")
@@ -73,7 +73,7 @@ fn test_extended_standard_declaration_parsing() {
             assert!(declarations.iter().any(|node| {
                 matches!(
                     node,
-                    AstNode::StdDecl { name, kind: StandardKind::Extended, body }
+                    AstNode::StdDecl { name, kind: StandardKind::Extended, body, .. }
                     if name == "geometry"
                         && body.len() == 2
                         && matches!(&body[0], AstNode::FunDecl { name, .. } if name == "area")

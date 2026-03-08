@@ -76,6 +76,7 @@ pub enum AstNode {
 
     /// Implementation declaration: imp name: target_type = { body }
     ImpDecl {
+        options: Vec<DeclOption>,
         generics: Vec<Generic>,
         name: String,
         target: FolType,
@@ -84,6 +85,7 @@ pub enum AstNode {
 
     /// Standard declaration: std name: pro|blu|ext = { body }
     StdDecl {
+        options: Vec<DeclOption>,
         name: String,
         kind: StandardKind,
         body: Vec<AstNode>,
@@ -344,6 +346,13 @@ pub enum StandardKind {
     Protocol,
     Blueprint,
     Extended,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum DeclOption {
+    Export,
+    Hidden,
+    Normal,
 }
 
 /// Integer sizes

@@ -1,4 +1,5 @@
 use super::*;
+use fol_parser::ast::DeclOption;
 
 #[test]
 fn test_basic_implementation_declaration_parsing() {
@@ -16,7 +17,7 @@ fn test_basic_implementation_declaration_parsing() {
             assert!(declarations.iter().any(|node| {
                 matches!(
                     node,
-                    AstNode::ImpDecl { name, target, body, generics }
+                    AstNode::ImpDecl { name, target, body, generics, .. }
                     if name == "Self"
                         && generics.is_empty()
                         && matches!(target, FolType::Named { name } if name == "ID")
@@ -93,7 +94,7 @@ fn test_implementation_declaration_rejects_unknown_options() {
     assert!(
         parse_error
             .to_string()
-            .contains("Implementation options currently support only empty brackets"),
+            .contains("Unknown implementation option"),
         "Malformed imp option list should report unsupported options, got: {}",
         parse_error
     );
@@ -123,6 +124,30 @@ fn test_implementation_declaration_supports_generic_headers() {
                         && matches!(target, FolType::Named { name } if name == "Pair[T,U]")
                 )
             }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_implementation_declaration_visibility_options_parse() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_imp_visibility_options.fol")
+            .expect("Should read visibility-option implementation test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse implementation visibility options");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::ImpDecl { name, options, .. }
+                if name == "Self" && options == &vec![DeclOption::Export, DeclOption::Normal]
+            )));
         }
         _ => panic!("Expected program node"),
     }
