@@ -66,10 +66,7 @@ impl AstParser {
                 );
                 let _ = tokens.bump();
             } else {
-                return Err(Box::new(ParseError::from_token(
-                    &token,
-                    "Expected '{' or quoted use path".to_string(),
-                )));
+                paths.push(self.parse_direct_use_path(tokens)?);
             }
             self.skip_ignorable(tokens);
 
@@ -163,5 +160,40 @@ impl AstParser {
         }
 
         Ok(names)
+    }
+
+    fn parse_direct_use_path(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<String, Box<dyn Glitch>> {
+        let mut path = String::new();
+
+        for _ in 0..256 {
+            self.skip_ignorable(tokens);
+            let token = tokens.curr(false)?;
+
+            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Comma))
+                || matches!(token.key(), KEYWORD::Symbol(SYMBOL::Semi))
+                || token.key().is_terminal()
+                || matches!(token.key(), KEYWORD::Void(_))
+            {
+                break;
+            }
+
+            path.push_str(token.con().trim());
+            if tokens.bump().is_none() {
+                break;
+            }
+        }
+
+        if path.is_empty() {
+            let token = tokens.curr(false)?;
+            return Err(Box::new(ParseError::from_token(
+                &token,
+                "Expected use path".to_string(),
+            )));
+        }
+
+        Ok(path)
     }
 }
