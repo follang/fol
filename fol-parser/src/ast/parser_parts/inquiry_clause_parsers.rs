@@ -118,6 +118,11 @@ impl AstParser {
                 continue;
             }
 
+            if matches!(key, KEYWORD::Keyword(BUILDIN::Std)) {
+                body.push(self.parse_std_decl(tokens)?);
+                continue;
+            }
+
             if matches!(key, KEYWORD::Keyword(BUILDIN::Ali)) {
                 body.push(self.parse_alias_decl(tokens)?);
                 continue;

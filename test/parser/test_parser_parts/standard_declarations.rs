@@ -84,3 +84,29 @@ fn test_extended_standard_declaration_parsing() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_standard_declaration_parsing_inside_function_bodies() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_fun_std_protocol.fol")
+        .expect("Should read nested standard test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse standards inside function bodies");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::FunDecl { name, body, .. }
+                    if name == "build"
+                        && body.iter().any(|stmt| matches!(stmt, AstNode::StdDecl { name, kind: StandardKind::Protocol, .. } if name == "geometry"))
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
