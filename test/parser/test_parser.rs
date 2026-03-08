@@ -153,6 +153,9 @@ mod segment_declarations;
 #[path = "test_parser_parts/single_quoted_names.rs"]
 mod single_quoted_names;
 #[cfg(test)]
+#[path = "test_parser_parts/slice_access_expressions.rs"]
+mod slice_access_expressions;
+#[cfg(test)]
 #[path = "test_parser_parts/standard_declarations.rs"]
 mod standard_declarations;
 #[cfg(test)]

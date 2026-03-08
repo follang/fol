@@ -922,25 +922,7 @@ impl AstParser {
                     }
                 }
                 KEYWORD::Symbol(SYMBOL::SquarO) => {
-                    let _ = tokens.bump();
-                    self.skip_ignorable(tokens);
-
-                    let index = self.parse_logical_expression(tokens)?;
-                    self.skip_ignorable(tokens);
-
-                    let close = tokens.curr(false)?;
-                    if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
-                        return Err(Box::new(ParseError::from_token(
-                            &close,
-                            "Expected closing ']' for index expression".to_string(),
-                        )));
-                    }
-
-                    let _ = tokens.bump();
-                    node = AstNode::IndexAccess {
-                        container: Box::new(node),
-                        index: Box::new(index),
-                    };
+                    node = self.parse_index_or_slice_expression(tokens, node)?;
                 }
                 _ => break,
             }

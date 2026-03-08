@@ -110,6 +110,14 @@ pub enum AstNode {
         index: Box<AstNode>,
     },
 
+    /// Slice access: container[start:end] / container[start::end]
+    SliceAccess {
+        container: Box<AstNode>,
+        start: Option<Box<AstNode>>,
+        end: Option<Box<AstNode>>,
+        reverse: bool,
+    },
+
     /// Field access: object.field
     FieldAccess { object: Box<AstNode>, field: String },
 
@@ -658,6 +666,21 @@ impl AstNode {
             }
             AstNode::IndexAccess { container, index } => {
                 vec![container.as_ref(), index.as_ref()]
+            }
+            AstNode::SliceAccess {
+                container,
+                start,
+                end,
+                ..
+            } => {
+                let mut children = vec![container.as_ref()];
+                if let Some(start) = start {
+                    children.push(start.as_ref());
+                }
+                if let Some(end) = end {
+                    children.push(end.as_ref());
+                }
+                children
             }
             AstNode::FieldAccess { object, .. } => {
                 vec![object.as_ref()]
