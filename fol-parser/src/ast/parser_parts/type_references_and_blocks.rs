@@ -411,6 +411,15 @@ impl AstParser {
                 break;
             }
 
+            let is_string = matches!(token.key(), KEYWORD::Literal(LITERAL::Stringy));
+            if is_string && !values.is_empty() {
+                return Err(Box::new(ParseError::from_token(
+                    &token,
+                    "Quoted tst[...] arguments are only allowed for the optional test label"
+                        .to_string(),
+                )));
+            }
+
             let value = match token.key() {
                 KEYWORD::Literal(LITERAL::Stringy) => token
                     .con()
@@ -424,7 +433,7 @@ impl AstParser {
                     )) as Box<dyn Glitch>
                 })?,
             };
-            values.push((matches!(token.key(), KEYWORD::Literal(LITERAL::Stringy)), value));
+            values.push((is_string, value));
             let _ = tokens.bump();
 
             self.skip_ignorable(tokens);
