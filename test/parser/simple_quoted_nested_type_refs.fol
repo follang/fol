@@ -1,0 +1,3 @@
+typ Boxed: vec["Item"];
+typ Mapping: map["Key", pkg::"Value"];
+typ Maybe: opt['Inner'];
