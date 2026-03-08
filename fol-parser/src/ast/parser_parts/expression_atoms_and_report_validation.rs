@@ -23,6 +23,15 @@ impl AstParser {
             });
         }
 
+        if matches!(
+            token.key(),
+            KEYWORD::Keyword(BUILDIN::This) | KEYWORD::Keyword(BUILDIN::Selfi)
+        ) {
+            return Ok(AstNode::Identifier {
+                name: token.con().trim().to_string(),
+            });
+        }
+
         Err(Box::new(ParseError::from_token(
             token,
             format!("Unsupported expression token '{}'", token.con()),

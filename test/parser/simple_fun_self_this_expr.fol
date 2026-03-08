@@ -1,0 +1,4 @@
+fun demo(): int = {
+    current = self.value;
+    return this.count;
+}
