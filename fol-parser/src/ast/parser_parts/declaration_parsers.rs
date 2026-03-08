@@ -496,7 +496,10 @@ impl AstParser {
                 )));
             }
 
-            if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Var)) {
+            if matches!(
+                token.key(),
+                KEYWORD::Keyword(BUILDIN::Var) | KEYWORD::Keyword(BUILDIN::Lab)
+            ) {
                 let _ = tokens.bump();
                 self.skip_ignorable(tokens);
             }

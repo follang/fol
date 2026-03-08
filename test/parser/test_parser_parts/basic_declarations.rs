@@ -499,6 +499,61 @@ fn test_duplicate_record_field_reports_parse_error() {
 }
 
 #[test]
+fn test_top_level_type_record_fields_support_lab_prefix() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_typ_record_lab_fields.fol")
+        .expect("Should read lab record field test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse record definitions with lab-prefixed fields");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::TypeDecl {
+                        type_def: TypeDefinition::Record { fields },
+                        ..
+                    }
+                    if matches!(fields.get("name"), Some(FolType::Named { name }) if name == "str")
+                        && matches!(fields.get("size"), Some(FolType::Int { size: None, signed: true }))
+                        && matches!(fields.get("ready"), Some(FolType::Bool))
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_record_lab_field_missing_name_reports_parse_error() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_typ_record_missing_lab_field_name.fol")
+            .expect("Should read malformed lab record field test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject lab record fields without names");
+
+    let parse_error = errors
+        .first()
+        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        .expect("First parser error should be ParseError");
+
+    let first_message = parse_error.to_string();
+    assert!(
+        first_message.contains("Expected field name in type record definition"),
+        "Malformed lab record field should report the missing name, got: {}",
+        first_message
+    );
+}
+
+#[test]
 fn test_top_level_type_record_marker_accepts_empty_brackets() {
     let mut file_stream =
         FileStream::from_file("test/parser/simple_typ_record_marker_empty_options.fol")
