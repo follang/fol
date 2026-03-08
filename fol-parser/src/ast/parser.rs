@@ -5,7 +5,7 @@ use super::{
     IntSize, Literal, LoopCondition, Parameter, TypeDefinition, TypeOption, UnaryOperator,
     UseOption, VarOption, WhenCase,
 };
-use fol_lexer::token::{BUILDIN, KEYWORD, LITERAL, OPERATOR, SYMBOL};
+use fol_lexer::token::{BUILDIN, KEYWORD, LITERAL, OPERATOR, SYMBOL, VOID};
 use fol_types::*;
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};

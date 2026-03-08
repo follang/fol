@@ -596,6 +596,19 @@ impl AstParser {
                 continue;
             }
 
+            match self.previous_significant_key(tokens) {
+                None
+                | Some(KEYWORD::Symbol(SYMBOL::CurlyO))
+                | Some(KEYWORD::Symbol(SYMBOL::Semi))
+                | Some(KEYWORD::Void(VOID::EndLine)) => {}
+                _ => {
+                    if tokens.bump().is_none() {
+                        break;
+                    }
+                    continue;
+                }
+            }
+
             let _ = tokens.bump();
             self.skip_ignorable(tokens);
 

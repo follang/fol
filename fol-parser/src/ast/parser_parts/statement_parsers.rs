@@ -694,7 +694,7 @@ impl AstParser {
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Box<dyn Glitch>> {
         let target_token = tokens.curr(false)?;
-        if !target_token.key().is_ident() {
+        if !Self::token_can_be_logical_name(&target_token.key()) {
             return Err(Box::new(ParseError::from_token(
                 &target_token,
                 "Expected assignment target".to_string(),
@@ -816,7 +816,7 @@ impl AstParser {
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Box<dyn Glitch>> {
         let object_token = tokens.curr(false)?;
-        if !object_token.key().is_ident() {
+        if !Self::token_can_be_logical_name(&object_token.key()) {
             return Err(Box::new(ParseError::from_token(
                 &object_token,
                 "Expected object identifier for method call".to_string(),
