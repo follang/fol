@@ -23,7 +23,7 @@ impl AstParser {
                 return Ok((params, first_untyped));
             }
 
-            if !token.key().is_ident() {
+            if !Self::token_can_be_logical_name(&token.key()) {
                 return Err(Box::new(ParseError::from_token(
                     &token,
                     "Expected generic parameter name".to_string(),
@@ -44,7 +44,7 @@ impl AstParser {
                     let _ = tokens.bump();
                     self.skip_ignorable(tokens);
                     let name_token = tokens.curr(false)?;
-                    if !name_token.key().is_ident() {
+                    if !Self::token_can_be_logical_name(&name_token.key()) {
                         return Err(Box::new(ParseError::from_token(
                             &name_token,
                             "Expected parameter name after ','".to_string(),
@@ -345,7 +345,7 @@ impl AstParser {
                 return Ok(params);
             }
 
-            if !token.key().is_ident() {
+            if !Self::token_can_be_logical_name(&token.key()) {
                 return Err(Box::new(ParseError::from_token(
                     &token,
                     "Expected parameter name".to_string(),
@@ -378,7 +378,7 @@ impl AstParser {
                 self.skip_ignorable(tokens);
 
                 let name_token = tokens.curr(false)?;
-                if !name_token.key().is_ident() {
+                if !Self::token_can_be_logical_name(&name_token.key()) {
                     return Err(Box::new(ParseError::from_token(
                         &name_token,
                         "Expected parameter name after ','".to_string(),
