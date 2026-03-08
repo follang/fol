@@ -1,0 +1,2 @@
+var[] counter: int = 1;
+

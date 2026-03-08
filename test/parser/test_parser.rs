@@ -15,6 +15,9 @@ mod assignments_and_logical_expressions;
 #[path = "test_parser_parts/basic_declarations.rs"]
 mod basic_declarations;
 #[cfg(test)]
+#[path = "test_parser_parts/binding_options.rs"]
+mod binding_options;
+#[cfg(test)]
 #[path = "test_parser_parts/call_and_postfix_expressions.rs"]
 mod call_and_postfix_expressions;
 #[cfg(test)]
