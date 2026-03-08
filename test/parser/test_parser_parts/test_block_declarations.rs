@@ -30,3 +30,35 @@ fn test_test_type_reference_lowering() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_named_test_block_definition_parsing() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_def_test_block.fol")
+        .expect("Should read named tst def test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse tst block definitions");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::DefDecl {
+                        name,
+                        def_type: FolType::Test { name: Some(label), access },
+                        body,
+                    }
+                    if name == "test1"
+                        && label == "sometest"
+                        && access == &vec!["shko".to_string()]
+                        && body.is_empty()
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}

@@ -46,11 +46,14 @@ impl AstParser {
         self.skip_ignorable(tokens);
         let def_type_token = tokens.curr(false)?;
         let def_type = self.parse_type_reference_tokens(tokens)?;
-        if !matches!(def_type, FolType::Module { .. } | FolType::Block { .. }) {
+        if !matches!(
+            def_type,
+            FolType::Module { .. } | FolType::Block { .. } | FolType::Test { .. }
+        ) {
             return Err(Box::new(ParseError::from_token(
                 &def_type_token,
                 format!(
-                    "Definition declarations currently support only mod[...] or blk[...] types, found '{}'",
+                    "Definition declarations currently support only mod[...], blk[...], or tst[...] types, found '{}'",
                     Self::fol_type_label(&def_type)
                 ),
             )));
