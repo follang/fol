@@ -312,6 +312,16 @@ impl AstParser {
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Star)) {
                 let _ = tokens.bump();
                 self.skip_ignorable(tokens);
+                let next = tokens.curr(false)?;
+                if !matches!(
+                    next.key(),
+                    KEYWORD::Symbol(SYMBOL::CurlyO) | KEYWORD::Operator(OPERATOR::Flow)
+                ) {
+                    return Err(Box::new(ParseError::from_token(
+                        &next,
+                        "Expected '{' after when default '*'".to_string(),
+                    )));
+                }
                 let body = self.parse_branch_body(tokens)?;
                 default = Some(body);
                 continue;

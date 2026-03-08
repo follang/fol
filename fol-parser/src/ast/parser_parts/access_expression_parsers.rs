@@ -1,6 +1,71 @@
 use super::*;
 
 impl AstParser {
+    pub(super) fn token_can_start_path_expression(
+        token: &fol_lexer::lexer::stage3::element::Element,
+    ) -> bool {
+        if Self::token_to_named_label(token).is_none() {
+            return false;
+        }
+
+        let text = token.con().trim();
+        let numeric = text
+            .strip_prefix(['+', '-'])
+            .unwrap_or(text)
+            .chars()
+            .all(|c| c.is_ascii_digit());
+
+        !numeric
+    }
+
+    fn consume_slice_separator(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<Option<bool>, Box<dyn Glitch>> {
+        self.skip_ignorable(tokens);
+        let token = match tokens.curr(false) {
+            Ok(token) => token,
+            Err(_) => return Ok(None),
+        };
+
+        if matches!(token.key(), KEYWORD::Operator(OPERATOR::Path)) {
+            let _ = tokens.bump();
+            return Ok(Some(true));
+        }
+
+        if !matches!(token.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
+            return Ok(None);
+        }
+
+        let _ = tokens.bump();
+        self.skip_ignorable(tokens);
+
+        if matches!(
+            tokens.curr(false).map(|token| token.key()),
+            Ok(KEYWORD::Symbol(SYMBOL::Colon) | KEYWORD::Operator(OPERATOR::Path))
+        ) {
+            let _ = tokens.bump();
+            return Ok(Some(true));
+        }
+
+        Ok(Some(false))
+    }
+
+    fn parse_optional_slice_end(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<Option<Box<AstNode>>, Box<dyn Glitch>> {
+        self.skip_ignorable(tokens);
+        if matches!(
+            tokens.curr(false).map(|token| token.key()),
+            Ok(KEYWORD::Symbol(SYMBOL::SquarC))
+        ) {
+            Ok(None)
+        } else {
+            Ok(Some(Box::new(self.parse_logical_expression(tokens)?)))
+        }
+    }
+
     pub(super) fn parse_named_path(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
@@ -50,23 +115,8 @@ impl AstParser {
         let _ = tokens.bump();
         self.skip_ignorable(tokens);
 
-        let next = tokens.curr(false)?;
-        if matches!(
-            next.key(),
-            KEYWORD::Symbol(SYMBOL::Colon) | KEYWORD::Operator(OPERATOR::Path)
-        ) {
-            let reverse = matches!(next.key(), KEYWORD::Operator(OPERATOR::Path));
-            let _ = tokens.bump();
-            self.skip_ignorable(tokens);
-
-            let end = if matches!(
-                tokens.curr(false).map(|token| token.key()),
-                Ok(KEYWORD::Symbol(SYMBOL::SquarC))
-            ) {
-                None
-            } else {
-                Some(Box::new(self.parse_logical_expression(tokens)?))
-            };
+        if let Some(reverse) = self.consume_slice_separator(tokens)? {
+            let end = self.parse_optional_slice_end(tokens)?;
             self.skip_ignorable(tokens);
 
             let close = tokens.curr(false)?;
@@ -89,23 +139,8 @@ impl AstParser {
         let start = self.parse_logical_expression(tokens)?;
         self.skip_ignorable(tokens);
 
-        let next = tokens.curr(false)?;
-        if matches!(
-            next.key(),
-            KEYWORD::Symbol(SYMBOL::Colon) | KEYWORD::Operator(OPERATOR::Path)
-        ) {
-            let reverse = matches!(next.key(), KEYWORD::Operator(OPERATOR::Path));
-            let _ = tokens.bump();
-            self.skip_ignorable(tokens);
-
-            let end = if matches!(
-                tokens.curr(false).map(|token| token.key()),
-                Ok(KEYWORD::Symbol(SYMBOL::SquarC))
-            ) {
-                None
-            } else {
-                Some(Box::new(self.parse_logical_expression(tokens)?))
-            };
+        if let Some(reverse) = self.consume_slice_separator(tokens)? {
+            let end = self.parse_optional_slice_end(tokens)?;
             self.skip_ignorable(tokens);
 
             let close = tokens.curr(false)?;
@@ -125,9 +160,10 @@ impl AstParser {
             });
         }
 
-        if !matches!(next.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
+        let close = tokens.curr(false)?;
+        if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
             return Err(Box::new(ParseError::from_token(
-                &next,
+                &close,
                 "Expected closing ']' for index expression".to_string(),
             )));
         }
@@ -147,23 +183,8 @@ impl AstParser {
         let _ = tokens.bump();
         self.skip_ignorable(tokens);
 
-        let next = tokens.curr(false)?;
-        if matches!(
-            next.key(),
-            KEYWORD::Symbol(SYMBOL::Colon) | KEYWORD::Operator(OPERATOR::Path)
-        ) {
-            let reverse = matches!(next.key(), KEYWORD::Operator(OPERATOR::Path));
-            let _ = tokens.bump();
-            self.skip_ignorable(tokens);
-
-            let end = if matches!(
-                tokens.curr(false).map(|token| token.key()),
-                Ok(KEYWORD::Symbol(SYMBOL::SquarC))
-            ) {
-                None
-            } else {
-                Some(Box::new(self.parse_logical_expression(tokens)?))
-            };
+        if let Some(reverse) = self.consume_slice_separator(tokens)? {
+            let end = self.parse_optional_slice_end(tokens)?;
             self.skip_ignorable(tokens);
 
             let close = tokens.curr(false)?;
@@ -186,23 +207,8 @@ impl AstParser {
         let start = self.parse_logical_expression(tokens)?;
         self.skip_ignorable(tokens);
 
-        let next = tokens.curr(false)?;
-        if matches!(
-            next.key(),
-            KEYWORD::Symbol(SYMBOL::Colon) | KEYWORD::Operator(OPERATOR::Path)
-        ) {
-            let reverse = matches!(next.key(), KEYWORD::Operator(OPERATOR::Path));
-            let _ = tokens.bump();
-            self.skip_ignorable(tokens);
-
-            let end = if matches!(
-                tokens.curr(false).map(|token| token.key()),
-                Ok(KEYWORD::Symbol(SYMBOL::SquarC))
-            ) {
-                None
-            } else {
-                Some(Box::new(self.parse_logical_expression(tokens)?))
-            };
+        if let Some(reverse) = self.consume_slice_separator(tokens)? {
+            let end = self.parse_optional_slice_end(tokens)?;
             self.skip_ignorable(tokens);
 
             let close = tokens.curr(false)?;
@@ -222,9 +228,10 @@ impl AstParser {
             });
         }
 
-        if !matches!(next.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
+        let close = tokens.curr(false)?;
+        if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
             return Err(Box::new(ParseError::from_token(
-                &next,
+                &close,
                 "Expected closing ']' for index assignment target".to_string(),
             )));
         }

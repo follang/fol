@@ -827,7 +827,7 @@ impl AstParser {
             })?;
             let _ = tokens.bump();
             AstNode::Identifier { name }
-        } else if Self::token_to_named_label(&token).is_some()
+        } else if Self::token_can_start_path_expression(&token)
             && matches!(
                 self.next_significant_key_from_window(tokens),
                 Some(KEYWORD::Operator(OPERATOR::Path))
