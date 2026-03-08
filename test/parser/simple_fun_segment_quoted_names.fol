@@ -1,0 +1,3 @@
+fun demo() = {
+    var 'left' = one, 'right' = two;
+}
