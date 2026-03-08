@@ -140,7 +140,7 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_use_decl(tokens) {
-                    Ok(node) => declarations.push(node),
+                    Ok(nodes) => declarations.extend(nodes),
                     Err(error) => errors.push(error),
                 }
                 self.bump_if_no_progress(tokens, before);
@@ -870,74 +870,6 @@ impl AstParser {
                 value: value.map(Box::new),
             })
             .collect())
-    }
-
-    pub(super) fn parse_use_decl(
-        &self,
-        tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
-        let use_token = tokens.curr(false)?;
-        if !matches!(use_token.key(), KEYWORD::Keyword(BUILDIN::Use)) {
-            return Err(Box::new(ParseError::from_token(
-                &use_token,
-                "Expected 'use' declaration".to_string(),
-            )));
-        }
-
-        let _ = tokens.bump();
-        self.skip_ignorable(tokens);
-        let options = self.parse_use_options(tokens)?;
-        self.skip_ignorable(tokens);
-
-        let name_token = tokens.curr(false)?;
-        if !name_token.key().is_ident() {
-            return Err(Box::new(ParseError::from_token(
-                &name_token,
-                "Expected use declaration name".to_string(),
-            )));
-        }
-        let name = name_token.con().trim().to_string();
-        let _ = tokens.bump();
-
-        self.skip_ignorable(tokens);
-        if let Ok(token) = tokens.curr(false) {
-            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
-                let _ = tokens.bump();
-                self.skip_ignorable(tokens);
-            }
-        }
-        let path_type = self.parse_type_reference_tokens(tokens)?;
-
-        self.skip_ignorable(tokens);
-        let assign = tokens.curr(false)?;
-        if !matches!(assign.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
-            return Err(Box::new(ParseError::from_token(
-                &assign,
-                "Expected '=' in use declaration".to_string(),
-            )));
-        }
-        let _ = tokens.bump();
-
-        self.skip_ignorable(tokens);
-        let open = tokens.curr(false)?;
-        if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
-            return Err(Box::new(ParseError::from_token(
-                &open,
-                "Expected '{' to start use path".to_string(),
-            )));
-        }
-        let _ = tokens.bump();
-
-        let path = self.parse_use_path(tokens)?;
-
-        self.consume_optional_semicolon(tokens);
-
-        Ok(AstNode::UseDecl {
-            options,
-            name,
-            path_type,
-            path,
-        })
     }
 
     pub(super) fn parse_use_options(

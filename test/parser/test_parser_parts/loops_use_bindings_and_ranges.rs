@@ -66,6 +66,82 @@ fn test_use_declaration_parsing() {
 }
 
 #[test]
+fn test_use_declaration_supports_multiple_names_and_paths() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_use_multi.fol")
+        .expect("Should read multi-use test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse use declarations with multiple names and paths");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            let imports: Vec<_> = declarations
+                .iter()
+                .filter_map(|node| {
+                    if let AstNode::UseDecl {
+                        name,
+                        path_type,
+                        path,
+                        ..
+                    } = node
+                    {
+                        Some((name.clone(), path_type.clone(), path.clone()))
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+            assert!(matches!(
+                imports.as_slice(),
+                [
+                    (log, FolType::Named { name: type_name_a }, path_a),
+                    (sync, FolType::Named { name: type_name_b }, path_b),
+                    (color, FolType::Named { name: type_name_c }, path_c),
+                ] if log == "log"
+                    && sync == "sync"
+                    && color == "color"
+                    && type_name_a == "std"
+                    && type_name_b == "std"
+                    && type_name_c == "std"
+                    && path_a == "fmt/log"
+                    && path_b == "os/sync"
+                    && path_c == "fmt/color"
+            ));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_use_declaration_supports_multiple_names_in_function_bodies() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_fun_use_multi.fol")
+        .expect("Should read function-body multi-use test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse multi-use declarations inside function bodies");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::FunDecl { body, .. }
+                    if body.iter().filter(|stmt| matches!(stmt, AstNode::UseDecl { .. })).count() == 2
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
 fn test_use_declaration_accepts_empty_option_brackets() {
     let mut file_stream = FileStream::from_file("test/parser/simple_use_empty_options.fol")
         .expect("Should read empty use options test file");

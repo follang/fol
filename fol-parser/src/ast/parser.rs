@@ -99,3 +99,5 @@ mod routine_headers_and_type_lowering;
 mod statement_parsers;
 #[path = "parser_parts/type_references_and_blocks.rs"]
 mod type_references_and_blocks;
+#[path = "parser_parts/use_declaration_parsers.rs"]
+mod use_declaration_parsers;

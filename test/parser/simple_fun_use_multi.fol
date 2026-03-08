@@ -1,0 +1,4 @@
+fun demo(): int = {
+    use log, sync: std = {fmt/log}, {os/sync};
+    return 1;
+}
