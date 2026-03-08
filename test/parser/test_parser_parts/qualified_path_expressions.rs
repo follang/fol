@@ -1,0 +1,65 @@
+use super::*;
+
+#[test]
+fn test_qualified_path_identifier_expression_parsing() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_fun_qualified_path_expr.fol")
+        .expect("Should read qualified path expression fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse qualified path expressions");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::FunDecl { body, .. }
+                    if body.iter().any(|stmt| matches!(
+                        stmt,
+                        AstNode::Return { value: Some(value) }
+                        if matches!(value.as_ref(), AstNode::Identifier { name } if name == "io::console::writer")
+                    ))
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_qualified_path_method_chain_parsing() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_qualified_path_method_chain.fol")
+            .expect("Should read qualified path method-chain fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse qualified path postfix chains");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::FunDecl { body, .. }
+                    if body.iter().any(|stmt| matches!(
+                        stmt,
+                        AstNode::Return { value: Some(value) }
+                        if matches!(
+                            value.as_ref(),
+                            AstNode::MethodCall { object, method, .. }
+                            if method == "echo"
+                                && matches!(object.as_ref(), AstNode::Identifier { name } if name == "io::console::writer")
+                        )
+                    ))
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}

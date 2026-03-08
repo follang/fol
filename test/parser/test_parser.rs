@@ -147,6 +147,9 @@ mod quoted_type_references;
 #[path = "test_parser_parts/qualified_quoted_type_references.rs"]
 mod qualified_quoted_type_references;
 #[cfg(test)]
+#[path = "test_parser_parts/qualified_path_expressions.rs"]
+mod qualified_path_expressions;
+#[cfg(test)]
 #[path = "test_parser_parts/segment_declarations.rs"]
 mod segment_declarations;
 #[cfg(test)]

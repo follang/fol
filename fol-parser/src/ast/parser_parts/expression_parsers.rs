@@ -780,6 +780,18 @@ impl AstParser {
             })?;
             let _ = tokens.bump();
             AstNode::Identifier { name }
+        } else if Self::token_to_named_label(&token).is_some()
+            && matches!(
+                self.next_significant_key_from_window(tokens),
+                Some(KEYWORD::Operator(OPERATOR::Path))
+            )
+        {
+            let name = self.parse_named_path(
+                tokens,
+                "Expected expression path root",
+                "Expected name after '::' in expression path",
+            )?;
+            AstNode::Identifier { name }
         } else {
             let node = self.parse_primary(&token)?;
             let _ = tokens.bump();

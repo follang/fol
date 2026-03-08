@@ -1,0 +1,3 @@
+fun echo_writer(): any = {
+    return io::console::writer.echo();
+}

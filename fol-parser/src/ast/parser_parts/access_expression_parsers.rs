@@ -1,6 +1,47 @@
 use super::*;
 
 impl AstParser {
+    pub(super) fn parse_named_path(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+        expected_root_error: &str,
+        expected_segment_error: &str,
+    ) -> Result<String, Box<dyn Glitch>> {
+        let root = tokens.curr(false)?;
+        let mut name = Self::token_to_named_label(&root).ok_or_else(|| {
+            Box::new(ParseError::from_token(&root, expected_root_error.to_string())) as Box<dyn Glitch>
+        })?;
+        let _ = tokens.bump();
+
+        loop {
+            self.skip_ignorable(tokens);
+            let token = match tokens.curr(false) {
+                Ok(token) => token,
+                Err(_) => break,
+            };
+
+            if !matches!(token.key(), KEYWORD::Operator(OPERATOR::Path)) {
+                break;
+            }
+
+            let _ = tokens.bump();
+            self.skip_ignorable(tokens);
+
+            let segment = tokens.curr(false)?;
+            let segment_name = Self::token_to_named_label(&segment).ok_or_else(|| {
+                Box::new(ParseError::from_token(
+                    &segment,
+                    expected_segment_error.to_string(),
+                )) as Box<dyn Glitch>
+            })?;
+            name.push_str("::");
+            name.push_str(&segment_name);
+            let _ = tokens.bump();
+        }
+
+        Ok(name)
+    }
+
     pub(super) fn parse_index_or_slice_expression(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
