@@ -45,6 +45,9 @@ mod implementation_declarations;
 #[path = "test_parser_parts/keyword_named_routines.rs"]
 mod keyword_named_routines;
 #[cfg(test)]
+#[path = "test_parser_parts/keyword_named_type_members.rs"]
+mod keyword_named_type_members;
+#[cfg(test)]
 #[path = "test_parser_parts/keyword_named_types.rs"]
 mod keyword_named_types;
 #[cfg(test)]
