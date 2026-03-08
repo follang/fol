@@ -1,9 +1,9 @@
 // AST Parser Implementation for FOL
 
 use super::{
-    AstNode, BinaryOperator, CharEncoding, ContainerType, FloatSize, FolType, FunOption,
-    Generic, IntSize, Literal, LoopCondition, Parameter, TypeDefinition, TypeOption,
-    UnaryOperator, UseOption, VarOption, WhenCase,
+    AstNode, BinaryOperator, CharEncoding, ContainerType, FloatSize, FolType, FunOption, Generic,
+    IntSize, Literal, LoopCondition, Parameter, TypeDefinition, TypeOption, UnaryOperator,
+    UseOption, VarOption, WhenCase,
 };
 use fol_lexer::token::{BUILDIN, KEYWORD, LITERAL, OPERATOR, SYMBOL};
 use fol_types::*;
@@ -77,17 +77,17 @@ impl Default for AstParser {
         Self::new()
     }
 }
-#[path = "parser_parts/program_and_bindings.rs"]
-mod program_and_bindings;
 #[path = "parser_parts/declaration_parsers.rs"]
 mod declaration_parsers;
-#[path = "parser_parts/routine_headers_and_type_lowering.rs"]
-mod routine_headers_and_type_lowering;
-#[path = "parser_parts/type_references_and_blocks.rs"]
-mod type_references_and_blocks;
-#[path = "parser_parts/statement_parsers.rs"]
-mod statement_parsers;
-#[path = "parser_parts/expression_parsers.rs"]
-mod expression_parsers;
 #[path = "parser_parts/expression_atoms_and_report_validation.rs"]
 mod expression_atoms_and_report_validation;
+#[path = "parser_parts/expression_parsers.rs"]
+mod expression_parsers;
+#[path = "parser_parts/program_and_bindings.rs"]
+mod program_and_bindings;
+#[path = "parser_parts/routine_headers_and_type_lowering.rs"]
+mod routine_headers_and_type_lowering;
+#[path = "parser_parts/statement_parsers.rs"]
+mod statement_parsers;
+#[path = "parser_parts/type_references_and_blocks.rs"]
+mod type_references_and_blocks;

@@ -90,8 +90,7 @@ impl AstParser {
                     {
                         return Err(Box::new(ParseError::from_token(
                             &next,
-                            "Expected default value expression after '=' in parameter"
-                                .to_string(),
+                            "Expected default value expression after '=' in parameter".to_string(),
                         )));
                     }
 
@@ -416,8 +415,7 @@ impl AstParser {
                     {
                         return Err(Box::new(ParseError::from_token(
                             &next,
-                            "Expected default value expression after '=' in parameter"
-                                .to_string(),
+                            "Expected default value expression after '=' in parameter".to_string(),
                         )));
                     }
 
@@ -857,5 +855,4 @@ impl AstParser {
 
         Ok(FolType::Named { name })
     }
-
 }

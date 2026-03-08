@@ -447,7 +447,10 @@ impl AstParser {
         }
     }
 
-    pub(super) fn seed_routine_return_types(&self, tokens: &mut fol_lexer::lexer::stage3::Elements) {
+    pub(super) fn seed_routine_return_types(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) {
         let source_path = Self::extract_source_path(tokens);
 
         let Some(path) = source_path else {
@@ -464,7 +467,9 @@ impl AstParser {
         self.routine_return_types.borrow_mut().extend(signatures);
     }
 
-    pub(super) fn extract_source_path(tokens: &fol_lexer::lexer::stage3::Elements) -> Option<String> {
+    pub(super) fn extract_source_path(
+        tokens: &fol_lexer::lexer::stage3::Elements,
+    ) -> Option<String> {
         if let Ok(token) = tokens.curr(false) {
             if let Some(path) = token.loc().source().map(|src| src.path(true)) {
                 return Some(path);
@@ -596,7 +601,10 @@ impl AstParser {
         signatures
     }
 
-    pub(super) fn scan_parameter_arity(&self, tokens: &mut fol_lexer::lexer::stage3::Elements) -> usize {
+    pub(super) fn scan_parameter_arity(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> usize {
         let mut depth: usize = 0;
         let mut count: usize = 0;
         let mut saw_token_in_slot = false;
@@ -684,33 +692,21 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Box<dyn Glitch>> {
-        self.parse_binding_decl(
-            tokens,
-            "var",
-            vec![VarOption::Mutable, VarOption::Normal],
-        )
+        self.parse_binding_decl(tokens, "var", vec![VarOption::Mutable, VarOption::Normal])
     }
 
     pub(super) fn parse_let_decl(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Box<dyn Glitch>> {
-        self.parse_binding_decl(
-            tokens,
-            "let",
-            vec![VarOption::Immutable, VarOption::Normal],
-        )
+        self.parse_binding_decl(tokens, "let", vec![VarOption::Immutable, VarOption::Normal])
     }
 
     pub(super) fn parse_con_decl(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Box<dyn Glitch>> {
-        self.parse_binding_decl(
-            tokens,
-            "con",
-            vec![VarOption::Immutable, VarOption::Normal],
-        )
+        self.parse_binding_decl(tokens, "con", vec![VarOption::Immutable, VarOption::Normal])
     }
 
     pub(super) fn parse_binding_decl(
@@ -873,5 +869,4 @@ impl AstParser {
             "Unknown use option".to_string(),
         )))
     }
-
 }

@@ -472,7 +472,10 @@ impl AstNode {
                     | BinaryOperator::Lt
                     | BinaryOperator::Le
                     | BinaryOperator::Gt
-                    | BinaryOperator::Ge => {
+                    | BinaryOperator::Ge
+                    | BinaryOperator::In
+                    | BinaryOperator::Has
+                    | BinaryOperator::Is => {
                         // Comparison operations always return bool
                         Some(FolType::Bool)
                     }

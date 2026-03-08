@@ -18,6 +18,9 @@ mod basic_declarations;
 #[path = "test_parser_parts/call_and_postfix_expressions.rs"]
 mod call_and_postfix_expressions;
 #[cfg(test)]
+#[path = "test_parser_parts/comparison_keyword_expressions.rs"]
+mod comparison_keyword_expressions;
+#[cfg(test)]
 #[path = "test_parser_parts/container_and_unary_expressions.rs"]
 mod container_and_unary_expressions;
 #[cfg(test)]

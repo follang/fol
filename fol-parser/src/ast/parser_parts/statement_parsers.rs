@@ -513,7 +513,8 @@ impl AstParser {
                 )));
             }
 
-            let declared_var = if matches!(current_var_token.key(), KEYWORD::Symbol(SYMBOL::Under)) {
+            let declared_var = if matches!(current_var_token.key(), KEYWORD::Symbol(SYMBOL::Under))
+            {
                 "_".to_string()
             } else {
                 current_var_token.con().trim().to_string()
@@ -545,7 +546,8 @@ impl AstParser {
             self.skip_ignorable(tokens);
 
             current_var_token = tokens.curr(false)?;
-            let iteration_var = if matches!(current_var_token.key(), KEYWORD::Symbol(SYMBOL::Under)) {
+            let iteration_var = if matches!(current_var_token.key(), KEYWORD::Symbol(SYMBOL::Under))
+            {
                 "_".to_string()
             } else if current_var_token.key().is_ident() {
                 current_var_token.con().trim().to_string()
@@ -875,5 +877,4 @@ impl AstParser {
         let _ = tokens.bump();
         self.parse_call_args(tokens)
     }
-
 }

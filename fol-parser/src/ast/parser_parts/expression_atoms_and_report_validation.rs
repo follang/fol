@@ -257,7 +257,10 @@ impl AstParser {
         Ok(())
     }
 
-    pub(super) fn report_literal_type_mismatch(value: &AstNode, expected_type: &FolType) -> Option<String> {
+    pub(super) fn report_literal_type_mismatch(
+        value: &AstNode,
+        expected_type: &FolType,
+    ) -> Option<String> {
         let expected_name = Self::type_family_name(expected_type)?;
 
         if !Self::is_builtin_scalar_type_name(&expected_name) {
@@ -675,7 +678,10 @@ impl AstParser {
         }
     }
 
-    pub(super) fn consume_optional_semicolon(&self, tokens: &mut fol_lexer::lexer::stage3::Elements) {
+    pub(super) fn consume_optional_semicolon(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) {
         self.skip_ignorable(tokens);
         if let Ok(token) = tokens.curr(false) {
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Semi)) {

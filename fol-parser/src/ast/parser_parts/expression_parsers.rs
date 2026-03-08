@@ -37,7 +37,10 @@ impl AstParser {
         Ok(args)
     }
 
-    pub(super) fn lookahead_is_assignment(&self, tokens: &fol_lexer::lexer::stage3::Elements) -> bool {
+    pub(super) fn lookahead_is_assignment(
+        &self,
+        tokens: &fol_lexer::lexer::stage3::Elements,
+    ) -> bool {
         let mut found_compound_symbol = false;
         let mut square_depth = 0usize;
         let mut round_depth = 0usize;
@@ -146,7 +149,10 @@ impl AstParser {
         false
     }
 
-    pub(super) fn lookahead_is_method_call(&self, tokens: &fol_lexer::lexer::stage3::Elements) -> bool {
+    pub(super) fn lookahead_is_method_call(
+        &self,
+        tokens: &fol_lexer::lexer::stage3::Elements,
+    ) -> bool {
         let mut saw_dot = false;
         for candidate in tokens.next_vec() {
             let token = match candidate {
@@ -405,6 +411,7 @@ impl AstParser {
             let next_key = self.next_significant_key_from_window(tokens);
             let op_text = op_token.con().trim().to_string();
             let (binary_op, consume_count) = match op_token.key() {
+                KEYWORD::Keyword(BUILDIN::In) => (Some(BinaryOperator::In), 1),
                 KEYWORD::Operator(OPERATOR::Equal) => (Some(BinaryOperator::Eq), 1),
                 KEYWORD::Operator(OPERATOR::Noteq) => (Some(BinaryOperator::Ne), 1),
                 KEYWORD::Operator(OPERATOR::Greateq) => (Some(BinaryOperator::Ge), 1),
@@ -572,7 +579,10 @@ impl AstParser {
         None
     }
 
-    pub(super) fn consume_significant_token(&self, tokens: &mut fol_lexer::lexer::stage3::Elements) {
+    pub(super) fn consume_significant_token(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) {
         for _ in 0..16 {
             if tokens.bump().is_none() {
                 break;
@@ -895,5 +905,4 @@ impl AstParser {
 
         Ok(node)
     }
-
 }

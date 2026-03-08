@@ -19,13 +19,11 @@ impl AstParser {
         let name_token = tokens.curr(false)?;
         let name = match name_token.key() {
             key if key.is_ident() => name_token.con().trim().to_string(),
-            KEYWORD::Literal(LITERAL::Stringy) => {
-                name_token
-                    .con()
-                    .trim()
-                    .trim_matches(|c| c == '"' || c == '\'')
-                    .to_string()
-            }
+            KEYWORD::Literal(LITERAL::Stringy) => name_token
+                .con()
+                .trim()
+                .trim_matches(|c| c == '"' || c == '\'')
+                .to_string(),
             _ => {
                 return Err(Box::new(ParseError::from_token(
                     &name_token,
@@ -419,7 +417,10 @@ impl AstParser {
             }
 
             for name in names {
-                if variants.insert(name.clone(), variant_type.clone()).is_some() {
+                if variants
+                    .insert(name.clone(), variant_type.clone())
+                    .is_some()
+                {
                     let token = tokens.curr(false)?;
                     return Err(Box::new(ParseError::from_token(
                         &token,
@@ -630,10 +631,8 @@ impl AstParser {
             "Expected function name after 'fun'",
         )?;
 
-        let (generics, params) = self.parse_routine_generics_and_params(
-            tokens,
-            "Expected '(' after function name",
-        )?;
+        let (generics, params) =
+            self.parse_routine_generics_and_params(tokens, "Expected '(' after function name")?;
 
         self.skip_ignorable(tokens);
         let mut return_type = None;
@@ -826,10 +825,8 @@ impl AstParser {
             "Expected procedure name after 'pro'",
         )?;
 
-        let (generics, params) = self.parse_routine_generics_and_params(
-            tokens,
-            "Expected '(' after procedure name",
-        )?;
+        let (generics, params) =
+            self.parse_routine_generics_and_params(tokens, "Expected '(' after procedure name")?;
 
         self.skip_ignorable(tokens);
         let mut return_type = None;
@@ -938,10 +935,10 @@ impl AstParser {
         if !matches!(next.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
             if let Some(token) = first_untyped {
                 return Err(Box::new(ParseError::from_token(
-                        &token,
-                        "Expected ':' after parameter name".to_string(),
-                    )));
-                }
+                    &token,
+                    "Expected ':' after parameter name".to_string(),
+                )));
+            }
             self.ensure_unique_parameter_names(&first_list, "parameter")?;
             return Ok((Vec::new(), first_list));
         }
@@ -952,5 +949,4 @@ impl AstParser {
         let params = self.parse_parameter_list(tokens)?;
         Ok((generics, params))
     }
-
 }

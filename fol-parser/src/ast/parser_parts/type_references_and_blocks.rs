@@ -243,10 +243,8 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<FolType, Box<dyn Glitch>> {
-        let args = self.parse_scalar_type_options(
-            tokens,
-            "Expected closing ']' in integer type reference",
-        )?;
+        let args = self
+            .parse_scalar_type_options(tokens, "Expected closing ']' in integer type reference")?;
 
         if args.len() != 1 {
             let token = tokens.curr(false)?;
@@ -274,10 +272,8 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<FolType, Box<dyn Glitch>> {
-        let args = self.parse_scalar_type_options(
-            tokens,
-            "Expected closing ']' in float type reference",
-        )?;
+        let args =
+            self.parse_scalar_type_options(tokens, "Expected closing ']' in float type reference")?;
 
         if args.len() != 1 {
             let token = tokens.curr(false)?;
@@ -350,17 +346,15 @@ impl AstParser {
                 return Ok(args);
             }
 
-            let option = if token.key().is_ident()
-                || token.key().is_buildin()
-                || token.key().is_number()
-            {
-                token.con().trim().to_string()
-            } else {
-                return Err(Box::new(ParseError::from_token(
-                    &token,
-                    "Expected scalar type option".to_string(),
-                )));
-            };
+            let option =
+                if token.key().is_ident() || token.key().is_buildin() || token.key().is_number() {
+                    token.con().trim().to_string()
+                } else {
+                    return Err(Box::new(ParseError::from_token(
+                        &token,
+                        "Expected scalar type option".to_string(),
+                    )));
+                };
             args.push(option);
             let _ = tokens.bump();
 
@@ -476,14 +470,14 @@ impl AstParser {
         self.skip_ignorable(tokens);
         let size_token = tokens.curr(false)?;
         let size = match size_token.key() {
-            KEYWORD::Literal(LITERAL::Deciaml) => size_token.con().trim().parse::<usize>().map_err(
-                |_| {
+            KEYWORD::Literal(LITERAL::Deciaml) => {
+                size_token.con().trim().parse::<usize>().map_err(|_| {
                     Box::new(ParseError::from_token(
                         &size_token,
                         "Expected decimal array size in arr[...]".to_string(),
                     )) as Box<dyn Glitch>
-                },
-            )?,
+                })?
+            }
             _ => {
                 return Err(Box::new(ParseError::from_token(
                     &size_token,
@@ -540,16 +534,14 @@ impl AstParser {
             self.skip_ignorable(tokens);
             let dim_token = tokens.curr(false)?;
             let dim = match dim_token.key() {
-                KEYWORD::Literal(LITERAL::Deciaml) => dim_token
-                    .con()
-                    .trim()
-                    .parse::<usize>()
-                    .map_err(|_| {
+                KEYWORD::Literal(LITERAL::Deciaml) => {
+                    dim_token.con().trim().parse::<usize>().map_err(|_| {
                         Box::new(ParseError::from_token(
                             &dim_token,
                             "Expected decimal matrix dimension in mat[...]".to_string(),
                         )) as Box<dyn Glitch>
-                    })?,
+                    })?
+                }
                 _ => {
                     return Err(Box::new(ParseError::from_token(
                         &dim_token,
@@ -899,5 +891,4 @@ impl AstParser {
             value: Box::new(value),
         })
     }
-
 }
