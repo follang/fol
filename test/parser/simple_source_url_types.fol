@@ -1,0 +1,2 @@
+use remote: url = {"https://example.com/api"};
+typ RemoteUrl: url[https];
