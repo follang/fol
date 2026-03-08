@@ -60,6 +60,9 @@ mod keyword_named_type_members;
 #[path = "test_parser_parts/keyword_named_types.rs"]
 mod keyword_named_types;
 #[cfg(test)]
+#[path = "test_parser_parts/quoted_type_names.rs"]
+mod quoted_type_names;
+#[cfg(test)]
 #[path = "test_parser_parts/lab_declarations.rs"]
 mod lab_declarations;
 #[cfg(test)]
