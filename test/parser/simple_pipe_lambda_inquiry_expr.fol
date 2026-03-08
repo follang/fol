@@ -1,0 +1,8 @@
+fun outer(): any = {
+    return |x: int| {
+        return x;
+        where(self) {
+            check(x);
+        }
+    };
+}

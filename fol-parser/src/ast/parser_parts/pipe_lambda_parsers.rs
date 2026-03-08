@@ -69,13 +69,16 @@ impl AstParser {
         self.ensure_unique_capture_names(&captures)?;
 
         self.skip_ignorable(tokens);
-        let body = if matches!(tokens.curr(false)?.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
+        let (body, inquiries) = if matches!(tokens.curr(false)?.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
             let _ = tokens.bump();
-            self.parse_block_body(tokens, "Expected '}' to close lambda body")?
+            self.parse_routine_body_with_inquiries(tokens, "Expected '}' to close lambda body")?
         } else {
-            vec![AstNode::Return {
-                value: Some(Box::new(self.parse_logical_expression(tokens)?)),
-            }]
+            (
+                vec![AstNode::Return {
+                    value: Some(Box::new(self.parse_logical_expression(tokens)?)),
+                }],
+                Vec::new(),
+            )
         };
 
         Ok(AstNode::AnonymousFun {
@@ -85,7 +88,7 @@ impl AstParser {
             return_type: None,
             error_type: None,
             body,
-            inquiries: Vec::new(),
+            inquiries,
         })
     }
 }
