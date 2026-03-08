@@ -232,6 +232,10 @@ impl AstParser {
                 };
                 Ok(Some(FolType::Block { name }))
             }
+            "tst" => {
+                let (name, access) = self.parse_test_type_arguments(tokens)?;
+                Ok(Some(FolType::Test { name, access }))
+            }
             "int" => Ok(Some(self.parse_integer_type_reference(tokens)?)),
             "flt" | "float" => Ok(Some(self.parse_float_type_reference(tokens)?)),
             "chr" | "char" => Ok(Some(self.parse_char_type_reference(tokens)?)),
@@ -382,6 +386,73 @@ impl AstParser {
             column: 0,
             length: 0,
         }))
+    }
+
+    pub(super) fn parse_test_type_arguments(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<(Option<String>, Vec<String>), Box<dyn Glitch>> {
+        let open = tokens.curr(false)?;
+        if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::SquarO)) {
+            return Err(Box::new(ParseError::from_token(
+                &open,
+                "Expected '[' to start tst[...] arguments".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+
+        let mut values = Vec::new();
+        for _ in 0..64 {
+            self.skip_ignorable(tokens);
+            let token = tokens.curr(false)?;
+
+            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
+                let _ = tokens.bump();
+                break;
+            }
+
+            let value = match token.key() {
+                KEYWORD::Literal(LITERAL::Stringy) => token
+                    .con()
+                    .trim()
+                    .trim_matches(|c| c == '"' || c == '\'')
+                    .to_string(),
+                _ => Self::token_to_named_label(&token).ok_or_else(|| {
+                    Box::new(ParseError::from_token(
+                        &token,
+                        "Expected tst[...] argument".to_string(),
+                    )) as Box<dyn Glitch>
+                })?,
+            };
+            values.push((matches!(token.key(), KEYWORD::Literal(LITERAL::Stringy)), value));
+            let _ = tokens.bump();
+
+            self.skip_ignorable(tokens);
+            let sep = tokens.curr(false)?;
+            if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
+                let _ = tokens.bump();
+                continue;
+            }
+            if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
+                let _ = tokens.bump();
+                break;
+            }
+
+            return Err(Box::new(ParseError::from_token(
+                &sep,
+                "Expected ',' or ']' in tst[...] arguments".to_string(),
+            )));
+        }
+
+        let (name, access) = match values.first() {
+            Some((true, label)) => (
+                Some(label.clone()),
+                values.iter().skip(1).map(|(_, value)| value.clone()).collect(),
+            ),
+            _ => (None, values.into_iter().map(|(_, value)| value).collect()),
+        };
+
+        Ok((name, access))
     }
 
     pub(super) fn parse_type_argument_list(

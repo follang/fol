@@ -150,6 +150,9 @@ mod single_quoted_names;
 #[path = "test_parser_parts/standard_declarations.rs"]
 mod standard_declarations;
 #[cfg(test)]
+#[path = "test_parser_parts/test_block_declarations.rs"]
+mod test_block_declarations;
+#[cfg(test)]
 #[path = "test_parser_parts/routine_error_types.rs"]
 mod routine_error_types;
 #[cfg(test)]

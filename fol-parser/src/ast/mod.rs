@@ -255,6 +255,10 @@ pub enum FolType {
     Block {
         name: String,
     },
+    Test {
+        name: Option<String>,
+        access: Vec<String>,
+    },
 
     // User-defined type reference
     Named {
