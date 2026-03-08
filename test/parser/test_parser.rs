@@ -111,6 +111,9 @@ mod qualified_quoted_type_references;
 #[path = "test_parser_parts/segment_declarations.rs"]
 mod segment_declarations;
 #[cfg(test)]
+#[path = "test_parser_parts/single_quoted_names.rs"]
+mod single_quoted_names;
+#[cfg(test)]
 #[path = "test_parser_parts/routine_error_types.rs"]
 mod routine_error_types;
 #[cfg(test)]
