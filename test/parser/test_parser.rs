@@ -138,6 +138,9 @@ mod single_quoted_names;
 #[path = "test_parser_parts/routine_error_types.rs"]
 mod routine_error_types;
 #[cfg(test)]
+#[path = "test_parser_parts/use_options.rs"]
+mod use_options;
+#[cfg(test)]
 #[path = "test_parser_parts/routine_headers_and_when_forms.rs"]
 mod routine_headers_and_when_forms;
 #[cfg(test)]

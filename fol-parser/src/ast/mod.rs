@@ -405,7 +405,9 @@ pub enum TypeOption {
 /// Use declaration options
 #[derive(Debug, Clone, PartialEq)]
 pub enum UseOption {
-    // Add specific use options as needed
+    Export,
+    Hidden,
+    Normal,
 }
 
 /// When statement cases

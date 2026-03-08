@@ -950,31 +950,4 @@ impl AstParser {
             .collect())
     }
 
-    pub(super) fn parse_use_options(
-        &self,
-        tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<Vec<UseOption>, Box<dyn Glitch>> {
-        self.skip_ignorable(tokens);
-        let open = match tokens.curr(false) {
-            Ok(token) => token,
-            Err(_) => return Ok(Vec::new()),
-        };
-
-        if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::SquarO)) {
-            return Ok(Vec::new());
-        }
-        let _ = tokens.bump();
-
-        self.skip_ignorable(tokens);
-        let token = tokens.curr(false)?;
-        if matches!(token.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
-            let _ = tokens.bump();
-            return Ok(Vec::new());
-        }
-
-        Err(Box::new(ParseError::from_token(
-            &token,
-            "Unknown use option".to_string(),
-        )))
-    }
 }

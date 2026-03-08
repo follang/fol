@@ -1,0 +1,3 @@
+use[export] pub_math: path = {core::math};
+use[hidden] hid_math: path = {core::math};
+use[normal] nor_math: path = {core::math};
