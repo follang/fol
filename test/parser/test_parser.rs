@@ -84,6 +84,9 @@ mod quoted_call_expressions;
 #[path = "test_parser_parts/quoted_root_statements.rs"]
 mod quoted_root_statements;
 #[cfg(test)]
+#[path = "test_parser_parts/quoted_parameters.rs"]
+mod quoted_parameters;
+#[cfg(test)]
 #[path = "test_parser_parts/quoted_use_names.rs"]
 mod quoted_use_names;
 #[cfg(test)]

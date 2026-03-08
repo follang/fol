@@ -23,14 +23,14 @@ impl AstParser {
                 return Ok((params, first_untyped));
             }
 
-            if !Self::token_can_be_logical_name(&token.key()) {
-                return Err(Box::new(ParseError::from_token(
+            let first_name = Self::token_to_named_label(&token).ok_or_else(|| {
+                Box::new(ParseError::from_token(
                     &token,
                     "Expected generic parameter name".to_string(),
-                )));
-            }
+                )) as Box<dyn Glitch>
+            })?;
 
-            let mut names = vec![token.con().trim().to_string()];
+            let mut names = vec![first_name];
             let _ = tokens.bump();
 
             self.skip_ignorable(tokens);
@@ -44,13 +44,13 @@ impl AstParser {
                     let _ = tokens.bump();
                     self.skip_ignorable(tokens);
                     let name_token = tokens.curr(false)?;
-                    if !Self::token_can_be_logical_name(&name_token.key()) {
-                        return Err(Box::new(ParseError::from_token(
+                    let grouped_name = Self::token_to_named_label(&name_token).ok_or_else(|| {
+                        Box::new(ParseError::from_token(
                             &name_token,
                             "Expected parameter name after ','".to_string(),
-                        )));
-                    }
-                    names.push(name_token.con().trim().to_string());
+                        )) as Box<dyn Glitch>
+                    })?;
+                    names.push(grouped_name);
                     let _ = tokens.bump();
                     self.skip_ignorable(tokens);
                     continue;
@@ -345,14 +345,12 @@ impl AstParser {
                 return Ok(params);
             }
 
-            if !Self::token_can_be_logical_name(&token.key()) {
-                return Err(Box::new(ParseError::from_token(
+            let first_name = Self::token_to_named_label(&token).ok_or_else(|| {
+                Box::new(ParseError::from_token(
                     &token,
                     "Expected parameter name".to_string(),
-                )));
-            }
-
-            let first_name = token.con().trim().to_string();
+                )) as Box<dyn Glitch>
+            })?;
             if !seen_names.insert(first_name.clone()) {
                 return Err(Box::new(ParseError::from_token(
                     &token,
@@ -378,13 +376,12 @@ impl AstParser {
                 self.skip_ignorable(tokens);
 
                 let name_token = tokens.curr(false)?;
-                if !Self::token_can_be_logical_name(&name_token.key()) {
-                    return Err(Box::new(ParseError::from_token(
+                let grouped_name = Self::token_to_named_label(&name_token).ok_or_else(|| {
+                    Box::new(ParseError::from_token(
                         &name_token,
                         "Expected parameter name after ','".to_string(),
-                    )));
-                }
-                let grouped_name = name_token.con().trim().to_string();
+                    )) as Box<dyn Glitch>
+                })?;
                 if !seen_names.insert(grouped_name.clone()) {
                     return Err(Box::new(ParseError::from_token(
                         &name_token,
