@@ -42,6 +42,9 @@ mod definition_declarations;
 #[path = "test_parser_parts/quoted_declaration_targets.rs"]
 mod quoted_declaration_targets;
 #[cfg(test)]
+#[path = "test_parser_parts/quoted_function_type_refs.rs"]
+mod quoted_function_type_refs;
+#[cfg(test)]
 #[path = "test_parser_parts/quoted_iteration_binders.rs"]
 mod quoted_iteration_binders;
 #[cfg(test)]
