@@ -1,0 +1,14 @@
+typ Parser: rec = { }
+
+pro caller_forward_keyword_method_overload_ok(tool: Parser, a: int, b: int): int : str = {
+    report tool.log(a, b);
+    return 0;
+}
+
+fun (Parser)log(code: int): int = {
+    return code;
+}
+
+fun (Parser)log(code: int, mode: int): str = {
+    return "err";
+}
