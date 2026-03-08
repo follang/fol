@@ -192,6 +192,12 @@ impl AstParser {
                     type_hint,
                     value,
                     ..
+                }
+                | AstNode::LabDecl {
+                    name,
+                    type_hint,
+                    value,
+                    ..
                 } => {
                     if let Some(typ) = type_hint.clone() {
                         scope_types.insert(name.clone(), typ);

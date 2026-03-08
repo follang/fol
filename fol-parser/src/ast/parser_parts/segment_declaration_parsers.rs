@@ -70,9 +70,9 @@ impl AstParser {
         let body = self.parse_block_body(tokens, "Expected '}' to close segment body")?;
         self.consume_optional_semicolon(tokens);
 
-        Ok(AstNode::DefDecl {
+        Ok(AstNode::SegDecl {
             name,
-            def_type,
+            seg_type: def_type,
             body,
         })
     }

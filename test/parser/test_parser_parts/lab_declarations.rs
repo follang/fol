@@ -16,7 +16,7 @@ fn test_top_level_lab_declaration_parsing() {
             assert!(declarations.iter().any(|node| {
                 matches!(
                     node,
-                    AstNode::VarDecl { name, options, value, .. }
+                    AstNode::LabDecl { name, options, value, .. }
                     if name == "label"
                         && options.contains(&fol_parser::ast::VarOption::Immutable)
                         && value.is_some()
@@ -44,7 +44,7 @@ fn test_lab_declaration_parsing_inside_function_bodies() {
                 matches!(
                     node,
                     AstNode::FunDecl { body, .. }
-                    if body.iter().any(|stmt| matches!(stmt, AstNode::VarDecl { name, .. } if name == "label"))
+                    if body.iter().any(|stmt| matches!(stmt, AstNode::LabDecl { name, .. } if name == "label"))
                 )
             }));
         }

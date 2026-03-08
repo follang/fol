@@ -443,7 +443,7 @@ impl AstParser {
             AstNode::FunDecl { name, params, .. } | AstNode::ProDecl { name, params, .. } => {
                 format!("{}#{}", name, params.len())
             }
-            AstNode::VarDecl { name, .. } => name.clone(),
+            AstNode::VarDecl { name, .. } | AstNode::LabDecl { name, .. } => name.clone(),
             _ => String::new(),
         }
     }

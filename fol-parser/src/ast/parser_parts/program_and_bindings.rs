@@ -840,7 +840,25 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
-        self.parse_binding_decl(tokens, "lab", vec![VarOption::Immutable, VarOption::Normal])
+        let nodes =
+            self.parse_binding_decl(tokens, "lab", vec![VarOption::Immutable, VarOption::Normal])?;
+        Ok(nodes
+            .into_iter()
+            .map(|node| match node {
+                AstNode::VarDecl {
+                    options,
+                    name,
+                    type_hint,
+                    value,
+                } => AstNode::LabDecl {
+                    options,
+                    name,
+                    type_hint,
+                    value,
+                },
+                other => other,
+            })
+            .collect())
     }
 
     pub(super) fn parse_binding_decl(

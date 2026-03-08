@@ -65,6 +65,13 @@ pub enum AstNode {
         body: Vec<AstNode>,
     },
 
+    /// Segment declaration: seg name: mod[...] = { body }
+    SegDecl {
+        name: String,
+        seg_type: FolType,
+        body: Vec<AstNode>,
+    },
+
     /// Implementation declaration: imp name: target_type = { body }
     ImpDecl {
         generics: Vec<Generic>,
@@ -185,6 +192,14 @@ pub enum AstNode {
     Assignment {
         target: Box<AstNode>,
         value: Box<AstNode>,
+    },
+
+    /// Label declaration: lab name: type = value
+    LabDecl {
+        options: Vec<VarOption>,
+        name: String,
+        type_hint: Option<FolType>,
+        value: Option<Box<AstNode>>,
     },
 
     /// When statement (FOL's if/match): when(expr) { case(condition){} * {} }
@@ -538,10 +553,13 @@ impl AstNode {
             }),
             AstNode::Literal(Literal::Boolean(_)) => Some(FolType::Bool),
 
-            AstNode::VarDecl { type_hint, .. } => type_hint.clone(),
+            AstNode::VarDecl { type_hint, .. } | AstNode::LabDecl { type_hint, .. } => {
+                type_hint.clone()
+            }
             AstNode::FunDecl { return_type, .. } => return_type.clone(),
             AstNode::ProDecl { return_type, .. } => return_type.clone(),
             AstNode::DefDecl { def_type, .. } => Some(def_type.clone()),
+            AstNode::SegDecl { seg_type, .. } => Some(seg_type.clone()),
             AstNode::ImpDecl { target, .. } => Some(target.clone()),
             AstNode::StdDecl { .. } => None,
 
@@ -623,7 +641,7 @@ impl AstNode {
     /// Get all child nodes for tree traversal
     pub fn children(&self) -> Vec<&AstNode> {
         match self {
-            AstNode::VarDecl { value, .. } => {
+            AstNode::VarDecl { value, .. } | AstNode::LabDecl { value, .. } => {
                 value.as_ref().map(|v| vec![v.as_ref()]).unwrap_or_default()
             }
             AstNode::FunDecl {
@@ -637,6 +655,7 @@ impl AstNode {
                 children
             }
             AstNode::DefDecl { body, .. }
+            | AstNode::SegDecl { body, .. }
             | AstNode::ImpDecl { body, .. }
             | AstNode::StdDecl { body, .. } => body.iter().collect(),
             AstNode::BinaryOp { left, right, .. } => {

@@ -16,9 +16,9 @@ fn test_top_level_segment_declaration_parsing() {
             assert!(declarations.iter().any(|node| {
                 matches!(
                     node,
-                    AstNode::DefDecl { name, def_type, body }
+                    AstNode::SegDecl { name, seg_type, body }
                     if name == "core"
-                        && matches!(def_type, FolType::Module { .. })
+                        && matches!(seg_type, FolType::Module { .. })
                         && body.iter().any(|stmt| matches!(stmt, AstNode::DefDecl { name, .. } if name == "helper"))
                 )
             }));
@@ -44,7 +44,7 @@ fn test_segment_declaration_parsing_inside_function_bodies() {
                 matches!(
                     node,
                     AstNode::FunDecl { body, .. }
-                    if body.iter().any(|stmt| matches!(stmt, AstNode::DefDecl { name, .. } if name == "local"))
+                    if body.iter().any(|stmt| matches!(stmt, AstNode::SegDecl { name, .. } if name == "local"))
                 )
             }));
         }
@@ -92,8 +92,8 @@ fn test_segment_declaration_accepts_keyword_names() {
             assert!(declarations.iter().any(|node| {
                 matches!(
                     node,
-                    AstNode::DefDecl { name, def_type, .. }
-                    if name == "get" && matches!(def_type, FolType::Module { .. })
+                    AstNode::SegDecl { name, seg_type, .. }
+                    if name == "get" && matches!(seg_type, FolType::Module { .. })
                 )
             }));
         }
@@ -117,9 +117,9 @@ fn test_segment_declaration_accepts_quoted_names() {
             assert!(declarations.iter().any(|node| {
                 matches!(
                     node,
-                    AstNode::DefDecl { name, def_type, body }
+                    AstNode::SegDecl { name, seg_type, body }
                     if name == "core"
-                        && matches!(def_type, FolType::Module { .. })
+                        && matches!(seg_type, FolType::Module { .. })
                         && body.iter().any(|stmt| matches!(stmt, AstNode::DefDecl { name, .. } if name == "helper"))
                 )
             }));
