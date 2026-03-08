@@ -163,3 +163,53 @@ fn test_binding_symbol_options_override_defaults() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_binding_storage_and_ownership_options_parse() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_binding_storage_options.fol")
+        .expect("Should read binding storage options fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept storage and ownership binding options");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::VarDecl { name, options, .. }
+                    if name == "cached"
+                        && options.contains(&fol_parser::ast::VarOption::Static)
+                )
+            }));
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::VarDecl { name, options, .. }
+                    if name == "derived"
+                        && options.contains(&fol_parser::ast::VarOption::Reactive)
+                )
+            }));
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::VarDecl { name, options, .. }
+                    if name == "heap_value"
+                        && options.contains(&fol_parser::ast::VarOption::New)
+                )
+            }));
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::VarDecl { name, options, .. }
+                    if name == "borrowed"
+                        && options.contains(&fol_parser::ast::VarOption::Borrowing)
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}

@@ -32,6 +32,10 @@ impl AstParser {
                 "exp" | "export" | "pub" | "+" => VarOption::Export,
                 "hid" | "hidden" | "-" => VarOption::Hidden,
                 "nor" | "normal" => VarOption::Normal,
+                "sta" | "static" | "!" => VarOption::Static,
+                "rac" | "reactive" | "?" => VarOption::Reactive,
+                "new" => VarOption::New,
+                "bor" | "borrow" | "borrowing" => VarOption::Borrowing,
                 _ => {
                     return Err(Box::new(ParseError::from_token(
                         &token,

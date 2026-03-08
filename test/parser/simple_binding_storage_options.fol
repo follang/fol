@@ -1,0 +1,4 @@
+var[sta] cached: int = 1;
+var[?] derived: int = 2;
+var[new] heap_value: int = 3;
+var[bor] borrowed: int = source;
