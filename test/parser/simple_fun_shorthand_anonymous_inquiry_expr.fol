@@ -1,0 +1,8 @@
+fun outer(): any = {
+    return () {
+        return value;
+        where(self) {
+            check(value);
+        }
+    };
+}

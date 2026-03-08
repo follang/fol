@@ -421,7 +421,7 @@ impl AstParser {
         }
         let _ = tokens.bump();
 
-        let (body, _inquiries) = self.parse_routine_body_with_inquiries(
+        let (body, inquiries) = self.parse_routine_body_with_inquiries(
             tokens,
             "Expected '}' to close shorthand anonymous function body",
         )?;
@@ -433,7 +433,7 @@ impl AstParser {
             return_type: None,
             error_type: None,
             body,
-            inquiries: Vec::new(),
+            inquiries,
         })
     }
 }
