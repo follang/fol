@@ -488,8 +488,12 @@ impl AstParser {
     ) -> Result<AstNode, Box<dyn Glitch>> {
         self.skip_ignorable(tokens);
         if let Ok(token) = tokens.curr(false) {
-            let is_open_start_range = matches!(token.key(), KEYWORD::Operator(OPERATOR::Dotdot))
-                || token.con().trim() == "..";
+            let is_open_start_range = matches!(
+                token.key(),
+                KEYWORD::Operator(OPERATOR::Dotdot) | KEYWORD::Operator(OPERATOR::Dotdotdot)
+            ) || matches!(token.con().trim(), ".." | "...");
+            let inclusive = !matches!(token.key(), KEYWORD::Operator(OPERATOR::Dotdotdot))
+                && token.con().trim() != "...";
             if is_open_start_range {
                 let operator_token = token.clone();
                 let _ = tokens.bump();
@@ -515,7 +519,7 @@ impl AstParser {
                 return Ok(AstNode::Range {
                     start: None,
                     end: Some(Box::new(rhs)),
-                    inclusive: true,
+                    inclusive,
                 });
             }
         }
@@ -528,11 +532,15 @@ impl AstParser {
             Err(_) => return Ok(lhs),
         };
 
-        let is_range = matches!(op_token.key(), KEYWORD::Operator(OPERATOR::Dotdot))
-            || op_token.con().trim() == "..";
+        let is_range = matches!(
+            op_token.key(),
+            KEYWORD::Operator(OPERATOR::Dotdot) | KEYWORD::Operator(OPERATOR::Dotdotdot)
+        ) || matches!(op_token.con().trim(), ".." | "...");
         if !is_range {
             return Ok(lhs);
         }
+        let inclusive = !matches!(op_token.key(), KEYWORD::Operator(OPERATOR::Dotdotdot))
+            && op_token.con().trim() != "...";
 
         let _ = tokens.bump();
         self.skip_ignorable(tokens);
@@ -548,13 +556,13 @@ impl AstParser {
             return Ok(AstNode::Range {
                 start: Some(Box::new(lhs)),
                 end: None,
-                inclusive: true,
+                inclusive,
             });
         }
         if next.key().is_terminal() {
             return Err(Box::new(ParseError::from_token(
                 &op_token,
-                "Expected expression after '..'".to_string(),
+                format!("Expected expression after '{}'", op_token.con().trim()),
             )));
         }
 
@@ -562,7 +570,7 @@ impl AstParser {
         Ok(AstNode::Range {
             start: Some(Box::new(lhs)),
             end: Some(Box::new(rhs)),
-            inclusive: true,
+            inclusive,
         })
     }
 

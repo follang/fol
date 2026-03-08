@@ -90,6 +90,9 @@ mod report_call_resolution;
 #[path = "test_parser_parts/reference_keywords.rs"]
 mod reference_keywords;
 #[cfg(test)]
+#[path = "test_parser_parts/range_expressions.rs"]
+mod range_expressions;
+#[cfg(test)]
 #[path = "test_parser_parts/rolling_expressions.rs"]
 mod rolling_expressions;
 #[cfg(test)]

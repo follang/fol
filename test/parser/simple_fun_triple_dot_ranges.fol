@@ -1,0 +1,6 @@
+fun build(a: int, b: int): int = {
+    from = { a... };
+    until = { ...b };
+    mid = { a...b };
+    return a...b;
+}
