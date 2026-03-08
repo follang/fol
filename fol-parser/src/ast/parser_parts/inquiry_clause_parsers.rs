@@ -8,6 +8,7 @@ impl AstParser {
     ) -> Result<(Vec<AstNode>, Vec<AstNode>), Box<dyn Glitch>> {
         let mut body = Vec::new();
         let mut inquiries = Vec::new();
+        let mut inquiry_targets = HashSet::new();
         let mut anchor_token = None;
 
         for _ in 0..1024 {
@@ -18,23 +19,21 @@ impl AstParser {
             }
 
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Where)) {
-                inquiries = self.parse_optional_inquiry_clause(tokens)?;
-                self.skip_ignorable(tokens);
-                let close = tokens.curr(false)?;
-                if matches!(close.key(), KEYWORD::Keyword(BUILDIN::Where)) {
-                    return Err(Box::new(ParseError::from_token(
-                        &close,
-                        "Duplicate inquiry clause".to_string(),
-                    )));
+                let parsed = self.parse_optional_inquiry_clause(tokens)?;
+                for inquiry in parsed {
+                    let target = match &inquiry {
+                        AstNode::Inquiry { target, .. } => target.clone(),
+                        _ => String::new(),
+                    };
+                    if !inquiry_targets.insert(target.clone()) {
+                        return Err(Box::new(ParseError::from_token(
+                            &token,
+                            format!("Duplicate inquiry clause for '{}'", target),
+                        )));
+                    }
+                    inquiries.push(inquiry);
                 }
-                if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) {
-                    return Err(Box::new(ParseError::from_token(
-                        &close,
-                        "Expected '}' after inquiry clause".to_string(),
-                    )));
-                }
-                let _ = tokens.bump();
-                return Ok((body, inquiries));
+                continue;
             }
 
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) {

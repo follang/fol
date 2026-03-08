@@ -72,7 +72,7 @@ fn test_duplicate_function_inquiry_clause_rejected() {
         .expect("First parser error should be ParseError");
 
     assert!(
-        parse_error.to_string().contains("Duplicate inquiry clause"),
+        parse_error.to_string().contains("Duplicate inquiry clause for 'self'"),
         "Expected duplicate inquiry error, got: {}",
         parse_error
     );
@@ -96,7 +96,7 @@ fn test_duplicate_procedure_inquiry_clause_rejected() {
         .expect("First parser error should be ParseError");
 
     assert!(
-        parse_error.to_string().contains("Duplicate inquiry clause"),
+        parse_error.to_string().contains("Duplicate inquiry clause for 'self'"),
         "Expected duplicate inquiry error, got: {}",
         parse_error
     );
@@ -120,6 +120,31 @@ fn test_this_inquiry_clause_parsing() {
                 AstNode::FunDecl { name, inquiries, .. }
                 if name == "show"
                     && matches!(&inquiries[0], AstNode::Inquiry { target, body } if target == "this" && body.len() == 1)
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_distinct_inquiry_targets_can_coexist() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_fun_inquiry_multi_target.fol")
+        .expect("Should read multi-target inquiry clause test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should allow distinct inquiry targets");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::FunDecl { inquiries, .. }
+                if inquiries.len() == 2
+                    && matches!(&inquiries[0], AstNode::Inquiry { target, .. } if target == "self")
+                    && matches!(&inquiries[1], AstNode::Inquiry { target, .. } if target == "this")
             )));
         }
         _ => panic!("Expected program node"),

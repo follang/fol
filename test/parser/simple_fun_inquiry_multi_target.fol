@@ -1,0 +1,9 @@
+fun[] show(): str = {
+    return this;
+    where(self) {
+        self;
+    }
+    where(this) {
+        this;
+    }
+}
