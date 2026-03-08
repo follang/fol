@@ -101,3 +101,27 @@ fn test_duplicate_procedure_inquiry_clause_rejected() {
         parse_error
     );
 }
+
+#[test]
+fn test_this_inquiry_clause_parsing() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_fun_inquiry_this.fol")
+        .expect("Should read this-target inquiry clause test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse 'where(this)' inquiry clauses");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::FunDecl { name, inquiries, .. }
+                if name == "show"
+                    && matches!(&inquiries[0], AstNode::Inquiry { target, body } if target == "this" && body.len() == 1)
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}

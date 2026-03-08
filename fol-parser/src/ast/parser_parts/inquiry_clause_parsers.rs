@@ -274,10 +274,13 @@ impl AstParser {
 
         self.skip_ignorable(tokens);
         let target = tokens.curr(false)?;
-        if !matches!(target.key(), KEYWORD::Keyword(BUILDIN::Selfi)) {
+        if !matches!(
+            target.key(),
+            KEYWORD::Keyword(BUILDIN::Selfi) | KEYWORD::Keyword(BUILDIN::This)
+        ) {
             return Err(Box::new(ParseError::from_token(
                 &target,
-                "Expected 'self' in inquiry clause".to_string(),
+                "Expected 'self' or 'this' in inquiry clause".to_string(),
             )));
         }
         let target_name = target.con().trim().to_string();
