@@ -1,0 +1,4 @@
+fun wrap(): int = {
+    var f = |x: int| => return x where(self) => self;
+    return 1;
+}

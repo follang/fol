@@ -150,6 +150,34 @@ fn test_flow_bodied_pipe_lambda_parsing() {
 }
 
 #[test]
+fn test_flow_bodied_pipe_lambda_inquiry_parsing() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_pipe_lambda_flow_inquiry_expr.fol")
+            .expect("Should read flow-bodied pipe lambda inquiry fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should preserve inquiries on flow-bodied pipe lambdas");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::FunDecl { body, .. }
+                if body.iter().any(|stmt| matches!(
+                    stmt,
+                    AstNode::VarDecl { value: Some(value), .. }
+                    if matches!(value.as_ref(), AstNode::AnonymousFun { inquiries, .. } if inquiries.len() == 1)
+                ))
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
 fn test_pipe_lambda_capture_lists_parsing() {
     let mut file_stream = FileStream::from_file("test/parser/simple_pipe_lambda_capture_expr.fol")
         .expect("Should read pipe lambda capture fixture");
