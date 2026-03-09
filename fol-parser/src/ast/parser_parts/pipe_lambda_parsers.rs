@@ -158,6 +158,26 @@ impl AstParser {
         self.ensure_unique_capture_names(&captures)?;
 
         self.skip_ignorable(tokens);
+        let mut return_type = None;
+        let mut error_type = None;
+        if let Ok(token) = tokens.curr(false) {
+            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
+                let _ = tokens.bump();
+                self.skip_ignorable(tokens);
+                return_type = Some(self.parse_type_reference_tokens(tokens)?);
+
+                self.skip_ignorable(tokens);
+                if let Ok(token) = tokens.curr(false) {
+                    if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
+                        let _ = tokens.bump();
+                        self.skip_ignorable(tokens);
+                        error_type = Some(self.parse_type_reference_tokens(tokens)?);
+                    }
+                }
+            }
+        }
+
+        self.skip_ignorable(tokens);
         let (body, inquiries) = if matches!(tokens.curr(false)?.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
             let _ = tokens.bump();
             self.parse_routine_body_with_inquiries(tokens, "Expected '}' to close lambda body")?
@@ -174,8 +194,8 @@ impl AstParser {
             options: vec![FunOption::Mutable],
             captures,
             params,
-            return_type: None,
-            error_type: None,
+            return_type,
+            error_type,
             body,
             inquiries,
         })

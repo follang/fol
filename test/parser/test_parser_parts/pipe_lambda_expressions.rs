@@ -403,3 +403,34 @@ fn test_pipe_lambda_marks_borrowable_parameters() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_pipe_lambda_supports_explicit_return_types() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_pipe_lambda_return_type.fol")
+            .expect("Should read pipe lambda return-type fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse explicit return types on pipe lambdas");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::FunDecl { body, .. }
+                if body.iter().any(|stmt| matches!(
+                    stmt,
+                    AstNode::Return { value: Some(value) }
+                    if matches!(
+                        value.as_ref(),
+                        AstNode::AnonymousFun { return_type: Some(FolType::Int { .. }), .. }
+                    )
+                ))
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
