@@ -58,6 +58,33 @@ fn test_protocol_standard_accepts_default_function_implementations() {
 }
 
 #[test]
+fn test_protocol_standard_accepts_alias_members() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_std_protocol_alias.fol")
+        .expect("Should read protocol alias-member standard fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse alias members in protocol standards");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::StdDecl { name, kind: StandardKind::Protocol, body, .. }
+                    if name == "geometry"
+                        && body.iter().any(|stmt| matches!(stmt, AstNode::AliasDecl { name, .. } if name == "Area"))
+                        && body.iter().any(|stmt| matches!(stmt, AstNode::FunDecl { name, return_type: Some(FolType::Named { name: ret }), .. } if name == "area" && ret == "Area"))
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
 fn test_blueprint_standard_declaration_parsing() {
     let mut file_stream = FileStream::from_file("test/parser/simple_std_blueprint.fol")
         .expect("Should read blueprint standard test file");

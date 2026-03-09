@@ -1,0 +1,4 @@
+std geometry: pro = {
+    ali Area: flt[64];
+    fun area(): Area;
+}
