@@ -121,3 +121,23 @@ fn test_array_and_matrix_missing_close_report_type_reference_close() {
         );
     }
 }
+
+#[test]
+fn test_special_type_bad_separator_diagnostics_stay_shape_specific() {
+    for (path, expected) in [
+        (
+            "test/parser/simple_opt_type_bad_separator.fol",
+            "Expected ',', ';', or closing ']' in type reference",
+        ),
+        (
+            "test/parser/simple_tst_type_bad_separator.fol",
+            "Expected ',', ';', or ']' in tst[...] arguments",
+        ),
+    ] {
+        let message = first_parse_error_message(path);
+        assert!(
+            message.contains(expected),
+            "Expected shape-specific separator diagnostic for fixture {path}, got: {message}",
+        );
+    }
+}
