@@ -249,3 +249,35 @@ fn test_suffix_pattern_availability_invoke_statement_parsing() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_suffix_slice_availability_invoke_statement_parsing() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_suffix_slice_availability_invoke_stmt.fol")
+            .expect("Should read suffix slice availability invoke statement fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse suffix slice availability invoke statements");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::FunDecl { body, .. }
+                    if body.iter().any(|stmt| matches!(
+                        stmt,
+                        AstNode::Invoke { callee, args }
+                        if args.len() == 1
+                            && matches!(callee.as_ref(), AstNode::AvailabilityAccess { target }
+                                if matches!(target.as_ref(), AstNode::SliceAccess { .. }))
+                    ))
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
