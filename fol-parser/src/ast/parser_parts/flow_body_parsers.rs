@@ -60,6 +60,42 @@ impl AstParser {
             return Ok(nodes);
         }
 
+        if matches!(key, KEYWORD::Keyword(BUILDIN::Ali)) {
+            let node = self.parse_alias_decl(tokens)?;
+            self.consume_optional_semicolon(tokens);
+            return Ok(vec![node]);
+        }
+
+        if matches!(key, KEYWORD::Keyword(BUILDIN::Typ)) {
+            let node = self.parse_type_decl(tokens)?;
+            self.consume_optional_semicolon(tokens);
+            return Ok(vec![node]);
+        }
+
+        if matches!(key, KEYWORD::Keyword(BUILDIN::Def)) {
+            let node = self.parse_def_decl(tokens)?;
+            self.consume_optional_semicolon(tokens);
+            return Ok(vec![node]);
+        }
+
+        if matches!(key, KEYWORD::Keyword(BUILDIN::Seg)) {
+            let node = self.parse_seg_decl(tokens)?;
+            self.consume_optional_semicolon(tokens);
+            return Ok(vec![node]);
+        }
+
+        if matches!(key, KEYWORD::Keyword(BUILDIN::Imp)) {
+            let node = self.parse_imp_decl(tokens)?;
+            self.consume_optional_semicolon(tokens);
+            return Ok(vec![node]);
+        }
+
+        if matches!(key, KEYWORD::Keyword(BUILDIN::Std)) && self.lookahead_is_std_decl(tokens) {
+            let node = self.parse_std_decl(tokens)?;
+            self.consume_optional_semicolon(tokens);
+            return Ok(vec![node]);
+        }
+
         if matches!(key, KEYWORD::Keyword(BUILDIN::Fun)) {
             let node = self.parse_fun_decl(tokens)?;
             self.consume_optional_semicolon(tokens);
