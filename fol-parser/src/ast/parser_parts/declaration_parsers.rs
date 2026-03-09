@@ -591,6 +591,81 @@ impl AstParser {
             "Expected logical name after 'log'",
         )?;
 
+        self.skip_ignorable(tokens);
+        if matches!(
+            tokens.curr(false).map(|token| token.key().clone()),
+            Ok(KEYWORD::Symbol(SYMBOL::Colon))
+        ) {
+            let _ = tokens.bump();
+            self.skip_ignorable(tokens);
+            let return_type = Some(self.parse_type_reference_tokens(tokens)?);
+            let mut error_type = None;
+
+            self.skip_ignorable(tokens);
+            if let Ok(err_sep) = tokens.curr(false) {
+                if matches!(err_sep.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
+                    let _ = tokens.bump();
+                    self.skip_ignorable(tokens);
+                    error_type = Some(self.parse_type_reference_tokens(tokens)?);
+                }
+            }
+
+            if let Some(rt) = return_type.as_ref() {
+                self.register_routine_return_type(
+                    &name,
+                    0,
+                    receiver_type.as_ref(),
+                    rt,
+                    &log_token,
+                )?;
+            }
+
+            self.skip_ignorable(tokens);
+            let assign = tokens.curr(false)?;
+            if !matches!(assign.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
+                return Err(Box::new(ParseError::from_token(
+                    &assign,
+                    "Expected '=' before logical body".to_string(),
+                )));
+            }
+            let _ = tokens.bump();
+
+            self.skip_ignorable(tokens);
+            let open_body = tokens.curr(false)?;
+            if !matches!(open_body.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
+                return Err(Box::new(ParseError::from_token(
+                    &open_body,
+                    "Expected '{' to start logical body".to_string(),
+                )));
+            }
+            let _ = tokens.bump();
+
+            let (body, inquiries) = self.parse_routine_body_with_inquiries(
+                tokens,
+                "Expected '}' to close logical body",
+            )?;
+            let routine_returns = self.routine_return_types.borrow().clone();
+            Self::validate_report_usage(
+                &body,
+                error_type.as_ref(),
+                &HashMap::new(),
+                &routine_returns,
+                &log_token,
+            )?;
+
+            return Ok(AstNode::FunDecl {
+                options,
+                generics: Vec::new(),
+                name,
+                captures: Vec::new(),
+                params: Vec::new(),
+                return_type,
+                error_type,
+                body,
+                inquiries,
+            });
+        }
+
         let (generics, params) =
             self.parse_routine_generics_and_params(tokens, "Expected '(' after logical name")?;
         self.skip_ignorable(tokens);
