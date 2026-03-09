@@ -232,6 +232,21 @@ impl AstParser {
                 )));
             }
 
+            if self.lookahead_binding_alternative(tokens).is_some() {
+                let members = self.parse_binding_alternative_decl(tokens)?;
+                for member in members {
+                    let key = self.standard_member_key(&member);
+                    if !seen_members.insert(key.clone()) {
+                        return Err(Box::new(ParseError::from_token(
+                            &token,
+                            format!("Duplicate standard member '{}'", key),
+                        )));
+                    }
+                    body.push(member);
+                }
+                continue;
+            }
+
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Var)) {
                 let members = self.parse_var_decl(tokens)?;
                 for member in members {
