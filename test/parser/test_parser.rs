@@ -267,6 +267,9 @@ mod type_contracts;
 #[path = "test_parser_parts/type_forms_and_function_decls.rs"]
 mod type_forms_and_function_decls;
 #[cfg(test)]
+#[path = "test_parser_parts/type_reference_diagnostics.rs"]
+mod type_reference_diagnostics;
+#[cfg(test)]
 #[path = "test_parser_parts/typed_iteration_binders.rs"]
 mod typed_iteration_binders;
 #[cfg(test)]
