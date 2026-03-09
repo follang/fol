@@ -117,3 +117,33 @@ fn test_entry_const_variant_metadata_is_retained() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_record_field_binding_options_are_retained() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_typ_record_field_options.fol")
+            .expect("Should read record field option fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should retain record field binding options");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::TypeDecl {
+                    name,
+                    type_def: TypeDefinition::Record { field_meta, .. },
+                    ..
+                }
+                if name == "Config"
+                    && matches!(field_meta.get("host"), Some(RecordFieldMeta { options, .. }) if options.contains(&VarOption::Export) && options.contains(&VarOption::Static))
+                    && matches!(field_meta.get("port"), Some(RecordFieldMeta { options, .. }) if options.contains(&VarOption::Hidden) && options.contains(&VarOption::Immutable))
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}

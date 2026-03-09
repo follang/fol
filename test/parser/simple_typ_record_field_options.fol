@@ -1,0 +1,4 @@
+typ Config: rec = {
+    var[exp, sta] host: str = "localhost";
+    con[hid] port: int = 8080;
+}
