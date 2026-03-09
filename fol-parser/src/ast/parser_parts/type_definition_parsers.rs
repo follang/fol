@@ -31,6 +31,34 @@ impl AstParser {
                 });
             }
 
+            if let Some(member) = self.parse_prefixed_type_routine_member(tokens)? {
+                let key = self.type_member_key(&member);
+                if !seen_members.insert(key.clone()) {
+                    return Err(self.duplicate_type_member_error(&token, &key));
+                }
+                members.push(member);
+                self.skip_ignorable(tokens);
+                let sep = tokens.curr(false)?;
+                if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma))
+                    || matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Semi))
+                {
+                    let _ = tokens.bump();
+                    continue;
+                }
+                if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) {
+                    let _ = tokens.bump();
+                    return Ok(TypeDefinition::Entry {
+                        variants,
+                        variant_meta,
+                        members,
+                    });
+                }
+                return Err(Box::new(ParseError::from_token(
+                    &sep,
+                    "Expected ',', ';', or '}' in type entry definition".to_string(),
+                )));
+            }
+
             if matches!(
                 token.key(),
                 KEYWORD::Keyword(BUILDIN::Fun)
@@ -309,6 +337,34 @@ impl AstParser {
                 )));
             }
 
+            if let Some(member) = self.parse_prefixed_type_routine_member(tokens)? {
+                let key = self.type_member_key(&member);
+                if !seen_members.insert(key.clone()) {
+                    return Err(self.duplicate_type_member_error(&token, &key));
+                }
+                members.push(member);
+                self.skip_ignorable(tokens);
+                let sep = tokens.curr(false)?;
+                if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma))
+                    || matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Semi))
+                {
+                    let _ = tokens.bump();
+                    continue;
+                }
+                if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) {
+                    let _ = tokens.bump();
+                    return Ok(TypeDefinition::Record {
+                        fields,
+                        field_meta,
+                        members,
+                    });
+                }
+                return Err(Box::new(ParseError::from_token(
+                    &sep,
+                    "Expected ',', ';', or '}' in type record definition".to_string(),
+                )));
+            }
+
             if matches!(
                 token.key(),
                 KEYWORD::Keyword(BUILDIN::Fun)
@@ -569,5 +625,40 @@ impl AstParser {
             token,
             format!("Duplicate type member '{}'", key),
         ))
+    }
+
+    fn parse_prefixed_type_routine_member(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<Option<AstNode>, Box<dyn Glitch>> {
+        let token = tokens.curr(false)?;
+        if !matches!(token.key(), KEYWORD::Symbol(SYMBOL::Plus)) {
+            return Ok(None);
+        }
+
+        let Some(next_key) = self.next_significant_key_from_window(tokens) else {
+            return Ok(None);
+        };
+        if !matches!(
+            next_key,
+            KEYWORD::Keyword(BUILDIN::Fun)
+                | KEYWORD::Keyword(BUILDIN::Pro)
+                | KEYWORD::Keyword(BUILDIN::Log)
+        ) {
+            return Ok(None);
+        }
+
+        let _ = tokens.bump();
+        self.skip_ignorable(tokens);
+        let mut member = self.parse_standard_routine_signature(tokens)?;
+        match &mut member {
+            AstNode::FunDecl { options, .. } | AstNode::ProDecl { options, .. } => {
+                if !options.contains(&FunOption::Export) {
+                    options.insert(0, FunOption::Export);
+                }
+            }
+            _ => {}
+        }
+        Ok(Some(member))
     }
 }
