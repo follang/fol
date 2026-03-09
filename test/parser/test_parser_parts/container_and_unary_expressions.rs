@@ -50,6 +50,50 @@ fn test_container_literals_parse_in_assignment_and_return() {
 }
 
 #[test]
+fn test_semicolon_container_literals_parse_in_assignment_and_return() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_container_literal_semicolon.fol")
+            .expect("Should read semicolon container literal test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse semicolon-separated container literals");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            let has_container_assignment = declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::Assignment { value, .. }
+                    if matches!(
+                        value.as_ref(),
+                        AstNode::ContainerLiteral { elements, .. } if elements.len() == 3
+                    )
+                )
+            });
+
+            let has_container_return = declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::Return { value: Some(value) }
+                    if matches!(
+                        value.as_ref(),
+                        AstNode::ContainerLiteral { elements, .. } if elements.len() == 2
+                    )
+                )
+            });
+
+            assert!(has_container_assignment);
+            assert!(has_container_return);
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
 fn test_braced_range_expressions_parse_in_assignment_and_return() {
     let mut file_stream = FileStream::from_file("test/parser/simple_fun_braced_range_expr.fol")
         .expect("Should read braced range expression test file");
