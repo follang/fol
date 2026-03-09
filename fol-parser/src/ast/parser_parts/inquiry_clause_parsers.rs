@@ -413,6 +413,42 @@ impl AstParser {
                 continue;
             }
 
+            if matches!(key, KEYWORD::Keyword(BUILDIN::Return)) {
+                body.push(self.parse_return_stmt(tokens)?);
+                continue;
+            }
+
+            if matches!(key, KEYWORD::Keyword(BUILDIN::Break)) {
+                body.push(self.parse_break_stmt(tokens)?);
+                continue;
+            }
+
+            if matches!(key, KEYWORD::Keyword(BUILDIN::Yeild)) {
+                body.push(self.parse_yield_stmt(tokens)?);
+                continue;
+            }
+
+            if matches!(key, KEYWORD::Keyword(BUILDIN::If)) {
+                body.push(self.parse_if_stmt(tokens)?);
+                continue;
+            }
+
+            if matches!(key, KEYWORD::Keyword(BUILDIN::When)) {
+                body.push(self.parse_when_stmt(tokens)?);
+                continue;
+            }
+
+            if matches!(
+                key,
+                KEYWORD::Keyword(BUILDIN::While)
+                    | KEYWORD::Keyword(BUILDIN::Loop)
+                    | KEYWORD::Keyword(BUILDIN::For)
+                    | KEYWORD::Keyword(BUILDIN::Each)
+            ) {
+                body.push(self.parse_loop_stmt(tokens)?);
+                continue;
+            }
+
             if (AstParser::token_can_be_logical_name(&key)
                 || matches!(key, KEYWORD::Literal(LITERAL::Stringy)))
                 && self.lookahead_is_assignment(tokens)
