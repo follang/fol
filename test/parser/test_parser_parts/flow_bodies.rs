@@ -170,3 +170,78 @@ fn test_when_flow_assignment_bodies_parsing() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_if_flow_declaration_bodies_parsing() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_fun_if_flow_decls.fol")
+        .expect("Should read if flow declaration fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse if/else declaration flow bodies");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::FunDecl { body, .. }
+                    if body.iter().any(|stmt| matches!(
+                        stmt,
+                        AstNode::When { cases, default, .. }
+                        if matches!(cases.as_slice(),
+                            [WhenCase::Case { body, .. }] if body.len() == 2
+                                && matches!(body[0], AstNode::VarDecl { .. })
+                                && matches!(body[1], AstNode::VarDecl { .. })
+                        )
+                        && matches!(default, Some(default_body)
+                            if default_body.len() == 2
+                                && matches!(default_body[0], AstNode::UseDecl { .. })
+                                && matches!(default_body[1], AstNode::UseDecl { .. }))
+                    ))
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_when_flow_declaration_bodies_parsing() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_fun_when_flow_decls.fol")
+        .expect("Should read when flow declaration fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse when declaration flow bodies");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::FunDecl { body, .. }
+                    if body.iter().any(|stmt| matches!(
+                        stmt,
+                        AstNode::When { cases, .. }
+                        if matches!(cases.as_slice(),
+                            [
+                                WhenCase::Is { body, .. },
+                                WhenCase::Has { body: second_body, .. }
+                            ]
+                            if body.len() == 2
+                                && matches!(body[0], AstNode::VarDecl { .. })
+                                && matches!(body[1], AstNode::VarDecl { .. })
+                                && matches!(second_body.as_slice(), [AstNode::VarDecl { .. }])
+                        )
+                    ))
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}

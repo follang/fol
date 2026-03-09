@@ -24,6 +24,42 @@ impl AstParser {
         self.skip_ignorable(tokens);
 
         let key = tokens.curr(false)?.key();
+        if self.lookahead_binding_alternative(tokens).is_some() {
+            let nodes = self.parse_binding_alternative_decl(tokens)?;
+            self.consume_optional_semicolon(tokens);
+            return Ok(nodes);
+        }
+
+        if matches!(key, KEYWORD::Keyword(BUILDIN::Var)) {
+            let nodes = self.parse_var_decl(tokens)?;
+            self.consume_optional_semicolon(tokens);
+            return Ok(nodes);
+        }
+
+        if matches!(key, KEYWORD::Keyword(BUILDIN::Let)) {
+            let nodes = self.parse_let_decl(tokens)?;
+            self.consume_optional_semicolon(tokens);
+            return Ok(nodes);
+        }
+
+        if matches!(key, KEYWORD::Keyword(BUILDIN::Con)) {
+            let nodes = self.parse_con_decl(tokens)?;
+            self.consume_optional_semicolon(tokens);
+            return Ok(nodes);
+        }
+
+        if matches!(key, KEYWORD::Keyword(BUILDIN::Lab)) {
+            let nodes = self.parse_lab_decl(tokens)?;
+            self.consume_optional_semicolon(tokens);
+            return Ok(nodes);
+        }
+
+        if matches!(key, KEYWORD::Keyword(BUILDIN::Use)) {
+            let nodes = self.parse_use_decl(tokens)?;
+            self.consume_optional_semicolon(tokens);
+            return Ok(nodes);
+        }
+
         let node = if (AstParser::token_can_be_logical_name(&key)
             || matches!(key, KEYWORD::Literal(LITERAL::Stringy)))
             && self.lookahead_is_assignment(tokens)
