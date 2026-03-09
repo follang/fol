@@ -1,14 +1,14 @@
-# Modules
+# Modules And Source Layout
 
-FOL programs are constructed by linking together packages. A package in turn is constructed from one or more source files that together declare constants, types, variables and functions belonging to the package and which are accessible in all files of the same package. Those elements may be exported and used in another package. 
+This section defines how FOL source is organized across files, folders, packages, imports, and named module-like declarations.
 
+It covers:
+- imports through `use`
+- namespaces and package layout
+- block-like named definitions
+- test-oriented module surfaces
 
-Every file with extension `.fol` in a folder is part of a package. Thus every file in the folder that uses the same package name, share the same scope between each other. 
-
-Two packages can't exist in same folder, so it is suggested using hierarchy folders to separate packages. 
-
-## Types
-
-Packages can be either:
-- defined
-- imported
+At a high level:
+- files in the same package contribute to the same package surface
+- namespaces are expressed through folder structure and `::` access
+- imported sources are classified by source kind such as `loc`, `url`, and `std`

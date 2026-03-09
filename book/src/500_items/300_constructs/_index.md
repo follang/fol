@@ -1,7 +1,11 @@
-# Constructs
+# Construct Types
 
-A construct is a collection of fields, possibly of different data types, typically in fixed number and sequence. It is a custom data type that lets you name and package together multiple related values that make up a meaningful group. The fields of a construct may also be called members. 
+This section covers named type construction beyond the built-in type families.
 
-Constructs come in two forms: 
-- alias declarations (aliases) and 
-- type definitions (structs)
+The main construct surfaces are:
+- aliases:
+  `ali`
+- record-like definitions
+- entry-like definitions
+
+These chapters describe how named data models are introduced, how members are declared, and how construct values are initialized and accessed.

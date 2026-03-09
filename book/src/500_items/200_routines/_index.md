@@ -1,15 +1,30 @@
 # Routines
 
-A rutine definition describes the interface to and the actions of the routine abstraction. A routine call is the explicit request that a specific routine be executed. A routine is said to be active if, after having been called, it has begun execution but has not yet completed that execution. A routine declaration consists of an identifier, zero or more argument parameters, a return value type and a block of code.
-```
-// version 1
-fun[] add(el1, el2: int[64]): int[64] = { result = el1 + el2 }
+Routines are callable declarations.
 
-// version 2
-fun[] add: int[64] = (el1, el2: int[64]){ result = el1 + el2 }
+FOL has three routine families:
+- `pro`:
+  procedures, used for effectful work
+- `fun`:
+  functions, intended for ordinary value-producing computation
+- `log`:
+  logical routines and relation-like callable forms
+
+Routine declarations support a shared structural pattern:
+
+```fol
+fun[options] name(params): return_type = { body }
+pro[options] name(params): return_type = { body }
+log[options] name(params): return_type = { body }
 ```
 
-You’ve already seen one of the most important routines in the language: the main routine, which is the entry point of many programs. You’ve also seen the `fun` or `pro` keyword, which allows you to declare new routine.
+FOL also allows an alternate header style:
+
+```fol
+fun[options] name: return_type = (params) { body }
+```
+
+This chapter family covers parameters, calls, defaults, variadics, return values, and routine-specific semantics.
 
 ## Types
 There are two main types of routines in fol:
@@ -202,4 +217,3 @@ pro main(): int = {
     }
 }
 ```
-

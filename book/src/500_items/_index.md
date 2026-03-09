@@ -1,36 +1,15 @@
-# Syntax items
+# Declarations And Items
 
-FOL uses different keywords to bind functionality and data to variables.
+This section covers the main named program elements of FOL.
 
-## modules
-used for: imports and includes
-```
-use[]
-```
+The declaration families include:
+- bindings:
+  `var`, `let`, `con`, `lab`
+- routines:
+  `fun`, `pro`, `log`
+- type and construct declarations:
+  `typ`, `ali`
+- contract-like declarations:
+  `std`
 
-## definitions
-used for: preporcesr, macros, blocks, definitions ...
-```
-def[]
-```
-
-## variables
-used for all variables: ints, strings, bools, arrays, vecotrs ...
-```
-var[]
-```
-## functions
-used for subporgrams: procedures and functions
-```
-pro[]
-fun[]
-log[]
-```
-
-## constructs
-used for: new types, records, objects, interfaces, enums ...
-```
-typ[]
-std[]
-```
-
+Module-like forms such as `use`, `def`, `seg`, and `imp` are covered in the modules chapter because they primarily define source layout, namespace, and composition boundaries.
