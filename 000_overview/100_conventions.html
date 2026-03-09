@@ -3,8 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Page not found - FOL Language Specification</title>
-        <base href="/">
+        <title>Notation And Conventions - FOL Language Specification</title>
 
 
         <!-- Custom HTML head -->
@@ -13,33 +12,33 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff">
 
-        <link rel="icon" href="favicon-de23e50b.svg">
-        <link rel="shortcut icon" href="favicon-8114d1fc.png">
-        <link rel="stylesheet" href="css/variables-8adf115d.css">
-        <link rel="stylesheet" href="css/general-2459343d.css">
-        <link rel="stylesheet" href="css/chrome-ae938929.css">
-        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+        <link rel="icon" href="../favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="../favicon-8114d1fc.png">
+        <link rel="stylesheet" href="../css/variables-8adf115d.css">
+        <link rel="stylesheet" href="../css/general-2459343d.css">
+        <link rel="stylesheet" href="../css/chrome-ae938929.css">
+        <link rel="stylesheet" href="../css/print-9e4910d8.css" media="print">
 
         <!-- Fonts -->
-        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+        <link rel="stylesheet" href="../fonts/fonts-9644e21d.css">
 
         <!-- Highlight.js Stylesheets -->
-        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
-        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
-        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+        <link rel="stylesheet" id="mdbook-highlight-css" href="../highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="../tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="../ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
-            const path_to_root = "";
+            const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-720f8919.js";
+            window.path_to_searchindex_js = "../searchindex-720f8919.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-c28f7be1.js"></script>
+        <script src="../toc-c28f7be1.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -106,7 +105,7 @@
             <!-- populated by js -->
             <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
             <noscript>
-                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
             </noscript>
             <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
                 <div class="sidebar-resize-indicator"></div>
@@ -141,7 +140,7 @@
                     <h1 class="menu-title">FOL Language Specification</h1>
 
                     <div class="right-buttons">
-                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
                             <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
                         </a>
 
@@ -175,14 +174,113 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="document-not-found-404"><a class="header" href="#document-not-found-404">Document not found (404)</a></h1>
-<p>This URL is invalid, sorry. Please use the navigation bar or search to continue.</p>
+                        <h1 id="notation-and-conventions"><a class="header" href="#notation-and-conventions">Notation And Conventions</a></h1>
+<p>This book is the language specification for FOL.</p>
+<p>It is written as a spec first:</p>
+<ul>
+<li>examples describe intended language behavior</li>
+<li>implementation status may lag behind the book</li>
+<li>when code and prose disagree, the disagreement should be resolved explicitly</li>
+</ul>
+<h2 id="reading-syntax-examples"><a class="header" href="#reading-syntax-examples">Reading Syntax Examples</a></h2>
+<p>The examples in this book follow a few conventions.</p>
+<ul>
+<li>Keywords are written literally:
+<ul>
+<li><code>fun</code></li>
+<li><code>pro</code></li>
+<li><code>typ</code></li>
+<li><code>use</code></li>
+</ul>
+</li>
+<li>Punctuation is written literally:
+<ul>
+<li><code>(</code></li>
+<li><code>)</code></li>
+<li><code>[</code></li>
+<li><code>]</code></li>
+<li><code>{</code></li>
+<li><code>}</code></li>
+<li><code>:</code></li>
+<li><code>=</code></li>
+</ul>
+</li>
+<li>Placeholder names are descriptive:
+<ul>
+<li><code>name</code></li>
+<li><code>type</code></li>
+<li><code>expr</code></li>
+<li><code>body</code></li>
+<li><code>source</code></li>
+</ul>
+</li>
+</ul>
+<p>For example:</p>
+<pre><code class="language-fol">fun[options] name(params): return_type = { body }
+</code></pre>
+<p>means:</p>
+<ul>
+<li><code>fun</code> is a literal keyword</li>
+<li><code>options</code> is a placeholder for zero or more routine options</li>
+<li><code>name</code> is the declared routine name</li>
+<li><code>params</code> is a parameter list</li>
+<li><code>return_type</code> is a type reference</li>
+<li><code>body</code> is a routine body</li>
+</ul>
+<h2 id="spec-vocabulary"><a class="header" href="#spec-vocabulary">Spec Vocabulary</a></h2>
+<p>The book uses the following terms consistently:</p>
+<ul>
+<li>declaration:
+a top-level or block-level form that introduces a named entity</li>
+<li>statement:
+an executable form that appears in a block</li>
+<li>expression:
+a form that produces a value</li>
+<li>type reference:
+a syntactic reference to a type</li>
+<li>type definition:
+a declaration form that creates a new named type</li>
+<li>source kind:
+an import/source locator family such as <code>loc</code>, <code>url</code>, or <code>std</code></li>
+</ul>
+<h2 id="examples-vs-grammar"><a class="header" href="#examples-vs-grammar">Examples vs Grammar</a></h2>
+<p>Examples are illustrative, not exhaustive.</p>
+<p>When a chapter gives one or two examples, that does not imply the syntax is limited to only those exact spellings. The normative rule is the chapter text plus the grammar intent described there.</p>
+<h2 id="terminology-preferences"><a class="header" href="#terminology-preferences">Terminology Preferences</a></h2>
+<p>This book prefers the following terms:</p>
+<ul>
+<li>routine:
+umbrella term for <code>fun</code>, <code>pro</code>, and <code>log</code></li>
+<li>record:
+named field-based type</li>
+<li>entry:
+named variant-based type</li>
+<li>standard:
+protocol/blueprint/extension-style contract surface</li>
+<li>module:
+namespace/package surface addressed through <code>use</code>, <code>def</code>, or <code>seg</code></li>
+</ul>
+<h2 id="status-notes"><a class="header" href="#status-notes">Status Notes</a></h2>
+<p>Some older chapters still use inconsistent wording inherited from earlier drafts.</p>
+<p>During cleanup, the following principles apply:</p>
+<ul>
+<li>keep examples unless they are contradictory</li>
+<li>prefer clarifying rewrites over removal</li>
+<li>keep the chapter tree stable where possible</li>
+<li>make chapter indexes explain scope before detail</li>
+</ul>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../000_overview/_index.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
 
+                            <a rel="next prefetch" href="../100_lexical/_index.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
 
                         <div style="clear: both"></div>
                     </nav>
@@ -190,7 +288,13 @@
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../000_overview/_index.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
 
+                    <a rel="next prefetch" href="../100_lexical/_index.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
             </nav>
 
         </div>
@@ -208,13 +312,13 @@
         </script>
 
 
-        <script src="elasticlunr-ef4e11c1.min.js"></script>
-        <script src="mark-09e88c2c.min.js"></script>
-        <script src="searcher-c2a407aa.js"></script>
+        <script src="../elasticlunr-ef4e11c1.min.js"></script>
+        <script src="../mark-09e88c2c.min.js"></script>
+        <script src="../searcher-c2a407aa.js"></script>
 
-        <script src="clipboard-1626706a.min.js"></script>
-        <script src="highlight-abc7f01d.js"></script>
-        <script src="book-a0b12cfe.js"></script>
+        <script src="../clipboard-1626706a.min.js"></script>
+        <script src="../highlight-abc7f01d.js"></script>
+        <script src="../book-a0b12cfe.js"></script>
 
         <!-- Custom JS scripts -->
 
