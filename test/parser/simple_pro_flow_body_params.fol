@@ -1,0 +1,1 @@
+pro main(left: int, right: int): int => return left;

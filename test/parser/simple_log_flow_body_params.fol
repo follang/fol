@@ -1,0 +1,1 @@
+log ready(left: int, right: int): bol => return left;
