@@ -182,12 +182,34 @@ impl AstParser {
             let _ = tokens.bump();
             self.parse_routine_body_with_inquiries(tokens, "Expected '}' to close lambda body")?
         } else {
-            (
-                vec![AstNode::Return {
-                    value: Some(Box::new(self.parse_logical_expression(tokens)?)),
-                }],
-                Vec::new(),
-            )
+            let body = vec![AstNode::Return {
+                value: Some(Box::new(self.parse_logical_expression(tokens)?)),
+            }];
+            let mut inquiries = Vec::new();
+            let mut inquiry_targets = HashSet::new();
+            loop {
+                self.skip_ignorable(tokens);
+                let parsed = self.parse_optional_inquiry_clause(tokens)?;
+                if parsed.is_empty() {
+                    break;
+                }
+
+                for inquiry in parsed {
+                    let target = match &inquiry {
+                        AstNode::Inquiry { target, .. } => target.clone(),
+                        _ => String::new(),
+                    };
+                    if !inquiry_targets.insert(target.clone()) {
+                        let token = tokens.curr(false)?;
+                        return Err(Box::new(ParseError::from_token(
+                            &token,
+                            format!("Duplicate inquiry clause for '{}'", target),
+                        )));
+                    }
+                    inquiries.push(inquiry);
+                }
+            }
+            (body, inquiries)
         };
 
         Ok(AstNode::AnonymousFun {

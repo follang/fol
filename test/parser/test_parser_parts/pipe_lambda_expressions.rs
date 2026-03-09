@@ -188,6 +188,39 @@ fn test_pipe_lambda_inquiry_clauses_parsing() {
 }
 
 #[test]
+fn test_expression_pipe_lambda_inquiry_clauses_parsing() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_pipe_lambda_expr_inquiry.fol")
+        .expect("Should read expression pipe lambda inquiry fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should preserve inquiry clauses on expression pipe lambdas");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::FunDecl { name, body, .. }
+                if name == "make"
+                    && body.iter().any(|stmt| matches!(
+                        stmt,
+                        AstNode::Return { value: Some(value) }
+                        if matches!(
+                            value.as_ref(),
+                            AstNode::AnonymousFun { inquiries, .. }
+                            if inquiries.len() == 1
+                                && matches!(&inquiries[0], AstNode::Inquiry { target, body } if target == "self" && body.len() == 1)
+                        )
+                    ))
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
 fn test_pipe_lambda_rejects_duplicate_parameters() {
     let mut file_stream =
         FileStream::from_file("test/parser/simple_pipe_lambda_duplicate_param.fol")
