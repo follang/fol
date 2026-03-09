@@ -86,6 +86,34 @@ fn test_blueprint_standard_declaration_parsing() {
 }
 
 #[test]
+fn test_blueprint_standard_accepts_routine_members() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_std_blueprint_methods.fol")
+        .expect("Should read blueprint routine-member standard fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse routine members in blueprint standards");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::StdDecl { name, kind: StandardKind::Blueprint, body, .. }
+                    if name == "geometry"
+                        && body.iter().any(|stmt| matches!(stmt, AstNode::VarDecl { name, .. } if name == "color"))
+                        && body.iter().any(|stmt| matches!(stmt, AstNode::FunDecl { name, body, .. } if name == "describe" && !body.is_empty()))
+                        && body.iter().any(|stmt| matches!(stmt, AstNode::ProDecl { name, body, .. } if name == "reset" && body.is_empty()))
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
 fn test_extended_standard_declaration_parsing() {
     let mut file_stream = FileStream::from_file("test/parser/simple_std_extended.fol")
         .expect("Should read extended standard test file");

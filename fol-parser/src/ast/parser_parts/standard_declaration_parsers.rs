@@ -285,6 +285,22 @@ impl AstParser {
                 continue;
             }
 
+            if matches!(
+                token.key(),
+                KEYWORD::Keyword(BUILDIN::Fun)
+                    | KEYWORD::Keyword(BUILDIN::Log)
+                    | KEYWORD::Keyword(BUILDIN::Pro)
+            ) {
+                let member_anchor = self.peek_standard_member_anchor_token(tokens);
+                let member = self.parse_standard_routine_signature(tokens)?;
+                let key = self.standard_member_key(&member);
+                if !seen_members.insert(key.clone()) {
+                    return Err(self.duplicate_standard_member_error(member_anchor, &token, &key));
+                }
+                body.push(member);
+                continue;
+            }
+
             if self.lookahead_binding_alternative(tokens).is_some() {
                 let member_anchor = self.peek_standard_member_anchor_token(tokens);
                 let members = self.parse_binding_alternative_decl(tokens)?;
@@ -315,7 +331,8 @@ impl AstParser {
 
             return Err(Box::new(ParseError::from_token(
                 &token,
-                "Blueprint standards currently support only field declarations".to_string(),
+                "Blueprint standards currently support only field and routine declarations"
+                    .to_string(),
             )));
         }
 
