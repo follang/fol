@@ -1,0 +1,1 @@
+fun[] id(T): T = (value: T) => return value;
