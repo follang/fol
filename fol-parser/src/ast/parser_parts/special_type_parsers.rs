@@ -411,6 +411,13 @@ impl AstParser {
                 return Ok(args);
             }
 
+            if Self::is_missing_type_reference_close_token(&token.key()) {
+                return Err(Box::new(ParseError::from_token(
+                    &token,
+                    "Expected closing ']' in type reference".to_string(),
+                )));
+            }
+
             args.push(self.parse_type_reference_tokens(tokens)?);
             self.skip_ignorable(tokens);
 
