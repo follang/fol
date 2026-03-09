@@ -468,6 +468,10 @@ impl AstParser {
             }
 
             self.skip_ignorable(tokens);
+            let captures = self.parse_optional_routine_capture_list(tokens)?;
+            self.ensure_unique_capture_names(&captures)?;
+
+            self.skip_ignorable(tokens);
             let open_body = tokens.curr(false)?;
             if !matches!(open_body.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
                 return Err(Box::new(ParseError::from_token(
@@ -495,7 +499,7 @@ impl AstParser {
                 options,
                 generics: Vec::new(),
                 name,
-                captures: Vec::new(),
+                captures,
                 params,
                 return_type,
                 error_type,

@@ -177,3 +177,28 @@ fn test_alternative_logical_header_with_params() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_alternative_function_header_with_captures() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_fun_alt_header_capture.fol")
+        .expect("Should read alternative function-header capture fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse captures on alternative function headers");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::FunDecl { name, captures, params, .. }
+                if name == "add"
+                    && params.len() == 1
+                    && captures == &vec!["n".to_string()]
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
