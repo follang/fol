@@ -69,15 +69,13 @@ impl AstParser {
                         return Ok(bindings);
                     }
 
+                    let binding_token = tokens.curr(false)?;
                     let binding = self.parse_rolling_binding(tokens)?;
                     if !seen_names.insert(binding.name.clone()) {
-                        return Err(Box::new(ParseError {
-                            message: format!("Duplicate rolling binding '{}'", binding.name),
-                            file: None,
-                            line: 0,
-                            column: 0,
-                            length: 0,
-                        }));
+                        return Err(Box::new(ParseError::from_token(
+                            &binding_token,
+                            format!("Duplicate rolling binding '{}'", binding.name),
+                        )));
                     }
                     bindings.push(binding);
                     self.skip_ignorable(tokens);
@@ -114,15 +112,13 @@ impl AstParser {
         let mut bindings = Vec::new();
         let mut seen_names = HashSet::new();
         for _ in 0..64 {
+            let binding_token = tokens.curr(false)?;
             let binding = self.parse_rolling_binding(tokens)?;
             if !seen_names.insert(binding.name.clone()) {
-                return Err(Box::new(ParseError {
-                    message: format!("Duplicate rolling binding '{}'", binding.name),
-                    file: None,
-                    line: 0,
-                    column: 0,
-                    length: 0,
-                }));
+                return Err(Box::new(ParseError::from_token(
+                    &binding_token,
+                    format!("Duplicate rolling binding '{}'", binding.name),
+                )));
             }
             bindings.push(binding);
             self.skip_ignorable(tokens);

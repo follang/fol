@@ -295,6 +295,10 @@ fn test_rolling_expression_rejects_duplicate_binders() {
         "Duplicate rolling binders should report the repeated name, got: {}",
         parse_error
     );
+    assert!(
+        parse_error.line() > 0 && parse_error.column() > 0,
+        "Duplicate rolling binders should carry a concrete source location"
+    );
 }
 
 #[test]
