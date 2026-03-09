@@ -205,3 +205,46 @@ fn test_semicolon_separated_inquiry_targets_keep_structural_variants() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_named_routine_inquiries_keep_named_quoted_and_qualified_targets() {
+    for (path, expected) in [
+        (
+            "test/parser/simple_fun_inquiry_named_target.fol",
+            InquiryTarget::Named("cache".to_string()),
+        ),
+        (
+            "test/parser/simple_fun_inquiry_quoted_target.fol",
+            InquiryTarget::Quoted("cache".to_string()),
+        ),
+        (
+            "test/parser/simple_fun_inquiry_qualified_target.fol",
+            InquiryTarget::Qualified(vec!["pkg".to_string(), "cache".to_string()]),
+        ),
+    ] {
+        let mut file_stream = FileStream::from_file(path).expect("Should read inquiry fixture");
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should preserve inquiry target structure");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                let Some(AstNode::FunDecl { inquiries, .. }) =
+                    declarations.iter().find(|node| matches!(node, AstNode::FunDecl { .. }))
+                else {
+                    panic!("Expected a function declaration");
+                };
+
+                assert!(
+                    matches!(&inquiries[0], AstNode::Inquiry { target, .. } if target == &expected),
+                    "Expected first inquiry target {:?} for fixture {}",
+                    expected,
+                    path
+                );
+            }
+            _ => panic!("Expected program node"),
+        }
+    }
+}
