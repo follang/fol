@@ -60,6 +60,12 @@ impl AstParser {
             return self.parse_if_stmt(tokens);
         }
 
+        if matches!(token.key(), KEYWORD::Keyword(BUILDIN::When))
+            && self.lookahead_pipe_stage_has_body_after_parens(tokens)
+        {
+            return self.parse_when_stmt(tokens);
+        }
+
         if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Return)) {
             return self.parse_return_stmt(tokens);
         }

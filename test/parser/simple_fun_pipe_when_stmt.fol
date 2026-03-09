@@ -1,0 +1,6 @@
+fun decide(value: int): int = {
+    return value | when(this) {
+        is(0) => 0;
+        * => this;
+    };
+}
