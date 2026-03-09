@@ -279,3 +279,28 @@ fn test_named_inquiry_target_parsing() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_quoted_inquiry_targets_parsing() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_fun_inquiry_quoted_target.fol")
+        .expect("Should read quoted inquiry target fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse quoted inquiry targets");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::FunDecl { name, inquiries, .. }
+                if name == "inspect"
+                    && inquiries.iter().any(|node| matches!(node, AstNode::Inquiry { target, .. } if target == "cache"))
+                    && inquiries.iter().any(|node| matches!(node, AstNode::Inquiry { target, .. } if target == "sink"))
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}

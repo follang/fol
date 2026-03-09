@@ -1,0 +1,6 @@
+fun[] inspect(value: int): int = {
+    return value;
+    where("cache"; 'sink') {
+        cache;
+    }
+}

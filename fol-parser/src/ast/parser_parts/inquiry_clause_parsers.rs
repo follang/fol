@@ -277,12 +277,19 @@ impl AstParser {
         loop {
             self.skip_ignorable(tokens);
             let target = tokens.curr(false)?;
-            let target_name = Self::token_to_named_label(&target).ok_or_else(|| {
-                Box::new(ParseError::from_token(
-                    &target,
-                    "Expected inquiry target name".to_string(),
-                )) as Box<dyn Glitch>
-            })?;
+            let target_name = match target.key() {
+                KEYWORD::Literal(LITERAL::Stringy) => target
+                    .con()
+                    .trim()
+                    .trim_matches(|c| c == '"' || c == '\'')
+                    .to_string(),
+                _ => Self::token_to_named_label(&target).ok_or_else(|| {
+                    Box::new(ParseError::from_token(
+                        &target,
+                        "Expected inquiry target name".to_string(),
+                    )) as Box<dyn Glitch>
+                })?,
+            };
             if !seen_targets.insert(target_name.clone()) {
                 return Err(Box::new(ParseError::from_token(
                     &target,
