@@ -1,6 +1,49 @@
 use super::*;
 
 impl AstParser {
+    fn lookahead_parenthesized_generic_header_before_colon(
+        &self,
+        tokens: &fol_lexer::lexer::stage3::Elements,
+    ) -> bool {
+        let current = match tokens.curr(false) {
+            Ok(token) => token,
+            Err(_) => return false,
+        };
+        if !matches!(current.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
+            return false;
+        }
+
+        let mut depth = 1usize;
+        for candidate in tokens.next_vec() {
+            let token = match candidate {
+                Ok(token) => token,
+                Err(_) => continue,
+            };
+            let key = token.key();
+            if key.is_void() || key.is_comment() {
+                continue;
+            }
+
+            match key {
+                KEYWORD::Symbol(SYMBOL::RoundO) => depth += 1,
+                KEYWORD::Symbol(SYMBOL::RoundC) => {
+                    if depth == 0 {
+                        return false;
+                    }
+                    depth -= 1;
+                    if depth == 0 {
+                        continue;
+                    }
+                }
+                KEYWORD::Symbol(SYMBOL::Colon) if depth == 0 => return true,
+                _ if depth == 0 => return false,
+                _ => {}
+            }
+        }
+
+        false
+    }
+
     pub(super) fn parse_def_decl(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
@@ -414,6 +457,19 @@ impl AstParser {
         )?;
 
         self.skip_ignorable(tokens);
+        let alt_generics = if self.lookahead_parenthesized_generic_header_before_colon(tokens) {
+            let open = tokens.curr(false)?;
+            if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
+                Vec::new()
+            } else {
+                let _ = tokens.bump();
+                self.parse_generic_list(tokens)?
+            }
+        } else {
+            Vec::new()
+        };
+
+        self.skip_ignorable(tokens);
         if matches!(
             tokens.curr(false).map(|token| token.key().clone()),
             Ok(KEYWORD::Symbol(SYMBOL::Colon))
@@ -497,7 +553,7 @@ impl AstParser {
 
             return Ok(AstNode::FunDecl {
                 options,
-                generics: Vec::new(),
+                generics: alt_generics,
                 name,
                 captures,
                 params,

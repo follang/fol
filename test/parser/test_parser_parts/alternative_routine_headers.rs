@@ -252,3 +252,36 @@ fn test_alternative_logical_header_with_captures() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_alternative_function_header_with_generics() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_fun_alt_header_generics.fol")
+        .expect("Should read alternative generic function-header fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse alternative function headers with generics");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::FunDecl {
+                    name,
+                    generics,
+                    params,
+                    return_type: Some(FolType::Named { name: type_name }),
+                    ..
+                }
+                if name == "id"
+                    && generics.len() == 1
+                    && generics[0].name == "T"
+                    && params.len() == 1
+                    && type_name == "T"
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
