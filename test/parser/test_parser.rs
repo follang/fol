@@ -134,6 +134,9 @@ mod named_function_types;
 #[path = "test_parser_parts/nil_literal_expressions.rs"]
 mod nil_literal_expressions;
 #[cfg(test)]
+#[path = "test_parser_parts/object_type_markers.rs"]
+mod object_type_markers;
+#[cfg(test)]
 #[path = "test_parser_parts/report_call_resolution.rs"]
 mod report_call_resolution;
 #[cfg(test)]

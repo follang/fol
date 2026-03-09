@@ -1,0 +1,3 @@
+typ Handle: obj[] = {
+    var active: bol;
+};

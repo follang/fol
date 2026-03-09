@@ -1,0 +1,3 @@
+typ File: obj = {
+    var name: str;
+};
