@@ -200,9 +200,20 @@ impl AstParser {
                 continue;
             }
 
+            if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Typ)) {
+                let member_anchor = self.peek_standard_member_anchor_token(tokens);
+                let member = self.parse_type_decl(tokens)?;
+                let key = self.standard_member_key(&member);
+                if !seen_members.insert(key.clone()) {
+                    return Err(self.duplicate_standard_member_error(member_anchor, &token, &key));
+                }
+                body.push(member);
+                continue;
+            }
+
             return Err(Box::new(ParseError::from_token(
                 &token,
-                "Protocol standards currently support only routine and alias declarations"
+                "Protocol standards currently support only routine, alias, and type declarations"
                     .to_string(),
             )));
         }
@@ -569,6 +580,7 @@ impl AstParser {
                 format!("{}#{}", name, params.len())
             }
             AstNode::AliasDecl { name, .. } => name.clone(),
+            AstNode::TypeDecl { name, .. } => name.clone(),
             AstNode::VarDecl { name, .. } | AstNode::LabDecl { name, .. } => name.clone(),
             _ => String::new(),
         }
@@ -653,6 +665,16 @@ impl AstParser {
             }
             KEYWORD::Keyword(BUILDIN::Ali) => {
                 index += 1;
+                self.find_named_label_in_window(&significant, index)
+            }
+            KEYWORD::Keyword(BUILDIN::Typ) => {
+                index += 1;
+                index = self.skip_balanced_window(
+                    &significant,
+                    index,
+                    KEYWORD::Symbol(SYMBOL::RoundO),
+                    KEYWORD::Symbol(SYMBOL::RoundC),
+                )?;
                 self.find_named_label_in_window(&significant, index)
             }
             _ => None,
