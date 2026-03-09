@@ -331,6 +331,14 @@ impl AstParser {
                 self.parse_if_stmt(tokens)?
             } else if matches!(key, KEYWORD::Keyword(BUILDIN::When)) {
                 self.parse_when_stmt(tokens)?
+            } else if matches!(
+                key,
+                KEYWORD::Keyword(BUILDIN::While)
+                    | KEYWORD::Keyword(BUILDIN::Loop)
+                    | KEYWORD::Keyword(BUILDIN::For)
+                    | KEYWORD::Keyword(BUILDIN::Each)
+            ) {
+                self.parse_loop_stmt(tokens)?
             } else if matches!(key, KEYWORD::Symbol(SYMBOL::CurlyO)) {
                 self.parse_block_stmt(tokens)?
             } else if (AstParser::token_can_be_logical_name(&key)
