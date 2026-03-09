@@ -18,6 +18,12 @@ mod assignments_and_logical_expressions;
 #[path = "test_parser_parts/anonymous_function_expressions.rs"]
 mod anonymous_function_expressions;
 #[cfg(test)]
+#[path = "test_parser_parts/anonymous_capture_separators.rs"]
+mod anonymous_capture_separators;
+#[cfg(test)]
+#[path = "test_parser_parts/anonymous_capture_lists.rs"]
+mod anonymous_capture_lists;
+#[cfg(test)]
 #[path = "test_parser_parts/basic_declarations.rs"]
 mod basic_declarations;
 #[cfg(test)]
