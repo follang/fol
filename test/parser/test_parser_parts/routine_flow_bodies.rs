@@ -158,3 +158,78 @@ fn test_logical_declaration_supports_parameterized_flow_body() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_function_declaration_supports_flow_body_inquiries() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_fun_flow_body_inquiry.fol")
+        .expect("Should read function flow-body inquiry fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should preserve inquiries on function flow bodies");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::FunDecl { name, inquiries, .. }
+                if name == "add"
+                    && inquiries.len() == 1
+                    && matches!(&inquiries[0], AstNode::Inquiry { target, body } if target == "self" && !body.is_empty())
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_procedure_declaration_supports_flow_body_inquiries() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_pro_flow_body_inquiry.fol")
+        .expect("Should read procedure flow-body inquiry fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should preserve inquiries on procedure flow bodies");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::ProDecl { name, inquiries, .. }
+                if name == "main"
+                    && inquiries.len() == 1
+                    && matches!(&inquiries[0], AstNode::Inquiry { target, body } if target == "this" && !body.is_empty())
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_logical_declaration_supports_flow_body_inquiries() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_log_flow_body_inquiry.fol")
+        .expect("Should read logical flow-body inquiry fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should preserve inquiries on logical flow bodies");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::FunDecl { name, inquiries, .. }
+                if name == "ready"
+                    && inquiries.len() == 1
+                    && matches!(&inquiries[0], AstNode::Inquiry { target, body } if target == "self" && !body.is_empty())
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
