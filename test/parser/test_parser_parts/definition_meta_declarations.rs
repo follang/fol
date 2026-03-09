@@ -188,3 +188,36 @@ fn test_macro_definitions_accept_grouped_parameters() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_macro_definitions_accept_semicolon_parameter_separators() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_def_macro_semicolon_params.fol")
+            .expect("Should read semicolon macro parameter definition test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse semicolon-separated macro parameters");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::DefDecl {
+                    name,
+                    params,
+                    def_type: FolType::Named { name: def_kind },
+                    ..
+                }
+                if name == "pair"
+                    && def_kind == "mac"
+                    && params.len() == 2
+                    && params[0].name == "left"
+                    && params[1].name == "right"
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
