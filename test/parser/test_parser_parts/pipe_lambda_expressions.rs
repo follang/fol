@@ -282,3 +282,37 @@ fn test_pipe_lambda_supports_default_parameters() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_pipe_lambda_supports_variadic_parameters() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_pipe_lambda_variadic_params.fol")
+            .expect("Should read variadic pipe lambda fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse variadic pipe lambda parameters");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::FunDecl { body, .. }
+                if body.iter().any(|stmt| matches!(
+                    stmt,
+                    AstNode::Return { value: Some(value) }
+                    if matches!(
+                        value.as_ref(),
+                        AstNode::AnonymousFun { params, .. }
+                        if params.len() == 2
+                            && matches!(params[0].param_type, FolType::Int { .. })
+                            && matches!(params[1].param_type, FolType::Sequence { .. })
+                    )
+                ))
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}

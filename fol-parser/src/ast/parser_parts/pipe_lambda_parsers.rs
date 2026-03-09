@@ -56,7 +56,18 @@ impl AstParser {
                 if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
                     let _ = tokens.bump();
                     self.skip_ignorable(tokens);
-                    param_type = self.parse_type_reference_tokens(tokens)?;
+                    if matches!(
+                        tokens.curr(false)?.key(),
+                        KEYWORD::Operator(OPERATOR::Dotdotdot)
+                    ) {
+                        let _ = tokens.bump();
+                        self.skip_ignorable(tokens);
+                        param_type = FolType::Sequence {
+                            element_type: Box::new(self.parse_type_reference_tokens(tokens)?),
+                        };
+                    } else {
+                        param_type = self.parse_type_reference_tokens(tokens)?;
+                    }
                 }
             }
 
