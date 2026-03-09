@@ -128,3 +128,27 @@ fn test_record_type_contracts_accept_keyword_and_quoted_names() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_constrained_type_generics_do_not_become_contracts() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_typ_constrained_record_generics.fol")
+            .expect("Should read constrained record-generic fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should keep constrained type generics separate from contracts");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::TypeDecl { name, generics, contracts, type_def: TypeDefinition::Record { .. }, .. }
+                if name == "Box" && generics.len() == 1 && generics[0].name == "T" && contracts.is_empty()
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
