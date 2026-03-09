@@ -594,3 +594,27 @@ fn test_inquiry_clause_accepts_flow_declaration_body() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_inquiry_clause_accepts_flow_builtin_body() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_fun_inquiry_flow_builtin.fol")
+        .expect("Should read inquiry flow-builtin fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse builtin flow bodies in inquiry clauses");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::FunDecl { inquiries, .. }
+                if matches!(&inquiries[0], AstNode::Inquiry { body, .. }
+                    if matches!(body.as_slice(), [AstNode::FunctionCall { name, .. }] if name == "report"))
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}

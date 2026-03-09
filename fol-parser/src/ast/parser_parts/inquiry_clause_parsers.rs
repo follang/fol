@@ -374,6 +374,14 @@ impl AstParser {
                 } else {
                     AstNode::Block { statements: nodes }
                 }
+            } else if matches!(
+                key,
+                KEYWORD::Keyword(BUILDIN::Panic)
+                    | KEYWORD::Keyword(BUILDIN::Report)
+                    | KEYWORD::Keyword(BUILDIN::Check)
+                    | KEYWORD::Keyword(BUILDIN::Assert)
+            ) {
+                self.parse_builtin_call_stmt(tokens)?
             } else {
                 self.parse_logical_expression(tokens)?
             };
