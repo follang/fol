@@ -1,0 +1,7 @@
+fun[] routine_stage(value: int): int = {
+    return value
+        | imp ImplTarget: int;
+        | fun[] local_stage(item: int): int = {
+            return item;
+        };
+}

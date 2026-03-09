@@ -142,6 +142,26 @@ impl AstParser {
             return self.parse_seg_decl(tokens);
         }
 
+        if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Imp)) {
+            return self.parse_imp_decl(tokens);
+        }
+
+        if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Std)) && self.lookahead_is_std_decl(tokens) {
+            return self.parse_std_decl(tokens);
+        }
+
+        if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Fun)) {
+            return self.parse_fun_decl(tokens);
+        }
+
+        if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Log)) {
+            return self.parse_log_decl(tokens);
+        }
+
+        if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Pro)) {
+            return self.parse_pro_decl(tokens);
+        }
+
         if matches!(
             token.key(),
             KEYWORD::Keyword(BUILDIN::Panic)
