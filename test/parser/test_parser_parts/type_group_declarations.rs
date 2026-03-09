@@ -134,3 +134,53 @@ fn test_multi_name_type_declarations_share_object_definitions() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_multi_name_type_declarations_reject_generic_headers() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_typ_multi_names_with_generics.fol")
+            .expect("Should read invalid multi-name generic type fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject generics on multi-name type declarations");
+
+    assert!(errors.iter().any(|error| {
+        error
+            .as_any()
+            .downcast_ref::<ParseError>()
+            .map(|parse_error| {
+                parse_error.to_string().contains(
+                    "Type generics and explicit contracts are currently supported only on single-name type declarations",
+                )
+            })
+            .unwrap_or(false)
+    }));
+}
+
+#[test]
+fn test_multi_name_type_declarations_reject_explicit_contract_headers() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_typ_multi_names_with_contracts.fol")
+            .expect("Should read invalid multi-name contract type fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject explicit contracts on multi-name type declarations");
+
+    assert!(errors.iter().any(|error| {
+        error
+            .as_any()
+            .downcast_ref::<ParseError>()
+            .map(|parse_error| {
+                parse_error.to_string().contains(
+                    "Type generics and explicit contracts are currently supported only on single-name type declarations",
+                )
+            })
+            .unwrap_or(false)
+    }));
+}
