@@ -243,6 +243,36 @@ fn test_record_field_binding_alternatives_are_retained() {
 }
 
 #[test]
+fn test_entry_variant_binding_alternatives_are_retained() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_typ_entry_variant_alternatives.fol")
+            .expect("Should read entry variant alternative fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse binding alternatives in entry variants");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::TypeDecl {
+                    name,
+                    type_def: TypeDefinition::Entry { variant_meta, .. },
+                    ..
+                }
+                if name == "Result"
+                    && matches!(variant_meta.get("Ok"), Some(EntryVariantMeta { options, .. }) if options.contains(&VarOption::Export) && options.contains(&VarOption::Mutable))
+                    && matches!(variant_meta.get("Err"), Some(EntryVariantMeta { options, default: Some(_) }) if options.contains(&VarOption::Hidden) && options.contains(&VarOption::Immutable))
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
 fn test_grouped_record_duplicate_field_error_anchors_to_duplicate_name() {
     let mut file_stream =
         FileStream::from_file("test/parser/simple_typ_record_grouped_duplicate_field.fol")

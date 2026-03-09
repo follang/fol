@@ -28,7 +28,27 @@ impl AstParser {
                 });
             }
 
-            let default_options = match token.key() {
+            let default_options = if let Some((keyword, options)) =
+                self.lookahead_binding_alternative(tokens)
+            {
+                match keyword {
+                    "var" | "con" => {
+                        let _ = tokens.bump();
+                        self.skip_ignorable(tokens);
+                        let _ = tokens.bump();
+                        self.skip_ignorable(tokens);
+                        options
+                    }
+                    _ => {
+                        return Err(Box::new(ParseError::from_token(
+                            &token,
+                            "Expected 'var', 'lab', or 'con' in type entry definition"
+                                .to_string(),
+                        )))
+                    }
+                }
+            } else {
+                match token.key() {
                 KEYWORD::Keyword(BUILDIN::Var) => {
                     let _ = tokens.bump();
                     self.parse_binding_options(
@@ -55,6 +75,7 @@ impl AstParser {
                         &token,
                         "Expected 'var', 'lab', or 'con' in type entry definition".to_string(),
                     )))
+                }
                 }
             };
 
