@@ -287,3 +287,44 @@ fn test_record_type_routine_members_retain_inquiries() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_record_type_bodies_accept_grouped_type_members() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_typ_record_grouped_type_members.fol")
+            .expect("Should read grouped type-member fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should flatten grouped type members inside record bodies");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::TypeDecl {
+                    name,
+                    type_def: TypeDefinition::Record { members, .. },
+                    ..
+                }
+                if name == "Outer"
+                    && members.iter().any(|member| matches!(
+                        member,
+                        AstNode::TypeDecl { name, type_def: TypeDefinition::Record { .. }, .. }
+                        if name == "Inner"
+                    ))
+                    && members.iter().any(|member| matches!(
+                        member,
+                        AstNode::TypeDecl {
+                            name,
+                            type_def: TypeDefinition::Alias { target: FolType::Named { name: target } },
+                            ..
+                        } if name == "Label" && target == "str"
+                    ))
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}

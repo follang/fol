@@ -1,0 +1,8 @@
+typ Outer: rec = {
+    typ (
+        Inner: rec = {
+            var value: int;
+        };
+        Label: str;
+    )
+};
