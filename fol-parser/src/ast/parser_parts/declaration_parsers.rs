@@ -14,6 +14,9 @@ impl AstParser {
         }
 
         let mut depth = 1usize;
+        let mut header_closed = false;
+        let mut saw_colon_after_header = false;
+        let mut saw_assign_after_header = false;
         for candidate in tokens.next_vec() {
             let token = match candidate {
                 Ok(token) => token,
@@ -24,19 +27,33 @@ impl AstParser {
                 continue;
             }
 
-            match key {
-                KEYWORD::Symbol(SYMBOL::RoundO) => depth += 1,
-                KEYWORD::Symbol(SYMBOL::RoundC) => {
-                    if depth == 0 {
-                        return false;
+            if !header_closed {
+                match key {
+                    KEYWORD::Symbol(SYMBOL::RoundO) => depth += 1,
+                    KEYWORD::Symbol(SYMBOL::RoundC) => {
+                        if depth == 0 {
+                            return false;
+                        }
+                        depth -= 1;
+                        if depth == 0 {
+                            header_closed = true;
+                        }
                     }
-                    depth -= 1;
-                    if depth == 0 {
-                        continue;
-                    }
+                    _ => {}
                 }
-                KEYWORD::Symbol(SYMBOL::Colon) if depth == 0 => return true,
-                _ if depth == 0 => return false,
+                continue;
+            }
+
+            match key {
+                KEYWORD::Symbol(SYMBOL::Colon) => {
+                    saw_colon_after_header = true;
+                }
+                KEYWORD::Symbol(SYMBOL::Equal) if saw_colon_after_header => {
+                    saw_assign_after_header = true;
+                }
+                KEYWORD::Operator(OPERATOR::Flow) if saw_colon_after_header => return false,
+                KEYWORD::Symbol(SYMBOL::RoundO) if saw_assign_after_header => return true,
+                KEYWORD::Symbol(SYMBOL::CurlyO) if saw_assign_after_header => return false,
                 _ => {}
             }
         }

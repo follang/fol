@@ -449,10 +449,18 @@ impl AstParser {
                 let _ = tokens.bump();
                 return Ok(args);
             }
-            if sep.key().is_terminal() || matches!(sep.key(), KEYWORD::Void(_)) {
+            if sep.key().is_terminal()
+                || matches!(sep.key(), KEYWORD::Void(_))
+                || matches!(
+                    sep.key(),
+                    KEYWORD::Symbol(SYMBOL::RoundC)
+                        | KEYWORD::Symbol(SYMBOL::CurlyC)
+                        | KEYWORD::Symbol(SYMBOL::Equal)
+                )
+            {
                 return Err(Box::new(ParseError::from_token(
                     &sep,
-                    "Expected ',', ';', or closing ']' in type reference".to_string(),
+                    "Expected closing ']' in type reference".to_string(),
                 )));
             }
 
