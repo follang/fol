@@ -703,8 +703,13 @@ fn test_extended_standard_accepts_empty_kind_brackets() {
             assert!(declarations.iter().any(|node| {
                 matches!(
                     node,
-                    AstNode::StdDecl { name, kind: StandardKind::Extended, .. }
-                    if name == "geometry"
+                    AstNode::StdDecl {
+                        name,
+                        kind: StandardKind::Extended,
+                        kind_options,
+                        ..
+                    }
+                    if name == "geometry" && kind_options == &vec![DeclOption::Normal]
                 )
             }));
         }
