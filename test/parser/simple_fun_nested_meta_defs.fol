@@ -1,0 +1,5 @@
+fun build(): int = {
+    def '$'(a: any): mac = '.to_string';
+    def '+var': alt = 'var[+]';
+    return 0;
+}
