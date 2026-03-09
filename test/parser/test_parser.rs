@@ -36,6 +36,9 @@ mod binding_options;
 #[path = "test_parser_parts/call_and_postfix_expressions.rs"]
 mod call_and_postfix_expressions;
 #[cfg(test)]
+#[path = "test_parser_parts/call_argument_separators.rs"]
+mod call_argument_separators;
+#[cfg(test)]
 #[path = "test_parser_parts/comparison_keyword_expressions.rs"]
 mod comparison_keyword_expressions;
 #[cfg(test)]
