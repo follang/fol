@@ -9,6 +9,9 @@ use fol_parser::ast::{
 use fol_stream::FileStream;
 
 #[cfg(test)]
+#[path = "test_parser_parts/alternative_routine_headers.rs"]
+mod alternative_routine_headers;
+#[cfg(test)]
 #[path = "test_parser_parts/assignments_and_logical_expressions.rs"]
 mod assignments_and_logical_expressions;
 #[cfg(test)]
