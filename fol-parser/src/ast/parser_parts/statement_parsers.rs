@@ -497,7 +497,10 @@ impl AstParser {
         let _ = tokens.bump();
 
         self.skip_ignorable(tokens);
-        let body = if matches!(loop_token.key(), KEYWORD::Keyword(BUILDIN::While | BUILDIN::Loop)) {
+        let body = if matches!(
+            loop_token.key(),
+            KEYWORD::Keyword(BUILDIN::While | BUILDIN::Loop | BUILDIN::For | BUILDIN::Each)
+        ) {
             self.parse_branch_body(tokens)?
         } else {
             let open_body = tokens.curr(false)?;

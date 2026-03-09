@@ -63,6 +63,23 @@ fn test_while_and_loop_support_flow_bodies() {
 }
 
 #[test]
+fn test_for_and_each_support_flow_bodies() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_fun_for_each_flow_body.fol")
+        .expect("Should read for/each flow-body fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse flow bodies for for and each");
+
+    let bodies = collect_loop_bodies(ast);
+    assert_eq!(bodies.len(), 2);
+    assert!(matches!(bodies[0].as_slice(), [AstNode::Identifier { name }] if name == "item"));
+    assert!(matches!(bodies[1].as_slice(), [AstNode::Identifier { name }] if name == "current"));
+}
+
+#[test]
 fn test_use_declaration_parsing() {
     let mut file_stream =
         FileStream::from_file("test/parser/simple_use.fol").expect("Should read use test file");
