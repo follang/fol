@@ -112,6 +112,10 @@ mod lexer_tests {
             keyword_strings.contains(&"on".to_string()),
             "Should contain 'on' keyword"
         );
+        assert!(
+            keyword_strings.contains(&"while".to_string()),
+            "Should contain 'while' keyword"
+        );
     }
 
     #[test]
