@@ -275,3 +275,48 @@ fn test_matrix_types_accept_semicolon_separators() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_numeric_container_types_accept_trailing_separators() {
+    let mut file_stream = FileStream::from_file(
+        "test/parser/simple_typ_numeric_types_trailing_separator.fol",
+    )
+    .expect("Should read trailing numeric-type fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse trailing numeric container separators");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::TypeDecl {
+                    name,
+                    type_def: TypeDefinition::Alias {
+                        target: FolType::Array { element_type, size: Some(8) }
+                    },
+                    ..
+                }
+                if name == "Buffer"
+                    && matches!(element_type.as_ref(), FolType::Int { .. })
+            )));
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::TypeDecl {
+                    name,
+                    type_def: TypeDefinition::Alias {
+                        target: FolType::Matrix { element_type, dimensions }
+                    },
+                    ..
+                }
+                if name == "Grid"
+                    && matches!(element_type.as_ref(), FolType::Int { .. })
+                    && dimensions == &vec![3, 4]
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}

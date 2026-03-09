@@ -500,6 +500,15 @@ impl AstParser {
         }
         let _ = tokens.bump();
         self.skip_ignorable(tokens);
+        if matches!(
+            tokens.curr(false).map(|token| token.key()),
+            Ok(KEYWORD::Symbol(SYMBOL::SquarC))
+        ) {
+            return Err(Box::new(ParseError::from_token(
+                &tokens.curr(false)?,
+                "Expected decimal array size in arr[...]".to_string(),
+            )));
+        }
 
         let size_token = tokens.curr(false)?;
         let size = size_token.con().trim().parse::<usize>().map_err(|_| {
@@ -511,6 +520,13 @@ impl AstParser {
         let _ = tokens.bump();
 
         self.skip_ignorable(tokens);
+        if matches!(
+            tokens.curr(false).map(|token| token.key()),
+            Ok(KEYWORD::Symbol(SYMBOL::Comma) | KEYWORD::Symbol(SYMBOL::Semi))
+        ) {
+            let _ = tokens.bump();
+            self.skip_ignorable(tokens);
+        }
         let close = tokens.curr(false)?;
         if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
             return Err(Box::new(ParseError::from_token(
