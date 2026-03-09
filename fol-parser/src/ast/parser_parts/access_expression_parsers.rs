@@ -252,17 +252,30 @@ impl AstParser {
 
         if matches!(
             tokens.curr(false).map(|token| token.key()),
-            Ok(KEYWORD::Symbol(SYMBOL::Comma))
+            Ok(KEYWORD::Symbol(SYMBOL::Comma) | KEYWORD::Symbol(SYMBOL::Semi))
         ) {
             let mut patterns = vec![start.clone()];
             for _ in 0..64 {
                 let _ = tokens.bump();
                 self.skip_ignorable(tokens);
+                if matches!(
+                    tokens.curr(false).map(|token| token.key()),
+                    Ok(KEYWORD::Symbol(SYMBOL::SquarC))
+                ) {
+                    let _ = tokens.bump();
+                    return Ok(AstNode::PatternAccess {
+                        container: Box::new(node),
+                        patterns,
+                    });
+                }
                 patterns.push(self.parse_logical_expression(tokens)?);
                 self.skip_ignorable(tokens);
 
                 let token = tokens.curr(false)?;
-                if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
+                if matches!(
+                    token.key(),
+                    KEYWORD::Symbol(SYMBOL::Comma) | KEYWORD::Symbol(SYMBOL::Semi)
+                ) {
                     continue;
                 }
                 if matches!(token.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
@@ -275,7 +288,7 @@ impl AstParser {
 
                 return Err(Box::new(ParseError::from_token(
                     &token,
-                    "Expected ',' or ']' in pattern assignment target".to_string(),
+                    "Expected ',', ';', or ']' in pattern assignment target".to_string(),
                 )));
             }
         }
