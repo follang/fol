@@ -136,6 +136,17 @@ impl AstParser {
             });
         }
 
+        if matches!(
+            tokens.curr(false).map(|token| token.key()),
+            Ok(KEYWORD::Symbol(SYMBOL::SquarC))
+        ) {
+            let _ = tokens.bump();
+            return Ok(AstNode::PatternAccess {
+                container: Box::new(node),
+                patterns: Vec::new(),
+            });
+        }
+
         let start = self.parse_logical_expression(tokens)?;
         self.skip_ignorable(tokens);
 
@@ -244,6 +255,17 @@ impl AstParser {
                 start: None,
                 end,
                 reverse,
+            });
+        }
+
+        if matches!(
+            tokens.curr(false).map(|token| token.key()),
+            Ok(KEYWORD::Symbol(SYMBOL::SquarC))
+        ) {
+            let _ = tokens.bump();
+            return Ok(AstNode::PatternAccess {
+                container: Box::new(node),
+                patterns: Vec::new(),
             });
         }
 
