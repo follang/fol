@@ -25,3 +25,29 @@ fn test_function_declaration_supports_flow_body() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_procedure_declaration_supports_flow_body() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_pro_flow_body.fol")
+        .expect("Should read procedure flow-body fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse procedure declarations with flow bodies");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::ProDecl { name, params, return_type: Some(FolType::Int { .. }), body, inquiries, .. }
+                if name == "main"
+                    && params.is_empty()
+                    && inquiries.is_empty()
+                    && !body.is_empty()
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}

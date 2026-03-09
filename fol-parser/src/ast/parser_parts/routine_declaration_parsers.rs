@@ -483,13 +483,18 @@ impl AstParser {
 
             self.skip_ignorable(tokens);
             let assign = tokens.curr(false)?;
-            if !matches!(assign.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
+            if !matches!(
+                assign.key(),
+                KEYWORD::Symbol(SYMBOL::Equal) | KEYWORD::Operator(OPERATOR::Flow)
+            ) {
                 return Err(Box::new(ParseError::from_token(
                     &assign,
-                    "Expected '=' before procedure body".to_string(),
+                    "Expected '=' or '=>' before procedure body".to_string(),
                 )));
             }
-            let _ = tokens.bump();
+            if matches!(assign.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
+                let _ = tokens.bump();
+            }
 
             self.skip_ignorable(tokens);
             let mut params = Vec::new();
@@ -510,18 +515,9 @@ impl AstParser {
             let captures = self.parse_optional_routine_capture_list(tokens)?;
             self.ensure_unique_capture_names(&captures)?;
 
-            self.skip_ignorable(tokens);
-            let open_body = tokens.curr(false)?;
-            if !matches!(open_body.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
-                return Err(Box::new(ParseError::from_token(
-                    &open_body,
-                    "Expected '{' to start procedure body".to_string(),
-                )));
-            }
-            let _ = tokens.bump();
-
-            let (body, inquiries) = self.parse_routine_body_with_inquiries(
+            let (body, inquiries) = self.parse_named_routine_body(
                 tokens,
+                "Expected '{' or '=>' to start procedure body",
                 "Expected '}' to close procedure body",
             )?;
             let parameter_types = Self::parameter_type_map(&params);
@@ -585,26 +581,24 @@ impl AstParser {
 
         self.skip_ignorable(tokens);
         let assign = tokens.curr(false)?;
-        if !matches!(assign.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
+        if !matches!(
+            assign.key(),
+            KEYWORD::Symbol(SYMBOL::Equal) | KEYWORD::Operator(OPERATOR::Flow)
+        ) {
             return Err(Box::new(ParseError::from_token(
                 &assign,
-                "Expected '=' before procedure body".to_string(),
+                "Expected '=' or '=>' before procedure body".to_string(),
             )));
         }
-        let _ = tokens.bump();
-
-        self.skip_ignorable(tokens);
-        let open_body = tokens.curr(false)?;
-        if !matches!(open_body.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
-            return Err(Box::new(ParseError::from_token(
-                &open_body,
-                "Expected '{' to start procedure body".to_string(),
-            )));
+        if matches!(assign.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
+            let _ = tokens.bump();
         }
-        let _ = tokens.bump();
 
-        let (body, inquiries) =
-            self.parse_routine_body_with_inquiries(tokens, "Expected '}' to close procedure body")?;
+        let (body, inquiries) = self.parse_named_routine_body(
+            tokens,
+            "Expected '{' or '=>' to start procedure body",
+            "Expected '}' to close procedure body",
+        )?;
         let parameter_types = Self::parameter_type_map(&params);
         let routine_returns = self.routine_return_types.borrow().clone();
         Self::validate_report_usage(
