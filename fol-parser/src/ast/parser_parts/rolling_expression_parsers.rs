@@ -20,7 +20,10 @@ impl AstParser {
         self.skip_ignorable(tokens);
 
         let condition = if let Ok(token) = tokens.curr(false) {
-            if matches!(token.key(), KEYWORD::Keyword(BUILDIN::If)) {
+            if matches!(
+                token.key(),
+                KEYWORD::Keyword(BUILDIN::If) | KEYWORD::Keyword(BUILDIN::When)
+            ) {
                 let _ = tokens.bump();
                 self.skip_ignorable(tokens);
                 Some(Box::new(self.parse_logical_expression(tokens)?))
