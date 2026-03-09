@@ -44,3 +44,18 @@ fn test_scalar_type_missing_close_report_type_reference_close() {
         );
     }
 }
+
+#[test]
+fn test_optional_multiple_union_missing_close_report_type_reference_close() {
+    for path in [
+        "test/parser/simple_opt_type_missing_close.fol",
+        "test/parser/simple_mul_type_missing_close.fol",
+        "test/parser/simple_uni_type_missing_close.fol",
+    ] {
+        let message = first_parse_error_message(path);
+        assert!(
+            message.contains("Expected closing ']' in type reference"),
+            "Expected normalized missing-close diagnostic for fixture {path}, got: {message}",
+        );
+    }
+}
