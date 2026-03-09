@@ -201,6 +201,9 @@ mod use_paths;
 #[path = "test_parser_parts/variadic_parameters.rs"]
 mod variadic_parameters;
 #[cfg(test)]
+#[path = "test_parser_parts/while_loops.rs"]
+mod while_loops;
+#[cfg(test)]
 #[path = "test_parser_parts/routine_headers_and_when_forms.rs"]
 mod routine_headers_and_when_forms;
 #[cfg(test)]

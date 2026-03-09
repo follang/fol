@@ -1,0 +1,6 @@
+fun spin(): int = {
+    while(flag) {
+        break;
+    }
+    return 1;
+}

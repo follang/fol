@@ -459,6 +459,7 @@ impl AstParser {
     ) -> Result<AstNode, Box<dyn Glitch>> {
         let loop_token = tokens.curr(false)?;
         let keyword_name = match loop_token.key() {
+            KEYWORD::Keyword(BUILDIN::While) => "while",
             KEYWORD::Keyword(BUILDIN::Loop) => "loop",
             KEYWORD::Keyword(BUILDIN::For) => "for",
             KEYWORD::Keyword(BUILDIN::Each) => "each",

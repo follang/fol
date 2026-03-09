@@ -1,0 +1,4 @@
+while(ready) {
+    yeild value;
+    break;
+}

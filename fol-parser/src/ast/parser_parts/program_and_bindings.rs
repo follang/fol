@@ -488,7 +488,8 @@ impl AstParser {
 
             if matches!(
                 key,
-                KEYWORD::Keyword(BUILDIN::Loop)
+                KEYWORD::Keyword(BUILDIN::While)
+                    | KEYWORD::Keyword(BUILDIN::Loop)
                     | KEYWORD::Keyword(BUILDIN::For)
                     | KEYWORD::Keyword(BUILDIN::Each)
             ) {
