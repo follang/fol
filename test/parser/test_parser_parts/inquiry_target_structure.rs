@@ -167,3 +167,41 @@ fn test_qualified_duplicate_inquiry_targets_are_rejected() {
         "Expected duplicate inquiry diagnostic, got: {message}",
     );
 }
+
+#[test]
+fn test_semicolon_separated_inquiry_targets_keep_structural_variants() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_inquiry_target_semicolons.fol")
+            .expect("Should read semicolon inquiry target fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should keep semicolon-separated inquiry targets structurally");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            let Some(AstNode::FunDecl { inquiries, .. }) =
+                declarations.iter().find(|node| matches!(node, AstNode::FunDecl { .. }))
+            else {
+                panic!("Expected a function declaration");
+            };
+
+            assert!(matches!(
+                inquiries.as_slice(),
+                [
+                    AstNode::Inquiry {
+                        target: InquiryTarget::SelfValue,
+                        ..
+                    },
+                    AstNode::Inquiry {
+                        target: InquiryTarget::ThisValue,
+                        ..
+                    }
+                ]
+            ));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
