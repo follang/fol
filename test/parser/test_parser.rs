@@ -225,6 +225,9 @@ mod top_level_control_flow_and_calls;
 #[path = "test_parser_parts/type_definition_validation.rs"]
 mod type_definition_validation;
 #[cfg(test)]
+#[path = "test_parser_parts/type_option_separators.rs"]
+mod type_option_separators;
+#[cfg(test)]
 #[path = "test_parser_parts/type_member_metadata.rs"]
 mod type_member_metadata;
 #[cfg(test)]
