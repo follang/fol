@@ -1,0 +1,1 @@
+log[] ready: bol = (value: int) => return value > 0;

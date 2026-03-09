@@ -1,0 +1,1 @@
+pro[] main: int = (value: int) => return value;
