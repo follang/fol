@@ -78,6 +78,21 @@ impl AstParser {
             return Ok(vec![node]);
         }
 
+        if matches!(key, KEYWORD::Keyword(BUILDIN::Return)) {
+            let node = self.parse_return_stmt(tokens)?;
+            return Ok(vec![node]);
+        }
+
+        if matches!(key, KEYWORD::Keyword(BUILDIN::Break)) {
+            let node = self.parse_break_stmt(tokens)?;
+            return Ok(vec![node]);
+        }
+
+        if matches!(key, KEYWORD::Keyword(BUILDIN::Yeild)) {
+            let node = self.parse_yield_stmt(tokens)?;
+            return Ok(vec![node]);
+        }
+
         let node = if (AstParser::token_can_be_logical_name(&key)
             || matches!(key, KEYWORD::Literal(LITERAL::Stringy)))
             && self.lookahead_is_assignment(tokens)
