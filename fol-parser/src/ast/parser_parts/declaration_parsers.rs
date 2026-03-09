@@ -825,6 +825,21 @@ impl AstParser {
             let _ = tokens.bump();
 
             self.skip_ignorable(tokens);
+            let mut params = Vec::new();
+            if matches!(tokens.curr(false)?.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
+                let _ = tokens.bump();
+                let (parsed_params, first_untyped) = self.parse_routine_header_list(tokens)?;
+                if let Some(token) = first_untyped {
+                    return Err(Box::new(ParseError::from_token(
+                        &token,
+                        "Expected ':' after function parameter name".to_string(),
+                    )));
+                }
+                self.ensure_unique_parameter_names(&parsed_params, "parameter")?;
+                params = parsed_params;
+            }
+
+            self.skip_ignorable(tokens);
             let open_body = tokens.curr(false)?;
             if !matches!(open_body.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
                 return Err(Box::new(ParseError::from_token(
@@ -838,11 +853,12 @@ impl AstParser {
                 tokens,
                 "Expected '}' to close procedure body",
             )?;
+            let parameter_types = Self::parameter_type_map(&params);
             let routine_returns = self.routine_return_types.borrow().clone();
             Self::validate_report_usage(
                 &body,
                 error_type.as_ref(),
-                &HashMap::new(),
+                &parameter_types,
                 &routine_returns,
                 &pro_token,
             )?;
@@ -852,7 +868,7 @@ impl AstParser {
                 generics: Vec::new(),
                 name,
                 captures: Vec::new(),
-                params: Vec::new(),
+                params,
                 return_type,
                 error_type,
                 body,
