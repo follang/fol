@@ -1,0 +1,3 @@
+typ Container(T: gen, N: int)(): obj = {
+    var items: seq[T];
+};

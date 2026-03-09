@@ -232,3 +232,62 @@ fn test_entry_type_retains_explicit_contract_headers() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_object_type_accepts_empty_explicit_contract_header_after_generics() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_typ_object_empty_contract_header.fol")
+            .expect("Should read object type empty-contract fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept an empty explicit contract header");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::TypeDecl {
+                    name,
+                    generics,
+                    contracts,
+                    type_def: TypeDefinition::Record { fields, .. },
+                    ..
+                } if name == "Container"
+                    && generics.len() == 2
+                    && contracts.is_empty()
+                    && matches!(fields.get("items"), Some(FolType::Sequence { .. }))
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_explicit_type_contract_headers_accept_trailing_separators() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_typ_record_explicit_contracts_trailing.fol")
+            .expect("Should read trailing-contract fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept trailing type-contract separators");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::TypeDecl { name, contracts, type_def: TypeDefinition::Record { .. }, .. }
+                if name == "Shape"
+                    && matches!(contracts.as_slice(),
+                        [FolType::Named { name: first }, FolType::Named { name: second }]
+                        if first == "geo" && second == "draw")
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
