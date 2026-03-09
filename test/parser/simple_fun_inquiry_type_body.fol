@@ -1,0 +1,8 @@
+fun[] inspect(value: int): int = {
+    return value;
+    where(self) {
+        ali LocalInt: int;
+        typ LocalBox: rec = { value: int };
+        def local_block: blk[];
+    }
+}

@@ -418,6 +418,21 @@ impl AstParser {
                 continue;
             }
 
+            if matches!(key, KEYWORD::Keyword(BUILDIN::Ali)) {
+                body.push(self.parse_alias_decl(tokens)?);
+                continue;
+            }
+
+            if matches!(key, KEYWORD::Keyword(BUILDIN::Typ)) {
+                body.push(self.parse_type_decl(tokens)?);
+                continue;
+            }
+
+            if matches!(key, KEYWORD::Keyword(BUILDIN::Def)) {
+                body.push(self.parse_def_decl(tokens)?);
+                continue;
+            }
+
             if matches!(
                 key,
                 KEYWORD::Keyword(BUILDIN::Panic)
