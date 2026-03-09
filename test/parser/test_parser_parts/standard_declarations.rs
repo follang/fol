@@ -187,6 +187,30 @@ fn test_protocol_standard_accepts_default_procedure_implementations() {
 }
 
 #[test]
+fn test_protocol_standard_accepts_default_logical_implementations() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_std_protocol_default_log.fol")
+        .expect("Should read protocol default-logical standard fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse default logical implementations in protocol standards");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::StdDecl { name, kind: StandardKind::Protocol, body, .. }
+                if name == "geometry"
+                    && body.iter().any(|stmt| matches!(stmt, AstNode::FunDecl { name, body, .. } if name == "valid" && !body.is_empty()))
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
 fn test_blueprint_standard_declaration_parsing() {
     let mut file_stream = FileStream::from_file("test/parser/simple_std_blueprint.fol")
         .expect("Should read blueprint standard test file");
