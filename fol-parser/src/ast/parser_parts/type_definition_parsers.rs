@@ -16,7 +16,7 @@ impl AstParser {
 
         let mut variants = HashMap::new();
         let mut variant_meta = HashMap::new();
-        let members = Vec::new();
+        let mut members = Vec::new();
         for _ in 0..256 {
             self.skip_ignorable(tokens);
             let token = tokens.curr(false)?;
@@ -28,6 +28,35 @@ impl AstParser {
                     variant_meta,
                     members,
                 });
+            }
+
+            if matches!(
+                token.key(),
+                KEYWORD::Keyword(BUILDIN::Fun)
+                    | KEYWORD::Keyword(BUILDIN::Pro)
+                    | KEYWORD::Keyword(BUILDIN::Log)
+            ) {
+                members.push(self.parse_standard_routine_signature(tokens)?);
+                self.skip_ignorable(tokens);
+                let sep = tokens.curr(false)?;
+                if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma))
+                    || matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Semi))
+                {
+                    let _ = tokens.bump();
+                    continue;
+                }
+                if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) {
+                    let _ = tokens.bump();
+                    return Ok(TypeDefinition::Entry {
+                        variants,
+                        variant_meta,
+                        members,
+                    });
+                }
+                return Err(Box::new(ParseError::from_token(
+                    &sep,
+                    "Expected ',', ';', or '}' in type entry definition".to_string(),
+                )));
             }
 
             let default_options = if let Some((keyword, options)) =
