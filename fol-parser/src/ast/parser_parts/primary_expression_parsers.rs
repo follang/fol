@@ -5,10 +5,12 @@ impl AstParser {
         &self,
         tokens: &fol_lexer::lexer::stage3::Elements,
     ) -> bool {
-        let mut depth = 1usize;
+        let mut saw_open = false;
+        let mut saw_close = false;
+        let mut depth = 0usize;
         let mut capture_depth = 0usize;
         let mut in_type_clause = false;
-        let saw_open = true;
+
         for candidate in tokens.next_vec() {
             let token = match candidate {
                 Ok(token) => token,
@@ -20,38 +22,57 @@ impl AstParser {
                 continue;
             }
 
+            if !saw_open {
+                saw_open = true;
+                if matches!(key, KEYWORD::Symbol(SYMBOL::RoundO)) {
+                    depth = 1;
+                    continue;
+                }
+                depth = 1;
+            }
+
+            if !saw_close {
+                match key {
+                    KEYWORD::Symbol(SYMBOL::RoundO) => {
+                        depth += 1;
+                        continue;
+                    }
+                    KEYWORD::Symbol(SYMBOL::RoundC) => {
+                        if depth == 0 {
+                            return false;
+                        }
+                        depth -= 1;
+                        if depth == 0 {
+                            saw_close = true;
+                        }
+                        continue;
+                    }
+                    _ => continue,
+                }
+            }
+
             match key {
-                KEYWORD::Symbol(SYMBOL::SquarO) if saw_open && depth == 0 => {
+                KEYWORD::Symbol(SYMBOL::SquarO) if capture_depth == 0 => {
                     capture_depth += 1;
                 }
-                KEYWORD::Symbol(SYMBOL::SquarC) if saw_open && depth == 0 => {
+                KEYWORD::Symbol(SYMBOL::SquarC) if capture_depth > 0 => {
+                    capture_depth -= 1;
+                }
+                KEYWORD::Symbol(SYMBOL::SquarC) if capture_depth == 0 => {
                     if capture_depth == 0 {
                         return false;
                     }
-                    capture_depth -= 1;
                 }
-                KEYWORD::Symbol(SYMBOL::RoundO) => {
-                    depth += 1;
-                }
-                KEYWORD::Symbol(SYMBOL::RoundC) => {
-                    if depth == 0 {
-                        return false;
-                    }
-                    depth -= 1;
-                    if saw_open && depth == 0 {
-                        continue;
-                    }
-                }
-                KEYWORD::Symbol(SYMBOL::Colon) if saw_open && depth == 0 && capture_depth == 0 => {
+                KEYWORD::Symbol(SYMBOL::Colon) if capture_depth == 0 => {
                     in_type_clause = true;
                 }
                 KEYWORD::Symbol(SYMBOL::CurlyO)
                 | KEYWORD::Operator(OPERATOR::Flow)
-                    if saw_open && depth == 0 && capture_depth == 0 =>
+                    if capture_depth == 0 =>
                 {
                     return true;
                 }
-                _ if saw_open && depth == 0 && capture_depth == 0 && !in_type_clause => {
+                _ if capture_depth == 0 && !in_type_clause => {
                     return false;
                 }
                 _ => {}
