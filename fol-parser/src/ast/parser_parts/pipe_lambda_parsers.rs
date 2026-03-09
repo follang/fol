@@ -178,9 +178,15 @@ impl AstParser {
         }
 
         self.skip_ignorable(tokens);
-        let (body, inquiries) = if matches!(tokens.curr(false)?.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
-            let _ = tokens.bump();
-            self.parse_routine_body_with_inquiries(tokens, "Expected '}' to close lambda body")?
+        let (body, inquiries) = if matches!(
+            tokens.curr(false)?.key(),
+            KEYWORD::Symbol(SYMBOL::CurlyO) | KEYWORD::Operator(OPERATOR::Flow)
+        ) {
+            self.parse_named_routine_body(
+                tokens,
+                "Expected '{', '=>', or expression after lambda parameters",
+                "Expected '}' to close lambda body",
+            )?
         } else {
             let body = vec![AstNode::Return {
                 value: Some(Box::new(self.parse_logical_expression(tokens)?)),
