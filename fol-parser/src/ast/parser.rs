@@ -86,6 +86,8 @@ mod binding_option_parsers;
 mod binding_value_parsers;
 #[path = "parser_parts/declaration_parsers.rs"]
 mod declaration_parsers;
+#[path = "parser_parts/routine_declaration_parsers.rs"]
+mod routine_declaration_parsers;
 #[path = "parser_parts/declaration_option_parsers.rs"]
 mod declaration_option_parsers;
 #[path = "parser_parts/type_definition_parsers.rs"]
