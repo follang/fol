@@ -211,9 +211,22 @@ impl AstParser {
                 continue;
             }
 
+            if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Con)) {
+                let member_anchor = self.peek_standard_member_anchor_token(tokens);
+                let members = self.parse_con_decl(tokens)?;
+                for member in members {
+                    let key = self.standard_member_key(&member);
+                    if !seen_members.insert(key.clone()) {
+                        return Err(self.duplicate_standard_member_error(member_anchor, &token, &key));
+                    }
+                    body.push(member);
+                }
+                continue;
+            }
+
             return Err(Box::new(ParseError::from_token(
                 &token,
-                "Protocol standards currently support only routine, alias, and type declarations"
+                "Protocol standards currently support only routine, alias, type, and constant declarations"
                     .to_string(),
             )));
         }
