@@ -87,3 +87,53 @@ fn test_bare_never_type_references_lower_structurally() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_bracketed_any_and_none_type_references_lower_structurally() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_bracketed_any_none_type_refs.fol")
+            .expect("Should read bracketed any/none type-reference fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should lower bracketed any[] and none[] references");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::TypeDecl {
+                    name,
+                    type_def: TypeDefinition::Alias { target: FolType::Any },
+                    ..
+                } if name == "Dynamic"
+            )));
+
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::TypeDecl {
+                    name,
+                    type_def: TypeDefinition::Alias { target: FolType::None },
+                    ..
+                } if name == "Empty"
+            )));
+
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::FunDecl {
+                    name,
+                    params,
+                    return_type: Some(FolType::None),
+                    ..
+                }
+                if name == "finish"
+                    && matches!(params.as_slice(),
+                        [Parameter { param_type: FolType::Any, .. }]
+                    )
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
