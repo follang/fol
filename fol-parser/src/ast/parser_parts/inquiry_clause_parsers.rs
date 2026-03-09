@@ -1,6 +1,14 @@
 use super::*;
 
 impl AstParser {
+    fn inquiry_flow_nodes_to_expr(&self, nodes: Vec<AstNode>) -> AstNode {
+        if nodes.len() == 1 {
+            nodes.into_iter().next().expect("one node")
+        } else {
+            AstNode::Block { statements: nodes }
+        }
+    }
+
     pub(super) fn parse_routine_body_with_inquiries(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
@@ -347,47 +355,17 @@ impl AstParser {
             {
                 self.parse_assignment_stmt(tokens)?
             } else if self.lookahead_binding_alternative(tokens).is_some() {
-                let nodes = self.parse_binding_alternative_decl(tokens)?;
-                if nodes.len() == 1 {
-                    nodes.into_iter().next().expect("one node")
-                } else {
-                    AstNode::Block { statements: nodes }
-                }
+                self.inquiry_flow_nodes_to_expr(self.parse_binding_alternative_decl(tokens)?)
             } else if matches!(key, KEYWORD::Keyword(BUILDIN::Var)) {
-                let nodes = self.parse_var_decl(tokens)?;
-                if nodes.len() == 1 {
-                    nodes.into_iter().next().expect("one node")
-                } else {
-                    AstNode::Block { statements: nodes }
-                }
+                self.inquiry_flow_nodes_to_expr(self.parse_var_decl(tokens)?)
             } else if matches!(key, KEYWORD::Keyword(BUILDIN::Let)) {
-                let nodes = self.parse_let_decl(tokens)?;
-                if nodes.len() == 1 {
-                    nodes.into_iter().next().expect("one node")
-                } else {
-                    AstNode::Block { statements: nodes }
-                }
+                self.inquiry_flow_nodes_to_expr(self.parse_let_decl(tokens)?)
             } else if matches!(key, KEYWORD::Keyword(BUILDIN::Con)) {
-                let nodes = self.parse_con_decl(tokens)?;
-                if nodes.len() == 1 {
-                    nodes.into_iter().next().expect("one node")
-                } else {
-                    AstNode::Block { statements: nodes }
-                }
+                self.inquiry_flow_nodes_to_expr(self.parse_con_decl(tokens)?)
             } else if matches!(key, KEYWORD::Keyword(BUILDIN::Lab)) {
-                let nodes = self.parse_lab_decl(tokens)?;
-                if nodes.len() == 1 {
-                    nodes.into_iter().next().expect("one node")
-                } else {
-                    AstNode::Block { statements: nodes }
-                }
+                self.inquiry_flow_nodes_to_expr(self.parse_lab_decl(tokens)?)
             } else if matches!(key, KEYWORD::Keyword(BUILDIN::Use)) {
-                let nodes = self.parse_use_decl(tokens)?;
-                if nodes.len() == 1 {
-                    nodes.into_iter().next().expect("one node")
-                } else {
-                    AstNode::Block { statements: nodes }
-                }
+                self.inquiry_flow_nodes_to_expr(self.parse_use_decl(tokens)?)
             } else if matches!(key, KEYWORD::Keyword(BUILDIN::Ali)) {
                 self.parse_alias_decl(tokens)?
             } else if matches!(key, KEYWORD::Keyword(BUILDIN::Typ)) {
