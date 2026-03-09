@@ -1,6 +1,27 @@
 use super::*;
 
 impl AstParser {
+    fn pipe_stage_from_nodes(&self, nodes: Vec<AstNode>) -> Result<AstNode, Box<dyn Glitch>> {
+        let mut iter = nodes.into_iter();
+        let Some(first) = iter.next() else {
+            return Err(Box::new(ParseError {
+                message: "Pipe stage produced no AST nodes".to_string(),
+                file: None,
+                line: 0,
+                column: 0,
+                length: 0,
+            }));
+        };
+
+        let mut statements = vec![first];
+        statements.extend(iter);
+        if statements.len() == 1 {
+            Ok(statements.into_iter().next().expect("one statement"))
+        } else {
+            Ok(AstNode::Block { statements })
+        }
+    }
+
     fn lookahead_pipe_stage_has_body_after_parens(
         &self,
         tokens: &fol_lexer::lexer::stage3::Elements,
@@ -79,6 +100,22 @@ impl AstParser {
 
         if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Return)) {
             return self.parse_return_stmt(tokens);
+        }
+
+        if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Var)) {
+            return self.pipe_stage_from_nodes(self.parse_var_decl(tokens)?);
+        }
+
+        if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Let)) {
+            return self.pipe_stage_from_nodes(self.parse_let_decl(tokens)?);
+        }
+
+        if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Con)) {
+            return self.pipe_stage_from_nodes(self.parse_con_decl(tokens)?);
+        }
+
+        if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Lab)) {
+            return self.pipe_stage_from_nodes(self.parse_lab_decl(tokens)?);
         }
 
         if matches!(

@@ -251,6 +251,41 @@ fn test_pipe_expression_supports_return_stage() {
 }
 
 #[test]
+fn test_pipe_expression_supports_binding_stages() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_fun_pipe_binding_stage.fol")
+        .expect("Should read pipe binding-stage fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse binding stages on pipes");
+
+    let return_value = match ast {
+        AstNode::Program { declarations } => declarations
+            .iter()
+            .find_map(|node| match node {
+                AstNode::FunDecl { body, .. } => body.iter().find_map(|stmt| match stmt {
+                    AstNode::Return { value: Some(value) } => Some(value.as_ref().clone()),
+                    _ => None,
+                }),
+                _ => None,
+            })
+            .expect("Expected return statement"),
+        _ => panic!("Expected program node"),
+    };
+
+    assert!(matches!(
+        return_value,
+        AstNode::BinaryOp {
+            op: BinaryOperator::Pipe,
+            right,
+            ..
+        } if matches!(right.as_ref(), AstNode::VarDecl { .. })
+    ));
+}
+
+#[test]
 fn test_pipe_expression_rejects_missing_rhs() {
     let mut file_stream = FileStream::from_file("test/parser/simple_fun_pipe_missing_rhs.fol")
         .expect("Should read malformed pipe fixture");
