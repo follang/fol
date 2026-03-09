@@ -543,6 +543,54 @@ fn test_call_argument_lists_accept_semicolons() {
 }
 
 #[test]
+fn test_call_argument_lists_accept_mixed_separators() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_call_mixed_separators.fol")
+            .expect("Should read mixed-separator call test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse call arguments with mixed separators");
+
+    let (has_ping_three_args, has_run_two_args, has_emit_three_args) = match ast {
+        AstNode::Program { declarations } => {
+            let has_ping_three_args = declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::FunctionCall { name, args }
+                    if name == "ping" && args.len() == 3
+                )
+            });
+
+            let has_run_two_args = declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::MethodCall { method, args, .. }
+                    if method == "run" && args.len() == 2
+                )
+            });
+
+            let has_emit_three_args = declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::Return { value: Some(value) }
+                    if matches!(value.as_ref(), AstNode::FunctionCall { name, args } if name == "emit" && args.len() == 3)
+                )
+            });
+
+            (has_ping_three_args, has_run_two_args, has_emit_three_args)
+        }
+        _ => panic!("Expected program node"),
+    };
+
+    assert!(has_ping_three_args);
+    assert!(has_run_two_args);
+    assert!(has_emit_three_args);
+}
+
+#[test]
 fn test_semicolon_call_arguments_parse_in_initializers() {
     let mut file_stream =
         FileStream::from_file("test/parser/simple_fun_call_semicolon_initializer.fol")

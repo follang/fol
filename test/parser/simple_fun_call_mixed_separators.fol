@@ -1,0 +1,5 @@
+fun call_mixed(a: int, b: int, c: int): int = {
+    ping(a, b; c,);
+    obj.run(a; b,);
+    return emit(a; b, c;);
+}
