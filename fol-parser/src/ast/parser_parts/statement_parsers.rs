@@ -435,12 +435,7 @@ impl AstParser {
         self.skip_ignorable(tokens);
         let token = tokens.curr(false)?;
         if matches!(token.key(), KEYWORD::Operator(OPERATOR::Flow)) {
-            let _ = tokens.bump();
-            self.skip_ignorable(tokens);
-
-            let expr = self.parse_logical_expression(tokens)?;
-            self.consume_optional_semicolon(tokens);
-            return Ok(vec![expr]);
+            return self.parse_flow_body_nodes(tokens);
         }
 
         if !matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {

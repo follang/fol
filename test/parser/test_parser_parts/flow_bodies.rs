@@ -100,3 +100,73 @@ fn test_when_dollar_default_flow_body_parsing() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_if_flow_assignment_bodies_parsing() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_fun_if_flow_assignment.fol")
+        .expect("Should read if flow assignment fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse if/else assignment flow bodies");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::FunDecl { body, .. }
+                    if body.iter().any(|stmt| matches!(
+                        stmt,
+                        AstNode::When { cases, default, .. }
+                        if matches!(cases.as_slice(),
+                            [WhenCase::Case { body, .. }]
+                            if matches!(body.as_slice(), [AstNode::Assignment { .. }])
+                        )
+                        && matches!(default, Some(default_body)
+                            if matches!(default_body.as_slice(), [AstNode::Assignment { .. }]))
+                    ))
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_when_flow_assignment_bodies_parsing() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_fun_when_flow_assignment.fol")
+        .expect("Should read when flow assignment fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse when assignment flow bodies");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::FunDecl { body, .. }
+                    if body.iter().any(|stmt| matches!(
+                        stmt,
+                        AstNode::When { cases, .. }
+                        if matches!(cases.as_slice(),
+                            [
+                                WhenCase::Is { body, .. },
+                                WhenCase::Has { body: second_body, .. }
+                            ]
+                            if matches!(body.as_slice(), [AstNode::Assignment { .. }])
+                                && matches!(second_body.as_slice(), [AstNode::Assignment { .. }])
+                        )
+                    ))
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}

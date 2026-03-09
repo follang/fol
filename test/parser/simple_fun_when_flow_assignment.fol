@@ -1,0 +1,6 @@
+fun classify(value: int): int = {
+    when(value) {
+        is(0) => value = 0;
+        has(value) => value = 1;
+    }
+}

@@ -1,14 +1,6 @@
 use super::*;
 
 impl AstParser {
-    fn inquiry_flow_nodes_to_expr(&self, nodes: Vec<AstNode>) -> AstNode {
-        if nodes.len() == 1 {
-            nodes.into_iter().next().expect("one node")
-        } else {
-            AstNode::Block { statements: nodes }
-        }
-    }
-
     pub(super) fn parse_routine_body_with_inquiries(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
@@ -332,76 +324,7 @@ impl AstParser {
         self.skip_ignorable(tokens);
         let open_body = tokens.curr(false)?;
         if matches!(open_body.key(), KEYWORD::Operator(OPERATOR::Flow)) {
-            let _ = tokens.bump();
-            self.skip_ignorable(tokens);
-            let key = tokens.curr(false)?.key();
-            let expr = if matches!(key, KEYWORD::Keyword(BUILDIN::If)) {
-                self.parse_if_stmt(tokens)?
-            } else if matches!(key, KEYWORD::Keyword(BUILDIN::When)) {
-                self.parse_when_stmt(tokens)?
-            } else if matches!(
-                key,
-                KEYWORD::Keyword(BUILDIN::While)
-                    | KEYWORD::Keyword(BUILDIN::Loop)
-                    | KEYWORD::Keyword(BUILDIN::For)
-                    | KEYWORD::Keyword(BUILDIN::Each)
-            ) {
-                self.parse_loop_stmt(tokens)?
-            } else if matches!(key, KEYWORD::Symbol(SYMBOL::CurlyO)) {
-                self.parse_block_stmt(tokens)?
-            } else if (AstParser::token_can_be_logical_name(&key)
-                || matches!(key, KEYWORD::Literal(LITERAL::Stringy)))
-                && self.lookahead_is_assignment(tokens)
-            {
-                self.parse_assignment_stmt(tokens)?
-            } else if self.lookahead_binding_alternative(tokens).is_some() {
-                self.inquiry_flow_nodes_to_expr(self.parse_binding_alternative_decl(tokens)?)
-            } else if matches!(key, KEYWORD::Keyword(BUILDIN::Var)) {
-                self.inquiry_flow_nodes_to_expr(self.parse_var_decl(tokens)?)
-            } else if matches!(key, KEYWORD::Keyword(BUILDIN::Let)) {
-                self.inquiry_flow_nodes_to_expr(self.parse_let_decl(tokens)?)
-            } else if matches!(key, KEYWORD::Keyword(BUILDIN::Con)) {
-                self.inquiry_flow_nodes_to_expr(self.parse_con_decl(tokens)?)
-            } else if matches!(key, KEYWORD::Keyword(BUILDIN::Lab)) {
-                self.inquiry_flow_nodes_to_expr(self.parse_lab_decl(tokens)?)
-            } else if matches!(key, KEYWORD::Keyword(BUILDIN::Use)) {
-                self.inquiry_flow_nodes_to_expr(self.parse_use_decl(tokens)?)
-            } else if matches!(key, KEYWORD::Keyword(BUILDIN::Ali)) {
-                self.parse_alias_decl(tokens)?
-            } else if matches!(key, KEYWORD::Keyword(BUILDIN::Typ)) {
-                self.parse_type_decl(tokens)?
-            } else if matches!(key, KEYWORD::Keyword(BUILDIN::Def)) {
-                self.parse_def_decl(tokens)?
-            } else if matches!(key, KEYWORD::Keyword(BUILDIN::Seg)) {
-                self.parse_seg_decl(tokens)?
-            } else if matches!(key, KEYWORD::Keyword(BUILDIN::Imp)) {
-                self.parse_imp_decl(tokens)?
-            } else if matches!(key, KEYWORD::Keyword(BUILDIN::Std)) && self.lookahead_is_std_decl(tokens) {
-                self.parse_std_decl(tokens)?
-            } else if matches!(key, KEYWORD::Keyword(BUILDIN::Fun)) {
-                self.parse_fun_decl(tokens)?
-            } else if matches!(key, KEYWORD::Keyword(BUILDIN::Log)) {
-                self.parse_log_decl(tokens)?
-            } else if matches!(key, KEYWORD::Keyword(BUILDIN::Pro)) {
-                self.parse_pro_decl(tokens)?
-            } else if matches!(key, KEYWORD::Keyword(BUILDIN::Return)) {
-                self.parse_return_stmt(tokens)?
-            } else if matches!(key, KEYWORD::Keyword(BUILDIN::Break)) {
-                self.parse_break_stmt(tokens)?
-            } else if matches!(key, KEYWORD::Keyword(BUILDIN::Yeild)) {
-                self.parse_yield_stmt(tokens)?
-            } else if matches!(
-                key,
-                KEYWORD::Keyword(BUILDIN::Panic)
-                    | KEYWORD::Keyword(BUILDIN::Report)
-                    | KEYWORD::Keyword(BUILDIN::Check)
-                    | KEYWORD::Keyword(BUILDIN::Assert)
-            ) {
-                self.parse_builtin_call_stmt(tokens)?
-            } else {
-                self.parse_logical_expression(tokens)?
-            };
-            self.consume_optional_semicolon(tokens);
+            let expr = self.flow_nodes_to_expr(self.parse_flow_body_nodes(tokens)?);
             return Ok(targets
                 .into_iter()
                 .map(|target| AstNode::Inquiry {

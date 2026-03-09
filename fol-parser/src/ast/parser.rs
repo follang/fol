@@ -128,6 +128,8 @@ mod segment_declaration_parsers;
 mod implementation_declaration_parsers;
 #[path = "parser_parts/inquiry_clause_parsers.rs"]
 mod inquiry_clause_parsers;
+#[path = "parser_parts/flow_body_parsers.rs"]
+mod flow_body_parsers;
 #[path = "parser_parts/postfix_expression_parsers.rs"]
 mod postfix_expression_parsers;
 #[path = "parser_parts/primary_expression_parsers.rs"]
