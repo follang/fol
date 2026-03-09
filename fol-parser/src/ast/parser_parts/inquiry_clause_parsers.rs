@@ -413,6 +413,11 @@ impl AstParser {
                 continue;
             }
 
+            if matches!(key, KEYWORD::Keyword(BUILDIN::Use)) {
+                body.extend(self.parse_use_decl(tokens)?);
+                continue;
+            }
+
             if matches!(
                 key,
                 KEYWORD::Keyword(BUILDIN::Panic)
