@@ -415,7 +415,7 @@ fn test_missing_call_closing_paren_reports_parse_error() {
         .unwrap_or_else(|| "<no error message>".to_string());
 
     assert!(
-        first_message.contains("Expected ',' or ')' in call arguments")
+        first_message.contains("Expected ',', ';', or ')' in call arguments")
             || first_message.contains("Unsupported expression token '; '"),
         "Missing call ')' should report a call-argument parse error, got: {}",
         first_message
@@ -444,7 +444,7 @@ fn test_missing_call_argument_separator_reports_parse_error() {
         .expect("First parser error should be ParseError");
 
     assert!(
-        first_message.contains("Expected ',' or ')' in call arguments"),
+        first_message.contains("Expected ',', ';', or ')' in call arguments"),
         "Missing call separator should report argument-separator parse error, got: {}",
         first_message
     );
@@ -516,7 +516,7 @@ fn test_method_call_missing_argument_separator_reports_parse_error() {
         .expect("First parser error should be ParseError");
 
     assert!(
-        first_message.contains("Expected ',' or ')' in call arguments"),
+        first_message.contains("Expected ',', ';', or ')' in call arguments"),
         "Method call with missing separator should report argument-separator parse error, got: {}",
         first_message
     );
@@ -545,7 +545,7 @@ fn test_nested_call_missing_argument_separator_reports_parse_error() {
         .unwrap_or_else(|| "<no error message>".to_string());
 
     assert!(
-        first_message.contains("Expected ',' or ')' in call arguments"),
+        first_message.contains("Expected ',', ';', or ')' in call arguments"),
         "Nested call with missing separator should report argument-separator parse error, got: {}",
         first_message
     );
