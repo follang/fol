@@ -714,13 +714,6 @@ impl AstParser {
     pub(super) fn fol_type_label(typ: &FolType) -> String {
         match typ {
             FolType::Named { name } => name.clone(),
-            FolType::Path { name } => {
-                if name.is_empty() {
-                    "path".to_string()
-                } else {
-                    name.clone()
-                }
-            }
             FolType::Url { name } => {
                 if name.is_empty() {
                     "url".to_string()

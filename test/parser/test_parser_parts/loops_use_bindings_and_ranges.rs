@@ -112,8 +112,8 @@ fn test_use_declaration_parsing() {
 
     assert_eq!(use_decl.0, "math");
     assert!(
-        matches!(use_decl.1, FolType::Path { name } if name.is_empty()),
-        "Use declaration should parse path type"
+        matches!(use_decl.1, FolType::Location { name } if name.is_empty()),
+        "Use declaration should parse loc type"
     );
     assert_eq!(use_decl.2, "core::math");
 }
@@ -236,8 +236,8 @@ fn test_use_declaration_accepts_empty_option_brackets() {
         "use[] should parse as explicit empty options"
     );
     assert!(
-        matches!(use_decl.2, FolType::Path { name } if name.is_empty()),
-        "Use declaration should still parse path type"
+        matches!(use_decl.2, FolType::Location { name } if name.is_empty()),
+        "Use declaration should still parse loc type"
     );
     assert_eq!(use_decl.3, "core::math");
 }
@@ -276,7 +276,7 @@ fn test_use_declaration_allows_omitted_colon_before_path_type() {
     assert_eq!(use_decl.0, "warn");
     assert!(
         matches!(use_decl.1, FolType::Standard { name } if name.is_empty()),
-        "Colonless use declaration should still parse path type"
+        "Colonless use declaration should still parse source-kind type"
     );
     assert_eq!(use_decl.2, "fmt/log.warn");
 }
@@ -315,7 +315,7 @@ fn test_use_declaration_unwraps_quoted_paths() {
     assert_eq!(use_decl.0, "fmt");
     assert!(
         matches!(use_decl.1, FolType::Standard { name } if name.is_empty()),
-        "Quoted-path use declaration should still parse path type"
+        "Quoted-path use declaration should still parse source-kind type"
     );
     assert_eq!(use_decl.2, "fmt/log");
 }
@@ -329,7 +329,7 @@ fn test_use_declaration_supports_qualified_and_bracketed_types() {
     let mut parser = AstParser::new();
     let ast = parser
         .parse(&mut lexer)
-        .expect("Parser should parse use declaration with qualified bracketed path type");
+        .expect("Parser should parse use declaration with qualified bracketed source-kind type");
 
     let use_decl = match ast {
         AstNode::Program { declarations } => declarations
@@ -359,7 +359,7 @@ fn test_use_declaration_supports_qualified_and_bracketed_types() {
                 if matches!(key_type.as_ref(), FolType::Named { name } if name == "str")
                     && matches!(value_type.as_ref(), FolType::Named { name } if name == "pkg::Value")
         ),
-        "Use declaration should preserve qualified bracketed path type"
+        "Use declaration should preserve qualified bracketed source-kind type"
     );
     assert_eq!(use_decl.2, "core::results");
 }
@@ -402,7 +402,7 @@ fn test_use_declaration_missing_bracket_close_reports_parse_error() {
     let mut parser = AstParser::new();
     let errors = parser
         .parse(&mut lexer)
-        .expect_err("Parser should fail when use path type is missing closing ']'");
+        .expect_err("Parser should fail when use source-kind type is missing closing ']'");
 
     let parse_error = errors
         .first()
@@ -412,7 +412,7 @@ fn test_use_declaration_missing_bracket_close_reports_parse_error() {
     let first_message = parse_error.to_string();
     assert!(
         first_message.contains("Expected closing ']' in type reference"),
-        "Malformed use path type should report missing close bracket, got: {}",
+        "Malformed use source-kind type should report missing close bracket, got: {}",
         first_message
     );
     assert_eq!(

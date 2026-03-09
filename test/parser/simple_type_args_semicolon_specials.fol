@@ -1,2 +1,2 @@
-typ MaybePath: opt[path[std;];]
-typ Paths: mul[path[std;]; url[web;];]
+typ MaybePath: opt[loc[std;];]
+typ Paths: mul[loc[std;]; url[web;];]

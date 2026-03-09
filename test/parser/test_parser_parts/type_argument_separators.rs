@@ -190,7 +190,7 @@ fn test_special_type_forms_accept_semicolon_type_arguments() {
                     ..
                 }
                 if name == "MaybePath"
-                    && matches!(inner.as_ref(), FolType::Path { name } if name == "std")
+                    && matches!(inner.as_ref(), FolType::Location { name } if name == "std")
             )));
 
             assert!(declarations.iter().any(|node| matches!(
@@ -204,7 +204,7 @@ fn test_special_type_forms_accept_semicolon_type_arguments() {
                 }
                 if name == "Paths"
                     && matches!(types.as_slice(),
-                        [FolType::Path { name: left }, FolType::Url { name: right }]
+                        [FolType::Location { name: left }, FolType::Url { name: right }]
                         if left == "std" && right == "web")
             )));
 

@@ -1,1 +1,1 @@
-use warn: path = "std/warn";
+use warn: loc = "std/warn";
