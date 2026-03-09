@@ -502,3 +502,39 @@ fn test_rolling_expression_supports_typed_var_binders() {
         "Typed var rolling binder should preserve the type hint"
     );
 }
+
+#[test]
+fn test_rolling_expression_supports_var_multi_bindings() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_rolling_var_multi_binding.fol")
+            .expect("Should read var multi-binding rolling fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept multi-binding rolling expressions with 'var' binders");
+
+    let return_value = match ast {
+        AstNode::Program { declarations } => declarations
+            .iter()
+            .find_map(|node| match node {
+                AstNode::Return { value: Some(value) } => Some(value.as_ref().clone()),
+                _ => None,
+            })
+            .expect("Program should contain return value"),
+        _ => panic!("Expected program node"),
+    };
+
+    assert!(
+        matches!(
+            return_value,
+            AstNode::Rolling { bindings, .. }
+                if bindings.len() == 2
+                    && bindings[0].name == "x"
+                    && bindings[1].name == "y"
+                    && matches!(bindings[0].type_hint, Some(FolType::Int { .. }))
+        ),
+        "Var rolling multi-binding syntax should preserve both binders"
+    );
+}
