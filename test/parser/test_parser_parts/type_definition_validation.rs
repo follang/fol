@@ -270,6 +270,30 @@ fn test_type_record_missing_close_reports_parse_error() {
 }
 
 #[test]
+fn test_duplicate_record_method_reports_parse_error() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_typ_record_duplicate_method.fol")
+            .expect("Should read duplicate record method test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject duplicate record methods");
+
+    let parse_error = errors
+        .first()
+        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        .expect("First parser error should be ParseError");
+
+    assert!(
+        parse_error.to_string().contains("Duplicate type member 'getBrand#0'"),
+        "Duplicate record method should report the member key, got: {}",
+        parse_error
+    );
+}
+
+#[test]
 fn test_type_alias_parsing_supports_special_boxed_types() {
     let mut file_stream = FileStream::from_file("test/parser/simple_typ_special_types.fol")
         .expect("Should read special type alias test file");

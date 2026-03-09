@@ -17,6 +17,7 @@ impl AstParser {
         let mut variants = HashMap::new();
         let mut variant_meta = HashMap::new();
         let mut members = Vec::new();
+        let mut seen_members = HashSet::new();
         for _ in 0..256 {
             self.skip_ignorable(tokens);
             let token = tokens.curr(false)?;
@@ -36,7 +37,12 @@ impl AstParser {
                     | KEYWORD::Keyword(BUILDIN::Pro)
                     | KEYWORD::Keyword(BUILDIN::Log)
             ) {
-                members.push(self.parse_standard_routine_signature(tokens)?);
+                let member = self.parse_standard_routine_signature(tokens)?;
+                let key = self.type_member_key(&member);
+                if !seen_members.insert(key.clone()) {
+                    return Err(self.duplicate_type_member_error(&token, &key));
+                }
+                members.push(member);
                 self.skip_ignorable(tokens);
                 let sep = tokens.curr(false)?;
                 if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma))
@@ -224,6 +230,7 @@ impl AstParser {
         let mut fields = HashMap::new();
         let mut field_meta = HashMap::new();
         let mut members = Vec::new();
+        let mut seen_members = HashSet::new();
         for _ in 0..256 {
             self.skip_ignorable(tokens);
             let token = tokens.curr(false)?;
@@ -250,7 +257,12 @@ impl AstParser {
                     | KEYWORD::Keyword(BUILDIN::Pro)
                     | KEYWORD::Keyword(BUILDIN::Log)
             ) {
-                members.push(self.parse_standard_routine_signature(tokens)?);
+                let member = self.parse_standard_routine_signature(tokens)?;
+                let key = self.type_member_key(&member);
+                if !seen_members.insert(key.clone()) {
+                    return Err(self.duplicate_type_member_error(&token, &key));
+                }
+                members.push(member);
                 self.skip_ignorable(tokens);
                 let sep = tokens.curr(false)?;
                 if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma))
@@ -417,5 +429,29 @@ impl AstParser {
             column: 0,
             length: 0,
         }))
+    }
+
+    fn type_member_key(&self, node: &AstNode) -> String {
+        match node {
+            AstNode::FunDecl { name, params, .. } | AstNode::ProDecl { name, params, .. } => {
+                format!("{}#{}", name, params.len())
+            }
+            AstNode::AliasDecl { name, .. }
+            | AstNode::TypeDecl { name, .. }
+            | AstNode::VarDecl { name, .. }
+            | AstNode::LabDecl { name, .. } => name.clone(),
+            _ => String::new(),
+        }
+    }
+
+    fn duplicate_type_member_error(
+        &self,
+        token: &fol_lexer::lexer::stage3::element::Element,
+        key: &str,
+    ) -> Box<dyn Glitch> {
+        Box::new(ParseError::from_token(
+            token,
+            format!("Duplicate type member '{}'", key),
+        ))
     }
 }

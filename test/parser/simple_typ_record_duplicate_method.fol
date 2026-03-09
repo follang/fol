@@ -1,0 +1,4 @@
+typ Computer: rec = {
+    fun getBrand(): str = { return "a"; };
+    fun getBrand(): str = { return "b"; };
+}
