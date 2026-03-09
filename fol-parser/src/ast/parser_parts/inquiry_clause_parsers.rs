@@ -374,6 +374,12 @@ impl AstParser {
                 } else {
                     AstNode::Block { statements: nodes }
                 }
+            } else if matches!(key, KEYWORD::Keyword(BUILDIN::Ali)) {
+                self.parse_alias_decl(tokens)?
+            } else if matches!(key, KEYWORD::Keyword(BUILDIN::Typ)) {
+                self.parse_type_decl(tokens)?
+            } else if matches!(key, KEYWORD::Keyword(BUILDIN::Def)) {
+                self.parse_def_decl(tokens)?
             } else if matches!(
                 key,
                 KEYWORD::Keyword(BUILDIN::Panic)
