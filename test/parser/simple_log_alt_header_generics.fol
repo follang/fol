@@ -1,0 +1,3 @@
+log[] decide(T): T = (value: T){
+    return value;
+}

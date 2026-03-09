@@ -668,6 +668,19 @@ impl AstParser {
         )?;
 
         self.skip_ignorable(tokens);
+        let alt_generics = if self.lookahead_parenthesized_generic_header_before_colon(tokens) {
+            let open = tokens.curr(false)?;
+            if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
+                Vec::new()
+            } else {
+                let _ = tokens.bump();
+                self.parse_generic_list(tokens)?
+            }
+        } else {
+            Vec::new()
+        };
+
+        self.skip_ignorable(tokens);
         if matches!(
             tokens.curr(false).map(|token| token.key().clone()),
             Ok(KEYWORD::Symbol(SYMBOL::Colon))
@@ -751,7 +764,7 @@ impl AstParser {
 
             return Ok(AstNode::FunDecl {
                 options,
-                generics: Vec::new(),
+                generics: alt_generics,
                 name,
                 captures,
                 params,
