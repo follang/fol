@@ -1,0 +1,68 @@
+use super::*;
+
+#[test]
+fn test_grouped_type_declarations_expand_into_multiple_nodes() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_typ_group_basic.fol")
+        .expect("Should read grouped type fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should expand grouped type declarations");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::TypeDecl {
+                    name,
+                    options,
+                    type_def: TypeDefinition::Record { .. },
+                    ..
+                } if name == "User" && options.contains(&fol_parser::ast::TypeOption::Export)
+            )));
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::TypeDecl {
+                    name,
+                    type_def: TypeDefinition::Alias { target: FolType::Named { name: target } },
+                    ..
+                } if name == "Label" && target == "str"
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_grouped_type_declarations_accept_mixed_separators() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_typ_group_mixed_separators.fol")
+            .expect("Should read grouped type mixed-separator fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept grouped type separators");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::TypeDecl { name, type_def: TypeDefinition::Entry { .. }, .. }
+                if name == "Status"
+            )));
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::TypeDecl {
+                    name,
+                    type_def: TypeDefinition::Alias { target: FolType::Int { .. } },
+                    ..
+                } if name == "Count"
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}

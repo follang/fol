@@ -1,0 +1,6 @@
+typ[pub] (
+    User: rec = {
+        var name: str;
+    };
+    Label: str;
+)

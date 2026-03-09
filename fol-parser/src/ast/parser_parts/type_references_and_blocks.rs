@@ -237,7 +237,7 @@ impl AstParser {
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Typ)) {
-                body.push(self.parse_type_decl(tokens)?);
+                body.extend(self.parse_type_decl(tokens)?);
                 continue;
             }
 

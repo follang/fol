@@ -67,9 +67,9 @@ impl AstParser {
         }
 
         if matches!(key, KEYWORD::Keyword(BUILDIN::Typ)) {
-            let node = self.parse_type_decl(tokens)?;
+            let nodes = self.parse_type_decl(tokens)?;
             self.consume_optional_semicolon(tokens);
-            return Ok(vec![node]);
+            return Ok(nodes);
         }
 
         if matches!(key, KEYWORD::Keyword(BUILDIN::Def)) {

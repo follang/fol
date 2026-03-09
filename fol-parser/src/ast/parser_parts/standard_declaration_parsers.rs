@@ -202,12 +202,15 @@ impl AstParser {
 
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Typ)) {
                 let member_anchor = self.peek_standard_member_anchor_token(tokens);
-                let member = self.parse_type_decl(tokens)?;
-                let key = self.standard_member_key(&member);
-                if !seen_members.insert(key.clone()) {
-                    return Err(self.duplicate_standard_member_error(member_anchor, &token, &key));
+                for member in self.parse_type_decl(tokens)? {
+                    let key = self.standard_member_key(&member);
+                    if !seen_members.insert(key.clone()) {
+                        return Err(
+                            self.duplicate_standard_member_error(member_anchor, &token, &key)
+                        );
+                    }
+                    body.push(member);
                 }
-                body.push(member);
                 continue;
             }
 
@@ -350,45 +353,57 @@ impl AstParser {
 
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Typ)) {
                 let member_anchor = self.peek_standard_member_anchor_token(tokens);
-                let member = self.parse_type_decl(tokens)?;
-                let key = self.standard_member_key(&member);
-                if !seen_members.insert(key.clone()) {
-                    return Err(self.duplicate_standard_member_error(member_anchor, &token, &key));
+                for member in self.parse_type_decl(tokens)? {
+                    let key = self.standard_member_key(&member);
+                    if !seen_members.insert(key.clone()) {
+                        return Err(
+                            self.duplicate_standard_member_error(member_anchor, &token, &key)
+                        );
+                    }
+                    body.push(member);
                 }
-                body.push(member);
                 continue;
             }
 
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Typ)) {
                 let member_anchor = self.peek_standard_member_anchor_token(tokens);
-                let member = self.parse_type_decl(tokens)?;
-                let key = self.standard_member_key(&member);
-                if !seen_members.insert(key.clone()) {
-                    return Err(self.duplicate_standard_member_error(member_anchor, &token, &key));
+                for member in self.parse_type_decl(tokens)? {
+                    let key = self.standard_member_key(&member);
+                    if !seen_members.insert(key.clone()) {
+                        return Err(
+                            self.duplicate_standard_member_error(member_anchor, &token, &key)
+                        );
+                    }
+                    body.push(member);
                 }
-                body.push(member);
                 continue;
             }
 
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Typ)) {
                 let member_anchor = self.peek_standard_member_anchor_token(tokens);
-                let member = self.parse_type_decl(tokens)?;
-                let key = self.standard_member_key(&member);
-                if !seen_members.insert(key.clone()) {
-                    return Err(self.duplicate_standard_member_error(member_anchor, &token, &key));
+                for member in self.parse_type_decl(tokens)? {
+                    let key = self.standard_member_key(&member);
+                    if !seen_members.insert(key.clone()) {
+                        return Err(
+                            self.duplicate_standard_member_error(member_anchor, &token, &key)
+                        );
+                    }
+                    body.push(member);
                 }
-                body.push(member);
                 continue;
             }
 
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Typ)) {
                 let member_anchor = self.peek_standard_member_anchor_token(tokens);
-                let member = self.parse_type_decl(tokens)?;
-                let key = self.standard_member_key(&member);
-                if !seen_members.insert(key.clone()) {
-                    return Err(self.duplicate_standard_member_error(member_anchor, &token, &key));
+                for member in self.parse_type_decl(tokens)? {
+                    let key = self.standard_member_key(&member);
+                    if !seen_members.insert(key.clone()) {
+                        return Err(
+                            self.duplicate_standard_member_error(member_anchor, &token, &key)
+                        );
+                    }
+                    body.push(member);
                 }
-                body.push(member);
                 continue;
             }
 
@@ -518,12 +533,15 @@ impl AstParser {
 
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Typ)) {
                 let member_anchor = self.peek_standard_member_anchor_token(tokens);
-                let member = self.parse_type_decl(tokens)?;
-                let key = self.standard_member_key(&member);
-                if !seen_members.insert(key.clone()) {
-                    return Err(self.duplicate_standard_member_error(member_anchor, &token, &key));
+                for member in self.parse_type_decl(tokens)? {
+                    let key = self.standard_member_key(&member);
+                    if !seen_members.insert(key.clone()) {
+                        return Err(
+                            self.duplicate_standard_member_error(member_anchor, &token, &key)
+                        );
+                    }
+                    body.push(member);
                 }
-                body.push(member);
                 continue;
             }
 

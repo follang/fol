@@ -106,6 +106,8 @@ mod pipe_lambda_parsers;
 mod rolling_expression_parsers;
 #[path = "parser_parts/grouped_binding_parsers.rs"]
 mod grouped_binding_parsers;
+#[path = "parser_parts/grouped_type_parsers.rs"]
+mod grouped_type_parsers;
 #[path = "parser_parts/program_and_bindings.rs"]
 mod program_and_bindings;
 #[path = "parser_parts/routine_headers_and_type_lowering.rs"]

@@ -143,7 +143,7 @@ impl AstParser {
         }
 
         if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Typ)) {
-            return self.parse_type_decl(tokens);
+            return self.pipe_stage_from_nodes(self.parse_type_decl(tokens)?);
         }
 
         if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Def)) {

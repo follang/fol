@@ -1,0 +1,6 @@
+typ (
+    Status: ent = {
+        var OK: str = "ok";
+    },
+    Count: int;
+);

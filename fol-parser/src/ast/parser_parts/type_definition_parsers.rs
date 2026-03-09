@@ -118,12 +118,13 @@ impl AstParser {
             }
 
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Typ)) {
-                let member = self.parse_type_decl(tokens)?;
-                let key = self.type_member_key(&member);
-                if !seen_members.insert(key.clone()) {
-                    return Err(self.duplicate_type_member_error(&token, &key));
+                for member in self.parse_type_decl(tokens)? {
+                    let key = self.type_member_key(&member);
+                    if !seen_members.insert(key.clone()) {
+                        return Err(self.duplicate_type_member_error(&token, &key));
+                    }
+                    members.push(member);
                 }
-                members.push(member);
                 self.skip_ignorable(tokens);
                 let sep = tokens.curr(false)?;
                 if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma))
@@ -422,12 +423,13 @@ impl AstParser {
             }
 
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Typ)) {
-                let member = self.parse_type_decl(tokens)?;
-                let key = self.type_member_key(&member);
-                if !seen_members.insert(key.clone()) {
-                    return Err(self.duplicate_type_member_error(&token, &key));
+                for member in self.parse_type_decl(tokens)? {
+                    let key = self.type_member_key(&member);
+                    if !seen_members.insert(key.clone()) {
+                        return Err(self.duplicate_type_member_error(&token, &key));
+                    }
+                    members.push(member);
                 }
-                members.push(member);
                 self.skip_ignorable(tokens);
                 let sep = tokens.curr(false)?;
                 if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma))

@@ -218,7 +218,7 @@ impl AstParser {
     pub(super) fn parse_type_decl(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
         let typ_token = tokens.curr(false)?;
         if !matches!(typ_token.key(), KEYWORD::Keyword(BUILDIN::Typ)) {
             return Err(Box::new(ParseError::from_token(
@@ -232,6 +232,22 @@ impl AstParser {
         let options = self.parse_type_options(tokens)?;
         self.skip_ignorable(tokens);
 
+        if matches!(
+            tokens.curr(false).map(|token| token.key()),
+            Ok(KEYWORD::Symbol(SYMBOL::RoundO))
+        ) {
+            return self.parse_type_group(tokens, options);
+        }
+
+        Ok(vec![self.parse_single_type_decl_with_options(tokens, options, true)?])
+    }
+
+    pub(super) fn parse_single_type_decl_with_options(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+        options: Vec<TypeOption>,
+        consume_terminator: bool,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
         let name_token = tokens.curr(false)?;
         let name = Self::token_to_named_label(&name_token).ok_or_else(|| {
             Box::new(ParseError::from_token(
@@ -256,7 +272,30 @@ impl AstParser {
         let _ = tokens.bump();
 
         self.skip_ignorable(tokens);
-        let type_def = if tokens.curr(false)?.con().trim() == "ent" {
+        let type_def = self.parse_type_definition(tokens)?;
+
+        let mut contracts = self.type_contracts_from_generics(&generics, &type_def);
+        contracts.extend(explicit_contracts);
+
+        if consume_terminator {
+            self.consume_optional_semicolon(tokens);
+        }
+
+        Ok(AstNode::TypeDecl {
+            options,
+            generics,
+            contracts,
+            name,
+            type_def,
+        })
+    }
+
+    pub(super) fn parse_type_definition(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<TypeDefinition, Box<dyn Glitch>> {
+        let marker = tokens.curr(false)?.con().trim().to_string();
+        if marker == "ent" {
             let _ = tokens.bump();
             self.skip_ignorable(tokens);
             self.parse_empty_type_marker_brackets(tokens, "entry")?;
@@ -271,47 +310,44 @@ impl AstParser {
             }
             let _ = tokens.bump();
             self.skip_ignorable(tokens);
-            self.parse_entry_type_definition(tokens)?
-        } else if tokens.curr(false)?.con().trim() == "rec" {
+            return self.parse_entry_type_definition(tokens);
+        }
+
+        if marker == "rec" || marker == "obj" {
             let _ = tokens.bump();
             self.skip_ignorable(tokens);
-            self.parse_empty_type_marker_brackets(tokens, "record")?;
+            self.parse_empty_type_marker_brackets(
+                tokens,
+                if marker == "obj" { "object" } else { "record" },
+            )?;
             self.skip_ignorable(tokens);
 
             let assign = tokens.curr(false)?;
             if !matches!(assign.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
                 return Err(Box::new(ParseError::from_token(
                     &assign,
-                    "Expected '=' after record type marker".to_string(),
+                    format!(
+                        "Expected '=' after {} type marker",
+                        if marker == "obj" { "object" } else { "record" }
+                    ),
                 )));
             }
             let _ = tokens.bump();
             self.skip_ignorable(tokens);
-            self.parse_record_type_definition(tokens)?
-        } else if matches!(tokens.curr(false)?.key(), KEYWORD::Symbol(SYMBOL::CurlyO))
+            return self.parse_record_type_definition(tokens);
+        }
+
+        if matches!(tokens.curr(false)?.key(), KEYWORD::Symbol(SYMBOL::CurlyO))
             && !matches!(
                 self.next_significant_key_from_window(tokens),
                 Some(KEYWORD::Keyword(BUILDIN::Fun))
             )
         {
-            self.parse_record_type_definition(tokens)?
-        } else {
-            let target = self.parse_type_reference_tokens(tokens)?;
-            TypeDefinition::Alias { target }
-        };
+            return self.parse_record_type_definition(tokens);
+        }
 
-        let mut contracts = self.type_contracts_from_generics(&generics, &type_def);
-        contracts.extend(explicit_contracts);
-
-        self.consume_optional_semicolon(tokens);
-
-        Ok(AstNode::TypeDecl {
-            options,
-            generics,
-            contracts,
-            name,
-            type_def,
-        })
+        let target = self.parse_type_reference_tokens(tokens)?;
+        Ok(TypeDefinition::Alias { target })
     }
 
     pub(super) fn parse_empty_type_marker_brackets(

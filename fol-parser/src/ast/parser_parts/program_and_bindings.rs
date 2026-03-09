@@ -259,7 +259,7 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_type_decl(tokens) {
-                    Ok(node) => declarations.push(node),
+                    Ok(nodes) => declarations.extend(nodes),
                     Err(error) => errors.push(error),
                 }
                 self.bump_if_no_progress(tokens, before);
