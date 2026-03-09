@@ -111,7 +111,7 @@ fn test_container_literal_bad_separator_reports_parse_error() {
 
     let first_message = parse_error.to_string();
     assert!(
-        first_message.contains("Expected ',' or '}' in container expression"),
+        first_message.contains("Expected ',', ';', or '}' in container expression"),
         "Malformed container literal should report missing separator, got: {}",
         first_message
     );
