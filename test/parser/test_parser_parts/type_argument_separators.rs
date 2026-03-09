@@ -214,6 +214,92 @@ fn test_special_type_forms_accept_semicolon_type_arguments() {
 }
 
 #[test]
+fn test_shared_type_argument_lists_accept_trailing_separators() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_type_args_trailing_separator.fol")
+            .expect("Should read trailing shared type-argument fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse trailing shared type-argument separators");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::TypeDecl {
+                    name,
+                    type_def: TypeDefinition::Alias {
+                        target: FolType::Sequence { element_type }
+                    },
+                    ..
+                }
+                if name == "Numbers"
+                    && matches!(element_type.as_ref(), FolType::Int { .. })
+            )));
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::TypeDecl {
+                    name,
+                    type_def: TypeDefinition::Alias {
+                        target: FolType::Map { key_type, value_type }
+                    },
+                    ..
+                }
+                if name == "Lookup"
+                    && matches!(key_type.as_ref(), FolType::Named { name } if name == "str")
+                    && matches!(
+                        value_type.as_ref(),
+                        FolType::Vector { element_type }
+                        if matches!(element_type.as_ref(), FolType::Int { .. })
+                    )
+            )));
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::FunDecl {
+                    name,
+                    params,
+                    return_type: Some(FolType::Map { key_type, value_type }),
+                    body,
+                    ..
+                }
+                if name == "build"
+                    && params.len() == 1
+                    && matches!(
+                        params[0].param_type,
+                        FolType::Sequence { ref element_type }
+                        if matches!(element_type.as_ref(), FolType::Named { name } if name == "pkg::Input")
+                    )
+                    && matches!(key_type.as_ref(), FolType::Named { name } if name == "str")
+                    && matches!(
+                        value_type.as_ref(),
+                        FolType::Vector { element_type }
+                        if matches!(element_type.as_ref(), FolType::Named { name } if name == "pkg::Output")
+                    )
+                    && body.iter().any(|stmt| matches!(
+                        stmt,
+                        AstNode::VarDecl {
+                            name,
+                            type_hint: Some(FolType::Map { key_type, value_type }),
+                            ..
+                        }
+                        if name == "cache"
+                            && matches!(key_type.as_ref(), FolType::Named { name } if name == "str")
+                            && matches!(
+                                value_type.as_ref(),
+                                FolType::Vector { element_type }
+                                if matches!(element_type.as_ref(), FolType::Int { .. })
+                            )
+                    ))
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
 fn test_array_types_accept_semicolon_separator() {
     let mut file_stream =
         FileStream::from_file("test/parser/simple_typ_array_types_semicolon.fol")
