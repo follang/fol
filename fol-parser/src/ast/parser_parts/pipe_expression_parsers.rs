@@ -1,12 +1,64 @@
 use super::*;
 
 impl AstParser {
+    fn lookahead_pipe_stage_has_body_after_parens(
+        &self,
+        tokens: &fol_lexer::lexer::stage3::Elements,
+    ) -> bool {
+        let mut depth = 0usize;
+        let mut saw_open = false;
+
+        for candidate in tokens.next_vec() {
+            let token = match candidate {
+                Ok(token) => token,
+                Err(_) => continue,
+            };
+            let key = token.key();
+            if key.is_void() || key.is_comment() {
+                continue;
+            }
+
+            match key {
+                KEYWORD::Symbol(SYMBOL::RoundO) => {
+                    saw_open = true;
+                    depth += 1;
+                }
+                KEYWORD::Symbol(SYMBOL::RoundC) => {
+                    if depth == 0 {
+                        return false;
+                    }
+                    depth -= 1;
+                    if saw_open && depth == 0 {
+                        continue;
+                    }
+                }
+                KEYWORD::Symbol(SYMBOL::CurlyO) | KEYWORD::Operator(OPERATOR::Flow)
+                    if saw_open && depth == 0 =>
+                {
+                    return true;
+                }
+                _ if saw_open && depth == 0 => {
+                    return false;
+                }
+                _ => {}
+            }
+        }
+
+        false
+    }
+
     fn parse_pipe_stage_expression(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Box<dyn Glitch>> {
         self.skip_ignorable(tokens);
         let token = tokens.curr(false)?;
+
+        if matches!(token.key(), KEYWORD::Keyword(BUILDIN::If))
+            && self.lookahead_pipe_stage_has_body_after_parens(tokens)
+        {
+            return self.parse_if_stmt(tokens);
+        }
 
         if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Return)) {
             return self.parse_return_stmt(tokens);

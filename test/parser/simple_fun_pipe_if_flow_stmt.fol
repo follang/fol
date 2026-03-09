@@ -1,0 +1,3 @@
+fun decide(value: int): int = {
+    return value | if(this > 0) => this;
+}
