@@ -165,3 +165,50 @@ fn test_type_bodies_accept_semicolon_type_arguments() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_special_type_forms_accept_semicolon_type_arguments() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_type_args_semicolon_specials.fol")
+            .expect("Should read semicolon type-argument special-type fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse semicolon-separated type arguments in special forms");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::TypeDecl {
+                    name,
+                    type_def: TypeDefinition::Alias {
+                        target: FolType::Optional { inner }
+                    },
+                    ..
+                }
+                if name == "MaybePath"
+                    && matches!(inner.as_ref(), FolType::Path { name } if name == "std")
+            )));
+
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::TypeDecl {
+                    name,
+                    type_def: TypeDefinition::Alias {
+                        target: FolType::Multiple { types }
+                    },
+                    ..
+                }
+                if name == "Paths"
+                    && matches!(types.as_slice(),
+                        [FolType::Path { name: left }, FolType::Url { name: right }]
+                        if left == "std" && right == "web")
+            )));
+
+        }
+        _ => panic!("Expected program node"),
+    }
+}

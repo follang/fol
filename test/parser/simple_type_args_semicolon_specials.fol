@@ -1,0 +1,2 @@
+typ MaybePath: opt[path[std;];]
+typ Paths: mul[path[std;]; url[web;];]
