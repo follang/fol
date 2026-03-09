@@ -1,0 +1,5 @@
+var empty = nil
+
+fun clear(): none = {
+    return nil;
+}
