@@ -102,6 +102,10 @@ impl AstParser {
             return self.parse_return_stmt(tokens);
         }
 
+        if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
+            return self.parse_block_stmt(tokens);
+        }
+
         if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Break)) {
             return self.parse_break_stmt(tokens);
         }

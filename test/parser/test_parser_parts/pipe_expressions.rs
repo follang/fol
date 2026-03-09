@@ -514,6 +514,37 @@ fn test_pipe_expression_supports_invoke_stages() {
 }
 
 #[test]
+fn test_pipe_expression_supports_block_stages() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_fun_pipe_block_stage.fol")
+        .expect("Should read pipe block-stage fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse block stages on pipes");
+
+    let return_value = match ast {
+        AstNode::Program { declarations } => declarations
+            .iter()
+            .find_map(|node| match node {
+                AstNode::FunDecl { body, .. } => body.iter().find_map(|stmt| match stmt {
+                    AstNode::Return { value: Some(value) } => Some(value.as_ref().clone()),
+                    _ => None,
+                }),
+                _ => None,
+            })
+            .expect("Expected return statement"),
+        _ => panic!("Expected program node"),
+    };
+
+    assert!(
+        contains_pipe_stage(&return_value, |node| matches!(node, AstNode::Block { .. })),
+        "Expected pipe tree to contain a block stage, got: {return_value:#?}"
+    );
+}
+
+#[test]
 fn test_pipe_expression_rejects_missing_rhs() {
     let mut file_stream = FileStream::from_file("test/parser/simple_fun_pipe_missing_rhs.fol")
         .expect("Should read malformed pipe fixture");

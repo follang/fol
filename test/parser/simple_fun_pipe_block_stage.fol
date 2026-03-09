@@ -1,0 +1,6 @@
+fun[] block_stage(value: int): int = {
+    return value | {
+        report(value);
+        return value;
+    };
+}
