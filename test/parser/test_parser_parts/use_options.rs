@@ -180,3 +180,37 @@ fn test_use_declaration_rejects_duplicate_names() {
         parse_error
     );
 }
+
+#[test]
+fn test_use_declaration_accepts_semicolon_visibility_options() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_use_options_semicolon.fol")
+        .expect("Should read semicolon use-option fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept semicolon-separated use options");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::UseDecl { name, options, .. }
+                    if name == "math"
+                        && options == &vec![UseOption::Export, UseOption::Normal]
+                )
+            }));
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::UseDecl { name, options, .. }
+                    if name == "cache"
+                        && options == &vec![UseOption::Hidden]
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
