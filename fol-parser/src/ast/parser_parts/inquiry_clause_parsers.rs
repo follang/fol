@@ -327,7 +327,9 @@ impl AstParser {
             let _ = tokens.bump();
             self.skip_ignorable(tokens);
             let key = tokens.curr(false)?.key();
-            let expr = if matches!(key, KEYWORD::Symbol(SYMBOL::CurlyO)) {
+            let expr = if matches!(key, KEYWORD::Keyword(BUILDIN::If)) {
+                self.parse_if_stmt(tokens)?
+            } else if matches!(key, KEYWORD::Symbol(SYMBOL::CurlyO)) {
                 self.parse_block_stmt(tokens)?
             } else if (AstParser::token_can_be_logical_name(&key)
                 || matches!(key, KEYWORD::Literal(LITERAL::Stringy)))
