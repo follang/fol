@@ -441,7 +441,7 @@ impl AstParser {
         if !matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
             return Err(Box::new(ParseError::from_token(
                 &token,
-                "Expected '{' or '=>' to start case/default body".to_string(),
+                "Expected '{' or '=>' to start branch body".to_string(),
             )));
         }
         let _ = tokens.bump();

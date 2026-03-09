@@ -737,3 +737,50 @@ fn test_when_flow_type_module_bodies_parsing() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_if_flow_missing_body_reports_branch_message() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_fun_if_flow_missing_body.fol")
+        .expect("Should read missing if flow-body fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject missing if branch body");
+
+    let parse_error = errors
+        .first()
+        .and_then(|error| error.as_ref().as_any().downcast_ref::<ParseError>())
+        .expect("First parser error should be ParseError");
+
+    assert!(
+        parse_error.to_string().contains("Expected '{' or '=>' to start branch body"),
+        "Missing if body should use generic branch-body wording, got: {}",
+        parse_error
+    );
+}
+
+#[test]
+fn test_when_flow_missing_body_reports_branch_message() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_when_flow_missing_body.fol")
+            .expect("Should read missing when flow-body fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject missing when branch body");
+
+    let parse_error = errors
+        .first()
+        .and_then(|error| error.as_ref().as_any().downcast_ref::<ParseError>())
+        .expect("First parser error should be ParseError");
+
+    assert!(
+        parse_error.to_string().contains("Expected '{' or '=>' to start branch body"),
+        "Missing when body should use generic branch-body wording, got: {}",
+        parse_error
+    );
+}
