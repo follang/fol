@@ -170,6 +170,14 @@ impl AstParser {
             return self.parse_pro_decl(tokens);
         }
 
+        let key = token.key();
+        if (AstParser::token_can_be_logical_name(&key)
+            || matches!(key, KEYWORD::Literal(LITERAL::Stringy)))
+            && self.lookahead_is_assignment(tokens)
+        {
+            return self.parse_assignment_stmt(tokens);
+        }
+
         if matches!(
             token.key(),
             KEYWORD::Keyword(BUILDIN::Panic)
