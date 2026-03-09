@@ -83,7 +83,10 @@ impl AstParser {
                     self.skip_ignorable(tokens);
 
                     let sep = tokens.curr(false)?;
-                    if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
+                    if matches!(
+                        sep.key(),
+                        KEYWORD::Symbol(SYMBOL::Comma) | KEYWORD::Symbol(SYMBOL::Semi)
+                    ) {
                         let _ = tokens.bump();
                         continue;
                     }
@@ -94,7 +97,7 @@ impl AstParser {
 
                     return Err(Box::new(ParseError::from_token(
                         &sep,
-                        "Expected ',' or ')' in rolling bindings".to_string(),
+                        "Expected ',', ';', or ')' in rolling bindings".to_string(),
                     )));
                 }
 
@@ -127,7 +130,10 @@ impl AstParser {
             let Ok(sep) = tokens.curr(false) else {
                 break;
             };
-            if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
+            if matches!(
+                sep.key(),
+                KEYWORD::Symbol(SYMBOL::Comma) | KEYWORD::Symbol(SYMBOL::Semi)
+            ) {
                 let _ = tokens.bump();
                 self.skip_ignorable(tokens);
                 continue;

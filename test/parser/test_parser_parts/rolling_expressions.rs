@@ -71,6 +71,41 @@ fn test_parenthesized_multi_binding_rolling_expression_parses() {
 }
 
 #[test]
+fn test_parenthesized_semicolon_multi_binding_rolling_expression_parses() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_rolling_multi_binding_semicolon.fol")
+            .expect("Should read semicolon multi-binding rolling expression fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept parenthesized semicolon-separated rolling expressions");
+
+    let return_value = match ast {
+        AstNode::Program { declarations } => declarations
+            .iter()
+            .find_map(|node| match node {
+                AstNode::Return { value: Some(value) } => Some(value.as_ref().clone()),
+                _ => None,
+            })
+            .expect("Program should contain return value"),
+        _ => panic!("Expected program node"),
+    };
+
+    assert!(
+        matches!(
+            return_value,
+            AstNode::Rolling { bindings, .. }
+                if bindings.len() == 2
+                    && bindings[0].name == "x"
+                    && bindings[1].name == "y"
+        ),
+        "Semicolon-separated rolling syntax should keep both binders"
+    );
+}
+
+#[test]
 fn test_bare_multi_binding_rolling_expression_parses() {
     let mut file_stream =
         FileStream::from_file("test/parser/simple_fun_rolling_bare_multi_binding.fol")
@@ -102,6 +137,41 @@ fn test_bare_multi_binding_rolling_expression_parses() {
                     && bindings[1].name == "y"
         ),
         "Bare rolling syntax should keep both binders"
+    );
+}
+
+#[test]
+fn test_bare_semicolon_multi_binding_rolling_expression_parses() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_rolling_bare_multi_binding_semicolon.fol")
+            .expect("Should read bare semicolon multi-binding rolling expression fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept bare semicolon-separated rolling expressions");
+
+    let return_value = match ast {
+        AstNode::Program { declarations } => declarations
+            .iter()
+            .find_map(|node| match node {
+                AstNode::Return { value: Some(value) } => Some(value.as_ref().clone()),
+                _ => None,
+            })
+            .expect("Program should contain return value"),
+        _ => panic!("Expected program node"),
+    };
+
+    assert!(
+        matches!(
+            return_value,
+            AstNode::Rolling { bindings, .. }
+                if bindings.len() == 2
+                    && bindings[0].name == "x"
+                    && bindings[1].name == "y"
+        ),
+        "Bare semicolon rolling syntax should keep both binders"
     );
 }
 
