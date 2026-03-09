@@ -153,6 +153,52 @@ fn test_segment_declaration_accepts_empty_option_brackets() {
 }
 
 #[test]
+fn test_segment_declaration_accepts_empty_marker_form() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_seg_marker.fol")
+        .expect("Should read marker-form segment declaration test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept marker-form segment declarations");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::SegDecl { name, seg_type, body, .. }
+                if name == "core" && matches!(seg_type, FolType::Module { .. }) && body.is_empty()
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_segment_declaration_accepts_empty_option_marker_form() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_seg_empty_options_marker.fol")
+        .expect("Should read empty-option marker segment fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept seg[] marker declarations");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::SegDecl { name, seg_type, body, .. }
+                if name == "core" && matches!(seg_type, FolType::Module { .. }) && body.is_empty()
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
 fn test_segment_declaration_rejects_non_empty_option_brackets() {
     let mut file_stream = FileStream::from_file("test/parser/simple_seg_unknown_option.fol")
         .expect("Should read invalid segment option test file");
