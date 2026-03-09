@@ -618,8 +618,13 @@ fn test_blueprint_standard_accepts_empty_kind_brackets() {
             assert!(declarations.iter().any(|node| {
                 matches!(
                     node,
-                    AstNode::StdDecl { name, kind: StandardKind::Blueprint, .. }
-                    if name == "geometry"
+                    AstNode::StdDecl {
+                        name,
+                        kind: StandardKind::Blueprint,
+                        kind_options,
+                        ..
+                    }
+                    if name == "geometry" && kind_options == &vec![DeclOption::Hidden]
                 )
             }));
         }
