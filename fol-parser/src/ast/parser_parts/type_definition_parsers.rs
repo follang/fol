@@ -31,15 +31,24 @@ impl AstParser {
             let default_options = match token.key() {
                 KEYWORD::Keyword(BUILDIN::Var) => {
                     let _ = tokens.bump();
-                    vec![VarOption::Mutable, VarOption::Normal]
+                    self.parse_binding_options(
+                        tokens,
+                        vec![VarOption::Mutable, VarOption::Normal],
+                    )?
                 }
                 KEYWORD::Keyword(BUILDIN::Lab) => {
                     let _ = tokens.bump();
-                    vec![VarOption::Immutable, VarOption::Normal]
+                    self.parse_binding_options(
+                        tokens,
+                        vec![VarOption::Immutable, VarOption::Normal],
+                    )?
                 }
                 KEYWORD::Keyword(BUILDIN::Con) => {
                     let _ = tokens.bump();
-                    vec![VarOption::Immutable, VarOption::Normal]
+                    self.parse_binding_options(
+                        tokens,
+                        vec![VarOption::Immutable, VarOption::Normal],
+                    )?
                 }
                 _ => {
                     return Err(Box::new(ParseError::from_token(
@@ -48,6 +57,8 @@ impl AstParser {
                     )))
                 }
             };
+
+            self.skip_ignorable(tokens);
 
             let mut names = Vec::new();
             for _ in 0..64 {

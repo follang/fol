@@ -147,3 +147,33 @@ fn test_record_field_binding_options_are_retained() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_entry_variant_binding_options_are_retained() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_typ_entry_variant_options.fol")
+            .expect("Should read entry variant option fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should retain entry variant binding options");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::TypeDecl {
+                    name,
+                    type_def: TypeDefinition::Entry { variant_meta, .. },
+                    ..
+                }
+                if name == "Result"
+                    && matches!(variant_meta.get("Ok"), Some(EntryVariantMeta { options, .. }) if options.contains(&VarOption::Export) && options.contains(&VarOption::Static))
+                    && matches!(variant_meta.get("Err"), Some(EntryVariantMeta { options, .. }) if options.contains(&VarOption::Hidden) && options.contains(&VarOption::Immutable))
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}

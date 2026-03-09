@@ -1,0 +1,4 @@
+typ Result: ent = {
+    var[exp, sta] Ok: str = "ok";
+    con[hid] Err: int = 500;
+}
