@@ -1,0 +1,6 @@
+fun watch(parent: any, value: int): int = {
+    return value;
+    where(self) {
+        parent:["bob"](value);
+    }
+}

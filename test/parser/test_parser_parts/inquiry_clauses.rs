@@ -802,3 +802,29 @@ fn test_inquiry_clause_accepts_flow_loop_body() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_inquiry_body_supports_availability_invoke_statements() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_inquiry_availability_invoke_body.fol")
+            .expect("Should read inquiry availability invoke fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept availability invoke statements in inquiry bodies");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::FunDecl { inquiries, .. }
+                if matches!(&inquiries[0], AstNode::Inquiry { body, .. }
+                    if matches!(body.as_slice(), [AstNode::Invoke { callee, args }]
+                        if args.len() == 1 && matches!(callee.as_ref(), AstNode::AvailabilityAccess { .. })))
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
