@@ -1,0 +1,3 @@
+fun make(): any = {
+    return |left, right: int; label: str| left;
+}
