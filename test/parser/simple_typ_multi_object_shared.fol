@@ -1,0 +1,3 @@
+typ User, Admin: obj = {
+    var name: str;
+};

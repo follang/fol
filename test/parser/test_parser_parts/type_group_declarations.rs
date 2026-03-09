@@ -66,3 +66,71 @@ fn test_grouped_type_declarations_accept_mixed_separators() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_multi_name_type_alias_declarations_expand_into_multiple_nodes() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_typ_multi_aliases.fol")
+        .expect("Should read multi-name type alias fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should expand multi-name type aliases");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::TypeDecl {
+                    name,
+                    options,
+                    type_def: TypeDefinition::Alias { target: FolType::Int { .. } },
+                    ..
+                } if name == "IntAlias"
+                    && options.contains(&fol_parser::ast::TypeOption::Extension)
+            )));
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::TypeDecl {
+                    name,
+                    options,
+                    type_def: TypeDefinition::Alias { target: FolType::Named { name: target } },
+                    ..
+                } if name == "TextAlias"
+                    && target == "str"
+                    && options.contains(&fol_parser::ast::TypeOption::Extension)
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_multi_name_type_declarations_share_object_definitions() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_typ_multi_object_shared.fol")
+            .expect("Should read shared object-definition fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should clone a shared object definition across names");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            let matched = declarations
+                .iter()
+                .filter(|node| matches!(
+                    node,
+                    AstNode::TypeDecl { name, type_def: TypeDefinition::Record { fields, .. }, .. }
+                    if (name == "User" || name == "Admin")
+                        && matches!(fields.get("name"), Some(FolType::Named { name }) if name == "str")
+                ))
+                .count();
+            assert_eq!(matched, 2, "Expected shared object definition for both names");
+        }
+        _ => panic!("Expected program node"),
+    }
+}

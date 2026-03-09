@@ -239,7 +239,7 @@ impl AstParser {
             return self.parse_type_group(tokens, options);
         }
 
-        Ok(vec![self.parse_single_type_decl_with_options(tokens, options, true)?])
+        self.parse_single_type_decl_with_options(tokens, options, true)
     }
 
     pub(super) fn parse_single_type_decl_with_options(
@@ -247,7 +247,7 @@ impl AstParser {
         tokens: &mut fol_lexer::lexer::stage3::Elements,
         options: Vec<TypeOption>,
         consume_terminator: bool,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
         let name_token = tokens.curr(false)?;
         let name = Self::token_to_named_label(&name_token).ok_or_else(|| {
             Box::new(ParseError::from_token(
@@ -256,6 +256,29 @@ impl AstParser {
             )) as Box<dyn Glitch>
         })?;
         let _ = tokens.bump();
+
+        let mut names = vec![name];
+        loop {
+            self.skip_ignorable(tokens);
+            let sep = match tokens.curr(false) {
+                Ok(token) => token,
+                Err(_) => break,
+            };
+            if !matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
+                break;
+            }
+            let _ = tokens.bump();
+            self.skip_ignorable(tokens);
+            let next_name = tokens.curr(false)?;
+            let next_name = Self::token_to_named_label(&next_name).ok_or_else(|| {
+                Box::new(ParseError::from_token(
+                    &next_name,
+                    "Expected type declaration name after ','".to_string(),
+                )) as Box<dyn Glitch>
+            })?;
+            names.push(next_name);
+            let _ = tokens.bump();
+        }
 
         self.skip_ignorable(tokens);
         let generics = self.parse_type_generic_header(tokens)?;
@@ -272,22 +295,56 @@ impl AstParser {
         let _ = tokens.bump();
 
         self.skip_ignorable(tokens);
-        let type_def = self.parse_type_definition(tokens)?;
+        let mut type_defs = vec![self.parse_type_definition(tokens)?];
+        while type_defs.len() < names.len() {
+            self.skip_ignorable(tokens);
+            let sep = tokens.curr(false)?;
+            if !matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
+                break;
+            }
+            let _ = tokens.bump();
+            self.skip_ignorable(tokens);
+            type_defs.push(self.parse_type_definition(tokens)?);
+        }
 
-        let mut contracts = self.type_contracts_from_generics(&generics, &type_def);
-        contracts.extend(explicit_contracts);
+        if names.len() > 1 && (!generics.is_empty() || !explicit_contracts.is_empty()) {
+            let token = tokens.curr(false).unwrap_or(name_token);
+            return Err(Box::new(ParseError::from_token(
+                &token,
+                "Type generics and explicit contracts are currently supported only on single-name type declarations".to_string(),
+            )));
+        }
 
         if consume_terminator {
             self.consume_optional_semicolon(tokens);
         }
 
-        Ok(AstNode::TypeDecl {
-            options,
-            generics,
-            contracts,
-            name,
-            type_def,
-        })
+        let assigned_type_defs = match type_defs.len() {
+            1 => vec![type_defs[0].clone(); names.len()],
+            n if n == names.len() => type_defs,
+            _ => {
+                let token = tokens.curr(false).unwrap_or(name_token);
+                return Err(Box::new(ParseError::from_token(
+                    &token,
+                    "Type definition count must match declared names or provide a single shared definition".to_string(),
+                )));
+            }
+        };
+
+        let mut nodes = Vec::new();
+        for (name, type_def) in names.into_iter().zip(assigned_type_defs) {
+            let mut contracts = self.type_contracts_from_generics(&generics, &type_def);
+            contracts.extend(explicit_contracts.clone());
+            nodes.push(AstNode::TypeDecl {
+                options: options.clone(),
+                generics: generics.clone(),
+                contracts,
+                name,
+                type_def,
+            });
+        }
+
+        Ok(nodes)
     }
 
     pub(super) fn parse_type_definition(
