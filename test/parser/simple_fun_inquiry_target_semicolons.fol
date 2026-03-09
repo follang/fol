@@ -1,0 +1,6 @@
+fun show(): int = {
+    return 1;
+    where(self; this) {
+        this;
+    }
+}

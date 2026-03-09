@@ -290,14 +290,17 @@ impl AstParser {
 
             self.skip_ignorable(tokens);
             let close = tokens.curr(false)?;
-            if matches!(close.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
+            if matches!(
+                close.key(),
+                KEYWORD::Symbol(SYMBOL::Comma) | KEYWORD::Symbol(SYMBOL::Semi)
+            ) {
                 let _ = tokens.bump();
                 continue;
             }
             if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
                 return Err(Box::new(ParseError::from_token(
                     &close,
-                    "Expected ',' or ')' after inquiry target".to_string(),
+                    "Expected ',', ';', or ')' after inquiry target".to_string(),
                 )));
             }
             let _ = tokens.bump();
