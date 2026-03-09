@@ -1,0 +1,2 @@
+var[mut; export;] counter: int = 1;
+let[hidden;] message: str = "hello";

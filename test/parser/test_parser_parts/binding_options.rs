@@ -215,6 +215,42 @@ fn test_binding_storage_and_ownership_options_parse() {
 }
 
 #[test]
+fn test_binding_option_brackets_accept_semicolon_separators() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_binding_options_semicolon.fol")
+        .expect("Should read semicolon binding options fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept semicolon-separated binding options");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::VarDecl { name, options, .. }
+                    if name == "counter"
+                        && options.contains(&fol_parser::ast::VarOption::Mutable)
+                        && options.contains(&fol_parser::ast::VarOption::Export)
+                )
+            }));
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::VarDecl { name, options, .. }
+                    if name == "message"
+                        && options.contains(&fol_parser::ast::VarOption::Immutable)
+                        && options.contains(&fol_parser::ast::VarOption::Hidden)
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
 fn test_binding_conflicting_options_report_parse_error() {
     let mut file_stream = FileStream::from_file("test/parser/simple_binding_option_conflicts.fol")
         .expect("Should read conflicting binding options fixture");
