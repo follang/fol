@@ -59,12 +59,7 @@ impl AstParser {
                 )));
             }
 
-            if matches!(
-                token.key(),
-                KEYWORD::Keyword(BUILDIN::Fun)
-                    | KEYWORD::Keyword(BUILDIN::Pro)
-                    | KEYWORD::Keyword(BUILDIN::Log)
-            ) {
+            if self.looks_like_type_routine_member(tokens)? {
                 let member = self.parse_standard_routine_signature(tokens)?;
                 let key = self.type_member_key(&member);
                 if !seen_members.insert(key.clone()) {
@@ -253,6 +248,9 @@ impl AstParser {
                         format!("Duplicate entry variant '{}'", name),
                     )));
                 }
+                if !seen_members.insert(name.clone()) {
+                    return Err(self.duplicate_type_member_error(&name_token, &name));
+                }
                 variant_meta.insert(
                     name,
                     EntryVariantMeta {
@@ -365,12 +363,7 @@ impl AstParser {
                 )));
             }
 
-            if matches!(
-                token.key(),
-                KEYWORD::Keyword(BUILDIN::Fun)
-                    | KEYWORD::Keyword(BUILDIN::Pro)
-                    | KEYWORD::Keyword(BUILDIN::Log)
-            ) {
+            if self.looks_like_type_routine_member(tokens)? {
                 let member = self.parse_standard_routine_signature(tokens)?;
                 let key = self.type_member_key(&member);
                 if !seen_members.insert(key.clone()) {
@@ -556,6 +549,9 @@ impl AstParser {
                         format!("Duplicate record field '{}'", field_name),
                     )));
                 }
+                if !seen_members.insert(field_name.clone()) {
+                    return Err(self.duplicate_type_member_error(&name_token, &field_name));
+                }
                 field_meta.insert(
                     field_name,
                     RecordFieldMeta {
@@ -660,5 +656,25 @@ impl AstParser {
             _ => {}
         }
         Ok(Some(member))
+    }
+
+    fn looks_like_type_routine_member(
+        &self,
+        tokens: &fol_lexer::lexer::stage3::Elements,
+    ) -> Result<bool, Box<dyn Glitch>> {
+        let token = tokens.curr(false)?;
+        if !matches!(
+            token.key(),
+            KEYWORD::Keyword(BUILDIN::Fun)
+                | KEYWORD::Keyword(BUILDIN::Pro)
+                | KEYWORD::Keyword(BUILDIN::Log)
+        ) {
+            return Ok(false);
+        }
+
+        Ok(!matches!(
+            self.next_significant_key_from_window(tokens),
+            Some(KEYWORD::Symbol(SYMBOL::Colon))
+        ))
     }
 }
