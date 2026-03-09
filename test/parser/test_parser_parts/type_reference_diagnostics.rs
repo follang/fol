@@ -107,3 +107,17 @@ fn test_module_block_test_and_source_kind_missing_close_report_type_reference_cl
         );
     }
 }
+
+#[test]
+fn test_array_and_matrix_missing_close_report_type_reference_close() {
+    for path in [
+        "test/parser/simple_arr_type_missing_close.fol",
+        "test/parser/simple_mat_type_missing_close.fol",
+    ] {
+        let message = first_parse_error_message(path);
+        assert!(
+            message.contains("Expected closing ']' in type reference"),
+            "Expected normalized missing-close diagnostic for fixture {path}, got: {message}",
+        );
+    }
+}
