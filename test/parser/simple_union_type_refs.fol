@@ -1,0 +1,5 @@
+typ DynamicNumber: uni[int, flt, bol]
+
+fun choose(value: uni[str, chr]): uni[str, chr] = {
+    return value;
+}
