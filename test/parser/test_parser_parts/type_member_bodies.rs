@@ -86,3 +86,31 @@ fn test_record_type_accepts_alias_members() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_record_type_accepts_nested_type_members() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_typ_record_type_member.fol")
+        .expect("Should read record type-member fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept nested type members in record type bodies");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::TypeDecl {
+                    name,
+                    type_def: TypeDefinition::Record { members, .. },
+                    ..
+                }
+                if name == "Distance"
+                    && members.iter().any(|member| matches!(member, AstNode::TypeDecl { name, type_def: TypeDefinition::Alias { target: FolType::Named { name: target } }, .. } if name == "Unit" && target == "str"))
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
