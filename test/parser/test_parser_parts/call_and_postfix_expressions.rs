@@ -624,6 +624,52 @@ fn test_nested_calls_with_trailing_commas_preserve_argument_shapes() {
 }
 
 #[test]
+fn test_nested_calls_with_semicolons_preserve_argument_shapes() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_call_nested_semicolon.fol")
+            .expect("Should read nested semicolon call test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse nested semicolon calls");
+
+    let (has_outer_two_args, has_done_one_arg) = match ast {
+        AstNode::Program { declarations } => {
+            let has_outer_two_args = declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::Assignment { value, .. }
+                    if matches!(
+                        value.as_ref(),
+                        AstNode::FunctionCall { name, args }
+                        if name == "outer"
+                            && args.len() == 2
+                            && matches!(args[0], AstNode::FunctionCall { ref name, args: ref nested_args } if name == "inner" && nested_args.len() == 1)
+                            && matches!(args[1], AstNode::MethodCall { ref method, args: ref nested_args, .. } if method == "run" && nested_args.len() == 1)
+                    )
+                )
+            });
+
+            let has_done_one_arg = declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::Return { value: Some(value) }
+                    if matches!(value.as_ref(), AstNode::FunctionCall { name, args } if name == "done" && args.len() == 1)
+                )
+            });
+
+            (has_outer_two_args, has_done_one_arg)
+        }
+        _ => panic!("Expected program node"),
+    };
+
+    assert!(has_outer_two_args);
+    assert!(has_done_one_arg);
+}
+
+#[test]
 fn test_multiline_call_arguments_parse_with_expected_shapes() {
     let mut file_stream = FileStream::from_file("test/parser/simple_fun_call_multiline.fol")
         .expect("Should read multiline call test file");

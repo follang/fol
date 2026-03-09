@@ -1,0 +1,4 @@
+fun nested_semicolon(a: int, b: int): int = {
+    value = outer(inner(a;); obj.run(b;););
+    return done(value;);
+}
