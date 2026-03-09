@@ -124,6 +124,40 @@ fn test_semicolon_container_literals_parse_in_initializers() {
 }
 
 #[test]
+fn test_semicolon_container_literals_parse_in_call_args() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_container_literal_semicolon_call_arg.fol")
+            .expect("Should read semicolon container call-arg file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse semicolon-separated container literals in call args");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::FunDecl { body, .. }
+                if body.iter().any(|stmt| matches!(
+                    stmt,
+                    AstNode::Return { value: Some(value) }
+                    if matches!(
+                        value.as_ref(),
+                        AstNode::FunctionCall { name, args }
+                        if name == "emit"
+                            && matches!(args.as_slice(), [AstNode::ContainerLiteral { elements, .. }] if elements.len() == 3)
+                    )
+                ))
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
 fn test_braced_range_expressions_parse_in_assignment_and_return() {
     let mut file_stream = FileStream::from_file("test/parser/simple_fun_braced_range_expr.fol")
         .expect("Should read braced range expression test file");
