@@ -943,6 +943,10 @@ impl AstParser {
             return Ok(FolType::Any);
         }
 
+        if name == "nev" {
+            return Ok(FolType::Never);
+        }
+
         if matches!(name.as_str(), "non" | "none") {
             return Ok(FolType::None);
         }
