@@ -60,6 +60,18 @@ impl AstParser {
             return Ok(nodes);
         }
 
+        if matches!(
+            key,
+            KEYWORD::Keyword(BUILDIN::Panic)
+                | KEYWORD::Keyword(BUILDIN::Report)
+                | KEYWORD::Keyword(BUILDIN::Check)
+                | KEYWORD::Keyword(BUILDIN::Assert)
+        ) {
+            let node = self.parse_builtin_call_stmt(tokens)?;
+            self.consume_optional_semicolon(tokens);
+            return Ok(vec![node]);
+        }
+
         let node = if (AstParser::token_can_be_logical_name(&key)
             || matches!(key, KEYWORD::Literal(LITERAL::Stringy)))
             && self.lookahead_is_assignment(tokens)

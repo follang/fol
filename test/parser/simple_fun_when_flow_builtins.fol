@@ -1,0 +1,6 @@
+fun classify(value: int): int = {
+    when(value) {
+        is(0) => check(value);
+        has(value) => panic(value);
+    }
+}

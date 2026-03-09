@@ -1,0 +1,4 @@
+fun fallback(value: int): int = {
+    if(value) => report(value);
+    else => assert(value);
+}
