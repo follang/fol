@@ -474,6 +474,17 @@ impl AstParser {
                 continue;
             }
 
+            if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Ali)) {
+                let member_anchor = self.peek_standard_member_anchor_token(tokens);
+                let member = self.parse_alias_decl(tokens)?;
+                let key = self.standard_member_key(&member);
+                if !seen_members.insert(key.clone()) {
+                    return Err(self.duplicate_standard_member_error(member_anchor, &token, &key));
+                }
+                body.push(member);
+                continue;
+            }
+
             if self.lookahead_binding_alternative(tokens).is_some() {
                 let member_anchor = self.peek_standard_member_anchor_token(tokens);
                 let members = self.parse_binding_alternative_decl(tokens)?;
@@ -489,7 +500,7 @@ impl AstParser {
 
             return Err(Box::new(ParseError::from_token(
                 &token,
-                "Extended standards currently support only routine signatures and field declarations"
+                "Extended standards currently support only routine, field, and alias declarations"
                     .to_string(),
             )));
         }
