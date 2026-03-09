@@ -441,10 +441,12 @@ pub enum TypeDefinition {
     Record {
         fields: HashMap<String, FolType>,
         field_meta: HashMap<String, RecordFieldMeta>,
+        members: Vec<AstNode>,
     },
     Entry {
         variants: HashMap<String, Option<FolType>>,
         variant_meta: HashMap<String, EntryVariantMeta>,
+        members: Vec<AstNode>,
     },
     Alias {
         target: FolType,

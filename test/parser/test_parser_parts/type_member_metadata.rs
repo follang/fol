@@ -196,7 +196,11 @@ fn test_record_grouped_fields_are_retained() {
                 node,
                 AstNode::TypeDecl {
                     name,
-                    type_def: TypeDefinition::Record { fields, field_meta },
+                    type_def: TypeDefinition::Record {
+                        fields,
+                        field_meta,
+                        ..
+                    },
                     ..
                 }
                 if name == "Pair"

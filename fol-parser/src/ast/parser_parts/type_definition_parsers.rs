@@ -16,6 +16,7 @@ impl AstParser {
 
         let mut variants = HashMap::new();
         let mut variant_meta = HashMap::new();
+        let members = Vec::new();
         for _ in 0..256 {
             self.skip_ignorable(tokens);
             let token = tokens.curr(false)?;
@@ -25,6 +26,7 @@ impl AstParser {
                 return Ok(TypeDefinition::Entry {
                     variants,
                     variant_meta,
+                    members,
                 });
             }
 
@@ -152,6 +154,7 @@ impl AstParser {
                 return Ok(TypeDefinition::Entry {
                     variants,
                     variant_meta,
+                    members,
                 });
             }
             if sep.key().is_terminal() || matches!(sep.key(), KEYWORD::Void(_)) {
@@ -191,13 +194,18 @@ impl AstParser {
 
         let mut fields = HashMap::new();
         let mut field_meta = HashMap::new();
+        let members = Vec::new();
         for _ in 0..256 {
             self.skip_ignorable(tokens);
             let token = tokens.curr(false)?;
 
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) {
                 let _ = tokens.bump();
-                return Ok(TypeDefinition::Record { fields, field_meta });
+                return Ok(TypeDefinition::Record {
+                    fields,
+                    field_meta,
+                    members,
+                });
             }
 
             if token.key().is_terminal() || matches!(token.key(), KEYWORD::Void(_)) {
@@ -325,7 +333,11 @@ impl AstParser {
             }
             if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) {
                 let _ = tokens.bump();
-                return Ok(TypeDefinition::Record { fields, field_meta });
+                return Ok(TypeDefinition::Record {
+                    fields,
+                    field_meta,
+                    members,
+                });
             }
             if sep.key().is_terminal() || matches!(sep.key(), KEYWORD::Void(_)) {
                 return Err(Box::new(ParseError::from_token(
