@@ -462,6 +462,35 @@ fn test_pipe_lambda_supports_trailing_parameter_separator() {
 }
 
 #[test]
+fn test_trailing_pipe_lambda_separator_in_initializers() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_pipe_lambda_trailing_separator_initializer.fol")
+            .expect("Should read trailing-separator pipe lambda initializer fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse trailing separators on pipe lambda initializers");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::FunDecl { body, .. }
+                if body.iter().any(|stmt| matches!(
+                    stmt,
+                    AstNode::VarDecl { name, value: Some(value), .. }
+                    if name == "lambda"
+                        && matches!(value.as_ref(), AstNode::AnonymousFun { params, .. } if params.len() == 2)
+                ))
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
 fn test_pipe_lambda_supports_default_parameters() {
     let mut file_stream =
         FileStream::from_file("test/parser/simple_pipe_lambda_default_params.fol")
