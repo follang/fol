@@ -89,6 +89,36 @@ fn test_alternative_procedure_header_without_params() {
 }
 
 #[test]
+fn test_alternative_procedure_header_without_params_supports_flow_body() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_pro_alt_header_no_params_flow.fol")
+            .expect("Should read alternative procedure-header flow fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse flow-bodied alternative procedure headers without params");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::ProDecl {
+                    name,
+                    params,
+                    return_type: Some(FolType::Int { .. }),
+                    body,
+                    ..
+                }
+                if name == "main" && params.is_empty() && !body.is_empty()
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
 fn test_alternative_logical_header_without_params() {
     let mut file_stream = FileStream::from_file("test/parser/simple_log_alt_header_no_params.fol")
         .expect("Should read alternative logical-header fixture");
