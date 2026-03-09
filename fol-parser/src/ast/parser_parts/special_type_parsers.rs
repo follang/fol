@@ -35,6 +35,17 @@ impl AstParser {
                 }
                 Ok(Some(FolType::Multiple { types: args }))
             }
+            "uni" => {
+                let args = self.parse_type_argument_list(tokens)?;
+                if args.is_empty() {
+                    let token = tokens.curr(false)?;
+                    return Err(Box::new(ParseError::from_token(
+                        &token,
+                        "Expected at least one type argument for uni[...]".to_string(),
+                    )));
+                }
+                Ok(Some(FolType::Union { types: args }))
+            }
             "nev" => {
                 let args = self.parse_type_argument_list(tokens)?;
                 if !args.is_empty() {

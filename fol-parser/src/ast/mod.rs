@@ -312,6 +312,9 @@ pub enum FolType {
     Multiple {
         types: Vec<FolType>,
     }, // mul[T1, T2, ...]
+    Union {
+        types: Vec<FolType>,
+    }, // uni[T1, T2, ...]
     Never,
     Any,
     Pointer {

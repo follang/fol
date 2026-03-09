@@ -736,6 +736,7 @@ impl AstParser {
                 }
             }
             FolType::Never => "nev".to_string(),
+            FolType::Union { .. } => "uni".to_string(),
             _ => format!("{:?}", typ),
         }
     }
