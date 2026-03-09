@@ -58,6 +58,11 @@ fn test_duplicate_entry_variant_reports_parse_error() {
         3,
         "Type entry duplicate parse error should point to the duplicate variant line"
     );
+    assert_eq!(
+        parse_error.column(),
+        9,
+        "Type entry duplicate parse error should point to the duplicate variant name"
+    );
 }
 
 #[test]

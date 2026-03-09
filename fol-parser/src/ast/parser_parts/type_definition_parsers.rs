@@ -91,7 +91,7 @@ impl AstParser {
                         "Expected entry variant name".to_string(),
                     )) as Box<dyn Glitch>
                 })?;
-                names.push(name);
+                names.push((name, name_token));
                 let _ = tokens.bump();
 
                 self.skip_ignorable(tokens);
@@ -123,11 +123,10 @@ impl AstParser {
                 }
             }
 
-            for name in names {
+            for (name, name_token) in names {
                 if variants.insert(name.clone(), variant_type.clone()).is_some() {
-                    let token = tokens.curr(false)?;
                     return Err(Box::new(ParseError::from_token(
-                        &token,
+                        &name_token,
                         format!("Duplicate entry variant '{}'", name),
                     )));
                 }
