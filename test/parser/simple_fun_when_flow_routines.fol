@@ -1,0 +1,7 @@
+fun classify(value: int): int = {
+    when(value) {
+        is(0) => log ready(): bol = { return 1; }
+        has(value) => fun inner(): int = { return value; }
+    }
+    return value;
+}

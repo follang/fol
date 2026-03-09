@@ -60,6 +60,24 @@ impl AstParser {
             return Ok(nodes);
         }
 
+        if matches!(key, KEYWORD::Keyword(BUILDIN::Fun)) {
+            let node = self.parse_fun_decl(tokens)?;
+            self.consume_optional_semicolon(tokens);
+            return Ok(vec![node]);
+        }
+
+        if matches!(key, KEYWORD::Keyword(BUILDIN::Log)) {
+            let node = self.parse_log_decl(tokens)?;
+            self.consume_optional_semicolon(tokens);
+            return Ok(vec![node]);
+        }
+
+        if matches!(key, KEYWORD::Keyword(BUILDIN::Pro)) {
+            let node = self.parse_pro_decl(tokens)?;
+            self.consume_optional_semicolon(tokens);
+            return Ok(vec![node]);
+        }
+
         if matches!(key, KEYWORD::Keyword(BUILDIN::If)) {
             let node = self.parse_if_stmt(tokens)?;
             self.consume_optional_semicolon(tokens);
