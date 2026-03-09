@@ -1,0 +1,5 @@
+use loader: mod[std;] = {"std/loader"}
+
+fun read(value: seq[pkg::Input;]): map[str; vec[pkg::Output;];] = {
+    return cache;
+}
