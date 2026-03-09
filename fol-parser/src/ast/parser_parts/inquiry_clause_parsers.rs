@@ -273,6 +273,7 @@ impl AstParser {
         let _ = tokens.bump();
 
         let mut targets = Vec::new();
+        let mut seen_targets = HashSet::new();
         loop {
             self.skip_ignorable(tokens);
             let target = tokens.curr(false)?;
@@ -285,7 +286,14 @@ impl AstParser {
                     "Expected 'self' or 'this' in inquiry clause".to_string(),
                 )));
             }
-            targets.push(target.con().trim().to_string());
+            let target_name = target.con().trim().to_string();
+            if !seen_targets.insert(target_name.clone()) {
+                return Err(Box::new(ParseError::from_token(
+                    &target,
+                    format!("Duplicate inquiry clause for '{}'", target_name),
+                )));
+            }
+            targets.push(target_name);
             let _ = tokens.bump();
 
             self.skip_ignorable(tokens);
