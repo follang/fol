@@ -1,6 +1,17 @@
 use super::*;
 
 impl AstParser {
+    pub(super) fn is_missing_type_reference_close_token(key: &KEYWORD) -> bool {
+        key.is_terminal()
+            || matches!(key, KEYWORD::Void(_))
+            || matches!(
+                key,
+                KEYWORD::Symbol(SYMBOL::RoundC)
+                    | KEYWORD::Symbol(SYMBOL::CurlyC)
+                    | KEYWORD::Symbol(SYMBOL::Equal)
+            )
+    }
+
     pub(super) fn try_parse_special_type_suffix(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
@@ -355,6 +366,13 @@ impl AstParser {
                 return Ok(args);
             }
 
+            if Self::is_missing_type_reference_close_token(&sep.key()) {
+                return Err(Box::new(ParseError::from_token(
+                    &sep,
+                    "Expected closing ']' in type reference".to_string(),
+                )));
+            }
+
             return Err(Box::new(ParseError::from_token(
                 &sep,
                 missing_close_message.to_string(),
@@ -416,15 +434,7 @@ impl AstParser {
                 let _ = tokens.bump();
                 return Ok(args);
             }
-            if sep.key().is_terminal()
-                || matches!(sep.key(), KEYWORD::Void(_))
-                || matches!(
-                    sep.key(),
-                    KEYWORD::Symbol(SYMBOL::RoundC)
-                        | KEYWORD::Symbol(SYMBOL::CurlyC)
-                        | KEYWORD::Symbol(SYMBOL::Equal)
-                )
-            {
+            if Self::is_missing_type_reference_close_token(&sep.key()) {
                 return Err(Box::new(ParseError::from_token(
                     &sep,
                     "Expected closing ']' in type reference".to_string(),
@@ -468,6 +478,12 @@ impl AstParser {
             comma.key(),
             KEYWORD::Symbol(SYMBOL::Comma) | KEYWORD::Symbol(SYMBOL::Semi)
         ) {
+            if Self::is_missing_type_reference_close_token(&comma.key()) {
+                return Err(Box::new(ParseError::from_token(
+                    &comma,
+                    "Expected closing ']' in type reference".to_string(),
+                )));
+            }
             return Err(Box::new(ParseError::from_token(
                 &comma,
                 "Expected ',' or ';' after array element type".to_string(),
@@ -541,6 +557,12 @@ impl AstParser {
                 comma.key(),
                 KEYWORD::Symbol(SYMBOL::Comma) | KEYWORD::Symbol(SYMBOL::Semi)
             ) {
+                if Self::is_missing_type_reference_close_token(&comma.key()) {
+                    return Err(Box::new(ParseError::from_token(
+                        &comma,
+                        "Expected closing ']' in type reference".to_string(),
+                    )));
+                }
                 return Err(Box::new(ParseError::from_token(
                     &comma,
                     "Expected ',' or ';' after matrix element type".to_string(),
