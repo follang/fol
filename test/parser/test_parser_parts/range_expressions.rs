@@ -87,3 +87,34 @@ fn test_semicolon_braced_ranges_parse_as_ranges() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_trailing_separator_braced_ranges_parse_as_ranges() {
+    let mut file_stream = FileStream::from_file(
+        "test/parser/simple_fun_braced_range_expr_trailing_separator.fol",
+    )
+    .expect("Should read trailing-separator braced-range fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept trailing-separator braced ranges");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            let ranges: Vec<&AstNode> = declarations
+                .iter()
+                .filter_map(|node| match node {
+                    AstNode::Assignment { value, .. } => Some(value.as_ref()),
+                    AstNode::Return { value: Some(value) } => Some(value.as_ref()),
+                    _ => None,
+                })
+                .collect();
+
+            assert_eq!(ranges.len(), 2);
+            assert!(ranges.iter().all(|node| matches!(node, AstNode::Range { .. })));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
