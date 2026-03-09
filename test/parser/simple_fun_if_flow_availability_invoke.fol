@@ -1,0 +1,4 @@
+fun run(parent: any, value: int): int = {
+    if(value > 0) => parent:["bob"](value);
+    return value;
+}

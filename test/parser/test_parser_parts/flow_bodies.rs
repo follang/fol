@@ -784,3 +784,35 @@ fn test_when_flow_missing_body_reports_branch_message() {
         parse_error
     );
 }
+
+#[test]
+fn test_if_flow_supports_availability_invoke_bodies() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_if_flow_availability_invoke.fol")
+            .expect("Should read if flow availability invoke fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse availability invoke flow bodies under if");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::FunDecl { body, .. }
+                if body.iter().any(|stmt| matches!(
+                    stmt,
+                    AstNode::When { cases, .. }
+                    if matches!(cases.as_slice(),
+                        [WhenCase::Case { body, .. }]
+                        if matches!(body.as_slice(), [AstNode::Invoke { callee, args }]
+                            if args.len() == 1 && matches!(callee.as_ref(), AstNode::AvailabilityAccess { .. }))
+                    )
+                ))
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
