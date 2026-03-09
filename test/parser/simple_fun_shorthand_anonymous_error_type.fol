@@ -1,0 +1,5 @@
+fun outer(): any = {
+    return (): int: Failure {
+        return value;
+    };
+}
