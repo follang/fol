@@ -90,6 +90,7 @@ pub enum AstNode {
         options: Vec<DeclOption>,
         name: String,
         kind: StandardKind,
+        kind_options: Vec<DeclOption>,
         body: Vec<AstNode>,
     },
 

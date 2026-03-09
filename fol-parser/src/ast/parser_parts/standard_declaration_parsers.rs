@@ -97,15 +97,17 @@ impl AstParser {
             }
         };
         let _ = tokens.bump();
-        if matches!(kind, StandardKind::Protocol) {
-            self.parse_empty_standard_kind_options(tokens, "protocol")?;
-        }
-        if matches!(kind, StandardKind::Blueprint) {
-            self.parse_empty_standard_kind_options(tokens, "blueprint")?;
-        }
-        if matches!(kind, StandardKind::Extended) {
-            self.parse_empty_standard_kind_options(tokens, "extended")?;
-        }
+        let kind_options = match kind {
+            StandardKind::Protocol => {
+                self.parse_decl_visibility_options(tokens, "protocol standard kind")?
+            }
+            StandardKind::Blueprint => {
+                self.parse_decl_visibility_options(tokens, "blueprint standard kind")?
+            }
+            StandardKind::Extended => {
+                self.parse_decl_visibility_options(tokens, "extended standard kind")?
+            }
+        };
 
         self.skip_ignorable(tokens);
         let assign = tokens.curr(false)?;
@@ -138,6 +140,7 @@ impl AstParser {
             options,
             name,
             kind,
+            kind_options,
             body,
         })
     }
@@ -640,36 +643,5 @@ impl AstParser {
             .skip(start)
             .find(|token| Self::token_to_named_label(token).is_some())
             .cloned()
-    }
-
-    fn parse_empty_standard_kind_options(
-        &self,
-        tokens: &mut fol_lexer::lexer::stage3::Elements,
-        kind_name: &str,
-    ) -> Result<(), Box<dyn Glitch>> {
-        self.skip_ignorable(tokens);
-        let open = match tokens.curr(false) {
-            Ok(token) => token,
-            Err(_) => return Ok(()),
-        };
-
-        if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::SquarO)) {
-            return Ok(());
-        }
-        let _ = tokens.bump();
-        self.skip_ignorable(tokens);
-
-        let close = tokens.curr(false)?;
-        if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
-            return Err(Box::new(ParseError::from_token(
-                &close,
-                format!(
-                    "{} standard kind options currently support only empty brackets",
-                    kind_name
-                ),
-            )));
-        }
-        let _ = tokens.bump();
-        Ok(())
     }
 }

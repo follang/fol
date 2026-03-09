@@ -181,7 +181,7 @@ fn test_standard_declaration_accepts_empty_options() {
 }
 
 #[test]
-fn test_protocol_standard_accepts_empty_kind_brackets() {
+fn test_protocol_standard_accepts_kind_options() {
     let mut file_stream =
         FileStream::from_file("test/parser/simple_std_protocol_kind_options.fol")
             .expect("Should read pro[] standard test file");
@@ -197,8 +197,13 @@ fn test_protocol_standard_accepts_empty_kind_brackets() {
             assert!(declarations.iter().any(|node| {
                 matches!(
                     node,
-                    AstNode::StdDecl { name, kind: StandardKind::Protocol, .. }
-                    if name == "geometry"
+                    AstNode::StdDecl {
+                        name,
+                        kind: StandardKind::Protocol,
+                        kind_options,
+                        ..
+                    }
+                    if name == "geometry" && kind_options == &vec![DeclOption::Export]
                 )
             }));
         }
@@ -507,7 +512,7 @@ fn test_standard_rejects_unknown_kind_options() {
     assert!(
         parse_error
             .to_string()
-            .contains("protocol standard kind options currently support only empty brackets"),
+            .contains("Unknown protocol standard kind option"),
         "Expected standard kind option error, got: {}",
         parse_error
     );
