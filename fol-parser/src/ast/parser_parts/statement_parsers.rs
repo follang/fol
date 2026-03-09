@@ -497,16 +497,19 @@ impl AstParser {
         let _ = tokens.bump();
 
         self.skip_ignorable(tokens);
-        let open_body = tokens.curr(false)?;
-        if !matches!(open_body.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
-            return Err(Box::new(ParseError::from_token(
-                &open_body,
-                format!("Expected '{{' to start {} body", keyword_name),
-            )));
-        }
-        let _ = tokens.bump();
-
-        let body = self.parse_block_body(tokens, "Expected '}' to close loop body")?;
+        let body = if matches!(loop_token.key(), KEYWORD::Keyword(BUILDIN::While | BUILDIN::Loop)) {
+            self.parse_branch_body(tokens)?
+        } else {
+            let open_body = tokens.curr(false)?;
+            if !matches!(open_body.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
+                return Err(Box::new(ParseError::from_token(
+                    &open_body,
+                    format!("Expected '{{' to start {} body", keyword_name),
+                )));
+            }
+            let _ = tokens.bump();
+            self.parse_block_body(tokens, "Expected '}' to close loop body")?
+        };
 
         Ok(AstNode::Loop {
             condition: Box::new(condition),

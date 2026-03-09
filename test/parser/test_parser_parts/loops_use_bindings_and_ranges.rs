@@ -1,5 +1,24 @@
 use super::*;
 
+fn collect_loop_bodies(ast: AstNode) -> Vec<Vec<AstNode>> {
+    match ast {
+        AstNode::Program { declarations } => declarations
+            .into_iter()
+            .flat_map(|node| match node {
+                AstNode::FunDecl { body, .. } => body
+                    .into_iter()
+                    .filter_map(|stmt| match stmt {
+                        AstNode::Loop { body, .. } => Some(body),
+                        _ => None,
+                    })
+                    .collect::<Vec<_>>(),
+                _ => Vec::new(),
+            })
+            .collect(),
+        _ => panic!("Expected program node"),
+    }
+}
+
 #[test]
 fn test_top_level_for_typed_binder_requires_matching_iteration_name() {
     let mut file_stream = FileStream::from_file("test/parser/simple_for_typed_binder_mismatch.fol")
@@ -24,6 +43,23 @@ fn test_top_level_for_typed_binder_requires_matching_iteration_name() {
         "Mismatched typed for binder should report the binder-name mismatch, got: {}",
         first_message
     );
+}
+
+#[test]
+fn test_while_and_loop_support_flow_bodies() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_fun_while_flow_body.fol")
+        .expect("Should read while/loop flow-body fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse flow bodies for while and loop");
+
+    let bodies = collect_loop_bodies(ast);
+    assert_eq!(bodies.len(), 2);
+    assert!(matches!(bodies[0].as_slice(), [AstNode::Literal(Literal::Integer(1))]));
+    assert!(matches!(bodies[1].as_slice(), [AstNode::Literal(Literal::Integer(2))]));
 }
 
 #[test]
