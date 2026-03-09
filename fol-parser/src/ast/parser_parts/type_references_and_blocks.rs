@@ -558,6 +558,12 @@ impl AstParser {
             let _ = tokens.bump();
 
             self.skip_ignorable(tokens);
+            if matches!(
+                tokens.curr(false).map(|token| token.key()),
+                Ok(KEYWORD::Symbol(SYMBOL::SquarC))
+            ) {
+                break;
+            }
             let dim_token = tokens.curr(false)?;
             let dim = dim_token.con().trim().parse::<usize>().map_err(|_| {
                 Box::new(ParseError::from_token(
