@@ -14,7 +14,7 @@ fn test_single_quoted_names_parse_across_declaration_surfaces() {
     match ast {
         AstNode::Program { declarations } => {
             assert!(declarations.iter().any(|node| {
-                matches!(node, AstNode::DefDecl { name, .. } if name == "core")
+                matches!(node, AstNode::SegDecl { name, .. } if name == "core")
             }));
             assert!(declarations.iter().any(|node| {
                 matches!(node, AstNode::ImpDecl { name, .. } if name == "math")
@@ -24,6 +24,13 @@ fn test_single_quoted_names_parse_across_declaration_surfaces() {
             }));
             assert!(declarations.iter().any(|node| {
                 matches!(node, AstNode::VarDecl { name, .. } if name == "state")
+            }));
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::SegDecl { body, .. }
+                    if body.iter().any(|stmt| matches!(stmt, AstNode::DefDecl { name, .. } if name == "helper"))
+                )
             }));
             assert!(declarations.iter().any(|node| {
                 matches!(
