@@ -65,6 +65,7 @@ pub enum AstNode {
     DefDecl {
         options: Vec<DeclOption>,
         name: String,
+        params: Vec<Parameter>,
         def_type: FolType,
         body: Vec<AstNode>,
     },

@@ -96,6 +96,8 @@ impl AstParser {
         let _ = tokens.bump();
 
         self.skip_ignorable(tokens);
+        let params = self.parse_definition_parameter_header(tokens)?;
+        self.skip_ignorable(tokens);
         let colon = tokens.curr(false)?;
         if !matches!(colon.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
             return Err(Box::new(ParseError::from_token(
@@ -108,14 +110,11 @@ impl AstParser {
         self.skip_ignorable(tokens);
         let def_type_token = tokens.curr(false)?;
         let def_type = self.parse_type_reference_tokens(tokens)?;
-        if !matches!(
-            def_type,
-            FolType::Module { .. } | FolType::Block { .. } | FolType::Test { .. }
-        ) {
+        if !self.is_supported_definition_type(&def_type) {
             return Err(Box::new(ParseError::from_token(
                 &def_type_token,
                 format!(
-                    "Definition declarations currently support only mod[...], blk[...], or tst[...] types, found '{}'",
+                    "Definition declarations currently support only mod[...], blk[...], tst[...], mac, alt, or def[] types, found '{}'",
                     Self::fol_type_label(&def_type)
                 ),
             )));
@@ -129,6 +128,7 @@ impl AstParser {
                 return Ok(AstNode::DefDecl {
                     options,
                     name,
+                    params,
                     def_type,
                     body: Vec::new(),
                 });
@@ -142,21 +142,25 @@ impl AstParser {
         let _ = tokens.bump();
 
         self.skip_ignorable(tokens);
-        let open_body = tokens.curr(false)?;
-        if !matches!(open_body.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
-            return Err(Box::new(ParseError::from_token(
-                &open_body,
-                "Expected '{' to start definition body".to_string(),
-            )));
-        }
-        let _ = tokens.bump();
-
-        let body = self.parse_block_body(tokens, "Expected '}' to close definition body")?;
+        let body = if self.definition_uses_block_body(&def_type) {
+            let open_body = tokens.curr(false)?;
+            if !matches!(open_body.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
+                return Err(Box::new(ParseError::from_token(
+                    &open_body,
+                    "Expected '{' to start definition body".to_string(),
+                )));
+            }
+            let _ = tokens.bump();
+            self.parse_block_body(tokens, "Expected '}' to close definition body")?
+        } else {
+            vec![self.parse_logical_expression(tokens)?]
+        };
         self.consume_optional_semicolon(tokens);
 
         Ok(AstNode::DefDecl {
             options,
             name,
+            params,
             def_type,
             body,
         })
@@ -481,6 +485,38 @@ impl AstParser {
                 name: generic.name.clone(),
             })
             .collect()
+    }
+
+    fn parse_definition_parameter_header(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<Vec<Parameter>, Box<dyn Glitch>> {
+        self.skip_ignorable(tokens);
+        let current = match tokens.curr(false) {
+            Ok(token) => token,
+            Err(_) => return Ok(Vec::new()),
+        };
+
+        if !matches!(current.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
+            return Ok(Vec::new());
+        }
+        let _ = tokens.bump();
+        self.parse_parameter_list(tokens)
+    }
+
+    fn is_supported_definition_type(&self, def_type: &FolType) -> bool {
+        match def_type {
+            FolType::Module { .. } | FolType::Block { .. } | FolType::Test { .. } => true,
+            FolType::Named { name } => matches!(name.as_str(), "mac" | "alt" | "def[]" | "def"),
+            _ => false,
+        }
+    }
+
+    fn definition_uses_block_body(&self, def_type: &FolType) -> bool {
+        matches!(
+            def_type,
+            FolType::Module { .. } | FolType::Block { .. } | FolType::Test { .. }
+        )
     }
 
 }
