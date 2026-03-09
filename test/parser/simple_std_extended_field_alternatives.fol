@@ -1,0 +1,5 @@
+std geometry: ext = {
+    fun area(): int;
+    +var theme: str;
+    -con status: int = 1;
+}
