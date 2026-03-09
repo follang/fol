@@ -1,0 +1,3 @@
+std geometry: pro = {
+    pro reset(): non = { return 0 }
+}
