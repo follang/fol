@@ -102,6 +102,14 @@ impl AstParser {
             return self.parse_return_stmt(tokens);
         }
 
+        if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Break)) {
+            return self.parse_break_stmt(tokens);
+        }
+
+        if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Yeild)) {
+            return self.parse_yield_stmt(tokens);
+        }
+
         if self.lookahead_binding_alternative(tokens).is_some() {
             return self.pipe_stage_from_nodes(self.parse_binding_alternative_decl(tokens)?);
         }

@@ -15,14 +15,7 @@ fn contains_pipe_panic_stage(node: &AstNode) -> bool {
 }
 
 fn contains_pipe_stage(node: &AstNode, predicate: fn(&AstNode) -> bool) -> bool {
-    match node {
-        AstNode::BinaryOp { left, right, .. } => {
-            predicate(right.as_ref())
-                || contains_pipe_stage(left, predicate)
-                || contains_pipe_stage(right, predicate)
-        }
-        _ => predicate(node),
-    }
+    predicate(node) || node.children().into_iter().any(|child| contains_pipe_stage(child, predicate))
 }
 
 #[test]
@@ -392,6 +385,38 @@ fn test_pipe_expression_supports_routine_stages() {
     assert!(
         contains_pipe_stage(&return_value, |node| matches!(node, AstNode::ImpDecl { .. })),
         "Expected pipe tree to contain an implementation stage, got: {return_value:#?}"
+    );
+}
+
+#[test]
+fn test_pipe_expression_supports_control_transfer_stages() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_fun_pipe_control_stage.fol")
+        .expect("Should read pipe control-stage fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse control-transfer stages on pipes");
+
+    let return_value = match ast {
+        AstNode::Program { declarations } => declarations
+            .iter()
+            .find_map(|node| match node {
+                AstNode::FunDecl { body, .. } => body.iter().find_map(|stmt| match stmt {
+                    AstNode::Return { value: Some(value) } => Some(value.as_ref().clone()),
+                    _ => None,
+                }),
+                _ => None,
+            })
+            .expect("Expected return statement"),
+        _ => panic!("Expected program node"),
+    };
+
+    assert!(
+        contains_pipe_stage(&return_value, |node| matches!(node, AstNode::Yield { .. }))
+            && contains_pipe_stage(&return_value, |node| matches!(node, AstNode::Break)),
+        "Expected pipe tree to contain yield and break stages, got: {return_value:#?}"
     );
 }
 
