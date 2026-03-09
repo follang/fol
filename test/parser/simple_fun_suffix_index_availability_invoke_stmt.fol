@@ -1,0 +1,4 @@
+fun run(values: vec[int], value: int): int = {
+    values[1]:(value);
+    return value;
+}
