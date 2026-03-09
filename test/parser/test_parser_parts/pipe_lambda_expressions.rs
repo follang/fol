@@ -316,3 +316,55 @@ fn test_pipe_lambda_supports_variadic_parameters() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_pipe_lambda_rejects_non_last_variadic_parameter() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_pipe_lambda_variadic_not_last.fol")
+            .expect("Should read non-last variadic pipe lambda fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject non-last variadic pipe lambda parameters");
+
+    let parse_error = errors
+        .first()
+        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        .expect("First parser error should be ParseError");
+
+    assert!(
+        parse_error
+            .to_string()
+            .contains("Variadic parameter must be the last parameter"),
+        "Expected non-last variadic pipe lambda error, got: {}",
+        parse_error
+    );
+}
+
+#[test]
+fn test_pipe_lambda_rejects_variadic_default_values() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_pipe_lambda_variadic_default_forbidden.fol")
+            .expect("Should read variadic default pipe lambda fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject default values on variadic pipe lambda parameters");
+
+    let parse_error = errors
+        .first()
+        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        .expect("First parser error should be ParseError");
+
+    assert!(
+        parse_error
+            .to_string()
+            .contains("Variadic parameters cannot have default values"),
+        "Expected variadic-default pipe lambda error, got: {}",
+        parse_error
+    );
+}

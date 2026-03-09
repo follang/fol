@@ -52,6 +52,7 @@ impl AstParser {
 
             self.skip_ignorable(tokens);
             let mut param_type = FolType::Any;
+            let mut is_variadic = false;
             if let Ok(token) = tokens.curr(false) {
                 if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
                     let _ = tokens.bump();
@@ -62,6 +63,7 @@ impl AstParser {
                     ) {
                         let _ = tokens.bump();
                         self.skip_ignorable(tokens);
+                        is_variadic = true;
                         param_type = FolType::Sequence {
                             element_type: Box::new(self.parse_type_reference_tokens(tokens)?),
                         };
@@ -81,6 +83,14 @@ impl AstParser {
                 }
             }
 
+            if is_variadic && default.is_some() {
+                let token = tokens.curr(false)?;
+                return Err(Box::new(ParseError::from_token(
+                    &token,
+                    "Variadic parameters cannot have default values".to_string(),
+                )));
+            }
+
             for name in names {
                 params.push(Parameter {
                     name,
@@ -93,6 +103,12 @@ impl AstParser {
             self.skip_ignorable(tokens);
             let token = tokens.curr(false)?;
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
+                if is_variadic {
+                    return Err(Box::new(ParseError::from_token(
+                        &token,
+                        "Variadic parameter must be the last parameter".to_string(),
+                    )));
+                }
                 let _ = tokens.bump();
                 self.skip_ignorable(tokens);
                 continue;
