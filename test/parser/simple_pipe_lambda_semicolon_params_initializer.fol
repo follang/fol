@@ -1,0 +1,4 @@
+fun make(): any = {
+    var lambda = |left: int; right: int| left;
+    return lambda;
+}
