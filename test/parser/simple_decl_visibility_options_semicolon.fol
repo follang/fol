@@ -1,0 +1,9 @@
+imp[export;] Self: ID = {
+}
+
+std[export;] geometry: pro = {
+    fun area(side: int): int;
+}
+
+def[export;] mark: blk[];
+seg[export;] core: mod = { }

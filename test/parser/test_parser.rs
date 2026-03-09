@@ -54,6 +54,9 @@ mod custom_error_report_validation;
 #[path = "test_parser_parts/definition_declarations.rs"]
 mod definition_declarations;
 #[cfg(test)]
+#[path = "test_parser_parts/declaration_option_separators.rs"]
+mod declaration_option_separators;
+#[cfg(test)]
 #[path = "test_parser_parts/flow_bodies.rs"]
 mod flow_bodies;
 #[cfg(test)]
