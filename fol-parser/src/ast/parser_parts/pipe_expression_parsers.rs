@@ -102,6 +102,10 @@ impl AstParser {
             return self.parse_return_stmt(tokens);
         }
 
+        if self.lookahead_binding_alternative(tokens).is_some() {
+            return self.pipe_stage_from_nodes(self.parse_binding_alternative_decl(tokens)?);
+        }
+
         if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Var)) {
             return self.pipe_stage_from_nodes(self.parse_var_decl(tokens)?);
         }

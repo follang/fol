@@ -1,5 +1,6 @@
 use super::*;
 use fol_parser::ast::BinaryOperator;
+use fol_parser::VarOption;
 
 fn contains_pipe_panic_stage(node: &AstNode) -> bool {
     match node {
@@ -282,6 +283,42 @@ fn test_pipe_expression_supports_binding_stages() {
             right,
             ..
         } if matches!(right.as_ref(), AstNode::VarDecl { .. })
+    ));
+}
+
+#[test]
+fn test_pipe_expression_supports_binding_alternative_stages() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_pipe_binding_alternative_stage.fol")
+            .expect("Should read pipe binding-alternative stage fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse binding alternative stages on pipes");
+
+    let return_value = match ast {
+        AstNode::Program { declarations } => declarations
+            .iter()
+            .find_map(|node| match node {
+                AstNode::FunDecl { body, .. } => body.iter().find_map(|stmt| match stmt {
+                    AstNode::Return { value: Some(value) } => Some(value.as_ref().clone()),
+                    _ => None,
+                }),
+                _ => None,
+            })
+            .expect("Expected return statement"),
+        _ => panic!("Expected program node"),
+    };
+
+    assert!(matches!(
+        return_value,
+        AstNode::BinaryOp {
+            op: BinaryOperator::Pipe,
+            right,
+            ..
+        } if matches!(right.as_ref(), AstNode::VarDecl { options, .. } if options.iter().any(|opt| matches!(opt, VarOption::Export)))
     ));
 }
 
