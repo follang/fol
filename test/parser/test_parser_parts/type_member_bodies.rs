@@ -200,3 +200,32 @@ fn test_record_type_accepts_prefixed_export_methods() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_entry_type_accepts_prefixed_export_methods() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_typ_entry_export_method.fol")
+            .expect("Should read prefixed entry method fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept prefixed export methods in entry type bodies");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::TypeDecl {
+                    name,
+                    type_def: TypeDefinition::Entry { members, .. },
+                    ..
+                }
+                if name == "Status"
+                    && members.iter().any(|member| matches!(member, AstNode::FunDecl { name, options, .. } if name == "label" && options.contains(&FunOption::Export)))
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
