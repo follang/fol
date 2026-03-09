@@ -249,6 +249,9 @@ mod type_argument_separators;
 #[path = "test_parser_parts/type_member_metadata.rs"]
 mod type_member_metadata;
 #[cfg(test)]
+#[path = "test_parser_parts/type_member_bodies.rs"]
+mod type_member_bodies;
+#[cfg(test)]
 #[path = "test_parser_parts/type_forms_and_function_decls.rs"]
 mod type_forms_and_function_decls;
 #[cfg(test)]

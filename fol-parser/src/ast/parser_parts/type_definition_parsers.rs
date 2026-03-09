@@ -194,7 +194,7 @@ impl AstParser {
 
         let mut fields = HashMap::new();
         let mut field_meta = HashMap::new();
-        let members = Vec::new();
+        let mut members = Vec::new();
         for _ in 0..256 {
             self.skip_ignorable(tokens);
             let token = tokens.curr(false)?;
@@ -212,6 +212,35 @@ impl AstParser {
                 return Err(Box::new(ParseError::from_token(
                     &token,
                     "Expected '}' to close type record definition".to_string(),
+                )));
+            }
+
+            if matches!(
+                token.key(),
+                KEYWORD::Keyword(BUILDIN::Fun)
+                    | KEYWORD::Keyword(BUILDIN::Pro)
+                    | KEYWORD::Keyword(BUILDIN::Log)
+            ) {
+                members.push(self.parse_standard_routine_signature(tokens)?);
+                self.skip_ignorable(tokens);
+                let sep = tokens.curr(false)?;
+                if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma))
+                    || matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Semi))
+                {
+                    let _ = tokens.bump();
+                    continue;
+                }
+                if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) {
+                    let _ = tokens.bump();
+                    return Ok(TypeDefinition::Record {
+                        fields,
+                        field_meta,
+                        members,
+                    });
+                }
+                return Err(Box::new(ParseError::from_token(
+                    &sep,
+                    "Expected ',', ';', or '}' in type record definition".to_string(),
                 )));
             }
 

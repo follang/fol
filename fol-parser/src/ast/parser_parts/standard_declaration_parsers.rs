@@ -557,7 +557,7 @@ impl AstParser {
         )))
     }
 
-    fn parse_standard_routine_signature(
+    pub(super) fn parse_standard_routine_signature(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Box<dyn Glitch>> {
