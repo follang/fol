@@ -283,12 +283,11 @@ impl AstParser {
                     .trim()
                     .trim_matches(|c| c == '"' || c == '\'')
                     .to_string(),
-                _ => Self::token_to_named_label(&target).ok_or_else(|| {
-                    Box::new(ParseError::from_token(
-                        &target,
-                        "Expected inquiry target name".to_string(),
-                    )) as Box<dyn Glitch>
-                })?,
+                _ => self.parse_named_path(
+                    tokens,
+                    "Expected inquiry target name",
+                    "Expected name after '::' in inquiry target",
+                )?,
             };
             if !seen_targets.insert(target_name.clone()) {
                 return Err(Box::new(ParseError::from_token(
@@ -297,7 +296,11 @@ impl AstParser {
                 )));
             }
             targets.push(target_name);
-            let _ = tokens.bump();
+            if !matches!(target.key(), KEYWORD::Literal(LITERAL::Stringy)) {
+                self.skip_ignorable(tokens);
+            } else {
+                let _ = tokens.bump();
+            }
 
             self.skip_ignorable(tokens);
             let close = tokens.curr(false)?;

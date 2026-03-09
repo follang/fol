@@ -1,0 +1,6 @@
+fun[] inspect(value: int): int = {
+    return value;
+    where(pkg::cache, sys::sink) {
+        pkg::cache;
+    }
+}
