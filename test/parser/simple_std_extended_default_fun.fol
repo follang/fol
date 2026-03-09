@@ -1,0 +1,4 @@
+std geometry: ext = {
+    fun area(): flt[64] = { return 0.0 }
+    var color: rgb;
+}
