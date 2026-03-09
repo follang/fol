@@ -467,6 +467,7 @@ pub enum Literal {
     String(String),
     Character(char),
     Boolean(bool),
+    Nil,
 }
 
 /// Binary operators
@@ -615,6 +616,7 @@ impl AstNode {
                 encoding: CharEncoding::Utf8,
             }),
             AstNode::Literal(Literal::Boolean(_)) => Some(FolType::Bool),
+            AstNode::Literal(Literal::Nil) => Some(FolType::None),
 
             AstNode::VarDecl { type_hint, .. } | AstNode::LabDecl { type_hint, .. } => {
                 type_hint.clone()

@@ -17,6 +17,10 @@ impl AstParser {
             return self.parse_lexer_literal(token);
         }
 
+        if token.key().is_ident() && token.con().trim() == "nil" {
+            return Ok(AstNode::Literal(Literal::Nil));
+        }
+
         if Self::token_can_be_logical_name(&token.key()) {
             return Ok(AstNode::Identifier {
                 name: token.con().trim().to_string(),
@@ -560,6 +564,7 @@ impl AstParser {
             Literal::Boolean(_) => matches!(expected_name, "bol" | "bool"),
             Literal::String(_) => matches!(expected_name, "str"),
             Literal::Character(_) => matches!(expected_name, "chr" | "char"),
+            Literal::Nil => matches!(expected_name, "non" | "none" | "nil"),
         }
     }
 
