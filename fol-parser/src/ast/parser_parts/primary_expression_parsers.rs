@@ -7,6 +7,7 @@ impl AstParser {
     ) -> bool {
         let mut depth = 1usize;
         let mut capture_depth = 0usize;
+        let mut in_type_clause = false;
         let saw_open = true;
         for candidate in tokens.next_vec() {
             let token = match candidate {
@@ -41,10 +42,13 @@ impl AstParser {
                         continue;
                     }
                 }
+                KEYWORD::Symbol(SYMBOL::Colon) if saw_open && depth == 0 && capture_depth == 0 => {
+                    in_type_clause = true;
+                }
                 KEYWORD::Symbol(SYMBOL::CurlyO) if saw_open && depth == 0 && capture_depth == 0 => {
                     return true;
                 }
-                _ if saw_open && depth == 0 && capture_depth == 0 => {
+                _ if saw_open && depth == 0 && capture_depth == 0 && !in_type_clause => {
                     return false;
                 }
                 _ => {}
@@ -412,6 +416,26 @@ impl AstParser {
         self.ensure_unique_capture_names(&captures)?;
 
         self.skip_ignorable(tokens);
+        let mut return_type = None;
+        let mut error_type = None;
+        if let Ok(token) = tokens.curr(false) {
+            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
+                let _ = tokens.bump();
+                self.skip_ignorable(tokens);
+                return_type = Some(self.parse_type_reference_tokens(tokens)?);
+
+                self.skip_ignorable(tokens);
+                if let Ok(token) = tokens.curr(false) {
+                    if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
+                        let _ = tokens.bump();
+                        self.skip_ignorable(tokens);
+                        error_type = Some(self.parse_type_reference_tokens(tokens)?);
+                    }
+                }
+            }
+        }
+
+        self.skip_ignorable(tokens);
         let open_body = tokens.curr(false)?;
         if !matches!(open_body.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
             return Err(Box::new(ParseError::from_token(
@@ -430,8 +454,8 @@ impl AstParser {
             options: Vec::new(),
             captures,
             params,
-            return_type: None,
-            error_type: None,
+            return_type,
+            error_type,
             body,
             inquiries,
         })
