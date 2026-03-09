@@ -1,0 +1,4 @@
+typ Status: ent = {
+    var Ok: str = "ok";
+    ali Label: str;
+}
