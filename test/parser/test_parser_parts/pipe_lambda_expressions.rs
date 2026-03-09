@@ -186,3 +186,29 @@ fn test_pipe_lambda_inquiry_clauses_parsing() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_pipe_lambda_rejects_duplicate_parameters() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_pipe_lambda_duplicate_param.fol")
+            .expect("Should read duplicate pipe lambda parameter fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject duplicate pipe lambda parameters");
+
+    let parse_error = errors
+        .first()
+        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        .expect("First parser error should be ParseError");
+
+    assert!(
+        parse_error
+            .to_string()
+            .contains("Duplicate parameter name 'x'"),
+        "Expected duplicate pipe lambda parameter error, got: {}",
+        parse_error
+    );
+}

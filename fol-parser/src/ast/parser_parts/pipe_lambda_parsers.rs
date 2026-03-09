@@ -15,6 +15,7 @@ impl AstParser {
         let _ = tokens.bump();
 
         let mut params = Vec::new();
+
         self.skip_ignorable(tokens);
         let close = tokens.curr(false)?;
         if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::Pipe)) {
@@ -53,6 +54,8 @@ impl AstParser {
                 break;
             }
         }
+
+        self.ensure_unique_parameter_names(&params, "parameter")?;
 
         self.skip_ignorable(tokens);
         let close = tokens.curr(false)?;
