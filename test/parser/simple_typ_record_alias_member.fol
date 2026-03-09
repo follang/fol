@@ -1,0 +1,4 @@
+typ Distance: rec = {
+    var value: int;
+    ali Unit: str;
+}
