@@ -1,0 +1,8 @@
+fun[] inspect(value: int): int = {
+    return value;
+    where(self) {
+        fun helper(item: int): int = { return item; }
+        log ready(flag: bol): bol = { return flag; }
+        pro store(item: int): int = { return item; }
+    }
+}

@@ -448,6 +448,21 @@ impl AstParser {
                 continue;
             }
 
+            if matches!(key, KEYWORD::Keyword(BUILDIN::Fun)) {
+                body.push(self.parse_fun_decl(tokens)?);
+                continue;
+            }
+
+            if matches!(key, KEYWORD::Keyword(BUILDIN::Log)) {
+                body.push(self.parse_log_decl(tokens)?);
+                continue;
+            }
+
+            if matches!(key, KEYWORD::Keyword(BUILDIN::Pro)) {
+                body.push(self.parse_pro_decl(tokens)?);
+                continue;
+            }
+
             if matches!(
                 key,
                 KEYWORD::Keyword(BUILDIN::Panic)
