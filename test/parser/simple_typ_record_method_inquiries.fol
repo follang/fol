@@ -1,0 +1,4 @@
+typ Counter: rec = {
+    var start: int;
+    fun next(): int = { return self.start; } where(self) => return self.start;
+}

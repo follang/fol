@@ -45,7 +45,10 @@ impl AstParser {
 
         if matches!(open_body.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
             let _ = tokens.bump();
-            return self.parse_routine_body_with_inquiries(tokens, missing_close_message);
+            let (body, mut inquiries) =
+                self.parse_routine_body_with_inquiries(tokens, missing_close_message)?;
+            inquiries.extend(self.parse_trailing_inquiries(tokens)?);
+            return Ok((body, inquiries));
         }
 
         if matches!(open_body.key(), KEYWORD::Operator(OPERATOR::Flow)) {
