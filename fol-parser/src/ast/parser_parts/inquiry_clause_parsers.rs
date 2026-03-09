@@ -309,10 +309,24 @@ impl AstParser {
 
         self.skip_ignorable(tokens);
         let open_body = tokens.curr(false)?;
+        if matches!(open_body.key(), KEYWORD::Operator(OPERATOR::Flow)) {
+            let _ = tokens.bump();
+            self.skip_ignorable(tokens);
+            let expr = self.parse_logical_expression(tokens)?;
+            self.consume_optional_semicolon(tokens);
+            return Ok(targets
+                .into_iter()
+                .map(|target| AstNode::Inquiry {
+                    target,
+                    body: vec![expr.clone()],
+                })
+                .collect());
+        }
+
         if !matches!(open_body.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
             return Err(Box::new(ParseError::from_token(
                 &open_body,
-                "Expected '{' to start inquiry body".to_string(),
+                "Expected '{' or '=>' to start inquiry body".to_string(),
             )));
         }
         let _ = tokens.bump();
