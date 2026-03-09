@@ -9,7 +9,7 @@ mod namespace_tests {
     #[test]
     fn test_package_name_detection() {
         // Test that package name is correctly detected from Cargo.toml
-        let sources = Source::init("test_old/main", SourceType::Folder)
+        let sources = Source::init("test/legacy/main", SourceType::Folder)
             .expect("Should create sources with namespace");
 
         assert!(!sources.is_empty(), "Should have sources");
@@ -34,8 +34,8 @@ mod namespace_tests {
     #[test]
     fn test_root_namespace() {
         // Test files in root directory get root namespace (package name)
-        let sources =
-            Source::init("test_old/main/main.fol", SourceType::File).expect("Should create source");
+        let sources = Source::init("test/legacy/main/main.fol", SourceType::File)
+            .expect("Should create source");
 
         assert_eq!(sources.len(), 1, "Should have one source");
         let source = &sources[0];
@@ -53,7 +53,7 @@ mod namespace_tests {
     fn test_subdirectory_namespace() {
         // Test files in subdirectories get proper namespace
         let sources =
-            Source::init("test_old/main", SourceType::Folder).expect("Should create sources");
+            Source::init("test/legacy/main", SourceType::Folder).expect("Should create sources");
 
         // Find sources in subdirectories
         let subdir_sources: Vec<_> = sources
@@ -171,7 +171,7 @@ mod namespace_tests {
     fn test_mod_directories_excluded_from_namespace() {
         // Test that .mod directories don't appear in namespaces
         let sources =
-            Source::init("test_old/main", SourceType::Folder).expect("Should create sources");
+            Source::init("test/legacy/main", SourceType::Folder).expect("Should create sources");
 
         // No namespace should contain ".mod"
         for source in &sources {
@@ -196,7 +196,7 @@ mod namespace_tests {
     fn test_namespace_consistency() {
         // Test that all files in the same directory have the same namespace
         let sources =
-            Source::init("test_old/main", SourceType::Folder).expect("Should create sources");
+            Source::init("test/legacy/main", SourceType::Folder).expect("Should create sources");
 
         use std::collections::HashMap;
         let mut dir_to_namespace: HashMap<String, String> = HashMap::new();
@@ -229,8 +229,12 @@ mod namespace_tests {
     fn test_explicit_package_name() {
         // Test using explicit package name
         let sources =
-            Source::init_with_package("test_old/main/main.fol", SourceType::File, "custom_package")
-                .expect("Should create source with custom package");
+            Source::init_with_package(
+                "test/legacy/main/main.fol",
+                SourceType::File,
+                "custom_package",
+            )
+            .expect("Should create source with custom package");
 
         assert_eq!(sources.len(), 1, "Should have one source");
         let source = &sources[0];
@@ -249,7 +253,7 @@ mod namespace_tests {
     fn test_namespace_output_integration() {
         // Test that the namespace information is properly integrated
         let sources =
-            Source::init("test_old/main", SourceType::Folder).expect("Should create sources");
+            Source::init("test/legacy/main", SourceType::Folder).expect("Should create sources");
 
         // Verify all expected properties are present
         for source in &sources {

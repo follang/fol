@@ -398,8 +398,8 @@ mod lexer_performance_tests {
 
     #[test]
     fn test_lexer_performance() {
-        // Use the more complex test file from test_old
-        let test_file = "test_old/main/main.fol";
+        // Use the more complex legacy test file from the unified test tree
+        let test_file = "test/legacy/main/main.fol";
 
         if std::path::Path::new(test_file).exists() {
             let start = Instant::now();

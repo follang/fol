@@ -1,0 +1,12 @@
+var five: int[i64] = 5;
+var ten: int = 10;
+
+var word: str = "word";
+
+fun add(xt, yt: int): int = {
+    xt + yt
+};
+
+var result: int = add(five, ten);
+
+/*5;6 < 10 > 5;*/

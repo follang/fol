@@ -1,0 +1,48 @@
+// Test file for procedure declaration parsing
+
+// Basic procedure
+pro greet(): non = {
+    .echo("Hello, World!");
+}
+
+// Procedure with parameters
+pro add(a: int, b: int): int = {
+    return a + b;
+}
+
+// Procedure with options
+pro[pub] calculate(x: int, y: int): flt = {
+    var result: flt = x + y;
+    return result;
+}
+
+// Procedure with complex parameters
+pro process_array(arr: arr[int, 10], size: int): non = {
+    var i: int = 0;
+    loop (i < size) {
+        .echo(arr[i]);
+        i = i + 1;
+    }
+}
+
+// Procedure with generics  
+pro[T: gen[]] swap(a: T, b: T): non = {
+    var temp: T = a;
+    a = b;
+    b = temp;
+}
+
+// Grouped procedure declarations
+pro (
+    init(): non = { .echo("Initializing..."); }
+    cleanup(): non = { .echo("Cleaning up..."); }
+    reset(): non = { .echo("Resetting..."); }
+)
+
+// Procedure with no parameters and return type
+pro main(): int = {
+    greet();
+    var result: int = add(5, 3);
+    .echo(result);
+    return 0;
+}

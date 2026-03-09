@@ -10,8 +10,8 @@ mod mod_handling_tests {
     #[test]
     fn test_mod_directory_skipping() {
         // Test that .mod directories are properly skipped during folder traversal
-        let sources = Source::init("test_old/main", SourceType::Folder)
-            .expect("Should process test_old/main directory");
+        let sources = Source::init("test/legacy/main", SourceType::Folder)
+            .expect("Should process test/legacy/main directory");
 
         // Print all found sources for debugging
         println!("Found {} sources:", sources.len());
@@ -48,7 +48,7 @@ mod mod_handling_tests {
     #[test]
     fn test_folder_stream_creation() {
         // Test creating a stream from a folder with .mod directories
-        let stream = FileStream::from_folder("test_old/main")
+        let stream = FileStream::from_folder("test/legacy/main")
             .expect("Should create stream from folder with .mod dirs");
 
         let sources = stream.sources();
@@ -71,7 +71,7 @@ mod mod_handling_tests {
     fn test_multi_source_character_streaming() {
         // Test that character streaming works across multiple sources
         let mut stream =
-            FileStream::from_folder("test_old/main").expect("Should create multi-source stream");
+            FileStream::from_folder("test/legacy/main").expect("Should create multi-source stream");
 
         let mut char_count = 0;
         let mut file_switches = 0;
@@ -115,7 +115,7 @@ mod mod_handling_tests {
         // Verify that .mod directories exist and contain expected mixed content
 
         // Check main.mod exists and has mixed file types
-        let main_mod_path = "test_old/main/main.mod";
+        let main_mod_path = "test/legacy/main/main.mod";
         assert!(
             std::path::Path::new(main_mod_path).exists(),
             "main.mod directory should exist"
@@ -142,7 +142,7 @@ mod mod_handling_tests {
     #[test]
     fn test_source_path_methods() {
         // Test Source path manipulation methods
-        let sources = Source::init("test_old/main/main.fol", SourceType::File)
+        let sources = Source::init("test/legacy/main/main.fol", SourceType::File)
             .expect("Should create source from file");
 
         assert_eq!(sources.len(), 1, "Should have one source");
@@ -189,7 +189,7 @@ mod mod_handling_tests {
     fn test_sophisticated_stream_features() {
         // Test advanced features of the sophisticated stream implementation
         let stream =
-            FileStream::from_folder("test_old/main").expect("Should create sophisticated stream");
+            FileStream::from_folder("test/legacy/main").expect("Should create sophisticated stream");
 
         // Test current_source method
         let current = stream.current_source();
