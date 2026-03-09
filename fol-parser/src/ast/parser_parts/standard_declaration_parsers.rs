@@ -574,6 +574,9 @@ impl AstParser {
         )?;
         let (generics, params) =
             self.parse_routine_generics_and_params(tokens, "Expected '(' after routine name")?;
+        self.skip_ignorable(tokens);
+        let captures = self.parse_optional_routine_capture_list(tokens)?;
+        self.ensure_unique_capture_names(&captures)?;
 
         self.skip_ignorable(tokens);
         let mut return_type = None;
@@ -628,7 +631,7 @@ impl AstParser {
                 options,
                 generics,
                 name,
-                captures: Vec::new(),
+                captures,
                 params,
                 return_type,
                 error_type,
@@ -639,7 +642,7 @@ impl AstParser {
                 options,
                 generics,
                 name,
-                captures: Vec::new(),
+                captures,
                 params,
                 return_type,
                 error_type,
