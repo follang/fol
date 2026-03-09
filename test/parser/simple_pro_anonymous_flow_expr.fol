@@ -1,0 +1,4 @@
+fun wrap(): int = {
+    var f = pro(x: int): int => return x;
+    return 1;
+}

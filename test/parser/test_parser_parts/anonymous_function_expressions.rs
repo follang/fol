@@ -275,6 +275,87 @@ fn test_anonymous_logical_immediate_invocation_parsing() {
 }
 
 #[test]
+fn test_anonymous_function_flow_body_parsing() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_fun_anonymous_flow_expr.fol")
+        .expect("Should read anonymous function flow-body fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse anonymous function flow bodies");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::FunDecl { body, .. }
+                if body.iter().any(|stmt| matches!(
+                    stmt,
+                    AstNode::VarDecl { value: Some(value), .. }
+                    if matches!(value.as_ref(), AstNode::AnonymousFun { body, .. } if !body.is_empty())
+                ))
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_anonymous_procedure_flow_body_parsing() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_pro_anonymous_flow_expr.fol")
+        .expect("Should read anonymous procedure flow-body fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse anonymous procedure flow bodies");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::FunDecl { body, .. }
+                if body.iter().any(|stmt| matches!(
+                    stmt,
+                    AstNode::VarDecl { value: Some(value), .. }
+                    if matches!(value.as_ref(), AstNode::AnonymousPro { body, .. } if !body.is_empty())
+                ))
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_anonymous_logical_flow_body_parsing() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_log_anonymous_flow_expr.fol")
+        .expect("Should read anonymous logical flow-body fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse anonymous logical flow bodies");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::FunDecl { body, .. }
+                if body.iter().any(|stmt| matches!(
+                    stmt,
+                    AstNode::VarDecl { value: Some(value), .. }
+                    if matches!(value.as_ref(), AstNode::AnonymousLog { body, .. } if !body.is_empty())
+                ))
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
 fn test_anonymous_routine_capture_lists_parsing() {
     let mut file_stream = FileStream::from_file("test/parser/simple_anonymous_routine_captures.fol")
         .expect("Should read anonymous routine captures fixture");

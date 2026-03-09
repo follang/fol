@@ -340,26 +340,22 @@ impl AstParser {
 
         self.skip_ignorable(tokens);
         let assign = tokens.curr(false)?;
-        if !matches!(assign.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
+        if !matches!(
+            assign.key(),
+            KEYWORD::Symbol(SYMBOL::Equal) | KEYWORD::Operator(OPERATOR::Flow)
+        ) {
             return Err(Box::new(ParseError::from_token(
                 &assign,
-                "Expected '=' before anonymous function body".to_string(),
+                "Expected '=' or '=>' before anonymous function body".to_string(),
             )));
         }
-        let _ = tokens.bump();
-
-        self.skip_ignorable(tokens);
-        let open_body = tokens.curr(false)?;
-        if !matches!(open_body.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
-            return Err(Box::new(ParseError::from_token(
-                &open_body,
-                "Expected '{' to start anonymous function body".to_string(),
-            )));
+        if matches!(assign.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
+            let _ = tokens.bump();
         }
-        let _ = tokens.bump();
 
-        let (body, inquiries) = self.parse_routine_body_with_inquiries(
+        let (body, inquiries) = self.parse_named_routine_body(
             tokens,
+            "Expected '{' or '=>' to start anonymous routine body",
             if is_function {
                 "Expected '}' to close anonymous function body"
             } else {
