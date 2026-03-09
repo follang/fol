@@ -272,29 +272,37 @@ impl AstParser {
         }
         let _ = tokens.bump();
 
-        self.skip_ignorable(tokens);
-        let target = tokens.curr(false)?;
-        if !matches!(
-            target.key(),
-            KEYWORD::Keyword(BUILDIN::Selfi) | KEYWORD::Keyword(BUILDIN::This)
-        ) {
-            return Err(Box::new(ParseError::from_token(
-                &target,
-                "Expected 'self' or 'this' in inquiry clause".to_string(),
-            )));
-        }
-        let target_name = target.con().trim().to_string();
-        let _ = tokens.bump();
+        let mut targets = Vec::new();
+        loop {
+            self.skip_ignorable(tokens);
+            let target = tokens.curr(false)?;
+            if !matches!(
+                target.key(),
+                KEYWORD::Keyword(BUILDIN::Selfi) | KEYWORD::Keyword(BUILDIN::This)
+            ) {
+                return Err(Box::new(ParseError::from_token(
+                    &target,
+                    "Expected 'self' or 'this' in inquiry clause".to_string(),
+                )));
+            }
+            targets.push(target.con().trim().to_string());
+            let _ = tokens.bump();
 
-        self.skip_ignorable(tokens);
-        let close = tokens.curr(false)?;
-        if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
-            return Err(Box::new(ParseError::from_token(
-                &close,
-                "Expected ')' after inquiry target".to_string(),
-            )));
+            self.skip_ignorable(tokens);
+            let close = tokens.curr(false)?;
+            if matches!(close.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
+                let _ = tokens.bump();
+                continue;
+            }
+            if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
+                return Err(Box::new(ParseError::from_token(
+                    &close,
+                    "Expected ',' or ')' after inquiry target".to_string(),
+                )));
+            }
+            let _ = tokens.bump();
+            break;
         }
-        let _ = tokens.bump();
 
         self.skip_ignorable(tokens);
         let open_body = tokens.curr(false)?;
@@ -306,10 +314,14 @@ impl AstParser {
         }
         let _ = tokens.bump();
 
-        Ok(vec![AstNode::Inquiry {
-            target: target_name,
-            body: self.parse_inquiry_body(tokens)?,
-        }])
+        let body = self.parse_inquiry_body(tokens)?;
+        Ok(targets
+            .into_iter()
+            .map(|target| AstNode::Inquiry {
+                target,
+                body: body.clone(),
+            })
+            .collect())
     }
 
     fn parse_inquiry_body(
