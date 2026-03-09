@@ -246,3 +246,29 @@ fn test_meta_definitions_parse_inside_routine_bodies() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_meta_definitions_parse_inside_definition_bodies() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_def_module_meta_defs.fol")
+            .expect("Should read nested meta-definition module fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should preserve meta definitions inside definition bodies");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::DefDecl { name, def_type: FolType::Module { .. }, body, .. }
+                if name == "meta"
+                    && body.iter().any(|stmt| matches!(stmt, AstNode::DefDecl { name, def_type: FolType::Named { name: kind }, .. } if name == "$" && kind == "mac"))
+                    && body.iter().any(|stmt| matches!(stmt, AstNode::DefDecl { name, def_type: FolType::Named { name: kind }, .. } if name == "str" && kind == "def[]"))
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}

@@ -1,0 +1,4 @@
+def meta: mod[] = {
+    def '$'(a: any): mac = '.to_string';
+    def 'str': def[] = 'str[new,mut,nor]';
+}
