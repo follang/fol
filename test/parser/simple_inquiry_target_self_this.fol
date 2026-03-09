@@ -1,0 +1,5 @@
+fun inspect(): int = {
+    return 1;
+} where(self, this) {
+    self;
+}

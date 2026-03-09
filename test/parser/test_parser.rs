@@ -92,6 +92,9 @@ mod implementation_declarations;
 #[path = "test_parser_parts/inquiry_clauses.rs"]
 mod inquiry_clauses;
 #[cfg(test)]
+#[path = "test_parser_parts/inquiry_target_structure.rs"]
+mod inquiry_target_structure;
+#[cfg(test)]
 #[path = "test_parser_parts/invoke_expressions.rs"]
 mod invoke_expressions;
 #[cfg(test)]
