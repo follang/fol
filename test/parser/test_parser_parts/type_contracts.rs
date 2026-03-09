@@ -24,3 +24,30 @@ fn test_record_type_retains_standard_contract_headers() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_record_type_retains_multiple_contract_headers() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_typ_record_multiple_contracts.fol")
+            .expect("Should read multiple record-contract fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should retain multiple record contracts");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::TypeDecl { name, contracts, type_def: TypeDefinition::Record { .. }, .. }
+                if name == "Shape"
+                    && matches!(contracts.as_slice(),
+                        [FolType::Named { name: first }, FolType::Named { name: second }]
+                        if first == "geo" && second == "draw")
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
