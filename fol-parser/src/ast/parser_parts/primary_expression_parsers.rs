@@ -5,11 +5,13 @@ impl AstParser {
         &self,
         tokens: &fol_lexer::lexer::stage3::Elements,
     ) -> bool {
-        let mut saw_open = false;
-        let mut saw_close = false;
-        let mut depth = 0usize;
+        let mut params_depth = 1usize;
+        let mut params_closed = false;
         let mut capture_depth = 0usize;
         let mut in_type_clause = false;
+        let mut type_round_depth = 0usize;
+        let mut type_square_depth = 0usize;
+        let mut type_curly_depth = 0usize;
 
         for candidate in tokens.next_vec() {
             let token = match candidate {
@@ -22,28 +24,19 @@ impl AstParser {
                 continue;
             }
 
-            if !saw_open {
-                saw_open = true;
-                if matches!(key, KEYWORD::Symbol(SYMBOL::RoundO)) {
-                    depth = 1;
-                    continue;
-                }
-                depth = 1;
-            }
-
-            if !saw_close {
+            if !params_closed {
                 match key {
                     KEYWORD::Symbol(SYMBOL::RoundO) => {
-                        depth += 1;
+                        params_depth += 1;
                         continue;
                     }
                     KEYWORD::Symbol(SYMBOL::RoundC) => {
-                        if depth == 0 {
+                        if params_depth == 0 {
                             return false;
                         }
-                        depth -= 1;
-                        if depth == 0 {
-                            saw_close = true;
+                        params_depth -= 1;
+                        if params_depth == 0 {
+                            params_closed = true;
                         }
                         continue;
                     }
@@ -51,31 +44,82 @@ impl AstParser {
                 }
             }
 
-            match key {
-                KEYWORD::Symbol(SYMBOL::SquarO) if capture_depth == 0 => {
-                    capture_depth += 1;
+            if capture_depth > 0 {
+                match key {
+                    KEYWORD::Symbol(SYMBOL::SquarO) => capture_depth += 1,
+                    KEYWORD::Symbol(SYMBOL::SquarC) => capture_depth -= 1,
+                    _ => {}
                 }
-                KEYWORD::Symbol(SYMBOL::SquarC) if capture_depth > 0 => {
-                    capture_depth -= 1;
-                }
-                KEYWORD::Symbol(SYMBOL::SquarC) if capture_depth == 0 => {
-                    if capture_depth == 0 {
-                        return false;
+                continue;
+            }
+
+            if in_type_clause {
+                match key {
+                    KEYWORD::Symbol(SYMBOL::RoundO) => {
+                        type_round_depth += 1;
+                        continue;
                     }
+                    KEYWORD::Symbol(SYMBOL::RoundC) if type_round_depth > 0 => {
+                        type_round_depth -= 1;
+                        continue;
+                    }
+                    KEYWORD::Symbol(SYMBOL::SquarO) => {
+                        type_square_depth += 1;
+                        continue;
+                    }
+                    KEYWORD::Symbol(SYMBOL::SquarC) if type_square_depth > 0 => {
+                        type_square_depth -= 1;
+                        continue;
+                    }
+                    KEYWORD::Symbol(SYMBOL::CurlyO) => {
+                        if type_round_depth == 0
+                            && type_square_depth == 0
+                            && type_curly_depth == 0
+                            && !matches!(
+                                self.next_significant_key_from_window(tokens),
+                                Some(KEYWORD::Keyword(BUILDIN::Fun))
+                            )
+                        {
+                            return true;
+                        }
+                        type_curly_depth += 1;
+                        continue;
+                    }
+                    KEYWORD::Symbol(SYMBOL::CurlyC) if type_curly_depth > 0 => {
+                        type_curly_depth -= 1;
+                        continue;
+                    }
+                    KEYWORD::Operator(OPERATOR::Flow)
+                        if type_round_depth == 0
+                            && type_square_depth == 0
+                            && type_curly_depth == 0 =>
+                    {
+                        return true;
+                    }
+                    KEYWORD::Symbol(SYMBOL::Colon)
+                        if type_round_depth == 0
+                            && type_square_depth == 0
+                            && type_curly_depth == 0 =>
+                    {
+                        continue;
+                    }
+                    _ => continue,
                 }
-                KEYWORD::Symbol(SYMBOL::Colon) if capture_depth == 0 => {
+            }
+
+            match key {
+                KEYWORD::Symbol(SYMBOL::SquarO) => {
+                    capture_depth = 1;
+                }
+                KEYWORD::Symbol(SYMBOL::Colon) => {
                     in_type_clause = true;
                 }
-                KEYWORD::Symbol(SYMBOL::CurlyO)
-                | KEYWORD::Operator(OPERATOR::Flow)
-                    if capture_depth == 0 =>
-                {
+                KEYWORD::Symbol(SYMBOL::CurlyO) | KEYWORD::Operator(OPERATOR::Flow) => {
                     return true;
                 }
-                _ if capture_depth == 0 && !in_type_clause => {
+                _ => {
                     return false;
                 }
-                _ => {}
             }
         }
 
