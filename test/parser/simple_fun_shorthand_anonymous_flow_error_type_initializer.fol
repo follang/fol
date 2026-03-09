@@ -1,0 +1,4 @@
+fun outer(): any = {
+    var f = (): int: Failure => return value;
+    return f;
+}
