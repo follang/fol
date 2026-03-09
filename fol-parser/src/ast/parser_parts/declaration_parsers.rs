@@ -287,11 +287,14 @@ impl AstParser {
             TypeDefinition::Alias { target }
         };
 
+        let contracts = self.type_contracts_from_generics(&generics, &type_def);
+
         self.consume_optional_semicolon(tokens);
 
         Ok(AstNode::TypeDecl {
             options,
             generics,
+            contracts,
             name,
             type_def,
         })
@@ -462,5 +465,22 @@ impl AstParser {
         }))
     }
 
+    fn type_contracts_from_generics(
+        &self,
+        generics: &[Generic],
+        type_def: &TypeDefinition,
+    ) -> Vec<FolType> {
+        if !matches!(type_def, TypeDefinition::Record { .. } | TypeDefinition::Entry { .. }) {
+            return Vec::new();
+        }
+
+        generics
+            .iter()
+            .filter(|generic| generic.constraints.is_empty())
+            .map(|generic| FolType::Named {
+                name: generic.name.clone(),
+            })
+            .collect()
+    }
 
 }

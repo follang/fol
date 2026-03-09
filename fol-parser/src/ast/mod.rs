@@ -45,6 +45,7 @@ pub enum AstNode {
     TypeDecl {
         options: Vec<TypeOption>,
         generics: Vec<Generic>,
+        contracts: Vec<FolType>,
         name: String,
         type_def: TypeDefinition,
     },

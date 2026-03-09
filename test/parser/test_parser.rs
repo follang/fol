@@ -252,6 +252,9 @@ mod type_member_metadata;
 #[path = "test_parser_parts/type_member_bodies.rs"]
 mod type_member_bodies;
 #[cfg(test)]
+#[path = "test_parser_parts/type_contracts.rs"]
+mod type_contracts;
+#[cfg(test)]
 #[path = "test_parser_parts/type_forms_and_function_decls.rs"]
 mod type_forms_and_function_decls;
 #[cfg(test)]
