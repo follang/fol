@@ -185,6 +185,14 @@ impl AstParser {
             return self.parse_call_stmt(tokens);
         }
 
+        if (matches!(key, KEYWORD::Symbol(SYMBOL::RoundO))
+            || AstParser::token_can_be_logical_name(&key)
+            || matches!(key, KEYWORD::Literal(LITERAL::Stringy)))
+            && self.lookahead_is_general_invoke(tokens, matches!(key, KEYWORD::Symbol(SYMBOL::RoundO)))
+        {
+            return self.parse_invoke_stmt(tokens);
+        }
+
         if matches!(
             token.key(),
             KEYWORD::Keyword(BUILDIN::Panic)
