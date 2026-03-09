@@ -209,6 +209,40 @@ fn test_alternative_function_header_with_params() {
 }
 
 #[test]
+fn test_alternative_function_header_with_params_supports_flow_body() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_alt_header_params_flow.fol")
+            .expect("Should read alternative parameterized function-header flow fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse flow-bodied alternative function headers with params");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::FunDecl {
+                    name,
+                    params,
+                    return_type: Some(FolType::Int { .. }),
+                    body,
+                    ..
+                }
+                if name == "add"
+                    && params.len() == 2
+                    && params[0].name == "a"
+                    && params[1].name == "b"
+                    && !body.is_empty()
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
 fn test_alternative_procedure_header_with_params() {
     let mut file_stream = FileStream::from_file("test/parser/simple_pro_alt_header_params.fol")
         .expect("Should read alternative parameterized procedure-header fixture");
