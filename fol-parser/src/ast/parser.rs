@@ -112,6 +112,8 @@ mod program_and_bindings;
 mod routine_headers_and_type_lowering;
 #[path = "parser_parts/routine_capture_parsers.rs"]
 mod routine_capture_parsers;
+#[path = "parser_parts/routine_signature_parsers.rs"]
+mod routine_signature_parsers;
 #[path = "parser_parts/statement_parsers.rs"]
 mod statement_parsers;
 #[path = "parser_parts/type_references_and_blocks.rs"]
