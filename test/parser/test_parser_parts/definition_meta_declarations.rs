@@ -97,3 +97,28 @@ fn test_default_definition_parsing() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_only_macro_definitions_accept_parameter_headers() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_def_alt_with_params.fol")
+        .expect("Should read invalid parameterized alternative definition file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject parameters on non-macro definitions");
+
+    let parse_error = errors
+        .first()
+        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        .expect("First parser error should be ParseError");
+
+    assert!(
+        parse_error
+            .to_string()
+            .contains("Definition parameters are currently supported only for mac definitions"),
+        "Non-macro parameterized defs should report the parameter restriction, got: {}",
+        parse_error
+    );
+}

@@ -119,6 +119,13 @@ impl AstParser {
                 ),
             )));
         }
+        if !params.is_empty() && !self.definition_supports_params(&def_type) {
+            return Err(Box::new(ParseError::from_token(
+                &def_type_token,
+                "Definition parameters are currently supported only for mac definitions"
+                    .to_string(),
+            )));
+        }
 
         self.skip_ignorable(tokens);
         let next = tokens.curr(false)?;
@@ -517,6 +524,10 @@ impl AstParser {
             def_type,
             FolType::Module { .. } | FolType::Block { .. } | FolType::Test { .. }
         )
+    }
+
+    fn definition_supports_params(&self, def_type: &FolType) -> bool {
+        matches!(def_type, FolType::Named { name } if name == "mac")
     }
 
 }
