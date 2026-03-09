@@ -326,7 +326,15 @@ impl AstParser {
         if matches!(open_body.key(), KEYWORD::Operator(OPERATOR::Flow)) {
             let _ = tokens.bump();
             self.skip_ignorable(tokens);
-            let expr = self.parse_logical_expression(tokens)?;
+            let key = tokens.curr(false)?.key();
+            let expr = if (AstParser::token_can_be_logical_name(&key)
+                || matches!(key, KEYWORD::Literal(LITERAL::Stringy)))
+                && self.lookahead_is_assignment(tokens)
+            {
+                self.parse_assignment_stmt(tokens)?
+            } else {
+                self.parse_logical_expression(tokens)?
+            };
             self.consume_optional_semicolon(tokens);
             return Ok(targets
                 .into_iter()
@@ -334,8 +342,8 @@ impl AstParser {
                     target,
                     body: vec![expr.clone()],
                 })
-                .collect());
-        }
+            .collect());
+    }
 
         if !matches!(open_body.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
             return Err(Box::new(ParseError::from_token(
