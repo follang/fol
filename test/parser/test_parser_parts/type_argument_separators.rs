@@ -212,3 +212,34 @@ fn test_special_type_forms_accept_semicolon_type_arguments() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_array_types_accept_semicolon_separator() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_typ_array_types_semicolon.fol")
+            .expect("Should read semicolon array-type fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse semicolon-separated array type arguments");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::TypeDecl {
+                    name,
+                    type_def: TypeDefinition::Alias {
+                        target: FolType::Array { element_type, size: Some(8) }
+                    },
+                    ..
+                }
+                if name == "Buffer"
+                    && matches!(element_type.as_ref(), FolType::Int { .. })
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}

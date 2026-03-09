@@ -499,25 +499,15 @@ impl AstParser {
             )));
         }
         let _ = tokens.bump();
-
         self.skip_ignorable(tokens);
+
         let size_token = tokens.curr(false)?;
-        let size = match size_token.key() {
-            KEYWORD::Literal(LITERAL::Deciaml) => {
-                size_token.con().trim().parse::<usize>().map_err(|_| {
-                    Box::new(ParseError::from_token(
-                        &size_token,
-                        "Expected decimal array size in arr[...]".to_string(),
-                    )) as Box<dyn Glitch>
-                })?
-            }
-            _ => {
-                return Err(Box::new(ParseError::from_token(
-                    &size_token,
-                    "Expected decimal array size in arr[...]".to_string(),
-                )))
-            }
-        };
+        let size = size_token.con().trim().parse::<usize>().map_err(|_| {
+            Box::new(ParseError::from_token(
+                &size_token,
+                "Expected decimal array size in arr[...]".to_string(),
+            )) as Box<dyn Glitch>
+        })?;
         let _ = tokens.bump();
 
         self.skip_ignorable(tokens);
@@ -556,32 +546,25 @@ impl AstParser {
             if matches!(comma.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
                 break;
             }
-            if !matches!(comma.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
+            if !matches!(
+                comma.key(),
+                KEYWORD::Symbol(SYMBOL::Comma) | KEYWORD::Symbol(SYMBOL::Semi)
+            ) {
                 return Err(Box::new(ParseError::from_token(
                     &comma,
-                    "Expected ',' after matrix element type".to_string(),
+                    "Expected ',' or ';' after matrix element type".to_string(),
                 )));
             }
             let _ = tokens.bump();
 
             self.skip_ignorable(tokens);
             let dim_token = tokens.curr(false)?;
-            let dim = match dim_token.key() {
-                KEYWORD::Literal(LITERAL::Deciaml) => {
-                    dim_token.con().trim().parse::<usize>().map_err(|_| {
-                        Box::new(ParseError::from_token(
-                            &dim_token,
-                            "Expected decimal matrix dimension in mat[...]".to_string(),
-                        )) as Box<dyn Glitch>
-                    })?
-                }
-                _ => {
-                    return Err(Box::new(ParseError::from_token(
-                        &dim_token,
-                        "Expected decimal matrix dimension in mat[...]".to_string(),
-                    )))
-                }
-            };
+            let dim = dim_token.con().trim().parse::<usize>().map_err(|_| {
+                Box::new(ParseError::from_token(
+                    &dim_token,
+                    "Expected decimal matrix dimension in mat[...]".to_string(),
+                )) as Box<dyn Glitch>
+            })?;
             dimensions.push(dim);
             let _ = tokens.bump();
         }
