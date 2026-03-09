@@ -46,6 +46,28 @@ impl AstParser {
                 }
                 Ok(Some(FolType::Never))
             }
+            "any" => {
+                let args = self.parse_type_argument_list(tokens)?;
+                if !args.is_empty() {
+                    let token = tokens.curr(false)?;
+                    return Err(Box::new(ParseError::from_token(
+                        &token,
+                        "Expected zero type arguments for any[...]".to_string(),
+                    )));
+                }
+                Ok(Some(FolType::Any))
+            }
+            "non" | "none" => {
+                let args = self.parse_type_argument_list(tokens)?;
+                if !args.is_empty() {
+                    let token = tokens.curr(false)?;
+                    return Err(Box::new(ParseError::from_token(
+                        &token,
+                        "Expected zero type arguments for none[...]".to_string(),
+                    )));
+                }
+                Ok(Some(FolType::None))
+            }
             "ptr" => {
                 let args = self.parse_type_argument_list(tokens)?;
                 if args.len() != 1 {
