@@ -184,3 +184,28 @@ fn test_multi_name_type_declarations_reject_explicit_contract_headers() {
             .unwrap_or(false)
     }));
 }
+
+#[test]
+fn test_multi_name_type_declarations_reject_mismatched_definition_counts() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_typ_multi_names_mismatched_defs.fol")
+            .expect("Should read mismatched multi-name type fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject mismatched multi-name type definitions");
+
+    assert!(errors.iter().any(|error| {
+        error
+            .as_any()
+            .downcast_ref::<ParseError>()
+            .map(|parse_error| {
+                parse_error.to_string().contains(
+                    "Type definition count must match declared names or provide a single shared definition",
+                )
+            })
+            .unwrap_or(false)
+    }));
+}
