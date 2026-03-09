@@ -4,7 +4,7 @@ An import declaration states that the source file containing the declaration dep
 
 Syntax to import a library is:
 ```
-use package_name: mod = { path }
+use package_name: mod = { source }
 ```
 
 There are two type of import declartions:

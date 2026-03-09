@@ -838,11 +838,9 @@ Authority rule for this file: code and active tests win over older aspirational 
 
 ### 12.3 Source-Kind Type Support
 
-- bare `path`: implemented
 - bare `url`: implemented
 - bare `loc`: implemented
 - bare `std`: implemented
-- `path[...]`: implemented
 - `url[...]`: implemented
 - `loc[...]`: implemented
 - `std[...]`: implemented
@@ -1711,7 +1709,7 @@ Authority rule for this file: code and active tests win over older aspirational 
 - `fol-parser/src/ast/parser_parts/routine_capture_parsers.rs`: active capture list parsing
 - `fol-parser/src/ast/parser_parts/routine_headers_and_type_lowering.rs`: active header parsing and type lowering
 - `fol-parser/src/ast/parser_parts/segment_declaration_parsers.rs`: active `seg` parsing
-- `fol-parser/src/ast/parser_parts/source_kind_type_parsers.rs`: active `path/url/loc/std` type parsing
+- `fol-parser/src/ast/parser_parts/source_kind_type_parsers.rs`: active `url/loc/std` type parsing
 - `fol-parser/src/ast/parser_parts/standard_declaration_parsers.rs`: active `std` parsing
 - `fol-parser/src/ast/parser_parts/statement_parsers.rs`: active statement/control-flow parsing
 - `fol-parser/src/ast/parser_parts/test_type_parsers.rs`: active `tst[...]` argument parsing
@@ -2251,7 +2249,7 @@ Authority rule for this file: code and active tests win over older aspirational 
 - `routine`: `12` fixtures covering routine options, grouped params, generics, and defaults
 - `seg`: `7` fixtures covering segment declarations and visibility/name/type cases
 - `single`: `13` fixtures covering single-quoted names and type/member/reference surfaces
-- `source`: `4` fixtures covering `path/url/loc/std` source-kind types
+- `source`: `3` fixtures covering `url/loc/std` source-kind types
 - `std`: `14` fixtures covering standard declarations, kinds, options, and duplicate members
 - `tilde`: `2` fixtures covering `~` binding shorthand
 - `top`: `2` fixtures covering top-level quoted/keyword call and assignment cases

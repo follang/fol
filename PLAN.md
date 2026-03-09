@@ -3,7 +3,7 @@
 This file is the working parser-completion backlog for the FOL project as of 2026-03-09.
 
 It is based on the current code, not on older docs:
-- `cargo test -q --test integration` is green: `897 passed`
+- `cargo test -q --test integration` is green: `896 passed`
 - `cargo clippy --workspace --all-targets --all-features -q` is green
 - the parser is already broad and stable
 
@@ -164,7 +164,6 @@ Current diagnostic:
 
 Need to decide whether `def` should widen to support:
 - source-kind definitions directly:
-  - `path[...]`
   - `url[...]`
   - `loc[...]`
   - `std[...]`
