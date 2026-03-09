@@ -112,3 +112,56 @@ fn test_routines_and_use_declarations_accept_semicolon_type_arguments() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_type_bodies_accept_semicolon_type_arguments() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_type_args_semicolon_type_bodies.fol")
+            .expect("Should read semicolon type-argument type-body fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse semicolon-separated type arguments in type bodies");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::TypeDecl {
+                    name,
+                    type_def: TypeDefinition::Record { fields, .. },
+                    ..
+                }
+                if name == "Config"
+                    && matches!(
+                        fields.get("values"),
+                        Some(FolType::Sequence { element_type })
+                        if matches!(element_type.as_ref(), FolType::Int { .. })
+                    )
+            )));
+
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::TypeDecl {
+                    name,
+                    type_def: TypeDefinition::Entry { variants, .. },
+                    ..
+                }
+                if name == "Event"
+                    && matches!(
+                        variants.get("Data"),
+                        Some(Some(FolType::Map { key_type, value_type }))
+                        if matches!(key_type.as_ref(), FolType::Named { name } if name == "str")
+                            && matches!(
+                                value_type.as_ref(),
+                                FolType::Vector { element_type }
+                                if matches!(element_type.as_ref(), FolType::Int { .. })
+                            )
+                    )
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
