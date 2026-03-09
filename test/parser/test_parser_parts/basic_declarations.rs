@@ -323,7 +323,7 @@ fn test_type_alias_missing_bracket_close_reports_parse_error() {
 
     let first_message = parse_error.to_string();
     assert!(
-        first_message.contains("Expected closing ']' in type reference"),
+        first_message.contains("Expected ',', ';', or closing ']' in type reference"),
         "Malformed bracketed typ alias should report missing close bracket, got: {}",
         first_message
     );
