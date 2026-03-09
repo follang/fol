@@ -176,3 +176,59 @@ fn test_alias_headers_do_not_synthesize_contracts() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_record_type_retains_explicit_contract_headers() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_typ_record_explicit_contracts.fol")
+            .expect("Should read explicit record-contract fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should retain explicit record contracts after generics");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::TypeDecl { name, generics, contracts, type_def: TypeDefinition::Record { .. }, .. }
+                if name == "Shape"
+                    && generics.len() == 1
+                    && generics[0].name == "T"
+                    && matches!(contracts.as_slice(),
+                        [FolType::Named { name: first }, FolType::Named { name: second }]
+                        if first == "geo" && second == "draw")
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_entry_type_retains_explicit_contract_headers() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_typ_entry_explicit_contracts.fol")
+            .expect("Should read explicit entry-contract fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should retain explicit entry contracts");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::TypeDecl { name, contracts, type_def: TypeDefinition::Entry { .. }, .. }
+                if name == "Status"
+                    && matches!(contracts.as_slice(),
+                        [FolType::Named { name: first }, FolType::Named { name: second }]
+                        if first == "display" && second == "serialize")
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}

@@ -244,6 +244,8 @@ impl AstParser {
         self.skip_ignorable(tokens);
         let generics = self.parse_type_generic_header(tokens)?;
         self.skip_ignorable(tokens);
+        let explicit_contracts = self.parse_type_contract_header(tokens)?;
+        self.skip_ignorable(tokens);
         let colon = tokens.curr(false)?;
         if !matches!(colon.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
             return Err(Box::new(ParseError::from_token(
@@ -298,7 +300,8 @@ impl AstParser {
             TypeDefinition::Alias { target }
         };
 
-        let contracts = self.type_contracts_from_generics(&generics, &type_def);
+        let mut contracts = self.type_contracts_from_generics(&generics, &type_def);
+        contracts.extend(explicit_contracts);
 
         self.consume_optional_semicolon(tokens);
 
@@ -356,6 +359,69 @@ impl AstParser {
         let _ = tokens.bump();
 
         self.parse_generic_list(tokens)
+    }
+
+    pub(super) fn parse_type_contract_header(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<Vec<FolType>, Box<dyn Glitch>> {
+        self.skip_ignorable(tokens);
+        let open = match tokens.curr(false) {
+            Ok(token) => token,
+            Err(_) => return Ok(Vec::new()),
+        };
+
+        if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
+            return Ok(Vec::new());
+        }
+        let _ = tokens.bump();
+
+        let mut contracts = Vec::new();
+        for _ in 0..64 {
+            self.skip_ignorable(tokens);
+            let token = tokens.curr(false)?;
+            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
+                let _ = tokens.bump();
+                return Ok(contracts);
+            }
+
+            contracts.push(self.parse_type_reference_tokens(tokens)?);
+            self.skip_ignorable(tokens);
+
+            let sep = tokens.curr(false)?;
+            if matches!(
+                sep.key(),
+                KEYWORD::Symbol(SYMBOL::Comma) | KEYWORD::Symbol(SYMBOL::Semi)
+            ) {
+                let _ = tokens.bump();
+                self.skip_ignorable(tokens);
+                if matches!(
+                    tokens.curr(false).map(|token| token.key()),
+                    Ok(KEYWORD::Symbol(SYMBOL::RoundC))
+                ) {
+                    let _ = tokens.bump();
+                    return Ok(contracts);
+                }
+                continue;
+            }
+            if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
+                let _ = tokens.bump();
+                return Ok(contracts);
+            }
+
+            return Err(Box::new(ParseError::from_token(
+                &sep,
+                "Expected ',', ';', or ')' in type contracts".to_string(),
+            )));
+        }
+
+        Err(Box::new(ParseError {
+            message: "Type contracts exceeded parser limit".to_string(),
+            file: None,
+            line: 0,
+            column: 0,
+            length: 0,
+        }))
     }
 
     pub(super) fn parse_type_options(

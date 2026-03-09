@@ -1,0 +1,3 @@
+typ Status(display; serialize): ent = {
+    var OK: str = "ok";
+}

@@ -1,0 +1,3 @@
+typ Shape(T: gen)(geo, draw): rec = {
+    var width: T;
+}
