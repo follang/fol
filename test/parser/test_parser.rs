@@ -42,6 +42,9 @@ mod comparison_keyword_expressions;
 #[path = "test_parser_parts/container_and_unary_expressions.rs"]
 mod container_and_unary_expressions;
 #[cfg(test)]
+#[path = "test_parser_parts/container_literal_expressions.rs"]
+mod container_literal_expressions;
+#[cfg(test)]
 #[path = "test_parser_parts/custom_error_report_validation.rs"]
 mod custom_error_report_validation;
 #[cfg(test)]
