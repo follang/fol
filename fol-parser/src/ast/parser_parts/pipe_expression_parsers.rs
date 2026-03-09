@@ -178,6 +178,13 @@ impl AstParser {
             return self.parse_assignment_stmt(tokens);
         }
 
+        if (AstParser::token_can_be_logical_name(&key)
+            || matches!(key, KEYWORD::Literal(LITERAL::Stringy)))
+            && (self.lookahead_is_call(tokens) || self.lookahead_is_method_call(tokens))
+        {
+            return self.parse_call_stmt(tokens);
+        }
+
         if matches!(
             token.key(),
             KEYWORD::Keyword(BUILDIN::Panic)
