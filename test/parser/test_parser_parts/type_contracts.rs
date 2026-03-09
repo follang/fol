@@ -152,3 +152,27 @@ fn test_constrained_type_generics_do_not_become_contracts() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_alias_headers_do_not_synthesize_contracts() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_typ_alias_unconstrained_header.fol")
+            .expect("Should read alias unconstrained-header fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should not synthesize contracts for alias type declarations");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::TypeDecl { name, generics, contracts, type_def: TypeDefinition::Alias { .. }, .. }
+                if name == "Alias" && generics.len() == 1 && generics[0].name == "Box" && contracts.is_empty()
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
