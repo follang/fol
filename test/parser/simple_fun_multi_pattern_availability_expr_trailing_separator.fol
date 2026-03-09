@@ -1,0 +1,3 @@
+fun pick(parent: any): any = {
+    return parent:["bob", "alice",];
+}
