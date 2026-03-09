@@ -192,6 +192,9 @@ mod test_block_declarations;
 #[path = "test_parser_parts/routine_error_types.rs"]
 mod routine_error_types;
 #[cfg(test)]
+#[path = "test_parser_parts/routine_flow_bodies.rs"]
+mod routine_flow_bodies;
+#[cfg(test)]
 #[path = "test_parser_parts/routine_closure_captures.rs"]
 mod routine_closure_captures;
 #[cfg(test)]

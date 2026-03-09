@@ -114,6 +114,8 @@ mod routine_headers_and_type_lowering;
 mod routine_capture_parsers;
 #[path = "parser_parts/routine_signature_parsers.rs"]
 mod routine_signature_parsers;
+#[path = "parser_parts/routine_body_parsers.rs"]
+mod routine_body_parsers;
 #[path = "parser_parts/statement_parsers.rs"]
 mod statement_parsers;
 #[path = "parser_parts/type_references_and_blocks.rs"]
