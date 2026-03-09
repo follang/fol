@@ -174,3 +174,59 @@ fn test_test_block_types_accept_semicolon_separators() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_test_block_types_accept_trailing_separators() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_test_type_trailing_separator.fol")
+            .expect("Should read trailing tst[...] fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse trailing tst[...] separators");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::TypeDecl {
+                        name,
+                        type_def: TypeDefinition::Alias {
+                            target: FolType::Test { name: Some(label), access }
+                        },
+                        ..
+                    }
+                    if name == "TestBlock" && label == "unit" && access == &vec!["shko".to_string()]
+                )
+            }));
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::DefDecl {
+                        name,
+                        def_type: FolType::Test { name: Some(label), access },
+                        ..
+                    }
+                    if name == "test1"
+                        && label == "sometest"
+                        && access == &vec!["shko".to_string()]
+                )
+            }));
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::DefDecl {
+                        name,
+                        def_type: FolType::Test { name: None, access },
+                        ..
+                    }
+                    if name == "some unit testing" && access == &vec!["shko".to_string()]
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
