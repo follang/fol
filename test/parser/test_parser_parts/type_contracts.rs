@@ -75,3 +75,30 @@ fn test_entry_type_retains_contract_headers() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_record_type_contracts_follow_generic_separator_rules() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_typ_record_contracts_semicolon.fol")
+            .expect("Should read semicolon-separated record contract fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should retain semicolon-separated record contracts");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::TypeDecl { name, contracts, type_def: TypeDefinition::Record { .. }, .. }
+                if name == "Shape"
+                    && matches!(contracts.as_slice(),
+                        [FolType::Named { name: first }, FolType::Named { name: second }]
+                        if first == "geo" && second == "draw")
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
