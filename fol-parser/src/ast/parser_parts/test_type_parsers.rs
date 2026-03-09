@@ -71,6 +71,13 @@ impl AstParser {
                 break;
             }
 
+            if Self::is_missing_type_reference_close_token(&sep.key()) {
+                return Err(Box::new(ParseError::from_token(
+                    &sep,
+                    "Expected closing ']' in type reference".to_string(),
+                )));
+            }
+
             return Err(Box::new(ParseError::from_token(
                 &sep,
                 "Expected ',', ';', or ']' in tst[...] arguments".to_string(),
