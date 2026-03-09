@@ -72,6 +72,18 @@ impl AstParser {
             return Ok(vec![node]);
         }
 
+        if matches!(
+            key,
+            KEYWORD::Keyword(BUILDIN::While)
+                | KEYWORD::Keyword(BUILDIN::Loop)
+                | KEYWORD::Keyword(BUILDIN::For)
+                | KEYWORD::Keyword(BUILDIN::Each)
+        ) {
+            let node = self.parse_loop_stmt(tokens)?;
+            self.consume_optional_semicolon(tokens);
+            return Ok(vec![node]);
+        }
+
         if matches!(key, KEYWORD::Symbol(SYMBOL::CurlyO)) {
             let node = self.parse_block_stmt(tokens)?;
             self.consume_optional_semicolon(tokens);

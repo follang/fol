@@ -1,0 +1,5 @@
+fun fallback(value: int, items: seq[int]): int = {
+    if(value) => while(value) => break;
+    else => for(item in items) => break;
+    return value;
+}

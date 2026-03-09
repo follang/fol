@@ -1,0 +1,7 @@
+fun classify(value: int, items: seq[int]): int = {
+    when(value) {
+        is(0) => loop(value) => break;
+        has(value) => each(item in items) => break;
+    }
+    return value;
+}
