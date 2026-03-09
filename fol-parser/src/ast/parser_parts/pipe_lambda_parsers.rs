@@ -104,7 +104,10 @@ impl AstParser {
 
             self.skip_ignorable(tokens);
             let token = tokens.curr(false)?;
-            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
+            if matches!(
+                token.key(),
+                KEYWORD::Symbol(SYMBOL::Comma) | KEYWORD::Symbol(SYMBOL::Semi)
+            ) {
                 if is_variadic {
                     return Err(Box::new(ParseError::from_token(
                         &token,
@@ -113,6 +116,12 @@ impl AstParser {
                 }
                 let _ = tokens.bump();
                 self.skip_ignorable(tokens);
+                if matches!(
+                    tokens.curr(false).map(|token| token.key()),
+                    Ok(KEYWORD::Symbol(SYMBOL::Pipe))
+                ) {
+                    return Ok(params);
+                }
                 continue;
             }
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Pipe)) {
@@ -121,7 +130,7 @@ impl AstParser {
 
             return Err(Box::new(ParseError::from_token(
                 &token,
-                "Expected ',' or '|' after lambda parameters".to_string(),
+                "Expected ',', ';', or '|' after lambda parameters".to_string(),
             )));
         }
     }
