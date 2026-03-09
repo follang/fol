@@ -138,6 +138,17 @@ pub enum AstNode {
         inquiries: Vec<AstNode>,
     },
 
+    /// Anonymous logical expression: log (...) : bol = { ... }
+    AnonymousLog {
+        options: Vec<FunOption>,
+        captures: Vec<String>,
+        params: Vec<Parameter>,
+        return_type: Option<FolType>,
+        error_type: Option<FolType>,
+        body: Vec<AstNode>,
+        inquiries: Vec<AstNode>,
+    },
+
     /// Method call: object.method(args)
     MethodCall {
         object: Box<AstNode>,
@@ -678,6 +689,14 @@ impl AstNode {
                 params: params.iter().map(|param| param.param_type.clone()).collect(),
                 return_type: Box::new(return_type.clone().unwrap_or(FolType::Any)),
             }),
+            AstNode::AnonymousLog {
+                params,
+                return_type,
+                ..
+            } => Some(FolType::Function {
+                params: params.iter().map(|param| param.param_type.clone()).collect(),
+                return_type: Box::new(return_type.clone().unwrap_or(FolType::Bool)),
+            }),
             AstNode::AvailabilityAccess { .. } => Some(FolType::Bool),
             AstNode::Inquiry { .. } => None,
 
@@ -724,6 +743,9 @@ impl AstNode {
                 body, inquiries, ..
             }
             | AstNode::AnonymousPro {
+                body, inquiries, ..
+            }
+            | AstNode::AnonymousLog {
                 body, inquiries, ..
             } => {
                 let mut children: Vec<&AstNode> = body.iter().collect();

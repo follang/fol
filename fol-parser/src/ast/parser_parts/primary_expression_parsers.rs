@@ -275,7 +275,7 @@ impl AstParser {
                 error_type,
                 body,
                 inquiries,
-            } => Ok(AstNode::AnonymousFun {
+            } => Ok(AstNode::AnonymousLog {
                 options,
                 captures,
                 params,

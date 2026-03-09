@@ -225,7 +225,7 @@ fn test_anonymous_logical_expression() {
                         AstNode::Return { value: Some(value) }
                         if matches!(
                             value.as_ref(),
-                            AstNode::AnonymousFun { params, return_type: Some(FolType::Bool), .. }
+                            AstNode::AnonymousLog { params, return_type: Some(FolType::Bool), .. }
                             if params.len() == 1 && params[0].name == "a"
                         )
                     ))
@@ -263,7 +263,7 @@ fn test_anonymous_logical_immediate_invocation_parsing() {
                             if args.len() == 1
                                 && matches!(
                                     callee.as_ref(),
-                                    AstNode::AnonymousFun { return_type: Some(FolType::Bool), .. }
+                                    AstNode::AnonymousLog { return_type: Some(FolType::Bool), .. }
                                 )
                         )
                     ))
@@ -331,7 +331,7 @@ fn test_anonymous_routine_capture_lists_parsing() {
                             AstNode::Return { value: Some(value) }
                             if matches!(
                                 value.as_ref(),
-                                AstNode::AnonymousFun { captures, return_type: Some(FolType::Bool), .. }
+                                AstNode::AnonymousLog { captures, return_type: Some(FolType::Bool), .. }
                                 if captures == &vec!["ready".to_string()]
                             )
                         ))
