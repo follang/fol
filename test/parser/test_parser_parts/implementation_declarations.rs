@@ -76,6 +76,58 @@ fn test_implementation_declaration_accepts_empty_option_brackets() {
 }
 
 #[test]
+fn test_implementation_declaration_accepts_empty_marker_form() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_imp_marker.fol")
+        .expect("Should read marker-form implementation declaration test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept marker-form implementation declarations");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::ImpDecl { name, target, body, generics, .. }
+                if name == "Self"
+                    && generics.is_empty()
+                    && matches!(target, FolType::Named { name } if name == "ID")
+                    && body.is_empty()
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_implementation_declaration_accepts_empty_option_marker_form() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_imp_empty_options_marker.fol")
+        .expect("Should read empty-option marker implementation fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept imp[] marker declarations");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::ImpDecl { name, target, body, generics, .. }
+                if name == "Self"
+                    && generics.is_empty()
+                    && matches!(target, FolType::Named { name } if name == "ID")
+                    && body.is_empty()
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
 fn test_implementation_declaration_rejects_unknown_options() {
     let mut file_stream = FileStream::from_file("test/parser/simple_imp_unknown_option.fol")
         .expect("Should read malformed imp option test file");

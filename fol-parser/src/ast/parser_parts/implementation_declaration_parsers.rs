@@ -45,10 +45,14 @@ impl AstParser {
         self.skip_ignorable(tokens);
         let assign = tokens.curr(false)?;
         if !matches!(assign.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
-            return Err(Box::new(ParseError::from_token(
-                &assign,
-                "Expected '=' before implementation body".to_string(),
-            )));
+            self.consume_optional_semicolon(tokens);
+            return Ok(AstNode::ImpDecl {
+                options,
+                generics,
+                name,
+                target,
+                body: Vec::new(),
+            });
         }
         let _ = tokens.bump();
 
