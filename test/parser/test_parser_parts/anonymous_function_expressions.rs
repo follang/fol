@@ -801,3 +801,42 @@ fn test_shorthand_anonymous_function_flow_capture_return_type_parsing() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_shorthand_anonymous_function_flow_capture_inquiry_parsing() {
+    let mut file_stream = FileStream::from_file(
+        "test/parser/simple_fun_shorthand_anonymous_flow_capture_inquiry.fol",
+    )
+    .expect("Should read shorthand anonymous flow capture+inquiry fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse captures and inquiries on shorthand flow bodies");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::FunDecl { name, body, .. }
+                    if name == "outer"
+                        && body.iter().any(|stmt| matches!(
+                            stmt,
+                            AstNode::Return { value: Some(value) }
+                            if matches!(value.as_ref(), AstNode::AnonymousFun {
+                                captures,
+                                inquiries,
+                                body,
+                                ..
+                            } if captures == &vec!["left".to_string()]
+                                && inquiries.len() == 1
+                                && !body.is_empty())
+                        ))
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
