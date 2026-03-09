@@ -115,3 +115,29 @@ fn test_qualified_inquiry_targets_lower_structurally() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_named_and_quoted_duplicate_inquiry_targets_are_rejected() {
+    let message = {
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_inquiry_target_duplicate_named_quoted.fol")
+                .expect("Should read duplicate named/quoted inquiry target fixture");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should reject duplicate named/quoted inquiry targets");
+
+        errors
+            .first()
+            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            .expect("First parser error should be ParseError")
+            .to_string()
+    };
+
+    assert!(
+        message.contains("Duplicate inquiry clause for 'cache'"),
+        "Expected duplicate inquiry diagnostic, got: {message}",
+    );
+}
