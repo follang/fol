@@ -368,3 +368,38 @@ fn test_pipe_lambda_rejects_variadic_default_values() {
         parse_error
     );
 }
+
+#[test]
+fn test_pipe_lambda_marks_borrowable_parameters() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_pipe_lambda_borrowable_params.fol")
+            .expect("Should read borrowable pipe lambda parameter fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should mark borrowable pipe lambda parameters");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::FunDecl { body, .. }
+                if body.iter().any(|stmt| matches!(
+                    stmt,
+                    AstNode::Return { value: Some(value) }
+                    if matches!(
+                        value.as_ref(),
+                        AstNode::AnonymousFun { params, .. }
+                        if params.len() == 2
+                            && params[0].name == "BUF"
+                            && params[0].is_borrowable
+                            && !params[1].is_borrowable
+                    )
+                ))
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}

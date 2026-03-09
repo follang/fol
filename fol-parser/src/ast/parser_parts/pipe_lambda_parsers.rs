@@ -93,9 +93,11 @@ impl AstParser {
 
             for name in names {
                 params.push(Parameter {
+                    is_borrowable: name.chars().all(|ch| {
+                        !ch.is_ascii_lowercase() && (ch.is_ascii_alphanumeric() || ch == '_')
+                    }),
                     name,
                     param_type: param_type.clone(),
-                    is_borrowable: false,
                     default: default.clone(),
                 });
             }
