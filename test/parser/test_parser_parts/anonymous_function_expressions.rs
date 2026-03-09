@@ -356,6 +356,34 @@ fn test_anonymous_logical_flow_body_parsing() {
 }
 
 #[test]
+fn test_shorthand_anonymous_function_flow_body_parsing() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_shorthand_anonymous_flow_expr.fol")
+            .expect("Should read shorthand anonymous flow-body fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse shorthand anonymous function flow bodies");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::FunDecl { body, .. }
+                if body.iter().any(|stmt| matches!(
+                    stmt,
+                    AstNode::VarDecl { value: Some(value), .. }
+                    if matches!(value.as_ref(), AstNode::AnonymousFun { body, .. } if !body.is_empty())
+                ))
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
 fn test_anonymous_routine_capture_lists_parsing() {
     let mut file_stream = FileStream::from_file("test/parser/simple_anonymous_routine_captures.fol")
         .expect("Should read anonymous routine captures fixture");

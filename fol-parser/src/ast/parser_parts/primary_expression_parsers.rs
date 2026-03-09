@@ -45,7 +45,10 @@ impl AstParser {
                 KEYWORD::Symbol(SYMBOL::Colon) if saw_open && depth == 0 && capture_depth == 0 => {
                     in_type_clause = true;
                 }
-                KEYWORD::Symbol(SYMBOL::CurlyO) if saw_open && depth == 0 && capture_depth == 0 => {
+                KEYWORD::Symbol(SYMBOL::CurlyO)
+                | KEYWORD::Operator(OPERATOR::Flow)
+                    if saw_open && depth == 0 && capture_depth == 0 =>
+                {
                     return true;
                 }
                 _ if saw_open && depth == 0 && capture_depth == 0 && !in_type_clause => {
@@ -431,18 +434,9 @@ impl AstParser {
             }
         }
 
-        self.skip_ignorable(tokens);
-        let open_body = tokens.curr(false)?;
-        if !matches!(open_body.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
-            return Err(Box::new(ParseError::from_token(
-                &open_body,
-                "Expected '{' to start shorthand anonymous function body".to_string(),
-            )));
-        }
-        let _ = tokens.bump();
-
-        let (body, inquiries) = self.parse_routine_body_with_inquiries(
+        let (body, inquiries) = self.parse_named_routine_body(
             tokens,
+            "Expected '{' or '=>' to start shorthand anonymous function body",
             "Expected '}' to close shorthand anonymous function body",
         )?;
 

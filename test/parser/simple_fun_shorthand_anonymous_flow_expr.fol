@@ -1,0 +1,4 @@
+fun wrap(): int = {
+    var f = (x: int) => return x;
+    return 1;
+}
