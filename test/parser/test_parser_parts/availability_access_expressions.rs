@@ -125,6 +125,37 @@ fn test_trailing_separator_availability_expression_parsing() {
 }
 
 #[test]
+fn test_empty_prefix_availability_expression_parsing() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_prefix_availability_expr_empty.fol")
+            .expect("Should read empty availability fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse empty prefix availability expressions");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::FunDecl { body, .. }
+                    if body.iter().any(|stmt| matches!(
+                        stmt,
+                        AstNode::Return { value: Some(value) }
+                        if matches!(value.as_ref(), AstNode::AvailabilityAccess { target }
+                            if matches!(target.as_ref(), AstNode::PatternAccess { patterns, .. } if patterns.is_empty()))
+                    ))
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
 fn test_suffix_availability_expression_parsing() {
     let mut file_stream =
         FileStream::from_file("test/parser/simple_fun_suffix_availability_expr.fol")
