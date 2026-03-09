@@ -211,3 +211,31 @@ fn test_record_grouped_fields_are_retained() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_grouped_record_duplicate_field_error_anchors_to_duplicate_name() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_typ_record_grouped_duplicate_field.fol")
+            .expect("Should read grouped duplicate record field fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject duplicate grouped record fields");
+
+    let parse_error = errors
+        .first()
+        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        .expect("First parser error should be ParseError");
+
+    assert!(
+        parse_error
+            .to_string()
+            .contains("Duplicate record field 'left'"),
+        "Expected duplicate grouped record field error, got: {}",
+        parse_error
+    );
+    assert_eq!(parse_error.line(), 2);
+    assert_eq!(parse_error.column(), 11);
+}

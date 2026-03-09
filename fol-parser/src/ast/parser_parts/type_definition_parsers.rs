@@ -219,14 +219,14 @@ impl AstParser {
 
             let mut field_names = Vec::new();
             loop {
-                let token = tokens.curr(false)?;
-                let field_name = Self::token_to_named_label(&token).ok_or_else(|| {
+                let name_token = tokens.curr(false)?;
+                let field_name = Self::token_to_named_label(&name_token).ok_or_else(|| {
                     Box::new(ParseError::from_token(
-                        &token,
+                        &name_token,
                         "Expected field name in type record definition".to_string(),
                     )) as Box<dyn Glitch>
                 })?;
-                field_names.push(field_name);
+                field_names.push((field_name, name_token));
                 let _ = tokens.bump();
 
                 self.skip_ignorable(tokens);
@@ -262,14 +262,13 @@ impl AstParser {
                 }
             }
 
-            for field_name in field_names {
+            for (field_name, name_token) in field_names {
                 if fields
                     .insert(field_name.clone(), field_type.clone())
                     .is_some()
                 {
-                    let token = tokens.curr(false)?;
                     return Err(Box::new(ParseError::from_token(
-                        &token,
+                        &name_token,
                         format!("Duplicate record field '{}'", field_name),
                     )));
                 }
