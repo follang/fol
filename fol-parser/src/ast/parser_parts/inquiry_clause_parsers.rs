@@ -382,6 +382,20 @@ impl AstParser {
                 )));
             }
 
+            let key = token.key();
+            if matches!(key, KEYWORD::Symbol(SYMBOL::CurlyO)) {
+                body.push(self.parse_block_stmt(tokens)?);
+                continue;
+            }
+
+            if (AstParser::token_can_be_logical_name(&key)
+                || matches!(key, KEYWORD::Literal(LITERAL::Stringy)))
+                && self.lookahead_is_assignment(tokens)
+            {
+                body.push(self.parse_assignment_stmt(tokens)?);
+                continue;
+            }
+
             body.push(self.parse_logical_expression(tokens)?);
             self.consume_optional_semicolon(tokens);
         }
