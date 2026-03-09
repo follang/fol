@@ -1,0 +1,7 @@
+fun[] inspect(value: int): int = {
+    return value;
+    where(self) {
+        report(value);
+        assert value;
+    }
+}

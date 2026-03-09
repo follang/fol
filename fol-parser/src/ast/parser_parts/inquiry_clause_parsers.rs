@@ -413,6 +413,17 @@ impl AstParser {
                 continue;
             }
 
+            if matches!(
+                key,
+                KEYWORD::Keyword(BUILDIN::Panic)
+                    | KEYWORD::Keyword(BUILDIN::Report)
+                    | KEYWORD::Keyword(BUILDIN::Check)
+                    | KEYWORD::Keyword(BUILDIN::Assert)
+            ) {
+                body.push(self.parse_builtin_call_stmt(tokens)?);
+                continue;
+            }
+
             if matches!(key, KEYWORD::Keyword(BUILDIN::Return)) {
                 body.push(self.parse_return_stmt(tokens)?);
                 continue;
