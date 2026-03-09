@@ -89,3 +89,21 @@ fn test_vector_sequence_set_and_map_missing_close_report_type_reference_close() 
         );
     }
 }
+
+#[test]
+fn test_module_block_test_and_source_kind_missing_close_report_type_reference_close() {
+    for path in [
+        "test/parser/simple_mod_type_missing_close.fol",
+        "test/parser/simple_blk_type_missing_close.fol",
+        "test/parser/simple_tst_type_missing_close.fol",
+        "test/parser/simple_url_type_missing_close.fol",
+        "test/parser/simple_loc_type_missing_close.fol",
+        "test/parser/simple_std_type_missing_close.fol",
+    ] {
+        let message = first_parse_error_message(path);
+        assert!(
+            message.contains("Expected closing ']' in type reference"),
+            "Expected normalized missing-close diagnostic for fixture {path}, got: {message}",
+        );
+    }
+}
