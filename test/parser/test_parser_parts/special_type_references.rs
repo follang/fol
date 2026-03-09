@@ -50,3 +50,40 @@ fn test_never_type_references_lower_structurally() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_bare_never_type_references_lower_structurally() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_bare_never_type_refs.fol")
+        .expect("Should read bare never type-reference fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should lower bare nev references");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::TypeDecl {
+                    name,
+                    type_def: TypeDefinition::Alias {
+                        target: FolType::Never
+                    },
+                    ..
+                } if name == "Bottom"
+            )));
+
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::FunDecl {
+                    name,
+                    return_type: Some(FolType::Never),
+                    ..
+                } if name == "crash"
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}

@@ -1,0 +1,5 @@
+typ Bottom: nev
+
+fun crash(): nev = {
+    panic "boom";
+}
