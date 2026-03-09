@@ -481,14 +481,32 @@ impl AstParser {
         }
 
         self.skip_ignorable(tokens);
-        let close = tokens.curr(false)?;
-        if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::Semi)) {
-            return Err(Box::new(ParseError::from_token(
-                &close,
-                "Expected ';' after standard routine signature".to_string(),
-            )));
+        let mut body = Vec::new();
+        let mut inquiries = Vec::new();
+        let next = tokens.curr(false)?;
+        match next.key() {
+            KEYWORD::Symbol(SYMBOL::Semi) => {
+                let _ = tokens.bump();
+            }
+            KEYWORD::Symbol(SYMBOL::Equal) | KEYWORD::Operator(OPERATOR::Flow) => {
+                if matches!(next.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
+                    let _ = tokens.bump();
+                }
+                let (parsed_body, parsed_inquiries) = self.parse_named_routine_body(
+                    tokens,
+                    "Expected '{' or '=>' to start standard routine body",
+                    "Expected '}' to close standard routine body",
+                )?;
+                body = parsed_body;
+                inquiries = parsed_inquiries;
+            }
+            _ => {
+                return Err(Box::new(ParseError::from_token(
+                    &next,
+                    "Expected ';', '=', or '=>' after standard routine declaration".to_string(),
+                )))
+            }
         }
-        let _ = tokens.bump();
 
         Ok(match routine_kind {
             KEYWORD::Keyword(BUILDIN::Pro) => AstNode::ProDecl {
@@ -499,8 +517,8 @@ impl AstParser {
                 params,
                 return_type,
                 error_type,
-                body: Vec::new(),
-                inquiries: Vec::new(),
+                body,
+                inquiries,
             },
             _ => AstNode::FunDecl {
                 options,
@@ -510,8 +528,8 @@ impl AstParser {
                 params,
                 return_type,
                 error_type,
-                body: Vec::new(),
-                inquiries: Vec::new(),
+                body,
+                inquiries,
             },
         })
     }

@@ -30,6 +30,34 @@ fn test_protocol_standard_declaration_parsing() {
 }
 
 #[test]
+fn test_protocol_standard_accepts_default_function_implementations() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_std_protocol_default_fun.fol")
+        .expect("Should read protocol default-function standard fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse default function implementations in protocol standards");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::StdDecl { name, kind: StandardKind::Protocol, body, .. }
+                    if name == "geometry"
+                        && body.len() == 2
+                        && matches!(&body[0], AstNode::FunDecl { name, body, .. } if name == "area" && !body.is_empty())
+                        && matches!(&body[1], AstNode::FunDecl { name, body, .. } if name == "perim" && body.is_empty())
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
 fn test_blueprint_standard_declaration_parsing() {
     let mut file_stream = FileStream::from_file("test/parser/simple_std_blueprint.fol")
         .expect("Should read blueprint standard test file");

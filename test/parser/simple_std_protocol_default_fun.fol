@@ -1,0 +1,4 @@
+std geometry: pro = {
+    fun area(): flt[64] = { return 0.0 }
+    fun perim(): flt[64];
+}
