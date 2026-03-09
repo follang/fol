@@ -1,0 +1,63 @@
+use super::*;
+
+#[test]
+fn test_aliases_and_bindings_accept_semicolon_type_arguments() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_type_args_semicolon_alias_binding.fol")
+            .expect("Should read semicolon type-argument alias/binding fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse semicolon-separated type arguments in aliases and bindings");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::TypeDecl {
+                    name,
+                    type_def: TypeDefinition::Alias {
+                        target: FolType::Sequence { element_type }
+                    },
+                    ..
+                }
+                if name == "Numbers"
+                    && matches!(element_type.as_ref(), FolType::Int { .. })
+            )));
+
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::VarDecl {
+                    name,
+                    type_hint: Some(FolType::Sequence { element_type }),
+                    ..
+                }
+                if name == "items"
+                    && matches!(element_type.as_ref(), FolType::Int { .. })
+            )));
+
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::FunDecl { body, .. }
+                if body.iter().any(|stmt| matches!(
+                    stmt,
+                    AstNode::VarDecl {
+                        name,
+                        type_hint: Some(FolType::Map { key_type, value_type }),
+                        ..
+                    }
+                    if name == "cache"
+                        && matches!(key_type.as_ref(), FolType::Named { name } if name == "str")
+                        && matches!(
+                            value_type.as_ref(),
+                            FolType::Vector { element_type }
+                            if matches!(element_type.as_ref(), FolType::Int { .. })
+                        )
+                ))
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}

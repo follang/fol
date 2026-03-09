@@ -234,6 +234,9 @@ mod type_definition_validation;
 #[path = "test_parser_parts/type_option_separators.rs"]
 mod type_option_separators;
 #[cfg(test)]
+#[path = "test_parser_parts/type_argument_separators.rs"]
+mod type_argument_separators;
+#[cfg(test)]
 #[path = "test_parser_parts/type_member_metadata.rs"]
 mod type_member_metadata;
 #[cfg(test)]
