@@ -1,0 +1,4 @@
+typ Counter: rec = {
+    var start: int;
+    fun next()[step]: int = { return step; };
+}
