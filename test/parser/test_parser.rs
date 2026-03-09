@@ -201,6 +201,9 @@ mod routine_error_types;
 #[path = "test_parser_parts/routine_flow_bodies.rs"]
 mod routine_flow_bodies;
 #[cfg(test)]
+#[path = "test_parser_parts/routine_option_separators.rs"]
+mod routine_option_separators;
+#[cfg(test)]
 #[path = "test_parser_parts/routine_closure_captures.rs"]
 mod routine_closure_captures;
 #[cfg(test)]
