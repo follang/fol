@@ -19,8 +19,19 @@ impl AstParser {
             self.skip_ignorable(tokens);
 
             let sep = tokens.curr(false)?;
-            if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
+            if matches!(
+                sep.key(),
+                KEYWORD::Symbol(SYMBOL::Comma) | KEYWORD::Symbol(SYMBOL::Semi)
+            ) {
                 let _ = tokens.bump();
+                self.skip_ignorable(tokens);
+                if matches!(
+                    tokens.curr(false).map(|token| token.key()),
+                    Ok(KEYWORD::Symbol(SYMBOL::RoundC))
+                ) {
+                    let _ = tokens.bump();
+                    break;
+                }
                 continue;
             }
             if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
@@ -30,7 +41,7 @@ impl AstParser {
 
             return Err(Box::new(ParseError::from_token(
                 &sep,
-                "Expected ',' or ')' in call arguments".to_string(),
+                "Expected ',', ';', or ')' in call arguments".to_string(),
             )));
         }
 

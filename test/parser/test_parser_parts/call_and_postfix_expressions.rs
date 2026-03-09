@@ -496,6 +496,53 @@ fn test_call_argument_lists_accept_trailing_commas() {
 }
 
 #[test]
+fn test_call_argument_lists_accept_semicolons() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_fun_call_semicolon.fol")
+        .expect("Should read semicolon call test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse call arguments with semicolons");
+
+    let (has_ping_two_args, has_run_one_arg, has_emit_two_args) = match ast {
+        AstNode::Program { declarations } => {
+            let has_ping_two_args = declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::FunctionCall { name, args }
+                    if name == "ping" && args.len() == 2
+                )
+            });
+
+            let has_run_one_arg = declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::MethodCall { method, args, .. }
+                    if method == "run" && args.len() == 1
+                )
+            });
+
+            let has_emit_two_args = declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::Return { value: Some(value) }
+                    if matches!(value.as_ref(), AstNode::FunctionCall { name, args } if name == "emit" && args.len() == 2)
+                )
+            });
+
+            (has_ping_two_args, has_run_one_arg, has_emit_two_args)
+        }
+        _ => panic!("Expected program node"),
+    };
+
+    assert!(has_ping_two_args);
+    assert!(has_run_one_arg);
+    assert!(has_emit_two_args);
+}
+
+#[test]
 fn test_nested_calls_with_trailing_commas_preserve_argument_shapes() {
     let mut file_stream =
         FileStream::from_file("test/parser/simple_fun_call_nested_trailing_comma.fol")
