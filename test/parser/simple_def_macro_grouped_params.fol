@@ -1,0 +1,1 @@
+def 'swap'(left, right: any): mac = '.swap';
