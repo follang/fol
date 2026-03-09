@@ -14,6 +14,17 @@ fn contains_pipe_panic_stage(node: &AstNode) -> bool {
     }
 }
 
+fn contains_pipe_stage(node: &AstNode, predicate: fn(&AstNode) -> bool) -> bool {
+    match node {
+        AstNode::BinaryOp { left, right, .. } => {
+            predicate(right.as_ref())
+                || contains_pipe_stage(left, predicate)
+                || contains_pipe_stage(right, predicate)
+        }
+        _ => predicate(node),
+    }
+}
+
 #[test]
 fn test_single_pipe_expression_parsing() {
     let mut file_stream = FileStream::from_file("test/parser/simple_fun_pipe_expr.fol")
@@ -320,6 +331,37 @@ fn test_pipe_expression_supports_binding_alternative_stages() {
             ..
         } if matches!(right.as_ref(), AstNode::VarDecl { options, .. } if options.iter().any(|opt| matches!(opt, VarOption::Export)))
     ));
+}
+
+#[test]
+fn test_pipe_expression_supports_declaration_stages() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_fun_pipe_decl_stage.fol")
+        .expect("Should read pipe declaration-stage fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse declaration stages on pipes");
+
+    let return_value = match ast {
+        AstNode::Program { declarations } => declarations
+            .iter()
+            .find_map(|node| match node {
+                AstNode::FunDecl { body, .. } => body.iter().find_map(|stmt| match stmt {
+                    AstNode::Return { value: Some(value) } => Some(value.as_ref().clone()),
+                    _ => None,
+                }),
+                _ => None,
+            })
+            .expect("Expected return statement"),
+        _ => panic!("Expected program node"),
+    };
+
+    assert!(
+        contains_pipe_stage(&return_value, |node| matches!(node, AstNode::UseDecl { .. })),
+        "Expected pipe tree to contain a use-declaration stage, got: {return_value:#?}"
+    );
 }
 
 #[test]

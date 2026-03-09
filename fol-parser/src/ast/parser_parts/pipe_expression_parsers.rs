@@ -122,6 +122,26 @@ impl AstParser {
             return self.pipe_stage_from_nodes(self.parse_lab_decl(tokens)?);
         }
 
+        if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Use)) {
+            return self.pipe_stage_from_nodes(self.parse_use_decl(tokens)?);
+        }
+
+        if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Ali)) {
+            return self.parse_alias_decl(tokens);
+        }
+
+        if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Typ)) {
+            return self.parse_type_decl(tokens);
+        }
+
+        if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Def)) {
+            return self.parse_def_decl(tokens);
+        }
+
+        if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Seg)) {
+            return self.parse_seg_decl(tokens);
+        }
+
         if matches!(
             token.key(),
             KEYWORD::Keyword(BUILDIN::Panic)
