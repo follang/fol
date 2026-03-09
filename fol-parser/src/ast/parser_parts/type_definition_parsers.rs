@@ -187,7 +187,20 @@ impl AstParser {
                 )));
             }
 
-            let options = match token.key() {
+            let options = if let Some((keyword, options)) = self.lookahead_binding_alternative(tokens)
+            {
+                match keyword {
+                    "var" | "con" => {
+                        let _ = tokens.bump();
+                        self.skip_ignorable(tokens);
+                        let _ = tokens.bump();
+                        self.skip_ignorable(tokens);
+                        options
+                    }
+                    _ => Vec::new(),
+                }
+            } else {
+                match token.key() {
                 KEYWORD::Keyword(BUILDIN::Var) => {
                     let _ = tokens.bump();
                     self.skip_ignorable(tokens);
@@ -213,6 +226,7 @@ impl AstParser {
                     )?
                 }
                 _ => Vec::new(),
+                }
             };
 
             self.skip_ignorable(tokens);
