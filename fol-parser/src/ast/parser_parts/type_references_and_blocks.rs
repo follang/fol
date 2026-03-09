@@ -489,10 +489,13 @@ impl AstParser {
         self.skip_ignorable(tokens);
 
         let comma = tokens.curr(false)?;
-        if !matches!(comma.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
+        if !matches!(
+            comma.key(),
+            KEYWORD::Symbol(SYMBOL::Comma) | KEYWORD::Symbol(SYMBOL::Semi)
+        ) {
             return Err(Box::new(ParseError::from_token(
                 &comma,
-                "Expected ',' after array element type".to_string(),
+                "Expected ',' or ';' after array element type".to_string(),
             )));
         }
         let _ = tokens.bump();
