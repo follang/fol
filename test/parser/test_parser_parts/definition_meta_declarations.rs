@@ -122,3 +122,36 @@ fn test_only_macro_definitions_accept_parameter_headers() {
         parse_error
     );
 }
+
+#[test]
+fn test_macro_definitions_allow_overloads_by_parameter_type() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_def_macro_overloads.fol")
+            .expect("Should read macro overload definition test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should preserve overloaded macro definitions");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            let overloads = declarations
+                .iter()
+                .filter(|node| {
+                    matches!(
+                        node,
+                        AstNode::DefDecl {
+                            name,
+                            def_type: FolType::Named { name: kind },
+                            ..
+                        } if name == "!" && kind == "mac"
+                    )
+                })
+                .count();
+            assert_eq!(overloads, 2, "Expected both macro overloads to be preserved");
+        }
+        _ => panic!("Expected program node"),
+    }
+}
