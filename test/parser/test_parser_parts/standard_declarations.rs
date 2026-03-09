@@ -392,6 +392,11 @@ fn test_protocol_standard_rejects_duplicate_signatures() {
         "Expected duplicate standard signature error, got: {}",
         parse_error
     );
+    assert_eq!(
+        parse_error.column(),
+        9,
+        "Duplicate protocol signature should point to the duplicate routine name"
+    );
 }
 
 #[test]
@@ -418,6 +423,11 @@ fn test_blueprint_standard_rejects_duplicate_fields() {
         "Expected duplicate blueprint member error, got: {}",
         parse_error
     );
+    assert_eq!(
+        parse_error.column(),
+        9,
+        "Duplicate blueprint field should point to the duplicate field name"
+    );
 }
 
 #[test]
@@ -443,6 +453,11 @@ fn test_extended_standard_rejects_duplicate_members() {
             .contains("Duplicate standard member 'area#0'"),
         "Expected duplicate extended member error, got: {}",
         parse_error
+    );
+    assert_eq!(
+        parse_error.column(),
+        9,
+        "Duplicate extended member should point to the duplicate member name"
     );
 }
 

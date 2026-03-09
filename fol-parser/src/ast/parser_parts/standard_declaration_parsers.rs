@@ -176,13 +176,11 @@ impl AstParser {
                     | KEYWORD::Keyword(BUILDIN::Log)
                     | KEYWORD::Keyword(BUILDIN::Pro)
             ) {
+                let member_anchor = self.peek_standard_member_anchor_token(tokens);
                 let member = self.parse_standard_routine_signature(tokens)?;
                 let key = self.standard_member_key(&member);
                 if !seen_members.insert(key.clone()) {
-                    return Err(Box::new(ParseError::from_token(
-                        &token,
-                        format!("Duplicate standard member '{}'", key),
-                    )));
+                    return Err(self.duplicate_standard_member_error(member_anchor, &token, &key));
                 }
                 body.push(member);
                 continue;
@@ -233,14 +231,12 @@ impl AstParser {
             }
 
             if self.lookahead_binding_alternative(tokens).is_some() {
+                let member_anchor = self.peek_standard_member_anchor_token(tokens);
                 let members = self.parse_binding_alternative_decl(tokens)?;
                 for member in members {
                     let key = self.standard_member_key(&member);
                     if !seen_members.insert(key.clone()) {
-                        return Err(Box::new(ParseError::from_token(
-                            &token,
-                            format!("Duplicate standard member '{}'", key),
-                        )));
+                        return Err(self.duplicate_standard_member_error(member_anchor, &token, &key));
                     }
                     body.push(member);
                 }
@@ -248,14 +244,12 @@ impl AstParser {
             }
 
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Var)) {
+                let member_anchor = self.peek_standard_member_anchor_token(tokens);
                 let members = self.parse_var_decl(tokens)?;
                 for member in members {
                     let key = self.standard_member_key(&member);
                     if !seen_members.insert(key.clone()) {
-                        return Err(Box::new(ParseError::from_token(
-                            &token,
-                            format!("Duplicate standard member '{}'", key),
-                        )));
+                        return Err(self.duplicate_standard_member_error(member_anchor, &token, &key));
                     }
                     body.push(member);
                 }
@@ -263,14 +257,12 @@ impl AstParser {
             }
 
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Lab)) {
+                let member_anchor = self.peek_standard_member_anchor_token(tokens);
                 let members = self.parse_lab_decl(tokens)?;
                 for member in members {
                     let key = self.standard_member_key(&member);
                     if !seen_members.insert(key.clone()) {
-                        return Err(Box::new(ParseError::from_token(
-                            &token,
-                            format!("Duplicate standard member '{}'", key),
-                        )));
+                        return Err(self.duplicate_standard_member_error(member_anchor, &token, &key));
                     }
                     body.push(member);
                 }
@@ -278,14 +270,12 @@ impl AstParser {
             }
 
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Con)) {
+                let member_anchor = self.peek_standard_member_anchor_token(tokens);
                 let members = self.parse_con_decl(tokens)?;
                 for member in members {
                     let key = self.standard_member_key(&member);
                     if !seen_members.insert(key.clone()) {
-                        return Err(Box::new(ParseError::from_token(
-                            &token,
-                            format!("Duplicate standard member '{}'", key),
-                        )));
+                        return Err(self.duplicate_standard_member_error(member_anchor, &token, &key));
                     }
                     body.push(member);
                 }
@@ -293,14 +283,12 @@ impl AstParser {
             }
 
             if self.lookahead_binding_alternative(tokens).is_some() {
+                let member_anchor = self.peek_standard_member_anchor_token(tokens);
                 let members = self.parse_binding_alternative_decl(tokens)?;
                 for member in members {
                     let key = self.standard_member_key(&member);
                     if !seen_members.insert(key.clone()) {
-                        return Err(Box::new(ParseError::from_token(
-                            &token,
-                            format!("Duplicate standard member '{}'", key),
-                        )));
+                        return Err(self.duplicate_standard_member_error(member_anchor, &token, &key));
                     }
                     body.push(member);
                 }
@@ -372,27 +360,23 @@ impl AstParser {
                     | KEYWORD::Keyword(BUILDIN::Log)
                     | KEYWORD::Keyword(BUILDIN::Pro)
             ) {
+                let member_anchor = self.peek_standard_member_anchor_token(tokens);
                 let member = self.parse_standard_routine_signature(tokens)?;
                 let key = self.standard_member_key(&member);
                 if !seen_members.insert(key.clone()) {
-                    return Err(Box::new(ParseError::from_token(
-                        &token,
-                        format!("Duplicate standard member '{}'", key),
-                    )));
+                    return Err(self.duplicate_standard_member_error(member_anchor, &token, &key));
                 }
                 body.push(member);
                 continue;
             }
 
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Var)) {
+                let member_anchor = self.peek_standard_member_anchor_token(tokens);
                 let members = self.parse_var_decl(tokens)?;
                 for member in members {
                     let key = self.standard_member_key(&member);
                     if !seen_members.insert(key.clone()) {
-                        return Err(Box::new(ParseError::from_token(
-                            &token,
-                            format!("Duplicate standard member '{}'", key),
-                        )));
+                        return Err(self.duplicate_standard_member_error(member_anchor, &token, &key));
                     }
                     body.push(member);
                 }
@@ -400,14 +384,12 @@ impl AstParser {
             }
 
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Lab)) {
+                let member_anchor = self.peek_standard_member_anchor_token(tokens);
                 let members = self.parse_lab_decl(tokens)?;
                 for member in members {
                     let key = self.standard_member_key(&member);
                     if !seen_members.insert(key.clone()) {
-                        return Err(Box::new(ParseError::from_token(
-                            &token,
-                            format!("Duplicate standard member '{}'", key),
-                        )));
+                        return Err(self.duplicate_standard_member_error(member_anchor, &token, &key));
                     }
                     body.push(member);
                 }
@@ -415,14 +397,12 @@ impl AstParser {
             }
 
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Con)) {
+                let member_anchor = self.peek_standard_member_anchor_token(tokens);
                 let members = self.parse_con_decl(tokens)?;
                 for member in members {
                     let key = self.standard_member_key(&member);
                     if !seen_members.insert(key.clone()) {
-                        return Err(Box::new(ParseError::from_token(
-                            &token,
-                            format!("Duplicate standard member '{}'", key),
-                        )));
+                        return Err(self.duplicate_standard_member_error(member_anchor, &token, &key));
                     }
                     body.push(member);
                 }
@@ -430,14 +410,12 @@ impl AstParser {
             }
 
             if self.lookahead_binding_alternative(tokens).is_some() {
+                let member_anchor = self.peek_standard_member_anchor_token(tokens);
                 let members = self.parse_binding_alternative_decl(tokens)?;
                 for member in members {
                     let key = self.standard_member_key(&member);
                     if !seen_members.insert(key.clone()) {
-                        return Err(Box::new(ParseError::from_token(
-                            &token,
-                            format!("Duplicate standard member '{}'", key),
-                        )));
+                        return Err(self.duplicate_standard_member_error(member_anchor, &token, &key));
                     }
                     body.push(member);
                 }
@@ -543,6 +521,125 @@ impl AstParser {
             AstNode::VarDecl { name, .. } | AstNode::LabDecl { name, .. } => name.clone(),
             _ => String::new(),
         }
+    }
+
+    fn duplicate_standard_member_error(
+        &self,
+        anchor: Option<fol_lexer::lexer::stage3::element::Element>,
+        fallback: &fol_lexer::lexer::stage3::element::Element,
+        key: &str,
+    ) -> Box<dyn Glitch> {
+        let token = anchor.unwrap_or_else(|| fallback.clone());
+        Box::new(ParseError::from_token(
+            &token,
+            format!("Duplicate standard member '{}'", key),
+        ))
+    }
+
+    fn peek_standard_member_anchor_token(
+        &self,
+        tokens: &fol_lexer::lexer::stage3::Elements,
+    ) -> Option<fol_lexer::lexer::stage3::element::Element> {
+        let mut significant = vec![tokens.curr(false).ok()?];
+        for candidate in tokens.next_vec() {
+            let token = match candidate {
+                Ok(token) => token,
+                Err(_) => continue,
+            };
+            let key = token.key();
+            if key.is_void() || key.is_comment() {
+                continue;
+            }
+            significant.push(token);
+            if significant.len() >= 32 {
+                break;
+            }
+        }
+
+        let mut index = 0;
+        if matches!(
+            significant.get(index)?.key(),
+            KEYWORD::Symbol(SYMBOL::Plus)
+                | KEYWORD::Symbol(SYMBOL::Minus)
+                | KEYWORD::Symbol(SYMBOL::Home)
+                | KEYWORD::Symbol(SYMBOL::Bang)
+                | KEYWORD::Symbol(SYMBOL::Query)
+                | KEYWORD::Symbol(SYMBOL::At)
+        ) {
+            index += 1;
+        }
+
+        match significant.get(index)?.key() {
+            KEYWORD::Keyword(BUILDIN::Var)
+            | KEYWORD::Keyword(BUILDIN::Lab)
+            | KEYWORD::Keyword(BUILDIN::Con) => {
+                index += 1;
+                index = self.skip_balanced_window(
+                    &significant,
+                    index,
+                    KEYWORD::Symbol(SYMBOL::SquarO),
+                    KEYWORD::Symbol(SYMBOL::SquarC),
+                )?;
+                self.find_named_label_in_window(&significant, index)
+            }
+            KEYWORD::Keyword(BUILDIN::Fun)
+            | KEYWORD::Keyword(BUILDIN::Log)
+            | KEYWORD::Keyword(BUILDIN::Pro) => {
+                index += 1;
+                index = self.skip_balanced_window(
+                    &significant,
+                    index,
+                    KEYWORD::Symbol(SYMBOL::SquarO),
+                    KEYWORD::Symbol(SYMBOL::SquarC),
+                )?;
+                index = self.skip_balanced_window(
+                    &significant,
+                    index,
+                    KEYWORD::Symbol(SYMBOL::RoundO),
+                    KEYWORD::Symbol(SYMBOL::RoundC),
+                )?;
+                self.find_named_label_in_window(&significant, index)
+            }
+            _ => None,
+        }
+    }
+
+    fn skip_balanced_window(
+        &self,
+        tokens: &[fol_lexer::lexer::stage3::element::Element],
+        start: usize,
+        open: KEYWORD,
+        close: KEYWORD,
+    ) -> Option<usize> {
+        if tokens.get(start)?.key() != open.clone() {
+            return Some(start);
+        }
+
+        let mut depth = 0usize;
+        for (index, token) in tokens.iter().enumerate().skip(start) {
+            if token.key() == open {
+                depth += 1;
+            } else if token.key() == close {
+                depth = depth.saturating_sub(1);
+                if depth == 0 {
+                    return Some(index + 1);
+                }
+            }
+        }
+
+        None
+    }
+
+    fn find_named_label_in_window(
+        &self,
+        tokens: &[fol_lexer::lexer::stage3::element::Element],
+        start: usize,
+    ) -> Option<fol_lexer::lexer::stage3::element::Element> {
+        tokens
+            .iter()
+            .skip(start)
+            .find(|token| Self::token_to_named_label(token).is_some())
+            .cloned()
     }
 
     fn parse_empty_standard_kind_options(
