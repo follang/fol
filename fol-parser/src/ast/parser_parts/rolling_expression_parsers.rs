@@ -144,6 +144,13 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<RollingBinding, Box<dyn Glitch>> {
+        if let Ok(token) = tokens.curr(false) {
+            if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Var)) {
+                let _ = tokens.bump();
+                self.skip_ignorable(tokens);
+            }
+        }
+
         let name_token = tokens.curr(false)?;
         let name = Self::token_to_named_label(&name_token).ok_or_else(|| {
             Box::new(ParseError::from_token(
