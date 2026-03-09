@@ -74,7 +74,9 @@ impl Element {
 
     pub fn analyze(&mut self, el: &mut stage2::Elements) -> Vod {
         while el.curr(false)?.loc().row() == 0 && !el.curr(false)?.key().is_eof() {
-            self.bump(el);
+            if el.bump().is_none() {
+                break;
+            }
         }
         if el.curr(false)?.key().is_number() && el.seek(0, false)?.key().is_operator() {
             self.make_number(el)?;
