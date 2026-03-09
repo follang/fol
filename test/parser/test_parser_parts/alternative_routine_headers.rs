@@ -645,6 +645,42 @@ fn test_alternative_procedure_header_with_generics() {
 }
 
 #[test]
+fn test_alternative_procedure_header_with_generics_supports_flow_body() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_pro_alt_header_generics_flow.fol")
+            .expect("Should read alternative generic procedure-header flow fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse flow-bodied alternative procedure headers with generics");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::ProDecl {
+                    name,
+                    generics,
+                    params,
+                    return_type: Some(FolType::Named { name: type_name }),
+                    body,
+                    ..
+                }
+                if name == "wrap"
+                    && generics.len() == 1
+                    && generics[0].name == "T"
+                    && params.len() == 1
+                    && type_name == "T"
+                    && !body.is_empty()
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
 fn test_alternative_logical_header_with_generics() {
     let mut file_stream = FileStream::from_file("test/parser/simple_log_alt_header_generics.fol")
         .expect("Should read alternative generic logical-header fixture");
@@ -671,6 +707,42 @@ fn test_alternative_logical_header_with_generics() {
                     && generics[0].name == "T"
                     && params.len() == 1
                     && type_name == "T"
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_alternative_logical_header_with_generics_supports_flow_body() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_log_alt_header_generics_flow.fol")
+            .expect("Should read alternative generic logical-header flow fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse flow-bodied alternative logical headers with generics");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::FunDecl {
+                    name,
+                    generics,
+                    params,
+                    return_type: Some(FolType::Named { name: type_name }),
+                    body,
+                    ..
+                }
+                if name == "decide"
+                    && generics.len() == 1
+                    && generics[0].name == "T"
+                    && params.len() == 1
+                    && type_name == "T"
+                    && !body.is_empty()
             )));
         }
         _ => panic!("Expected program node"),
