@@ -277,16 +277,12 @@ impl AstParser {
         loop {
             self.skip_ignorable(tokens);
             let target = tokens.curr(false)?;
-            if !matches!(
-                target.key(),
-                KEYWORD::Keyword(BUILDIN::Selfi) | KEYWORD::Keyword(BUILDIN::This)
-            ) {
-                return Err(Box::new(ParseError::from_token(
+            let target_name = Self::token_to_named_label(&target).ok_or_else(|| {
+                Box::new(ParseError::from_token(
                     &target,
-                    "Expected 'self' or 'this' in inquiry clause".to_string(),
-                )));
-            }
-            let target_name = target.con().trim().to_string();
+                    "Expected inquiry target name".to_string(),
+                )) as Box<dyn Glitch>
+            })?;
             if !seen_targets.insert(target_name.clone()) {
                 return Err(Box::new(ParseError::from_token(
                     &target,
