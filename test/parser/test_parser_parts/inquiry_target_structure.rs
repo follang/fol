@@ -290,3 +290,45 @@ fn test_flow_bodied_routines_keep_structural_inquiry_targets() {
         }
     }
 }
+
+#[test]
+fn test_alternative_headers_keep_structural_inquiry_targets() {
+    for (path, expected) in [
+        (
+            "test/parser/simple_fun_alt_header_flow_inquiry.fol",
+            InquiryTarget::SelfValue,
+        ),
+        (
+            "test/parser/simple_pro_alt_header_flow_inquiry.fol",
+            InquiryTarget::ThisValue,
+        ),
+        (
+            "test/parser/simple_log_alt_header_flow_inquiry.fol",
+            InquiryTarget::SelfValue,
+        ),
+    ] {
+        let mut file_stream = FileStream::from_file(path).expect("Should read alt-header inquiry fixture");
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Parser should preserve alt-header inquiry target structure");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                let inquiry_target = declarations.iter().find_map(|node| match node {
+                    AstNode::FunDecl { inquiries, .. }
+                    | AstNode::ProDecl { inquiries, .. } => inquiries.first(),
+                    _ => None,
+                });
+
+                let Some(AstNode::Inquiry { target, .. }) = inquiry_target else {
+                    panic!("Expected an inquiry clause");
+                };
+
+                assert_eq!(target, &expected, "Unexpected inquiry target for fixture {path}");
+            }
+            _ => panic!("Expected program node"),
+        }
+    }
+}
