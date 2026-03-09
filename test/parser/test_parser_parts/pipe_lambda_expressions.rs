@@ -211,6 +211,40 @@ fn test_pipe_lambda_capture_lists_parsing() {
 }
 
 #[test]
+fn test_pipe_lambda_capture_lists_accept_semicolon_separators() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_pipe_lambda_capture_semicolon.fol")
+            .expect("Should read semicolon pipe lambda capture fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse semicolon-separated captures on pipe lambdas");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::FunDecl { body, .. }
+                if body.iter().any(|stmt| matches!(
+                    stmt,
+                    AstNode::Return { value: Some(value) }
+                    if matches!(
+                        value.as_ref(),
+                        AstNode::AnonymousFun { captures, params, .. }
+                        if captures == &vec!["left".to_string(), "right".to_string()]
+                            && params.len() == 1
+                            && params[0].name == "x"
+                    )
+                ))
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
 fn test_pipe_lambda_inquiry_clauses_parsing() {
     let mut file_stream = FileStream::from_file("test/parser/simple_pipe_lambda_inquiry_expr.fol")
         .expect("Should read pipe lambda inquiry fixture");
