@@ -274,7 +274,7 @@ fn test_pipe_lambda_supports_default_parameters() {
                         if params.len() == 3
                             && params[0].default.is_some()
                             && params[1].default.is_none()
-                            && params[2].default.is_none()
+                            && params[2].default.is_some()
                     )
                 ))
             )));

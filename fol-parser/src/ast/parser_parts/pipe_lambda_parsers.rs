@@ -79,7 +79,7 @@ impl AstParser {
                 if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
                     let _ = tokens.bump();
                     self.skip_ignorable(tokens);
-                    default = Some(self.parse_logical_expression(tokens)?);
+                    default = Some(self.parse_logical_or_expression(tokens)?);
                 }
             }
 
