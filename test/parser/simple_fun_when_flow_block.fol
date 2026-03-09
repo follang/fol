@@ -1,0 +1,12 @@
+fun classify(value: int): int = {
+    when(value) {
+        is(0) => {
+            let local: int = 0;
+            return local;
+        }
+        has(value) => {
+            con local: int = 1;
+            return local;
+        }
+    }
+}

@@ -60,6 +60,12 @@ impl AstParser {
             return Ok(nodes);
         }
 
+        if matches!(key, KEYWORD::Symbol(SYMBOL::CurlyO)) {
+            let node = self.parse_block_stmt(tokens)?;
+            self.consume_optional_semicolon(tokens);
+            return Ok(vec![node]);
+        }
+
         if matches!(
             key,
             KEYWORD::Keyword(BUILDIN::Panic)

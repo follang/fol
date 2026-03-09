@@ -315,3 +315,73 @@ fn test_when_flow_builtin_bodies_parsing() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_if_flow_block_bodies_parsing() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_fun_if_flow_block.fol")
+        .expect("Should read if flow block fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse if/else block flow bodies");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::FunDecl { body, .. }
+                    if body.iter().any(|stmt| matches!(
+                        stmt,
+                        AstNode::When { cases, default, .. }
+                        if matches!(cases.as_slice(),
+                            [WhenCase::Case { body, .. }]
+                            if matches!(body.as_slice(), [AstNode::Block { statements }] if statements.len() == 2)
+                        )
+                        && matches!(default, Some(default_body)
+                            if matches!(default_body.as_slice(), [AstNode::Block { statements }] if statements.len() == 2))
+                    ))
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_when_flow_block_bodies_parsing() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_fun_when_flow_block.fol")
+        .expect("Should read when flow block fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse when block flow bodies");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::FunDecl { body, .. }
+                    if body.iter().any(|stmt| matches!(
+                        stmt,
+                        AstNode::When { cases, .. }
+                        if matches!(cases.as_slice(),
+                            [
+                                WhenCase::Is { body, .. },
+                                WhenCase::Has { body: second_body, .. }
+                            ]
+                            if matches!(body.as_slice(), [AstNode::Block { statements }] if statements.len() == 2)
+                                && matches!(second_body.as_slice(), [AstNode::Block { statements }] if statements.len() == 2)
+                        )
+                    ))
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
