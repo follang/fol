@@ -392,6 +392,12 @@ impl AstParser {
                 self.parse_log_decl(tokens)?
             } else if matches!(key, KEYWORD::Keyword(BUILDIN::Pro)) {
                 self.parse_pro_decl(tokens)?
+            } else if matches!(key, KEYWORD::Keyword(BUILDIN::Return)) {
+                self.parse_return_stmt(tokens)?
+            } else if matches!(key, KEYWORD::Keyword(BUILDIN::Break)) {
+                self.parse_break_stmt(tokens)?
+            } else if matches!(key, KEYWORD::Keyword(BUILDIN::Yeild)) {
+                self.parse_yield_stmt(tokens)?
             } else if matches!(
                 key,
                 KEYWORD::Keyword(BUILDIN::Panic)

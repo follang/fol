@@ -687,3 +687,26 @@ fn test_inquiry_clause_accepts_flow_routine_body() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_inquiry_clause_accepts_flow_control_body() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_fun_inquiry_flow_control.fol")
+        .expect("Should read inquiry flow-control fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse control flow bodies in inquiry clauses");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::FunDecl { inquiries, .. }
+                if matches!(&inquiries[0], AstNode::Inquiry { body, .. } if matches!(body.as_slice(), [AstNode::Return { .. }]))
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
