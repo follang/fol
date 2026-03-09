@@ -60,6 +60,9 @@ mod custom_error_report_validation;
 #[path = "test_parser_parts/definition_declarations.rs"]
 mod definition_declarations;
 #[cfg(test)]
+#[path = "test_parser_parts/definition_meta_declarations.rs"]
+mod definition_meta_declarations;
+#[cfg(test)]
 #[path = "test_parser_parts/declaration_option_separators.rs"]
 mod declaration_option_separators;
 #[cfg(test)]
