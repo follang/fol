@@ -332,6 +332,48 @@ impl AstParser {
                 && self.lookahead_is_assignment(tokens)
             {
                 self.parse_assignment_stmt(tokens)?
+            } else if self.lookahead_binding_alternative(tokens).is_some() {
+                let nodes = self.parse_binding_alternative_decl(tokens)?;
+                if nodes.len() == 1 {
+                    nodes.into_iter().next().expect("one node")
+                } else {
+                    AstNode::Block { statements: nodes }
+                }
+            } else if matches!(key, KEYWORD::Keyword(BUILDIN::Var)) {
+                let nodes = self.parse_var_decl(tokens)?;
+                if nodes.len() == 1 {
+                    nodes.into_iter().next().expect("one node")
+                } else {
+                    AstNode::Block { statements: nodes }
+                }
+            } else if matches!(key, KEYWORD::Keyword(BUILDIN::Let)) {
+                let nodes = self.parse_let_decl(tokens)?;
+                if nodes.len() == 1 {
+                    nodes.into_iter().next().expect("one node")
+                } else {
+                    AstNode::Block { statements: nodes }
+                }
+            } else if matches!(key, KEYWORD::Keyword(BUILDIN::Con)) {
+                let nodes = self.parse_con_decl(tokens)?;
+                if nodes.len() == 1 {
+                    nodes.into_iter().next().expect("one node")
+                } else {
+                    AstNode::Block { statements: nodes }
+                }
+            } else if matches!(key, KEYWORD::Keyword(BUILDIN::Lab)) {
+                let nodes = self.parse_lab_decl(tokens)?;
+                if nodes.len() == 1 {
+                    nodes.into_iter().next().expect("one node")
+                } else {
+                    AstNode::Block { statements: nodes }
+                }
+            } else if matches!(key, KEYWORD::Keyword(BUILDIN::Use)) {
+                let nodes = self.parse_use_decl(tokens)?;
+                if nodes.len() == 1 {
+                    nodes.into_iter().next().expect("one node")
+                } else {
+                    AstNode::Block { statements: nodes }
+                }
             } else {
                 self.parse_logical_expression(tokens)?
             };
