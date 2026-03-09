@@ -388,6 +388,31 @@ impl AstParser {
                 continue;
             }
 
+            if self.lookahead_binding_alternative(tokens).is_some() {
+                body.extend(self.parse_binding_alternative_decl(tokens)?);
+                continue;
+            }
+
+            if matches!(key, KEYWORD::Keyword(BUILDIN::Var)) {
+                body.extend(self.parse_var_decl(tokens)?);
+                continue;
+            }
+
+            if matches!(key, KEYWORD::Keyword(BUILDIN::Let)) {
+                body.extend(self.parse_let_decl(tokens)?);
+                continue;
+            }
+
+            if matches!(key, KEYWORD::Keyword(BUILDIN::Con)) {
+                body.extend(self.parse_con_decl(tokens)?);
+                continue;
+            }
+
+            if matches!(key, KEYWORD::Keyword(BUILDIN::Lab)) {
+                body.extend(self.parse_lab_decl(tokens)?);
+                continue;
+            }
+
             if (AstParser::token_can_be_logical_name(&key)
                 || matches!(key, KEYWORD::Literal(LITERAL::Stringy)))
                 && self.lookahead_is_assignment(tokens)

@@ -359,3 +359,32 @@ fn test_inquiry_clause_accepts_statement_bodies() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_inquiry_clause_accepts_declaration_bodies() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_fun_inquiry_decl_body.fol")
+        .expect("Should read inquiry declaration-body fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse declaration forms inside inquiry bodies");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::FunDecl { name, inquiries, .. }
+                if name == "inspect"
+                    && matches!(
+                        &inquiries[0],
+                        AstNode::Inquiry { body, .. }
+                        if body.iter().any(|node| matches!(node, AstNode::VarDecl { .. }))
+                            && body.iter().any(|node| matches!(node, AstNode::LabDecl { .. }))
+                    )
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
