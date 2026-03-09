@@ -1,0 +1,7 @@
+fun fallback(value: int): int = {
+    if(value) => when(value) {
+        is(0) => return value;
+    }
+    else => if(value) => return 0;
+    return value;
+}

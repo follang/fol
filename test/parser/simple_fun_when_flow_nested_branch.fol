@@ -1,0 +1,9 @@
+fun classify(value: int): int = {
+    when(value) {
+        is(0) => if(value) => return 0;
+        has(value) => when(value) {
+            has(value) => return value;
+        }
+    }
+    return value;
+}
