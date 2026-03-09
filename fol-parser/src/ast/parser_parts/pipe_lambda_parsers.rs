@@ -211,7 +211,7 @@ impl AstParser {
 
                 for inquiry in parsed {
                     let target = match &inquiry {
-                        AstNode::Inquiry { target, .. } => target.clone(),
+                        AstNode::Inquiry { target, .. } => target.duplicate_key(),
                         _ => String::new(),
                     };
                     if !inquiry_targets.insert(target.clone()) {

@@ -22,7 +22,7 @@ impl AstParser {
                 let parsed = self.parse_optional_inquiry_clause(tokens)?;
                 for inquiry in parsed {
                     let target = match &inquiry {
-                        AstNode::Inquiry { target, .. } => target.clone(),
+                        AstNode::Inquiry { target, .. } => target.duplicate_key(),
                         _ => String::new(),
                     };
                     if !inquiry_targets.insert(target.clone()) {
@@ -276,31 +276,18 @@ impl AstParser {
         let mut seen_targets = HashSet::new();
         loop {
             self.skip_ignorable(tokens);
-            let target = tokens.curr(false)?;
-            let target_name = match target.key() {
-                KEYWORD::Literal(LITERAL::Stringy) => target
-                    .con()
-                    .trim()
-                    .trim_matches(|c| c == '"' || c == '\'')
-                    .to_string(),
-                _ => self.parse_named_path(
-                    tokens,
-                    "Expected inquiry target name",
-                    "Expected name after '::' in inquiry target",
-                )?,
-            };
-            if !seen_targets.insert(target_name.clone()) {
+            let target_token = tokens.curr(false)?;
+            let target = self.parse_inquiry_target(tokens)?;
+            let duplicate_key = target.duplicate_key();
+            if !seen_targets.insert(duplicate_key.clone()) {
                 return Err(Box::new(ParseError::from_token(
-                    &target,
-                    format!("Duplicate inquiry clause for '{}'", target_name),
+                    &target_token,
+                    format!("Duplicate inquiry clause for '{}'", duplicate_key),
                 )));
             }
-            targets.push(target_name);
-            if !matches!(target.key(), KEYWORD::Literal(LITERAL::Stringy)) {
-                self.skip_ignorable(tokens);
-            } else {
-                let _ = tokens.bump();
-            }
+            targets.push(target);
+
+            self.skip_ignorable(tokens);
 
             self.skip_ignorable(tokens);
             let close = tokens.curr(false)?;
@@ -350,6 +337,77 @@ impl AstParser {
                 body: body.clone(),
             })
             .collect())
+    }
+
+    pub(super) fn parse_inquiry_target(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<InquiryTarget, Box<dyn Glitch>> {
+        self.skip_ignorable(tokens);
+        let token = tokens.curr(false)?;
+
+        if matches!(token.key(), KEYWORD::Literal(LITERAL::Stringy)) {
+            let target = token
+                .con()
+                .trim()
+                .trim_matches(|c| c == '"' || c == '\'')
+                .to_string();
+            let _ = tokens.bump();
+            return Ok(InquiryTarget::Quoted(target));
+        }
+
+        let first = Self::token_to_named_label(&token).ok_or_else(|| {
+            Box::new(ParseError::from_token(
+                &token,
+                "Expected inquiry target name".to_string(),
+            )) as Box<dyn Glitch>
+        })?;
+        let _ = tokens.bump();
+
+        let mut segments = vec![first];
+        for _ in 0..64 {
+            self.skip_ignorable(tokens);
+            let separator = match tokens.curr(false) {
+                Ok(token) => token,
+                Err(_) => break,
+            };
+
+            let is_path = matches!(separator.key(), KEYWORD::Operator(OPERATOR::Path))
+                || matches!(separator.key(), KEYWORD::Symbol(SYMBOL::Colon))
+                    && matches!(
+                        self.next_significant_key_from_window(tokens),
+                        Some(KEYWORD::Symbol(SYMBOL::Colon))
+                    );
+
+            if !is_path {
+                break;
+            }
+
+            if matches!(separator.key(), KEYWORD::Operator(OPERATOR::Path)) {
+                let _ = tokens.bump();
+            } else {
+                self.consume_significant_token(tokens);
+                self.consume_significant_token(tokens);
+            }
+
+            self.skip_ignorable(tokens);
+            let segment = tokens.curr(false)?;
+            let segment_name = Self::token_to_named_label(&segment).ok_or_else(|| {
+                Box::new(ParseError::from_token(
+                    &segment,
+                    "Expected name after '::' in inquiry target".to_string(),
+                )) as Box<dyn Glitch>
+            })?;
+            segments.push(segment_name);
+            let _ = tokens.bump();
+        }
+
+        Ok(match segments.as_slice() {
+            [single] if single == "self" => InquiryTarget::SelfValue,
+            [single] if single == "this" => InquiryTarget::ThisValue,
+            [single] => InquiryTarget::Named(single.clone()),
+            _ => InquiryTarget::Qualified(segments),
+        })
     }
 
     fn parse_inquiry_body(

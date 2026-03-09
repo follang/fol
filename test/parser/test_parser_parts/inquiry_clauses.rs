@@ -19,7 +19,7 @@ fn test_function_inquiry_clause_parsing() {
                     AstNode::FunDecl { name, inquiries, .. }
                     if name == "sum"
                         && inquiries.len() == 1
-                        && matches!(&inquiries[0], AstNode::Inquiry { target, body } if target == "self" && body.len() == 3 && matches!(&body[0], AstNode::BinaryOp { .. }))
+                        && matches!(&inquiries[0], AstNode::Inquiry { target, body } if inquiry_target_is(target, "self") && body.len() == 3 && matches!(&body[0], AstNode::BinaryOp { .. }))
                 )
             }));
         }
@@ -46,7 +46,7 @@ fn test_procedure_inquiry_clause_parsing() {
                     AstNode::ProDecl { name, inquiries, .. }
                     if name == "store"
                         && inquiries.len() == 1
-                        && matches!(&inquiries[0], AstNode::Inquiry { target, body } if target == "self" && body.len() == 2 && matches!(&body[0], AstNode::BinaryOp { .. }))
+                        && matches!(&inquiries[0], AstNode::Inquiry { target, body } if inquiry_target_is(target, "self") && body.len() == 2 && matches!(&body[0], AstNode::BinaryOp { .. }))
                 )
             }));
         }
@@ -119,7 +119,7 @@ fn test_this_inquiry_clause_parsing() {
                 node,
                 AstNode::FunDecl { name, inquiries, .. }
                 if name == "show"
-                    && matches!(&inquiries[0], AstNode::Inquiry { target, body } if target == "this" && body.len() == 1)
+                    && matches!(&inquiries[0], AstNode::Inquiry { target, body } if inquiry_target_is(target, "this") && body.len() == 1)
             )));
         }
         _ => panic!("Expected program node"),
@@ -143,8 +143,8 @@ fn test_distinct_inquiry_targets_can_coexist() {
                 node,
                 AstNode::FunDecl { inquiries, .. }
                 if inquiries.len() == 2
-                    && matches!(&inquiries[0], AstNode::Inquiry { target, .. } if target == "self")
-                    && matches!(&inquiries[1], AstNode::Inquiry { target, .. } if target == "this")
+                    && matches!(&inquiries[0], AstNode::Inquiry { target, .. } if inquiry_target_is(target, "self"))
+                    && matches!(&inquiries[1], AstNode::Inquiry { target, .. } if inquiry_target_is(target, "this"))
             )));
         }
         _ => panic!("Expected program node"),
@@ -170,8 +170,8 @@ fn test_inquiry_clause_accepts_comma_separated_targets() {
                     AstNode::FunDecl { name, inquiries, .. }
                     if name == "show"
                         && inquiries.len() == 2
-                        && inquiries.iter().any(|node| matches!(node, AstNode::Inquiry { target, .. } if target == "self"))
-                        && inquiries.iter().any(|node| matches!(node, AstNode::Inquiry { target, .. } if target == "this"))
+                        && inquiries.iter().any(|node| matches!(node, AstNode::Inquiry { target, .. } if inquiry_target_is(target, "self")))
+                        && inquiries.iter().any(|node| matches!(node, AstNode::Inquiry { target, .. } if inquiry_target_is(target, "this")))
                 )
             }));
         }
@@ -199,8 +199,8 @@ fn test_inquiry_clause_accepts_semicolon_separated_targets() {
                     AstNode::FunDecl { name, inquiries, .. }
                     if name == "show"
                         && inquiries.len() == 2
-                        && inquiries.iter().any(|node| matches!(node, AstNode::Inquiry { target, .. } if target == "self"))
-                        && inquiries.iter().any(|node| matches!(node, AstNode::Inquiry { target, .. } if target == "this"))
+                        && inquiries.iter().any(|node| matches!(node, AstNode::Inquiry { target, .. } if inquiry_target_is(target, "self")))
+                        && inquiries.iter().any(|node| matches!(node, AstNode::Inquiry { target, .. } if inquiry_target_is(target, "this")))
                 )
             }));
         }
@@ -225,7 +225,7 @@ fn test_inquiry_clause_accepts_flow_body() {
                 node,
                 AstNode::FunDecl { name, inquiries, .. }
                 if name == "show"
-                    && matches!(&inquiries[0], AstNode::Inquiry { target, body } if target == "self" && matches!(body.as_slice(), [AstNode::Identifier { name }] if name == "self"))
+                    && matches!(&inquiries[0], AstNode::Inquiry { target, body } if inquiry_target_is(target, "self") && matches!(body.as_slice(), [AstNode::Identifier { name }] if name == "self"))
             )));
         }
         _ => panic!("Expected program node"),
@@ -273,7 +273,7 @@ fn test_named_inquiry_target_parsing() {
                 node,
                 AstNode::FunDecl { name, inquiries, .. }
                 if name == "inspect"
-                    && matches!(&inquiries[0], AstNode::Inquiry { target, body } if target == "cache" && body.len() == 1)
+                    && matches!(&inquiries[0], AstNode::Inquiry { target, body } if inquiry_target_is(target, "cache") && body.len() == 1)
             )));
         }
         _ => panic!("Expected program node"),
@@ -297,8 +297,8 @@ fn test_quoted_inquiry_targets_parsing() {
                 node,
                 AstNode::FunDecl { name, inquiries, .. }
                 if name == "inspect"
-                    && inquiries.iter().any(|node| matches!(node, AstNode::Inquiry { target, .. } if target == "cache"))
-                    && inquiries.iter().any(|node| matches!(node, AstNode::Inquiry { target, .. } if target == "sink"))
+                    && inquiries.iter().any(|node| matches!(node, AstNode::Inquiry { target, .. } if inquiry_target_is(target, "cache")))
+                    && inquiries.iter().any(|node| matches!(node, AstNode::Inquiry { target, .. } if inquiry_target_is(target, "sink")))
             )));
         }
         _ => panic!("Expected program node"),
@@ -323,8 +323,8 @@ fn test_qualified_inquiry_targets_parsing() {
                 node,
                 AstNode::FunDecl { name, inquiries, .. }
                 if name == "inspect"
-                    && inquiries.iter().any(|node| matches!(node, AstNode::Inquiry { target, .. } if target == "pkg::cache"))
-                    && inquiries.iter().any(|node| matches!(node, AstNode::Inquiry { target, .. } if target == "sys::sink"))
+                    && inquiries.iter().any(|node| matches!(node, AstNode::Inquiry { target, .. } if inquiry_target_is(target, "pkg::cache")))
+                    && inquiries.iter().any(|node| matches!(node, AstNode::Inquiry { target, .. } if inquiry_target_is(target, "sys::sink")))
             )));
         }
         _ => panic!("Expected program node"),

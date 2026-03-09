@@ -466,7 +466,7 @@ fn test_anonymous_routine_inquiry_clauses_parsing() {
                                 value.as_ref(),
                                 AstNode::AnonymousFun { inquiries, .. }
                                 if inquiries.len() == 1
-                                    && matches!(&inquiries[0], AstNode::Inquiry { target, body } if target == "self" && body.len() == 1)
+                                    && matches!(&inquiries[0], AstNode::Inquiry { target, body } if inquiry_target_is(target, "self") && body.len() == 1)
                             )
                         ))
                 )
@@ -484,7 +484,7 @@ fn test_anonymous_routine_inquiry_clauses_parsing() {
                                 value.as_ref(),
                                 AstNode::AnonymousPro { inquiries, .. }
                                 if inquiries.len() == 1
-                                    && matches!(&inquiries[0], AstNode::Inquiry { target, body } if target == "this" && body.len() == 1)
+                                    && matches!(&inquiries[0], AstNode::Inquiry { target, body } if inquiry_target_is(target, "this") && body.len() == 1)
                             )
                         ))
                 )
@@ -520,7 +520,7 @@ fn test_shorthand_anonymous_function_inquiry_clauses_parsing() {
                                 value.as_ref(),
                                 AstNode::AnonymousFun { inquiries, .. }
                                 if inquiries.len() == 1
-                                    && matches!(&inquiries[0], AstNode::Inquiry { target, body } if target == "self" && body.len() == 1)
+                                    && matches!(&inquiries[0], AstNode::Inquiry { target, body } if inquiry_target_is(target, "self") && body.len() == 1)
                             )
                         ))
                 )

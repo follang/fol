@@ -252,7 +252,10 @@ pub enum AstNode {
     Block { statements: Vec<AstNode> },
 
     /// Inquiry clause attached to a routine
-    Inquiry { target: String, body: Vec<AstNode> },
+    Inquiry {
+        target: InquiryTarget,
+        body: Vec<AstNode>,
+    },
 
     /// Program root
     Program { declarations: Vec<AstNode> },
@@ -360,6 +363,36 @@ pub enum FolType {
     Named {
         name: String,
     },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum InquiryTarget {
+    SelfValue,
+    ThisValue,
+    Named(String),
+    Quoted(String),
+    Qualified(Vec<String>),
+}
+
+impl InquiryTarget {
+    pub fn duplicate_key(&self) -> String {
+        match self {
+            InquiryTarget::SelfValue => "self".to_string(),
+            InquiryTarget::ThisValue => "this".to_string(),
+            InquiryTarget::Named(name) | InquiryTarget::Quoted(name) => name.clone(),
+            InquiryTarget::Qualified(segments) => segments.join("::"),
+        }
+    }
+
+    pub fn display_label(&self) -> String {
+        match self {
+            InquiryTarget::SelfValue => "self".to_string(),
+            InquiryTarget::ThisValue => "this".to_string(),
+            InquiryTarget::Named(name) => name.clone(),
+            InquiryTarget::Quoted(name) => format!("\"{}\"", name),
+            InquiryTarget::Qualified(segments) => segments.join("::"),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]

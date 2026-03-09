@@ -267,7 +267,7 @@ fn test_pipe_lambda_inquiry_clauses_parsing() {
                         value.as_ref(),
                         AstNode::AnonymousFun { inquiries, .. }
                         if inquiries.len() == 1
-                            && matches!(&inquiries[0], AstNode::Inquiry { target, body } if target == "self" && body.len() == 1)
+                            && matches!(&inquiries[0], AstNode::Inquiry { target, body } if inquiry_target_is(target, "self") && body.len() == 1)
                     )
                 ))
             )));
@@ -300,7 +300,7 @@ fn test_expression_pipe_lambda_inquiry_clauses_parsing() {
                             value.as_ref(),
                             AstNode::AnonymousFun { inquiries, .. }
                             if inquiries.len() == 1
-                                && matches!(&inquiries[0], AstNode::Inquiry { target, body } if target == "self" && body.len() == 1)
+                                && matches!(&inquiries[0], AstNode::Inquiry { target, body } if inquiry_target_is(target, "self") && body.len() == 1)
                         )
                     ))
             )));

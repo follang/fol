@@ -3,10 +3,18 @@
 use fol_lexer::lexer::stage3::Elements;
 use fol_lexer::token::KEYWORD;
 use fol_parser::ast::{
-    AstNode, AstParser, CharEncoding, FloatSize, FolType, IntSize, Literal, Parameter, ParseError,
-    TypeDefinition,
+    AstNode, AstParser, CharEncoding, FloatSize, FolType, InquiryTarget, IntSize, Literal,
+    Parameter, ParseError, TypeDefinition,
 };
 use fol_stream::FileStream;
+
+fn inquiry_target_key(target: &InquiryTarget) -> String {
+    target.duplicate_key()
+}
+
+fn inquiry_target_is(target: &InquiryTarget, expected: &str) -> bool {
+    inquiry_target_key(target) == expected
+}
 
 #[cfg(test)]
 #[path = "test_parser_parts/alternative_routine_headers.rs"]

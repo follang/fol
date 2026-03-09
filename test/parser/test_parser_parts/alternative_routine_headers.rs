@@ -808,7 +808,7 @@ fn test_alternative_function_header_with_flow_body_inquiries() {
                 AstNode::FunDecl { name, inquiries, .. }
                 if name == "add"
                     && inquiries.len() == 1
-                    && matches!(&inquiries[0], AstNode::Inquiry { target, body } if target == "self" && !body.is_empty())
+                    && matches!(&inquiries[0], AstNode::Inquiry { target, body } if inquiry_target_is(target, "self") && !body.is_empty())
             )));
         }
         _ => panic!("Expected program node"),
@@ -834,7 +834,7 @@ fn test_alternative_procedure_header_with_flow_body_inquiries() {
                 AstNode::ProDecl { name, inquiries, .. }
                 if name == "main"
                     && inquiries.len() == 1
-                    && matches!(&inquiries[0], AstNode::Inquiry { target, body } if target == "this" && !body.is_empty())
+                    && matches!(&inquiries[0], AstNode::Inquiry { target, body } if inquiry_target_is(target, "this") && !body.is_empty())
             )));
         }
         _ => panic!("Expected program node"),
@@ -860,7 +860,7 @@ fn test_alternative_logical_header_with_flow_body_inquiries() {
                 AstNode::FunDecl { name, inquiries, .. }
                 if name == "ready"
                     && inquiries.len() == 1
-                    && matches!(&inquiries[0], AstNode::Inquiry { target, body } if target == "self" && !body.is_empty())
+                    && matches!(&inquiries[0], AstNode::Inquiry { target, body } if inquiry_target_is(target, "self") && !body.is_empty())
             )));
         }
         _ => panic!("Expected program node"),

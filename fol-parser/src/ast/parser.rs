@@ -2,9 +2,9 @@
 
 use super::{
     AstNode, BinaryOperator, CharEncoding, ContainerType, DeclOption, EntryVariantMeta,
-    FloatSize, FolType, FunOption, Generic, IntSize, Literal, LoopCondition, Parameter,
-    RecordFieldMeta, RollingBinding, StandardKind, TypeDefinition, TypeOption, UnaryOperator,
-    UseOption, VarOption, WhenCase,
+    FloatSize, FolType, FunOption, Generic, InquiryTarget, IntSize, Literal, LoopCondition,
+    Parameter, RecordFieldMeta, RollingBinding, StandardKind, TypeDefinition, TypeOption,
+    UnaryOperator, UseOption, VarOption, WhenCase,
 };
 use fol_lexer::token::{BUILDIN, KEYWORD, LITERAL, OPERATOR, SYMBOL, VOID};
 use fol_types::*;
