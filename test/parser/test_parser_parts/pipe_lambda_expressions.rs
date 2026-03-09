@@ -247,3 +247,38 @@ fn test_pipe_lambda_supports_grouped_parameters() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_pipe_lambda_supports_default_parameters() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_pipe_lambda_default_params.fol")
+            .expect("Should read default pipe lambda parameter fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse default pipe lambda parameters");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::FunDecl { body, .. }
+                if body.iter().any(|stmt| matches!(
+                    stmt,
+                    AstNode::Return { value: Some(value) }
+                    if matches!(
+                        value.as_ref(),
+                        AstNode::AnonymousFun { params, .. }
+                        if params.len() == 3
+                            && params[0].default.is_some()
+                            && params[1].default.is_none()
+                            && params[2].default.is_none()
+                    )
+                ))
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}

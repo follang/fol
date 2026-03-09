@@ -60,12 +60,22 @@ impl AstParser {
                 }
             }
 
+            self.skip_ignorable(tokens);
+            let mut default = None;
+            if let Ok(token) = tokens.curr(false) {
+                if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
+                    let _ = tokens.bump();
+                    self.skip_ignorable(tokens);
+                    default = Some(self.parse_logical_expression(tokens)?);
+                }
+            }
+
             for name in names {
                 params.push(Parameter {
                     name,
                     param_type: param_type.clone(),
                     is_borrowable: false,
-                    default: None,
+                    default: default.clone(),
                 });
             }
 
