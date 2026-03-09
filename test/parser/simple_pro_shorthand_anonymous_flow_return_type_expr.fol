@@ -1,0 +1,3 @@
+pro outer(): any = {
+    return (): int => return value;
+}
