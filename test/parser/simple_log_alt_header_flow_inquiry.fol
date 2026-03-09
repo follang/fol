@@ -1,0 +1,1 @@
+log[] ready: bol => return 1 where(self) => self;

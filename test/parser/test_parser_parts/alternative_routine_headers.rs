@@ -748,3 +748,81 @@ fn test_alternative_logical_header_with_generics_supports_flow_body() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_alternative_function_header_with_flow_body_inquiries() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_alt_header_flow_inquiry.fol")
+            .expect("Should read alternative function-header flow inquiry fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should preserve inquiries on flow-bodied alternative function headers");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::FunDecl { name, inquiries, .. }
+                if name == "add"
+                    && inquiries.len() == 1
+                    && matches!(&inquiries[0], AstNode::Inquiry { target, body } if target == "self" && !body.is_empty())
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_alternative_procedure_header_with_flow_body_inquiries() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_pro_alt_header_flow_inquiry.fol")
+            .expect("Should read alternative procedure-header flow inquiry fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should preserve inquiries on flow-bodied alternative procedure headers");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::ProDecl { name, inquiries, .. }
+                if name == "main"
+                    && inquiries.len() == 1
+                    && matches!(&inquiries[0], AstNode::Inquiry { target, body } if target == "this" && !body.is_empty())
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_alternative_logical_header_with_flow_body_inquiries() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_log_alt_header_flow_inquiry.fol")
+            .expect("Should read alternative logical-header flow inquiry fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should preserve inquiries on flow-bodied alternative logical headers");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::FunDecl { name, inquiries, .. }
+                if name == "ready"
+                    && inquiries.len() == 1
+                    && matches!(&inquiries[0], AstNode::Inquiry { target, body } if target == "self" && !body.is_empty())
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
