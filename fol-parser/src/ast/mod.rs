@@ -312,6 +312,7 @@ pub enum FolType {
     Multiple {
         types: Vec<FolType>,
     }, // mul[T1, T2, ...]
+    Never,
     Any,
     Pointer {
         target: Box<FolType>,

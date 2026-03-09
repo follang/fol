@@ -735,6 +735,7 @@ impl AstParser {
                     name.clone()
                 }
             }
+            FolType::Never => "nev".to_string(),
             _ => format!("{:?}", typ),
         }
     }
