@@ -380,6 +380,12 @@ impl AstParser {
                 self.parse_type_decl(tokens)?
             } else if matches!(key, KEYWORD::Keyword(BUILDIN::Def)) {
                 self.parse_def_decl(tokens)?
+            } else if matches!(key, KEYWORD::Keyword(BUILDIN::Seg)) {
+                self.parse_seg_decl(tokens)?
+            } else if matches!(key, KEYWORD::Keyword(BUILDIN::Imp)) {
+                self.parse_imp_decl(tokens)?
+            } else if matches!(key, KEYWORD::Keyword(BUILDIN::Std)) && self.lookahead_is_std_decl(tokens) {
+                self.parse_std_decl(tokens)?
             } else if matches!(
                 key,
                 KEYWORD::Keyword(BUILDIN::Panic)
