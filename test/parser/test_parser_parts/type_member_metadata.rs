@@ -177,3 +177,37 @@ fn test_entry_variant_binding_options_are_retained() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_record_grouped_fields_are_retained() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_typ_record_grouped_fields.fol")
+            .expect("Should read grouped record field fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse grouped record fields");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::TypeDecl {
+                    name,
+                    type_def: TypeDefinition::Record { fields, field_meta },
+                    ..
+                }
+                if name == "Pair"
+                    && matches!(fields.get("left"), Some(FolType::Int { .. }))
+                    && matches!(fields.get("right"), Some(FolType::Int { .. }))
+                    && matches!(fields.get("label"), Some(FolType::Named { name }) if name == "str")
+                    && matches!(fields.get("title"), Some(FolType::Named { name }) if name == "str")
+                    && matches!(field_meta.get("label"), Some(RecordFieldMeta { default: Some(_), options }) if options.contains(&VarOption::Immutable))
+                    && matches!(field_meta.get("title"), Some(RecordFieldMeta { default: Some(_), options }) if options.contains(&VarOption::Immutable))
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}

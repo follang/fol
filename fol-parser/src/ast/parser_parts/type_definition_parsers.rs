@@ -217,14 +217,27 @@ impl AstParser {
 
             self.skip_ignorable(tokens);
 
-            let token = tokens.curr(false)?;
-            let field_name = Self::token_to_named_label(&token).ok_or_else(|| {
-                Box::new(ParseError::from_token(
-                    &token,
-                    "Expected field name in type record definition".to_string(),
-                )) as Box<dyn Glitch>
-            })?;
-            let _ = tokens.bump();
+            let mut field_names = Vec::new();
+            loop {
+                let token = tokens.curr(false)?;
+                let field_name = Self::token_to_named_label(&token).ok_or_else(|| {
+                    Box::new(ParseError::from_token(
+                        &token,
+                        "Expected field name in type record definition".to_string(),
+                    )) as Box<dyn Glitch>
+                })?;
+                field_names.push(field_name);
+                let _ = tokens.bump();
+
+                self.skip_ignorable(tokens);
+                let sep = tokens.curr(false)?;
+                if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
+                    let _ = tokens.bump();
+                    self.skip_ignorable(tokens);
+                    continue;
+                }
+                break;
+            }
             self.skip_ignorable(tokens);
 
             let colon = tokens.curr(false)?;
@@ -238,13 +251,6 @@ impl AstParser {
 
             self.skip_ignorable(tokens);
             let field_type = self.parse_type_reference_tokens(tokens)?;
-            if fields.insert(field_name.clone(), field_type).is_some() {
-                let token = tokens.curr(false)?;
-                return Err(Box::new(ParseError::from_token(
-                    &token,
-                    format!("Duplicate record field '{}'", field_name),
-                )));
-            }
 
             self.skip_ignorable(tokens);
             let mut default = None;
@@ -256,7 +262,25 @@ impl AstParser {
                 }
             }
 
-            field_meta.insert(field_name, RecordFieldMeta { default, options });
+            for field_name in field_names {
+                if fields
+                    .insert(field_name.clone(), field_type.clone())
+                    .is_some()
+                {
+                    let token = tokens.curr(false)?;
+                    return Err(Box::new(ParseError::from_token(
+                        &token,
+                        format!("Duplicate record field '{}'", field_name),
+                    )));
+                }
+                field_meta.insert(
+                    field_name,
+                    RecordFieldMeta {
+                        default: default.clone(),
+                        options: options.clone(),
+                    },
+                );
+            }
 
             self.skip_ignorable(tokens);
             let sep = tokens.curr(false)?;
