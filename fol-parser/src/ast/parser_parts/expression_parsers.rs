@@ -315,6 +315,11 @@ impl AstParser {
                 continue;
             }
 
+            if matches!(key, KEYWORD::Symbol(SYMBOL::Colon)) {
+                saw_postfix_base = true;
+                continue;
+            }
+
             if matches!(key, KEYWORD::Symbol(SYMBOL::SquarO)) {
                 square_depth = 1;
                 saw_postfix_base = true;
