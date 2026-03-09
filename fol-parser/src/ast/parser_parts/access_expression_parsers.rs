@@ -147,6 +147,16 @@ impl AstParser {
             for _ in 0..64 {
                 let _ = tokens.bump();
                 self.skip_ignorable(tokens);
+                if matches!(
+                    tokens.curr(false).map(|token| token.key()),
+                    Ok(KEYWORD::Symbol(SYMBOL::SquarC))
+                ) {
+                    let _ = tokens.bump();
+                    return Ok(AstNode::PatternAccess {
+                        container: Box::new(node),
+                        patterns,
+                    });
+                }
                 patterns.push(self.parse_logical_expression(tokens)?);
                 self.skip_ignorable(tokens);
 
@@ -326,6 +336,13 @@ impl AstParser {
 
         let mut patterns = Vec::new();
         for _ in 0..64 {
+            if matches!(
+                tokens.curr(false).map(|token| token.key()),
+                Ok(KEYWORD::Symbol(SYMBOL::SquarC))
+            ) {
+                let _ = tokens.bump();
+                break;
+            }
             patterns.push(self.parse_logical_expression(tokens)?);
             self.skip_ignorable(tokens);
 
