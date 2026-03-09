@@ -1,0 +1,3 @@
+pro[] main: int = {
+    return 0;
+}
