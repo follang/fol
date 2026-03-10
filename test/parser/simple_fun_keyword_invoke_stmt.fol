@@ -1,0 +1,3 @@
+fun compute(): int = {
+    handlers[idx](left = 3, right = 4);
+}

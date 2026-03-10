@@ -307,3 +307,34 @@ fn test_keyword_method_call_statements_parse() {
         "Statement method-call path should preserve keyword arguments structurally"
     );
 }
+
+#[test]
+fn test_keyword_invoke_statements_parse() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_keyword_invoke_stmt.fol")
+            .expect("Should read keyword invoke-statement fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept keyword invoke statements");
+
+    let has_keyword_invoke_stmt = match ast {
+        AstNode::Program { declarations } => declarations.iter().any(|node| {
+            matches!(
+                node,
+                AstNode::Invoke { args, .. }
+                if args.len() == 2
+                    && matches!(&args[0], AstNode::NamedArgument { name, .. } if name == "left")
+                    && matches!(&args[1], AstNode::NamedArgument { name, .. } if name == "right")
+            )
+        }),
+        _ => panic!("Expected program node"),
+    };
+
+    assert!(
+        has_keyword_invoke_stmt,
+        "Statement invoke path should preserve keyword arguments structurally"
+    );
+}
