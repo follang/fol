@@ -225,3 +225,32 @@ fn test_book_default_argument_example_parses() {
         "Book default-argument example should keep the defaulted parameter"
     );
 }
+
+#[test]
+fn test_book_short_return_form_example_parses() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_book_short_return_form_example.fol")
+            .expect("Should read book short-return-form example");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept the book short-return-form example");
+
+    let has_short_return_fun = match ast {
+        AstNode::Program { declarations } => declarations.iter().any(|node| {
+            matches!(
+                node,
+                AstNode::FunDecl { name, return_type: None, .. }
+                if name == "add"
+            )
+        }),
+        _ => panic!("Expected program node"),
+    };
+
+    assert!(
+        has_short_return_fun,
+        "Book short-return-form example should keep the omitted return type"
+    );
+}
