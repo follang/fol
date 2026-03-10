@@ -15,6 +15,15 @@ pub enum AstNode {
         value: Option<Box<AstNode>>,
     },
 
+    /// Destructuring binding declaration: var pattern = value
+    DestructureDecl {
+        options: Vec<VarOption>,
+        is_label: bool,
+        pattern: BindingPattern,
+        type_hint: Option<FolType>,
+        value: Box<AstNode>,
+    },
+
     /// Function declaration: fun[options] name(params): return_type = { body }
     FunDecl {
         options: Vec<FunOption>,
@@ -385,6 +394,25 @@ pub enum InquiryTarget {
     Qualified(Vec<String>),
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum BindingPattern {
+    Name(String),
+    Rest(String),
+    Sequence(Vec<BindingPattern>),
+}
+
+impl BindingPattern {
+    pub fn is_destructuring(&self) -> bool {
+        match self {
+            BindingPattern::Name(_) => false,
+            BindingPattern::Rest(_) => true,
+            BindingPattern::Sequence(parts) => {
+                parts.len() != 1 || parts.iter().any(BindingPattern::is_destructuring)
+            }
+        }
+    }
+}
+
 impl InquiryTarget {
     pub fn duplicate_key(&self) -> String {
         match self {
@@ -662,7 +690,9 @@ impl AstNode {
             AstNode::Literal(Literal::Boolean(_)) => Some(FolType::Bool),
             AstNode::Literal(Literal::Nil) => Some(FolType::None),
 
-            AstNode::VarDecl { type_hint, .. } | AstNode::LabDecl { type_hint, .. } => {
+            AstNode::VarDecl { type_hint, .. }
+            | AstNode::LabDecl { type_hint, .. }
+            | AstNode::DestructureDecl { type_hint, .. } => {
                 type_hint.clone()
             }
             AstNode::FunDecl { return_type, .. } => return_type.clone(),
@@ -764,6 +794,7 @@ impl AstNode {
             AstNode::VarDecl { value, .. } | AstNode::LabDecl { value, .. } => {
                 value.as_ref().map(|v| vec![v.as_ref()]).unwrap_or_default()
             }
+            AstNode::DestructureDecl { value, .. } => vec![value.as_ref()],
             AstNode::FunDecl {
                 body, inquiries, ..
             }

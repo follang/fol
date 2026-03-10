@@ -3,7 +3,7 @@
 use fol_lexer::lexer::stage3::Elements;
 use fol_lexer::token::KEYWORD;
 use fol_parser::ast::{
-    AstNode, AstParser, CharEncoding, FloatSize, FolType, InquiryTarget, IntSize, Literal,
+    AstNode, AstParser, BindingPattern, CharEncoding, FloatSize, FolType, InquiryTarget, IntSize, Literal,
     Parameter, ParseError, TypeDefinition,
 };
 use fol_stream::FileStream;
@@ -85,6 +85,9 @@ mod definition_meta_declarations;
 #[cfg(test)]
 #[path = "test_parser_parts/declaration_option_separators.rs"]
 mod declaration_option_separators;
+#[cfg(test)]
+#[path = "test_parser_parts/destructuring_bindings.rs"]
+mod destructuring_bindings;
 #[cfg(test)]
 #[path = "test_parser_parts/flow_bodies.rs"]
 mod flow_bodies;

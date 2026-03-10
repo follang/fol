@@ -1,4 +1,5 @@
 use super::*;
+use crate::ast::BindingPattern;
 
 impl AstParser {
     pub fn new() -> Self {
@@ -644,6 +645,19 @@ impl AstParser {
                     type_hint,
                     value,
                 },
+                AstNode::DestructureDecl {
+                    options,
+                    pattern,
+                    type_hint,
+                    value,
+                    ..
+                } => AstNode::DestructureDecl {
+                    options,
+                    is_label: true,
+                    pattern,
+                    type_hint,
+                    value,
+                },
                 other => other,
             })
             .collect())
@@ -676,7 +690,9 @@ impl AstParser {
 
         let mut nodes = Vec::new();
         for _ in 0..256 {
-            let names = self.parse_binding_names(tokens, keyword)?;
+            let patterns = self.parse_binding_pattern_list(tokens, keyword)?;
+            let is_destructuring =
+                patterns.len() > 1 || patterns.iter().any(BindingPattern::is_destructuring);
             self.skip_ignorable(tokens);
 
             let mut type_hint = None;
@@ -694,11 +710,33 @@ impl AstParser {
                 if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
                     let _ = tokens.bump();
                     self.skip_ignorable(tokens);
-                    values = self.parse_binding_values(tokens, names.len() == 1)?;
+                    values = self.parse_binding_values(tokens, !is_destructuring && patterns.len() == 1)?;
                 }
             }
 
-            nodes.extend(self.build_binding_nodes(options.clone(), names, type_hint, values)?);
+            if is_destructuring {
+                nodes.push(self.build_destructure_binding_node(
+                    options.clone(),
+                    patterns,
+                    type_hint,
+                    values,
+                )?);
+            } else {
+                let names = patterns
+                    .into_iter()
+                    .map(|pattern| match pattern {
+                        BindingPattern::Name(name) => Ok(name),
+                        other => Err(Box::new(ParseError {
+                            message: format!("Unsupported plain binding pattern: {other:?}"),
+                            file: None,
+                            line: 0,
+                            column: 0,
+                            length: 0,
+                        }) as Box<dyn Glitch>),
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+                nodes.extend(self.build_binding_nodes(options.clone(), names, type_hint, values)?);
+            }
 
             self.skip_ignorable(tokens);
             let next = match tokens.curr(false) {
@@ -761,6 +799,117 @@ impl AstParser {
         Ok(names)
     }
 
+    pub(super) fn parse_binding_pattern_list(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+        keyword: &str,
+    ) -> Result<Vec<BindingPattern>, Box<dyn Glitch>> {
+        let mut patterns = Vec::new();
+
+        for _ in 0..256 {
+            patterns.push(self.parse_binding_pattern(tokens, keyword)?);
+            self.skip_ignorable(tokens);
+
+            let next = match tokens.curr(false) {
+                Ok(token) => token,
+                Err(_) => break,
+            };
+
+            if matches!(next.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
+                let _ = tokens.bump();
+                self.skip_ignorable(tokens);
+                continue;
+            }
+
+            break;
+        }
+
+        Ok(patterns)
+    }
+
+    pub(super) fn parse_binding_pattern(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+        keyword: &str,
+    ) -> Result<BindingPattern, Box<dyn Glitch>> {
+        let token = tokens.curr(false)?;
+
+        if matches!(token.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
+            let _ = tokens.bump();
+            let mut parts = Vec::new();
+            for _ in 0..256 {
+                self.skip_ignorable(tokens);
+                let current = tokens.curr(false)?;
+                if matches!(current.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
+                    let _ = tokens.bump();
+                    return Ok(BindingPattern::Sequence(parts));
+                }
+
+                parts.push(self.parse_binding_pattern(tokens, keyword)?);
+                self.skip_ignorable(tokens);
+
+                let separator = tokens.curr(false)?;
+                if matches!(separator.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
+                    let _ = tokens.bump();
+                    continue;
+                }
+                if matches!(separator.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
+                    let _ = tokens.bump();
+                    return Ok(BindingPattern::Sequence(parts));
+                }
+
+                return Err(Box::new(ParseError::from_token(
+                    &separator,
+                    "Expected ',' or ')' in binding pattern".to_string(),
+                )));
+            }
+
+            return Err(Box::new(ParseError::from_token(
+                &token,
+                "Binding pattern exceeded parser limit".to_string(),
+            )));
+        }
+
+        if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Star)) {
+            let star = token.clone();
+            let _ = tokens.bump();
+            self.skip_ignorable(tokens);
+            let name_token = tokens.curr(false)?;
+            let name = if matches!(name_token.key(), KEYWORD::Symbol(SYMBOL::Under)) {
+                "_".to_string()
+            } else {
+                Self::token_to_named_label(&name_token).ok_or_else(|| {
+                    Box::new(ParseError::from_token(
+                        &name_token,
+                        "Expected binding name after '*'".to_string(),
+                    )) as Box<dyn Glitch>
+                })?
+            };
+            let _ = tokens.bump();
+            if matches!(name_token.key(), KEYWORD::Symbol(SYMBOL::Star)) {
+                return Err(Box::new(ParseError::from_token(
+                    &star,
+                    "Nested '*' binding patterns are not allowed".to_string(),
+                )));
+            }
+            return Ok(BindingPattern::Rest(name));
+        }
+
+        if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Under)) {
+            let _ = tokens.bump();
+            return Ok(BindingPattern::Name("_".to_string()));
+        }
+
+        let name = Self::token_to_named_label(&token).ok_or_else(|| {
+            Box::new(ParseError::from_token(
+                &token,
+                format!("Expected identifier after '{}'", keyword),
+            )) as Box<dyn Glitch>
+        })?;
+        let _ = tokens.bump();
+        Ok(BindingPattern::Name(name))
+    }
+
     pub(super) fn build_binding_nodes(
         &self,
         options: Vec<VarOption>,
@@ -793,6 +942,32 @@ impl AstParser {
                 value: value.map(Box::new),
             })
             .collect())
+    }
+
+    pub(super) fn build_destructure_binding_node(
+        &self,
+        options: Vec<VarOption>,
+        patterns: Vec<BindingPattern>,
+        type_hint: Option<FolType>,
+        values: Vec<AstNode>,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
+        if values.len() != 1 {
+            return Err(Box::new(ParseError {
+                message: "Destructuring bindings require exactly one source value".to_string(),
+                file: None,
+                line: 0,
+                column: 0,
+                length: 0,
+            }));
+        }
+
+        Ok(AstNode::DestructureDecl {
+            options,
+            is_label: false,
+            pattern: BindingPattern::Sequence(patterns),
+            type_hint,
+            value: Box::new(values.into_iter().next().expect("single destructure value")),
+        })
     }
 
 }
