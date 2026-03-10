@@ -402,6 +402,11 @@ impl AstParser {
                 visible_types,
                 routine_return_types,
             ),
+            AstNode::NamedArgument { value, .. } => Self::report_unknown_identifier_in_expression(
+                value,
+                visible_types,
+                routine_return_types,
+            ),
             AstNode::FunctionCall { name, args } => {
                 let callable_key = Self::callable_key(name, args.len());
                 if !routine_return_types.contains_key(&callable_key) {
@@ -610,6 +615,9 @@ impl AstParser {
             AstNode::FunctionCall { name, args } => {
                 let found = routine_return_types.get(&Self::callable_key(name, args.len()))?;
                 Self::fol_type_to_named_family(found.clone())
+            }
+            AstNode::NamedArgument { value, .. } => {
+                Self::infer_named_type_from_node(value, visible_types, routine_return_types)
             }
             AstNode::MethodCall {
                 object,

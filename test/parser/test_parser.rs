@@ -35,6 +35,12 @@ mod anonymous_capture_lists;
 #[path = "test_parser_parts/basic_declarations.rs"]
 mod basic_declarations;
 #[cfg(test)]
+#[path = "test_parser_parts/book_spec_examples.rs"]
+mod book_spec_examples;
+#[cfg(test)]
+#[path = "test_parser_parts/call_argument_keywords.rs"]
+mod call_argument_keywords;
+#[cfg(test)]
 #[path = "test_parser_parts/availability_access_expressions.rs"]
 mod availability_access_expressions;
 #[cfg(test)]

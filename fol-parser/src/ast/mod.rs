@@ -113,6 +113,12 @@ pub enum AstNode {
     /// Function call: function_name(args)
     FunctionCall { name: String, args: Vec<AstNode> },
 
+    /// Named call argument: name = value
+    NamedArgument {
+        name: String,
+        value: Box<AstNode>,
+    },
+
     /// General invocation: callee(args)
     Invoke {
         callee: Box<AstNode>,
@@ -714,6 +720,7 @@ impl AstNode {
                     None
                 }
             }
+            AstNode::NamedArgument { value, .. } => value.get_type(),
             AstNode::AnonymousFun {
                 params,
                 return_type,
@@ -771,6 +778,9 @@ impl AstNode {
             }
             AstNode::UnaryOp { operand, .. } => {
                 vec![operand.as_ref()]
+            }
+            AstNode::NamedArgument { value, .. } => {
+                vec![value.as_ref()]
             }
             AstNode::FunctionCall { args, .. } | AstNode::MethodCall { args, .. } => {
                 args.iter().collect()

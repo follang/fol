@@ -1,11 +1,74 @@
 use super::*;
 
 impl AstParser {
+    fn lookahead_is_named_call_arg(
+        &self,
+        tokens: &fol_lexer::lexer::stage3::Elements,
+    ) -> bool {
+        let current = match tokens.curr(false) {
+            Ok(token) => token,
+            Err(_) => return false,
+        };
+        if Self::token_to_named_label(&current).is_none() {
+            return false;
+        }
+
+        for candidate in tokens.next_vec() {
+            let token = match candidate {
+                Ok(token) => token,
+                Err(_) => continue,
+            };
+            let key = token.key();
+            if key.is_void() || key.is_comment() {
+                continue;
+            }
+            return matches!(key, KEYWORD::Symbol(SYMBOL::Equal));
+        }
+
+        false
+    }
+
+    fn parse_call_argument(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
+        if self.lookahead_is_named_call_arg(tokens) {
+            let name_token = tokens.curr(false)?;
+            let name = Self::token_to_named_label(&name_token).ok_or_else(|| {
+                Box::new(ParseError::from_token(
+                    &name_token,
+                    "Expected argument name before '='".to_string(),
+                )) as Box<dyn Glitch>
+            })?;
+            let _ = tokens.bump();
+            self.skip_ignorable(tokens);
+
+            let equal = tokens.curr(false)?;
+            if !matches!(equal.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
+                return Err(Box::new(ParseError::from_token(
+                    &equal,
+                    "Expected '=' after named call argument".to_string(),
+                )));
+            }
+            let _ = tokens.bump();
+            self.skip_ignorable(tokens);
+
+            let value = self.parse_logical_expression(tokens)?;
+            return Ok(AstNode::NamedArgument {
+                name,
+                value: Box::new(value),
+            });
+        }
+
+        self.parse_logical_expression(tokens)
+    }
+
     pub(super) fn parse_call_args(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
         let mut args = Vec::new();
+        let mut seen_named_arg = false;
         for _ in 0..256 {
             self.skip_ignorable(tokens);
             let token = tokens.curr(false)?;
@@ -15,7 +78,17 @@ impl AstParser {
                 break;
             }
 
-            args.push(self.parse_logical_expression(tokens)?);
+            let arg = self.parse_call_argument(tokens)?;
+            let is_named = matches!(arg, AstNode::NamedArgument { .. });
+            if !is_named && seen_named_arg {
+                return Err(Box::new(ParseError::from_token(
+                    &token,
+                    "Positional call arguments are not allowed after named arguments"
+                        .to_string(),
+                )));
+            }
+            seen_named_arg |= is_named;
+            args.push(arg);
             self.skip_ignorable(tokens);
 
             let sep = tokens.curr(false)?;
