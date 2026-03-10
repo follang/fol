@@ -1,0 +1,4 @@
+fun load(): str = {
+    result = client.get(address).send() | await;
+    return result;
+}

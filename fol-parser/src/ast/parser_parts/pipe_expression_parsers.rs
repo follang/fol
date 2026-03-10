@@ -114,6 +114,16 @@ impl AstParser {
             return self.parse_yield_stmt(tokens);
         }
 
+        if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Async)) {
+            let _ = tokens.bump();
+            return Ok(AstNode::AsyncStage);
+        }
+
+        if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Await)) {
+            let _ = tokens.bump();
+            return Ok(AstNode::AwaitStage);
+        }
+
         if self.lookahead_binding_alternative(tokens).is_some() {
             return self.pipe_stage_from_nodes(self.parse_binding_alternative_decl(tokens)?);
         }

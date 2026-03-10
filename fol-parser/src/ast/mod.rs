@@ -133,6 +133,12 @@ pub enum AstNode {
         value: Box<AstNode>,
     },
 
+    /// Processor pipe stage: async
+    AsyncStage,
+
+    /// Processor pipe stage: await
+    AwaitStage,
+
     /// General invocation: callee(args)
     Invoke {
         callee: Box<AstNode>,
@@ -781,6 +787,7 @@ impl AstNode {
             }
             AstNode::NamedArgument { value, .. } => value.get_type(),
             AstNode::Unpack { value } => value.get_type(),
+            AstNode::AsyncStage | AstNode::AwaitStage => None,
             AstNode::AnonymousFun {
                 params,
                 return_type,
@@ -848,6 +855,7 @@ impl AstNode {
             AstNode::Unpack { value } => {
                 vec![value.as_ref()]
             }
+            AstNode::AsyncStage | AstNode::AwaitStage => vec![],
             AstNode::FunctionCall { args, .. } | AstNode::MethodCall { args, .. } => {
                 args.iter().collect()
             }
