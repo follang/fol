@@ -1,0 +1,3 @@
+typ Outer: rec = {
+    typ Inner: obj;
+};

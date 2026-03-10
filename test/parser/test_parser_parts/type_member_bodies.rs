@@ -328,3 +328,39 @@ fn test_record_type_bodies_accept_grouped_type_members() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_record_type_bodies_accept_empty_object_members() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_typ_record_object_member_empty.fol")
+            .expect("Should read empty object-member fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should retain empty object members inside record bodies");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::TypeDecl {
+                    name,
+                    type_def: TypeDefinition::Record { members, .. },
+                    ..
+                }
+                if name == "Outer"
+                    && members.iter().any(|member| matches!(
+                        member,
+                        AstNode::TypeDecl {
+                            name,
+                            type_def: TypeDefinition::Record { fields, members, .. },
+                            ..
+                        } if name == "Inner" && fields.is_empty() && members.is_empty()
+                    ))
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
