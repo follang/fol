@@ -380,6 +380,13 @@ impl AstParser {
             self.skip_ignorable(tokens);
 
             let assign = tokens.curr(false)?;
+            if marker == "obj" && !matches!(assign.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
+                return Ok(TypeDefinition::Record {
+                    fields: HashMap::new(),
+                    field_meta: HashMap::new(),
+                    members: Vec::new(),
+                });
+            }
             if !matches!(assign.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
                 return Err(Box::new(ParseError::from_token(
                     &assign,
