@@ -251,6 +251,9 @@ mod source_kind_types;
 #[path = "test_parser_parts/special_type_references.rs"]
 mod special_type_references;
 #[cfg(test)]
+#[path = "test_parser_parts/select_statements.rs"]
+mod select_statements;
+#[cfg(test)]
 #[path = "test_parser_parts/scalar_type_option_separators.rs"]
 mod scalar_type_option_separators;
 #[cfg(test)]

@@ -303,6 +303,17 @@ impl AstParser {
                 continue;
             }
 
+            if matches!(key, KEYWORD::Keyword(BUILDIN::Select)) {
+                let before = (
+                    token.loc().row(),
+                    token.loc().col(),
+                    token.con().to_string(),
+                );
+                body.push(self.parse_select_stmt(tokens)?);
+                self.bump_if_no_progress(tokens, before);
+                continue;
+            }
+
             if matches!(
                 key,
                 KEYWORD::Keyword(BUILDIN::While)

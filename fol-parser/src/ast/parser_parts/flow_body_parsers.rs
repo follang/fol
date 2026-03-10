@@ -126,6 +126,12 @@ impl AstParser {
             return Ok(vec![node]);
         }
 
+        if matches!(key, KEYWORD::Keyword(BUILDIN::Select)) {
+            let node = self.parse_select_stmt(tokens)?;
+            self.consume_optional_semicolon(tokens);
+            return Ok(vec![node]);
+        }
+
         if matches!(
             key,
             KEYWORD::Keyword(BUILDIN::While)

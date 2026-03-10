@@ -1,6 +1,72 @@
 use super::*;
 
 impl AstParser {
+    pub(super) fn parse_select_stmt(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
+        let select_token = tokens.curr(false)?;
+        if !matches!(select_token.key(), KEYWORD::Keyword(BUILDIN::Select)) {
+            return Err(Box::new(ParseError::from_token(
+                &select_token,
+                "Expected 'select' statement".to_string(),
+            )));
+        }
+
+        let _ = tokens.bump();
+        self.skip_ignorable(tokens);
+
+        let open = tokens.curr(false)?;
+        if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
+            return Err(Box::new(ParseError::from_token(
+                &open,
+                "Expected '(' after 'select'".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+        self.skip_ignorable(tokens);
+
+        let channel = self.parse_range_expression(tokens)?;
+        self.skip_ignorable(tokens);
+
+        let mut binding = None;
+        if matches!(
+            tokens.curr(false).map(|token| token.key()),
+            Ok(KEYWORD::Keyword(BUILDIN::As))
+        ) {
+            let _ = tokens.bump();
+            self.skip_ignorable(tokens);
+
+            let binding_token = tokens.curr(false)?;
+            binding = Self::token_to_named_label(&binding_token);
+            if binding.is_none() {
+                return Err(Box::new(ParseError::from_token(
+                    &binding_token,
+                    "Expected binding name after 'as' in select statement".to_string(),
+                )));
+            }
+            let _ = tokens.bump();
+            self.skip_ignorable(tokens);
+        }
+
+        let close = tokens.curr(false)?;
+        if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
+            return Err(Box::new(ParseError::from_token(
+                &close,
+                "Expected ')' after select header".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+        self.skip_ignorable(tokens);
+
+        let body = self.parse_branch_body(tokens)?;
+        Ok(AstNode::Select {
+            channel: Box::new(channel),
+            binding,
+            body,
+        })
+    }
+
     pub(super) fn parse_builtin_call_stmt(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,

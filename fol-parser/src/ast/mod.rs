@@ -274,6 +274,13 @@ pub enum AstNode {
         body: Vec<AstNode>,
     },
 
+    /// Select statement: select(channel as binding) { body }
+    Select {
+        channel: Box<AstNode>,
+        binding: Option<String>,
+        body: Vec<AstNode>,
+    },
+
     /// Return statement: return value
     Return { value: Option<Box<AstNode>> },
 
@@ -933,6 +940,11 @@ impl AstNode {
                         }
                     }
                 }
+                children
+            }
+            AstNode::Select { channel, body, .. } => {
+                let mut children = vec![channel.as_ref()];
+                children.extend(body.iter());
                 children
             }
             AstNode::Block { statements } => statements.iter().collect(),

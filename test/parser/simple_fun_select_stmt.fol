@@ -1,0 +1,5 @@
+pro main(): int = {
+    select(channel as c) {
+        sequence.push(channel[rx][c]);
+    }
+}
