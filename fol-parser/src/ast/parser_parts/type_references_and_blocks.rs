@@ -349,6 +349,7 @@ impl AstParser {
                 || matches!(key, KEYWORD::Literal(LITERAL::Stringy)))
                 && (self.lookahead_is_call(tokens) || self.lookahead_is_method_call(tokens))
                 && self.can_start_assignment(tokens)
+                && !self.lookahead_has_top_level_pipe(tokens)
             {
                 body.push(self.parse_call_stmt(tokens)?);
                 continue;

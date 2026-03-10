@@ -38,6 +38,9 @@ mod basic_declarations;
 #[path = "test_parser_parts/book_spec_examples.rs"]
 mod book_spec_examples;
 #[cfg(test)]
+#[path = "test_parser_parts/book_processor_examples.rs"]
+mod book_processor_examples;
+#[cfg(test)]
 #[path = "test_parser_parts/book_routine_examples.rs"]
 mod book_routine_examples;
 #[cfg(test)]

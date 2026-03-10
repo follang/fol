@@ -545,6 +545,64 @@ impl AstParser {
         None
     }
 
+    pub(super) fn lookahead_has_top_level_pipe(
+        &self,
+        tokens: &fol_lexer::lexer::stage3::Elements,
+    ) -> bool {
+        let mut round_depth = 0usize;
+        let mut square_depth = 0usize;
+        let mut curly_depth = 0usize;
+
+        for candidate in tokens.next_vec() {
+            let token = match candidate {
+                Ok(token) => token,
+                Err(_) => continue,
+            };
+
+            let key = token.key();
+            if key.is_void() || key.is_comment() {
+                continue;
+            }
+
+            match key {
+                KEYWORD::Symbol(SYMBOL::RoundO) => round_depth += 1,
+                KEYWORD::Symbol(SYMBOL::RoundC) => {
+                    if round_depth > 0 {
+                        round_depth -= 1;
+                    } else {
+                        break;
+                    }
+                }
+                KEYWORD::Symbol(SYMBOL::SquarO) => square_depth += 1,
+                KEYWORD::Symbol(SYMBOL::SquarC) => {
+                    square_depth = square_depth.saturating_sub(1);
+                }
+                KEYWORD::Symbol(SYMBOL::CurlyO) => curly_depth += 1,
+                KEYWORD::Symbol(SYMBOL::CurlyC) => {
+                    if curly_depth == 0 {
+                        break;
+                    }
+                    curly_depth -= 1;
+                }
+                KEYWORD::Symbol(SYMBOL::Pipe)
+                    if round_depth == 0 && square_depth == 0 && curly_depth == 0 =>
+                {
+                    return true;
+                }
+                _ if round_depth == 0
+                    && square_depth == 0
+                    && curly_depth == 0
+                    && key.is_terminal() =>
+                {
+                    break;
+                }
+                _ => {}
+            }
+        }
+
+        false
+    }
+
     pub(super) fn bump_if_no_progress(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
