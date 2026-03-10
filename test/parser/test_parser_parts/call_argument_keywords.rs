@@ -204,3 +204,40 @@ fn test_keyword_call_arguments_accept_semicolon_separators() {
         "Keyword call arguments should accept semicolon separators"
     );
 }
+
+#[test]
+fn test_keyword_call_arguments_accept_trailing_separators() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_keyword_call_args_trailing.fol")
+            .expect("Should read trailing-separator keyword call-argument fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept trailing separators after keyword arguments");
+
+    let has_trailing_keyword_call = match ast {
+        AstNode::Program { declarations } => declarations.iter().any(|node| {
+            matches!(
+                node,
+                AstNode::Assignment { value, .. }
+                if matches!(
+                    value.as_ref(),
+                    AstNode::FunctionCall { name, args }
+                    if name == "calc"
+                        && args.len() == 3
+                        && matches!(&args[0], AstNode::NamedArgument { name, .. } if name == "el3")
+                        && matches!(&args[1], AstNode::NamedArgument { name, .. } if name == "el2")
+                        && matches!(&args[2], AstNode::NamedArgument { name, .. } if name == "el1")
+                )
+            )
+        }),
+        _ => panic!("Expected program node"),
+    };
+
+    assert!(
+        has_trailing_keyword_call,
+        "Keyword call arguments should accept trailing separators"
+    );
+}
