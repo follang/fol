@@ -125,6 +125,9 @@ mod quoted_type_names;
 #[path = "test_parser_parts/lab_declarations.rs"]
 mod lab_declarations;
 #[cfg(test)]
+#[path = "test_parser_parts/leading_dot_builtin_calls.rs"]
+mod leading_dot_builtin_calls;
+#[cfg(test)]
 #[path = "test_parser_parts/keyword_named_bindings.rs"]
 mod keyword_named_bindings;
 #[cfg(test)]

@@ -1,0 +1,4 @@
+fun[] measure(items: seq[int]): int = {
+    var size = .len(items);
+    return size;
+}

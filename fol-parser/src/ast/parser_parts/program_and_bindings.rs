@@ -373,7 +373,30 @@ impl AstParser {
                 continue;
             }
 
-            if (matches!(key, KEYWORD::Symbol(SYMBOL::RoundO))
+            if matches!(key, KEYWORD::Symbol(SYMBOL::Dot))
+                && self.lookahead_is_dot_builtin_call(tokens)
+                && self.can_start_assignment(tokens)
+            {
+                let before = (
+                    token.loc().row(),
+                    token.loc().col(),
+                    token.con().to_string(),
+                );
+                match self.parse_dot_builtin_call_expr(tokens) {
+                    Ok(node) => {
+                        declarations.push(node);
+                        self.consume_optional_semicolon(tokens);
+                    }
+                    Err(error) => errors.push(error),
+                }
+                self.bump_if_no_progress(tokens, before);
+                if tokens.curr(false).is_err() {
+                    break;
+                }
+                continue;
+            }
+
+            if (matches!(key, KEYWORD::Symbol(SYMBOL::RoundO) | KEYWORD::Symbol(SYMBOL::Dot))
                 || AstParser::token_can_be_logical_name(&key)
                 || matches!(key, KEYWORD::Literal(LITERAL::Stringy)))
                 && self.lookahead_is_general_invoke(tokens, matches!(key, KEYWORD::Symbol(SYMBOL::RoundO)))

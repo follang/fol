@@ -1,6 +1,76 @@
 use super::*;
 
 impl AstParser {
+    pub(super) fn lookahead_is_dot_builtin_call(
+        &self,
+        tokens: &fol_lexer::lexer::stage3::Elements,
+    ) -> bool {
+        let current = match tokens.curr(false) {
+            Ok(token) => token,
+            Err(_) => return false,
+        };
+        if !matches!(current.key(), KEYWORD::Symbol(SYMBOL::Dot)) {
+            return false;
+        }
+
+        let mut saw_name = false;
+
+        for candidate in tokens.next_vec() {
+            let token = match candidate {
+                Ok(token) => token,
+                Err(_) => continue,
+            };
+
+            let key = token.key();
+            if key.is_void() || key.is_comment() {
+                continue;
+            }
+
+            if !saw_name {
+                if Self::token_can_be_logical_name(&key)
+                    || matches!(key, KEYWORD::Literal(LITERAL::Stringy))
+                {
+                    saw_name = true;
+                    continue;
+                }
+                return false;
+            }
+
+            return matches!(key, KEYWORD::Symbol(SYMBOL::RoundO));
+        }
+
+        false
+    }
+
+    pub(super) fn parse_dot_builtin_call_expr(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
+        let dot = tokens.curr(false)?;
+        if !matches!(dot.key(), KEYWORD::Symbol(SYMBOL::Dot)) {
+            return Err(Box::new(ParseError::from_token(
+                &dot,
+                "Expected '.' to start builtin root call".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+        self.skip_ignorable(tokens);
+
+        let name_token = tokens.curr(false)?;
+        let name = Self::token_to_named_label(&name_token).ok_or_else(|| {
+            Box::new(ParseError::from_token(
+                &name_token,
+                "Expected builtin call name after '.'".to_string(),
+            )) as Box<dyn Glitch>
+        })?;
+        let _ = tokens.bump();
+
+        let args =
+            self.parse_open_paren_and_call_args(tokens, "Expected '(' after builtin call name")?;
+
+        Ok(AstNode::FunctionCall { name, args })
+    }
+
     fn lookahead_is_named_call_arg(
         &self,
         tokens: &fol_lexer::lexer::stage3::Elements,

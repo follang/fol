@@ -156,6 +156,13 @@ impl AstParser {
             return Ok(vec![node]);
         }
 
+        if matches!(key, KEYWORD::Symbol(SYMBOL::Dot)) && self.lookahead_is_dot_builtin_call(tokens)
+        {
+            let node = self.parse_dot_builtin_call_expr(tokens)?;
+            self.consume_optional_semicolon(tokens);
+            return Ok(vec![node]);
+        }
+
         if matches!(key, KEYWORD::Keyword(BUILDIN::Return)) {
             let node = self.parse_return_stmt(tokens)?;
             return Ok(vec![node]);
@@ -182,7 +189,7 @@ impl AstParser {
             && self.can_start_assignment(tokens)
         {
             self.parse_call_stmt(tokens)?
-        } else if (matches!(key, KEYWORD::Symbol(SYMBOL::RoundO))
+        } else if (matches!(key, KEYWORD::Symbol(SYMBOL::RoundO) | KEYWORD::Symbol(SYMBOL::Dot))
             || AstParser::token_can_be_logical_name(&key)
             || matches!(key, KEYWORD::Literal(LITERAL::Stringy)))
             && self.lookahead_is_general_invoke(tokens, matches!(key, KEYWORD::Symbol(SYMBOL::RoundO)))

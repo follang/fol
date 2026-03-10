@@ -77,6 +77,14 @@ impl AstParser {
                 continue;
             }
 
+            if matches!(key, KEYWORD::Symbol(SYMBOL::Dot))
+                && self.lookahead_is_dot_builtin_call(tokens)
+            {
+                body.push(self.parse_dot_builtin_call_expr(tokens)?);
+                self.consume_optional_semicolon(tokens);
+                continue;
+            }
+
             if self.lookahead_binding_alternative(tokens).is_some() {
                 body.extend(self.parse_binding_alternative_decl(tokens)?);
                 continue;
@@ -526,6 +534,14 @@ impl AstParser {
                     | KEYWORD::Keyword(BUILDIN::Assert)
             ) {
                 body.push(self.parse_builtin_call_stmt(tokens)?);
+                continue;
+            }
+
+            if matches!(key, KEYWORD::Symbol(SYMBOL::Dot))
+                && self.lookahead_is_dot_builtin_call(tokens)
+            {
+                body.push(self.parse_dot_builtin_call_expr(tokens)?);
+                self.consume_optional_semicolon(tokens);
                 continue;
             }
 

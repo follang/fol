@@ -189,7 +189,14 @@ impl AstParser {
             return self.parse_call_stmt(tokens);
         }
 
-        if (matches!(key, KEYWORD::Symbol(SYMBOL::RoundO))
+        if matches!(key, KEYWORD::Symbol(SYMBOL::Dot)) && self.lookahead_is_dot_builtin_call(tokens)
+        {
+            let node = self.parse_dot_builtin_call_expr(tokens)?;
+            self.consume_optional_semicolon(tokens);
+            return Ok(node);
+        }
+
+        if (matches!(key, KEYWORD::Symbol(SYMBOL::RoundO) | KEYWORD::Symbol(SYMBOL::Dot))
             || AstParser::token_can_be_logical_name(&key)
             || matches!(key, KEYWORD::Literal(LITERAL::Stringy)))
             && self.lookahead_is_general_invoke(tokens, matches!(key, KEYWORD::Symbol(SYMBOL::RoundO)))

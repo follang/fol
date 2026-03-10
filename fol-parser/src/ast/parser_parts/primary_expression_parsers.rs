@@ -149,7 +149,11 @@ impl AstParser {
             return Ok(operand);
         }
 
-        let node = if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Pipe)) {
+        let node = if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Dot))
+            && self.lookahead_is_dot_builtin_call(tokens)
+        {
+            self.parse_dot_builtin_call_expr(tokens)?
+        } else if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Pipe)) {
             self.parse_pipe_lambda_expr(tokens)?
         } else if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Fun)) {
             self.parse_anonymous_fun_expr(tokens)?
