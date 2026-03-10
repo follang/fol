@@ -209,3 +209,34 @@ fn test_multi_name_type_declarations_reject_mismatched_definition_counts() {
             .unwrap_or(false)
     }));
 }
+
+#[test]
+fn test_grouped_type_declarations_accept_empty_object_markers() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_typ_group_object_empty_body.fol")
+            .expect("Should read grouped object marker fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept grouped empty object markers");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            let matched = declarations
+                .iter()
+                .filter(|node| matches!(
+                    node,
+                    AstNode::TypeDecl {
+                        name,
+                        type_def: TypeDefinition::Record { fields, members, .. },
+                        ..
+                    } if (name == "User" || name == "Admin") && fields.is_empty() && members.is_empty()
+                ))
+                .count();
+            assert_eq!(matched, 2, "Expected both grouped object markers to lower to empty records");
+        }
+        _ => panic!("Expected program node"),
+    }
+}

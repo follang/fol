@@ -1,0 +1,4 @@
+typ (
+    User: obj;
+    Admin: obj[];
+)
