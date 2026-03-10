@@ -195,3 +195,33 @@ fn test_book_variadic_routine_example_parses() {
         "Book variadic routine example should keep the variadic sequence parameter"
     );
 }
+
+#[test]
+fn test_book_default_argument_example_parses() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_book_default_argument_example.fol")
+            .expect("Should read book default-argument example");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept the book default-argument example");
+
+    let has_default_param = match ast {
+        AstNode::Program { declarations } => declarations.iter().any(|node| {
+            matches!(
+                node,
+                AstNode::FunDecl { name, params, .. }
+                if name == "calc"
+                    && params.iter().any(|param| param.name == "rise" && param.default.is_some())
+            )
+        }),
+        _ => panic!("Expected program node"),
+    };
+
+    assert!(
+        has_default_param,
+        "Book default-argument example should keep the defaulted parameter"
+    );
+}
