@@ -97,3 +97,29 @@ fn test_book_protocol_standard_example() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_book_blueprint_standard_example() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_book_standard_blueprint.fol")
+        .expect("Should read blueprint standard example");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept the book blueprint standard example");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::StdDecl { name, kind, body, .. }
+                if name == "geometry"
+                    && matches!(kind, fol_parser::ast::StandardKind::Blueprint)
+                    && body.iter().any(|member| matches!(member, AstNode::VarDecl { name, .. } if name == "width"))
+                    && body.iter().any(|member| matches!(member, AstNode::VarDecl { name, options, .. } if name == "name" && options.contains(&fol_parser::ast::VarOption::Immutable)))
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
