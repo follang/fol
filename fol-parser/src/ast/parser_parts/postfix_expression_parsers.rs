@@ -95,6 +95,13 @@ impl AstParser {
                         operand: Box::new(node),
                     };
                 }
+                KEYWORD::Symbol(SYMBOL::Dollar) => {
+                    let _ = tokens.bump();
+                    node = AstNode::TemplateCall {
+                        object: Box::new(node),
+                        template: "$".to_string(),
+                    };
+                }
                 _ => break,
             }
         }

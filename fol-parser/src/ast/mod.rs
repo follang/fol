@@ -190,6 +190,12 @@ pub enum AstNode {
         args: Vec<AstNode>,
     },
 
+    /// Postfix template access: object$
+    TemplateCall {
+        object: Box<AstNode>,
+        template: String,
+    },
+
     /// Array/Container access: container[index]
     IndexAccess {
         container: Box<AstNode>,
@@ -842,6 +848,7 @@ impl AstNode {
             AstNode::PatternWildcard => None,
             AstNode::PatternCapture { pattern, .. } => pattern.get_type(),
             AstNode::RecordInit { .. } => None,
+            AstNode::TemplateCall { .. } => None,
 
             _ => None,
         }
@@ -891,6 +898,7 @@ impl AstNode {
                 children.extend(args.iter());
                 children
             }
+            AstNode::TemplateCall { object, .. } => vec![object.as_ref()],
             AstNode::AnonymousFun {
                 body, inquiries, ..
             }
