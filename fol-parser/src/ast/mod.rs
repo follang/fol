@@ -139,6 +139,11 @@ pub enum AstNode {
     /// Processor pipe stage: await
     AwaitStage,
 
+    /// Coroutine spawn expression: [>]expr
+    Spawn {
+        task: Box<AstNode>,
+    },
+
     /// General invocation: callee(args)
     Invoke {
         callee: Box<AstNode>,
@@ -795,6 +800,7 @@ impl AstNode {
             AstNode::NamedArgument { value, .. } => value.get_type(),
             AstNode::Unpack { value } => value.get_type(),
             AstNode::AsyncStage | AstNode::AwaitStage => None,
+            AstNode::Spawn { task } => task.get_type(),
             AstNode::AnonymousFun {
                 params,
                 return_type,
@@ -863,6 +869,7 @@ impl AstNode {
                 vec![value.as_ref()]
             }
             AstNode::AsyncStage | AstNode::AwaitStage => vec![],
+            AstNode::Spawn { task } => vec![task.as_ref()],
             AstNode::FunctionCall { args, .. } | AstNode::MethodCall { args, .. } => {
                 args.iter().collect()
             }

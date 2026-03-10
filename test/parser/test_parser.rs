@@ -254,6 +254,9 @@ mod special_type_references;
 #[path = "test_parser_parts/select_statements.rs"]
 mod select_statements;
 #[cfg(test)]
+#[path = "test_parser_parts/spawn_expressions.rs"]
+mod spawn_expressions;
+#[cfg(test)]
 #[path = "test_parser_parts/scalar_type_option_separators.rs"]
 mod scalar_type_option_separators;
 #[cfg(test)]

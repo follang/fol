@@ -1,6 +1,39 @@
 use super::*;
 
 impl AstParser {
+    fn lookahead_is_spawn_expression(
+        &self,
+        tokens: &fol_lexer::lexer::stage3::Elements,
+    ) -> bool {
+        let current = match tokens.curr(false) {
+            Ok(token) => token,
+            Err(_) => return false,
+        };
+        if !matches!(current.key(), KEYWORD::Symbol(SYMBOL::SquarO)) {
+            return false;
+        }
+
+        let mut found = Vec::new();
+        for candidate in tokens.next_vec() {
+            let token = match candidate {
+                Ok(token) => token,
+                Err(_) => continue,
+            };
+            if token.key().is_void() || token.key().is_comment() {
+                continue;
+            }
+            found.push(token.key());
+            if found.len() == 2 {
+                break;
+            }
+        }
+
+        matches!(
+            found.as_slice(),
+            [KEYWORD::Symbol(SYMBOL::AngleC), KEYWORD::Symbol(SYMBOL::SquarC)]
+        )
+    }
+
     fn lookahead_is_match_expression(
         &self,
         tokens: &fol_lexer::lexer::stage3::Elements,
@@ -368,6 +401,34 @@ impl AstParser {
     ) -> Result<AstNode, Box<dyn Glitch>> {
         self.skip_ignorable(tokens);
         let token = tokens.curr(false)?;
+
+        if self.lookahead_is_spawn_expression(tokens) {
+            self.consume_significant_token(tokens);
+
+            let angle = tokens.curr(false)?;
+            if !matches!(angle.key(), KEYWORD::Symbol(SYMBOL::AngleC)) {
+                return Err(Box::new(ParseError::from_token(
+                    &angle,
+                    "Expected '>' in spawn marker".to_string(),
+                )));
+            }
+            self.consume_significant_token(tokens);
+
+            let close = tokens.curr(false)?;
+            if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
+                return Err(Box::new(ParseError::from_token(
+                    &close,
+                    "Expected closing ']' in spawn marker".to_string(),
+                )));
+            }
+            self.consume_significant_token(tokens);
+            self.skip_ignorable(tokens);
+
+            let task = self.parse_primary_expression(tokens)?;
+            return Ok(AstNode::Spawn {
+                task: Box::new(task),
+            });
+        }
 
         if let Some((message, unary_op)) = self.unary_prefix_info(&token) {
             let operator_token = token.clone();
