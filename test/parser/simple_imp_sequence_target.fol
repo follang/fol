@@ -1,0 +1,5 @@
+imp Self: seq[int] = {
+    fun len(): int = {
+        return 0;
+    }
+}

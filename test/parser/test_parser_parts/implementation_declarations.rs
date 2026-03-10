@@ -346,3 +346,68 @@ fn test_implementation_declaration_supports_named_and_quoted_constraints() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_implementation_declaration_supports_structured_sequence_targets() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_imp_sequence_target.fol")
+        .expect("Should read sequence-target implementation fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse structured implementation targets");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::ImpDecl {
+                        name,
+                        target: FolType::Sequence { element_type },
+                        body,
+                        ..
+                    }
+                    if name == "Self"
+                        && matches!(element_type.as_ref(), FolType::Int { .. })
+                        && body.iter().any(|stmt| matches!(stmt, AstNode::FunDecl { name, .. } if name == "len"))
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_implementation_marker_supports_structured_sequence_targets() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_imp_sequence_target_marker.fol")
+            .expect("Should read sequence-target marker fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse structured implementation marker targets");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::ImpDecl {
+                        name,
+                        target: FolType::Sequence { element_type },
+                        body,
+                        ..
+                    }
+                    if name == "Self"
+                        && matches!(element_type.as_ref(), FolType::Int { .. })
+                        && body.is_empty()
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
