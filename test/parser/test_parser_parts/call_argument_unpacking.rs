@@ -241,3 +241,34 @@ fn test_unpack_method_call_statements_parse() {
         "Statement method-call path should preserve unpack arguments structurally"
     );
 }
+
+#[test]
+fn test_unpack_invoke_statements_parse() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_invoke_unpack_stmt.fol")
+            .expect("Should read unpack invoke-statement fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept unpack invoke statements");
+
+    let has_unpack_invoke_stmt = match ast {
+        AstNode::Program { declarations } => declarations.iter().any(|node| {
+            matches!(
+                node,
+                AstNode::Invoke { args, .. }
+                if args.len() == 2
+                    && matches!(&args[0], AstNode::Literal(Literal::Boolean(true)))
+                    && matches!(&args[1], AstNode::Unpack { .. })
+            )
+        }),
+        _ => panic!("Expected program node"),
+    };
+
+    assert!(
+        has_unpack_invoke_stmt,
+        "Statement invoke path should preserve unpack arguments structurally"
+    );
+}
