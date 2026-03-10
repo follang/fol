@@ -268,3 +268,31 @@ fn test_book_default_definition_example() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_book_block_marker_definition_example() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_book_block_marker_def.fol")
+            .expect("Should read block marker definition example");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept the book block marker definition example");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::DefDecl {
+                    name,
+                    def_type: FolType::Block { .. },
+                    body,
+                    ..
+                } if name == "mark" && body.is_empty()
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
