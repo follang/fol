@@ -1,0 +1,3 @@
+fun calc(rise: bool; ints: ... int): int = {
+    value = calc(true; ...ints;);
+}

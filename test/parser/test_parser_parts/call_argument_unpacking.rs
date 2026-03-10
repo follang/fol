@@ -105,3 +105,39 @@ fn test_invoke_expressions_support_unpack_arguments() {
         "Invoke expressions should preserve call-site unpack arguments structurally"
     );
 }
+
+#[test]
+fn test_unpack_arguments_accept_semicolon_separators() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_call_unpack_args_semicolon.fol")
+            .expect("Should read semicolon unpack fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept semicolon-separated unpack arguments");
+
+    let has_semicolon_unpack_call = match ast {
+        AstNode::Program { declarations } => declarations.iter().any(|node| {
+            matches!(
+                node,
+                AstNode::Assignment { value, .. }
+                if matches!(
+                    value.as_ref(),
+                    AstNode::FunctionCall { name, args }
+                    if name == "calc"
+                        && args.len() == 2
+                        && matches!(&args[0], AstNode::Literal(Literal::Boolean(true)))
+                        && matches!(&args[1], AstNode::Unpack { .. })
+                )
+            )
+        }),
+        _ => panic!("Expected program node"),
+    };
+
+    assert!(
+        has_semicolon_unpack_call,
+        "Unpack call arguments should accept semicolon separators"
+    );
+}
