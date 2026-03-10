@@ -1,0 +1,3 @@
+fun calc(): int = {
+    box.calc(true, ...ints);
+}
