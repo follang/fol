@@ -288,3 +288,40 @@ fn test_book_variadic_call_example_parses() {
         "Book variadic call example should keep the expanded positional call"
     );
 }
+
+#[test]
+fn test_book_dispatch_example_parses() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_book_dispatch_example.fol")
+            .expect("Should read book dispatch example");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept the book dispatch example");
+
+    let has_dispatch_routines = match ast {
+        AstNode::Program { declarations } => {
+            let mut has_call_bar = false;
+            let mut has_bar_call = false;
+            for node in declarations {
+                if let AstNode::ProDecl { name, params, .. } = node {
+                    if name == "callBar" && params.len() == 1 {
+                        has_call_bar = true;
+                    }
+                    if name == "barCall" && params.len() == 1 {
+                        has_bar_call = true;
+                    }
+                }
+            }
+            has_call_bar && has_bar_call
+        }
+        _ => panic!("Expected program node"),
+    };
+
+    assert!(
+        has_dispatch_routines,
+        "Book dispatch example should keep both dispatch routines"
+    );
+}

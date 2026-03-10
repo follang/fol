@@ -1,0 +1,9 @@
+std foo: pro = { fun bar(); }
+
+typ[ext] int, str: int, str;
+
+fun (int)bar() = {  }
+fun (str)bar() = {  }
+
+pro callBar(T: foo)(value: T) = { value.bar() }
+pro barCall(value: foo) = { value.bar() }

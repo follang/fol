@@ -187,53 +187,49 @@ fn test_function_method_receiver_missing_bracket_close_reports_parse_error() {
 }
 
 #[test]
-fn test_function_method_receiver_syntax_rejects_builtin_receiver_type() {
+fn test_function_method_receiver_syntax_accepts_builtin_receiver_type() {
     let mut file_stream =
         FileStream::from_file("test/parser/simple_fun_method_receiver_builtin_type.fol")
             .expect("Should read function builtin receiver type fixture");
 
     let mut lexer = Elements::init(&mut file_stream);
     let mut parser = AstParser::new();
-    let errors = parser
+    let ast = parser
         .parse(&mut lexer)
-        .expect_err("Parser should reject function receiver syntax with builtin receiver type");
+        .expect("Parser should accept function receiver syntax with builtin receiver type");
 
-    let parse_error = errors
-        .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
-        .expect("First parser error should be ParseError");
-
-    let first_message = parse_error.to_string();
-    assert!(
-        first_message.contains("Method receiver type must be a user-defined named type"),
-        "Builtin receiver type should report explicit receiver-type diagnostic, got: {}",
-        first_message
-    );
+    match ast {
+        AstNode::Program { declarations } => assert!(
+            declarations.iter().any(|node| matches!(
+                node, AstNode::FunDecl { name, .. } if name == "parse_msg"
+            )),
+            "Builtin scalar receiver method should parse as a named function declaration"
+        ),
+        _ => panic!("Expected program node"),
+    }
 }
 
 #[test]
-fn test_procedure_method_receiver_syntax_rejects_builtin_receiver_type() {
+fn test_procedure_method_receiver_syntax_accepts_builtin_receiver_type() {
     let mut file_stream =
         FileStream::from_file("test/parser/simple_pro_method_receiver_builtin_type.fol")
             .expect("Should read procedure builtin receiver type fixture");
 
     let mut lexer = Elements::init(&mut file_stream);
     let mut parser = AstParser::new();
-    let errors = parser
+    let ast = parser
         .parse(&mut lexer)
-        .expect_err("Parser should reject procedure receiver syntax with builtin receiver type");
+        .expect("Parser should accept procedure receiver syntax with builtin receiver type");
 
-    let parse_error = errors
-        .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
-        .expect("First parser error should be ParseError");
-
-    let first_message = parse_error.to_string();
-    assert!(
-        first_message.contains("Method receiver type must be a user-defined named type"),
-        "Procedure builtin receiver type should report explicit receiver-type diagnostic, got: {}",
-        first_message
-    );
+    match ast {
+        AstNode::Program { declarations } => assert!(
+            declarations.iter().any(|node| matches!(
+                node, AstNode::ProDecl { name, .. } if name == "parse_msg"
+            )),
+            "Builtin scalar receiver method should parse as a named procedure declaration"
+        ),
+        _ => panic!("Expected program node"),
+    }
 }
 
 #[test]
@@ -255,8 +251,8 @@ fn test_function_method_receiver_syntax_rejects_builtin_keyword_receiver_type() 
 
     let first_message = parse_error.to_string();
     assert!(
-        first_message.contains("Method receiver type must be a user-defined named type"),
-        "Builtin keyword receiver type should report explicit receiver-type diagnostic, got: {}",
+        first_message.contains("Expected type reference"),
+        "Builtin keyword receiver type should report a type-reference diagnostic, got: {}",
         first_message
     );
 }
@@ -280,8 +276,8 @@ fn test_procedure_method_receiver_syntax_rejects_builtin_keyword_receiver_type()
 
     let first_message = parse_error.to_string();
     assert!(
-            first_message.contains("Method receiver type must be a user-defined named type"),
-            "Procedure builtin keyword receiver type should report explicit receiver-type diagnostic, got: {}",
+            first_message.contains("Expected type reference"),
+            "Procedure builtin keyword receiver type should report a type-reference diagnostic, got: {}",
             first_message
         );
 }

@@ -651,26 +651,17 @@ impl AstParser {
             self.skip_ignorable(tokens);
 
             let receiver_token = tokens.curr(false)?;
-            if receiver_token.key().is_buildin() {
-                return Err(Box::new(ParseError::from_token(
-                    &receiver_token,
-                    "Method receiver type must be a user-defined named type".to_string(),
-                )));
-            }
-
             receiver_type = Some(self.parse_type_reference_tokens(tokens)?);
             match receiver_type.as_ref() {
-                Some(FolType::Named { name }) if !Self::is_builtin_scalar_type_name(name) => {}
-                Some(FolType::Named { .. })
-                | Some(FolType::Int { .. })
+                Some(FolType::Named { name }) if !matches!(name.as_str(), "any" | "none" | "non") => {}
+                Some(FolType::Int { .. })
                 | Some(FolType::Float { .. })
                 | Some(FolType::Bool)
-                | Some(FolType::Char { .. })
-                | Some(FolType::Any)
-                | Some(FolType::None) => {
+                | Some(FolType::Char { .. }) => {}
+                Some(FolType::Named { .. }) | Some(FolType::Any) | Some(FolType::None) => {
                     return Err(Box::new(ParseError::from_token(
                         &receiver_token,
-                        "Method receiver type must be a user-defined named type".to_string(),
+                        "Method receiver type must be a named or scalar type".to_string(),
                     )));
                 }
                 Some(_) => {}
