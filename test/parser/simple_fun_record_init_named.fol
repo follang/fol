@@ -1,0 +1,6 @@
+var user1: user = {
+    email = "someone@example.com",
+    username = "someusername123",
+    active = true,
+    sign_in_count = 1,
+};

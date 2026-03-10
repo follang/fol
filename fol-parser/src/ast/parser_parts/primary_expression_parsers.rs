@@ -1,6 +1,90 @@
 use super::*;
 
 impl AstParser {
+    fn lookahead_is_record_init_field(
+        &self,
+        tokens: &fol_lexer::lexer::stage3::Elements,
+    ) -> bool {
+        let current = match tokens.curr(false) {
+            Ok(token) => token,
+            Err(_) => return false,
+        };
+        if Self::token_to_named_label(&current).is_none() {
+            return false;
+        }
+
+        matches!(
+            self.next_significant_key_from_window(tokens),
+            Some(KEYWORD::Symbol(SYMBOL::Equal))
+        )
+    }
+
+    fn parse_record_init_fields_after_open(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
+        let mut fields = Vec::new();
+        for _ in 0..256 {
+            self.skip_ignorable(tokens);
+            let token = tokens.curr(false)?;
+            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) {
+                let _ = tokens.bump();
+                break;
+            }
+
+            let name = Self::token_to_named_label(&token).ok_or_else(|| {
+                Box::new(ParseError::from_token(
+                    &token,
+                    "Expected field name in record initializer".to_string(),
+                )) as Box<dyn Glitch>
+            })?;
+            let _ = tokens.bump();
+            self.skip_ignorable(tokens);
+
+            let equal = tokens.curr(false)?;
+            if !matches!(equal.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
+                return Err(Box::new(ParseError::from_token(
+                    &equal,
+                    "Expected '=' after record initializer field name".to_string(),
+                )));
+            }
+            let _ = tokens.bump();
+            self.skip_ignorable(tokens);
+
+            let value = self.parse_logical_expression(tokens)?;
+            fields.push(crate::ast::RecordInitField { name, value });
+            self.skip_ignorable(tokens);
+
+            let sep = tokens.curr(false)?;
+            if matches!(
+                sep.key(),
+                KEYWORD::Symbol(SYMBOL::Comma) | KEYWORD::Symbol(SYMBOL::Semi)
+            ) {
+                let _ = tokens.bump();
+                self.skip_ignorable(tokens);
+                if matches!(
+                    tokens.curr(false).map(|token| token.key()),
+                    Ok(KEYWORD::Symbol(SYMBOL::CurlyC))
+                ) {
+                    let _ = tokens.bump();
+                    break;
+                }
+                continue;
+            }
+            if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) {
+                let _ = tokens.bump();
+                break;
+            }
+
+            return Err(Box::new(ParseError::from_token(
+                &sep,
+                "Expected ',', ';', or '}' in record initializer".to_string(),
+            )));
+        }
+
+        Ok(AstNode::RecordInit { fields })
+    }
+
     fn lookahead_is_spawn_expression(
         &self,
         tokens: &fol_lexer::lexer::stage3::Elements,
@@ -532,6 +616,22 @@ impl AstParser {
             )));
         }
         let _ = tokens.bump();
+
+        self.skip_ignorable(tokens);
+        if matches!(
+            tokens.curr(false).map(|token| token.key()),
+            Ok(KEYWORD::Symbol(SYMBOL::CurlyC))
+        ) {
+            let _ = tokens.bump();
+            return Ok(AstNode::ContainerLiteral {
+                container_type: ContainerType::Array,
+                elements: Vec::new(),
+            });
+        }
+
+        if self.lookahead_is_record_init_field(tokens) {
+            return self.parse_record_init_fields_after_open(tokens);
+        }
 
         let mut elements = Vec::new();
         for _ in 0..256 {

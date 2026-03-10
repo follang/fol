@@ -1,0 +1,11 @@
+var empl1: employee = {
+    FirstName = "Mark",
+    LastName = "Jones",
+    MonthlySalary = {
+        Basic = 15000.00,
+        Bonus = {
+            HTA = 2100.00,
+            RA = 5000.00,
+        },
+    },
+};

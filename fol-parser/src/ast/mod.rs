@@ -237,6 +237,11 @@ pub enum AstNode {
         elements: Vec<AstNode>,
     },
 
+    /// Record/object initializer: { field = value, ... }
+    RecordInit {
+        fields: Vec<RecordInitField>,
+    },
+
     /// Rolling/list-comprehension expression: { expr for x in iterable if cond }
     Rolling {
         expr: Box<AstNode>,
@@ -708,6 +713,12 @@ pub struct RollingBinding {
     pub iterable: AstNode,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct RecordInitField {
+    pub name: String,
+    pub value: AstNode,
+}
+
 impl AstNode {
     /// Get the type of this AST node (for type inference)
     pub fn get_type(&self) -> Option<FolType> {
@@ -830,6 +841,7 @@ impl AstNode {
             AstNode::Inquiry { .. } => None,
             AstNode::PatternWildcard => None,
             AstNode::PatternCapture { pattern, .. } => pattern.get_type(),
+            AstNode::RecordInit { .. } => None,
 
             _ => None,
         }
@@ -958,6 +970,7 @@ impl AstNode {
             AstNode::Block { statements } => statements.iter().collect(),
             AstNode::Program { declarations } => declarations.iter().collect(),
             AstNode::ContainerLiteral { elements, .. } => elements.iter().collect(),
+            AstNode::RecordInit { fields } => fields.iter().map(|field| &field.value).collect(),
             AstNode::Rolling {
                 expr,
                 bindings,

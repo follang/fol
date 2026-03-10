@@ -170,6 +170,9 @@ mod object_type_markers;
 #[path = "test_parser_parts/report_call_resolution.rs"]
 mod report_call_resolution;
 #[cfg(test)]
+#[path = "test_parser_parts/record_initializers.rs"]
+mod record_initializers;
+#[cfg(test)]
 #[path = "test_parser_parts/reference_keywords.rs"]
 mod reference_keywords;
 #[cfg(test)]
