@@ -1,0 +1,5 @@
+fun[] greet(): int = {
+    return 0;
+} where(self) {
+    .echo("ok");
+}

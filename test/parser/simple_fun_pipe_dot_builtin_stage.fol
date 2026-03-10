@@ -1,0 +1,3 @@
+fun[] greet(value: str): int = {
+    return value | .echo();
+}

@@ -1,4 +1,5 @@
 use super::*;
+use fol_parser::ast::WhenCase;
 
 #[test]
 fn test_top_level_leading_dot_builtin_call_statement() {
@@ -64,5 +65,107 @@ fn test_leading_dot_builtin_call_expression() {
     assert!(
         has_dot_expr,
         "Expected leading-dot builtin expression to lower as FunctionCall"
+    );
+}
+
+#[test]
+fn test_leading_dot_builtin_calls_in_inquiry_bodies() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_dot_builtin_inquiry.fol")
+            .expect("Should read leading-dot inquiry fixture");
+    let mut tokens = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+
+    let ast = parser
+        .parse(&mut tokens)
+        .expect("Parser should accept leading-dot builtin calls in inquiry bodies");
+
+    let has_inquiry_dot_call = match ast {
+        AstNode::Program { declarations } => declarations.iter().any(|node| {
+            matches!(
+                node,
+                AstNode::FunDecl { inquiries, .. }
+                    if inquiries.iter().any(|inquiry| matches!(
+                        inquiry,
+                        AstNode::Inquiry { body, .. }
+                            if matches!(body.as_slice(), [AstNode::FunctionCall { name, .. }] if name == "echo")
+                    ))
+            )
+        }),
+        _ => false,
+    };
+
+    assert!(
+        has_inquiry_dot_call,
+        "Expected inquiry body to preserve leading-dot builtin call"
+    );
+}
+
+#[test]
+fn test_leading_dot_builtin_calls_in_flow_bodies() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_fun_if_dot_builtin_flow.fol")
+        .expect("Should read leading-dot flow-body fixture");
+    let mut tokens = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+
+    let ast = parser
+        .parse(&mut tokens)
+        .expect("Parser should accept leading-dot builtin calls in flow bodies");
+
+    let has_flow_dot_call = match ast {
+        AstNode::Program { declarations } => declarations.iter().any(|node| {
+            matches!(
+                node,
+                AstNode::FunDecl { body, .. }
+                    if body.iter().any(|stmt| matches!(
+                        stmt,
+                        AstNode::When { cases, .. }
+                            if matches!(cases.as_slice(), [WhenCase::Case { body, .. }] if matches!(body.as_slice(), [AstNode::FunctionCall { name, .. }] if name == "echo"))
+                    ))
+            )
+        }),
+        _ => false,
+    };
+
+    assert!(
+        has_flow_dot_call,
+        "Expected flow body to preserve leading-dot builtin call"
+    );
+}
+
+#[test]
+fn test_leading_dot_builtin_calls_in_pipe_stages() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_pipe_dot_builtin_stage.fol")
+            .expect("Should read leading-dot pipe-stage fixture");
+    let mut tokens = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+
+    let ast = parser
+        .parse(&mut tokens)
+        .expect("Parser should accept leading-dot builtin calls in pipe stages");
+
+    let has_pipe_dot_call = match ast {
+        AstNode::Program { declarations } => declarations.iter().any(|node| {
+            matches!(
+                node,
+                AstNode::FunDecl { body, .. }
+                    if body.iter().any(|stmt| matches!(
+                        stmt,
+                        AstNode::Return { value: Some(value) }
+                            if matches!(
+                                value.as_ref(),
+                                AstNode::BinaryOp { right, .. }
+                                    if matches!(right.as_ref(), AstNode::FunctionCall { name, .. } if name == "echo")
+                            )
+                    ))
+            )
+        }),
+        _ => false,
+    };
+
+    assert!(
+        has_pipe_dot_call,
+        "Expected pipe stage to preserve leading-dot builtin call"
     );
 }

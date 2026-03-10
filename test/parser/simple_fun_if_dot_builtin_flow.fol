@@ -1,0 +1,4 @@
+fun[] greet(): int = {
+    if (true) => .echo("ok");
+    return 0;
+}
