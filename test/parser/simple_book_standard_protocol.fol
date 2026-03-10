@@ -1,0 +1,4 @@
+std geometry: pro = {
+    fun area(): int;
+    pro draw(): non;
+};

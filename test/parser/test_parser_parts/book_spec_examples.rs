@@ -71,3 +71,29 @@ fn test_book_extended_aliases_example() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_book_protocol_standard_example() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_book_standard_protocol.fol")
+        .expect("Should read protocol standard example");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept the book protocol standard example");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::StdDecl { name, kind, body, .. }
+                if name == "geometry"
+                    && matches!(kind, fol_parser::ast::StandardKind::Protocol)
+                    && body.iter().any(|member| matches!(member, AstNode::FunDecl { name, .. } if name == "area"))
+                    && body.iter().any(|member| matches!(member, AstNode::ProDecl { name, .. } if name == "draw"))
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
