@@ -181,3 +181,30 @@ fn test_book_type_contract_record_example() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_book_macro_definition_examples() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_book_macro_defs.fol")
+        .expect("Should read macro definition examples");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept the book macro definition examples");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            let macro_defs = declarations
+                .iter()
+                .filter(|node| matches!(
+                    node,
+                    AstNode::DefDecl { name, def_type: FolType::Named { name: def_kind }, params, .. }
+                    if (name == "!" || name == "*") && def_kind == "mac" && !params.is_empty()
+                ))
+                .count();
+            assert_eq!(macro_defs, 3, "Expected all macro examples to parse as def mac declarations");
+        }
+        _ => panic!("Expected program node"),
+    }
+}

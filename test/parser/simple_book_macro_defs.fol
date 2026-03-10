@@ -1,0 +1,3 @@
+def '!'(a: bol): mac = '.not';
+def '!'(a: ptr): mac = '.delete_pointer';
+def '*'(a: ptr): mac = '.pointer_value';
