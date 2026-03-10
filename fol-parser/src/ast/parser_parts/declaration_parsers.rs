@@ -39,6 +39,7 @@ impl AstParser {
                             header_closed = true;
                         }
                     }
+                    KEYWORD::Symbol(SYMBOL::CurlyO) => return false,
                     _ => {}
                 }
                 continue;

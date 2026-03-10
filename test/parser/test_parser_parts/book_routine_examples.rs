@@ -75,3 +75,34 @@ fn test_book_mixed_keyword_call_example_parses() {
         "Book mixed keyword call example should preserve positional and named call arguments"
     );
 }
+
+#[test]
+fn test_book_higher_order_function_parameter_example_parses() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_book_higher_order_param_example.fol")
+            .expect("Should read book higher-order parameter example");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept the book higher-order parameter example");
+
+    let has_higher_order_param = match ast {
+        AstNode::Program { declarations } => declarations.iter().any(|node| {
+            matches!(
+                node,
+                AstNode::FunDecl { name, params, .. }
+                if name == "add1"
+                    && params.len() == 1
+                    && matches!(params[0].param_type, FolType::Function { .. })
+            )
+        }),
+        _ => panic!("Expected program node"),
+    };
+
+    assert!(
+        has_higher_order_param,
+        "Book higher-order parameter example should keep the function-type parameter"
+    );
+}

@@ -23,6 +23,43 @@ impl AstParser {
                 return Ok((params, first_untyped));
             }
 
+            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
+                let (function_name, function_type) = self.parse_function_type_signature(tokens)?;
+                let Some(param_name) = function_name else {
+                    return Err(Box::new(ParseError::from_token(
+                        &token,
+                        "Expected named function header in higher-order parameter".to_string(),
+                    )));
+                };
+
+                params.push(Parameter {
+                    name: param_name.clone(),
+                    param_type: function_type,
+                    is_borrowable: param_name.chars().all(|ch| {
+                        !ch.is_ascii_lowercase() && (ch.is_ascii_alphanumeric() || ch == '_')
+                    }),
+                    default: None,
+                });
+
+                self.skip_ignorable(tokens);
+                let sep = tokens.curr(false)?;
+                if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma))
+                    || matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Semi))
+                {
+                    let _ = tokens.bump();
+                    continue;
+                }
+                if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
+                    let _ = tokens.bump();
+                    return Ok((params, first_untyped));
+                }
+
+                return Err(Box::new(ParseError::from_token(
+                    &sep,
+                    "Expected ',', ';', or ')' after generic parameter".to_string(),
+                )));
+            }
+
             let first_name = Self::token_to_named_label(&token).ok_or_else(|| {
                 Box::new(ParseError::from_token(
                     &token,
@@ -406,6 +443,49 @@ impl AstParser {
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
                 let _ = tokens.bump();
                 return Ok(params);
+            }
+
+            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
+                let (function_name, function_type) = self.parse_function_type_signature(tokens)?;
+                let Some(param_name) = function_name else {
+                    return Err(Box::new(ParseError::from_token(
+                        &token,
+                        "Expected named function header in higher-order parameter".to_string(),
+                    )));
+                };
+                if !seen_names.insert(param_name.clone()) {
+                    return Err(Box::new(ParseError::from_token(
+                        &token,
+                        format!("Duplicate parameter name '{}'", param_name),
+                    )));
+                }
+
+                params.push(Parameter {
+                    name: param_name.clone(),
+                    param_type: function_type,
+                    is_borrowable: param_name.chars().all(|ch| {
+                        !ch.is_ascii_lowercase() && (ch.is_ascii_alphanumeric() || ch == '_')
+                    }),
+                    default: None,
+                });
+
+                self.skip_ignorable(tokens);
+                let sep = tokens.curr(false)?;
+                if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma))
+                    || matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Semi))
+                {
+                    let _ = tokens.bump();
+                    continue;
+                }
+                if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
+                    let _ = tokens.bump();
+                    return Ok(params);
+                }
+
+                return Err(Box::new(ParseError::from_token(
+                    &sep,
+                    "Expected ',', ';', or ')' after parameter".to_string(),
+                )));
             }
 
             let first_name = Self::token_to_named_label(&token).ok_or_else(|| {

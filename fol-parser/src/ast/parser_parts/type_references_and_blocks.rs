@@ -1,10 +1,10 @@
 use super::*;
 
 impl AstParser {
-    pub(super) fn parse_function_type_reference(
+    pub(super) fn parse_function_type_signature(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<FolType, Box<dyn Glitch>> {
+    ) -> Result<(Option<String>, FolType), Box<dyn Glitch>> {
         let open = tokens.curr(false)?;
         if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
             return Err(Box::new(ParseError::from_token(
@@ -25,8 +25,10 @@ impl AstParser {
         let _ = tokens.bump();
 
         self.skip_ignorable(tokens);
+        let mut function_name = None;
         if let Ok(token) = tokens.curr(false) {
             if Self::token_to_named_label(&token).is_some() {
+                function_name = Self::token_to_named_label(&token);
                 let _ = tokens.bump();
             }
         }
@@ -72,10 +74,21 @@ impl AstParser {
         }
         let _ = tokens.bump();
 
-        Ok(FolType::Function {
-            params: params.into_iter().map(|param| param.param_type).collect(),
-            return_type: Box::new(return_type),
-        })
+        Ok((
+            function_name,
+            FolType::Function {
+                params: params.into_iter().map(|param| param.param_type).collect(),
+                return_type: Box::new(return_type),
+            },
+        ))
+    }
+
+    pub(super) fn parse_function_type_reference(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<FolType, Box<dyn Glitch>> {
+        self.parse_function_type_signature(tokens)
+            .map(|(_, function_type)| function_type)
     }
 
     pub(super) fn parse_balanced_type_suffix(
