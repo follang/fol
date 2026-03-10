@@ -320,3 +320,42 @@ fn test_type_limit_references_lower_structurally() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_channel_type_references_lower_structurally() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_channel_type_refs.fol")
+        .expect("Should read channel type-reference fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should lower chn[...] references");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::VarDecl {
+                    name,
+                    type_hint: Some(FolType::Channel { element_type }),
+                    ..
+                } if name == "channel"
+                    && matches!(element_type.as_ref(), FolType::Named { name } if name == "str")
+            )));
+
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::TypeDecl {
+                    name,
+                    type_def: TypeDefinition::Alias {
+                        target: FolType::Channel { element_type }
+                    },
+                    ..
+                } if name == "StringChannel"
+                    && matches!(element_type.as_ref(), FolType::Named { name } if name == "str")
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}

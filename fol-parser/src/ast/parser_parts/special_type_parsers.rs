@@ -272,6 +272,19 @@ impl AstParser {
                     value_type: Box::new(args.next().expect("map value exists")),
                 }))
             }
+            "chn" => {
+                let args = self.parse_type_argument_list(tokens)?;
+                if args.len() != 1 {
+                    let token = tokens.curr(false)?;
+                    return Err(Box::new(ParseError::from_token(
+                        &token,
+                        "Expected exactly one type argument for chn[...]".to_string(),
+                    )));
+                }
+                Ok(Some(FolType::Channel {
+                    element_type: Box::new(args.into_iter().next().expect("chn arg exists")),
+                }))
+            }
             "mod" => {
                 let args = self.parse_type_argument_list(tokens)?;
                 if args.len() > 1 {

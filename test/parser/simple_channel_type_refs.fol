@@ -1,0 +1,3 @@
+typ StringChannel: chn[str];
+
+var channel: chn[str];

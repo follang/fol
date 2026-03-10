@@ -797,6 +797,7 @@ impl AstParser {
     pub(super) fn fol_type_label(typ: &FolType) -> String {
         match typ {
             FolType::Limited { base, .. } => Self::fol_type_label(base),
+            FolType::Channel { .. } => "chn".to_string(),
             FolType::Named { name } => name.clone(),
             FolType::Url { name } => {
                 if name.is_empty() {

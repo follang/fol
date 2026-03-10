@@ -319,6 +319,9 @@ pub enum FolType {
         key_type: Box<FolType>,
         value_type: Box<FolType>,
     },
+    Channel {
+        element_type: Box<FolType>,
+    },
 
     // Complex types
     Record {
