@@ -240,3 +240,34 @@ fn test_grouped_type_declarations_accept_empty_object_markers() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_multi_name_type_declarations_accept_shared_empty_object_markers() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_typ_multi_object_empty_body.fol")
+            .expect("Should read multi-name empty object fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should share empty object markers across names");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            let matched = declarations
+                .iter()
+                .filter(|node| matches!(
+                    node,
+                    AstNode::TypeDecl {
+                        name,
+                        type_def: TypeDefinition::Record { fields, members, .. },
+                        ..
+                    } if (name == "User" || name == "Admin") && fields.is_empty() && members.is_empty()
+                ))
+                .count();
+            assert_eq!(matched, 2, "Expected both names to receive the shared empty object definition");
+        }
+        _ => panic!("Expected program node"),
+    }
+}
