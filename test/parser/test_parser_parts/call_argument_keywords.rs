@@ -73,3 +73,27 @@ fn test_function_calls_support_mixed_keyword_arguments() {
         "Function call should preserve positional arguments before keyword arguments"
     );
 }
+
+#[test]
+fn test_function_calls_reject_positional_arguments_after_keyword_arguments() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_keyword_call_positional_after_named.fol")
+            .expect("Should read malformed mixed call-argument fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let error = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject positional arguments after keyword arguments");
+
+    let first_message = error
+        .first()
+        .map(|problem| problem.to_string())
+        .unwrap_or_default();
+
+    assert!(
+        first_message.contains("Positional call arguments are not allowed after named arguments"),
+        "Expected positional-after-keyword diagnostic, got: {}",
+        first_message
+    );
+}
