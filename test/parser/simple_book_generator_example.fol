@@ -1,0 +1,6 @@
+fun someIter: vec[int] = {
+    var curInt = 0;
+    loop(){
+        yeild curInt.inc(1)
+    }
+}

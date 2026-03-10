@@ -522,6 +522,11 @@ impl AstParser {
         self.skip_ignorable(tokens);
 
         let current = tokens.curr(false)?;
+        if matches!(current.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
+            return Ok(LoopCondition::Condition(Box::new(AstNode::Literal(
+                Literal::Boolean(true),
+            ))));
+        }
         let mut type_hint = None;
         let mut current_var_token = current.clone();
 

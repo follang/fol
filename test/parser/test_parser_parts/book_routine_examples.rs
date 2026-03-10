@@ -135,3 +135,32 @@ fn test_book_higher_order_function_return_example_parses() {
         "Book higher-order return example should keep the function return type"
     );
 }
+
+#[test]
+fn test_book_generator_example_parses() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_book_generator_example.fol")
+        .expect("Should read book generator example");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept the book generator example");
+
+    let has_generator = match ast {
+        AstNode::Program { declarations } => declarations.iter().any(|node| {
+            matches!(
+                node,
+                AstNode::FunDecl { name, body, .. }
+                if name == "someIter"
+                    && body.iter().any(|stmt| matches!(stmt, AstNode::Loop { .. }))
+            )
+        }),
+        _ => panic!("Expected program node"),
+    };
+
+    assert!(
+        has_generator,
+        "Book generator example should keep the loop/yield routine body"
+    );
+}
