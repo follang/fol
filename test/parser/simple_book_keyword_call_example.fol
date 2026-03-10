@@ -1,0 +1,5 @@
+fun[] calc(el1, el2, el3: int): int = { result = el1 + el2 - el3 }
+
+pro main: int = {
+    calc(el3 = 5, el2 = 4, el1 = 3);
+}

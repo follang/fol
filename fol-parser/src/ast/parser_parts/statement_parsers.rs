@@ -700,6 +700,10 @@ impl AstParser {
                 break;
             }
 
+            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) {
+                break;
+            }
+
             if tokens.bump().is_none() {
                 break;
             }
