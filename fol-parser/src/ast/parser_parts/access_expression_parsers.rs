@@ -1,6 +1,69 @@
 use super::*;
 
 impl AstParser {
+    fn parse_access_pattern(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
+        self.skip_ignorable(tokens);
+
+        let pattern = if matches!(
+            tokens.curr(false).map(|token| token.key()),
+            Ok(KEYWORD::Symbol(SYMBOL::Star))
+        ) {
+            let _ = tokens.bump();
+            AstNode::PatternWildcard
+        } else {
+            self.parse_logical_expression(tokens)?
+        };
+
+        self.skip_ignorable(tokens);
+        let token = match tokens.curr(false) {
+            Ok(token) => token,
+            Err(_) => return Ok(pattern),
+        };
+
+        if !matches!(token.key(), KEYWORD::Operator(OPERATOR::Flow)) {
+            return Ok(pattern);
+        }
+
+        let _ = tokens.bump();
+        self.skip_ignorable(tokens);
+
+        let binding_token = tokens.curr(false)?;
+        let binding = Self::token_to_named_label(&binding_token).ok_or_else(|| {
+            Box::new(ParseError::from_token(
+                &binding_token,
+                "Expected binding name after '=>' in access pattern".to_string(),
+            )) as Box<dyn Glitch>
+        })?;
+        let _ = tokens.bump();
+
+        Ok(AstNode::PatternCapture {
+            pattern: Box::new(pattern),
+            binding,
+        })
+    }
+
+    fn pattern_access_from_patterns(&self, node: AstNode, mut patterns: Vec<AstNode>) -> AstNode {
+        if patterns.len() == 1
+            && !matches!(
+                patterns.first(),
+                Some(AstNode::PatternWildcard | AstNode::PatternCapture { .. })
+            )
+        {
+            return AstNode::IndexAccess {
+                container: Box::new(node),
+                index: Box::new(patterns.pop().expect("single pattern")),
+            };
+        }
+
+        AstNode::PatternAccess {
+            container: Box::new(node),
+            patterns,
+        }
+    }
+
     pub(super) fn token_can_start_path_expression(
         token: &fol_lexer::lexer::stage3::element::Element,
     ) -> bool {
@@ -147,7 +210,7 @@ impl AstParser {
             });
         }
 
-        let start = self.parse_logical_expression(tokens)?;
+        let start = self.parse_access_pattern(tokens)?;
         self.skip_ignorable(tokens);
 
         if matches!(
@@ -168,7 +231,7 @@ impl AstParser {
                         patterns,
                     });
                 }
-                patterns.push(self.parse_logical_expression(tokens)?);
+                patterns.push(self.parse_access_pattern(tokens)?);
                 self.skip_ignorable(tokens);
 
                 let token = tokens.curr(false)?;
@@ -223,10 +286,7 @@ impl AstParser {
         }
 
         let _ = tokens.bump();
-        Ok(AstNode::IndexAccess {
-            container: Box::new(node),
-            index: Box::new(start),
-        })
+        Ok(self.pattern_access_from_patterns(node, vec![start]))
     }
 
     pub(super) fn parse_index_or_slice_assignment_target(
@@ -269,7 +329,7 @@ impl AstParser {
             });
         }
 
-        let start = self.parse_logical_expression(tokens)?;
+        let start = self.parse_access_pattern(tokens)?;
         self.skip_ignorable(tokens);
 
         if matches!(
@@ -290,7 +350,7 @@ impl AstParser {
                         patterns,
                     });
                 }
-                patterns.push(self.parse_logical_expression(tokens)?);
+                patterns.push(self.parse_access_pattern(tokens)?);
                 self.skip_ignorable(tokens);
 
                 let token = tokens.curr(false)?;
@@ -345,10 +405,7 @@ impl AstParser {
         }
 
         let _ = tokens.bump();
-        Ok(AstNode::IndexAccess {
-            container: Box::new(node),
-            index: Box::new(start),
-        })
+        Ok(self.pattern_access_from_patterns(node, vec![start]))
     }
 
     pub(super) fn parse_prefix_availability_expression(
@@ -378,7 +435,7 @@ impl AstParser {
                 let _ = tokens.bump();
                 break;
             }
-            patterns.push(self.parse_logical_expression(tokens)?);
+            patterns.push(self.parse_access_pattern(tokens)?);
             self.skip_ignorable(tokens);
 
             let token = tokens.curr(false)?;
@@ -401,17 +458,7 @@ impl AstParser {
             )));
         }
 
-        let target = if patterns.len() == 1 {
-            AstNode::IndexAccess {
-                container: Box::new(node),
-                index: Box::new(patterns.pop().expect("single pattern")),
-            }
-        } else {
-            AstNode::PatternAccess {
-                container: Box::new(node),
-                patterns,
-            }
-        };
+        let target = self.pattern_access_from_patterns(node, patterns);
 
         Ok(AstNode::AvailabilityAccess {
             target: Box::new(target),

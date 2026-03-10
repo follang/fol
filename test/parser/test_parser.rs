@@ -53,6 +53,9 @@ mod chaining_sugar;
 #[path = "test_parser_parts/availability_access_expressions.rs"]
 mod availability_access_expressions;
 #[cfg(test)]
+#[path = "test_parser_parts/access_pattern_captures.rs"]
+mod access_pattern_captures;
+#[cfg(test)]
 #[path = "test_parser_parts/binding_alternatives.rs"]
 mod binding_alternatives;
 #[cfg(test)]

@@ -199,6 +199,15 @@ pub enum AstNode {
         patterns: Vec<AstNode>,
     },
 
+    /// Wildcard access pattern: *
+    PatternWildcard,
+
+    /// Capturing access pattern: pattern => Name / * => Name
+    PatternCapture {
+        pattern: Box<AstNode>,
+        binding: String,
+    },
+
     /// Availability access: container:[pattern] / access_expr:
     AvailabilityAccess { target: Box<AstNode> },
 
@@ -798,6 +807,8 @@ impl AstNode {
             }),
             AstNode::AvailabilityAccess { .. } => Some(FolType::Bool),
             AstNode::Inquiry { .. } => None,
+            AstNode::PatternWildcard => None,
+            AstNode::PatternCapture { pattern, .. } => pattern.get_type(),
 
             _ => None,
         }
@@ -957,6 +968,7 @@ impl AstNode {
                 children.extend(patterns.iter());
                 children
             }
+            AstNode::PatternCapture { pattern, .. } => vec![pattern.as_ref()],
             AstNode::AvailabilityAccess { target } => {
                 vec![target.as_ref()]
             }
