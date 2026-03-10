@@ -1,0 +1,6 @@
+typ container[T: gen, N: int](): obj = {
+    var items: seq[T];
+    +fun getsize(): int = {
+        return 0;
+    }
+};

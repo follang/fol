@@ -238,6 +238,15 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<Vec<Generic>, Box<dyn Glitch>> {
+        self.parse_generic_list_with_close(tokens, SYMBOL::RoundC, ")")
+    }
+
+    pub(super) fn parse_generic_list_with_close(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+        close_symbol: SYMBOL,
+        close_label: &str,
+    ) -> Result<Vec<Generic>, Box<dyn Glitch>> {
         let mut generics = Vec::new();
         let mut seen_names = HashSet::new();
 
@@ -245,7 +254,7 @@ impl AstParser {
             self.skip_ignorable(tokens);
             let token = tokens.curr(false)?;
 
-            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
+            if matches!(token.key(), KEYWORD::Symbol(symbol) if symbol == close_symbol) {
                 let _ = tokens.bump();
                 return Ok(generics);
             }
@@ -284,14 +293,17 @@ impl AstParser {
                 let _ = tokens.bump();
                 continue;
             }
-            if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
+            if matches!(sep.key(), KEYWORD::Symbol(symbol) if symbol == close_symbol) {
                 let _ = tokens.bump();
                 return Ok(generics);
             }
 
             return Err(Box::new(ParseError::from_token(
                 &sep,
-                "Expected ',', ';', or ')' after generic parameter".to_string(),
+                format!(
+                    "Expected ',', ';', or '{}' after generic parameter",
+                    close_label
+                ),
             )));
         }
 

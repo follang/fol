@@ -453,12 +453,25 @@ impl AstParser {
             Err(_) => return Ok(Vec::new()),
         };
 
-        if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
+        let close_symbol = match open.key() {
+            KEYWORD::Symbol(SYMBOL::RoundO) => SYMBOL::RoundC,
+            KEYWORD::Symbol(SYMBOL::SquarO) => SYMBOL::SquarC,
+            _ => return Ok(Vec::new()),
+        };
+        let close_label = match close_symbol {
+            SYMBOL::RoundC => ")",
+            SYMBOL::SquarC => "]",
+            _ => unreachable!(),
+        };
+        if !matches!(
+            open.key(),
+            KEYWORD::Symbol(SYMBOL::RoundO) | KEYWORD::Symbol(SYMBOL::SquarO)
+        ) {
             return Ok(Vec::new());
         }
         let _ = tokens.bump();
 
-        self.parse_generic_list(tokens)
+        self.parse_generic_list_with_close(tokens, close_symbol, close_label)
     }
 
     pub(super) fn parse_type_contract_header(
