@@ -106,3 +106,32 @@ fn test_book_higher_order_function_parameter_example_parses() {
         "Book higher-order parameter example should keep the function-type parameter"
     );
 }
+
+#[test]
+fn test_book_higher_order_function_return_example_parses() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_book_higher_order_return_example.fol")
+            .expect("Should read book higher-order return example");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept the book higher-order return example");
+
+    let has_higher_order_return = match ast {
+        AstNode::Program { declarations } => declarations.iter().any(|node| {
+            matches!(
+                node,
+                AstNode::FunDecl { name, return_type: Some(FolType::Function { .. }), .. }
+                if name == "add2"
+            )
+        }),
+        _ => panic!("Expected program node"),
+    };
+
+    assert!(
+        has_higher_order_return,
+        "Book higher-order return example should keep the function return type"
+    );
+}
