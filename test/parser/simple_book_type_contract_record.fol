@@ -1,0 +1,4 @@
+typ rect(geo): rec[] = {
+    var width: int;
+    var height: int;
+};

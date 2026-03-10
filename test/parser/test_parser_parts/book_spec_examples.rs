@@ -149,3 +149,35 @@ fn test_book_extended_standard_example() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_book_type_contract_record_example() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_book_type_contract_record.fol")
+            .expect("Should read type-contract record example");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept the book record contract example");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::TypeDecl {
+                    name,
+                    contracts,
+                    type_def: TypeDefinition::Record { fields, .. },
+                    ..
+                }
+                if name == "rect"
+                    && matches!(contracts.as_slice(), [FolType::Named { name }] if name == "geo")
+                    && fields.contains_key("width")
+                    && fields.contains_key("height")
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
