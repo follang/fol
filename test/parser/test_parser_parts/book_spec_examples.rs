@@ -238,3 +238,33 @@ fn test_book_alternative_definition_examples() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_book_default_definition_example() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_book_default_def.fol")
+        .expect("Should read default definition example");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept the book default definition example");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::DefDecl {
+                    name,
+                    def_type: FolType::Named { name: def_kind },
+                    body,
+                    ..
+                }
+                if name == "str"
+                    && (def_kind == "def[]" || def_kind == "def")
+                    && body.len() == 1
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
