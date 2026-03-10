@@ -763,42 +763,6 @@ impl AstParser {
         Ok(nodes)
     }
 
-    pub(super) fn parse_binding_names(
-        &self,
-        tokens: &mut fol_lexer::lexer::stage3::Elements,
-        keyword: &str,
-    ) -> Result<Vec<String>, Box<dyn Glitch>> {
-        let mut names = Vec::new();
-
-        for _ in 0..256 {
-            let name_token = tokens.curr(false)?;
-            let name = Self::token_to_named_label(&name_token).ok_or_else(|| {
-                Box::new(ParseError::from_token(
-                    &name_token,
-                    format!("Expected identifier after '{}'", keyword),
-                )) as Box<dyn Glitch>
-            })?;
-            names.push(name);
-            let _ = tokens.bump();
-
-            self.skip_ignorable(tokens);
-            let next = match tokens.curr(false) {
-                Ok(token) => token,
-                Err(_) => break,
-            };
-
-            if matches!(next.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
-                let _ = tokens.bump();
-                self.skip_ignorable(tokens);
-                continue;
-            }
-
-            break;
-        }
-
-        Ok(names)
-    }
-
     pub(super) fn parse_binding_pattern_list(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,

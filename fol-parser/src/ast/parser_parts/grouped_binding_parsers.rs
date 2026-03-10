@@ -1,4 +1,5 @@
 use super::*;
+use crate::ast::BindingPattern;
 
 impl AstParser {
     pub(super) fn parse_binding_group(
@@ -26,7 +27,9 @@ impl AstParser {
                 return Ok(nodes);
             }
 
-            let names = self.parse_binding_names(tokens, "grouped binding")?;
+            let patterns = self.parse_binding_pattern_list(tokens, "grouped binding")?;
+            let is_destructuring =
+                patterns.len() > 1 || patterns.iter().any(BindingPattern::is_destructuring);
             self.skip_ignorable(tokens);
 
             let mut type_hint = None;
@@ -44,11 +47,33 @@ impl AstParser {
                 if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
                     let _ = tokens.bump();
                     self.skip_ignorable(tokens);
-                    values = self.parse_binding_values(tokens, true)?;
+                    values = self.parse_binding_values(tokens, !is_destructuring && patterns.len() == 1)?;
                 }
             }
 
-            nodes.extend(self.build_binding_nodes(options.clone(), names, type_hint, values)?);
+            if is_destructuring {
+                nodes.push(self.build_destructure_binding_node(
+                    options.clone(),
+                    patterns,
+                    type_hint,
+                    values,
+                )?);
+            } else {
+                let names = patterns
+                    .into_iter()
+                    .map(|pattern| match pattern {
+                        BindingPattern::Name(name) => Ok(name),
+                        other => Err(Box::new(ParseError {
+                            message: format!("Unsupported grouped binding pattern: {other:?}"),
+                            file: None,
+                            line: 0,
+                            column: 0,
+                            length: 0,
+                        }) as Box<dyn Glitch>),
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+                nodes.extend(self.build_binding_nodes(options.clone(), names, type_hint, values)?);
+            }
 
             self.skip_ignorable(tokens);
             let sep = tokens.curr(false)?;
