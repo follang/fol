@@ -28,8 +28,7 @@ impl AstParser {
             }
 
             let patterns = self.parse_binding_pattern_list(tokens, "grouped binding")?;
-            let is_destructuring =
-                patterns.len() > 1 || patterns.iter().any(BindingPattern::is_destructuring);
+            let is_destructuring = patterns.iter().any(BindingPattern::is_destructuring);
             self.skip_ignorable(tokens);
 
             let mut type_hint = None;
@@ -47,7 +46,7 @@ impl AstParser {
                 if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
                     let _ = tokens.bump();
                     self.skip_ignorable(tokens);
-                    values = self.parse_binding_values(tokens, !is_destructuring && patterns.len() == 1)?;
+                    values = self.parse_binding_values(tokens, !is_destructuring)?;
                 }
             }
 

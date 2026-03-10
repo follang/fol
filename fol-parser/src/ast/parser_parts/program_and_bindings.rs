@@ -691,8 +691,7 @@ impl AstParser {
         let mut nodes = Vec::new();
         for _ in 0..256 {
             let patterns = self.parse_binding_pattern_list(tokens, keyword)?;
-            let is_destructuring =
-                patterns.len() > 1 || patterns.iter().any(BindingPattern::is_destructuring);
+            let is_destructuring = patterns.iter().any(BindingPattern::is_destructuring);
             self.skip_ignorable(tokens);
 
             let mut type_hint = None;
