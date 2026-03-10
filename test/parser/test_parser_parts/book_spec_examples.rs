@@ -208,3 +208,33 @@ fn test_book_macro_definition_examples() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_book_alternative_definition_examples() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_book_alternative_defs.fol")
+            .expect("Should read alternative definition examples");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept the book alternative definition examples");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            let alt_defs = declarations
+                .iter()
+                .filter(|node| matches!(
+                    node,
+                    AstNode::DefDecl { name, def_type: FolType::Named { name: def_kind }, body, .. }
+                    if (name == "+var" || name == "~var" || name == ".pointer_content")
+                        && def_kind == "alt"
+                        && matches!(body.as_slice(), [AstNode::Literal(Literal::String(_))])
+                ))
+                .count();
+            assert_eq!(alt_defs, 3, "Expected all alternative examples to parse as def alt declarations");
+        }
+        _ => panic!("Expected program node"),
+    }
+}

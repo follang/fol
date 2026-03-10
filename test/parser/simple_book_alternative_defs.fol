@@ -1,0 +1,3 @@
+def '+var': alt = 'var[+]';
+def '~var': alt = 'var[~]';
+def '.pointer_content': alt = '.pointer_value';
