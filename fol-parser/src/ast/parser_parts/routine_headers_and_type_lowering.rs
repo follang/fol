@@ -1,6 +1,102 @@
 use super::*;
 
 impl AstParser {
+    fn parse_parameter_name_group(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+        missing_name_error: &str,
+        missing_group_name_error: &str,
+        missing_mutex_close_error: &str,
+    ) -> Result<(Vec<String>, bool), Box<dyn Glitch>> {
+        let token = tokens.curr(false)?;
+
+        if matches!(token.key(), KEYWORD::Symbol(SYMBOL::RoundO))
+            && matches!(
+                self.next_significant_key_from_window(tokens),
+                Some(KEYWORD::Symbol(SYMBOL::RoundO))
+            )
+        {
+            let _ = tokens.bump();
+            self.skip_ignorable(tokens);
+
+            let second_open = tokens.curr(false)?;
+            if !matches!(second_open.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
+                return Err(Box::new(ParseError::from_token(
+                    &second_open,
+                    "Expected second '(' to start mutex parameter".to_string(),
+                )));
+            }
+            let _ = tokens.bump();
+            self.skip_ignorable(tokens);
+
+            let name_token = tokens.curr(false)?;
+            let name = Self::token_to_named_label(&name_token).ok_or_else(|| {
+                Box::new(ParseError::from_token(
+                    &name_token,
+                    missing_name_error.to_string(),
+                )) as Box<dyn Glitch>
+            })?;
+            let _ = tokens.bump();
+            self.skip_ignorable(tokens);
+
+            let close_inner = tokens.curr(false)?;
+            if !matches!(close_inner.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
+                return Err(Box::new(ParseError::from_token(
+                    &close_inner,
+                    missing_mutex_close_error.to_string(),
+                )));
+            }
+            let _ = tokens.bump();
+            self.skip_ignorable(tokens);
+
+            let close_outer = tokens.curr(false)?;
+            if !matches!(close_outer.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
+                return Err(Box::new(ParseError::from_token(
+                    &close_outer,
+                    missing_mutex_close_error.to_string(),
+                )));
+            }
+            let _ = tokens.bump();
+            return Ok((vec![name], true));
+        }
+
+        let first_name = Self::token_to_named_label(&token).ok_or_else(|| {
+            Box::new(ParseError::from_token(
+                &token,
+                missing_name_error.to_string(),
+            )) as Box<dyn Glitch>
+        })?;
+
+        let mut names = vec![first_name];
+        let _ = tokens.bump();
+
+        self.skip_ignorable(tokens);
+        loop {
+            let next = tokens.curr(false)?;
+            if matches!(next.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
+                break;
+            }
+            if matches!(next.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
+                let _ = tokens.bump();
+                self.skip_ignorable(tokens);
+                let name_token = tokens.curr(false)?;
+                let grouped_name = Self::token_to_named_label(&name_token).ok_or_else(|| {
+                    Box::new(ParseError::from_token(
+                        &name_token,
+                        missing_group_name_error.to_string(),
+                    )) as Box<dyn Glitch>
+                })?;
+                names.push(grouped_name);
+                let _ = tokens.bump();
+                self.skip_ignorable(tokens);
+                continue;
+            }
+            break;
+        }
+
+        Ok((names, false))
+    }
+
     pub(super) fn parse_routine_header_list(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
@@ -38,6 +134,7 @@ impl AstParser {
                     is_borrowable: param_name.chars().all(|ch| {
                         !ch.is_ascii_lowercase() && (ch.is_ascii_alphanumeric() || ch == '_')
                     }),
+                    is_mutex: false,
                     default: None,
                 });
 
@@ -60,40 +157,12 @@ impl AstParser {
                 )));
             }
 
-            let first_name = Self::token_to_named_label(&token).ok_or_else(|| {
-                Box::new(ParseError::from_token(
-                    &token,
-                    "Expected generic parameter name".to_string(),
-                )) as Box<dyn Glitch>
-            })?;
-
-            let mut names = vec![first_name];
-            let _ = tokens.bump();
-
-            self.skip_ignorable(tokens);
-
-            loop {
-                let next = tokens.curr(false)?;
-                if matches!(next.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
-                    break;
-                }
-                if matches!(next.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
-                    let _ = tokens.bump();
-                    self.skip_ignorable(tokens);
-                    let name_token = tokens.curr(false)?;
-                    let grouped_name = Self::token_to_named_label(&name_token).ok_or_else(|| {
-                        Box::new(ParseError::from_token(
-                            &name_token,
-                            "Expected parameter name after ','".to_string(),
-                        )) as Box<dyn Glitch>
-                    })?;
-                    names.push(grouped_name);
-                    let _ = tokens.bump();
-                    self.skip_ignorable(tokens);
-                    continue;
-                }
-                break;
-            }
+            let (names, is_mutex) = self.parse_parameter_name_group(
+                tokens,
+                "Expected generic parameter name",
+                "Expected parameter name after ','",
+                "Expected closing '))' after mutex parameter name",
+            )?;
 
             let mut is_variadic = false;
             let param_type = if let Ok(token) = tokens.curr(false) {
@@ -171,6 +240,7 @@ impl AstParser {
                     is_borrowable: name.chars().all(|ch| {
                         !ch.is_ascii_lowercase() && (ch.is_ascii_alphanumeric() || ch == '_')
                     }),
+                    is_mutex,
                     default: default.clone(),
                 });
             }
@@ -466,6 +536,7 @@ impl AstParser {
                     is_borrowable: param_name.chars().all(|ch| {
                         !ch.is_ascii_lowercase() && (ch.is_ascii_alphanumeric() || ch == '_')
                     }),
+                    is_mutex: false,
                     default: None,
                 });
 
@@ -488,51 +559,27 @@ impl AstParser {
                 )));
             }
 
-            let first_name = Self::token_to_named_label(&token).ok_or_else(|| {
-                Box::new(ParseError::from_token(
-                    &token,
-                    "Expected parameter name".to_string(),
-                )) as Box<dyn Glitch>
-            })?;
+            let (names, is_mutex) = self.parse_parameter_name_group(
+                tokens,
+                "Expected parameter name",
+                "Expected parameter name after ','",
+                "Expected closing '))' after mutex parameter name",
+            )?;
+            let first_name = names[0].clone();
             if !seen_names.insert(first_name.clone()) {
                 return Err(Box::new(ParseError::from_token(
                     &token,
                     format!("Duplicate parameter name '{}'", first_name),
                 )));
             }
-            let mut names = vec![first_name];
-            let _ = tokens.bump();
-
-            loop {
-                self.skip_ignorable(tokens);
-                let next = tokens.curr(false)?;
-                if matches!(next.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
-                    break;
-                }
-                if !matches!(next.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
-                    return Err(Box::new(ParseError::from_token(
-                        &next,
-                        "Expected ':' after parameter name".to_string(),
-                    )));
-                }
-                let _ = tokens.bump();
-                self.skip_ignorable(tokens);
-
-                let name_token = tokens.curr(false)?;
-                let grouped_name = Self::token_to_named_label(&name_token).ok_or_else(|| {
-                    Box::new(ParseError::from_token(
-                        &name_token,
-                        "Expected parameter name after ','".to_string(),
-                    )) as Box<dyn Glitch>
-                })?;
+            for grouped_name in names.iter().skip(1) {
                 if !seen_names.insert(grouped_name.clone()) {
+                    let name_token = tokens.curr(false)?;
                     return Err(Box::new(ParseError::from_token(
                         &name_token,
                         format!("Duplicate parameter name '{}'", grouped_name),
                     )));
                 }
-                names.push(grouped_name);
-                let _ = tokens.bump();
             }
 
             let _colon = tokens.curr(false)?;
@@ -600,6 +647,7 @@ impl AstParser {
                     is_borrowable: param_name.chars().all(|ch| {
                         !ch.is_ascii_lowercase() && (ch.is_ascii_alphanumeric() || ch == '_')
                     }),
+                    is_mutex,
                     default: default.clone(),
                 });
             }

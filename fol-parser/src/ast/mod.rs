@@ -525,6 +525,7 @@ pub struct Parameter {
     pub name: String,
     pub param_type: FolType,
     pub is_borrowable: bool, // ALL_CAPS names are borrowable
+    pub is_mutex: bool,
     pub default: Option<AstNode>,
 }
 

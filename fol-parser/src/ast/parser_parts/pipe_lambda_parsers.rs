@@ -96,6 +96,7 @@ impl AstParser {
                     is_borrowable: name.chars().all(|ch| {
                         !ch.is_ascii_lowercase() && (ch.is_ascii_alphanumeric() || ch == '_')
                     }),
+                    is_mutex: false,
                     name,
                     param_type: param_type.clone(),
                     default: default.clone(),

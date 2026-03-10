@@ -149,6 +149,9 @@ mod loops_use_bindings_and_ranges;
 #[path = "test_parser_parts/method_receivers_and_branching.rs"]
 mod method_receivers_and_branching;
 #[cfg(test)]
+#[path = "test_parser_parts/mutex_parameters.rs"]
+mod mutex_parameters;
+#[cfg(test)]
 #[path = "test_parser_parts/matching_expressions.rs"]
 mod matching_expressions;
 #[cfg(test)]
