@@ -50,6 +50,9 @@ mod call_argument_unpacking;
 #[path = "test_parser_parts/chaining_sugar.rs"]
 mod chaining_sugar;
 #[cfg(test)]
+#[path = "test_parser_parts/channel_access_expressions.rs"]
+mod channel_access_expressions;
+#[cfg(test)]
 #[path = "test_parser_parts/availability_access_expressions.rs"]
 mod availability_access_expressions;
 #[cfg(test)]

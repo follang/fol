@@ -1,6 +1,14 @@
 use super::*;
 
 impl AstParser {
+    fn channel_endpoint_from_pattern(&self, pattern: &AstNode) -> Option<crate::ast::ChannelEndpoint> {
+        match pattern {
+            AstNode::Identifier { name } if name == "tx" => Some(crate::ast::ChannelEndpoint::Tx),
+            AstNode::Identifier { name } if name == "rx" => Some(crate::ast::ChannelEndpoint::Rx),
+            _ => None,
+        }
+    }
+
     fn parse_access_pattern(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
@@ -52,6 +60,15 @@ impl AstParser {
                 Some(AstNode::PatternWildcard | AstNode::PatternCapture { .. })
             )
         {
+            if let Some(endpoint) = self.channel_endpoint_from_pattern(
+                patterns.first().expect("single pattern exists"),
+            ) {
+                return AstNode::ChannelAccess {
+                    channel: Box::new(node),
+                    endpoint,
+                };
+            }
+
             return AstNode::IndexAccess {
                 container: Box::new(node),
                 index: Box::new(patterns.pop().expect("single pattern")),

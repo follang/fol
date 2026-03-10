@@ -202,6 +202,12 @@ pub enum AstNode {
         index: Box<AstNode>,
     },
 
+    /// Channel endpoint access: channel[tx] / channel[rx]
+    ChannelAccess {
+        channel: Box<AstNode>,
+        endpoint: ChannelEndpoint,
+    },
+
     /// Slice access: container[start:end] / container[start::end]
     SliceAccess {
         container: Box<AstNode>,
@@ -713,6 +719,12 @@ pub enum LoopCondition {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub enum ChannelEndpoint {
+    Tx,
+    Rx,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct RollingBinding {
     pub name: String,
     pub type_hint: Option<FolType>,
@@ -994,6 +1006,7 @@ impl AstNode {
             AstNode::IndexAccess { container, index } => {
                 vec![container.as_ref(), index.as_ref()]
             }
+            AstNode::ChannelAccess { channel, .. } => vec![channel.as_ref()],
             AstNode::SliceAccess {
                 container,
                 start,
