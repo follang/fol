@@ -272,3 +272,27 @@ fn test_unpack_invoke_statements_parse() {
         "Statement invoke path should preserve unpack arguments structurally"
     );
 }
+
+#[test]
+fn test_unpack_arguments_reject_missing_operand() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_call_unpack_missing_operand.fol")
+            .expect("Should read malformed unpack call-argument fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let error = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject unpack arguments without an operand");
+
+    let first_message = error
+        .first()
+        .map(|problem| problem.to_string())
+        .unwrap_or_default();
+
+    assert!(
+        first_message.contains("Expected expression after '...' in call arguments"),
+        "Expected unpack-missing-operand diagnostic, got: {}",
+        first_message
+    );
+}
