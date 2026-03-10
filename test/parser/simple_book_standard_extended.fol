@@ -1,0 +1,6 @@
+std geometry: ext = {
+    var width: int;
+    fun area(): int = {
+        return 0;
+    }
+};

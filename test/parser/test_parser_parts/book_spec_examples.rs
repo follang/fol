@@ -123,3 +123,29 @@ fn test_book_blueprint_standard_example() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_book_extended_standard_example() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_book_standard_extended.fol")
+        .expect("Should read extended standard example");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept the book extended standard example");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::StdDecl { name, kind, body, .. }
+                if name == "geometry"
+                    && matches!(kind, fol_parser::ast::StandardKind::Extended)
+                    && body.iter().any(|member| matches!(member, AstNode::VarDecl { name, .. } if name == "width"))
+                    && body.iter().any(|member| matches!(member, AstNode::FunDecl { name, .. } if name == "area"))
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
