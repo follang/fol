@@ -141,3 +141,39 @@ fn test_unpack_arguments_accept_semicolon_separators() {
         "Unpack call arguments should accept semicolon separators"
     );
 }
+
+#[test]
+fn test_unpack_arguments_accept_trailing_separators() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_call_unpack_args_trailing.fol")
+            .expect("Should read trailing unpack fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept trailing separators after unpack arguments");
+
+    let has_trailing_unpack_call = match ast {
+        AstNode::Program { declarations } => declarations.iter().any(|node| {
+            matches!(
+                node,
+                AstNode::Assignment { value, .. }
+                if matches!(
+                    value.as_ref(),
+                    AstNode::FunctionCall { name, args }
+                    if name == "calc"
+                        && args.len() == 2
+                        && matches!(&args[0], AstNode::Literal(Literal::Boolean(true)))
+                        && matches!(&args[1], AstNode::Unpack { .. })
+                )
+            )
+        }),
+        _ => panic!("Expected program node"),
+    };
+
+    assert!(
+        has_trailing_unpack_call,
+        "Unpack call arguments should accept trailing separators"
+    );
+}
