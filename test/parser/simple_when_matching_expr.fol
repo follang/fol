@@ -1,0 +1,7 @@
+fun[] someValue(variable: int): str = {
+    return when(variable) {
+        in {..10} -> "1-10";
+        in {11..20} -> "11-20";
+        * -> "0";
+    };
+}

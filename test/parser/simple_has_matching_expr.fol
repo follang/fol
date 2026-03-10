@@ -1,0 +1,4 @@
+var has_it: bol = if(variable) {
+    has "o", "k" -> true;
+    * -> false;
+};

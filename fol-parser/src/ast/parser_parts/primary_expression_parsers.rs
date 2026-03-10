@@ -1,6 +1,242 @@
 use super::*;
 
 impl AstParser {
+    fn lookahead_is_match_expression(
+        &self,
+        tokens: &fol_lexer::lexer::stage3::Elements,
+    ) -> bool {
+        let current = match tokens.curr(false) {
+            Ok(token) => token,
+            Err(_) => return false,
+        };
+        if !matches!(
+            current.key(),
+            KEYWORD::Keyword(BUILDIN::If) | KEYWORD::Keyword(BUILDIN::When)
+        ) {
+            return false;
+        }
+
+        let mut round_depth = 0usize;
+        let mut saw_open_round = false;
+        let mut saw_close_round = false;
+
+        for candidate in tokens.next_vec() {
+            let token = match candidate {
+                Ok(token) => token,
+                Err(_) => continue,
+            };
+
+            let key = token.key();
+            if key.is_void() || key.is_comment() {
+                continue;
+            }
+
+            if !saw_open_round {
+                if matches!(key, KEYWORD::Symbol(SYMBOL::RoundO)) {
+                    saw_open_round = true;
+                    round_depth = 1;
+                    continue;
+                }
+                return false;
+            }
+
+            if !saw_close_round {
+                if matches!(key, KEYWORD::Symbol(SYMBOL::RoundO)) {
+                    round_depth += 1;
+                    continue;
+                }
+                if matches!(key, KEYWORD::Symbol(SYMBOL::RoundC)) {
+                    round_depth -= 1;
+                    if round_depth == 0 {
+                        saw_close_round = true;
+                    }
+                    continue;
+                }
+                continue;
+            }
+
+            return matches!(key, KEYWORD::Symbol(SYMBOL::CurlyO));
+        }
+
+        false
+    }
+
+    fn parse_match_arrow_body(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
+        self.skip_ignorable(tokens);
+        let flow = tokens.curr(false)?;
+        if !matches!(
+            flow.key(),
+            KEYWORD::Operator(OPERATOR::Flow2) | KEYWORD::Operator(OPERATOR::Flow)
+        ) {
+            return Err(Box::new(ParseError::from_token(
+                &flow,
+                "Expected '->' or '=>' in matching expression".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+        self.skip_ignorable(tokens);
+
+        let expr = self.parse_logical_expression(tokens)?;
+        self.skip_ignorable(tokens);
+        if matches!(
+            tokens.curr(false).map(|token| token.key()),
+            Ok(KEYWORD::Symbol(SYMBOL::Semi))
+        ) {
+            let _ = tokens.bump();
+        }
+
+        Ok(vec![expr])
+    }
+
+    fn parse_match_expression_has_members(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
+        let mut members = Vec::new();
+        for _ in 0..64 {
+            members.push(self.parse_logical_expression(tokens)?);
+            self.skip_ignorable(tokens);
+
+            let next = tokens.curr(false)?;
+            if matches!(
+                next.key(),
+                KEYWORD::Operator(OPERATOR::Flow2) | KEYWORD::Operator(OPERATOR::Flow)
+            ) {
+                break;
+            }
+            if matches!(
+                next.key(),
+                KEYWORD::Symbol(SYMBOL::Comma) | KEYWORD::Symbol(SYMBOL::Semi)
+            ) {
+                let _ = tokens.bump();
+                self.skip_ignorable(tokens);
+                continue;
+            }
+
+            return Err(Box::new(ParseError::from_token(
+                &next,
+                "Expected ',', ';', or '->' in matching has-case".to_string(),
+            )));
+        }
+
+        if members.len() == 1 {
+            Ok(members.into_iter().next().expect("single has member"))
+        } else {
+            Ok(AstNode::ContainerLiteral {
+                container_type: ContainerType::Set,
+                elements: members,
+            })
+        }
+    }
+
+    fn parse_match_expression(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
+        let keyword = tokens.curr(false)?;
+        if !matches!(
+            keyword.key(),
+            KEYWORD::Keyword(BUILDIN::If) | KEYWORD::Keyword(BUILDIN::When)
+        ) {
+            return Err(Box::new(ParseError::from_token(
+                &keyword,
+                "Expected matching expression".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+        self.skip_ignorable(tokens);
+
+        let open = tokens.curr(false)?;
+        if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
+            return Err(Box::new(ParseError::from_token(
+                &open,
+                "Expected '(' after matching keyword".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+
+        let expr = self.parse_logical_expression(tokens)?;
+        self.skip_ignorable(tokens);
+        let close = tokens.curr(false)?;
+        if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
+            return Err(Box::new(ParseError::from_token(
+                &close,
+                "Expected ')' after matching expression condition".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+        self.skip_ignorable(tokens);
+
+        let open_cases = tokens.curr(false)?;
+        if !matches!(open_cases.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
+            return Err(Box::new(ParseError::from_token(
+                &open_cases,
+                "Expected '{' to start matching expression cases".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+
+        let mut cases = Vec::new();
+        let mut default = None;
+
+        for _ in 0..256 {
+            self.skip_ignorable(tokens);
+            let token = tokens.curr(false)?;
+
+            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) {
+                let _ = tokens.bump();
+                break;
+            }
+
+            if matches!(token.key(), KEYWORD::Keyword(BUILDIN::In)) {
+                let _ = tokens.bump();
+                self.skip_ignorable(tokens);
+                let range = self.parse_logical_expression(tokens)?;
+                let body = self.parse_match_arrow_body(tokens)?;
+                cases.push(WhenCase::In { range, body });
+                continue;
+            }
+
+            if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Is)) {
+                let _ = tokens.bump();
+                self.skip_ignorable(tokens);
+                let value = self.parse_logical_expression(tokens)?;
+                let body = self.parse_match_arrow_body(tokens)?;
+                cases.push(WhenCase::Is { value, body });
+                continue;
+            }
+
+            if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Has)) {
+                let _ = tokens.bump();
+                self.skip_ignorable(tokens);
+                let member = self.parse_match_expression_has_members(tokens)?;
+                let body = self.parse_match_arrow_body(tokens)?;
+                cases.push(WhenCase::Has { member, body });
+                continue;
+            }
+
+            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Star)) {
+                let _ = tokens.bump();
+                default = Some(self.parse_match_arrow_body(tokens)?);
+                continue;
+            }
+
+            return Err(Box::new(ParseError::from_token(
+                &token,
+                "Expected in/is/has/* case in matching expression".to_string(),
+            )));
+        }
+
+        Ok(AstNode::When {
+            expr: Box::new(expr),
+            cases,
+            default,
+        })
+    }
+
     fn lookahead_is_shorthand_anonymous_fun(
         &self,
         tokens: &fol_lexer::lexer::stage3::Elements,
@@ -149,7 +385,13 @@ impl AstParser {
             return Ok(operand);
         }
 
-        let node = if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Dot))
+        let node = if matches!(
+            token.key(),
+            KEYWORD::Keyword(BUILDIN::If) | KEYWORD::Keyword(BUILDIN::When)
+        ) && self.lookahead_is_match_expression(tokens)
+        {
+            self.parse_match_expression(tokens)?
+        } else if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Dot))
             && self.lookahead_is_dot_builtin_call(tokens)
         {
             self.parse_dot_builtin_call_expr(tokens)?

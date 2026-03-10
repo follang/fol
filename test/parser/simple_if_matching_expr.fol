@@ -1,0 +1,5 @@
+var checker: str = if(variable) {
+    in {..10} -> "in range of 1-10";
+    in {11..20} -> "in range of 11-20";
+    * -> "out of range";
+};
