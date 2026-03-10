@@ -56,6 +56,9 @@ pub enum BUILDIN {
     Get,
     Of,
     Let,
+    Async,
+    Await,
+    Select,
 }
 
 impl fmt::Display for BUILDIN {
@@ -112,6 +115,9 @@ impl fmt::Display for BUILDIN {
             BUILDIN::Go => Some("go"),
             BUILDIN::Get => Some("get"),
             BUILDIN::Let => Some("let"),
+            BUILDIN::Async => Some("async"),
+            BUILDIN::Await => Some("await"),
+            BUILDIN::Select => Some("select"),
             _ => None,
         };
         write!(

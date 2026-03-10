@@ -116,6 +116,18 @@ mod lexer_tests {
             keyword_strings.contains(&"while".to_string()),
             "Should contain 'while' keyword"
         );
+        assert!(
+            keyword_strings.contains(&"async".to_string()),
+            "Should contain 'async' keyword"
+        );
+        assert!(
+            keyword_strings.contains(&"await".to_string()),
+            "Should contain 'await' keyword"
+        );
+        assert!(
+            keyword_strings.contains(&"select".to_string()),
+            "Should contain 'select' keyword"
+        );
     }
 
     #[test]

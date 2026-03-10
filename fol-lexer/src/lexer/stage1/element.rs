@@ -303,6 +303,9 @@ impl Element {
             "do" => self.set_key(Keyword(BUILDIN::Do)),
             "go" => self.set_key(Keyword(BUILDIN::Go)),
             "let" => self.set_key(Keyword(BUILDIN::Let)),
+            "async" => self.set_key(Keyword(BUILDIN::Async)),
+            "await" => self.set_key(Keyword(BUILDIN::Await)),
+            "select" => self.set_key(Keyword(BUILDIN::Select)),
             _ => self.set_key(Identifier),
         }
         Ok(())
