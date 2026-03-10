@@ -119,6 +119,11 @@ pub enum AstNode {
         value: Box<AstNode>,
     },
 
+    /// Call-site unpack argument: ...value
+    Unpack {
+        value: Box<AstNode>,
+    },
+
     /// General invocation: callee(args)
     Invoke {
         callee: Box<AstNode>,
@@ -721,6 +726,7 @@ impl AstNode {
                 }
             }
             AstNode::NamedArgument { value, .. } => value.get_type(),
+            AstNode::Unpack { value } => value.get_type(),
             AstNode::AnonymousFun {
                 params,
                 return_type,
@@ -780,6 +786,9 @@ impl AstNode {
                 vec![operand.as_ref()]
             }
             AstNode::NamedArgument { value, .. } => {
+                vec![value.as_ref()]
+            }
+            AstNode::Unpack { value } => {
                 vec![value.as_ref()]
             }
             AstNode::FunctionCall { args, .. } | AstNode::MethodCall { args, .. } => {

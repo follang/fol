@@ -32,6 +32,30 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Box<dyn Glitch>> {
+        let current = tokens.curr(false)?;
+        if current.con().trim() == "..." {
+            let _ = tokens.bump();
+            self.skip_ignorable(tokens);
+
+            let value_token = tokens.curr(false)?;
+            if matches!(
+                value_token.key(),
+                KEYWORD::Symbol(SYMBOL::RoundC)
+                    | KEYWORD::Symbol(SYMBOL::Comma)
+                    | KEYWORD::Symbol(SYMBOL::Semi)
+            ) {
+                return Err(Box::new(ParseError::from_token(
+                    &value_token,
+                    "Expected expression after '...' in call arguments".to_string(),
+                )));
+            }
+
+            let value = self.parse_logical_expression(tokens)?;
+            return Ok(AstNode::Unpack {
+                value: Box::new(value),
+            });
+        }
+
         if self.lookahead_is_named_call_arg(tokens) {
             let name_token = tokens.curr(false)?;
             let name = Self::token_to_named_label(&name_token).ok_or_else(|| {

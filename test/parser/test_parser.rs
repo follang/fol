@@ -41,6 +41,9 @@ mod book_spec_examples;
 #[path = "test_parser_parts/call_argument_keywords.rs"]
 mod call_argument_keywords;
 #[cfg(test)]
+#[path = "test_parser_parts/call_argument_unpacking.rs"]
+mod call_argument_unpacking;
+#[cfg(test)]
 #[path = "test_parser_parts/availability_access_expressions.rs"]
 mod availability_access_expressions;
 #[cfg(test)]
