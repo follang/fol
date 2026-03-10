@@ -70,3 +70,38 @@ fn test_method_calls_support_unpack_arguments() {
         "Method call should preserve call-site unpack arguments structurally"
     );
 }
+
+#[test]
+fn test_invoke_expressions_support_unpack_arguments() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_invoke_unpack_args.fol")
+            .expect("Should read unpack invoke fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept unpack invoke arguments");
+
+    let has_unpack_invoke = match ast {
+        AstNode::Program { declarations } => declarations.iter().any(|node| {
+            matches!(
+                node,
+                AstNode::Assignment { value, .. }
+                if matches!(
+                    value.as_ref(),
+                    AstNode::Invoke { args, .. }
+                    if args.len() == 2
+                        && matches!(&args[0], AstNode::Literal(Literal::Boolean(true)))
+                        && matches!(&args[1], AstNode::Unpack { .. })
+                )
+            )
+        }),
+        _ => panic!("Expected program node"),
+    };
+
+    assert!(
+        has_unpack_invoke,
+        "Invoke expressions should preserve call-site unpack arguments structurally"
+    );
+}
