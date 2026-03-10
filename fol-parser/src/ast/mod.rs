@@ -346,6 +346,10 @@ pub enum FolType {
     Error {
         inner: Option<Box<FolType>>,
     },
+    Limited {
+        base: Box<FolType>,
+        limits: Vec<AstNode>,
+    },
     None,
 
     // Function types

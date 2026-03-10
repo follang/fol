@@ -796,6 +796,7 @@ impl AstParser {
 
     pub(super) fn fol_type_label(typ: &FolType) -> String {
         match typ {
+            FolType::Limited { base, .. } => Self::fol_type_label(base),
             FolType::Named { name } => name.clone(),
             FolType::Url { name } => {
                 if name.is_empty() {
@@ -1013,8 +1014,15 @@ impl AstParser {
                 break;
             }
 
+            if matches!(
+                self.next_significant_key_from_window(tokens),
+                Some(KEYWORD::Symbol(SYMBOL::Dot))
+            ) {
+                break;
+            }
+
             if let Some(parsed) = self.try_parse_special_type_suffix(tokens, &base_name)? {
-                return Ok(parsed);
+                return self.parse_trailing_type_limits(tokens, parsed);
             }
 
             name.push_str(&self.parse_balanced_type_suffix(
@@ -1025,38 +1033,28 @@ impl AstParser {
             )?);
         }
 
-        if name == "mod" {
-            return Ok(FolType::Module {
+        let base_type = if name == "mod" {
+            FolType::Module {
                 name: String::new(),
-            });
-        }
-
-        if name == "blk" {
-            return Ok(FolType::Block {
+            }
+        } else if name == "blk" {
+            FolType::Block {
                 name: String::new(),
-            });
-        }
+            }
+        } else if name == "any" {
+            FolType::Any
+        } else if name == "nev" {
+            FolType::Never
+        } else if matches!(name.as_str(), "non" | "none") {
+            FolType::None
+        } else if let Some(lowered) = Self::lower_bare_scalar_type_name(&name) {
+            lowered
+        } else if let Some(lowered) = Self::lower_bare_source_kind_type_name(&name) {
+            lowered
+        } else {
+            FolType::Named { name }
+        };
 
-        if name == "any" {
-            return Ok(FolType::Any);
-        }
-
-        if name == "nev" {
-            return Ok(FolType::Never);
-        }
-
-        if matches!(name.as_str(), "non" | "none") {
-            return Ok(FolType::None);
-        }
-
-        if let Some(lowered) = Self::lower_bare_scalar_type_name(&name) {
-            return Ok(lowered);
-        }
-
-        if let Some(lowered) = Self::lower_bare_source_kind_type_name(&name) {
-            return Ok(lowered);
-        }
-
-        Ok(FolType::Named { name })
+        self.parse_trailing_type_limits(tokens, base_type)
     }
 }

@@ -1,6 +1,96 @@
 use super::*;
 
 impl AstParser {
+    pub(super) fn parse_trailing_type_limits(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+        mut base: FolType,
+    ) -> Result<FolType, Box<dyn Glitch>> {
+        for _ in 0..32 {
+            self.skip_ignorable(tokens);
+            let open = match tokens.curr(false) {
+                Ok(token) => token,
+                Err(_) => break,
+            };
+
+            if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::SquarO)) {
+                break;
+            }
+
+            let next_key = self.next_significant_key_from_window(tokens);
+            if !matches!(next_key, Some(KEYWORD::Symbol(SYMBOL::Dot))) {
+                break;
+            }
+
+            let limits = self.parse_type_limit_list(tokens)?;
+            base = FolType::Limited {
+                base: Box::new(base),
+                limits,
+            };
+        }
+
+        Ok(base)
+    }
+
+    pub(super) fn parse_type_limit_list(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
+        let open = tokens.curr(false)?;
+        if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::SquarO)) {
+            return Err(Box::new(ParseError::from_token(
+                &open,
+                "Expected '[' to start type limits".to_string(),
+            )));
+        }
+        let _ = tokens.bump();
+
+        let mut limits = Vec::new();
+        for _ in 0..128 {
+            self.skip_ignorable(tokens);
+            let token = tokens.curr(false)?;
+            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
+                let _ = tokens.bump();
+                return Ok(limits);
+            }
+
+            limits.push(self.parse_logical_expression(tokens)?);
+            self.skip_ignorable(tokens);
+
+            let separator = tokens.curr(false)?;
+            if matches!(
+                separator.key(),
+                KEYWORD::Symbol(SYMBOL::Comma) | KEYWORD::Symbol(SYMBOL::Semi)
+            ) {
+                let _ = tokens.bump();
+                self.skip_ignorable(tokens);
+                if matches!(
+                    tokens.curr(false).map(|token| token.key()),
+                    Ok(KEYWORD::Symbol(SYMBOL::SquarC))
+                ) {
+                    let _ = tokens.bump();
+                    return Ok(limits);
+                }
+                continue;
+            }
+
+            if matches!(separator.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
+                let _ = tokens.bump();
+                return Ok(limits);
+            }
+
+            return Err(Box::new(ParseError::from_token(
+                &separator,
+                "Expected ',', ';', or ']' in type limits".to_string(),
+            )));
+        }
+
+        Err(Box::new(ParseError::from_token(
+            &open,
+            "Type limits exceeded parser limit".to_string(),
+        )))
+    }
+
     pub(super) fn is_missing_type_reference_close_token(key: &KEYWORD) -> bool {
         key.is_terminal()
             || matches!(key, KEYWORD::Void(_))
