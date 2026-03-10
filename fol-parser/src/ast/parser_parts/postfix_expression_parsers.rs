@@ -81,6 +81,20 @@ impl AstParser {
                         break;
                     }
                 }
+                KEYWORD::Symbol(SYMBOL::Bang) => {
+                    if matches!(
+                        self.next_significant_key_from_window(tokens),
+                        Some(KEYWORD::Symbol(SYMBOL::Equal))
+                    ) {
+                        break;
+                    }
+
+                    let _ = tokens.bump();
+                    node = AstNode::UnaryOp {
+                        op: UnaryOperator::Unwrap,
+                        operand: Box::new(node),
+                    };
+                }
                 _ => break,
             }
         }

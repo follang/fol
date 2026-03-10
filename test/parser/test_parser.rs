@@ -47,6 +47,9 @@ mod call_argument_keywords;
 #[path = "test_parser_parts/call_argument_unpacking.rs"]
 mod call_argument_unpacking;
 #[cfg(test)]
+#[path = "test_parser_parts/chaining_sugar.rs"]
+mod chaining_sugar;
+#[cfg(test)]
 #[path = "test_parser_parts/availability_access_expressions.rs"]
 mod availability_access_expressions;
 #[cfg(test)]

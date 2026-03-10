@@ -587,6 +587,7 @@ pub enum UnaryOperator {
     Not,
     Ref,
     Deref,
+    Unwrap,
 }
 
 /// Variable declaration options
@@ -749,6 +750,13 @@ impl AstNode {
                         Some(*target)
                     } else {
                         None
+                    }
+                }
+                UnaryOperator::Unwrap => {
+                    if let Some(FolType::Optional { inner }) = operand.get_type() {
+                        Some(*inner)
+                    } else {
+                        operand.get_type()
                     }
                 }
             },
