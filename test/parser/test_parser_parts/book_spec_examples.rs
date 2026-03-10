@@ -33,3 +33,41 @@ fn test_book_generic_object_type_example() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_book_extended_aliases_example() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_book_extended_aliases.fol")
+        .expect("Should read extended aliases example");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept the book extended aliases example");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::TypeDecl {
+                    name,
+                    options,
+                    type_def: TypeDefinition::Alias { target: FolType::Int { .. } },
+                    ..
+                } if name == "int" && options.contains(&fol_parser::ast::TypeOption::Extension)
+            )));
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::TypeDecl {
+                    name,
+                    options,
+                    type_def: TypeDefinition::Alias { target: FolType::Named { name: target } },
+                    ..
+                } if name == "str"
+                    && target == "str"
+                    && options.contains(&fol_parser::ast::TypeOption::Extension)
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
