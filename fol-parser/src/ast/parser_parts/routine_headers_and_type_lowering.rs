@@ -936,6 +936,20 @@ impl AstParser {
         self.skip_ignorable(tokens);
         let token = tokens.curr(false)?;
 
+        if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Query)) {
+            let _ = tokens.bump();
+            let inner = self.parse_type_reference_tokens(tokens)?;
+            return Ok(FolType::Optional {
+                inner: Box::new(inner),
+            });
+        }
+
+        if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Bang)) {
+            let _ = tokens.bump();
+            let _ = self.parse_type_reference_tokens(tokens)?;
+            return Ok(FolType::Never);
+        }
+
         if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
             return self.parse_function_type_reference(tokens);
         }

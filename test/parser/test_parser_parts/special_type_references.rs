@@ -192,3 +192,87 @@ fn test_union_type_references_lower_structurally() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_optional_type_shorthand_references_lower_structurally() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_optional_type_shorthand.fol")
+        .expect("Should read optional shorthand type-reference fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should lower ?T shorthand references");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::TypeDecl {
+                    name,
+                    type_def: TypeDefinition::Alias {
+                        target: FolType::Optional { inner }
+                    },
+                    ..
+                } if name == "MaybeCount"
+                    && matches!(inner.as_ref(), FolType::Int { .. })
+            )));
+
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::FunDecl {
+                    name,
+                    params,
+                    return_type: Some(FolType::Optional { inner }),
+                    ..
+                } if name == "lookup"
+                    && matches!(
+                        params.as_slice(),
+                        [Parameter { param_type: FolType::Optional { inner: param_inner }, .. }]
+                        if matches!(param_inner.as_ref(), FolType::Named { name } if name == "str")
+                    )
+                    && matches!(inner.as_ref(), FolType::Named { name } if name == "str")
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_never_type_shorthand_references_lower_structurally() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_never_type_shorthand.fol")
+        .expect("Should read never shorthand type-reference fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should lower !T shorthand references");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::TypeDecl {
+                    name,
+                    type_def: TypeDefinition::Alias {
+                        target: FolType::Never
+                    },
+                    ..
+                } if name == "ImpossibleNumber"
+            )));
+
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::FunDecl {
+                    name,
+                    params,
+                    return_type: Some(FolType::Never),
+                    ..
+                } if name == "crashIfMissing"
+                    && matches!(params.as_slice(), [Parameter { param_type: FolType::Never, .. }])
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}

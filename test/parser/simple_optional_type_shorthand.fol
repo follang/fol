@@ -1,0 +1,5 @@
+typ MaybeCount: ?int[32];
+
+fun[] lookup(value: ?str): ?str = {
+    return value;
+}
