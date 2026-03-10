@@ -133,3 +133,37 @@ fn test_method_calls_support_keyword_arguments() {
         "Method call should preserve keyword arguments structurally"
     );
 }
+
+#[test]
+fn test_invoke_expressions_support_keyword_arguments() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_fun_keyword_invoke_args.fol")
+        .expect("Should read keyword invoke-argument fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept keyword invoke arguments");
+
+    let has_keyword_invoke = match ast {
+        AstNode::Program { declarations } => declarations.iter().any(|node| {
+            matches!(
+                node,
+                AstNode::Assignment { value, .. }
+                if matches!(
+                    value.as_ref(),
+                    AstNode::Invoke { args, .. }
+                    if args.len() == 2
+                        && matches!(&args[0], AstNode::NamedArgument { name, .. } if name == "left")
+                        && matches!(&args[1], AstNode::NamedArgument { name, .. } if name == "right")
+                )
+            )
+        }),
+        _ => panic!("Expected program node"),
+    };
+
+    assert!(
+        has_keyword_invoke,
+        "Invoke expressions should preserve keyword arguments structurally"
+    );
+}
