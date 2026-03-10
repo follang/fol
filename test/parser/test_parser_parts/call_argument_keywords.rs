@@ -274,3 +274,36 @@ fn test_keyword_function_call_statements_parse() {
         "Statement call path should preserve keyword arguments structurally"
     );
 }
+
+#[test]
+fn test_keyword_method_call_statements_parse() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_keyword_method_call_stmt.fol")
+            .expect("Should read keyword method call-statement fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept keyword method call statements");
+
+    let has_keyword_method_stmt = match ast {
+        AstNode::Program { declarations } => declarations.iter().any(|node| {
+            matches!(
+                node,
+                AstNode::MethodCall { method, args, .. }
+                if method == "calc"
+                    && args.len() == 3
+                    && matches!(&args[0], AstNode::NamedArgument { name, .. } if name == "el3")
+                    && matches!(&args[1], AstNode::NamedArgument { name, .. } if name == "el2")
+                    && matches!(&args[2], AstNode::NamedArgument { name, .. } if name == "el1")
+            )
+        }),
+        _ => panic!("Expected program node"),
+    };
+
+    assert!(
+        has_keyword_method_stmt,
+        "Statement method-call path should preserve keyword arguments structurally"
+    );
+}
