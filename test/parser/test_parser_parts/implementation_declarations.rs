@@ -411,3 +411,40 @@ fn test_implementation_marker_supports_structured_sequence_targets() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_generic_implementation_markers_support_structured_targets() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_imp_generic_sequence_marker.fol")
+            .expect("Should read generic sequence-target marker fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should parse generic structured implementation markers");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::ImpDecl {
+                        name,
+                        generics,
+                        target: FolType::Sequence { element_type },
+                        body,
+                        ..
+                    }
+                    if name == "Self"
+                        && generics.len() == 1
+                        && generics[0].name == "T"
+                        && generics[0].constraints.len() == 1
+                        && matches!(element_type.as_ref(), FolType::Named { name } if name == "T")
+                        && body.is_empty()
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}

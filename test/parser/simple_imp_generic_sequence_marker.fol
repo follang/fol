@@ -1,0 +1,1 @@
+imp[](T: item) Self: seq[T];
