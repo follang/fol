@@ -1,0 +1,4 @@
+fun object_flow(flag: bol): int = {
+    if(flag) => typ User: obj;
+    else => return 0;
+}
