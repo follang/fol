@@ -296,3 +296,27 @@ fn test_unpack_arguments_reject_missing_operand() {
         first_message
     );
 }
+
+#[test]
+fn test_unpack_arguments_reject_positional_order_after_named_arguments() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_call_unpack_after_named.fol")
+            .expect("Should read malformed unpack-after-keyword fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let error = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject unpack arguments after keyword arguments");
+
+    let first_message = error
+        .first()
+        .map(|problem| problem.to_string())
+        .unwrap_or_default();
+
+    assert!(
+        first_message.contains("Positional call arguments are not allowed after named arguments"),
+        "Expected unpack-after-keyword diagnostic, got: {}",
+        first_message
+    );
+}
