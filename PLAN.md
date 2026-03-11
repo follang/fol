@@ -372,7 +372,7 @@ Done when:
 
 - [ ] Normalize "expected X" wording.
 - [x] Normalize missing-close-token diagnostics.
-- [ ] Normalize duplicate and unknown-option diagnostics where parser owns them.
+- [x] Normalize duplicate and unknown-option diagnostics where parser owns them.
 - [ ] Add negative tests for important failure classes.
 
 Done when:
