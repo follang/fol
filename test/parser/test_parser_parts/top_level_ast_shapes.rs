@@ -125,3 +125,26 @@ fn test_type_member_routines_stay_nested_and_do_not_leak_to_root() {
         other => panic!("Expected record type declaration, got {:?}", other),
     }
 }
+
+#[test]
+fn test_top_level_var_declaration_stays_a_single_root_node() {
+    let declarations = parse_program_declarations("test/parser/simple_var.fol");
+
+    assert_eq!(
+        declarations.len(),
+        1,
+        "A simple top-level variable declaration should not synthesize extra root nodes"
+    );
+    assert!(
+        matches!(
+            &declarations[0],
+            AstNode::VarDecl {
+                name,
+                type_hint: Some(FolType::Int { .. }),
+                value: Some(value),
+                ..
+            } if name == "x" && matches!(value.as_ref(), AstNode::Literal(Literal::Integer(42)))
+        ),
+        "Top-level variable fixture should stay as a single VarDecl with its literal initializer"
+    );
+}
