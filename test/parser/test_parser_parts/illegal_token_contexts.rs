@@ -137,3 +137,37 @@ fn test_record_initializer_value_illegal_token_reports_offending_token_location(
         "Illegal record-initializer token should retain a concrete source column"
     );
 }
+
+#[test]
+fn test_return_expression_illegal_token_reports_offending_token_location() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_fun_return_illegal_value.fol")
+        .expect("Should read illegal return-expression fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject illegal tokens inside return expressions");
+
+    let parse_error = errors
+        .first()
+        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        .expect("First parser error should be ParseError");
+
+    assert!(
+        parse_error
+            .to_string()
+            .contains("Parser encountered illegal token"),
+        "Illegal return-expression token should report an explicit illegal-token diagnostic, got: {}",
+        parse_error
+    );
+    assert_eq!(
+        parse_error.line(),
+        2,
+        "Illegal return-expression token should report the return line"
+    );
+    assert!(
+        parse_error.column() > 0,
+        "Illegal return-expression token should retain a concrete source column"
+    );
+}
