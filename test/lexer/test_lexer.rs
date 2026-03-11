@@ -830,4 +830,14 @@ mod lexer_error_tests {
             "Unterminated quoted content should surface as an illegal token"
         );
     }
+
+    #[test]
+    fn test_unterminated_single_quoted_literal_becomes_illegal_token() {
+        let tokens = tokenize_file("test/lexer/unterminated_single_quote.fol");
+
+        assert!(
+            tokens.iter().any(|(key, _)| key.is_illegal()),
+            "Single-quoted unterminated content should use the same illegal-token path as double-quoted content"
+        );
+    }
 }

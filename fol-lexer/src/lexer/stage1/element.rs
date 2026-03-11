@@ -205,6 +205,8 @@ impl Element {
         // Escapes stay verbatim in the token payload during front-end hardening.
         // The lexer only keeps the quoted span intact and does not validate
         // escape spellings beyond finding the matching closing delimiter.
+        // If EOF arrives first, every quoted form on this path degrades to the same
+        // parser-visible Illegal token instead of producing delimiter-specific behavior.
         while code.peek(0)?.0 != litsym || (code.peek(0)?.0 == litsym && code.curr()?.0 == '\\') {
             if code.peek(0)?.0 != litsym && code.peek(0)?.0 == '\0' {
                 self.key = Illegal;

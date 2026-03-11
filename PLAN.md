@@ -454,7 +454,7 @@ Done when:
 
 - [ ] exact token payload checks
 - [ ] exact literal-family checks
-- [ ] malformed literal checks
+- [x] malformed literal checks
 - [x] comment and doc-comment checks
 - [ ] EOF/bootstrap behavior checks
 
