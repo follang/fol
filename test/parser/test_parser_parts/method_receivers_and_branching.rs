@@ -118,10 +118,14 @@ fn test_function_method_receiver_supports_qualified_type_references() {
                 program_surface_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
-                        AstNode::FunDecl { name, .. } if name == "parse_msg"
+                        AstNode::FunDecl {
+                            name,
+                            receiver_type: Some(FolType::Named { name: receiver }),
+                            ..
+                        } if name == "parse_msg" && receiver == "pkg::Parser"
                     )
                 }),
-                "Qualified receiver function should parse as a function declaration"
+                "Qualified receiver function should retain its receiver type in the AST"
             );
         }
         _ => panic!("Expected program node"),
@@ -146,10 +150,16 @@ fn test_procedure_method_receiver_supports_bracketed_type_references() {
                 program_surface_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
-                        AstNode::ProDecl { name, .. } if name == "store"
+                        AstNode::ProDecl {
+                            name,
+                            receiver_type: Some(FolType::Vector { element_type }),
+                            ..
+                        }
+                            if name == "store"
+                                && matches!(element_type.as_ref(), FolType::Named { name } if name == "pkg::Item")
                     )
                 }),
-                "Bracketed receiver procedure should parse as a procedure declaration"
+                "Bracketed receiver procedure should retain its receiver type in the AST"
             );
         }
         _ => panic!("Expected program node"),
@@ -201,9 +211,14 @@ fn test_function_method_receiver_syntax_accepts_builtin_receiver_type() {
     match ast {
         AstNode::Program { declarations } => assert!(
             program_surface_nodes(&declarations).into_iter().any(|node| matches!(
-                node, AstNode::FunDecl { name, .. } if name == "parse_msg"
+                node,
+                AstNode::FunDecl {
+                    name,
+                    receiver_type: Some(FolType::Int { .. }),
+                    ..
+                } if name == "parse_msg"
             )),
-            "Builtin scalar receiver method should parse as a named function declaration"
+            "Builtin scalar receiver method should retain its receiver type in the AST"
         ),
         _ => panic!("Expected program node"),
     }
@@ -224,9 +239,14 @@ fn test_procedure_method_receiver_syntax_accepts_builtin_receiver_type() {
     match ast {
         AstNode::Program { declarations } => assert!(
             program_surface_nodes(&declarations).into_iter().any(|node| matches!(
-                node, AstNode::ProDecl { name, .. } if name == "parse_msg"
+                node,
+                AstNode::ProDecl {
+                    name,
+                    receiver_type: Some(FolType::Int { .. }),
+                    ..
+                } if name == "parse_msg"
             )),
-            "Builtin scalar receiver method should parse as a named procedure declaration"
+            "Builtin scalar receiver method should retain its receiver type in the AST"
         ),
         _ => panic!("Expected program node"),
     }

@@ -19,10 +19,14 @@ fn test_quoted_type_references_parse_in_receiver_and_error_positions() {
                     node,
                     AstNode::FunDecl {
                         name,
+                        receiver_type: Some(FolType::Named { name: receiver }),
                         return_type: Some(FolType::Named { name: ret }),
                         error_type: Some(FolType::Named { name: err }),
                         ..
-                    } if name == "run" && ret == "Output" && err == "errs::Failure"
+                    } if name == "run"
+                        && receiver == "Box"
+                        && ret == "Output"
+                        && err == "errs::Failure"
                 )
             }));
         }
@@ -50,10 +54,14 @@ fn test_single_quoted_type_references_parse_in_receiver_and_error_positions() {
                     node,
                     AstNode::FunDecl {
                         name,
+                        receiver_type: Some(FolType::Named { name: receiver }),
                         return_type: Some(FolType::Named { name: ret }),
                         error_type: Some(FolType::Named { name: err }),
                         ..
-                    } if name == "run" && ret == "Output" && err == "errs::Failure"
+                    } if name == "run"
+                        && receiver == "Box"
+                        && ret == "Output"
+                        && err == "errs::Failure"
                 )
             }));
         }

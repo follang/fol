@@ -586,7 +586,7 @@ impl AstParser {
         let options = self.parse_routine_options(tokens)?;
         self.skip_ignorable(tokens);
 
-        let (_, name) = self.parse_routine_name_with_optional_receiver(
+        let (receiver_type, name) = self.parse_routine_name_with_optional_receiver(
             tokens,
             "Expected routine name in standard signature",
         )?;
@@ -649,6 +649,7 @@ impl AstParser {
                 options,
                 generics,
                 name,
+                receiver_type,
                 captures,
                 params,
                 return_type,
@@ -660,6 +661,7 @@ impl AstParser {
                 options,
                 generics,
                 name,
+                receiver_type,
                 captures,
                 params,
                 return_type,

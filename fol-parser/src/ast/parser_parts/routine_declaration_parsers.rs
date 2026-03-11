@@ -18,7 +18,7 @@ impl AstParser {
         let options = self.parse_routine_options(tokens)?;
         self.skip_ignorable(tokens);
 
-        let (_receiver_type, name) = self.parse_routine_name_with_optional_receiver(
+        let (receiver_type, name) = self.parse_routine_name_with_optional_receiver(
             tokens,
             "Expected function name after 'fun'",
         )?;
@@ -99,6 +99,7 @@ impl AstParser {
                 options,
                 generics: alt_generics,
                 name,
+                receiver_type,
                 captures,
                 params,
                 return_type,
@@ -159,6 +160,7 @@ impl AstParser {
             options,
             generics,
             name,
+            receiver_type,
             captures,
             params,
             return_type,
@@ -185,7 +187,7 @@ impl AstParser {
         let options = self.parse_routine_options(tokens)?;
         self.skip_ignorable(tokens);
 
-        let (_receiver_type, name) = self.parse_routine_name_with_optional_receiver(
+        let (receiver_type, name) = self.parse_routine_name_with_optional_receiver(
             tokens,
             "Expected logical name after 'log'",
         )?;
@@ -266,6 +268,7 @@ impl AstParser {
                 options,
                 generics: alt_generics,
                 name,
+                receiver_type,
                 captures,
                 params,
                 return_type,
@@ -326,6 +329,7 @@ impl AstParser {
             options,
             generics,
             name,
+            receiver_type,
             captures,
             params,
             return_type,
@@ -352,7 +356,7 @@ impl AstParser {
         let options = self.parse_routine_options(tokens)?;
         self.skip_ignorable(tokens);
 
-        let (_receiver_type, name) = self.parse_routine_name_with_optional_receiver(
+        let (receiver_type, name) = self.parse_routine_name_with_optional_receiver(
             tokens,
             "Expected procedure name after 'pro'",
         )?;
@@ -433,6 +437,7 @@ impl AstParser {
                 options,
                 generics: alt_generics,
                 name,
+                receiver_type,
                 captures,
                 params,
                 return_type,
@@ -493,6 +498,7 @@ impl AstParser {
             options,
             generics,
             name,
+            receiver_type,
             captures,
             params,
             return_type,
