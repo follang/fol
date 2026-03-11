@@ -810,3 +810,23 @@ fn test_named_call_argument_illegal_name_reports_offending_token_location() {
         "Illegal named call arguments should retain a concrete source column"
     );
 }
+
+#[test]
+fn test_record_initializer_field_illegal_name_reports_offending_token_location() {
+    let (message, line, column) =
+        parse_error_snapshot("test/parser/simple_fun_record_init_illegal_field_name.fol");
+
+    assert!(
+        message.contains("Parser encountered illegal token"),
+        "Illegal record initializer field names should report an explicit illegal-token diagnostic, got: {}",
+        message
+    );
+    assert_eq!(
+        line, 2,
+        "Illegal record initializer field names should anchor to the record literal line"
+    );
+    assert!(
+        column > 0,
+        "Illegal record initializer field names should retain a concrete source column"
+    );
+}

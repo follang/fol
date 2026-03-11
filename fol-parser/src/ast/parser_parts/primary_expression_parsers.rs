@@ -34,7 +34,7 @@ impl AstParser {
             Ok(token) => token,
             Err(_) => return false,
         };
-        if Self::token_to_named_label(&current).is_none() {
+        if !(Self::token_to_named_label(&current).is_some() || current.key().is_illegal()) {
             return false;
         }
 
@@ -57,12 +57,8 @@ impl AstParser {
                 break;
             }
 
-            let name = Self::token_to_named_label(&token).ok_or_else(|| {
-                Box::new(ParseError::from_token(
-                    &token,
-                    "Expected field name in record initializer".to_string(),
-                )) as Box<dyn Glitch>
-            })?;
+            let name =
+                Self::expect_named_label(&token, "Expected field name in record initializer")?;
             let _ = tokens.bump();
             self.skip_ignorable(tokens);
 
