@@ -555,6 +555,58 @@ fn test_multiline_call_arguments_with_comments_parse_with_expected_shapes() {
 }
 
 #[test]
+fn test_multiline_call_arguments_with_slash_comments_still_parse_as_compatibility_surface() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_call_comments_multiline_compat.fol")
+            .expect("Should read multiline slash-comment compatibility fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should keep accepting slash comments while compatibility support remains");
+
+    let (has_combine_assignment, has_emit_return) = match ast {
+        AstNode::Program { declarations } => {
+            let has_combine_assignment = program_surface_nodes(&declarations).into_iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::Assignment { value, .. }
+                        if matches!(
+                            value.as_ref(),
+                            AstNode::FunctionCall { name, args }
+                            if name == "combine"
+                                && args.len() == 3
+                                && matches!(args[1], AstNode::FunctionCall { ref name, args: ref inner_args } if name == "wrap" && inner_args.len() == 1)
+                                && matches!(args[2], AstNode::Literal(Literal::Integer(42)))
+                        )
+                    )
+                });
+
+            let has_emit_return = program_surface_nodes(&declarations).into_iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::Return { value: Some(value) }
+                        if matches!(value.as_ref(), AstNode::FunctionCall { name, args } if name == "emit" && args.len() == 1)
+                    )
+                });
+
+            (has_combine_assignment, has_emit_return)
+        }
+        _ => panic!("Expected program node"),
+    };
+
+    assert!(
+        has_combine_assignment,
+        "Slash-comment compatibility should not disturb multiline combine(...) argument parsing"
+    );
+    assert!(
+        has_emit_return,
+        "Slash-comment compatibility should keep the trailing return emit(...) shape intact"
+    );
+}
+
+#[test]
 fn test_top_level_loop_iteration_shape_matches_function_loop_shape() {
     let mut file_stream = FileStream::from_file("test/parser/simple_loop_top_level.fol")
         .expect("Should read top-level loop test file");
