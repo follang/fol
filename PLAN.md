@@ -248,7 +248,7 @@ Done when:
 
 - [x] Define when the lexer emits `Illegal`.
 - [x] Define when the lexer returns an error instead.
-- [ ] Make malformed-input handling consistent across literal families.
+- [x] Make malformed-input handling consistent across literal families.
 - [x] Add negative tests for malformed lexical input.
 
 Done when:
