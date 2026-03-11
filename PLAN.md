@@ -263,16 +263,16 @@ Target files:
 
 ### 9.3 Rebuild Quoted Literal Taxonomy
 
-- [ ] Stop using current delimiter meaning as the long-term literal model.
-- [ ] Rebuild token taxonomy around the chosen cooked/raw quote policy.
-- [ ] Preserve enough token metadata to distinguish delimiter kind and cooked/raw behavior without reparsing raw text later.
-- [ ] Decide whether character-vs-string distinction happens in the lexer or parser.
-- [ ] If the book remains authoritative, support cooked double-quoted character/string forms and raw single-quoted character/string forms.
-- [ ] Add an explicit policy for one-element vs multi-element lowering.
-- [ ] Add an explicit policy for escape processing in cooked literals.
-- [ ] Add an explicit policy for raw literals not processing escapes.
-- [ ] Add an explicit policy for multiline cooked strings.
-- [ ] Implement backslash-line-break continuation and indentation trimming if the book remains authoritative.
+- [x] Stop using current delimiter meaning as the long-term literal model.
+- [x] Rebuild token taxonomy around the chosen cooked/raw quote policy.
+- [x] Preserve enough token metadata to distinguish delimiter kind and cooked/raw behavior without reparsing raw text later.
+- [x] Decide whether character-vs-string distinction happens in the lexer or parser.
+- [x] If the book remains authoritative, support cooked double-quoted character/string forms and raw single-quoted character/string forms.
+- [x] Add an explicit policy for one-element vs multi-element lowering.
+- [x] Add an explicit policy for escape processing in cooked literals.
+- [x] Add an explicit policy for raw literals not processing escapes.
+- [x] Add an explicit policy for multiline cooked strings.
+- [x] Implement backslash-line-break continuation and indentation trimming if the book remains authoritative.
 - [ ] Add fixtures for cooked char, cooked string, raw char, raw string, multiline cooked string, escaped quote, escaped backslash, and unicode escape spellings.
 
 ### 9.4 Finish Numeric Literal Support
@@ -315,7 +315,7 @@ Target files:
 Acceptance for Phase 2:
 
 - [x] Comment syntax matches the chosen authority.
-- [ ] Literal quote behavior matches the chosen authority.
+- [x] Literal quote behavior matches the chosen authority.
 - [x] Illegal tokens are no longer treated as whitespace.
 - [ ] Identifier rules are explicit and test-backed.
 - [ ] Numeric families are complete for the chosen front-end scope.
@@ -392,10 +392,10 @@ Target files:
 ### 10.6 Align Literal And Quoted-Name Lowering With The New Lexer Model
 
 - [x] Replace `trim_matches`-based name lowering with a dedicated unquote helper that matches the final lexer contract.
-- [ ] Lower cooked character/string literals according to the chosen literal authority.
-- [ ] Lower raw character/string literals according to the chosen literal authority.
+- [x] Lower cooked character/string literals according to the chosen literal authority.
+- [x] Lower raw character/string literals according to the chosen literal authority.
 - [ ] Implement imaginary literal lowering if Phase 2 adds imaginary token support.
-- [ ] Decide whether raw-vs-cooked must survive in the AST or can be normalized away after value lowering.
+- [x] Decide whether raw-vs-cooked must survive in the AST or can be normalized away after value lowering.
 - [x] Add tests for quoted names using both quote families if both remain valid name surfaces.
 
 ### 10.7 Tighten Parser Error Surfaces After The Lexer Cleanup
@@ -451,8 +451,8 @@ This is the recommended implementation order once the decision freeze is complet
 6. [ ] Decide and implement the final root surface contract.
 7. [x] Replace backtick `ANY` behavior with the chosen comment model.
 8. [x] Remove slash-comment dependence or make it explicit compatibility behavior.
-9. [ ] Rebuild literal quote taxonomy around the chosen cooked/raw model.
-10. [ ] Implement cooked escape handling and cooked multiline continuation if that model is kept.
+9. [x] Rebuild literal quote taxonomy around the chosen cooked/raw model.
+10. [x] Implement cooked escape handling and cooked multiline continuation if that model is kept.
 11. [ ] Add imaginary literal support or explicitly remove it from the front-end scope docs.
 12. [ ] Rename typoed literal enum variants and update all call sites.
 13. [x] Remove `Illegal` from `is_void()` and add nested malformed-token regressions.
@@ -472,8 +472,8 @@ Do not move to the next compiler stage until every gate below is true.
 - [x] Cross-file boundaries are explicit and do not depend on fabricated source characters.
 - [ ] Identifier rules are explicit, tested, and used consistently across stream/lexer/parser comparisons.
 - [x] Comment syntax matches the chosen authority and no longer conflicts with backtick tokenization.
-- [ ] Literal quote behavior matches the chosen authority.
-- [ ] Escape handling matches the chosen authority.
+- [x] Literal quote behavior matches the chosen authority.
+- [x] Escape handling matches the chosen authority.
 - [ ] Imaginary literal status is resolved instead of sitting in a silent limbo.
 - [x] `Illegal` tokens are never skipped as whitespace.
 - [x] Method receiver types survive AST lowering.
