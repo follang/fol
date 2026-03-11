@@ -352,12 +352,8 @@ impl AstParser {
                 return Ok(generics);
             }
 
-            let name = Self::token_to_named_label(&token).ok_or_else(|| {
-                Box::new(ParseError::from_token(
-                    &token,
-                    "Expected generic parameter name".to_string(),
-                )) as Box<dyn Glitch>
-            })?;
+            let name =
+                Self::expect_named_label(&token, "Expected generic parameter name")?;
             if !seen_names.insert(canonical_identifier_key(&name)) {
                 return Err(Box::new(ParseError::from_token(
                     &token,

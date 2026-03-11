@@ -670,3 +670,23 @@ fn test_routine_parameter_illegal_name_reports_offending_token_location() {
         "Illegal routine parameter names should retain a concrete source column"
     );
 }
+
+#[test]
+fn test_routine_generic_illegal_name_reports_offending_token_location() {
+    let (message, line, column) =
+        parse_error_snapshot("test/parser/simple_fun_illegal_generic_name.fol");
+
+    assert!(
+        message.contains("Parser encountered illegal token"),
+        "Illegal routine generic names should report an explicit illegal-token diagnostic, got: {}",
+        message
+    );
+    assert_eq!(
+        line, 1,
+        "Illegal routine generic names should anchor to the routine header line"
+    );
+    assert!(
+        column > 0,
+        "Illegal routine generic names should retain a concrete source column"
+    );
+}
