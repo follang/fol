@@ -427,7 +427,7 @@ Target area:
 - [ ] root AST invariants
 - [ ] declaration invariants
 - [x] literal lowering guarantees
-- [ ] parser-owned validations
+- [x] parser-owned validations
 
 ### 8.4 Front-end readiness check
 

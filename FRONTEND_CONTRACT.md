@@ -104,3 +104,17 @@ tests actually enforce today.
   float values instead of staying as raw text in the AST.
 - End-to-end tests now lock this behavior across the full `stream -> lexer -> parser`
   path, not just through direct parser helpers.
+
+### Parser-Owned Validations
+
+- The parser rejects duplicate and conflicting declaration options where those checks are
+  already encoded in parser-side option handling.
+- The parser rejects duplicate names in surfaces such as `use` declarations when they are
+  repeated within the same declaration.
+- The parser rejects duplicate inquiry targets and duplicate type members in the grammar
+  surfaces that already track those sets during parsing.
+- The parser performs a limited file-local routine signature scan so it can validate
+  `report` arity and a small amount of report-type compatibility for routines that declare
+  a custom error type.
+- Name resolution, whole-program type checking, ownership rules, and cross-file semantic
+  validation are still outside the parser contract.
