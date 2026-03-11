@@ -1,0 +1,7 @@
+fun[] add(n_value: int): int = {
+    fun added(x: int)[n_value, NValue]: int = {
+        return x + n_value;
+    }
+
+    return added(5);
+}

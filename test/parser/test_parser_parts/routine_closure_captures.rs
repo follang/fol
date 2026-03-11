@@ -84,6 +84,31 @@ fn test_duplicate_routine_closure_captures_are_rejected() {
 }
 
 #[test]
+fn test_canonical_duplicate_routine_closure_captures_are_rejected() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_duplicate_closure_capture_canonical.fol")
+            .expect("Should read canonical duplicate closure capture test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject canonical duplicate capture names");
+
+    let parse_error = errors
+        .first()
+        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        .expect("First parser error should be ParseError");
+
+    let message = parse_error.to_string();
+    assert!(
+        message.contains("Duplicate capture name 'NValue'"),
+        "Canonical duplicate capture names should report the later spelling, got: {}",
+        message
+    );
+}
+
+#[test]
 fn test_named_routine_closure_captures_accept_semicolon_separators() {
     let mut file_stream = FileStream::from_file("test/parser/simple_named_capture_semicolon.fol")
         .expect("Should read semicolon routine capture test file");
