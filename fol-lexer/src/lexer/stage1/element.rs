@@ -85,6 +85,9 @@ impl Element {
 
     //checking
     pub fn comment(&mut self, code: &mut stage0::Elements) -> Vod {
+        // Ordinary comments and doc-comment spellings share the same lexer path for now.
+        // Front-end hardening keeps them fully ignorable and leaves any future doc-comment
+        // semantics to a later phase instead of surfacing a separate token family today.
         self.con.push_str(&code.curr()?.0.to_string());
         self.bump(code)?;
         if code.curr()?.0 == '/' {

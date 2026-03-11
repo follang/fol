@@ -212,7 +212,7 @@ Done when:
 
 - [x] Decide whether normal comments remain fully ignorable.
 - [x] Decide whether doc comments are represented separately or explicitly deferred.
-- [ ] If deferred, make that explicit in the front-end contract.
+- [x] If deferred, make that explicit in the front-end contract.
 - [x] Add tests for line comments, block comments, and comment-boundary spacing behavior.
 
 Done when:
@@ -455,7 +455,7 @@ Done when:
 - [ ] exact token payload checks
 - [ ] exact literal-family checks
 - [ ] malformed literal checks
-- [ ] comment and doc-comment checks
+- [x] comment and doc-comment checks
 - [ ] EOF/bootstrap behavior checks
 
 ### Parser tests
