@@ -112,3 +112,27 @@ fn test_duplicate_and_conflicting_diagnostics_stay_surface_specific() {
         );
     }
 }
+
+#[test]
+fn test_representative_missing_close_diagnostics_use_expected_closing_language() {
+    for (path, expected) in [
+        (
+            "test/parser/simple_opt_type_missing_close.fol",
+            "Expected closing ']' in type reference",
+        ),
+        (
+            "test/parser/simple_fun_index_assignment_missing_close.fol",
+            "Expected closing ']' for index assignment target",
+        ),
+        (
+            "test/parser/simple_pro_method_receiver_missing_close_paren.fol",
+            "Expected ')' after method receiver type",
+        ),
+    ] {
+        let message = first_parse_error_message(path);
+        assert!(
+            message.contains(expected),
+            "Expected normalized missing-close diagnostic for fixture {path}, got: {message}",
+        );
+    }
+}
