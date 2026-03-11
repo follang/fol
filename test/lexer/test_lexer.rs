@@ -10,20 +10,10 @@ fn tokenize_file(path: &str) -> Vec<(KEYWORD, String)> {
     let mut lexer = Elements::init(&mut file_stream);
     let mut tokens = Vec::new();
 
-    // Advance once to skip synthetic bootstrap token used by the lexer window.
-    let _ = lexer.bump();
-
     // Extract tokens until EOF
     for _ in 0..10_000 {
         match lexer.curr(false) {
             Ok(token) => {
-                if token.loc().row() == 0 {
-                    if lexer.bump().is_none() {
-                        break;
-                    }
-                    continue;
-                }
-
                 let keyword = token.key();
                 let content = token.con().to_string();
 
@@ -128,6 +118,20 @@ mod lexer_tests {
             keyword_strings.contains(&"select".to_string()),
             "Should contain 'select' keyword"
         );
+    }
+
+    #[test]
+    fn test_stage3_starts_on_first_real_token() {
+        let mut file_stream =
+            FileStream::from_file("test/lexer/mixed.fol").expect("Should read mixed.fol");
+        let lexer = Elements::init(&mut file_stream);
+        let token = lexer
+            .curr(false)
+            .expect("Stage 3 lexer should expose the first token immediately");
+
+        assert_eq!(token.loc().row(), 1, "First token should not be synthetic");
+        assert_eq!(token.loc().col(), 1, "First token should start at column 1");
+        assert_eq!(token.con(), "var", "First token should be the first real token");
     }
 
     #[test]
@@ -313,19 +317,11 @@ mod lexer_tests {
             FileStream::from_file("test/lexer/mixed.fol").expect("Should read mixed.fol");
 
         let mut lexer = Elements::init(&mut file_stream);
-        let _ = lexer.bump();
 
         // Test first few tokens have proper location info
         for i in 0..5 {
             match lexer.curr(false) {
                 Ok(token) => {
-                    if token.loc().row() == 0 {
-                        if lexer.bump().is_none() {
-                            break;
-                        }
-                        continue;
-                    }
-
                     let loc = token.loc();
                     assert!(loc.row() >= 1, "Row should be at least 1");
                     assert!(loc.col() >= 1, "Column should be at least 1");

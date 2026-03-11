@@ -24,11 +24,13 @@ impl Elements {
         for _ in 0..SLIDER {
             next.push(elem.next().unwrap_or(Ok(Element::default())))
         }
-        Self {
+        let mut elements = Self {
             elem,
             win: (prev, Ok(Element::default()), next),
             _in_count: SLIDER,
-        }
+        };
+        let _ = elements.bump();
+        elements
     }
     pub fn set_key(&mut self, key: KEYWORD) -> Vod {
         if self.win.1.clone()?.key().is_space() || self.win.2[0].is_ok() {

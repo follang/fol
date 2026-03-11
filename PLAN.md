@@ -257,13 +257,13 @@ Done when:
 
 ### 6.8 Bootstrap and EOF cleanup
 
-- [ ] Review the synthetic bootstrap behavior used by current tests.
-- [ ] Reduce or isolate parser-visible startup artifacts if possible.
+- [x] Review the synthetic bootstrap behavior used by current tests.
+- [x] Reduce or isolate parser-visible startup artifacts if possible.
 - [ ] Keep EOF behavior explicit and stable.
 
 Done when:
 
-- [ ] Tests no longer need unexplained lexer workarounds.
+- [x] Tests no longer need unexplained lexer workarounds.
 
 ### 6.9 Lexer acceptance gate
 
