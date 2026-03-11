@@ -86,10 +86,13 @@ tests actually enforce today.
 
 ### Malformed-Input Policy
 
-- Unterminated quoted content becomes an `Illegal` token instead of a hard lexer error.
+- Unterminated single-quoted, double-quoted, and backtick-delimited content all become
+  the same parser-visible `Illegal` token instead of a hard lexer error.
 - Invalid-looking escape spellings are preserved verbatim inside quoted payloads.
 - Physical newlines inside quoted content stay inside the same token payload; the lexer
   does not apply a separate line-continuation rule at this boundary.
+- The parser-facing split is stable: malformed quoted spans become `Illegal`, while raw
+  unsupported characters still stop lexing with an error.
 - Raw unrecognized characters still raise a lexer error instead of being silently
   converted into tokens.
 
