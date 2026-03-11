@@ -461,7 +461,7 @@ Done when:
 ### Parser tests
 
 - [ ] exact top-level AST shape
-- [ ] exact literal AST lowering
+- [x] exact literal AST lowering
 - [ ] exact name/path AST shape
 - [ ] unsupported combination failure tests
 - [ ] parser diagnostic consistency checks where stable enough
@@ -481,7 +481,7 @@ Do not move to the next compiler step until all of these are true:
 - [x] lexer token payload policy is fixed
 - [ ] lexer literal taxonomy is fixed for supported forms
 - [ ] parser root AST shape is fixed
-- [ ] parser literal lowering is complete for supported forms
+- [x] parser literal lowering is complete for supported forms
 - [ ] stream, lexer, and parser contracts are written down
 - [ ] regression tests cover the corrected behavior
 
