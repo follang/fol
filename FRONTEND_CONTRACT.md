@@ -53,10 +53,15 @@ tests actually enforce today.
 
 ### Namespace Derivation
 
-- Single-file entry keeps the root namespace even when the file lives in nested folders.
+- Single-file entry keeps the detached-file root namespace even when the file
+  lives in deeper nested folders.
 - Folder entry derives namespace segments from nested directories under the chosen root.
-- Invalid namespace components are ignored instead of aborting source discovery.
-- Valid components may include underscores and non-leading digits.
+- Namespace validation is ASCII-only and preserves the original component spelling.
+- Valid components may include mixed case, a standalone `_`, leading underscores,
+  underscores inside the name, and non-leading digits.
+- Invalid components include dots, hyphens, leading digits, repeated underscore
+  runs, and non-ASCII path segments.
+- Invalid namespace components are skipped instead of aborting source discovery.
 - `.mod` directories do not contribute sources or namespace segments.
 
 ### Location Guarantees
