@@ -134,7 +134,7 @@ impl AstParser {
                     "Expected identifier after 'use'".to_string(),
                 )) as Box<dyn Glitch>
             })?;
-            if !seen_names.insert(name.clone()) {
+            if !seen_names.insert(canonical_identifier_key(&name)) {
                 return Err(Box::new(ParseError::from_token(
                     &name_token,
                     format!("Duplicate use name '{}'", name),
