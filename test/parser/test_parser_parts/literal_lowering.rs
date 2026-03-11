@@ -71,6 +71,19 @@ fn test_parse_literal_supports_float_payloads() {
 }
 
 #[test]
+fn test_double_quotes_always_lower_to_string_literals() {
+    let parser = AstParser::new();
+
+    assert_eq!(
+        parser
+            .parse_literal("\"c\"")
+            .expect("Double-quoted single-character text should parse"),
+        AstNode::Literal(Literal::String("c".to_string())),
+        "Double quotes should stay string-like even when the inner text has length one"
+    );
+}
+
+#[test]
 fn test_top_level_boolean_and_nil_literals_lower_cleanly() {
     let mut file_stream = FileStream::from_file("test/parser/simple_literal_logic.fol")
         .expect("Should read logical literal lowering fixture");

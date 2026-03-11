@@ -185,7 +185,7 @@ Done when:
 
 ### 6.2 Literal taxonomy
 
-- [ ] Decide the intended meaning of double quotes.
+- [x] Decide the intended meaning of double quotes.
 - [ ] Decide the intended meaning of single quotes.
 - [x] Decide the intended meaning of backticks, if kept.
 - [ ] Separate character-like and string-like forms if the language requires it.
