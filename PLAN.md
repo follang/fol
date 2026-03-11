@@ -448,7 +448,7 @@ Done when:
 - [ ] namespace corner cases
 - [ ] package fallback cases
 - [ ] file boundary location tracking
-- [ ] file/folder mismatch behavior
+- [x] file/folder mismatch behavior
 
 ### Lexer tests
 

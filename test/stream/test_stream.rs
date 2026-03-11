@@ -180,6 +180,46 @@ mod stream_tests {
     }
 
     #[test]
+    fn test_file_input_used_as_folder_source_uses_parent_directory() {
+        let from_file_as_folder = fol_stream::Source::init(
+            "test/legacy/main/main.fol",
+            fol_stream::SourceType::Folder,
+        )
+        .expect("File path used as folder source should resolve through its parent directory");
+        let from_folder = fol_stream::Source::init("test/legacy/main", fol_stream::SourceType::Folder)
+            .expect("Folder source should resolve normally");
+
+        let file_as_folder_paths: Vec<_> = from_file_as_folder.iter().map(|source| &source.path).collect();
+        let folder_paths: Vec<_> = from_folder.iter().map(|source| &source.path).collect();
+        let file_as_folder_namespaces: Vec<_> = from_file_as_folder
+            .iter()
+            .map(|source| &source.namespace)
+            .collect();
+        let folder_namespaces: Vec<_> = from_folder.iter().map(|source| &source.namespace).collect();
+
+        assert_eq!(
+            file_as_folder_paths, folder_paths,
+            "Folder-mode file input should discover the same parent-directory files"
+        );
+        assert_eq!(
+            file_as_folder_namespaces, folder_namespaces,
+            "Folder-mode file input should derive the same namespaces as the parent directory"
+        );
+        assert!(
+            from_file_as_folder
+                .iter()
+                .all(|source| source.call == "test/legacy/main/main.fol"),
+            "Folder-mode file input should preserve the original file call site"
+        );
+        assert!(
+            from_folder
+                .iter()
+                .all(|source| source.call == "test/legacy/main"),
+            "Direct folder input should preserve the folder call site"
+        );
+    }
+
+    #[test]
     fn test_file_path_preservation() {
         let file_path = "test/stream/basic.fol";
         let mut stream = FileStream::from_file(file_path).expect("Should be able to read file");
