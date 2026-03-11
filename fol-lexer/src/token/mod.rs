@@ -58,6 +58,12 @@ impl KEYWORD {
             KEYWORD::Literal(LITERAL::CookedQuoted) | KEYWORD::Literal(LITERAL::RawQuoted)
         )
     }
+    pub fn is_cooked_textual_literal(&self) -> bool {
+        matches!(*self, KEYWORD::Literal(LITERAL::CookedQuoted))
+    }
+    pub fn is_raw_textual_literal(&self) -> bool {
+        matches!(*self, KEYWORD::Literal(LITERAL::RawQuoted))
+    }
     pub fn is_buildin(&self) -> bool {
         matches!(*self, KEYWORD::Keyword(_))
     }
@@ -226,5 +232,19 @@ mod tests {
         assert!(boundary.is_eol());
         assert!(boundary.is_terminal());
         assert!(boundary.is_continue());
+    }
+
+    #[test]
+    fn textual_literal_helpers_preserve_cooked_and_raw_distinction() {
+        let cooked = KEYWORD::Literal(LITERAL::CookedQuoted);
+        let raw = KEYWORD::Literal(LITERAL::RawQuoted);
+
+        assert!(cooked.is_textual_literal());
+        assert!(cooked.is_cooked_textual_literal());
+        assert!(!cooked.is_raw_textual_literal());
+
+        assert!(raw.is_textual_literal());
+        assert!(raw.is_raw_textual_literal());
+        assert!(!raw.is_cooked_textual_literal());
     }
 }
