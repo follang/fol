@@ -630,3 +630,23 @@ fn test_pipe_lambda_illegal_parameter_reports_offending_token_location() {
         "Illegal pipe-lambda parameters should retain a concrete source column"
     );
 }
+
+#[test]
+fn test_routine_capture_illegal_name_reports_offending_token_location() {
+    let (message, line, column) =
+        parse_error_snapshot("test/parser/simple_fun_illegal_capture_name.fol");
+
+    assert!(
+        message.contains("Parser encountered illegal token"),
+        "Illegal routine captures should report an explicit illegal-token diagnostic, got: {}",
+        message
+    );
+    assert_eq!(
+        line, 2,
+        "Illegal routine captures should anchor to the routine header line"
+    );
+    assert!(
+        column > 0,
+        "Illegal routine captures should retain a concrete source column"
+    );
+}

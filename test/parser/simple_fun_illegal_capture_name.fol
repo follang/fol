@@ -1,0 +1,7 @@
+fun[] add(n: int): int = {
+    fun added(x: int)[bad__capture]: int = {
+        return x + n;
+    }
+
+    return added(5);
+}

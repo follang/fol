@@ -46,12 +46,8 @@ impl AstParser {
                 return Ok(captures);
             }
 
-            let name = Self::token_to_named_label(&token).ok_or_else(|| {
-                Box::new(ParseError::from_token(
-                    &token,
-                    "Expected capture name in routine capture list".to_string(),
-                )) as Box<dyn Glitch>
-            })?;
+            let name =
+                Self::expect_named_label(&token, "Expected capture name in routine capture list")?;
             captures.push(name);
             let _ = tokens.bump();
 
