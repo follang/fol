@@ -88,6 +88,8 @@ tests actually enforce today.
 
 - Unterminated quoted content becomes an `Illegal` token instead of a hard lexer error.
 - Invalid-looking escape spellings are preserved verbatim inside quoted payloads.
+- Physical newlines inside quoted content stay inside the same token payload; the lexer
+  does not apply a separate line-continuation rule at this boundary.
 - Raw unrecognized characters still raise a lexer error instead of being silently
   converted into tokens.
 
