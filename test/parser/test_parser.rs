@@ -136,6 +136,9 @@ mod illegal_token_contexts;
 #[path = "test_parser_parts/inquiry_clauses.rs"]
 mod inquiry_clauses;
 #[cfg(test)]
+#[path = "test_parser_parts/logical_identity_ast.rs"]
+mod logical_identity_ast;
+#[cfg(test)]
 #[path = "test_parser_parts/inquiry_target_structure.rs"]
 mod inquiry_target_structure;
 #[cfg(test)]

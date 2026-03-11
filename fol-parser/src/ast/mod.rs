@@ -52,6 +52,20 @@ pub enum AstNode {
         inquiries: Vec<AstNode>,
     },
 
+    /// Logical declaration: log[options] name(params): return_type = { body }
+    LogDecl {
+        options: Vec<FunOption>,
+        generics: Vec<Generic>,
+        name: String,
+        receiver_type: Option<FolType>,
+        captures: Vec<String>,
+        params: Vec<Parameter>,
+        return_type: Option<FolType>,
+        error_type: Option<FolType>,
+        body: Vec<AstNode>,
+        inquiries: Vec<AstNode>,
+    },
+
     /// Type declaration: typ name: definition
     TypeDecl {
         options: Vec<TypeOption>,
@@ -764,6 +778,9 @@ impl AstNode {
             }
             AstNode::FunDecl { return_type, .. } => return_type.clone(),
             AstNode::ProDecl { return_type, .. } => return_type.clone(),
+            AstNode::LogDecl { return_type, .. } => {
+                return_type.clone().or(Some(FolType::Bool))
+            }
             AstNode::DefDecl { def_type, .. } => Some(def_type.clone()),
             AstNode::SegDecl { seg_type, .. } => Some(seg_type.clone()),
             AstNode::ImpDecl { target, .. } => Some(target.clone()),
@@ -879,6 +896,9 @@ impl AstNode {
                 body, inquiries, ..
             }
             | AstNode::ProDecl {
+                body, inquiries, ..
+            }
+            | AstNode::LogDecl {
                 body, inquiries, ..
             } => {
                 let mut children: Vec<&AstNode> = body.iter().collect();
