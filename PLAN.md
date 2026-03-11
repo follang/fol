@@ -34,7 +34,7 @@ Do not use this plan for:
 - [x] Fix stream first, then lexer, then parser.
 - [x] Keep changes surgical unless a contract is fundamentally wrong.
 - [x] If behavior stays weird but intentional, document it.
-- [ ] If behavior is accidental, remove it.
+- [x] If behavior is accidental, remove it.
 
 ## 3. Current Blocking Problems
 
