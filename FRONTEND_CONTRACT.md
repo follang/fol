@@ -225,6 +225,17 @@ tests actually enforce today.
   - ownership and borrowing analysis
   - cross-file semantic validation
 
+### Hardening Boundary Freeze
+
+- During this hardening pass, no new parser-owned semantic checks have been added beyond
+  the semantic-adjacent validations that were already present before the contract freeze.
+- The remaining semantic-adjacent checks stay narrow and explicit:
+  file-local routine signature seeding, `report` arity validation, and limited
+  `report` type-compatibility checks.
+- That keeps the parser boundary narrower than before this pass: new hardening work has
+  stayed on syntax shape, AST invariants, token/literal continuity, and diagnostic
+  consistency instead of growing parser-side semantic reach.
+
 ### Statement And Expression Boundaries
 
 - File scope currently accepts real root statements such as calls, invokes, assignments,
