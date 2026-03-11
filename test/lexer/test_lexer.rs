@@ -1013,6 +1013,45 @@ mod lexer_tests {
     }
 
     #[test]
+    fn test_stage1_multiline_backtick_comments_preserve_exact_span() {
+        let tokens = tokenize_stage1_file("test/lexer/backtick_multiline_comments.fol");
+        let comments: Vec<(KEYWORD, String)> = tokens
+            .into_iter()
+            .filter(|(key, _)| key.is_comment())
+            .collect();
+
+        assert_eq!(
+            comments,
+            vec![(
+                KEYWORD::Comment(COMMENT::Backtick),
+                "`note one\nnote two`".to_string(),
+            )],
+            "Stage 1 should preserve the exact multiline backtick span before later stages normalize it away"
+        );
+    }
+
+    #[test]
+    fn test_multiline_backtick_comments_remain_parser_ignorable() {
+        let tokens = tokenize_file("test/lexer/backtick_multiline_comments.fol");
+        let significant: Vec<(KEYWORD, String)> = tokens
+            .into_iter()
+            .filter(|(key, _)| !key.is_void() && !key.is_eof())
+            .collect();
+
+        assert_eq!(
+            significant,
+            vec![
+                (KEYWORD::Keyword(BUILDIN::Var), "var".to_string()),
+                (KEYWORD::Identifier, "after".to_string()),
+                (KEYWORD::Symbol(SYMBOL::Equal), "=".to_string()),
+                (KEYWORD::Literal(LITERAL::Decimal), "1".to_string()),
+                (KEYWORD::Symbol(SYMBOL::Semi), "; ".to_string()),
+            ],
+            "Multiline backtick comments should stay ignorable in the parser-facing lexer output"
+        );
+    }
+
+    #[test]
     fn test_quoted_payloads_preserve_escape_spelling_without_validation() {
         let tokens = tokenize_file("test/lexer/escape_payloads.fol");
         let significant: Vec<(KEYWORD, String)> = tokens
