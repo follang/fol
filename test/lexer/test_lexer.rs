@@ -381,7 +381,7 @@ mod lexer_tests {
     }
 
     #[test]
-    fn test_backticks_remain_operator_any_tokens() {
+    fn test_backticks_are_ignorable_comments() {
         let tokens = tokenize_file("test/lexer/backticks.fol");
         let significant: Vec<(KEYWORD, String)> = tokens
             .into_iter()
@@ -390,8 +390,8 @@ mod lexer_tests {
 
         assert_eq!(
             significant,
-            vec![(KEYWORD::Operator(OPERATOR::ANY), "`macroish`".to_string())],
-            "Backticks should remain opaque operator-like tokens until the language gives them a narrower meaning"
+            Vec::<(KEYWORD, String)>::new(),
+            "Backtick-delimited comments should be fully ignorable at the parser-facing lexer boundary"
         );
     }
 

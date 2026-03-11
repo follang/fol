@@ -4,7 +4,7 @@ use fol_types::{catch, error::*, Vod};
 use std::fmt;
 
 use crate::token::{
-    buildin::BUILDIN, literal::LITERAL, operator::OPERATOR, symbol::SYMBOL, void::VOID,
+    buildin::BUILDIN, literal::LITERAL, symbol::SYMBOL, void::VOID,
 };
 use crate::token::{help::*, KEYWORD, KEYWORD::*};
 
@@ -64,14 +64,16 @@ impl Element {
 
     pub fn analyze(&mut self, code: &mut stage0::Elements) -> Vod {
         if code.curr()?.0 == '/' && (code.peek(0)?.0 == '/' || code.peek(0)?.0 == '*') {
-            self.comment(code)?;
+            self.slash_comment(code)?;
+        } else if code.curr()?.0 == '`' {
+            self.backtick_comment(code)?;
         } else if is_eof(&code.curr()?.0) {
             self.endfile(code)?;
         } else if is_eol(&code.curr()?.0) {
             self.endline(code)?;
         } else if is_space(&code.curr()?.0) {
             self.space(code)?;
-        } else if code.curr()?.0 == '"' || code.curr()?.0 == '\'' || code.curr()?.0 == '`' {
+        } else if code.curr()?.0 == '"' || code.curr()?.0 == '\'' {
             self.encap(code)?;
         } else if is_digit(&code.curr()?.0) {
             self.digit(code)?;
@@ -87,10 +89,8 @@ impl Element {
     }
 
     //checking
-    pub fn comment(&mut self, code: &mut stage0::Elements) -> Vod {
-        // Ordinary comments and doc-comment spellings share the same lexer path for now.
-        // Front-end hardening keeps them fully ignorable and leaves any future doc-comment
-        // semantics to a later phase instead of surfacing a separate token family today.
+    pub fn slash_comment(&mut self, code: &mut stage0::Elements) -> Vod {
+        // Slash comments remain a compatibility surface for now.
         self.con.push_str(&code.curr()?.0.to_string());
         self.bump(code)?;
         if code.curr()?.0 == '/' {
@@ -115,9 +115,24 @@ impl Element {
                 self.bump(code)?;
             }
         }
-        self.key = Comment;
-        self.con = " ".to_string();
-        self.space(code)?;
+        self.set_key(Void(VOID::Space));
+        self.set_con(" ".to_string());
+        Ok(())
+    }
+
+    pub fn backtick_comment(&mut self, code: &mut stage0::Elements) -> Vod {
+        // Backticks are the authoritative comment delimiters from the book.
+        self.push(code)?;
+        while code.peek(0)?.0 != '`' {
+            if code.peek(0)?.0 == '\0' {
+                self.set_key(Illegal);
+                return Ok(());
+            }
+            self.bump(code)?;
+        }
+        self.bump(code)?;
+        self.set_key(Void(VOID::Space));
+        self.set_con(" ".to_string());
         Ok(())
     }
 
@@ -196,9 +211,7 @@ impl Element {
 
     pub fn encap(&mut self, code: &mut stage0::Elements) -> Vod {
         let litsym = code.curr()?.0;
-        if litsym == '`' {
-            self.key = Operator(OPERATOR::ANY);
-        } else if litsym == '\'' {
+        if litsym == '\'' {
             self.key = Literal(LITERAL::Quoted);
         } else {
             self.key = Literal(LITERAL::Stringy);
