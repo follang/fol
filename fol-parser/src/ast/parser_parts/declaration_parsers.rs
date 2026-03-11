@@ -82,11 +82,9 @@ impl AstParser {
         let name_token = tokens.curr(false)?;
         let name = match name_token.key() {
             key if key.is_ident() || key.is_buildin() => name_token.con().trim().to_string(),
-            KEYWORD::Literal(LITERAL::Stringy) | KEYWORD::Literal(LITERAL::Quoted) => name_token
-                .con()
-                .trim()
-                .trim_matches(|c| c == '"' || c == '\'')
-                .to_string(),
+            KEYWORD::Literal(LITERAL::Stringy) | KEYWORD::Literal(LITERAL::Quoted) => {
+                Self::exact_unquote_text(name_token.con())
+            }
             _ => {
                 return Err(Box::new(ParseError::from_token(
                     &name_token,
