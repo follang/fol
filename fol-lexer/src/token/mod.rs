@@ -122,8 +122,14 @@ impl KEYWORD {
     pub fn is_space(&self) -> bool {
         matches!(*self, KEYWORD::Void(VOID::Space))
     }
+    pub fn is_boundary(&self) -> bool {
+        matches!(*self, KEYWORD::Void(VOID::Boundary))
+    }
     pub fn is_eol(&self) -> bool {
-        matches!(*self, KEYWORD::Void(VOID::EndLine))
+        matches!(
+            *self,
+            KEYWORD::Void(VOID::EndLine) | KEYWORD::Void(VOID::Boundary)
+        )
     }
     pub fn is_nonterm(&self) -> bool {
         matches!(
@@ -139,6 +145,7 @@ impl KEYWORD {
         matches!(
             *self,
             KEYWORD::Void(VOID::EndLine)
+                | KEYWORD::Void(VOID::Boundary)
                 | KEYWORD::Void(VOID::EndFile)
                 | KEYWORD::Symbol(SYMBOL::Semi)
         )
@@ -198,5 +205,15 @@ mod tests {
         assert!(KEYWORD::Void(VOID::Space).is_continue());
         assert!(KEYWORD::Void(VOID::EndLine).is_void());
         assert!(KEYWORD::Void(VOID::EndLine).is_continue());
+    }
+
+    #[test]
+    fn boundary_tokens_are_void_terminal_and_line_like() {
+        let boundary = KEYWORD::Void(VOID::Boundary);
+        assert!(boundary.is_void());
+        assert!(boundary.is_boundary());
+        assert!(boundary.is_eol());
+        assert!(boundary.is_terminal());
+        assert!(boundary.is_continue());
     }
 }

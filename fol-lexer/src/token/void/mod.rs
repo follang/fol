@@ -6,6 +6,7 @@ pub enum VOID {
     ANY,
     Space,
     EndLine,
+    Boundary,
     EndFile,
 }
 
@@ -15,6 +16,7 @@ impl fmt::Display for VOID {
             VOID::Space => Some("space"),
             VOID::EndFile => Some("EOF"),
             VOID::EndLine => Some("eol"),
+            VOID::Boundary => Some("boundary"),
             _ => None,
         };
         write!(
