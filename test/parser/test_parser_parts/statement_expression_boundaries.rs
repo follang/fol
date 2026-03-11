@@ -66,3 +66,24 @@ fn test_routine_body_keeps_call_invoke_and_assignment_boundaries() {
                 && matches!(value.as_ref(), AstNode::Identifier { name } if name == "value")
     ));
 }
+
+#[test]
+fn test_top_level_when_stays_a_root_statement_with_nested_bodies() {
+    let declarations =
+        parse_program_declarations("test/parser/simple_when_top_level_statement.fol");
+
+    assert!(matches!(
+        declarations.as_slice(),
+        [AstNode::When { cases, default, .. }]
+            if matches!(
+                cases.as_slice(),
+                [fol_parser::ast::WhenCase::Case { body, .. }]
+                    if matches!(body.as_slice(), [AstNode::FunctionCall { name, args }] if name == "run" && args.is_empty())
+            )
+                && matches!(
+                    default,
+                    Some(default_body)
+                        if matches!(default_body.as_slice(), [AstNode::FunctionCall { name, args }] if name == "stop" && args.is_empty())
+                )
+    ));
+}

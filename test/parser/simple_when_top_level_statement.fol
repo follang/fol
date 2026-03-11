@@ -1,0 +1,8 @@
+when (value) {
+    case (ready) {
+        run();
+    }
+    {
+        stop();
+    }
+}
