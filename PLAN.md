@@ -31,7 +31,7 @@ Do not use this plan for:
 
 - [x] No new major syntax during this plan unless required to fix a current mismatch.
 - [x] Every fix gets a regression test.
-- [ ] Fix stream first, then lexer, then parser.
+- [x] Fix stream first, then lexer, then parser.
 - [ ] Keep changes surgical unless a contract is fundamentally wrong.
 - [x] If behavior stays weird but intentional, document it.
 - [ ] If behavior is accidental, remove it.
