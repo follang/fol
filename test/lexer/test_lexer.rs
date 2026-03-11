@@ -691,6 +691,27 @@ mod lexer_tests {
     }
 
     #[test]
+    fn test_slash_block_comments_remain_supported_as_compatibility_comments() {
+        let tokens = tokenize_file("test/lexer/slash_block_comments.fol");
+        let significant: Vec<(KEYWORD, String)> = tokens
+            .into_iter()
+            .filter(|(key, _)| !key.is_void() && !key.is_eof())
+            .collect();
+
+        assert_eq!(
+            significant,
+            vec![
+                (KEYWORD::Keyword(BUILDIN::Var), "var".to_string()),
+                (KEYWORD::Identifier, "beta".to_string()),
+                (KEYWORD::Symbol(SYMBOL::Equal), "=".to_string()),
+                (KEYWORD::Literal(LITERAL::Decimal), "2".to_string()),
+                (KEYWORD::Symbol(SYMBOL::Semi), "; ".to_string()),
+            ],
+            "Slash block comments remain a compatibility comment surface and should stay ignorable"
+        );
+    }
+
+    #[test]
     fn test_mixed_content() {
         let tokens = tokenize_file("test/lexer/mixed.fol");
 
