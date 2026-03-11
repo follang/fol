@@ -390,6 +390,28 @@ mod namespace_tests {
     }
 
     #[test]
+    fn test_explicit_package_override_changes_logical_identity_without_changing_path() {
+        let pkg_a = Source::init_with_package(
+            "test/legacy/main/main.fol",
+            SourceType::File,
+            "alpha_pkg",
+        )
+        .expect("Should create source for alpha package");
+        let pkg_b = Source::init_with_package(
+            "test/legacy/main/main.fol",
+            SourceType::File,
+            "beta_pkg",
+        )
+        .expect("Should create source for beta package");
+
+        assert_eq!(pkg_a[0].path, pkg_b[0].path);
+        assert_ne!(pkg_a[0].package, pkg_b[0].package);
+        assert_ne!(pkg_a[0].namespace, pkg_b[0].namespace);
+        assert_eq!(pkg_a[0].namespace, "alpha_pkg");
+        assert_eq!(pkg_b[0].namespace, "beta_pkg");
+    }
+
+    #[test]
     fn test_namespace_output_integration() {
         // Test that the namespace information is properly integrated
         let sources =

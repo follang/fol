@@ -98,8 +98,8 @@ Done when:
 
 - [ ] Define what uniquely identifies a source at the stream boundary.
 - [x] Decide whether canonical absolute path is the primary identity.
-- [ ] Decide how `package` and `namespace` participate in identity.
-- [ ] Write down whether the same file can appear twice under different logical identities.
+- [x] Decide how `package` and `namespace` participate in identity.
+- [x] Write down whether the same file can appear twice under different logical identities.
 - [x] Make tests assert the chosen behavior.
 
 Done when:
