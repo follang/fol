@@ -377,7 +377,7 @@ Done when:
 
 Done when:
 
-- [ ] Parser diagnostics are consistent enough to freeze the front-end contract.
+- [x] Parser diagnostics are consistent enough to freeze the front-end contract.
 
 ### 7.9 Parser module ownership
 
