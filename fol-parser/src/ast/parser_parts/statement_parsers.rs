@@ -655,6 +655,7 @@ impl AstParser {
         }
 
         if (Self::token_to_named_label(&current_var_token).is_some()
+            || current_var_token.key().is_illegal()
             || matches!(current_var_token.key(), KEYWORD::Symbol(SYMBOL::Under)))
             && matches!(
                 self.next_significant_key_from_window(tokens),
@@ -664,8 +665,10 @@ impl AstParser {
             let var = if matches!(current_var_token.key(), KEYWORD::Symbol(SYMBOL::Under)) {
                 "_".to_string()
             } else {
-                Self::token_to_named_label(&current_var_token)
-                    .expect("guard above ensured named iteration binder")
+                Self::expect_named_label(
+                    &current_var_token,
+                    "Expected iteration binder before 'in'",
+                )?
             };
             let _ = tokens.bump();
             self.skip_ignorable(tokens);

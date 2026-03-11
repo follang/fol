@@ -1,0 +1,3 @@
+loop (bad__item in items when ready) {
+    break;
+}
