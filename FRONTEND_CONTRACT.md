@@ -193,6 +193,21 @@ tests actually enforce today.
   - ownership and borrowing analysis
   - cross-file semantic validation
 
+### Statement And Expression Boundaries
+
+- File scope currently accepts real root statements such as calls, invokes, assignments,
+  loops, and `when` forms in addition to declarations.
+- At both file scope and routine-body scope, a bare named callee lowers as
+  `AstNode::FunctionCall`, while a grouped or otherwise computed callee lowers as
+  `AstNode::Invoke`.
+- Assignment parsing stays a separate statement path at both scopes; call-like targets
+  are rejected instead of being reinterpreted as assignment shapes.
+- A top-level `when` statement stays a root `AstNode::When` with nested body nodes instead
+  of being rewritten into a declaration-like wrapper.
+- `when` and matching forms used in expression position stay nested under their owner
+  node, such as `VarDecl.value` or `Return.value`, instead of surfacing as sibling
+  statements.
+
 ### Parser Part Ownership
 
 - `program_and_bindings.rs`: program root assembly, top-level declaration dispatch, and
