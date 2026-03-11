@@ -141,8 +141,16 @@ impl Element {
             self.bump(code)?;
         }
         self.bump(code)?;
-        self.set_key(Comment(COMMENT::Backtick));
+        self.set_key(self.classify_backtick_comment());
         Ok(())
+    }
+
+    fn classify_backtick_comment(&self) -> KEYWORD {
+        if self.con.starts_with("`[doc]") {
+            Comment(COMMENT::Doc)
+        } else {
+            Comment(COMMENT::Backtick)
+        }
     }
 
     pub fn endfile(&mut self, _code: &mut stage0::Elements) -> Vod {

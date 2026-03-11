@@ -886,6 +886,30 @@ mod lexer_tests {
     }
 
     #[test]
+    fn test_stage1_doc_comments_are_classified_separately() {
+        let tokens = tokenize_stage1_file("test/lexer/doc_comments.fol");
+        let comments: Vec<(KEYWORD, String)> = tokens
+            .into_iter()
+            .filter(|(key, _)| key.is_comment())
+            .collect();
+
+        assert_eq!(
+            comments,
+            vec![
+                (
+                    KEYWORD::Comment(COMMENT::Doc),
+                    "`[doc] module docs`".to_string(),
+                ),
+                (
+                    KEYWORD::Comment(COMMENT::Doc),
+                    "`[doc] block docs`".to_string(),
+                ),
+            ],
+            "Stage 1 should detect the book's [doc] prefix explicitly even while doc comments stay deferred later in the pipeline"
+        );
+    }
+
+    #[test]
     fn test_quoted_payloads_preserve_escape_spelling_without_validation() {
         let tokens = tokenize_file("test/lexer/escape_payloads.fol");
         let significant: Vec<(KEYWORD, String)> = tokens
