@@ -298,12 +298,12 @@ Target files:
 
 ### 9.6 Remove Stage Wrapper Debt
 
-- [ ] Replace `TODO: Handle better .ok()` window mutations with explicit bounded operations in stage 0.
-- [ ] Do the same in stage 1.
-- [ ] Do the same in stage 2.
-- [ ] Do the same in stage 3.
-- [ ] Remove stale TODO comments once the window semantics are explicit.
-- [ ] Add a focused regression test for each stage wrapper after the cleanup.
+- [x] Replace `TODO: Handle better .ok()` window mutations with explicit bounded operations in stage 0.
+- [x] Do the same in stage 1.
+- [x] Do the same in stage 2.
+- [x] Do the same in stage 3.
+- [x] Remove stale TODO comments once the window semantics are explicit.
+- [x] Add a focused regression test for each stage wrapper after the cleanup.
 
 ### 9.7 Revisit Stage 0 Collection
 
