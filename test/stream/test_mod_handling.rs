@@ -114,6 +114,73 @@ mod mod_handling_tests {
     }
 
     #[test]
+    fn test_multi_file_stream_keeps_draining_after_backing_files_are_removed() {
+        let temp_root = std::env::temp_dir().join(format!(
+            "fol_stream_eager_loading_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("System time should be after unix epoch")
+                .as_nanos()
+        ));
+        fs::create_dir_all(temp_root.join("nested/deeper"))
+            .expect("Should create nested temp folders");
+
+        let file_specs = vec![
+            (temp_root.join("main.fol"), "fun main() => 10\n"),
+            (temp_root.join("alpha.fol"), "let alpha = 11\n"),
+            (
+                temp_root.join("nested/beta.fol"),
+                "fun beta() {\n    return 12\n}\n",
+            ),
+            (
+                temp_root.join("nested/deeper/gamma.fol"),
+                "log gamma(flag: bool): bool => flag\n",
+            ),
+        ];
+
+        let mut expected_total = 0usize;
+        for (path, contents) in &file_specs {
+            if let Some(parent) = path.parent() {
+                fs::create_dir_all(parent).expect("Should create temp file parent folders");
+            }
+            fs::write(path, contents).expect("Should write temp source file");
+            expected_total += contents.chars().count();
+        }
+
+        let sources = Source::init(
+            temp_root
+                .to_str()
+                .expect("Temp root should render as UTF-8"),
+            SourceType::Folder,
+        )
+        .expect("Should discover temp eager-loading sources");
+        let mut stream =
+            FileStream::from_sources(sources).expect("Should build eager stream from temp sources");
+
+        fs::remove_dir_all(&temp_root)
+            .expect("Should remove backing files after stream construction");
+
+        let mut drained = String::new();
+        while let Some((ch, _loc)) = stream.next_char() {
+            drained.push(ch);
+        }
+
+        assert_eq!(
+            drained.chars().count(),
+            expected_total,
+            "Eager source loading should preserve the full multi-file stream even after the backing files disappear"
+        );
+        assert!(
+            drained.contains("fun main() => 10")
+                && drained.contains("let alpha = 11")
+                && drained.contains("fun beta()")
+                && drained.contains("log gamma(flag: bool): bool => flag"),
+            "The drained stream should still contain content from every eagerly loaded file"
+        );
+    }
+
+    #[test]
     fn test_multi_source_character_streaming() {
         // Test that character streaming works across multiple sources
         let mut stream =
