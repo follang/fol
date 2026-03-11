@@ -294,7 +294,7 @@ Target files:
 - [ ] Make malformed comments follow one consistent policy.
 - [ ] Make malformed numeric spans follow one consistent policy.
 - [ ] Ensure raw unsupported characters still produce lexer errors instead of silent token conversion.
-- [ ] Add nested-context fixtures where an illegal token appears inside calls, blocks, type references, and parameter lists.
+- [x] Add nested-context fixtures where an illegal token appears inside calls, blocks, type references, and parameter lists.
 
 ### 9.6 Remove Stage Wrapper Debt
 
@@ -347,14 +347,14 @@ Target files:
 
 ### 10.2 Preserve Method Receiver Types In The AST
 
-- [ ] Add receiver type storage to routine declarations or introduce dedicated method declaration nodes.
-- [ ] Preserve receiver types for `fun` methods.
-- [ ] Preserve receiver types for `pro` methods.
+- [x] Add receiver type storage to routine declarations or introduce dedicated method declaration nodes.
+- [x] Preserve receiver types for `fun` methods.
+- [x] Preserve receiver types for `pro` methods.
 - [ ] Preserve receiver types for `log` methods if `log` remains a distinct routine kind.
-- [ ] Preserve receiver types for nested type-member routines.
-- [ ] Add tests that assert the receiver type survives AST lowering instead of only proving the syntax parses.
+- [x] Preserve receiver types for nested type-member routines.
+- [x] Add tests that assert the receiver type survives AST lowering instead of only proving the syntax parses.
 - [ ] Ensure receiver type diagnostics keep correct source spans.
-- [ ] Ensure quoted, qualified, and bracketed receiver types keep the chosen structure.
+- [x] Ensure quoted, qualified, and bracketed receiver types keep the chosen structure.
 
 ### 10.3 Stop Losing Logical Routine Identity
 
@@ -408,7 +408,7 @@ Target files:
 
 Acceptance for Phase 3:
 
-- [ ] No method receiver information is lost in the AST.
+- [x] No method receiver information is lost in the AST.
 - [ ] No logical routine kind is lost in the AST.
 - [ ] Qualified path structure is preserved instead of flattened away where it matters.
 - [ ] Parser-owned duplicate checks use the chosen identifier equality rules.
@@ -474,7 +474,7 @@ Do not move to the next compiler stage until every gate below is true.
 - [ ] Escape handling matches the chosen authority.
 - [ ] Imaginary literal status is resolved instead of sitting in a silent limbo.
 - [ ] `Illegal` tokens are never skipped as whitespace.
-- [ ] Method receiver types survive AST lowering.
+- [x] Method receiver types survive AST lowering.
 - [ ] Logical routine kind survives AST lowering.
 - [ ] Qualified path structure survives AST lowering where the next stage needs it.
 - [ ] Root program shape is explicit.
