@@ -200,7 +200,7 @@ Done when:
 - [ ] Decide whether escapes are validated in the lexer.
 - [ ] Define accepted escape sequences for the current front-end scope.
 - [ ] Define behavior for invalid escapes.
-- [ ] Define behavior for unterminated quoted content.
+- [x] Define behavior for unterminated quoted content.
 - [ ] Define multiline continuation behavior if supported.
 - [ ] Add positive and negative tests.
 
@@ -249,7 +249,7 @@ Done when:
 - [ ] Define when the lexer emits `Illegal`.
 - [ ] Define when the lexer returns an error instead.
 - [ ] Make malformed-input handling consistent across literal families.
-- [ ] Add negative tests for malformed lexical input.
+- [x] Add negative tests for malformed lexical input.
 
 Done when:
 

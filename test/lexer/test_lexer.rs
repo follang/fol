@@ -596,4 +596,14 @@ mod lexer_error_tests {
 
         assert!(result.is_err(), "Should panic on nonexistent file");
     }
+
+    #[test]
+    fn test_unterminated_string_literal_becomes_illegal_token() {
+        let tokens = tokenize_file("test/lexer/unterminated_string.fol");
+
+        assert!(
+            tokens.iter().any(|(key, _)| key.is_illegal()),
+            "Unterminated quoted content should surface as an illegal token"
+        );
+    }
 }
