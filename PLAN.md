@@ -181,7 +181,7 @@ Target area:
 
 Done when:
 
-- [ ] Parser code no longer depends on undocumented payload quirks.
+- [x] Parser code no longer depends on undocumented payload quirks.
 
 ### 6.2 Literal taxonomy
 
