@@ -26,3 +26,46 @@ fn test_top_level_string_and_character_literals_lower_cleanly() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_top_level_integer_literals_lower_to_exact_values() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_literal_numbers.fol")
+        .expect("Should read numeric literal lowering fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should lower top-level numeric literals");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert_eq!(
+                declarations,
+                vec![
+                    AstNode::Literal(Literal::Integer(42)),
+                    AstNode::Literal(Literal::Integer(1_000)),
+                    AstNode::Literal(Literal::Integer(26)),
+                    AstNode::Literal(Literal::Integer(15)),
+                    AstNode::Literal(Literal::Integer(10)),
+                ],
+                "Numeric literals should preserve their integer value across supported families"
+            );
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_parse_literal_supports_float_payloads() {
+    let parser = AstParser::new();
+    let literal = parser
+        .parse_literal("3.5")
+        .expect("Direct parser literal lowering should support floats");
+
+    assert_eq!(
+        literal,
+        AstNode::Literal(Literal::Float(3.5)),
+        "Float payloads should lower to Literal::Float"
+    );
+}

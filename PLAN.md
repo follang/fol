@@ -300,10 +300,10 @@ Done when:
 - [x] Support correct AST lowering for currently supported strings.
 - [ ] Support correct AST lowering for booleans.
 - [ ] Support correct AST lowering for nil.
-- [ ] Support correct AST lowering for decimal integers.
-- [ ] Decide and implement lowering strategy for floats.
-- [ ] Decide and implement lowering strategy for hex, octal, and binary values.
-- [ ] Add tests that assert exact AST literal values.
+- [x] Support correct AST lowering for decimal integers.
+- [x] Decide and implement lowering strategy for floats.
+- [x] Decide and implement lowering strategy for hex, octal, and binary values.
+- [x] Add tests that assert exact AST literal values.
 
 Done when:
 
