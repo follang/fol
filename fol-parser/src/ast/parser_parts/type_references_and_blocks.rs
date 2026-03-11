@@ -27,8 +27,11 @@ impl AstParser {
         self.skip_ignorable(tokens);
         let mut function_name = None;
         if let Ok(token) = tokens.curr(false) {
-            if Self::token_to_named_label(&token).is_some() {
-                function_name = Self::token_to_named_label(&token);
+            if token.key().is_illegal() || Self::token_to_named_label(&token).is_some() {
+                function_name = Some(Self::expect_named_label(
+                    &token,
+                    "Expected function type name after 'fun'",
+                )?);
                 let _ = tokens.bump();
             }
         }

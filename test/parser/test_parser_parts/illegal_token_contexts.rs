@@ -770,3 +770,23 @@ fn test_standard_illegal_name_still_routes_through_std_parser() {
         "Illegal standard names should retain a concrete source column"
     );
 }
+
+#[test]
+fn test_named_function_type_illegal_name_reports_offending_token_location() {
+    let (message, line, column) =
+        parse_error_snapshot("test/parser/simple_fun_illegal_named_function_type.fol");
+
+    assert!(
+        message.contains("Parser encountered illegal token"),
+        "Illegal named function types should report an explicit illegal-token diagnostic, got: {}",
+        message
+    );
+    assert_eq!(
+        line, 1,
+        "Illegal named function types should anchor to the function type header line"
+    );
+    assert!(
+        column > 0,
+        "Illegal named function types should retain a concrete source column"
+    );
+}
