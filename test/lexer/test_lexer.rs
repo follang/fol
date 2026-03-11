@@ -1142,6 +1142,28 @@ mod lexer_tests {
     }
 
     #[test]
+    fn test_stage1_cooked_and_raw_quotes_follow_different_delimiter_rules() {
+        let tokens = tokenize_stage1_file("test/lexer/cooked_raw_quote_boundaries.fol");
+        let significant: Vec<(KEYWORD, String)> = tokens
+            .into_iter()
+            .filter(|(key, _)| !key.is_void())
+            .collect();
+
+        assert_eq!(
+            significant,
+            vec![
+                (
+                    KEYWORD::Literal(LITERAL::CookedQuoted),
+                    "\"a\\\" b\"".to_string(),
+                ),
+                (KEYWORD::Literal(LITERAL::RawQuoted), "'a\\'".to_string()),
+                (KEYWORD::Literal(LITERAL::RawQuoted), "'b'".to_string()),
+            ],
+            "Cooked quotes should treat backslash-delimiter pairs as escaped content, while raw quotes should stop at the next single quote"
+        );
+    }
+
+    #[test]
     fn test_symbols() {
         let tokens = tokenize_file("test/lexer/symbols.fol");
 

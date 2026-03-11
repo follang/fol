@@ -310,26 +310,56 @@ impl Element {
         let litsym = code.curr()?.0;
         if litsym == '\'' {
             self.key = Literal(LITERAL::RawQuoted);
+            self.scan_raw_quoted(code)?;
         } else {
             self.key = Literal(LITERAL::CookedQuoted);
+            self.scan_cooked_quoted(code)?;
         }
+        Ok(())
+    }
+
+    fn scan_raw_quoted(&mut self, code: &mut stage0::Elements) -> Vod {
         self.push(code)?;
-        // Escapes stay verbatim in the token payload during front-end hardening.
-        // The lexer only keeps the quoted span intact and does not validate
-        // escape spellings beyond finding the matching closing delimiter.
-        // If EOF arrives first, every quoted form on this path degrades to the same
-        // parser-visible Illegal token instead of producing delimiter-specific behavior.
-        while code.peek(0)?.0 != litsym || (code.peek(0)?.0 == litsym && code.curr()?.0 == '\\') {
-            if code.peek(0)?.0 != litsym
-                && (code.peek(0)?.0 == '\0' || code.peek(0)?.0 == stage0::SOURCE_BOUNDARY_CHAR)
-            {
+
+        loop {
+            let next = code.peek(0)?.0;
+            if next == '\0' || next == stage0::SOURCE_BOUNDARY_CHAR {
                 self.key = Illegal;
                 return Ok(());
             }
+
             self.bump(code)?;
+            if code.curr()?.0 == '\'' {
+                return Ok(());
+            }
         }
-        self.bump(code)?;
-        Ok(())
+    }
+
+    fn scan_cooked_quoted(&mut self, code: &mut stage0::Elements) -> Vod {
+        self.push(code)?;
+
+        loop {
+            let next = code.peek(0)?.0;
+            if next == '\0' || next == stage0::SOURCE_BOUNDARY_CHAR {
+                self.key = Illegal;
+                return Ok(());
+            }
+
+            self.bump(code)?;
+            if code.curr()?.0 == '\\' {
+                let escaped = code.peek(0)?.0;
+                if escaped == '\0' || escaped == stage0::SOURCE_BOUNDARY_CHAR {
+                    self.key = Illegal;
+                    return Ok(());
+                }
+                self.bump(code)?;
+                continue;
+            }
+
+            if code.curr()?.0 == '"' {
+                return Ok(());
+            }
+        }
     }
 
     pub fn symbol(&mut self, code: &mut stage0::Elements) -> Vod {
