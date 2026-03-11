@@ -251,6 +251,21 @@ mod lexer_tests {
     }
 
     #[test]
+    fn test_backticks_remain_operator_any_tokens() {
+        let tokens = tokenize_file("test/lexer/backticks.fol");
+        let significant: Vec<(KEYWORD, String)> = tokens
+            .into_iter()
+            .filter(|(key, _)| !key.is_space() && !key.is_eof())
+            .collect();
+
+        assert_eq!(
+            significant,
+            vec![(KEYWORD::Operator(OPERATOR::ANY), "`macroish`".to_string())],
+            "Backticks should remain opaque operator-like tokens until the language gives them a narrower meaning"
+        );
+    }
+
+    #[test]
     fn test_quoted_literal_payloads_keep_delimiters() {
         let tokens = tokenize_file("test/lexer/literals.fol");
 
