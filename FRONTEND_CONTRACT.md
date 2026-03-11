@@ -285,6 +285,10 @@ tests actually enforce today.
   mismatched definition counts report a dedicated error instead of a later shape failure.
 - That means the currently known unsupported declaration-family combinations fail
   intentionally and early rather than being inferred later from malformed AST shape.
+- Malformed name-like tokens now stay inside the parser surface that owns them instead of
+  falling out into neighboring generic expression or separator failures; this is locked
+  for builtin root calls, named call arguments, record initializer fields, grouped
+  bindings, destructuring bindings, loop iteration binders, and qualified type segments.
 - Representative missing-close diagnostics consistently use `Expected closing ...`
   language, although the exact trailing context is still shape-specific.
 - Representative `Expected X` diagnostics also name the missing syntactic shape directly,
