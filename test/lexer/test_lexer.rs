@@ -174,6 +174,43 @@ mod lexer_tests {
     }
 
     #[test]
+    fn test_uppercase_prefixed_numeric_literals_tokenize_as_numbers() {
+        let tokens = tokenize_file("test/lexer/literals_uppercase.fol");
+        let significant: Vec<(KEYWORD, String)> = tokens
+            .into_iter()
+            .filter(|(key, _)| !key.is_space() && !key.is_eof())
+            .collect();
+
+        assert_eq!(
+            significant,
+            vec![
+                (KEYWORD::Literal(LITERAL::Hexal), "0X1A".to_string()),
+                (KEYWORD::Literal(LITERAL::Octal), "0O17".to_string()),
+                (KEYWORD::Literal(LITERAL::Binary), "0B1010".to_string()),
+            ],
+            "Uppercase numeric prefixes should tokenize the same as lowercase forms"
+        );
+    }
+
+    #[test]
+    fn test_quoted_literal_payloads_keep_delimiters() {
+        let tokens = tokenize_file("test/lexer/literals.fol");
+
+        assert!(
+            tokens.iter().any(|(key, content)| {
+                matches!(key, KEYWORD::Literal(LITERAL::Stringy)) && content == "\"hello\""
+            }),
+            "String literal payload should keep its double-quote delimiters"
+        );
+        assert!(
+            tokens.iter().any(|(key, content)| {
+                matches!(key, KEYWORD::Literal(LITERAL::Stringy)) && content == "'c'"
+            }),
+            "Single-quoted literal payload should keep its delimiters"
+        );
+    }
+
+    #[test]
     fn test_symbols() {
         let tokens = tokenize_file("test/lexer/symbols.fol");
 

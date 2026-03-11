@@ -153,22 +153,22 @@ impl Element {
 
     pub fn digit(&mut self, code: &mut stage0::Elements) -> Vod {
         if code.curr()?.0 == '0'
-            && (code.peek(0)?.0 == 'x' || code.peek(0)?.0 == 'o' || code.peek(0)?.0 == 'b')
+            && matches!(code.peek(0)?.0, 'x' | 'X' | 'o' | 'O' | 'b' | 'B')
         {
             self.push(code)?;
-            if code.peek(0)?.0 == 'x' {
+            if matches!(code.peek(0)?.0, 'x' | 'X') {
                 self.bump(code)?;
                 self.key = Literal(LITERAL::Hexal);
                 while is_hex_digit(&code.peek(0)?.0) {
                     self.bump(code)?;
                 }
-            } else if code.peek(0)?.0 == 'o' {
+            } else if matches!(code.peek(0)?.0, 'o' | 'O') {
                 self.bump(code)?;
                 self.key = Literal(LITERAL::Octal);
                 while is_oct_digit(&code.peek(0)?.0) {
                     self.bump(code)?;
                 }
-            } else if code.peek(0)?.0 == 'b' {
+            } else if matches!(code.peek(0)?.0, 'b' | 'B') {
                 self.bump(code)?;
                 self.key = Literal(LITERAL::Binary);
                 while code.peek(0)?.0 == '0' || code.peek(0)?.0 == '1' || code.peek(0)?.0 == '_' {
