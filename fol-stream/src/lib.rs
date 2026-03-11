@@ -437,9 +437,19 @@ fn compute_namespace(
 
 /// Check if a name is a valid namespace component (no dots, valid identifier)
 fn is_valid_namespace_component(name: &str) -> bool {
-    // Namespace components should be valid identifiers (no dots or special chars except underscore)
-    !name.is_empty()
-        && !name.contains('.')
-        && name.chars().all(|c| c.is_alphanumeric() || c == '_')
-        && !name.chars().next().unwrap_or('0').is_ascii_digit() // Don't start with digit
+    let mut chars = name.chars();
+    let Some(first) = chars.next() else {
+        return false;
+    };
+
+    if !first.is_ascii() || first.is_ascii_digit() || !(first.is_ascii_alphabetic() || first == '_')
+    {
+        return false;
+    }
+
+    if name.contains("__") {
+        return false;
+    }
+
+    chars.all(|ch| ch.is_ascii() && (ch.is_ascii_alphanumeric() || ch == '_'))
 }

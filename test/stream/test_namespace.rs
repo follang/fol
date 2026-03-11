@@ -372,18 +372,34 @@ mod namespace_tests {
     }
 
     #[test]
-    fn test_invalid_namespace_components_are_ignored() {
+    fn test_namespace_validation_follows_current_front_end_contract() {
         let temp_root = unique_temp_root("namespace_components");
         fs::create_dir_all(temp_root.join("good/123bad")).expect("Should create invalid nested dir");
         fs::create_dir_all(temp_root.join("bad.dir")).expect("Should create dotted dir");
+        fs::create_dir_all(temp_root.join("bad-dir")).expect("Should create hyphenated dir");
         fs::create_dir_all(temp_root.join("okay_dir")).expect("Should create valid dir");
+        fs::create_dir_all(temp_root.join("_hidden")).expect("Should create leading-underscore dir");
+        fs::create_dir_all(temp_root.join("_")).expect("Should create single-underscore dir");
+        fs::create_dir_all(temp_root.join("bad__name"))
+            .expect("Should create repeated-underscore dir");
+        fs::create_dir_all(temp_root.join("MiXeDCase")).expect("Should create mixed-case dir");
 
         fs::write(temp_root.join("good/123bad/value.fol"), "var nested = 1")
             .expect("Should write nested file");
         fs::write(temp_root.join("bad.dir/value.fol"), "var dotted = 1")
             .expect("Should write dotted-dir file");
+        fs::write(temp_root.join("bad-dir/value.fol"), "var hyphen = 1")
+            .expect("Should write hyphen-dir file");
         fs::write(temp_root.join("okay_dir/value.fol"), "var valid = 1")
             .expect("Should write valid-dir file");
+        fs::write(temp_root.join("_hidden/value.fol"), "var hidden = 1")
+            .expect("Should write leading-underscore file");
+        fs::write(temp_root.join("_/value.fol"), "var wildcard = 1")
+            .expect("Should write single-underscore file");
+        fs::write(temp_root.join("bad__name/value.fol"), "var repeated = 1")
+            .expect("Should write repeated-underscore file");
+        fs::write(temp_root.join("MiXeDCase/value.fol"), "var mixed = 1")
+            .expect("Should write mixed-case file");
 
         let sources = Source::init_with_package(
             temp_root.to_str().expect("Temp root should be utf-8"),
@@ -400,14 +416,39 @@ mod namespace_tests {
             .iter()
             .find(|source| source.path.ends_with("bad.dir/value.fol"))
             .expect("Should include dotted-dir file");
+        let hyphen = sources
+            .iter()
+            .find(|source| source.path.ends_with("bad-dir/value.fol"))
+            .expect("Should include hyphen-dir file");
         let valid = sources
             .iter()
             .find(|source| source.path.ends_with("okay_dir/value.fol"))
             .expect("Should include valid-dir file");
+        let leading_underscore = sources
+            .iter()
+            .find(|source| source.path.ends_with("_hidden/value.fol"))
+            .expect("Should include leading-underscore file");
+        let single_underscore = sources
+            .iter()
+            .find(|source| source.path.ends_with("_/value.fol"))
+            .expect("Should include single-underscore file");
+        let repeated_underscore = sources
+            .iter()
+            .find(|source| source.path.ends_with("bad__name/value.fol"))
+            .expect("Should include repeated-underscore file");
+        let mixed_case = sources
+            .iter()
+            .find(|source| source.path.ends_with("MiXeDCase/value.fol"))
+            .expect("Should include mixed-case file");
 
         assert_eq!(nested.namespace, "pkg::good");
         assert_eq!(dotted.namespace, "pkg");
+        assert_eq!(hyphen.namespace, "pkg");
         assert_eq!(valid.namespace, "pkg::okay_dir");
+        assert_eq!(leading_underscore.namespace, "pkg::_hidden");
+        assert_eq!(single_underscore.namespace, "pkg::_");
+        assert_eq!(repeated_underscore.namespace, "pkg");
+        assert_eq!(mixed_case.namespace, "pkg::MiXeDCase");
 
         fs::remove_dir_all(&temp_root).ok();
     }
@@ -432,6 +473,33 @@ mod namespace_tests {
             .expect("Should include valid-component file");
 
         assert_eq!(valid.namespace, "pkg::good_2::more3");
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_non_ascii_namespace_components_are_ignored() {
+        let temp_root = unique_temp_root("namespace_non_ascii_components");
+        fs::create_dir_all(temp_root.join("ascii/café")).expect("Should create mixed ascii/unicode dirs");
+        fs::write(temp_root.join("ascii/café/value.fol"), "var unicode = 1")
+            .expect("Should write unicode-path file");
+
+        let sources = Source::init_with_package(
+            temp_root.to_str().expect("Temp root should be utf-8"),
+            SourceType::Folder,
+            "pkg",
+        )
+        .expect("Should create sources from non-ascii namespace root");
+
+        let mixed = sources
+            .iter()
+            .find(|source| source.path.ends_with("ascii/café/value.fol"))
+            .expect("Should include unicode-path file");
+
+        assert_eq!(
+            mixed.namespace, "pkg::ascii",
+            "Non-ASCII namespace components should be skipped while valid ASCII ancestors remain"
+        );
 
         fs::remove_dir_all(&temp_root).ok();
     }
