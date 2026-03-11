@@ -203,7 +203,7 @@ fn test_protocol_standard_accepts_default_logical_implementations() {
                 node,
                 AstNode::StdDecl { name, kind: StandardKind::Protocol, body, .. }
                 if name == "geometry"
-                    && body.iter().any(|stmt| matches!(stmt, AstNode::FunDecl { name, body, .. } if name == "valid" && !body.is_empty()))
+                    && body.iter().any(|stmt| matches!(stmt, AstNode::LogDecl { name, body, .. } if name == "valid" && !body.is_empty()))
             )));
         }
         _ => panic!("Expected program node"),
@@ -468,7 +468,7 @@ fn test_extended_standard_accepts_default_logical_implementations() {
                 node,
                 AstNode::StdDecl { name, kind: StandardKind::Extended, body, .. }
                 if name == "geometry"
-                    && body.iter().any(|stmt| matches!(stmt, AstNode::FunDecl { name, body, .. } if name == "valid" && !body.is_empty()))
+                    && body.iter().any(|stmt| matches!(stmt, AstNode::LogDecl { name, body, .. } if name == "valid" && !body.is_empty()))
             )));
         }
         _ => panic!("Expected program node"),

@@ -50,7 +50,7 @@ fn test_anonymous_routine_capture_lists_parsing() {
             assert!(declarations.iter().any(|node| {
                 matches!(
                     node,
-                    AstNode::FunDecl { name, body, .. }
+                    AstNode::LogDecl { name, body, .. }
                     if name == "check_it"
                         && body.iter().any(|stmt| matches!(
                             stmt,

@@ -44,7 +44,7 @@ fn test_anonymous_routines_accept_semicolon_capture_separators() {
             )));
             assert!(declarations.iter().any(|node| matches!(
                 node,
-                AstNode::FunDecl { name, body, .. }
+                AstNode::LogDecl { name, body, .. }
                 if name == "check_it"
                     && body.iter().any(|stmt| matches!(
                         stmt,

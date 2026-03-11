@@ -133,7 +133,7 @@ fn test_alternative_logical_header_without_params() {
         AstNode::Program { declarations } => {
             assert!(declarations.iter().any(|node| matches!(
                 node,
-                AstNode::FunDecl {
+                AstNode::LogDecl {
                     name,
                     params,
                     return_type: Some(FolType::Bool),
@@ -163,7 +163,7 @@ fn test_alternative_logical_header_without_params_supports_flow_body() {
         AstNode::Program { declarations } => {
             assert!(declarations.iter().any(|node| matches!(
                 node,
-                AstNode::FunDecl {
+                AstNode::LogDecl {
                     name,
                     params,
                     return_type: Some(FolType::Bool),
@@ -320,7 +320,7 @@ fn test_alternative_logical_header_with_params() {
         AstNode::Program { declarations } => {
             assert!(declarations.iter().any(|node| matches!(
                 node,
-                AstNode::FunDecl {
+                AstNode::LogDecl {
                     name,
                     params,
                     return_type: Some(FolType::Bool),
@@ -351,7 +351,7 @@ fn test_alternative_logical_header_with_params_supports_flow_body() {
         AstNode::Program { declarations } => {
             assert!(declarations.iter().any(|node| matches!(
                 node,
-                AstNode::FunDecl {
+                AstNode::LogDecl {
                     name,
                     params,
                     return_type: Some(FolType::Bool),
@@ -499,7 +499,7 @@ fn test_alternative_logical_header_with_captures() {
         AstNode::Program { declarations } => {
             assert!(declarations.iter().any(|node| matches!(
                 node,
-                AstNode::FunDecl { name, captures, params, .. }
+                AstNode::LogDecl { name, captures, params, .. }
                 if name == "ready"
                     && params.len() == 1
                     && captures == &vec!["state".to_string()]
@@ -525,7 +525,7 @@ fn test_alternative_logical_header_with_captures_supports_flow_body() {
         AstNode::Program { declarations } => {
             assert!(declarations.iter().any(|node| matches!(
                 node,
-                AstNode::FunDecl {
+                AstNode::LogDecl {
                     name,
                     captures,
                     params,
@@ -572,7 +572,7 @@ fn test_alternative_headers_accept_semicolon_capture_separators() {
             )));
             assert!(declarations.iter().any(|node| matches!(
                 node,
-                AstNode::FunDecl { name, captures, params, .. }
+                AstNode::LogDecl { name, captures, params, .. }
                 if name == "ready"
                     && params.len() == 1
                     && captures == &vec!["state".to_string()]
@@ -735,7 +735,7 @@ fn test_alternative_logical_header_with_generics() {
         AstNode::Program { declarations } => {
             assert!(declarations.iter().any(|node| matches!(
                 node,
-                AstNode::FunDecl {
+                AstNode::LogDecl {
                     name,
                     generics,
                     params,
@@ -769,7 +769,7 @@ fn test_alternative_logical_header_with_generics_supports_flow_body() {
         AstNode::Program { declarations } => {
             assert!(declarations.iter().any(|node| matches!(
                 node,
-                AstNode::FunDecl {
+                AstNode::LogDecl {
                     name,
                     generics,
                     params,
@@ -857,7 +857,7 @@ fn test_alternative_logical_header_with_flow_body_inquiries() {
         AstNode::Program { declarations } => {
             assert!(declarations.iter().any(|node| matches!(
                 node,
-                AstNode::FunDecl { name, inquiries, .. }
+                AstNode::LogDecl { name, inquiries, .. }
                 if name == "ready"
                     && inquiries.len() == 1
                     && matches!(&inquiries[0], AstNode::Inquiry { target, body } if inquiry_target_is(target, "self") && !body.is_empty())

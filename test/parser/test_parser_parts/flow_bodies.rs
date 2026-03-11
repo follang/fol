@@ -727,7 +727,7 @@ fn test_when_flow_routine_bodies_parsing() {
                             WhenCase::Is { body, .. },
                             WhenCase::Has { body: second_body, .. }
                         ]
-                        if matches!(body.as_slice(), [AstNode::FunDecl { .. }])
+                        if matches!(body.as_slice(), [AstNode::LogDecl { .. }])
                             && matches!(second_body.as_slice(), [AstNode::FunDecl { .. }])
                     )
                 ))

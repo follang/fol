@@ -24,7 +24,7 @@ fn test_record_type_accepts_routine_members() {
                 if name == "Computer"
                     && members.iter().any(|member| matches!(member, AstNode::FunDecl { name, .. } if name == "getBrand"))
                     && members.iter().any(|member| matches!(member, AstNode::ProDecl { name, .. } if name == "reset"))
-                    && members.iter().any(|member| matches!(member, AstNode::FunDecl { name, .. } if name == "ready"))
+                    && members.iter().any(|member| matches!(member, AstNode::LogDecl { name, .. } if name == "ready"))
             )));
         }
         _ => panic!("Expected program node"),

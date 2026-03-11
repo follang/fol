@@ -743,7 +743,7 @@ fn test_logical_declaration_parsing() {
         AstNode::Program { declarations } => declarations
             .iter()
             .find_map(|node| {
-                if let AstNode::FunDecl {
+                if let AstNode::LogDecl {
                     name,
                     params,
                     return_type,
@@ -774,7 +774,7 @@ fn test_logical_declaration_parsing() {
                 }
                 None
             })
-            .expect("Program should include logical declaration lowered as function"),
+            .expect("Program should include a dedicated logical declaration"),
         _ => panic!("Expected program node"),
     };
 

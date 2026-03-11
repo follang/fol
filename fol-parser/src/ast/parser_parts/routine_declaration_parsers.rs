@@ -264,7 +264,7 @@ impl AstParser {
                 "Expected '}' to close logical body",
             )?;
 
-            return Ok(AstNode::FunDecl {
+            return Ok(AstNode::LogDecl {
                 options,
                 generics: alt_generics,
                 name,
@@ -325,7 +325,7 @@ impl AstParser {
             "Expected '}' to close logical body",
         )?;
 
-        Ok(AstNode::FunDecl {
+        Ok(AstNode::LogDecl {
             options,
             generics,
             name,

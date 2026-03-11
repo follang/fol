@@ -540,7 +540,8 @@ fn test_inquiry_clause_accepts_routine_bodies() {
                 node,
                 AstNode::FunDecl { inquiries, .. }
                 if matches!(&inquiries[0], AstNode::Inquiry { body, .. }
-                    if body.iter().filter(|node| matches!(node, AstNode::FunDecl { .. })).count() >= 2
+                    if body.iter().filter(|node| matches!(node, AstNode::FunDecl { .. })).count() >= 1
+                        && body.iter().any(|node| matches!(node, AstNode::LogDecl { .. }))
                         && body.iter().any(|node| matches!(node, AstNode::ProDecl { .. })))
             )));
         }

@@ -67,7 +67,7 @@ fn test_logical_declaration_supports_flow_body() {
         AstNode::Program { declarations } => {
             assert!(declarations.iter().any(|node| matches!(
                 node,
-                AstNode::FunDecl { name, params, return_type: Some(FolType::Bool), body, inquiries, .. }
+                AstNode::LogDecl { name, params, return_type: Some(FolType::Bool), body, inquiries, .. }
                 if name == "ready"
                     && params.is_empty()
                     && inquiries.is_empty()
@@ -147,7 +147,7 @@ fn test_logical_declaration_supports_parameterized_flow_body() {
         AstNode::Program { declarations } => {
             assert!(declarations.iter().any(|node| matches!(
                 node,
-                AstNode::FunDecl { name, params, return_type: Some(FolType::Bool), body, .. }
+                AstNode::LogDecl { name, params, return_type: Some(FolType::Bool), body, .. }
                 if name == "ready"
                     && params.len() == 2
                     && params[0].name == "left"
@@ -224,7 +224,7 @@ fn test_logical_declaration_supports_flow_body_inquiries() {
         AstNode::Program { declarations } => {
             assert!(declarations.iter().any(|node| matches!(
                 node,
-                AstNode::FunDecl { name, inquiries, .. }
+                AstNode::LogDecl { name, inquiries, .. }
                 if name == "ready"
                     && inquiries.len() == 1
                     && matches!(&inquiries[0], AstNode::Inquiry { target, body } if inquiry_target_is(target, "self") && !body.is_empty())

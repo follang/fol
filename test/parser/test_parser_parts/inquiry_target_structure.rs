@@ -330,6 +330,7 @@ fn test_flow_bodied_routines_keep_structural_inquiry_targets() {
             AstNode::Program { declarations } => {
                 let inquiry_target = declarations.iter().find_map(|node| match node {
                     AstNode::FunDecl { inquiries, .. }
+                    | AstNode::LogDecl { inquiries, .. }
                     | AstNode::ProDecl { inquiries, .. } => inquiries.first(),
                     _ => None,
                 });
@@ -372,6 +373,7 @@ fn test_alternative_headers_keep_structural_inquiry_targets() {
             AstNode::Program { declarations } => {
                 let inquiry_target = declarations.iter().find_map(|node| match node {
                     AstNode::FunDecl { inquiries, .. }
+                    | AstNode::LogDecl { inquiries, .. }
                     | AstNode::ProDecl { inquiries, .. } => inquiries.first(),
                     _ => None,
                 });

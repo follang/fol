@@ -943,7 +943,7 @@ fn test_shorthand_anonymous_function_flow_error_type_in_logical_bodies() {
             assert!(declarations.iter().any(|node| {
                 matches!(
                     node,
-                    AstNode::FunDecl { name, body, .. }
+                    AstNode::LogDecl { name, body, .. }
                     if name == "outer"
                         && body.iter().any(|stmt| matches!(
                             stmt,

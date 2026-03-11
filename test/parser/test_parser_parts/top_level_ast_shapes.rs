@@ -62,9 +62,9 @@ fn test_top_level_log_stays_a_single_root_declaration() {
     assert!(
         matches!(
             &declarations[0],
-            AstNode::FunDecl { name, body, .. } if name == "dating" && body.len() == 1
+            AstNode::LogDecl { name, body, .. } if name == "dating" && body.len() == 1
         ),
-        "Logical declarations still lower through FunDecl, but only as a single root declaration"
+        "The only root node should be the authoritative logical declaration"
     );
 }
 
@@ -103,7 +103,7 @@ fn test_type_member_routines_stay_nested_and_do_not_leak_to_root() {
             )));
             assert!(members.iter().any(|member| matches!(
                 member,
-                AstNode::FunDecl { name, .. } if name == "ready"
+                AstNode::LogDecl { name, .. } if name == "ready"
             )));
         }
         other => panic!("Expected record type declaration, got {:?}", other),

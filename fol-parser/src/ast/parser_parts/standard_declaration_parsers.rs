@@ -657,6 +657,18 @@ impl AstParser {
                 body,
                 inquiries,
             },
+            KEYWORD::Keyword(BUILDIN::Log) => AstNode::LogDecl {
+                options,
+                generics,
+                name,
+                receiver_type,
+                captures,
+                params,
+                return_type,
+                error_type,
+                body,
+                inquiries,
+            },
             _ => AstNode::FunDecl {
                 options,
                 generics,
@@ -674,7 +686,9 @@ impl AstParser {
 
     fn standard_member_key(&self, node: &AstNode) -> String {
         match node {
-            AstNode::FunDecl { name, params, .. } | AstNode::ProDecl { name, params, .. } => {
+            AstNode::FunDecl { name, params, .. }
+            | AstNode::LogDecl { name, params, .. }
+            | AstNode::ProDecl { name, params, .. } => {
                 format!("{}#{}", name, params.len())
             }
             AstNode::AliasDecl { name, .. } => name.clone(),
@@ -686,7 +700,9 @@ impl AstParser {
 
     fn standard_member_comparison_key(&self, node: &AstNode) -> String {
         match node {
-            AstNode::FunDecl { name, params, .. } | AstNode::ProDecl { name, params, .. } => {
+            AstNode::FunDecl { name, params, .. }
+            | AstNode::LogDecl { name, params, .. }
+            | AstNode::ProDecl { name, params, .. } => {
                 format!("routine#{}#{}", canonical_identifier_key(name), params.len())
             }
             AstNode::AliasDecl { name, .. } => format!("alias#{}", canonical_identifier_key(name)),

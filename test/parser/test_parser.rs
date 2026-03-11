@@ -23,7 +23,9 @@ fn program_surface_nodes<'a>(declarations: &'a [AstNode]) -> Vec<&'a AstNode> {
         nodes.push(node);
 
         match node {
-            AstNode::FunDecl { body, .. } | AstNode::ProDecl { body, .. } => {
+            AstNode::FunDecl { body, .. }
+            | AstNode::LogDecl { body, .. }
+            | AstNode::ProDecl { body, .. } => {
                 nodes.extend(body.iter());
             }
             _ => {}

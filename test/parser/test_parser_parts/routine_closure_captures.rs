@@ -45,7 +45,7 @@ fn test_named_logical_and_procedure_closure_captures() {
         AstNode::Program { declarations } => {
             assert!(declarations.iter().any(|node| matches!(
                 node,
-                AstNode::FunDecl { name, captures, .. }
+                AstNode::LogDecl { name, captures, .. }
                 if name == "matches" && captures == &vec!["rule".to_string(), "value".to_string()]
             )));
             assert!(declarations.iter().any(|node| matches!(
@@ -135,7 +135,7 @@ fn test_named_routine_closure_captures_accept_semicolon_separators() {
             }));
             assert!(declarations.iter().any(|node| matches!(
                 node,
-                AstNode::FunDecl { name, captures, .. }
+                AstNode::LogDecl { name, captures, .. }
                 if name == "matches" && captures == &vec!["rule".to_string(), "value".to_string()]
             )));
             assert!(declarations.iter().any(|node| matches!(

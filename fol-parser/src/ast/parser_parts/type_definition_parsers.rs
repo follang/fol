@@ -604,7 +604,9 @@ impl AstParser {
 
     fn type_member_key(&self, node: &AstNode) -> String {
         match node {
-            AstNode::FunDecl { name, params, .. } | AstNode::ProDecl { name, params, .. } => {
+            AstNode::FunDecl { name, params, .. }
+            | AstNode::LogDecl { name, params, .. }
+            | AstNode::ProDecl { name, params, .. } => {
                 format!("{}#{}", name, params.len())
             }
             AstNode::AliasDecl { name, .. }
@@ -651,7 +653,9 @@ impl AstParser {
         self.skip_ignorable(tokens);
         let mut member = self.parse_standard_routine_signature(tokens)?;
         match &mut member {
-            AstNode::FunDecl { options, .. } | AstNode::ProDecl { options, .. } => {
+            AstNode::FunDecl { options, .. }
+            | AstNode::LogDecl { options, .. }
+            | AstNode::ProDecl { options, .. } => {
                 if !options.contains(&FunOption::Export) {
                     options.insert(0, FunOption::Export);
                 }
