@@ -327,7 +327,7 @@ Done when:
 - [x] Normalize named-label extraction.
 - [x] Normalize quoted-name extraction.
 - [x] Normalize qualified path extraction.
-- [ ] Keep type-path handling and value-path handling deliberate.
+- [x] Keep type-path handling and value-path handling deliberate.
 - [x] Add tests for quoted and qualified path forms.
 
 Done when:
