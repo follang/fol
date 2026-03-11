@@ -425,7 +425,7 @@ Target area:
 
 - [x] Write a short parser contract summary:
 - [x] root AST invariants
-- [ ] declaration invariants
+- [x] declaration invariants
 - [x] literal lowering guarantees
 - [x] parser-owned validations
 
