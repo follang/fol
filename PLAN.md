@@ -314,7 +314,7 @@ Done when:
 - [ ] Define what may appear in `Program.declarations`.
 - [ ] Define what may appear inside routine bodies.
 - [x] Define how quoted names are represented.
-- [ ] Define how qualified paths are represented.
+- [x] Define how qualified paths are represented.
 - [ ] Define invariants for grouped declarations.
 - [ ] Add tests that lock those invariants down.
 
