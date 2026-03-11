@@ -750,3 +750,23 @@ fn test_test_type_argument_illegal_name_reports_offending_token_location() {
         "Illegal tst[...] arguments should retain a concrete source column"
     );
 }
+
+#[test]
+fn test_standard_illegal_name_still_routes_through_std_parser() {
+    let (message, line, column) =
+        parse_error_snapshot("test/parser/simple_std_illegal_name_routed_decl.fol");
+
+    assert!(
+        message.contains("Parser encountered illegal token"),
+        "Illegal standard names should surface from the standard parser, got: {}",
+        message
+    );
+    assert_eq!(
+        line, 1,
+        "Illegal standard names should anchor to the declaration header line"
+    );
+    assert!(
+        column > 0,
+        "Illegal standard names should retain a concrete source column"
+    );
+}

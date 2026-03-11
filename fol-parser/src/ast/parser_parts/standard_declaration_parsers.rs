@@ -37,7 +37,7 @@ impl AstParser {
             };
             name_token = next_name;
         }
-        if Self::token_to_named_label(&name_token).is_none() {
+        if !(Self::token_to_named_label(&name_token).is_some() || name_token.key().is_illegal()) {
             return false;
         }
 
