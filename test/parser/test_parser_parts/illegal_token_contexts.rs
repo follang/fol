@@ -1008,6 +1008,23 @@ fn test_type_reference_illegal_segment_reports_offending_token_location() {
 }
 
 #[test]
+fn test_scalar_type_illegal_option_reports_offending_token_location() {
+    let (message, line, column) =
+        parse_error_snapshot("test/parser/simple_typ_scalar_type_illegal_option.fol");
+
+    assert!(
+        message.contains("Parser encountered illegal token"),
+        "Illegal scalar type options should surface as explicit illegal-token diagnostics, got: {}",
+        message
+    );
+    assert_eq!(line, 1, "Illegal scalar type options should report the declaration line");
+    assert!(
+        column > 0,
+        "Illegal scalar type options should retain a concrete source column"
+    );
+}
+
+#[test]
 fn test_rest_binding_illegal_name_reports_offending_token_location() {
     let (message, line, column) =
         parse_error_snapshot("test/parser/simple_var_destructure_illegal_rest_name.fol");
