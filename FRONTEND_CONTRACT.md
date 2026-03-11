@@ -171,6 +171,8 @@ tests actually enforce today.
   parser accepts them as labels.
 - Quoted names also normalize to plain, unquoted strings in AST fields such as
   declaration names and binding names.
+- Parser name and quoted-path lowering remove only the matching outer delimiters, so
+  inner opposite-family quote characters survive unchanged in the lowered AST text.
 - Qualified value paths are currently encoded as `::`-joined strings inside the value
   nodes that carry names, such as `Identifier { name }` and `FunctionCall { name }`.
 - Qualified type paths are currently encoded as `FolType::Named { name }` with the full

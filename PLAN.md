@@ -391,12 +391,12 @@ Target files:
 
 ### 10.6 Align Literal And Quoted-Name Lowering With The New Lexer Model
 
-- [ ] Replace `trim_matches`-based name lowering with a dedicated unquote helper that matches the final lexer contract.
+- [x] Replace `trim_matches`-based name lowering with a dedicated unquote helper that matches the final lexer contract.
 - [ ] Lower cooked character/string literals according to the chosen literal authority.
 - [ ] Lower raw character/string literals according to the chosen literal authority.
 - [ ] Implement imaginary literal lowering if Phase 2 adds imaginary token support.
 - [ ] Decide whether raw-vs-cooked must survive in the AST or can be normalized away after value lowering.
-- [ ] Add tests for quoted names using both quote families if both remain valid name surfaces.
+- [x] Add tests for quoted names using both quote families if both remain valid name surfaces.
 
 ### 10.7 Tighten Parser Error Surfaces After The Lexer Cleanup
 
