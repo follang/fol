@@ -1146,9 +1146,9 @@ mod lexer_error_tests {
     }
 
     #[test]
-    fn test_unterminated_backtick_literal_becomes_illegal_token() {
+    fn test_unterminated_backtick_comment_becomes_illegal_token() {
         let temp_path = std::env::temp_dir().join(format!(
-            "fol_lexer_unterminated_backtick_{}_{}.fol",
+            "fol_lexer_unterminated_backtick_comment_{}_{}.fol",
             std::process::id(),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -1156,17 +1156,17 @@ mod lexer_error_tests {
                 .as_nanos()
         ));
         std::fs::write(&temp_path, "`macroish")
-            .expect("Should write unterminated backtick lexer fixture");
+            .expect("Should write unterminated backtick comment lexer fixture");
 
         let tokens = tokenize_file(
             temp_path
                 .to_str()
-                .expect("Unterminated backtick fixture path should be valid utf-8"),
+                .expect("Unterminated backtick comment fixture path should be valid utf-8"),
         );
 
         assert!(
             tokens.iter().any(|(key, _)| key.is_illegal()),
-            "Unterminated backtick content should use the same illegal-token path as other quoted forms"
+            "Unterminated backtick comments should use the same illegal-token path as other malformed comment spans"
         );
 
         std::fs::remove_file(&temp_path).ok();

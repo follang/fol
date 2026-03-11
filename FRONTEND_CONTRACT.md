@@ -119,21 +119,32 @@ tests actually enforce today.
 - Double-quoted content arrives at the lexer boundary as `Stringy`.
 - Single-quoted content arrives at the lexer boundary as `Quoted`.
 - The current front end does not expose separate raw-vs-cooked literal token kinds;
-  backticks still stay outside the literal taxonomy entirely.
-- Backticks stay `Operator::ANY` until the language gives them a narrower meaning.
+  backticks stay outside the literal taxonomy entirely because they now belong to
+  comment syntax instead of parser-visible literal or operator tokens.
 - Imaginary-unit suffixes are out of scope and stay outside the supported numeric
   literal families.
 
 ### Comment Policy
 
+- Backtick-delimited comments are the authoritative comment syntax from the book.
+- Single-line and multiline backtick comments are the same delimited syntax family;
+  newlines inside the span do not change the comment kind.
+- Slash line comments and slash block comments remain explicit compatibility behavior
+  during this hardening pass.
 - Ordinary comments are fully ignorable by the parser-facing lexer output.
-- Doc-comment spellings follow the same path as ordinary comments and are explicitly
-  deferred instead of surfacing as a separate token family.
+- Backtick doc-comment spellings using the `[doc]` prefix follow the same path as
+  ordinary comments and are explicitly deferred instead of surfacing as a separate
+  token family.
+- Comment delimiters inside quoted literals stay inside the literal payload and do not
+  start comments.
 
 ### Malformed-Input Policy
 
-- Unterminated single-quoted, double-quoted, and backtick-delimited content all become
-  the same parser-visible `Illegal` token instead of a hard lexer error.
+- Unterminated single-quoted and double-quoted literal spans become parser-visible
+  `Illegal` tokens instead of hard lexer errors.
+- Unterminated backtick comment spans and unterminated slash block comment spans also
+  become parser-visible `Illegal` tokens instead of degrading into ignorable whitespace
+  or a later delimiter error.
 - Invalid-looking escape spellings are preserved verbatim inside quoted payloads.
 - Physical newlines inside quoted content stay inside the same token payload; the lexer
   does not apply a separate line-continuation rule at this boundary.

@@ -136,9 +136,9 @@ Target files:
 
 ### 7.2 Comment Authority
 
-- [ ] Decide whether backtick comments from the book are authoritative.
-- [ ] Decide whether slash comments remain temporarily supported during migration or are removed immediately.
-- [ ] Decide whether doc comments must survive lexing as recoverable metadata or can remain deferred longer.
+- [x] Decide whether backtick comments from the book are authoritative.
+- [x] Decide whether slash comments remain temporarily supported during migration or are removed immediately.
+- [x] Decide whether doc comments must survive lexing as recoverable metadata or can remain deferred longer.
 
 ### 7.3 Literal Authority
 
@@ -251,15 +251,15 @@ Target files:
 
 ### 9.2 Replace The Current Comment Model
 
-- [ ] Remove the impossible overlap between backticks-as-`ANY` and backticks-as-comments.
-- [ ] If the book wins, implement backtick-delimited comment spans.
-- [ ] Treat one-line and multiline backtick comments as the same delimited syntax family instead of emulating slash comments.
+- [x] Remove the impossible overlap between backticks-as-`ANY` and backticks-as-comments.
+- [x] If the book wins, implement backtick-delimited comment spans.
+- [x] Treat one-line and multiline backtick comments as the same delimited syntax family instead of emulating slash comments.
 - [ ] Implement doc-comment detection for the `[doc]` prefix if it remains in scope.
-- [ ] Decide whether doc comments become a token family, lexer side channel, or deferred metadata stream.
+- [x] Decide whether doc comments become a token family, lexer side channel, or deferred metadata stream.
 - [ ] Remove slash comment logic if it is no longer part of the front-end contract.
 - [ ] Delete dead `stage2::make_comment()` if comment handling no longer needs it.
 - [ ] Add fixtures for normal comments, doc comments, multiline comments, and unterminated comment spans.
-- [ ] Add tests proving comment delimiters inside quoted literals do not start comments.
+- [x] Add tests proving comment delimiters inside quoted literals do not start comments.
 
 ### 9.3 Rebuild Quoted Literal Taxonomy
 
@@ -291,7 +291,7 @@ Target files:
 - [x] Remove `Illegal` from `KEYWORD::is_void()`.
 - [ ] Audit every parser path that currently assumes `is_void()` also means malformed input.
 - [ ] Make malformed quoted spans follow one consistent policy.
-- [ ] Make malformed comments follow one consistent policy.
+- [x] Make malformed comments follow one consistent policy.
 - [ ] Make malformed numeric spans follow one consistent policy.
 - [ ] Ensure raw unsupported characters still produce lexer errors instead of silent token conversion.
 - [x] Add nested-context fixtures where an illegal token appears inside calls, blocks, type references, and parameter lists.
@@ -314,7 +314,7 @@ Target files:
 
 Acceptance for Phase 2:
 
-- [ ] Comment syntax matches the chosen authority.
+- [x] Comment syntax matches the chosen authority.
 - [ ] Literal quote behavior matches the chosen authority.
 - [ ] Illegal tokens are no longer treated as whitespace.
 - [ ] Identifier rules are explicit and test-backed.
@@ -447,8 +447,8 @@ This is the recommended implementation order once the decision freeze is complet
 4. [x] Preserve method receiver types in the AST and add direct retention tests.
 5. [x] Introduce explicit logical routine kind in the AST and migrate `log` lowering.
 6. [ ] Decide and implement the final root surface contract.
-7. [ ] Replace backtick `ANY` behavior with the chosen comment model.
-8. [ ] Remove slash-comment dependence or make it explicit compatibility behavior.
+7. [x] Replace backtick `ANY` behavior with the chosen comment model.
+8. [x] Remove slash-comment dependence or make it explicit compatibility behavior.
 9. [ ] Rebuild literal quote taxonomy around the chosen cooked/raw model.
 10. [ ] Implement cooked escape handling and cooked multiline continuation if that model is kept.
 11. [ ] Add imaginary literal support or explicitly remove it from the front-end scope docs.
@@ -469,7 +469,7 @@ Do not move to the next compiler stage until every gate below is true.
 - [ ] Package and namespace behavior are FOL-defined instead of host-tool-defined.
 - [ ] Cross-file boundaries are explicit and do not depend on fabricated source characters.
 - [ ] Identifier rules are explicit, tested, and used consistently across stream/lexer/parser comparisons.
-- [ ] Comment syntax matches the chosen authority and no longer conflicts with backtick tokenization.
+- [x] Comment syntax matches the chosen authority and no longer conflicts with backtick tokenization.
 - [ ] Literal quote behavior matches the chosen authority.
 - [ ] Escape handling matches the chosen authority.
 - [ ] Imaginary literal status is resolved instead of sitting in a silent limbo.
