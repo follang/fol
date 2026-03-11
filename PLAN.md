@@ -213,7 +213,7 @@ Done when:
 - [ ] Decide whether normal comments remain fully ignorable.
 - [ ] Decide whether doc comments are represented separately or explicitly deferred.
 - [ ] If deferred, make that explicit in the front-end contract.
-- [ ] Add tests for line comments, block comments, and comment-boundary spacing behavior.
+- [x] Add tests for line comments, block comments, and comment-boundary spacing behavior.
 
 Done when:
 

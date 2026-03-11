@@ -265,6 +265,27 @@ mod lexer_tests {
     }
 
     #[test]
+    fn test_comments_do_not_disturb_surrounding_code_tokens() {
+        let tokens = tokenize_file("test/lexer/comments.fol");
+        let significant: Vec<(KEYWORD, String)> = tokens
+            .into_iter()
+            .filter(|(key, _)| !key.is_void() && !key.is_comment())
+            .collect();
+
+        assert_eq!(
+            significant,
+            vec![
+                (KEYWORD::Keyword(BUILDIN::Var), "var".to_string()),
+                (KEYWORD::Identifier, "x".to_string()),
+                (KEYWORD::Symbol(SYMBOL::Equal), "=".to_string()),
+                (KEYWORD::Literal(LITERAL::Deciaml), "5".to_string()),
+                (KEYWORD::Symbol(SYMBOL::Semi), "; ".to_string()),
+            ],
+            "Line and block comments should be ignorable without disturbing code token order"
+        );
+    }
+
+    #[test]
     fn test_mixed_content() {
         let tokens = tokenize_file("test/lexer/mixed.fol");
 
