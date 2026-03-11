@@ -316,6 +316,25 @@ mod lexer_tests {
     }
 
     #[test]
+    fn test_identifier_string_boundaries_do_not_merge_across_files() {
+        let tokens = tokenize_folder_contents(&[("a.fol", "alpha"), ("b.fol", "\"beta\"")]);
+        let significant: Vec<(KEYWORD, String)> = tokens
+            .into_iter()
+            .filter(|(key, _)| !key.is_space() && !key.is_eof())
+            .collect();
+
+        assert_eq!(
+            significant,
+            vec![
+                (KEYWORD::Identifier, "alpha".to_string()),
+                (KEYWORD::Void(VOID::Boundary), String::new()),
+                (KEYWORD::Literal(LITERAL::Stringy), "\"beta\"".to_string()),
+            ],
+            "Cross-file boundaries must keep identifiers and following quoted literals separate"
+        );
+    }
+
+    #[test]
     fn test_literals() {
         let tokens = tokenize_file("test/lexer/literals.fol");
 
