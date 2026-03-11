@@ -909,4 +909,31 @@ mod lexer_error_tests {
             "Single-quoted unterminated content should use the same illegal-token path as double-quoted content"
         );
     }
+
+    #[test]
+    fn test_unterminated_backtick_literal_becomes_illegal_token() {
+        let temp_path = std::env::temp_dir().join(format!(
+            "fol_lexer_unterminated_backtick_{}_{}.fol",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("System time should be after unix epoch")
+                .as_nanos()
+        ));
+        std::fs::write(&temp_path, "`macroish")
+            .expect("Should write unterminated backtick lexer fixture");
+
+        let tokens = tokenize_file(
+            temp_path
+                .to_str()
+                .expect("Unterminated backtick fixture path should be valid utf-8"),
+        );
+
+        assert!(
+            tokens.iter().any(|(key, _)| key.is_illegal()),
+            "Unterminated backtick content should use the same illegal-token path as other quoted forms"
+        );
+
+        std::fs::remove_file(&temp_path).ok();
+    }
 }
