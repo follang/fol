@@ -182,6 +182,32 @@ fn test_use_declaration_rejects_duplicate_names() {
 }
 
 #[test]
+fn test_use_declaration_rejects_canonical_duplicate_names() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_use_duplicate_names_canonical.fol")
+            .expect("Should read canonical duplicate use-name fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject canonical duplicate names in one use declaration");
+
+    let parse_error = errors
+        .first()
+        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        .expect("First parser error should be ParseError");
+
+    assert!(
+        parse_error
+            .to_string()
+            .contains("Duplicate use name 'MathName'"),
+        "Canonical duplicate use names should report the later spelling, got: {}",
+        parse_error
+    );
+}
+
+#[test]
 fn test_use_declaration_accepts_semicolon_visibility_options() {
     let mut file_stream = FileStream::from_file("test/parser/simple_use_options_semicolon.fol")
         .expect("Should read semicolon use-option fixture");
