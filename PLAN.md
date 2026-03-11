@@ -58,7 +58,7 @@ Do not use this plan for:
 ### Parser
 
 - [ ] Top-level `Program.declarations` is structurally contaminated by routine body leakage.
-- [ ] Literal lowering is narrower than lexer support.
+- [x] Literal lowering is narrower than lexer support.
 - [ ] AST invariants are not documented or enforced enough.
 - [ ] Parser still mixes syntax work with some semantic-ish checks.
 - [ ] Unsupported combinations are not always rejected explicitly.
@@ -296,7 +296,7 @@ Done when:
 
 ### 7.2 Literal lowering
 
-- [ ] Align parser literal lowering with lexer-supported literal families.
+- [x] Align parser literal lowering with lexer-supported literal families.
 - [x] Support correct AST lowering for currently supported strings.
 - [x] Support correct AST lowering for booleans.
 - [x] Support correct AST lowering for nil.
@@ -307,7 +307,7 @@ Done when:
 
 Done when:
 
-- [ ] Supported lexer literals become correct AST literals without ad hoc gaps.
+- [x] Supported lexer literals become correct AST literals without ad hoc gaps.
 
 ### 7.3 AST invariants
 
@@ -392,7 +392,7 @@ Done when:
 ### 7.10 Parser acceptance gate
 
 - [ ] `Program` root shape is fixed.
-- [ ] Literal lowering is complete for supported literal families.
+- [x] Literal lowering is complete for supported literal families.
 - [ ] AST invariants are explicit and tested.
 - [ ] Unsupported combinations fail intentionally.
 - [ ] Parser diagnostic behavior is more consistent.
