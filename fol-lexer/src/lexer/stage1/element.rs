@@ -197,10 +197,7 @@ impl Element {
                 })?;
             } else if matches!(code.peek(0)?.0, 'o' | 'O') {
                 self.bump(code)?;
-                self.key = Literal(LITERAL::Octal);
-                while is_oct_digit(&code.peek(0)?.0) {
-                    self.bump(code)?;
-                }
+                self.scan_prefixed_numeric(code, LITERAL::Octal, |ch| matches!(ch, '0'..='7'))?;
             } else if matches!(code.peek(0)?.0, 'b' | 'B') {
                 self.bump(code)?;
                 self.key = Literal(LITERAL::Binary);
