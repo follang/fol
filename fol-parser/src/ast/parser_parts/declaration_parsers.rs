@@ -671,8 +671,10 @@ impl AstParser {
     fn is_supported_definition_type(&self, def_type: &FolType) -> bool {
         match def_type {
             FolType::Module { .. } | FolType::Block { .. } | FolType::Test { .. } => true,
-            FolType::Named { name } => matches!(name.as_str(), "mac" | "alt" | "def[]" | "def"),
-            _ => false,
+            other => matches!(
+                other.named_text().as_deref(),
+                Some("mac" | "alt" | "def[]" | "def")
+            ),
         }
     }
 
@@ -684,7 +686,6 @@ impl AstParser {
     }
 
     fn definition_supports_params(&self, def_type: &FolType) -> bool {
-        matches!(def_type, FolType::Named { name } if name == "mac")
+        matches!(def_type.named_text().as_deref(), Some("mac"))
     }
-
 }

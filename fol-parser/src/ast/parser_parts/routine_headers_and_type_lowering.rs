@@ -294,9 +294,11 @@ impl AstParser {
                     }) as Box<dyn Glitch>);
                 }
 
-                let constraints = match param.param_type {
-                    FolType::Named { name } if name == "any" => Vec::new(),
-                    other => vec![other],
+                let constraints = if matches!(param.param_type.named_text().as_deref(), Some("any"))
+                {
+                    Vec::new()
+                } else {
+                    vec![param.param_type]
                 };
 
                 Ok(Generic {
@@ -685,12 +687,19 @@ impl AstParser {
             let receiver_token = tokens.curr(false)?;
             receiver_type = Some(self.parse_type_reference_tokens(tokens)?);
             match receiver_type.as_ref() {
-                Some(FolType::Named { name }) if !matches!(name.as_str(), "any" | "none" | "non") => {}
+                Some(other)
+                    if matches!(
+                        other.named_text().as_deref(),
+                        Some(name) if !matches!(name, "any" | "none" | "non")
+                    ) => {}
                 Some(FolType::Int { .. })
                 | Some(FolType::Float { .. })
                 | Some(FolType::Bool)
                 | Some(FolType::Char { .. }) => {}
-                Some(FolType::Named { .. }) | Some(FolType::Any) | Some(FolType::None) => {
+                Some(FolType::Named { .. })
+                | Some(FolType::QualifiedNamed { .. })
+                | Some(FolType::Any)
+                | Some(FolType::None) => {
                     return Err(Box::new(ParseError::from_token(
                         &receiver_token,
                         "Method receiver type must be a named or scalar type".to_string(),
@@ -723,6 +732,7 @@ impl AstParser {
             FolType::Limited { base, .. } => Self::fol_type_label(base),
             FolType::Channel { .. } => "chn".to_string(),
             FolType::Named { name } => name.clone(),
+            FolType::QualifiedNamed { path } => path.joined(),
             FolType::Url { name } => {
                 if name.is_empty() {
                     "url".to_string()

@@ -481,6 +481,9 @@ pub enum FolType {
     Named {
         name: String,
     },
+    QualifiedNamed {
+        path: QualifiedPath,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -528,6 +531,16 @@ impl InquiryTarget {
             InquiryTarget::Named(name) => name.clone(),
             InquiryTarget::Quoted(name) => format!("\"{}\"", name),
             InquiryTarget::Qualified(segments) => segments.join("::"),
+        }
+    }
+}
+
+impl FolType {
+    pub fn named_text(&self) -> Option<String> {
+        match self {
+            FolType::Named { name } => Some(name.clone()),
+            FolType::QualifiedNamed { path } => Some(path.joined()),
+            _ => None,
         }
     }
 }

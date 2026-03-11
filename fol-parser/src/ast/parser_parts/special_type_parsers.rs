@@ -296,8 +296,9 @@ impl AstParser {
                 }
                 let name = match args.into_iter().next() {
                     None => String::new(),
-                    Some(FolType::Named { name }) => name,
-                    Some(other) => Self::fol_type_label(&other),
+                    Some(other) => other
+                        .named_text()
+                        .unwrap_or_else(|| Self::fol_type_label(&other)),
                 };
                 Ok(Some(FolType::Module { name }))
             }
@@ -312,8 +313,9 @@ impl AstParser {
                 }
                 let name = match args.into_iter().next() {
                     None => String::new(),
-                    Some(FolType::Named { name }) => name,
-                    Some(other) => Self::fol_type_label(&other),
+                    Some(other) => other
+                        .named_text()
+                        .unwrap_or_else(|| Self::fol_type_label(&other)),
                 };
                 Ok(Some(FolType::Block { name }))
             }

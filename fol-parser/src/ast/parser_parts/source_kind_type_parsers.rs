@@ -18,8 +18,9 @@ impl AstParser {
                 }
                 let name = match args.into_iter().next() {
                     None => String::new(),
-                    Some(FolType::Named { name }) => name,
-                    Some(other) => Self::fol_type_label(&other),
+                    Some(other) => other
+                        .named_text()
+                        .unwrap_or_else(|| Self::fol_type_label(&other)),
                 };
                 Ok(Some(FolType::Url { name }))
             }
@@ -34,8 +35,9 @@ impl AstParser {
                 }
                 let name = match args.into_iter().next() {
                     None => String::new(),
-                    Some(FolType::Named { name }) => name,
-                    Some(other) => Self::fol_type_label(&other),
+                    Some(other) => other
+                        .named_text()
+                        .unwrap_or_else(|| Self::fol_type_label(&other)),
                 };
                 Ok(Some(FolType::Location { name }))
             }
@@ -50,8 +52,9 @@ impl AstParser {
                 }
                 let name = match args.into_iter().next() {
                     None => String::new(),
-                    Some(FolType::Named { name }) => name,
-                    Some(other) => Self::fol_type_label(&other),
+                    Some(other) => other
+                        .named_text()
+                        .unwrap_or_else(|| Self::fol_type_label(&other)),
                 };
                 Ok(Some(FolType::Standard { name }))
             }

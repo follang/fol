@@ -31,3 +31,20 @@ fn test_qualified_path_from_joined_keeps_single_and_multi_segment_shapes() {
     );
     assert_eq!(multi.joined(), "pkg::cache::entry");
 }
+
+#[test]
+fn test_named_type_helpers_preserve_flat_and_structured_forms() {
+    let flat = FolType::Named {
+        name: "value".to_string(),
+    };
+    assert_eq!(flat.named_text().as_deref(), Some("value"));
+
+    let structured = FolType::QualifiedNamed {
+        path: QualifiedPath::new(vec![
+            "pkg".to_string(),
+            "cache".to_string(),
+            "entry".to_string(),
+        ]),
+    };
+    assert_eq!(structured.named_text().as_deref(), Some("pkg::cache::entry"));
+}
