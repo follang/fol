@@ -385,6 +385,41 @@ mod lexer_tests {
     }
 
     #[test]
+    fn test_quoted_payloads_keep_physical_newlines_without_continuation_semantics() {
+        let temp_path = std::env::temp_dir().join(format!(
+            "fol_lexer_multiline_quote_{}_{}.fol",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("System time should be after unix epoch")
+                .as_nanos()
+        ));
+        std::fs::write(&temp_path, "\"line one\nline two\"")
+            .expect("Should write multiline quoted lexer fixture");
+
+        let tokens = tokenize_file(
+            temp_path
+                .to_str()
+                .expect("Multiline quoted fixture path should be valid utf-8"),
+        );
+        let significant: Vec<(KEYWORD, String)> = tokens
+            .into_iter()
+            .filter(|(key, _)| !key.is_space() && !key.is_eof())
+            .collect();
+
+        assert_eq!(
+            significant,
+            vec![(
+                KEYWORD::Literal(LITERAL::Stringy),
+                "\"line one\nline two\"".to_string()
+            )],
+            "Quoted content should keep physical newlines inside the token payload instead of using a special continuation rule"
+        );
+
+        std::fs::remove_file(&temp_path).ok();
+    }
+
+    #[test]
     fn test_quoted_literal_payloads_keep_delimiters() {
         let tokens = tokenize_file("test/lexer/literals.fol");
 
