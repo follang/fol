@@ -136,3 +136,27 @@ fn test_representative_missing_close_diagnostics_use_expected_closing_language()
         );
     }
 }
+
+#[test]
+fn test_representative_expected_x_diagnostics_name_the_missing_shape() {
+    for (path, expected) in [
+        (
+            "test/parser/simple_fun_method_receiver_missing_name.fol",
+            "Expected function name after 'fun'",
+        ),
+        (
+            "test/parser/simple_pro_method_receiver_missing_name.fol",
+            "Expected procedure name after 'pro'",
+        ),
+        (
+            "test/parser/simple_fun_field_assignment_missing_name.fol",
+            "Expected field name after '.' in assignment target",
+        ),
+    ] {
+        let message = first_parse_error_message(path);
+        assert!(
+            message.contains(expected),
+            "Expected representative expected-X diagnostic for fixture {path}, got: {message}",
+        );
+    }
+}
