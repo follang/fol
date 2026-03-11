@@ -103,7 +103,7 @@ Done when:
 - [x] Make tests assert the chosen behavior.
 
 Done when:
-- [ ] A future resolver could use stream output without guessing what a source "is".
+- [x] A future resolver could use stream output without guessing what a source "is".
 
 ### 5.3 Package detection
 
