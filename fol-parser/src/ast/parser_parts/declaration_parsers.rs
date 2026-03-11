@@ -632,14 +632,13 @@ impl AstParser {
             }
 
             let segment = match token.key() {
-                KEYWORD::Literal(LITERAL::Stringy) | KEYWORD::Literal(LITERAL::Quoted) => token
-                    .con()
-                    .trim()
-                    .trim_matches(|c| c == '"' || c == '\''),
-                _ => token.con().trim(),
+                KEYWORD::Literal(LITERAL::Stringy) | KEYWORD::Literal(LITERAL::Quoted) => {
+                    Self::exact_unquote_text(token.con())
+                }
+                _ => token.con().trim().to_string(),
             };
             if !segment.is_empty() {
-                path.push_str(segment);
+                path.push_str(&segment);
             }
 
             if tokens.bump().is_none() {

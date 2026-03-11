@@ -57,13 +57,7 @@ impl AstParser {
                 let _ = tokens.bump();
                 paths.push(self.parse_use_path(tokens)?);
             } else if token.key().is_textual_literal() {
-                paths.push(
-                    token
-                        .con()
-                        .trim()
-                        .trim_matches(|c| c == '"' || c == '\'')
-                        .to_string(),
-                );
+                paths.push(Self::exact_unquote_text(token.con()));
                 let _ = tokens.bump();
             } else {
                 paths.push(self.parse_direct_use_path(tokens)?);
