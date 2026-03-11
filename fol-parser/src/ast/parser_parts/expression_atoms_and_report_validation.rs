@@ -100,6 +100,16 @@ impl AstParser {
         token: &fol_lexer::lexer::stage3::element::Element,
         message: &str,
     ) -> Result<String, Box<dyn Glitch>> {
+        Self::reject_illegal_token(token)?;
+
+        Self::token_to_named_label(token).ok_or_else(|| {
+            Box::new(ParseError::from_token(token, message.to_string())) as Box<dyn Glitch>
+        })
+    }
+
+    pub(super) fn reject_illegal_token(
+        token: &fol_lexer::lexer::stage3::element::Element,
+    ) -> Result<(), Box<dyn Glitch>> {
         if token.key().is_illegal() {
             return Err(Box::new(ParseError::from_token(
                 token,
@@ -107,9 +117,7 @@ impl AstParser {
             )));
         }
 
-        Self::token_to_named_label(token).ok_or_else(|| {
-            Box::new(ParseError::from_token(token, message.to_string())) as Box<dyn Glitch>
-        })
+        Ok(())
     }
 
     pub(super) fn exact_unquote_text(raw: &str) -> String {
