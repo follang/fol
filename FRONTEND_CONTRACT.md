@@ -205,6 +205,9 @@ tests actually enforce today.
 - `log` declarations now lower through a dedicated `AstNode::LogDecl` node instead of
   being collapsed into `FunDecl`, so routine kind survives AST lowering for named
   routines.
+- Anonymous logical expressions now follow the same explicit routine-kind decision:
+  `log` expressions lower directly through `AstNode::AnonymousLog` instead of parsing
+  through anonymous-function internals and being rewritten afterward.
 - `AliasDecl` stays a leaf declaration with only the alias name and target type.
 - `TypeDecl` is the single carrier for alias, entry, record, and other type-definition
   families through the `type_def` field.

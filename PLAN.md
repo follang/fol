@@ -360,7 +360,7 @@ Target files:
 
 - [x] Stop lowering `log` declarations through `AstNode::FunDecl`.
 - [x] Introduce either `LogDecl` or one shared routine node with an explicit kind field.
-- [ ] Apply the same decision to anonymous logicals so named and anonymous logicals use one consistent representation.
+- [x] Apply the same decision to anonymous logicals so named and anonymous logicals use one consistent representation.
 - [x] Add tests asserting logical routine identity survives AST lowering.
 - [x] Update docs so no contract still describes `log` as a temporary `FunDecl`.
 
