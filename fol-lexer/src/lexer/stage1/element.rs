@@ -65,6 +65,8 @@ impl Element {
     pub fn analyze(&mut self, code: &mut stage0::Elements) -> Vod {
         if code.curr()?.0 == '/' && (code.peek(0)?.0 == '/' || code.peek(0)?.0 == '*') {
             self.slash_comment(code)?;
+        } else if code.curr()?.0 == stage0::SOURCE_BOUNDARY_CHAR {
+            self.boundary(code)?;
         } else if code.curr()?.0 == '`' {
             self.backtick_comment(code)?;
         } else if is_eof(&code.curr()?.0) {
@@ -96,7 +98,7 @@ impl Element {
         if code.curr()?.0 == '/' {
             self.bump(code)?;
             while !is_eol(&code.peek(0)?.0) {
-                if is_eof(&code.peek(0)?.0) {
+                if is_eof(&code.peek(0)?.0) || code.peek(0)?.0 == stage0::SOURCE_BOUNDARY_CHAR {
                     break;
                 };
                 self.bump(code)?;
@@ -104,7 +106,7 @@ impl Element {
         }
         if code.curr()?.0 == '*' {
             while !(code.curr()?.0 == '*' && code.peek(0)?.0 == '/') {
-                if is_eof(&code.peek(0)?.0) {
+                if is_eof(&code.peek(0)?.0) || code.peek(0)?.0 == stage0::SOURCE_BOUNDARY_CHAR {
                     self.set_key(Illegal);
                     return Ok(());
                 };
@@ -121,11 +123,18 @@ impl Element {
         Ok(())
     }
 
+    pub fn boundary(&mut self, code: &mut stage0::Elements) -> Vod {
+        self.push(code)?;
+        self.set_key(Void(VOID::Boundary));
+        self.set_con(String::new());
+        Ok(())
+    }
+
     pub fn backtick_comment(&mut self, code: &mut stage0::Elements) -> Vod {
         // Backticks are the authoritative comment delimiters from the book.
         self.push(code)?;
         while code.peek(0)?.0 != '`' {
-            if code.peek(0)?.0 == '\0' {
+            if code.peek(0)?.0 == '\0' || code.peek(0)?.0 == stage0::SOURCE_BOUNDARY_CHAR {
                 self.set_key(Illegal);
                 return Ok(());
             }
@@ -224,7 +233,9 @@ impl Element {
         // If EOF arrives first, every quoted form on this path degrades to the same
         // parser-visible Illegal token instead of producing delimiter-specific behavior.
         while code.peek(0)?.0 != litsym || (code.peek(0)?.0 == litsym && code.curr()?.0 == '\\') {
-            if code.peek(0)?.0 != litsym && code.peek(0)?.0 == '\0' {
+            if code.peek(0)?.0 != litsym
+                && (code.peek(0)?.0 == '\0' || code.peek(0)?.0 == stage0::SOURCE_BOUNDARY_CHAR)
+            {
                 self.key = Illegal;
                 break;
             }

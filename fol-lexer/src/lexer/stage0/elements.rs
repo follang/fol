@@ -4,9 +4,11 @@ use fol_types::{Con, Vod, Win, SLIDER};
 use std::fmt;
 
 // Stage 0 owns raw character windowing only.
-// It preserves per-character locations and inserts the minimum synthetic
-// boundary markers needed so later token stages never infer cross-file joins.
+// It preserves per-character locations and inserts explicit source-boundary
+// markers so later token stages never infer cross-file joins from fake text.
 type Part<T> = (T, point::Location);
+
+pub const SOURCE_BOUNDARY_CHAR: char = '\u{001D}';
 
 pub struct Elements {
     chars: Box<dyn Iterator<Item = Con<Part<char>>>>,
@@ -112,21 +114,16 @@ pub fn gen(file: &mut FileStream) -> impl Iterator<Item = Con<Part<char>>> {
     // Collect all characters from the file stream
     let mut chars = Vec::new();
     let mut previous_file: Option<String> = None;
-    let mut previous_char: Option<char> = None;
     while let Some((ch, stream_loc)) = file.next_char() {
-        if previous_file.as_ref() != stream_loc.file.as_ref()
-            && previous_char.is_some_and(|prev| !prev.is_whitespace())
-            && !ch.is_whitespace()
-        {
+        if previous_file.is_some() && previous_file.as_ref() != stream_loc.file.as_ref() {
             let mut boundary = point::Location::from_stream_location(&stream_loc);
-            boundary.adjust(1, 0);
-            chars.push(Ok(('\n', boundary)));
+            boundary.adjust(stream_loc.row, 0);
+            chars.push(Ok((SOURCE_BOUNDARY_CHAR, boundary)));
         }
 
         let loc = point::Location::from_stream_location(&stream_loc);
         chars.push(Ok((ch, loc)));
         previous_file = stream_loc.file.clone();
-        previous_char = Some(ch);
     }
 
     // Downstream stages may fold trailing separators around EOF, so the

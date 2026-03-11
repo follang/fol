@@ -8,6 +8,7 @@ use fol_lexer::{
 };
 use fol_stream::FileStream;
 use fol_types::SLIDER;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 fn tokenize_file(path: &str) -> Vec<(KEYWORD, String)> {
     let mut file_stream =
@@ -43,6 +44,60 @@ fn tokenize_file(path: &str) -> Vec<(KEYWORD, String)> {
         path
     );
 
+    tokens
+}
+
+fn unique_temp_root(label: &str) -> std::path::PathBuf {
+    let stamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("System time should be after unix epoch")
+        .as_nanos();
+    std::env::temp_dir().join(format!(
+        "fol_lexer_{}_{}_{}",
+        label,
+        std::process::id(),
+        stamp
+    ))
+}
+
+fn tokenize_folder_contents(files: &[(&str, &str)]) -> Vec<(KEYWORD, String)> {
+    use std::fs;
+
+    let temp_root = unique_temp_root("folder");
+    fs::create_dir_all(&temp_root).expect("Should create temp lexer fixture dir");
+    for (relative, content) in files {
+        let path = temp_root.join(relative);
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).expect("Should create lexer fixture parent directories");
+        }
+        fs::write(&path, content).expect("Should write lexer fixture file");
+    }
+
+    let mut file_stream = FileStream::from_folder(
+        temp_root
+            .to_str()
+            .expect("Lexer fixture folder path should be valid utf-8"),
+    )
+    .expect("Should create lexer stream from folder fixture");
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut tokens = Vec::new();
+
+    for _ in 0..10_000 {
+        let token = lexer
+            .curr(false)
+            .expect("Lexer should expose tokens for temp folder fixture");
+        let keyword = token.key();
+        let content = token.con().to_string();
+        tokens.push((keyword.clone(), content));
+        if keyword.is_eof() {
+            break;
+        }
+        if lexer.bump().is_none() {
+            break;
+        }
+    }
+
+    fs::remove_dir_all(&temp_root).ok();
     tokens
 }
 
@@ -162,6 +217,25 @@ mod lexer_tests {
         assert_eq!(token.loc().row(), 1, "First token should not be synthetic");
         assert_eq!(token.loc().col(), 1, "First token should start at column 1");
         assert_eq!(token.con(), "var", "First token should be the first real token");
+    }
+
+    #[test]
+    fn test_cross_file_boundaries_surface_as_explicit_void_tokens() {
+        let tokens = tokenize_folder_contents(&[("a.fol", "alpha"), ("b.fol", "beta")]);
+        let significant: Vec<(KEYWORD, String)> = tokens
+            .into_iter()
+            .filter(|(key, _)| !key.is_space() && !key.is_eof())
+            .collect();
+
+        assert_eq!(
+            significant,
+            vec![
+                (KEYWORD::Identifier, "alpha".to_string()),
+                (KEYWORD::Void(VOID::Boundary), String::new()),
+                (KEYWORD::Identifier, "beta".to_string()),
+            ],
+            "Adjacent files should be separated by an explicit boundary token instead of a synthetic newline character"
+        );
     }
 
     #[test]

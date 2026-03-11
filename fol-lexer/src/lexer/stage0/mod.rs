@@ -1,3 +1,3 @@
 pub mod elements;
 
-pub use crate::lexer::stage0::elements::Elements;
+pub use crate::lexer::stage0::elements::{Elements, SOURCE_BOUNDARY_CHAR};
