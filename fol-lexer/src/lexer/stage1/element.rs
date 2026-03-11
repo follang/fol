@@ -237,7 +237,7 @@ impl Element {
                 && (code.peek(0)?.0 == '\0' || code.peek(0)?.0 == stage0::SOURCE_BOUNDARY_CHAR)
             {
                 self.key = Illegal;
-                break;
+                return Ok(());
             }
             self.bump(code)?;
         }
