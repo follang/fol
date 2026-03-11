@@ -118,6 +118,8 @@ impl Element {
             self.set_key(Literal(LITERAL::Float));
             self.append(&el.peek(0, false)?.into());
             self.bump(el);
+            self.append(&el.peek(0, false)?.into());
+            self.bump(el);
         }
 
         if el.curr(false)?.key().is_dot() && el.peek(0, false)?.key().is_decimal() {
