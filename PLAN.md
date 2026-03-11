@@ -315,7 +315,7 @@ Done when:
 - [x] Define what may appear inside routine bodies.
 - [x] Define how quoted names are represented.
 - [x] Define how qualified paths are represented.
-- [ ] Define invariants for grouped declarations.
+- [x] Define invariants for grouped declarations.
 - [ ] Add tests that lock those invariants down.
 
 Done when:
