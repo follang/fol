@@ -225,17 +225,15 @@ impl AstParser {
     /// Parse a simple literal for testing
     pub fn parse_literal(&self, value: &str) -> Result<AstNode, Box<dyn Glitch>> {
         if value.starts_with('"') && value.ends_with('"') {
-            let string_val = value[1..value.len() - 1].to_string();
-            return Ok(AstNode::Literal(Literal::String(string_val)));
+            return Ok(Self::lower_width_based_text_literal(
+                value[1..value.len() - 1].to_string(),
+            ));
         }
 
         if value.starts_with('\'') && value.ends_with('\'') {
-            let inner = &value[1..value.len() - 1];
-            let mut chars = inner.chars();
-            return match (chars.next(), chars.next()) {
-                (Some(ch), None) => Ok(AstNode::Literal(Literal::Character(ch))),
-                _ => Ok(AstNode::Literal(Literal::String(inner.to_string()))),
-            };
+            return Ok(Self::lower_width_based_text_literal(
+                value[1..value.len() - 1].to_string(),
+            ));
         }
 
         let normalized = value.replace('_', "");
@@ -279,5 +277,13 @@ impl AstParser {
         Ok(AstNode::Identifier {
             name: value.to_string(),
         })
+    }
+
+    fn lower_width_based_text_literal(content: String) -> AstNode {
+        let mut chars = content.chars();
+        match (chars.next(), chars.next()) {
+            (Some(ch), None) => AstNode::Literal(Literal::Character(ch)),
+            _ => AstNode::Literal(Literal::String(content)),
+        }
     }
 }

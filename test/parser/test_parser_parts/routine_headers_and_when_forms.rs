@@ -227,7 +227,7 @@ fn test_routine_parameters_support_grouped_names_and_semicolon_separators() {
                                     [
                                         Parameter { name: first, param_type: FolType::Int { size: None, signed: true }, default: None, .. },
                                         Parameter { name: second, param_type: FolType::Int { size: None, signed: true }, default: None, .. },
-                                        Parameter { name: label, param_type: FolType::Named { name: label_ty }, default: Some(AstNode::Literal(Literal::String(_))), .. }
+                                        Parameter { name: label, param_type: FolType::Named { name: label_ty }, default: Some(AstNode::Literal(Literal::Character('x'))), .. }
                                     ] if first == "a"
                                         && second == "b"
                                         && label == "label"

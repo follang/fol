@@ -71,15 +71,22 @@ fn test_parse_literal_supports_float_payloads() {
 }
 
 #[test]
-fn test_double_quotes_always_lower_to_string_literals() {
+fn test_double_quotes_now_lower_by_inner_width() {
     let parser = AstParser::new();
 
     assert_eq!(
         parser
             .parse_literal("\"c\"")
             .expect("Double-quoted single-character text should parse"),
-        AstNode::Literal(Literal::String("c".to_string())),
-        "Double quotes should stay string-like even when the inner text has length one"
+        AstNode::Literal(Literal::Character('c')),
+        "Double quotes should lower one-character payloads to Literal::Character under the chosen width policy"
+    );
+    assert_eq!(
+        parser
+            .parse_literal("\"xy\"")
+            .expect("Double-quoted multi-character text should parse"),
+        AstNode::Literal(Literal::String("xy".to_string())),
+        "Double quotes should still lower wider payloads to Literal::String"
     );
 }
 
