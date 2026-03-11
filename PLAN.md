@@ -128,7 +128,7 @@ Done when:
 
 Done when:
 
-- [ ] Namespace derivation is fully specified by tests.
+- [x] Namespace derivation is fully specified by tests.
 
 ### 5.5 Location guarantees
 
@@ -154,11 +154,11 @@ Done when:
 
 ### 5.7 Stream acceptance gate
 
-- [ ] Source order is deterministic.
-- [ ] Source identity rules are explicit.
-- [ ] Package rules are explicit.
-- [ ] Namespace rules are explicit.
-- [ ] File-boundary location behavior is tested.
+- [x] Source order is deterministic.
+- [x] Source identity rules are explicit.
+- [x] Package rules are explicit.
+- [x] Namespace rules are explicit.
+- [x] File-boundary location behavior is tested.
 
 ## 6. Phase 2: Lexer Contract Hardening
 Target area:
@@ -444,10 +444,10 @@ Done when:
 
 ### Stream tests
 
-- [ ] exact source ordering
-- [ ] namespace corner cases
-- [ ] package fallback cases
-- [ ] file boundary location tracking
+- [x] exact source ordering
+- [x] namespace corner cases
+- [x] package fallback cases
+- [x] file boundary location tracking
 - [x] file/folder mismatch behavior
 
 ### Lexer tests
@@ -476,8 +476,8 @@ Done when:
 
 Do not move to the next compiler step until all of these are true:
 
-- [ ] stream order is deterministic
-- [ ] source identity is explicit
+- [x] stream order is deterministic
+- [x] source identity is explicit
 - [ ] lexer token payload policy is fixed
 - [ ] lexer literal taxonomy is fixed for supported forms
 - [ ] parser root AST shape is fixed
@@ -489,7 +489,7 @@ Do not move to the next compiler step until all of these are true:
 
 This plan is done only when a maintainer can answer all of these without reading implementation internals:
 
-- [ ] In what order are sources streamed from a folder?
+- [x] In what order are sources streamed from a folder?
 - [ ] What exactly does a token payload contain?
 - [ ] Which literal families exist today, and how are they tokenized?
 - [ ] How are comments treated?
