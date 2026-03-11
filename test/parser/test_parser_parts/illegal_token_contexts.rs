@@ -850,3 +850,23 @@ fn test_type_reference_illegal_segment_reports_offending_token_location() {
         "Illegal type-reference segments should retain a concrete source column"
     );
 }
+
+#[test]
+fn test_rest_binding_illegal_name_reports_offending_token_location() {
+    let (message, line, column) =
+        parse_error_snapshot("test/parser/simple_var_destructure_illegal_rest_name.fol");
+
+    assert!(
+        message.contains("Parser encountered illegal token"),
+        "Illegal rest binding names should report an explicit illegal-token diagnostic, got: {}",
+        message
+    );
+    assert_eq!(
+        line, 1,
+        "Illegal rest binding names should anchor to the binding declaration line"
+    );
+    assert!(
+        column > 0,
+        "Illegal rest binding names should retain a concrete source column"
+    );
+}

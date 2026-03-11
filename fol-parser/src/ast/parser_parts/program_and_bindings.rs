@@ -839,12 +839,7 @@ impl AstParser {
             let name = if matches!(name_token.key(), KEYWORD::Symbol(SYMBOL::Under)) {
                 "_".to_string()
             } else {
-                Self::token_to_named_label(&name_token).ok_or_else(|| {
-                    Box::new(ParseError::from_token(
-                        &name_token,
-                        "Expected binding name after '*'".to_string(),
-                    )) as Box<dyn Glitch>
-                })?
+                Self::expect_named_label(&name_token, "Expected binding name after '*'")?
             };
             let _ = tokens.bump();
             if matches!(name_token.key(), KEYWORD::Symbol(SYMBOL::Star)) {
