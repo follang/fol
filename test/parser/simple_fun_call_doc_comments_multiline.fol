@@ -1,0 +1,16 @@
+fun call_with_doc_comments(a: int, b: int): int = {
+    value = combine(
+        a,
+        `[doc] keep b wrapped for tracing`
+        wrap(
+            b,
+        ),
+        `[doc] include stable
+        literal for checksum`
+        42,
+    );
+
+    return emit(
+        value,
+    );
+}
