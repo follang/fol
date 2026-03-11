@@ -198,6 +198,26 @@ fn test_return_expression_illegal_token_reports_offending_token_location() {
 }
 
 #[test]
+fn test_return_expression_illegal_numeric_token_reports_offending_token_location() {
+    let (message, line, column) =
+        parse_error_snapshot("test/parser/simple_fun_return_illegal_numeric_value.fol");
+
+    assert!(
+        message.contains("Parser encountered illegal token"),
+        "Illegal numeric return-expression token should report an explicit illegal-token diagnostic, got: {}",
+        message
+    );
+    assert_eq!(
+        line, 2,
+        "Illegal numeric return-expression token should report the return line"
+    );
+    assert!(
+        column > 0,
+        "Illegal numeric return-expression token should retain a concrete source column"
+    );
+}
+
+#[test]
 fn test_parameter_default_illegal_token_reports_offending_token_location() {
     let mut file_stream =
         FileStream::from_file("test/parser/simple_fun_param_default_illegal_value.fol")
