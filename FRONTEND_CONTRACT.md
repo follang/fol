@@ -39,9 +39,15 @@ tests actually enforce today.
 
 ### Package Detection
 
+- Package identity is defined by the explicit package override when one is
+  provided; otherwise it is derived from the explicit entry root used for source
+  discovery.
 - Detached folders fall back to their own folder name as the package name.
 - Detached files fall back to their parent folder name as the package name.
-- Nested manifests use the nearest `Cargo.toml` package name, not the outermost one.
+- Nested `Cargo.toml` files are ignored by the default front-end package
+  algorithm.
+- If the entry root has no usable final path segment, the deterministic fallback
+  package name is `root`.
 - Explicit package overrides intentionally change logical identity without changing
   the canonical source path.
 
