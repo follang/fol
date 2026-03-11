@@ -101,6 +101,17 @@ mod stream_tests {
     }
 
     #[test]
+    fn test_stream_locations_are_one_based() {
+        let mut stream = FileStream::from_file("test/stream/multiline.fol")
+            .expect("Should be able to read multiline.fol");
+
+        while let Some((_ch, loc)) = stream.next_char() {
+            assert!(loc.row >= 1, "Rows should be one-based");
+            assert!(loc.col >= 1, "Columns should be one-based");
+        }
+    }
+
+    #[test]
     fn test_unicode_handling() {
         let mut stream = FileStream::from_file("test/stream/unicode.fol")
             .expect("Should be able to read unicode.fol");

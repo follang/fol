@@ -132,7 +132,7 @@ Done when:
 
 ### 5.5 Location guarantees
 
-- [ ] Document row and column origin.
+- [x] Document row and column origin.
 - [ ] Confirm newline handling rules.
 - [x] Confirm row/column reset behavior when switching files.
 - [ ] Define location meaning for synthetic EOF handling if downstream uses it.
