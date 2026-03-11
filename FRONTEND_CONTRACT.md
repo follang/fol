@@ -148,6 +148,22 @@ tests actually enforce today.
   duplicate of the node already stored inside the routine declaration body, not a
   separate root-only form.
 
+### Declaration Family Shapes
+
+- `fun` and `pro` declarations share the same high-level shape: options, generics,
+  captures, parameters, optional return and error types, a `body`, and `inquiries`.
+- `log` declarations currently lower through `AstNode::FunDecl` with a boolean return
+  shape instead of a dedicated `LogDecl` node, so later phases must treat logical
+  routines as a constrained `FunDecl` form.
+- `AliasDecl` stays a leaf declaration with only the alias name and target type.
+- `TypeDecl` is the single carrier for alias, entry, record, and other type-definition
+  families through the `type_def` field.
+- `StdDecl`, `ImpDecl`, `DefDecl`, and `SegDecl` keep nested declarations inside their
+  dedicated `body` fields instead of flattening those members into wrapper-specific
+  side channels.
+- Grouped binding and grouped type forms expand into ordinary sibling declaration nodes
+  rather than producing wrapper nodes that later phases would need to unwrap.
+
 ### Grouped Declaration Invariants
 
 - Grouped binding forms expand into multiple sibling declaration nodes in source order.
