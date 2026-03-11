@@ -407,7 +407,7 @@ Target area:
 ### 8.1 Stream contract summary
 
 - [ ] Write a short stream contract summary:
-- [ ] source ordering
+- [x] source ordering
 - [ ] source identity
 - [ ] package detection
 - [ ] namespace derivation

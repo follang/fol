@@ -14,3 +14,14 @@ tests actually enforce today.
   operators and separator cleanup.
 - `stage3`: performs the final parser-facing disambiguation, especially around numeric
   literal forms and explicit EOF behavior.
+
+## Stream Contract
+
+### Source Ordering
+
+- Folder traversal is deterministic.
+- Directory entries are processed in lexicographic filename order.
+- Regular directories are traversed recursively in that same sorted order.
+- `.mod` directories are skipped before any source collection.
+- The lexer now preserves that stream ordering across file boundaries instead of
+  accidentally joining touching files into one token.
