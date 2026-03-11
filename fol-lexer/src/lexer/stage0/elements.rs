@@ -115,9 +115,22 @@ impl fmt::Display for Elements {
 pub fn gen(file: &mut FileStream) -> impl Iterator<Item = Con<Part<char>>> {
     // Collect all characters from the file stream
     let mut chars = Vec::new();
+    let mut previous_file: Option<String> = None;
+    let mut previous_char: Option<char> = None;
     while let Some((ch, stream_loc)) = file.next_char() {
+        if previous_file.as_ref() != stream_loc.file.as_ref()
+            && previous_char.is_some_and(|prev| !prev.is_whitespace())
+            && !ch.is_whitespace()
+        {
+            let mut boundary = point::Location::from_stream_location(&stream_loc);
+            boundary.adjust(1, 0);
+            chars.push(Ok(('\n', boundary)));
+        }
+
         let loc = point::Location::from_stream_location(&stream_loc);
         chars.push(Ok((ch, loc)));
+        previous_file = stream_loc.file.clone();
+        previous_char = Some(ch);
     }
 
     // Downstream stages may fold trailing separators around EOF, so the

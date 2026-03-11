@@ -42,6 +42,66 @@ mod integration_tests {
     }
 
     #[test]
+    fn test_stream_to_lexer_order_stays_stable_across_multiple_files() {
+        use fol_lexer::lexer::stage3::Elements;
+        use fol_lexer::token::KEYWORD;
+        use fol_stream::FileStream;
+        use std::fs;
+        use std::time::{SystemTime, UNIX_EPOCH};
+
+        let stamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("System time should be after unix epoch")
+            .as_nanos();
+        let temp_root = std::env::temp_dir()
+            .join(format!("fol_stream_lexer_order_{}_{}", std::process::id(), stamp));
+
+        fs::create_dir_all(temp_root.join("10_alpha")).expect("Should create alpha fixture dir");
+        fs::create_dir_all(temp_root.join("20_beta")).expect("Should create beta fixture dir");
+        fs::write(temp_root.join("00_root.fol"), "root_token").expect("Should write root fixture");
+        fs::write(temp_root.join("10_alpha/entry.fol"), "alpha_token")
+            .expect("Should write alpha fixture");
+        fs::write(temp_root.join("20_beta/entry.fol"), "beta_token")
+            .expect("Should write beta fixture");
+
+        let mut file_stream = FileStream::from_folder(
+            temp_root
+                .to_str()
+                .expect("Order fixture path should be valid utf-8"),
+        )
+        .expect("Should create file stream from ordered folder fixture");
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut identifiers = Vec::new();
+
+        for _ in 0..10_000 {
+            let token = lexer
+                .curr(false)
+                .expect("Lexer should expose tokens while walking the ordered fixture");
+            if token.key().is_eof() {
+                break;
+            }
+            if matches!(token.key(), KEYWORD::Identifier) {
+                identifiers.push(token.con().to_string());
+            }
+            if lexer.bump().is_none() {
+                break;
+            }
+        }
+
+        assert_eq!(
+            identifiers,
+            vec![
+                "root_token".to_string(),
+                "alpha_token".to_string(),
+                "beta_token".to_string(),
+            ],
+            "Flattened lexer output should preserve the stream's deterministic file order"
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
     fn test_lexer_to_parser_integration() {
         use fol_lexer::lexer::stage3::Elements;
         use fol_parser::ast::AstParser;

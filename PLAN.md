@@ -468,7 +468,7 @@ Done when:
 
 ### Cross-phase tests
 
-- [ ] stream -> lexer order stability
+- [x] stream -> lexer order stability
 - [ ] lexer -> parser literal continuity
 - [ ] multi-file location continuity into parser diagnostics
 
