@@ -111,7 +111,12 @@ fn test_parser_name_and_path_ast_shapes_stay_distinct_by_surface() {
                     AstNode::FunDecl { body, .. }
                     if body.iter().any(|stmt| matches!(
                         stmt,
-                        AstNode::FunctionCall { name, .. } if name == "io::console::write_out"
+                        AstNode::QualifiedFunctionCall { path, .. }
+                        if path.segments == vec![
+                            "io".to_string(),
+                            "console".to_string(),
+                            "write_out".to_string(),
+                        ]
                     ))
                 )
             }));

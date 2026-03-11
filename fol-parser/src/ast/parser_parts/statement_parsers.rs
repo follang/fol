@@ -873,7 +873,10 @@ impl AstParser {
         let expr = self.parse_logical_expression(tokens)?;
         if !matches!(
             expr,
-            AstNode::FunctionCall { .. } | AstNode::MethodCall { .. } | AstNode::Invoke { .. }
+            AstNode::FunctionCall { .. }
+                | AstNode::QualifiedFunctionCall { .. }
+                | AstNode::MethodCall { .. }
+                | AstNode::Invoke { .. }
         ) {
             return Err(Box::new(ParseError::from_token(
                 &start_token,
@@ -889,7 +892,7 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Box<dyn Glitch>> {
-        let name = self.parse_named_path(
+        let path = self.parse_qualified_path(
             tokens,
             "Expected identifier for function call",
             "Expected name after '::' in function call",
@@ -897,7 +900,14 @@ impl AstParser {
         let args =
             self.parse_open_paren_and_call_args(tokens, "Expected '(' after function name")?;
 
-        Ok(AstNode::FunctionCall { name, args })
+        Ok(if path.is_qualified() {
+            AstNode::QualifiedFunctionCall { path, args }
+        } else {
+            AstNode::FunctionCall {
+                name: path.joined(),
+                args,
+            }
+        })
     }
 
     pub(super) fn parse_method_call_expr(

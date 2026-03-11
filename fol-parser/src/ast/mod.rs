@@ -138,6 +138,9 @@ pub enum AstNode {
     /// Function call: function_name(args)
     FunctionCall { name: String, args: Vec<AstNode> },
 
+    /// Qualified function call: a::b::call(args)
+    QualifiedFunctionCall { path: QualifiedPath, args: Vec<AstNode> },
+
     /// Named call argument: name = value
     NamedArgument {
         name: String,
@@ -952,7 +955,9 @@ impl AstNode {
             }
             AstNode::AsyncStage | AstNode::AwaitStage => vec![],
             AstNode::Spawn { task } => vec![task.as_ref()],
-            AstNode::FunctionCall { args, .. } | AstNode::MethodCall { args, .. } => {
+            AstNode::FunctionCall { args, .. }
+            | AstNode::QualifiedFunctionCall { args, .. }
+            | AstNode::MethodCall { args, .. } => {
                 args.iter().collect()
             }
             AstNode::Invoke { callee, args } => {

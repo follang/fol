@@ -20,6 +20,9 @@ impl AstParser {
                     let args = self.parse_call_args(tokens)?;
                     node = match node {
                         AstNode::Identifier { name } => AstNode::FunctionCall { name, args },
+                        AstNode::QualifiedIdentifier { path } => {
+                            AstNode::QualifiedFunctionCall { path, args }
+                        }
                         callee => AstNode::Invoke {
                             callee: Box::new(callee),
                             args,

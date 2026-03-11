@@ -100,7 +100,12 @@ fn test_qualified_path_call_statement_parsing() {
                     AstNode::FunDecl { body, .. }
                     if body.iter().any(|stmt| matches!(
                         stmt,
-                        AstNode::FunctionCall { name, .. } if name == "io::console::write_out"
+                        AstNode::QualifiedFunctionCall { path, .. }
+                        if path.segments == vec![
+                            "io".to_string(),
+                            "console".to_string(),
+                            "write_out".to_string(),
+                        ]
                     ))
                 )
             }));
