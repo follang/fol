@@ -186,7 +186,7 @@ impl Element {
             }
         } else {
             self.push(code)?;
-            self.key = Literal(LITERAL::Deciaml);
+            self.key = Literal(LITERAL::Decimal);
             while is_digit(&code.peek(0)?.0) || code.peek(0)?.0 == '_' {
                 self.bump(code)?;
             }

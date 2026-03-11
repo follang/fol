@@ -87,13 +87,13 @@ impl KEYWORD {
     pub fn is_decimal(&self) -> bool {
         matches!(
             *self,
-            KEYWORD::Literal(LITERAL::Deciaml) | KEYWORD::Literal(LITERAL::Float)
+            KEYWORD::Literal(LITERAL::Decimal) | KEYWORD::Literal(LITERAL::Float)
         )
     }
     pub fn is_number(&self) -> bool {
         matches!(
             *self,
-            KEYWORD::Literal(LITERAL::Deciaml)
+            KEYWORD::Literal(LITERAL::Decimal)
                 | KEYWORD::Literal(LITERAL::Float)
                 | KEYWORD::Literal(LITERAL::Hexal)
                 | KEYWORD::Literal(LITERAL::Octal)

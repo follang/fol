@@ -227,7 +227,7 @@ mod lexer_tests {
         assert_eq!(
             significant,
             vec![
-                (KEYWORD::Literal(LITERAL::Deciaml), "1_000".to_string()),
+                (KEYWORD::Literal(LITERAL::Decimal), "1_000".to_string()),
                 (KEYWORD::Literal(LITERAL::Hexal), "0xCA_FE".to_string()),
                 (KEYWORD::Literal(LITERAL::Octal), "0o7_7".to_string()),
                 (KEYWORD::Literal(LITERAL::Binary), "0b1010_0001".to_string()),
@@ -269,7 +269,7 @@ mod lexer_tests {
         );
         assert!(
             tokens.iter().any(|(key, content)| {
-                matches!(key, KEYWORD::Literal(LITERAL::Deciaml)) && content == "42"
+                matches!(key, KEYWORD::Literal(LITERAL::Decimal)) && content == "42"
             }),
             "Numeric literals should keep their source spelling as payload"
         );
@@ -308,7 +308,7 @@ mod lexer_tests {
         assert_eq!(
             significant,
             vec![
-                (KEYWORD::Literal(LITERAL::Deciaml), "42".to_string()),
+                (KEYWORD::Literal(LITERAL::Decimal), "42".to_string()),
                 (KEYWORD::Literal(LITERAL::Float), "3.14".to_string()),
                 (KEYWORD::Literal(LITERAL::Float), ".5".to_string()),
                 (KEYWORD::Literal(LITERAL::Hexal), "0x1A".to_string()),
@@ -346,7 +346,7 @@ mod lexer_tests {
             significant,
             vec![
                 (KEYWORD::Symbol(SYMBOL::Minus), "-".to_string()),
-                (KEYWORD::Literal(LITERAL::Deciaml), "42".to_string()),
+                (KEYWORD::Literal(LITERAL::Decimal), "42".to_string()),
                 (KEYWORD::Symbol(SYMBOL::Minus), "-".to_string()),
                 (KEYWORD::Literal(LITERAL::Float), "3.5".to_string()),
             ],
@@ -365,7 +365,7 @@ mod lexer_tests {
         assert_eq!(
             significant,
             vec![
-                (KEYWORD::Literal(LITERAL::Deciaml), "1".to_string()),
+                (KEYWORD::Literal(LITERAL::Decimal), "1".to_string()),
                 (KEYWORD::Identifier, "i".to_string()),
                 (KEYWORD::Literal(LITERAL::Float), "3.5".to_string()),
                 (KEYWORD::Identifier, "i".to_string()),
@@ -584,7 +584,7 @@ mod lexer_tests {
                 (KEYWORD::Keyword(BUILDIN::Var), "var".to_string()),
                 (KEYWORD::Identifier, "x".to_string()),
                 (KEYWORD::Symbol(SYMBOL::Equal), "=".to_string()),
-                (KEYWORD::Literal(LITERAL::Deciaml), "5".to_string()),
+                (KEYWORD::Literal(LITERAL::Decimal), "5".to_string()),
                 (KEYWORD::Symbol(SYMBOL::Semi), "; ".to_string()),
             ],
             "Line and block comments should be ignorable without disturbing code token order"
@@ -624,11 +624,11 @@ mod lexer_tests {
                 (KEYWORD::Keyword(BUILDIN::Var), "var".to_string()),
                 (KEYWORD::Identifier, "alpha".to_string()),
                 (KEYWORD::Symbol(SYMBOL::Equal), "=".to_string()),
-                (KEYWORD::Literal(LITERAL::Deciaml), "1".to_string()),
+                (KEYWORD::Literal(LITERAL::Decimal), "1".to_string()),
                 (KEYWORD::Keyword(BUILDIN::Var), "var".to_string()),
                 (KEYWORD::Identifier, "beta".to_string()),
                 (KEYWORD::Symbol(SYMBOL::Equal), "=".to_string()),
-                (KEYWORD::Literal(LITERAL::Deciaml), "2".to_string()),
+                (KEYWORD::Literal(LITERAL::Decimal), "2".to_string()),
             ],
             "Doc comments should stay deferred and should not surface as a parser-visible token family yet"
         );
