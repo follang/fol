@@ -41,6 +41,26 @@ fn test_call_argument_illegal_token_reports_offending_token_location() {
 }
 
 #[test]
+fn test_call_argument_illegal_numeric_token_reports_offending_token_location() {
+    let (message, line, column) =
+        parse_error_snapshot("test/parser/simple_fun_call_illegal_numeric_arg.fol");
+
+    assert!(
+        message.contains("Parser encountered illegal token"),
+        "Illegal numeric call-argument token should report an explicit illegal-token diagnostic, got: {}",
+        message
+    );
+    assert_eq!(
+        line, 2,
+        "Illegal numeric call-argument token should report the call site line"
+    );
+    assert!(
+        column > 0,
+        "Illegal numeric call-argument token should retain a concrete source column"
+    );
+}
+
+#[test]
 fn test_type_reference_illegal_token_reports_offending_token_location() {
     let mut file_stream = FileStream::from_file("test/parser/simple_fun_param_illegal_type_ref.fol")
         .expect("Should read illegal type-reference fixture");
