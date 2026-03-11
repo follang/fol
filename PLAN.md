@@ -381,11 +381,11 @@ Target files:
 - [x] Do the same for capture names.
 - [x] Do the same for generic names.
 - [x] Do the same for use-declaration names.
-- [ ] Do the same for record field names.
-- [ ] Do the same for entry variant names.
-- [ ] Do the same for duplicate type-member names.
+- [x] Do the same for record field names.
+- [x] Do the same for entry variant names.
+- [x] Do the same for duplicate type-member names.
 - [x] Do the same for rolling binding names.
-- [ ] Do the same for any other parser-owned duplicate set discovered during the audit.
+- [x] Do the same for any other parser-owned duplicate set discovered during the audit.
 - [x] Keep original spelling in diagnostics even when comparison uses canonical keys.
 - [x] Add collision tests such as `value_name` vs `ValueName`, `Foo_Bar` vs `foobar`, and `A__B` if repeated underscores remain invalid.
 
@@ -443,7 +443,7 @@ This is the recommended implementation order once the decision freeze is complet
 
 1. [ ] Freeze the comment, literal, receiver, package, and root-surface decisions in `FRONTEND_CONTRACT.md`.
 2. [ ] Introduce one shared identifier canonicalization helper and test it directly.
-3. [ ] Apply the canonicalization helper to parser duplicate checks before changing more AST shape.
+3. [x] Apply the canonicalization helper to parser duplicate checks before changing more AST shape.
 4. [ ] Preserve method receiver types in the AST and add direct retention tests.
 5. [ ] Introduce explicit logical routine kind in the AST and migrate `log` lowering.
 6. [ ] Decide and implement the final root surface contract.
