@@ -37,12 +37,7 @@ impl AstParser {
                 KEYWORD::Literal(LITERAL::Stringy) | KEYWORD::Literal(LITERAL::Quoted) => {
                     Self::exact_unquote_text(token.con())
                 }
-                _ => Self::token_to_named_label(&token).ok_or_else(|| {
-                    Box::new(ParseError::from_token(
-                        &token,
-                        "Expected tst[...] argument".to_string(),
-                    )) as Box<dyn Glitch>
-                })?,
+                _ => Self::expect_named_label(&token, "Expected tst[...] argument")?,
             };
             values.push((is_string, value));
             let _ = tokens.bump();

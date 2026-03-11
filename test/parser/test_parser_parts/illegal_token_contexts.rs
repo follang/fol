@@ -730,3 +730,23 @@ fn test_typed_loop_binder_illegal_name_reports_offending_token_location() {
         "Illegal typed loop binders should retain a concrete source column"
     );
 }
+
+#[test]
+fn test_test_type_argument_illegal_name_reports_offending_token_location() {
+    let (message, line, column) =
+        parse_error_snapshot("test/parser/simple_def_illegal_test_type_arg.fol");
+
+    assert!(
+        message.contains("Parser encountered illegal token"),
+        "Illegal tst[...] arguments should report an explicit illegal-token diagnostic, got: {}",
+        message
+    );
+    assert_eq!(
+        line, 1,
+        "Illegal tst[...] arguments should anchor to the declaration header line"
+    );
+    assert!(
+        column > 0,
+        "Illegal tst[...] arguments should retain a concrete source column"
+    );
+}
