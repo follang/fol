@@ -1,6 +1,6 @@
 # FOL Project Progress
 
-Last scan: 2026-03-11
+Last scan: 2026-03-12
 Scan basis: repository code, active tests, fixture inventory, and a full integration test run
 Authority rule for this file: code and active tests win over older aspirational docs
 
@@ -46,7 +46,7 @@ Authority rule for this file: code and active tests win over older aspirational 
 - Active parser fixtures: `1057`
 - Active lexer tests: `36`
 - Active stream tests: `43`
-- Active parser/integration tests in `integration`: `1018`
+- Active parser/integration tests in `integration`: `1159`
 - Observed active integration failures during the run: `0`
 - Observed active integration run shape: suite is green
 
@@ -75,7 +75,7 @@ Authority rule for this file: code and active tests win over older aspirational 
 - `make test` passed
 - test totals observed:
 - `1` unit test
-- `1018` integration tests
+- `1159` integration tests
 - The main remaining front-end debt is no longer parser-boundary ambiguity.
 - The remaining missing work is later-phase compiler work, not front-end hardening.
 

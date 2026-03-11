@@ -118,13 +118,13 @@ tests actually enforce today.
 
 ### Literal Categories
 
-- The current lexer surfaces `Stringy`, `Quoted`, `Bool`, `Float`, `Decimal`, `Hexadecimal`,
-  `Octal`, and `Binary`.
-- Double-quoted content arrives at the lexer boundary as `Stringy`.
-- Single-quoted content arrives at the lexer boundary as `Quoted`.
-- The current front end does not expose separate raw-vs-cooked literal token kinds;
-  backticks stay outside the literal taxonomy entirely because they now belong to
-  comment syntax instead of parser-visible literal or operator tokens.
+- The current lexer surfaces `CookedQuoted`, `RawQuoted`, `Bool`, `Float`, `Decimal`,
+  `Hexadecimal`, `Octal`, and `Binary`.
+- Double-quoted content arrives at the lexer boundary as `CookedQuoted`.
+- Single-quoted content arrives at the lexer boundary as `RawQuoted`.
+- The cooked/raw distinction is explicit at the lexer boundary.
+- Character-vs-string distinction is parser-owned; the lexer preserves quoted-family
+  identity and full payload spelling instead of deciding width-based lowering itself.
 - Imaginary-unit suffixes are out of scope and stay outside the supported numeric
   literal families.
 
@@ -157,6 +157,10 @@ tests actually enforce today.
 - Invalid-looking escape spellings are preserved verbatim inside quoted payloads.
 - Physical newlines inside quoted content stay inside the same token payload; the lexer
   does not apply a separate line-continuation rule at this boundary.
+- Raw single-quoted spans stop at the next single quote even when the preceding payload
+  character is `\`.
+- Cooked double-quoted spans treat backslash-delimiter pairs as escaped payload and keep
+  scanning to the real closing quote.
 
 ### Stage 0 Collection
 
@@ -177,9 +181,20 @@ tests actually enforce today.
 
 - Parser-supported literal lowering currently covers strings, booleans, `nil`, decimal
   integers, floats, hex, octal, and binary integers.
-- Double-quoted content always lowers to `Literal::String`.
-- Single-quoted one-character content lowers to `Literal::Character`.
-- Wider single-quoted content lowers to `Literal::String`.
+- One-element quoted payloads lower to `Literal::Character`.
+- Wider quoted payloads lower to `Literal::String`.
+- Cooked double-quoted literals decode the current supported escape set before width
+  lowering:
+  short escapes such as `\n`, `\t`, `\\`, `\"`, and `\'`
+  decimal numeric escapes
+  `\xHH` hex escapes
+  `\uHHHH` unicode escapes
+  `\u{H+}` braced unicode escapes
+- Cooked double-quoted literals also honor backslash-line-break continuation with
+  indentation trimming during parser lowering.
+- Raw single-quoted literals do not decode escape spellings; their inner text is lowered
+  verbatim after delimiter removal.
+- Raw-vs-cooked does not survive as a separate AST value kind after literal lowering.
 - Supported prefixed and underscored numeric spellings lower to their exact integer or
   float values instead of staying as raw text in the AST.
 - End-to-end tests now lock this behavior across the full `stream -> lexer -> parser`
