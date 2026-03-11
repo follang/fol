@@ -395,7 +395,7 @@ Done when:
 - [x] Literal lowering is complete for supported literal families.
 - [x] AST invariants are explicit and tested.
 - [ ] Unsupported combinations fail intentionally.
-- [ ] Parser diagnostic behavior is more consistent.
+- [x] Parser diagnostic behavior is more consistent.
 
 ## 8. Phase 4: Front-End Contract Freeze
 Target area:
