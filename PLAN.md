@@ -463,7 +463,7 @@ Done when:
 - [x] exact top-level AST shape
 - [x] exact literal AST lowering
 - [x] exact name/path AST shape
-- [ ] unsupported combination failure tests
+- [x] unsupported combination failure tests
 - [ ] parser diagnostic consistency checks where stable enough
 
 ### Cross-phase tests
