@@ -49,7 +49,7 @@ Do not use this plan for:
 ### Lexer
 
 - [x] Token payload rules are not explicit.
-- [ ] String, character, raw-string, and raw-character handling is not clean.
+- [x] String, character, raw-string, and raw-character handling is not clean.
 - [x] Comment treatment is too informal.
 - [x] Malformed lexical input behavior is not defined tightly enough.
 - [x] Numeric token fidelity is not strong enough for later phases.
