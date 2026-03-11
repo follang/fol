@@ -306,3 +306,82 @@ fn test_postfix_member_illegal_name_reports_offending_token_location() {
         "Illegal postfix member names should retain a concrete source column"
     );
 }
+
+#[test]
+fn test_alias_declaration_illegal_name_reports_offending_token_location() {
+    let (message, line, column) =
+        parse_error_snapshot("test/parser/simple_alias_illegal_name.fol");
+
+    assert!(
+        message.contains("Parser encountered illegal token"),
+        "Illegal alias names should surface as explicit illegal-token diagnostics, got: {}",
+        message
+    );
+    assert_eq!(line, 1, "Illegal alias names should report the declaration line");
+    assert!(column > 0, "Illegal alias names should retain a concrete source column");
+}
+
+#[test]
+fn test_type_declaration_illegal_name_reports_offending_token_location() {
+    let (message, line, column) =
+        parse_error_snapshot("test/parser/simple_typ_illegal_name.fol");
+
+    assert!(
+        message.contains("Parser encountered illegal token"),
+        "Illegal type names should surface as explicit illegal-token diagnostics, got: {}",
+        message
+    );
+    assert_eq!(line, 1, "Illegal type names should report the declaration line");
+    assert!(column > 0, "Illegal type names should retain a concrete source column");
+}
+
+#[test]
+fn test_segment_declaration_illegal_name_reports_offending_token_location() {
+    let (message, line, column) =
+        parse_error_snapshot("test/parser/simple_seg_illegal_name.fol");
+
+    assert!(
+        message.contains("Parser encountered illegal token"),
+        "Illegal segment names should surface as explicit illegal-token diagnostics, got: {}",
+        message
+    );
+    assert_eq!(line, 1, "Illegal segment names should report the declaration line");
+    assert!(column > 0, "Illegal segment names should retain a concrete source column");
+}
+
+#[test]
+fn test_implementation_declaration_illegal_name_reports_offending_token_location() {
+    let (message, line, column) =
+        parse_error_snapshot("test/parser/simple_imp_illegal_name.fol");
+
+    assert!(
+        message.contains("Parser encountered illegal token"),
+        "Illegal implementation names should surface as explicit illegal-token diagnostics, got: {}",
+        message
+    );
+    assert_eq!(
+        line, 1,
+        "Illegal implementation names should report the declaration line"
+    );
+    assert!(
+        column > 0,
+        "Illegal implementation names should retain a concrete source column"
+    );
+}
+
+#[test]
+fn test_standard_declaration_illegal_name_reports_offending_token_location() {
+    let (message, line, column) =
+        parse_error_snapshot("test/parser/simple_std_illegal_name.fol");
+
+    assert!(
+        message.contains("Parser encountered illegal token"),
+        "Illegal standard names should surface as explicit illegal-token diagnostics, got: {}",
+        message
+    );
+    assert_eq!(line, 1, "Illegal standard names should report the declaration line");
+    assert!(
+        column > 0,
+        "Illegal standard names should retain a concrete source column"
+    );
+}

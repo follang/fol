@@ -21,12 +21,8 @@ impl AstParser {
         self.skip_ignorable(tokens);
 
         let name_token = tokens.curr(false)?;
-        let name = Self::token_to_named_label(&name_token).ok_or_else(|| {
-            Box::new(ParseError::from_token(
-                &name_token,
-                "Expected implementation name after 'imp'".to_string(),
-            )) as Box<dyn Glitch>
-        })?;
+        let name =
+            Self::expect_named_label(&name_token, "Expected implementation name after 'imp'")?;
         let _ = tokens.bump();
 
         self.skip_ignorable(tokens);

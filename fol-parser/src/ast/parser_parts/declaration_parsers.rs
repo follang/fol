@@ -188,12 +188,7 @@ impl AstParser {
         self.skip_ignorable(tokens);
 
         let name_token = tokens.curr(false)?;
-        let name = Self::token_to_named_label(&name_token).ok_or_else(|| {
-            Box::new(ParseError::from_token(
-                &name_token,
-                "Expected alias declaration name".to_string(),
-            )) as Box<dyn Glitch>
-        })?;
+        let name = Self::expect_named_label(&name_token, "Expected alias declaration name")?;
         let _ = tokens.bump();
 
         self.skip_ignorable(tokens);
@@ -248,12 +243,7 @@ impl AstParser {
         consume_terminator: bool,
     ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
         let name_token = tokens.curr(false)?;
-        let name = Self::token_to_named_label(&name_token).ok_or_else(|| {
-            Box::new(ParseError::from_token(
-                &name_token,
-                "Expected type declaration name".to_string(),
-            )) as Box<dyn Glitch>
-        })?;
+        let name = Self::expect_named_label(&name_token, "Expected type declaration name")?;
         let _ = tokens.bump();
 
         let mut names = vec![name];
@@ -269,12 +259,8 @@ impl AstParser {
             let _ = tokens.bump();
             self.skip_ignorable(tokens);
             let next_name = tokens.curr(false)?;
-            let next_name = Self::token_to_named_label(&next_name).ok_or_else(|| {
-                Box::new(ParseError::from_token(
-                    &next_name,
-                    "Expected type declaration name after ','".to_string(),
-                )) as Box<dyn Glitch>
-            })?;
+            let next_name =
+                Self::expect_named_label(&next_name, "Expected type declaration name after ','")?;
             names.push(next_name);
             let _ = tokens.bump();
         }
