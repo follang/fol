@@ -499,6 +499,36 @@ fn test_duplicate_record_field_reports_parse_error() {
 }
 
 #[test]
+fn test_canonical_duplicate_record_field_reports_parse_error() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_typ_record_duplicate_field_canonical.fol")
+            .expect("Should read canonical duplicate record field test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject canonical duplicate record fields");
+
+    let parse_error = errors
+        .first()
+        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        .expect("First parser error should be ParseError");
+
+    let first_message = parse_error.to_string();
+    assert!(
+        first_message.contains("Duplicate record field 'UserName'"),
+        "Canonical duplicate record field should report the later spelling, got: {}",
+        first_message
+    );
+    assert_eq!(
+        parse_error.line(),
+        3,
+        "Canonical duplicate record field parse error should point to the duplicate field line"
+    );
+}
+
+#[test]
 fn test_top_level_type_record_fields_support_lab_prefix() {
     let mut file_stream = FileStream::from_file("test/parser/simple_typ_record_lab_fields.fol")
         .expect("Should read lab record field test file");
