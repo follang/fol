@@ -32,6 +32,52 @@ fn test_record_type_accepts_routine_members() {
 }
 
 #[test]
+fn test_record_type_routine_members_retain_receiver_types() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_typ_record_method_receivers.fol")
+            .expect("Should read type-member receiver fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should retain receiver types on type-body routine members");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::TypeDecl {
+                    name,
+                    type_def: TypeDefinition::Record { members, .. },
+                    ..
+                }
+                if name == "Computer"
+                    && members.iter().any(|member| matches!(
+                        member,
+                        AstNode::FunDecl {
+                            name,
+                            receiver_type: Some(FolType::Named { name: receiver }),
+                            ..
+                        } if name == "parse_msg" && receiver == "pkg::Parser"
+                    ))
+                    && members.iter().any(|member| matches!(
+                        member,
+                        AstNode::ProDecl {
+                            name,
+                            receiver_type: Some(FolType::Vector { element_type }),
+                            ..
+                        }
+                            if name == "store"
+                                && matches!(element_type.as_ref(), FolType::Named { name } if name == "pkg::Item")
+                    ))
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
 fn test_entry_type_accepts_routine_members() {
     let mut file_stream = FileStream::from_file("test/parser/simple_typ_entry_methods.fol")
         .expect("Should read entry routine-member fixture");

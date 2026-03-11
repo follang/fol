@@ -1,0 +1,4 @@
+typ Computer: rec = {
+    fun (pkg::Parser)parse_msg(code: int): str = { return "ok"; };
+    pro (vec[pkg::Item])store(value: int): non = { return; };
+}
