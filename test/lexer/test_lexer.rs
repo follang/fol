@@ -81,6 +81,40 @@ fn tokenize_stage1_file(path: &str) -> Vec<(KEYWORD, String)> {
     tokens
 }
 
+fn tokenize_stage2_file(path: &str) -> Vec<(KEYWORD, String)> {
+    let mut file_stream =
+        FileStream::from_file(path).unwrap_or_else(|_| panic!("Should be able to read {}", path));
+    let mut lexer = stage2::Elements::init(&mut file_stream);
+    let mut tokens = Vec::new();
+
+    let _ = lexer.bump();
+
+    for _ in 0..10_000 {
+        match lexer.curr(false) {
+            Ok(token) => {
+                let keyword = token.key().clone();
+                let content = token.con().to_string();
+                tokens.push((keyword.clone(), content));
+                if keyword == KEYWORD::Void(VOID::EndFile) {
+                    break;
+                }
+                if lexer.bump().is_none() {
+                    break;
+                }
+            }
+            Err(_) => break,
+        }
+    }
+
+    assert!(
+        tokens.len() < 10_000,
+        "Stage 2 tokenization did not terminate for {}",
+        path
+    );
+
+    tokens
+}
+
 fn unique_temp_root(label: &str) -> std::path::PathBuf {
     let stamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -948,6 +982,33 @@ mod lexer_tests {
                 "/* compatibility\n   block comment */".to_string(),
             )],
             "Slash block comments should stay on an explicit compatibility-only internal comment kind with an exact span"
+        );
+    }
+
+    #[test]
+    fn test_stage2_normalizes_backtick_and_doc_comments_back_to_void_tokens() {
+        let backtick_tokens = tokenize_stage2_file("test/lexer/backticks.fol");
+        let doc_tokens = tokenize_stage2_file("test/lexer/doc_comments.fol");
+
+        assert!(
+            backtick_tokens.iter().any(|(key, content)| key.is_space() && content == " "),
+            "Stage 2 should collapse ordinary backtick comments back to normalized void separators"
+        );
+        assert!(
+            !backtick_tokens.iter().any(|(key, _)| key.is_comment()),
+            "Stage 2 should not leak backtick comment tokens past the internal classification boundary"
+        );
+        assert!(
+            doc_tokens
+                .iter()
+                .filter(|(key, content)| key.is_space() && content == " ")
+                .count()
+                >= 2,
+            "Stage 2 should also collapse doc comments back to normalized void separators"
+        );
+        assert!(
+            !doc_tokens.iter().any(|(key, _)| key.is_comment()),
+            "Stage 2 should not leak doc comment tokens past the internal classification boundary"
         );
     }
 
