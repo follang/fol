@@ -143,6 +143,9 @@ mod lab_declarations;
 #[path = "test_parser_parts/leading_dot_builtin_calls.rs"]
 mod leading_dot_builtin_calls;
 #[cfg(test)]
+#[path = "test_parser_parts/literal_lowering.rs"]
+mod literal_lowering;
+#[cfg(test)]
 #[path = "test_parser_parts/keyword_named_bindings.rs"]
 mod keyword_named_bindings;
 #[cfg(test)]

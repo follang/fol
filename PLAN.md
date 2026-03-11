@@ -297,7 +297,7 @@ Done when:
 ### 7.2 Literal lowering
 
 - [ ] Align parser literal lowering with lexer-supported literal families.
-- [ ] Support correct AST lowering for currently supported strings.
+- [x] Support correct AST lowering for currently supported strings.
 - [ ] Support correct AST lowering for booleans.
 - [ ] Support correct AST lowering for nil.
 - [ ] Support correct AST lowering for decimal integers.
