@@ -59,7 +59,7 @@ Do not use this plan for:
 
 - [ ] Top-level `Program.declarations` is structurally contaminated by routine body leakage.
 - [x] Literal lowering is narrower than lexer support.
-- [ ] AST invariants are not documented or enforced enough.
+- [x] AST invariants are not documented or enforced enough.
 - [ ] Parser still mixes syntax work with some semantic-ish checks.
 - [ ] Unsupported combinations are not always rejected explicitly.
 
