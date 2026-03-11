@@ -69,3 +69,30 @@ fn test_parse_literal_supports_float_payloads() {
         "Float payloads should lower to Literal::Float"
     );
 }
+
+#[test]
+fn test_top_level_boolean_and_nil_literals_lower_cleanly() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_literal_logic.fol")
+        .expect("Should read logical literal lowering fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should lower top-level boolean and nil literals");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert_eq!(
+                declarations,
+                vec![
+                    AstNode::Literal(Literal::Boolean(true)),
+                    AstNode::Literal(Literal::Boolean(false)),
+                    AstNode::Literal(Literal::Nil),
+                ],
+                "Top-level logical literals should lower to concrete AST literals"
+            );
+        }
+        _ => panic!("Expected program node"),
+    }
+}

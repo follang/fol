@@ -298,8 +298,8 @@ Done when:
 
 - [ ] Align parser literal lowering with lexer-supported literal families.
 - [x] Support correct AST lowering for currently supported strings.
-- [ ] Support correct AST lowering for booleans.
-- [ ] Support correct AST lowering for nil.
+- [x] Support correct AST lowering for booleans.
+- [x] Support correct AST lowering for nil.
 - [x] Support correct AST lowering for decimal integers.
 - [x] Decide and implement lowering strategy for floats.
 - [x] Decide and implement lowering strategy for hex, octal, and binary values.

@@ -571,16 +571,6 @@ impl AstParser {
                 continue;
             }
 
-            if AstParser::token_can_be_logical_name(&key) {
-                declarations.push(AstNode::Identifier {
-                    name: token.con().trim().to_string(),
-                });
-                if tokens.bump().is_none() {
-                    break;
-                }
-                continue;
-            }
-
             if key.is_literal() {
                 match self.parse_lexer_literal(&token) {
                     Ok(node) => declarations.push(node),
@@ -592,6 +582,14 @@ impl AstParser {
                 declarations.push(AstNode::Literal(Literal::Boolean(false)));
             } else if key.is_ident() && token.con().trim() == "nil" {
                 declarations.push(AstNode::Literal(Literal::Nil));
+            } else if AstParser::token_can_be_logical_name(&key) {
+                declarations.push(AstNode::Identifier {
+                    name: token.con().trim().to_string(),
+                });
+                if tokens.bump().is_none() {
+                    break;
+                }
+                continue;
             }
 
             if tokens.bump().is_none() {
