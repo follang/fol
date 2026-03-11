@@ -119,3 +119,33 @@ fn test_top_level_float_literal_lowers_cleanly() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_top_level_prefixed_integer_literals_lower_cleanly() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_literal_prefixed_numbers.fol")
+        .expect("Should read prefixed literal lowering fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should lower prefixed integer literals");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert_eq!(
+                declarations,
+                vec![
+                    AstNode::Literal(Literal::Integer(0xCAFE)),
+                    AstNode::Literal(Literal::Integer(0o77)),
+                    AstNode::Literal(Literal::Integer(0b1010_0001)),
+                    AstNode::Literal(Literal::Integer(0x1A)),
+                    AstNode::Literal(Literal::Integer(0o17)),
+                    AstNode::Literal(Literal::Integer(0b1010)),
+                ],
+                "Prefixed integer literals should lower through the full lexer/parser pipeline"
+            );
+        }
+        _ => panic!("Expected program node"),
+    }
+}

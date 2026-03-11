@@ -229,7 +229,7 @@ Done when:
 
 Done when:
 
-- [ ] Lexer numeric output is precise enough for parser literal lowering.
+- [x] Lexer numeric output is precise enough for parser literal lowering.
 
 ### 6.6 Stage responsibilities
 
