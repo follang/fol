@@ -486,6 +486,13 @@ impl AstParser {
         self.skip_ignorable(tokens);
         let token = tokens.curr(false)?;
 
+        if token.key().is_illegal() {
+            return Err(Box::new(ParseError::from_token(
+                &token,
+                format!("Parser encountered illegal token '{}'", token.con()),
+            )));
+        }
+
         if self.lookahead_is_spawn_expression(tokens) {
             self.consume_significant_token(tokens);
 
