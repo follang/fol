@@ -336,7 +336,7 @@ Done when:
 
 ### 7.5 Declaration normalization
 
-- [ ] Audit `fun`, `pro`, and `log` for shared structure.
+- [x] Audit `fun`, `pro`, and `log` for shared structure.
 - [ ] Audit alias, type, standard, implementation, and grouped declarations for structural consistency.
 - [ ] Reject unsupported mixes explicitly instead of relying on incidental failure.
 - [x] Add targeted tests for current unsupported combinations.
