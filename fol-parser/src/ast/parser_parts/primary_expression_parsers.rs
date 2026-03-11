@@ -568,9 +568,7 @@ impl AstParser {
         ) && self.lookahead_is_match_expression(tokens)
         {
             self.parse_match_expression(tokens)?
-        } else if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Dot))
-            && self.lookahead_is_dot_builtin_call(tokens)
-        {
+        } else if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Dot)) {
             self.parse_dot_builtin_call_expr(tokens)?
         } else if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Pipe)) {
             self.parse_pipe_lambda_expr(tokens)?

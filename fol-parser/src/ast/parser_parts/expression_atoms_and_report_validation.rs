@@ -96,6 +96,22 @@ impl AstParser {
         }
     }
 
+    pub(super) fn expect_named_label(
+        token: &fol_lexer::lexer::stage3::element::Element,
+        message: &str,
+    ) -> Result<String, Box<dyn Glitch>> {
+        if token.key().is_illegal() {
+            return Err(Box::new(ParseError::from_token(
+                token,
+                format!("Parser encountered illegal token '{}'", token.con()),
+            )));
+        }
+
+        Self::token_to_named_label(token).ok_or_else(|| {
+            Box::new(ParseError::from_token(token, message.to_string())) as Box<dyn Glitch>
+        })
+    }
+
     pub(super) fn exact_unquote_text(raw: &str) -> String {
         let trimmed = raw.trim();
 

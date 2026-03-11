@@ -55,12 +55,7 @@ impl AstParser {
         self.skip_ignorable(tokens);
 
         let name_token = tokens.curr(false)?;
-        let name = Self::token_to_named_label(&name_token).ok_or_else(|| {
-            Box::new(ParseError::from_token(
-                &name_token,
-                "Expected builtin call name after '.'".to_string(),
-            )) as Box<dyn Glitch>
-        })?;
+        let name = Self::expect_named_label(&name_token, "Expected builtin call name after '.'")?;
         let _ = tokens.bump();
 
         let args =

@@ -31,12 +31,8 @@ impl AstParser {
                     self.skip_ignorable(tokens);
 
                     let member_token = tokens.curr(false)?;
-                    let member = Self::token_to_named_label(&member_token).ok_or_else(|| {
-                        Box::new(ParseError::from_token(
-                            &member_token,
-                            "Expected field or method name after '.'".to_string(),
-                        )) as Box<dyn Glitch>
-                    })?;
+                    let member =
+                        Self::expect_named_label(&member_token, "Expected field or method name after '.'")?;
                     let _ = tokens.bump();
                     self.skip_ignorable(tokens);
 
