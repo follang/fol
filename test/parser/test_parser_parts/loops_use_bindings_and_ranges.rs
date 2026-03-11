@@ -182,7 +182,7 @@ fn test_use_declaration_supports_multiple_names_in_function_bodies() {
 
     match ast {
         AstNode::Program { declarations } => {
-            assert!(declarations.iter().any(|node| {
+            assert!(program_surface_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::FunDecl { body, .. }
@@ -522,7 +522,7 @@ fn test_let_parsing_supports_bracketed_type_hints() {
     match ast {
         AstNode::Program { declarations } => {
             assert!(
-                    declarations.iter().any(|node| {
+                    program_surface_nodes(&declarations).into_iter().any(|node| {
                         matches!(
                             node,
                             AstNode::VarDecl {
@@ -619,7 +619,7 @@ fn test_boolean_keyword_literals_parse_in_var_and_return() {
 
     let (has_true_var, has_false_return) = match ast {
         AstNode::Program { declarations } => {
-            let has_true_var = declarations.iter().any(|node| {
+            let has_true_var = program_surface_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::VarDecl { name, value: Some(value), .. }
@@ -628,7 +628,7 @@ fn test_boolean_keyword_literals_parse_in_var_and_return() {
                 )
             });
 
-            let has_false_return = declarations.iter().any(|node| {
+            let has_false_return = program_surface_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Return { value: Some(value) }
@@ -753,7 +753,7 @@ fn test_range_expressions_parse_in_assignment_and_return() {
 
     match ast {
         AstNode::Program { declarations } => {
-            let has_range_assignment = declarations.iter().any(|node| {
+            let has_range_assignment = program_surface_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Assignment { value, .. }
@@ -770,7 +770,7 @@ fn test_range_expressions_parse_in_assignment_and_return() {
                 )
             });
 
-            let has_range_return = declarations.iter().any(|node| {
+            let has_range_return = program_surface_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Return { value: Some(value) }
@@ -843,7 +843,7 @@ fn test_open_start_range_expressions_parse_in_assignment_and_return() {
 
     match ast {
         AstNode::Program { declarations } => {
-            let has_open_start_assignment = declarations.iter().any(|node| {
+            let has_open_start_assignment = program_surface_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Assignment { value, .. }
@@ -859,7 +859,7 @@ fn test_open_start_range_expressions_parse_in_assignment_and_return() {
                 )
             });
 
-            let has_open_start_return = declarations.iter().any(|node| {
+            let has_open_start_return = program_surface_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Return { value: Some(value) }
@@ -932,7 +932,7 @@ fn test_open_end_range_expressions_parse_in_assignment_and_return() {
 
     match ast {
         AstNode::Program { declarations } => {
-            let has_open_end_assignment = declarations.iter().any(|node| {
+            let has_open_end_assignment = program_surface_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Assignment { value, .. }
@@ -948,7 +948,7 @@ fn test_open_end_range_expressions_parse_in_assignment_and_return() {
                 )
             });
 
-            let has_open_end_return = declarations.iter().any(|node| {
+            let has_open_end_return = program_surface_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Return { value: Some(value) }

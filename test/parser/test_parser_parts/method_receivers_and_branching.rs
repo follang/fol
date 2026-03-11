@@ -115,7 +115,7 @@ fn test_function_method_receiver_supports_qualified_type_references() {
     match ast {
         AstNode::Program { declarations } => {
             assert!(
-                declarations.iter().any(|node| {
+                program_surface_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::FunDecl { name, .. } if name == "parse_msg"
@@ -143,7 +143,7 @@ fn test_procedure_method_receiver_supports_bracketed_type_references() {
     match ast {
         AstNode::Program { declarations } => {
             assert!(
-                declarations.iter().any(|node| {
+                program_surface_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::ProDecl { name, .. } if name == "store"
@@ -200,7 +200,7 @@ fn test_function_method_receiver_syntax_accepts_builtin_receiver_type() {
 
     match ast {
         AstNode::Program { declarations } => assert!(
-            declarations.iter().any(|node| matches!(
+            program_surface_nodes(&declarations).into_iter().any(|node| matches!(
                 node, AstNode::FunDecl { name, .. } if name == "parse_msg"
             )),
             "Builtin scalar receiver method should parse as a named function declaration"
@@ -223,7 +223,7 @@ fn test_procedure_method_receiver_syntax_accepts_builtin_receiver_type() {
 
     match ast {
         AstNode::Program { declarations } => assert!(
-            declarations.iter().any(|node| matches!(
+            program_surface_nodes(&declarations).into_iter().any(|node| matches!(
                 node, AstNode::ProDecl { name, .. } if name == "parse_msg"
             )),
             "Builtin scalar receiver method should parse as a named procedure declaration"
