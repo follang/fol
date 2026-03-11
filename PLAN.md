@@ -402,6 +402,8 @@ Target files:
 
 - [x] Add a nested illegal-token diagnostic matrix after `Illegal` and `Void` are separated.
 - [x] Ensure malformed tokens are reported at the offending token instead of a following separator.
+- [x] Keep malformed name-like tokens inside the parser surface that owns them instead of
+  letting them fall out into generic neighboring parse paths.
 - [ ] Re-run representative `Expected X` and `Expected closing ...` matrices after AST and lexer changes.
 - [ ] Keep unsupported combination failures explicit.
 - [ ] Remove any tests that only preserve known-bad legacy parser compromises.
