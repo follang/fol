@@ -412,6 +412,33 @@ mod namespace_tests {
     }
 
     #[test]
+    fn test_nested_manifest_folder_uses_nearest_package_name() {
+        let temp_root = unique_temp_root("nested_manifest_folder");
+        let outer_dir = temp_root.join("outer");
+        let inner_dir = outer_dir.join("inner");
+        let input_dir = inner_dir.join("src");
+
+        fs::create_dir_all(&input_dir).expect("Should create nested manifest tree");
+        fs::write(outer_dir.join("Cargo.toml"), "[package]\nname = \"outer_pkg\"\n")
+            .expect("Should write outer manifest");
+        fs::write(inner_dir.join("Cargo.toml"), "[package]\nname = \"inner_pkg\"\n")
+            .expect("Should write inner manifest");
+        fs::write(input_dir.join("main.fol"), "var answer = 42")
+            .expect("Should write fol source");
+
+        let sources = Source::init(
+            input_dir.to_str().expect("Input directory should be utf-8"),
+            SourceType::Folder,
+        )
+        .expect("Nested manifest folder should produce sources");
+
+        assert_eq!(sources.len(), 1);
+        assert_eq!(sources[0].package, "inner_pkg");
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
     fn test_namespace_output_integration() {
         // Test that the namespace information is properly integrated
         let sources =

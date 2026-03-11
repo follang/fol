@@ -110,7 +110,7 @@ Done when:
 - [x] Decide whether current `Cargo.toml` lookup stays as-is for now.
 - [x] Define fallback behavior when no manifest exists.
 - [x] Define behavior for single-file input outside a package root.
-- [ ] Define behavior for nested manifests or workspace-like layouts.
+- [x] Define behavior for nested manifests or workspace-like layouts.
 - [x] Add tests for the supported cases.
 
 Done when:
