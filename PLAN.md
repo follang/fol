@@ -408,8 +408,8 @@ Target area:
 
 - [ ] Write a short stream contract summary:
 - [x] source ordering
-- [ ] source identity
-- [ ] package detection
+- [x] source identity
+- [x] package detection
 - [ ] namespace derivation
 - [ ] location guarantees
 

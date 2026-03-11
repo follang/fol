@@ -25,3 +25,18 @@ tests actually enforce today.
 - `.mod` directories are skipped before any source collection.
 - The lexer now preserves that stream ordering across file boundaries instead of
   accidentally joining touching files into one token.
+
+### Source Identity
+
+- A stream source is identified by its canonical file path plus the package and
+  namespace chosen for the current run.
+- The original call site is preserved separately so file discovery mode can still
+  be reported without changing logical identity.
+
+### Package Detection
+
+- Detached folders fall back to their own folder name as the package name.
+- Detached files fall back to their parent folder name as the package name.
+- Nested manifests use the nearest `Cargo.toml` package name, not the outermost one.
+- Explicit package overrides intentionally change logical identity without changing
+  the canonical source path.
