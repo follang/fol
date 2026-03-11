@@ -1,0 +1,3 @@
+"literal with `backticks` and // slash"
+'quoted with /* block */ and `ticks`'
+var done = 1;

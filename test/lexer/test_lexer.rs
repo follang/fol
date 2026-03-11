@@ -641,6 +641,35 @@ mod lexer_tests {
     }
 
     #[test]
+    fn test_comment_delimiters_inside_literals_do_not_start_comments() {
+        let tokens = tokenize_file("test/lexer/comment_delimiters_in_literals.fol");
+        let significant: Vec<(KEYWORD, String)> = tokens
+            .into_iter()
+            .filter(|(key, _)| !key.is_void() && !key.is_eof())
+            .collect();
+
+        assert_eq!(
+            significant,
+            vec![
+                (
+                    KEYWORD::Literal(LITERAL::Stringy),
+                    "\"literal with `backticks` and // slash\"".to_string(),
+                ),
+                (
+                    KEYWORD::Literal(LITERAL::Quoted),
+                    "'quoted with /* block */ and `ticks`'".to_string(),
+                ),
+                (KEYWORD::Keyword(BUILDIN::Var), "var".to_string()),
+                (KEYWORD::Identifier, "done".to_string()),
+                (KEYWORD::Symbol(SYMBOL::Equal), "=".to_string()),
+                (KEYWORD::Literal(LITERAL::Decimal), "1".to_string()),
+                (KEYWORD::Symbol(SYMBOL::Semi), "; ".to_string()),
+            ],
+            "Comment delimiters inside quoted literals should stay literal payload, not open comments"
+        );
+    }
+
+    #[test]
     fn test_mixed_content() {
         let tokens = tokenize_file("test/lexer/mixed.fol");
 
