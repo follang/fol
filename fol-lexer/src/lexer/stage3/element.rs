@@ -6,6 +6,9 @@ use colored::Colorize;
 use fol_types::*;
 use std::fmt;
 
+// Stage 3 owns final disambiguation only.
+// It refines the folded token stream into parser-facing numeric and EOF forms
+// without redoing the earlier raw scanning or multi-token folding work.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Element {
     key: KEYWORD,
