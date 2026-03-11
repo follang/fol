@@ -242,7 +242,7 @@ Done when:
 
 Done when:
 
-- [ ] A maintainer can explain each stage without hand-waving.
+- [x] A maintainer can explain each stage without hand-waving.
 
 ### 6.7 Illegal token strategy
 
