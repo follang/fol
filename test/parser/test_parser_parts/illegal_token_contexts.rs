@@ -385,3 +385,77 @@ fn test_standard_declaration_illegal_name_reports_offending_token_location() {
         "Illegal standard names should retain a concrete source column"
     );
 }
+
+#[test]
+fn test_definition_declaration_illegal_name_reports_offending_token_location() {
+    let (message, line, column) =
+        parse_error_snapshot("test/parser/simple_def_illegal_name.fol");
+
+    assert!(
+        message.contains("Parser encountered illegal token"),
+        "Illegal definition names should surface as explicit illegal-token diagnostics, got: {}",
+        message
+    );
+    assert_eq!(
+        line, 1,
+        "Illegal definition names should report the declaration line"
+    );
+    assert!(
+        column > 0,
+        "Illegal definition names should retain a concrete source column"
+    );
+}
+
+#[test]
+fn test_function_declaration_illegal_name_reports_offending_token_location() {
+    let (message, line, column) =
+        parse_error_snapshot("test/parser/simple_fun_illegal_name.fol");
+
+    assert!(
+        message.contains("Parser encountered illegal token"),
+        "Illegal function names should surface as explicit illegal-token diagnostics, got: {}",
+        message
+    );
+    assert_eq!(line, 1, "Illegal function names should report the declaration line");
+    assert!(
+        column > 0,
+        "Illegal function names should retain a concrete source column"
+    );
+}
+
+#[test]
+fn test_logical_declaration_illegal_name_reports_offending_token_location() {
+    let (message, line, column) =
+        parse_error_snapshot("test/parser/simple_log_illegal_name.fol");
+
+    assert!(
+        message.contains("Parser encountered illegal token"),
+        "Illegal logical names should surface as explicit illegal-token diagnostics, got: {}",
+        message
+    );
+    assert_eq!(line, 1, "Illegal logical names should report the declaration line");
+    assert!(
+        column > 0,
+        "Illegal logical names should retain a concrete source column"
+    );
+}
+
+#[test]
+fn test_procedure_declaration_illegal_name_reports_offending_token_location() {
+    let (message, line, column) =
+        parse_error_snapshot("test/parser/simple_pro_illegal_name.fol");
+
+    assert!(
+        message.contains("Parser encountered illegal token"),
+        "Illegal procedure names should surface as explicit illegal-token diagnostics, got: {}",
+        message
+    );
+    assert_eq!(
+        line, 1,
+        "Illegal procedure names should report the declaration line"
+    );
+    assert!(
+        column > 0,
+        "Illegal procedure names should retain a concrete source column"
+    );
+}

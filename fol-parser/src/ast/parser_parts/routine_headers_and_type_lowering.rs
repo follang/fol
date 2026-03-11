@@ -729,12 +729,7 @@ impl AstParser {
         }
 
         let name_token = tokens.curr(false)?;
-        let name = Self::token_to_named_label(&name_token).ok_or_else(|| {
-            Box::new(ParseError::from_token(
-                &name_token,
-                missing_name_message.to_string(),
-            )) as Box<dyn Glitch>
-        })?;
+        let name = Self::expect_named_label(&name_token, missing_name_message)?;
         let _ = tokens.bump();
         Ok((receiver_type, name))
     }

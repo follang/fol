@@ -80,18 +80,7 @@ impl AstParser {
         self.skip_ignorable(tokens);
 
         let name_token = tokens.curr(false)?;
-        let name = match name_token.key() {
-            key if key.is_ident() || key.is_buildin() => name_token.con().trim().to_string(),
-            KEYWORD::Literal(LITERAL::Stringy) | KEYWORD::Literal(LITERAL::Quoted) => {
-                Self::exact_unquote_text(name_token.con())
-            }
-            _ => {
-                return Err(Box::new(ParseError::from_token(
-                    &name_token,
-                    "Expected definition name".to_string(),
-                )));
-            }
-        };
+        let name = Self::expect_named_label(&name_token, "Expected definition name")?;
         let _ = tokens.bump();
 
         self.skip_ignorable(tokens);
