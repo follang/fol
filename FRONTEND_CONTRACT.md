@@ -280,6 +280,10 @@ tests actually enforce today.
   and `segment`.
 - Duplicate and conflicting parser-owned option diagnostics also stay surface-specific
   instead of falling back to a generic parse failure.
+- Malformed option tokens and malformed option-separator positions now stay inside the
+  parser surface that owns them instead of degrading into `Unknown ... option` or
+  separator-shape failures; this is locked for declaration, binding, `use`, type,
+  routine, entry-marker, record-marker, scalar-type, and type-argument surfaces.
 - The currently unsupported multi-name type combinations are rejected explicitly:
   generics and explicit contracts are limited to single-name type declarations, and
   mismatched definition counts report a dedicated error instead of a later shape failure.
@@ -289,6 +293,9 @@ tests actually enforce today.
   falling out into neighboring generic expression or separator failures; this is locked
   for builtin root calls, named call arguments, record initializer fields, grouped
   bindings, destructuring bindings, loop iteration binders, and qualified type segments.
+- Malformed `use` path segments and malformed type-argument separator positions now also
+  fail at the offending token instead of being flattened into string paths or later
+  `Expected ...` diagnostics.
 - Representative missing-close diagnostics consistently use `Expected closing ...`
   language, although the exact trailing context is still shape-specific.
 - Representative `Expected X` diagnostics also name the missing syntactic shape directly,

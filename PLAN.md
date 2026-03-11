@@ -50,18 +50,18 @@ Do not add or plan work here for:
 
 - The lexer stages are real and heavily tested.
 - Stage 0 still collects the entire character stream into a `Vec`.
-- Cross-file token separation is still enforced by injecting a synthetic newline between touching files.
-- Comments in the implementation use slash styles (`//`, `/* */`), but the book defines backtick-delimited comments.
-- Backticks are still tokenized as `Operator::ANY`, which conflicts with the book’s comment syntax.
+- Cross-file token separation now uses an explicit boundary token instead of injected source characters.
+- Backtick-delimited comments are authoritative, while slash comments remain an explicit compatibility layer.
+- Backticks no longer overlap with `Operator::ANY` tokenization.
 - Literal taxonomy is still not aligned to the book: current code treats double quotes as `Stringy`, single quotes as `Quoted`, and then lowers them as string vs single-char/string heuristics, while the book defines cooked double-quoted character/string forms and raw single-quoted character/string forms.
 - Escape processing is not implemented; escapes are preserved verbatim.
 - Cooked-string line continuation behavior from the book is not implemented.
 - Imaginary numeric literals from the book are still out of scope in the code.
-- Lexer identifier scanning allows forms the book rejects, especially `_` alone and repeated underscores.
-- `KEYWORD::is_void()` still treats `Illegal` as void, which is unsafe for parser-facing behavior.
+- Lexer identifier scanning still allows `_` alone, but repeated underscore runs now become `Illegal`.
+- `KEYWORD::is_void()` no longer treats `Illegal` as void.
 - Literal enum names no longer carry the old `Deciaml` and `Hexal` misspellings.
-- `stage2::make_comment()` is dead code.
-- The stage wrapper files still contain `TODO: Handle better .ok()` markers around window mutation.
+- The old dead stage-2 comment helper is gone.
+- The stage wrapper files no longer carry the old `.ok()` mutation TODOs.
 
 ### Parser
 
@@ -289,7 +289,7 @@ Target files:
 ### 9.5 Clean Up Illegal And Error Semantics
 
 - [x] Remove `Illegal` from `KEYWORD::is_void()`.
-- [ ] Audit every parser path that currently assumes `is_void()` also means malformed input.
+- [x] Audit every parser path that currently assumes `is_void()` also means malformed input.
 - [ ] Make malformed quoted spans follow one consistent policy.
 - [x] Make malformed comments follow one consistent policy.
 - [x] Make malformed numeric spans follow one consistent policy.
@@ -316,7 +316,7 @@ Acceptance for Phase 2:
 
 - [x] Comment syntax matches the chosen authority.
 - [ ] Literal quote behavior matches the chosen authority.
-- [ ] Illegal tokens are no longer treated as whitespace.
+- [x] Illegal tokens are no longer treated as whitespace.
 - [ ] Identifier rules are explicit and test-backed.
 - [ ] Numeric families are complete for the chosen front-end scope.
 
@@ -455,7 +455,7 @@ This is the recommended implementation order once the decision freeze is complet
 10. [ ] Implement cooked escape handling and cooked multiline continuation if that model is kept.
 11. [ ] Add imaginary literal support or explicitly remove it from the front-end scope docs.
 12. [ ] Rename typoed literal enum variants and update all call sites.
-13. [ ] Remove `Illegal` from `is_void()` and add nested malformed-token regressions.
+13. [x] Remove `Illegal` from `is_void()` and add nested malformed-token regressions.
 14. [x] Replace synthetic in-band file-boundary newlines with an explicit boundary model.
 15. [ ] Remove default `Cargo.toml` package detection and replace it with the chosen FOL-native package contract.
 16. [ ] Replace string-joined qualified paths with structured path representation.
@@ -475,7 +475,7 @@ Do not move to the next compiler stage until every gate below is true.
 - [ ] Literal quote behavior matches the chosen authority.
 - [ ] Escape handling matches the chosen authority.
 - [ ] Imaginary literal status is resolved instead of sitting in a silent limbo.
-- [ ] `Illegal` tokens are never skipped as whitespace.
+- [x] `Illegal` tokens are never skipped as whitespace.
 - [x] Method receiver types survive AST lowering.
 - [x] Logical routine kind survives AST lowering.
 - [ ] Qualified path structure survives AST lowering where the next stage needs it.
