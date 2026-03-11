@@ -192,10 +192,9 @@ impl Element {
             self.push(code)?;
             if matches!(code.peek(0)?.0, 'x' | 'X') {
                 self.bump(code)?;
-                self.key = Literal(LITERAL::Hexadecimal);
-                while is_hex_digit(&code.peek(0)?.0) {
-                    self.bump(code)?;
-                }
+                self.scan_prefixed_numeric(code, LITERAL::Hexadecimal, |ch| {
+                    ch.is_ascii_digit() || matches!(ch, 'a'..='f' | 'A'..='F')
+                })?;
             } else if matches!(code.peek(0)?.0, 'o' | 'O') {
                 self.bump(code)?;
                 self.key = Literal(LITERAL::Octal);
@@ -216,6 +215,67 @@ impl Element {
                 self.bump(code)?;
             }
         }
+        Ok(())
+    }
+
+    fn scan_prefixed_numeric<F>(
+        &mut self,
+        code: &mut stage0::Elements,
+        kind: LITERAL,
+        valid_digit: F,
+    ) -> Vod
+    where
+        F: Fn(char) -> bool,
+    {
+        self.key = Literal(kind);
+
+        let mut saw_digit = false;
+        let mut prev_underscore = false;
+        let mut invalid = false;
+
+        loop {
+            let next = code.peek(0)?.0;
+            if is_eof(&next)
+                || is_eol(&next)
+                || is_space(&next)
+                || next == stage0::SOURCE_BOUNDARY_CHAR
+                || is_symbol(&next)
+            {
+                break;
+            }
+
+            if !(next.is_ascii_alphanumeric() || next == '_') {
+                break;
+            }
+
+            self.bump(code)?;
+            let current = code.curr()?.0;
+
+            if current == '_' {
+                if !saw_digit || prev_underscore {
+                    invalid = true;
+                }
+                prev_underscore = true;
+                continue;
+            }
+
+            if valid_digit(current) {
+                saw_digit = true;
+                prev_underscore = false;
+            } else {
+                invalid = true;
+                prev_underscore = false;
+            }
+        }
+
+        if !saw_digit || prev_underscore {
+            invalid = true;
+        }
+
+        if invalid {
+            self.key = Illegal;
+        }
+
         Ok(())
     }
 
