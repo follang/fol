@@ -67,7 +67,7 @@ Do not use this plan for:
 
 - [x] Phase 1: stream hardening
 - [x] Phase 2: lexer contract hardening
-- [ ] Phase 3: parser structural hardening
+- [x] Phase 3: parser structural hardening
 - [ ] Phase 4: front-end contract freeze
 
 Do not start Phase 2 before Phase 1 is green.
