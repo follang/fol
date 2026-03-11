@@ -782,9 +782,41 @@ impl AstParser {
             };
         }
 
-        // Simple integer parsing for testing
-        if let Ok(int_val) = value.parse::<i64>() {
+        let normalized = value.replace('_', "");
+
+        if let Some(hex) = normalized
+            .strip_prefix("0x")
+            .or_else(|| normalized.strip_prefix("0X"))
+        {
+            if let Ok(int_val) = i64::from_str_radix(hex, 16) {
+                return Ok(AstNode::Literal(Literal::Integer(int_val)));
+            }
+        }
+
+        if let Some(octal) = normalized
+            .strip_prefix("0o")
+            .or_else(|| normalized.strip_prefix("0O"))
+        {
+            if let Ok(int_val) = i64::from_str_radix(octal, 8) {
+                return Ok(AstNode::Literal(Literal::Integer(int_val)));
+            }
+        }
+
+        if let Some(binary) = normalized
+            .strip_prefix("0b")
+            .or_else(|| normalized.strip_prefix("0B"))
+        {
+            if let Ok(int_val) = i64::from_str_radix(binary, 2) {
+                return Ok(AstNode::Literal(Literal::Integer(int_val)));
+            }
+        }
+
+        if let Ok(int_val) = normalized.parse::<i64>() {
             return Ok(AstNode::Literal(Literal::Integer(int_val)));
+        }
+
+        if let Ok(float_val) = normalized.parse::<f64>() {
+            return Ok(AstNode::Literal(Literal::Float(float_val)));
         }
 
         // Default to identifier
