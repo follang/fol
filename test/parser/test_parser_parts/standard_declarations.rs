@@ -805,6 +805,37 @@ fn test_protocol_standard_rejects_duplicate_signatures() {
 }
 
 #[test]
+fn test_protocol_standard_rejects_canonical_duplicate_signatures() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_std_protocol_duplicate_signature_canonical.fol")
+            .expect("Should read canonical duplicate protocol standard fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject canonical duplicate protocol signatures");
+
+    let parse_error = errors
+        .first()
+        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        .expect("First parser error should be ParseError");
+
+    assert!(
+        parse_error
+            .to_string()
+            .contains("Duplicate standard member 'AreaValue#0'"),
+        "Expected canonical duplicate protocol signature error, got: {}",
+        parse_error
+    );
+    assert_eq!(
+        parse_error.column(),
+        9,
+        "Canonical duplicate protocol signature should point to the duplicate routine name"
+    );
+}
+
+#[test]
 fn test_blueprint_standard_rejects_duplicate_fields() {
     let mut file_stream =
         FileStream::from_file("test/parser/simple_std_blueprint_duplicate_field.fol")
@@ -832,6 +863,37 @@ fn test_blueprint_standard_rejects_duplicate_fields() {
         parse_error.column(),
         9,
         "Duplicate blueprint field should point to the duplicate field name"
+    );
+}
+
+#[test]
+fn test_blueprint_standard_rejects_canonical_duplicate_fields() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_std_blueprint_duplicate_field_canonical.fol")
+            .expect("Should read canonical duplicate blueprint standard fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject canonical duplicate blueprint fields");
+
+    let parse_error = errors
+        .first()
+        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        .expect("First parser error should be ParseError");
+
+    assert!(
+        parse_error
+            .to_string()
+            .contains("Duplicate standard member 'ColorName'"),
+        "Expected canonical duplicate blueprint member error, got: {}",
+        parse_error
+    );
+    assert_eq!(
+        parse_error.column(),
+        9,
+        "Canonical duplicate blueprint field should point to the duplicate field name"
     );
 }
 
