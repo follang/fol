@@ -328,7 +328,7 @@ impl AstParser {
     ) -> Result<(), Box<dyn Glitch>> {
         let mut seen_names = HashSet::new();
         for param in params {
-            if !seen_names.insert(param.name.clone()) {
+            if !seen_names.insert(canonical_identifier_key(&param.name)) {
                 return Err(Box::new(ParseError {
                     message: format!("Duplicate {} name '{}'", kind, param.name),
                     file: None,
@@ -372,7 +372,7 @@ impl AstParser {
                     "Expected generic parameter name".to_string(),
                 )) as Box<dyn Glitch>
             })?;
-            if !seen_names.insert(name.clone()) {
+            if !seen_names.insert(canonical_identifier_key(&name)) {
                 return Err(Box::new(ParseError::from_token(
                     &token,
                     format!("Duplicate generic name '{}'", name),
@@ -523,7 +523,7 @@ impl AstParser {
                         "Expected named function header in higher-order parameter".to_string(),
                     )));
                 };
-                if !seen_names.insert(param_name.clone()) {
+                if !seen_names.insert(canonical_identifier_key(&param_name)) {
                     return Err(Box::new(ParseError::from_token(
                         &token,
                         format!("Duplicate parameter name '{}'", param_name),
@@ -566,14 +566,14 @@ impl AstParser {
                 "Expected closing '))' after mutex parameter name",
             )?;
             let first_name = names[0].clone();
-            if !seen_names.insert(first_name.clone()) {
+            if !seen_names.insert(canonical_identifier_key(&first_name)) {
                 return Err(Box::new(ParseError::from_token(
                     &token,
                     format!("Duplicate parameter name '{}'", first_name),
                 )));
             }
             for grouped_name in names.iter().skip(1) {
-                if !seen_names.insert(grouped_name.clone()) {
+                if !seen_names.insert(canonical_identifier_key(grouped_name)) {
                     let name_token = tokens.curr(false)?;
                     return Err(Box::new(ParseError::from_token(
                         &name_token,
