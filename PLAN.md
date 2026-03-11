@@ -120,7 +120,7 @@ Done when:
 ### 5.4 Namespace contract
 
 - [x] Define root namespace behavior.
-- [ ] Define nested namespace behavior.
+- [x] Define nested namespace behavior.
 - [ ] Define valid namespace component rules.
 - [ ] Define interaction with `.mod` skipping.
 - [x] Decide whether invalid directory names are ignored or rejected.
@@ -174,7 +174,7 @@ Target area:
 ### 6.1 Token payload policy
 
 - [ ] Decide what `con()` means for every token family.
-- [ ] Decide whether delimiters stay in string-like payloads.
+- [x] Decide whether delimiters stay in string-like payloads.
 - [ ] Decide whether number payloads preserve original spelling.
 - [ ] Decide whether whitespace and comments normalize to placeholder content or preserve source content.
 - [ ] Write tests that assert payload shape directly.

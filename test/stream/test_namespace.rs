@@ -478,6 +478,21 @@ mod namespace_tests {
     }
 
     #[test]
+    fn test_folder_input_uses_nested_namespace_segments_for_nested_files() {
+        let sources =
+            Source::init("test/legacy/main", SourceType::Folder).expect("Should create sources");
+        let nested = sources
+            .iter()
+            .find(|source| source.path.ends_with("test/legacy/main/single/subpak/input1.fol"))
+            .expect("Folder input should include nested file");
+
+        assert_eq!(
+            nested.namespace, "fol::single::subpak",
+            "Folder input should derive namespace segments from nested directories"
+        );
+    }
+
+    #[test]
     fn test_namespace_output_integration() {
         // Test that the namespace information is properly integrated
         let sources =
