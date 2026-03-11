@@ -175,6 +175,19 @@ tests actually enforce today.
 - Name resolution, whole-program type checking, ownership rules, and cross-file semantic
   validation are still outside the parser contract.
 
+### Current Failure-Shape Consistency
+
+- Parser-owned unknown-option diagnostics name the surface that rejected the option, such
+  as `use`, `implementation`, `standard`, `type`, `routine`, `binding`, `definition`,
+  and `segment`.
+- Duplicate and conflicting parser-owned option diagnostics also stay surface-specific
+  instead of falling back to a generic parse failure.
+- The currently unsupported multi-name type combinations are rejected explicitly:
+  generics and explicit contracts are limited to single-name type declarations, and
+  mismatched definition counts report a dedicated error instead of a later shape failure.
+- Representative missing-close diagnostics consistently use `Expected closing ...`
+  language, although the exact trailing context is still shape-specific.
+
 ### Parser Boundary
 
 - Structural parsing work stays in the parser:
