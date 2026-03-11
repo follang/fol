@@ -688,6 +688,23 @@ fn test_use_declaration_braced_illegal_path_reports_offending_token_location() {
 }
 
 #[test]
+fn test_use_declaration_direct_illegal_path_reports_offending_token_location() {
+    let (message, line, column) =
+        parse_error_snapshot("test/parser/simple_use_direct_illegal_path.fol");
+
+    assert!(
+        message.contains("Parser encountered illegal token"),
+        "Illegal direct use paths should surface as explicit illegal-token diagnostics, got: {}",
+        message
+    );
+    assert_eq!(line, 1, "Illegal direct use paths should report the declaration line");
+    assert!(
+        column > 0,
+        "Illegal direct use paths should retain a concrete source column"
+    );
+}
+
+#[test]
 fn test_inquiry_target_illegal_segment_reports_offending_token_location() {
     let (message, line, column) =
         parse_error_snapshot("test/parser/simple_fun_inquiry_illegal_target_segment.fol");

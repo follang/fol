@@ -160,6 +160,7 @@ impl AstParser {
         for _ in 0..256 {
             self.skip_ignorable(tokens);
             let token = tokens.curr(false)?;
+            Self::reject_illegal_token(&token)?;
 
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Comma))
                 || matches!(token.key(), KEYWORD::Symbol(SYMBOL::Semi))
