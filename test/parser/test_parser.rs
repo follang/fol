@@ -16,6 +16,23 @@ fn inquiry_target_is(target: &InquiryTarget, expected: &str) -> bool {
     inquiry_target_key(target) == expected
 }
 
+fn program_surface_nodes<'a>(declarations: &'a [AstNode]) -> Vec<&'a AstNode> {
+    let mut nodes = Vec::new();
+
+    for node in declarations {
+        nodes.push(node);
+
+        match node {
+            AstNode::FunDecl { body, .. } | AstNode::ProDecl { body, .. } => {
+                nodes.extend(body.iter());
+            }
+            _ => {}
+        }
+    }
+
+    nodes
+}
+
 #[cfg(test)]
 #[path = "test_parser_parts/alternative_routine_headers.rs"]
 mod alternative_routine_headers;
