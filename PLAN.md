@@ -347,7 +347,7 @@ Done when:
 
 ### 7.6 Parser boundary cleanup
 
-- [ ] Identify which current parser checks are purely structural.
+- [x] Identify which current parser checks are purely structural.
 - [ ] Keep structural checks in the parser.
 - [ ] Stop adding semantic-like checks during this hardening cycle unless they are required to preserve AST correctness.
 - [ ] Mark anything semantic-adjacent that stays temporarily.
