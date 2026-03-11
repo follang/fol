@@ -570,3 +570,23 @@ fn test_method_call_illegal_method_name_reports_offending_token_location() {
         "Illegal method names should retain a concrete source column"
     );
 }
+
+#[test]
+fn test_rolling_binding_illegal_name_reports_offending_token_location() {
+    let (message, line, column) =
+        parse_error_snapshot("test/parser/simple_fun_rolling_illegal_binding_name.fol");
+
+    assert!(
+        message.contains("Parser encountered illegal token"),
+        "Illegal rolling binder names should report an explicit illegal-token diagnostic, got: {}",
+        message
+    );
+    assert_eq!(
+        line, 2,
+        "Illegal rolling binder names should anchor to the rolling expression line"
+    );
+    assert!(
+        column > 0,
+        "Illegal rolling binder names should retain a concrete source column"
+    );
+}
