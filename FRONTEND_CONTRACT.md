@@ -316,3 +316,18 @@ tests actually enforce today.
   front-end correction without broad grammar churn.
 - Eager source loading remains accepted for this cycle, but there is now an explicit
   follow-up expectation to revisit it only after parser hardening is complete.
+
+## Undefined Behavior Audit
+
+- Stream behavior that was previously implicit is now explicit: ordering, source
+  identity, package lookup, namespace derivation, and file-boundary locations are all
+  written down and test-backed.
+- Lexer behavior that was previously quirk-driven is now explicit at the front-end
+  boundary: token payload meaning, EOF handling, malformed literal handling, and the
+  currently supported numeric families are all documented and exercised by tests.
+- Parser behavior that remains unusual is explicit rather than undefined: root
+  contamination, logical-routine lowering through `FunDecl`, declaration-family shapes,
+  statement/expression boundaries, and representative failure shapes are all recorded in
+  this contract.
+- Remaining front-end debt is therefore conscious deferred debt, not undocumented
+  boundary behavior that later phases would need to rediscover from the implementation.
