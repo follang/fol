@@ -14,6 +14,10 @@ tests actually enforce today.
   operators and separator cleanup.
 - `stage3`: performs the final parser-facing disambiguation, especially around numeric
   literal forms and explicit EOF behavior.
+- The current quoted-literal split is stage1-owned: later stages preserve that family
+  distinction instead of rediscovering delimiter intent.
+- No current lexer contract depends on hidden reclassification overlap between stages;
+  the remaining stage interactions are explicit token-stream refinement boundaries.
 
 ## Stream Contract
 
