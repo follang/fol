@@ -95,9 +95,7 @@ impl KEYWORD {
         )
     }
     pub fn is_numberish(&self) -> bool {
-        self.is_number()
-            || matches!(self, KEYWORD::Symbol(SYMBOL::Dot))
-            || matches!(self, KEYWORD::Symbol(SYMBOL::Minus))
+        self.is_number() || matches!(self, KEYWORD::Symbol(SYMBOL::Dot))
     }
     pub fn is_symbol(&self) -> bool {
         if self.is_bracket() {

@@ -223,7 +223,7 @@ Done when:
 
 - [ ] Audit decimal, float, hex, octal, and binary tokenization.
 - [x] Define leading-dot float behavior.
-- [ ] Decide whether negative numbers stay parser-level unary operations.
+- [x] Decide whether negative numbers stay parser-level unary operations.
 - [ ] Decide whether imaginary numbers are out of scope for this cycle.
 - [ ] Add tests for every supported numeric family.
 

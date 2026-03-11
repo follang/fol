@@ -1,6 +1,6 @@
 use crate::lexer::stage2;
 use crate::point;
-use crate::token::{literal::LITERAL, symbol::SYMBOL, void::VOID};
+use crate::token::{literal::LITERAL, void::VOID};
 use crate::token::{KEYWORD, KEYWORD::*};
 use colored::Colorize;
 use fol_types::*;
@@ -90,7 +90,12 @@ impl Element {
             self.make_number(el)?;
         } else if el.curr(false)?.key().is_number() && el.seek(0, false)?.key().is_operator() {
             self.make_number(el)?;
-        } else if el.curr(false)?.key().is_number() && !el.seek(0, false)?.key().is_void() {
+        } else if el.curr(false)?.key().is_number()
+            && !el.seek(0, false)?.key().is_void()
+            && !el.seek(0, false)?.key().is_continue()
+            && !el.seek(0, false)?.key().is_operator()
+            && !el.seek(0, false)?.key().is_symbol()
+        {
             self.set_key(Identifier);
         } else if (el.curr(false)?.key().is_numberish() && el.seek(0, false)?.key().is_continue())
             && (el.peek(0, false)?.key().is_number()
@@ -110,16 +115,6 @@ impl Element {
         // } else if el.curr(false)?.key().is_decimal() && el.peek(0, false)?.key().is_dot() && el.peek(1, false)?.key().is_symbol() {
         // return Ok(());
         // }
-
-        if matches!(el.curr(false)?.key(), KEYWORD::Symbol(SYMBOL::Minus))
-            && el.peek(0, false)?.key().is_decimal()
-        {
-            self.append(&el.peek(0, false)?.into());
-            self.bump(el);
-            if !el.peek(0, false)?.key().is_dot() || !el.peek(0, false)?.key().is_decimal() {
-                return Ok(());
-            }
-        }
 
         if el.curr(false)?.key().is_decimal()
             && el.peek(0, false)?.key().is_dot()

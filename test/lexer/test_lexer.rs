@@ -231,6 +231,26 @@ mod lexer_tests {
     }
 
     #[test]
+    fn test_negative_numbers_keep_minus_as_a_separate_token() {
+        let tokens = tokenize_file("test/lexer/negative_numbers.fol");
+        let significant: Vec<(KEYWORD, String)> = tokens
+            .into_iter()
+            .filter(|(key, _)| !key.is_space() && !key.is_eof())
+            .collect();
+
+        assert_eq!(
+            significant,
+            vec![
+                (KEYWORD::Symbol(SYMBOL::Minus), "-".to_string()),
+                (KEYWORD::Literal(LITERAL::Deciaml), "42".to_string()),
+                (KEYWORD::Symbol(SYMBOL::Minus), "-".to_string()),
+                (KEYWORD::Literal(LITERAL::Float), "3.5".to_string()),
+            ],
+            "Minus should remain a separate token so unary negation stays parser-level"
+        );
+    }
+
+    #[test]
     fn test_quoted_literal_payloads_keep_delimiters() {
         let tokens = tokenize_file("test/lexer/literals.fol");
 
