@@ -459,3 +459,43 @@ fn test_procedure_declaration_illegal_name_reports_offending_token_location() {
         "Illegal procedure names should retain a concrete source column"
     );
 }
+
+#[test]
+fn test_type_entry_variant_illegal_name_reports_offending_token_location() {
+    let (message, line, column) =
+        parse_error_snapshot("test/parser/simple_typ_entry_illegal_variant_name.fol");
+
+    assert!(
+        message.contains("Parser encountered illegal token"),
+        "Illegal type entry variant names should surface as explicit illegal-token diagnostics, got: {}",
+        message
+    );
+    assert_eq!(
+        line, 2,
+        "Illegal type entry variant names should report the variant line"
+    );
+    assert!(
+        column > 0,
+        "Illegal type entry variant names should retain a concrete source column"
+    );
+}
+
+#[test]
+fn test_type_record_field_illegal_name_reports_offending_token_location() {
+    let (message, line, column) =
+        parse_error_snapshot("test/parser/simple_typ_record_illegal_field_name.fol");
+
+    assert!(
+        message.contains("Parser encountered illegal token"),
+        "Illegal type record field names should surface as explicit illegal-token diagnostics, got: {}",
+        message
+    );
+    assert_eq!(
+        line, 2,
+        "Illegal type record field names should report the field line"
+    );
+    assert!(
+        column > 0,
+        "Illegal type record field names should retain a concrete source column"
+    );
+}

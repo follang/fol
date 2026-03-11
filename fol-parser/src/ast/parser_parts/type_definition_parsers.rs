@@ -205,12 +205,7 @@ impl AstParser {
             for _ in 0..64 {
                 self.skip_ignorable(tokens);
                 let name_token = tokens.curr(false)?;
-                let name = Self::token_to_named_label(&name_token).ok_or_else(|| {
-                    Box::new(ParseError::from_token(
-                        &name_token,
-                        "Expected entry variant name".to_string(),
-                    )) as Box<dyn Glitch>
-                })?;
+                let name = Self::expect_named_label(&name_token, "Expected entry variant name")?;
                 names.push((name, name_token));
                 let _ = tokens.bump();
 
@@ -502,12 +497,8 @@ impl AstParser {
             let mut field_names = Vec::new();
             loop {
                 let name_token = tokens.curr(false)?;
-                let field_name = Self::token_to_named_label(&name_token).ok_or_else(|| {
-                    Box::new(ParseError::from_token(
-                        &name_token,
-                        "Expected field name in type record definition".to_string(),
-                    )) as Box<dyn Glitch>
-                })?;
+                let field_name =
+                    Self::expect_named_label(&name_token, "Expected field name in type record definition")?;
                 field_names.push((field_name, name_token));
                 let _ = tokens.bump();
 
