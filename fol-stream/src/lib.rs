@@ -256,16 +256,22 @@ fn from_dir(directory: &str) -> Result<Vec<String>, Box<dyn Glitch>> {
             message: format!("Cannot read directory {}: {}", directory, e),
         })
     })?;
-
-    let mut files = Vec::new();
-
-    for path in paths {
-        let entry = path.map_err(|e| -> Box<dyn Glitch> {
+    let mut entries = paths
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| -> Box<dyn Glitch> {
             Box::new(BasicError {
                 message: format!("Cannot read directory entry: {}", e),
             })
         })?;
+    entries.sort_by(|left, right| {
+        left.file_name()
+            .to_string_lossy()
+            .cmp(&right.file_name().to_string_lossy())
+    });
 
+    let mut files = Vec::new();
+
+    for entry in entries {
         let filepath = entry.path().to_string_lossy().to_string();
         let filename = entry.file_name().to_string_lossy().to_string();
 

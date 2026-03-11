@@ -95,10 +95,6 @@ mod mod_handling_tests {
             assert!(loc.row >= 1, "Row should be at least 1");
             assert!(loc.col >= 1, "Column should be at least 1");
 
-            // Stop after reasonable amount to avoid long test
-            if char_count > 1000 {
-                break;
-            }
         }
 
         assert!(char_count > 100, "Should stream substantial content");

@@ -1,239 +1,499 @@
-# Parser Completion Ledger
+# FOL Front-End Implementation Plan
 
-## 1. Current Baseline
+Last rebuilt: 2026-03-11
+Scope: harden `fol-stream`, `fol-lexer`, and `fol-parser` before any next-stage compiler work
 
-Current verified state:
-- `cargo test -q --test integration` passes with `1070` integration tests.
-- `cargo clippy --workspace --all-targets --all-features -q` passes.
-- The parser is no longer in backlog mode for broad grammar sectors.
+## 0. Goal
 
-Practical meaning:
-- the core grammar is implemented
-- the major book sugar surfaces are implemented
-- the processor/concurrency syntax that was concrete enough to parse is implemented
-- the remaining items are mostly spec-ambiguity or semantic-policy questions, not parser gaps
+Make the current front-end robust enough that the next stage can trust:
 
-## 2. Completed From This Plan
+- source order
+- source identity
+- token contracts
+- literal fidelity
+- AST shape
+- parser invariants
+- front-end diagnostics
 
-The following sectors that were originally open are now implemented and covered.
+## 1. Out Of Scope
 
-### 2.1 Destructuring And Unpacking Bindings
+Do not use this plan for:
 
-Implemented:
-- destructuring binding AST
-- rest bindings
-- nested destructuring
-- grouped destructuring
-- `var`
-- `lab`
-- widened binding-path support
+- semantic analysis
+- symbol resolution
+- type checking
+- ownership enforcement
+- runtime
+- interpreter
+- backend
 
-Covered by:
-- `test/parser/test_parser_parts/destructuring_bindings.rs`
+## 2. Working Rules
 
-### 2.2 Type Shorthand Sugar
+- [ ] No new major syntax during this plan unless required to fix a current mismatch.
+- [ ] Every fix gets a regression test.
+- [ ] Fix stream first, then lexer, then parser.
+- [ ] Keep changes surgical unless a contract is fundamentally wrong.
+- [ ] If behavior stays weird but intentional, document it.
+- [ ] If behavior is accidental, remove it.
 
-Implemented:
-- `?T`
-- `!T`
+## 3. Current Blocking Problems
 
-Lowering:
-- `?T` lowers to optional
-- `!T` lowers to never
+### Stream
 
-Covered by:
-- `test/parser/test_parser_parts/special_type_references.rs`
+- [ ] Folder traversal order is not deterministic.
+- [ ] Source identity is not defined tightly enough.
+- [ ] Package detection behavior is too ad hoc.
+- [ ] Namespace rules are not written down as a contract.
+- [ ] Location guarantees across file boundaries are implicit.
 
-### 2.3 Type Limits
+### Lexer
 
-Implemented:
-- limited type AST
-- `type[...][.limit(...)]` parsing
-- preserved lowering through existing type-reference paths
+- [ ] Token payload rules are not explicit.
+- [ ] String, character, raw-string, and raw-character handling is not clean.
+- [ ] Comment treatment is too informal.
+- [ ] Malformed lexical input behavior is not defined tightly enough.
+- [ ] Numeric token fidelity is not strong enough for later phases.
+- [ ] Stage responsibilities are too implicit.
 
-Covered by:
-- `test/parser/test_parser_parts/special_type_references.rs`
+### Parser
 
-### 2.4 Matching Expression Sugar
+- [ ] Top-level `Program.declarations` is structurally contaminated by routine body leakage.
+- [ ] Literal lowering is narrower than lexer support.
+- [ ] AST invariants are not documented or enforced enough.
+- [ ] Parser still mixes syntax work with some semantic-ish checks.
+- [ ] Unsupported combinations are not always rejected explicitly.
 
-Implemented:
-- expression-shaped matching with `if(...) { ... }`
-- expression-shaped matching with `when(...) { ... }`
-- `is`
-- `in`
-- `has`
-- wildcard/default branches
-- arrow bodies with `->` and `=>`
+## 4. Phase Order
 
-Covered by:
-- `test/parser/test_parser_parts/matching_expressions.rs`
+- [ ] Phase 1: stream hardening
+- [ ] Phase 2: lexer contract hardening
+- [ ] Phase 3: parser structural hardening
+- [ ] Phase 4: front-end contract freeze
 
-### 2.5 Builtin Leading-Dot Calls
+Do not start Phase 2 before Phase 1 is green.
+Do not start Phase 3 before Phase 2 is green.
+Do not declare the front-end ready until Phase 4 is complete.
 
-Implemented:
-- root `.echo(...)`
-- root builtin expression calls
-- root builtin statement calls
-- use in block, flow, inquiry, and pipe contexts
+## 5. Phase 1: Stream Hardening
+Target area:
 
-Covered by:
-- `test/parser/test_parser_parts/leading_dot_builtin_calls.rs`
+- `fol-stream/src/lib.rs`
+- `test/stream/test_stream.rs`
+- `test/stream/test_namespace.rs`
+- `test/stream/test_mod_handling.rs`
 
-### 2.6 Templates And Postfix Template Sugar
+### 5.1 Deterministic traversal
 
-Implemented:
-- postfix template access like `file$`
-- structural AST node for template postfix usage
+- [x] Sort directory entries before recursive traversal.
+- [x] Pick one ordering rule and keep it everywhere.
+- [x] Use the same rule for root files and nested files.
+- [x] Make sure recursion preserves that rule.
+- [ ] Add tests that assert exact source order, not just source presence.
 
-Covered by:
-- `test/parser/test_parser_parts/template_calls.rs`
+Done when:
+- [ ] Repeated runs over the same folder produce the same source order.
+- [ ] Tests fail if traversal order regresses.
 
-### 2.7 Record Constructors / Typed Initializers
+### 5.2 Source identity
 
-Implemented:
-- structural record initializer AST
-- named field initializers `{ field = value, ... }`
-- nested record initializers
+- [ ] Define what uniquely identifies a source at the stream boundary.
+- [ ] Decide whether canonical absolute path is the primary identity.
+- [ ] Decide how `package` and `namespace` participate in identity.
+- [ ] Write down whether the same file can appear twice under different logical identities.
+- [ ] Make tests assert the chosen behavior.
 
-Current note:
-- named initializers are implemented
-- positional `{ value1, value2, ... }` remains represented as ordinary container literals because the book examples do not define a parser-only disambiguator that can separate positional record construction from ordinary braced value literals without semantic type context
+Done when:
+- [ ] A future resolver could use stream output without guessing what a source "is".
 
-Covered by:
-- `test/parser/test_parser_parts/record_initializers.rs`
+### 5.3 Package detection
 
-### 2.8 Access Filters With Capture Or Assignment
+- [ ] Decide whether current `Cargo.toml` lookup stays as-is for now.
+- [ ] Define fallback behavior when no manifest exists.
+- [ ] Define behavior for single-file input outside a package root.
+- [ ] Define behavior for nested manifests or workspace-like layouts.
+- [ ] Add tests for the supported cases.
 
-Implemented:
-- `expr => Name` inside access patterns
-- wildcard capture `* => Name`
-- structural wildcard/capture pattern nodes
-- support in ordinary pattern access
-- support in availability access
+Done when:
 
-Covered by:
-- `test/parser/test_parser_parts/access_pattern_captures.rs`
+- [ ] Package naming behavior is deliberate and tested.
 
-### 2.9 Optional Chaining / Chaining Sugar
+### 5.4 Namespace contract
 
-Implemented:
-- explicit postfix unwrap `value!`
+- [ ] Define root namespace behavior.
+- [ ] Define nested namespace behavior.
+- [ ] Define valid namespace component rules.
+- [ ] Define interaction with `.mod` skipping.
+- [ ] Decide whether invalid directory names are ignored or rejected.
+- [ ] Add tests for edge cases.
 
-Status note:
-- the chapter’s concrete parser surface was mainly the unwrap form shown in examples
-- broader nil-safe chain operators are not specified with a concrete tokenized syntax in the current book text
+Done when:
 
-Covered by:
-- `test/parser/test_parser_parts/chaining_sugar.rs`
+- [ ] Namespace derivation is fully specified by tests.
 
-### 2.10 Async / Await
+### 5.5 Location guarantees
 
-Implemented:
-- lexer keywords for `async` and `await`
-- structural `async` pipe stage
-- structural `await` pipe stage
+- [ ] Document row and column origin.
+- [ ] Confirm newline handling rules.
+- [ ] Confirm row/column reset behavior when switching files.
+- [ ] Define location meaning for synthetic EOF handling if downstream uses it.
+- [ ] Add explicit tests for file boundary transitions.
 
-Covered by:
-- `test/parser/test_parser_parts/pipe_expressions.rs`
-- `test/parser/test_parser_parts/book_processor_examples.rs`
+Done when:
 
-### 2.11 Coroutines / Channels / Select / Mutex Parameters
+- [ ] Later diagnostics can trust stream locations without special-casing.
 
-Implemented:
-- channel types `chn[...]`
-- structural `channel[tx]` / `channel[rx]`
-- structural `select(channel as c) { ... }`
-- coroutine spawn `[>]expr`
-- mutex parameters `((name))`
+### 5.6 Eager loading
 
-Covered by:
-- `test/parser/test_parser_parts/channel_access_expressions.rs`
-- `test/parser/test_parser_parts/select_statements.rs`
-- `test/parser/test_parser_parts/spawn_expressions.rs`
-- `test/parser/test_parser_parts/mutex_parameters.rs`
-- `test/parser/test_parser_parts/book_processor_examples.rs`
+- [ ] Decide whether eager source loading is accepted for this cycle.
+- [ ] If accepted, mark it as intentional.
+- [ ] If not accepted, schedule a contained follow-up after parser hardening.
 
-### 2.12 Book Example Alignment
+Done when:
 
-Added or expanded direct book-shape coverage for:
-- processor/eventual examples
-- coroutine/select/channel examples
-- template postfix examples
-- named record initializer examples
-- nested record initializer examples
+- [ ] Eager loading is no longer accidental design.
 
-## 3. What Is Still Open
+### 5.7 Stream acceptance gate
 
-These are the only remaining items that still qualify as open from the parser-plan perspective.
+- [ ] Source order is deterministic.
+- [ ] Source identity rules are explicit.
+- [ ] Package rules are explicit.
+- [ ] Namespace rules are explicit.
+- [ ] File-boundary location behavior is tested.
 
-### 3.1 Positional Record Initialization
+## 6. Phase 2: Lexer Contract Hardening
+Target area:
 
-Status:
-- parser-ambiguous
+- `fol-lexer/src/lexer/stage0/*`
+- `fol-lexer/src/lexer/stage1/*`
+- `fol-lexer/src/lexer/stage2/*`
+- `fol-lexer/src/lexer/stage3/*`
+- `fol-lexer/src/token/*`
+- `test/lexer/test_lexer.rs`
+- add or expand fixtures under `test/lexer/`
 
-Reason:
-- `{ a, b, c }` is already the container literal surface
-- the current book text does not define a parser-only discriminator for “this brace literal is positional record construction” versus “this brace literal is a normal literal container”
-- resolving that cleanly may require semantic type-context rather than syntax alone
+### 6.1 Token payload policy
 
-Conclusion:
-- not an unresolved parser bug
-- unresolved language-design / parse-vs-typecheck boundary
+- [ ] Decide what `con()` means for every token family.
+- [ ] Decide whether delimiters stay in string-like payloads.
+- [ ] Decide whether number payloads preserve original spelling.
+- [ ] Decide whether whitespace and comments normalize to placeholder content or preserve source content.
+- [ ] Write tests that assert payload shape directly.
 
-### 3.2 Broader Optional-Chaining Operators
+Done when:
 
-Status:
-- spec-ambiguous
+- [ ] Parser code no longer depends on undocumented payload quirks.
 
-Reason:
-- the current chapter explains optional chaining conceptually
-- it does not clearly define a concrete extra token/operator family beyond the unwrap form already implemented
+### 6.2 Literal taxonomy
 
-Conclusion:
-- no concrete parser work should be forced until the book defines exact tokens and examples
+- [ ] Decide the intended meaning of double quotes.
+- [ ] Decide the intended meaning of single quotes.
+- [ ] Decide the intended meaning of backticks, if kept.
+- [ ] Separate character-like and string-like forms if the language requires it.
+- [ ] Decide whether raw-vs-cooked form needs separate token kinds.
 
-### 3.3 Async As Routine Modifier Outside Pipe Form
+Done when:
 
-Status:
-- spec-ambiguous
+- [ ] The lexer no longer conflates unrelated literal families.
 
-Reason:
-- the book examples show `| async` and `| await`
-- they do not clearly define a stable declaration/header surface such as `fun[async]` or similar
+### 6.3 Escape handling
 
-Conclusion:
-- the concrete parser surface from the examples is implemented
-- anything beyond that should wait for clearer spec wording
+- [ ] Decide whether escapes are validated in the lexer.
+- [ ] Define accepted escape sequences for the current front-end scope.
+- [ ] Define behavior for invalid escapes.
+- [ ] Define behavior for unterminated quoted content.
+- [ ] Define multiline continuation behavior if supported.
+- [ ] Add positive and negative tests.
 
-### 3.4 Any Further `def` / `seg` / `imp` Widening
+Done when:
 
-Status:
-- only if the book adds or clarifies extra grammar
+- [ ] Escape behavior is explicit and test-backed.
 
-Reason:
-- the parser already supports the concrete documented forms that were previously missing
-- no further clear parser-only gaps remain there from the current book sweep
+### 6.4 Comment policy
 
-## 4. Honest Final Status
+- [ ] Decide whether normal comments remain fully ignorable.
+- [ ] Decide whether doc comments are represented separately or explicitly deferred.
+- [ ] If deferred, make that explicit in the front-end contract.
+- [ ] Add tests for line comments, block comments, and comment-boundary spacing behavior.
 
-Current parser completion against the concrete book syntax:
-- core grammar: done
-- declaration grammar: done
-- routine grammar: done
-- expression grammar: done
-- type sugar from this plan: done
-- processor syntax from this plan: done
-- book-shaped regression coverage for those sectors: done
+Done when:
 
-Best summary:
-- the parser backlog described by this plan is complete for all concrete, syntax-definable items
-- the remaining items are not “missing parser work” so much as “book/spec wording is not concrete enough to justify new syntax”
+- [ ] Comment treatment is policy, not parser convenience.
 
-## 5. Definition Of Done
+### 6.5 Numeric fidelity
 
-For the purposes of this plan, the parser work is finished because:
-- every concrete syntax family listed in the plan now parses
-- direct regression coverage exists for the implemented sectors
-- the integration suite is green
-- `clippy` is green
-- the only remaining entries are explicitly documented above as spec-ambiguous rather than parser omissions
+- [ ] Audit decimal, float, hex, octal, and binary tokenization.
+- [ ] Define leading-dot float behavior.
+- [ ] Decide whether negative numbers stay parser-level unary operations.
+- [ ] Decide whether imaginary numbers are out of scope for this cycle.
+- [ ] Add tests for every supported numeric family.
+
+Done when:
+
+- [ ] Lexer numeric output is precise enough for parser literal lowering.
+
+### 6.6 Stage responsibilities
+
+- [ ] Write down what each stage owns.
+- [ ] Keep stage0 about raw character windowing only.
+- [ ] Keep stage1 about first-pass token classification only.
+- [ ] Keep stage2 about token folding and normalization only.
+- [ ] Keep stage3 about final disambiguation only.
+- [ ] Remove stage overlap if it causes hidden coupling.
+
+Done when:
+
+- [ ] A maintainer can explain each stage without hand-waving.
+
+### 6.7 Illegal token strategy
+
+- [ ] Define when the lexer emits `Illegal`.
+- [ ] Define when the lexer returns an error instead.
+- [ ] Make malformed-input handling consistent across literal families.
+- [ ] Add negative tests for malformed lexical input.
+
+Done when:
+
+- [ ] Parser-facing error behavior is predictable.
+
+### 6.8 Bootstrap and EOF cleanup
+
+- [ ] Review the synthetic bootstrap behavior used by current tests.
+- [ ] Reduce or isolate parser-visible startup artifacts if possible.
+- [ ] Keep EOF behavior explicit and stable.
+
+Done when:
+
+- [ ] Tests no longer need unexplained lexer workarounds.
+
+### 6.9 Lexer acceptance gate
+
+- [ ] Token payload policy is fixed.
+- [ ] Literal families are explicit.
+- [ ] Comment policy is explicit.
+- [ ] Malformed lexical input behavior is explicit.
+- [ ] Stage responsibilities are explicit.
+
+## 7. Phase 3: Parser Structural Hardening
+Target area:
+
+- `fol-parser/src/ast/mod.rs`
+- `fol-parser/src/ast/parser.rs`
+- `fol-parser/src/ast/parser_parts/*`
+- `test/parser/test_parser.rs`
+- `test/parser/test_parser_parts/*`
+- add focused fixtures under `test/parser/` where needed
+
+### 7.1 Fix `Program` contamination
+
+- [ ] Remove top-level leakage of `fun` body statements into `Program.declarations`.
+- [ ] Remove top-level leakage of `pro` body statements into `Program.declarations`.
+- [ ] Audit whether any other declaration family leaks child nodes upward.
+- [ ] Add explicit AST-shape regression tests for top-level declarations.
+
+Done when:
+
+- [ ] Top-level program shape contains only real top-level nodes.
+
+### 7.2 Literal lowering
+
+- [ ] Align parser literal lowering with lexer-supported literal families.
+- [ ] Support correct AST lowering for currently supported strings.
+- [ ] Support correct AST lowering for booleans.
+- [ ] Support correct AST lowering for nil.
+- [ ] Support correct AST lowering for decimal integers.
+- [ ] Decide and implement lowering strategy for floats.
+- [ ] Decide and implement lowering strategy for hex, octal, and binary values.
+- [ ] Add tests that assert exact AST literal values.
+
+Done when:
+
+- [ ] Supported lexer literals become correct AST literals without ad hoc gaps.
+
+### 7.3 AST invariants
+
+- [ ] Define what may appear in `Program.declarations`.
+- [ ] Define what may appear inside routine bodies.
+- [ ] Define how quoted names are represented.
+- [ ] Define how qualified paths are represented.
+- [ ] Define invariants for grouped declarations.
+- [ ] Add tests that lock those invariants down.
+
+Done when:
+
+- [ ] Later phases can consume AST shape without reverse-engineering parser behavior.
+
+### 7.4 Name and path normalization
+
+- [ ] Normalize named-label extraction.
+- [ ] Normalize quoted-name extraction.
+- [ ] Normalize qualified path extraction.
+- [ ] Keep type-path handling and value-path handling deliberate.
+- [ ] Add tests for quoted and qualified path forms.
+
+Done when:
+
+- [ ] Path and name AST encoding is predictable.
+
+### 7.5 Declaration normalization
+
+- [ ] Audit `fun`, `pro`, and `log` for shared structure.
+- [ ] Audit alias, type, standard, implementation, and grouped declarations for structural consistency.
+- [ ] Reject unsupported mixes explicitly instead of relying on incidental failure.
+- [ ] Add targeted tests for current unsupported combinations.
+
+Done when:
+
+- [ ] Declaration families have stable AST shape and explicit failure modes.
+
+### 7.6 Parser boundary cleanup
+
+- [ ] Identify which current parser checks are purely structural.
+- [ ] Keep structural checks in the parser.
+- [ ] Stop adding semantic-like checks during this hardening cycle unless they are required to preserve AST correctness.
+- [ ] Mark anything semantic-adjacent that stays temporarily.
+
+Done when:
+
+- [ ] Parser responsibility is narrower and clearer.
+
+### 7.7 Statement vs expression boundary
+
+- [ ] Audit top-level statement parsing.
+- [ ] Audit block-body parsing.
+- [ ] Audit call-vs-invoke-vs-assignment entry points.
+- [ ] Audit control-flow surfaces that appear both as expressions and statements.
+- [ ] Add shape tests where ambiguity currently exists.
+
+Done when:
+
+- [ ] Statement/expression boundaries are test-backed and intentional.
+
+### 7.8 Parser diagnostics
+
+- [ ] Normalize "expected X" wording.
+- [ ] Normalize missing-close-token diagnostics.
+- [ ] Normalize duplicate and unknown-option diagnostics where parser owns them.
+- [ ] Add negative tests for important failure classes.
+
+Done when:
+
+- [ ] Parser diagnostics are consistent enough to freeze the front-end contract.
+
+### 7.9 Parser module ownership
+
+- [ ] Define which grammar area each `parser_parts` file owns.
+- [ ] Identify overlap that causes maintenance risk.
+- [ ] Refactor only where ownership is unclear enough to block maintenance.
+
+Done when:
+
+- [ ] Parser structure is easier to work in without broad churn.
+
+### 7.10 Parser acceptance gate
+
+- [ ] `Program` root shape is fixed.
+- [ ] Literal lowering is complete for supported literal families.
+- [ ] AST invariants are explicit and tested.
+- [ ] Unsupported combinations fail intentionally.
+- [ ] Parser diagnostic behavior is more consistent.
+
+## 8. Phase 4: Front-End Contract Freeze
+Target area:
+
+- `PLAN.md`
+- `PROGRESS.md`
+- possibly `README.md` only if needed to stop lying about current front-end state
+
+### 8.1 Stream contract summary
+
+- [ ] Write a short stream contract summary:
+- [ ] source ordering
+- [ ] source identity
+- [ ] package detection
+- [ ] namespace derivation
+- [ ] location guarantees
+
+### 8.2 Lexer contract summary
+
+- [ ] Write a short lexer contract summary:
+- [ ] token payload meaning
+- [ ] literal categories
+- [ ] comment policy
+- [ ] malformed-input policy
+
+### 8.3 Parser contract summary
+
+- [ ] Write a short parser contract summary:
+- [ ] root AST invariants
+- [ ] declaration invariants
+- [ ] literal lowering guarantees
+- [ ] parser-owned validations
+
+### 8.4 Front-end readiness check
+
+- [ ] Re-run the full front-end suite.
+- [ ] Confirm no component still relies on undefined behavior from the previous phase.
+- [ ] Record remaining front-end debt that is consciously deferred.
+
+Done when:
+
+- [ ] Stream, lexer, and parser each have a written contract.
+- [ ] The current front-end can be handed to the next stage without guessing.
+
+## 9. Test Matrix
+
+### Stream tests
+
+- [ ] exact source ordering
+- [ ] namespace corner cases
+- [ ] package fallback cases
+- [ ] file boundary location tracking
+- [ ] file/folder mismatch behavior
+
+### Lexer tests
+
+- [ ] exact token payload checks
+- [ ] exact literal-family checks
+- [ ] malformed literal checks
+- [ ] comment and doc-comment checks
+- [ ] EOF/bootstrap behavior checks
+
+### Parser tests
+
+- [ ] exact top-level AST shape
+- [ ] exact literal AST lowering
+- [ ] exact name/path AST shape
+- [ ] unsupported combination failure tests
+- [ ] parser diagnostic consistency checks where stable enough
+
+### Cross-phase tests
+
+- [ ] stream -> lexer order stability
+- [ ] lexer -> parser literal continuity
+- [ ] multi-file location continuity into parser diagnostics
+
+## 10. Stop Conditions
+
+Do not move to the next compiler step until all of these are true:
+
+- [ ] stream order is deterministic
+- [ ] source identity is explicit
+- [ ] lexer token payload policy is fixed
+- [ ] lexer literal taxonomy is fixed for supported forms
+- [ ] parser root AST shape is fixed
+- [ ] parser literal lowering is complete for supported forms
+- [ ] stream, lexer, and parser contracts are written down
+- [ ] regression tests cover the corrected behavior
+
+## 11. Definition Of Done
+
+This plan is done only when a maintainer can answer all of these without reading implementation internals:
+
+- [ ] In what order are sources streamed from a folder?
+- [ ] What exactly does a token payload contain?
+- [ ] Which literal families exist today, and how are they tokenized?
+- [ ] How are comments treated?
+- [ ] What exactly belongs in `Program.declarations`?
+- [ ] Which parser checks are structural and which are intentionally deferred?
+
+If those answers still require code archaeology, the front-end is not hardened enough yet.
