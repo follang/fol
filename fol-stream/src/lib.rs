@@ -132,7 +132,8 @@ impl FileStream {
             }));
         }
 
-        // Load file contents for all sources
+        // Eager loading is intentional for this hardening cycle so stream identity,
+        // traversal order, and per-file location resets are fixed before later phases.
         for source in &mut sources {
             source.data =
                 std::fs::read_to_string(&source.path).map_err(|e| -> Box<dyn Glitch> {

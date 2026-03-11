@@ -102,6 +102,18 @@ mod mod_handling_tests {
     }
 
     #[test]
+    fn test_from_sources_eagerly_loads_all_source_contents() {
+        let sources = Source::init("test/legacy/main", SourceType::Folder)
+            .expect("Should discover sources for eager loading test");
+        let stream = FileStream::from_sources(sources).expect("Should build stream from sources");
+
+        assert!(
+            stream.sources().iter().all(|source| !source.data.is_empty()),
+            "FileStream::from_sources should eagerly load every source body before streaming starts"
+        );
+    }
+
+    #[test]
     fn test_multi_source_character_streaming() {
         // Test that character streaming works across multiple sources
         let mut stream =
