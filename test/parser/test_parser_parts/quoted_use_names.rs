@@ -1,4 +1,19 @@
 use super::*;
+use std::fs;
+use std::time::{SystemTime, UNIX_EPOCH};
+
+fn unique_temp_root(label: &str) -> std::path::PathBuf {
+    let stamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("System time should be after unix epoch")
+        .as_nanos();
+    std::env::temp_dir().join(format!(
+        "fol_use_quoted_names_{}_{}_{}",
+        label,
+        std::process::id(),
+        stamp
+    ))
+}
 
 #[test]
 fn test_use_declaration_accepts_quoted_name() {
@@ -20,6 +35,50 @@ fn test_use_declaration_accepts_quoted_name() {
                     if name == "warn"
                         && path == "std/warn"
                         && matches!(path_type, FolType::Module { .. })
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_use_declaration_preserves_inner_opposite_quote_chars_in_names() {
+    let temp_root = unique_temp_root("inner_quotes");
+    fs::create_dir_all(&temp_root).expect("Should create temp use-name fixture dir");
+    let fixture = temp_root.join("inner_quotes.fol");
+    fs::write(
+        &fixture,
+        "use \"wa'rn\": mod = {\"std/warn\"};\nuse 'tr\"ace': mod = {'std/trace'};\n",
+    )
+    .expect("Should write temp use-name fixture");
+
+    let mut file_stream =
+        FileStream::from_file(fixture.to_str().expect("Use-name fixture path should be UTF-8"))
+            .expect("Should read temp use-name fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should preserve inner opposite-family quotes in use names");
+
+    fs::remove_dir_all(&temp_root).ok();
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::UseDecl { name, path, .. }
+                        if name == "wa'rn" && path == "std/warn"
+                )
+            }));
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::UseDecl { name, path, .. }
+                        if name == "tr\"ace" && path == "std/trace"
                 )
             }));
         }
