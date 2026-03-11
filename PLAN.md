@@ -193,7 +193,7 @@ Done when:
 
 Done when:
 
-- [ ] The lexer no longer conflates unrelated literal families.
+- [x] The lexer no longer conflates unrelated literal families.
 
 ### 6.3 Escape handling
 
