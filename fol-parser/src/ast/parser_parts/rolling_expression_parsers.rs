@@ -71,7 +71,7 @@ impl AstParser {
 
                     let binding_token = tokens.curr(false)?;
                     let binding = self.parse_rolling_binding(tokens)?;
-                    if !seen_names.insert(binding.name.clone()) {
+                    if !seen_names.insert(canonical_identifier_key(&binding.name)) {
                         return Err(Box::new(ParseError::from_token(
                             &binding_token,
                             format!("Duplicate rolling binding '{}'", binding.name),
@@ -114,7 +114,7 @@ impl AstParser {
         for _ in 0..64 {
             let binding_token = tokens.curr(false)?;
             let binding = self.parse_rolling_binding(tokens)?;
-            if !seen_names.insert(binding.name.clone()) {
+            if !seen_names.insert(canonical_identifier_key(&binding.name)) {
                 return Err(Box::new(ParseError::from_token(
                     &binding_token,
                     format!("Duplicate rolling binding '{}'", binding.name),
