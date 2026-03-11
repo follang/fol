@@ -493,7 +493,7 @@ This plan is done only when a maintainer can answer all of these without reading
 - [x] What exactly does a token payload contain?
 - [x] Which literal families exist today, and how are they tokenized?
 - [x] How are comments treated?
-- [ ] What exactly belongs in `Program.declarations`?
+- [x] What exactly belongs in `Program.declarations`?
 - [x] Which parser checks are structural and which are intentionally deferred?
 
 If those answers still require code archaeology, the front-end is not hardened enough yet.
