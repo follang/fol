@@ -1,11 +1,12 @@
 fun call_with_comments(a: int, b: int): int = {
     value = combine(
         a,
-        // keep b wrapped for tracing
+        `keep b wrapped for tracing`
         wrap(
             b,
         ),
-        /* include stable literal for checksum */
+        `include stable
+        literal for checksum`
         42,
     );
 

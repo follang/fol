@@ -512,7 +512,7 @@ fn test_multiline_call_arguments_with_comments_parse_with_expected_shapes() {
     let mut parser = AstParser::new();
     let ast = parser
         .parse(&mut lexer)
-        .expect("Parser should parse multiline call arguments with comments");
+        .expect("Parser should parse multiline call arguments with backtick comments");
 
     let (has_combine_assignment, has_emit_return) = match ast {
         AstNode::Program { declarations } => {
@@ -546,7 +546,7 @@ fn test_multiline_call_arguments_with_comments_parse_with_expected_shapes() {
 
     assert!(
             has_combine_assignment,
-            "combine(...) should parse with three arguments including nested wrap(...) and integer literal"
+            "combine(...) should parse with three arguments including nested wrap(...) and integer literal around backtick comments"
         );
     assert!(
         has_emit_return,
