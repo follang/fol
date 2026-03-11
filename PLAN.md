@@ -382,7 +382,7 @@ Done when:
 ### 7.9 Parser module ownership
 
 - [x] Define which grammar area each `parser_parts` file owns.
-- [ ] Identify overlap that causes maintenance risk.
+- [x] Identify overlap that causes maintenance risk.
 - [ ] Refactor only where ownership is unclear enough to block maintenance.
 
 Done when:
