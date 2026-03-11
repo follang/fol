@@ -76,3 +76,39 @@ fn test_unsupported_multi_name_type_combinations_report_explicit_messages() {
         );
     }
 }
+
+#[test]
+fn test_duplicate_and_conflicting_diagnostics_stay_surface_specific() {
+    for (path, expected) in [
+        (
+            "test/parser/simple_use_duplicate_options.fol",
+            "Duplicate use option 'export'",
+        ),
+        (
+            "test/parser/simple_use_conflicting_options.fol",
+            "Conflicting use options 'export' and 'hidden'",
+        ),
+        (
+            "test/parser/simple_imp_conflicting_options.fol",
+            "Conflicting implementation visibility options",
+        ),
+        (
+            "test/parser/simple_std_conflicting_options.fol",
+            "Conflicting standard visibility options",
+        ),
+        (
+            "test/parser/simple_typ_record_duplicate_method.fol",
+            "Duplicate type member 'getBrand#0'",
+        ),
+        (
+            "test/parser/simple_std_blueprint_duplicate_field.fol",
+            "Duplicate standard member 'color'",
+        ),
+    ] {
+        let message = first_parse_error_message(path);
+        assert!(
+            message.contains(expected),
+            "Expected surface-specific duplicate/conflict diagnostic for fixture {path}, got: {message}",
+        );
+    }
+}
