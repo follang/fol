@@ -7,7 +7,7 @@ impl AstParser {
     ) -> Result<(), Box<dyn Glitch>> {
         let mut seen = HashSet::new();
         for capture in captures {
-            if !seen.insert(capture.clone()) {
+            if !seen.insert(canonical_identifier_key(capture)) {
                 return Err(Box::new(ParseError {
                     message: format!("Duplicate capture name '{}'", capture),
                     file: None,
