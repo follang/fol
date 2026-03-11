@@ -118,3 +118,14 @@ tests actually enforce today.
   a custom error type.
 - Name resolution, whole-program type checking, ownership rules, and cross-file semantic
   validation are still outside the parser contract.
+
+## Deferred Front-End Debt
+
+- `Program.declarations` still needs structural hardening so routine bodies stop leaking
+  top-level child nodes into the root declaration list.
+- Parser root and declaration invariants are not frozen yet.
+- Name and path normalization rules are still spread across parser surfaces instead of
+  being stated as a single stable AST contract.
+- The lexer still conflates multiple quoted forms into `Stringy`; the supported behavior
+  is documented, but the literal taxonomy is not fully cleaned up.
+- Later semantic phases remain out of scope for this front-end hardening pass.

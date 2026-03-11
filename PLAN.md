@@ -433,7 +433,7 @@ Target area:
 
 - [ ] Re-run the full front-end suite.
 - [ ] Confirm no component still relies on undefined behavior from the previous phase.
-- [ ] Record remaining front-end debt that is consciously deferred.
+- [x] Record remaining front-end debt that is consciously deferred.
 
 Done when:
 
