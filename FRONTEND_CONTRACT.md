@@ -133,27 +133,21 @@ tests actually enforce today.
 ### Current Root Shape
 
 - `AstNode::Program { declarations }` is the single parser root.
-- `Program.declarations` currently contains real top-level declarations and top-level
-  lowered statements or expressions that the parser accepts at file scope.
-- Top-level `fun`, `log`, and `pro` declarations are still structurally contaminated:
-  each routine body is cloned into `Program.declarations` immediately before the
-  corresponding routine declaration node.
-- That means `Program.declarations` is currently a mixed list of true root nodes plus
-  leaked routine-body nodes for top-level routines only.
+- `Program.declarations` contains real top-level declarations and top-level lowered
+  statements or expressions that the parser accepts at file scope.
+- Top-level `fun`, `log`, and `pro` declarations now stay as single root declaration
+  nodes instead of leaking their body statements into the program root.
 - Nested routine declarations, type members, standards, implementations, and other
   nested bodies keep their child nodes inside their own body fields instead of leaking
   to the program root.
 
 ### Routine Body Shape
 
-- `FunDecl.body` and `ProDecl.body` remain the authoritative routine-body fields even
-  though top-level routine bodies are currently duplicated at the program root.
+- `FunDecl.body` and `ProDecl.body` are the authoritative routine-body fields for both
+  top-level and nested routines.
 - Routine bodies contain the statement and lowered-expression nodes accepted by the
   body parsers, including local bindings, returns, control-flow, calls, and other
   body-level forms that the current grammar supports.
-- When a top-level routine body node also appears in `Program.declarations`, it is a
-  duplicate of the node already stored inside the routine declaration body, not a
-  separate root-only form.
 
 ### Declaration Family Shapes
 
@@ -291,9 +285,6 @@ tests actually enforce today.
 - `program_and_bindings.rs` is the main maintenance hotspot because it mixes root
   assembly with direct lowering of many statement and expression forms that are also
   handled inside routine bodies.
-- The current `Program.declarations` contamination lives in that same root-assembly
-  layer, so root-shape cleanup is coupled to many tests that currently search for body
-  nodes at the program level.
 - Routine parsing is spread across header, signature, capture, declaration, and body
   parser parts; that split is workable, but it means routine-structure changes have to
   be audited across several files rather than in one place.
@@ -303,13 +294,9 @@ tests actually enforce today.
 
 ## Deferred Front-End Debt
 
-- `Program.declarations` still needs structural hardening so routine bodies stop leaking
-  top-level child nodes into the root declaration list.
 - Parser root and declaration invariants are not frozen yet.
 - Name and path normalization rules are still spread across parser surfaces instead of
   being stated as a single stable AST contract.
-- The lexer still conflates multiple quoted forms into `Stringy`; the supported behavior
-  is documented, but the literal taxonomy is not fully cleaned up.
 - Later semantic phases remain out of scope for this front-end hardening pass.
 
 ## Hardening Execution Notes
@@ -332,8 +319,8 @@ tests actually enforce today.
 - Lexer behavior that was previously quirk-driven is now explicit at the front-end
   boundary: token payload meaning, EOF handling, malformed literal handling, and the
   currently supported numeric families are all documented and exercised by tests.
-- Parser behavior that remains unusual is explicit rather than undefined: root
-  contamination, logical-routine lowering through `FunDecl`, declaration-family shapes,
+- Parser behavior that remains unusual is explicit rather than undefined: logical-routine
+  lowering through `FunDecl`, declaration-family shapes,
   statement/expression boundaries, and representative failure shapes are all recorded in
   this contract.
 - Remaining front-end debt is therefore conscious deferred debt, not undocumented
