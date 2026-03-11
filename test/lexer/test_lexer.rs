@@ -331,6 +331,26 @@ mod lexer_tests {
     }
 
     #[test]
+    fn test_imaginary_suffixes_remain_out_of_scope_for_numeric_tokenization() {
+        let tokens = tokenize_file("test/lexer/imaginary_out_of_scope.fol");
+        let significant: Vec<(KEYWORD, String)> = tokens
+            .into_iter()
+            .filter(|(key, _)| !key.is_space() && !key.is_eof())
+            .collect();
+
+        assert_eq!(
+            significant,
+            vec![
+                (KEYWORD::Literal(LITERAL::Deciaml), "1".to_string()),
+                (KEYWORD::Identifier, "i".to_string()),
+                (KEYWORD::Literal(LITERAL::Float), "3.5".to_string()),
+                (KEYWORD::Identifier, "i".to_string()),
+            ],
+            "Imaginary-unit suffixes should stay outside the supported numeric families for now"
+        );
+    }
+
+    #[test]
     fn test_backticks_remain_operator_any_tokens() {
         let tokens = tokenize_file("test/lexer/backticks.fol");
         let significant: Vec<(KEYWORD, String)> = tokens

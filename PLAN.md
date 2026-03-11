@@ -224,7 +224,7 @@ Done when:
 - [x] Audit decimal, float, hex, octal, and binary tokenization.
 - [x] Define leading-dot float behavior.
 - [x] Decide whether negative numbers stay parser-level unary operations.
-- [ ] Decide whether imaginary numbers are out of scope for this cycle.
+- [x] Decide whether imaginary numbers are out of scope for this cycle.
 - [x] Add tests for every supported numeric family.
 
 Done when:
