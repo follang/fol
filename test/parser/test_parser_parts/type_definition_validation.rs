@@ -66,6 +66,36 @@ fn test_duplicate_entry_variant_reports_parse_error() {
 }
 
 #[test]
+fn test_canonical_duplicate_entry_variant_reports_parse_error() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_typ_entry_duplicate_variant_canonical.fol")
+            .expect("Should read canonical duplicate type entry test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject canonical duplicate entry variants");
+
+    let parse_error = errors
+        .first()
+        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        .expect("First parser error should be ParseError");
+
+    let first_message = parse_error.to_string();
+    assert!(
+        first_message.contains("Duplicate entry variant 'BlueValue'"),
+        "Canonical duplicate entry variant should report the later spelling, got: {}",
+        first_message
+    );
+    assert_eq!(
+        parse_error.line(),
+        3,
+        "Canonical duplicate entry parse error should point to the duplicate variant line"
+    );
+}
+
+#[test]
 fn test_type_entry_marker_unknown_option_reports_parse_error() {
     let mut file_stream =
         FileStream::from_file("test/parser/simple_typ_entry_marker_unknown_option.fol")
