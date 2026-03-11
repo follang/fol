@@ -383,11 +383,11 @@ Done when:
 
 - [x] Define which grammar area each `parser_parts` file owns.
 - [x] Identify overlap that causes maintenance risk.
-- [ ] Refactor only where ownership is unclear enough to block maintenance.
+- [x] Refactor only where ownership is unclear enough to block maintenance.
 
 Done when:
 
-- [ ] Parser structure is easier to work in without broad churn.
+- [x] Parser structure is easier to work in without broad churn.
 
 ### 7.10 Parser acceptance gate
 
