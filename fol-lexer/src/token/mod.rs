@@ -5,13 +5,15 @@ use std::fmt;
 pub mod help;
 
 pub mod buildin;
+pub mod comment;
 pub mod literal;
 pub mod operator;
 pub mod symbol;
 pub mod void;
 
 pub use crate::token::{
-    buildin::BUILDIN, literal::LITERAL, operator::OPERATOR, symbol::SYMBOL, void::VOID,
+    buildin::BUILDIN, comment::COMMENT, literal::LITERAL, operator::OPERATOR, symbol::SYMBOL,
+    void::VOID,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -22,7 +24,7 @@ pub enum KEYWORD {
     Operator(OPERATOR),
     Void(VOID),
     Identifier,
-    Comment,
+    Comment(COMMENT),
     Illegal,
 }
 
@@ -63,7 +65,7 @@ impl KEYWORD {
         matches!(*self, KEYWORD::Illegal)
     }
     pub fn is_comment(&self) -> bool {
-        matches!(*self, KEYWORD::Comment)
+        matches!(*self, KEYWORD::Comment(_))
     }
     pub fn is_open_bracket(&self) -> bool {
         matches!(
@@ -171,7 +173,7 @@ impl fmt::Display for KEYWORD {
             // KEYWORD::assign(v) => write!(f, "{}", v),
             KEYWORD::Keyword(v) => write!(f, "{}", v),
             KEYWORD::Identifier => write!(f, "{}", " IDENT    ".black().on_red()),
-            KEYWORD::Comment => write!(f, "{}", " COMMENT  ".black().on_red()),
+            KEYWORD::Comment(v) => write!(f, "{}", v),
             KEYWORD::Illegal => write!(f, "{}", " ILLEGAL  ".black().on_green()),
         }
     }
@@ -205,6 +207,15 @@ mod tests {
         assert!(KEYWORD::Void(VOID::Space).is_continue());
         assert!(KEYWORD::Void(VOID::EndLine).is_void());
         assert!(KEYWORD::Void(VOID::EndLine).is_continue());
+    }
+
+    #[test]
+    fn comment_tokens_are_distinct_from_void_tokens() {
+        let comment = KEYWORD::Comment(COMMENT::Doc);
+
+        assert!(comment.is_comment());
+        assert!(!comment.is_void());
+        assert!(!comment.is_continue());
     }
 
     #[test]
