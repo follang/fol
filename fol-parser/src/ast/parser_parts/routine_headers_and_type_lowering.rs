@@ -30,12 +30,7 @@ impl AstParser {
             self.skip_ignorable(tokens);
 
             let name_token = tokens.curr(false)?;
-            let name = Self::token_to_named_label(&name_token).ok_or_else(|| {
-                Box::new(ParseError::from_token(
-                    &name_token,
-                    missing_name_error.to_string(),
-                )) as Box<dyn Glitch>
-            })?;
+            let name = Self::expect_named_label(&name_token, missing_name_error)?;
             let _ = tokens.bump();
             self.skip_ignorable(tokens);
 
@@ -60,12 +55,7 @@ impl AstParser {
             return Ok((vec![name], true));
         }
 
-        let first_name = Self::token_to_named_label(&token).ok_or_else(|| {
-            Box::new(ParseError::from_token(
-                &token,
-                missing_name_error.to_string(),
-            )) as Box<dyn Glitch>
-        })?;
+        let first_name = Self::expect_named_label(&token, missing_name_error)?;
 
         let mut names = vec![first_name];
         let _ = tokens.bump();
@@ -80,12 +70,8 @@ impl AstParser {
                 let _ = tokens.bump();
                 self.skip_ignorable(tokens);
                 let name_token = tokens.curr(false)?;
-                let grouped_name = Self::token_to_named_label(&name_token).ok_or_else(|| {
-                    Box::new(ParseError::from_token(
-                        &name_token,
-                        missing_group_name_error.to_string(),
-                    )) as Box<dyn Glitch>
-                })?;
+                let grouped_name =
+                    Self::expect_named_label(&name_token, missing_group_name_error)?;
                 names.push(grouped_name);
                 let _ = tokens.bump();
                 self.skip_ignorable(tokens);
