@@ -328,7 +328,7 @@ Done when:
 - [ ] Normalize quoted-name extraction.
 - [ ] Normalize qualified path extraction.
 - [ ] Keep type-path handling and value-path handling deliberate.
-- [ ] Add tests for quoted and qualified path forms.
+- [x] Add tests for quoted and qualified path forms.
 
 Done when:
 
@@ -462,7 +462,7 @@ Done when:
 
 - [ ] exact top-level AST shape
 - [x] exact literal AST lowering
-- [ ] exact name/path AST shape
+- [x] exact name/path AST shape
 - [ ] unsupported combination failure tests
 - [ ] parser diagnostic consistency checks where stable enough
 
