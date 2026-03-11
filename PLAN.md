@@ -268,7 +268,7 @@ Done when:
 ### 6.9 Lexer acceptance gate
 
 - [x] Token payload policy is fixed.
-- [ ] Literal families are explicit.
+- [x] Literal families are explicit.
 - [x] Comment policy is explicit.
 - [x] Malformed lexical input behavior is explicit.
 - [x] Stage responsibilities are explicit.
