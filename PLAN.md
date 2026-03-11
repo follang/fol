@@ -338,7 +338,7 @@ Done when:
 
 - [x] Audit `fun`, `pro`, and `log` for shared structure.
 - [x] Audit alias, type, standard, implementation, and grouped declarations for structural consistency.
-- [ ] Reject unsupported mixes explicitly instead of relying on incidental failure.
+- [x] Reject unsupported mixes explicitly instead of relying on incidental failure.
 - [x] Add targeted tests for current unsupported combinations.
 
 Done when:
