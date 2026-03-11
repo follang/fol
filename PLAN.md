@@ -238,7 +238,7 @@ Done when:
 - [x] Keep stage1 about first-pass token classification only.
 - [x] Keep stage2 about token folding and normalization only.
 - [x] Keep stage3 about final disambiguation only.
-- [ ] Remove stage overlap if it causes hidden coupling.
+- [x] Remove stage overlap if it causes hidden coupling.
 
 Done when:
 
