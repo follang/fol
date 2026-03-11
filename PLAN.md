@@ -354,7 +354,7 @@ Done when:
 
 Done when:
 
-- [ ] Parser responsibility is narrower and clearer.
+- [x] Parser responsibility is narrower and clearer.
 
 ### 7.7 Statement vs expression boundary
 
