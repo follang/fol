@@ -35,3 +35,29 @@ fn test_top_level_fun_currently_leaks_body_before_declaration() {
         "Second node should remain the authoritative function declaration"
     );
 }
+
+#[test]
+fn test_top_level_pro_currently_leaks_body_before_declaration() {
+    let declarations = parse_program_declarations("test/parser/simple_pro.fol");
+
+    assert_eq!(
+        declarations.len(),
+        3,
+        "Top-level procedure fixture should currently lower to leaked body statements plus declaration"
+    );
+    assert!(
+        matches!(&declarations[0], AstNode::Assignment { .. }),
+        "Current root contamination places the procedure body assignment before the declaration"
+    );
+    assert!(
+        matches!(&declarations[1], AstNode::Return { .. }),
+        "Current root contamination also leaks the procedure return before the declaration"
+    );
+    assert!(
+        matches!(
+            &declarations[2],
+            AstNode::ProDecl { name, body, .. } if name == "update" && body.len() == 2
+        ),
+        "Final node should remain the authoritative procedure declaration"
+    );
+}
