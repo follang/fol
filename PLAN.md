@@ -279,12 +279,12 @@ Target files:
 
 - [x] Rename `Deciaml` to `Decimal`.
 - [x] Rename `Hexal` to the final chosen spelling.
-- [ ] Keep the payload-preserving behavior during the rename.
+- [x] Keep the payload-preserving behavior during the rename.
 - [ ] Decide and implement front-end support for imaginary numeric literals from the book.
 - [ ] Decide and implement the parser-facing token kind for imaginary literals.
-- [ ] Decide how invalid prefixed numerics behave: one illegal token, split tokenization, or immediate lexer error.
-- [ ] Add tests for invalid hex, octal, binary, underscore placement, leading-dot float adjacency, and imaginary suffixes.
-- [ ] Keep unary minus parser-side.
+- [x] Decide how invalid prefixed numerics behave: one illegal token, split tokenization, or immediate lexer error.
+- [x] Add tests for invalid hex, octal, binary, underscore placement, leading-dot float adjacency, and imaginary suffixes.
+- [x] Keep unary minus parser-side.
 
 ### 9.5 Clean Up Illegal And Error Semantics
 
@@ -292,7 +292,7 @@ Target files:
 - [ ] Audit every parser path that currently assumes `is_void()` also means malformed input.
 - [ ] Make malformed quoted spans follow one consistent policy.
 - [x] Make malformed comments follow one consistent policy.
-- [ ] Make malformed numeric spans follow one consistent policy.
+- [x] Make malformed numeric spans follow one consistent policy.
 - [ ] Ensure raw unsupported characters still produce lexer errors instead of silent token conversion.
 - [x] Add nested-context fixtures where an illegal token appears inside calls, blocks, type references, and parameter lists.
 
