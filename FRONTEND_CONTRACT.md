@@ -133,12 +133,17 @@ tests actually enforce today.
 - Backtick-delimited comments are the authoritative comment syntax from the book.
 - Single-line and multiline backtick comments are the same delimited syntax family;
   newlines inside the span do not change the comment kind.
+- Stage 1 now classifies comment spans explicitly as backtick, doc, slash-line, or
+  slash-block comment kinds before later lexer stages normalize them away.
 - Slash line comments and slash block comments remain explicit compatibility behavior
   during this hardening pass.
 - Ordinary comments are fully ignorable by the parser-facing lexer output.
 - Backtick doc-comment spellings using the `[doc]` prefix follow the same path as
-  ordinary comments and are explicitly deferred instead of surfacing as a separate
-  token family.
+  ordinary comments at the parser boundary, but the lexer now detects that prefix
+  explicitly instead of treating it as accidental comment text.
+- Stage 2 collapses every internal comment kind back into one normalized `Void(Space)`
+  separator so parser-facing behavior stays unchanged while the lexer keeps more
+  internal structure.
 - Comment delimiters inside quoted literals stay inside the literal payload and do not
   start comments.
 

@@ -254,11 +254,11 @@ Target files:
 - [x] Remove the impossible overlap between backticks-as-`ANY` and backticks-as-comments.
 - [x] If the book wins, implement backtick-delimited comment spans.
 - [x] Treat one-line and multiline backtick comments as the same delimited syntax family instead of emulating slash comments.
-- [ ] Implement doc-comment detection for the `[doc]` prefix if it remains in scope.
+- [x] Implement doc-comment detection for the `[doc]` prefix if it remains in scope.
 - [x] Decide whether doc comments become a token family, lexer side channel, or deferred metadata stream.
 - [ ] Remove slash comment logic if it is no longer part of the front-end contract.
 - [ ] Delete dead `stage2::make_comment()` if comment handling no longer needs it.
-- [ ] Add fixtures for normal comments, doc comments, multiline comments, and unterminated comment spans.
+- [x] Add fixtures for normal comments, doc comments, multiline comments, and unterminated comment spans.
 - [x] Add tests proving comment delimiters inside quoted literals do not start comments.
 
 ### 9.3 Rebuild Quoted Literal Taxonomy
