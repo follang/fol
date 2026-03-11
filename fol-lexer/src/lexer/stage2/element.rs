@@ -6,6 +6,9 @@ use colored::Colorize;
 use fol_types::Vod;
 use std::fmt;
 
+// Stage 2 owns token folding and normalization only.
+// It combines multi-character operators and collapses separator patterns without
+// taking over the final literal-family decisions reserved for stage 3.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Element {
     key: KEYWORD,
