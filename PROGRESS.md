@@ -1,6 +1,6 @@
 # FOL Project Progress
 
-Last scan: 2026-03-08
+Last scan: 2026-03-11
 Scan basis: repository code, active tests, fixture inventory, and a full integration test run
 Authority rule for this file: code and active tests win over older aspirational docs
 
@@ -19,7 +19,7 @@ Authority rule for this file: code and active tests win over older aspirational 
 
 ## 1. Scan Method
 
-- Scanned the workspace file inventory with `rg --files`.
+- Scanned the workspace file inventory with `find` and the active workspace manifests.
 - Scanned all active Rust source modules under `fol-types`, `fol-stream`, `fol-lexer`, `fol-parser`, `fol-diagnostics`, and `src`.
 - Scanned all active tests under `test/`.
 - Counted active parser fixtures under `test/parser/simple_*.fol`.
@@ -27,34 +27,34 @@ Authority rule for this file: code and active tests win over older aspirational 
 - Read the lexer token inventory and every lexer stage implementation.
 - Read the stream crate and diagnostics crate.
 - Read the root CLI entry point.
-- Ran the root integration test target: `cargo test -q --test integration -- --nocapture`.
-- Observed current integration failures directly from the test run output.
+- Ran the root validation commands: `make build` and `make test`.
+- Observed current integration status directly from the test run output.
 - Did not rely on the mdBook, `README.md`, or `FEATURES.md` as implementation truth.
 
 ## 2. Snapshot Metrics
 
 - Workspace member crates: `5`
 - Root binary crate: `1`
-- Active Rust source lines scanned: `37024`
+- Active Rust source lines scanned: `18405`
 - Core compiler Rust lines scanned:
 - `fol-types`: `228`
-- `fol-stream`: `456`
-- `fol-lexer`: `2026`
-- `fol-parser`: `10772`
+- `fol-stream`: `480`
+- `fol-lexer`: `2115`
+- `fol-parser`: `15056`
 - `fol-diagnostics`: `267`
-- Root CLI: `172`
-- Active parser fixtures: `646`
-- Active lexer tests: `13`
-- Active stream tests: `25`
-- Active parser/integration tests in `integration`: `677`
-- Observed active integration failures during the run: `2`
-- Observed active integration run shape: most suite passes, but suite is not green
+- Root CLI: `259`
+- Active parser fixtures: `1057`
+- Active lexer tests: `36`
+- Active stream tests: `43`
+- Active parser/integration tests in `integration`: `1138`
+- Observed active integration failures during the run: `0`
+- Observed active integration run shape: suite is green
 
 ## 3. Current Headline Status
 
-- `fol-stream`: implemented and actively used
-- `fol-lexer`: implemented and actively used
-- `fol-parser`: large surface implemented and actively used
+- `fol-stream`: implemented, hardened, and actively used
+- `fol-lexer`: implemented, hardened, and actively used
+- `fol-parser`: large surface implemented, structurally hardened, and actively used
 - `fol-diagnostics`: implemented and actively used
 - Root CLI: implemented as parse-and-report driver
 - Semantic analysis pass: missing
@@ -65,31 +65,22 @@ Authority rule for this file: code and active tests win over older aspirational 
 - Interpreter/runtime: missing
 - Code generation/backend: missing
 - Package/module system beyond source enumeration and syntax: partial
-- Documentation alignment with implementation: poor
+- Documentation alignment with implementation: materially improved for the front-end contract, still mixed elsewhere
 
 ## 4. Current Known Failures
 
-- Failing test observed:
-- `lexer::lexer_error_tests::test_nonexistent_file_error`
-- Failure shape:
-- the test panics because it expects to read `test/lexer/nonexistent.fol`
-- the fixture path is intentionally missing, but the test harness calls `.expect(...)`
-- Status:
-- this is a test issue, not evidence that the lexer pipeline is absent
-- Remaining work:
-- either rewrite the test to assert the error path without `.expect(...)`
-- or add a more direct negative-path constructor test
-
-- Failing test observed:
-- `parser::single_quoted_names::test_single_quoted_names_parse_across_declaration_surfaces`
-- Failure shape:
-- the assertion expects a `DefDecl` named `core`
-- the current fixture begins with `seg 'core'`
-- Status:
-- this is a fixture/expectation mismatch, not evidence that quoted names are broadly broken
-- Remaining work:
-- either fix the fixture
-- or fix the expectation to match the fixture
+- No active test failures were observed in the current validation run.
+- Current validation result:
+- `make build` passed
+- `make test` passed
+- test totals observed:
+- `1` unit test
+- `1138` integration tests
+- The main remaining front-end debt is no longer suite breakage.
+- The main remaining front-end debt is the parser's still-present semantic-adjacent checks:
+- file-local routine signature seeding
+- `report` arity validation
+- limited `report` type-compatibility checks
 
 ## 5. Current Big Picture
 
@@ -98,6 +89,8 @@ Authority rule for this file: code and active tests win over older aspirational 
 - `fol-stream` -> `fol-lexer` stage0/stage1/stage2/stage3 -> `fol-parser` -> `fol-diagnostics`
 - The parser is no longer "minimal".
 - The parser surface is broad enough that the real bottleneck is no longer basic syntax support.
+- The top-level parser root shape is now explicit and test-backed:
+- `Program.declarations` no longer leaks routine body nodes for top-level `fun`, `log`, or `pro`.
 - The main missing systems are later-phase systems:
 - semantic analysis
 - type checking
@@ -105,9 +98,10 @@ Authority rule for this file: code and active tests win over older aspirational 
 - package/module resolution
 - lowering
 - runtime/backend work
-- Docs are behind the code in both directions:
-- some documented ideas are not implemented
-- some implemented syntax is not documented
+- Front-end docs are now much closer to code truth:
+- [FRONTEND_CONTRACT.md](/home/bresilla/data/code/bresilla/fol/FRONTEND_CONTRACT.md) records the active stream, lexer, and parser contracts
+- `PLAN.md` records the hardening work and remaining open item
+- older aspirational docs are still behind the code in places
 
 ## 6. Workspace Inventory
 
