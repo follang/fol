@@ -350,7 +350,7 @@ Target files:
 - [x] Add receiver type storage to routine declarations or introduce dedicated method declaration nodes.
 - [x] Preserve receiver types for `fun` methods.
 - [x] Preserve receiver types for `pro` methods.
-- [ ] Preserve receiver types for `log` methods if `log` remains a distinct routine kind.
+- [x] Preserve receiver types for `log` methods if `log` remains a distinct routine kind.
 - [x] Preserve receiver types for nested type-member routines.
 - [x] Add tests that assert the receiver type survives AST lowering instead of only proving the syntax parses.
 - [ ] Ensure receiver type diagnostics keep correct source spans.
@@ -358,11 +358,11 @@ Target files:
 
 ### 10.3 Stop Losing Logical Routine Identity
 
-- [ ] Stop lowering `log` declarations through `AstNode::FunDecl`.
-- [ ] Introduce either `LogDecl` or one shared routine node with an explicit kind field.
+- [x] Stop lowering `log` declarations through `AstNode::FunDecl`.
+- [x] Introduce either `LogDecl` or one shared routine node with an explicit kind field.
 - [ ] Apply the same decision to anonymous logicals so named and anonymous logicals use one consistent representation.
-- [ ] Add tests asserting logical routine identity survives AST lowering.
-- [ ] Update docs so no contract still describes `log` as a temporary `FunDecl`.
+- [x] Add tests asserting logical routine identity survives AST lowering.
+- [x] Update docs so no contract still describes `log` as a temporary `FunDecl`.
 
 ### 10.4 Replace String-Joined Qualified Paths
 
@@ -409,7 +409,7 @@ Target files:
 Acceptance for Phase 3:
 
 - [x] No method receiver information is lost in the AST.
-- [ ] No logical routine kind is lost in the AST.
+- [x] No logical routine kind is lost in the AST.
 - [ ] Qualified path structure is preserved instead of flattened away where it matters.
 - [ ] Parser-owned duplicate checks use the chosen identifier equality rules.
 - [ ] Root shape is explicit and no longer ambiguous to the next stage.
@@ -444,8 +444,8 @@ This is the recommended implementation order once the decision freeze is complet
 1. [ ] Freeze the comment, literal, receiver, package, and root-surface decisions in `FRONTEND_CONTRACT.md`.
 2. [ ] Introduce one shared identifier canonicalization helper and test it directly.
 3. [x] Apply the canonicalization helper to parser duplicate checks before changing more AST shape.
-4. [ ] Preserve method receiver types in the AST and add direct retention tests.
-5. [ ] Introduce explicit logical routine kind in the AST and migrate `log` lowering.
+4. [x] Preserve method receiver types in the AST and add direct retention tests.
+5. [x] Introduce explicit logical routine kind in the AST and migrate `log` lowering.
 6. [ ] Decide and implement the final root surface contract.
 7. [ ] Replace backtick `ANY` behavior with the chosen comment model.
 8. [ ] Remove slash-comment dependence or make it explicit compatibility behavior.
@@ -475,7 +475,7 @@ Do not move to the next compiler stage until every gate below is true.
 - [ ] Imaginary literal status is resolved instead of sitting in a silent limbo.
 - [ ] `Illegal` tokens are never skipped as whitespace.
 - [x] Method receiver types survive AST lowering.
-- [ ] Logical routine kind survives AST lowering.
+- [x] Logical routine kind survives AST lowering.
 - [ ] Qualified path structure survives AST lowering where the next stage needs it.
 - [ ] Root program shape is explicit.
 - [ ] No front-end doc claims are known to contradict the code.
