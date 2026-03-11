@@ -61,3 +61,25 @@ fn test_top_level_pro_currently_leaks_body_before_declaration() {
         "Final node should remain the authoritative procedure declaration"
     );
 }
+
+#[test]
+fn test_top_level_log_currently_leaks_body_before_declaration() {
+    let declarations = parse_program_declarations("test/parser/simple_log.fol");
+
+    assert_eq!(
+        declarations.len(),
+        2,
+        "Top-level logical fixture should currently lower to leaked body plus declaration"
+    );
+    assert!(
+        matches!(&declarations[0], AstNode::Return { .. }),
+        "Current root contamination places the logical body return before the declaration"
+    );
+    assert!(
+        matches!(
+            &declarations[1],
+            AstNode::FunDecl { name, body, .. } if name == "dating" && body.len() == 1
+        ),
+        "Logical declarations currently lower through FunDecl and should remain authoritative"
+    );
+}
