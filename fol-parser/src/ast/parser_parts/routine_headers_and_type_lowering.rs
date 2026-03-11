@@ -920,12 +920,8 @@ impl AstParser {
 
             self.skip_ignorable(tokens);
             let segment = tokens.curr(false)?;
-            let segment_name = Self::token_to_named_label(&segment).ok_or_else(|| {
-                Box::new(ParseError::from_token(
-                    &segment,
-                    "Expected type segment after '::'".to_string(),
-                )) as Box<dyn Glitch>
-            })?;
+            let segment_name =
+                Self::expect_named_label(&segment, "Expected type segment after '::'")?;
 
             name.push_str("::");
             name.push_str(&segment_name);

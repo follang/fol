@@ -830,3 +830,23 @@ fn test_record_initializer_field_illegal_name_reports_offending_token_location()
         "Illegal record initializer field names should retain a concrete source column"
     );
 }
+
+#[test]
+fn test_type_reference_illegal_segment_reports_offending_token_location() {
+    let (message, line, column) =
+        parse_error_snapshot("test/parser/simple_fun_param_illegal_type_segment.fol");
+
+    assert!(
+        message.contains("Parser encountered illegal token"),
+        "Illegal type-reference segments should report an explicit illegal-token diagnostic, got: {}",
+        message
+    );
+    assert_eq!(
+        line, 1,
+        "Illegal type-reference segments should anchor to the signature line"
+    );
+    assert!(
+        column > 0,
+        "Illegal type-reference segments should retain a concrete source column"
+    );
+}
