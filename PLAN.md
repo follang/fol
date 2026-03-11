@@ -119,7 +119,7 @@ Done when:
 
 ### 5.4 Namespace contract
 
-- [ ] Define root namespace behavior.
+- [x] Define root namespace behavior.
 - [ ] Define nested namespace behavior.
 - [ ] Define valid namespace component rules.
 - [ ] Define interaction with `.mod` skipping.

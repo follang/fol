@@ -466,6 +466,18 @@ mod namespace_tests {
     }
 
     #[test]
+    fn test_single_file_input_keeps_root_namespace_even_in_nested_folders() {
+        let sources = Source::init("test/legacy/main/single/subpak/input1.fol", SourceType::File)
+            .expect("Should create single nested file source");
+
+        assert_eq!(sources.len(), 1);
+        assert_eq!(
+            sources[0].namespace, "fol",
+            "Single-file entry should keep the root namespace instead of inheriting folder segments"
+        );
+    }
+
+    #[test]
     fn test_namespace_output_integration() {
         // Test that the namespace information is properly integrated
         let sources =
