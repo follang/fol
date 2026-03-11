@@ -1059,6 +1059,26 @@ fn test_scalar_type_illegal_option_reports_offending_token_location() {
 }
 
 #[test]
+fn test_type_argument_separator_illegal_token_reports_offending_token_location() {
+    let (message, line, column) =
+        parse_error_snapshot("test/parser/simple_typ_illegal_type_argument_separator.fol");
+
+    assert!(
+        message.contains("Parser encountered illegal token"),
+        "Illegal type-argument separators should surface as explicit illegal-token diagnostics, got: {}",
+        message
+    );
+    assert_eq!(
+        line, 1,
+        "Illegal type-argument separators should report the declaration line"
+    );
+    assert!(
+        column > 0,
+        "Illegal type-argument separators should retain a concrete source column"
+    );
+}
+
+#[test]
 fn test_rest_binding_illegal_name_reports_offending_token_location() {
     let (message, line, column) =
         parse_error_snapshot("test/parser/simple_var_destructure_illegal_rest_name.fol");

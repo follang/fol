@@ -527,6 +527,7 @@ impl AstParser {
             self.skip_ignorable(tokens);
 
             let sep = tokens.curr(false)?;
+            Self::reject_illegal_token(&sep)?;
             if matches!(
                 sep.key(),
                 KEYWORD::Symbol(SYMBOL::Comma) | KEYWORD::Symbol(SYMBOL::Semi)
