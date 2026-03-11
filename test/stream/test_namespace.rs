@@ -372,6 +372,30 @@ mod namespace_tests {
     }
 
     #[test]
+    fn test_source_identity_keeps_raw_call_spelling_separate_from_canonical_identity() {
+        let direct = Source::init("test/legacy/main/main.fol", SourceType::File)
+            .expect("Should create direct file-backed source");
+        let dotted = Source::init("./test/legacy/main/main.fol", SourceType::File)
+            .expect("Should create dotted file-backed source");
+
+        assert_eq!(direct.len(), 1);
+        assert_eq!(dotted.len(), 1);
+        assert_ne!(
+            direct[0].call, dotted[0].call,
+            "Raw call spelling should preserve how the entry path was provided"
+        );
+        assert_eq!(
+            direct[0].path, dotted[0].path,
+            "Canonical source paths should collapse path-spelling aliases"
+        );
+        assert_eq!(
+            direct[0].identity(),
+            dotted[0].identity(),
+            "Logical source identity should use canonical path plus package and namespace rather than raw call spelling"
+        );
+    }
+
+    #[test]
     fn test_namespace_validation_follows_current_front_end_contract() {
         let temp_root = unique_temp_root("namespace_components");
         fs::create_dir_all(temp_root.join("good/123bad")).expect("Should create invalid nested dir");
