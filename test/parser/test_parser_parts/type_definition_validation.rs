@@ -348,6 +348,32 @@ fn test_record_field_and_alias_name_conflict_reports_parse_error() {
 }
 
 #[test]
+fn test_record_field_and_alias_canonical_name_conflict_reports_parse_error() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_typ_record_field_alias_conflict_canonical.fol")
+            .expect("Should read canonical record field/alias conflict test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject canonical record field and alias name conflicts");
+
+    let parse_error = errors
+        .first()
+        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        .expect("First parser error should be ParseError");
+
+    assert!(
+        parse_error
+            .to_string()
+            .contains("Duplicate type member 'HostName'"),
+        "Canonical field/alias conflict should report the later spelling, got: {}",
+        parse_error
+    );
+}
+
+#[test]
 fn test_entry_variant_and_type_name_conflict_reports_parse_error() {
     let mut file_stream =
         FileStream::from_file("test/parser/simple_typ_entry_variant_type_conflict.fol")
@@ -367,6 +393,32 @@ fn test_entry_variant_and_type_name_conflict_reports_parse_error() {
     assert!(
         parse_error.to_string().contains("Duplicate type member 'Ok'"),
         "Entry variant/type conflict should report duplicate type member, got: {}",
+        parse_error
+    );
+}
+
+#[test]
+fn test_entry_variant_and_type_canonical_name_conflict_reports_parse_error() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_typ_entry_variant_type_conflict_canonical.fol")
+            .expect("Should read canonical entry variant/type conflict test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject canonical entry variant and nested type name conflicts");
+
+    let parse_error = errors
+        .first()
+        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        .expect("First parser error should be ParseError");
+
+    assert!(
+        parse_error
+            .to_string()
+            .contains("Duplicate type member 'OkValue'"),
+        "Canonical entry/type conflict should report the later spelling, got: {}",
         parse_error
     );
 }
