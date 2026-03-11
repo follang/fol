@@ -350,7 +350,7 @@ Done when:
 - [x] Identify which current parser checks are purely structural.
 - [x] Keep structural checks in the parser.
 - [ ] Stop adding semantic-like checks during this hardening cycle unless they are required to preserve AST correctness.
-- [ ] Mark anything semantic-adjacent that stays temporarily.
+- [x] Mark anything semantic-adjacent that stays temporarily.
 
 Done when:
 
