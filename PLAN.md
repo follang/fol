@@ -370,7 +370,7 @@ Done when:
 
 ### 7.8 Parser diagnostics
 
-- [ ] Normalize "expected X" wording.
+- [x] Normalize "expected X" wording.
 - [x] Normalize missing-close-token diagnostics.
 - [x] Normalize duplicate and unknown-option diagnostics where parser owns them.
 - [x] Add negative tests for important failure classes.
