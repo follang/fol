@@ -123,6 +123,44 @@ tests actually enforce today.
 - `use` declarations keep their import path text in the dedicated `path` field instead of
   reusing the value-path or type-path encoding.
 
+### Current Root Shape
+
+- `AstNode::Program { declarations }` is the single parser root.
+- `Program.declarations` currently contains real top-level declarations and top-level
+  lowered statements or expressions that the parser accepts at file scope.
+- Top-level `fun`, `log`, and `pro` declarations are still structurally contaminated:
+  each routine body is cloned into `Program.declarations` immediately before the
+  corresponding routine declaration node.
+- That means `Program.declarations` is currently a mixed list of true root nodes plus
+  leaked routine-body nodes for top-level routines only.
+- Nested routine declarations, type members, standards, implementations, and other
+  nested bodies keep their child nodes inside their own body fields instead of leaking
+  to the program root.
+
+### Routine Body Shape
+
+- `FunDecl.body` and `ProDecl.body` remain the authoritative routine-body fields even
+  though top-level routine bodies are currently duplicated at the program root.
+- Routine bodies contain the statement and lowered-expression nodes accepted by the
+  body parsers, including local bindings, returns, control-flow, calls, and other
+  body-level forms that the current grammar supports.
+- When a top-level routine body node also appears in `Program.declarations`, it is a
+  duplicate of the node already stored inside the routine declaration body, not a
+  separate root-only form.
+
+### Grouped Declaration Invariants
+
+- Grouped binding forms expand into multiple sibling declaration nodes in source order.
+- Shared binding options apply to every expanded declaration in the grouped result.
+- Shared values and parallel values preserve the declared name order when the parser
+  lowers grouped bindings.
+- Grouped and multi-name type declarations expand into multiple sibling `TypeDecl`
+  nodes instead of keeping a wrapper node in the AST.
+- Shared object-style type definitions are cloned per declared type name.
+- Multi-name type declarations currently reject generic headers, explicit contract
+  headers, and mismatched definition counts with explicit parse errors instead of
+  silently guessing a shape.
+
 ### Parser-Owned Validations
 
 - The parser rejects duplicate and conflicting declaration options where those checks are
@@ -154,6 +192,49 @@ tests actually enforce today.
   - whole-program type checking
   - ownership and borrowing analysis
   - cross-file semantic validation
+
+### Parser Part Ownership
+
+- `program_and_bindings.rs`: program root assembly, top-level declaration dispatch, and
+  file-scope fallback lowering for statements, calls, literals, and identifiers.
+- `declaration_parsers.rs`, `use_declaration_parsers.rs`, `segment_declaration_parsers.rs`,
+  `implementation_declaration_parsers.rs`, and `standard_declaration_parsers.rs`:
+  declaration-family parsing for the corresponding top-level syntactic forms.
+- `routine_declaration_parsers.rs`, `routine_headers_and_type_lowering.rs`,
+  `routine_signature_parsers.rs`, `routine_capture_parsers.rs`, and
+  `routine_body_parsers.rs`: routine header parsing, capture parsing, routine-local body
+  parsing, and the current routine-signature pre-scan used for parser-owned validation.
+- `binding_alternative_parsers.rs`, `binding_option_parsers.rs`,
+  `binding_value_parsers.rs`, and `grouped_binding_parsers.rs`: binding options,
+  storage/visibility modifiers, grouped bindings, and binding value lowering.
+- `type_definition_parsers.rs`, `grouped_type_parsers.rs`, `special_type_parsers.rs`,
+  `source_kind_type_parsers.rs`, `test_type_parsers.rs`, and
+  `type_references_and_blocks.rs`: type declarations, grouped type expansion, special
+  type forms, source/test type forms, and general type-reference parsing.
+- `expression_parsers.rs`, `expression_atoms_and_report_validation.rs`,
+  `primary_expression_parsers.rs`, `postfix_expression_parsers.rs`,
+  `access_expression_parsers.rs`, `pipe_expression_parsers.rs`,
+  `pipe_lambda_parsers.rs`, and `rolling_expression_parsers.rs`: expression precedence,
+  atoms, postfix chains, access forms, pipe forms, pipe lambdas, and rolling
+  expressions.
+- `statement_parsers.rs`, `flow_body_parsers.rs`, and `inquiry_clause_parsers.rs`:
+  statement parsing, flow-body parsing, and inquiry-clause parsing for declarations
+  and anonymous routines.
+
+### Parser Part Overlap Risks
+
+- `program_and_bindings.rs` is the main maintenance hotspot because it mixes root
+  assembly with direct lowering of many statement and expression forms that are also
+  handled inside routine bodies.
+- The current `Program.declarations` contamination lives in that same root-assembly
+  layer, so root-shape cleanup is coupled to many tests that currently search for body
+  nodes at the program level.
+- Routine parsing is spread across header, signature, capture, declaration, and body
+  parser parts; that split is workable, but it means routine-structure changes have to
+  be audited across several files rather than in one place.
+- Type parsing is also intentionally split across declaration, grouped-type, and
+  general type-reference parsers, so declaration-shape fixes need to preserve those
+  boundaries instead of collapsing everything into one parser part.
 
 ## Deferred Front-End Debt
 
