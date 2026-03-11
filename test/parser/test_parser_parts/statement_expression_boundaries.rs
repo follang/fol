@@ -87,3 +87,39 @@ fn test_top_level_when_stays_a_root_statement_with_nested_bodies() {
                 )
     ));
 }
+
+#[test]
+fn test_when_matching_forms_stay_nested_in_expression_positions() {
+    let initializer_declarations =
+        parse_program_declarations("test/parser/simple_if_matching_expr.fol");
+
+    assert!(matches!(
+        initializer_declarations.as_slice(),
+        [AstNode::VarDecl { name, value: Some(value), .. }]
+            if name == "checker" && matches!(value.as_ref(), AstNode::When { .. })
+    ));
+    assert!(
+        !initializer_declarations
+            .iter()
+            .any(|node| matches!(node, AstNode::When { .. })),
+        "Matching expressions in initializers should stay under their declaration value"
+    );
+
+    let routine_declarations = parse_program_declarations("test/parser/simple_when_matching_expr.fol");
+    let body = routine_declarations
+        .iter()
+        .find_map(|node| {
+            if let AstNode::FunDecl { name, body, .. } = node {
+                (name == "someValue").then(|| body.clone())
+            } else {
+                None
+            }
+        })
+        .expect("Program should contain the someValue routine declaration");
+
+    assert!(matches!(
+        body.as_slice(),
+        [AstNode::Return { value: Some(value) }]
+            if matches!(value.as_ref(), AstNode::When { .. })
+    ));
+}
