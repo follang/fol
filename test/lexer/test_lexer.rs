@@ -636,7 +636,7 @@ mod lexer_tests {
                 (KEYWORD::Symbol(SYMBOL::Equal), "=".to_string()),
                 (KEYWORD::Literal(LITERAL::Decimal), "2".to_string()),
             ],
-            "Doc comments should stay deferred and should not surface as a parser-visible token family yet"
+            "Backtick doc comments should stay deferred and should not surface as a parser-visible token family yet"
         );
     }
 

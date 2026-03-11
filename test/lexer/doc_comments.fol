@@ -1,4 +1,4 @@
-/// module docs
+`[doc] module docs`
 var alpha = 1
-/** block docs */
+`[doc] block docs`
 var beta = 2
