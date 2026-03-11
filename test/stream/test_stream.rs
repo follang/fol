@@ -227,6 +227,29 @@ mod stream_tests {
         assert_eq!(line_count, 3, "Should track all three lines");
         assert!(max_col >= 6, "Should track column positions correctly");
     }
+
+    #[test]
+    fn test_file_boundary_resets_location_to_line_one_column_one() {
+        let mut stream = FileStream::from_folder("test/legacy/main")
+            .expect("Should build stream from multiple sources");
+        let mut previous_file = None;
+
+        while let Some((_, loc)) = stream.next_char() {
+            if previous_file.as_ref() != loc.file.as_ref() {
+                if previous_file.is_some() {
+                    assert_eq!(loc.row, 1, "New source should restart at row 1");
+                    assert_eq!(loc.col, 1, "New source should restart at column 1");
+                    return;
+                }
+                previous_file = loc.file.clone();
+                continue;
+            }
+
+            previous_file = loc.file.clone();
+        }
+
+        panic!("Expected stream to advance into a second source");
+    }
 }
 
 // Performance and stress tests
