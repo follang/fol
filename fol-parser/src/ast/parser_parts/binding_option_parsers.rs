@@ -20,6 +20,7 @@ impl AstParser {
         for _ in 0..16 {
             self.skip_ignorable(tokens);
             let token = tokens.curr(false)?;
+            Self::reject_illegal_token(&token)?;
 
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
                 let _ = tokens.bump();
@@ -63,6 +64,7 @@ impl AstParser {
 
             self.skip_ignorable(tokens);
             let sep = tokens.curr(false)?;
+            Self::reject_illegal_token(&sep)?;
             if matches!(
                 sep.key(),
                 KEYWORD::Symbol(SYMBOL::Comma) | KEYWORD::Symbol(SYMBOL::Semi)

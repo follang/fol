@@ -971,6 +971,23 @@ fn test_plain_binding_illegal_name_reports_offending_token_location() {
 }
 
 #[test]
+fn test_binding_illegal_option_reports_offending_token_location() {
+    let (message, line, column) =
+        parse_error_snapshot("test/parser/simple_binding_illegal_option.fol");
+
+    assert!(
+        message.contains("Parser encountered illegal token"),
+        "Illegal binding options should surface as explicit illegal-token diagnostics, got: {}",
+        message
+    );
+    assert_eq!(line, 1, "Illegal binding options should anchor to the binding line");
+    assert!(
+        column > 0,
+        "Illegal binding options should retain a concrete source column"
+    );
+}
+
+#[test]
 fn test_loop_iteration_binder_illegal_name_reports_offending_token_location() {
     let (message, line, column) =
         parse_error_snapshot("test/parser/simple_loop_illegal_binder_name.fol");
