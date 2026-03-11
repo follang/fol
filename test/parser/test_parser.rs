@@ -314,6 +314,9 @@ mod top_level_control_flow_and_calls;
 #[path = "test_parser_parts/top_level_ast_shapes.rs"]
 mod top_level_ast_shapes;
 #[cfg(test)]
+#[path = "test_parser_parts/statement_expression_boundaries.rs"]
+mod statement_expression_boundaries;
+#[cfg(test)]
 #[path = "test_parser_parts/type_definition_validation.rs"]
 mod type_definition_validation;
 #[cfg(test)]
