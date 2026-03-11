@@ -73,6 +73,16 @@ tests actually enforce today.
 - EOF keeps an explicit `\0` sentinel and may carry only normalized trailing separator
   payload ahead of that sentinel.
 
+### Identifier And Keyword Edges
+
+- Keyword recognition is exact-case only.
+- Case variants such as `Fun` and `LOG` stay ordinary identifiers instead of being
+  normalized into keyword tokens.
+- Repeated underscore runs inside identifiers lower to `Illegal`.
+- A standalone `_` still lowers as an identifier token because the current parser uses
+  that surface for silent binders and destructuring-rest forms.
+- Leading single underscores remain ordinary identifiers under the current contract.
+
 ### Literal Categories
 
 - The current lexer surfaces `Stringy`, `Quoted`, `Bool`, `Float`, `Decimal`, `Hexadecimal`,
