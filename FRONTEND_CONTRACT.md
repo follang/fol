@@ -105,6 +105,19 @@ tests actually enforce today.
 - End-to-end tests now lock this behavior across the full `stream -> lexer -> parser`
   path, not just through direct parser helpers.
 
+### Name And Path Encoding
+
+- Bare names and keyword-like names normalize to the same plain string form when the
+  parser accepts them as labels.
+- Quoted names also normalize to plain, unquoted strings in AST fields such as
+  declaration names and binding names.
+- Qualified value paths are currently encoded as `::`-joined strings inside the value
+  nodes that carry names, such as `Identifier { name }` and `FunctionCall { name }`.
+- Qualified type paths are currently encoded as `FolType::Named { name }` with the full
+  normalized `::`-joined path string.
+- `use` declarations keep their import path text in the dedicated `path` field instead of
+  reusing the value-path or type-path encoding.
+
 ### Parser-Owned Validations
 
 - The parser rejects duplicate and conflicting declaration options where those checks are
