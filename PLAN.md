@@ -29,7 +29,7 @@ Do not use this plan for:
 
 ## 2. Working Rules
 
-- [ ] No new major syntax during this plan unless required to fix a current mismatch.
+- [x] No new major syntax during this plan unless required to fix a current mismatch.
 - [x] Every fix gets a regression test.
 - [ ] Fix stream first, then lexer, then parser.
 - [ ] Keep changes surgical unless a contract is fundamentally wrong.
