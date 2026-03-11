@@ -1,0 +1,87 @@
+use super::*;
+use std::fs;
+use std::time::{SystemTime, UNIX_EPOCH};
+
+fn unique_temp_root(label: &str) -> std::path::PathBuf {
+    let stamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("System time should be after unix epoch")
+        .as_nanos();
+    std::env::temp_dir().join(format!(
+        "fol_parser_anon_log_{}_{}_{}",
+        label,
+        std::process::id(),
+        stamp
+    ))
+}
+
+fn parse_first_error_from_source(source: &str) -> ParseError {
+    let temp_root = unique_temp_root("diag");
+    fs::create_dir_all(&temp_root).expect("Should create temporary diagnostic fixture folder");
+    let fixture = temp_root.join("anon_log_diag.fol");
+    fs::write(&fixture, source).expect("Should write temporary anonymous logical fixture");
+
+    let mut file_stream = FileStream::from_file(
+        fixture
+            .to_str()
+            .expect("Temporary diagnostic fixture path should be UTF-8"),
+    )
+    .expect("Should open temporary anonymous logical fixture");
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject malformed anonymous logical fixture");
+
+    fs::remove_dir_all(&temp_root).ok();
+
+    errors
+        .first()
+        .and_then(|error| error.as_ref().as_any().downcast_ref::<ParseError>())
+        .cloned()
+        .expect("First parser error should be ParseError")
+}
+
+#[test]
+fn test_anonymous_logical_missing_open_paren_uses_logical_wording() {
+    let error =
+        parse_first_error_from_source("fun host(): bool = { return log[] value: bool => value; }\n");
+
+    assert!(
+        error
+            .to_string()
+            .contains("Expected '(' after anonymous logical"),
+        "Anonymous logical diagnostics should no longer inherit function wording, got: {}",
+        error
+    );
+}
+
+#[test]
+fn test_anonymous_logical_untyped_parameter_uses_logical_wording() {
+    let error = parse_first_error_from_source(
+        "fun host(): bool = { return log[] (value): bool => value; }\n",
+    );
+
+    assert!(
+        error
+            .to_string()
+            .contains("Expected ':' after logical parameter name"),
+        "Anonymous logical parameter diagnostics should use logical wording, got: {}",
+        error
+    );
+}
+
+#[test]
+fn test_anonymous_logical_missing_body_separator_uses_logical_wording() {
+    let error = parse_first_error_from_source(
+        "fun host(): bool = { return log[] (value: bool): bool value; }\n",
+    );
+
+    assert!(
+        error
+            .to_string()
+            .contains("Expected '=' or '=>' before anonymous logical body"),
+        "Anonymous logical body diagnostics should use logical wording, got: {}",
+        error
+    );
+}

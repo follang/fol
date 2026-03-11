@@ -1,5 +1,30 @@
 use super::*;
 
+#[derive(Clone, Copy)]
+enum AnonymousRoutineKind {
+    Function,
+    Procedure,
+    Logical,
+}
+
+impl AnonymousRoutineKind {
+    fn label(self) -> &'static str {
+        match self {
+            Self::Function => "function",
+            Self::Procedure => "procedure",
+            Self::Logical => "logical",
+        }
+    }
+
+    fn body_close_message(self) -> &'static str {
+        match self {
+            Self::Function => "Expected '}' to close anonymous function body",
+            Self::Procedure => "Expected '}' to close anonymous procedure body",
+            Self::Logical => "Expected '}' to close anonymous logical body",
+        }
+    }
+}
+
 impl AstParser {
     fn lookahead_is_record_init_field(
         &self,
@@ -726,7 +751,7 @@ impl AstParser {
         }
 
         let _ = tokens.bump();
-        self.parse_anonymous_routine_after_keyword(tokens, true)
+        self.parse_anonymous_routine_after_keyword(tokens, AnonymousRoutineKind::Function)
     }
 
     pub(super) fn parse_anonymous_pro_expr(
@@ -742,7 +767,7 @@ impl AstParser {
         }
 
         let _ = tokens.bump();
-        self.parse_anonymous_routine_after_keyword(tokens, false)
+        self.parse_anonymous_routine_after_keyword(tokens, AnonymousRoutineKind::Procedure)
     }
 
     pub(super) fn parse_anonymous_log_expr(
@@ -758,33 +783,13 @@ impl AstParser {
         }
 
         let _ = tokens.bump();
-        let node = self.parse_anonymous_routine_after_keyword(tokens, true)?;
-        match node {
-            AstNode::AnonymousFun {
-                options,
-                captures,
-                params,
-                return_type,
-                error_type,
-                body,
-                inquiries,
-            } => Ok(AstNode::AnonymousLog {
-                options,
-                captures,
-                params,
-                return_type: Some(return_type.unwrap_or(FolType::Bool)),
-                error_type,
-                body,
-                inquiries,
-            }),
-            other => Ok(other),
-        }
+        self.parse_anonymous_routine_after_keyword(tokens, AnonymousRoutineKind::Logical)
     }
 
     fn parse_anonymous_routine_after_keyword(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-        is_function: bool,
+        kind: AnonymousRoutineKind,
     ) -> Result<AstNode, Box<dyn Glitch>> {
         self.skip_ignorable(tokens);
         let options = self.parse_routine_options(tokens)?;
@@ -794,7 +799,7 @@ impl AstParser {
         if !matches!(open_params.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
             return Err(Box::new(ParseError::from_token(
                 &open_params,
-                "Expected '(' after anonymous function".to_string(),
+                format!("Expected '(' after anonymous {}", kind.label()),
             )));
         }
         let _ = tokens.bump();
@@ -803,7 +808,7 @@ impl AstParser {
         if let Some(token) = first_untyped {
             return Err(Box::new(ParseError::from_token(
                 &token,
-                "Expected ':' after function parameter name".to_string(),
+                format!("Expected ':' after {} parameter name", kind.label()),
             )));
         }
         self.ensure_unique_parameter_names(&params, "parameter")?;
@@ -839,7 +844,7 @@ impl AstParser {
         ) {
             return Err(Box::new(ParseError::from_token(
                 &assign,
-                "Expected '=' or '=>' before anonymous function body".to_string(),
+                format!("Expected '=' or '=>' before anonymous {} body", kind.label()),
             )));
         }
         if matches!(assign.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
@@ -849,15 +854,11 @@ impl AstParser {
         let (body, inquiries) = self.parse_named_routine_body(
             tokens,
             "Expected '{' or '=>' to start anonymous routine body",
-            if is_function {
-                "Expected '}' to close anonymous function body"
-            } else {
-                "Expected '}' to close anonymous procedure body"
-            },
+            kind.body_close_message(),
         )?;
 
-        if is_function {
-            Ok(AstNode::AnonymousFun {
+        match kind {
+            AnonymousRoutineKind::Function => Ok(AstNode::AnonymousFun {
                 options,
                 captures,
                 params,
@@ -865,9 +866,8 @@ impl AstParser {
                 error_type,
                 body,
                 inquiries,
-            })
-        } else {
-            Ok(AstNode::AnonymousPro {
+            }),
+            AnonymousRoutineKind::Procedure => Ok(AstNode::AnonymousPro {
                 options,
                 captures,
                 params,
@@ -875,7 +875,16 @@ impl AstParser {
                 error_type,
                 body,
                 inquiries,
-            })
+            }),
+            AnonymousRoutineKind::Logical => Ok(AstNode::AnonymousLog {
+                options,
+                captures,
+                params,
+                return_type: Some(return_type.unwrap_or(FolType::Bool)),
+                error_type,
+                body,
+                inquiries,
+            }),
         }
     }
 
