@@ -1,0 +1,5 @@
+fun broken_comment(a: int): int = {
+    value = combine(
+        a,
+        `missing close
+}

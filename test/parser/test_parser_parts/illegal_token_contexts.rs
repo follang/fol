@@ -206,3 +206,38 @@ fn test_parameter_default_illegal_token_reports_offending_token_location() {
         "Illegal parameter-default token should retain a concrete source column"
     );
 }
+
+#[test]
+fn test_unterminated_backtick_comment_in_call_reports_offending_token_location() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_call_unterminated_backtick_comment.fol")
+            .expect("Should read unterminated backtick-comment fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject unterminated backtick comments inside call arguments");
+
+    let parse_error = errors
+        .first()
+        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        .expect("First parser error should be ParseError");
+
+    assert!(
+        parse_error
+            .to_string()
+            .contains("Parser encountered illegal token"),
+        "Malformed backtick comments should surface as explicit illegal-token diagnostics, got: {}",
+        parse_error
+    );
+    assert_eq!(
+        parse_error.line(),
+        4,
+        "Malformed backtick comments should anchor to the offending comment start line"
+    );
+    assert!(
+        parse_error.column() > 0,
+        "Malformed backtick comments should retain a concrete source column"
+    );
+}
