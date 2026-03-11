@@ -374,6 +374,44 @@ mod lexer_tests {
     }
 
     #[test]
+    fn test_invalid_prefixed_numeric_literals_stop_at_file_boundaries() {
+        let tokens = tokenize_folder_contents(&[("a.fol", "0x"), ("b.fol", "CAFE")]);
+        let significant: Vec<(KEYWORD, String)> = tokens
+            .into_iter()
+            .filter(|(key, _)| !key.is_space() && !key.is_eof())
+            .collect();
+
+        assert_eq!(
+            significant,
+            vec![
+                (KEYWORD::Illegal, "0x".to_string()),
+                (KEYWORD::Void(VOID::Boundary), String::new()),
+                (KEYWORD::Identifier, "CAFE".to_string()),
+            ],
+            "Malformed prefixed numerics must stop at a file boundary instead of consuming the next file's content"
+        );
+    }
+
+    #[test]
+    fn test_invalid_decimal_literals_stop_at_file_boundaries() {
+        let tokens = tokenize_folder_contents(&[("a.fol", "1_"), ("b.fol", "2")]);
+        let significant: Vec<(KEYWORD, String)> = tokens
+            .into_iter()
+            .filter(|(key, _)| !key.is_space() && !key.is_eof())
+            .collect();
+
+        assert_eq!(
+            significant,
+            vec![
+                (KEYWORD::Illegal, "1_".to_string()),
+                (KEYWORD::Void(VOID::Boundary), String::new()),
+                (KEYWORD::Literal(LITERAL::Decimal), "2".to_string()),
+            ],
+            "Malformed decimal literals must stop at a file boundary instead of consuming the next file's content"
+        );
+    }
+
+    #[test]
     fn test_cross_file_boundaries_keep_second_file_locations_real() {
         use std::fs;
 
