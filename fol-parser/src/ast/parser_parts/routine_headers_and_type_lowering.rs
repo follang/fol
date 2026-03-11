@@ -883,6 +883,13 @@ impl AstParser {
         self.skip_ignorable(tokens);
         let token = tokens.curr(false)?;
 
+        if token.key().is_illegal() {
+            return Err(Box::new(ParseError::from_token(
+                &token,
+                format!("Parser encountered illegal token '{}'", token.con()),
+            )));
+        }
+
         if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Query)) {
             let _ = tokens.bump();
             let inner = self.parse_type_reference_tokens(tokens)?;
