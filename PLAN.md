@@ -210,10 +210,10 @@ Target files:
 
 ### 8.5 Preserve Raw And Canonical Identity Separately
 
-- [ ] Decide whether source identity needs both display names and canonical comparison keys.
-- [ ] If identifier canonicalization applies to package and namespace names, add that key explicitly instead of overloading raw strings.
-- [ ] Keep canonical file path identity separate from presentation strings.
-- [ ] Add tests covering renamed entry paths, override-driven identity changes, and raw-vs-canonical identity behavior.
+- [x] Decide whether source identity needs both display names and canonical comparison keys.
+- [x] If identifier canonicalization applies to package and namespace names, add that key explicitly instead of overloading raw strings.
+- [x] Keep canonical file path identity separate from presentation strings.
+- [x] Add tests covering renamed entry paths, override-driven identity changes, and raw-vs-canonical identity behavior.
 
 Acceptance for Phase 1:
 

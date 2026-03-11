@@ -36,6 +36,14 @@ tests actually enforce today.
   namespace chosen for the current run.
 - The original call site is preserved separately so file discovery mode can still
   be reported without changing logical identity.
+- Canonical path identity and presentation spelling are intentionally separate:
+  `path` is the comparison key, while `call` preserves how the entry path was supplied.
+- Stream identity does not currently apply parser-style identifier canonicalization
+  to package or namespace strings; those remain in the exact spelling derived during
+  source discovery or provided by explicit override.
+- Changing only raw path spelling does not change logical identity.
+- Changing the canonical file path does change logical identity, even when explicit
+  package override keeps the package and namespace stable.
 
 ### Package Detection
 
