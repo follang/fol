@@ -90,3 +90,17 @@ tests actually enforce today.
 - Invalid-looking escape spellings are preserved verbatim inside quoted payloads.
 - Raw unrecognized characters still raise a lexer error instead of being silently
   converted into tokens.
+
+## Parser Contract
+
+### Literal Lowering Guarantees
+
+- Parser-supported literal lowering currently covers strings, booleans, `nil`, decimal
+  integers, floats, hex, octal, and binary integers.
+- Double-quoted content always lowers to `Literal::String`.
+- Single-quoted one-character content lowers to `Literal::Character`.
+- Wider single-quoted content lowers to `Literal::String`.
+- Supported prefixed and underscored numeric spellings lower to their exact integer or
+  float values instead of staying as raw text in the AST.
+- End-to-end tests now lock this behavior across the full `stream -> lexer -> parser`
+  path, not just through direct parser helpers.
