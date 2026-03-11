@@ -999,4 +999,26 @@ mod lexer_error_tests {
         );
     }
 
+    #[test]
+    fn test_identifier_edge_cases_follow_current_front_end_contract() {
+        let tokens = tokenize_file("test/lexer/identifier_edge_cases.fol");
+        let significant: Vec<(KEYWORD, String)> = tokens
+            .into_iter()
+            .filter(|(key, _)| !key.is_space() && !key.is_eol() && !key.is_eof())
+            .collect();
+
+        assert_eq!(
+            significant,
+            vec![
+                (KEYWORD::Identifier, "_".to_string()),
+                (KEYWORD::Identifier, "_hidden".to_string()),
+                (KEYWORD::Identifier, "good_name".to_string()),
+                (KEYWORD::Illegal, "bad__name".to_string()),
+                (KEYWORD::Identifier, "Fun".to_string()),
+                (KEYWORD::Keyword(BUILDIN::Fun), "fun".to_string()),
+            ],
+            "Current identifier edges should stay explicit: '_' is still a parser-relevant identifier surface, repeated underscores are illegal, and keyword matching remains exact-case"
+        );
+    }
+
 }
