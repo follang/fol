@@ -631,10 +631,10 @@ fn test_top_level_keyword_named_call_and_assignment_parsing() {
 
     match ast {
         AstNode::Program { declarations } => {
-            assert!(declarations.iter().any(|node| {
+            assert!(program_surface_nodes(&declarations).into_iter().any(|node| {
                 matches!(node, AstNode::FunctionCall { name, args } if name == "get" && args.is_empty())
             }));
-            assert!(declarations.iter().any(|node| {
+            assert!(program_surface_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Assignment { target, value }
@@ -740,7 +740,7 @@ fn test_call_and_method_call_with_unary_plus_arguments_parsing() {
 
     let (has_run_assignment, has_update_method_call, has_emit_return) = match ast {
         AstNode::Program { declarations } => {
-            let has_run_assignment = declarations.iter().any(|node| {
+            let has_run_assignment = program_surface_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::Assignment { value, .. }
@@ -755,7 +755,7 @@ fn test_call_and_method_call_with_unary_plus_arguments_parsing() {
                     )
                 });
 
-            let has_update_method_call = declarations.iter().any(|node| {
+            let has_update_method_call = program_surface_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::MethodCall { method, args, .. }
@@ -766,7 +766,7 @@ fn test_call_and_method_call_with_unary_plus_arguments_parsing() {
                     )
                 });
 
-            let has_emit_return = declarations.iter().any(|node| {
+            let has_emit_return = program_surface_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::Return { value: Some(value) }
@@ -856,7 +856,7 @@ fn test_call_and_method_call_with_unary_ref_deref_arguments_parsing() {
 
     let (has_run_assignment, has_update_method_call, has_emit_return) = match ast {
         AstNode::Program { declarations } => {
-            let has_run_assignment = declarations.iter().any(|node| {
+            let has_run_assignment = program_surface_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::Assignment { value, .. }
@@ -871,7 +871,7 @@ fn test_call_and_method_call_with_unary_ref_deref_arguments_parsing() {
                     )
                 });
 
-            let has_update_method_call = declarations.iter().any(|node| {
+            let has_update_method_call = program_surface_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::MethodCall { method, args, .. }
@@ -882,7 +882,7 @@ fn test_call_and_method_call_with_unary_ref_deref_arguments_parsing() {
                     )
                 });
 
-            let has_emit_return = declarations.iter().any(|node| {
+            let has_emit_return = program_surface_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::Return { value: Some(value) }
