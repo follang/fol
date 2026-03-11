@@ -242,6 +242,8 @@ tests actually enforce today.
   declarations.
 - Qualified and bracketed receiver type references stay lowered through the same
   `FolType` surfaces already used by the rest of the parser.
+- Invalid receiver-type diagnostics now anchor to the rejected receiver token itself
+  instead of drifting to surrounding punctuation or the method name.
 
 ### Parser-Owned Validations
 

@@ -353,7 +353,7 @@ Target files:
 - [x] Preserve receiver types for `log` methods if `log` remains a distinct routine kind.
 - [x] Preserve receiver types for nested type-member routines.
 - [x] Add tests that assert the receiver type survives AST lowering instead of only proving the syntax parses.
-- [ ] Ensure receiver type diagnostics keep correct source spans.
+- [x] Ensure receiver type diagnostics keep correct source spans.
 - [x] Ensure quoted, qualified, and bracketed receiver types keep the chosen structure.
 
 ### 10.3 Stop Losing Logical Routine Identity
