@@ -259,7 +259,7 @@ Done when:
 
 - [x] Review the synthetic bootstrap behavior used by current tests.
 - [x] Reduce or isolate parser-visible startup artifacts if possible.
-- [ ] Keep EOF behavior explicit and stable.
+- [x] Keep EOF behavior explicit and stable.
 
 Done when:
 

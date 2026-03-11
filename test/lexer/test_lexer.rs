@@ -475,6 +475,22 @@ mod lexer_error_tests {
     }
 
     #[test]
+    fn test_empty_file_starts_at_explicit_eof_token() {
+        let mut file_stream =
+            FileStream::from_file("test/stream/empty.fol").expect("Should read empty file");
+        let lexer = Elements::init(&mut file_stream);
+        let token = lexer
+            .curr(false)
+            .expect("Empty-file lexer should still expose a current token");
+
+        assert!(token.key().is_eof(), "Empty file should start at EOF");
+        assert!(
+            token.loc().row() <= 1,
+            "EOF location should stay explicit and stable for empty files"
+        );
+    }
+
+    #[test]
     fn test_nonexistent_file_error() {
         let result = std::panic::catch_unwind(|| tokenize_file("test/lexer/nonexistent.fol"));
 
