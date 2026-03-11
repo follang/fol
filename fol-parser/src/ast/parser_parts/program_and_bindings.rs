@@ -586,6 +586,12 @@ impl AstParser {
                     Ok(node) => declarations.push(node),
                     Err(error) => errors.push(error),
                 }
+            } else if matches!(key, KEYWORD::Keyword(BUILDIN::True)) {
+                declarations.push(AstNode::Literal(Literal::Boolean(true)));
+            } else if matches!(key, KEYWORD::Keyword(BUILDIN::False)) {
+                declarations.push(AstNode::Literal(Literal::Boolean(false)));
+            } else if key.is_ident() && token.con().trim() == "nil" {
+                declarations.push(AstNode::Literal(Literal::Nil));
             }
 
             if tokens.bump().is_none() {
