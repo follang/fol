@@ -89,15 +89,25 @@ impl AstParser {
         }
 
         match token.key() {
-            KEYWORD::Literal(LITERAL::Stringy) | KEYWORD::Literal(LITERAL::Quoted) => Some(
-                token
-                    .con()
-                    .trim()
-                    .trim_matches(|c| c == '"' || c == '\'')
-                    .to_string(),
-            ),
+            KEYWORD::Literal(LITERAL::Stringy) | KEYWORD::Literal(LITERAL::Quoted) => {
+                Some(Self::exact_unquote_text(token.con()))
+            }
             _ => None,
         }
+    }
+
+    pub(super) fn exact_unquote_text(raw: &str) -> String {
+        let trimmed = raw.trim();
+
+        if let Some(inner) = trimmed.strip_prefix('"').and_then(|text| text.strip_suffix('"')) {
+            return inner.to_string();
+        }
+
+        if let Some(inner) = trimmed.strip_prefix('\'').and_then(|text| text.strip_suffix('\'')) {
+            return inner.to_string();
+        }
+
+        trimmed.to_string()
     }
 
     pub(super) fn unary_prefix_info(
