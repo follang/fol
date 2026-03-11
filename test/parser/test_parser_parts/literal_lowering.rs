@@ -151,6 +151,40 @@ fn test_raw_single_quotes_keep_escape_spelling_verbatim() {
 }
 
 #[test]
+fn test_cooked_double_quotes_decode_numeric_and_unicode_escapes() {
+    let parser = AstParser::new();
+
+    assert_eq!(
+        parser
+            .parse_literal("\"\\65\"")
+            .expect("Cooked decimal escape should parse"),
+        AstNode::Literal(Literal::Character('A')),
+        "Cooked decimal escapes should decode using all directly following digits"
+    );
+    assert_eq!(
+        parser
+            .parse_literal("\"\\x41\"")
+            .expect("Cooked hex escape should parse"),
+        AstNode::Literal(Literal::Character('A')),
+        "Cooked hex escapes should decode exactly two hex digits"
+    );
+    assert_eq!(
+        parser
+            .parse_literal("\"\\u0041\"")
+            .expect("Cooked four-digit unicode escape should parse"),
+        AstNode::Literal(Literal::Character('A')),
+        "Cooked unicode escapes should decode exactly four hex digits"
+    );
+    assert_eq!(
+        parser
+            .parse_literal("\"\\u{41}\"")
+            .expect("Cooked braced unicode escape should parse"),
+        AstNode::Literal(Literal::Character('A')),
+        "Cooked braced unicode escapes should decode all enclosed hex digits"
+    );
+}
+
+#[test]
 fn test_top_level_boolean_and_nil_literals_lower_cleanly() {
     let mut file_stream = FileStream::from_file("test/parser/simple_literal_logic.fol")
         .expect("Should read logical literal lowering fixture");

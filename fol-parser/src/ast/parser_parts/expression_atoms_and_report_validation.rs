@@ -288,19 +288,25 @@ impl AstParser {
     }
 
     fn decode_cooked_literal(content: &str) -> String {
+        let chars: Vec<char> = content.chars().collect();
         let mut decoded = String::new();
-        let mut chars = content.chars();
+        let mut index = 0;
 
-        while let Some(ch) = chars.next() {
+        while index < chars.len() {
+            let ch = chars[index];
+            index += 1;
             if ch != '\\' {
                 decoded.push(ch);
                 continue;
             }
 
-            let Some(next) = chars.next() else {
+            if index >= chars.len() {
                 decoded.push('\\');
                 break;
-            };
+            }
+
+            let next = chars[index];
+            index += 1;
 
             match next {
                 'p' => {
@@ -320,6 +326,73 @@ impl AstParser {
                 'a' => decoded.push('\u{0007}'),
                 'b' => decoded.push('\u{0008}'),
                 'e' => decoded.push('\u{001B}'),
+                '0'..='9' => {
+                    let start = index - 1;
+                    while index < chars.len() && chars[index].is_ascii_digit() {
+                        index += 1;
+                    }
+                    if let Some(escaped) = Self::decode_u32_escape(&chars[start..index], 10) {
+                        decoded.push(escaped);
+                    } else {
+                        decoded.push('\\');
+                        decoded.extend(chars[start..index].iter());
+                    }
+                }
+                'x' => {
+                    let start = index;
+                    if let Some(end) = start.checked_add(2).filter(|end| *end <= chars.len()) {
+                        if let Some(escaped) = Self::decode_u32_escape(&chars[start..end], 16) {
+                            decoded.push(escaped);
+                            index = end;
+                        } else {
+                            decoded.push('\\');
+                            decoded.push('x');
+                        }
+                    } else {
+                        decoded.push('\\');
+                        decoded.push('x');
+                    }
+                }
+                'u' => {
+                    if index < chars.len() && chars[index] == '{' {
+                        let hex_start = index + 1;
+                        let mut end = hex_start;
+                        while end < chars.len() && chars[end] != '}' {
+                            end += 1;
+                        }
+                        if end < chars.len() && end > hex_start {
+                            if let Some(escaped) =
+                                Self::decode_u32_escape(&chars[hex_start..end], 16)
+                            {
+                                decoded.push(escaped);
+                                index = end + 1;
+                            } else {
+                                decoded.push('\\');
+                                decoded.push('u');
+                            }
+                        } else {
+                            decoded.push('\\');
+                            decoded.push('u');
+                        }
+                    } else {
+                        let start = index;
+                        if let Some(end) =
+                            start.checked_add(4).filter(|end| *end <= chars.len())
+                        {
+                            if let Some(escaped) = Self::decode_u32_escape(&chars[start..end], 16)
+                            {
+                                decoded.push(escaped);
+                                index = end;
+                            } else {
+                                decoded.push('\\');
+                                decoded.push('u');
+                            }
+                        } else {
+                            decoded.push('\\');
+                            decoded.push('u');
+                        }
+                    }
+                }
                 other => {
                     decoded.push('\\');
                     decoded.push(other);
@@ -328,5 +401,11 @@ impl AstParser {
         }
 
         decoded
+    }
+
+    fn decode_u32_escape(digits: &[char], radix: u32) -> Option<char> {
+        let text: String = digits.iter().collect();
+        let value = u32::from_str_radix(&text, radix).ok()?;
+        char::from_u32(value)
     }
 }
