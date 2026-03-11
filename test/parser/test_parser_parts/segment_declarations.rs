@@ -1,5 +1,20 @@
 use super::*;
 use fol_parser::ast::DeclOption;
+use std::fs;
+use std::time::{SystemTime, UNIX_EPOCH};
+
+fn unique_temp_root(label: &str) -> std::path::PathBuf {
+    let stamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("System time should be after unix epoch")
+        .as_nanos();
+    std::env::temp_dir().join(format!(
+        "fol_segment_decl_{}_{}_{}",
+        label,
+        std::process::id(),
+        stamp
+    ))
+}
 
 #[test]
 fn test_top_level_segment_declaration_parsing() {
@@ -122,6 +137,54 @@ fn test_segment_declaration_accepts_quoted_names() {
                     if name == "core"
                         && matches!(seg_type, FolType::Module { .. })
                         && body.iter().any(|stmt| matches!(stmt, AstNode::DefDecl { name, .. } if name == "helper"))
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_segment_declaration_preserves_inner_opposite_quote_chars() {
+    let temp_root = unique_temp_root("inner_quotes");
+    fs::create_dir_all(&temp_root).expect("Should create temp segment fixture dir");
+    let fixture = temp_root.join("inner_quotes.fol");
+    fs::write(
+        &fixture,
+        "seg \"co're\": mod = { def helper: blk = {}; }\nseg 'quo\"te': mod = { def value: blk = {}; }\n",
+    )
+    .expect("Should write temp segment fixture");
+
+    let mut file_stream =
+        FileStream::from_file(fixture.to_str().expect("Segment fixture path should be UTF-8"))
+            .expect("Should read temp segment fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should preserve inner opposite-family quotes in segment names");
+
+    fs::remove_dir_all(&temp_root).ok();
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::SegDecl { name, seg_type, body, .. }
+                        if name == "co're"
+                            && matches!(seg_type, FolType::Module { .. })
+                            && body.iter().any(|stmt| matches!(stmt, AstNode::DefDecl { name, .. } if name == "helper"))
+                )
+            }));
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::SegDecl { name, seg_type, body, .. }
+                        if name == "quo\"te"
+                            && matches!(seg_type, FolType::Module { .. })
+                            && body.iter().any(|stmt| matches!(stmt, AstNode::DefDecl { name, .. } if name == "value"))
                 )
             }));
         }
