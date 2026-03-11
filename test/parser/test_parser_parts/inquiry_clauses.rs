@@ -1,4 +1,19 @@
 use super::*;
+use std::fs;
+use std::time::{SystemTime, UNIX_EPOCH};
+
+fn unique_temp_root(label: &str) -> std::path::PathBuf {
+    let stamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("System time should be after unix epoch")
+        .as_nanos();
+    std::env::temp_dir().join(format!(
+        "fol_inquiry_clause_{}_{}_{}",
+        label,
+        std::process::id(),
+        stamp
+    ))
+}
 
 #[test]
 fn test_function_inquiry_clause_parsing() {
@@ -299,6 +314,54 @@ fn test_quoted_inquiry_targets_parsing() {
                 if name == "inspect"
                     && inquiries.iter().any(|node| matches!(node, AstNode::Inquiry { target, .. } if inquiry_target_is(target, "cache")))
                     && inquiries.iter().any(|node| matches!(node, AstNode::Inquiry { target, .. } if inquiry_target_is(target, "sink")))
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_quoted_inquiry_targets_preserve_inner_opposite_quote_chars() {
+    let temp_root = unique_temp_root("inner_quotes");
+    fs::create_dir_all(&temp_root).expect("Should create temp inquiry fixture dir");
+    let fixture = temp_root.join("inner_quotes.fol");
+    fs::write(
+        &fixture,
+        "fun[] inspect(value: int): int = {\n    return value;\n    where(\"cache 'hot'\"; 'sink \"cold\"') {\n        value;\n    }\n}\n",
+    )
+    .expect("Should write temp inquiry fixture");
+
+    let mut file_stream = FileStream::from_file(
+        fixture
+            .to_str()
+            .expect("Inquiry fixture path should be UTF-8"),
+    )
+    .expect("Should read temp inquiry fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should preserve inner opposite-family quotes in inquiry targets");
+
+    fs::remove_dir_all(&temp_root).ok();
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::FunDecl { name, inquiries, .. }
+                    if name == "inspect"
+                        && inquiries.iter().any(|node| matches!(
+                            node,
+                            AstNode::Inquiry { target, .. }
+                                if inquiry_target_is(target, "cache 'hot'")
+                        ))
+                        && inquiries.iter().any(|node| matches!(
+                            node,
+                            AstNode::Inquiry { target, .. }
+                                if inquiry_target_is(target, "sink \"cold\"")
+                        ))
             )));
         }
         _ => panic!("Expected program node"),

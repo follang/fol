@@ -365,11 +365,7 @@ impl AstParser {
         let token = tokens.curr(false)?;
 
         if token.key().is_textual_literal() {
-            let target = token
-                .con()
-                .trim()
-                .trim_matches(|c| c == '"' || c == '\'')
-                .to_string();
+            let target = Self::exact_unquote_text(token.con());
             let _ = tokens.bump();
             return Ok(InquiryTarget::Quoted(target));
         }
