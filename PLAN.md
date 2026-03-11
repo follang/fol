@@ -482,7 +482,7 @@ Do not move to the next compiler step until all of these are true:
 - [ ] lexer literal taxonomy is fixed for supported forms
 - [ ] parser root AST shape is fixed
 - [x] parser literal lowering is complete for supported forms
-- [ ] stream, lexer, and parser contracts are written down
+- [x] stream, lexer, and parser contracts are written down
 - [ ] regression tests cover the corrected behavior
 
 ## 11. Definition Of Done
