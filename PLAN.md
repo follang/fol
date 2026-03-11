@@ -97,10 +97,10 @@ Done when:
 ### 5.2 Source identity
 
 - [ ] Define what uniquely identifies a source at the stream boundary.
-- [ ] Decide whether canonical absolute path is the primary identity.
+- [x] Decide whether canonical absolute path is the primary identity.
 - [ ] Decide how `package` and `namespace` participate in identity.
 - [ ] Write down whether the same file can appear twice under different logical identities.
-- [ ] Make tests assert the chosen behavior.
+- [x] Make tests assert the chosen behavior.
 
 Done when:
 - [ ] A future resolver could use stream output without guessing what a source "is".

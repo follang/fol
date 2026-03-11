@@ -316,6 +316,39 @@ mod namespace_tests {
     }
 
     #[test]
+    fn test_source_identity_uses_canonical_path_and_preserves_call_site() {
+        let file_sources = Source::init("test/legacy/main/main.fol", SourceType::File)
+            .expect("Should create file-backed source");
+        let folder_sources = Source::init("test/legacy/main", SourceType::Folder)
+            .expect("Should create folder-backed sources");
+        let folder_main = folder_sources
+            .iter()
+            .find(|source| source.path.ends_with("test/legacy/main/main.fol"))
+            .expect("Folder-backed sources should include main.fol");
+        let file_main = &file_sources[0];
+        let canonical = std::fs::canonicalize("test/legacy/main/main.fol")
+            .expect("Should canonicalize main.fol")
+            .to_string_lossy()
+            .to_string();
+
+        assert_eq!(file_main.call, "test/legacy/main/main.fol");
+        assert_eq!(folder_main.call, "test/legacy/main");
+        assert_eq!(file_main.path, canonical, "File source path should be canonical");
+        assert_eq!(
+            folder_main.path, canonical,
+            "Folder and file source discovery should agree on canonical identity"
+        );
+        assert_eq!(
+            file_main.namespace, folder_main.namespace,
+            "The same physical file should keep the same namespace"
+        );
+        assert_eq!(
+            file_main.package, folder_main.package,
+            "The same physical file should keep the same package"
+        );
+    }
+
+    #[test]
     fn test_namespace_output_integration() {
         // Test that the namespace information is properly integrated
         let sources =
