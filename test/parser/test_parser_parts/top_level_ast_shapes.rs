@@ -83,3 +83,45 @@ fn test_top_level_log_currently_leaks_body_before_declaration() {
         "Logical declarations currently lower through FunDecl and should remain authoritative"
     );
 }
+
+#[test]
+fn test_type_member_routines_stay_nested_and_do_not_leak_to_root() {
+    let declarations = parse_program_declarations("test/parser/simple_typ_record_methods.fol");
+
+    assert_eq!(
+        declarations.len(),
+        1,
+        "Type member routines should not leak additional top-level nodes into the program root"
+    );
+
+    match &declarations[0] {
+        AstNode::TypeDecl {
+            name,
+            type_def:
+                TypeDefinition::Record {
+                    fields, members, ..
+                },
+            ..
+        } => {
+            assert_eq!(name, "Computer", "Fixture should parse the Computer type");
+            assert!(
+                matches!(fields.get("brand"), Some(FolType::Named { name }) if name == "str"),
+                "Record field should remain on the type definition"
+            );
+            assert_eq!(members.len(), 3, "All three routine members should stay nested");
+            assert!(members.iter().any(|member| matches!(
+                member,
+                AstNode::FunDecl { name, .. } if name == "getBrand"
+            )));
+            assert!(members.iter().any(|member| matches!(
+                member,
+                AstNode::ProDecl { name, .. } if name == "reset"
+            )));
+            assert!(members.iter().any(|member| matches!(
+                member,
+                AstNode::FunDecl { name, .. } if name == "ready"
+            )));
+        }
+        other => panic!("Expected record type declaration, got {:?}", other),
+    }
+}
