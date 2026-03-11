@@ -8,6 +8,9 @@ use crate::token::{
 };
 use crate::token::{help::*, KEYWORD, KEYWORD::*};
 
+// Stage 1 owns first-pass token classification only.
+// It converts raw characters into the initial token families before later
+// folding and numeric disambiguation refine the stream.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Element {
     key: KEYWORD,

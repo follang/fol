@@ -235,7 +235,7 @@ Done when:
 
 - [ ] Write down what each stage owns.
 - [x] Keep stage0 about raw character windowing only.
-- [ ] Keep stage1 about first-pass token classification only.
+- [x] Keep stage1 about first-pass token classification only.
 - [ ] Keep stage2 about token folding and normalization only.
 - [ ] Keep stage3 about final disambiguation only.
 - [ ] Remove stage overlap if it causes hidden coupling.
