@@ -170,6 +170,9 @@ mod named_generics;
 #[path = "test_parser_parts/named_function_types.rs"]
 mod named_function_types;
 #[cfg(test)]
+#[path = "test_parser_parts/name_path_shapes.rs"]
+mod name_path_shapes;
+#[cfg(test)]
 #[path = "test_parser_parts/nil_literal_expressions.rs"]
 mod nil_literal_expressions;
 #[cfg(test)]
