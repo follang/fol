@@ -34,7 +34,7 @@ impl AstParser {
             }
 
             let value = match token.key() {
-                KEYWORD::Literal(LITERAL::Stringy) | KEYWORD::Literal(LITERAL::Quoted) => {
+                KEYWORD::Literal(LITERAL::CookedQuoted) | KEYWORD::Literal(LITERAL::RawQuoted) => {
                     Self::exact_unquote_text(token.con())
                 }
                 _ => Self::expect_named_label(&token, "Expected tst[...] argument")?,

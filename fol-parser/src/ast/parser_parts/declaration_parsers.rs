@@ -610,7 +610,7 @@ impl AstParser {
              Self::reject_illegal_token(&token)?;
 
             let segment = match token.key() {
-                KEYWORD::Literal(LITERAL::Stringy) | KEYWORD::Literal(LITERAL::Quoted) => {
+                KEYWORD::Literal(LITERAL::CookedQuoted) | KEYWORD::Literal(LITERAL::RawQuoted) => {
                     Self::exact_unquote_text(token.con())
                 }
                 _ => token.con().trim().to_string(),

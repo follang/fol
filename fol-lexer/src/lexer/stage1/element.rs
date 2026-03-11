@@ -309,9 +309,9 @@ impl Element {
     pub fn encap(&mut self, code: &mut stage0::Elements) -> Vod {
         let litsym = code.curr()?.0;
         if litsym == '\'' {
-            self.key = Literal(LITERAL::Quoted);
+            self.key = Literal(LITERAL::RawQuoted);
         } else {
-            self.key = Literal(LITERAL::Stringy);
+            self.key = Literal(LITERAL::CookedQuoted);
         }
         self.push(code)?;
         // Escapes stay verbatim in the token payload during front-end hardening.

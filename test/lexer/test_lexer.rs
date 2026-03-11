@@ -396,7 +396,7 @@ mod lexer_tests {
             vec![
                 (KEYWORD::Identifier, "alpha".to_string()),
                 (KEYWORD::Void(VOID::Boundary), String::new()),
-                (KEYWORD::Literal(LITERAL::Stringy), "\"beta\"".to_string()),
+                (KEYWORD::Literal(LITERAL::CookedQuoted), "\"beta\"".to_string()),
             ],
             "Cross-file boundaries must keep identifiers and following quoted literals separate"
         );
@@ -668,7 +668,7 @@ mod lexer_tests {
         );
         assert!(
             tokens.iter().any(|(key, content)| {
-                matches!(key, KEYWORD::Literal(LITERAL::Stringy)) && content == "\"hi\""
+                matches!(key, KEYWORD::Literal(LITERAL::CookedQuoted)) && content == "\"hi\""
             }),
             "Quoted literals should keep delimiters in payload"
         );
@@ -1062,11 +1062,11 @@ mod lexer_tests {
         assert_eq!(
             significant,
             vec![
-                (KEYWORD::Literal(LITERAL::Stringy), "\"line\\n\"".to_string()),
-                (KEYWORD::Literal(LITERAL::Stringy), "\"quote\\\"\"".to_string()),
-                (KEYWORD::Literal(LITERAL::Stringy), "\"bad\\q\"".to_string()),
+                (KEYWORD::Literal(LITERAL::CookedQuoted), "\"line\\n\"".to_string()),
+                (KEYWORD::Literal(LITERAL::CookedQuoted), "\"quote\\\"\"".to_string()),
+                (KEYWORD::Literal(LITERAL::CookedQuoted), "\"bad\\q\"".to_string()),
             ],
-            "Quoted payloads should preserve both conventional and unknown escape spellings verbatim at the lexer boundary"
+            "Cooked quoted payloads should preserve both conventional and unknown escape spellings verbatim at the lexer boundary"
         );
     }
 
@@ -1096,10 +1096,10 @@ mod lexer_tests {
         assert_eq!(
             significant,
             vec![(
-                KEYWORD::Literal(LITERAL::Stringy),
+                KEYWORD::Literal(LITERAL::CookedQuoted),
                 "\"line one\nline two\"".to_string()
             )],
-            "Quoted content should keep physical newlines inside the token payload instead of using a special continuation rule"
+            "Cooked quoted content should keep physical newlines inside the token payload instead of using a special continuation rule"
         );
 
         std::fs::remove_file(&temp_path).ok();
@@ -1111,13 +1111,13 @@ mod lexer_tests {
 
         assert!(
             tokens.iter().any(|(key, content)| {
-                matches!(key, KEYWORD::Literal(LITERAL::Stringy)) && content == "\"hello\""
+                matches!(key, KEYWORD::Literal(LITERAL::CookedQuoted)) && content == "\"hello\""
             }),
             "String literal payload should keep its double-quote delimiters"
         );
         assert!(
             tokens.iter().any(|(key, content)| {
-                matches!(key, KEYWORD::Literal(LITERAL::Quoted)) && content == "'c'"
+                matches!(key, KEYWORD::Literal(LITERAL::RawQuoted)) && content == "'c'"
             }),
             "Single-quoted literal payload should keep its delimiters on its own token family"
         );
@@ -1129,13 +1129,13 @@ mod lexer_tests {
 
         assert!(
             tokens.iter().any(|(key, content)| {
-                matches!(key, KEYWORD::Literal(LITERAL::Stringy)) && content == "\"hello\""
+                matches!(key, KEYWORD::Literal(LITERAL::CookedQuoted)) && content == "\"hello\""
             }),
             "Double-quoted text should stay on the string token family"
         );
         assert!(
             tokens.iter().any(|(key, content)| {
-                matches!(key, KEYWORD::Literal(LITERAL::Quoted)) && content == "'c'"
+                matches!(key, KEYWORD::Literal(LITERAL::RawQuoted)) && content == "'c'"
             }),
             "Single-quoted text should no longer be conflated with double-quoted text"
         );
@@ -1308,11 +1308,11 @@ mod lexer_tests {
             significant,
             vec![
                 (
-                    KEYWORD::Literal(LITERAL::Stringy),
+                    KEYWORD::Literal(LITERAL::CookedQuoted),
                     "\"literal with `backticks` and // slash\"".to_string(),
                 ),
                 (
-                    KEYWORD::Literal(LITERAL::Quoted),
+                    KEYWORD::Literal(LITERAL::RawQuoted),
                     "'quoted with /* block */ and `ticks`'".to_string(),
                 ),
                 (KEYWORD::Keyword(BUILDIN::Var), "var".to_string()),

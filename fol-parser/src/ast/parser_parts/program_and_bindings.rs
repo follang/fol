@@ -589,8 +589,8 @@ impl AstParser {
         let raw = token.con().trim();
 
         match token.key() {
-            fol_lexer::token::KEYWORD::Literal(LITERAL::Stringy)
-            | fol_lexer::token::KEYWORD::Literal(LITERAL::Quoted) => self.parse_literal(raw),
+            fol_lexer::token::KEYWORD::Literal(LITERAL::CookedQuoted)
+            | fol_lexer::token::KEYWORD::Literal(LITERAL::RawQuoted) => self.parse_literal(raw),
             fol_lexer::token::KEYWORD::Literal(LITERAL::Bool) => match raw {
                 "true" => Ok(AstNode::Literal(Literal::Boolean(true))),
                 "false" => Ok(AstNode::Literal(Literal::Boolean(false))),

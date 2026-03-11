@@ -55,7 +55,7 @@ impl KEYWORD {
     pub fn is_textual_literal(&self) -> bool {
         matches!(
             *self,
-            KEYWORD::Literal(LITERAL::Stringy) | KEYWORD::Literal(LITERAL::Quoted)
+            KEYWORD::Literal(LITERAL::CookedQuoted) | KEYWORD::Literal(LITERAL::RawQuoted)
         )
     }
     pub fn is_buildin(&self) -> bool {

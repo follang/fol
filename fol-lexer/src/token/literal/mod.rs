@@ -4,8 +4,8 @@ use std::fmt;
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum LITERAL {
     ANY,
-    Stringy,
-    Quoted,
+    CookedQuoted,
+    RawQuoted,
     Bool,
     Float,
     Decimal,
@@ -17,8 +17,8 @@ pub enum LITERAL {
 impl fmt::Display for LITERAL {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let t = match self {
-            LITERAL::Stringy => Some("string"),
-            LITERAL::Quoted => Some("quoted"),
+            LITERAL::CookedQuoted => Some("cooked-quoted"),
+            LITERAL::RawQuoted => Some("raw-quoted"),
             LITERAL::Float => Some("float"),
             LITERAL::Bool => Some("bool"),
             LITERAL::Decimal => Some("decimal"),
