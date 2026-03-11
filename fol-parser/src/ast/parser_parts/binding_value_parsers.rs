@@ -64,7 +64,7 @@ impl AstParser {
             Some(token) => token,
             None => return false,
         };
-        if Self::token_to_named_label(&first).is_none() {
+        if !(Self::token_to_named_label(&first).is_some() || first.key().is_illegal()) {
             return false;
         }
 

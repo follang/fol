@@ -910,3 +910,23 @@ fn test_loop_iteration_binder_illegal_name_reports_offending_token_location() {
         "Illegal loop binders should retain a concrete source column"
     );
 }
+
+#[test]
+fn test_grouped_binding_segment_illegal_name_reports_offending_token_location() {
+    let (message, line, column) =
+        parse_error_snapshot("test/parser/simple_var_grouped_illegal_binding_name.fol");
+
+    assert!(
+        message.contains("Parser encountered illegal token"),
+        "Illegal grouped binding names should report an explicit illegal-token diagnostic, got: {}",
+        message
+    );
+    assert_eq!(
+        line, 1,
+        "Illegal grouped binding names should anchor to the binding declaration line"
+    );
+    assert!(
+        column > 0,
+        "Illegal grouped binding names should retain a concrete source column"
+    );
+}
