@@ -146,7 +146,7 @@ Done when:
 
 - [x] Decide whether eager source loading is accepted for this cycle.
 - [x] If accepted, mark it as intentional.
-- [ ] If not accepted, schedule a contained follow-up after parser hardening.
+- [x] If not accepted, schedule a contained follow-up after parser hardening.
 
 Done when:
 
