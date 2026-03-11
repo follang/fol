@@ -400,8 +400,8 @@ Target files:
 
 ### 10.7 Tighten Parser Error Surfaces After The Lexer Cleanup
 
-- [ ] Add a nested illegal-token diagnostic matrix after `Illegal` and `Void` are separated.
-- [ ] Ensure malformed tokens are reported at the offending token instead of a following separator.
+- [x] Add a nested illegal-token diagnostic matrix after `Illegal` and `Void` are separated.
+- [x] Ensure malformed tokens are reported at the offending token instead of a following separator.
 - [ ] Re-run representative `Expected X` and `Expected closing ...` matrices after AST and lexer changes.
 - [ ] Keep unsupported combination failures explicit.
 - [ ] Remove any tests that only preserve known-bad legacy parser compromises.
