@@ -870,3 +870,23 @@ fn test_rest_binding_illegal_name_reports_offending_token_location() {
         "Illegal rest binding names should retain a concrete source column"
     );
 }
+
+#[test]
+fn test_plain_binding_illegal_name_reports_offending_token_location() {
+    let (message, line, column) =
+        parse_error_snapshot("test/parser/simple_var_illegal_binding_name.fol");
+
+    assert!(
+        message.contains("Parser encountered illegal token"),
+        "Illegal plain binding names should report an explicit illegal-token diagnostic, got: {}",
+        message
+    );
+    assert_eq!(
+        line, 1,
+        "Illegal plain binding names should anchor to the binding declaration line"
+    );
+    assert!(
+        column > 0,
+        "Illegal plain binding names should retain a concrete source column"
+    );
+}

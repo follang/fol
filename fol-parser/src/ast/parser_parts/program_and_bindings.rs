@@ -856,12 +856,8 @@ impl AstParser {
             return Ok(BindingPattern::Name("_".to_string()));
         }
 
-        let name = Self::token_to_named_label(&token).ok_or_else(|| {
-            Box::new(ParseError::from_token(
-                &token,
-                format!("Expected identifier after '{}'", keyword),
-            )) as Box<dyn Glitch>
-        })?;
+        let name =
+            Self::expect_named_label(&token, &format!("Expected identifier after '{}'", keyword))?;
         let _ = tokens.bump();
         Ok(BindingPattern::Name(name))
     }
