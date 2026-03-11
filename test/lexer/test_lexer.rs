@@ -954,4 +954,25 @@ mod lexer_error_tests {
 
         std::fs::remove_file(&temp_path).ok();
     }
+
+    #[test]
+    fn test_identifiers_with_repeated_underscore_runs_become_illegal_tokens() {
+        let tokens = tokenize_file("test/lexer/identifier_repeated_underscores.fol");
+        let significant: Vec<(KEYWORD, String)> = tokens
+            .into_iter()
+            .filter(|(key, _)| !key.is_space() && !key.is_eof())
+            .collect();
+
+        assert_eq!(
+            significant,
+            vec![
+                (KEYWORD::Identifier, "good_name".to_string()),
+                (KEYWORD::Illegal, "bad__name".to_string()),
+                (KEYWORD::Illegal, "__hidden".to_string()),
+                (KEYWORD::Identifier, "good_2".to_string()),
+            ],
+            "Identifiers with repeated underscore runs should be illegal while single underscores remain valid separators"
+        );
+    }
+
 }

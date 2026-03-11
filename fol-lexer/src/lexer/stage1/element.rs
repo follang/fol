@@ -267,6 +267,10 @@ impl Element {
             self.bump(code)?;
             con.push(code.curr()?.0);
         }
+        if self.con().contains("__") {
+            self.set_key(Illegal);
+            return Ok(());
+        }
         match self.con().as_str() {
             "use" => self.set_key(Keyword(BUILDIN::Use)),
             "def" => self.set_key(Keyword(BUILDIN::Def)),
