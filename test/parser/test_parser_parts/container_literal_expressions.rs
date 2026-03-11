@@ -14,7 +14,7 @@ fn test_container_literals_parse_in_assignment_and_return() {
 
     match ast {
         AstNode::Program { declarations } => {
-            let has_container_assignment = declarations.iter().any(|node| {
+            let has_container_assignment = program_surface_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Assignment { value, .. }
@@ -25,7 +25,7 @@ fn test_container_literals_parse_in_assignment_and_return() {
                 )
             });
 
-            let has_container_return = declarations.iter().any(|node| {
+            let has_container_return = program_surface_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Return { value: Some(value) }
@@ -58,7 +58,7 @@ fn test_semicolon_container_literals_parse_in_assignment_and_return() {
 
     match ast {
         AstNode::Program { declarations } => {
-            let has_container_assignment = declarations.iter().any(|node| {
+            let has_container_assignment = program_surface_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Assignment { value, .. }
@@ -69,7 +69,7 @@ fn test_semicolon_container_literals_parse_in_assignment_and_return() {
                 )
             });
 
-            let has_container_return = declarations.iter().any(|node| {
+            let has_container_return = program_surface_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Return { value: Some(value) }
@@ -102,7 +102,7 @@ fn test_semicolon_container_literals_parse_in_initializers() {
 
     match ast {
         AstNode::Program { declarations } => {
-            assert!(declarations.iter().any(|node| matches!(
+            assert!(program_surface_nodes(&declarations).into_iter().any(|node| matches!(
                 node,
                 AstNode::FunDecl { body, .. }
                 if body.iter().any(|stmt| matches!(
@@ -132,7 +132,7 @@ fn test_semicolon_container_literals_parse_in_call_args() {
 
     match ast {
         AstNode::Program { declarations } => {
-            assert!(declarations.iter().any(|node| matches!(
+            assert!(program_surface_nodes(&declarations).into_iter().any(|node| matches!(
                 node,
                 AstNode::FunDecl { body, .. }
                 if body.iter().any(|stmt| matches!(
@@ -166,7 +166,7 @@ fn test_trailing_separator_container_literals_parse_in_assignment_and_return() {
 
     match ast {
         AstNode::Program { declarations } => {
-            let has_container_assignment = declarations.iter().any(|node| {
+            let has_container_assignment = program_surface_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Assignment { value, .. }
@@ -177,7 +177,7 @@ fn test_trailing_separator_container_literals_parse_in_assignment_and_return() {
                 )
             });
 
-            let has_container_return = declarations.iter().any(|node| {
+            let has_container_return = program_surface_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Return { value: Some(value) }
@@ -211,7 +211,7 @@ fn test_trailing_separator_container_literals_parse_in_initializers() {
 
     match ast {
         AstNode::Program { declarations } => {
-            assert!(declarations.iter().any(|node| matches!(
+            assert!(program_surface_nodes(&declarations).into_iter().any(|node| matches!(
                 node,
                 AstNode::FunDecl { body, .. }
                 if body.iter().any(|stmt| matches!(
@@ -242,7 +242,7 @@ fn test_trailing_separator_container_literals_parse_in_call_args() {
 
     match ast {
         AstNode::Program { declarations } => {
-            assert!(declarations.iter().any(|node| matches!(
+            assert!(program_surface_nodes(&declarations).into_iter().any(|node| matches!(
                 node,
                 AstNode::FunDecl { body, .. }
                 if body.iter().any(|stmt| matches!(

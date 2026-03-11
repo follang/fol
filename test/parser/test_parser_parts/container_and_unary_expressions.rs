@@ -14,7 +14,7 @@ fn test_braced_range_expressions_parse_in_assignment_and_return() {
 
     match ast {
         AstNode::Program { declarations } => {
-            let has_range_assignment = declarations.iter().any(|node| {
+            let has_range_assignment = program_surface_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Assignment { value, .. }
@@ -22,7 +22,7 @@ fn test_braced_range_expressions_parse_in_assignment_and_return() {
                 )
             });
 
-            let has_range_return = declarations.iter().any(|node| {
+            let has_range_return = program_surface_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Return { value: Some(value) }
@@ -186,7 +186,7 @@ fn test_unary_plus_preserves_call_and_method_call_expression_shapes() {
 
     let (has_call_assignment, has_method_return) = match ast {
         AstNode::Program { declarations } => {
-            let has_call_assignment = declarations.iter().any(|node| {
+            let has_call_assignment = program_surface_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Assignment { value, .. }
@@ -200,7 +200,7 @@ fn test_unary_plus_preserves_call_and_method_call_expression_shapes() {
                 )
             });
 
-            let has_method_return = declarations.iter().any(|node| {
+            let has_method_return = program_surface_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Return { value: Some(value) }
@@ -329,7 +329,7 @@ fn test_unary_ref_deref_chains_parse_with_expected_shape() {
 
     let (has_chain_assignment, has_chain_return) = match ast {
         AstNode::Program { declarations } => {
-            let has_chain_assignment = declarations.iter().any(|node| {
+            let has_chain_assignment = program_surface_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::Assignment { value, .. }
@@ -350,7 +350,7 @@ fn test_unary_ref_deref_chains_parse_with_expected_shape() {
                     )
                 });
 
-            let has_chain_return = declarations.iter().any(|node| {
+            let has_chain_return = program_surface_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::Return { value: Some(value) }
@@ -400,7 +400,7 @@ fn test_mixed_unary_chains_parse_with_expected_shape() {
 
     let (has_assignment_chain, has_return_chain) = match ast {
         AstNode::Program { declarations } => {
-            let has_assignment_chain = declarations.iter().any(|node| {
+            let has_assignment_chain = program_surface_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::Assignment { value, .. }
@@ -428,7 +428,7 @@ fn test_mixed_unary_chains_parse_with_expected_shape() {
                     )
                 });
 
-            let has_return_chain = declarations.iter().any(|node| {
+            let has_return_chain = program_surface_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Return { value: Some(value) }
@@ -732,7 +732,7 @@ fn test_field_assignment_target_parsing() {
     match ast {
         AstNode::Program { declarations } => {
             assert!(
-                    declarations.iter().any(|node| {
+                    program_surface_nodes(&declarations).into_iter().any(|node| {
                         matches!(
                             node,
                             AstNode::Assignment { target, value }
@@ -767,7 +767,7 @@ fn test_index_assignment_target_parsing() {
     match ast {
         AstNode::Program { declarations } => {
             assert!(
-                    declarations.iter().any(|node| {
+                    program_surface_nodes(&declarations).into_iter().any(|node| {
                         matches!(
                             node,
                             AstNode::Assignment { target, value }
