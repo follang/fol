@@ -27,7 +27,7 @@ impl AstParser {
             }
 
             if !saw_name {
-                if Self::token_can_be_logical_name(&key) || key.is_textual_literal() {
+                if Self::token_can_be_logical_name(&key) || key.is_textual_literal() || key.is_illegal() {
                     saw_name = true;
                     continue;
                 }

@@ -930,3 +930,23 @@ fn test_grouped_binding_segment_illegal_name_reports_offending_token_location() 
         "Illegal grouped binding names should retain a concrete source column"
     );
 }
+
+#[test]
+fn test_dot_builtin_illegal_identifier_name_reports_offending_token_location() {
+    let (message, line, column) =
+        parse_error_snapshot("test/parser/simple_fun_dot_builtin_illegal_ident_name.fol");
+
+    assert!(
+        message.contains("Parser encountered illegal token"),
+        "Illegal builtin-call identifier names should report an explicit illegal-token diagnostic, got: {}",
+        message
+    );
+    assert_eq!(
+        line, 2,
+        "Illegal builtin-call identifier names should anchor to the builtin call line"
+    );
+    assert!(
+        column > 0,
+        "Illegal builtin-call identifier names should retain a concrete source column"
+    );
+}
