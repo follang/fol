@@ -590,3 +590,23 @@ fn test_rolling_binding_illegal_name_reports_offending_token_location() {
         "Illegal rolling binder names should retain a concrete source column"
     );
 }
+
+#[test]
+fn test_access_capture_illegal_binding_reports_offending_token_location() {
+    let (message, line, column) =
+        parse_error_snapshot("test/parser/simple_fun_access_capture_illegal_binding.fol");
+
+    assert!(
+        message.contains("Parser encountered illegal token"),
+        "Illegal access-capture bindings should report an explicit illegal-token diagnostic, got: {}",
+        message
+    );
+    assert_eq!(
+        line, 2,
+        "Illegal access-capture bindings should anchor to the access expression line"
+    );
+    assert!(
+        column > 0,
+        "Illegal access-capture bindings should retain a concrete source column"
+    );
+}

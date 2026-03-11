@@ -39,12 +39,10 @@ impl AstParser {
         self.skip_ignorable(tokens);
 
         let binding_token = tokens.curr(false)?;
-        let binding = Self::token_to_named_label(&binding_token).ok_or_else(|| {
-            Box::new(ParseError::from_token(
-                &binding_token,
-                "Expected binding name after '=>' in access pattern".to_string(),
-            )) as Box<dyn Glitch>
-        })?;
+        let binding = Self::expect_named_label(
+            &binding_token,
+            "Expected binding name after '=>' in access pattern",
+        )?;
         let _ = tokens.bump();
 
         Ok(AstNode::PatternCapture {
