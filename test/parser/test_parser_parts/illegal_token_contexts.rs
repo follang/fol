@@ -594,6 +594,19 @@ fn test_use_declaration_illegal_name_reports_offending_token_location() {
 }
 
 #[test]
+fn test_use_declaration_illegal_option_reports_offending_token_location() {
+    let (message, line, column) = parse_error_snapshot("test/parser/simple_use_illegal_option.fol");
+
+    assert!(
+        message.contains("Parser encountered illegal token"),
+        "Illegal use options should surface as explicit illegal-token diagnostics, got: {}",
+        message
+    );
+    assert_eq!(line, 1, "Illegal use options should report the declaration line");
+    assert!(column > 0, "Illegal use options should retain a concrete source column");
+}
+
+#[test]
 fn test_inquiry_target_illegal_segment_reports_offending_token_location() {
     let (message, line, column) =
         parse_error_snapshot("test/parser/simple_fun_inquiry_illegal_target_segment.fol");
