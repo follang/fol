@@ -130,9 +130,9 @@ Target files:
 
 ### 7.1 Package Authority
 
-- [ ] Decide whether package identity is defined by entry root, explicit override, or a future FOL manifest layer.
-- [ ] Decide whether `Cargo.toml` support stays only as an optional compatibility path.
-- [ ] Decide whether detached folders and detached files should keep current fallback naming or be made stricter.
+- [x] Decide whether package identity is defined by entry root, explicit override, or a future FOL manifest layer.
+- [x] Decide whether `Cargo.toml` support stays only as an optional compatibility path.
+- [x] Decide whether detached folders and detached files should keep current fallback naming or be made stricter.
 
 ### 7.2 Comment Authority
 
@@ -175,13 +175,13 @@ Target files:
 
 ### 8.1 Replace Host-Specific Package Detection
 
-- [ ] Remove `Cargo.toml` probing from the default package-name algorithm in `fol-stream/src/lib.rs`.
-- [ ] If compatibility support for Cargo remains, move it behind an explicit compatibility branch or helper.
-- [ ] Stop treating Rust project layout as the front-end’s package truth.
-- [ ] Replace the current `"unknown"` fallback with a deterministic, FOL-defined fallback.
-- [ ] Preserve the explicit package override behavior.
-- [ ] Add tests for detached folder, detached file, nested folder, and explicit override package identity.
-- [ ] Add tests that prove package naming no longer depends on host build files unless compatibility mode is requested.
+- [x] Remove `Cargo.toml` probing from the default package-name algorithm in `fol-stream/src/lib.rs`.
+- [x] If compatibility support for Cargo remains, move it behind an explicit compatibility branch or helper.
+- [x] Stop treating Rust project layout as the front-end’s package truth.
+- [x] Replace the current `"unknown"` fallback with a deterministic, FOL-defined fallback.
+- [x] Preserve the explicit package override behavior.
+- [x] Add tests for detached folder, detached file, nested folder, and explicit override package identity.
+- [x] Add tests that prove package naming no longer depends on host build files unless compatibility mode is requested.
 
 ### 8.2 Tighten Namespace Validation
 
@@ -217,7 +217,7 @@ Target files:
 
 Acceptance for Phase 1:
 
-- [ ] Package detection is FOL-defined.
+- [x] Package detection is FOL-defined.
 - [ ] Namespace validation is explicit.
 - [ ] Cross-file boundaries are explicit instead of synthetic source text.
 - [ ] Loading behavior is intentional, documented, and tested.
