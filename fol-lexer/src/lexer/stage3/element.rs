@@ -78,7 +78,17 @@ impl Element {
                 break;
             }
         }
-        if el.curr(false)?.key().is_number() && el.seek(0, false)?.key().is_operator() {
+        if el.curr(false)?.key().is_decimal()
+            && el.peek(0, false)?.key().is_dot()
+            && el.peek(1, false)?.key().is_decimal()
+        {
+            self.make_number(el)?;
+        } else if el.curr(false)?.key().is_dot()
+            && el.peek(0, false)?.key().is_decimal()
+            && (el.seek(0, false)?.key().is_continue() || el.seek(0, false)?.key().is_operator())
+        {
+            self.make_number(el)?;
+        } else if el.curr(false)?.key().is_number() && el.seek(0, false)?.key().is_operator() {
             self.make_number(el)?;
         } else if el.curr(false)?.key().is_number() && !el.seek(0, false)?.key().is_void() {
             self.set_key(Identifier);

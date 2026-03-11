@@ -162,6 +162,18 @@ mod lexer_tests {
     }
 
     #[test]
+    fn test_float_literal_payload_is_preserved() {
+        let tokens = tokenize_file("test/lexer/literals.fol");
+
+        assert!(
+            tokens.iter().any(|(key, content)| {
+                matches!(key, KEYWORD::Literal(LITERAL::Float)) && content == "3.14"
+            }),
+            "Lexer should preserve the full float payload for 3.14"
+        );
+    }
+
+    #[test]
     fn test_symbols() {
         let tokens = tokenize_file("test/lexer/symbols.fol");
 
