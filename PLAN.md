@@ -244,7 +244,7 @@ Target files:
 - [ ] Reject `_` as a standalone identifier if the book remains authoritative.
 - [ ] Reject repeated underscore runs if the book remains authoritative.
 - [ ] Decide whether identifier canonicalization belongs in the lexer crate, a shared front-end helper, or parser-side utilities.
-- [ ] Add a single front-end identifier normalization helper that later parser checks can reuse.
+- [x] Add a single front-end identifier normalization helper that later parser checks can reuse.
 - [ ] Decide whether keyword recognition is exact-case only or uses the same canonicalization policy.
 - [ ] Add lexer fixtures for valid and invalid identifier edges.
 - [ ] Add tests for case and underscore variants that should or should not be equivalent.
@@ -377,17 +377,17 @@ Target files:
 
 ### 10.5 Apply Book Identifier Equality To Parser-Owned Validations
 
-- [ ] Replace raw-string uniqueness checks with canonical identifier comparison for parameter names.
-- [ ] Do the same for capture names.
-- [ ] Do the same for generic names.
-- [ ] Do the same for use-declaration names.
+- [x] Replace raw-string uniqueness checks with canonical identifier comparison for parameter names.
+- [x] Do the same for capture names.
+- [x] Do the same for generic names.
+- [x] Do the same for use-declaration names.
 - [ ] Do the same for record field names.
 - [ ] Do the same for entry variant names.
 - [ ] Do the same for duplicate type-member names.
-- [ ] Do the same for rolling binding names.
+- [x] Do the same for rolling binding names.
 - [ ] Do the same for any other parser-owned duplicate set discovered during the audit.
-- [ ] Keep original spelling in diagnostics even when comparison uses canonical keys.
-- [ ] Add collision tests such as `value_name` vs `ValueName`, `Foo_Bar` vs `foobar`, and `A__B` if repeated underscores remain invalid.
+- [x] Keep original spelling in diagnostics even when comparison uses canonical keys.
+- [x] Add collision tests such as `value_name` vs `ValueName`, `Foo_Bar` vs `foobar`, and `A__B` if repeated underscores remain invalid.
 
 ### 10.6 Align Literal And Quoted-Name Lowering With The New Lexer Model
 
