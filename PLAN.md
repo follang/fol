@@ -438,7 +438,7 @@ Target area:
 Done when:
 
 - [x] Stream, lexer, and parser each have a written contract.
-- [ ] The current front-end can be handed to the next stage without guessing.
+- [x] The current front-end can be handed to the next stage without guessing.
 
 ## 9. Test Matrix
 
