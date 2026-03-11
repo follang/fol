@@ -288,7 +288,7 @@ Target area:
 - [ ] Remove top-level leakage of `fun` body statements into `Program.declarations`.
 - [ ] Remove top-level leakage of `pro` body statements into `Program.declarations`.
 - [ ] Audit whether any other declaration family leaks child nodes upward.
-- [ ] Add explicit AST-shape regression tests for top-level declarations.
+- [x] Add explicit AST-shape regression tests for top-level declarations.
 
 Done when:
 
