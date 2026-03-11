@@ -66,7 +66,7 @@ Do not use this plan for:
 ## 4. Phase Order
 
 - [x] Phase 1: stream hardening
-- [ ] Phase 2: lexer contract hardening
+- [x] Phase 2: lexer contract hardening
 - [ ] Phase 3: parser structural hardening
 - [ ] Phase 4: front-end contract freeze
 
