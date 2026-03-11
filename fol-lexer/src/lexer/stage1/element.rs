@@ -200,10 +200,7 @@ impl Element {
                 self.scan_prefixed_numeric(code, LITERAL::Octal, |ch| matches!(ch, '0'..='7'))?;
             } else if matches!(code.peek(0)?.0, 'b' | 'B') {
                 self.bump(code)?;
-                self.key = Literal(LITERAL::Binary);
-                while code.peek(0)?.0 == '0' || code.peek(0)?.0 == '1' || code.peek(0)?.0 == '_' {
-                    self.bump(code)?;
-                }
+                self.scan_prefixed_numeric(code, LITERAL::Binary, |ch| matches!(ch, '0' | '1'))?;
             }
         } else {
             self.push(code)?;

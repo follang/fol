@@ -651,6 +651,28 @@ mod lexer_tests {
     }
 
     #[test]
+    fn test_invalid_binary_literals_become_single_illegal_tokens() {
+        let tokens = tokenize_file("test/lexer/invalid_binary_literals.fol");
+        let significant: Vec<(KEYWORD, String)> = tokens
+            .into_iter()
+            .filter(|(key, _)| !key.is_space() && !key.is_eof())
+            .collect();
+
+        assert_eq!(
+            significant,
+            vec![
+                (KEYWORD::Illegal, "0b".to_string()),
+                (KEYWORD::Illegal, "0b_1".to_string()),
+                (KEYWORD::Illegal, "0b1_".to_string()),
+                (KEYWORD::Illegal, "0b102".to_string()),
+                (KEYWORD::Illegal, "0b10__01".to_string()),
+                (KEYWORD::Illegal, "0B_1".to_string()),
+            ],
+            "Malformed binary literals should stay one illegal token instead of splitting into partial numeric and trailing junk"
+        );
+    }
+
+    #[test]
     fn test_leading_dot_float_tokenizes_as_float() {
         let tokens = tokenize_file("test/lexer/leading_dot_float.fol");
         let significant: Vec<(KEYWORD, String)> = tokens
