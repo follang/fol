@@ -19,9 +19,9 @@
 
 FOL is a general-purpose, systems programming language designed for robustness, efficiency, portability, expressiveness and most importantly elegance. Heavily inspired (and shamelessly copying) from languages: zig, nim, c++, go, rust, julia (in this order), hence the name - FOL (Frankenstein's Objective Language). In Albanian language "fol" means "speak".
 
-<p align="center">  ** FOL IS STILL JUST AN IDEA **  </p>
+<p align="center">  ** FOL IS AN ACTIVE FRONT-END COMPILER WORKSPACE **  </p>
 
-Current compiler status: streaming and lexer pipeline are implemented and tested; parser implementation is in active incremental development.
+Current compiler status: the stream, lexer, parser, and diagnostics pipeline are implemented and actively tested. The front-end hardening pass is largely complete; the main compiler work still missing is later-phase semantic analysis, type checking, ownership rules, and backend/runtime work.
 
 <hr>
 
