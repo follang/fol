@@ -190,9 +190,6 @@ tests actually enforce today.
   repeated within the same declaration.
 - The parser rejects duplicate inquiry targets and duplicate type members in the grammar
   surfaces that already track those sets during parsing.
-- The parser performs a limited file-local routine signature scan so it can validate
-  `report` arity and a small amount of report-type compatibility for routines that declare
-  a custom error type.
 - Name resolution, whole-program type checking, ownership rules, and cross-file semantic
   validation are still outside the parser contract.
 
@@ -221,11 +218,6 @@ tests actually enforce today.
   - delimiter and separator matching
   - duplicate/conflicting parser-owned option rejection
   - AST lowering for literals, names, paths, and other grammar-owned forms
-- Semantic-adjacent checks stay only where the current front end already needs them to
-  keep parser results coherent:
-  - file-local routine signature seeding
-  - `report` arity validation
-  - limited `report` type-compatibility checks against the routine error type
 - Deferred work remains outside the parser boundary:
   - whole-program name resolution
   - whole-program type checking
@@ -237,24 +229,18 @@ tests actually enforce today.
 - `parser_parts` ownership is now explicit enough to maintain without broad structural
   refactoring:
   - program/root assembly lives in `program_and_bindings`
-  - literal atom lowering and `report` validation live in
-    `expression_atoms_and_report_validation`
-  - routine signature and header parsing live in `routine_signature_parsers`
+  - literal atom lowering lives in `expression_atoms_and_report_validation`
   - statement/expression boundary behavior is locked by focused parser tests instead of
     depending on cross-module guesswork
 - The remaining overlap hotspots are documented rather than hidden:
-  - routine surfaces still touch both signature parsing and body parsing modules
-  - `report` validation remains a semantic-adjacent parser-owned exception
+  - routine surfaces still touch both header parsing and body parsing modules
 - No additional parser-part reshuffle is required for this hardening pass because the
   current ownership boundaries are stable enough to support targeted maintenance.
 
 ### Hardening Boundary Freeze
 
-- During this hardening pass, no new parser-owned semantic checks have been added beyond
-  the semantic-adjacent validations that were already present before the contract freeze.
-- The remaining semantic-adjacent checks stay narrow and explicit:
-  file-local routine signature seeding, `report` arity validation, and limited
-  `report` type-compatibility checks.
+- During this hardening pass, parser-side semantic-adjacent `report` validation and
+  routine-signature pre-scanning were removed instead of expanded.
 - That keeps the parser boundary narrower than before this pass: new hardening work has
   stayed on syntax shape, AST invariants, token/literal continuity, and diagnostic
   consistency instead of growing parser-side semantic reach.
@@ -269,11 +255,9 @@ tests actually enforce today.
     explicit
   - representative parser failure modes are explicit and test-backed
 - The remaining front-end debt is narrow and declared up front:
-  - parser-owned semantic-adjacent `report` checks still exist
   - later semantic passes still need whole-program resolution and type analysis
-- That means the next stage no longer needs to guess at front-end structure, but it
-  should still treat the documented parser-owned semantic-adjacent checks as legacy
-  behavior to remove or relocate later.
+- That means the next stage no longer needs to guess at front-end structure or work
+  around parser-owned semantic checks.
 
 ### Statement And Expression Boundaries
 
@@ -298,9 +282,8 @@ tests actually enforce today.
   `implementation_declaration_parsers.rs`, and `standard_declaration_parsers.rs`:
   declaration-family parsing for the corresponding top-level syntactic forms.
 - `routine_declaration_parsers.rs`, `routine_headers_and_type_lowering.rs`,
-  `routine_signature_parsers.rs`, `routine_capture_parsers.rs`, and
-  `routine_body_parsers.rs`: routine header parsing, capture parsing, routine-local body
-  parsing, and the current routine-signature pre-scan used for parser-owned validation.
+  `routine_capture_parsers.rs`, and `routine_body_parsers.rs`: routine header parsing,
+  capture parsing, and routine-local body parsing.
 - `binding_alternative_parsers.rs`, `binding_option_parsers.rs`,
   `binding_value_parsers.rs`, and `grouped_binding_parsers.rs`: binding options,
   storage/visibility modifiers, grouped bindings, and binding value lowering.
@@ -332,9 +315,6 @@ tests actually enforce today.
 
 ## Deferred Front-End Debt
 
-- Parser root and declaration invariants are not frozen yet.
-- Name and path normalization rules are still spread across parser surfaces instead of
-  being stated as a single stable AST contract.
 - Later semantic phases remain out of scope for this front-end hardening pass.
 
 ## Hardening Execution Notes

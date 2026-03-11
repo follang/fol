@@ -35,18 +35,18 @@ Authority rule for this file: code and active tests win over older aspirational 
 
 - Workspace member crates: `5`
 - Root binary crate: `1`
-- Active Rust source lines scanned: `18405`
+- Active Rust source lines scanned: `17360`
 - Core compiler Rust lines scanned:
 - `fol-types`: `228`
 - `fol-stream`: `480`
 - `fol-lexer`: `2115`
-- `fol-parser`: `15056`
+- `fol-parser`: `14011`
 - `fol-diagnostics`: `267`
 - Root CLI: `259`
 - Active parser fixtures: `1057`
 - Active lexer tests: `36`
 - Active stream tests: `43`
-- Active parser/integration tests in `integration`: `1138`
+- Active parser/integration tests in `integration`: `1018`
 - Observed active integration failures during the run: `0`
 - Observed active integration run shape: suite is green
 
@@ -75,12 +75,9 @@ Authority rule for this file: code and active tests win over older aspirational 
 - `make test` passed
 - test totals observed:
 - `1` unit test
-- `1138` integration tests
-- The main remaining front-end debt is no longer suite breakage.
-- The main remaining front-end debt is the parser's still-present semantic-adjacent checks:
-- file-local routine signature seeding
-- `report` arity validation
-- limited `report` type-compatibility checks
+- `1018` integration tests
+- The main remaining front-end debt is no longer parser-boundary ambiguity.
+- The remaining missing work is later-phase compiler work, not front-end hardening.
 
 ## 5. Current Big Picture
 
@@ -100,7 +97,7 @@ Authority rule for this file: code and active tests win over older aspirational 
 - runtime/backend work
 - Front-end docs are now much closer to code truth:
 - [FRONTEND_CONTRACT.md](/home/bresilla/data/code/bresilla/fol/FRONTEND_CONTRACT.md) records the active stream, lexer, and parser contracts
-- `PLAN.md` records the hardening work and remaining open item
+- `PLAN.md` records the completed hardening work
 - older aspirational docs are still behind the code in places
 
 ## 6. Workspace Inventory
@@ -1367,20 +1364,13 @@ Authority rule for this file: code and active tests win over older aspirational 
 - duplicate type member detection: implemented
 - conflicting binding option detection: implemented
 - conflicting declaration visibility detection: implemented
-- conflicting return signature detection: implemented
 - method receiver type restrictions: implemented
-- report arity validation: implemented
-- report type-family validation: implemented
-- report unknown identifier detection: implemented
-- report unknown callable detection: implemented
-- report method overload arity diagnostics: implemented
+- unsupported declaration-family combinations: implemented
+- dedicated parser-owned expected-shape diagnostics: implemented
 
 ### 20.1 Important Caveat
 
-- These checks are currently living inside the parser layer.
-- That means the parser is doing some semantic-ish work already.
-- That is useful for progress.
-- That is also architectural debt.
+- These checks are structural parser responsibilities, not parser-side semantic analysis.
 
 ## 21. What The Parser Still Does Not Have
 
@@ -1626,7 +1616,6 @@ Authority rule for this file: code and active tests win over older aspirational 
 - type reference parsing: implemented broadly
 - expression parsing: implemented broadly
 - statement parsing: implemented broadly
-- parser-local report validation: implemented
 - diagnostics rendering: implemented
 - CLI driver: implemented
 - package resolver: partial/missing
@@ -1689,7 +1678,7 @@ Authority rule for this file: code and active tests win over older aspirational 
 - `fol-parser/src/ast/parser_parts/binding_value_parsers.rs`: active binding value parsing
 - `fol-parser/src/ast/parser_parts/declaration_option_parsers.rs`: active decl visibility parsing
 - `fol-parser/src/ast/parser_parts/declaration_parsers.rs`: active def/ali/typ/fun/log/pro parsing
-- `fol-parser/src/ast/parser_parts/expression_atoms_and_report_validation.rs`: active atom parsing and report validation helpers
+- `fol-parser/src/ast/parser_parts/expression_atoms_and_report_validation.rs`: active atom parsing and literal helpers
 - `fol-parser/src/ast/parser_parts/expression_parsers.rs`: active precedence parser
 - `fol-parser/src/ast/parser_parts/grouped_binding_parsers.rs`: active grouped binding parsing
 - `fol-parser/src/ast/parser_parts/implementation_declaration_parsers.rs`: active `imp` parsing
@@ -1954,10 +1943,6 @@ Authority rule for this file: code and active tests win over older aspirational 
 
 - `new`: implemented
 - `parse`: implemented
-- `seed_routine_return_types`: implemented
-- `extract_source_path`: implemented
-- `collect_routine_signatures`: implemented
-- `scan_parameter_arity`: implemented
 - `parse_lexer_literal`: implemented
 - `parse_var_decl`: implemented
 - `parse_let_decl`: implemented
@@ -2268,7 +2253,6 @@ Authority rule for this file: code and active tests win over older aspirational 
 - pipes
 - rolling expressions
 - availability/index/slice access
-- custom error report validation
 
 ### D.3 What The Fixture Ledger Does Not Prove By Itself
 

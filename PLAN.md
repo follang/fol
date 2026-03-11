@@ -60,7 +60,7 @@ Do not use this plan for:
 - [x] Top-level `Program.declarations` is structurally contaminated by routine body leakage.
 - [x] Literal lowering is narrower than lexer support.
 - [x] AST invariants are not documented or enforced enough.
-- [ ] Parser still mixes syntax work with some semantic-ish checks.
+- [x] Parser still mixes syntax work with some semantic-ish checks.
 - [x] Unsupported combinations are not always rejected explicitly.
 
 ## 4. Phase Order
