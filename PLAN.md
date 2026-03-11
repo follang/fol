@@ -460,7 +460,7 @@ Done when:
 
 ### Parser tests
 
-- [ ] exact top-level AST shape
+- [x] exact top-level AST shape
 - [x] exact literal AST lowering
 - [x] exact name/path AST shape
 - [ ] unsupported combination failure tests
