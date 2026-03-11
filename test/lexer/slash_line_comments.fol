@@ -1,0 +1,2 @@
+// compatibility line comment
+var alpha = 1; // trailing compatibility comment
