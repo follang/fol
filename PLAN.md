@@ -50,10 +50,10 @@ Do not use this plan for:
 
 - [x] Token payload rules are not explicit.
 - [ ] String, character, raw-string, and raw-character handling is not clean.
-- [ ] Comment treatment is too informal.
+- [x] Comment treatment is too informal.
 - [x] Malformed lexical input behavior is not defined tightly enough.
-- [ ] Numeric token fidelity is not strong enough for later phases.
-- [ ] Stage responsibilities are too implicit.
+- [x] Numeric token fidelity is not strong enough for later phases.
+- [x] Stage responsibilities are too implicit.
 
 ### Parser
 
