@@ -71,9 +71,12 @@ tests actually enforce today.
 
 ### Literal Categories
 
-- The current lexer surfaces `Stringy`, `Bool`, `Float`, `Deciaml`, `Hexal`, `Octal`,
-  and `Binary`.
-- Single-quoted and double-quoted forms both arrive at the lexer boundary as `Stringy`.
+- The current lexer surfaces `Stringy`, `Quoted`, `Bool`, `Float`, `Deciaml`, `Hexal`,
+  `Octal`, and `Binary`.
+- Double-quoted content arrives at the lexer boundary as `Stringy`.
+- Single-quoted content arrives at the lexer boundary as `Quoted`.
+- The current front end does not expose separate raw-vs-cooked literal token kinds;
+  backticks still stay outside the literal taxonomy entirely.
 - Backticks stay `Operator::ANY` until the language gives them a narrower meaning.
 - Imaginary-unit suffixes are out of scope and stay outside the supported numeric
   literal families.
