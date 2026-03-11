@@ -360,7 +360,7 @@ Done when:
 
 - [x] Audit top-level statement parsing.
 - [x] Audit block-body parsing.
-- [ ] Audit call-vs-invoke-vs-assignment entry points.
+- [x] Audit call-vs-invoke-vs-assignment entry points.
 - [ ] Audit control-flow surfaces that appear both as expressions and statements.
 - [ ] Add shape tests where ambiguity currently exists.
 
