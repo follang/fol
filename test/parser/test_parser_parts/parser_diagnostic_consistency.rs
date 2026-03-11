@@ -52,3 +52,27 @@ fn test_parser_owned_unknown_option_diagnostics_name_the_surface() {
         );
     }
 }
+
+#[test]
+fn test_unsupported_multi_name_type_combinations_report_explicit_messages() {
+    for (path, expected) in [
+        (
+            "test/parser/simple_typ_multi_names_with_generics.fol",
+            "Type generics and explicit contracts are currently supported only on single-name type declarations",
+        ),
+        (
+            "test/parser/simple_typ_multi_names_with_contracts.fol",
+            "Type generics and explicit contracts are currently supported only on single-name type declarations",
+        ),
+        (
+            "test/parser/simple_typ_multi_names_mismatched_defs.fol",
+            "Type definition count must match declared names or provide a single shared definition",
+        ),
+    ] {
+        let message = first_parse_error_message(path);
+        assert!(
+            message.contains(expected),
+            "Expected explicit unsupported-combination diagnostic for fixture {path}, got: {message}",
+        );
+    }
+}
