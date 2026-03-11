@@ -358,11 +358,24 @@ pub fn sources(input: String, source_type: SourceType) -> impl Iterator<Item = S
 /// Detect package name from path by looking for Cargo.toml
 fn detect_package_name(input_path: &str) -> Result<String, Box<dyn Glitch>> {
     let path = std::path::Path::new(input_path);
-    let mut current = if path.is_file() {
+    let fallback_root = if path.is_file() {
         path.parent().unwrap_or(path)
     } else {
         path
     };
+    let fallback_name = fallback_root
+        .file_name()
+        .and_then(|name| name.to_str())
+        .filter(|name| !name.is_empty())
+        .map(str::to_string)
+        .or_else(|| {
+            path.file_stem()
+                .and_then(|name| name.to_str())
+                .filter(|name| !name.is_empty())
+                .map(str::to_string)
+        })
+        .unwrap_or_else(|| "unknown".to_string());
+    let mut current = fallback_root;
 
     // Walk up the directory tree looking for Cargo.toml
     loop {
@@ -398,13 +411,7 @@ fn detect_package_name(input_path: &str) -> Result<String, Box<dyn Glitch>> {
         }
     }
 
-    // Fallback: use directory name
-    let dir_name = current
-        .file_name()
-        .and_then(|name| name.to_str())
-        .unwrap_or("unknown");
-
-    Ok(dir_name.to_string())
+    Ok(fallback_name)
 }
 
 /// Compute namespace from file path relative to project root
