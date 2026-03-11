@@ -123,8 +123,8 @@ Done when:
 - [ ] Define nested namespace behavior.
 - [ ] Define valid namespace component rules.
 - [ ] Define interaction with `.mod` skipping.
-- [ ] Decide whether invalid directory names are ignored or rejected.
-- [ ] Add tests for edge cases.
+- [x] Decide whether invalid directory names are ignored or rejected.
+- [x] Add tests for edge cases.
 
 Done when:
 

@@ -349,6 +349,47 @@ mod namespace_tests {
     }
 
     #[test]
+    fn test_invalid_namespace_components_are_ignored() {
+        let temp_root = unique_temp_root("namespace_components");
+        fs::create_dir_all(temp_root.join("good/123bad")).expect("Should create invalid nested dir");
+        fs::create_dir_all(temp_root.join("bad.dir")).expect("Should create dotted dir");
+        fs::create_dir_all(temp_root.join("okay_dir")).expect("Should create valid dir");
+
+        fs::write(temp_root.join("good/123bad/value.fol"), "var nested = 1")
+            .expect("Should write nested file");
+        fs::write(temp_root.join("bad.dir/value.fol"), "var dotted = 1")
+            .expect("Should write dotted-dir file");
+        fs::write(temp_root.join("okay_dir/value.fol"), "var valid = 1")
+            .expect("Should write valid-dir file");
+
+        let sources = Source::init_with_package(
+            temp_root.to_str().expect("Temp root should be utf-8"),
+            SourceType::Folder,
+            "pkg",
+        )
+        .expect("Should create sources from namespace temp root");
+
+        let nested = sources
+            .iter()
+            .find(|source| source.path.ends_with("good/123bad/value.fol"))
+            .expect("Should include nested invalid-component file");
+        let dotted = sources
+            .iter()
+            .find(|source| source.path.ends_with("bad.dir/value.fol"))
+            .expect("Should include dotted-dir file");
+        let valid = sources
+            .iter()
+            .find(|source| source.path.ends_with("okay_dir/value.fol"))
+            .expect("Should include valid-dir file");
+
+        assert_eq!(nested.namespace, "pkg::good");
+        assert_eq!(dotted.namespace, "pkg");
+        assert_eq!(valid.namespace, "pkg::okay_dir");
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
     fn test_namespace_output_integration() {
         // Test that the namespace information is properly integrated
         let sources =
