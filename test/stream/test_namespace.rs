@@ -396,6 +396,56 @@ mod namespace_tests {
     }
 
     #[test]
+    fn test_source_identity_changes_when_canonical_entry_path_changes() {
+        let temp_root = unique_temp_root("renamed_identity");
+        let before_dir = temp_root.join("entry_before");
+        let before_file = before_dir.join("main.fol");
+        let after_dir = temp_root.join("entry_after");
+        let after_file = after_dir.join("main.fol");
+
+        fs::create_dir_all(&before_dir).expect("Should create initial entry folder");
+        fs::write(&before_file, "fun main() => 1\n").expect("Should write initial entry file");
+
+        let before = Source::init_with_package(
+            before_file.to_str().expect("Initial file path should be UTF-8"),
+            SourceType::File,
+            "fixed_pkg",
+        )
+        .expect("Should create initial explicit-package source");
+
+        fs::rename(&before_dir, &after_dir).expect("Should rename entry folder");
+
+        let after = Source::init_with_package(
+            after_file.to_str().expect("Renamed file path should be UTF-8"),
+            SourceType::File,
+            "fixed_pkg",
+        )
+        .expect("Should create renamed explicit-package source");
+
+        assert_eq!(before.len(), 1);
+        assert_eq!(after.len(), 1);
+        assert_eq!(
+            before[0].package, after[0].package,
+            "Explicit package overrides should isolate this test to path identity"
+        );
+        assert_eq!(
+            before[0].namespace, after[0].namespace,
+            "Explicit package overrides should keep namespace stable while canonical path changes"
+        );
+        assert_ne!(
+            before[0].path, after[0].path,
+            "Renaming the entry path should change the canonical file path"
+        );
+        assert_ne!(
+            before[0].identity(),
+            after[0].identity(),
+            "Logical identity should change when the canonical file path changes even if package and namespace stay fixed"
+        );
+
+        fs::remove_dir_all(&temp_root).expect("Should clean up renamed identity temp root");
+    }
+
+    #[test]
     fn test_namespace_validation_follows_current_front_end_contract() {
         let temp_root = unique_temp_root("namespace_components");
         fs::create_dir_all(temp_root.join("good/123bad")).expect("Should create invalid nested dir");
