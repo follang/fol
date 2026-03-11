@@ -205,6 +205,35 @@ fn test_cooked_double_quotes_trim_backslash_line_continuations() {
 }
 
 #[test]
+fn test_top_level_cooked_and_raw_escape_modes_lower_through_full_pipeline() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_literal_escape_modes.fol")
+        .expect("Should read mixed escape-mode literal fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should lower cooked and raw escape modes through the full pipeline");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert_eq!(
+                declarations,
+                vec![
+                    AstNode::Literal(Literal::Character('\n')),
+                    AstNode::Literal(Literal::String("\\n".to_string())),
+                    AstNode::Literal(Literal::Character('A')),
+                    AstNode::Literal(Literal::String("\\x41".to_string())),
+                    AstNode::Literal(Literal::String("foobar".to_string())),
+                ],
+                "Cooked literals should decode escapes and continuations, while raw literals should preserve their source spelling"
+            );
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
 fn test_top_level_boolean_and_nil_literals_lower_cleanly() {
     let mut file_stream = FileStream::from_file("test/parser/simple_literal_logic.fol")
         .expect("Should read logical literal lowering fixture");
