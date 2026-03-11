@@ -38,13 +38,10 @@ impl AstParser {
             self.skip_ignorable(tokens);
 
             let binding_token = tokens.curr(false)?;
-            binding = Self::token_to_named_label(&binding_token);
-            if binding.is_none() {
-                return Err(Box::new(ParseError::from_token(
-                    &binding_token,
-                    "Expected binding name after 'as' in select statement".to_string(),
-                )));
-            }
+            binding = Some(Self::expect_named_label(
+                &binding_token,
+                "Expected binding name after 'as' in select statement",
+            )?);
             let _ = tokens.bump();
             self.skip_ignorable(tokens);
         }

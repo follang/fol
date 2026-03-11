@@ -690,3 +690,23 @@ fn test_routine_generic_illegal_name_reports_offending_token_location() {
         "Illegal routine generic names should retain a concrete source column"
     );
 }
+
+#[test]
+fn test_select_binding_illegal_name_reports_offending_token_location() {
+    let (message, line, column) =
+        parse_error_snapshot("test/parser/simple_fun_select_illegal_binding_name.fol");
+
+    assert!(
+        message.contains("Parser encountered illegal token"),
+        "Illegal select bindings should report an explicit illegal-token diagnostic, got: {}",
+        message
+    );
+    assert_eq!(
+        line, 2,
+        "Illegal select bindings should anchor to the select header line"
+    );
+    assert!(
+        column > 0,
+        "Illegal select bindings should retain a concrete source column"
+    );
+}
