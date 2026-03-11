@@ -13,7 +13,7 @@ fn test_call_expressions_in_assignment_and_return() {
 
     let (has_call_assignment, has_call_return) = match ast {
         AstNode::Program { declarations } => {
-            let has_call_assignment = declarations.iter().any(|node| {
+            let has_call_assignment = program_surface_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::Assignment { value, .. }
@@ -21,7 +21,7 @@ fn test_call_expressions_in_assignment_and_return() {
                     )
                 });
 
-            let has_call_return = declarations.iter().any(|node| {
+            let has_call_return = program_surface_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::Return { value: Some(value) }
@@ -57,21 +57,21 @@ fn test_zero_argument_calls_in_statement_and_return_positions() {
 
     let (has_ping_stmt, has_pong_stmt, has_emit_return) = match ast {
         AstNode::Program { declarations } => {
-            let has_ping_stmt = declarations.iter().any(|node| {
+            let has_ping_stmt = program_surface_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::FunctionCall { name, args } if name == "ping" && args.is_empty()
                 )
             });
 
-            let has_pong_stmt = declarations.iter().any(|node| {
+            let has_pong_stmt = program_surface_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::FunctionCall { name, args } if name == "pong" && args.is_empty()
                 )
             });
 
-            let has_emit_return = declarations.iter().any(|node| {
+            let has_emit_return = program_surface_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::Return { value: Some(value) }
@@ -111,14 +111,14 @@ fn test_method_calls_in_statement_and_return_positions() {
 
     let (has_update_stmt, has_get_return) = match ast {
         AstNode::Program { declarations } => {
-            let has_update_stmt = declarations.iter().any(|node| {
+            let has_update_stmt = program_surface_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::MethodCall { method, .. } if method == "update"
                 )
             });
 
-            let has_get_return = declarations.iter().any(|node| {
+            let has_get_return = program_surface_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::Return { value: Some(value) }
@@ -154,21 +154,21 @@ fn test_zero_argument_method_calls_with_optional_semicolons() {
 
     let (has_start_stmt, has_stop_stmt, has_done_return) = match ast {
         AstNode::Program { declarations } => {
-            let has_start_stmt = declarations.iter().any(|node| {
+            let has_start_stmt = program_surface_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::MethodCall { method, args, .. } if method == "start" && args.is_empty()
                 )
             });
 
-            let has_stop_stmt = declarations.iter().any(|node| {
+            let has_stop_stmt = program_surface_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::MethodCall { method, args, .. } if method == "stop" && args.is_empty()
                 )
             });
 
-            let has_done_return = declarations.iter().any(|node| {
+            let has_done_return = program_surface_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::Return { value: Some(value) }
@@ -208,7 +208,7 @@ fn test_field_access_expressions_in_assignment_and_return() {
 
     let (has_field_assignment, has_nested_field_return) = match ast {
         AstNode::Program { declarations } => {
-            let has_field_assignment = declarations.iter().any(|node| {
+            let has_field_assignment = program_surface_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::Assignment { value, .. }
@@ -221,7 +221,7 @@ fn test_field_access_expressions_in_assignment_and_return() {
                     )
                 });
 
-            let has_nested_field_return = declarations.iter().any(|node| {
+            let has_nested_field_return = program_surface_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::Return { value: Some(value) }
@@ -267,7 +267,7 @@ fn test_index_access_expressions_in_assignment_and_return() {
 
     let (has_index_assignment, has_index_return) = match ast {
         AstNode::Program { declarations } => {
-            let has_index_assignment = declarations.iter().any(|node| {
+            let has_index_assignment = program_surface_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::Assignment { value, .. }
@@ -280,7 +280,7 @@ fn test_index_access_expressions_in_assignment_and_return() {
                     )
                 });
 
-            let has_index_return = declarations.iter().any(|node| {
+            let has_index_return = program_surface_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::Return { value: Some(value) }
@@ -321,7 +321,7 @@ fn test_chained_postfix_expressions_mix_fields_indexes_and_methods() {
 
     let (has_chained_assignment, has_chained_return) = match ast {
         AstNode::Program { declarations } => {
-            let has_chained_assignment = declarations.iter().any(|node| {
+            let has_chained_assignment = program_surface_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::Assignment { value, .. }
@@ -345,7 +345,7 @@ fn test_chained_postfix_expressions_mix_fields_indexes_and_methods() {
                     )
                 });
 
-            let has_chained_return = declarations.iter().any(|node| {
+            let has_chained_return = program_surface_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::Return { value: Some(value) }
@@ -395,7 +395,7 @@ fn test_nested_function_and_method_calls_in_expression_positions() {
 
     let (has_wrapped_method_assignment, has_nested_return_emit) = match ast {
         AstNode::Program { declarations } => {
-            let has_wrapped_method_assignment = declarations.iter().any(|node| {
+            let has_wrapped_method_assignment = program_surface_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::Assignment { value, .. }
@@ -409,7 +409,7 @@ fn test_nested_function_and_method_calls_in_expression_positions() {
                     )
                 });
 
-            let has_nested_return_emit = declarations.iter().any(|node| {
+            let has_nested_return_emit = program_surface_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::Return { value: Some(value) }
@@ -453,7 +453,7 @@ fn test_multiline_call_arguments_parse_with_expected_shapes() {
 
     let (has_compose_assignment, has_update_call, has_emit_return) = match ast {
         AstNode::Program { declarations } => {
-            let has_compose_assignment = declarations.iter().any(|node| {
+            let has_compose_assignment = program_surface_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::Assignment { value, .. }
@@ -467,7 +467,7 @@ fn test_multiline_call_arguments_parse_with_expected_shapes() {
                     )
                 });
 
-            let has_update_call = declarations.iter().any(|node| {
+            let has_update_call = program_surface_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::MethodCall { method, args, .. }
@@ -475,7 +475,7 @@ fn test_multiline_call_arguments_parse_with_expected_shapes() {
                 )
             });
 
-            let has_emit_return = declarations.iter().any(|node| {
+            let has_emit_return = program_surface_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::Return { value: Some(value) }
@@ -516,7 +516,7 @@ fn test_multiline_call_arguments_with_comments_parse_with_expected_shapes() {
 
     let (has_combine_assignment, has_emit_return) = match ast {
         AstNode::Program { declarations } => {
-            let has_combine_assignment = declarations.iter().any(|node| {
+            let has_combine_assignment = program_surface_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::Assignment { value, .. }
@@ -531,7 +531,7 @@ fn test_multiline_call_arguments_with_comments_parse_with_expected_shapes() {
                     )
                 });
 
-            let has_emit_return = declarations.iter().any(|node| {
+            let has_emit_return = program_surface_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::Return { value: Some(value) }

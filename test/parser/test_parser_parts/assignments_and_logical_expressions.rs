@@ -15,7 +15,7 @@ fn test_chained_assignment_target_parsing() {
     match ast {
         AstNode::Program { declarations } => {
             assert!(
-                    declarations.iter().any(|node| {
+                    program_surface_nodes(&declarations).into_iter().any(|node| {
                         matches!(
                             node,
                             AstNode::Assignment { target, value }
@@ -59,7 +59,7 @@ fn test_quoted_field_assignment_target_parsing() {
 
     match ast {
         AstNode::Program { declarations } => {
-            assert!(declarations.iter().any(|node| {
+            assert!(program_surface_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::FunDecl { body, .. }
@@ -93,7 +93,7 @@ fn test_self_assignment_targets_and_this_method_calls_parse() {
 
     match ast {
         AstNode::Program { declarations } => {
-            assert!(declarations.iter().any(|node| {
+            assert!(program_surface_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::FunDecl { body, .. }
@@ -276,7 +276,7 @@ fn test_field_compound_assignment_target_parsing() {
     match ast {
         AstNode::Program { declarations } => {
             assert!(
-                    declarations.iter().any(|node| {
+                    program_surface_nodes(&declarations).into_iter().any(|node| {
                         matches!(
                             node,
                             AstNode::Assignment { target, value }
@@ -317,7 +317,7 @@ fn test_index_compound_assignment_target_parsing() {
     match ast {
         AstNode::Program { declarations } => {
             assert!(
-                    declarations.iter().any(|node| {
+                    program_surface_nodes(&declarations).into_iter().any(|node| {
                         matches!(
                             node,
                             AstNode::Assignment { target, value }
@@ -357,7 +357,7 @@ fn test_mod_assignment_and_comparison_expressions() {
 
     let (has_mod_assignment, return_ops, return_values) = match ast {
         AstNode::Program { declarations } => {
-            let has_mod_assignment = declarations.iter().any(|node| {
+            let has_mod_assignment = program_surface_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::Assignment { value, .. }
@@ -424,7 +424,7 @@ fn test_pow_expression_parsing_is_right_associative() {
     match ast {
         AstNode::Program { declarations } => {
             assert!(
-                    declarations.iter().any(|node| {
+                    program_surface_nodes(&declarations).into_iter().any(|node| {
                         matches!(
                             node,
                             AstNode::Return {
@@ -473,7 +473,7 @@ fn test_pow_compound_assignment_parsing() {
     match ast {
         AstNode::Program { declarations } => {
             assert!(
-                    declarations.iter().any(|node| {
+                    program_surface_nodes(&declarations).into_iter().any(|node| {
                         matches!(
                             node,
                             AstNode::Assignment { target, value }
