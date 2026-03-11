@@ -516,6 +516,23 @@ fn test_function_declaration_illegal_name_reports_offending_token_location() {
 }
 
 #[test]
+fn test_routine_illegal_option_reports_offending_token_location() {
+    let (message, line, column) =
+        parse_error_snapshot("test/parser/simple_routine_illegal_option.fol");
+
+    assert!(
+        message.contains("Parser encountered illegal token"),
+        "Illegal routine options should surface as explicit illegal-token diagnostics, got: {}",
+        message
+    );
+    assert_eq!(line, 1, "Illegal routine options should anchor to the header line");
+    assert!(
+        column > 0,
+        "Illegal routine options should retain a concrete source column"
+    );
+}
+
+#[test]
 fn test_logical_declaration_illegal_name_reports_offending_token_location() {
     let (message, line, column) =
         parse_error_snapshot("test/parser/simple_log_illegal_name.fol");
