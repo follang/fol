@@ -68,6 +68,16 @@ impl Source {
         }
     }
 
+    /// Stream-boundary identity excludes the original call site and keeps the
+    /// canonical file plus the logical package/namespace chosen for this run.
+    pub fn identity(&self) -> (String, String, String) {
+        (
+            self.path.clone(),
+            self.package.clone(),
+            self.namespace.clone(),
+        )
+    }
+
     fn rel_path(&self) -> String {
         std::fs::canonicalize(&self.path)
             .unwrap_or_else(|_| self.path.clone().into())

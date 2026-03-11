@@ -349,6 +349,29 @@ mod namespace_tests {
     }
 
     #[test]
+    fn test_source_identity_excludes_call_site_and_matches_stream_contract() {
+        let file_sources = Source::init("test/legacy/main/main.fol", SourceType::File)
+            .expect("Should create file-backed source");
+        let folder_sources = Source::init("test/legacy/main", SourceType::Folder)
+            .expect("Should create folder-backed sources");
+        let folder_main = folder_sources
+            .iter()
+            .find(|source| source.path.ends_with("test/legacy/main/main.fol"))
+            .expect("Folder-backed sources should include main.fol");
+        let file_main = &file_sources[0];
+
+        assert_ne!(
+            file_main.call, folder_main.call,
+            "Call site should preserve how discovery started"
+        );
+        assert_eq!(
+            file_main.identity(),
+            folder_main.identity(),
+            "Stream identity should be canonical path plus package and namespace, not the original call path"
+        );
+    }
+
+    #[test]
     fn test_invalid_namespace_components_are_ignored() {
         let temp_root = unique_temp_root("namespace_components");
         fs::create_dir_all(temp_root.join("good/123bad")).expect("Should create invalid nested dir");
