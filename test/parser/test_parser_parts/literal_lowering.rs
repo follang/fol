@@ -84,6 +84,26 @@ fn test_double_quotes_always_lower_to_string_literals() {
 }
 
 #[test]
+fn test_single_quotes_lower_by_inner_width() {
+    let parser = AstParser::new();
+
+    assert_eq!(
+        parser
+            .parse_literal("'c'")
+            .expect("Single-quoted single-character text should parse"),
+        AstNode::Literal(Literal::Character('c')),
+        "Single quotes should lower one-character payloads to Literal::Character"
+    );
+    assert_eq!(
+        parser
+            .parse_literal("'xy'")
+            .expect("Single-quoted multi-character text should parse"),
+        AstNode::Literal(Literal::String("xy".to_string())),
+        "Single quotes should fall back to Literal::String when the inner payload is wider than one character"
+    );
+}
+
+#[test]
 fn test_top_level_boolean_and_nil_literals_lower_cleanly() {
     let mut file_stream = FileStream::from_file("test/parser/simple_literal_logic.fol")
         .expect("Should read logical literal lowering fixture");
