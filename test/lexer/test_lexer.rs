@@ -346,6 +346,25 @@ mod lexer_tests {
     }
 
     #[test]
+    fn test_comments_are_fully_ignorable_and_void_payloads_are_normalized() {
+        let tokens = tokenize_file("test/lexer/comments.fol");
+        let comment_tokens: Vec<_> = tokens.iter().filter(|(key, _)| key.is_comment()).collect();
+        let normalized_voids: Vec<_> = tokens
+            .iter()
+            .filter(|(key, _)| key.is_void() && !key.is_eof())
+            .collect();
+
+        assert!(
+            comment_tokens.is_empty(),
+            "Stage 3 should not expose ordinary comments as parser-visible tokens"
+        );
+        assert!(
+            normalized_voids.iter().all(|(_, content)| content == " "),
+            "Ignorable separators should normalize to a single-space payload"
+        );
+    }
+
+    #[test]
     fn test_mixed_content() {
         let tokens = tokenize_file("test/lexer/mixed.fol");
 
