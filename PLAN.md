@@ -324,7 +324,7 @@ Done when:
 
 ### 7.4 Name and path normalization
 
-- [ ] Normalize named-label extraction.
+- [x] Normalize named-label extraction.
 - [ ] Normalize quoted-name extraction.
 - [ ] Normalize qualified path extraction.
 - [ ] Keep type-path handling and value-path handling deliberate.
