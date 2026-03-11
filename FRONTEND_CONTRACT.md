@@ -29,6 +29,8 @@ tests actually enforce today.
 - `.mod` directories are skipped before any source collection.
 - The lexer now preserves that stream ordering across file boundaries instead of
   accidentally joining touching files into one token.
+- Cross-file boundaries are surfaced as explicit lexer boundary markers instead of
+  fabricated in-band newline characters.
 
 ### Source Identity
 
@@ -79,6 +81,8 @@ tests actually enforce today.
 - Switching to a new source restarts location tracking at row `1`, column `1`.
 - Synthetic lexer-only markers use explicit out-of-band coordinates instead of pretending
   to be real source characters.
+- The explicit cross-file boundary marker is anchored to the incoming file at row `1`,
+  column `0`; the first real token from that file still begins at row `1`, column `1`.
 
 ### Loading Model
 

@@ -374,6 +374,78 @@ mod lexer_tests {
     }
 
     #[test]
+    fn test_cross_file_boundaries_keep_second_file_locations_real() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("boundary_locations");
+        fs::create_dir_all(&temp_root).expect("Should create temp lexer fixture dir");
+        fs::write(temp_root.join("a.fol"), "alpha").expect("Should write first fixture file");
+        fs::write(temp_root.join("b.fol"), "beta").expect("Should write second fixture file");
+
+        let mut file_stream = FileStream::from_folder(
+            temp_root
+                .to_str()
+                .expect("Lexer fixture folder path should be valid utf-8"),
+        )
+        .expect("Should create lexer stream from folder fixture");
+        let mut lexer = Elements::init(&mut file_stream);
+
+        let first = lexer
+            .curr(false)
+            .expect("Lexer should expose the first file token");
+        assert_eq!(first.key(), KEYWORD::Identifier);
+        assert_eq!(first.con(), "alpha");
+        assert_eq!(first.loc().row(), 1);
+        assert_eq!(first.loc().col(), 1);
+        assert!(
+            first
+                .loc()
+                .source()
+                .expect("First token should carry a source path")
+                .path(false)
+                .ends_with("a.fol"),
+            "First token should stay anchored to the first file"
+        );
+
+        lexer.bump();
+        let boundary = lexer
+            .curr(false)
+            .expect("Lexer should expose the explicit file boundary token");
+        assert_eq!(boundary.key(), KEYWORD::Void(VOID::Boundary));
+        assert_eq!(boundary.loc().row(), 1);
+        assert_eq!(boundary.loc().col(), 0);
+        assert!(
+            boundary
+                .loc()
+                .source()
+                .expect("Boundary token should still identify the incoming file")
+                .path(false)
+                .ends_with("b.fol"),
+            "Boundary token should point at the incoming file without pretending to be a real source character"
+        );
+
+        lexer.bump();
+        let second = lexer
+            .curr(false)
+            .expect("Lexer should expose the second file token after the boundary");
+        assert_eq!(second.key(), KEYWORD::Identifier);
+        assert_eq!(second.con(), "beta");
+        assert_eq!(second.loc().row(), 1);
+        assert_eq!(second.loc().col(), 1);
+        assert!(
+            second
+                .loc()
+                .source()
+                .expect("Second token should carry a source path")
+                .path(false)
+                .ends_with("b.fol"),
+            "Second-file tokens must keep their real source path after the explicit boundary token"
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
     fn test_literals() {
         let tokens = tokenize_file("test/lexer/literals.fol");
 

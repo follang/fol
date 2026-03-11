@@ -194,11 +194,11 @@ Target files:
 
 ### 8.3 Separate Logical Boundary Handling From Fake Source Characters
 
-- [ ] Remove long-term reliance on synthetic newline injection between adjacent files.
-- [ ] Introduce an explicit source-boundary concept instead of pretending a real newline existed.
-- [ ] Preserve the guarantee that tokens from adjacent files never merge accidentally.
-- [ ] Add cases where one file ends with an identifier and the next begins with an identifier, number, string delimiter, comment delimiter, or operator.
-- [ ] Ensure source-boundary handling does not affect user-visible location reporting as if the boundary came from the file.
+- [x] Remove long-term reliance on synthetic newline injection between adjacent files.
+- [x] Introduce an explicit source-boundary concept instead of pretending a real newline existed.
+- [x] Preserve the guarantee that tokens from adjacent files never merge accidentally.
+- [x] Add cases where one file ends with an identifier and the next begins with an identifier, number, string delimiter, comment delimiter, or operator.
+- [x] Ensure source-boundary handling does not affect user-visible location reporting as if the boundary came from the file.
 
 ### 8.4 Revisit The Loading Model
 
@@ -219,7 +219,7 @@ Acceptance for Phase 1:
 
 - [x] Package detection is FOL-defined.
 - [x] Namespace validation is explicit.
-- [ ] Cross-file boundaries are explicit instead of synthetic source text.
+- [x] Cross-file boundaries are explicit instead of synthetic source text.
 - [x] Loading behavior is intentional, documented, and tested.
 
 ## 9. Phase 2: Lexer Book-Alignment And Error Cleanup
@@ -454,7 +454,7 @@ This is the recommended implementation order once the decision freeze is complet
 11. [ ] Add imaginary literal support or explicitly remove it from the front-end scope docs.
 12. [ ] Rename typoed literal enum variants and update all call sites.
 13. [ ] Remove `Illegal` from `is_void()` and add nested malformed-token regressions.
-14. [ ] Replace synthetic in-band file-boundary newlines with an explicit boundary model.
+14. [x] Replace synthetic in-band file-boundary newlines with an explicit boundary model.
 15. [ ] Remove default `Cargo.toml` package detection and replace it with the chosen FOL-native package contract.
 16. [ ] Replace string-joined qualified paths with structured path representation.
 17. [ ] Re-run the parser diagnostic matrix after all AST and lexer changes.
@@ -467,7 +467,7 @@ This is the recommended implementation order once the decision freeze is complet
 Do not move to the next compiler stage until every gate below is true.
 
 - [ ] Package and namespace behavior are FOL-defined instead of host-tool-defined.
-- [ ] Cross-file boundaries are explicit and do not depend on fabricated source characters.
+- [x] Cross-file boundaries are explicit and do not depend on fabricated source characters.
 - [ ] Identifier rules are explicit, tested, and used consistently across stream/lexer/parser comparisons.
 - [x] Comment syntax matches the chosen authority and no longer conflicts with backtick tokenization.
 - [ ] Literal quote behavior matches the chosen authority.
