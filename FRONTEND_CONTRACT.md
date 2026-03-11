@@ -143,19 +143,20 @@ tests actually enforce today.
 
 ### Routine Body Shape
 
-- `FunDecl.body` and `ProDecl.body` are the authoritative routine-body fields for both
-  top-level and nested routines.
+- `FunDecl.body`, `LogDecl.body`, and `ProDecl.body` are the authoritative routine-body
+  fields for both top-level and nested routines.
 - Routine bodies contain the statement and lowered-expression nodes accepted by the
   body parsers, including local bindings, returns, control-flow, calls, and other
   body-level forms that the current grammar supports.
 
 ### Declaration Family Shapes
 
-- `fun` and `pro` declarations share the same high-level shape: options, generics,
-  captures, parameters, optional return and error types, a `body`, and `inquiries`.
-- `log` declarations currently lower through `AstNode::FunDecl` with a boolean return
-  shape instead of a dedicated `LogDecl` node, so later phases must treat logical
-  routines as a constrained `FunDecl` form.
+- `fun`, `log`, and `pro` declarations share the same high-level shape: options,
+  generics, captures, parameters, optional return and error types, a `body`, and
+  `inquiries`.
+- `log` declarations now lower through a dedicated `AstNode::LogDecl` node instead of
+  being collapsed into `FunDecl`, so routine kind survives AST lowering for named
+  routines.
 - `AliasDecl` stays a leaf declaration with only the alias name and target type.
 - `TypeDecl` is the single carrier for alias, entry, record, and other type-definition
   families through the `type_def` field.
@@ -181,6 +182,15 @@ tests actually enforce today.
 - Multi-name type declarations currently reject generic headers, explicit contract
   headers, and mismatched definition counts with explicit parse errors instead of
   silently guessing a shape.
+
+### Method Receiver Retention
+
+- Named `fun`, `log`, and `pro` declarations retain their parsed `receiver_type`
+  directly in the AST.
+- Receiver types survive at both top level and inside nested type-member routine
+  declarations.
+- Qualified and bracketed receiver type references stay lowered through the same
+  `FolType` surfaces already used by the rest of the parser.
 
 ### Parser-Owned Validations
 
@@ -337,9 +347,8 @@ tests actually enforce today.
 - Lexer behavior that was previously quirk-driven is now explicit at the front-end
   boundary: token payload meaning, EOF handling, malformed literal handling, and the
   currently supported numeric families are all documented and exercised by tests.
-- Parser behavior that remains unusual is explicit rather than undefined: logical-routine
-  lowering through `FunDecl`, declaration-family shapes,
-  statement/expression boundaries, and representative failure shapes are all recorded in
-  this contract.
+- Parser behavior that remains unusual is explicit rather than undefined:
+  declaration-family shapes, statement/expression boundaries, and representative
+  failure shapes are all recorded in this contract.
 - Remaining front-end debt is therefore conscious deferred debt, not undocumented
   boundary behavior that later phases would need to rediscover from the implementation.
