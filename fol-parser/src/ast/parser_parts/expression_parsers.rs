@@ -269,6 +269,9 @@ impl AstParser {
             }
 
             if expect_path_ident {
+                if key.is_illegal() {
+                    return true;
+                }
                 if Self::token_can_be_logical_name(&key) || key.is_textual_literal() {
                     expect_path_ident = false;
                     continue;
@@ -277,6 +280,9 @@ impl AstParser {
             }
 
             if expect_member_ident {
+                if key.is_illegal() {
+                    return true;
+                }
                 if Self::token_can_be_logical_name(&key) || key.is_textual_literal() {
                     expect_member_ident = false;
                     continue;
@@ -383,6 +389,10 @@ impl AstParser {
                     continue;
                 }
                 return false;
+            }
+
+            if key.is_illegal() {
+                return true;
             }
 
             if Self::token_can_be_logical_name(&key) || key.is_textual_literal() {

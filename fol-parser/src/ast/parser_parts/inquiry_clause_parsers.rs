@@ -370,12 +370,7 @@ impl AstParser {
             return Ok(InquiryTarget::Quoted(target));
         }
 
-        let first = Self::token_to_named_label(&token).ok_or_else(|| {
-            Box::new(ParseError::from_token(
-                &token,
-                "Expected inquiry target name".to_string(),
-            )) as Box<dyn Glitch>
-        })?;
+        let first = Self::expect_named_label(&token, "Expected inquiry target name")?;
         let _ = tokens.bump();
 
         let mut segments = vec![first];
@@ -406,12 +401,8 @@ impl AstParser {
 
             self.skip_ignorable(tokens);
             let segment = tokens.curr(false)?;
-            let segment_name = Self::token_to_named_label(&segment).ok_or_else(|| {
-                Box::new(ParseError::from_token(
-                    &segment,
-                    "Expected name after '::' in inquiry target".to_string(),
-                )) as Box<dyn Glitch>
-            })?;
+            let segment_name =
+                Self::expect_named_label(&segment, "Expected name after '::' in inquiry target")?;
             segments.push(segment_name);
             let _ = tokens.bump();
         }

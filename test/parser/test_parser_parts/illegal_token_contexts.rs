@@ -499,3 +499,74 @@ fn test_type_record_field_illegal_name_reports_offending_token_location() {
         "Illegal type record field names should retain a concrete source column"
     );
 }
+
+#[test]
+fn test_use_declaration_illegal_name_reports_offending_token_location() {
+    let (message, line, column) =
+        parse_error_snapshot("test/parser/simple_use_illegal_name.fol");
+
+    assert!(
+        message.contains("Parser encountered illegal token"),
+        "Illegal use names should surface as explicit illegal-token diagnostics, got: {}",
+        message
+    );
+    assert_eq!(line, 1, "Illegal use names should report the declaration line");
+    assert!(column > 0, "Illegal use names should retain a concrete source column");
+}
+
+#[test]
+fn test_inquiry_target_illegal_segment_reports_offending_token_location() {
+    let (message, line, column) =
+        parse_error_snapshot("test/parser/simple_fun_inquiry_illegal_target_segment.fol");
+
+    assert!(
+        message.contains("Parser encountered illegal token"),
+        "Illegal inquiry target segments should surface as explicit illegal-token diagnostics, got: {}",
+        message
+    );
+    assert_eq!(
+        line, 3,
+        "Illegal inquiry target segments should report the inquiry clause line"
+    );
+    assert!(
+        column > 0,
+        "Illegal inquiry target segments should retain a concrete source column"
+    );
+}
+
+#[test]
+fn test_assignment_target_illegal_field_reports_offending_token_location() {
+    let (message, line, column) =
+        parse_error_snapshot("test/parser/simple_fun_assignment_illegal_field_name.fol");
+
+    assert!(
+        message.contains("Parser encountered illegal token"),
+        "Illegal assignment-target field names should surface as explicit illegal-token diagnostics, got: {}",
+        message
+    );
+    assert_eq!(
+        line, 2,
+        "Illegal assignment-target field names should report the assignment line"
+    );
+    assert!(
+        column > 0,
+        "Illegal assignment-target field names should retain a concrete source column"
+    );
+}
+
+#[test]
+fn test_method_call_illegal_method_name_reports_offending_token_location() {
+    let (message, line, column) =
+        parse_error_snapshot("test/parser/simple_fun_method_call_illegal_name.fol");
+
+    assert!(
+        message.contains("Parser encountered illegal token"),
+        "Illegal method names should surface as explicit illegal-token diagnostics, got: {}",
+        message
+    );
+    assert_eq!(line, 2, "Illegal method names should report the call line");
+    assert!(
+        column > 0,
+        "Illegal method names should retain a concrete source column"
+    );
+}

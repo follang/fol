@@ -122,12 +122,7 @@ impl AstParser {
 
         for _ in 0..256 {
             let name_token = tokens.curr(false)?;
-            let name = Self::token_to_named_label(&name_token).ok_or_else(|| {
-                Box::new(ParseError::from_token(
-                    &name_token,
-                    "Expected identifier after 'use'".to_string(),
-                )) as Box<dyn Glitch>
-            })?;
+            let name = Self::expect_named_label(&name_token, "Expected identifier after 'use'")?;
             if !seen_names.insert(canonical_identifier_key(&name)) {
                 return Err(Box::new(ParseError::from_token(
                     &name_token,

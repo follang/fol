@@ -817,12 +817,10 @@ impl AstParser {
                     self.skip_ignorable(tokens);
 
                     let field_token = tokens.curr(false)?;
-                    let field = Self::token_to_named_label(&field_token).ok_or_else(|| {
-                        Box::new(ParseError::from_token(
-                            &field_token,
-                            "Expected field name after '.' in assignment target".to_string(),
-                        )) as Box<dyn Glitch>
-                    })?;
+                    let field = Self::expect_named_label(
+                        &field_token,
+                        "Expected field name after '.' in assignment target",
+                    )?;
                     let _ = tokens.bump();
                     self.skip_ignorable(tokens);
 
@@ -925,12 +923,7 @@ impl AstParser {
         self.skip_ignorable(tokens);
 
         let method_token = tokens.curr(false)?;
-        let method = Self::token_to_named_label(&method_token).ok_or_else(|| {
-            Box::new(ParseError::from_token(
-                &method_token,
-                "Expected method name after '.'".to_string(),
-            )) as Box<dyn Glitch>
-        })?;
+        let method = Self::expect_named_label(&method_token, "Expected method name after '.'")?;
         let _ = tokens.bump();
         let args = self.parse_open_paren_and_call_args(tokens, "Expected '(' after method name")?;
 

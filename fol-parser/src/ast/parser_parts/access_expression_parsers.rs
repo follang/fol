@@ -153,9 +153,7 @@ impl AstParser {
         expected_segment_error: &str,
     ) -> Result<String, Box<dyn Glitch>> {
         let root = tokens.curr(false)?;
-        let mut name = Self::token_to_named_label(&root).ok_or_else(|| {
-            Box::new(ParseError::from_token(&root, expected_root_error.to_string())) as Box<dyn Glitch>
-        })?;
+        let mut name = Self::expect_named_label(&root, expected_root_error)?;
         let _ = tokens.bump();
 
         loop {
@@ -173,12 +171,7 @@ impl AstParser {
             self.skip_ignorable(tokens);
 
             let segment = tokens.curr(false)?;
-            let segment_name = Self::token_to_named_label(&segment).ok_or_else(|| {
-                Box::new(ParseError::from_token(
-                    &segment,
-                    expected_segment_error.to_string(),
-                )) as Box<dyn Glitch>
-            })?;
+            let segment_name = Self::expect_named_label(&segment, expected_segment_error)?;
             name.push_str("::");
             name.push_str(&segment_name);
             let _ = tokens.bump();
