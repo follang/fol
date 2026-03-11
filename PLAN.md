@@ -362,7 +362,7 @@ Done when:
 - [x] Audit block-body parsing.
 - [x] Audit call-vs-invoke-vs-assignment entry points.
 - [x] Audit control-flow surfaces that appear both as expressions and statements.
-- [ ] Add shape tests where ambiguity currently exists.
+- [x] Add shape tests where ambiguity currently exists.
 
 Done when:
 
