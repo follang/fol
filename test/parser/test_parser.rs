@@ -311,6 +311,9 @@ mod routine_headers_and_when_forms;
 #[path = "test_parser_parts/top_level_control_flow_and_calls.rs"]
 mod top_level_control_flow_and_calls;
 #[cfg(test)]
+#[path = "test_parser_parts/top_level_ast_shapes.rs"]
+mod top_level_ast_shapes;
+#[cfg(test)]
 #[path = "test_parser_parts/type_definition_validation.rs"]
 mod type_definition_validation;
 #[cfg(test)]
