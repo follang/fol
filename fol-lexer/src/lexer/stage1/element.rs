@@ -115,10 +115,8 @@ impl Element {
                 self.bump(code)?;
             }
             self.bump(code)?;
-            //TODO: double check
-            if is_space(&code.peek(0)?.0) {
-                self.bump(code)?;
-            }
+            self.set_key(Comment(COMMENT::SlashBlock));
+            return Ok(());
         }
         self.set_key(Void(VOID::Space));
         self.set_con(" ".to_string());

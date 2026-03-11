@@ -934,6 +934,24 @@ mod lexer_tests {
     }
 
     #[test]
+    fn test_stage1_slash_block_comments_use_compatibility_comment_kind() {
+        let tokens = tokenize_stage1_file("test/lexer/slash_block_comments.fol");
+        let comments: Vec<(KEYWORD, String)> = tokens
+            .into_iter()
+            .filter(|(key, _)| key.is_comment())
+            .collect();
+
+        assert_eq!(
+            comments,
+            vec![(
+                KEYWORD::Comment(COMMENT::SlashBlock),
+                "/* compatibility\n   block comment */".to_string(),
+            )],
+            "Slash block comments should stay on an explicit compatibility-only internal comment kind with an exact span"
+        );
+    }
+
+    #[test]
     fn test_quoted_payloads_preserve_escape_spelling_without_validation() {
         let tokens = tokenize_file("test/lexer/escape_payloads.fol");
         let significant: Vec<(KEYWORD, String)> = tokens
