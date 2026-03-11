@@ -673,6 +673,26 @@ mod lexer_tests {
     }
 
     #[test]
+    fn test_invalid_decimal_literals_become_single_illegal_tokens() {
+        let tokens = tokenize_file("test/lexer/invalid_decimal_literals.fol");
+        let significant: Vec<(KEYWORD, String)> = tokens
+            .into_iter()
+            .filter(|(key, _)| !key.is_space() && !key.is_eof())
+            .collect();
+
+        assert_eq!(
+            significant,
+            vec![
+                (KEYWORD::Illegal, "1_".to_string()),
+                (KEYWORD::Illegal, "1__2".to_string()),
+                (KEYWORD::Illegal, "12__".to_string()),
+                (KEYWORD::Illegal, "0__0".to_string()),
+            ],
+            "Malformed decimal literals should stay one illegal token instead of silently accepting repeated or trailing underscores"
+        );
+    }
+
+    #[test]
     fn test_leading_dot_float_tokenizes_as_float() {
         let tokens = tokenize_file("test/lexer/leading_dot_float.fol");
         let significant: Vec<(KEYWORD, String)> = tokens

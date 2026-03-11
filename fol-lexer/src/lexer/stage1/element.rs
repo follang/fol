@@ -205,10 +205,36 @@ impl Element {
         } else {
             self.push(code)?;
             self.key = Literal(LITERAL::Decimal);
-            while is_digit(&code.peek(0)?.0) || code.peek(0)?.0 == '_' {
-                self.bump(code)?;
+            self.scan_decimal_digits(code)?;
+        }
+        Ok(())
+    }
+
+    fn scan_decimal_digits(&mut self, code: &mut stage0::Elements) -> Vod {
+        let mut prev_underscore = false;
+        let mut invalid = false;
+
+        while is_digit(&code.peek(0)?.0) || code.peek(0)?.0 == '_' {
+            self.bump(code)?;
+            let current = code.curr()?.0;
+            if current == '_' {
+                if prev_underscore {
+                    invalid = true;
+                }
+                prev_underscore = true;
+            } else {
+                prev_underscore = false;
             }
         }
+
+        if prev_underscore {
+            invalid = true;
+        }
+
+        if invalid {
+            self.key = Illegal;
+        }
+
         Ok(())
     }
 
