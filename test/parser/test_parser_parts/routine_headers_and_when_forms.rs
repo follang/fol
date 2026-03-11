@@ -79,6 +79,36 @@ fn test_routine_generic_headers_reject_duplicate_names() {
 }
 
 #[test]
+fn test_routine_generic_headers_reject_canonical_duplicate_names() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_routine_generics_duplicate_canonical.fol")
+            .expect("Should read canonical duplicate routine generics test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject canonical duplicate routine generic names");
+
+    let parse_error = errors
+        .first()
+        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        .expect("First parser error should be ParseError");
+
+    let first_message = parse_error.to_string();
+    assert!(
+        first_message.contains("Duplicate generic name 'tvalue'"),
+        "Canonical duplicate routine generic should report the later spelling, got: {}",
+        first_message
+    );
+    assert_eq!(
+        parse_error.line(),
+        1,
+        "Canonical duplicate routine generic parse error should point to the declaration line"
+    );
+}
+
+#[test]
 fn test_routine_generic_headers_reject_default_values() {
     let mut file_stream =
         FileStream::from_file("test/parser/simple_routine_generics_default_forbidden.fol")
@@ -300,6 +330,36 @@ fn test_duplicate_routine_parameter_reports_parse_error() {
         parse_error.line(),
         1,
         "Duplicate routine parameter parse error should point to the signature line"
+    );
+}
+
+#[test]
+fn test_duplicate_routine_parameter_reports_canonical_parse_error() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_duplicate_param_canonical.fol")
+            .expect("Should read canonical duplicate parameter routine test file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject canonical duplicate routine parameter names");
+
+    let parse_error = errors
+        .first()
+        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        .expect("First parser error should be ParseError");
+
+    let first_message = parse_error.to_string();
+    assert!(
+        first_message.contains("Duplicate parameter name 'AA'"),
+        "Canonical duplicate routine parameter should report the later spelling, got: {}",
+        first_message
+    );
+    assert_eq!(
+        parse_error.line(),
+        1,
+        "Canonical duplicate routine parameter parse error should point to the signature line"
     );
 }
 
