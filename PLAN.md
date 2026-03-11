@@ -316,7 +316,7 @@ Done when:
 - [x] Define how quoted names are represented.
 - [x] Define how qualified paths are represented.
 - [x] Define invariants for grouped declarations.
-- [ ] Add tests that lock those invariants down.
+- [x] Add tests that lock those invariants down.
 
 Done when:
 
