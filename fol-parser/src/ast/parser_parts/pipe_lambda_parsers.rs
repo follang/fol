@@ -17,12 +17,8 @@ impl AstParser {
             let mut names = Vec::new();
             loop {
                 let name_token = tokens.curr(false)?;
-                let name = Self::token_to_named_label(&name_token).ok_or_else(|| {
-                    Box::new(ParseError::from_token(
-                        &name_token,
-                        "Expected lambda parameter name".to_string(),
-                    )) as Box<dyn Glitch>
-                })?;
+                let name =
+                    Self::expect_named_label(&name_token, "Expected lambda parameter name")?;
                 names.push(name);
                 let _ = tokens.bump();
 
