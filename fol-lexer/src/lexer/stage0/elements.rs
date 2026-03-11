@@ -3,6 +3,9 @@ use fol_stream::{CharacterProvider, FileStream};
 use fol_types::{Con, Vod, Win, SLIDER};
 use std::fmt;
 
+// Stage 0 owns raw character windowing only.
+// It preserves per-character locations and inserts the minimum synthetic
+// boundary markers needed so later token stages never infer cross-file joins.
 type Part<T> = (T, point::Location);
 
 pub struct Elements {
