@@ -366,7 +366,7 @@ Done when:
 
 Done when:
 
-- [ ] Statement/expression boundaries are test-backed and intentional.
+- [x] Statement/expression boundaries are test-backed and intentional.
 
 ### 7.8 Parser diagnostics
 
