@@ -1,0 +1,4 @@
+/// module docs
+var alpha = 1
+/** block docs */
+var beta = 2

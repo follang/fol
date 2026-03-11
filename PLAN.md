@@ -211,7 +211,7 @@ Done when:
 ### 6.4 Comment policy
 
 - [x] Decide whether normal comments remain fully ignorable.
-- [ ] Decide whether doc comments are represented separately or explicitly deferred.
+- [x] Decide whether doc comments are represented separately or explicitly deferred.
 - [ ] If deferred, make that explicit in the front-end contract.
 - [x] Add tests for line comments, block comments, and comment-boundary spacing behavior.
 

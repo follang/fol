@@ -415,6 +415,30 @@ mod lexer_tests {
     }
 
     #[test]
+    fn test_doc_comments_are_deferred_with_normal_comments() {
+        let tokens = tokenize_file("test/lexer/doc_comments.fol");
+        let significant: Vec<(KEYWORD, String)> = tokens
+            .into_iter()
+            .filter(|(key, _)| !key.is_void() && !key.is_comment())
+            .collect();
+
+        assert_eq!(
+            significant,
+            vec![
+                (KEYWORD::Keyword(BUILDIN::Var), "var".to_string()),
+                (KEYWORD::Identifier, "alpha".to_string()),
+                (KEYWORD::Symbol(SYMBOL::Equal), "=".to_string()),
+                (KEYWORD::Literal(LITERAL::Deciaml), "1".to_string()),
+                (KEYWORD::Keyword(BUILDIN::Var), "var".to_string()),
+                (KEYWORD::Identifier, "beta".to_string()),
+                (KEYWORD::Symbol(SYMBOL::Equal), "=".to_string()),
+                (KEYWORD::Literal(LITERAL::Deciaml), "2".to_string()),
+            ],
+            "Doc comments should stay deferred and should not surface as a parser-visible token family yet"
+        );
+    }
+
+    #[test]
     fn test_mixed_content() {
         let tokens = tokenize_file("test/lexer/mixed.fol");
 
