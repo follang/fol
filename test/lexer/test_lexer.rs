@@ -1,7 +1,7 @@
 // Comprehensive tests for fol-lexer module
 
 use fol_lexer::{
-    lexer::{stage0, stage1},
+    lexer::{stage0, stage1, stage2},
     lexer::stage3::Elements,
     token::KEYWORD,
     token::*,
@@ -952,6 +952,35 @@ mod lexer_error_tests {
         assert!(
             elements.bump().is_none(),
             "Stage1 should terminate cleanly once its bounded window is fully drained"
+        );
+    }
+
+    #[test]
+    fn test_stage2_window_stays_bounded_while_draining() {
+        let mut file_stream =
+            FileStream::from_file("test/stream/basic.fol").expect("Should read basic file");
+        let mut elements = stage2::Elements::init(&mut file_stream);
+        let mut saw_eof = false;
+
+        for _ in 0..10_000 {
+            assert_eq!(elements.prev_vec().len(), SLIDER);
+            assert_eq!(elements.next_vec().len(), SLIDER);
+
+            let Some(part) = elements.bump() else {
+                break;
+            };
+            let part = part.expect("Stage2 should not fail while draining a basic fixture");
+            if part.key().is_eof() {
+                saw_eof = true;
+            }
+        }
+
+        assert!(saw_eof, "Stage2 should drain through its explicit EOF token");
+        assert_eq!(elements.prev_vec().len(), SLIDER);
+        assert_eq!(elements.next_vec().len(), SLIDER);
+        assert!(
+            elements.bump().is_none(),
+            "Stage2 should terminate cleanly once its bounded window is fully drained"
         );
     }
 
