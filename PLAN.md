@@ -253,7 +253,7 @@ Done when:
 
 Done when:
 
-- [ ] Parser-facing error behavior is predictable.
+- [x] Parser-facing error behavior is predictable.
 
 ### 6.8 Bootstrap and EOF cleanup
 
