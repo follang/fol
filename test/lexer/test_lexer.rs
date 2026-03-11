@@ -985,6 +985,35 @@ mod lexer_error_tests {
     }
 
     #[test]
+    fn test_stage3_window_stays_bounded_while_draining() {
+        let mut file_stream =
+            FileStream::from_file("test/stream/basic.fol").expect("Should read basic file");
+        let mut elements = Elements::init(&mut file_stream);
+        let mut saw_eof = false;
+
+        for _ in 0..10_000 {
+            assert_eq!(elements.prev_vec().len(), SLIDER);
+            assert_eq!(elements.next_vec().len(), SLIDER);
+
+            let Some(part) = elements.bump() else {
+                break;
+            };
+            let part = part.expect("Stage3 should not fail while draining a basic fixture");
+            if part.key().is_eof() {
+                saw_eof = true;
+            }
+        }
+
+        assert!(saw_eof, "Stage3 should drain through its explicit EOF token");
+        assert_eq!(elements.prev_vec().len(), SLIDER);
+        assert_eq!(elements.next_vec().len(), SLIDER);
+        assert!(
+            elements.bump().is_none(),
+            "Stage3 should terminate cleanly once its bounded window is fully drained"
+        );
+    }
+
+    #[test]
     fn test_nonexistent_file_error() {
         let result = std::panic::catch_unwind(|| tokenize_file("test/lexer/nonexistent.fol"));
 
