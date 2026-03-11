@@ -91,8 +91,8 @@ fn test_use_declaration_parsing() {
         .expect("Parser should parse use declaration");
 
     let use_decl = match ast {
-        AstNode::Program { declarations } => declarations
-            .iter()
+        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+            .into_iter()
             .find_map(|node| {
                 if let AstNode::UseDecl {
                     name,
@@ -131,8 +131,8 @@ fn test_use_declaration_supports_multiple_names_and_paths() {
 
     match ast {
         AstNode::Program { declarations } => {
-            let imports: Vec<_> = declarations
-                .iter()
+            let imports: Vec<_> = program_surface_nodes(&declarations)
+                .into_iter()
                 .filter_map(|node| {
                     if let AstNode::UseDecl {
                         name,
@@ -206,8 +206,8 @@ fn test_use_declaration_accepts_empty_option_brackets() {
         .expect("Parser should parse use[] declarations");
 
     let use_decl = match ast {
-        AstNode::Program { declarations } => declarations
-            .iter()
+        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+            .into_iter()
             .find_map(|node| {
                 if let AstNode::UseDecl {
                     name,
@@ -254,8 +254,8 @@ fn test_use_declaration_allows_omitted_colon_before_path_type() {
         .expect("Parser should parse use declaration without colon after name");
 
     let use_decl = match ast {
-        AstNode::Program { declarations } => declarations
-            .iter()
+        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+            .into_iter()
             .find_map(|node| {
                 if let AstNode::UseDecl {
                     name,
@@ -293,8 +293,8 @@ fn test_use_declaration_unwraps_quoted_paths() {
         .expect("Parser should parse use declaration with quoted path");
 
     let use_decl = match ast {
-        AstNode::Program { declarations } => declarations
-            .iter()
+        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+            .into_iter()
             .find_map(|node| {
                 if let AstNode::UseDecl {
                     name,
@@ -332,8 +332,8 @@ fn test_use_declaration_supports_qualified_and_bracketed_types() {
         .expect("Parser should parse use declaration with qualified bracketed source-kind type");
 
     let use_decl = match ast {
-        AstNode::Program { declarations } => declarations
-            .iter()
+        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+            .into_iter()
             .find_map(|node| {
                 if let AstNode::UseDecl {
                     name,
@@ -436,8 +436,8 @@ fn test_var_parsing_without_type_hint() {
 
     match ast {
         AstNode::Program { declarations } => {
-            let var_decl = declarations
-                .iter()
+            let var_decl = program_surface_nodes(&declarations)
+                .into_iter()
                 .find_map(|node| {
                     if let AstNode::VarDecl {
                         name,
@@ -475,8 +475,8 @@ fn test_var_parsing_supports_qualified_and_bracketed_type_hints() {
 
     match ast {
         AstNode::Program { declarations } => {
-            let var_decl = declarations
-                .iter()
+            let var_decl = program_surface_nodes(&declarations)
+                .into_iter()
                 .find_map(|node| {
                     if let AstNode::VarDecl {
                         name,
@@ -664,8 +664,8 @@ fn test_return_expression_precedence_mul_before_add() {
         .expect("Parser should parse precedence function");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => declarations
-            .iter()
+        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+            .into_iter()
             .find_map(|node| {
                 if let AstNode::Return { value: Some(value) } = node {
                     Some(value.as_ref().clone())
@@ -708,8 +708,8 @@ fn test_return_expression_parentheses_override_precedence() {
         .expect("Parser should parse parenthesized precedence function");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => declarations
-            .iter()
+        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+            .into_iter()
             .find_map(|node| {
                 if let AstNode::Return { value: Some(value) } = node {
                     Some(value.as_ref().clone())

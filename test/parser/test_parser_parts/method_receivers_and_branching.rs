@@ -495,8 +495,8 @@ fn test_when_statement_parsing_with_case_and_default() {
         .expect("Parser should parse when statement");
 
     let when_stmt = match ast {
-        AstNode::Program { declarations } => declarations
-            .iter()
+        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+            .into_iter()
             .find_map(|node| {
                 if let AstNode::When {
                     expr,
@@ -533,8 +533,8 @@ fn test_when_statement_parsing_with_multiple_cases() {
         .expect("Parser should parse when statement with multiple cases");
 
     let when_stmt = match ast {
-        AstNode::Program { declarations } => declarations
-            .iter()
+        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+            .into_iter()
             .find_map(|node| {
                 if let AstNode::When {
                     expr,
@@ -575,8 +575,8 @@ fn test_when_case_body_supports_nested_if_and_loop() {
         .expect("Parser should parse nested control flow inside when case body");
 
     let when_cases = match ast {
-        AstNode::Program { declarations } => declarations
-            .iter()
+        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+            .into_iter()
             .find_map(|node| {
                 if let AstNode::When { cases, .. } = node {
                     Some(cases.clone())
@@ -638,8 +638,8 @@ fn test_if_statement_lowers_to_when_shape() {
         .expect("Parser should parse if statement");
 
     let lowered_if = match ast {
-        AstNode::Program { declarations } => declarations
-            .iter()
+        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+            .into_iter()
             .find_map(|node| {
                 if let AstNode::When {
                     expr,
@@ -685,8 +685,8 @@ fn test_if_chain_lowers_to_nested_when_default() {
         .expect("Parser should parse chained if statements");
 
     let lowered_if = match ast {
-        AstNode::Program { declarations } => declarations
-            .iter()
+        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+            .into_iter()
             .find_map(|node| {
                 if let AstNode::When {
                     expr,
@@ -736,8 +736,8 @@ fn test_if_statement_without_else_has_no_default_branch() {
         .expect("Parser should parse if statement without else");
 
     let lowered_if = match ast {
-        AstNode::Program { declarations } => declarations
-            .iter()
+        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+            .into_iter()
             .find_map(|node| {
                 if let AstNode::When {
                     expr,
@@ -783,8 +783,8 @@ fn test_else_if_keyword_chain_lowers_to_nested_when_default() {
         .expect("Parser should parse else-if keyword chain");
 
     let lowered_if = match ast {
-        AstNode::Program { declarations } => declarations
-            .iter()
+        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+            .into_iter()
             .find_map(|node| {
                 if let AstNode::When {
                     expr,
@@ -834,8 +834,8 @@ fn test_else_keyword_block_maps_to_direct_default_body() {
         .expect("Parser should parse if-else keyword block");
 
     let lowered_if = match ast {
-        AstNode::Program { declarations } => declarations
-            .iter()
+        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+            .into_iter()
             .find_map(|node| {
                 if let AstNode::When {
                     expr,

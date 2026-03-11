@@ -277,12 +277,7 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_fun_decl(tokens) {
-                    Ok(node) => {
-                        if let AstNode::FunDecl { body, .. } = &node {
-                            declarations.extend(body.clone());
-                        }
-                        declarations.push(node);
-                    }
+                    Ok(node) => declarations.push(node),
                     Err(error) => errors.push(error),
                 }
                 self.bump_if_no_progress(tokens, before);
@@ -299,12 +294,7 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_log_decl(tokens) {
-                    Ok(node) => {
-                        if let AstNode::FunDecl { body, .. } = &node {
-                            declarations.extend(body.clone());
-                        }
-                        declarations.push(node);
-                    }
+                    Ok(node) => declarations.push(node),
                     Err(error) => errors.push(error),
                 }
                 self.bump_if_no_progress(tokens, before);
@@ -321,12 +311,7 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_pro_decl(tokens) {
-                    Ok(node) => {
-                        if let AstNode::ProDecl { body, .. } = &node {
-                            declarations.extend(body.clone());
-                        }
-                        declarations.push(node);
-                    }
+                    Ok(node) => declarations.push(node),
                     Err(error) => errors.push(error),
                 }
                 self.bump_if_no_progress(tokens, before);

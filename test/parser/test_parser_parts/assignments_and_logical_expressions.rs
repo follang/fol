@@ -222,8 +222,8 @@ fn test_compound_assignment_statements_are_lowered_to_binary_ops() {
         .expect("Parser should parse compound assignment statements");
 
     let assignment_ops = match ast {
-        AstNode::Program { declarations } => declarations
-            .iter()
+        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+            .into_iter()
             .filter_map(|node| {
                 if let AstNode::Assignment { value, .. } = node {
                     if let AstNode::BinaryOp { op, .. } = value.as_ref() {
@@ -365,8 +365,8 @@ fn test_mod_assignment_and_comparison_expressions() {
                     )
                 });
 
-            let return_ops = declarations
-                .iter()
+            let return_ops = program_surface_nodes(&declarations)
+                .into_iter()
                 .filter_map(|node| {
                     if let AstNode::Return { value: Some(value) } = node {
                         if let AstNode::BinaryOp { op, .. } = value.as_ref() {
@@ -380,8 +380,8 @@ fn test_mod_assignment_and_comparison_expressions() {
                 })
                 .collect::<Vec<_>>();
 
-            let return_values = declarations
-                .iter()
+            let return_values = program_surface_nodes(&declarations)
+                .into_iter()
                 .filter_map(|node| {
                     if let AstNode::Return { value } = node {
                         Some(format!("{:?}", value))
@@ -510,8 +510,8 @@ fn test_logical_and_has_lower_precedence_than_comparison() {
         .expect("Parser should parse logical expression");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => declarations
-            .iter()
+        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+            .into_iter()
             .find_map(|node| {
                 if let AstNode::Return { value: Some(value) } = node {
                     Some(value.as_ref().clone())
@@ -564,8 +564,8 @@ fn test_logical_or_has_lower_precedence_than_and() {
         .expect("Parser should parse logical or precedence expression");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => declarations
-            .iter()
+        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+            .into_iter()
             .find_map(|node| {
                 if let AstNode::Return { value: Some(value) } = node {
                     Some(value.as_ref().clone())
@@ -618,8 +618,8 @@ fn test_logical_not_parses_as_unary_expression() {
         .expect("Parser should parse logical not expression");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => declarations
-            .iter()
+        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+            .into_iter()
             .find_map(|node| {
                 if let AstNode::Return { value: Some(value) } = node {
                     Some(value.as_ref().clone())
@@ -657,8 +657,8 @@ fn test_logical_xor_precedence_between_or_and_and() {
         .expect("Parser should parse logical xor precedence expression");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => declarations
-            .iter()
+        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+            .into_iter()
             .find_map(|node| {
                 if let AstNode::Return { value: Some(value) } = node {
                     Some(value.as_ref().clone())
@@ -716,8 +716,8 @@ fn test_logical_nand_lowers_to_not_of_and() {
         .expect("Parser should parse logical nand/nor expression");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => declarations
-            .iter()
+        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+            .into_iter()
             .find_map(|node| {
                 if let AstNode::Return { value: Some(value) } = node {
                     Some(value.as_ref().clone())
@@ -761,8 +761,8 @@ fn test_logical_nor_lowers_to_not_of_or() {
         .expect("Parser should parse logical nor expression");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => declarations
-            .iter()
+        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+            .into_iter()
             .find_map(|node| {
                 if let AstNode::Return { value: Some(value) } = node {
                     Some(value.as_ref().clone())
@@ -807,8 +807,8 @@ fn test_logical_not_precedence_over_comparison_and_and() {
         .expect("Parser should parse logical not precedence expression");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => declarations
-            .iter()
+        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+            .into_iter()
             .find_map(|node| {
                 if let AstNode::Return { value: Some(value) } = node {
                     Some(value.as_ref().clone())

@@ -57,8 +57,8 @@ fn test_return_expression_unary_minus_precedence() {
         .expect("Parser should parse unary precedence function");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => declarations
-            .iter()
+        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+            .into_iter()
             .find_map(|node| {
                 if let AstNode::Return { value: Some(value) } = node {
                     Some(value.as_ref().clone())
@@ -101,8 +101,8 @@ fn test_return_expression_unary_plus_precedence() {
         .expect("Parser should parse unary plus precedence function");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => declarations
-            .iter()
+        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+            .into_iter()
             .find_map(|node| {
                 if let AstNode::Return { value: Some(value) } = node {
                     Some(value.as_ref().clone())
@@ -143,8 +143,8 @@ fn test_return_expression_chained_unary_plus_precedence() {
         .expect("Parser should parse chained unary plus precedence function");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => declarations
-            .iter()
+        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+            .into_iter()
             .find_map(|node| {
                 if let AstNode::Return { value: Some(value) } = node {
                     Some(value.as_ref().clone())
@@ -243,8 +243,8 @@ fn test_return_expression_unary_ref_parses_as_unary_expression() {
         .expect("Parser should parse unary ref function");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => declarations
-            .iter()
+        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+            .into_iter()
             .find_map(|node| {
                 if let AstNode::Return { value: Some(value) } = node {
                     Some(value.as_ref().clone())
@@ -282,8 +282,8 @@ fn test_return_expression_unary_deref_precedence() {
         .expect("Parser should parse unary deref precedence function");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => declarations
-            .iter()
+        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+            .into_iter()
             .find_map(|node| {
                 if let AstNode::Return { value: Some(value) } = node {
                     Some(value.as_ref().clone())
@@ -472,8 +472,8 @@ fn test_return_expression_unary_minus_parenthesized_addition() {
         .expect("Parser should parse unary parenthesized precedence function");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => declarations
-            .iter()
+        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+            .into_iter()
             .find_map(|node| {
                 if let AstNode::Return { value: Some(value) } = node {
                     Some(value.as_ref().clone())
@@ -516,8 +516,8 @@ fn test_return_expression_subtraction_is_left_associative() {
         .expect("Parser should parse subtraction associativity function");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => declarations
-            .iter()
+        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+            .into_iter()
             .find_map(|node| {
                 if let AstNode::Return { value: Some(value) } = node {
                     Some(value.as_ref().clone())
@@ -560,8 +560,8 @@ fn test_return_expression_division_is_left_associative() {
         .expect("Parser should parse division associativity function");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => declarations
-            .iter()
+        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+            .into_iter()
             .find_map(|node| {
                 if let AstNode::Return { value: Some(value) } = node {
                     Some(value.as_ref().clone())
@@ -605,8 +605,8 @@ fn test_return_expression_mixed_precedence_and_associativity() {
         .expect("Parser should parse mixed precedence function");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => declarations
-            .iter()
+        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+            .into_iter()
             .find_map(|node| {
                 if let AstNode::Return { value: Some(value) } = node {
                     Some(value.as_ref().clone())
@@ -650,8 +650,8 @@ fn test_return_expression_division_with_grouped_rhs() {
         .expect("Parser should parse division with grouped rhs");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => declarations
-            .iter()
+        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+            .into_iter()
             .find_map(|node| {
                 if let AstNode::Return { value: Some(value) } = node {
                     Some(value.as_ref().clone())
@@ -694,8 +694,8 @@ fn test_assignment_statement_parsing_with_expression_value() {
         .expect("Parser should parse assignment statement");
 
     let assignment = match ast {
-        AstNode::Program { declarations } => declarations
-            .iter()
+        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+            .into_iter()
             .find_map(|node| {
                 if let AstNode::Assignment { target, value } = node {
                     Some((target.as_ref().clone(), value.as_ref().clone()))

@@ -14,8 +14,8 @@ fn test_triple_dot_ranges_parse_as_non_inclusive() {
 
     match ast {
         AstNode::Program { declarations } => {
-            let ranges: Vec<&AstNode> = declarations
-                .iter()
+            let ranges: Vec<&AstNode> = program_surface_nodes(&declarations)
+                .into_iter()
                 .filter_map(|node| match node {
                     AstNode::Assignment { value, .. } => Some(value.as_ref()),
                     AstNode::Return { value: Some(value) } => Some(value.as_ref()),
@@ -72,8 +72,8 @@ fn test_semicolon_braced_ranges_parse_as_ranges() {
 
     match ast {
         AstNode::Program { declarations } => {
-            let ranges: Vec<&AstNode> = declarations
-                .iter()
+            let ranges: Vec<&AstNode> = program_surface_nodes(&declarations)
+                .into_iter()
                 .filter_map(|node| match node {
                     AstNode::Assignment { value, .. } => Some(value.as_ref()),
                     AstNode::Return { value: Some(value) } => Some(value.as_ref()),
@@ -103,8 +103,8 @@ fn test_trailing_separator_braced_ranges_parse_as_ranges() {
 
     match ast {
         AstNode::Program { declarations } => {
-            let ranges: Vec<&AstNode> = declarations
-                .iter()
+            let ranges: Vec<&AstNode> = program_surface_nodes(&declarations)
+                .into_iter()
                 .filter_map(|node| match node {
                     AstNode::Assignment { value, .. } => Some(value.as_ref()),
                     AstNode::Return { value: Some(value) } => Some(value.as_ref()),

@@ -15,72 +15,56 @@ fn parse_program_declarations(path: &str) -> Vec<AstNode> {
 }
 
 #[test]
-fn test_top_level_fun_currently_leaks_body_before_declaration() {
+fn test_top_level_fun_stays_a_single_root_declaration() {
     let declarations = parse_program_declarations("test/parser/simple_fun.fol");
 
     assert_eq!(
         declarations.len(),
-        2,
-        "Top-level function fixture should currently lower to leaked body plus declaration"
-    );
-    assert!(
-        matches!(&declarations[0], AstNode::Return { .. }),
-        "Current root contamination places the function body return before the declaration"
+        1,
+        "Top-level function fixture should no longer leak body statements into Program.declarations"
     );
     assert!(
         matches!(
-            &declarations[1],
+            &declarations[0],
             AstNode::FunDecl { name, body, .. } if name == "add" && body.len() == 1
         ),
-        "Second node should remain the authoritative function declaration"
+        "The only root node should be the authoritative function declaration"
     );
 }
 
 #[test]
-fn test_top_level_pro_currently_leaks_body_before_declaration() {
+fn test_top_level_pro_stays_a_single_root_declaration() {
     let declarations = parse_program_declarations("test/parser/simple_pro.fol");
 
     assert_eq!(
         declarations.len(),
-        3,
-        "Top-level procedure fixture should currently lower to leaked body statements plus declaration"
-    );
-    assert!(
-        matches!(&declarations[0], AstNode::Assignment { .. }),
-        "Current root contamination places the procedure body assignment before the declaration"
-    );
-    assert!(
-        matches!(&declarations[1], AstNode::Return { .. }),
-        "Current root contamination also leaks the procedure return before the declaration"
+        1,
+        "Top-level procedure fixture should no longer leak body statements into Program.declarations"
     );
     assert!(
         matches!(
-            &declarations[2],
+            &declarations[0],
             AstNode::ProDecl { name, body, .. } if name == "update" && body.len() == 2
         ),
-        "Final node should remain the authoritative procedure declaration"
+        "The only root node should be the authoritative procedure declaration"
     );
 }
 
 #[test]
-fn test_top_level_log_currently_leaks_body_before_declaration() {
+fn test_top_level_log_stays_a_single_root_declaration() {
     let declarations = parse_program_declarations("test/parser/simple_log.fol");
 
     assert_eq!(
         declarations.len(),
-        2,
-        "Top-level logical fixture should currently lower to leaked body plus declaration"
-    );
-    assert!(
-        matches!(&declarations[0], AstNode::Return { .. }),
-        "Current root contamination places the logical body return before the declaration"
+        1,
+        "Top-level logical fixture should no longer leak body statements into Program.declarations"
     );
     assert!(
         matches!(
-            &declarations[1],
+            &declarations[0],
             AstNode::FunDecl { name, body, .. } if name == "dating" && body.len() == 1
         ),
-        "Logical declarations currently lower through FunDecl and should remain authoritative"
+        "Logical declarations still lower through FunDecl, but only as a single root declaration"
     );
 }
 
