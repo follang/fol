@@ -32,3 +32,37 @@ fn test_top_level_grouped_callee_lowers_as_invoke_not_function_call() {
                 && matches!(&args[0], AstNode::Identifier { name } if name == "value")
     ));
 }
+
+#[test]
+fn test_routine_body_keeps_call_invoke_and_assignment_boundaries() {
+    let declarations =
+        parse_program_declarations("test/parser/simple_fun_call_invoke_assignment_boundaries.fol");
+
+    let body = declarations
+        .iter()
+        .find_map(|node| {
+            if let AstNode::FunDecl { name, body, .. } = node {
+                (name == "shape").then(|| body.clone())
+            } else {
+                None
+            }
+        })
+        .expect("Program should contain the shape routine declaration");
+
+    assert!(matches!(
+        body.as_slice(),
+        [
+            AstNode::FunctionCall { name, args },
+            AstNode::Invoke { callee, args: invoke_args },
+            AstNode::Assignment { target, value }
+        ]
+            if name == "run"
+                && args.len() == 1
+                && matches!(&args[0], AstNode::Identifier { name } if name == "value")
+                && invoke_args.len() == 1
+                && matches!(callee.as_ref(), AstNode::FunctionCall { name, args } if name == "factory" && args.is_empty())
+                && matches!(&invoke_args[0], AstNode::Identifier { name } if name == "value")
+                && matches!(target.as_ref(), AstNode::Identifier { name } if name == "target")
+                && matches!(value.as_ref(), AstNode::Identifier { name } if name == "value")
+    ));
+}
