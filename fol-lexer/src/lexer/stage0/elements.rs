@@ -120,7 +120,8 @@ pub fn gen(file: &mut FileStream) -> impl Iterator<Item = Con<Part<char>>> {
         chars.push(Ok((ch, loc)));
     }
 
-    // Add EOF marker
+    // Downstream stages may fold trailing separators around EOF, so the
+    // synthetic marker itself stays anchored to an explicit out-of-band point.
     let mut eof_loc = point::Location::default();
     eof_loc.adjust(1, 0);
     chars.push(Ok(('\0', eof_loc)));

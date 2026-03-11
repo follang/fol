@@ -1,6 +1,6 @@
 // Comprehensive tests for fol-lexer module
 
-use fol_lexer::{lexer::stage3::Elements, token::KEYWORD, token::*};
+use fol_lexer::{lexer::stage0, lexer::stage3::Elements, token::KEYWORD, token::*};
 use fol_stream::FileStream;
 
 fn tokenize_file(path: &str) -> Vec<(KEYWORD, String)> {
@@ -683,6 +683,37 @@ mod lexer_error_tests {
         assert!(
             token.loc().row() <= 1,
             "EOF location should stay explicit and stable for empty files"
+        );
+    }
+
+    #[test]
+    fn test_stage0_synthetic_eof_uses_explicit_out_of_band_location() {
+        let mut file_stream =
+            FileStream::from_file("test/stream/basic.fol").expect("Should read basic file");
+        let mut chars = stage0::Elements::init(&mut file_stream);
+        let mut eof = None;
+
+        for _ in 0..10_000 {
+            let part = chars
+                .bump()
+                .expect("Stage0 should expose a part while scanning to EOF")
+                .expect("Stage0 should not fail for a basic fixture");
+            if part.0 == '\0' {
+                eof = Some(part.1);
+                break;
+            }
+        }
+
+        let eof = eof.expect("Stage0 should eventually reach its synthetic EOF marker");
+        assert_eq!(
+            eof.row(),
+            1,
+            "Synthetic stage0 EOF should use the explicit row chosen in the source generator"
+        );
+        assert_eq!(
+            eof.col(),
+            0,
+            "Synthetic stage0 EOF should remain out-of-band instead of pretending to be a real character location"
         );
     }
 

@@ -135,7 +135,7 @@ Done when:
 - [x] Document row and column origin.
 - [x] Confirm newline handling rules.
 - [x] Confirm row/column reset behavior when switching files.
-- [ ] Define location meaning for synthetic EOF handling if downstream uses it.
+- [x] Define location meaning for synthetic EOF handling if downstream uses it.
 - [x] Add explicit tests for file boundary transitions.
 
 Done when:
