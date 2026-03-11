@@ -232,6 +232,22 @@ tests actually enforce today.
   - ownership and borrowing analysis
   - cross-file semantic validation
 
+### Parser Module Ownership
+
+- `parser_parts` ownership is now explicit enough to maintain without broad structural
+  refactoring:
+  - program/root assembly lives in `program_and_bindings`
+  - literal atom lowering and `report` validation live in
+    `expression_atoms_and_report_validation`
+  - routine signature and header parsing live in `routine_signature_parsers`
+  - statement/expression boundary behavior is locked by focused parser tests instead of
+    depending on cross-module guesswork
+- The remaining overlap hotspots are documented rather than hidden:
+  - routine surfaces still touch both signature parsing and body parsing modules
+  - `report` validation remains a semantic-adjacent parser-owned exception
+- No additional parser-part reshuffle is required for this hardening pass because the
+  current ownership boundaries are stable enough to support targeted maintenance.
+
 ### Hardening Boundary Freeze
 
 - During this hardening pass, no new parser-owned semantic checks have been added beyond
