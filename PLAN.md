@@ -332,7 +332,7 @@ Done when:
 
 Done when:
 
-- [ ] Path and name AST encoding is predictable.
+- [x] Path and name AST encoding is predictable.
 
 ### 7.5 Declaration normalization
 
