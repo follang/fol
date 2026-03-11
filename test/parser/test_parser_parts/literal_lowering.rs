@@ -111,6 +111,46 @@ fn test_single_quotes_lower_by_inner_width() {
 }
 
 #[test]
+fn test_cooked_double_quotes_decode_basic_escapes_before_width_lowering() {
+    let parser = AstParser::new();
+
+    assert_eq!(
+        parser
+            .parse_literal("\"\\n\"")
+            .expect("Cooked newline escape should parse"),
+        AstNode::Literal(Literal::Character('\n')),
+        "Cooked escapes should decode before one-element literals are lowered to Literal::Character"
+    );
+    assert_eq!(
+        parser
+            .parse_literal("\"say \\\"hi\\\"\"")
+            .expect("Cooked quote escape should parse"),
+        AstNode::Literal(Literal::String("say \"hi\"".to_string())),
+        "Cooked double quotes should decode escaped delimiters in string payloads"
+    );
+    assert_eq!(
+        parser
+            .parse_literal("\"\\\\path\"")
+            .expect("Cooked backslash escape should parse"),
+        AstNode::Literal(Literal::String("\\path".to_string())),
+        "Cooked double quotes should decode escaped backslashes"
+    );
+}
+
+#[test]
+fn test_raw_single_quotes_keep_escape_spelling_verbatim() {
+    let parser = AstParser::new();
+
+    assert_eq!(
+        parser
+            .parse_literal("'\\n'")
+            .expect("Raw quoted backslash-n should parse"),
+        AstNode::Literal(Literal::String("\\n".to_string())),
+        "Raw single quotes should not decode cooked escape spellings"
+    );
+}
+
+#[test]
 fn test_top_level_boolean_and_nil_literals_lower_cleanly() {
     let mut file_stream = FileStream::from_file("test/parser/simple_literal_logic.fol")
         .expect("Should read logical literal lowering fixture");

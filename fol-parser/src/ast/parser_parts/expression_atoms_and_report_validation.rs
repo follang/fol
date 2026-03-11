@@ -226,7 +226,7 @@ impl AstParser {
     pub fn parse_literal(&self, value: &str) -> Result<AstNode, Box<dyn Glitch>> {
         if value.starts_with('"') && value.ends_with('"') {
             return Ok(Self::lower_width_based_text_literal(
-                value[1..value.len() - 1].to_string(),
+                Self::decode_cooked_literal(&value[1..value.len() - 1]),
             ));
         }
 
@@ -285,5 +285,48 @@ impl AstParser {
             (Some(ch), None) => AstNode::Literal(Literal::Character(ch)),
             _ => AstNode::Literal(Literal::String(content)),
         }
+    }
+
+    fn decode_cooked_literal(content: &str) -> String {
+        let mut decoded = String::new();
+        let mut chars = content.chars();
+
+        while let Some(ch) = chars.next() {
+            if ch != '\\' {
+                decoded.push(ch);
+                continue;
+            }
+
+            let Some(next) = chars.next() else {
+                decoded.push('\\');
+                break;
+            };
+
+            match next {
+                'p' => {
+                    if cfg!(windows) {
+                        decoded.push('\r');
+                    }
+                    decoded.push('\n');
+                }
+                'r' | 'c' => decoded.push('\r'),
+                'n' | 'l' => decoded.push('\n'),
+                'f' => decoded.push('\u{000C}'),
+                't' => decoded.push('\t'),
+                'v' => decoded.push('\u{000B}'),
+                '\\' => decoded.push('\\'),
+                '"' => decoded.push('"'),
+                '\'' => decoded.push('\''),
+                'a' => decoded.push('\u{0007}'),
+                'b' => decoded.push('\u{0008}'),
+                'e' => decoded.push('\u{001B}'),
+                other => {
+                    decoded.push('\\');
+                    decoded.push(other);
+                }
+            }
+        }
+
+        decoded
     }
 }
