@@ -75,6 +75,20 @@ impl Default for AstParser {
         Self::new()
     }
 }
+
+pub(super) fn canonical_identifier_key(name: &str) -> String {
+    name.chars()
+        .filter(|ch| *ch != '_')
+        .map(|ch| {
+            if ch.is_ascii() {
+                ch.to_ascii_lowercase()
+            } else {
+                ch
+            }
+        })
+        .collect()
+}
+
 #[path = "parser_parts/binding_alternative_parsers.rs"]
 mod binding_alternative_parsers;
 #[path = "parser_parts/binding_option_parsers.rs"]
