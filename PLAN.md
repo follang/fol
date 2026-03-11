@@ -88,11 +88,11 @@ Target area:
 - [x] Pick one ordering rule and keep it everywhere.
 - [x] Use the same rule for root files and nested files.
 - [x] Make sure recursion preserves that rule.
-- [ ] Add tests that assert exact source order, not just source presence.
+- [x] Add tests that assert exact source order, not just source presence.
 
 Done when:
-- [ ] Repeated runs over the same folder produce the same source order.
-- [ ] Tests fail if traversal order regresses.
+- [x] Repeated runs over the same folder produce the same source order.
+- [x] Tests fail if traversal order regresses.
 
 ### 5.2 Source identity
 

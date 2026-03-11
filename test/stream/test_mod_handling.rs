@@ -46,6 +46,40 @@ mod mod_handling_tests {
     }
 
     #[test]
+    fn test_folder_traversal_order_is_deterministic() {
+        let sources = Source::init("test/legacy/main", SourceType::Folder)
+            .expect("Should process test/legacy/main directory");
+        let root = std::fs::canonicalize("test/legacy/main").expect("Should resolve test root");
+
+        let relative_paths: Vec<String> = sources
+            .iter()
+            .map(|source| {
+                std::path::Path::new(&source.path)
+                    .strip_prefix(&root)
+                    .expect("Source should stay under the root")
+                    .to_string_lossy()
+                    .to_string()
+            })
+            .collect();
+
+        assert_eq!(
+            relative_paths,
+            vec![
+                "main.fol",
+                "single/input1.fol",
+                "single/input2.fol",
+                "single/subpak/input1.fol",
+                "single/var.fol",
+                "var/let.fol",
+                "var/var.fol",
+                "var2/number.fol/file.fol",
+                "var2/var.fol",
+            ],
+            "Folder traversal order should stay stable for downstream phases"
+        );
+    }
+
+    #[test]
     fn test_folder_stream_creation() {
         // Test creating a stream from a folder with .mod directories
         let stream = FileStream::from_folder("test/legacy/main")
