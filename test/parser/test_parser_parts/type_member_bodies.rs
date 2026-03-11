@@ -71,6 +71,14 @@ fn test_record_type_routine_members_retain_receiver_types() {
                             if name == "store"
                                 && matches!(element_type.as_ref(), FolType::Named { name } if name == "pkg::Item")
                     ))
+                    && members.iter().any(|member| matches!(
+                        member,
+                        AstNode::LogDecl {
+                            name,
+                            receiver_type: Some(FolType::Named { name: receiver }),
+                            ..
+                        } if name == "ready" && receiver == "pkg::Status"
+                    ))
             )));
         }
         _ => panic!("Expected program node"),

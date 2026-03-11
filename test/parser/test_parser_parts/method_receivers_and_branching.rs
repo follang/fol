@@ -133,6 +133,38 @@ fn test_function_method_receiver_supports_qualified_type_references() {
 }
 
 #[test]
+fn test_logical_method_receiver_supports_qualified_type_references() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_log_method_receiver_qualified.fol")
+            .expect("Should read qualified logical receiver fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should accept logical method receiver type");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(
+                program_surface_nodes(&declarations).into_iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::LogDecl {
+                            name,
+                            receiver_type: Some(FolType::Named { name: receiver }),
+                            ..
+                        } if name == "ready" && receiver == "pkg::Parser"
+                    )
+                }),
+                "Qualified receiver logical method should retain its receiver type in the AST"
+            );
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
 fn test_procedure_method_receiver_supports_bracketed_type_references() {
     let mut file_stream =
         FileStream::from_file("test/parser/simple_pro_method_receiver_bracketed.fol")
