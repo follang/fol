@@ -206,7 +206,7 @@ Done when:
 
 Done when:
 
-- [ ] Escape behavior is explicit and test-backed.
+- [x] Escape behavior is explicit and test-backed.
 
 ### 6.4 Comment policy
 
