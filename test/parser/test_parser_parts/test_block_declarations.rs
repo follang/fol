@@ -1,4 +1,19 @@
 use super::*;
+use std::fs;
+use std::time::{SystemTime, UNIX_EPOCH};
+
+fn unique_temp_root(label: &str) -> std::path::PathBuf {
+    let stamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("System time should be after unix epoch")
+        .as_nanos();
+    std::env::temp_dir().join(format!(
+        "fol_test_block_{}_{}_{}",
+        label,
+        std::process::id(),
+        stamp
+    ))
+}
 
 #[test]
 fn test_test_type_reference_lowering() {
@@ -87,6 +102,62 @@ fn test_access_only_test_block_definition_parsing() {
                         ..
                     }
                     if name == "some unit testing" && access == &vec!["shko".to_string()]
+                )
+            }));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_test_block_labels_preserve_inner_opposite_quote_chars() {
+    let temp_root = unique_temp_root("inner_quotes");
+    fs::create_dir_all(&temp_root).expect("Should create temp tst fixture dir");
+    let fixture = temp_root.join("inner_quotes.fol");
+    fs::write(
+        &fixture,
+        "typ Alpha: tst[\"unit 'alpha'\", shko]\ndef beta: tst['case \"beta\"', shko] = {}\n",
+    )
+    .expect("Should write temp tst fixture");
+
+    let mut file_stream =
+        FileStream::from_file(fixture.to_str().expect("tst fixture path should be UTF-8"))
+            .expect("Should read temp tst fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should preserve inner opposite-family quotes in tst labels");
+
+    fs::remove_dir_all(&temp_root).ok();
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::TypeDecl {
+                        name,
+                        type_def: TypeDefinition::Alias {
+                            target: FolType::Test { name: Some(label), access }
+                        },
+                        ..
+                    } if name == "Alpha"
+                        && label == "unit 'alpha'"
+                        && access == &vec!["shko".to_string()]
+                )
+            }));
+            assert!(declarations.iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::DefDecl {
+                        name,
+                        def_type: FolType::Test { name: Some(label), access },
+                        ..
+                    } if name == "beta"
+                        && label == "case \"beta\""
+                        && access == &vec!["shko".to_string()]
                 )
             }));
         }

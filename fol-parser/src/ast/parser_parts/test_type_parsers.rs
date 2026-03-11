@@ -34,11 +34,9 @@ impl AstParser {
             }
 
             let value = match token.key() {
-                KEYWORD::Literal(LITERAL::Stringy) | KEYWORD::Literal(LITERAL::Quoted) => token
-                    .con()
-                    .trim()
-                    .trim_matches(|c| c == '"' || c == '\'')
-                    .to_string(),
+                KEYWORD::Literal(LITERAL::Stringy) | KEYWORD::Literal(LITERAL::Quoted) => {
+                    Self::exact_unquote_text(token.con())
+                }
                 _ => Self::token_to_named_label(&token).ok_or_else(|| {
                     Box::new(ParseError::from_token(
                         &token,
