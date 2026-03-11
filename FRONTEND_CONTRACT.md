@@ -293,3 +293,15 @@ tests actually enforce today.
 - The lexer still conflates multiple quoted forms into `Stringy`; the supported behavior
   is documented, but the literal taxonomy is not fully cleaned up.
 - Later semantic phases remain out of scope for this front-end hardening pass.
+
+## Hardening Execution Notes
+
+- This hardening pass has not introduced new major language syntax; the work has stayed
+  on contract definition, regression coverage, and front-end shape correction.
+- The executed order has stayed stream first, then lexer, then parser, with later
+  contract freeze work only after those boundaries were exercised by tests.
+- The changes in this pass have been intentionally surgical: most slices either lock
+  existing behavior with tests, document a contract explicitly, or make a contained
+  front-end correction without broad grammar churn.
+- Eager source loading remains accepted for this cycle, but there is now an explicit
+  follow-up expectation to revisit it only after parser hardening is complete.
