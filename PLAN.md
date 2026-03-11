@@ -288,7 +288,7 @@ Target files:
 
 ### 9.5 Clean Up Illegal And Error Semantics
 
-- [ ] Remove `Illegal` from `KEYWORD::is_void()`.
+- [x] Remove `Illegal` from `KEYWORD::is_void()`.
 - [ ] Audit every parser path that currently assumes `is_void()` also means malformed input.
 - [ ] Make malformed quoted spans follow one consistent policy.
 - [ ] Make malformed comments follow one consistent policy.

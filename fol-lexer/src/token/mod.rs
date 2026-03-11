@@ -114,7 +114,7 @@ impl KEYWORD {
         matches!(*self, KEYWORD::Operator(_))
     }
     pub fn is_void(&self) -> bool {
-        matches!(*self, KEYWORD::Void(_) | KEYWORD::Illegal)
+        matches!(*self, KEYWORD::Void(_))
     }
     pub fn is_eof(&self) -> bool {
         matches!(*self, KEYWORD::Void(VOID::EndFile))
@@ -174,4 +174,29 @@ pub fn get_keyword() -> HashMap<String, KEYWORD> {
     let mut keywords: HashMap<String, KEYWORD> = HashMap::new();
     keywords.insert(String::from("use"), KEYWORD::Keyword(BUILDIN::Use));
     keywords
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn illegal_tokens_are_not_void_or_continue() {
+        assert!(
+            !KEYWORD::Illegal.is_void(),
+            "Illegal tokens must not be treated as void after lexer hardening"
+        );
+        assert!(
+            !KEYWORD::Illegal.is_continue(),
+            "Illegal tokens must not be treated as ignorable continuation markers"
+        );
+    }
+
+    #[test]
+    fn real_void_tokens_remain_void_and_continue() {
+        assert!(KEYWORD::Void(VOID::Space).is_void());
+        assert!(KEYWORD::Void(VOID::Space).is_continue());
+        assert!(KEYWORD::Void(VOID::EndLine).is_void());
+        assert!(KEYWORD::Void(VOID::EndLine).is_continue());
+    }
 }
