@@ -6,9 +6,8 @@ use super::{
     Parameter, RecordFieldMeta, RollingBinding, StandardKind, TypeDefinition, TypeOption,
     UnaryOperator, UseOption, VarOption, WhenCase,
 };
-use fol_lexer::token::{BUILDIN, KEYWORD, LITERAL, OPERATOR, SYMBOL, VOID};
+use fol_lexer::token::{BUILDIN, KEYWORD, LITERAL, OPERATOR, SYMBOL};
 use fol_types::*;
-use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 
@@ -69,9 +68,7 @@ impl Glitch for ParseError {
 }
 
 /// Simple AST Parser for FOL
-pub struct AstParser {
-    routine_return_types: RefCell<HashMap<String, FolType>>,
-}
+pub struct AstParser;
 
 impl Default for AstParser {
     fn default() -> Self {
@@ -114,8 +111,6 @@ mod program_and_bindings;
 mod routine_headers_and_type_lowering;
 #[path = "parser_parts/routine_capture_parsers.rs"]
 mod routine_capture_parsers;
-#[path = "parser_parts/routine_signature_parsers.rs"]
-mod routine_signature_parsers;
 #[path = "parser_parts/routine_body_parsers.rs"]
 mod routine_body_parsers;
 #[path = "parser_parts/statement_parsers.rs"]

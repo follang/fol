@@ -18,7 +18,7 @@ impl AstParser {
         let options = self.parse_routine_options(tokens)?;
         self.skip_ignorable(tokens);
 
-        let (receiver_type, name) = self.parse_routine_name_with_optional_receiver(
+        let (_receiver_type, name) = self.parse_routine_name_with_optional_receiver(
             tokens,
             "Expected function name after 'fun'",
         )?;
@@ -53,16 +53,6 @@ impl AstParser {
                     self.skip_ignorable(tokens);
                     error_type = Some(self.parse_type_reference_tokens(tokens)?);
                 }
-            }
-
-            if let Some(rt) = return_type.as_ref() {
-                self.register_routine_return_type(
-                    &name,
-                    0,
-                    receiver_type.as_ref(),
-                    rt,
-                    &fun_token,
-                )?;
             }
 
             self.skip_ignorable(tokens);
@@ -104,15 +94,6 @@ impl AstParser {
                 "Expected '{' or '=>' to start function body",
                 "Expected '}' to close function body",
             )?;
-            let parameter_types = Self::parameter_type_map(&params);
-            let routine_returns = self.routine_return_types.borrow().clone();
-            Self::validate_report_usage(
-                &body,
-                error_type.as_ref(),
-                &parameter_types,
-                &routine_returns,
-                &fun_token,
-            )?;
 
             return Ok(AstNode::FunDecl {
                 options,
@@ -153,16 +134,6 @@ impl AstParser {
             }
         }
 
-        if let Some(rt) = return_type.as_ref() {
-            self.register_routine_return_type(
-                &name,
-                params.len(),
-                receiver_type.as_ref(),
-                rt,
-                &fun_token,
-            )?;
-        }
-
         self.skip_ignorable(tokens);
         let assign = tokens.curr(false)?;
         if !matches!(
@@ -182,15 +153,6 @@ impl AstParser {
             tokens,
             "Expected '{' or '=>' to start function body",
             "Expected '}' to close function body",
-        )?;
-        let parameter_types = Self::parameter_type_map(&params);
-        let routine_returns = self.routine_return_types.borrow().clone();
-        Self::validate_report_usage(
-            &body,
-            error_type.as_ref(),
-            &parameter_types,
-            &routine_returns,
-            &fun_token,
         )?;
 
         Ok(AstNode::FunDecl {
@@ -223,7 +185,7 @@ impl AstParser {
         let options = self.parse_routine_options(tokens)?;
         self.skip_ignorable(tokens);
 
-        let (receiver_type, name) = self.parse_routine_name_with_optional_receiver(
+        let (_receiver_type, name) = self.parse_routine_name_with_optional_receiver(
             tokens,
             "Expected logical name after 'log'",
         )?;
@@ -258,16 +220,6 @@ impl AstParser {
                     self.skip_ignorable(tokens);
                     error_type = Some(self.parse_type_reference_tokens(tokens)?);
                 }
-            }
-
-            if let Some(rt) = return_type.as_ref() {
-                self.register_routine_return_type(
-                    &name,
-                    0,
-                    receiver_type.as_ref(),
-                    rt,
-                    &log_token,
-                )?;
             }
 
             self.skip_ignorable(tokens);
@@ -309,15 +261,6 @@ impl AstParser {
                 "Expected '{' or '=>' to start logical body",
                 "Expected '}' to close logical body",
             )?;
-            let parameter_types = Self::parameter_type_map(&params);
-            let routine_returns = self.routine_return_types.borrow().clone();
-            Self::validate_report_usage(
-                &body,
-                error_type.as_ref(),
-                &parameter_types,
-                &routine_returns,
-                &log_token,
-            )?;
 
             return Ok(AstNode::FunDecl {
                 options,
@@ -358,16 +301,6 @@ impl AstParser {
             }
         }
 
-        if let Some(rt) = return_type.as_ref() {
-            self.register_routine_return_type(
-                &name,
-                params.len(),
-                receiver_type.as_ref(),
-                rt,
-                &log_token,
-            )?;
-        }
-
         self.skip_ignorable(tokens);
         let assign = tokens.curr(false)?;
         if !matches!(
@@ -387,15 +320,6 @@ impl AstParser {
             tokens,
             "Expected '{' or '=>' to start logical body",
             "Expected '}' to close logical body",
-        )?;
-        let parameter_types = Self::parameter_type_map(&params);
-        let routine_returns = self.routine_return_types.borrow().clone();
-        Self::validate_report_usage(
-            &body,
-            error_type.as_ref(),
-            &parameter_types,
-            &routine_returns,
-            &log_token,
         )?;
 
         Ok(AstNode::FunDecl {
@@ -428,7 +352,7 @@ impl AstParser {
         let options = self.parse_routine_options(tokens)?;
         self.skip_ignorable(tokens);
 
-        let (receiver_type, name) = self.parse_routine_name_with_optional_receiver(
+        let (_receiver_type, name) = self.parse_routine_name_with_optional_receiver(
             tokens,
             "Expected procedure name after 'pro'",
         )?;
@@ -463,16 +387,6 @@ impl AstParser {
                     self.skip_ignorable(tokens);
                     error_type = Some(self.parse_type_reference_tokens(tokens)?);
                 }
-            }
-
-            if let Some(rt) = return_type.as_ref() {
-                self.register_routine_return_type(
-                    &name,
-                    0,
-                    receiver_type.as_ref(),
-                    rt,
-                    &pro_token,
-                )?;
             }
 
             self.skip_ignorable(tokens);
@@ -514,15 +428,6 @@ impl AstParser {
                 "Expected '{' or '=>' to start procedure body",
                 "Expected '}' to close procedure body",
             )?;
-            let parameter_types = Self::parameter_type_map(&params);
-            let routine_returns = self.routine_return_types.borrow().clone();
-            Self::validate_report_usage(
-                &body,
-                error_type.as_ref(),
-                &parameter_types,
-                &routine_returns,
-                &pro_token,
-            )?;
 
             return Ok(AstNode::ProDecl {
                 options,
@@ -563,16 +468,6 @@ impl AstParser {
             }
         }
 
-        if let Some(rt) = return_type.as_ref() {
-            self.register_routine_return_type(
-                &name,
-                params.len(),
-                receiver_type.as_ref(),
-                rt,
-                &pro_token,
-            )?;
-        }
-
         self.skip_ignorable(tokens);
         let assign = tokens.curr(false)?;
         if !matches!(
@@ -592,15 +487,6 @@ impl AstParser {
             tokens,
             "Expected '{' or '=>' to start procedure body",
             "Expected '}' to close procedure body",
-        )?;
-        let parameter_types = Self::parameter_type_map(&params);
-        let routine_returns = self.routine_return_types.borrow().clone();
-        Self::validate_report_usage(
-            &body,
-            error_type.as_ref(),
-            &parameter_types,
-            &routine_returns,
-            &pro_token,
         )?;
 
         Ok(AstNode::ProDecl {

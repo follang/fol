@@ -103,9 +103,6 @@ mod container_and_unary_expressions;
 #[path = "test_parser_parts/container_literal_expressions.rs"]
 mod container_literal_expressions;
 #[cfg(test)]
-#[path = "test_parser_parts/custom_error_report_validation.rs"]
-mod custom_error_report_validation;
-#[cfg(test)]
 #[path = "test_parser_parts/definition_declarations.rs"]
 mod definition_declarations;
 #[cfg(test)]
@@ -196,11 +193,11 @@ mod nil_literal_expressions;
 #[path = "test_parser_parts/object_type_markers.rs"]
 mod object_type_markers;
 #[cfg(test)]
-#[path = "test_parser_parts/report_call_resolution.rs"]
-mod report_call_resolution;
-#[cfg(test)]
 #[path = "test_parser_parts/record_initializers.rs"]
 mod record_initializers;
+#[cfg(test)]
+#[path = "test_parser_parts/report_syntax.rs"]
+mod report_syntax;
 #[cfg(test)]
 #[path = "test_parser_parts/reference_keywords.rs"]
 mod reference_keywords;
@@ -219,9 +216,6 @@ mod quoted_member_access;
 #[cfg(test)]
 #[path = "test_parser_parts/quoted_call_expressions.rs"]
 mod quoted_call_expressions;
-#[cfg(test)]
-#[path = "test_parser_parts/quoted_report_call_resolution.rs"]
-mod quoted_report_call_resolution;
 #[cfg(test)]
 #[path = "test_parser_parts/quoted_bindings.rs"]
 mod quoted_bindings;

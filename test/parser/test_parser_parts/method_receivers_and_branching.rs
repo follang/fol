@@ -296,28 +296,15 @@ fn test_function_custom_error_type_accepts_compatible_report_local_var() {
 }
 
 #[test]
-fn test_function_custom_error_type_rejects_incompatible_report_local_var() {
+fn test_function_custom_error_type_allows_incompatible_report_local_var_as_syntax() {
     let mut file_stream =
         FileStream::from_file("test/parser/simple_fun_error_type_report_local_var_mismatch.fol")
             .expect("Should read incompatible custom-error report local var file");
 
     let mut lexer = Elements::init(&mut file_stream);
     let mut parser = AstParser::new();
-    let errors = parser.parse(&mut lexer).expect_err(
-        "Parser should fail when report local var is incompatible with custom error type",
-    );
-
-    let parse_error = errors
-        .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
-        .expect("First parser error should be ParseError");
-
-    let first_message = parse_error.to_string();
-    assert!(
-        first_message.contains("Reported identifier")
-            && first_message.contains("incompatible with routine error type"),
-        "Custom-error routine should reject incompatible report local var type, got: {}",
-        first_message
+    parser.parse(&mut lexer).expect(
+        "Parser should keep incompatible report local vars as syntax-only forms after semantic validation removal",
     );
 }
 
@@ -335,7 +322,7 @@ fn test_function_custom_error_type_accepts_compatible_report_inferred_local_var(
 }
 
 #[test]
-fn test_function_custom_error_type_rejects_incompatible_report_inferred_local_var() {
+fn test_function_custom_error_type_allows_incompatible_report_inferred_local_var_as_syntax() {
     let mut file_stream = FileStream::from_file(
         "test/parser/simple_fun_error_type_report_inferred_local_mismatch.fol",
     )
@@ -343,21 +330,8 @@ fn test_function_custom_error_type_rejects_incompatible_report_inferred_local_va
 
     let mut lexer = Elements::init(&mut file_stream);
     let mut parser = AstParser::new();
-    let errors = parser.parse(&mut lexer).expect_err(
-        "Parser should fail when report inferred local var is incompatible with custom error type",
-    );
-
-    let parse_error = errors
-        .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
-        .expect("First parser error should be ParseError");
-
-    let first_message = parse_error.to_string();
-    assert!(
-        first_message.contains("Reported identifier")
-            && first_message.contains("incompatible with routine error type"),
-        "Custom-error routine should reject incompatible inferred local var type, got: {}",
-        first_message
+    parser.parse(&mut lexer).expect(
+        "Parser should keep incompatible inferred report locals as syntax-only forms after semantic validation removal",
     );
 }
 
@@ -376,7 +350,7 @@ fn test_function_custom_error_type_accepts_nested_inferred_local_report() {
 }
 
 #[test]
-fn test_function_custom_error_type_rejects_nested_inferred_local_report_mismatch() {
+fn test_function_custom_error_type_allows_nested_inferred_local_report_mismatch_as_syntax() {
     let mut file_stream = FileStream::from_file(
         "test/parser/simple_fun_error_type_report_nested_inferred_local_mismatch.fol",
     )
@@ -384,21 +358,8 @@ fn test_function_custom_error_type_rejects_nested_inferred_local_report_mismatch
 
     let mut lexer = Elements::init(&mut file_stream);
     let mut parser = AstParser::new();
-    let errors = parser.parse(&mut lexer).expect_err(
-        "Parser should reject nested inferred-local report incompatible with custom error type",
-    );
-
-    let parse_error = errors
-        .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
-        .expect("First parser error should be ParseError");
-
-    let first_message = parse_error.to_string();
-    assert!(
-        first_message.contains("Reported identifier")
-            && first_message.contains("incompatible with routine error type"),
-        "Nested inferred-local mismatch should report incompatible identifier type, got: {}",
-        first_message
+    parser.parse(&mut lexer).expect(
+        "Parser should keep nested inferred-local report mismatches as syntax-only forms after semantic validation removal",
     );
 }
 
@@ -417,7 +378,7 @@ fn test_function_custom_error_type_accepts_loop_inferred_local_report() {
 }
 
 #[test]
-fn test_function_custom_error_type_rejects_loop_inferred_local_report_mismatch() {
+fn test_function_custom_error_type_allows_loop_inferred_local_report_mismatch_as_syntax() {
     let mut file_stream = FileStream::from_file(
         "test/parser/simple_fun_error_type_report_loop_inferred_local_mismatch.fol",
     )
@@ -425,21 +386,8 @@ fn test_function_custom_error_type_rejects_loop_inferred_local_report_mismatch()
 
     let mut lexer = Elements::init(&mut file_stream);
     let mut parser = AstParser::new();
-    let errors = parser.parse(&mut lexer).expect_err(
-        "Parser should reject loop inferred-local report incompatible with custom error type",
-    );
-
-    let parse_error = errors
-        .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
-        .expect("First parser error should be ParseError");
-
-    let first_message = parse_error.to_string();
-    assert!(
-        first_message.contains("Reported identifier")
-            && first_message.contains("incompatible with routine error type"),
-        "Loop inferred-local mismatch should report incompatible identifier type, got: {}",
-        first_message
+    parser.parse(&mut lexer).expect(
+        "Parser should keep loop inferred-local report mismatches as syntax-only forms after semantic validation removal",
     );
 }
 
@@ -457,7 +405,7 @@ fn test_function_custom_error_type_accepts_nested_shadowed_report_identifier() {
 }
 
 #[test]
-fn test_function_custom_error_type_rejects_nested_shadowed_report_identifier_mismatch() {
+fn test_function_custom_error_type_allows_nested_shadowed_report_identifier_mismatch_as_syntax() {
     let mut file_stream = FileStream::from_file(
         "test/parser/simple_fun_error_type_report_nested_shadow_mismatch.fol",
     )
@@ -465,21 +413,8 @@ fn test_function_custom_error_type_rejects_nested_shadowed_report_identifier_mis
 
     let mut lexer = Elements::init(&mut file_stream);
     let mut parser = AstParser::new();
-    let errors = parser.parse(&mut lexer).expect_err(
-        "Parser should reject nested shadowed identifier incompatible with custom error type",
-    );
-
-    let parse_error = errors
-        .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
-        .expect("First parser error should be ParseError");
-
-    let first_message = parse_error.to_string();
-    assert!(
-        first_message.contains("Reported identifier")
-            && first_message.contains("incompatible with routine error type"),
-        "Nested shadow mismatch should report incompatible identifier type, got: {}",
-        first_message
+    parser.parse(&mut lexer).expect(
+        "Parser should keep nested shadowed report mismatches as syntax-only forms after semantic validation removal",
     );
 }
 

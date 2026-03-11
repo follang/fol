@@ -3,9 +3,7 @@ use crate::ast::BindingPattern;
 
 impl AstParser {
     pub fn new() -> Self {
-        Self {
-            routine_return_types: RefCell::new(HashMap::new()),
-        }
+        Self
     }
 
     /// Parse a token stream into an AST
@@ -13,9 +11,6 @@ impl AstParser {
         &mut self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Vec<Box<dyn Glitch>>> {
-        self.routine_return_types.borrow_mut().clear();
-        self.seed_routine_return_types(tokens);
-
         let mut declarations = Vec::new();
         let mut errors: Vec<Box<dyn Glitch>> = Vec::new();
 
