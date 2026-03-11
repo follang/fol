@@ -216,6 +216,21 @@ mod lexer_tests {
     }
 
     #[test]
+    fn test_leading_dot_float_tokenizes_as_float() {
+        let tokens = tokenize_file("test/lexer/leading_dot_float.fol");
+        let significant: Vec<(KEYWORD, String)> = tokens
+            .into_iter()
+            .filter(|(key, _)| !key.is_space() && !key.is_eof())
+            .collect();
+
+        assert_eq!(
+            significant,
+            vec![(KEYWORD::Literal(LITERAL::Float), ".5".to_string())],
+            "A leading-dot numeric literal should tokenize as a float"
+        );
+    }
+
+    #[test]
     fn test_quoted_literal_payloads_keep_delimiters() {
         let tokens = tokenize_file("test/lexer/literals.fol");
 
