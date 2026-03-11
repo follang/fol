@@ -57,7 +57,7 @@ Do not use this plan for:
 
 ### Parser
 
-- [ ] Top-level `Program.declarations` is structurally contaminated by routine body leakage.
+- [x] Top-level `Program.declarations` is structurally contaminated by routine body leakage.
 - [x] Literal lowering is narrower than lexer support.
 - [x] AST invariants are not documented or enforced enough.
 - [ ] Parser still mixes syntax work with some semantic-ish checks.
@@ -285,14 +285,14 @@ Target area:
 
 ### 7.1 Fix `Program` contamination
 
-- [ ] Remove top-level leakage of `fun` body statements into `Program.declarations`.
-- [ ] Remove top-level leakage of `pro` body statements into `Program.declarations`.
-- [ ] Audit whether any other declaration family leaks child nodes upward.
+- [x] Remove top-level leakage of `fun` body statements into `Program.declarations`.
+- [x] Remove top-level leakage of `pro` body statements into `Program.declarations`.
+- [x] Audit whether any other declaration family leaks child nodes upward.
 - [x] Add explicit AST-shape regression tests for top-level declarations.
 
 Done when:
 
-- [ ] Top-level program shape contains only real top-level nodes.
+- [x] Top-level program shape contains only real top-level nodes.
 
 ### 7.2 Literal lowering
 
@@ -320,7 +320,7 @@ Done when:
 
 Done when:
 
-- [ ] Later phases can consume AST shape without reverse-engineering parser behavior.
+- [x] Later phases can consume AST shape without reverse-engineering parser behavior.
 
 ### 7.4 Name and path normalization
 
@@ -391,7 +391,7 @@ Done when:
 
 ### 7.10 Parser acceptance gate
 
-- [ ] `Program` root shape is fixed.
+- [x] `Program` root shape is fixed.
 - [x] Literal lowering is complete for supported literal families.
 - [x] AST invariants are explicit and tested.
 - [ ] Unsupported combinations fail intentionally.
@@ -480,10 +480,10 @@ Do not move to the next compiler step until all of these are true:
 - [x] source identity is explicit
 - [x] lexer token payload policy is fixed
 - [x] lexer literal taxonomy is fixed for supported forms
-- [ ] parser root AST shape is fixed
+- [x] parser root AST shape is fixed
 - [x] parser literal lowering is complete for supported forms
 - [x] stream, lexer, and parser contracts are written down
-- [ ] regression tests cover the corrected behavior
+- [x] regression tests cover the corrected behavior
 
 ## 11. Definition Of Done
 
