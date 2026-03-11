@@ -154,6 +154,29 @@ fn test_top_level_float_literal_lowers_cleanly() {
 }
 
 #[test]
+fn test_top_level_trailing_dot_float_literal_lowers_cleanly() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_literal_trailing_dot_float.fol")
+        .expect("Should read trailing-dot float literal lowering fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should lower top-level trailing-dot float literal");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert_eq!(
+                declarations,
+                vec![AstNode::Literal(Literal::Float(1.0))],
+                "Top-level trailing-dot float literal should lower to Literal::Float"
+            );
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
 fn test_top_level_prefixed_integer_literals_lower_cleanly() {
     let mut file_stream = FileStream::from_file("test/parser/simple_literal_prefixed_numbers.fol")
         .expect("Should read prefixed literal lowering fixture");

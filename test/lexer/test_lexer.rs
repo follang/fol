@@ -708,6 +708,21 @@ mod lexer_tests {
     }
 
     #[test]
+    fn test_trailing_dot_float_tokenizes_as_float() {
+        let tokens = tokenize_file("test/lexer/trailing_dot_float.fol");
+        let significant: Vec<(KEYWORD, String)> = tokens
+            .into_iter()
+            .filter(|(key, _)| !key.is_space() && !key.is_eof())
+            .collect();
+
+        assert_eq!(
+            significant,
+            vec![(KEYWORD::Literal(LITERAL::Float), "1.".to_string())],
+            "A decimal literal followed by a trailing dot should tokenize as a float"
+        );
+    }
+
+    #[test]
     fn test_negative_numbers_keep_minus_as_a_separate_token() {
         let tokens = tokenize_file("test/lexer/negative_numbers.fol");
         let significant: Vec<(KEYWORD, String)> = tokens

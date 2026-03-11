@@ -83,7 +83,8 @@ impl Element {
         }
         if el.curr(false)?.key().is_decimal()
             && el.peek(0, false)?.key().is_dot()
-            && el.peek(1, false)?.key().is_decimal()
+            && (el.peek(1, false)?.key().is_decimal()
+                || Self::is_trailing_float_terminator(&el.peek(1, false)?.key()))
         {
             self.make_number(el)?;
         } else if el.curr(false)?.key().is_dot()
@@ -110,6 +111,16 @@ impl Element {
         }
         Ok(())
     }
+
+    fn is_trailing_float_terminator(key: &KEYWORD) -> bool {
+        key.is_void()
+            || key.is_eof()
+            || key.is_terminal()
+            || key.is_comma()
+            || key.is_close_bracket()
+            || key.is_operator()
+    }
+
     pub fn make_number(&mut self, el: &mut stage2::Elements) -> Vod {
         self.set_key(Literal(LITERAL::Decimal));
 
@@ -126,6 +137,13 @@ impl Element {
             self.set_key(Literal(LITERAL::Float));
             self.append(&el.peek(0, false)?.into());
             self.bump(el);
+            self.append(&el.peek(0, false)?.into());
+            self.bump(el);
+        } else if el.curr(false)?.key().is_decimal()
+            && el.peek(0, false)?.key().is_dot()
+            && Self::is_trailing_float_terminator(&el.peek(1, false)?.key())
+        {
+            self.set_key(Literal(LITERAL::Float));
             self.append(&el.peek(0, false)?.into());
             self.bump(el);
         }
