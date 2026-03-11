@@ -13,7 +13,7 @@ fn test_call_argument_lists_accept_trailing_commas() {
 
     let (has_ping_two_args, has_run_one_arg, has_emit_one_arg) = match ast {
         AstNode::Program { declarations } => {
-            let has_ping_two_args = declarations.iter().any(|node| {
+            let has_ping_two_args = program_surface_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::FunctionCall { name, args }
@@ -21,7 +21,7 @@ fn test_call_argument_lists_accept_trailing_commas() {
                 )
             });
 
-            let has_run_one_arg = declarations.iter().any(|node| {
+            let has_run_one_arg = program_surface_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::MethodCall { method, args, .. }
@@ -29,7 +29,7 @@ fn test_call_argument_lists_accept_trailing_commas() {
                 )
             });
 
-            let has_emit_one_arg = declarations.iter().any(|node| {
+            let has_emit_one_arg = program_surface_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Return { value: Some(value) }
@@ -60,7 +60,7 @@ fn test_call_argument_lists_accept_semicolons() {
 
     let (has_ping_two_args, has_run_one_arg, has_emit_two_args) = match ast {
         AstNode::Program { declarations } => {
-            let has_ping_two_args = declarations.iter().any(|node| {
+            let has_ping_two_args = program_surface_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::FunctionCall { name, args }
@@ -68,7 +68,7 @@ fn test_call_argument_lists_accept_semicolons() {
                 )
             });
 
-            let has_run_one_arg = declarations.iter().any(|node| {
+            let has_run_one_arg = program_surface_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::MethodCall { method, args, .. }
@@ -76,7 +76,7 @@ fn test_call_argument_lists_accept_semicolons() {
                 )
             });
 
-            let has_emit_two_args = declarations.iter().any(|node| {
+            let has_emit_two_args = program_surface_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Return { value: Some(value) }
@@ -108,7 +108,7 @@ fn test_call_argument_lists_accept_mixed_separators() {
 
     let (has_ping_three_args, has_run_two_args, has_emit_three_args) = match ast {
         AstNode::Program { declarations } => {
-            let has_ping_three_args = declarations.iter().any(|node| {
+            let has_ping_three_args = program_surface_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::FunctionCall { name, args }
@@ -116,7 +116,7 @@ fn test_call_argument_lists_accept_mixed_separators() {
                 )
             });
 
-            let has_run_two_args = declarations.iter().any(|node| {
+            let has_run_two_args = program_surface_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::MethodCall { method, args, .. }
@@ -124,7 +124,7 @@ fn test_call_argument_lists_accept_mixed_separators() {
                 )
             });
 
-            let has_emit_three_args = declarations.iter().any(|node| {
+            let has_emit_three_args = program_surface_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Return { value: Some(value) }
@@ -156,7 +156,7 @@ fn test_semicolon_call_arguments_parse_in_initializers() {
 
     match ast {
         AstNode::Program { declarations } => {
-            assert!(declarations.iter().any(|node| matches!(
+            assert!(program_surface_nodes(&declarations).into_iter().any(|node| matches!(
                 node,
                 AstNode::FunDecl { body, .. }
                 if body.iter().any(|stmt| matches!(
@@ -185,7 +185,7 @@ fn test_nested_calls_with_trailing_commas_preserve_argument_shapes() {
 
     let (has_outer_two_args, has_done_one_arg) = match ast {
         AstNode::Program { declarations } => {
-            let has_outer_two_args = declarations.iter().any(|node| {
+            let has_outer_two_args = program_surface_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Assignment { value, .. }
@@ -200,7 +200,7 @@ fn test_nested_calls_with_trailing_commas_preserve_argument_shapes() {
                 )
             });
 
-            let has_done_one_arg = declarations.iter().any(|node| {
+            let has_done_one_arg = program_surface_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Return { value: Some(value) }
@@ -231,7 +231,7 @@ fn test_nested_calls_with_semicolons_preserve_argument_shapes() {
 
     let (has_outer_two_args, has_done_one_arg) = match ast {
         AstNode::Program { declarations } => {
-            let has_outer_two_args = declarations.iter().any(|node| {
+            let has_outer_two_args = program_surface_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Assignment { value, .. }
@@ -246,7 +246,7 @@ fn test_nested_calls_with_semicolons_preserve_argument_shapes() {
                 )
             });
 
-            let has_done_one_arg = declarations.iter().any(|node| {
+            let has_done_one_arg = program_surface_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Return { value: Some(value) }

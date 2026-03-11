@@ -12,7 +12,7 @@ fn test_function_calls_support_keyword_arguments() {
         .expect("Parser should accept keyword call arguments");
 
     let has_keyword_call = match ast {
-        AstNode::Program { declarations } => declarations.iter().any(|node| {
+        AstNode::Program { declarations } => program_surface_nodes(&declarations).into_iter().any(|node| {
             matches!(
                 node,
                 AstNode::Assignment { value, .. }
@@ -48,7 +48,7 @@ fn test_function_calls_support_mixed_keyword_arguments() {
         .expect("Parser should accept mixed positional and keyword call arguments");
 
     let has_mixed_keyword_call = match ast {
-        AstNode::Program { declarations } => declarations.iter().any(|node| {
+        AstNode::Program { declarations } => program_surface_nodes(&declarations).into_iter().any(|node| {
             matches!(
                 node,
                 AstNode::Assignment { value, .. }
@@ -110,7 +110,7 @@ fn test_method_calls_support_keyword_arguments() {
         .expect("Parser should accept keyword method call arguments");
 
     let has_keyword_method_call = match ast {
-        AstNode::Program { declarations } => declarations.iter().any(|node| {
+        AstNode::Program { declarations } => program_surface_nodes(&declarations).into_iter().any(|node| {
             matches!(
                 node,
                 AstNode::Assignment { value, .. }
@@ -146,7 +146,7 @@ fn test_invoke_expressions_support_keyword_arguments() {
         .expect("Parser should accept keyword invoke arguments");
 
     let has_keyword_invoke = match ast {
-        AstNode::Program { declarations } => declarations.iter().any(|node| {
+        AstNode::Program { declarations } => program_surface_nodes(&declarations).into_iter().any(|node| {
             matches!(
                 node,
                 AstNode::Assignment { value, .. }
@@ -181,7 +181,7 @@ fn test_keyword_call_arguments_accept_semicolon_separators() {
         .expect("Parser should accept semicolon-separated keyword arguments");
 
     let has_semicolon_keyword_call = match ast {
-        AstNode::Program { declarations } => declarations.iter().any(|node| {
+        AstNode::Program { declarations } => program_surface_nodes(&declarations).into_iter().any(|node| {
             matches!(
                 node,
                 AstNode::Assignment { value, .. }
@@ -218,7 +218,7 @@ fn test_keyword_call_arguments_accept_trailing_separators() {
         .expect("Parser should accept trailing separators after keyword arguments");
 
     let has_trailing_keyword_call = match ast {
-        AstNode::Program { declarations } => declarations.iter().any(|node| {
+        AstNode::Program { declarations } => program_surface_nodes(&declarations).into_iter().any(|node| {
             matches!(
                 node,
                 AstNode::Assignment { value, .. }
@@ -255,7 +255,7 @@ fn test_keyword_function_call_statements_parse() {
         .expect("Parser should accept keyword function call statements");
 
     let has_keyword_call_stmt = match ast {
-        AstNode::Program { declarations } => declarations.iter().any(|node| {
+        AstNode::Program { declarations } => program_surface_nodes(&declarations).into_iter().any(|node| {
             matches!(
                 node,
                 AstNode::FunctionCall { name, args }
@@ -288,7 +288,7 @@ fn test_keyword_method_call_statements_parse() {
         .expect("Parser should accept keyword method call statements");
 
     let has_keyword_method_stmt = match ast {
-        AstNode::Program { declarations } => declarations.iter().any(|node| {
+        AstNode::Program { declarations } => program_surface_nodes(&declarations).into_iter().any(|node| {
             matches!(
                 node,
                 AstNode::MethodCall { method, args, .. }
@@ -321,7 +321,7 @@ fn test_keyword_invoke_statements_parse() {
         .expect("Parser should accept keyword invoke statements");
 
     let has_keyword_invoke_stmt = match ast {
-        AstNode::Program { declarations } => declarations.iter().any(|node| {
+        AstNode::Program { declarations } => program_surface_nodes(&declarations).into_iter().any(|node| {
             matches!(
                 node,
                 AstNode::Invoke { args, .. }

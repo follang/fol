@@ -12,7 +12,7 @@ fn test_function_calls_support_unpack_arguments() {
         .expect("Parser should accept call-site unpack arguments");
 
     let has_unpack_call = match ast {
-        AstNode::Program { declarations } => declarations.iter().any(|node| {
+        AstNode::Program { declarations } => program_surface_nodes(&declarations).into_iter().any(|node| {
             matches!(
                 node,
                 AstNode::Assignment { value, .. }
@@ -48,7 +48,7 @@ fn test_method_calls_support_unpack_arguments() {
         .expect("Parser should accept unpack method call arguments");
 
     let has_unpack_method_call = match ast {
-        AstNode::Program { declarations } => declarations.iter().any(|node| {
+        AstNode::Program { declarations } => program_surface_nodes(&declarations).into_iter().any(|node| {
             matches!(
                 node,
                 AstNode::Assignment { value, .. }
@@ -84,7 +84,7 @@ fn test_invoke_expressions_support_unpack_arguments() {
         .expect("Parser should accept unpack invoke arguments");
 
     let has_unpack_invoke = match ast {
-        AstNode::Program { declarations } => declarations.iter().any(|node| {
+        AstNode::Program { declarations } => program_surface_nodes(&declarations).into_iter().any(|node| {
             matches!(
                 node,
                 AstNode::Assignment { value, .. }
@@ -119,7 +119,7 @@ fn test_unpack_arguments_accept_semicolon_separators() {
         .expect("Parser should accept semicolon-separated unpack arguments");
 
     let has_semicolon_unpack_call = match ast {
-        AstNode::Program { declarations } => declarations.iter().any(|node| {
+        AstNode::Program { declarations } => program_surface_nodes(&declarations).into_iter().any(|node| {
             matches!(
                 node,
                 AstNode::Assignment { value, .. }
@@ -155,7 +155,7 @@ fn test_unpack_arguments_accept_trailing_separators() {
         .expect("Parser should accept trailing separators after unpack arguments");
 
     let has_trailing_unpack_call = match ast {
-        AstNode::Program { declarations } => declarations.iter().any(|node| {
+        AstNode::Program { declarations } => program_surface_nodes(&declarations).into_iter().any(|node| {
             matches!(
                 node,
                 AstNode::Assignment { value, .. }
@@ -191,7 +191,7 @@ fn test_unpack_function_call_statements_parse() {
         .expect("Parser should accept unpack function call statements");
 
     let has_unpack_call_stmt = match ast {
-        AstNode::Program { declarations } => declarations.iter().any(|node| {
+        AstNode::Program { declarations } => program_surface_nodes(&declarations).into_iter().any(|node| {
             matches!(
                 node,
                 AstNode::FunctionCall { name, args }
@@ -223,7 +223,7 @@ fn test_unpack_method_call_statements_parse() {
         .expect("Parser should accept unpack method call statements");
 
     let has_unpack_method_stmt = match ast {
-        AstNode::Program { declarations } => declarations.iter().any(|node| {
+        AstNode::Program { declarations } => program_surface_nodes(&declarations).into_iter().any(|node| {
             matches!(
                 node,
                 AstNode::MethodCall { method, args, .. }
@@ -255,7 +255,7 @@ fn test_unpack_invoke_statements_parse() {
         .expect("Parser should accept unpack invoke statements");
 
     let has_unpack_invoke_stmt = match ast {
-        AstNode::Program { declarations } => declarations.iter().any(|node| {
+        AstNode::Program { declarations } => program_surface_nodes(&declarations).into_iter().any(|node| {
             matches!(
                 node,
                 AstNode::Invoke { args, .. }
