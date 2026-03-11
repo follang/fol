@@ -121,7 +121,7 @@ Done when:
 
 - [x] Define root namespace behavior.
 - [x] Define nested namespace behavior.
-- [ ] Define valid namespace component rules.
+- [x] Define valid namespace component rules.
 - [ ] Define interaction with `.mod` skipping.
 - [x] Decide whether invalid directory names are ignored or rejected.
 - [x] Add tests for edge cases.

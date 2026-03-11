@@ -390,6 +390,30 @@ mod namespace_tests {
     }
 
     #[test]
+    fn test_valid_namespace_components_allow_underscores_and_nonleading_digits() {
+        let temp_root = unique_temp_root("namespace_valid_components");
+        fs::create_dir_all(temp_root.join("good_2/more3")).expect("Should create valid dirs");
+        fs::write(temp_root.join("good_2/more3/value.fol"), "var valid = 1")
+            .expect("Should write nested file");
+
+        let sources = Source::init_with_package(
+            temp_root.to_str().expect("Temp root should be utf-8"),
+            SourceType::Folder,
+            "pkg",
+        )
+        .expect("Should create sources from valid namespace root");
+
+        let valid = sources
+            .iter()
+            .find(|source| source.path.ends_with("good_2/more3/value.fol"))
+            .expect("Should include valid-component file");
+
+        assert_eq!(valid.namespace, "pkg::good_2::more3");
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
     fn test_explicit_package_override_changes_logical_identity_without_changing_path() {
         let pkg_a = Source::init_with_package(
             "test/legacy/main/main.fol",
