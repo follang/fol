@@ -233,7 +233,7 @@ Done when:
 
 ### 6.6 Stage responsibilities
 
-- [ ] Write down what each stage owns.
+- [x] Write down what each stage owns.
 - [x] Keep stage0 about raw character windowing only.
 - [x] Keep stage1 about first-pass token classification only.
 - [x] Keep stage2 about token folding and normalization only.
