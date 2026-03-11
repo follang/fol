@@ -790,3 +790,23 @@ fn test_named_function_type_illegal_name_reports_offending_token_location() {
         "Illegal named function types should retain a concrete source column"
     );
 }
+
+#[test]
+fn test_named_call_argument_illegal_name_reports_offending_token_location() {
+    let (message, line, column) =
+        parse_error_snapshot("test/parser/simple_fun_call_illegal_named_arg.fol");
+
+    assert!(
+        message.contains("Parser encountered illegal token"),
+        "Illegal named call arguments should report an explicit illegal-token diagnostic, got: {}",
+        message
+    );
+    assert_eq!(
+        line, 2,
+        "Illegal named call arguments should anchor to the call site line"
+    );
+    assert!(
+        column > 0,
+        "Illegal named call arguments should retain a concrete source column"
+    );
+}
