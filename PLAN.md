@@ -185,12 +185,12 @@ Target files:
 
 ### 8.2 Tighten Namespace Validation
 
-- [ ] Align namespace-component validation with the chosen identifier rules.
-- [ ] Make namespace validation ASCII-aware if we align it to the book’s identifier grammar.
-- [ ] Decide whether invalid namespace components are hard errors or collected diagnostics.
-- [ ] Stop silently dropping invalid namespace components without an observable outcome.
-- [ ] Add tests for dots, hyphens, leading digits, leading underscore, single underscore, repeated underscores, and mixed-case names.
-- [ ] Add tests for non-ASCII folder names to prove the chosen policy.
+- [x] Align namespace-component validation with the chosen identifier rules.
+- [x] Make namespace validation ASCII-aware if we align it to the book’s identifier grammar.
+- [x] Decide whether invalid namespace components are hard errors or collected diagnostics.
+- [x] Stop silently dropping invalid namespace components without an observable outcome.
+- [x] Add tests for dots, hyphens, leading digits, leading underscore, single underscore, repeated underscores, and mixed-case names.
+- [x] Add tests for non-ASCII folder names to prove the chosen policy.
 
 ### 8.3 Separate Logical Boundary Handling From Fake Source Characters
 
@@ -218,7 +218,7 @@ Target files:
 Acceptance for Phase 1:
 
 - [x] Package detection is FOL-defined.
-- [ ] Namespace validation is explicit.
+- [x] Namespace validation is explicit.
 - [ ] Cross-file boundaries are explicit instead of synthetic source text.
 - [ ] Loading behavior is intentional, documented, and tested.
 
