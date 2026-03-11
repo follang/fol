@@ -40,11 +40,11 @@ Do not use this plan for:
 
 ### Stream
 
-- [ ] Folder traversal order is not deterministic.
-- [ ] Source identity is not defined tightly enough.
-- [ ] Package detection behavior is too ad hoc.
-- [ ] Namespace rules are not written down as a contract.
-- [ ] Location guarantees across file boundaries are implicit.
+- [x] Folder traversal order is not deterministic.
+- [x] Source identity is not defined tightly enough.
+- [x] Package detection behavior is too ad hoc.
+- [x] Namespace rules are not written down as a contract.
+- [x] Location guarantees across file boundaries are implicit.
 
 ### Lexer
 
@@ -65,7 +65,7 @@ Do not use this plan for:
 
 ## 4. Phase Order
 
-- [ ] Phase 1: stream hardening
+- [x] Phase 1: stream hardening
 - [ ] Phase 2: lexer contract hardening
 - [ ] Phase 3: parser structural hardening
 - [ ] Phase 4: front-end contract freeze
