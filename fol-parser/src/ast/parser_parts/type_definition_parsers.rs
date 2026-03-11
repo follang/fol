@@ -315,6 +315,7 @@ impl AstParser {
         let mut fields = HashMap::new();
         let mut field_meta = HashMap::new();
         let mut members = Vec::new();
+        let mut seen_field_names = HashSet::new();
         let mut seen_members = HashSet::new();
         for _ in 0..256 {
             self.skip_ignorable(tokens);
@@ -542,15 +543,13 @@ impl AstParser {
             }
 
             for (field_name, name_token) in field_names {
-                if fields
-                    .insert(field_name.clone(), field_type.clone())
-                    .is_some()
-                {
+                if !seen_field_names.insert(canonical_identifier_key(&field_name)) {
                     return Err(Box::new(ParseError::from_token(
                         &name_token,
                         format!("Duplicate record field '{}'", field_name),
                     )));
                 }
+                let _ = fields.insert(field_name.clone(), field_type.clone());
                 if !seen_members.insert(field_name.clone()) {
                     return Err(self.duplicate_type_member_error(&name_token, &field_name));
                 }
