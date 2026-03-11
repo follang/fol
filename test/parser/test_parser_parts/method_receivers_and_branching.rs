@@ -1,5 +1,18 @@
 use super::*;
 
+fn unique_temp_root(label: &str) -> std::path::PathBuf {
+    let stamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("System time should be after unix epoch")
+        .as_nanos();
+    std::env::temp_dir().join(format!(
+        "fol_receiver_diag_{}_{}_{}",
+        label,
+        std::process::id(),
+        stamp
+    ))
+}
+
 #[test]
 fn test_procedure_method_receiver_syntax_rejects_missing_method_name() {
     let mut file_stream =
@@ -225,6 +238,58 @@ fn test_function_method_receiver_missing_bracket_close_reports_parse_error() {
         parse_error.line(),
         1,
         "Malformed receiver type parse error should point to the signature line"
+    );
+}
+
+#[test]
+fn test_invalid_method_receiver_type_reports_receiver_token_span() {
+    let temp_root = unique_temp_root("invalid_receiver_span");
+    std::fs::create_dir_all(&temp_root).expect("Should create temp receiver diagnostic dir");
+    let fixture = temp_root.join("invalid_receiver_span.fol");
+    std::fs::write(&fixture, "fun (any) parse_msg(): int = { return 1; }\n")
+        .expect("Should write invalid receiver diagnostic fixture");
+
+    let mut file_stream = FileStream::from_file(
+        fixture
+            .to_str()
+            .expect("Receiver diagnostic fixture path should be UTF-8"),
+    )
+    .expect("Should read invalid receiver diagnostic fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject `any` as a method receiver type");
+
+    std::fs::remove_dir_all(&temp_root).ok();
+
+    let parse_error = errors
+        .first()
+        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        .expect("First parser error should be ParseError");
+
+    assert!(
+        parse_error
+            .to_string()
+            .contains("Method receiver type must be a named or scalar type"),
+        "Invalid method receiver type should report the dedicated receiver diagnostic, got: {}",
+        parse_error
+    );
+    assert_eq!(
+        parse_error.line(),
+        1,
+        "Invalid receiver diagnostic should stay on the method signature line"
+    );
+    assert_eq!(
+        parse_error.column(),
+        6,
+        "Invalid receiver diagnostic should anchor to the receiver token"
+    );
+    assert_eq!(
+        parse_error.length(),
+        3,
+        "Invalid receiver diagnostic span should cover the rejected receiver token"
     );
 }
 
