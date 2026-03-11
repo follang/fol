@@ -4,7 +4,7 @@ use fol_types::{catch, error::*, Vod};
 use std::fmt;
 
 use crate::token::{
-    buildin::BUILDIN, literal::LITERAL, symbol::SYMBOL, void::VOID,
+    buildin::BUILDIN, comment::COMMENT, literal::LITERAL, symbol::SYMBOL, void::VOID,
 };
 use crate::token::{help::*, KEYWORD, KEYWORD::*};
 
@@ -141,8 +141,7 @@ impl Element {
             self.bump(code)?;
         }
         self.bump(code)?;
-        self.set_key(Void(VOID::Space));
-        self.set_con(" ".to_string());
+        self.set_key(Comment(COMMENT::Backtick));
         Ok(())
     }
 

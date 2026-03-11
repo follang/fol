@@ -47,6 +47,40 @@ fn tokenize_file(path: &str) -> Vec<(KEYWORD, String)> {
     tokens
 }
 
+fn tokenize_stage1_file(path: &str) -> Vec<(KEYWORD, String)> {
+    let mut file_stream =
+        FileStream::from_file(path).unwrap_or_else(|_| panic!("Should be able to read {}", path));
+    let mut lexer = stage1::Elements::init(&mut file_stream);
+    let mut tokens = Vec::new();
+
+    let _ = lexer.bump();
+
+    for _ in 0..10_000 {
+        match lexer.curr() {
+            Ok(token) => {
+                let keyword = token.key().clone();
+                let content = token.con().to_string();
+                tokens.push((keyword.clone(), content));
+                if keyword == KEYWORD::Void(VOID::EndFile) {
+                    break;
+                }
+                if lexer.bump().is_none() {
+                    break;
+                }
+            }
+            Err(_) => break,
+        }
+    }
+
+    assert!(
+        tokens.len() < 10_000,
+        "Stage 1 tokenization did not terminate for {}",
+        path
+    );
+
+    tokens
+}
+
 fn unique_temp_root(label: &str) -> std::path::PathBuf {
     let stamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -833,6 +867,21 @@ mod lexer_tests {
             significant,
             Vec::<(KEYWORD, String)>::new(),
             "Backtick-delimited comments should be fully ignorable at the parser-facing lexer boundary"
+        );
+    }
+
+    #[test]
+    fn test_stage1_backticks_are_classified_as_comment_tokens() {
+        let tokens = tokenize_stage1_file("test/lexer/backticks.fol");
+        let comments: Vec<(KEYWORD, String)> = tokens
+            .into_iter()
+            .filter(|(key, _)| key.is_comment())
+            .collect();
+
+        assert_eq!(
+            comments,
+            vec![(KEYWORD::Comment(COMMENT::Backtick), "`macroish`".to_string(),)],
+            "Stage 1 should classify backtick-delimited spans explicitly before later stages normalize them away"
         );
     }
 

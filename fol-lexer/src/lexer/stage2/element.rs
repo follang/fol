@@ -76,6 +76,12 @@ impl Element {
     }
 
     pub fn analyze(&mut self, el: &mut stage1::Elements) -> Vod {
+        if el.curr()?.key().is_comment() {
+            self.set_key(Void(VOID::Space));
+            self.set_con(" ".to_string());
+            return Ok(());
+        }
+
         // EOL => SPACE
         if el.curr()?.key().is_eol() && el.peek(0)?.key().is_eol() {
             while el.curr()?.key().is_eol() && el.peek(0)?.key().is_eol() {
