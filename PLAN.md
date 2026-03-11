@@ -242,12 +242,12 @@ Target files:
 ### 9.1 Enforce The Chosen Identifier Rules
 
 - [ ] Reject `_` as a standalone identifier if the book remains authoritative.
-- [ ] Reject repeated underscore runs if the book remains authoritative.
+- [x] Reject repeated underscore runs if the book remains authoritative.
 - [ ] Decide whether identifier canonicalization belongs in the lexer crate, a shared front-end helper, or parser-side utilities.
 - [x] Add a single front-end identifier normalization helper that later parser checks can reuse.
-- [ ] Decide whether keyword recognition is exact-case only or uses the same canonicalization policy.
-- [ ] Add lexer fixtures for valid and invalid identifier edges.
-- [ ] Add tests for case and underscore variants that should or should not be equivalent.
+- [x] Decide whether keyword recognition is exact-case only or uses the same canonicalization policy.
+- [x] Add lexer fixtures for valid and invalid identifier edges.
+- [x] Add tests for case and underscore variants that should or should not be equivalent.
 
 ### 9.2 Replace The Current Comment Model
 
