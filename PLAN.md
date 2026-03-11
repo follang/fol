@@ -431,7 +431,7 @@ Target area:
 
 ### 8.4 Front-end readiness check
 
-- [ ] Re-run the full front-end suite.
+- [x] Re-run the full front-end suite.
 - [ ] Confirm no component still relies on undefined behavior from the previous phase.
 - [x] Record remaining front-end debt that is consciously deferred.
 
