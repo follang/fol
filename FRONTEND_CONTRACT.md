@@ -203,6 +203,9 @@ tests actually enforce today.
   mismatched definition counts report a dedicated error instead of a later shape failure.
 - Representative missing-close diagnostics consistently use `Expected closing ...`
   language, although the exact trailing context is still shape-specific.
+- Representative `Expected X` diagnostics also name the missing syntactic shape directly,
+  such as missing routine names or missing assignment-target fields, instead of falling
+  back to an opaque generic parse failure.
 
 ### Parser Boundary
 
