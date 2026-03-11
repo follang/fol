@@ -259,6 +259,22 @@ tests actually enforce today.
   stayed on syntax shape, AST invariants, token/literal continuity, and diagnostic
   consistency instead of growing parser-side semantic reach.
 
+### Next-Stage Handoff
+
+- A next-stage consumer can now rely on the front-end without reverse-engineering
+  implementation quirks:
+  - stream ordering and source identity are explicit
+  - lexer payloads and literal families are explicit
+  - parser root shape, declaration-family shape, and supported literal lowering are
+    explicit
+  - representative parser failure modes are explicit and test-backed
+- The remaining front-end debt is narrow and declared up front:
+  - parser-owned semantic-adjacent `report` checks still exist
+  - later semantic passes still need whole-program resolution and type analysis
+- That means the next stage no longer needs to guess at front-end structure, but it
+  should still treat the documented parser-owned semantic-adjacent checks as legacy
+  behavior to remove or relocate later.
+
 ### Statement And Expression Boundaries
 
 - File scope currently accepts real root statements such as calls, invokes, assignments,
