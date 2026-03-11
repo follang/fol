@@ -1102,6 +1102,33 @@ mod lexer_error_tests {
     }
 
     #[test]
+    fn test_unterminated_slash_block_comment_becomes_illegal_token() {
+        let temp_path = std::env::temp_dir().join(format!(
+            "fol_lexer_unterminated_block_comment_{}_{}.fol",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("System time should be after unix epoch")
+                .as_nanos()
+        ));
+        std::fs::write(&temp_path, "/* missing close")
+            .expect("Should write unterminated block-comment lexer fixture");
+
+        let tokens = tokenize_file(
+            temp_path
+                .to_str()
+                .expect("Unterminated block-comment fixture path should be valid utf-8"),
+        );
+
+        assert!(
+            tokens.iter().any(|(key, _)| key.is_illegal()),
+            "Unterminated slash block comments should use the same illegal-token path as other malformed comment spans"
+        );
+
+        std::fs::remove_file(&temp_path).ok();
+    }
+
+    #[test]
     fn test_identifiers_with_repeated_underscore_runs_become_illegal_tokens() {
         let tokens = tokenize_file("test/lexer/identifier_repeated_underscores.fol");
         let significant: Vec<(KEYWORD, String)> = tokens

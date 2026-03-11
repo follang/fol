@@ -105,7 +105,8 @@ impl Element {
         if code.curr()?.0 == '*' {
             while !(code.curr()?.0 == '*' && code.peek(0)?.0 == '/') {
                 if is_eof(&code.peek(0)?.0) {
-                    break;
+                    self.set_key(Illegal);
+                    return Ok(());
                 };
                 self.bump(code)?;
             }
