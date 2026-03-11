@@ -414,6 +414,36 @@ mod namespace_tests {
     }
 
     #[test]
+    fn test_mod_directories_do_not_contribute_sources_or_namespace_segments() {
+        let temp_root = unique_temp_root("namespace_mod_interaction");
+        fs::create_dir_all(temp_root.join("alpha")).expect("Should create regular dir");
+        fs::create_dir_all(temp_root.join("alpha.mod/hidden"))
+            .expect("Should create skipped .mod dir");
+
+        fs::write(temp_root.join("alpha/value.fol"), "var visible = 1")
+            .expect("Should write regular source");
+        fs::write(temp_root.join("alpha.mod/hidden/value.fol"), "var hidden = 1")
+            .expect("Should write skipped source");
+
+        let sources = Source::init_with_package(
+            temp_root.to_str().expect("Temp root should be utf-8"),
+            SourceType::Folder,
+            "pkg",
+        )
+        .expect("Should create sources from temp root");
+
+        assert_eq!(
+            sources.len(),
+            1,
+            ".mod directories should be skipped before source collection"
+        );
+        assert!(sources[0].path.ends_with("alpha/value.fol"));
+        assert_eq!(sources[0].namespace, "pkg::alpha");
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
     fn test_explicit_package_override_changes_logical_identity_without_changing_path() {
         let pkg_a = Source::init_with_package(
             "test/legacy/main/main.fol",
