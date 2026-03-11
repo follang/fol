@@ -177,6 +177,29 @@ fn test_top_level_trailing_dot_float_literal_lowers_cleanly() {
 }
 
 #[test]
+fn test_top_level_underscored_float_literal_lowers_cleanly() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_literal_underscored_float.fol")
+        .expect("Should read underscored float literal lowering fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should lower top-level underscored float literal");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert_eq!(
+                declarations,
+                vec![AstNode::Literal(Literal::Float(123.45))],
+                "Top-level underscored float literal should normalize underscores and lower to Literal::Float"
+            );
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
 fn test_top_level_prefixed_integer_literals_lower_cleanly() {
     let mut file_stream = FileStream::from_file("test/parser/simple_literal_prefixed_numbers.fol")
         .expect("Should read prefixed literal lowering fixture");

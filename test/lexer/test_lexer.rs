@@ -607,6 +607,27 @@ mod lexer_tests {
     }
 
     #[test]
+    fn test_underscored_numeric_families_preserve_payload_spelling() {
+        let tokens = tokenize_file("test/lexer/underscored_numeric_families.fol");
+        let significant: Vec<(KEYWORD, String)> = tokens
+            .into_iter()
+            .filter(|(key, _)| !key.is_space() && !key.is_eof())
+            .collect();
+
+        assert_eq!(
+            significant,
+            vec![
+                (KEYWORD::Literal(LITERAL::Decimal), "1_000".to_string()),
+                (KEYWORD::Literal(LITERAL::Float), "12_3.4_5".to_string()),
+                (KEYWORD::Literal(LITERAL::Hexadecimal), "0xCA_FE".to_string()),
+                (KEYWORD::Literal(LITERAL::Octal), "0o7_7".to_string()),
+                (KEYWORD::Literal(LITERAL::Binary), "0b1010_0001".to_string()),
+            ],
+            "Supported underscored numeric families should preserve their original source spelling at the lexer boundary"
+        );
+    }
+
+    #[test]
     fn test_invalid_hex_literals_become_single_illegal_tokens() {
         let tokens = tokenize_file("test/lexer/invalid_hex_literals.fol");
         let significant: Vec<(KEYWORD, String)> = tokens
