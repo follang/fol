@@ -312,7 +312,7 @@ Done when:
 ### 7.3 AST invariants
 
 - [x] Define what may appear in `Program.declarations`.
-- [ ] Define what may appear inside routine bodies.
+- [x] Define what may appear inside routine bodies.
 - [x] Define how quoted names are represented.
 - [x] Define how qualified paths are represented.
 - [ ] Define invariants for grouped declarations.
