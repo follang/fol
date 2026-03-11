@@ -308,6 +308,26 @@ fn test_unterminated_backtick_comment_in_call_reports_offending_token_location()
 }
 
 #[test]
+fn test_unterminated_doc_comment_in_call_reports_offending_token_location() {
+    let (message, line, column) =
+        parse_error_snapshot("test/parser/simple_fun_call_unterminated_doc_comment.fol");
+
+    assert!(
+        message.contains("Parser encountered illegal token"),
+        "Malformed doc comments should surface as explicit illegal-token diagnostics, got: {}",
+        message
+    );
+    assert_eq!(
+        line, 4,
+        "Malformed doc comments should anchor to the offending comment start line"
+    );
+    assert!(
+        column > 0,
+        "Malformed doc comments should retain a concrete source column"
+    );
+}
+
+#[test]
 fn test_unterminated_slash_block_comment_in_call_reports_offending_token_location() {
     let (message, line, column) =
         parse_error_snapshot("test/parser/simple_fun_call_unterminated_block_comment.fol");
