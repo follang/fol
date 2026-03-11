@@ -173,7 +173,7 @@ Target area:
 
 ### 6.1 Token payload policy
 
-- [ ] Decide what `con()` means for every token family.
+- [x] Decide what `con()` means for every token family.
 - [x] Decide whether delimiters stay in string-like payloads.
 - [x] Decide whether number payloads preserve original spelling.
 - [x] Decide whether whitespace and comments normalize to placeholder content or preserve source content.

@@ -216,6 +216,64 @@ mod lexer_tests {
     }
 
     #[test]
+    fn test_token_payloads_follow_the_front_end_contract() {
+        let tokens = tokenize_file("test/lexer/payload_shapes.fol");
+
+        assert!(
+            tokens
+                .iter()
+                .any(|(key, content)| matches!(key, KEYWORD::Keyword(BUILDIN::Var)) && content == "var"),
+            "Keywords should keep their source spelling as payload"
+        );
+        assert!(
+            tokens
+                .iter()
+                .any(|(key, content)| key.is_ident() && content == "name"),
+            "Identifiers should keep their source spelling as payload"
+        );
+        assert!(
+            tokens
+                .iter()
+                .any(|(key, content)| matches!(key, KEYWORD::Symbol(SYMBOL::Equal)) && content == "="),
+            "Single-character symbols should keep their source spelling as payload"
+        );
+        assert!(
+            tokens
+                .iter()
+                .any(|(key, content)| matches!(key, KEYWORD::Operator(OPERATOR::Addeq)) && content == "+="),
+            "Folded operators should keep their combined source spelling as payload"
+        );
+        assert!(
+            tokens.iter().any(|(key, content)| {
+                matches!(key, KEYWORD::Literal(LITERAL::Deciaml)) && content == "42"
+            }),
+            "Numeric literals should keep their source spelling as payload"
+        );
+        assert!(
+            tokens.iter().any(|(key, content)| {
+                matches!(key, KEYWORD::Literal(LITERAL::Stringy)) && content == "\"hi\""
+            }),
+            "Quoted literals should keep delimiters in payload"
+        );
+        assert!(
+            tokens
+                .iter()
+                .filter(|(key, _)| key.is_void() && !key.is_eof())
+                .all(|(_, content)| content == " "),
+            "Ignorable separators should normalize to a single-space payload"
+        );
+        let eof_payload = &tokens.last().expect("Token stream should end with EOF").1;
+        assert!(
+            eof_payload.ends_with('\0'),
+            "EOF payload should always retain the explicit sentinel"
+        );
+        assert!(
+            eof_payload.trim_end_matches('\0').chars().all(|ch| ch == ' '),
+            "Any content before the EOF sentinel should only be normalized trailing separator payload"
+        );
+    }
+
+    #[test]
     fn test_supported_numeric_families_tokenize_with_expected_kinds() {
         let tokens = tokenize_file("test/lexer/numeric_families.fol");
         let significant: Vec<(KEYWORD, String)> = tokens
