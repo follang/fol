@@ -479,7 +479,7 @@ Do not move to the next compiler step until all of these are true:
 - [x] stream order is deterministic
 - [x] source identity is explicit
 - [x] lexer token payload policy is fixed
-- [ ] lexer literal taxonomy is fixed for supported forms
+- [x] lexer literal taxonomy is fixed for supported forms
 - [ ] parser root AST shape is fixed
 - [x] parser literal lowering is complete for supported forms
 - [x] stream, lexer, and parser contracts are written down
