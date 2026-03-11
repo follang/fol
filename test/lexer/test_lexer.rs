@@ -278,6 +278,25 @@ mod lexer_tests {
     }
 
     #[test]
+    fn test_unterminated_slash_block_comments_stop_at_file_boundaries() {
+        let tokens = tokenize_folder_contents(&[("a.fol", "/*unterminated"), ("b.fol", "beta")]);
+        let significant: Vec<(KEYWORD, String)> = tokens
+            .into_iter()
+            .filter(|(key, _)| !key.is_space() && !key.is_eof())
+            .collect();
+
+        assert_eq!(
+            significant,
+            vec![
+                (KEYWORD::Illegal, "/*unterminated".to_string()),
+                (KEYWORD::Void(VOID::Boundary), String::new()),
+                (KEYWORD::Identifier, "beta".to_string()),
+            ],
+            "Slash block comments must stop at source boundaries instead of consuming the next file"
+        );
+    }
+
+    #[test]
     fn test_literals() {
         let tokens = tokenize_file("test/lexer/literals.fol");
 
