@@ -15,6 +15,13 @@ pub struct Elements {
 }
 
 impl Elements {
+    fn shift_window(&mut self, incoming: Con<Part<char>>) -> Con<Part<char>> {
+        let _ = self.win.0.remove(0);
+        self.win.0.push(self.win.1.clone());
+        self.win.1 = self.win.2.remove(0);
+        self.win.2.push(incoming);
+        self.win.1.clone()
+    }
     pub fn curr(&self) -> Con<Part<char>> {
         self.win.1.clone()
     }
@@ -60,27 +67,13 @@ impl Elements {
 
     pub fn bump(&mut self) -> Option<Con<Part<char>>> {
         match self.chars.next() {
-            Some(v) => {
-                // TODO: Handle better .ok()
-                self.win.0.remove(0).ok();
-                self.win.0.push(self.win.1.clone());
-                self.win.1 = self.win.2[0].clone();
-                // TODO: Handle better .ok()
-                self.win.2.remove(0).ok();
-                self.win.2.push(v);
-                Some(self.win.1.clone())
-            }
+            Some(v) => Some(self.shift_window(v)),
             None => {
                 if self._in_count > 0 {
-                    // TODO: Handle better .ok()
-                    self.win.0.remove(0).ok();
-                    self.win.0.push(self.win.1.clone());
-                    self.win.1 = self.win.2[0].clone();
-                    // TODO: Handle better .ok()
-                    self.win.2.remove(0).ok();
-                    self.win.2.push(Ok(('\0', point::Location::default())));
+                    let next = Ok(('\0', point::Location::default()));
+                    let current = self.shift_window(next);
                     self._in_count -= 1;
-                    Some(self.win.1.clone())
+                    Some(current)
                 } else {
                     None
                 }

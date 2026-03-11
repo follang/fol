@@ -2,6 +2,7 @@
 
 use fol_lexer::{lexer::stage0, lexer::stage3::Elements, token::KEYWORD, token::*};
 use fol_stream::FileStream;
+use fol_types::SLIDER;
 
 fn tokenize_file(path: &str) -> Vec<(KEYWORD, String)> {
     let mut file_stream =
@@ -888,6 +889,35 @@ mod lexer_error_tests {
             eof.col(),
             0,
             "Synthetic stage0 EOF should remain out-of-band instead of pretending to be a real character location"
+        );
+    }
+
+    #[test]
+    fn test_stage0_window_stays_bounded_while_draining() {
+        let mut file_stream =
+            FileStream::from_file("test/stream/basic.fol").expect("Should read basic file");
+        let mut chars = stage0::Elements::init(&mut file_stream);
+        let mut saw_eof = false;
+
+        for _ in 0..10_000 {
+            assert_eq!(chars.prev_vec().len(), SLIDER);
+            assert_eq!(chars.next_vec().len(), SLIDER);
+
+            let Some(part) = chars.bump() else {
+                break;
+            };
+            let part = part.expect("Stage0 should not fail while draining a basic fixture");
+            if part.0 == '\0' {
+                saw_eof = true;
+            }
+        }
+
+        assert!(saw_eof, "Stage0 should drain through its explicit EOF marker");
+        assert_eq!(chars.prev_vec().len(), SLIDER);
+        assert_eq!(chars.next_vec().len(), SLIDER);
+        assert!(
+            chars.bump().is_none(),
+            "Stage0 should terminate cleanly once its bounded window is fully drained"
         );
     }
 
