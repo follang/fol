@@ -61,7 +61,7 @@ Do not use this plan for:
 - [x] Literal lowering is narrower than lexer support.
 - [x] AST invariants are not documented or enforced enough.
 - [ ] Parser still mixes syntax work with some semantic-ish checks.
-- [ ] Unsupported combinations are not always rejected explicitly.
+- [x] Unsupported combinations are not always rejected explicitly.
 
 ## 4. Phase Order
 

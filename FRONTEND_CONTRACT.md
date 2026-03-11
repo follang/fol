@@ -164,6 +164,10 @@ tests actually enforce today.
   side channels.
 - Grouped binding and grouped type forms expand into ordinary sibling declaration nodes
   rather than producing wrapper nodes that later phases would need to unwrap.
+- The currently unsupported declaration-family mixes also fail explicitly instead of
+  collapsing into incidental parse shape:
+  multi-name type declarations reject generic headers, explicit contract headers, and
+  mismatched definition counts with dedicated parse errors.
 
 ### Grouped Declaration Invariants
 
@@ -202,6 +206,8 @@ tests actually enforce today.
 - The currently unsupported multi-name type combinations are rejected explicitly:
   generics and explicit contracts are limited to single-name type declarations, and
   mismatched definition counts report a dedicated error instead of a later shape failure.
+- That means the currently known unsupported declaration-family combinations fail
+  intentionally and early rather than being inferred later from malformed AST shape.
 - Representative missing-close diagnostics consistently use `Expected closing ...`
   language, although the exact trailing context is still shape-specific.
 - Representative `Expected X` diagnostics also name the missing syntactic shape directly,
