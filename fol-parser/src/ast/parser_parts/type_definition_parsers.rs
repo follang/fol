@@ -34,7 +34,7 @@ impl AstParser {
 
             if let Some(member) = self.parse_prefixed_type_routine_member(tokens)? {
                 let key = self.type_member_key(&member);
-                if !seen_members.insert(key.clone()) {
+                if !seen_members.insert(canonical_identifier_key(&key)) {
                     return Err(self.duplicate_type_member_error(&token, &key));
                 }
                 members.push(member);
@@ -63,7 +63,7 @@ impl AstParser {
             if self.looks_like_type_routine_member(tokens)? {
                 let member = self.parse_standard_routine_signature(tokens)?;
                 let key = self.type_member_key(&member);
-                if !seen_members.insert(key.clone()) {
+                if !seen_members.insert(canonical_identifier_key(&key)) {
                     return Err(self.duplicate_type_member_error(&token, &key));
                 }
                 members.push(member);
@@ -92,7 +92,7 @@ impl AstParser {
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Ali)) {
                 let member = self.parse_alias_decl(tokens)?;
                 let key = self.type_member_key(&member);
-                if !seen_members.insert(key.clone()) {
+                if !seen_members.insert(canonical_identifier_key(&key)) {
                     return Err(self.duplicate_type_member_error(&token, &key));
                 }
                 members.push(member);
@@ -121,7 +121,7 @@ impl AstParser {
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Typ)) {
                 for member in self.parse_type_decl(tokens)? {
                     let key = self.type_member_key(&member);
-                    if !seen_members.insert(key.clone()) {
+                    if !seen_members.insert(canonical_identifier_key(&key)) {
                         return Err(self.duplicate_type_member_error(&token, &key));
                     }
                     members.push(member);
@@ -251,7 +251,7 @@ impl AstParser {
                     )));
                 }
                 let _ = variants.insert(name.clone(), variant_type.clone());
-                if !seen_members.insert(name.clone()) {
+                if !seen_members.insert(canonical_identifier_key(&name)) {
                     return Err(self.duplicate_type_member_error(&name_token, &name));
                 }
                 variant_meta.insert(
@@ -341,7 +341,7 @@ impl AstParser {
 
             if let Some(member) = self.parse_prefixed_type_routine_member(tokens)? {
                 let key = self.type_member_key(&member);
-                if !seen_members.insert(key.clone()) {
+                if !seen_members.insert(canonical_identifier_key(&key)) {
                     return Err(self.duplicate_type_member_error(&token, &key));
                 }
                 members.push(member);
@@ -370,7 +370,7 @@ impl AstParser {
             if self.looks_like_type_routine_member(tokens)? {
                 let member = self.parse_standard_routine_signature(tokens)?;
                 let key = self.type_member_key(&member);
-                if !seen_members.insert(key.clone()) {
+                if !seen_members.insert(canonical_identifier_key(&key)) {
                     return Err(self.duplicate_type_member_error(&token, &key));
                 }
                 members.push(member);
@@ -399,7 +399,7 @@ impl AstParser {
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Ali)) {
                 let member = self.parse_alias_decl(tokens)?;
                 let key = self.type_member_key(&member);
-                if !seen_members.insert(key.clone()) {
+                if !seen_members.insert(canonical_identifier_key(&key)) {
                     return Err(self.duplicate_type_member_error(&token, &key));
                 }
                 members.push(member);
@@ -428,7 +428,7 @@ impl AstParser {
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Typ)) {
                 for member in self.parse_type_decl(tokens)? {
                     let key = self.type_member_key(&member);
-                    if !seen_members.insert(key.clone()) {
+                    if !seen_members.insert(canonical_identifier_key(&key)) {
                         return Err(self.duplicate_type_member_error(&token, &key));
                     }
                     members.push(member);
@@ -552,7 +552,7 @@ impl AstParser {
                     )));
                 }
                 let _ = fields.insert(field_name.clone(), field_type.clone());
-                if !seen_members.insert(field_name.clone()) {
+                if !seen_members.insert(canonical_identifier_key(&field_name)) {
                     return Err(self.duplicate_type_member_error(&name_token, &field_name));
                 }
                 field_meta.insert(
