@@ -424,7 +424,7 @@ Target area:
 ### 8.3 Parser contract summary
 
 - [x] Write a short parser contract summary:
-- [ ] root AST invariants
+- [x] root AST invariants
 - [ ] declaration invariants
 - [x] literal lowering guarantees
 - [x] parser-owned validations
