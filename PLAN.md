@@ -188,7 +188,7 @@ Done when:
 - [x] Decide the intended meaning of double quotes.
 - [x] Decide the intended meaning of single quotes.
 - [x] Decide the intended meaning of backticks, if kept.
-- [ ] Separate character-like and string-like forms if the language requires it.
+- [x] Separate character-like and string-like forms if the language requires it.
 - [ ] Decide whether raw-vs-cooked form needs separate token kinds.
 
 Done when:
