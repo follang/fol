@@ -464,7 +464,7 @@ Done when:
 - [x] exact literal AST lowering
 - [x] exact name/path AST shape
 - [x] unsupported combination failure tests
-- [ ] parser diagnostic consistency checks where stable enough
+- [x] parser diagnostic consistency checks where stable enough
 
 ### Cross-phase tests
 
