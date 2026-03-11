@@ -140,7 +140,7 @@ Done when:
 
 Done when:
 
-- [ ] Later diagnostics can trust stream locations without special-casing.
+- [x] Later diagnostics can trust stream locations without special-casing.
 
 ### 5.6 Eager loading
 
@@ -469,8 +469,8 @@ Done when:
 ### Cross-phase tests
 
 - [x] stream -> lexer order stability
-- [ ] lexer -> parser literal continuity
-- [ ] multi-file location continuity into parser diagnostics
+- [x] lexer -> parser literal continuity
+- [x] multi-file location continuity into parser diagnostics
 
 ## 10. Stop Conditions
 

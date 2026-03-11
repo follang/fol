@@ -14,6 +14,20 @@ mod parser {
 
 #[cfg(test)]
 mod integration_tests {
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn unique_temp_root(label: &str) -> std::path::PathBuf {
+        let stamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("System time should be after unix epoch")
+            .as_nanos();
+        std::env::temp_dir().join(format!(
+            "fol_integration_{}_{}_{}",
+            label,
+            std::process::id(),
+            stamp
+        ))
+    }
 
     #[test]
     fn test_stream_to_lexer_integration() {
@@ -97,6 +111,60 @@ mod integration_tests {
             ],
             "Flattened lexer output should preserve the stream's deterministic file order"
         );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_lexer_to_parser_literal_continuity_for_supported_forms() {
+        use fol_lexer::lexer::stage3::Elements;
+        use fol_parser::ast::{AstNode, AstParser, Literal};
+        use fol_stream::FileStream;
+        use std::fs;
+
+        let temp_root = unique_temp_root("literal_continuity");
+        fs::create_dir_all(&temp_root).expect("Should create temp literal fixture dir");
+        let fixture = temp_root.join("literal_continuity.fol");
+        fs::write(
+            &fixture,
+            "\"hello\"\n'c'\n'true'\n42\n3.5\n0x1A\n0o17\n0b1010\ntrue\nfalse\nnil\n",
+        )
+        .expect("Should write literal continuity fixture");
+
+        let mut file_stream = FileStream::from_file(
+            fixture
+                .to_str()
+                .expect("Literal continuity fixture path should be utf-8"),
+        )
+        .expect("Should open literal continuity fixture");
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let ast = parser
+            .parse(&mut lexer)
+            .expect("Supported literal forms should survive stream and lexer into exact AST literals");
+
+        match ast {
+            AstNode::Program { declarations } => {
+                assert_eq!(
+                    declarations,
+                    vec![
+                        AstNode::Literal(Literal::String("hello".to_string())),
+                        AstNode::Literal(Literal::Character('c')),
+                        AstNode::Literal(Literal::String("true".to_string())),
+                        AstNode::Literal(Literal::Integer(42)),
+                        AstNode::Literal(Literal::Float(3.5)),
+                        AstNode::Literal(Literal::Integer(0x1A)),
+                        AstNode::Literal(Literal::Integer(0o17)),
+                        AstNode::Literal(Literal::Integer(0b1010)),
+                        AstNode::Literal(Literal::Boolean(true)),
+                        AstNode::Literal(Literal::Boolean(false)),
+                        AstNode::Literal(Literal::Nil),
+                    ],
+                    "Cross-phase literal continuity should preserve exact AST literal values for supported forms"
+                );
+            }
+            _ => panic!("Expected program node"),
+        }
 
         fs::remove_dir_all(&temp_root).ok();
     }
@@ -229,5 +297,69 @@ mod integration_tests {
             json.contains("\"column\""),
             "JSON diagnostics should include column field"
         );
+    }
+
+    #[test]
+    fn test_multi_file_parser_errors_keep_second_file_locations() {
+        use fol_diagnostics::{DiagnosticLocation, DiagnosticReport, OutputFormat};
+        use fol_lexer::lexer::stage3::Elements;
+        use fol_parser::ast::{AstParser, ParseError};
+        use fol_stream::FileStream;
+        use std::fs;
+
+        let temp_root = unique_temp_root("parser_multifile_locations");
+        let first = temp_root.join("00_good.fol");
+        let second = temp_root.join("10_bad.fol");
+        fs::create_dir_all(&temp_root).expect("Should create temp parser error fixture dir");
+        fs::write(&first, "var ok = 1\n").expect("Should write first source");
+        fs::write(&second, "\"unterminated").expect("Should write malformed second source");
+
+        let mut file_stream = FileStream::from_folder(
+            temp_root
+                .to_str()
+                .expect("Multi-file parser fixture path should be utf-8"),
+        )
+        .expect("Should build a multi-file stream");
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let errors = parser
+            .parse(&mut lexer)
+            .expect_err("Second source should surface a parser-visible error");
+
+        let parse_error = errors
+            .iter()
+            .filter_map(|error| error.as_ref().as_any().downcast_ref::<ParseError>())
+            .find(|error| {
+                error
+                    .file()
+                    .as_deref()
+                    .is_some_and(|path| path.ends_with("10_bad.fol"))
+            })
+            .expect("A parse error should point at the malformed second file");
+
+        assert_eq!(parse_error.line(), 1, "Second file should restart at line 1");
+        assert_eq!(
+            parse_error.column(),
+            1,
+            "Second file should restart at column 1 for its first token"
+        );
+
+        let mut diagnostics = DiagnosticReport::new();
+        diagnostics.add_error(
+            parse_error,
+            Some(DiagnosticLocation {
+                file: parse_error.file(),
+                line: parse_error.line(),
+                column: parse_error.column(),
+                length: Some(parse_error.length()),
+            }),
+        );
+        let human = diagnostics.output(OutputFormat::Human);
+        assert!(
+            human.contains("10_bad.fol"),
+            "Diagnostic output should name the second file that actually failed"
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
     }
 }
