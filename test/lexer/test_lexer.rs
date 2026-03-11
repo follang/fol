@@ -910,6 +910,30 @@ mod lexer_tests {
     }
 
     #[test]
+    fn test_stage1_slash_line_comments_use_compatibility_comment_kind() {
+        let tokens = tokenize_stage1_file("test/lexer/slash_line_comments.fol");
+        let comments: Vec<(KEYWORD, String)> = tokens
+            .into_iter()
+            .filter(|(key, _)| key.is_comment())
+            .collect();
+
+        assert_eq!(
+            comments,
+            vec![
+                (
+                    KEYWORD::Comment(COMMENT::SlashLine),
+                    "// compatibility line comment".to_string(),
+                ),
+                (
+                    KEYWORD::Comment(COMMENT::SlashLine),
+                    "// trailing compatibility comment".to_string(),
+                ),
+            ],
+            "Slash line comments should stay on an explicit compatibility-only internal comment kind"
+        );
+    }
+
+    #[test]
     fn test_quoted_payloads_preserve_escape_spelling_without_validation() {
         let tokens = tokenize_file("test/lexer/escape_payloads.fol");
         let significant: Vec<(KEYWORD, String)> = tokens

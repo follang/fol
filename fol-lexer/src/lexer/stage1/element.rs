@@ -103,6 +103,8 @@ impl Element {
                 };
                 self.bump(code)?;
             }
+            self.set_key(Comment(COMMENT::SlashLine));
+            return Ok(());
         }
         if code.curr()?.0 == '*' {
             while !(code.curr()?.0 == '*' && code.peek(0)?.0 == '/') {
