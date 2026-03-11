@@ -185,6 +185,26 @@ fn test_cooked_double_quotes_decode_numeric_and_unicode_escapes() {
 }
 
 #[test]
+fn test_cooked_double_quotes_trim_backslash_line_continuations() {
+    let parser = AstParser::new();
+
+    assert_eq!(
+        parser
+            .parse_literal("\"foo\\\n              bar\"")
+            .expect("Cooked LF continuation should parse"),
+        AstNode::Literal(Literal::String("foobar".to_string())),
+        "Cooked backslash-LF continuations should drop the line break and next-line indentation"
+    );
+    assert_eq!(
+        parser
+            .parse_literal("\"foo\\\r\n\tbar\"")
+            .expect("Cooked CRLF continuation should parse"),
+        AstNode::Literal(Literal::String("foobar".to_string())),
+        "Cooked backslash-CRLF continuations should also drop the platform line break and indentation"
+    );
+}
+
+#[test]
 fn test_top_level_boolean_and_nil_literals_lower_cleanly() {
     let mut file_stream = FileStream::from_file("test/parser/simple_literal_logic.fol")
         .expect("Should read logical literal lowering fixture");

@@ -309,6 +309,19 @@ impl AstParser {
             index += 1;
 
             match next {
+                '\n' => {
+                    while index < chars.len() && Self::is_cooked_continuation_indent(chars[index]) {
+                        index += 1;
+                    }
+                }
+                '\r' => {
+                    if index < chars.len() && chars[index] == '\n' {
+                        index += 1;
+                    }
+                    while index < chars.len() && Self::is_cooked_continuation_indent(chars[index]) {
+                        index += 1;
+                    }
+                }
                 'p' => {
                     if cfg!(windows) {
                         decoded.push('\r');
@@ -407,5 +420,9 @@ impl AstParser {
         let text: String = digits.iter().collect();
         let value = u32::from_str_radix(&text, radix).ok()?;
         char::from_u32(value)
+    }
+
+    fn is_cooked_continuation_indent(ch: char) -> bool {
+        ch.is_whitespace() && !matches!(ch, '\n' | '\r')
     }
 }
