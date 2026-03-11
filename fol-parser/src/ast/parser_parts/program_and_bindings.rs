@@ -607,9 +607,7 @@ impl AstParser {
         let raw = token.con().trim();
 
         match token.key() {
-            fol_lexer::token::KEYWORD::Literal(LITERAL::Stringy) => {
-                Ok(AstNode::Literal(Literal::String(raw.to_string())))
-            }
+            fol_lexer::token::KEYWORD::Literal(LITERAL::Stringy) => self.parse_literal(raw),
             fol_lexer::token::KEYWORD::Literal(LITERAL::Bool) => match raw {
                 "true" => Ok(AstNode::Literal(Literal::Boolean(true))),
                 "false" => Ok(AstNode::Literal(Literal::Boolean(false))),

@@ -768,15 +768,23 @@ impl AstParser {
 
     /// Parse a simple literal for testing
     pub fn parse_literal(&self, value: &str) -> Result<AstNode, Box<dyn Glitch>> {
-        // Simple integer parsing for testing
-        if let Ok(int_val) = value.parse::<i64>() {
-            return Ok(AstNode::Literal(Literal::Integer(int_val)));
-        }
-
-        // Simple string parsing
         if value.starts_with('"') && value.ends_with('"') {
             let string_val = value[1..value.len() - 1].to_string();
             return Ok(AstNode::Literal(Literal::String(string_val)));
+        }
+
+        if value.starts_with('\'') && value.ends_with('\'') {
+            let inner = &value[1..value.len() - 1];
+            let mut chars = inner.chars();
+            return match (chars.next(), chars.next()) {
+                (Some(ch), None) => Ok(AstNode::Literal(Literal::Character(ch))),
+                _ => Ok(AstNode::Literal(Literal::String(inner.to_string()))),
+            };
+        }
+
+        // Simple integer parsing for testing
+        if let Ok(int_val) = value.parse::<i64>() {
+            return Ok(AstNode::Literal(Literal::Integer(int_val)));
         }
 
         // Default to identifier
