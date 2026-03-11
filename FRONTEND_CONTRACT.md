@@ -56,3 +56,37 @@ tests actually enforce today.
 - Switching to a new source restarts location tracking at row `1`, column `1`.
 - Synthetic lexer-only markers use explicit out-of-band coordinates instead of pretending
   to be real source characters.
+
+## Lexer Contract
+
+### Token Payload Meaning
+
+- Keywords, identifiers, symbols, and folded operators keep their source spelling.
+- Numeric literal payloads preserve the original spelling, including supported prefixes
+  and underscores.
+- Quoted literal payloads keep their delimiters.
+- Ignorable separators normalize to a single-space payload.
+- EOF keeps an explicit `\0` sentinel and may carry only normalized trailing separator
+  payload ahead of that sentinel.
+
+### Literal Categories
+
+- The current lexer surfaces `Stringy`, `Bool`, `Float`, `Deciaml`, `Hexal`, `Octal`,
+  and `Binary`.
+- Single-quoted and double-quoted forms both arrive at the lexer boundary as `Stringy`.
+- Backticks stay `Operator::ANY` until the language gives them a narrower meaning.
+- Imaginary-unit suffixes are out of scope and stay outside the supported numeric
+  literal families.
+
+### Comment Policy
+
+- Ordinary comments are fully ignorable by the parser-facing lexer output.
+- Doc-comment spellings follow the same path as ordinary comments and are explicitly
+  deferred instead of surfacing as a separate token family.
+
+### Malformed-Input Policy
+
+- Unterminated quoted content becomes an `Illegal` token instead of a hard lexer error.
+- Invalid-looking escape spellings are preserved verbatim inside quoted payloads.
+- Raw unrecognized characters still raise a lexer error instead of being silently
+  converted into tokens.

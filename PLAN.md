@@ -217,7 +217,7 @@ Done when:
 
 Done when:
 
-- [ ] Comment treatment is policy, not parser convenience.
+- [x] Comment treatment is policy, not parser convenience.
 
 ### 6.5 Numeric fidelity
 
@@ -246,8 +246,8 @@ Done when:
 
 ### 6.7 Illegal token strategy
 
-- [ ] Define when the lexer emits `Illegal`.
-- [ ] Define when the lexer returns an error instead.
+- [x] Define when the lexer emits `Illegal`.
+- [x] Define when the lexer returns an error instead.
 - [ ] Make malformed-input handling consistent across literal families.
 - [x] Add negative tests for malformed lexical input.
 
@@ -267,11 +267,11 @@ Done when:
 
 ### 6.9 Lexer acceptance gate
 
-- [ ] Token payload policy is fixed.
+- [x] Token payload policy is fixed.
 - [ ] Literal families are explicit.
-- [ ] Comment policy is explicit.
-- [ ] Malformed lexical input behavior is explicit.
-- [ ] Stage responsibilities are explicit.
+- [x] Comment policy is explicit.
+- [x] Malformed lexical input behavior is explicit.
+- [x] Stage responsibilities are explicit.
 
 ## 7. Phase 3: Parser Structural Hardening
 Target area:
@@ -415,11 +415,11 @@ Target area:
 
 ### 8.2 Lexer contract summary
 
-- [ ] Write a short lexer contract summary:
-- [ ] token payload meaning
-- [ ] literal categories
-- [ ] comment policy
-- [ ] malformed-input policy
+- [x] Write a short lexer contract summary:
+- [x] token payload meaning
+- [x] literal categories
+- [x] comment policy
+- [x] malformed-input policy
 
 ### 8.3 Parser contract summary
 
@@ -452,11 +452,11 @@ Done when:
 
 ### Lexer tests
 
-- [ ] exact token payload checks
-- [ ] exact literal-family checks
+- [x] exact token payload checks
+- [x] exact literal-family checks
 - [x] malformed literal checks
 - [x] comment and doc-comment checks
-- [ ] EOF/bootstrap behavior checks
+- [x] EOF/bootstrap behavior checks
 
 ### Parser tests
 
@@ -478,7 +478,7 @@ Do not move to the next compiler step until all of these are true:
 
 - [x] stream order is deterministic
 - [x] source identity is explicit
-- [ ] lexer token payload policy is fixed
+- [x] lexer token payload policy is fixed
 - [ ] lexer literal taxonomy is fixed for supported forms
 - [ ] parser root AST shape is fixed
 - [ ] parser literal lowering is complete for supported forms
@@ -490,9 +490,9 @@ Do not move to the next compiler step until all of these are true:
 This plan is done only when a maintainer can answer all of these without reading implementation internals:
 
 - [x] In what order are sources streamed from a folder?
-- [ ] What exactly does a token payload contain?
-- [ ] Which literal families exist today, and how are they tokenized?
-- [ ] How are comments treated?
+- [x] What exactly does a token payload contain?
+- [x] Which literal families exist today, and how are they tokenized?
+- [x] How are comments treated?
 - [ ] What exactly belongs in `Program.declarations`?
 - [ ] Which parser checks are structural and which are intentionally deferred?
 
