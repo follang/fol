@@ -343,7 +343,7 @@ Done when:
 
 Done when:
 
-- [ ] Declaration families have stable AST shape and explicit failure modes.
+- [x] Declaration families have stable AST shape and explicit failure modes.
 
 ### 7.6 Parser boundary cleanup
 
