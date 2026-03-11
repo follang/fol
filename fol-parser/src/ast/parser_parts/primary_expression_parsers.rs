@@ -569,7 +569,7 @@ impl AstParser {
 
             let _ = tokens.bump();
             inner
-        } else if matches!(token.key(), KEYWORD::Literal(LITERAL::Stringy))
+        } else if token.key().is_textual_literal()
             && matches!(
                 self.next_significant_key_from_window(tokens),
                 Some(KEYWORD::Symbol(SYMBOL::RoundO))

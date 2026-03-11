@@ -198,9 +198,8 @@ impl Element {
         let litsym = code.curr()?.0;
         if litsym == '`' {
             self.key = Operator(OPERATOR::ANY);
-        // } else if litsym == '\'' {
-        // self.key = makro;
-        // self.key = literal(LITERAL::char_);
+        } else if litsym == '\'' {
+            self.key = Literal(LITERAL::Quoted);
         } else {
             self.key = Literal(LITERAL::Stringy);
         }

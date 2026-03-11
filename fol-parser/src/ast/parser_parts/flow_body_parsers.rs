@@ -185,19 +185,19 @@ impl AstParser {
         }
 
         let node = if (AstParser::token_can_be_logical_name(&key)
-            || matches!(key, KEYWORD::Literal(LITERAL::Stringy)))
+            || key.is_textual_literal())
             && self.lookahead_is_assignment(tokens)
         {
             self.parse_assignment_stmt(tokens)?
         } else if (AstParser::token_can_be_logical_name(&key)
-            || matches!(key, KEYWORD::Literal(LITERAL::Stringy)))
+            || key.is_textual_literal())
             && (self.lookahead_is_call(tokens) || self.lookahead_is_method_call(tokens))
             && self.can_start_assignment(tokens)
         {
             self.parse_call_stmt(tokens)?
         } else if (matches!(key, KEYWORD::Symbol(SYMBOL::RoundO) | KEYWORD::Symbol(SYMBOL::Dot))
             || AstParser::token_can_be_logical_name(&key)
-            || matches!(key, KEYWORD::Literal(LITERAL::Stringy)))
+            || key.is_textual_literal())
             && self.lookahead_is_general_invoke(tokens, matches!(key, KEYWORD::Symbol(SYMBOL::RoundO)))
             && self.can_start_assignment(tokens)
         {

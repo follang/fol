@@ -27,9 +27,7 @@ impl AstParser {
             }
 
             if !saw_name {
-                if Self::token_can_be_logical_name(&key)
-                    || matches!(key, KEYWORD::Literal(LITERAL::Stringy))
-                {
+                if Self::token_can_be_logical_name(&key) || key.is_textual_literal() {
                     saw_name = true;
                     continue;
                 }
@@ -276,9 +274,7 @@ impl AstParser {
             }
 
             if expect_path_ident {
-                if Self::token_can_be_logical_name(&key)
-                    || matches!(key, KEYWORD::Literal(LITERAL::Stringy))
-                {
+                if Self::token_can_be_logical_name(&key) || key.is_textual_literal() {
                     expect_path_ident = false;
                     continue;
                 }
@@ -286,9 +282,7 @@ impl AstParser {
             }
 
             if expect_member_ident {
-                if Self::token_can_be_logical_name(&key)
-                    || matches!(key, KEYWORD::Literal(LITERAL::Stringy))
-                {
+                if Self::token_can_be_logical_name(&key) || key.is_textual_literal() {
                     expect_member_ident = false;
                     continue;
                 }
@@ -341,9 +335,7 @@ impl AstParser {
             }
 
             if allow_path_segment {
-                if Self::token_can_be_logical_name(&key)
-                    || matches!(key, KEYWORD::Literal(LITERAL::Stringy))
-                {
+                if Self::token_can_be_logical_name(&key) || key.is_textual_literal() {
                     allow_path_segment = false;
                     continue;
                 }
@@ -379,9 +371,7 @@ impl AstParser {
             }
 
             if allow_path_segment {
-                if Self::token_can_be_logical_name(&key)
-                    || matches!(key, KEYWORD::Literal(LITERAL::Stringy))
-                {
+                if Self::token_can_be_logical_name(&key) || key.is_textual_literal() {
                     allow_path_segment = false;
                     continue;
                 }
@@ -400,9 +390,7 @@ impl AstParser {
                 return false;
             }
 
-            if Self::token_can_be_logical_name(&key)
-                || matches!(key, KEYWORD::Literal(LITERAL::Stringy))
-            {
+            if Self::token_can_be_logical_name(&key) || key.is_textual_literal() {
                 continue;
             }
 
@@ -463,9 +451,7 @@ impl AstParser {
             }
 
             if expect_path_segment {
-                if Self::token_can_be_logical_name(&key)
-                    || matches!(key, KEYWORD::Literal(LITERAL::Stringy))
-                {
+                if Self::token_can_be_logical_name(&key) || key.is_textual_literal() {
                     expect_path_segment = false;
                     continue;
                 }
@@ -473,9 +459,7 @@ impl AstParser {
             }
 
             if expect_member_name {
-                if Self::token_can_be_logical_name(&key)
-                    || matches!(key, KEYWORD::Literal(LITERAL::Stringy))
-                {
+                if Self::token_can_be_logical_name(&key) || key.is_textual_literal() {
                     expect_member_name = false;
                     continue;
                 }

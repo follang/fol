@@ -24,7 +24,7 @@ impl AstParser {
                 break;
             }
 
-            let is_string = matches!(token.key(), KEYWORD::Literal(LITERAL::Stringy));
+            let is_string = token.key().is_textual_literal();
             if is_string && !values.is_empty() {
                 return Err(Box::new(ParseError::from_token(
                     &token,
@@ -34,7 +34,7 @@ impl AstParser {
             }
 
             let value = match token.key() {
-                KEYWORD::Literal(LITERAL::Stringy) => token
+                KEYWORD::Literal(LITERAL::Stringy) | KEYWORD::Literal(LITERAL::Quoted) => token
                     .con()
                     .trim()
                     .trim_matches(|c| c == '"' || c == '\'')

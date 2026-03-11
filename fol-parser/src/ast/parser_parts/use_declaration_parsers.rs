@@ -56,7 +56,7 @@ impl AstParser {
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
                 let _ = tokens.bump();
                 paths.push(self.parse_use_path(tokens)?);
-            } else if matches!(token.key(), KEYWORD::Literal(LITERAL::Stringy)) {
+            } else if token.key().is_textual_literal() {
                 paths.push(
                     token
                         .con()

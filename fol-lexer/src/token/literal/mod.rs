@@ -5,6 +5,7 @@ use std::fmt;
 pub enum LITERAL {
     ANY,
     Stringy,
+    Quoted,
     Bool,
     Float,
     Deciaml,
@@ -17,6 +18,7 @@ impl fmt::Display for LITERAL {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let t = match self {
             LITERAL::Stringy => Some("string"),
+            LITERAL::Quoted => Some("quoted"),
             LITERAL::Float => Some("float"),
             LITERAL::Bool => Some("bool"),
             LITERAL::Deciaml => Some("decimal"),

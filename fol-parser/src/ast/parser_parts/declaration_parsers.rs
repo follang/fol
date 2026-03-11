@@ -82,7 +82,7 @@ impl AstParser {
         let name_token = tokens.curr(false)?;
         let name = match name_token.key() {
             key if key.is_ident() || key.is_buildin() => name_token.con().trim().to_string(),
-            KEYWORD::Literal(LITERAL::Stringy) => name_token
+            KEYWORD::Literal(LITERAL::Stringy) | KEYWORD::Literal(LITERAL::Quoted) => name_token
                 .con()
                 .trim()
                 .trim_matches(|c| c == '"' || c == '\'')
@@ -632,7 +632,7 @@ impl AstParser {
             }
 
             let segment = match token.key() {
-                KEYWORD::Literal(LITERAL::Stringy) => token
+                KEYWORD::Literal(LITERAL::Stringy) | KEYWORD::Literal(LITERAL::Quoted) => token
                     .con()
                     .trim()
                     .trim_matches(|c| c == '"' || c == '\''),

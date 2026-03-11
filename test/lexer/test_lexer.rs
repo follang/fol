@@ -431,9 +431,27 @@ mod lexer_tests {
         );
         assert!(
             tokens.iter().any(|(key, content)| {
-                matches!(key, KEYWORD::Literal(LITERAL::Stringy)) && content == "'c'"
+                matches!(key, KEYWORD::Literal(LITERAL::Quoted)) && content == "'c'"
             }),
-            "Single-quoted literal payload should keep its delimiters"
+            "Single-quoted literal payload should keep its delimiters on its own token family"
+        );
+    }
+
+    #[test]
+    fn test_single_and_double_quotes_no_longer_share_one_literal_kind() {
+        let tokens = tokenize_file("test/lexer/literals.fol");
+
+        assert!(
+            tokens.iter().any(|(key, content)| {
+                matches!(key, KEYWORD::Literal(LITERAL::Stringy)) && content == "\"hello\""
+            }),
+            "Double-quoted text should stay on the string token family"
+        );
+        assert!(
+            tokens.iter().any(|(key, content)| {
+                matches!(key, KEYWORD::Literal(LITERAL::Quoted)) && content == "'c'"
+            }),
+            "Single-quoted text should no longer be conflated with double-quoted text"
         );
     }
 

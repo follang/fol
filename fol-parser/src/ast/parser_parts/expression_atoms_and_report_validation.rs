@@ -89,7 +89,7 @@ impl AstParser {
         }
 
         match token.key() {
-            KEYWORD::Literal(LITERAL::Stringy) => Some(
+            KEYWORD::Literal(LITERAL::Stringy) | KEYWORD::Literal(LITERAL::Quoted) => Some(
                 token
                     .con()
                     .trim()

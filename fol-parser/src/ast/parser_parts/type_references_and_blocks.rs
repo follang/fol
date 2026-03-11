@@ -336,8 +336,7 @@ impl AstParser {
                 continue;
             }
 
-            if (AstParser::token_can_be_logical_name(&key)
-                || matches!(key, KEYWORD::Literal(LITERAL::Stringy)))
+            if (AstParser::token_can_be_logical_name(&key) || key.is_textual_literal())
                 && self.lookahead_is_assignment(tokens)
                 && self.can_start_assignment(tokens)
             {
@@ -345,8 +344,7 @@ impl AstParser {
                 continue;
             }
 
-            if (AstParser::token_can_be_logical_name(&key)
-                || matches!(key, KEYWORD::Literal(LITERAL::Stringy)))
+            if (AstParser::token_can_be_logical_name(&key) || key.is_textual_literal())
                 && (self.lookahead_is_call(tokens) || self.lookahead_is_method_call(tokens))
                 && self.can_start_assignment(tokens)
                 && !self.lookahead_has_top_level_pipe(tokens)
@@ -357,7 +355,7 @@ impl AstParser {
 
             if (matches!(key, KEYWORD::Symbol(SYMBOL::RoundO) | KEYWORD::Symbol(SYMBOL::Dot))
                 || AstParser::token_can_be_logical_name(&key)
-                || matches!(key, KEYWORD::Literal(LITERAL::Stringy)))
+                || key.is_textual_literal())
                 && self.lookahead_is_general_invoke(tokens, matches!(key, KEYWORD::Symbol(SYMBOL::RoundO)))
                 && self.can_start_assignment(tokens)
             {

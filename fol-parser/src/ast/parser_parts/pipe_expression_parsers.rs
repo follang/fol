@@ -191,15 +191,13 @@ impl AstParser {
         }
 
         let key = token.key();
-        if (AstParser::token_can_be_logical_name(&key)
-            || matches!(key, KEYWORD::Literal(LITERAL::Stringy)))
+        if (AstParser::token_can_be_logical_name(&key) || key.is_textual_literal())
             && self.lookahead_is_assignment(tokens)
         {
             return self.parse_assignment_stmt(tokens);
         }
 
-        if (AstParser::token_can_be_logical_name(&key)
-            || matches!(key, KEYWORD::Literal(LITERAL::Stringy)))
+        if (AstParser::token_can_be_logical_name(&key) || key.is_textual_literal())
             && (self.lookahead_is_call(tokens) || self.lookahead_is_method_call(tokens))
         {
             return self.parse_call_stmt(tokens);
@@ -214,7 +212,7 @@ impl AstParser {
 
         if (matches!(key, KEYWORD::Symbol(SYMBOL::RoundO) | KEYWORD::Symbol(SYMBOL::Dot))
             || AstParser::token_can_be_logical_name(&key)
-            || matches!(key, KEYWORD::Literal(LITERAL::Stringy)))
+            || key.is_textual_literal())
             && self.lookahead_is_general_invoke(tokens, matches!(key, KEYWORD::Symbol(SYMBOL::RoundO)))
         {
             return self.parse_invoke_stmt(tokens);

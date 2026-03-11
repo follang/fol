@@ -50,6 +50,12 @@ impl KEYWORD {
     pub fn is_literal(&self) -> bool {
         matches!(*self, KEYWORD::Literal(_))
     }
+    pub fn is_textual_literal(&self) -> bool {
+        matches!(
+            *self,
+            KEYWORD::Literal(LITERAL::Stringy) | KEYWORD::Literal(LITERAL::Quoted)
+        )
+    }
     pub fn is_buildin(&self) -> bool {
         matches!(*self, KEYWORD::Keyword(_))
     }
