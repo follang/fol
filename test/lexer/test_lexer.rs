@@ -193,6 +193,29 @@ mod lexer_tests {
     }
 
     #[test]
+    fn test_numeric_literal_payloads_preserve_original_spelling() {
+        let tokens = tokenize_file("test/lexer/literals_spelling.fol");
+        let significant: Vec<(KEYWORD, String)> = tokens
+            .into_iter()
+            .filter(|(key, _)| !key.is_space() && !key.is_eof())
+            .collect();
+
+        assert_eq!(
+            significant,
+            vec![
+                (KEYWORD::Literal(LITERAL::Deciaml), "1_000".to_string()),
+                (KEYWORD::Literal(LITERAL::Hexal), "0xCA_FE".to_string()),
+                (KEYWORD::Literal(LITERAL::Octal), "0o7_7".to_string()),
+                (KEYWORD::Literal(LITERAL::Binary), "0b1010_0001".to_string()),
+                (KEYWORD::Literal(LITERAL::Hexal), "0XCA_FE".to_string()),
+                (KEYWORD::Literal(LITERAL::Octal), "0O7_7".to_string()),
+                (KEYWORD::Literal(LITERAL::Binary), "0B1010_0001".to_string()),
+            ],
+            "Numeric literal payloads should preserve source spelling for supported forms"
+        );
+    }
+
+    #[test]
     fn test_quoted_literal_payloads_keep_delimiters() {
         let tokens = tokenize_file("test/lexer/literals.fol");
 
