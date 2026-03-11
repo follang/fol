@@ -5,6 +5,16 @@ use fol_stream::{Source, SourceType};
 #[cfg(test)]
 mod namespace_tests {
     use super::*;
+    use std::fs;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn unique_temp_root(label: &str) -> std::path::PathBuf {
+        let stamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("System time should be after unix epoch")
+            .as_nanos();
+        std::env::temp_dir().join(format!("fol_stream_{}_{}_{}", label, std::process::id(), stamp))
+    }
 
     #[test]
     fn test_package_name_detection() {
@@ -247,6 +257,62 @@ mod namespace_tests {
             source.namespace, "custom_package",
             "Should use custom package as root namespace"
         );
+    }
+
+    #[test]
+    fn test_detached_folder_falls_back_to_folder_name() {
+        let temp_root = unique_temp_root("detached_folder_package");
+        fs::create_dir_all(&temp_root).expect("Should create detached temp directory");
+        fs::write(temp_root.join("main.fol"), "var answer = 42")
+            .expect("Should create detached fol file");
+
+        let sources = Source::init(
+            temp_root
+                .to_str()
+                .expect("Detached temp directory should be utf-8"),
+            SourceType::Folder,
+        )
+        .expect("Detached folder should still produce sources");
+
+        assert_eq!(sources.len(), 1, "Detached folder should expose one source");
+        assert_eq!(
+            sources[0].package,
+            temp_root
+                .file_name()
+                .and_then(|name| name.to_str())
+                .expect("Detached temp directory should have a folder name"),
+            "Detached folder package name should come from the folder itself"
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_detached_file_falls_back_to_parent_folder_name() {
+        let temp_root = unique_temp_root("detached_file_package");
+        fs::create_dir_all(&temp_root).expect("Should create detached temp directory");
+        let file_path = temp_root.join("main.fol");
+        fs::write(&file_path, "var answer = 42").expect("Should create detached fol file");
+
+        let sources = Source::init(
+            file_path
+                .to_str()
+                .expect("Detached temp file path should be utf-8"),
+            SourceType::File,
+        )
+        .expect("Detached file should still produce a source");
+
+        assert_eq!(sources.len(), 1, "Detached file should expose one source");
+        assert_eq!(
+            sources[0].package,
+            temp_root
+                .file_name()
+                .and_then(|name| name.to_str())
+                .expect("Detached temp directory should have a folder name"),
+            "Detached file package name should come from the parent folder"
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
     }
 
     #[test]

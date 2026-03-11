@@ -107,15 +107,15 @@ Done when:
 
 ### 5.3 Package detection
 
-- [ ] Decide whether current `Cargo.toml` lookup stays as-is for now.
-- [ ] Define fallback behavior when no manifest exists.
-- [ ] Define behavior for single-file input outside a package root.
+- [x] Decide whether current `Cargo.toml` lookup stays as-is for now.
+- [x] Define fallback behavior when no manifest exists.
+- [x] Define behavior for single-file input outside a package root.
 - [ ] Define behavior for nested manifests or workspace-like layouts.
-- [ ] Add tests for the supported cases.
+- [x] Add tests for the supported cases.
 
 Done when:
 
-- [ ] Package naming behavior is deliberate and tested.
+- [x] Package naming behavior is deliberate and tested.
 
 ### 5.4 Namespace contract
 
