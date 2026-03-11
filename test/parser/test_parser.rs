@@ -4,7 +4,7 @@ use fol_lexer::lexer::stage3::Elements;
 use fol_lexer::token::KEYWORD;
 use fol_parser::ast::{
     AstNode, AstParser, BindingPattern, CharEncoding, FloatSize, FolType, InquiryTarget, IntSize, Literal,
-    Parameter, ParseError, TypeDefinition,
+    Parameter, ParseError, QualifiedPath, TypeDefinition,
 };
 use fol_stream::FileStream;
 
@@ -236,6 +236,9 @@ mod quoted_binding_type_hints;
 #[cfg(test)]
 #[path = "test_parser_parts/quoted_alias_names.rs"]
 mod quoted_alias_names;
+#[cfg(test)]
+#[path = "test_parser_parts/qualified_path_nodes.rs"]
+mod qualified_path_nodes;
 #[cfg(test)]
 #[path = "test_parser_parts/quoted_root_statements.rs"]
 mod quoted_root_statements;

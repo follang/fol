@@ -341,6 +341,31 @@ pub enum AstNode {
     Program { declarations: Vec<AstNode> },
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct QualifiedPath {
+    pub segments: Vec<String>,
+}
+
+impl QualifiedPath {
+    pub fn new(segments: Vec<String>) -> Self {
+        Self { segments }
+    }
+
+    pub fn from_joined(path: &str) -> Self {
+        Self {
+            segments: path.split("::").map(|segment| segment.to_string()).collect(),
+        }
+    }
+
+    pub fn is_qualified(&self) -> bool {
+        self.segments.len() > 1
+    }
+
+    pub fn joined(&self) -> String {
+        self.segments.join("::")
+    }
+}
+
 /// FOL Type system
 #[derive(Debug, Clone, PartialEq)]
 pub enum FolType {
