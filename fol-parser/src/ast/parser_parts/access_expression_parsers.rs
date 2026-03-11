@@ -144,14 +144,14 @@ impl AstParser {
         }
     }
 
-    pub(super) fn parse_named_path(
+    pub(super) fn parse_qualified_path(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
         expected_root_error: &str,
         expected_segment_error: &str,
-    ) -> Result<String, Box<dyn Glitch>> {
+    ) -> Result<QualifiedPath, Box<dyn Glitch>> {
         let root = tokens.curr(false)?;
-        let mut name = Self::expect_named_label(&root, expected_root_error)?;
+        let mut segments = vec![Self::expect_named_label(&root, expected_root_error)?];
         let _ = tokens.bump();
 
         loop {
@@ -170,12 +170,22 @@ impl AstParser {
 
             let segment = tokens.curr(false)?;
             let segment_name = Self::expect_named_label(&segment, expected_segment_error)?;
-            name.push_str("::");
-            name.push_str(&segment_name);
+            segments.push(segment_name);
             let _ = tokens.bump();
         }
 
-        Ok(name)
+        Ok(QualifiedPath::new(segments))
+    }
+
+    pub(super) fn parse_named_path(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+        expected_root_error: &str,
+        expected_segment_error: &str,
+    ) -> Result<String, Box<dyn Glitch>> {
+        Ok(self
+            .parse_qualified_path(tokens, expected_root_error, expected_segment_error)?
+            .joined())
     }
 
     pub(super) fn parse_index_or_slice_expression(

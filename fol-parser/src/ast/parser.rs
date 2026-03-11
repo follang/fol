@@ -3,7 +3,7 @@
 use super::{
     AstNode, BinaryOperator, CharEncoding, ContainerType, DeclOption, EntryVariantMeta,
     FloatSize, FolType, FunOption, Generic, InquiryTarget, IntSize, Literal, LoopCondition,
-    Parameter, RecordFieldMeta, RollingBinding, StandardKind, TypeDefinition, TypeOption,
+    Parameter, QualifiedPath, RecordFieldMeta, RollingBinding, StandardKind, TypeDefinition, TypeOption,
     UnaryOperator, UseOption, VarOption, WhenCase,
 };
 use fol_lexer::token::{BUILDIN, KEYWORD, LITERAL, OPERATOR, SYMBOL};

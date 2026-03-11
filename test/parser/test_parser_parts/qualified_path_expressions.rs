@@ -20,7 +20,15 @@ fn test_qualified_path_identifier_expression_parsing() {
                     if body.iter().any(|stmt| matches!(
                         stmt,
                         AstNode::Return { value: Some(value) }
-                        if matches!(value.as_ref(), AstNode::Identifier { name } if name == "io::console::writer")
+                        if matches!(
+                            value.as_ref(),
+                            AstNode::QualifiedIdentifier { path }
+                            if path.segments == vec![
+                                "io".to_string(),
+                                "console".to_string(),
+                                "writer".to_string(),
+                            ]
+                        )
                     ))
                 )
             }));
@@ -54,7 +62,15 @@ fn test_qualified_path_method_chain_parsing() {
                             value.as_ref(),
                             AstNode::MethodCall { object, method, .. }
                             if method == "echo"
-                                && matches!(object.as_ref(), AstNode::Identifier { name } if name == "io::console::writer")
+                                && matches!(
+                                    object.as_ref(),
+                                    AstNode::QualifiedIdentifier { path }
+                                    if path.segments == vec![
+                                        "io".to_string(),
+                                        "console".to_string(),
+                                        "writer".to_string(),
+                                    ]
+                                )
                         )
                     ))
                 )
@@ -145,7 +161,15 @@ fn test_qualified_path_assignment_target_parsing() {
                     if body.iter().any(|stmt| matches!(
                         stmt,
                         AstNode::Assignment { target, .. }
-                        if matches!(target.as_ref(), AstNode::Identifier { name } if name == "io::console::writer")
+                        if matches!(
+                            target.as_ref(),
+                            AstNode::QualifiedIdentifier { path }
+                            if path.segments == vec![
+                                "io".to_string(),
+                                "console".to_string(),
+                                "writer".to_string(),
+                            ]
+                        )
                     ))
                 )
             }));

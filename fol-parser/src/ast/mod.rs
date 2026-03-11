@@ -256,6 +256,9 @@ pub enum AstNode {
     /// Identifier reference
     Identifier { name: String },
 
+    /// Qualified identifier reference
+    QualifiedIdentifier { path: QualifiedPath },
+
     /// Literal values
     Literal(Literal),
 

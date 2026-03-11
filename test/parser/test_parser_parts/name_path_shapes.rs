@@ -78,7 +78,15 @@ fn test_parser_name_and_path_ast_shapes_stay_distinct_by_surface() {
                     if body.iter().any(|stmt| matches!(
                         stmt,
                         AstNode::Return { value: Some(value) }
-                        if matches!(value.as_ref(), AstNode::Identifier { name } if name == "io::console::writer")
+                        if matches!(
+                            value.as_ref(),
+                            AstNode::QualifiedIdentifier { path }
+                            if path.segments == vec![
+                                "io".to_string(),
+                                "console".to_string(),
+                                "writer".to_string(),
+                            ]
+                        )
                     ))
                 )
             }));

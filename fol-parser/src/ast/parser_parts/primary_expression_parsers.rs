@@ -615,12 +615,12 @@ impl AstParser {
                 Some(KEYWORD::Operator(OPERATOR::Path))
             )
         {
-            let name = self.parse_named_path(
+            let path = self.parse_qualified_path(
                 tokens,
                 "Expected expression path root",
                 "Expected name after '::' in expression path",
             )?;
-            AstNode::Identifier { name }
+            AstNode::QualifiedIdentifier { path }
         } else {
             let node = self.parse_primary(&token)?;
             let _ = tokens.bump();

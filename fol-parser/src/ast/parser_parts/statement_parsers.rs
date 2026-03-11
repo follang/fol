@@ -786,12 +786,17 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Box<dyn Glitch>> {
-        let mut target = AstNode::Identifier {
-            name: self.parse_named_path(
-                tokens,
-                "Expected assignment target",
-                "Expected name after '::' in assignment target",
-            )?,
+        let path = self.parse_qualified_path(
+            tokens,
+            "Expected assignment target",
+            "Expected name after '::' in assignment target",
+        )?;
+        let mut target = if path.is_qualified() {
+            AstNode::QualifiedIdentifier { path }
+        } else {
+            AstNode::Identifier {
+                name: path.joined(),
+            }
         };
 
         for _ in 0..128 {
