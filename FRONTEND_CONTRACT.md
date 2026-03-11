@@ -132,6 +132,24 @@ tests actually enforce today.
 - Name resolution, whole-program type checking, ownership rules, and cross-file semantic
   validation are still outside the parser contract.
 
+### Parser Boundary
+
+- Structural parsing work stays in the parser:
+  - declaration and statement shape recognition
+  - delimiter and separator matching
+  - duplicate/conflicting parser-owned option rejection
+  - AST lowering for literals, names, paths, and other grammar-owned forms
+- Semantic-adjacent checks stay only where the current front end already needs them to
+  keep parser results coherent:
+  - file-local routine signature seeding
+  - `report` arity validation
+  - limited `report` type-compatibility checks against the routine error type
+- Deferred work remains outside the parser boundary:
+  - whole-program name resolution
+  - whole-program type checking
+  - ownership and borrowing analysis
+  - cross-file semantic validation
+
 ## Deferred Front-End Debt
 
 - `Program.declarations` still needs structural hardening so routine bodies stop leaking
