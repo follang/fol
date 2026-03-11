@@ -202,11 +202,11 @@ Target files:
 
 ### 8.4 Revisit The Loading Model
 
-- [ ] Decide whether `FileStream` remains a preload-based source set or becomes a truly lazy stream.
-- [ ] If eager loading remains for now, document that explicitly and stop calling it a stronger streaming guarantee than it is.
+- [x] Decide whether `FileStream` remains a preload-based source set or becomes a truly lazy stream.
+- [x] If eager loading remains for now, document that explicitly and stop calling it a stronger streaming guarantee than it is.
 - [ ] If lazy loading is introduced, preserve deterministic traversal and file-boundary resets.
 - [ ] Remove duplicated whole-input collection across `fol-stream` and lexer stage 0.
-- [ ] Add one large multi-file regression to cover the chosen loading model.
+- [x] Add one large multi-file regression to cover the chosen loading model.
 
 ### 8.5 Preserve Raw And Canonical Identity Separately
 
@@ -220,7 +220,7 @@ Acceptance for Phase 1:
 - [x] Package detection is FOL-defined.
 - [x] Namespace validation is explicit.
 - [ ] Cross-file boundaries are explicit instead of synthetic source text.
-- [ ] Loading behavior is intentional, documented, and tested.
+- [x] Loading behavior is intentional, documented, and tested.
 
 ## 9. Phase 2: Lexer Book-Alignment And Error Cleanup
 
@@ -307,8 +307,8 @@ Target files:
 
 ### 9.7 Revisit Stage 0 Collection
 
-- [ ] Decide whether stage 0 remains a buffering adapter or becomes truly streaming.
-- [ ] If buffering remains, document that it is an implementation choice rather than a stream contract.
+- [x] Decide whether stage 0 remains a buffering adapter or becomes truly streaming.
+- [x] If buffering remains, document that it is an implementation choice rather than a stream contract.
 - [ ] If streaming is introduced, preserve the existing window API guarantees or replace them intentionally.
 - [ ] Keep source locations exact across the chosen model.
 

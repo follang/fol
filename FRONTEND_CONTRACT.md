@@ -72,6 +72,16 @@ tests actually enforce today.
 - Synthetic lexer-only markers use explicit out-of-band coordinates instead of pretending
   to be real source characters.
 
+### Loading Model
+
+- `FileStream::from_sources` is intentionally eager for this hardening cycle.
+- Source discovery and package/namespace derivation happen before streaming begins, and
+  full file bodies are loaded before the first streamed character is exposed.
+- That eager preload is a current front-end choice, not a claim that the stream layer is
+  already a lazy or incremental source provider.
+- The larger multi-file regression now proves that the stream continues draining even if
+  the backing files disappear after `FileStream` construction.
+
 ## Lexer Contract
 
 ### Token Payload Meaning
@@ -119,6 +129,15 @@ tests actually enforce today.
 - Invalid-looking escape spellings are preserved verbatim inside quoted payloads.
 - Physical newlines inside quoted content stay inside the same token payload; the lexer
   does not apply a separate line-continuation rule at this boundary.
+
+### Stage 0 Collection
+
+- Stage 0 currently buffers the incoming character provider into a local collection
+  before later lexer passes refine the token stream.
+- That buffering is a lexer implementation choice, not part of the external stream
+  contract.
+- Any future move toward true streaming has to preserve the current source-location and
+  cross-file ordering guarantees intentionally rather than by accident.
 - The parser-facing split is stable: malformed quoted spans become `Illegal`, while raw
   unsupported characters still stop lexing with an error.
 - Raw unrecognized characters still raise a lexer error instead of being silently
