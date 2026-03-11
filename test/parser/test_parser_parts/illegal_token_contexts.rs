@@ -590,6 +590,23 @@ fn test_type_entry_variant_illegal_name_reports_offending_token_location() {
 }
 
 #[test]
+fn test_type_entry_marker_illegal_option_reports_offending_token_location() {
+    let (message, line, column) =
+        parse_error_snapshot("test/parser/simple_typ_entry_marker_illegal_option.fol");
+
+    assert!(
+        message.contains("Parser encountered illegal token"),
+        "Illegal entry marker options should surface as explicit illegal-token diagnostics, got: {}",
+        message
+    );
+    assert_eq!(line, 1, "Illegal entry marker options should report the declaration line");
+    assert!(
+        column > 0,
+        "Illegal entry marker options should retain a concrete source column"
+    );
+}
+
+#[test]
 fn test_type_record_field_illegal_name_reports_offending_token_location() {
     let (message, line, column) =
         parse_error_snapshot("test/parser/simple_typ_record_illegal_field_name.fol");
@@ -606,6 +623,23 @@ fn test_type_record_field_illegal_name_reports_offending_token_location() {
     assert!(
         column > 0,
         "Illegal type record field names should retain a concrete source column"
+    );
+}
+
+#[test]
+fn test_type_record_marker_illegal_option_reports_offending_token_location() {
+    let (message, line, column) =
+        parse_error_snapshot("test/parser/simple_typ_record_marker_illegal_option.fol");
+
+    assert!(
+        message.contains("Parser encountered illegal token"),
+        "Illegal record marker options should surface as explicit illegal-token diagnostics, got: {}",
+        message
+    );
+    assert_eq!(line, 1, "Illegal record marker options should report the declaration line");
+    assert!(
+        column > 0,
+        "Illegal record marker options should retain a concrete source column"
     );
 }
 

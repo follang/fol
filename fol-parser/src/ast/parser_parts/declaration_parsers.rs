@@ -406,6 +406,7 @@ impl AstParser {
 
         self.skip_ignorable(tokens);
         let token = tokens.curr(false)?;
+        Self::reject_illegal_token(&token)?;
         if matches!(token.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
             let _ = tokens.bump();
             return Ok(());
