@@ -233,6 +233,26 @@ fn test_parameter_default_illegal_token_reports_offending_token_location() {
 }
 
 #[test]
+fn test_parameter_default_illegal_numeric_token_reports_offending_token_location() {
+    let (message, line, column) =
+        parse_error_snapshot("test/parser/simple_fun_param_default_illegal_numeric_value.fol");
+
+    assert!(
+        message.contains("Parser encountered illegal token"),
+        "Illegal numeric parameter-default token should report an explicit illegal-token diagnostic, got: {}",
+        message
+    );
+    assert_eq!(
+        line, 1,
+        "Illegal numeric parameter-default token should report the signature line"
+    );
+    assert!(
+        column > 0,
+        "Illegal numeric parameter-default token should retain a concrete source column"
+    );
+}
+
+#[test]
 fn test_unterminated_backtick_comment_in_call_reports_offending_token_location() {
     let mut file_stream =
         FileStream::from_file("test/parser/simple_fun_call_unterminated_backtick_comment.fol")
