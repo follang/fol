@@ -393,7 +393,7 @@ Done when:
 
 - [ ] `Program` root shape is fixed.
 - [x] Literal lowering is complete for supported literal families.
-- [ ] AST invariants are explicit and tested.
+- [x] AST invariants are explicit and tested.
 - [ ] Unsupported combinations fail intentionally.
 - [ ] Parser diagnostic behavior is more consistent.
 
