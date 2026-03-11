@@ -221,11 +221,11 @@ Done when:
 
 ### 6.5 Numeric fidelity
 
-- [ ] Audit decimal, float, hex, octal, and binary tokenization.
+- [x] Audit decimal, float, hex, octal, and binary tokenization.
 - [x] Define leading-dot float behavior.
 - [x] Decide whether negative numbers stay parser-level unary operations.
 - [ ] Decide whether imaginary numbers are out of scope for this cycle.
-- [ ] Add tests for every supported numeric family.
+- [x] Add tests for every supported numeric family.
 
 Done when:
 
