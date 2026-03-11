@@ -710,3 +710,23 @@ fn test_select_binding_illegal_name_reports_offending_token_location() {
         "Illegal select bindings should retain a concrete source column"
     );
 }
+
+#[test]
+fn test_typed_loop_binder_illegal_name_reports_offending_token_location() {
+    let (message, line, column) =
+        parse_error_snapshot("test/parser/simple_for_illegal_typed_binder_name.fol");
+
+    assert!(
+        message.contains("Parser encountered illegal token"),
+        "Illegal typed loop binders should report an explicit illegal-token diagnostic, got: {}",
+        message
+    );
+    assert_eq!(
+        line, 1,
+        "Illegal typed loop binders should anchor to the loop header line"
+    );
+    assert!(
+        column > 0,
+        "Illegal typed loop binders should retain a concrete source column"
+    );
+}

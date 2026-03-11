@@ -1,0 +1,3 @@
+for(var bad__item: str; bad__item in items when ready) {
+    yeild bad__item;
+}
