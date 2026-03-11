@@ -494,6 +494,6 @@ This plan is done only when a maintainer can answer all of these without reading
 - [x] Which literal families exist today, and how are they tokenized?
 - [x] How are comments treated?
 - [ ] What exactly belongs in `Program.declarations`?
-- [ ] Which parser checks are structural and which are intentionally deferred?
+- [x] Which parser checks are structural and which are intentionally deferred?
 
 If those answers still require code archaeology, the front-end is not hardened enough yet.
