@@ -112,6 +112,35 @@ mod stream_tests {
     }
 
     #[test]
+    fn test_carriage_return_only_advances_column_and_line_feed_advances_row() {
+        let temp_path = std::env::temp_dir().join(format!(
+            "fol_stream_crlf_{}_{}.fol",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("System time should be after unix epoch")
+                .as_nanos()
+        ));
+        std::fs::write(&temp_path, "a\r\nb").expect("Should write CRLF test file");
+
+        let mut stream = FileStream::from_file(
+            temp_path
+                .to_str()
+                .expect("Temp CRLF path should be valid utf-8"),
+        )
+        .expect("Should read CRLF test file");
+
+        let mut seen = Vec::new();
+        while let Some((ch, loc)) = stream.next_char() {
+            seen.push((ch, loc.row, loc.col));
+        }
+
+        assert_eq!(seen, vec![('a', 1, 1), ('\r', 1, 2), ('\n', 1, 3), ('b', 2, 1)]);
+
+        std::fs::remove_file(&temp_path).ok();
+    }
+
+    #[test]
     fn test_unicode_handling() {
         let mut stream = FileStream::from_file("test/stream/unicode.fol")
             .expect("Should be able to read unicode.fol");
