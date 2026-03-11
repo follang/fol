@@ -406,12 +406,12 @@ Target area:
 
 ### 8.1 Stream contract summary
 
-- [ ] Write a short stream contract summary:
+- [x] Write a short stream contract summary:
 - [x] source ordering
 - [x] source identity
 - [x] package detection
-- [ ] namespace derivation
-- [ ] location guarantees
+- [x] namespace derivation
+- [x] location guarantees
 
 ### 8.2 Lexer contract summary
 

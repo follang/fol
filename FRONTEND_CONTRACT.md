@@ -40,3 +40,19 @@ tests actually enforce today.
 - Nested manifests use the nearest `Cargo.toml` package name, not the outermost one.
 - Explicit package overrides intentionally change logical identity without changing
   the canonical source path.
+
+### Namespace Derivation
+
+- Single-file entry keeps the root namespace even when the file lives in nested folders.
+- Folder entry derives namespace segments from nested directories under the chosen root.
+- Invalid namespace components are ignored instead of aborting source discovery.
+- Valid components may include underscores and non-leading digits.
+- `.mod` directories do not contribute sources or namespace segments.
+
+### Location Guarantees
+
+- Rows and columns are one-based for real source characters.
+- Carriage return advances the column; line feed advances the row and resets the column.
+- Switching to a new source restarts location tracking at row `1`, column `1`.
+- Synthetic lexer-only markers use explicit out-of-band coordinates instead of pretending
+  to be real source characters.
