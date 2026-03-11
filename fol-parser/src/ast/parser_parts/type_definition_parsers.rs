@@ -17,6 +17,7 @@ impl AstParser {
         let mut variants = HashMap::new();
         let mut variant_meta = HashMap::new();
         let mut members = Vec::new();
+        let mut seen_variant_names = HashSet::new();
         let mut seen_members = HashSet::new();
         for _ in 0..256 {
             self.skip_ignorable(tokens);
@@ -243,12 +244,13 @@ impl AstParser {
             }
 
             for (name, name_token) in names {
-                if variants.insert(name.clone(), variant_type.clone()).is_some() {
+                if !seen_variant_names.insert(canonical_identifier_key(&name)) {
                     return Err(Box::new(ParseError::from_token(
                         &name_token,
                         format!("Duplicate entry variant '{}'", name),
                     )));
                 }
+                let _ = variants.insert(name.clone(), variant_type.clone());
                 if !seen_members.insert(name.clone()) {
                     return Err(self.duplicate_type_member_error(&name_token, &name));
                 }
