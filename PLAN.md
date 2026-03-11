@@ -359,7 +359,7 @@ Done when:
 ### 7.7 Statement vs expression boundary
 
 - [x] Audit top-level statement parsing.
-- [ ] Audit block-body parsing.
+- [x] Audit block-body parsing.
 - [ ] Audit call-vs-invoke-vs-assignment entry points.
 - [ ] Audit control-flow surfaces that appear both as expressions and statements.
 - [ ] Add shape tests where ambiguity currently exists.
