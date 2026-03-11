@@ -317,6 +317,9 @@ mod top_level_ast_shapes;
 #[path = "test_parser_parts/statement_expression_boundaries.rs"]
 mod statement_expression_boundaries;
 #[cfg(test)]
+#[path = "test_parser_parts/parser_diagnostic_consistency.rs"]
+mod parser_diagnostic_consistency;
+#[cfg(test)]
 #[path = "test_parser_parts/type_definition_validation.rs"]
 mod type_definition_validation;
 #[cfg(test)]
