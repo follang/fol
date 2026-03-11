@@ -121,6 +121,30 @@ mod lexer_tests {
     }
 
     #[test]
+    fn test_keyword_recognition_is_exact_case_only() {
+        let tokens = tokenize_file("test/lexer/keyword_case_edges.fol");
+        let significant: Vec<(KEYWORD, String)> = tokens
+            .into_iter()
+            .filter(|(key, _)| !key.is_space() && !key.is_eof())
+            .collect();
+
+        assert_eq!(
+            significant,
+            vec![
+                (KEYWORD::Identifier, "Fun".to_string()),
+                (KEYWORD::Keyword(BUILDIN::Fun), "fun".to_string()),
+                (KEYWORD::Identifier, "WHILE".to_string()),
+                (KEYWORD::Keyword(BUILDIN::While), "while".to_string()),
+                (KEYWORD::Identifier, "LOG".to_string()),
+                (KEYWORD::Keyword(BUILDIN::Log), "log".to_string()),
+                (KEYWORD::Identifier, "Select".to_string()),
+                (KEYWORD::Keyword(BUILDIN::Select), "select".to_string()),
+            ],
+            "Keyword recognition should remain exact-case only until the lexer contract changes intentionally"
+        );
+    }
+
+    #[test]
     fn test_stage3_starts_on_first_real_token() {
         let mut file_stream =
             FileStream::from_file("test/lexer/mixed.fol").expect("Should read mixed.fol");
