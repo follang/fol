@@ -25,7 +25,7 @@ impl AstParser {
                         AstNode::Inquiry { target, .. } => target.duplicate_key(),
                         _ => String::new(),
                     };
-                    if !inquiry_targets.insert(target.clone()) {
+                    if !inquiry_targets.insert(canonical_identifier_key(&target)) {
                         return Err(Box::new(ParseError::from_token(
                             &token,
                             format!("Duplicate inquiry clause for '{}'", target),
@@ -297,7 +297,7 @@ impl AstParser {
             let target_token = tokens.curr(false)?;
             let target = self.parse_inquiry_target(tokens)?;
             let duplicate_key = target.duplicate_key();
-            if !seen_targets.insert(duplicate_key.clone()) {
+            if !seen_targets.insert(canonical_identifier_key(&duplicate_key)) {
                 return Err(Box::new(ParseError::from_token(
                     &target_token,
                     format!("Duplicate inquiry clause for '{}'", duplicate_key),
