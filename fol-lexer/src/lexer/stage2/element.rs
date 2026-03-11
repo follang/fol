@@ -157,26 +157,6 @@ impl Element {
         Ok(())
     }
 
-    pub fn make_comment(&mut self, el: &mut stage1::Elements) -> Vod {
-        if matches!(el.peek(0)?.key(), KEYWORD::Symbol(SYMBOL::Root)) {
-            while !el.peek(0)?.key().is_eol() {
-                self.append(&el.peek(0)?.into());
-                self.bump(el);
-            }
-        } else if matches!(el.peek(0)?.key(), KEYWORD::Symbol(SYMBOL::Star)) {
-            while !(matches!(el.peek(0)?.key(), KEYWORD::Symbol(SYMBOL::Star))
-                && matches!(el.peek(1)?.key(), KEYWORD::Symbol(SYMBOL::Root)))
-                || el.peek(0)?.key().is_eof()
-            {
-                self.append(&el.peek(0)?.into());
-                self.bump(el);
-            }
-            self.append(&el.peek(0)?.into());
-            self.bump(el);
-        };
-        self.set_key(Comment);
-        Ok(())
-    }
     pub fn bump(&mut self, el: &mut stage1::Elements) {
         el.bump();
     }
