@@ -197,12 +197,12 @@ Done when:
 
 ### 6.3 Escape handling
 
-- [ ] Decide whether escapes are validated in the lexer.
-- [ ] Define accepted escape sequences for the current front-end scope.
-- [ ] Define behavior for invalid escapes.
+- [x] Decide whether escapes are validated in the lexer.
+- [x] Define accepted escape sequences for the current front-end scope.
+- [x] Define behavior for invalid escapes.
 - [x] Define behavior for unterminated quoted content.
 - [ ] Define multiline continuation behavior if supported.
-- [ ] Add positive and negative tests.
+- [x] Add positive and negative tests.
 
 Done when:
 

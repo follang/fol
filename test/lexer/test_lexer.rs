@@ -346,6 +346,25 @@ mod lexer_tests {
     }
 
     #[test]
+    fn test_quoted_payloads_preserve_escape_spelling_without_validation() {
+        let tokens = tokenize_file("test/lexer/escape_payloads.fol");
+        let significant: Vec<(KEYWORD, String)> = tokens
+            .into_iter()
+            .filter(|(key, _)| !key.is_space() && !key.is_eof())
+            .collect();
+
+        assert_eq!(
+            significant,
+            vec![
+                (KEYWORD::Literal(LITERAL::Stringy), "\"line\\n\"".to_string()),
+                (KEYWORD::Literal(LITERAL::Stringy), "\"quote\\\"\"".to_string()),
+                (KEYWORD::Literal(LITERAL::Stringy), "\"bad\\q\"".to_string()),
+            ],
+            "Quoted payloads should preserve both conventional and unknown escape spellings verbatim at the lexer boundary"
+        );
+    }
+
+    #[test]
     fn test_quoted_literal_payloads_keep_delimiters() {
         let tokens = tokenize_file("test/lexer/literals.fol");
 
