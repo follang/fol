@@ -95,7 +95,7 @@ impl KEYWORD {
             *self,
             KEYWORD::Literal(LITERAL::Decimal)
                 | KEYWORD::Literal(LITERAL::Float)
-                | KEYWORD::Literal(LITERAL::Hexal)
+                | KEYWORD::Literal(LITERAL::Hexadecimal)
                 | KEYWORD::Literal(LITERAL::Octal)
                 | KEYWORD::Literal(LITERAL::Binary)
         )

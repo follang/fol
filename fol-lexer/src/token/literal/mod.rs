@@ -9,7 +9,7 @@ pub enum LITERAL {
     Bool,
     Float,
     Decimal,
-    Hexal,
+    Hexadecimal,
     Octal,
     Binary,
 }
@@ -22,7 +22,7 @@ impl fmt::Display for LITERAL {
             LITERAL::Float => Some("float"),
             LITERAL::Bool => Some("bool"),
             LITERAL::Decimal => Some("decimal"),
-            LITERAL::Hexal => Some("hexal"),
+            LITERAL::Hexadecimal => Some("hexadecimal"),
             LITERAL::Octal => Some("octal"),
             LITERAL::Binary => Some("binary"),
             _ => None,

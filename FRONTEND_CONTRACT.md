@@ -75,7 +75,7 @@ tests actually enforce today.
 
 ### Literal Categories
 
-- The current lexer surfaces `Stringy`, `Quoted`, `Bool`, `Float`, `Decimal`, `Hexal`,
+- The current lexer surfaces `Stringy`, `Quoted`, `Bool`, `Float`, `Decimal`, `Hexadecimal`,
   `Octal`, and `Binary`.
 - Double-quoted content arrives at the lexer boundary as `Stringy`.
 - Single-quoted content arrives at the lexer boundary as `Quoted`.

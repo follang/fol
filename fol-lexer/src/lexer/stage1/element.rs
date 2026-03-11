@@ -167,7 +167,7 @@ impl Element {
             self.push(code)?;
             if matches!(code.peek(0)?.0, 'x' | 'X') {
                 self.bump(code)?;
-                self.key = Literal(LITERAL::Hexal);
+                self.key = Literal(LITERAL::Hexadecimal);
                 while is_hex_digit(&code.peek(0)?.0) {
                     self.bump(code)?;
                 }

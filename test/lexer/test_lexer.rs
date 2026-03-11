@@ -208,7 +208,7 @@ mod lexer_tests {
         assert_eq!(
             significant,
             vec![
-                (KEYWORD::Literal(LITERAL::Hexal), "0X1A".to_string()),
+                (KEYWORD::Literal(LITERAL::Hexadecimal), "0X1A".to_string()),
                 (KEYWORD::Literal(LITERAL::Octal), "0O17".to_string()),
                 (KEYWORD::Literal(LITERAL::Binary), "0B1010".to_string()),
             ],
@@ -228,10 +228,10 @@ mod lexer_tests {
             significant,
             vec![
                 (KEYWORD::Literal(LITERAL::Decimal), "1_000".to_string()),
-                (KEYWORD::Literal(LITERAL::Hexal), "0xCA_FE".to_string()),
+                (KEYWORD::Literal(LITERAL::Hexadecimal), "0xCA_FE".to_string()),
                 (KEYWORD::Literal(LITERAL::Octal), "0o7_7".to_string()),
                 (KEYWORD::Literal(LITERAL::Binary), "0b1010_0001".to_string()),
-                (KEYWORD::Literal(LITERAL::Hexal), "0XCA_FE".to_string()),
+                (KEYWORD::Literal(LITERAL::Hexadecimal), "0XCA_FE".to_string()),
                 (KEYWORD::Literal(LITERAL::Octal), "0O7_7".to_string()),
                 (KEYWORD::Literal(LITERAL::Binary), "0B1010_0001".to_string()),
             ],
@@ -311,7 +311,7 @@ mod lexer_tests {
                 (KEYWORD::Literal(LITERAL::Decimal), "42".to_string()),
                 (KEYWORD::Literal(LITERAL::Float), "3.14".to_string()),
                 (KEYWORD::Literal(LITERAL::Float), ".5".to_string()),
-                (KEYWORD::Literal(LITERAL::Hexal), "0x1A".to_string()),
+                (KEYWORD::Literal(LITERAL::Hexadecimal), "0x1A".to_string()),
                 (KEYWORD::Literal(LITERAL::Octal), "0o777".to_string()),
                 (KEYWORD::Literal(LITERAL::Binary), "0b1010".to_string()),
             ],

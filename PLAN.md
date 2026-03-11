@@ -59,7 +59,7 @@ Do not add or plan work here for:
 - Imaginary numeric literals from the book are still out of scope in the code.
 - Lexer identifier scanning allows forms the book rejects, especially `_` alone and repeated underscores.
 - `KEYWORD::is_void()` still treats `Illegal` as void, which is unsafe for parser-facing behavior.
-- Literal enum names still contain the remaining typo `Hexal`.
+- Literal enum names no longer carry the old `Deciaml` and `Hexal` misspellings.
 - `stage2::make_comment()` is dead code.
 - The stage wrapper files still contain `TODO: Handle better .ok()` markers around window mutation.
 
@@ -278,7 +278,7 @@ Target files:
 ### 9.4 Finish Numeric Literal Support
 
 - [x] Rename `Deciaml` to `Decimal`.
-- [ ] Rename `Hexal` to the final chosen spelling.
+- [x] Rename `Hexal` to the final chosen spelling.
 - [ ] Keep the payload-preserving behavior during the rename.
 - [ ] Decide and implement front-end support for imaginary numeric literals from the book.
 - [ ] Decide and implement the parser-facing token kind for imaginary literals.

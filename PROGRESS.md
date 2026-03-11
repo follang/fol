@@ -403,7 +403,7 @@ Authority rule for this file: code and active tests win over older aspirational 
 - `Bool`
 - `Float`
 - `Decimal`
-- `Hexal`
+- `Hexadecimal`
 - `Octal`
 - `Binary`
 
@@ -545,7 +545,7 @@ Authority rule for this file: code and active tests win over older aspirational 
 
 - clean up misspellings:
 - `yeild`
-- `Hexal`
+- `Hexadecimal`
 - maybe other legacy enum spellings
 - decide what backticks actually mean
 - separate char literal handling cleanly from string literal handling
