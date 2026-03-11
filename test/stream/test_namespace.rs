@@ -18,7 +18,7 @@ mod namespace_tests {
 
     #[test]
     fn test_package_name_detection() {
-        // Test that package name is correctly detected from Cargo.toml
+        // Test that package name comes from the explicit folder entry root.
         let sources = Source::init("test/legacy/main", SourceType::Folder)
             .expect("Should create sources with namespace");
 
@@ -27,8 +27,8 @@ mod namespace_tests {
         // All sources should have the same package name
         let package_name = &sources[0].package;
         assert_eq!(
-            package_name, "fol",
-            "Package name should be 'fol' from Cargo.toml"
+            package_name, "main",
+            "Package name should come from the folder entry root"
         );
 
         for source in &sources {
@@ -50,9 +50,9 @@ mod namespace_tests {
         assert_eq!(sources.len(), 1, "Should have one source");
         let source = &sources[0];
 
-        assert_eq!(source.package, "fol", "Package should be 'fol'");
+        assert_eq!(source.package, "main", "Package should be 'main'");
         assert_eq!(
-            source.namespace, "fol",
+            source.namespace, "main",
             "Root file should have root namespace"
         );
 
@@ -68,7 +68,7 @@ mod namespace_tests {
         // Find sources in subdirectories
         let subdir_sources: Vec<_> = sources
             .iter()
-            .filter(|s| s.namespace != "fol") // Not root namespace
+            .filter(|s| s.namespace != "main") // Not root namespace
             .collect();
 
         assert!(
@@ -81,7 +81,7 @@ mod namespace_tests {
 
             // Namespace should start with package name
             assert!(
-                source.namespace.starts_with("fol::"),
+                source.namespace.starts_with("main::"),
                 "Namespace should start with package name: {}",
                 source.namespace
             );
@@ -489,7 +489,7 @@ mod namespace_tests {
     }
 
     #[test]
-    fn test_nested_manifest_folder_uses_nearest_package_name() {
+    fn test_nested_manifest_folder_ignores_cargo_package_files() {
         let temp_root = unique_temp_root("nested_manifest_folder");
         let outer_dir = temp_root.join("outer");
         let inner_dir = outer_dir.join("inner");
@@ -510,13 +510,16 @@ mod namespace_tests {
         .expect("Nested manifest folder should produce sources");
 
         assert_eq!(sources.len(), 1);
-        assert_eq!(sources[0].package, "inner_pkg");
+        assert_eq!(
+            sources[0].package, "src",
+            "Folder entry should use its own name even when Cargo.toml files are present above it"
+        );
 
         fs::remove_dir_all(&temp_root).ok();
     }
 
     #[test]
-    fn test_nested_manifest_file_uses_nearest_package_name() {
+    fn test_nested_manifest_file_ignores_cargo_package_files() {
         let temp_root = unique_temp_root("nested_manifest_file");
         let outer_dir = temp_root.join("outer");
         let inner_dir = outer_dir.join("inner");
@@ -537,7 +540,10 @@ mod namespace_tests {
         .expect("Nested manifest file should produce sources");
 
         assert_eq!(sources.len(), 1);
-        assert_eq!(sources[0].package, "inner_pkg");
+        assert_eq!(
+            sources[0].package, "src",
+            "File entry should use its parent folder name even when Cargo.toml files are present above it"
+        );
 
         fs::remove_dir_all(&temp_root).ok();
     }
@@ -549,8 +555,8 @@ mod namespace_tests {
 
         assert_eq!(sources.len(), 1);
         assert_eq!(
-            sources[0].namespace, "fol",
-            "Single-file entry should keep the root namespace instead of inheriting folder segments"
+            sources[0].namespace, "subpak",
+            "Single-file entry should keep the detached-file root namespace instead of inheriting higher folder segments"
         );
     }
 
@@ -564,7 +570,7 @@ mod namespace_tests {
             .expect("Folder input should include nested file");
 
         assert_eq!(
-            nested.namespace, "fol::single::subpak",
+            nested.namespace, "main::single::subpak",
             "Folder input should derive namespace segments from nested directories"
         );
     }

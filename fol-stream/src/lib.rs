@@ -366,7 +366,7 @@ pub fn sources(input: String, source_type: SourceType) -> impl Iterator<Item = S
     sources.into_iter()
 }
 
-/// Detect package name from path by looking for Cargo.toml
+/// Detect package name from the explicit entry root instead of host build files.
 fn detect_package_name(input_path: &str) -> Result<String, Box<dyn Glitch>> {
     let path = std::path::Path::new(input_path);
     let fallback_root = if path.is_file() {
@@ -385,42 +385,7 @@ fn detect_package_name(input_path: &str) -> Result<String, Box<dyn Glitch>> {
                 .filter(|name| !name.is_empty())
                 .map(str::to_string)
         })
-        .unwrap_or_else(|| "unknown".to_string());
-    let mut current = fallback_root;
-
-    // Walk up the directory tree looking for Cargo.toml
-    loop {
-        let cargo_toml = current.join("Cargo.toml");
-        if cargo_toml.exists() {
-            // Parse Cargo.toml to get package name
-            let content = std::fs::read_to_string(&cargo_toml).map_err(|e| -> Box<dyn Glitch> {
-                Box::new(BasicError {
-                    message: format!("Cannot read Cargo.toml: {}", e),
-                })
-            })?;
-
-            // Simple parsing - look for name = "..." line
-            for line in content.lines() {
-                let line = line.trim();
-                if line.starts_with("name") && line.contains('=') {
-                    if let Some(name_part) = line.split('=').nth(1) {
-                        let name = name_part.trim().trim_matches('"').trim_matches('\'');
-                        return Ok(name.to_string());
-                    }
-                }
-            }
-
-            return Err(Box::new(BasicError {
-                message: "Could not find package name in Cargo.toml".to_string(),
-            }));
-        }
-
-        if let Some(parent) = current.parent() {
-            current = parent;
-        } else {
-            break;
-        }
-    }
+        .unwrap_or_else(|| "root".to_string());
 
     Ok(fallback_name)
 }
