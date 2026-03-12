@@ -405,7 +405,7 @@ Target files:
 - [x] Keep malformed name-like tokens inside the parser surface that owns them instead of
   letting them fall out into generic neighboring parse paths.
 - [ ] Re-run representative `Expected X` and `Expected closing ...` matrices after AST and lexer changes.
-- [ ] Keep unsupported combination failures explicit.
+- [x] Keep unsupported combination failures explicit.
 - [ ] Remove any tests that only preserve known-bad legacy parser compromises.
 
 Acceptance for Phase 3:
