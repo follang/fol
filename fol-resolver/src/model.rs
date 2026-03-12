@@ -59,6 +59,7 @@ pub struct ResolvedSymbol {
     pub id: SymbolId,
     pub name: String,
     pub canonical_name: String,
+    pub duplicate_key: String,
     pub kind: SymbolKind,
     pub scope: ScopeId,
     pub source_unit: SourceUnitId,

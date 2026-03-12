@@ -467,6 +467,8 @@ Status: done
 
 #### Slice 1.3
 
+Status: done
+
 - Implement canonical duplicate detection for top-level symbols.
 - Add tests for raw duplicates and canonical duplicates across files.
 

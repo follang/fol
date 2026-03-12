@@ -2,7 +2,7 @@ use crate::{
     model::{ResolvedProgram, ResolvedSymbol, SymbolKind},
     ResolverError, ResolverErrorKind, ScopeId, SourceUnitId, SymbolId,
 };
-use fol_parser::ast::{AstNode, BindingPattern, ParsedDeclScope, ParsedTopLevel};
+use fol_parser::ast::{AstNode, BindingPattern, FolType, ParsedDeclScope, ParsedTopLevel};
 
 pub fn collect_top_level_symbols(program: &mut ResolvedProgram) -> Result<(), Vec<ResolverError>> {
     let mut errors = Vec::new();
@@ -24,10 +24,10 @@ pub fn collect_top_level_symbols(program: &mut ResolvedProgram) -> Result<(), Ve
         let scope_id = top_level_scope_id(program, source_unit_id, &item);
         let origin = program.syntax_index().origin(item.node_id).cloned();
 
-        if let Err(error_list) =
+        if let Err(error) =
             collect_symbols_from_top_level(program, source_unit_id, scope_id, &item, origin)
         {
-            errors.extend(error_list);
+            errors.push(error);
         }
     }
 
@@ -62,7 +62,7 @@ fn collect_symbols_from_top_level(
     scope_id: ScopeId,
     item: &ParsedTopLevel,
     origin: Option<fol_parser::ast::SyntaxOrigin>,
-) -> Result<(), Vec<ResolverError>> {
+) -> Result<(), ResolverError> {
     match semantic_node(&item.node) {
         AstNode::VarDecl { name, .. } => {
             insert_symbol(
@@ -73,7 +73,7 @@ fn collect_symbols_from_top_level(
                 SymbolKind::ValueBinding,
                 item,
                 origin,
-            );
+            )?;
         }
         AstNode::LabDecl { name, .. } => {
             insert_symbol(
@@ -84,7 +84,7 @@ fn collect_symbols_from_top_level(
                 SymbolKind::LabelBinding,
                 item,
                 origin,
-            );
+            )?;
         }
         AstNode::DestructureDecl { pattern, .. } => {
             for name in binding_names(pattern) {
@@ -96,7 +96,7 @@ fn collect_symbols_from_top_level(
                     SymbolKind::DestructureBinding,
                     item,
                     origin.clone(),
-                );
+                )?;
             }
         }
         AstNode::FunDecl { name, .. }
@@ -110,7 +110,7 @@ fn collect_symbols_from_top_level(
                 SymbolKind::Routine,
                 item,
                 origin,
-            );
+            )?;
         }
         AstNode::TypeDecl { name, .. } => {
             insert_symbol(
@@ -121,7 +121,7 @@ fn collect_symbols_from_top_level(
                 SymbolKind::Type,
                 item,
                 origin,
-            );
+            )?;
         }
         AstNode::AliasDecl { name, .. } => {
             insert_symbol(
@@ -132,7 +132,7 @@ fn collect_symbols_from_top_level(
                 SymbolKind::Alias,
                 item,
                 origin,
-            );
+            )?;
         }
         AstNode::DefDecl { name, .. } => {
             insert_symbol(
@@ -143,7 +143,7 @@ fn collect_symbols_from_top_level(
                 SymbolKind::Definition,
                 item,
                 origin,
-            );
+            )?;
         }
         AstNode::SegDecl { name, .. } => {
             insert_symbol(
@@ -154,7 +154,7 @@ fn collect_symbols_from_top_level(
                 SymbolKind::Segment,
                 item,
                 origin,
-            );
+            )?;
         }
         AstNode::ImpDecl { name, .. } => {
             insert_symbol(
@@ -165,7 +165,7 @@ fn collect_symbols_from_top_level(
                 SymbolKind::Implementation,
                 item,
                 origin,
-            );
+            )?;
         }
         AstNode::StdDecl { name, .. } => {
             insert_symbol(
@@ -176,7 +176,7 @@ fn collect_symbols_from_top_level(
                 SymbolKind::Standard,
                 item,
                 origin,
-            );
+            )?;
         }
         AstNode::UseDecl { name, .. } => {
             insert_symbol(
@@ -187,17 +187,17 @@ fn collect_symbols_from_top_level(
                 SymbolKind::ImportAlias,
                 item,
                 origin,
-            );
+            )?;
         }
         AstNode::Comment { .. } => {}
         node => {
-            return Err(vec![ResolverError::new(
+            return Err(ResolverError::new(
                 ResolverErrorKind::Unsupported,
                 format!(
                     "top-level node is not a collectable declaration: {:?}",
                     node
                 ),
-            )]);
+            ));
         }
     }
 
@@ -212,12 +212,41 @@ fn insert_symbol(
     kind: SymbolKind,
     item: &ParsedTopLevel,
     origin: Option<fol_parser::ast::SyntaxOrigin>,
-) -> SymbolId {
+) -> Result<SymbolId, ResolverError> {
     let canonical_name = fol_types::canonical_identifier_key(name);
+    let duplicate_key = top_level_duplicate_key(semantic_node(&item.node), &canonical_name);
+    if let Some(existing) = program
+        .scope(scope_id)
+        .and_then(|scope| scope.symbol_keys.get(&canonical_name))
+        .into_iter()
+        .flat_map(|ids| ids.iter())
+        .filter_map(|id| program.symbol(*id))
+        .find(|symbol| symbol.duplicate_key == duplicate_key)
+    {
+        return Err(ResolverError::with_origin(
+            ResolverErrorKind::DuplicateSymbol,
+            format!(
+                "duplicate symbol '{}' conflicts with existing {:?} declaration",
+                name, existing.kind
+            ),
+            origin.unwrap_or_else(|| {
+                existing
+                    .origin
+                    .clone()
+                    .unwrap_or(fol_parser::ast::SyntaxOrigin {
+                        file: None,
+                        line: 1,
+                        column: 1,
+                        length: name.len(),
+                    })
+            }),
+        ));
+    }
     let symbol_id = program.symbols.push(ResolvedSymbol {
         id: SymbolId(0),
         name: name.to_string(),
         canonical_name: canonical_name.clone(),
+        duplicate_key,
         kind,
         scope: scope_id,
         source_unit: source_unit_id,
@@ -241,7 +270,7 @@ fn insert_symbol(
         .or_default()
         .push(symbol_id);
 
-    symbol_id
+    Ok(symbol_id)
 }
 
 fn semantic_node(node: &AstNode) -> &AstNode {
@@ -265,5 +294,53 @@ fn collect_binding_names(pattern: &BindingPattern, output: &mut Vec<String>) {
                 collect_binding_names(part, output);
             }
         }
+    }
+}
+
+fn top_level_duplicate_key(node: &AstNode, canonical_name: &str) -> String {
+    match node {
+        AstNode::FunDecl {
+            receiver_type,
+            params,
+            ..
+        }
+        | AstNode::ProDecl {
+            receiver_type,
+            params,
+            ..
+        }
+        | AstNode::LogDecl {
+            receiver_type,
+            params,
+            ..
+        } => {
+            let receiver = receiver_type
+                .as_ref()
+                .map(fol_type_key)
+                .unwrap_or_else(|| "_".to_string());
+            let params = params
+                .iter()
+                .map(|param| fol_type_key(&param.param_type))
+                .collect::<Vec<_>>()
+                .join(",");
+            format!("routine#{}#{}#{}", canonical_name, receiver, params)
+        }
+        _ => format!("symbol#{}", canonical_name),
+    }
+}
+
+fn fol_type_key(typ: &FolType) -> String {
+    match typ {
+        FolType::Named { name } => fol_types::canonical_identifier_key(name),
+        FolType::QualifiedNamed { path } => path
+            .segments
+            .iter()
+            .map(|segment| fol_types::canonical_identifier_key(segment))
+            .collect::<Vec<_>>()
+            .join("::"),
+        other => other
+            .named_text()
+            .map(|text| fol_types::canonical_identifier_key(&text))
+            .unwrap_or_else(|| format!("{:?}", other)),
     }
 }
