@@ -80,15 +80,23 @@ impl Elements {
     pub fn jump(&mut self, loops: isize, elem: bool) -> Vod {
         for _ in 0..loops + 1 {
             if (elem && self.curr(false)?.key().is_void()) && !self.peek(0, true)?.key().is_eof() {
-                if let Err(e) = self.bump().unwrap() {
+                match self.bump() {
+                    Some(Err(e)) => {
+                        self.until_term(true)?;
+                        return Err(e);
+                    }
+                    Some(Ok(_)) => {}
+                    None => break,
+                }
+            }
+            match self.bump() {
+                Some(Err(e)) => {
                     self.until_term(true)?;
                     return Err(e);
-                };
+                }
+                Some(Ok(_)) => {}
+                None => break,
             }
-            if let Err(e) = self.bump().unwrap() {
-                self.until_term(true)?;
-                return Err(e);
-            };
         }
         Ok(())
     }
