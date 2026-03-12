@@ -512,6 +512,8 @@ Status: done
 
 #### Slice 2.5
 
+Status: done
+
 - Make comment nodes and `AstNode::Commented` wrappers transparent to traversal.
 - Add tests proving comments do not disturb scope construction or reference binding.
 
