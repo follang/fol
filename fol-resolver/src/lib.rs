@@ -2,6 +2,7 @@ pub mod collect;
 pub mod errors;
 pub mod ids;
 pub mod model;
+pub mod traverse;
 
 pub use errors::{ResolverError, ResolverErrorKind};
 pub use ids::{IdTable, ImportId, ReferenceId, ScopeId, SourceUnitId, SymbolId};
@@ -26,6 +27,7 @@ impl Resolver {
     ) -> ResolverResult<ResolvedProgram> {
         let mut program = ResolvedProgram::new(syntax);
         collect::collect_top_level_symbols(&mut program)?;
+        traverse::collect_routine_scopes(&mut program)?;
         Ok(program)
     }
 }

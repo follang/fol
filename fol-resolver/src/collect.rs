@@ -38,7 +38,7 @@ pub fn collect_top_level_symbols(program: &mut ResolvedProgram) -> Result<(), Ve
     }
 }
 
-fn top_level_scope_id(
+pub(crate) fn top_level_scope_id(
     program: &ResolvedProgram,
     source_unit_id: SourceUnitId,
     item: &ParsedTopLevel,
@@ -273,14 +273,14 @@ fn insert_symbol(
     Ok(symbol_id)
 }
 
-fn semantic_node(node: &AstNode) -> &AstNode {
+pub(crate) fn semantic_node(node: &AstNode) -> &AstNode {
     match node {
         AstNode::Commented { node, .. } => semantic_node(node),
         _ => node,
     }
 }
 
-fn binding_names(pattern: &BindingPattern) -> Vec<String> {
+pub(crate) fn binding_names(pattern: &BindingPattern) -> Vec<String> {
     let mut names = Vec::new();
     collect_binding_names(pattern, &mut names);
     names
@@ -297,7 +297,7 @@ fn collect_binding_names(pattern: &BindingPattern, output: &mut Vec<String>) {
     }
 }
 
-fn top_level_duplicate_key(node: &AstNode, canonical_name: &str) -> String {
+pub(crate) fn top_level_duplicate_key(node: &AstNode, canonical_name: &str) -> String {
     match node {
         AstNode::FunDecl {
             receiver_type,

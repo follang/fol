@@ -481,6 +481,8 @@ Status: done
 
 #### Slice 2.1
 
+Status: done
+
 - Add routine scopes and local declaration traversal.
 - Resolve parameters and captures in routine bodies.
 - Add tests for parameter/capture visibility and duplicates.

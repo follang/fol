@@ -83,6 +83,7 @@ pub struct ResolvedProgram {
     syntax: ParsedPackage,
     pub program_scope: ScopeId,
     namespace_scopes: BTreeMap<String, ScopeId>,
+    syntax_scopes: BTreeMap<SyntaxNodeId, ScopeId>,
     pub source_units: IdTable<SourceUnitId, ResolvedSourceUnit>,
     pub scopes: IdTable<ScopeId, ResolvedScope>,
     pub symbols: IdTable<SymbolId, ResolvedSymbol>,
@@ -169,6 +170,7 @@ impl ResolvedProgram {
             syntax,
             program_scope,
             namespace_scopes,
+            syntax_scopes: BTreeMap::new(),
             source_units,
             scopes,
             symbols: IdTable::new(),
@@ -201,6 +203,10 @@ impl ResolvedProgram {
         self.namespace_scopes.get(namespace).copied()
     }
 
+    pub fn scope_for_syntax(&self, syntax_id: SyntaxNodeId) -> Option<ScopeId> {
+        self.syntax_scopes.get(&syntax_id).copied()
+    }
+
     pub fn symbol(&self, id: SymbolId) -> Option<&ResolvedSymbol> {
         self.symbols.get(id)
     }
@@ -222,6 +228,36 @@ impl ResolvedProgram {
             .and_then(|scope| scope.symbol_keys.get(key))
             .map(|ids| ids.iter().filter_map(|id| self.symbol(*id)).collect())
             .unwrap_or_default()
+    }
+
+    pub(crate) fn add_scope(
+        &mut self,
+        kind: ScopeKind,
+        parent: ScopeId,
+        source_unit: SourceUnitId,
+    ) -> ScopeId {
+        let scope_id = self.scopes.push(ResolvedScope {
+            id: ScopeId(0),
+            kind,
+            parent: Some(parent),
+            source_unit: Some(source_unit),
+            symbols: Vec::new(),
+            symbol_keys: BTreeMap::new(),
+        });
+        if let Some(scope) = self.scopes.get_mut(scope_id) {
+            scope.id = scope_id;
+        }
+        scope_id
+    }
+
+    pub(crate) fn record_scope_for_syntax(
+        &mut self,
+        syntax_id: Option<SyntaxNodeId>,
+        scope_id: ScopeId,
+    ) {
+        if let Some(syntax_id) = syntax_id {
+            self.syntax_scopes.insert(syntax_id, scope_id);
+        }
     }
 }
 
