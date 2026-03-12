@@ -264,6 +264,35 @@ fn test_cooked_double_quotes_decode_numeric_and_unicode_escapes() {
 }
 
 #[test]
+fn test_top_level_cooked_unicode_escape_fixture_lowers_through_pipeline() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_literal_cooked_unicode_escapes.fol")
+            .expect("Should read cooked unicode escape literal fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should lower cooked unicode escape literals through the full pipeline");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert_eq!(
+                declarations,
+                vec![
+                    AstNode::Literal(Literal::Character('A')),
+                    AstNode::Literal(Literal::Character('A')),
+                    AstNode::Literal(Literal::Character('A')),
+                    AstNode::Literal(Literal::Character('A')),
+                ],
+                "Cooked numeric and unicode escape spellings should decode identically when they spell the same scalar value"
+            );
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
 fn test_cooked_double_quotes_trim_backslash_line_continuations() {
     let parser = AstParser::new();
 
