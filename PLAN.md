@@ -148,9 +148,9 @@ Target files:
 
 ### 7.4 Root Surface Authority
 
-- [ ] Decide whether file scope is declaration-only.
-- [ ] Decide whether file scope is script-like.
-- [ ] If dual-mode is desired, decide how that mode is represented explicitly instead of incidentally.
+- [x] Decide whether file scope is declaration-only.
+- [x] Decide whether file scope is script-like.
+- [x] If dual-mode is desired, decide how that mode is represented explicitly instead of incidentally.
 
 ### 7.5 Method And Routine Authority
 
@@ -338,12 +338,12 @@ Target files:
 
 ### 10.1 Settle The File-Scope Root Shape
 
-- [ ] Decide whether `AstNode::Program` contains declarations only.
+- [x] Decide whether `AstNode::Program` contains declarations only.
 - [ ] If file-scope executable statements remain supported, stop treating them as incidental declarations.
 - [ ] Introduce an explicit root representation for mixed item/statement programs if mixed file scope remains.
 - [ ] If declaration-only file scope is chosen, reject top-level calls, loops, conditionals, literals, and bare identifiers with explicit diagnostics.
 - [x] Update `top_level_control_flow_and_calls.rs` and any other root-shape tests to match the chosen contract.
-- [ ] Update `FRONTEND_CONTRACT.md` so later phases do not have to infer module shape.
+- [x] Update `FRONTEND_CONTRACT.md` so later phases do not have to infer module shape.
 
 ### 10.2 Preserve Method Receiver Types In The AST
 
@@ -414,7 +414,7 @@ Acceptance for Phase 3:
 - [x] No logical routine kind is lost in the AST.
 - [x] Qualified path structure is preserved instead of flattened away where it matters.
 - [ ] Parser-owned duplicate checks use the chosen identifier equality rules.
-- [ ] Root shape is explicit and no longer ambiguous to the next stage.
+- [x] Root shape is explicit and no longer ambiguous to the next stage.
 
 ## 11. Phase 4: Docs And Contract Freeze
 
@@ -448,7 +448,7 @@ This is the recommended implementation order once the decision freeze is complet
 3. [x] Apply the canonicalization helper to parser duplicate checks before changing more AST shape.
 4. [x] Preserve method receiver types in the AST and add direct retention tests.
 5. [x] Introduce explicit logical routine kind in the AST and migrate `log` lowering.
-6. [ ] Decide and implement the final root surface contract.
+6. [x] Decide and implement the final root surface contract.
 7. [x] Replace backtick `ANY` behavior with the chosen comment model.
 8. [x] Remove slash-comment dependence or make it explicit compatibility behavior.
 9. [x] Rebuild literal quote taxonomy around the chosen cooked/raw model.
@@ -479,7 +479,7 @@ Do not move to the next compiler stage until every gate below is true.
 - [x] Method receiver types survive AST lowering.
 - [x] Logical routine kind survives AST lowering.
 - [x] Qualified path structure survives AST lowering where the next stage needs it.
-- [ ] Root program shape is explicit.
+- [x] Root program shape is explicit.
 - [ ] No front-end doc claims are known to contradict the code.
 - [ ] `make build` passes.
 - [ ] `make test` passes.
