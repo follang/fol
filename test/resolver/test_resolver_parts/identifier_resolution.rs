@@ -58,10 +58,13 @@ fn test_resolver_resolves_plain_identifiers_against_outer_local_scopes() {
 #[test]
 fn test_resolver_resolves_plain_identifiers_against_import_alias_symbols() {
     let temp_root = unique_temp_root("identifier_resolution_import_alias");
-    fs::create_dir_all(&temp_root).expect("Should create a temporary resolver fixture directory");
+    fs::create_dir_all(temp_root.join("math"))
+        .expect("Should create a temporary resolver fixture directory");
+    fs::write(temp_root.join("math/module.fol"), "var answer: int = 42;\n")
+        .expect("Should write the imported namespace fixture");
     fs::write(
         temp_root.join("main.fol"),
-        "use math: loc = {core::math};\nfun[] main(): int = {\n    return math;\n}\n",
+        "use math: loc = {math};\nfun[] main(): int = {\n    return math;\n}\n",
     )
     .expect("Should write the import-alias resolver fixture");
 

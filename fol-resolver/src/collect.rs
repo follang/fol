@@ -362,6 +362,7 @@ pub(crate) fn insert_import_record(
         path_segments,
         scope: scope_id,
         source_unit: source_unit_id,
+        target_scope: None,
     });
     if let Some(import) = program.imports.get_mut(import_id) {
         import.id = import_id;

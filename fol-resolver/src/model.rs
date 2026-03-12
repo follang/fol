@@ -94,6 +94,7 @@ pub struct ResolvedImport {
     pub path_segments: Vec<UsePathSegment>,
     pub scope: ScopeId,
     pub source_unit: SourceUnitId,
+    pub target_scope: Option<ScopeId>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

@@ -29,7 +29,7 @@ impl Resolver {
         let mut program = ResolvedProgram::new(syntax);
         collect::collect_top_level_symbols(&mut program)?;
         traverse::collect_routine_scopes(&mut program)?;
-        imports::validate_supported_import_kinds(&program)?;
+        imports::resolve_import_targets(&mut program)?;
         Ok(program)
     }
 }

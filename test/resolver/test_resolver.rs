@@ -83,3 +83,6 @@ mod top_level_duplicates;
 #[cfg(test)]
 #[path = "test_resolver_parts/unsupported_imports.rs"]
 mod unsupported_imports;
+#[cfg(test)]
+#[path = "test_resolver_parts/use_loc_resolution.rs"]
+mod use_loc_resolution;

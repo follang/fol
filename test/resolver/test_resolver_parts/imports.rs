@@ -5,10 +5,13 @@ use std::fs;
 #[test]
 fn test_resolver_lowers_top_level_use_declarations_into_import_records() {
     let temp_root = unique_temp_root("imports_top_level");
-    fs::create_dir_all(&temp_root).expect("Should create a temporary resolver fixture directory");
+    fs::create_dir_all(temp_root.join("math"))
+        .expect("Should create a temporary resolver fixture directory");
+    fs::write(temp_root.join("math/module.fol"), "var helper: int = 1;\n")
+        .expect("Should write the imported namespace fixture");
     fs::write(
         temp_root.join("main.fol"),
-        "use math: loc = {core::math};\nfun[] main(): int = {\n    return 0;\n}\n",
+        "use math: loc = {math};\nfun[] main(): int = {\n    return 0;\n}\n",
     )
     .expect("Should write the top-level import fixture");
 
@@ -33,8 +36,12 @@ fn test_resolver_lowers_top_level_use_declarations_into_import_records() {
             .iter()
             .map(|segment| segment.spelling.as_str())
             .collect::<Vec<_>>(),
-        vec!["core", "math"],
+        vec!["math"],
         "Resolver import records should preserve parsed use-path segments"
+    );
+    assert!(
+        import.target_scope.is_some(),
+        "Location imports should resolve to a concrete package or namespace scope"
     );
 
     fs::remove_dir_all(&temp_root)
@@ -44,10 +51,13 @@ fn test_resolver_lowers_top_level_use_declarations_into_import_records() {
 #[test]
 fn test_resolver_keeps_local_use_aliases_visible_in_routine_scopes() {
     let temp_root = unique_temp_root("imports_local_alias");
-    fs::create_dir_all(&temp_root).expect("Should create a temporary resolver fixture directory");
+    fs::create_dir_all(temp_root.join("helper"))
+        .expect("Should create a temporary resolver fixture directory");
+    fs::write(temp_root.join("helper/module.fol"), "var value: int = 1;\n")
+        .expect("Should write the imported helper namespace fixture");
     fs::write(
         temp_root.join("main.fol"),
-        "fun[] main(): int = {\n    use helper: loc = {core::helper};\n    return helper;\n}\n",
+        "fun[] main(): int = {\n    use helper: loc = {helper};\n    return helper;\n}\n",
     )
     .expect("Should write the local import fixture");
 

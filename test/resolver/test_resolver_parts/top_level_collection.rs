@@ -5,7 +5,8 @@ use std::fs;
 #[test]
 fn test_resolver_collects_top_level_named_declarations_across_multiple_files() {
     let temp_root = unique_temp_root("top_level_symbols");
-    fs::create_dir_all(&temp_root).expect("Should create resolver top-level fixture dir");
+    fs::create_dir_all(temp_root.join("core"))
+        .expect("Should create resolver top-level fixture dir");
     fs::write(
         temp_root.join("00_values.fol"),
         "var value: int = 1;\nlab label: int = 2;\nvar left, *right = { 1, 2, 3 };\n",
@@ -18,9 +19,14 @@ fn test_resolver_collects_top_level_named_declarations_across_multiple_files() {
     .expect("Should write routine fixture");
     fs::write(
         temp_root.join("02_types.fol"),
-        "typ Text: str;\nali Count: int;\nuse core: loc = {pkg::core};\n",
+        "typ Text: str;\nali Count: int;\nuse core: loc = {core};\n",
     )
     .expect("Should write type fixture");
+    fs::write(
+        temp_root.join("core/module.fol"),
+        "var imported: int = 1;\n",
+    )
+    .expect("Should write imported namespace fixture");
     fs::write(
         temp_root.join("03_meta.fol"),
         "def 'str': def[] = 'str[new,mut,nor]';\nseg coreSeg: mod = { def helper: blk[] = { } }\nimp Self: ID = { fun ready(): bol = { return true; } }\nstd geometry: pro = { fun area(): int; };\n",

@@ -561,6 +561,8 @@ Status: done
 
 #### Slice 4.2
 
+Status: done
+
 - Implement semantic support for `use ... : loc = ...`.
 - Match import targets against the source set already known to `fol-stream`.
 - Add tests for:
