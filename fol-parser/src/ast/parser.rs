@@ -89,6 +89,24 @@ pub(super) fn canonical_identifier_key(name: &str) -> String {
         .collect()
 }
 
+#[cfg(test)]
+mod tests {
+    use super::canonical_identifier_key;
+
+    #[test]
+    fn canonical_identifier_key_normalizes_ascii_case_and_underscores() {
+        assert_eq!(canonical_identifier_key("Foo_Bar"), "foobar");
+        assert_eq!(canonical_identifier_key("foo__bar"), "foobar");
+        assert_eq!(canonical_identifier_key("MIXED_Case_Name"), "mixedcasename");
+    }
+
+    #[test]
+    fn canonical_identifier_key_preserves_non_ascii_while_normalizing_ascii() {
+        assert_eq!(canonical_identifier_key("Straße_Name"), "straßename");
+        assert_eq!(canonical_identifier_key("Δelta_Name"), "Δeltaname");
+    }
+}
+
 #[path = "parser_parts/binding_alternative_parsers.rs"]
 mod binding_alternative_parsers;
 #[path = "parser_parts/binding_option_parsers.rs"]
