@@ -318,7 +318,7 @@ Acceptance for Phase 2:
 - [x] Literal quote behavior matches the chosen authority.
 - [x] Illegal tokens are no longer treated as whitespace.
 - [ ] Identifier rules are explicit and test-backed.
-- [ ] Numeric families are complete for the chosen front-end scope.
+- [x] Numeric families are complete for the chosen front-end scope.
 
 ## 10. Phase 3: Parser AST-Fidelity Cleanup
 
