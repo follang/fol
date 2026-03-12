@@ -3,7 +3,6 @@
 
 use colored::Colorize;
 use fol_types::*;
-use regex::Regex;
 use std::ffi::OsStr;
 use std::path::Path;
 
@@ -312,7 +311,7 @@ fn from_dir(directory: &str) -> Result<Vec<String>, Box<dyn Glitch>> {
         if entry.path().is_dir() {
             // CRITICAL: Skip .mod directories - this is the key innovation!
             // .mod directories contain module-specific mixed content
-            if Regex::new(r"(\.mod)$").unwrap().is_match(&filename) {
+            if filename.ends_with(".mod") {
                 continue;
             }
 

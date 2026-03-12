@@ -80,6 +80,49 @@ mod mod_handling_tests {
     }
 
     #[test]
+    fn test_dot_mod_directories_are_skipped_without_hiding_normal_directories() {
+        let temp_root = std::env::temp_dir().join(format!(
+            "fol_stream_mod_suffix_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("System time should be after unix epoch")
+                .as_nanos()
+        ));
+
+        fs::create_dir_all(temp_root.join("alpha.mod/hidden"))
+            .expect("Should create skipped .mod directory");
+        fs::create_dir_all(temp_root.join("alpha_mod/visible"))
+            .expect("Should create retained normal directory");
+        fs::write(temp_root.join("root.fol"), "var root = 1").expect("Should write root source");
+        fs::write(temp_root.join("alpha.mod/hidden/value.fol"), "var hidden = 2")
+            .expect("Should write skipped .mod source");
+        fs::write(temp_root.join("alpha_mod/visible/value.fol"), "var visible = 3")
+            .expect("Should write retained normal-directory source");
+
+        let sources = Source::init(
+            temp_root
+                .to_str()
+                .expect("Temp root path should be valid UTF-8"),
+            SourceType::Folder,
+        )
+        .expect("Should discover sources while applying exact .mod suffix filtering");
+
+        assert!(
+            sources.iter().all(|source| !source.path.contains("alpha.mod/")),
+            "Directories ending with '.mod' should still be skipped"
+        );
+        assert!(
+            sources
+                .iter()
+                .any(|source| source.path.contains("alpha_mod/visible/value.fol")),
+            "Normal directories should still be traversed while '.mod' directories are skipped"
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
     fn test_folder_stream_creation() {
         // Test creating a stream from a folder with .mod directories
         let stream = FileStream::from_folder("test/legacy/main")
