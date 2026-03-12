@@ -28,6 +28,32 @@ fn test_top_level_string_and_character_literals_lower_cleanly() {
 }
 
 #[test]
+fn test_top_level_cooked_family_fixture_lowers_by_inner_width() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_literal_cooked_family.fol")
+        .expect("Should read cooked family literal fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should lower cooked-family literals through the full pipeline");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert_eq!(
+                declarations,
+                vec![
+                    AstNode::Literal(Literal::Character('a')),
+                    AstNode::Literal(Literal::String("beta".to_string())),
+                ],
+                "Cooked double-quoted fixture literals should lower by decoded inner width"
+            );
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
 fn test_top_level_integer_literals_lower_to_exact_values() {
     let mut file_stream = FileStream::from_file("test/parser/simple_literal_numbers.fol")
         .expect("Should read numeric literal lowering fixture");
