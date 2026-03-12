@@ -120,6 +120,9 @@ tests actually enforce today.
   `fol-parser` instead of a lexer-normalized identifier form.
 - That canonical comparison key lowercases ASCII letters and removes underscores while
   leaving non-ASCII characters unchanged.
+- Together, those lexer and parser rules define the explicit identifier boundary for
+  this hardening phase: token spelling is preserved, keyword matching is exact-case,
+  repeated underscore runs are illegal, and duplicate comparison is parser-owned.
 
 ### Literal Categories
 
