@@ -505,6 +505,8 @@ Status: done
 
 #### Slice 2.4
 
+Status: done
+
 - Add rolling/comprehension binder scopes.
 - Add tests for rolling-expression binding visibility and shadowing.
 

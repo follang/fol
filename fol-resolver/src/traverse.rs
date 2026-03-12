@@ -278,12 +278,31 @@ fn traverse_node(
             bindings,
             condition,
         } => {
+            let rolling_scope =
+                program.add_scope(ScopeKind::RollingBinder, scope_id, source_unit_id);
             for binding in bindings {
-                traverse_node(program, source_unit_id, scope_id, &binding.iterable, false)?;
+                traverse_node(
+                    program,
+                    source_unit_id,
+                    rolling_scope,
+                    &binding.iterable,
+                    false,
+                )?;
+                insert_local_symbol(
+                    program,
+                    source_unit_id,
+                    rolling_scope,
+                    &binding.name,
+                    SymbolKind::RollingBinder,
+                    format!(
+                        "symbol#{}",
+                        fol_types::canonical_identifier_key(&binding.name)
+                    ),
+                )?;
             }
-            traverse_node(program, source_unit_id, scope_id, expr, false)?;
+            traverse_node(program, source_unit_id, rolling_scope, expr, false)?;
             if let Some(condition) = condition {
-                traverse_node(program, source_unit_id, scope_id, condition, false)?;
+                traverse_node(program, source_unit_id, rolling_scope, condition, false)?;
             }
         }
         AstNode::Range { start, end, .. } => {
