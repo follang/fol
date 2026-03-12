@@ -65,6 +65,7 @@ pub enum ReferenceKind {
     QualifiedFunctionCall,
     TypeName,
     QualifiedTypeName,
+    InquiryTarget,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

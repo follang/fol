@@ -551,6 +551,8 @@ Status: done
 
 #### Slice 3.5
 
+Status: done
+
 - Resolve `InquiryTarget::Named` and `InquiryTarget::Qualified`.
 - Validate `self` / `this` resolver-context rules.
 - Add tests for valid and invalid inquiry targets.

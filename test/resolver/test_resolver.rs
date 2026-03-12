@@ -66,6 +66,9 @@ mod identifier_resolution;
 #[path = "test_resolver_parts/imports.rs"]
 mod imports;
 #[cfg(test)]
+#[path = "test_resolver_parts/inquiry_resolution.rs"]
+mod inquiry_resolution;
+#[cfg(test)]
 #[path = "test_resolver_parts/loop_binders.rs"]
 mod loop_binders;
 #[cfg(test)]
