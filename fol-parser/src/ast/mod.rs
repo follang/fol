@@ -15,6 +15,14 @@ pub struct UsePathSegment {
     pub spelling: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CommentKind {
+    Backtick,
+    Doc,
+    SlashLine,
+    SlashBlock,
+}
+
 /// Core AST node types for FOL language
 #[derive(Debug, Clone, PartialEq)]
 pub enum AstNode {
@@ -132,6 +140,11 @@ pub enum AstNode {
         kind: StandardKind,
         kind_options: Vec<DeclOption>,
         body: Vec<AstNode>,
+    },
+
+    Comment {
+        kind: CommentKind,
+        raw: String,
     },
 
     // ==== EXPRESSIONS ====
@@ -855,6 +868,7 @@ impl AstNode {
             AstNode::SegDecl { seg_type, .. } => Some(seg_type.clone()),
             AstNode::ImpDecl { target, .. } => Some(target.clone()),
             AstNode::StdDecl { .. } => None,
+            AstNode::Comment { .. } => None,
 
             AstNode::BinaryOp { op, left, right } => {
                 // Type inference for binary operations
@@ -1086,6 +1100,7 @@ impl AstNode {
             }
             AstNode::Block { statements } => statements.iter().collect(),
             AstNode::Program { declarations } => declarations.iter().collect(),
+            AstNode::Comment { .. } => vec![],
             AstNode::ContainerLiteral { elements, .. } => elements.iter().collect(),
             AstNode::RecordInit { fields } => fields.iter().map(|field| &field.value).collect(),
             AstNode::Rolling {

@@ -43,6 +43,17 @@ impl AstParser {
                 continue;
             }
 
+            if key.is_comment() {
+                match self.parse_comment_token(&token) {
+                    Ok(node) => declarations.push(node),
+                    Err(error) => errors.push(error),
+                }
+                if tokens.bump().is_none() {
+                    break;
+                }
+                continue;
+            }
+
             if self.lookahead_binding_alternative(tokens).is_some() {
                 let before = (
                     token.loc().row(),

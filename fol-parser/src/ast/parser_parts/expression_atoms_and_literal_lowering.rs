@@ -1,6 +1,30 @@
 use super::*;
+use crate::ast::CommentKind;
 
 impl AstParser {
+    pub(super) fn parse_comment_token(
+        &self,
+        token: &fol_lexer::lexer::stage3::element::Element,
+    ) -> Result<AstNode, Box<dyn Glitch>> {
+        let kind = match token.key() {
+            KEYWORD::Comment(fol_lexer::token::COMMENT::Backtick) => CommentKind::Backtick,
+            KEYWORD::Comment(fol_lexer::token::COMMENT::Doc) => CommentKind::Doc,
+            KEYWORD::Comment(fol_lexer::token::COMMENT::SlashLine) => CommentKind::SlashLine,
+            KEYWORD::Comment(fol_lexer::token::COMMENT::SlashBlock) => CommentKind::SlashBlock,
+            _ => {
+                return Err(Box::new(ParseError::from_token(
+                    token,
+                    "Expected comment token".to_string(),
+                )));
+            }
+        };
+
+        Ok(AstNode::Comment {
+            kind,
+            raw: token.con().to_string(),
+        })
+    }
+
     pub(super) fn key_is_soft_ignorable(key: &KEYWORD) -> bool {
         matches!(
             key,

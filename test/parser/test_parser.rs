@@ -3,8 +3,8 @@
 use fol_lexer::lexer::stage3::Elements;
 use fol_lexer::token::KEYWORD;
 use fol_parser::ast::{
-    AstNode, AstParser, BindingPattern, CharEncoding, FloatSize, FolType, InquiryTarget, IntSize, Literal,
-    Parameter, ParseError, QualifiedPath, TypeDefinition,
+    AstNode, AstParser, BindingPattern, CharEncoding, CommentKind, FloatSize, FolType, InquiryTarget,
+    IntSize, Literal, Parameter, ParseError, QualifiedPath, TypeDefinition,
 };
 use fol_stream::FileStream;
 
@@ -109,6 +109,9 @@ mod binding_options;
 #[cfg(test)]
 #[path = "test_parser_parts/call_and_postfix_expressions.rs"]
 mod call_and_postfix_expressions;
+#[cfg(test)]
+#[path = "test_parser_parts/comment_nodes.rs"]
+mod comment_nodes;
 #[cfg(test)]
 #[path = "test_parser_parts/call_argument_separators.rs"]
 mod call_argument_separators;
