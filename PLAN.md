@@ -447,6 +447,8 @@ Status: done
 
 #### Slice 1.2
 
+Status: done
+
 - Collect top-level named declarations into root/source-unit scopes.
 - Cover:
 - `var`

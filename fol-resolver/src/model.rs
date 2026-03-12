@@ -1,5 +1,7 @@
 use crate::ids::{IdTable, ImportId, ReferenceId, ScopeId, SourceUnitId, SymbolId};
-use fol_parser::ast::{ParsedPackage, SyntaxIndex, SyntaxNodeId};
+use fol_parser::ast::{
+    ParsedDeclScope, ParsedDeclVisibility, ParsedPackage, SyntaxIndex, SyntaxNodeId, SyntaxOrigin,
+};
 use std::collections::BTreeMap;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -33,9 +35,36 @@ pub struct ResolvedScope {
     pub symbol_keys: BTreeMap<String, Vec<SymbolId>>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SymbolKind {
+    ValueBinding,
+    LabelBinding,
+    DestructureBinding,
+    Routine,
+    Type,
+    Alias,
+    Definition,
+    Segment,
+    Implementation,
+    Standard,
+    ImportAlias,
+    Parameter,
+    Capture,
+    LoopBinder,
+    RollingBinder,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResolvedSymbol {
     pub id: SymbolId,
+    pub name: String,
+    pub canonical_name: String,
+    pub kind: SymbolKind,
+    pub scope: ScopeId,
+    pub source_unit: SourceUnitId,
+    pub origin: Option<SyntaxOrigin>,
+    pub visibility: Option<ParsedDeclVisibility>,
+    pub declaration_scope: Option<ParsedDeclScope>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -169,6 +198,29 @@ impl ResolvedProgram {
 
     pub fn namespace_scope(&self, namespace: &str) -> Option<ScopeId> {
         self.namespace_scopes.get(namespace).copied()
+    }
+
+    pub fn symbol(&self, id: SymbolId) -> Option<&ResolvedSymbol> {
+        self.symbols.get(id)
+    }
+
+    pub fn symbols_in_scope(&self, scope_id: ScopeId) -> Vec<&ResolvedSymbol> {
+        self.scope(scope_id)
+            .map(|scope| {
+                scope
+                    .symbols
+                    .iter()
+                    .filter_map(|symbol_id| self.symbol(*symbol_id))
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
+    pub fn symbols_named_in_scope(&self, scope_id: ScopeId, key: &str) -> Vec<&ResolvedSymbol> {
+        self.scope(scope_id)
+            .and_then(|scope| scope.symbol_keys.get(key))
+            .map(|ids| ids.iter().filter_map(|id| self.symbol(*id)).collect())
+            .unwrap_or_default()
     }
 }
 

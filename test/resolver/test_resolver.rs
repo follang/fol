@@ -45,3 +45,6 @@ mod foundation;
 #[cfg(test)]
 #[path = "test_resolver_parts/source_units.rs"]
 mod source_units;
+#[cfg(test)]
+#[path = "test_resolver_parts/top_level_collection.rs"]
+mod top_level_collection;

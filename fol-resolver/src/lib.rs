@@ -1,3 +1,4 @@
+pub mod collect;
 pub mod errors;
 pub mod ids;
 pub mod model;
@@ -6,7 +7,7 @@ pub use errors::{ResolverError, ResolverErrorKind};
 pub use ids::{IdTable, ImportId, ReferenceId, ScopeId, SourceUnitId, SymbolId};
 pub use model::{
     ResolvedImport, ResolvedProgram, ResolvedReference, ResolvedScope, ResolvedSourceUnit,
-    ResolvedSymbol, ScopeKind,
+    ResolvedSymbol, ScopeKind, SymbolKind,
 };
 
 pub type ResolverResult<T> = Result<T, Vec<ResolverError>>;
@@ -23,7 +24,9 @@ impl Resolver {
         &mut self,
         syntax: fol_parser::ast::ParsedPackage,
     ) -> ResolverResult<ResolvedProgram> {
-        Ok(ResolvedProgram::new(syntax))
+        let mut program = ResolvedProgram::new(syntax);
+        collect::collect_top_level_symbols(&mut program)?;
+        Ok(program)
     }
 }
 
