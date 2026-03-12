@@ -439,6 +439,8 @@ Status: done
 
 #### Slice 1.1
 
+Status: done
+
 - Add `SourceUnitId` lowering based on `fol-stream::Source`.
 - Regroup parsed top-level nodes by source identity using syntax origins.
 - Add tests for cross-file regrouping and deterministic source-unit ordering.

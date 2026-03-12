@@ -6,7 +6,7 @@ pub use errors::{ResolverError, ResolverErrorKind};
 pub use ids::{IdTable, ImportId, ReferenceId, ScopeId, SourceUnitId, SymbolId};
 pub use model::{
     ResolvedImport, ResolvedProgram, ResolvedReference, ResolvedScope, ResolvedSourceUnit,
-    ResolvedSymbol,
+    ResolvedSymbol, ScopeKind,
 };
 
 pub type ResolverResult<T> = Result<T, Vec<ResolverError>>;
