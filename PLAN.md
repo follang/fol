@@ -474,6 +474,8 @@ Status: done
 
 #### Slice 1.4
 
+Status: done
+
 - Allow forward references among top-level declarations in the same resolution domain.
 - Add tests for top-level value and type references that point forward.
 
