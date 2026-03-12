@@ -257,6 +257,30 @@ fn test_cooked_double_quotes_trim_backslash_line_continuations() {
 }
 
 #[test]
+fn test_top_level_multiline_cooked_literal_lowers_through_fixture() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_literal_multiline_cooked.fol")
+            .expect("Should read multiline cooked literal fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should lower multiline cooked literals through the full pipeline");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert_eq!(
+                declarations,
+                vec![AstNode::Literal(Literal::String("foobar".to_string()))],
+                "Cooked backslash-newline continuation should trim the line break and indentation in file fixtures too"
+            );
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
 fn test_top_level_cooked_and_raw_escape_modes_lower_through_full_pipeline() {
     let mut file_stream = FileStream::from_file("test/parser/simple_literal_escape_modes.fol")
         .expect("Should read mixed escape-mode literal fixture");
