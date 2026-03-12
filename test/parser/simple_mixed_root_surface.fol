@@ -1,0 +1,7 @@
+var answer: int = 41;
+notify();
+answer = 42;
+"done";
+pro main() = {
+    return;
+}

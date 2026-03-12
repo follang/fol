@@ -132,3 +132,59 @@ fn test_top_level_var_declaration_stays_a_single_root_node() {
         "Top-level variable fixture should stay as a single VarDecl with its literal initializer"
     );
 }
+
+#[test]
+fn test_mixed_root_surface_keeps_declarations_statements_and_literals_in_order() {
+    let declarations = parse_program_declarations("test/parser/simple_mixed_root_surface.fol");
+
+    assert_eq!(
+        declarations.len(),
+        5,
+        "Mixed file-scope fixture should keep all accepted root nodes in Program.declarations"
+    );
+    assert!(
+        matches!(
+            &declarations[0],
+            AstNode::VarDecl {
+                name,
+                type_hint: Some(FolType::Int { .. }),
+                value: Some(value),
+                ..
+            } if name == "answer"
+                && matches!(value.as_ref(), AstNode::Literal(Literal::Integer(41)))
+        ),
+        "First root node should remain the variable declaration"
+    );
+    assert!(
+        matches!(
+            &declarations[1],
+            AstNode::FunctionCall { name, args } if name == "notify" && args.is_empty()
+        ),
+        "Second root node should remain the top-level function call"
+    );
+    assert!(
+        matches!(
+            &declarations[2],
+            AstNode::Assignment { target, value }
+                if matches!(target.as_ref(), AstNode::Identifier { name } if name == "answer")
+                    && matches!(value.as_ref(), AstNode::Literal(Literal::Integer(42)))
+        ),
+        "Third root node should remain the top-level assignment"
+    );
+    assert!(
+        matches!(
+            &declarations[3],
+            AstNode::Literal(Literal::String(value)) if value == "done"
+        ),
+        "Fourth root node should remain the top-level literal expression"
+    );
+    assert!(
+        matches!(
+            &declarations[4],
+            AstNode::ProDecl { name, body, .. }
+                if name == "main"
+                    && matches!(body.as_slice(), [AstNode::Return { value: None }])
+        ),
+        "Final root node should remain the routine declaration with its body nested"
+    );
+}
