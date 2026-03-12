@@ -194,7 +194,13 @@ fn traverse_node(
         AstNode::UnaryOp { operand, .. } => {
             traverse_node(program, source_unit_id, scope_id, operand, false)?;
         }
-        AstNode::FunctionCall { args, .. } | AstNode::QualifiedFunctionCall { args, .. } => {
+        AstNode::FunctionCall { name, args } => {
+            record_function_call_reference(program, source_unit_id, scope_id, name)?;
+            for arg in args {
+                traverse_node(program, source_unit_id, scope_id, arg, false)?;
+            }
+        }
+        AstNode::QualifiedFunctionCall { args, .. } => {
             for arg in args {
                 traverse_node(program, source_unit_id, scope_id, arg, false)?;
             }
@@ -607,10 +613,41 @@ fn record_identifier_reference(
     Ok(reference_id)
 }
 
+fn record_function_call_reference(
+    program: &mut ResolvedProgram,
+    source_unit_id: SourceUnitId,
+    scope_id: ScopeId,
+    name: &str,
+) -> Result<ReferenceId, ResolverError> {
+    let symbol_id =
+        resolve_visible_symbol_of_kinds(program, scope_id, name, &[SymbolKind::Routine])?;
+    let reference_id = program.references.push(ResolvedReference {
+        id: ReferenceId(0),
+        kind: ReferenceKind::FunctionCall,
+        name: name.to_string(),
+        scope: scope_id,
+        source_unit: source_unit_id,
+        resolved: Some(symbol_id),
+    });
+    if let Some(reference) = program.references.get_mut(reference_id) {
+        reference.id = reference_id;
+    }
+    Ok(reference_id)
+}
+
 fn resolve_visible_symbol(
     program: &ResolvedProgram,
     starting_scope: ScopeId,
     name: &str,
+) -> Result<SymbolId, ResolverError> {
+    resolve_visible_symbol_of_kinds(program, starting_scope, name, &[])
+}
+
+fn resolve_visible_symbol_of_kinds(
+    program: &ResolvedProgram,
+    starting_scope: ScopeId,
+    name: &str,
+    allowed_kinds: &[SymbolKind],
 ) -> Result<SymbolId, ResolverError> {
     let canonical_name = fol_types::canonical_identifier_key(name);
     let mut current_scope = Some(starting_scope);
@@ -618,20 +655,50 @@ fn resolve_visible_symbol(
     while let Some(scope_id) = current_scope {
         let symbols = program.symbols_named_in_scope(scope_id, &canonical_name);
         if !symbols.is_empty() {
-            if symbols.len() == 1 {
-                return Ok(symbols[0].id);
+            let matching_symbols = if allowed_kinds.is_empty() {
+                symbols
+            } else {
+                symbols
+                    .into_iter()
+                    .filter(|symbol| allowed_kinds.contains(&symbol.kind))
+                    .collect::<Vec<_>>()
+            };
+
+            if matching_symbols.len() == 1 {
+                return Ok(matching_symbols[0].id);
             }
+            if matching_symbols.len() > 1 {
+                return Err(ResolverError::new(
+                    ResolverErrorKind::AmbiguousReference,
+                    format!("name '{}' is ambiguous in lexical scope", name),
+                ));
+            }
+
+            if allowed_kinds.is_empty() {
+                return Err(ResolverError::new(
+                    ResolverErrorKind::AmbiguousReference,
+                    format!("name '{}' is ambiguous in lexical scope", name),
+                ));
+            }
+
             return Err(ResolverError::new(
-                ResolverErrorKind::AmbiguousReference,
-                format!("name '{}' is ambiguous in lexical scope", name),
+                ResolverErrorKind::UnresolvedName,
+                format!("could not resolve callable routine '{}'", name),
             ));
         }
 
         current_scope = program.scope(scope_id).and_then(|scope| scope.parent);
     }
 
-    Err(ResolverError::new(
-        ResolverErrorKind::UnresolvedName,
-        format!("could not resolve name '{}'", name),
-    ))
+    if allowed_kinds.is_empty() {
+        Err(ResolverError::new(
+            ResolverErrorKind::UnresolvedName,
+            format!("could not resolve name '{}'", name),
+        ))
+    } else {
+        Err(ResolverError::new(
+            ResolverErrorKind::UnresolvedName,
+            format!("could not resolve callable routine '{}'", name),
+        ))
+    }
 }

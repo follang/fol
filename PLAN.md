@@ -528,6 +528,8 @@ Status: done
 
 #### Slice 3.2
 
+Status: done
+
 - Resolve plain free calls (`FunctionCall { name, .. }`) against routine-capable symbols.
 - Add tests for routine lookup, unresolved call names, and wrong-kind lookup diagnostics if needed.
 

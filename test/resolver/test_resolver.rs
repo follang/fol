@@ -54,6 +54,9 @@ mod comment_transparency;
 #[path = "test_resolver_parts/foundation.rs"]
 mod foundation;
 #[cfg(test)]
+#[path = "test_resolver_parts/free_calls.rs"]
+mod free_calls;
+#[cfg(test)]
 #[path = "test_resolver_parts/identifier_resolution.rs"]
 mod identifier_resolution;
 #[cfg(test)]
