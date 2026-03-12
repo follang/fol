@@ -457,7 +457,7 @@ This is the recommended implementation order once the decision freeze is complet
 12. [x] Rename typoed literal enum variants and update all call sites.
 13. [x] Remove `Illegal` from `is_void()` and add nested malformed-token regressions.
 14. [x] Replace synthetic in-band file-boundary newlines with an explicit boundary model.
-15. [ ] Remove default `Cargo.toml` package detection and replace it with the chosen FOL-native package contract.
+15. [x] Remove default `Cargo.toml` package detection and replace it with the chosen FOL-native package contract.
 16. [x] Replace string-joined qualified paths with structured path representation.
 17. [ ] Re-run the parser diagnostic matrix after all AST and lexer changes.
 18. [ ] Refresh `FRONTEND_CONTRACT.md`, `PROGRESS.md`, and any touched book pages.
@@ -468,7 +468,7 @@ This is the recommended implementation order once the decision freeze is complet
 
 Do not move to the next compiler stage until every gate below is true.
 
-- [ ] Package and namespace behavior are FOL-defined instead of host-tool-defined.
+- [x] Package and namespace behavior are FOL-defined instead of host-tool-defined.
 - [x] Cross-file boundaries are explicit and do not depend on fabricated source characters.
 - [ ] Identifier rules are explicit, tested, and used consistently across stream/lexer/parser comparisons.
 - [x] Comment syntax matches the chosen authority and no longer conflicts with backtick tokenization.
