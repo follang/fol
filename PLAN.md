@@ -639,6 +639,8 @@ Status: done
 
 #### Slice 6.2
 
+Status: done
+
 - Add integration tests for:
 - stream -> lexer -> parser -> resolver happy path
 - cross-file import resolution

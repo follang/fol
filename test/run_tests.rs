@@ -211,49 +211,82 @@ mod integration_tests {
 
     #[test]
     fn test_full_pipeline_integration() {
-        use fol_diagnostics::{DiagnosticReport, OutputFormat};
         use fol_lexer::lexer::stage3::Elements;
         use fol_parser::ast::AstParser;
+        use fol_resolver::resolve_package;
         use fol_stream::FileStream;
 
-        // Test the complete compilation pipeline
-        let mut diagnostics = DiagnosticReport::new();
-
-        // 1. Stream
-        let mut file_stream = match FileStream::from_file("test/parser/simple_var.fol") {
-            Ok(stream) => stream,
-            Err(e) => {
-                diagnostics.add_error(e.as_ref(), None);
-                panic!("Should read test file");
-            }
-        };
-
-        // 2. Lexer
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_var.fol").expect("Should read test file");
         let mut lexer = Elements::init(&mut file_stream);
-
-        // 3. Parser
         let mut parser = AstParser::new();
-        match parser.parse(&mut lexer) {
-            Ok(_ast) => {
-                println!("Full pipeline integration successful!");
-            }
-            Err(parse_errors) => {
-                for error in parse_errors {
-                    diagnostics.add_error(error.as_ref(), None);
-                }
-                println!("Parser stage completed with errors (may be expected for minimal parser)");
-            }
-        }
+        let parsed = parser
+            .parse_package(&mut lexer)
+            .expect("Full pipeline happy-path fixture should parse cleanly");
+        let resolved =
+            resolve_package(parsed).expect("Full pipeline happy-path fixture should resolve");
 
-        // 4. Diagnostics
-        let output = diagnostics.output(OutputFormat::Human);
-        println!("Diagnostic output: {}", output);
-
-        // The test passes if we get through the pipeline without crashing
+        assert_eq!(resolved.package_name(), "parser");
+        assert_eq!(resolved.source_units.len(), 1);
         assert!(
-            diagnostics.error_count <= diagnostics.diagnostics.len(),
-            "Diagnostic counters should remain consistent"
+            !resolved.symbols_in_scope(resolved.program_scope).is_empty(),
+            "Resolver-backed full pipeline runs should produce top-level symbols"
         );
+    }
+
+    #[test]
+    fn test_full_pipeline_cross_file_import_resolution() {
+        use fol_lexer::lexer::stage3::Elements;
+        use fol_parser::ast::AstParser;
+        use fol_resolver::resolve_package;
+        use fol_stream::FileStream;
+        use std::fs;
+
+        let temp_root = unique_temp_root("pipeline_cross_file_import");
+        fs::create_dir_all(temp_root.join("net/http"))
+            .expect("Should create a temporary integration fixture directory");
+        let package = temp_root
+            .file_name()
+            .expect("Integration fixture root should have a folder name")
+            .to_string_lossy()
+            .to_string();
+        fs::write(temp_root.join("net/http/route.fol"), "var handler: int = 1;\n")
+            .expect("Should write the imported namespace fixture");
+        fs::write(
+            temp_root.join("main.fol"),
+            "use http: loc = {net::http};\nfun[] main(): int = {\n    return http;\n}\n",
+        )
+        .expect("Should write the importing source unit fixture");
+
+        let mut file_stream = FileStream::from_folder(
+            temp_root
+                .to_str()
+                .expect("Integration fixture path should be valid UTF-8"),
+        )
+        .expect("Should read integration folder fixture");
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut parser = AstParser::new();
+        let parsed = parser
+            .parse_package(&mut lexer)
+            .expect("Cross-file import fixture should parse cleanly");
+        let resolved =
+            resolve_package(parsed).expect("Cross-file import fixture should resolve cleanly");
+        let expected_scope = resolved
+            .namespace_scope(&format!("{package}::net::http"))
+            .expect("Imported namespace scope should exist");
+        let import = resolved
+            .imports_in_scope(resolved.program_scope)
+            .into_iter()
+            .find(|import| import.alias_name == "http")
+            .expect("Resolved program should keep the import record");
+
+        assert_eq!(
+            import.target_scope,
+            Some(expected_scope),
+            "Cross-file full pipeline runs should resolve location imports against namespace scopes"
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
     }
 
     #[test]
@@ -423,6 +456,56 @@ mod integration_tests {
         assert!(
             stdout.contains("duplicate symbol 'value'"),
             "JSON resolver diagnostics should keep resolver duplicate-symbol wording"
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_cli_resolver_errors_keep_exact_json_locations_for_qualified_paths() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_resolver_qualified_location");
+        fs::create_dir_all(&temp_root).expect("Should create temp CLI resolver fixture");
+        let main_file = temp_root.join("main.fol");
+        fs::write(&main_file, "ali Broken: tools::Missing;\n")
+            .expect("Should write unresolved qualified type fixture");
+
+        let output = run_fol(&[
+            "--json",
+            temp_root
+                .to_str()
+                .expect("CLI resolver fixture path should be utf-8"),
+        ]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let compact = stdout
+            .chars()
+            .filter(|c| !c.is_whitespace())
+            .collect::<String>();
+
+        assert!(
+            !output.status.success(),
+            "CLI should fail in JSON mode when resolver rejects an unresolved qualified path"
+        );
+        assert!(
+            stdout.contains(
+                main_file
+                    .to_str()
+                    .expect("Temporary resolver fixture path should be valid UTF-8")
+            ),
+            "JSON resolver diagnostics should keep the exact source file for qualified paths"
+        );
+        assert!(
+            compact.contains("\"line\":1"),
+            "JSON resolver diagnostics should preserve the exact failing line number"
+        );
+        assert!(
+            compact.contains("\"column\":13"),
+            "JSON resolver diagnostics should preserve the exact qualified-path column"
+        );
+        assert!(
+            stdout.contains("could not resolve qualified type 'tools::Missing'"),
+            "JSON resolver diagnostics should keep the exact qualified-type wording"
         );
 
         fs::remove_dir_all(&temp_root).ok();
