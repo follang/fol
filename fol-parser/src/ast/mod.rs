@@ -150,6 +150,12 @@ pub enum AstNode {
         raw: String,
     },
 
+    Commented {
+        leading_comments: Vec<AstNode>,
+        node: Box<AstNode>,
+        trailing_comments: Vec<AstNode>,
+    },
+
     // ==== EXPRESSIONS ====
     /// Binary operation: (left op right)
     BinaryOp {
@@ -840,6 +846,7 @@ impl AstNode {
             | AstNode::AnonymousFun { body, .. }
             | AstNode::AnonymousPro { body, .. }
             | AstNode::AnonymousLog { body, .. } => Some(body.as_slice()),
+            AstNode::Commented { node, .. } => node.routine_body(),
             _ => None,
         }
     }
@@ -878,6 +885,7 @@ impl AstNode {
             AstNode::ImpDecl { target, .. } => Some(target.clone()),
             AstNode::StdDecl { .. } => None,
             AstNode::Comment { .. } => None,
+            AstNode::Commented { node, .. } => node.syntactic_type_hint(),
 
             AstNode::BinaryOp { op, left, right } => {
                 // Type inference for binary operations
@@ -1119,6 +1127,16 @@ impl AstNode {
             AstNode::Block { statements } => statements.iter().collect(),
             AstNode::Program { declarations } => declarations.iter().collect(),
             AstNode::Comment { .. } => vec![],
+            AstNode::Commented {
+                leading_comments,
+                node,
+                trailing_comments,
+            } => {
+                let mut children: Vec<&AstNode> = leading_comments.iter().collect();
+                children.push(node.as_ref());
+                children.extend(trailing_comments.iter());
+                children
+            }
             AstNode::ContainerLiteral { elements, .. } => elements.iter().collect(),
             AstNode::RecordInit { fields } => fields.iter().map(|field| &field.value).collect(),
             AstNode::Rolling {

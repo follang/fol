@@ -173,6 +173,106 @@ impl AstParser {
         Ok(())
     }
 
+    pub(super) fn collect_comment_nodes(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
+        let mut comments = Vec::new();
+
+        loop {
+            self.skip_layout(tokens);
+
+            let token = match tokens.curr(false) {
+                Ok(token) => token,
+                Err(_) => break,
+            };
+
+            if !token.key().is_comment() {
+                break;
+            }
+
+            comments.push(self.parse_comment_token(&token)?);
+            let _ = tokens.bump();
+        }
+
+        self.skip_layout(tokens);
+        Ok(comments)
+    }
+
+    pub(super) fn collect_comments_before<F>(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+        continues_with: F,
+    ) -> Result<Vec<AstNode>, Box<dyn Glitch>>
+    where
+        F: Fn(&KEYWORD) -> bool,
+    {
+        self.skip_layout(tokens);
+
+        let Ok(token) = tokens.curr(false) else {
+            return Ok(Vec::new());
+        };
+        if !token.key().is_comment() {
+            return Ok(Vec::new());
+        }
+
+        if self
+            .next_significant_key_from_window(tokens)
+            .is_some_and(|key| continues_with(&key))
+        {
+            return self.collect_comment_nodes(tokens);
+        }
+
+        Ok(Vec::new())
+    }
+
+    fn attach_comments(
+        node: AstNode,
+        mut leading_comments: Vec<AstNode>,
+        trailing_comments: Vec<AstNode>,
+    ) -> AstNode {
+        if leading_comments.is_empty() && trailing_comments.is_empty() {
+            return node;
+        }
+
+        match node {
+            AstNode::Commented {
+                leading_comments: mut existing_leading,
+                node,
+                trailing_comments: mut existing_trailing,
+            } => {
+                leading_comments.append(&mut existing_leading);
+                existing_trailing.extend(trailing_comments);
+                AstNode::Commented {
+                    leading_comments,
+                    node,
+                    trailing_comments: existing_trailing,
+                }
+            }
+            node => AstNode::Commented {
+                leading_comments,
+                node: Box::new(node),
+                trailing_comments,
+            },
+        }
+    }
+
+    pub(super) fn attach_leading_comments(
+        &self,
+        node: AstNode,
+        leading_comments: Vec<AstNode>,
+    ) -> AstNode {
+        Self::attach_comments(node, leading_comments, Vec::new())
+    }
+
+    pub(super) fn attach_trailing_comments(
+        &self,
+        node: AstNode,
+        trailing_comments: Vec<AstNode>,
+    ) -> AstNode {
+        Self::attach_comments(node, Vec::new(), trailing_comments)
+    }
+
     pub(super) fn exact_unquote_text(raw: &str) -> String {
         let trimmed = raw.trim();
 

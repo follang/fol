@@ -98,7 +98,7 @@ impl AstParser {
         let current = tokens.curr(false)?;
         if current.con().trim() == "..." {
             let _ = tokens.bump();
-            self.skip_ignorable(tokens);
+            self.skip_layout(tokens);
 
             let value_token = tokens.curr(false)?;
             if matches!(
@@ -124,7 +124,7 @@ impl AstParser {
             let name =
                 Self::expect_named_label(&name_token, "Expected argument name before '='")?;
             let _ = tokens.bump();
-            self.skip_ignorable(tokens);
+            self.skip_layout(tokens);
 
             let equal = tokens.curr(false)?;
             if !matches!(equal.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
@@ -134,7 +134,7 @@ impl AstParser {
                 )));
             }
             let _ = tokens.bump();
-            self.skip_ignorable(tokens);
+            self.skip_layout(tokens);
 
             let value = self.parse_logical_expression(tokens)?;
             return Ok(AstNode::NamedArgument {
@@ -654,12 +654,12 @@ impl AstParser {
         let mut lhs = self.parse_logical_xor_expression(tokens)?;
 
         for _ in 0..32 {
-            self.skip_layout_and_expression_comments(tokens, |key| {
+            let leading_comments = self.collect_comments_before(tokens, |key| {
                 matches!(
                     key,
                     KEYWORD::Keyword(BUILDIN::Or) | KEYWORD::Keyword(BUILDIN::Nor)
                 )
-            });
+            })?;
 
             let op_token = match tokens.curr(false) {
                 Ok(token) => token,
@@ -669,25 +669,31 @@ impl AstParser {
             if self.token_is_word(&op_token, "or") {
                 self.consume_significant_token(tokens);
                 let rhs = self.parse_logical_xor_expression(tokens)?;
-                lhs = AstNode::BinaryOp {
-                    op: BinaryOperator::Or,
-                    left: Box::new(lhs),
-                    right: Box::new(rhs),
-                };
+                lhs = self.attach_leading_comments(
+                    AstNode::BinaryOp {
+                        op: BinaryOperator::Or,
+                        left: Box::new(lhs),
+                        right: Box::new(rhs),
+                    },
+                    leading_comments,
+                );
                 continue;
             }
 
             if self.token_is_word(&op_token, "nor") {
                 self.consume_significant_token(tokens);
                 let rhs = self.parse_logical_xor_expression(tokens)?;
-                lhs = AstNode::UnaryOp {
-                    op: UnaryOperator::Not,
-                    operand: Box::new(AstNode::BinaryOp {
-                        op: BinaryOperator::Or,
-                        left: Box::new(lhs),
-                        right: Box::new(rhs),
-                    }),
-                };
+                lhs = self.attach_leading_comments(
+                    AstNode::UnaryOp {
+                        op: UnaryOperator::Not,
+                        operand: Box::new(AstNode::BinaryOp {
+                            op: BinaryOperator::Or,
+                            left: Box::new(lhs),
+                            right: Box::new(rhs),
+                        }),
+                    },
+                    leading_comments,
+                );
                 continue;
             }
 
@@ -704,9 +710,9 @@ impl AstParser {
         let mut lhs = self.parse_logical_and_expression(tokens)?;
 
         for _ in 0..32 {
-            self.skip_layout_and_expression_comments(tokens, |key| {
+            let leading_comments = self.collect_comments_before(tokens, |key| {
                 matches!(key, KEYWORD::Keyword(BUILDIN::Xor))
-            });
+            })?;
 
             let op_token = match tokens.curr(false) {
                 Ok(token) => token,
@@ -716,11 +722,14 @@ impl AstParser {
             if self.token_is_word(&op_token, "xor") {
                 self.consume_significant_token(tokens);
                 let rhs = self.parse_logical_and_expression(tokens)?;
-                lhs = AstNode::BinaryOp {
-                    op: BinaryOperator::Xor,
-                    left: Box::new(lhs),
-                    right: Box::new(rhs),
-                };
+                lhs = self.attach_leading_comments(
+                    AstNode::BinaryOp {
+                        op: BinaryOperator::Xor,
+                        left: Box::new(lhs),
+                        right: Box::new(rhs),
+                    },
+                    leading_comments,
+                );
                 continue;
             }
 
@@ -737,12 +746,12 @@ impl AstParser {
         let mut lhs = self.parse_comparison_expression(tokens)?;
 
         for _ in 0..32 {
-            self.skip_layout_and_expression_comments(tokens, |key| {
+            let leading_comments = self.collect_comments_before(tokens, |key| {
                 matches!(
                     key,
                     KEYWORD::Keyword(BUILDIN::And) | KEYWORD::Keyword(BUILDIN::Nand)
                 )
-            });
+            })?;
 
             let op_token = match tokens.curr(false) {
                 Ok(token) => token,
@@ -752,25 +761,31 @@ impl AstParser {
             if self.token_is_word(&op_token, "and") {
                 self.consume_significant_token(tokens);
                 let rhs = self.parse_comparison_expression(tokens)?;
-                lhs = AstNode::BinaryOp {
-                    op: BinaryOperator::And,
-                    left: Box::new(lhs),
-                    right: Box::new(rhs),
-                };
+                lhs = self.attach_leading_comments(
+                    AstNode::BinaryOp {
+                        op: BinaryOperator::And,
+                        left: Box::new(lhs),
+                        right: Box::new(rhs),
+                    },
+                    leading_comments,
+                );
                 continue;
             }
 
             if self.token_is_word(&op_token, "nand") {
                 self.consume_significant_token(tokens);
                 let rhs = self.parse_comparison_expression(tokens)?;
-                lhs = AstNode::UnaryOp {
-                    op: UnaryOperator::Not,
-                    operand: Box::new(AstNode::BinaryOp {
-                        op: BinaryOperator::And,
-                        left: Box::new(lhs),
-                        right: Box::new(rhs),
-                    }),
-                };
+                lhs = self.attach_leading_comments(
+                    AstNode::UnaryOp {
+                        op: UnaryOperator::Not,
+                        operand: Box::new(AstNode::BinaryOp {
+                            op: BinaryOperator::And,
+                            left: Box::new(lhs),
+                            right: Box::new(rhs),
+                        }),
+                    },
+                    leading_comments,
+                );
                 continue;
             }
 
@@ -787,7 +802,7 @@ impl AstParser {
         let mut lhs = self.parse_range_expression(tokens)?;
 
         for _ in 0..32 {
-            self.skip_layout_and_expression_comments(tokens, |key| {
+            let leading_comments = self.collect_comments_before(tokens, |key| {
                 matches!(
                     key,
                     KEYWORD::Keyword(BUILDIN::Cast)
@@ -804,7 +819,7 @@ impl AstParser {
                         | KEYWORD::Symbol(SYMBOL::Equal)
                         | KEYWORD::Symbol(SYMBOL::Bang)
                 )
-            });
+            })?;
 
             let op_token = match tokens.curr(false) {
                 Ok(token) => token,
@@ -867,11 +882,14 @@ impl AstParser {
                     self.consume_significant_token(tokens);
                 }
                 let rhs = self.parse_range_expression(tokens)?;
-                lhs = AstNode::BinaryOp {
-                    op,
-                    left: Box::new(lhs),
-                    right: Box::new(rhs),
-                };
+                lhs = self.attach_leading_comments(
+                    AstNode::BinaryOp {
+                        op,
+                        left: Box::new(lhs),
+                        right: Box::new(rhs),
+                    },
+                    leading_comments,
+                );
                 continue;
             }
 
@@ -885,7 +903,7 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Box<dyn Glitch>> {
-        self.skip_ignorable(tokens);
+        let leading_comments = self.collect_comment_nodes(tokens)?;
         if let Ok(token) = tokens.curr(false) {
             let is_open_start_range = matches!(
                 token.key(),
@@ -896,7 +914,7 @@ impl AstParser {
             if is_open_start_range {
                 let operator_token = token.clone();
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_layout(tokens);
 
                 let next = tokens.curr(false)?;
                 if next.key().is_terminal()
@@ -915,25 +933,28 @@ impl AstParser {
                 }
 
                 let rhs = self.parse_add_sub_expression(tokens)?;
-                return Ok(AstNode::Range {
-                    start: None,
-                    end: Some(Box::new(rhs)),
-                    inclusive,
-                });
+                return Ok(self.attach_leading_comments(
+                    AstNode::Range {
+                        start: None,
+                        end: Some(Box::new(rhs)),
+                        inclusive,
+                    },
+                    leading_comments,
+                ));
             }
         }
 
         let lhs = self.parse_add_sub_expression(tokens)?;
-        self.skip_layout_and_expression_comments(tokens, |key| {
+        let operator_comments = self.collect_comments_before(tokens, |key| {
             matches!(
                 key,
                 KEYWORD::Operator(OPERATOR::Dotdot) | KEYWORD::Operator(OPERATOR::Dotdotdot)
             )
-        });
+        })?;
 
         let op_token = match tokens.curr(false) {
             Ok(token) => token,
-            Err(_) => return Ok(lhs),
+            Err(_) => return Ok(self.attach_leading_comments(lhs, leading_comments)),
         };
 
         let is_range = matches!(
@@ -941,13 +962,13 @@ impl AstParser {
             KEYWORD::Operator(OPERATOR::Dotdot) | KEYWORD::Operator(OPERATOR::Dotdotdot)
         ) || matches!(op_token.con().trim(), ".." | "...");
         if !is_range {
-            return Ok(lhs);
+            return Ok(self.attach_leading_comments(lhs, leading_comments));
         }
         let inclusive = !matches!(op_token.key(), KEYWORD::Operator(OPERATOR::Dotdotdot))
             && op_token.con().trim() != "...";
 
         let _ = tokens.bump();
-        self.skip_ignorable(tokens);
+        self.skip_layout(tokens);
 
         let next = tokens.curr(false)?;
         if matches!(
@@ -957,11 +978,18 @@ impl AstParser {
                 | KEYWORD::Symbol(SYMBOL::CurlyC)
                 | KEYWORD::Symbol(SYMBOL::SquarC)
         ) {
-            return Ok(AstNode::Range {
-                start: Some(Box::new(lhs)),
-                end: None,
-                inclusive,
-            });
+            return Ok(self.attach_leading_comments(
+                AstNode::Range {
+                    start: Some(Box::new(lhs)),
+                    end: None,
+                    inclusive,
+                },
+                {
+                    let mut comments = leading_comments;
+                    comments.extend(operator_comments);
+                    comments
+                },
+            ));
         }
         if next.key().is_terminal() {
             return Err(Box::new(ParseError::from_token(
@@ -971,11 +999,18 @@ impl AstParser {
         }
 
         let rhs = self.parse_add_sub_expression(tokens)?;
-        Ok(AstNode::Range {
-            start: Some(Box::new(lhs)),
-            end: Some(Box::new(rhs)),
-            inclusive,
-        })
+        Ok(self.attach_leading_comments(
+            AstNode::Range {
+                start: Some(Box::new(lhs)),
+                end: Some(Box::new(rhs)),
+                inclusive,
+            },
+            {
+                let mut comments = leading_comments;
+                comments.extend(operator_comments);
+                comments
+            },
+        ))
     }
 
     pub(super) fn next_significant_key_from_window(
@@ -997,30 +1032,6 @@ impl AstParser {
         }
 
         None
-    }
-
-    pub(super) fn skip_layout_and_expression_comments<F>(
-        &self,
-        tokens: &mut fol_lexer::lexer::stage3::Elements,
-        continues_expression: F,
-    ) where
-        F: Fn(&KEYWORD) -> bool,
-    {
-        self.skip_layout(tokens);
-
-        let Ok(token) = tokens.curr(false) else {
-            return;
-        };
-        if !token.key().is_comment() {
-            return;
-        }
-
-        if self
-            .next_significant_key_from_window(tokens)
-            .is_some_and(|key| continues_expression(&key))
-        {
-            self.skip_ignorable(tokens);
-        }
     }
 
     pub(super) fn consume_significant_token(
@@ -1050,7 +1061,7 @@ impl AstParser {
         let mut lhs = self.parse_mul_div_expression(tokens)?;
 
         for _ in 0..32 {
-            self.skip_layout_and_expression_comments(tokens, |key| {
+            let leading_comments = self.collect_comments_before(tokens, |key| {
                 matches!(
                     key,
                     KEYWORD::Operator(OPERATOR::Add)
@@ -1058,7 +1069,7 @@ impl AstParser {
                         | KEYWORD::Operator(OPERATOR::Abstract)
                         | KEYWORD::Symbol(SYMBOL::Minus)
                 )
-            });
+            })?;
 
             let op_token = match tokens.curr(false) {
                 Ok(token) => token,
@@ -1079,11 +1090,14 @@ impl AstParser {
                 let _ = tokens.bump();
                 let rhs = self.parse_mul_div_expression(tokens)?;
 
-                lhs = AstNode::BinaryOp {
-                    op,
-                    left: Box::new(lhs),
-                    right: Box::new(rhs),
-                };
+                lhs = self.attach_leading_comments(
+                    AstNode::BinaryOp {
+                        op,
+                        left: Box::new(lhs),
+                        right: Box::new(rhs),
+                    },
+                    leading_comments,
+                );
                 continue;
             }
 
@@ -1100,7 +1114,7 @@ impl AstParser {
         let mut lhs = self.parse_pow_expression(tokens)?;
 
         for _ in 0..32 {
-            self.skip_layout_and_expression_comments(tokens, |key| {
+            let leading_comments = self.collect_comments_before(tokens, |key| {
                 matches!(
                     key,
                     KEYWORD::Operator(OPERATOR::Multiply)
@@ -1109,7 +1123,7 @@ impl AstParser {
                         | KEYWORD::Symbol(SYMBOL::Root)
                         | KEYWORD::Symbol(SYMBOL::Percent)
                 )
-            });
+            })?;
 
             let op_token = match tokens.curr(false) {
                 Ok(token) => token,
@@ -1130,11 +1144,14 @@ impl AstParser {
             if let Some(op) = binary_op {
                 let _ = tokens.bump();
                 let rhs = self.parse_pow_expression(tokens)?;
-                lhs = AstNode::BinaryOp {
-                    op,
-                    left: Box::new(lhs),
-                    right: Box::new(rhs),
-                };
+                lhs = self.attach_leading_comments(
+                    AstNode::BinaryOp {
+                        op,
+                        left: Box::new(lhs),
+                        right: Box::new(rhs),
+                    },
+                    leading_comments,
+                );
                 continue;
             }
 
@@ -1149,9 +1166,8 @@ impl AstParser {
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Box<dyn Glitch>> {
         let lhs = self.parse_primary_expression(tokens)?;
-        self.skip_layout_and_expression_comments(tokens, |key| {
-            matches!(key, KEYWORD::Symbol(SYMBOL::Carret))
-        });
+        let leading_comments =
+            self.collect_comments_before(tokens, |key| matches!(key, KEYWORD::Symbol(SYMBOL::Carret)))?;
 
         let op_token = match tokens.curr(false) {
             Ok(token) => token,
@@ -1164,11 +1180,14 @@ impl AstParser {
 
         let _ = tokens.bump();
         let rhs = self.parse_pow_expression(tokens)?;
-        Ok(AstNode::BinaryOp {
-            op: BinaryOperator::Pow,
-            left: Box::new(lhs),
-            right: Box::new(rhs),
-        })
+        Ok(self.attach_leading_comments(
+            AstNode::BinaryOp {
+                op: BinaryOperator::Pow,
+                left: Box::new(lhs),
+                right: Box::new(rhs),
+            },
+            leading_comments,
+        ))
     }
 
 }

@@ -196,3 +196,123 @@ fn test_body_comments_between_statements_are_preserved() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_expression_comments_wrap_binary_nodes_and_rhs_nodes() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_expression_comment_wrappers.fol")
+            .expect("Should read expression comment wrapper fixture");
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should preserve inline expression comments as AST wrappers");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            let body = only_root_routine_body_nodes(&declarations);
+
+            assert!(matches!(
+                body[0],
+                AstNode::Return {
+                    value: Some(value),
+                } if matches!(
+                    value.as_ref(),
+                    AstNode::Commented {
+                        leading_comments,
+                        node,
+                        trailing_comments,
+                    }
+                    if trailing_comments.is_empty()
+                        && matches!(
+                            leading_comments.as_slice(),
+                            [AstNode::Comment {
+                                kind: CommentKind::Backtick,
+                                raw,
+                            }] if raw == "`between add`"
+                        )
+                        && matches!(
+                            node.as_ref(),
+                            AstNode::BinaryOp {
+                                op: fol_parser::ast::BinaryOperator::Add,
+                                left,
+                                right,
+                            }
+                            if matches!(left.as_ref(), AstNode::Identifier { name } if name == "alpha")
+                                && matches!(
+                                    right.as_ref(),
+                                    AstNode::Commented {
+                                        leading_comments,
+                                        node,
+                                        trailing_comments,
+                                    }
+                                    if trailing_comments.is_empty()
+                                        && matches!(
+                                            leading_comments.as_slice(),
+                                            [AstNode::Comment {
+                                                kind: CommentKind::Doc,
+                                                raw,
+                                            }] if raw == "`[doc] rhs docs`"
+                                        )
+                                        && matches!(
+                                            node.as_ref(),
+                                            AstNode::Identifier { name } if name == "beta"
+                                        )
+                                )
+                        )
+                )
+            ));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_postfix_comments_wrap_call_nodes() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_postfix_comment_wrapper.fol")
+            .expect("Should read postfix comment wrapper fixture");
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should preserve comments before postfix calls");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            let body = only_root_routine_body_nodes(&declarations);
+
+            assert!(matches!(
+                body[0],
+                AstNode::Return {
+                    value: Some(value),
+                } if matches!(
+                    value.as_ref(),
+                    AstNode::Commented {
+                        leading_comments,
+                        node,
+                        trailing_comments,
+                    }
+                    if trailing_comments.is_empty()
+                        && matches!(
+                            leading_comments.as_slice(),
+                            [AstNode::Comment {
+                                kind: CommentKind::Doc,
+                                raw,
+                            }] if raw == "`[doc] call docs`"
+                        )
+                        && matches!(
+                            node.as_ref(),
+                            AstNode::FunctionCall { name, args }
+                            if name == "emit"
+                                && args.len() == 1
+                                && matches!(&args[0], AstNode::Identifier { name } if name == "alpha")
+                        )
+                )
+            ));
+        }
+        _ => panic!("Expected program node"),
+    }
+}

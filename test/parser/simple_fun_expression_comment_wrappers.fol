@@ -1,0 +1,7 @@
+fun inspect(): int = {
+    return alpha
+        `between add`
+        +
+        `[doc] rhs docs`
+        beta
+}

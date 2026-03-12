@@ -244,9 +244,8 @@ impl AstParser {
         let mut lhs = self.parse_logical_or_expression(tokens)?;
 
         for _ in 0..32 {
-            self.skip_layout_and_expression_comments(tokens, |key| {
-                matches!(key, KEYWORD::Symbol(SYMBOL::Pipe))
-            });
+            let leading_comments =
+                self.collect_comments_before(tokens, |key| matches!(key, KEYWORD::Symbol(SYMBOL::Pipe)))?;
             let op_token = match tokens.curr(false) {
                 Ok(token) => token,
                 Err(_) => return Ok(lhs),
@@ -269,7 +268,7 @@ impl AstParser {
                 self.consume_significant_token(tokens);
             }
 
-            self.skip_ignorable(tokens);
+            self.skip_layout(tokens);
             let next = tokens.curr(false)?;
             if next.key().is_terminal() || next.key().is_eof() {
                 return Err(Box::new(ParseError::from_token(
@@ -283,15 +282,18 @@ impl AstParser {
             }
 
             let rhs = self.parse_pipe_stage_expression(tokens)?;
-            lhs = AstNode::BinaryOp {
-                op: if consume_count == 2 {
-                    BinaryOperator::PipeOr
-                } else {
-                    BinaryOperator::Pipe
+            lhs = self.attach_leading_comments(
+                AstNode::BinaryOp {
+                    op: if consume_count == 2 {
+                        BinaryOperator::PipeOr
+                    } else {
+                        BinaryOperator::Pipe
+                    },
+                    left: Box::new(lhs),
+                    right: Box::new(rhs),
                 },
-                left: Box::new(lhs),
-                right: Box::new(rhs),
-            };
+                leading_comments,
+            );
         }
 
         Ok(lhs)

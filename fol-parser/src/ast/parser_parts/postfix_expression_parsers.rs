@@ -7,7 +7,7 @@ impl AstParser {
         mut node: AstNode,
     ) -> Result<AstNode, Box<dyn Glitch>> {
         for _ in 0..256 {
-            self.skip_layout_and_expression_comments(tokens, |key| {
+            let leading_comments = self.collect_comments_before(tokens, |key| {
                 matches!(
                     key,
                     KEYWORD::Symbol(SYMBOL::RoundO)
@@ -17,7 +17,7 @@ impl AstParser {
                         | KEYWORD::Symbol(SYMBOL::Bang)
                         | KEYWORD::Symbol(SYMBOL::Dollar)
                 )
-            });
+            })?;
 
             let token = match tokens.curr(false) {
                 Ok(token) => token,
@@ -28,7 +28,7 @@ impl AstParser {
                 KEYWORD::Symbol(SYMBOL::RoundO) => {
                     let _ = tokens.bump();
                     let args = self.parse_call_args(tokens)?;
-                    node = match node {
+                    node = self.attach_leading_comments(match node {
                         AstNode::Identifier { name } => AstNode::FunctionCall { name, args },
                         AstNode::QualifiedIdentifier { path } => {
                             AstNode::QualifiedFunctionCall { path, args }
@@ -37,7 +37,7 @@ impl AstParser {
                             callee: Box::new(callee),
                             args,
                         },
-                    };
+                    }, leading_comments);
                 }
                 KEYWORD::Symbol(SYMBOL::Dot) => {
                     let _ = tokens.bump();
@@ -57,25 +57,37 @@ impl AstParser {
                     if is_method_call {
                         let _ = tokens.bump();
                         let args = self.parse_call_args(tokens)?;
-                        node = AstNode::MethodCall {
-                            object: Box::new(node),
-                            method: member,
-                            args,
-                        };
+                        node = self.attach_leading_comments(
+                            AstNode::MethodCall {
+                                object: Box::new(node),
+                                method: member,
+                                args,
+                            },
+                            leading_comments,
+                        );
                     } else {
-                        node = AstNode::FieldAccess {
-                            object: Box::new(node),
-                            field: member,
-                        };
+                        node = self.attach_leading_comments(
+                            AstNode::FieldAccess {
+                                object: Box::new(node),
+                                field: member,
+                            },
+                            leading_comments,
+                        );
                     }
                 }
                 KEYWORD::Symbol(SYMBOL::SquarO) => {
-                    node = self.parse_index_or_slice_expression(tokens, node)?;
+                    node = self.attach_leading_comments(
+                        self.parse_index_or_slice_expression(tokens, node)?,
+                        leading_comments,
+                    );
                 }
                 KEYWORD::Symbol(SYMBOL::Colon) => {
                     let next_key = self.next_significant_key_from_window(tokens);
                     if matches!(next_key, Some(KEYWORD::Symbol(SYMBOL::SquarO))) {
-                        node = self.parse_prefix_availability_expression(tokens, node)?;
+                        node = self.attach_leading_comments(
+                            self.parse_prefix_availability_expression(tokens, node)?,
+                            leading_comments,
+                        );
                     } else if matches!(
                         node,
                         AstNode::IndexAccess { .. }
@@ -83,9 +95,12 @@ impl AstParser {
                             | AstNode::PatternAccess { .. }
                     ) {
                         let _ = tokens.bump();
-                        node = AstNode::AvailabilityAccess {
-                            target: Box::new(node),
-                        };
+                        node = self.attach_leading_comments(
+                            AstNode::AvailabilityAccess {
+                                target: Box::new(node),
+                            },
+                            leading_comments,
+                        );
                     } else {
                         break;
                     }
@@ -99,17 +114,23 @@ impl AstParser {
                     }
 
                     let _ = tokens.bump();
-                    node = AstNode::UnaryOp {
-                        op: UnaryOperator::Unwrap,
-                        operand: Box::new(node),
-                    };
+                    node = self.attach_leading_comments(
+                        AstNode::UnaryOp {
+                            op: UnaryOperator::Unwrap,
+                            operand: Box::new(node),
+                        },
+                        leading_comments,
+                    );
                 }
                 KEYWORD::Symbol(SYMBOL::Dollar) => {
                     let _ = tokens.bump();
-                    node = AstNode::TemplateCall {
-                        object: Box::new(node),
-                        template: "$".to_string(),
-                    };
+                    node = self.attach_leading_comments(
+                        AstNode::TemplateCall {
+                            object: Box::new(node),
+                            template: "$".to_string(),
+                        },
+                        leading_comments,
+                    );
                 }
                 _ => break,
             }

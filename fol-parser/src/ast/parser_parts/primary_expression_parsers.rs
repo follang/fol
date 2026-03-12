@@ -504,7 +504,7 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Box<dyn Glitch>> {
-        self.skip_ignorable(tokens);
+        let leading_comments = self.collect_comment_nodes(tokens)?;
         let token = tokens.curr(false)?;
 
         if token.key().is_illegal() {
@@ -534,12 +534,15 @@ impl AstParser {
                 )));
             }
             self.consume_significant_token(tokens);
-            self.skip_ignorable(tokens);
+            self.skip_layout(tokens);
 
             let task = self.parse_primary_expression(tokens)?;
-            return Ok(AstNode::Spawn {
-                task: Box::new(task),
-            });
+            return Ok(self.attach_leading_comments(
+                AstNode::Spawn {
+                    task: Box::new(task),
+                },
+                leading_comments,
+            ));
         }
 
         if let Some((message, unary_op)) = self.unary_prefix_info(&token) {
@@ -549,13 +552,16 @@ impl AstParser {
 
             let operand = self.parse_primary_expression(tokens)?;
             if let Some(op) = unary_op {
-                return Ok(AstNode::UnaryOp {
-                    op,
-                    operand: Box::new(operand),
-                });
+                return Ok(self.attach_leading_comments(
+                    AstNode::UnaryOp {
+                        op,
+                        operand: Box::new(operand),
+                    },
+                    leading_comments,
+                ));
             }
 
-            return Ok(operand);
+            return Ok(self.attach_leading_comments(operand, leading_comments));
         }
 
         let node = if matches!(
@@ -575,7 +581,10 @@ impl AstParser {
         } else if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Pro)) {
             self.parse_anonymous_pro_expr(tokens)?
         } else if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
-            return self.parse_container_expression(tokens);
+            return Ok(self.attach_leading_comments(
+                self.parse_container_expression(tokens)?,
+                leading_comments,
+            ));
         } else if matches!(token.key(), KEYWORD::Symbol(SYMBOL::RoundO))
             && self.lookahead_is_shorthand_anonymous_fun(tokens)
         {
@@ -583,7 +592,11 @@ impl AstParser {
         } else if matches!(token.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
             let _ = tokens.bump();
             let inner = self.parse_logical_expression(tokens)?;
-            self.skip_ignorable(tokens);
+            let inner = self.attach_trailing_comments(
+                inner,
+                self.collect_comments_before(tokens, |key| matches!(key, KEYWORD::Symbol(SYMBOL::RoundC)))?,
+            );
+            self.skip_layout(tokens);
 
             let close = tokens.curr(false)?;
             if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
@@ -627,7 +640,10 @@ impl AstParser {
             node
         };
 
-        self.parse_postfix_expression(tokens, node)
+        Ok(self.attach_leading_comments(
+            self.parse_postfix_expression(tokens, node)?,
+            leading_comments,
+        ))
     }
 
     pub(super) fn parse_container_expression(
