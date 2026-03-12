@@ -96,6 +96,9 @@ pub enum AstNode {
     },
 
     /// Use declaration: use[options] name: type = { path }
+    ///
+    /// `path` preserves the accepted raw import spelling, while `path_segments`
+    /// retains the parsed segment/separator structure for later import work.
     UseDecl {
         options: Vec<UseOption>,
         name: String,
@@ -369,7 +372,11 @@ pub enum AstNode {
         body: Vec<AstNode>,
     },
 
-    /// Program root
+    /// Program root.
+    ///
+    /// The `declarations` list is intentionally source-ordered and mixed: it may
+    /// contain declarations, executable root nodes, and retained standalone comment
+    /// nodes accepted at file scope.
     Program { declarations: Vec<AstNode> },
 }
 

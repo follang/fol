@@ -23,6 +23,9 @@ FOL is a general-purpose, systems programming language designed for robustness, 
 
 Current compiler status: the stream, lexer, parser, and diagnostics pipeline are implemented and actively tested. The front-end hardening pass is largely complete; the main compiler work still missing is later-phase semantic analysis, type checking, ownership rules, and backend/runtime work.
 
+For exact current stream/lexer/parser behavior, treat [`FRONTEND_CONTRACT.md`](./FRONTEND_CONTRACT.md)
+as the authoritative front-end contract. The README is only a high-level project summary.
+
 <hr>
 
 ## BUILDING BLOCKS
