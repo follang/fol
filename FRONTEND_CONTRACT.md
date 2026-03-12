@@ -115,6 +115,10 @@ tests actually enforce today.
 - A standalone `_` still lowers as an identifier token because the current parser uses
   that surface for silent binders and destructuring-rest forms.
 - Leading single underscores remain ordinary identifiers under the current contract.
+- Parser-owned duplicate checks use the shared `canonical_identifier_key` helper in
+  `fol-parser` instead of a lexer-normalized identifier form.
+- That canonical comparison key lowercases ASCII letters and removes underscores while
+  leaving non-ASCII characters unchanged.
 
 ### Literal Categories
 
