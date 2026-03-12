@@ -219,6 +219,53 @@ mod mod_handling_tests {
         );
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn test_folder_traversal_propagates_recursive_directory_read_failures() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let temp_root = std::env::temp_dir().join(format!(
+            "fol_stream_recursive_read_error_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("System time should be after unix epoch")
+                .as_nanos()
+        ));
+        let blocked_dir = temp_root.join("blocked");
+        let root_file = temp_root.join("main.fol");
+
+        fs::create_dir_all(&blocked_dir).expect("Should create blocked temp directory");
+        fs::write(&root_file, "fun main() => 1\n").expect("Should write readable root source");
+
+        let mut permissions = fs::metadata(&blocked_dir)
+            .expect("Should read blocked directory metadata")
+            .permissions();
+        permissions.set_mode(0o000);
+        fs::set_permissions(&blocked_dir, permissions)
+            .expect("Should remove blocked directory permissions");
+
+        let result = Source::init(
+            temp_root
+                .to_str()
+                .expect("Blocked temp root should be valid UTF-8"),
+            SourceType::Folder,
+        );
+
+        let mut cleanup_permissions = fs::metadata(&blocked_dir)
+            .expect("Should re-read blocked directory metadata")
+            .permissions();
+        cleanup_permissions.set_mode(0o755);
+        fs::set_permissions(&blocked_dir, cleanup_permissions)
+            .expect("Should restore blocked directory permissions for cleanup");
+        fs::remove_dir_all(&temp_root).ok();
+
+        assert!(
+            result.is_err(),
+            "Folder traversal should report unreadable nested directories instead of silently dropping them"
+        );
+    }
+
     #[test]
     fn test_mod_directory_contents_verification() {
         // Verify that .mod directories exist and contain expected mixed content

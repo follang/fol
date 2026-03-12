@@ -256,7 +256,13 @@ fn source(
             });
         }
         SourceType::Folder => {
-            for file_path in from_dir(&validated_path)? {
+            let discovered_files = from_dir(&validated_path)?;
+            if discovered_files.is_empty() {
+                let msg = format!("{}", "No .fol files found".red());
+                return Err(Box::new(BasicError { message: msg }));
+            }
+
+            for file_path in discovered_files {
                 let namespace = compute_namespace(&file_path, &validated_path, package_name)?;
                 sources.push(Source {
                     call: input.to_string(),
@@ -310,9 +316,8 @@ fn from_dir(directory: &str) -> Result<Vec<String>, Box<dyn Glitch>> {
             }
 
             // Recursively process non-.mod directories
-            if let Ok(recursive_files) = from_dir(&filepath) {
-                files.extend(recursive_files);
-            }
+            let recursive_files = from_dir(&filepath)?;
+            files.extend(recursive_files);
         } else {
             // Only include .fol files
             if let Some(extension) = entry.path().extension().and_then(OsStr::to_str) {
@@ -323,12 +328,7 @@ fn from_dir(directory: &str) -> Result<Vec<String>, Box<dyn Glitch>> {
         }
     }
 
-    if files.is_empty() {
-        let msg = format!("{}", "No .fol files found".red());
-        Err(Box::new(BasicError { message: msg }))
-    } else {
-        Ok(files)
-    }
+    Ok(files)
 }
 
 /// Validate input path and return canonical path
