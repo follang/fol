@@ -654,7 +654,12 @@ impl AstParser {
         let mut lhs = self.parse_logical_xor_expression(tokens)?;
 
         for _ in 0..32 {
-            self.skip_ignorable(tokens);
+            self.skip_layout_and_expression_comments(tokens, |key| {
+                matches!(
+                    key,
+                    KEYWORD::Keyword(BUILDIN::Or) | KEYWORD::Keyword(BUILDIN::Nor)
+                )
+            });
 
             let op_token = match tokens.curr(false) {
                 Ok(token) => token,
@@ -699,7 +704,9 @@ impl AstParser {
         let mut lhs = self.parse_logical_and_expression(tokens)?;
 
         for _ in 0..32 {
-            self.skip_ignorable(tokens);
+            self.skip_layout_and_expression_comments(tokens, |key| {
+                matches!(key, KEYWORD::Keyword(BUILDIN::Xor))
+            });
 
             let op_token = match tokens.curr(false) {
                 Ok(token) => token,
@@ -730,7 +737,12 @@ impl AstParser {
         let mut lhs = self.parse_comparison_expression(tokens)?;
 
         for _ in 0..32 {
-            self.skip_ignorable(tokens);
+            self.skip_layout_and_expression_comments(tokens, |key| {
+                matches!(
+                    key,
+                    KEYWORD::Keyword(BUILDIN::And) | KEYWORD::Keyword(BUILDIN::Nand)
+                )
+            });
 
             let op_token = match tokens.curr(false) {
                 Ok(token) => token,
@@ -775,7 +787,24 @@ impl AstParser {
         let mut lhs = self.parse_range_expression(tokens)?;
 
         for _ in 0..32 {
-            self.skip_ignorable(tokens);
+            self.skip_layout_and_expression_comments(tokens, |key| {
+                matches!(
+                    key,
+                    KEYWORD::Keyword(BUILDIN::Cast)
+                        | KEYWORD::Keyword(BUILDIN::As)
+                        | KEYWORD::Keyword(BUILDIN::Is)
+                        | KEYWORD::Keyword(BUILDIN::Has)
+                        | KEYWORD::Keyword(BUILDIN::In)
+                        | KEYWORD::Operator(OPERATOR::Equal)
+                        | KEYWORD::Operator(OPERATOR::Noteq)
+                        | KEYWORD::Operator(OPERATOR::Greateq)
+                        | KEYWORD::Operator(OPERATOR::Lesseq)
+                        | KEYWORD::Symbol(SYMBOL::AngleC)
+                        | KEYWORD::Symbol(SYMBOL::AngleO)
+                        | KEYWORD::Symbol(SYMBOL::Equal)
+                        | KEYWORD::Symbol(SYMBOL::Bang)
+                )
+            });
 
             let op_token = match tokens.curr(false) {
                 Ok(token) => token,
@@ -895,7 +924,12 @@ impl AstParser {
         }
 
         let lhs = self.parse_add_sub_expression(tokens)?;
-        self.skip_ignorable(tokens);
+        self.skip_layout_and_expression_comments(tokens, |key| {
+            matches!(
+                key,
+                KEYWORD::Operator(OPERATOR::Dotdot) | KEYWORD::Operator(OPERATOR::Dotdotdot)
+            )
+        });
 
         let op_token = match tokens.curr(false) {
             Ok(token) => token,
@@ -965,6 +999,30 @@ impl AstParser {
         None
     }
 
+    pub(super) fn skip_layout_and_expression_comments<F>(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+        continues_expression: F,
+    ) where
+        F: Fn(&KEYWORD) -> bool,
+    {
+        self.skip_layout(tokens);
+
+        let Ok(token) = tokens.curr(false) else {
+            return;
+        };
+        if !token.key().is_comment() {
+            return;
+        }
+
+        if self
+            .next_significant_key_from_window(tokens)
+            .is_some_and(|key| continues_expression(&key))
+        {
+            self.skip_ignorable(tokens);
+        }
+    }
+
     pub(super) fn consume_significant_token(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
@@ -992,7 +1050,15 @@ impl AstParser {
         let mut lhs = self.parse_mul_div_expression(tokens)?;
 
         for _ in 0..32 {
-            self.skip_ignorable(tokens);
+            self.skip_layout_and_expression_comments(tokens, |key| {
+                matches!(
+                    key,
+                    KEYWORD::Operator(OPERATOR::Add)
+                        | KEYWORD::Symbol(SYMBOL::Plus)
+                        | KEYWORD::Operator(OPERATOR::Abstract)
+                        | KEYWORD::Symbol(SYMBOL::Minus)
+                )
+            });
 
             let op_token = match tokens.curr(false) {
                 Ok(token) => token,
@@ -1034,7 +1100,16 @@ impl AstParser {
         let mut lhs = self.parse_pow_expression(tokens)?;
 
         for _ in 0..32 {
-            self.skip_ignorable(tokens);
+            self.skip_layout_and_expression_comments(tokens, |key| {
+                matches!(
+                    key,
+                    KEYWORD::Operator(OPERATOR::Multiply)
+                        | KEYWORD::Symbol(SYMBOL::Star)
+                        | KEYWORD::Operator(OPERATOR::Divide)
+                        | KEYWORD::Symbol(SYMBOL::Root)
+                        | KEYWORD::Symbol(SYMBOL::Percent)
+                )
+            });
 
             let op_token = match tokens.curr(false) {
                 Ok(token) => token,
@@ -1074,7 +1149,9 @@ impl AstParser {
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Box<dyn Glitch>> {
         let lhs = self.parse_primary_expression(tokens)?;
-        self.skip_ignorable(tokens);
+        self.skip_layout_and_expression_comments(tokens, |key| {
+            matches!(key, KEYWORD::Symbol(SYMBOL::Carret))
+        });
 
         let op_token = match tokens.curr(false) {
             Ok(token) => token,

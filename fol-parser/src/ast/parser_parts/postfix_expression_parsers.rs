@@ -7,7 +7,17 @@ impl AstParser {
         mut node: AstNode,
     ) -> Result<AstNode, Box<dyn Glitch>> {
         for _ in 0..256 {
-            self.skip_ignorable(tokens);
+            self.skip_layout_and_expression_comments(tokens, |key| {
+                matches!(
+                    key,
+                    KEYWORD::Symbol(SYMBOL::RoundO)
+                        | KEYWORD::Symbol(SYMBOL::Dot)
+                        | KEYWORD::Symbol(SYMBOL::SquarO)
+                        | KEYWORD::Symbol(SYMBOL::Colon)
+                        | KEYWORD::Symbol(SYMBOL::Bang)
+                        | KEYWORD::Symbol(SYMBOL::Dollar)
+                )
+            });
 
             let token = match tokens.curr(false) {
                 Ok(token) => token,

@@ -244,7 +244,9 @@ impl AstParser {
         let mut lhs = self.parse_logical_or_expression(tokens)?;
 
         for _ in 0..32 {
-            self.skip_ignorable(tokens);
+            self.skip_layout_and_expression_comments(tokens, |key| {
+                matches!(key, KEYWORD::Symbol(SYMBOL::Pipe))
+            });
             let op_token = match tokens.curr(false) {
                 Ok(token) => token,
                 Err(_) => return Ok(lhs),

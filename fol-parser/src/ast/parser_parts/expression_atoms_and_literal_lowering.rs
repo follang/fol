@@ -267,7 +267,7 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) {
-        self.skip_ignorable(tokens);
+        self.skip_layout(tokens);
         if let Ok(token) = tokens.curr(false) {
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Semi)) {
                 let _ = tokens.bump();

@@ -758,7 +758,7 @@ impl AstParser {
                 nodes.extend(self.build_binding_nodes(options.clone(), names, type_hint, values)?);
             }
 
-            self.skip_ignorable(tokens);
+            self.skip_layout(tokens);
             let next = match tokens.curr(false) {
                 Ok(token) => token,
                 Err(_) => break,
@@ -772,7 +772,7 @@ impl AstParser {
                 && self.lookahead_starts_binding_segment(tokens)
             {
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_layout(tokens);
                 continue;
             }
 
