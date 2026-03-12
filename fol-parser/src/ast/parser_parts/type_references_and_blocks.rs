@@ -492,6 +492,13 @@ impl AstParser {
             )));
         }
 
+        if !(self.is_inside_routine() || self.is_inside_loop()) {
+            return Err(Box::new(ParseError::from_token(
+                &yield_token,
+                "'yeild' is only allowed inside routines or loops".to_string(),
+            )));
+        }
+
         let _ = tokens.bump();
         self.skip_ignorable(tokens);
         let value = self.parse_logical_expression(tokens)?;
