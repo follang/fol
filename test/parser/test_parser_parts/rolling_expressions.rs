@@ -13,7 +13,7 @@ fn test_simple_rolling_expression_parses_in_return_position() {
         .expect("Parser should accept rolling expressions");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| match node {
                 AstNode::Return { value: Some(value) } => Some(value.as_ref().clone()),
@@ -48,7 +48,7 @@ fn test_parenthesized_multi_binding_rolling_expression_parses() {
         .expect("Parser should accept parenthesized multi-binding rolling expressions");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| match node {
                 AstNode::Return { value: Some(value) } => Some(value.as_ref().clone()),
@@ -83,7 +83,7 @@ fn test_parenthesized_semicolon_multi_binding_rolling_expression_parses() {
         .expect("Parser should accept parenthesized semicolon-separated rolling expressions");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| match node {
                 AstNode::Return { value: Some(value) } => Some(value.as_ref().clone()),
@@ -118,7 +118,7 @@ fn test_bare_multi_binding_rolling_expression_parses() {
         .expect("Parser should accept bare multi-binding rolling expressions");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| match node {
                 AstNode::Return { value: Some(value) } => Some(value.as_ref().clone()),
@@ -153,7 +153,7 @@ fn test_bare_semicolon_multi_binding_rolling_expression_parses() {
         .expect("Parser should accept bare semicolon-separated rolling expressions");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| match node {
                 AstNode::Return { value: Some(value) } => Some(value.as_ref().clone()),
@@ -188,7 +188,7 @@ fn test_rolling_expression_supports_optional_filter() {
         .expect("Parser should accept filtered rolling expressions");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| match node {
                 AstNode::Return { value: Some(value) } => Some(value.as_ref().clone()),
@@ -223,7 +223,7 @@ fn test_rolling_expression_supports_when_filter() {
         .expect("Parser should accept rolling expressions filtered with 'when'");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| match node {
                 AstNode::Return { value: Some(value) } => Some(value.as_ref().clone()),
@@ -345,7 +345,7 @@ fn test_rolling_expression_supports_silent_binders() {
         .expect("Parser should accept silent rolling binders");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| match node {
                 AstNode::Return { value: Some(value) } => Some(value.as_ref().clone()),
@@ -378,7 +378,7 @@ fn test_rolling_expression_supports_typed_silent_binders() {
         .expect("Parser should accept typed silent rolling binders");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| match node {
                 AstNode::Return { value: Some(value) } => Some(value.as_ref().clone()),
@@ -413,7 +413,7 @@ fn test_rolling_expression_supports_quoted_binders() {
         .expect("Parser should accept quoted rolling binders");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| match node {
                 AstNode::Return { value: Some(value) } => Some(value.as_ref().clone()),
@@ -446,7 +446,7 @@ fn test_rolling_expression_supports_keyword_named_binders() {
         .expect("Parser should accept keyword-named rolling binders");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| match node {
                 AstNode::Return { value: Some(value) } => Some(value.as_ref().clone()),
@@ -479,7 +479,7 @@ fn test_rolling_expression_supports_var_binders() {
         .expect("Parser should accept 'var' rolling binders");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| match node {
                 AstNode::Return { value: Some(value) } => Some(value.as_ref().clone()),
@@ -512,7 +512,7 @@ fn test_rolling_expression_supports_typed_var_binders() {
         .expect("Parser should accept typed 'var' rolling binders");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| match node {
                 AstNode::Return { value: Some(value) } => Some(value.as_ref().clone()),
@@ -547,7 +547,7 @@ fn test_rolling_expression_supports_var_multi_bindings() {
         .expect("Parser should accept multi-binding rolling expressions with 'var' binders");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| match node {
                 AstNode::Return { value: Some(value) } => Some(value.as_ref().clone()),
