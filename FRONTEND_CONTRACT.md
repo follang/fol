@@ -116,6 +116,9 @@ tests actually enforce today.
 - `FileStream::from_sources` is intentionally eager for this hardening cycle.
 - Source discovery and package/namespace derivation happen before streaming begins, and
   full file bodies are loaded before the first streamed character is exposed.
+- `FileStream` now also precomputes one reusable per-source character buffer during
+  construction instead of rebuilding `chars().collect()` buffers every time streaming
+  crosses into the next file.
 - That eager preload is a current front-end choice, not a claim that the stream layer is
   already a lazy or incremental source provider.
 - The larger multi-file regression now proves that the stream continues draining even if
@@ -209,6 +212,8 @@ tests actually enforce today.
   unified character stream into one local `Vec`.
 - That means the lexer no longer duplicates the whole cross-file character stream after
   `fol-stream` has already loaded source contents eagerly.
+- It also no longer depends on `fol-stream` rebuilding per-file character buffers during
+  source switches; stage 0 now reads from the stream's precomputed per-source buffers.
 - The current stream/lexer boundary is therefore:
   `fol-stream` still preloads file bodies per source
   stage 0 consumes that source set incrementally while preserving explicit file
