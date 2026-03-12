@@ -5,6 +5,7 @@ use fol_lexer::{
     lexer::stage3::Elements,
     token::KEYWORD,
     token::*,
+    Location, Source,
 };
 use fol_stream::FileStream;
 use fol_types::SLIDER;
@@ -2165,6 +2166,62 @@ mod lexer_error_tests {
                 (KEYWORD::Keyword(BUILDIN::Fun), "fun".to_string()),
             ],
             "Current identifier edges should stay explicit: '_' is still a parser-relevant identifier surface, repeated underscores are illegal, and keyword matching remains exact-case"
+        );
+    }
+
+    #[test]
+    fn test_location_visualize_survives_missing_source_file() {
+        let missing_path = unique_temp_root("missing_visualize_file")
+            .join("gone.fol")
+            .to_string_lossy()
+            .to_string();
+        let source = Some(Source::new(missing_path.clone()));
+        let mut location = Location::default();
+        location.adjust(4, 2);
+        location.set_len(3);
+        location.set_source(&source);
+
+        let visualization = location.visualize(&source);
+
+        assert!(
+            visualization.contains("source file unavailable"),
+            "Missing source files should render a fallback message instead of panicking: {}",
+            visualization
+        );
+        assert!(
+            visualization.contains(&missing_path),
+            "Fallback visualization should mention the missing file path"
+        );
+    }
+
+    #[test]
+    fn test_location_visualize_survives_missing_source_line() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("missing_visualize_line");
+        fs::create_dir_all(&temp_root).expect("Should create temp location fixture dir");
+        let file_path = temp_root.join("short.fol");
+        fs::write(&file_path, "only one line\n").expect("Should write short source fixture");
+
+        let source = Some(Source::new(
+            file_path
+                .to_str()
+                .expect("Location fixture path should be UTF-8")
+                .to_string(),
+        ));
+        let mut location = Location::default();
+        location.adjust(5, 1);
+        location.set_len(1);
+        location.set_source(&source);
+
+        let visualization = location.visualize(&source);
+
+        fs::remove_dir_all(&temp_root).ok();
+
+        assert!(
+            visualization.contains("<source line unavailable>"),
+            "Missing source lines should render a fallback line instead of panicking: {}",
+            visualization
         );
     }
 

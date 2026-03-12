@@ -42,19 +42,37 @@ impl fmt::Display for Location {
 impl Location {
     pub fn visualize(&self, src: &Option<Source>) -> String {
         if let Some(source) = src {
-            let file = File::open(Path::new(&source.path(true))).unwrap();
-            let mut lines = BufReader::new(&file).lines();
-            let line = lines.nth(self.row() - 1).unwrap().unwrap();
-            format!(
-                "{}\n {:>6}\n {:>6}  {}\n {:>6} {}{}",
-                self.print(source),
-                " |".red(),
-                (self.row().to_string() + " |").red(),
-                line.red(),
-                " |".red(),
-                " ".repeat(self.col()),
-                "^".repeat(self.len()),
-            )
+            match File::open(Path::new(&source.path(true))) {
+                Ok(file) => {
+                    let mut lines = BufReader::new(&file).lines();
+                    match lines.nth(self.row().saturating_sub(1)) {
+                        Some(Ok(line)) => format!(
+                            "{}\n {:>6}\n {:>6}  {}\n {:>6} {}{}",
+                            self.print(source),
+                            " |".red(),
+                            (self.row().to_string() + " |").red(),
+                            line.red(),
+                            " |".red(),
+                            " ".repeat(self.col()),
+                            "^".repeat(self.len()),
+                        ),
+                        Some(Err(_)) | None => format!(
+                            "{}\n {:>6}\n {:>6}  <source line unavailable>\n {:>6} {}{}",
+                            self.print(source),
+                            " |".red(),
+                            (self.row().to_string() + " |").red(),
+                            " |".red(),
+                            " ".repeat(self.col()),
+                            "^".repeat(self.len()),
+                        ),
+                    }
+                }
+                Err(_) => format!(
+                    "{}\nsource file unavailable: {}",
+                    self.print(source),
+                    source.path(true)
+                ),
+            }
         } else {
             format!("at line: {:>6}", self,)
         }
