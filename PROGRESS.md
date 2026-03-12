@@ -44,9 +44,9 @@ Authority rule for this file: code and active tests win over older aspirational 
 - `fol-diagnostics`: `267`
 - Root CLI: `259`
 - Active parser fixtures: `1148`
-- Active lexer tests: `75`
+- Active lexer tests: `76`
 - Active stream tests: `47`
-- Active parser/integration tests in `integration`: `1178`
+- Active parser/integration tests in `integration`: `1179`
 - Observed active integration failures during the run: `0`
 - Observed active integration run shape: suite is green
 
@@ -76,7 +76,7 @@ Authority rule for this file: code and active tests win over older aspirational 
 - `make test` passed
 - test totals observed:
 - `1` unit test
-- `1178` integration tests
+- `1179` integration tests
 - The main remaining front-end debt is now concentrated in a few hardening decisions:
 - standalone `_` policy
 - slash-comment permanence vs compatibility-only status
