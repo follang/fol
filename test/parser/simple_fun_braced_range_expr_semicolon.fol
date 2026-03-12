@@ -1,2 +1,4 @@
-items = {1..3;};
-return {4..6;};
+fun build_ranges(): int = {
+    items = {1..3;};
+    return {4..6;};
+}

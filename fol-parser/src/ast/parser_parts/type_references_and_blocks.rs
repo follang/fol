@@ -423,6 +423,21 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Box<dyn Glitch>> {
+        let return_token = tokens.curr(false)?;
+        if !matches!(return_token.key(), KEYWORD::Keyword(BUILDIN::Return)) {
+            return Err(Box::new(ParseError::from_token(
+                &return_token,
+                "Expected 'return' statement".to_string(),
+            )));
+        }
+
+        if !self.is_inside_routine() {
+            return Err(Box::new(ParseError::from_token(
+                &return_token,
+                "'return' is only allowed inside routines".to_string(),
+            )));
+        }
+
         if tokens.bump().is_none() {
             return Ok(AstNode::Return { value: None });
         }

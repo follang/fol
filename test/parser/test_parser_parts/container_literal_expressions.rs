@@ -58,7 +58,7 @@ fn test_semicolon_container_literals_parse_in_assignment_and_return() {
 
     match ast {
         AstNode::Program { declarations } => {
-            let has_container_assignment = program_root_nodes(&declarations).into_iter().any(|node| {
+            let has_container_assignment = only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Assignment { value, .. }
@@ -69,7 +69,7 @@ fn test_semicolon_container_literals_parse_in_assignment_and_return() {
                 )
             });
 
-            let has_container_return = program_root_nodes(&declarations).into_iter().any(|node| {
+            let has_container_return = only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Return { value: Some(value) }
@@ -158,7 +158,7 @@ fn test_trailing_separator_container_literals_parse_in_assignment_and_return() {
 
     match ast {
         AstNode::Program { declarations } => {
-            let has_container_assignment = program_root_nodes(&declarations).into_iter().any(|node| {
+            let has_container_assignment = only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Assignment { value, .. }
@@ -169,7 +169,7 @@ fn test_trailing_separator_container_literals_parse_in_assignment_and_return() {
                 )
             });
 
-            let has_container_return = program_root_nodes(&declarations).into_iter().any(|node| {
+            let has_container_return = only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Return { value: Some(value) }

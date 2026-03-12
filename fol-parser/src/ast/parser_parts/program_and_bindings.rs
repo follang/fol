@@ -3,7 +3,9 @@ use crate::ast::BindingPattern;
 
 impl AstParser {
     pub fn new() -> Self {
-        Self
+        Self {
+            routine_depth: Cell::new(0),
+        }
     }
 
     /// Parse a token stream into an AST

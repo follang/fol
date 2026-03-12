@@ -8,6 +8,7 @@ use super::{
 };
 use fol_lexer::token::{BUILDIN, KEYWORD, LITERAL, OPERATOR, SYMBOL, VOID};
 use fol_types::*;
+use std::cell::Cell;
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 
@@ -67,12 +68,41 @@ impl Glitch for ParseError {
     }
 }
 
+pub(super) struct ParseDepthGuard<'a> {
+    depth: &'a Cell<usize>,
+}
+
+impl Drop for ParseDepthGuard<'_> {
+    fn drop(&mut self) {
+        let current = self.depth.get();
+        debug_assert!(current > 0, "parser context depth underflow");
+        self.depth.set(current.saturating_sub(1));
+    }
+}
+
 /// Simple AST Parser for FOL
-pub struct AstParser;
+pub struct AstParser {
+    routine_depth: Cell<usize>,
+}
 
 impl Default for AstParser {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl AstParser {
+    fn enter_depth<'a>(&'a self, depth: &'a Cell<usize>) -> ParseDepthGuard<'a> {
+        depth.set(depth.get() + 1);
+        ParseDepthGuard { depth }
+    }
+
+    pub(super) fn enter_routine_context(&self) -> ParseDepthGuard<'_> {
+        self.enter_depth(&self.routine_depth)
+    }
+
+    pub(super) fn is_inside_routine(&self) -> bool {
+        self.routine_depth.get() > 0
     }
 }
 
