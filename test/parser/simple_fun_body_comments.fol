@@ -1,0 +1,6 @@
+fun preserve_body_comments(): int = {
+    `[doc] body docs`
+    `body note`
+    var alpha = 1
+    return alpha
+}

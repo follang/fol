@@ -162,13 +162,19 @@ impl AstParser {
         let mut anchor_token = None;
 
         for _ in 0..8_192 {
-            self.skip_ignorable(tokens);
+            self.skip_layout(tokens);
 
             let token = tokens.curr(false)?;
             if anchor_token.is_none() {
                 anchor_token = Some(token.clone());
             }
             let key = token.key();
+
+            if key.is_comment() {
+                body.push(self.parse_comment_token(&token)?);
+                let _ = tokens.bump();
+                continue;
+            }
 
             if matches!(key, KEYWORD::Symbol(SYMBOL::CurlyC)) {
                 let _ = tokens.bump();

@@ -2,6 +2,13 @@ use super::*;
 use crate::ast::CommentKind;
 
 impl AstParser {
+    pub(super) fn key_is_layout_ignorable(key: &KEYWORD) -> bool {
+        matches!(
+            key,
+            KEYWORD::Void(VOID::Space) | KEYWORD::Void(VOID::EndLine)
+        )
+    }
+
     pub(super) fn parse_comment_token(
         &self,
         token: &fol_lexer::lexer::stage3::element::Element,
@@ -26,10 +33,25 @@ impl AstParser {
     }
 
     pub(super) fn key_is_soft_ignorable(key: &KEYWORD) -> bool {
-        matches!(
-            key,
-            KEYWORD::Void(VOID::Space) | KEYWORD::Void(VOID::EndLine)
-        ) || key.is_comment()
+        Self::key_is_layout_ignorable(key) || key.is_comment()
+    }
+
+    pub(super) fn skip_layout(&self, tokens: &mut fol_lexer::lexer::stage3::Elements) {
+        for _ in 0..128 {
+            let token = match tokens.curr(false) {
+                Ok(token) => token,
+                Err(_) => break,
+            };
+
+            if Self::key_is_layout_ignorable(&token.key()) {
+                if tokens.bump().is_none() {
+                    break;
+                }
+                continue;
+            }
+
+            break;
+        }
     }
 
     pub(super) fn parse_primary(

@@ -12,10 +12,16 @@ impl AstParser {
         let mut anchor_token = None;
 
         for _ in 0..1024 {
-            self.skip_ignorable(tokens);
+            self.skip_layout(tokens);
             let token = tokens.curr(false)?;
             if anchor_token.is_none() {
                 anchor_token = Some(token.clone());
+            }
+
+            if token.key().is_comment() {
+                body.push(self.parse_comment_token(&token)?);
+                let _ = tokens.bump();
+                continue;
             }
 
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Where)) {
