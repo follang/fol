@@ -101,8 +101,8 @@ Do not add or plan work here for:
 - [x] Every behavior change gets a regression test.
 - [x] Every intentional front-end compromise gets written to `FRONTEND_CONTRACT.md`.
 - [x] Every removed compromise also removes the matching stale test assumptions.
-- [ ] Prefer preserving syntax facts over recomputing or guessing them later.
-- [ ] Do not flatten structured syntax into strings unless there is a strong reason.
+- [x] Prefer preserving syntax facts over recomputing or guessing them later.
+- [x] Do not flatten structured syntax into strings unless there is a strong reason.
 - [x] Do not keep host-tool assumptions in the front-end contract unless they are explicit compatibility layers.
 
 ## 6. Implementation Order
