@@ -23,7 +23,11 @@ typ[ali] rgb: int[8][.range(255)] ;                        // we create a type t
 typ[ali] rgbSet: set[rgb, rgb, rgb];                       // then we create a type holding the `rgb` type
 ```
 
-Alias declaration are created because they can simplify using them multiple times, their identifier (their name) may be expressive in other contexts, and–most importantly–so that you can define (attach) methods to it (you can't attach methods to built-in types, nor to anonymous types or types defined in other packages).
+Alias declaration are created because they can simplify using them multiple times,
+their identifier (their name) may be expressive in other contexts, and-most
+importantly-so that you can define (attach) methods to a named type surface. Anonymous
+types still need a named alias or extension surface first, while built-in or foreign
+types can be extended explicitly through `typ[ext]`.
 
 Attaching methods is of outmost importance, because even though instead of attaching methods you could just as easily create and use functions that accept the "original" type as parameter, only types with methods can implement standards `std[]` that list/enforce those methods, and you can't attach methods to certain types unless you create a new type derived from them.
 
