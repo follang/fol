@@ -595,6 +595,8 @@ Status: done
 
 #### Slice 6.1
 
+Status: done
+
 - Wire resolver into the root CLI after parser success.
 - Make resolution errors visible through `fol-diagnostics`.
 - Add end-to-end CLI-path tests for parse-clean but resolution-bad programs.

@@ -112,13 +112,19 @@ fn compile_file(file_path: &str, diagnostics: &mut DiagnosticReport) -> Result<(
     // 3. Parse the book-aligned package shape
     let mut ast_parser = AstParser::new();
     match ast_parser.parse_package(&mut lexer) {
-        Ok(_package) => {
-            // Successfully parsed package
-            if !diagnostics.has_errors() {
-                // Could add semantic analysis, type checking, etc. here
-                return Ok(());
+        Ok(package) => match fol_resolver::resolve_package(package) {
+            Ok(_) => {
+                if !diagnostics.has_errors() {
+                    return Ok(());
+                }
             }
-        }
+            Err(resolve_errors) => {
+                for error in resolve_errors {
+                    diagnostics.add_error(&error, error.diagnostic_location());
+                }
+                return Err(());
+            }
+        },
         Err(parse_errors) => {
             // Add parse errors to diagnostics
             for error in parse_errors {

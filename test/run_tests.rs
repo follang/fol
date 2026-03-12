@@ -350,6 +350,85 @@ mod integration_tests {
     }
 
     #[test]
+    fn test_cli_folder_resolver_errors_fail_parse_clean_programs() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_folder_resolver_error");
+        fs::create_dir_all(&temp_root).expect("Should create temp CLI resolver fixture");
+        fs::write(temp_root.join("00_first.fol"), "var value = 1\n")
+            .expect("Should write first declaration source");
+        fs::write(temp_root.join("10_second.fol"), "var value = 2\n")
+            .expect("Should write duplicate declaration source");
+
+        let output = run_fol(&[temp_root
+            .to_str()
+            .expect("CLI resolver fixture path should be utf-8")]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        assert!(
+            !output.status.success(),
+            "CLI should fail when resolver rejects a parse-clean folder"
+        );
+        assert!(
+            stdout.contains("duplicate symbol 'value'"),
+            "CLI diagnostics should surface resolver duplicate-symbol messages"
+        );
+        assert!(
+            stdout.contains("10_second.fol"),
+            "CLI diagnostics should identify the duplicate source file"
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_cli_folder_resolver_errors_keep_json_locations() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_folder_resolver_error_json");
+        fs::create_dir_all(&temp_root).expect("Should create temp CLI resolver fixture");
+        fs::write(temp_root.join("00_first.fol"), "var value = 1\n")
+            .expect("Should write first declaration source");
+        fs::write(temp_root.join("10_second.fol"), "var value = 2\n")
+            .expect("Should write duplicate declaration source");
+
+        let output = run_fol(&[
+            "--json",
+            temp_root
+                .to_str()
+                .expect("CLI resolver fixture path should be utf-8"),
+        ]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let compact = stdout
+            .chars()
+            .filter(|c| !c.is_whitespace())
+            .collect::<String>();
+
+        assert!(
+            !output.status.success(),
+            "CLI should fail in JSON mode when resolver rejects a parse-clean folder"
+        );
+        assert!(
+            stdout.contains("10_second.fol"),
+            "JSON resolver diagnostics should identify the duplicate source file"
+        );
+        assert!(
+            compact.contains("\"line\":1"),
+            "JSON resolver diagnostics should preserve the duplicate declaration line number"
+        );
+        assert!(
+            compact.contains("\"column\":1"),
+            "JSON resolver diagnostics should preserve the duplicate declaration column number"
+        );
+        assert!(
+            stdout.contains("duplicate symbol 'value'"),
+            "JSON resolver diagnostics should keep resolver duplicate-symbol wording"
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
     fn test_parser_error_locations_reach_diagnostics_outputs() {
         use fol_diagnostics::{DiagnosticLocation, DiagnosticReport, OutputFormat};
         use fol_lexer::lexer::stage3::Elements;
