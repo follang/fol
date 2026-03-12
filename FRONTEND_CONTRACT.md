@@ -74,6 +74,9 @@ tests actually enforce today.
 - Package identity is defined by the explicit package override when one is
   provided; otherwise it is derived from the explicit entry root used for source
   discovery.
+- Package names must satisfy the same ASCII identifier rules used for namespace
+  components; invalid derived roots and invalid explicit overrides fail source
+  discovery instead of creating unstable logical identities.
 - Detached folders fall back to their own folder name as the package name.
 - Detached files fall back to their parent folder name as the package name.
 - Host-tool build files do not participate in default package detection; the
@@ -94,7 +97,8 @@ tests actually enforce today.
   underscores inside the name, and non-leading digits.
 - Invalid components include dots, hyphens, leading digits, repeated underscore
   runs, and non-ASCII path segments.
-- Invalid namespace components are skipped instead of aborting source discovery.
+- Invalid namespace components fail source discovery explicitly instead of being
+  skipped or collapsed away.
 - `.mod` directories do not contribute sources or namespace segments.
 
 ### Location Guarantees
@@ -271,6 +275,8 @@ tests actually enforce today.
   them for resolution or canonical lookup.
 - `use` declarations keep their import path text in the dedicated `path` field instead of
   reusing the value-path or type-path encoding.
+- `use` declarations also retain structured `path_segments`, preserving accepted
+  segment spelling plus the separator kind that preceded each later segment.
 
 ### Current Root Shape
 

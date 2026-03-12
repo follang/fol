@@ -10,7 +10,9 @@ fun/pro name(args): ResultType : ErrorType = { ... }
 
 `report expr` should produce a value compatible with `ErrorType`.
 
-Parser type checks support forward routine declarations, so a reported routine/method can be declared later in the same file.
+The current hardening-phase front end does not type-check `report` expressions.
+The parser keeps `report` as a syntax form and leaves compatibility checks,
+forward declaration checks, and error propagation rules to later semantic work.
 
 ```fol
 fun load(path: str): int : str = {
@@ -36,7 +38,9 @@ fun (parser)parse_err(code: int): str = {
 }
 ```
 
-If the forward-declared callee return type is incompatible with the routine error type, parser validation fails.
+If the forward-declared callee return type is incompatible with the routine error
+type, that is a later semantic error rather than a parser error in the current
+front end.
 
 ```fol
 fun load_bad(path: str): int : str = {
@@ -49,7 +53,9 @@ fun make_code(path: str): int = {
 }
 ```
 
-This fails because `report make_code(path)` produces `int` while the routine error type is `str`.
+This is invalid because `report make_code(path)` produces `int` while the routine
+error type is `str`, but the current parser does not diagnose that mismatch on its
+own.
 
 When we use the keyword `report`, the error is returned to the routine's error variable and the routine qutis executing (the routine, not the program).
 ```
