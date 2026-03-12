@@ -2033,6 +2033,60 @@ mod lexer_error_tests {
     }
 
     #[test]
+    fn test_stage3_seek_ignore_looks_back_through_space_tokens() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("stage3_seek_ignore");
+        fs::create_dir_all(&temp_root).expect("Should create temp stage3 seek fixture dir");
+        let fixture = temp_root.join("stage3_seek_ignore.fol");
+        fs::write(&fixture, "alpha beta\n").expect("Should write stage3 seek fixture");
+
+        let mut file_stream = FileStream::from_file(
+            fixture
+                .to_str()
+                .expect("Stage3 seek fixture path should be UTF-8"),
+        )
+        .expect("Should open stage3 seek fixture");
+        let mut elements = Elements::init(&mut file_stream);
+
+        for _ in 0..32 {
+            let token = elements
+                .curr(false)
+                .expect("Stage3 should expose a current token while seeking");
+            if token.con() == "beta" {
+                break;
+            }
+            let _ = elements.bump();
+        }
+
+        assert_eq!(
+            elements
+                .curr(false)
+                .expect("Stage3 should land on the second identifier")
+                .con(),
+            "beta"
+        );
+        assert!(
+            elements
+                .seek(0, false)
+                .expect("Stage3 seek(false) should expose the immediate previous token")
+                .key()
+                .is_space(),
+            "Stage3 seek(false) should still see the immediate space token"
+        );
+        assert_eq!(
+            elements
+                .seek(0, true)
+                .expect("Stage3 seek(true) should skip ignorable spaces when looking behind")
+                .con(),
+            "alpha",
+            "Stage3 seek(true) should inspect the reverse window instead of the forward window"
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
     fn test_nonexistent_file_error() {
         let result = std::panic::catch_unwind(|| tokenize_file("test/lexer/nonexistent.fol"));
 

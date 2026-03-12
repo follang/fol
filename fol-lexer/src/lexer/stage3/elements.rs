@@ -72,7 +72,7 @@ impl Elements {
     }
     pub fn seek(&self, index: usize, ignore: bool) -> Con<Element> {
         let mut u = if index > SLIDER { SLIDER } else { index };
-        if ignore && self.next_vec()[u].clone()?.key().is_space() && u < SLIDER {
+        if ignore && self.prev_vec()[u].clone()?.key().is_space() && u < SLIDER {
             u += 1
         };
         self.prev_vec()[u].clone()
