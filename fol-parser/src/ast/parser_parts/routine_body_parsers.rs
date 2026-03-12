@@ -20,7 +20,7 @@ impl AstParser {
                     AstNode::Inquiry { target, .. } => target.duplicate_key(),
                     _ => String::new(),
                 };
-                if !inquiry_targets.insert(target.clone()) {
+                if !inquiry_targets.insert(canonical_identifier_key(&target)) {
                     let token = tokens.curr(false)?;
                     return Err(Box::new(ParseError::from_token(
                         &token,

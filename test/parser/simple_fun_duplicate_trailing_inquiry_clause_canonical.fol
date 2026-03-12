@@ -1,0 +1,7 @@
+fun inspect(): int = {
+    return 1;
+} where(cache_name) {
+    cache_name;
+} where("CacheName") {
+    cache_name;
+}
