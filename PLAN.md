@@ -410,6 +410,7 @@ Progress snapshot as of 2026-03-12:
 
 - Update front-end docs to say this source-layout alignment is the immediate pre-resolver phase
 - Do not yet change runtime behavior
+- Status: complete on 2026-03-12
 
 ### Phase 1: Successful Parse Origins
 

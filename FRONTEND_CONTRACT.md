@@ -3,6 +3,12 @@
 This file records the current stream, lexer, and parser contracts that the code and
 tests actually enforce today.
 
+The active immediate front-end phase is source-layout and package-scope alignment
+before `fol-resolver`. This file therefore describes the current enforced behavior at
+head, including compatibility paths that still exist while that alignment work is in
+progress. It is not a promise that every current parser surface already matches the
+book-aligned target shape in [`PLAN.md`](./PLAN.md).
+
 ## Decision Summary
 
 - Comments: backtick comments are authoritative; slash comments are frozen
@@ -13,8 +19,11 @@ tests actually enforce today.
   in the AST, and receiver validation stays syntax-oriented at parser time.
 - Packages: package identity comes from explicit override or explicit entry root, not
   host-tool manifests.
-- Root surface: file scope is intentionally mixed and script-like, represented through
-  one `AstNode::Program { declarations }` root that preserves source order.
+- Source units: the parser now has a structured `parse_package(...)` path that preserves
+  source units, package/namespace identity, and successful top-level origins.
+- Root surface: the legacy `AstParser::parse()` compatibility path still returns one
+  mixed and script-like `AstNode::Program { declarations }` root that preserves source
+  order, but the active pre-resolver plan is to tighten file roots toward the book.
 
 ## Intentional Book Divergences
 

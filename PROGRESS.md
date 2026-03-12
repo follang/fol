@@ -8,7 +8,7 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 
 - This file answers one question: what is actually implemented right now.
 - This file is a repo-backed status ledger for the current workspace head.
-- For the current phase, the priority is front-end truth: stream, lexer, parser, diagnostics, and CLI behavior.
+- For the current phase, the priority is front-end truth: stream, lexer, parser, diagnostics, CLI behavior, and the immediate pre-resolver source-layout alignment pass.
 - This file does not plan later semantic work.
 
 ## 1. Scan Method
@@ -30,7 +30,7 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `FRONTEND_CONTRACT.md`
 - `README.md`
 - relevant `book/src` pages for lexical rules, methods, literals, and recoverable errors
-- Rechecked the current implementation against the existing progress ledger and the current plan.
+- Rechecked the current implementation against the existing progress ledger, the active source-layout alignment plan, and the preserved next-phase resolver plan.
 - Ran:
 - `make build`
 - `make test`
@@ -52,7 +52,7 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - Active stream tests: `54`
 - Parser-focused Rust tests under `test/parser`: `1077`
 - Observed current unit test run: `1` unit test, green
-- Observed current integration run: `1223` integration tests, green
+- Observed current integration run: `1227` integration tests, green
 
 ## 3. Current Headline Status
 
@@ -61,7 +61,8 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `fol-parser`: large front-end surface implemented, heavily hardened, and now much closer to a stable AST contract
 - `fol-diagnostics`: implemented and wired into the CLI
 - Root CLI: implemented as parse-and-report driver
-- Stream + lexer + parser: ready to stop deep rescanning and hand off to the next phase
+- Stream + lexer + parser: ready to stop broad deep rescanning
+- Immediate active phase: source-layout and package-scope alignment before whole-program name resolution
 - Whole-program name resolution: missing
 - Whole-program type checking: missing
 - Ownership and borrowing enforcement: missing
@@ -75,7 +76,7 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `make test`: passed
 - Current observed totals:
 - `1` unit test passed
-- `1223` integration tests passed
+- `1227` integration tests passed
 - Observed active failures: `0`
 
 ## 5. What Has Been Completed So Far
@@ -148,6 +149,9 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - Empty `use` path segments now report dedicated separator-focused diagnostics.
 - Method receiver diagnostics now match the actual parser contract.
 - The stale report-era literal-lowering module name was removed.
+- The parser now exposes `parse_package(...)` as a structured package-aware entry point.
+- Successful top-level parse nodes now retain syntax origins through parser-owned IDs and a syntax index.
+- Parser output can now preserve first-class source units with per-file path, package, namespace, and ordered items.
 - Comments and doc comments now remain AST-visible beyond standalone root/body sibling nodes.
 - Inline expression, postfix, call-argument, and container-element comments are preserved through `AstNode::Commented { leading_comments, node, trailing_comments }`.
 - Parser failure-shape coverage is much broader:
@@ -251,7 +255,7 @@ What is solid now:
 - much stronger diagnostic consistency coverage
 
 What is still true in code today:
-- `AstNode::Program { declarations }` is intentionally mixed and script-like, but the field name still suggests declaration-only contents
+- the preferred structured path is now `parse_package(...)`, but the legacy `AstNode::Program { declarations }` compatibility path is still intentionally mixed and script-like
 - `AstNode::UseDecl` now carries only structured path segments for import spelling
 - `AstNode::get_type()` is still a heuristic AST helper that looks semantic-adjacent even though whole-program semantic analysis is not implemented
 - the parser still treats many keyword tokens as acceptable label surfaces by design, which is test-backed and now part of the current contract
