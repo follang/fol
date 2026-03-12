@@ -111,7 +111,7 @@ Do not add or plan work here for:
 - [x] Phase 1: stream contract cleanup
 - [x] Phase 2: lexer book-alignment and error-model cleanup
 - [x] Phase 3: parser AST-fidelity cleanup
-- [ ] Phase 4: docs/test contract freeze
+- [x] Phase 4: docs/test contract freeze
 
 Do not start Phase 2 before Phase 1 decisions that affect source/package/boundary handling are settled.
 
