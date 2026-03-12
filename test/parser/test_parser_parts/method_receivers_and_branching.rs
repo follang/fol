@@ -128,7 +128,7 @@ fn test_function_method_receiver_supports_qualified_type_references() {
     match ast {
         AstNode::Program { declarations } => {
             assert!(
-                program_surface_nodes(&declarations).into_iter().any(|node| {
+                program_root_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::FunDecl {
@@ -161,7 +161,7 @@ fn test_logical_method_receiver_supports_qualified_type_references() {
     match ast {
         AstNode::Program { declarations } => {
             assert!(
-                program_surface_nodes(&declarations).into_iter().any(|node| {
+                program_root_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::LogDecl {
@@ -194,7 +194,7 @@ fn test_procedure_method_receiver_supports_bracketed_type_references() {
     match ast {
         AstNode::Program { declarations } => {
             assert!(
-                program_surface_nodes(&declarations).into_iter().any(|node| {
+                program_root_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::ProDecl {
@@ -309,7 +309,7 @@ fn test_function_method_receiver_syntax_accepts_builtin_receiver_type() {
 
     match ast {
         AstNode::Program { declarations } => assert!(
-            program_surface_nodes(&declarations).into_iter().any(|node| matches!(
+            program_root_nodes(&declarations).into_iter().any(|node| matches!(
                 node,
                 AstNode::FunDecl {
                     name,
@@ -337,7 +337,7 @@ fn test_procedure_method_receiver_syntax_accepts_builtin_receiver_type() {
 
     match ast {
         AstNode::Program { declarations } => assert!(
-            program_surface_nodes(&declarations).into_iter().any(|node| matches!(
+            program_root_nodes(&declarations).into_iter().any(|node| matches!(
                 node,
                 AstNode::ProDecl {
                     name,
@@ -549,7 +549,7 @@ fn test_when_statement_parsing_with_case_and_default() {
         .expect("Parser should parse when statement");
 
     let when_stmt = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
                 if let AstNode::When {
@@ -587,7 +587,7 @@ fn test_when_statement_parsing_with_multiple_cases() {
         .expect("Parser should parse when statement with multiple cases");
 
     let when_stmt = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
                 if let AstNode::When {
@@ -629,7 +629,7 @@ fn test_when_case_body_supports_nested_if_and_loop() {
         .expect("Parser should parse nested control flow inside when case body");
 
     let when_cases = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
                 if let AstNode::When { cases, .. } = node {
@@ -692,7 +692,7 @@ fn test_if_statement_lowers_to_when_shape() {
         .expect("Parser should parse if statement");
 
     let lowered_if = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
                 if let AstNode::When {
@@ -739,7 +739,7 @@ fn test_if_chain_lowers_to_nested_when_default() {
         .expect("Parser should parse chained if statements");
 
     let lowered_if = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
                 if let AstNode::When {
@@ -790,7 +790,7 @@ fn test_if_statement_without_else_has_no_default_branch() {
         .expect("Parser should parse if statement without else");
 
     let lowered_if = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
                 if let AstNode::When {
@@ -837,7 +837,7 @@ fn test_else_if_keyword_chain_lowers_to_nested_when_default() {
         .expect("Parser should parse else-if keyword chain");
 
     let lowered_if = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
                 if let AstNode::When {
@@ -888,7 +888,7 @@ fn test_else_keyword_block_maps_to_direct_default_body() {
         .expect("Parser should parse if-else keyword block");
 
     let lowered_if = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
                 if let AstNode::When {
