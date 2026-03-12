@@ -434,8 +434,8 @@ Target files:
 
 ### 11.2 Lock Final Test And Build State
 
-- [ ] Run `make build`.
-- [ ] Run `make test`.
+- [x] Run `make build`.
+- [x] Run `make test`.
 - [x] Confirm the final stream, lexer, and parser test totals and record them in `PROGRESS.md`.
 - [x] Confirm no test is still freezing an abandoned compromise.
 
@@ -461,8 +461,8 @@ This is the recommended implementation order once the decision freeze is complet
 16. [x] Replace string-joined qualified paths with structured path representation.
 17. [x] Re-run the parser diagnostic matrix after all AST and lexer changes.
 18. [x] Refresh `FRONTEND_CONTRACT.md`, `PROGRESS.md`, and any touched book pages.
-19. [ ] Run final `make build`.
-20. [ ] Run final `make test`.
+19. [x] Run final `make build`.
+20. [x] Run final `make test`.
 
 ## 13. Final Readiness Gates
 
@@ -481,8 +481,8 @@ Do not move to the next compiler stage until every gate below is true.
 - [x] Qualified path structure survives AST lowering where the next stage needs it.
 - [x] Root program shape is explicit.
 - [x] No front-end doc claims are known to contradict the code.
-- [ ] `make build` passes.
-- [ ] `make test` passes.
+- [x] `make build` passes.
+- [x] `make test` passes.
 
 ## 14. Stop Condition
 
