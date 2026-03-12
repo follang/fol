@@ -72,6 +72,9 @@ mod qualified_calls;
 #[path = "test_resolver_parts/qualified_identifiers.rs"]
 mod qualified_identifiers;
 #[cfg(test)]
+#[path = "test_resolver_parts/qualified_type_resolution.rs"]
+mod qualified_type_resolution;
+#[cfg(test)]
 #[path = "test_resolver_parts/rolling_binders.rs"]
 mod rolling_binders;
 #[cfg(test)]

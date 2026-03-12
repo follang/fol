@@ -542,6 +542,8 @@ Status: done
 
 #### Slice 3.4
 
+Status: done
+
 - Resolve `FolType::QualifiedNamed`.
 - Add tests for qualified type names across namespaces and imports.
 

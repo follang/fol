@@ -830,6 +830,32 @@ fn record_named_type_reference(
     Ok(reference_id)
 }
 
+fn record_qualified_type_reference(
+    program: &mut ResolvedProgram,
+    source_unit_id: SourceUnitId,
+    scope_id: ScopeId,
+    path: &QualifiedPath,
+) -> Result<ReferenceId, ResolverError> {
+    let symbol_id = resolve_qualified_symbol(
+        program,
+        scope_id,
+        path,
+        &[SymbolKind::Type, SymbolKind::Alias],
+    )?;
+    let reference_id = program.references.push(ResolvedReference {
+        id: ReferenceId(0),
+        kind: ReferenceKind::QualifiedTypeName,
+        name: path.joined(),
+        scope: scope_id,
+        source_unit: source_unit_id,
+        resolved: Some(symbol_id),
+    });
+    if let Some(reference) = program.references.get_mut(reference_id) {
+        reference.id = reference_id;
+    }
+    Ok(reference_id)
+}
+
 fn resolve_visible_symbol(
     program: &ResolvedProgram,
     starting_scope: ScopeId,
@@ -992,7 +1018,9 @@ fn resolve_type_reference(
                 resolve_type_reference(program, source_unit_id, scope_id, constraint)?;
             }
         }
-        FolType::QualifiedNamed { .. } => {}
+        FolType::QualifiedNamed { path } => {
+            record_qualified_type_reference(program, source_unit_id, scope_id, path)?;
+        }
         FolType::Int { .. }
         | FolType::Float { .. }
         | FolType::Char { .. }
