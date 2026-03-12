@@ -497,6 +497,8 @@ Status: done
 
 #### Slice 2.3
 
+Status: done
+
 - Add loop iteration binder scopes.
 - Cover `loop`, `for`, and `each`-style binders already lowered by parser.
 - Add tests for binder visibility inside loop bodies and invisibility outside.

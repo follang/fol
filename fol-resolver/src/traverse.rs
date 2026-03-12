@@ -376,26 +376,38 @@ fn traverse_node(
                 traverse_block_body(program, source_unit_id, scope_id, default_body)?;
             }
         }
-        AstNode::Loop { condition, body } => {
-            match condition.as_ref() {
-                LoopCondition::Condition(condition) => {
-                    traverse_node(program, source_unit_id, scope_id, condition, false)?;
-                }
-                LoopCondition::Iteration {
-                    iterable,
-                    condition,
-                    ..
-                } => {
-                    traverse_node(program, source_unit_id, scope_id, iterable, false)?;
-                    if let Some(condition) = condition {
-                        traverse_node(program, source_unit_id, scope_id, condition, false)?;
-                    }
+        AstNode::Loop { condition, body } => match condition.as_ref() {
+            LoopCondition::Condition(condition) => {
+                traverse_node(program, source_unit_id, scope_id, condition, false)?;
+                for statement in body {
+                    traverse_node(program, source_unit_id, scope_id, statement, false)?;
                 }
             }
-            for statement in body {
-                traverse_node(program, source_unit_id, scope_id, statement, false)?;
+            LoopCondition::Iteration {
+                var,
+                iterable,
+                condition,
+                ..
+            } => {
+                traverse_node(program, source_unit_id, scope_id, iterable, false)?;
+                let binder_scope =
+                    program.add_scope(ScopeKind::LoopBinder, scope_id, source_unit_id);
+                insert_local_symbol(
+                    program,
+                    source_unit_id,
+                    binder_scope,
+                    var,
+                    SymbolKind::LoopBinder,
+                    format!("symbol#{}", fol_types::canonical_identifier_key(var)),
+                )?;
+                if let Some(condition) = condition {
+                    traverse_node(program, source_unit_id, binder_scope, condition, false)?;
+                }
+                for statement in body {
+                    traverse_node(program, source_unit_id, binder_scope, statement, false)?;
+                }
             }
-        }
+        },
         AstNode::Select { channel, body, .. } => {
             traverse_node(program, source_unit_id, scope_id, channel, false)?;
             traverse_block_body(program, source_unit_id, scope_id, body)?;
