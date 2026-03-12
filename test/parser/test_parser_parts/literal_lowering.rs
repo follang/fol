@@ -203,6 +203,59 @@ fn test_top_level_out_of_range_decimal_reports_parse_error() {
 }
 
 #[test]
+fn test_parse_literal_rejects_out_of_range_prefixed_integers() {
+    let parser = AstParser::new();
+
+    for (literal, family) in [
+        ("0x8000000000000000", "Hexadecimal"),
+        ("0o1000000000000000000000", "Octal"),
+        (
+            "0b1000000000000000000000000000000000000000000000000000000000000000",
+            "Binary",
+        ),
+    ] {
+        let error = parser
+            .parse_literal(literal)
+            .expect_err("Out-of-range prefixed literal should fail instead of becoming an identifier");
+
+        assert!(
+            error
+                .to_string()
+                .contains(&format!("{family} literal")),
+            "Prefixed overflow should use explicit {family} wording, got: {}",
+            error
+        );
+    }
+}
+
+#[test]
+fn test_top_level_out_of_range_prefixed_literals_report_parse_errors() {
+    for (label, source, family) in [
+        ("hex_overflow", "0x8000000000000000\n", "Hexadecimal"),
+        ("octal_overflow", "0o1000000000000000000000\n", "Octal"),
+        (
+            "binary_overflow",
+            "0b1000000000000000000000000000000000000000000000000000000000000000\n",
+            "Binary",
+        ),
+    ] {
+        let error = parse_first_error_from_source(label, source);
+
+        assert!(
+            error.to_string().contains(&format!("{family} literal")),
+            "Out-of-range {family} tokens should report a parse error, got: {}",
+            error
+        );
+        assert_eq!(error.line(), 1, "{family} overflow should report its own line");
+        assert_eq!(
+            error.column(),
+            1,
+            "{family} overflow should point at the literal token itself"
+        );
+    }
+}
+
+#[test]
 fn test_double_quotes_now_lower_by_inner_width() {
     let parser = AstParser::new();
 

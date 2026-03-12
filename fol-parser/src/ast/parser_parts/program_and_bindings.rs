@@ -595,7 +595,10 @@ impl AstParser {
             fol_lexer::token::KEYWORD::Literal(LITERAL::CookedQuoted)
             | fol_lexer::token::KEYWORD::Literal(LITERAL::RawQuoted) => self.parse_literal(raw),
             fol_lexer::token::KEYWORD::Literal(LITERAL::Decimal)
-            | fol_lexer::token::KEYWORD::Literal(LITERAL::Float) => self
+            | fol_lexer::token::KEYWORD::Literal(LITERAL::Float)
+            | fol_lexer::token::KEYWORD::Literal(LITERAL::Hexadecimal)
+            | fol_lexer::token::KEYWORD::Literal(LITERAL::Octal)
+            | fol_lexer::token::KEYWORD::Literal(LITERAL::Binary) => self
                 .parse_literal(raw)
                 .map_err(|error| {
                     Box::new(ParseError::from_token(token, error.to_string())) as Box<dyn Glitch>

@@ -261,6 +261,10 @@ impl AstParser {
             if let Ok(int_val) = i64::from_str_radix(hex, 16) {
                 return Ok(AstNode::Literal(Literal::Integer(int_val)));
             }
+            return Err(numeric_error(format!(
+                "Hexadecimal literal '{}' is out of range for current parser literal lowering",
+                value
+            )));
         }
 
         if let Some(octal) = normalized
@@ -270,6 +274,10 @@ impl AstParser {
             if let Ok(int_val) = i64::from_str_radix(octal, 8) {
                 return Ok(AstNode::Literal(Literal::Integer(int_val)));
             }
+            return Err(numeric_error(format!(
+                "Octal literal '{}' is out of range for current parser literal lowering",
+                value
+            )));
         }
 
         if let Some(binary) = normalized
@@ -279,6 +287,10 @@ impl AstParser {
             if let Ok(int_val) = i64::from_str_radix(binary, 2) {
                 return Ok(AstNode::Literal(Literal::Integer(int_val)));
             }
+            return Err(numeric_error(format!(
+                "Binary literal '{}' is out of range for current parser literal lowering",
+                value
+            )));
         }
 
         if let Ok(int_val) = normalized.parse::<i64>() {
