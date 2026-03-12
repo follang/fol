@@ -837,8 +837,10 @@ impl AstNode {
         }
     }
 
-    /// Get the type of this AST node (for type inference)
-    pub fn get_type(&self) -> Option<FolType> {
+    /// Return a parser-local syntactic type hint when one is obvious from this node alone.
+    ///
+    /// This is not semantic analysis and must not be treated as an authoritative type.
+    pub fn syntactic_type_hint(&self) -> Option<FolType> {
         match self {
             AstNode::Literal(Literal::Integer(_)) => Some(FolType::Int {
                 size: None,
@@ -880,7 +882,8 @@ impl AstNode {
                     | BinaryOperator::Mod
                     | BinaryOperator::Pow => {
                         // Arithmetic operations - return type of operands (with promotion rules)
-                        left.get_type().or_else(|| right.get_type())
+                        left.syntactic_type_hint()
+                            .or_else(|| right.syntactic_type_hint())
                     }
                     BinaryOperator::Eq
                     | BinaryOperator::Ne
@@ -903,37 +906,37 @@ impl AstNode {
             }
 
             AstNode::UnaryOp { op, operand } => match op {
-                UnaryOperator::Neg => operand.get_type(),
+                UnaryOperator::Neg => operand.syntactic_type_hint(),
                 UnaryOperator::Not => Some(FolType::Bool),
-                UnaryOperator::Ref => operand.get_type().map(|t| FolType::Pointer {
+                UnaryOperator::Ref => operand.syntactic_type_hint().map(|t| FolType::Pointer {
                     target: Box::new(t),
                 }),
                 UnaryOperator::Deref => {
-                    if let Some(FolType::Pointer { target }) = operand.get_type() {
+                    if let Some(FolType::Pointer { target }) = operand.syntactic_type_hint() {
                         Some(*target)
                     } else {
                         None
                     }
                 }
                 UnaryOperator::Unwrap => {
-                    if let Some(FolType::Optional { inner }) = operand.get_type() {
+                    if let Some(FolType::Optional { inner }) = operand.syntactic_type_hint() {
                         Some(*inner)
                     } else {
-                        operand.get_type()
+                        operand.syntactic_type_hint()
                     }
                 }
             },
             AstNode::Invoke { callee, .. } => {
-                if let Some(FolType::Function { return_type, .. }) = callee.get_type() {
+                if let Some(FolType::Function { return_type, .. }) = callee.syntactic_type_hint() {
                     Some(*return_type)
                 } else {
                     None
                 }
             }
-            AstNode::NamedArgument { value, .. } => value.get_type(),
-            AstNode::Unpack { value } => value.get_type(),
+            AstNode::NamedArgument { value, .. } => value.syntactic_type_hint(),
+            AstNode::Unpack { value } => value.syntactic_type_hint(),
             AstNode::AsyncStage | AstNode::AwaitStage => None,
-            AstNode::Spawn { task } => task.get_type(),
+            AstNode::Spawn { task } => task.syntactic_type_hint(),
             AstNode::AnonymousFun {
                 params,
                 return_type,
@@ -961,12 +964,20 @@ impl AstNode {
             AstNode::AvailabilityAccess { .. } => Some(FolType::Bool),
             AstNode::Inquiry { .. } => None,
             AstNode::PatternWildcard => None,
-            AstNode::PatternCapture { pattern, .. } => pattern.get_type(),
+            AstNode::PatternCapture { pattern, .. } => pattern.syntactic_type_hint(),
             AstNode::RecordInit { .. } => None,
             AstNode::TemplateCall { .. } => None,
 
             _ => None,
         }
+    }
+
+    /// Compatibility shim for older parser-era tests and callers.
+    ///
+    /// Prefer `syntactic_type_hint()` for any new code so this helper is not mistaken
+    /// for whole-program semantic typing.
+    pub fn get_type(&self) -> Option<FolType> {
+        self.syntactic_type_hint()
     }
 
     /// Get all child nodes for tree traversal

@@ -44,9 +44,9 @@ fn test_function_return_parses_in_expression() {
         "Return expression should lower into BinaryOperator::In",
     );
     assert_eq!(
-        return_expr.get_type(),
+        return_expr.syntactic_type_hint(),
         Some(FolType::Bool),
-        "'in' expressions should infer bool type",
+        "'in' expressions should infer a bool type hint",
     );
 }
 
@@ -94,9 +94,9 @@ fn test_function_return_parses_has_expression() {
         "Return expression should lower into BinaryOperator::Has",
     );
     assert_eq!(
-        return_expr.get_type(),
+        return_expr.syntactic_type_hint(),
         Some(FolType::Bool),
-        "'has' expressions should infer bool type",
+        "'has' expressions should infer a bool type hint",
     );
 }
 
@@ -144,9 +144,9 @@ fn test_function_return_parses_is_expression() {
         "Return expression should lower into BinaryOperator::Is",
     );
     assert_eq!(
-        return_expr.get_type(),
+        return_expr.syntactic_type_hint(),
         Some(FolType::Bool),
-        "'is' expressions should infer bool type",
+        "'is' expressions should infer a bool type hint",
     );
 }
 

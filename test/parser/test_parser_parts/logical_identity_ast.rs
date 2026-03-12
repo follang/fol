@@ -1,7 +1,7 @@
 use super::*;
 
 #[test]
-fn test_log_decl_get_type_defaults_to_bool() {
+fn test_log_decl_syntactic_type_hint_defaults_to_bool() {
     let node = AstNode::LogDecl {
         options: Vec::new(),
         generics: Vec::new(),
@@ -16,9 +16,20 @@ fn test_log_decl_get_type_defaults_to_bool() {
     };
 
     assert_eq!(
-        node.get_type(),
+        node.syntactic_type_hint(),
         Some(FolType::Bool),
-        "LogDecl without an explicit return type should still report bool as its routine type"
+        "LogDecl without an explicit return type should still report bool as its routine type hint"
+    );
+}
+
+#[test]
+fn test_get_type_remains_a_compatibility_shim() {
+    let node = AstNode::Literal(Literal::Boolean(true));
+
+    assert_eq!(
+        node.get_type(),
+        node.syntactic_type_hint(),
+        "Legacy get_type() calls should keep matching the explicit syntactic_type_hint() helper"
     );
 }
 
