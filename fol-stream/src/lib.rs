@@ -115,9 +115,9 @@ impl Source {
 /// Multi-source file stream for handling complex folder structures
 pub struct FileStream {
     sources: Vec<Source>,
+    char_buffers: Vec<Box<[char]>>,
     current_source: usize,
     position: usize,
-    current_chars: Vec<char>,
     location: Location,
 }
 
@@ -125,9 +125,9 @@ impl Default for FileStream {
     fn default() -> Self {
         Self {
             sources: Vec::new(),
+            char_buffers: Vec::new(),
             current_source: 0,
             position: 0,
-            current_chars: Vec::new(),
             location: Location {
                 row: 1,
                 col: 1,
@@ -169,13 +169,16 @@ impl FileStream {
                 })?;
         }
 
+        let char_buffers = sources
+            .iter()
+            .map(|source| source.data.chars().collect::<Vec<_>>().into_boxed_slice())
+            .collect::<Vec<_>>();
         let first_file = sources[0].path.clone();
-        let first_chars: Vec<char> = sources[0].data.chars().collect();
         Ok(Self {
             sources,
+            char_buffers,
             current_source: 0,
             position: 0,
-            current_chars: first_chars,
             location: Location {
                 row: 1,
                 col: 1,
@@ -199,13 +202,12 @@ impl CharacterProvider for FileStream {
     fn next_char(&mut self) -> Option<(char, Location)> {
         // Check if we need to move to next source
         while self.current_source < self.sources.len() {
-            if self.position >= self.current_chars.len() {
+            if self.position >= self.char_buffers[self.current_source].len() {
                 // Move to next source
                 self.current_source += 1;
                 self.position = 0;
 
                 if self.current_source < self.sources.len() {
-                    self.current_chars = self.sources[self.current_source].data.chars().collect();
                     // Update location for new file
                     self.location = Location {
                         row: 1,
@@ -217,7 +219,7 @@ impl CharacterProvider for FileStream {
             }
 
             // Get character from current position
-            let ch = self.current_chars[self.position];
+            let ch = self.char_buffers[self.current_source][self.position];
             let loc = self.location.clone();
 
             self.position += 1;
@@ -499,4 +501,70 @@ fn is_valid_namespace_component(name: &str) -> bool {
     }
 
     chars.all(|ch| ch.is_ascii() && (ch.is_ascii_alphanumeric() || ch == '_'))
+}
+
+#[cfg(test)]
+mod unit_tests {
+    use super::*;
+    use std::fs;
+
+    #[test]
+    fn from_sources_precomputes_char_buffers_for_every_source() {
+        let temp_root = std::env::temp_dir().join(format!(
+            "fol_stream_char_buffers_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("System time should be after unix epoch")
+                .as_nanos()
+        ));
+        fs::create_dir_all(temp_root.join("nested"))
+            .expect("Should create temp folders for char-buffer test");
+        fs::write(temp_root.join("alpha.fol"), "alpha\n")
+            .expect("Should write alpha temp source");
+        fs::write(temp_root.join("nested/beta.fol"), "beta🌍\n")
+            .expect("Should write beta temp source");
+
+        let sources = Source::init(
+            temp_root
+                .to_str()
+                .expect("Temp root path should be valid UTF-8"),
+            SourceType::Folder,
+        )
+        .expect("Should discover temp sources for char-buffer test");
+        let mut stream =
+            FileStream::from_sources(sources).expect("Should build stream with cached buffers");
+
+        assert_eq!(
+            stream.char_buffers.len(),
+            stream.sources.len(),
+            "FileStream should precompute one reusable character buffer per source"
+        );
+        for (source, buffer) in stream.sources.iter().zip(stream.char_buffers.iter()) {
+            let buffered: String = buffer.iter().collect();
+            assert_eq!(
+                buffered, source.data,
+                "Each cached character buffer should mirror the eagerly loaded source text"
+            );
+        }
+
+        let expected_buffers = stream
+            .char_buffers
+            .iter()
+            .map(|buffer| buffer.to_vec())
+            .collect::<Vec<_>>();
+        while let Some((_ch, _loc)) = stream.next_char() {}
+
+        assert_eq!(
+            stream
+                .char_buffers
+                .iter()
+                .map(|buffer| buffer.to_vec())
+                .collect::<Vec<_>>(),
+            expected_buffers,
+            "Streaming across file boundaries should reuse precomputed character buffers without rebuilding them"
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
 }
