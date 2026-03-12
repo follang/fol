@@ -1,3 +1,4 @@
+use crate::model::SymbolKind;
 use fol_diagnostics::{DiagnosticLocation, ToDiagnosticLocation};
 use fol_parser::ast::SyntaxOrigin;
 use fol_types::Glitch;
@@ -106,6 +107,34 @@ impl ToDiagnosticLocation for ResolverError {
                 length: None,
             }
         }
+    }
+}
+
+pub(crate) fn format_origin_brief(origin: &SyntaxOrigin) -> String {
+    match &origin.file {
+        Some(file) => format!("{file}:{}:{}", origin.line, origin.column),
+        None => format!("line {}:{}", origin.line, origin.column),
+    }
+}
+
+pub(crate) fn symbol_kind_label(kind: SymbolKind) -> &'static str {
+    match kind {
+        SymbolKind::ValueBinding => "value binding",
+        SymbolKind::LabelBinding => "label binding",
+        SymbolKind::DestructureBinding => "destructure binding",
+        SymbolKind::Routine => "routine",
+        SymbolKind::Type => "type",
+        SymbolKind::Alias => "alias",
+        SymbolKind::Definition => "definition",
+        SymbolKind::Segment => "segment",
+        SymbolKind::Implementation => "implementation",
+        SymbolKind::Standard => "standard",
+        SymbolKind::ImportAlias => "import alias",
+        SymbolKind::GenericParameter => "generic parameter",
+        SymbolKind::Parameter => "parameter",
+        SymbolKind::Capture => "capture",
+        SymbolKind::LoopBinder => "loop binder",
+        SymbolKind::RollingBinder => "rolling binder",
     }
 }
 

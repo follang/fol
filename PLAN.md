@@ -614,6 +614,8 @@ Status: done
 
 #### Slice 5.2
 
+Status: done
+
 - Harden duplicate and ambiguity diagnostics.
 - Report both primary and secondary sites where useful.
 - Add multi-file duplicate/ambiguity tests.

@@ -155,8 +155,12 @@ fn test_resolver_reports_ambiguous_use_loc_targets() {
                 && error
                     .to_string()
                     .contains(&format!("local import target '{package}' is ambiguous"))
+                && error.to_string().contains(&format!("package '{package}'"))
+                && error
+                    .to_string()
+                    .contains(&format!("namespace '{package}::{package}'"))
         }),
-        "Resolver should report ambiguous local import targets explicitly"
+        "Resolver should report ambiguous local import targets with both candidate scopes"
     );
 
     fs::remove_dir_all(&temp_root)

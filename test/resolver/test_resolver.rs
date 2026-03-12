@@ -51,6 +51,9 @@ mod block_scopes;
 #[path = "test_resolver_parts/comment_transparency.rs"]
 mod comment_transparency;
 #[cfg(test)]
+#[path = "test_resolver_parts/ambiguity_diagnostics.rs"]
+mod ambiguity_diagnostics;
+#[cfg(test)]
 #[path = "test_resolver_parts/diagnostic_quality.rs"]
 mod diagnostic_quality;
 #[cfg(test)]

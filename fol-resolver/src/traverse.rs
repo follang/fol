@@ -3,6 +3,7 @@ use crate::{
         binding_names, insert_import_record, semantic_node, top_level_duplicate_key,
         top_level_scope_id,
     },
+    errors::{format_origin_brief, symbol_kind_label},
     model::{
         ReferenceKind, ResolvedProgram, ResolvedReference, ResolvedSymbol, ScopeKind, SymbolKind,
     },
@@ -863,11 +864,18 @@ fn insert_local_symbol(
         .filter_map(|id| program.symbol(*id))
         .find(|symbol| symbol.duplicate_key == duplicate_key)
     {
+        let existing_site = existing
+            .origin
+            .as_ref()
+            .map(format_origin_brief)
+            .unwrap_or_else(|| "an unknown location".to_string());
         return Err(ResolverError::with_origin(
             ResolverErrorKind::DuplicateSymbol,
             format!(
-                "duplicate local symbol '{}' conflicts with existing {:?} declaration",
-                name, existing.kind
+                "duplicate local symbol '{}' conflicts with existing {} declaration first declared at {}",
+                name,
+                symbol_kind_label(existing.kind),
+                existing_site
             ),
             existing
                 .origin
@@ -1191,7 +1199,7 @@ fn resolve_visible_symbol_of_kinds(
             if matching_symbols.len() > 1 {
                 return Err(error_with_optional_origin(
                     ResolverErrorKind::AmbiguousReference,
-                    format!("name '{}' is ambiguous in lexical scope", name),
+                    lexical_ambiguity_message(name, missing_role, &matching_symbols),
                     origin,
                 ));
             }
@@ -1199,7 +1207,7 @@ fn resolve_visible_symbol_of_kinds(
             if allowed_kinds.is_empty() {
                 return Err(error_with_optional_origin(
                     ResolverErrorKind::AmbiguousReference,
-                    format!("name '{}' is ambiguous in lexical scope", name),
+                    lexical_ambiguity_message(name, missing_role, &matching_symbols),
                     origin,
                 ));
             }
@@ -1502,7 +1510,12 @@ fn resolve_symbol_in_scope(
         )),
         _ => Err(error_with_optional_origin(
             ResolverErrorKind::AmbiguousReference,
-            format!("{} '{}' is ambiguous", missing_role, full_path),
+            format!(
+                "{} '{}' is ambiguous; candidates: {}",
+                missing_role,
+                full_path,
+                describe_symbol_candidates(&matching_symbols)
+            ),
             origin,
         )),
     }
@@ -1538,4 +1551,39 @@ fn scope_namespace(program: &ResolvedProgram, scope_id: ScopeId) -> String {
         ScopeKind::NamespaceRoot { namespace } => namespace.clone(),
         other => panic!("qualified path root scope must be package or namespace, got {other:?}"),
     }
+}
+
+fn describe_symbol_candidates(symbols: &[&ResolvedSymbol]) -> String {
+    symbols
+        .iter()
+        .map(|symbol| {
+            let site = symbol
+                .origin
+                .as_ref()
+                .map(format_origin_brief)
+                .unwrap_or_else(|| "an unknown location".to_string());
+            format!(
+                "{} '{}' at {}",
+                symbol_kind_label(symbol.kind),
+                symbol.name,
+                site
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("; ")
+}
+
+fn lexical_ambiguity_message(
+    name: &str,
+    missing_role: Option<&str>,
+    symbols: &[&ResolvedSymbol],
+) -> String {
+    let subject = match missing_role {
+        Some(role) => format!("{role} '{name}'"),
+        None => format!("name '{name}'"),
+    };
+    format!(
+        "{subject} is ambiguous in lexical scope; candidates: {}",
+        describe_symbol_candidates(symbols)
+    )
 }

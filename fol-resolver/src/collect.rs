@@ -1,4 +1,5 @@
 use crate::{
+    errors::{format_origin_brief, symbol_kind_label},
     model::{ResolvedImport, ResolvedProgram, ResolvedSymbol, SymbolKind},
     ImportId, ResolverError, ResolverErrorKind, ScopeId, SourceUnitId, SymbolId,
 };
@@ -239,11 +240,18 @@ fn insert_symbol(
         .filter_map(|id| program.symbol(*id))
         .find(|symbol| symbol.duplicate_key == duplicate_key)
     {
+        let existing_site = existing
+            .origin
+            .as_ref()
+            .map(format_origin_brief)
+            .unwrap_or_else(|| "an unknown location".to_string());
         return Err(ResolverError::with_origin(
             ResolverErrorKind::DuplicateSymbol,
             format!(
-                "duplicate symbol '{}' conflicts with existing {:?} declaration",
-                name, existing.kind
+                "duplicate symbol '{}' conflicts with existing {} declaration first declared at {}",
+                name,
+                symbol_kind_label(existing.kind),
+                existing_site
             ),
             origin.unwrap_or_else(|| {
                 existing

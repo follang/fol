@@ -1,4 +1,5 @@
 use crate::{ResolvedProgram, ResolverError, ResolverErrorKind, ScopeId};
+use crate::model::ScopeKind;
 use fol_parser::ast::FolType;
 use std::collections::BTreeSet;
 
@@ -93,7 +94,15 @@ fn resolve_location_target(
             program,
             import.alias_symbol,
             ResolverErrorKind::AmbiguousReference,
-            format!("local import target '{}' is ambiguous", joined),
+            format!(
+                "local import target '{}' is ambiguous; candidates: {}",
+                joined,
+                candidate_scopes
+                    .iter()
+                    .map(|scope_id| describe_import_target(program, *scope_id))
+                    .collect::<Vec<_>>()
+                    .join("; ")
+            ),
         )),
     }
 }
@@ -128,5 +137,15 @@ fn import_kind_label(path_type: &FolType) -> &'static str {
         FolType::Standard { .. } => "std",
         FolType::Url { .. } => "url",
         _ => "unknown",
+    }
+}
+
+fn describe_import_target(program: &ResolvedProgram, scope_id: ScopeId) -> String {
+    match program.scope(scope_id).map(|scope| &scope.kind) {
+        Some(ScopeKind::ProgramRoot { package }) => format!("package '{package}'"),
+        Some(ScopeKind::NamespaceRoot { namespace }) => format!("namespace '{namespace}'"),
+        Some(ScopeKind::SourceUnitRoot { path }) => format!("source unit '{path}'"),
+        Some(other) => format!("scope {other:?}"),
+        None => "unknown scope".to_string(),
     }
 }
