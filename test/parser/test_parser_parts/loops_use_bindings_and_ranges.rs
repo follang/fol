@@ -91,7 +91,7 @@ fn test_use_declaration_parsing() {
         .expect("Parser should parse use declaration");
 
     let use_decl = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => program_root_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
                 if let AstNode::UseDecl {
@@ -131,7 +131,7 @@ fn test_use_declaration_supports_multiple_names_and_paths() {
 
     match ast {
         AstNode::Program { declarations } => {
-            let imports: Vec<_> = program_surface_nodes(&declarations)
+            let imports: Vec<_> = program_root_nodes(&declarations)
                 .into_iter()
                 .filter_map(|node| {
                     if let AstNode::UseDecl {
@@ -182,7 +182,7 @@ fn test_use_declaration_supports_multiple_names_in_function_bodies() {
 
     match ast {
         AstNode::Program { declarations } => {
-            assert!(program_surface_nodes(&declarations).into_iter().any(|node| {
+            assert!(declarations.iter().any(|node| {
                 matches!(
                     node,
                     AstNode::FunDecl { body, .. }
@@ -206,7 +206,7 @@ fn test_use_declaration_accepts_empty_option_brackets() {
         .expect("Parser should parse use[] declarations");
 
     let use_decl = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => program_root_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
                 if let AstNode::UseDecl {
@@ -254,7 +254,7 @@ fn test_use_declaration_allows_omitted_colon_before_path_type() {
         .expect("Parser should parse use declaration without colon after name");
 
     let use_decl = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => program_root_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
                 if let AstNode::UseDecl {
@@ -293,7 +293,7 @@ fn test_use_declaration_unwraps_quoted_paths() {
         .expect("Parser should parse use declaration with quoted path");
 
     let use_decl = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => program_root_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
                 if let AstNode::UseDecl {
@@ -332,7 +332,7 @@ fn test_use_declaration_supports_qualified_and_bracketed_types() {
         .expect("Parser should parse use declaration with qualified bracketed source-kind type");
 
     let use_decl = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => program_root_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
                 if let AstNode::UseDecl {
@@ -436,7 +436,7 @@ fn test_var_parsing_without_type_hint() {
 
     match ast {
         AstNode::Program { declarations } => {
-            let var_decl = program_surface_nodes(&declarations)
+            let var_decl = program_root_nodes(&declarations)
                 .into_iter()
                 .find_map(|node| {
                     if let AstNode::VarDecl {
@@ -475,7 +475,7 @@ fn test_var_parsing_supports_qualified_and_bracketed_type_hints() {
 
     match ast {
         AstNode::Program { declarations } => {
-            let var_decl = program_surface_nodes(&declarations)
+            let var_decl = program_root_nodes(&declarations)
                 .into_iter()
                 .find_map(|node| {
                     if let AstNode::VarDecl {
@@ -522,7 +522,7 @@ fn test_let_parsing_supports_bracketed_type_hints() {
     match ast {
         AstNode::Program { declarations } => {
             assert!(
-                    program_surface_nodes(&declarations).into_iter().any(|node| {
+                    only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                         matches!(
                             node,
                             AstNode::VarDecl {
@@ -619,7 +619,7 @@ fn test_boolean_keyword_literals_parse_in_var_and_return() {
 
     let (has_true_var, has_false_return) = match ast {
         AstNode::Program { declarations } => {
-            let has_true_var = program_surface_nodes(&declarations).into_iter().any(|node| {
+            let has_true_var = only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::VarDecl { name, value: Some(value), .. }
@@ -628,7 +628,7 @@ fn test_boolean_keyword_literals_parse_in_var_and_return() {
                 )
             });
 
-            let has_false_return = program_surface_nodes(&declarations).into_iter().any(|node| {
+            let has_false_return = only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Return { value: Some(value) }
@@ -664,7 +664,7 @@ fn test_return_expression_precedence_mul_before_add() {
         .expect("Parser should parse precedence function");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
                 if let AstNode::Return { value: Some(value) } = node {
@@ -708,7 +708,7 @@ fn test_return_expression_parentheses_override_precedence() {
         .expect("Parser should parse parenthesized precedence function");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
                 if let AstNode::Return { value: Some(value) } = node {
@@ -753,7 +753,7 @@ fn test_range_expressions_parse_in_assignment_and_return() {
 
     match ast {
         AstNode::Program { declarations } => {
-            let has_range_assignment = program_surface_nodes(&declarations).into_iter().any(|node| {
+            let has_range_assignment = only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Assignment { value, .. }
@@ -770,7 +770,7 @@ fn test_range_expressions_parse_in_assignment_and_return() {
                 )
             });
 
-            let has_range_return = program_surface_nodes(&declarations).into_iter().any(|node| {
+            let has_range_return = only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Return { value: Some(value) }
@@ -843,7 +843,7 @@ fn test_open_start_range_expressions_parse_in_assignment_and_return() {
 
     match ast {
         AstNode::Program { declarations } => {
-            let has_open_start_assignment = program_surface_nodes(&declarations).into_iter().any(|node| {
+            let has_open_start_assignment = only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Assignment { value, .. }
@@ -859,7 +859,7 @@ fn test_open_start_range_expressions_parse_in_assignment_and_return() {
                 )
             });
 
-            let has_open_start_return = program_surface_nodes(&declarations).into_iter().any(|node| {
+            let has_open_start_return = only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Return { value: Some(value) }
@@ -932,7 +932,7 @@ fn test_open_end_range_expressions_parse_in_assignment_and_return() {
 
     match ast {
         AstNode::Program { declarations } => {
-            let has_open_end_assignment = program_surface_nodes(&declarations).into_iter().any(|node| {
+            let has_open_end_assignment = only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Assignment { value, .. }
@@ -948,7 +948,7 @@ fn test_open_end_range_expressions_parse_in_assignment_and_return() {
                 )
             });
 
-            let has_open_end_return = program_surface_nodes(&declarations).into_iter().any(|node| {
+            let has_open_end_return = only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Return { value: Some(value) }
