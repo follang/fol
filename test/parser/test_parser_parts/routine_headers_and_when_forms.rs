@@ -15,7 +15,7 @@ fn test_routine_generic_headers_accept_unconstrained_names() {
     match ast {
         AstNode::Program { declarations } => {
             assert!(
-                program_surface_nodes(&declarations).into_iter().any(|node| {
+                program_root_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::FunDecl { name, generics, params, .. }
@@ -31,7 +31,7 @@ fn test_routine_generic_headers_accept_unconstrained_names() {
                 "Function generic header should allow bare generic names"
             );
             assert!(
-                program_surface_nodes(&declarations).into_iter().any(|node| {
+                program_root_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::ProDecl { name, generics, params, .. }
@@ -152,7 +152,7 @@ fn test_routine_parameters_support_default_values() {
     match ast {
         AstNode::Program { declarations } => {
             assert!(
-                program_surface_nodes(&declarations).into_iter().any(|node| {
+                program_root_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::FunDecl { name, params, .. }
@@ -174,7 +174,7 @@ fn test_routine_parameters_support_default_values() {
                 "Function parameters should preserve default expressions in the AST"
             );
             assert!(
-                program_surface_nodes(&declarations).into_iter().any(|node| {
+                program_root_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::ProDecl { name, params, .. }
@@ -217,7 +217,7 @@ fn test_routine_parameters_support_grouped_names_and_semicolon_separators() {
     match ast {
         AstNode::Program { declarations } => {
             assert!(
-                    program_surface_nodes(&declarations).into_iter().any(|node| {
+                    program_root_nodes(&declarations).into_iter().any(|node| {
                         matches!(
                             node,
                             AstNode::FunDecl { name, params, .. }
@@ -238,7 +238,7 @@ fn test_routine_parameters_support_grouped_names_and_semicolon_separators() {
                     "Routine headers should expand grouped parameter names and accept ';' separators"
                 );
             assert!(
-                    program_surface_nodes(&declarations).into_iter().any(|node| {
+                    program_root_nodes(&declarations).into_iter().any(|node| {
                         matches!(
                             node,
                             AstNode::ProDecl { name, params, .. }
@@ -630,7 +630,7 @@ fn test_routine_declarations_support_any_and_none_types() {
     match ast {
         AstNode::Program { declarations } => {
             assert!(
-                    program_surface_nodes(&declarations).into_iter().any(|node| {
+                    program_root_nodes(&declarations).into_iter().any(|node| {
                         matches!(
                             node,
                             AstNode::FunDecl { name, params, return_type, .. }
@@ -645,7 +645,7 @@ fn test_routine_declarations_support_any_and_none_types() {
                     "Routine parameters should lower any to FolType::Any"
                 );
             assert!(
-                program_surface_nodes(&declarations).into_iter().any(|node| {
+                program_root_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::ProDecl { name, return_type, .. }
@@ -672,7 +672,7 @@ fn test_when_statement_supports_of_cases_with_complex_types() {
 
     match ast {
         AstNode::Program { declarations } => {
-            let when_stmt = program_surface_nodes(&declarations).into_iter().find_map(|node| {
+            let when_stmt = only_root_routine_body_nodes(&declarations).into_iter().find_map(|node| {
                 if let AstNode::When { cases, default, .. } = node {
                     Some((cases.clone(), default.clone()))
                 } else {
@@ -733,7 +733,7 @@ fn test_when_statement_supports_is_in_and_has_cases() {
 
     match ast {
         AstNode::Program { declarations } => {
-            let when_stmt = program_surface_nodes(&declarations).into_iter().find_map(|node| {
+            let when_stmt = only_root_routine_body_nodes(&declarations).into_iter().find_map(|node| {
                 if let AstNode::When { cases, default, .. } = node {
                     Some((cases.clone(), default.clone()))
                 } else {
@@ -800,7 +800,7 @@ fn test_when_statement_supports_on_cases() {
 
     match ast {
         AstNode::Program { declarations } => {
-            let when_stmt = program_surface_nodes(&declarations).into_iter().find_map(|node| {
+            let when_stmt = only_root_routine_body_nodes(&declarations).into_iter().find_map(|node| {
                 if let AstNode::When { cases, default, .. } = node {
                     Some((cases.clone(), default.clone()))
                 } else {
@@ -843,7 +843,7 @@ fn test_when_statement_supports_star_default_case() {
 
     match ast {
         AstNode::Program { declarations } => {
-            let when_stmt = program_surface_nodes(&declarations).into_iter().find_map(|node| {
+            let when_stmt = only_root_routine_body_nodes(&declarations).into_iter().find_map(|node| {
                 if let AstNode::When { default, .. } = node {
                     default.clone()
                 } else {
