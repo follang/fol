@@ -8,7 +8,9 @@ str[]
 ```
 
 ## Number
-Number type is an abstraction of intiger and float type. It can be imaginary too.
+Number type is an abstraction of integer and float type in the current hardened
+front-end. Imaginary-number support is still outside the active stream/lexer/parser
+contract.
 ```
 num[]
 ```
