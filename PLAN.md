@@ -622,6 +622,8 @@ Status: done
 
 #### Slice 5.3
 
+Status: done
+
 - Add shadowing diagnostics only where the chosen resolver contract requires them.
 - Keep this explicit and test-backed instead of heuristic.
 

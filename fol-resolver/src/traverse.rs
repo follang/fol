@@ -856,6 +856,8 @@ fn insert_local_symbol(
     duplicate_key: String,
 ) -> Result<SymbolId, ResolverError> {
     let canonical_name = fol_types::canonical_identifier_key(name);
+    // Resolver contract: one scope cannot redefine the same binding shape, but
+    // nested scopes may intentionally shadow names from parent scopes.
     if let Some(existing) = program
         .scope(scope_id)
         .and_then(|scope| scope.symbol_keys.get(&canonical_name))

@@ -96,6 +96,9 @@ mod routine_scopes;
 #[path = "test_resolver_parts/source_units.rs"]
 mod source_units;
 #[cfg(test)]
+#[path = "test_resolver_parts/shadowing_contract.rs"]
+mod shadowing_contract;
+#[cfg(test)]
 #[path = "test_resolver_parts/surface_audit.rs"]
 mod surface_audit;
 #[cfg(test)]
