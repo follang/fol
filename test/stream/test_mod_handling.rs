@@ -72,7 +72,7 @@ mod mod_handling_tests {
                 "single/var.fol",
                 "var/let.fol",
                 "var/var.fol",
-                "var2/number.fol/file.fol",
+                "var2/number_fol/file.fol",
                 "var2/var.fol",
             ],
             "Folder traversal order should stay stable for downstream phases"

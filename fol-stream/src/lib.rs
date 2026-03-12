@@ -454,13 +454,28 @@ fn compute_namespace(
             let mut namespace_parts = vec![package_name.to_string()];
 
             for component in rel_path.components() {
-                if let Some(name) = component.as_os_str().to_str() {
-                    // Skip .mod directories in namespace (they were already filtered out)
-                    // Also validate that component names are valid identifiers
-                    if !name.ends_with(".mod") && is_valid_namespace_component(name) {
-                        namespace_parts.push(name.to_string());
-                    }
+                let name = component.as_os_str().to_str().ok_or_else(|| -> Box<dyn Glitch> {
+                    Box::new(BasicError {
+                        message: "Invalid namespace component: path segment is not valid UTF-8"
+                            .to_string(),
+                    })
+                })?;
+
+                // Skip .mod directories in namespace (they were already filtered out)
+                if name.ends_with(".mod") {
+                    continue;
                 }
+
+                if !is_valid_namespace_component(name) {
+                    return Err(Box::new(BasicError {
+                        message: format!(
+                            "Invalid namespace component '{}': namespace components must follow identifier rules",
+                            name
+                        ),
+                    }));
+                }
+
+                namespace_parts.push(name.to_string());
             }
 
             Ok(namespace_parts.join("::"))

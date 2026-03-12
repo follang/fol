@@ -70,12 +70,12 @@ mod integration_tests {
         let temp_root = std::env::temp_dir()
             .join(format!("fol_stream_lexer_order_{}_{}", std::process::id(), stamp));
 
-        fs::create_dir_all(temp_root.join("10_alpha")).expect("Should create alpha fixture dir");
-        fs::create_dir_all(temp_root.join("20_beta")).expect("Should create beta fixture dir");
+        fs::create_dir_all(temp_root.join("alpha_10")).expect("Should create alpha fixture dir");
+        fs::create_dir_all(temp_root.join("beta_20")).expect("Should create beta fixture dir");
         fs::write(temp_root.join("00_root.fol"), "root_token").expect("Should write root fixture");
-        fs::write(temp_root.join("10_alpha/entry.fol"), "alpha_token")
+        fs::write(temp_root.join("alpha_10/entry.fol"), "alpha_token")
             .expect("Should write alpha fixture");
-        fs::write(temp_root.join("20_beta/entry.fol"), "beta_token")
+        fs::write(temp_root.join("beta_20/entry.fol"), "beta_token")
             .expect("Should write beta fixture");
 
         let mut file_stream = FileStream::from_folder(
