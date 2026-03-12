@@ -1,11 +1,85 @@
 # Declarations
 
-Each file in a folder (with extension `.fol`) is part of a package. There is no need for imports or other things at the top of the file. They share the same scope, and each declaration is order independent for all files.
+Each `.fol` file inside a folder is part of the same package.
 
+The important part is that files are **connected, but not merged**:
+
+- every physical `.fol` file is still its own source file
+- files in the same folder share one package scope
+- declarations are order independent across those files
+- a declaration started in one file can **not** continue into the next file
+
+There is no need to import sibling files from the same package. They already belong to the same package scope.
+
+## Package, Namespace, And File Scope
+
+It helps to think about source layout in three layers:
+
+- **package scope**: all `.fol` files directly inside the package folder
+- **namespace scope**: declarations inside subfolders of that package
+- **file scope**: declarations marked `hid`, which stay visible only inside their own file
+
+In short:
+
+- same folder = same package
+- subfolder = nested namespace
+- `hid` = file only
+
+### Package scope
+
+Files that live directly in the package root share one package scope:
+
+```
+root/
+    math/
+        add.fol
+        sub.fol
+```
+
+Both `add.fol` and `sub.fol` belong to package `math`, so declarations from one file may be used by the other without importing the sibling file.
+
+### Namespace scope
+
+Subfolders do not create a new package by themselves. They create nested namespaces inside the same package:
+
+```
+root/
+    math/
+        add.fol
+        stats/
+            mean.fol
+```
+
+Here:
+
+- `add.fol` is in package namespace `math`
+- `mean.fol` is in package namespace `math::stats`
+
+Code may reach namespace members either by:
+
+- direct `use`
+- or qualified access with `::`
+
+### File scope
+
+Sometimes a declaration should stay inside one file even though the package is shared.
+That is what `hid` is for.
+
+```
+// file1.fol
+var[hid] cache_key: str = "local"
+```
+
+```
+// file2.fol
+pro[] main: int = {
+    .echo(cache_key)      // error: hidden declarations are file-only
+}
+```
 
 ## Namespaces
 
-A namespace can be defined in a subfolder of the main foler. And they can be nested.
+A namespace can be defined in a subfolder of the main folder, and namespaces can be nested.
 
 To acces the namespace there are two ways:
 - direct import with `use`
@@ -31,6 +105,19 @@ pro[] main: int = {
 }
 
 ```
+
+## Mental model
+
+For source layout, the mental model is:
+
+- one folder root gives one package
+- each file in that folder is a real source file in that package
+- subfolders extend the namespace path
+- `use` imports packages or namespaces
+- `hid` keeps a declaration private to one file
+
+This means FOL is **not** "one file = one module".
+The package is the folder; the file is a source unit inside that package.
 
 ## Blocks
 
@@ -59,5 +146,4 @@ pro[] main: int = {
     def mark: blk[]                 // $mark A named block that can be referenced, usually for "jump" statements
 }
 ```
-
 

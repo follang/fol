@@ -11,6 +11,29 @@ There are two type of import declartions:
 - system libraries
 - local libraries
 
+## What `use` imports
+
+`use` works against the source-layout model:
+
+- the folder root is the package
+- subfolders are namespaces inside that package
+- a file is only a source file, not a separate module by itself
+
+So a `use` target is normally:
+
+- a whole package
+- or one namespace inside that package
+
+`use` does **not** mean "import another file from the same folder".
+Files in the same package already share package scope.
+Imports are for reaching another package or another namespace boundary.
+
+Also note:
+
+- `use` brings in exported functionality
+- `hid` declarations remain file-only even inside the same package
+- importing a package does not erase the original file boundary rules
+
 ## System libraries
 This is how including other libraries works, for example include `fmt` module from standard library:
 ```
@@ -46,6 +69,9 @@ Then to acces only a namespace:
 ```
 use space: loc = {"../folder/bender/space"};
 ```
+
+That second form is namespace import, not "single file import".
+If `space` contains multiple `.fol` files in the same folder, they still belong to the same imported namespace.
 
 ## URL libraries
 Libraries can be directly URL imported:

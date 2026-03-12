@@ -161,7 +161,21 @@ pro[] main: int = {
 
 ### Scope
 
-As disscussed before, files with same name share the same functions and global variables. However, those variables and functions can't be accesed if the whole module is imported in another project. In order for a variable to be accest by the importer, it needs to be have the `exp` flag option, so `var[exp]`, or `var[+]`
+As discussed before, files in the same package share one package scope. That means package-level functions and variables may be used across sibling files without importing those sibling files one by one.
+
+However, package-private declarations are still different from exported declarations:
+
+- default visibility means the declaration is available inside the same package
+- `exp` / `+` means the declaration may be used through imports from outside the package
+- `hid` / `-` means the declaration is visible only inside its own file
+
+So the visibility model is:
+
+- package scope by default
+- exported outside the package with `exp`
+- file-only with `hid`
+
+In order for a variable to be accessed by the importer, it needs the `exp` flag option, so `var[exp]`, or `var[+]`.
 
 *module **shko**, file1.fol*
 ```
@@ -181,7 +195,7 @@ def vij: mod[] = {
     }
 }
 ```
-There is even the opposite option too. If we want a function/variable to be only used inside the file ( so same package but only for that file ) then we use `hid` option flag: `var[hid]` or `var[-]`
+There is even the opposite option too. If we want a function or variable to be used only inside its own file, even though the package is shared, then we use the `hid` option flag: `var[hid]` or `var[-]`.
 
 *file1.fol*
 ```
@@ -263,4 +277,3 @@ To acces container variables, brackets like this `[]` are use:
 ```
 var shortvar = anothermulti[1][3]     // compiler will copy the value `anothermulti[1][3]` (which is a float) to a new memory location
 ```
-
