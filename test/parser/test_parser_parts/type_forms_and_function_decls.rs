@@ -14,7 +14,7 @@ fn test_use_declarations_support_bare_module_types() {
     match ast {
         AstNode::Program { declarations } => {
             assert!(
-                program_surface_nodes(&declarations).into_iter().any(|node| {
+                program_root_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::UseDecl {
@@ -76,7 +76,7 @@ fn test_type_alias_parsing_supports_array_types() {
     match ast {
         AstNode::Program { declarations } => {
             assert!(
-                    program_surface_nodes(&declarations).into_iter().any(|node| {
+                    program_root_nodes(&declarations).into_iter().any(|node| {
                         matches!(
                             node,
                             AstNode::TypeDecl {
@@ -93,7 +93,7 @@ fn test_type_alias_parsing_supports_array_types() {
                     "Type alias should lower arr[T, N] to FolType::Array"
                 );
             assert!(
-                    program_surface_nodes(&declarations).into_iter().any(|node| {
+                    program_root_nodes(&declarations).into_iter().any(|node| {
                         matches!(
                             node,
                             AstNode::TypeDecl {
@@ -161,7 +161,7 @@ fn test_type_alias_parsing_supports_matrix_types() {
     match ast {
         AstNode::Program { declarations } => {
             assert!(
-                    program_surface_nodes(&declarations).into_iter().any(|node| {
+                    program_root_nodes(&declarations).into_iter().any(|node| {
                         matches!(
                             node,
                             AstNode::TypeDecl {
@@ -179,7 +179,7 @@ fn test_type_alias_parsing_supports_matrix_types() {
                     "Type alias should lower mat[T, dims...] to FolType::Matrix"
                 );
             assert!(
-                    program_surface_nodes(&declarations).into_iter().any(|node| {
+                    program_root_nodes(&declarations).into_iter().any(|node| {
                         matches!(
                             node,
                             AstNode::TypeDecl {
@@ -248,7 +248,7 @@ fn test_type_references_support_braced_function_types() {
     match ast {
         AstNode::Program { declarations } => {
             assert!(
-                    program_surface_nodes(&declarations).into_iter().any(|node| {
+                    program_root_nodes(&declarations).into_iter().any(|node| {
                         matches!(
                             node,
                             AstNode::TypeDecl {
@@ -272,7 +272,7 @@ fn test_type_references_support_braced_function_types() {
                     "Type alias should lower braced function types into FolType::Function"
                 );
             assert!(
-                    program_surface_nodes(&declarations).into_iter().any(|node| {
+                    program_root_nodes(&declarations).into_iter().any(|node| {
                         matches!(
                             node,
                             AstNode::FunDecl { name, params, .. }
@@ -344,7 +344,7 @@ fn test_function_types_are_supported_in_use_and_binding_declarations() {
     match ast {
         AstNode::Program { declarations } => {
             assert!(
-                    program_surface_nodes(&declarations).into_iter().any(|node| {
+                    program_root_nodes(&declarations).into_iter().any(|node| {
                         matches!(
                             node,
                             AstNode::UseDecl {
@@ -360,7 +360,7 @@ fn test_function_types_are_supported_in_use_and_binding_declarations() {
                     "Use declarations should preserve function path types"
                 );
             assert!(
-                    program_surface_nodes(&declarations).into_iter().any(|node| {
+                    program_root_nodes(&declarations).into_iter().any(|node| {
                         matches!(
                             node,
                             AstNode::VarDecl {
@@ -377,18 +377,23 @@ fn test_function_types_are_supported_in_use_and_binding_declarations() {
                     "Top-level bindings should accept function type hints"
                 );
             assert!(
-                    program_surface_nodes(&declarations).into_iter().any(|node| {
+                    declarations.iter().any(|node| {
                         matches!(
                             node,
-                            AstNode::VarDecl {
-                                name,
-                                type_hint: Some(FolType::Function { params, return_type }),
-                                value: Some(_),
-                                ..
-                            }
-                            if name == "formatter"
-                                && matches!(params.as_slice(), [FolType::Named { name }] if name == "str")
-                                && matches!(return_type.as_ref(), FolType::Named { name } if name == "str")
+                            AstNode::FunDecl { name, body, .. }
+                            if name == "local_binding"
+                                && body.iter().any(|statement| matches!(
+                                    statement,
+                                    AstNode::VarDecl {
+                                        name,
+                                        type_hint: Some(FolType::Function { params, return_type }),
+                                        value: Some(_),
+                                        ..
+                                    }
+                                    if name == "formatter"
+                                        && matches!(params.as_slice(), [FolType::Named { name }] if name == "str")
+                                        && matches!(return_type.as_ref(), FolType::Named { name } if name == "str")
+                                ))
                         )
                     }),
                     "Local let bindings should accept function type hints"
@@ -445,7 +450,7 @@ fn test_function_parsing() {
                         "Function source should produce parser nodes"
                     );
                     assert!(
-                        program_surface_nodes(&declarations).into_iter().any(|node| {
+                        only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                             matches!(
                                 node,
                                 AstNode::Return {
@@ -480,7 +485,7 @@ fn test_function_body_let_parsing() {
 
     let (has_inferred_local, has_typed_local, has_return_identifier) = match ast {
         AstNode::Program { declarations } => {
-            let has_inferred_local = program_surface_nodes(&declarations).into_iter().any(|node| {
+            let has_inferred_local = only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::VarDecl { name, type_hint, value, options }
@@ -491,7 +496,7 @@ fn test_function_body_let_parsing() {
                 )
             });
 
-            let has_typed_local = program_surface_nodes(&declarations).into_iter().any(|node| {
+            let has_typed_local = only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::VarDecl {
@@ -505,7 +510,7 @@ fn test_function_body_let_parsing() {
                 )
             });
 
-            let has_return_identifier = program_surface_nodes(&declarations).into_iter().any(|node| {
+            let has_return_identifier = only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Return { value: Some(value) }
@@ -545,7 +550,7 @@ fn test_function_body_con_parsing() {
 
     let (has_inferred_local, has_typed_local, has_return_identifier) = match ast {
         AstNode::Program { declarations } => {
-            let has_inferred_local = program_surface_nodes(&declarations).into_iter().any(|node| {
+            let has_inferred_local = only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::VarDecl { name, type_hint, value, options }
@@ -556,7 +561,7 @@ fn test_function_body_con_parsing() {
                 )
             });
 
-            let has_typed_local = program_surface_nodes(&declarations).into_iter().any(|node| {
+            let has_typed_local = only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::VarDecl {
@@ -570,7 +575,7 @@ fn test_function_body_con_parsing() {
                 )
             });
 
-            let has_return_identifier = program_surface_nodes(&declarations).into_iter().any(|node| {
+            let has_return_identifier = only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Return { value: Some(value) }
@@ -803,7 +808,7 @@ fn test_routine_option_brackets_parse_for_functions_and_procedures() {
     match ast {
         AstNode::Program { declarations } => {
             assert!(
-                program_surface_nodes(&declarations).into_iter().any(|node| {
+                program_root_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::FunDecl { name, options, .. }
@@ -813,7 +818,7 @@ fn test_routine_option_brackets_parse_for_functions_and_procedures() {
                 "fun[] should parse with an explicit empty options list"
             );
             assert!(
-                program_surface_nodes(&declarations).into_iter().any(|node| {
+                program_root_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::ProDecl { name, options, .. }
@@ -846,7 +851,7 @@ fn test_routine_generic_headers_parse_for_functions_and_procedures() {
     match ast {
         AstNode::Program { declarations } => {
             assert!(
-                program_surface_nodes(&declarations).into_iter().any(|node| {
+                program_root_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::FunDecl { name, generics, params, .. }
@@ -874,7 +879,7 @@ fn test_routine_generic_headers_parse_for_functions_and_procedures() {
                 "Function generic header should populate generics separately from params"
             );
             assert!(
-                program_surface_nodes(&declarations).into_iter().any(|node| {
+                program_root_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::ProDecl { name, generics, params, .. }
