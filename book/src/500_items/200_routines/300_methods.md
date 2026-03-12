@@ -16,17 +16,24 @@ pro (parser)update(code: int): int = {
 
 The receiver type appears in parentheses right after `fun` or `pro`, followed by the method name.
 
-Receiver types must be user-defined named types. Builtin scalar/special language types (like `int`, `bol`, `str`, `flt`, and keyword-like builtins) are rejected for method receiver declarations.
+Current parser-supported receiver syntax is intentionally broader than a named-only rule.
+At parse time, receiver positions accept named, qualified, builtin-scalar, and
+bracketed/composite type references. This keeps extension-style examples such as
+`typ[ext] int: int; pro (int)print(): non = { ... }` and dispatch examples on extended
+builtin aliases in scope for the front-end.
+
+The dedicated parser-level rejection in this hardening phase is still for special
+builtin forms such as `any`, `none`, and `non`.
 
 Invalid example:
 
 ```fol
-fun (int)parse_msg(code: int): str = {
+fun (any)parse_msg(code: int): str = {
     return "ok";
 }
 ```
 
-This form reports: `Method receiver type must be a user-defined named type`.
+This form reports: `Method receiver type must be a named or scalar type`.
 
 Method calls use standard dot syntax:
 

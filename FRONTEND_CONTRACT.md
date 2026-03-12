@@ -309,6 +309,11 @@ tests actually enforce today.
   directly in the AST.
 - Receiver types survive at both top level and inside nested type-member routine
   declarations.
+- Receiver validation is currently parser-level and syntax-oriented: the front-end keeps
+  named, qualified, scalar, and bracketed/composite receiver references instead of
+  narrowing methods to one semantic receiver family during parsing.
+- The dedicated parser rejection in this hardening phase is still for special
+  receiver-like builtins such as `any`, `none`, and `non`.
 - Qualified and bracketed receiver type references stay lowered through the same
   `FolType` surfaces already used by the rest of the parser.
 - Invalid receiver-type diagnostics now anchor to the rejected receiver token itself
