@@ -243,7 +243,7 @@ Target files:
 
 - [ ] Reject `_` as a standalone identifier if the book remains authoritative.
 - [x] Reject repeated underscore runs if the book remains authoritative.
-- [ ] Decide whether identifier canonicalization belongs in the lexer crate, a shared front-end helper, or parser-side utilities.
+- [x] Decide whether identifier canonicalization belongs in the lexer crate, a shared front-end helper, or parser-side utilities.
 - [x] Add a single front-end identifier normalization helper that later parser checks can reuse.
 - [x] Decide whether keyword recognition is exact-case only or uses the same canonicalization policy.
 - [x] Add lexer fixtures for valid and invalid identifier edges.
@@ -444,7 +444,7 @@ Target files:
 This is the recommended implementation order once the decision freeze is complete.
 
 1. [ ] Freeze the comment, literal, receiver, package, and root-surface decisions in `FRONTEND_CONTRACT.md`.
-2. [ ] Introduce one shared identifier canonicalization helper and test it directly.
+2. [x] Introduce one shared identifier canonicalization helper and test it directly.
 3. [x] Apply the canonicalization helper to parser duplicate checks before changing more AST shape.
 4. [x] Preserve method receiver types in the AST and add direct retention tests.
 5. [x] Introduce explicit logical routine kind in the AST and migrate `log` lowering.
