@@ -155,13 +155,13 @@ Target files:
 ### 7.5 Method And Routine Authority
 
 - [x] Decide whether method receiver types are restricted to user-defined named types as the book says.
-- [ ] Decide whether `log` becomes a first-class routine kind in the AST.
+- [x] Decide whether `log` becomes a first-class routine kind in the AST.
 - [x] Decide whether qualified paths remain string-encoded temporarily or are promoted now.
 
 Acceptance for Phase 0:
 
-- [ ] Every unresolved front-end ambiguity above has one chosen direction.
-- [ ] `FRONTEND_CONTRACT.md` reflects those choices before implementation begins.
+- [x] Every unresolved front-end ambiguity above has one chosen direction.
+- [x] `FRONTEND_CONTRACT.md` reflects those choices before implementation begins.
 
 ## 8. Phase 1: Stream Contract Cleanup
 
