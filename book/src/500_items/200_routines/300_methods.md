@@ -33,7 +33,7 @@ fun (any)parse_msg(code: int): str = {
 }
 ```
 
-This form reports: `Method receiver type must be a named or scalar type`.
+This form reports: `Method receiver type cannot be any, non, or none`.
 
 Method calls use standard dot syntax:
 

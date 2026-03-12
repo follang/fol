@@ -274,7 +274,7 @@ fn test_invalid_method_receiver_type_reports_receiver_token_span() {
     assert!(
         parse_error
             .to_string()
-            .contains("Method receiver type must be a named or scalar type"),
+            .contains("Method receiver type cannot be any, non, or none"),
         "Invalid method receiver type should report the dedicated receiver diagnostic, got: {}",
         parse_error
     );
@@ -292,6 +292,53 @@ fn test_invalid_method_receiver_type_reports_receiver_token_span() {
         parse_error.length(),
         3,
         "Invalid receiver diagnostic span should cover the rejected receiver token"
+    );
+}
+
+#[test]
+fn test_none_like_method_receiver_type_reports_dedicated_receiver_diagnostic() {
+    let temp_root = unique_temp_root("invalid_none_receiver_span");
+    std::fs::create_dir_all(&temp_root).expect("Should create temp receiver diagnostic dir");
+    let fixture = temp_root.join("invalid_none_receiver_span.fol");
+    std::fs::write(&fixture, "fun (non) parse_msg(): int = { return 1; }\n")
+        .expect("Should write invalid none-like receiver diagnostic fixture");
+
+    let mut file_stream = FileStream::from_file(
+        fixture
+            .to_str()
+            .expect("Receiver diagnostic fixture path should be UTF-8"),
+    )
+    .expect("Should read invalid none-like receiver diagnostic fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject `non` as a method receiver type");
+
+    std::fs::remove_dir_all(&temp_root).ok();
+
+    let parse_error = errors
+        .first()
+        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        .expect("First parser error should be ParseError");
+
+    assert!(
+        parse_error
+            .to_string()
+            .contains("Method receiver type cannot be any, non, or none"),
+        "None-like method receiver types should share the dedicated receiver diagnostic, got: {}",
+        parse_error
+    );
+    assert_eq!(
+        parse_error.column(),
+        6,
+        "Invalid none-like receiver diagnostic should anchor to the receiver token"
+    );
+    assert_eq!(
+        parse_error.length(),
+        3,
+        "Invalid none-like receiver diagnostic span should cover the rejected receiver token"
     );
 }
 

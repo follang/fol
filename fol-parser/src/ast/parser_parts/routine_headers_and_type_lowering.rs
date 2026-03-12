@@ -702,7 +702,7 @@ impl AstParser {
                 | Some(FolType::None) => {
                     return Err(Box::new(ParseError::from_token(
                         &receiver_token,
-                        "Method receiver type must be a named or scalar type".to_string(),
+                        "Method receiver type cannot be any, non, or none".to_string(),
                     )));
                 }
                 Some(_) => {}
