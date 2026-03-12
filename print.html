@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-5e9c7c02.js";
+            window.path_to_searchindex_js = "searchindex-d069bd3c.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-c28f7be1.js"></script>
@@ -560,9 +560,15 @@ comment family.</p>
 <pre><code>`[doc] this is a documentation comment`
 </code></pre>
 <h2 id="current-front-end-compatibility"><a class="header" href="#current-front-end-compatibility">Current front-end compatibility</a></h2>
-<p>The hardened front-end still accepts <code>//</code> and <code>/* ... */</code> comments as compatibility
-syntax. They are not the authoritative book syntax, but they remain intentionally
-supported by the current lexer and parser.</p>
+<p>The hardened front-end still accepts <code>//</code> and <code>/* ... */</code> comments as frozen
+compatibility syntax. They are not the authoritative book spelling, but they remain
+intentionally supported by the current lexer and parser.</p>
+<p>The current front-end also preserves comment kind and raw spelling past lexing. In the
+parser today, standalone root comments and standalone routine-body comments lower to
+explicit AST comment nodes, and many inline expression-owned comments now survive
+through <code>AstNode::Commented</code> wrappers around the parsed node they belong to. That
+gives later doc-comment tooling retained comment content to build on instead of
+re-scanning raw source text.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="whitespaces"><a class="header" href="#whitespaces">Whitespaces</a></h1>
 <p>Whitespace is any non-empty string containing only characters that have the below Unicode properties:</p>
