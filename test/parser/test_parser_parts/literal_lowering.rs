@@ -366,6 +366,35 @@ fn test_top_level_cooked_and_raw_escape_modes_lower_through_full_pipeline() {
 }
 
 #[test]
+fn test_cooked_and_raw_quote_families_normalize_to_one_ast_literal_shape() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_literal_normalized_quote_families.fol")
+            .expect("Should read normalized quote-family fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should normalize quote families after literal lowering");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert_eq!(
+                declarations,
+                vec![
+                    AstNode::Literal(Literal::Character('c')),
+                    AstNode::Literal(Literal::Character('c')),
+                    AstNode::Literal(Literal::String("xy".to_string())),
+                    AstNode::Literal(Literal::String("xy".to_string())),
+                ],
+                "Cooked and raw quote families should lower to the same AST literal variants once their payload content is equivalent"
+            );
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
 fn test_top_level_boolean_and_nil_literals_lower_cleanly() {
     let mut file_stream = FileStream::from_file("test/parser/simple_literal_logic.fol")
         .expect("Should read logical literal lowering fixture");
