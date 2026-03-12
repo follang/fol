@@ -55,6 +55,7 @@ impl SyntaxIndex {
 pub struct ParsedTopLevel {
     pub node_id: SyntaxNodeId,
     pub node: AstNode,
+    pub meta: ParsedTopLevelMeta,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -70,6 +71,36 @@ pub struct ParsedPackage {
     pub package: String,
     pub source_units: Vec<ParsedSourceUnit>,
     pub syntax_index: SyntaxIndex,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ParsedDeclVisibility {
+    Normal,
+    Exported,
+    Hidden,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ParsedDeclScope {
+    Package,
+    Namespace,
+    File,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct ParsedTopLevelMeta {
+    pub visibility: Option<ParsedDeclVisibility>,
+    pub scope: Option<ParsedDeclScope>,
+}
+
+impl ParsedTopLevel {
+    pub fn declaration_visibility(&self) -> Option<ParsedDeclVisibility> {
+        self.meta.visibility
+    }
+
+    pub fn declaration_scope(&self) -> Option<ParsedDeclScope> {
+        self.meta.scope
+    }
 }
 
 impl ParsedPackage {
@@ -97,7 +128,7 @@ impl ParsedPackage {
             path_to_index.insert(source.path.clone(), index);
         }
 
-        for entry in entries {
+        for mut entry in entries {
             let unit_index = syntax_index
                 .origin(entry.node_id)
                 .and_then(|origin| origin.file.as_ref())
@@ -106,6 +137,12 @@ impl ParsedPackage {
                 .unwrap_or(0);
 
             if let Some(unit) = source_units.get_mut(unit_index) {
+                entry.meta = ParsedTopLevelMeta {
+                    visibility: entry.node.declaration_visibility(),
+                    scope: entry
+                        .node
+                        .declaration_scope(&unit.package, &unit.namespace),
+                };
                 unit.items.push(entry);
             }
         }
@@ -968,6 +1005,43 @@ pub struct RecordInitField {
 }
 
 impl AstNode {
+    pub fn declaration_visibility(&self) -> Option<ParsedDeclVisibility> {
+        match self {
+            AstNode::VarDecl { options, .. }
+            | AstNode::LabDecl { options, .. }
+            | AstNode::DestructureDecl { options, .. } => {
+                Some(var_decl_visibility(options))
+            }
+            AstNode::FunDecl { options, .. }
+            | AstNode::ProDecl { options, .. }
+            | AstNode::LogDecl { options, .. } => Some(fun_decl_visibility(options)),
+            AstNode::TypeDecl { options, .. } => Some(type_decl_visibility(options)),
+            AstNode::UseDecl { options, .. } => Some(use_decl_visibility(options)),
+            AstNode::DefDecl { options, .. }
+            | AstNode::SegDecl { options, .. }
+            | AstNode::ImpDecl { options, .. }
+            | AstNode::StdDecl { options, .. } => Some(decl_visibility(options)),
+            AstNode::AliasDecl { .. } => Some(ParsedDeclVisibility::Normal),
+            AstNode::Commented { node, .. } => node.declaration_visibility(),
+            _ => None,
+        }
+    }
+
+    pub fn declaration_scope(
+        &self,
+        package: &str,
+        namespace: &str,
+    ) -> Option<ParsedDeclScope> {
+        let visibility = self.declaration_visibility()?;
+        if visibility == ParsedDeclVisibility::Hidden {
+            Some(ParsedDeclScope::File)
+        } else if namespace == package {
+            Some(ParsedDeclScope::Package)
+        } else {
+            Some(ParsedDeclScope::Namespace)
+        }
+    }
+
     pub fn syntax_id(&self) -> Option<SyntaxNodeId> {
         match self {
             AstNode::FunDecl { syntax_id, .. }
@@ -1350,6 +1424,76 @@ impl AstNode {
     /// Accept a visitor for the visitor pattern
     pub fn accept<V: AstVisitor>(&self, visitor: &mut V) {
         visitor.visit(self);
+    }
+}
+
+fn decl_visibility(options: &[DeclOption]) -> ParsedDeclVisibility {
+    if options
+        .iter()
+        .any(|option| matches!(option, DeclOption::Hidden))
+    {
+        ParsedDeclVisibility::Hidden
+    } else if options
+        .iter()
+        .any(|option| matches!(option, DeclOption::Export))
+    {
+        ParsedDeclVisibility::Exported
+    } else {
+        ParsedDeclVisibility::Normal
+    }
+}
+
+fn var_decl_visibility(options: &[VarOption]) -> ParsedDeclVisibility {
+    if options
+        .iter()
+        .any(|option| matches!(option, VarOption::Hidden))
+    {
+        ParsedDeclVisibility::Hidden
+    } else if options
+        .iter()
+        .any(|option| matches!(option, VarOption::Export))
+    {
+        ParsedDeclVisibility::Exported
+    } else {
+        ParsedDeclVisibility::Normal
+    }
+}
+
+fn fun_decl_visibility(options: &[FunOption]) -> ParsedDeclVisibility {
+    if options
+        .iter()
+        .any(|option| matches!(option, FunOption::Export))
+    {
+        ParsedDeclVisibility::Exported
+    } else {
+        ParsedDeclVisibility::Normal
+    }
+}
+
+fn type_decl_visibility(options: &[TypeOption]) -> ParsedDeclVisibility {
+    if options
+        .iter()
+        .any(|option| matches!(option, TypeOption::Export))
+    {
+        ParsedDeclVisibility::Exported
+    } else {
+        ParsedDeclVisibility::Normal
+    }
+}
+
+fn use_decl_visibility(options: &[UseOption]) -> ParsedDeclVisibility {
+    if options
+        .iter()
+        .any(|option| matches!(option, UseOption::Hidden))
+    {
+        ParsedDeclVisibility::Hidden
+    } else if options
+        .iter()
+        .any(|option| matches!(option, UseOption::Export))
+    {
+        ParsedDeclVisibility::Exported
+    } else {
+        ParsedDeclVisibility::Normal
     }
 }
 

@@ -26,6 +26,43 @@ fn write_folder_fixture(root: &std::path::Path, files: &[(&str, &str)]) {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+enum SourceUnitDeclFamily {
+    Use,
+    Def,
+    Seg,
+    Imp,
+    Var,
+    Lab,
+    Fun,
+    Pro,
+    Log,
+    Type,
+    Alias,
+    Standard,
+}
+
+fn source_unit_has_decl_family(
+    source_unit: &ParsedSourceUnit,
+    family: SourceUnitDeclFamily,
+) -> bool {
+    source_unit.items.iter().any(|item| match (&item.node, family) {
+        (AstNode::UseDecl { .. }, SourceUnitDeclFamily::Use)
+        | (AstNode::DefDecl { .. }, SourceUnitDeclFamily::Def)
+        | (AstNode::SegDecl { .. }, SourceUnitDeclFamily::Seg)
+        | (AstNode::ImpDecl { .. }, SourceUnitDeclFamily::Imp)
+        | (AstNode::VarDecl { .. }, SourceUnitDeclFamily::Var)
+        | (AstNode::LabDecl { .. }, SourceUnitDeclFamily::Lab)
+        | (AstNode::FunDecl { .. }, SourceUnitDeclFamily::Fun)
+        | (AstNode::ProDecl { .. }, SourceUnitDeclFamily::Pro)
+        | (AstNode::LogDecl { .. }, SourceUnitDeclFamily::Log)
+        | (AstNode::TypeDecl { .. }, SourceUnitDeclFamily::Type)
+        | (AstNode::AliasDecl { .. }, SourceUnitDeclFamily::Alias)
+        | (AstNode::StdDecl { .. }, SourceUnitDeclFamily::Standard) => true,
+        _ => false,
+    })
+}
+
 #[test]
 fn test_parse_package_groups_top_level_items_by_source_unit() {
     let temp_root = unique_temp_root("grouping");
@@ -251,4 +288,82 @@ fn test_decl_package_preserves_comment_only_source_units() {
         source_unit_nodes(&parsed.source_units[1]).as_slice(),
         [AstNode::VarDecl { name, .. }] if name == "ready"
     ));
+}
+
+#[test]
+fn test_parse_package_assigns_all_supported_root_decl_families_to_matching_source_units() {
+    let temp_root = unique_temp_root("all_decl_families");
+    let fixture_files = [
+        (
+            "00_use.fol",
+            "test/parser/simple_use_bare_mod_type.fol",
+            SourceUnitDeclFamily::Use,
+        ),
+        (
+            "01_def.fol",
+            "test/parser/simple_def_module.fol",
+            SourceUnitDeclFamily::Def,
+        ),
+        (
+            "02_seg.fol",
+            "test/parser/simple_seg_module.fol",
+            SourceUnitDeclFamily::Seg,
+        ),
+        (
+            "03_imp.fol",
+            "test/parser/simple_imp_basic.fol",
+            SourceUnitDeclFamily::Imp,
+        ),
+        ("04_var.fol", "test/parser/simple_var.fol", SourceUnitDeclFamily::Var),
+        (
+            "05_lab.fol",
+            "test/parser/simple_lab_decl.fol",
+            SourceUnitDeclFamily::Lab,
+        ),
+        ("06_fun.fol", "test/parser/simple_fun.fol", SourceUnitDeclFamily::Fun),
+        ("07_pro.fol", "test/parser/simple_pro.fol", SourceUnitDeclFamily::Pro),
+        ("08_log.fol", "test/parser/simple_log.fol", SourceUnitDeclFamily::Log),
+        (
+            "09_typ.fol",
+            "test/parser/simple_typ_object_marker.fol",
+            SourceUnitDeclFamily::Type,
+        ),
+        ("10_ali.fol", "test/parser/simple_ali.fol", SourceUnitDeclFamily::Alias),
+        (
+            "11_std.fol",
+            "test/parser/simple_std_protocol.fol",
+            SourceUnitDeclFamily::Standard,
+        ),
+    ];
+
+    fs::create_dir_all(&temp_root).expect("Should create declaration-family fixture root");
+    for (target, source_fixture, _) in fixture_files {
+        let contents =
+            fs::read_to_string(source_fixture).expect("Should read declaration-family fixture");
+        fs::write(temp_root.join(target), contents)
+            .expect("Should write declaration-family package fixture");
+    }
+
+    let parsed = parse_package_from_folder(
+        temp_root
+            .to_str()
+            .expect("Temporary declaration-family fixture path should be UTF-8"),
+    );
+
+    fs::remove_dir_all(&temp_root).ok();
+
+    assert_eq!(
+        parsed.source_units.len(),
+        fixture_files.len(),
+        "Each declaration-family fixture file should remain its own parsed source unit"
+    );
+
+    for (index, (_, _, family)) in fixture_files.iter().enumerate() {
+        assert!(
+            source_unit_has_decl_family(&parsed.source_units[index], *family),
+            "Source unit {} should retain its declaration family {:?} instead of mixing files",
+            index,
+            family
+        );
+    }
 }

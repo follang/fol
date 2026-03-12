@@ -4,8 +4,8 @@ use fol_lexer::lexer::stage3::Elements;
 use fol_lexer::token::KEYWORD;
 use fol_parser::ast::{
     AstNode, AstParser, BindingPattern, CharEncoding, CommentKind, FloatSize, FolType, InquiryTarget,
-    IntSize, Literal, Parameter, ParseError, ParsedPackage, ParsedSourceUnit, ParsedTopLevel,
-    QualifiedPath, SyntaxOrigin, TypeDefinition,
+    IntSize, Literal, Parameter, ParseError, ParsedDeclScope, ParsedDeclVisibility, ParsedPackage,
+    ParsedSourceUnit, ParsedTopLevel, QualifiedPath, SyntaxOrigin, TypeDefinition,
 };
 use fol_stream::FileStream;
 
@@ -245,6 +245,9 @@ mod control_flow_contexts;
 #[cfg(test)]
 #[path = "test_parser_parts/file_boundaries.rs"]
 mod file_boundaries;
+#[cfg(test)]
+#[path = "test_parser_parts/file_visibility_prep.rs"]
+mod file_visibility_prep;
 #[cfg(test)]
 #[path = "test_parser_parts/package_source_units.rs"]
 mod package_source_units;

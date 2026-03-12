@@ -393,9 +393,9 @@ Each slice should land with tests in the same commit and be gated by:
 
 Progress snapshot as of 2026-03-12:
 
-- completed: `0.1`, `0.2`, `1.1`, `1.2`, `1.3`, `2.1`, `2.2`, `2.3`, `2.4`, `3.1`, `3.2`, `3.3`, `3.4`, `4.1`, `4.2`, `4.3`
-- in progress overall: the CLI now consumes the declaration-oriented parsed package shape while preserving parse-error diagnostics
-- still open: visibility prep, hardening, and docs handoff
+- completed: `0.1`, `0.2`, `1.1`, `1.2`, `1.3`, `2.1`, `2.2`, `2.3`, `2.4`, `3.1`, `3.2`, `3.3`, `3.4`, `4.1`, `4.2`, `4.3`, `5.1`, `5.2`, `6.1`
+- in progress overall: parsed top-level items now carry explicit declaration visibility/scope metadata while source-unit assignment is covered across the full root declaration surface
+- still open: parser error-path hardening, lexer/parser boundary hardening, and docs handoff
 
 ### Phase 0: Planning And Contract Setup
 
@@ -525,6 +525,7 @@ Progress snapshot as of 2026-03-12:
 
 - Ensure declaration nodes with visibility options remain tied to source units
 - Add tests that `exp` and `hid` declarations retain unit-aware placement
+- Status: complete on 2026-03-12
 
 #### Slice 5.2
 
@@ -534,6 +535,7 @@ Progress snapshot as of 2026-03-12:
 - file-private declarations
 - Do not resolve them yet
 - Add tests for same-package different-file cases
+- Status: complete on 2026-03-12
 
 ### Phase 6: Hardening
 
@@ -541,6 +543,7 @@ Progress snapshot as of 2026-03-12:
 
 - Audit all parser-owned declaration families for correct source-unit assignment
 - Add tests for any missed declaration form
+- Status: complete on 2026-03-12
 
 #### Slice 6.2
 

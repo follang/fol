@@ -75,7 +75,11 @@ impl AstParser {
         let node_id = self
             .record_syntax_origin(token)
             .expect("top-level parsing should have active syntax tracking");
-        entries.push(ParsedTopLevel { node_id, node });
+        entries.push(ParsedTopLevel {
+            node_id,
+            node,
+            meta: crate::ParsedTopLevelMeta::default(),
+        });
     }
 
     fn reject_file_root_form<F>(
