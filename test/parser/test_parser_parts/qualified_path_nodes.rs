@@ -48,3 +48,36 @@ fn test_named_type_helpers_preserve_flat_and_structured_forms() {
     };
     assert_eq!(structured.named_text().as_deref(), Some("pkg::cache::entry"));
 }
+
+#[test]
+fn test_method_call_children_include_structured_receiver_before_args() {
+    let receiver = AstNode::QualifiedIdentifier {
+        path: QualifiedPath::new(vec![
+            "pkg".to_string(),
+            "cache".to_string(),
+            "entry".to_string(),
+        ]),
+    };
+    let call = AstNode::MethodCall {
+        object: Box::new(receiver),
+        method: "read".to_string(),
+        args: vec![AstNode::Literal(Literal::Integer(1))],
+    };
+
+    let children = call.children();
+    assert_eq!(children.len(), 2);
+    assert!(matches!(
+        children[0],
+        AstNode::QualifiedIdentifier { path }
+            if path.segments
+                == vec![
+                    "pkg".to_string(),
+                    "cache".to_string(),
+                    "entry".to_string(),
+                ]
+    ));
+    assert!(matches!(
+        children[1],
+        AstNode::Literal(Literal::Integer(1))
+    ));
+}

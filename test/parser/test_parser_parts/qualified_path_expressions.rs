@@ -136,7 +136,15 @@ fn test_qualified_path_method_call_statement_parsing() {
                         stmt,
                         AstNode::MethodCall { object, method, .. }
                         if method == "echo"
-                            && matches!(object.as_ref(), AstNode::Identifier { name } if name == "io::console::writer")
+                            && matches!(
+                                object.as_ref(),
+                                AstNode::QualifiedIdentifier { path }
+                                if path.segments == vec![
+                                    "io".to_string(),
+                                    "console".to_string(),
+                                    "writer".to_string(),
+                                ]
+                            )
                     ))
                 )
             }));

@@ -914,12 +914,17 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Box<dyn Glitch>> {
-        let object = AstNode::Identifier {
-            name: self.parse_named_path(
-                tokens,
-                "Expected object identifier for method call",
-                "Expected name after '::' in method call",
-            )?,
+        let path = self.parse_qualified_path(
+            tokens,
+            "Expected object identifier for method call",
+            "Expected name after '::' in method call",
+        )?;
+        let object = if path.is_qualified() {
+            AstNode::QualifiedIdentifier { path }
+        } else {
+            AstNode::Identifier {
+                name: path.joined(),
+            }
         };
         self.skip_ignorable(tokens);
 

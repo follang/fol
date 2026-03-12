@@ -968,10 +968,13 @@ impl AstNode {
             }
             AstNode::AsyncStage | AstNode::AwaitStage => vec![],
             AstNode::Spawn { task } => vec![task.as_ref()],
-            AstNode::FunctionCall { args, .. }
-            | AstNode::QualifiedFunctionCall { args, .. }
-            | AstNode::MethodCall { args, .. } => {
+            AstNode::FunctionCall { args, .. } | AstNode::QualifiedFunctionCall { args, .. } => {
                 args.iter().collect()
+            }
+            AstNode::MethodCall { object, args, .. } => {
+                let mut children = vec![object.as_ref()];
+                children.extend(args.iter());
+                children
             }
             AstNode::Invoke { callee, args } => {
                 let mut children = vec![callee.as_ref()];
