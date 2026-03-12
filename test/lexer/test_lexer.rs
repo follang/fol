@@ -459,9 +459,10 @@ mod lexer_tests {
             vec![
                 (KEYWORD::Identifier, "alpha".to_string()),
                 (KEYWORD::Void(VOID::Boundary), String::new()),
+                (KEYWORD::Comment(COMMENT::Backtick), "`hidden`".to_string()),
                 (KEYWORD::Identifier, "beta".to_string()),
             ],
-            "Cross-file boundaries must keep identifiers and following comment delimiters separate"
+            "Cross-file boundaries must keep identifiers, preserved comments, and following identifiers separate"
         );
     }
 
@@ -934,17 +935,17 @@ mod lexer_tests {
     }
 
     #[test]
-    fn test_backticks_are_ignorable_comments() {
+    fn test_backticks_surface_as_parser_visible_comments() {
         let tokens = tokenize_file("test/lexer/backticks.fol");
-        let significant: Vec<(KEYWORD, String)> = tokens
+        let comments: Vec<(KEYWORD, String)> = tokens
             .into_iter()
-            .filter(|(key, _)| !key.is_space() && !key.is_eof())
+            .filter(|(key, _)| key.is_comment())
             .collect();
 
         assert_eq!(
-            significant,
-            Vec::<(KEYWORD, String)>::new(),
-            "Backtick-delimited comments should be fully ignorable at the parser-facing lexer boundary"
+            comments,
+            vec![(KEYWORD::Comment(COMMENT::Backtick), "`macroish`".to_string())],
+            "Backtick-delimited comments should now survive through the parser-facing lexer output"
         );
     }
 
@@ -1030,29 +1031,29 @@ mod lexer_tests {
     }
 
     #[test]
-    fn test_stage2_normalizes_backtick_and_doc_comments_back_to_void_tokens() {
+    fn test_stage2_preserves_backtick_and_doc_comments() {
         let backtick_tokens = tokenize_stage2_file("test/lexer/backticks.fol");
         let doc_tokens = tokenize_stage2_file("test/lexer/doc_comments.fol");
 
         assert!(
-            backtick_tokens.iter().any(|(key, content)| key.is_space() && content == " "),
-            "Stage 2 should collapse ordinary backtick comments back to normalized void separators"
+            backtick_tokens
+                .iter()
+                .any(|(key, content)| *key == KEYWORD::Comment(COMMENT::Backtick) && content == "`macroish`"),
+            "Stage 2 should preserve ordinary backtick comments as explicit comment tokens"
         );
         assert!(
-            !backtick_tokens.iter().any(|(key, _)| key.is_comment()),
-            "Stage 2 should not leak backtick comment tokens past the internal classification boundary"
+            doc_tokens.iter().any(|(key, content)| {
+                *key == KEYWORD::Comment(COMMENT::Doc) && content == "`[doc] module docs`"
+            }),
+            "Stage 2 should preserve doc comments instead of collapsing them to whitespace"
         );
         assert!(
             doc_tokens
                 .iter()
-                .filter(|(key, content)| key.is_space() && content == " ")
+                .filter(|(key, _)| *key == KEYWORD::Comment(COMMENT::Doc))
                 .count()
-                >= 2,
-            "Stage 2 should also collapse doc comments back to normalized void separators"
-        );
-        assert!(
-            !doc_tokens.iter().any(|(key, _)| key.is_comment()),
-            "Stage 2 should not leak doc comment tokens past the internal classification boundary"
+                == 2,
+            "Stage 2 should keep both doc comments as comment tokens"
         );
     }
 
@@ -1075,7 +1076,7 @@ mod lexer_tests {
     }
 
     #[test]
-    fn test_multiline_backtick_comments_remain_parser_ignorable() {
+    fn test_multiline_backtick_comments_remain_parser_visible() {
         let tokens = tokenize_file("test/lexer/backtick_multiline_comments.fol");
         let significant: Vec<(KEYWORD, String)> = tokens
             .into_iter()
@@ -1085,13 +1086,17 @@ mod lexer_tests {
         assert_eq!(
             significant,
             vec![
+                (
+                    KEYWORD::Comment(COMMENT::Backtick),
+                    "`note one\nnote two`".to_string(),
+                ),
                 (KEYWORD::Keyword(BUILDIN::Var), "var".to_string()),
                 (KEYWORD::Identifier, "after".to_string()),
                 (KEYWORD::Symbol(SYMBOL::Equal), "=".to_string()),
                 (KEYWORD::Literal(LITERAL::Decimal), "1".to_string()),
                 (KEYWORD::Symbol(SYMBOL::Semi), "; ".to_string()),
             ],
-            "Multiline backtick comments should stay ignorable in the parser-facing lexer output"
+            "Multiline backtick comments should remain visible in the parser-facing lexer output"
         );
     }
 
@@ -1420,26 +1425,50 @@ mod lexer_tests {
     }
 
     #[test]
-    fn test_comments_are_fully_ignorable_and_void_payloads_are_normalized() {
+    fn test_comments_reach_parser_facing_lexer_output() {
         let tokens = tokenize_file("test/lexer/comments.fol");
         let comment_tokens: Vec<_> = tokens.iter().filter(|(key, _)| key.is_comment()).collect();
-        let normalized_voids: Vec<_> = tokens
-            .iter()
-            .filter(|(key, _)| key.is_void() && !key.is_eof())
-            .collect();
 
         assert!(
-            comment_tokens.is_empty(),
-            "Stage 3 should not expose ordinary comments as parser-visible tokens"
+            !comment_tokens.is_empty(),
+            "Stage 3 should expose ordinary comments as parser-visible tokens for later AST retention"
         );
         assert!(
-            normalized_voids.iter().all(|(_, content)| content == " "),
-            "Ignorable separators should normalize to a single-space payload"
+            comment_tokens.iter().any(|(key, content)| {
+                *key == KEYWORD::Comment(COMMENT::SlashLine)
+                    && content == "// single line comment"
+            }),
+            "Parser-facing comment tokens should retain their original raw spelling"
         );
     }
 
     #[test]
-    fn test_doc_comments_are_deferred_with_normal_comments() {
+    fn test_doc_comments_stay_distinct_in_parser_facing_lexer_output() {
+        let tokens = tokenize_file("test/lexer/doc_comments.fol");
+        let doc_comments: Vec<(KEYWORD, String)> = tokens
+            .iter()
+            .filter(|(key, _)| *key == KEYWORD::Comment(COMMENT::Doc))
+            .map(|(key, content)| (key.clone(), content.clone()))
+            .collect();
+
+        assert_eq!(
+            doc_comments,
+            vec![
+                (
+                    KEYWORD::Comment(COMMENT::Doc),
+                    "`[doc] module docs`".to_string(),
+                ),
+                (
+                    KEYWORD::Comment(COMMENT::Doc),
+                    "`[doc] block docs`".to_string(),
+                ),
+            ],
+            "Backtick doc comments should remain distinguishable from ordinary comments in parser-facing lexer output"
+        );
+    }
+
+    #[test]
+    fn test_doc_comments_do_not_disturb_surrounding_code_tokens() {
         let tokens = tokenize_file("test/lexer/doc_comments.fol");
         let significant: Vec<(KEYWORD, String)> = tokens
             .into_iter()
@@ -1458,7 +1487,7 @@ mod lexer_tests {
                 (KEYWORD::Symbol(SYMBOL::Equal), "=".to_string()),
                 (KEYWORD::Literal(LITERAL::Decimal), "2".to_string()),
             ],
-            "Backtick doc comments should stay deferred and should not surface as a parser-visible token family yet"
+            "Preserved doc comments should still remain non-semantic for ordinary code tokenization"
         );
     }
 
@@ -1494,11 +1523,20 @@ mod lexer_tests {
     #[test]
     fn test_slash_line_comments_remain_supported_as_compatibility_comments() {
         let tokens = tokenize_file("test/lexer/slash_line_comments.fol");
+        let comment_tokens: Vec<(KEYWORD, String)> = tokens
+            .iter()
+            .filter(|(key, _)| *key == KEYWORD::Comment(COMMENT::SlashLine))
+            .map(|(key, content)| (key.clone(), content.clone()))
+            .collect();
         let significant: Vec<(KEYWORD, String)> = tokens
             .into_iter()
-            .filter(|(key, _)| !key.is_void() && !key.is_eof())
+            .filter(|(key, _)| !key.is_void() && !key.is_comment() && !key.is_eof())
             .collect();
 
+        assert!(
+            !comment_tokens.is_empty(),
+            "Slash line comments should stay preserved as explicit compatibility comment tokens"
+        );
         assert_eq!(
             significant,
             vec![
@@ -1515,11 +1553,20 @@ mod lexer_tests {
     #[test]
     fn test_slash_block_comments_remain_supported_as_compatibility_comments() {
         let tokens = tokenize_file("test/lexer/slash_block_comments.fol");
+        let comment_tokens: Vec<(KEYWORD, String)> = tokens
+            .iter()
+            .filter(|(key, _)| *key == KEYWORD::Comment(COMMENT::SlashBlock))
+            .map(|(key, content)| (key.clone(), content.clone()))
+            .collect();
         let significant: Vec<(KEYWORD, String)> = tokens
             .into_iter()
-            .filter(|(key, _)| !key.is_void() && !key.is_eof())
+            .filter(|(key, _)| !key.is_void() && !key.is_comment() && !key.is_eof())
             .collect();
 
+        assert!(
+            !comment_tokens.is_empty(),
+            "Slash block comments should stay preserved as explicit compatibility comment tokens"
+        );
         assert_eq!(
             significant,
             vec![
