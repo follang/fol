@@ -1,6 +1,7 @@
 pub mod collect;
 pub mod errors;
 pub mod ids;
+pub mod imports;
 pub mod model;
 pub mod traverse;
 
@@ -28,6 +29,7 @@ impl Resolver {
         let mut program = ResolvedProgram::new(syntax);
         collect::collect_top_level_symbols(&mut program)?;
         traverse::collect_routine_scopes(&mut program)?;
+        imports::validate_supported_import_kinds(&program)?;
         Ok(program)
     }
 }

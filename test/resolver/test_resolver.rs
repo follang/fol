@@ -68,3 +68,6 @@ mod top_level_collection;
 #[cfg(test)]
 #[path = "test_resolver_parts/top_level_duplicates.rs"]
 mod top_level_duplicates;
+#[cfg(test)]
+#[path = "test_resolver_parts/unsupported_imports.rs"]
+mod unsupported_imports;

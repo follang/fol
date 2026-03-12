@@ -563,6 +563,8 @@ Status: done
 
 #### Slice 4.3
 
+Status: done
+
 - Emit explicit unsupported diagnostics for `use` kinds not yet semantically implemented.
 - Add tests for `url`, `std`, and any parser-accepted but resolver-unsupported import kind used in real fixtures.
 
