@@ -293,7 +293,11 @@ impl AstParser {
         if current.is_empty() {
             return Err(Box::new(ParseError::from_token(
                 token,
-                "Expected use path segment".to_string(),
+                if pending_separator.is_some() {
+                    "Expected use path segment after separator".to_string()
+                } else {
+                    "Expected use path segment".to_string()
+                },
             )));
         }
 

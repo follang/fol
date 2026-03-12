@@ -33,6 +33,34 @@ fn use_decl_path_segments<'a>(
         .expect("Expected use declaration to expose structured path segments")
 }
 
+fn parse_use_path_fixture_error(source: &str) -> ParseError {
+    let temp_root = unique_temp_root("use_path_error");
+    fs::create_dir_all(&temp_root).expect("Should create temp use-path error fixture dir");
+    let fixture = temp_root.join("use_path_error.fol");
+    fs::write(&fixture, source).expect("Should write temp use-path error fixture");
+
+    let mut file_stream = FileStream::from_file(
+        fixture
+            .to_str()
+            .expect("Use-path error fixture path should be UTF-8"),
+    )
+    .expect("Should read temp use-path error fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Malformed use path fixture should fail parsing");
+
+    fs::remove_dir_all(&temp_root).ok();
+
+    errors
+        .into_iter()
+        .next()
+        .and_then(|error| error.as_any().downcast_ref::<ParseError>().cloned())
+        .expect("First use-path failure should be a ParseError")
+}
+
 #[test]
 fn test_use_declaration_accepts_direct_quoted_paths() {
     let mut file_stream =
@@ -300,4 +328,30 @@ fn test_use_declaration_preserves_mixed_separator_path_structure() {
         }
         _ => panic!("Expected program node"),
     }
+}
+
+#[test]
+fn test_use_declaration_rejects_dangling_separator_segments() {
+    let parse_error = parse_use_path_fixture_error("use warn: mod = std/;\n");
+
+    assert!(
+        parse_error
+            .to_string()
+            .contains("Expected use path segment after separator"),
+        "Dangling use-path separators should report an explicit segment diagnostic, got: {}",
+        parse_error
+    );
+}
+
+#[test]
+fn test_use_declaration_rejects_empty_segments_between_separators() {
+    let parse_error = parse_use_path_fixture_error("use warn: mod = std::::warn;\n");
+
+    assert!(
+        parse_error
+            .to_string()
+            .contains("Expected use path segment after separator"),
+        "Repeated use-path separators should report an explicit empty-segment diagnostic, got: {}",
+        parse_error
+    );
 }
