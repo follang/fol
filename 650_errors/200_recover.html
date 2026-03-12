@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-a1b14eae.js";
+            window.path_to_searchindex_js = "../searchindex-5e9c7c02.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-c28f7be1.js"></script>
@@ -180,7 +180,9 @@
 <pre><code>fun/pro name(args): ResultType : ErrorType = { ... }
 </code></pre>
 <p><code>report expr</code> should produce a value compatible with <code>ErrorType</code>.</p>
-<p>Parser type checks support forward routine declarations, so a reported routine/method can be declared later in the same file.</p>
+<p>The current hardening-phase front end does not type-check <code>report</code> expressions.
+The parser keeps <code>report</code> as a syntax form and leaves compatibility checks,
+forward declaration checks, and error propagation rules to later semantic work.</p>
 <pre><code class="language-fol">fun load(path: str): int : str = {
     report make_err(path)
     return 0
@@ -200,7 +202,9 @@ fun (parser)parse_err(code: int): str = {
     return "bad-input"
 }
 </code></pre>
-<p>If the forward-declared callee return type is incompatible with the routine error type, parser validation fails.</p>
+<p>If the forward-declared callee return type is incompatible with the routine error
+type, that is a later semantic error rather than a parser error in the current
+front end.</p>
 <pre><code class="language-fol">fun load_bad(path: str): int : str = {
     report make_code(path)
     return 0
@@ -210,7 +214,9 @@ fun make_code(path: str): int = {
     return 1
 }
 </code></pre>
-<p>This fails because <code>report make_code(path)</code> produces <code>int</code> while the routine error type is <code>str</code>.</p>
+<p>This is invalid because <code>report make_code(path)</code> produces <code>int</code> while the routine
+error type is <code>str</code>, but the current parser does not diagnose that mismatch on its
+own.</p>
 <p>When we use the keyword <code>report</code>, the error is returned to the routine’s error variable and the routine qutis executing (the routine, not the program).</p>
 <pre><code>use file: mod[std] = { std::fs::File }
 

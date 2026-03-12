@@ -35,7 +35,7 @@
             const path_to_root = "../../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../../searchindex-a1b14eae.js";
+            window.path_to_searchindex_js = "../../searchindex-5e9c7c02.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../../toc-c28f7be1.js"></script>
@@ -198,7 +198,7 @@ builtin forms such as <code>any</code>, <code>none</code>, and <code>non</code>.
     return "ok";
 }
 </code></pre>
-<p>This form reports: <code>Method receiver type must be a named or scalar type</code>.</p>
+<p>This form reports: <code>Method receiver type cannot be any, non, or none</code>.</p>
 <p>Method calls use standard dot syntax:</p>
 <pre><code class="language-fol">var tool: parser = parser.new()
 var msg: str = tool.parse_msg(10)
