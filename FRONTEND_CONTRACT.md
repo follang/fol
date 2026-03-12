@@ -241,6 +241,11 @@ tests actually enforce today.
 - `AstNode::Program { declarations }` is the single parser root.
 - `Program.declarations` contains real top-level declarations and top-level lowered
   statements or expressions that the parser accepts at file scope.
+- The current file-scope contract is intentionally mixed and script-like: declarations,
+  assignments, calls, control-flow, and literal expressions may coexist in the same
+  `Program.declarations` list.
+- When mixed file-scope input is accepted, `Program.declarations` preserves source
+  order instead of grouping declarations separately from executable root nodes.
 - Top-level `fun`, `log`, and `pro` declarations now stay as single root declaration
   nodes instead of leaking their body statements into the program root.
 - Nested routine declarations, type members, standards, implementations, and other
