@@ -1,14 +1,20 @@
 # Numbers
 
-A number is either an integer, floating-point or imaginary. The grammar for recognizing the kind of number is mixed.
+A number in the current front-end is either an integer or a floating-point literal.
+Imaginary suffix forms are intentionally outside the hardened lexer/parser contract for
+this phase.
 
 ## Intigers
 An integer has one of four forms:
 
-- A decimal literal starts with a decimal digit and continues with any mixture of decimal digits and underscores.
-- A hex literal starts with the character sequence `U+0030` `U+0078` (`0x`) and continues as any mixture (with at least one digit) of hex digits and underscores.
-- An octal literal starts with the character sequence `U+0030 U+006F` (`0o`) and continues as any mixture (with at least one digit) of octal digits and underscores.
-- A binary literal starts with the character sequence `U+0030 U+0062` (`0b`) and continues as any mixture (with at least one digit) of binary digits and underscores.
+- A decimal literal starts with a decimal digit and continues with decimal digits and
+  optional separating underscores.
+- A hex literal starts with `0x` or `0X` and then uses hex digits with optional
+  separating underscores.
+- An octal literal starts with `0o` or `0O` and then uses octal digits with optional
+  separating underscores.
+- A binary literal starts with `0b` or `0B` and then uses binary digits with optional
+  separating underscores.
 
 ```
 var decimal: int = 45;
@@ -33,10 +39,16 @@ A floating-point has one of two forms:
 
 - A decimal literal followed by a period character `U+002E` (`.`). This is optionally followed by another decimal literal.
 - A decimal literal that follows a period character `U+002E` (`.`).
+- A decimal literal followed by a period with no fractional digits is also accepted by
+  the current front-end.
 
 ```
 var aFloat: flt = 3.4;
 var bFloat: flt = .4;
+var cFloat: flt = 1.;
 ```
 
-## Imaginary numbers
+## Current front-end note
+
+Imaginary literals such as `5i` remain a language-design topic in the book, but they
+are not tokenized or lowered by the current hardened stream/lexer/parser pipeline.
