@@ -1,6 +1,7 @@
 use crate::ids::{IdTable, ImportId, ReferenceId, ScopeId, SourceUnitId, SymbolId};
 use fol_parser::ast::{
-    ParsedDeclScope, ParsedDeclVisibility, ParsedPackage, SyntaxIndex, SyntaxNodeId, SyntaxOrigin,
+    FolType, ParsedDeclScope, ParsedDeclVisibility, ParsedPackage, SyntaxIndex, SyntaxNodeId,
+    SyntaxOrigin, UsePathSegment,
 };
 use std::collections::BTreeMap;
 
@@ -83,9 +84,15 @@ pub struct ResolvedReference {
     pub resolved: Option<SymbolId>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ResolvedImport {
     pub id: ImportId,
+    pub alias_symbol: SymbolId,
+    pub alias_name: String,
+    pub path_type: FolType,
+    pub path_segments: Vec<UsePathSegment>,
+    pub scope: ScopeId,
+    pub source_unit: SourceUnitId,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -225,6 +232,10 @@ impl ResolvedProgram {
         self.references.get(id)
     }
 
+    pub fn import(&self, id: ImportId) -> Option<&ResolvedImport> {
+        self.imports.get(id)
+    }
+
     pub fn symbols_in_scope(&self, scope_id: ScopeId) -> Vec<&ResolvedSymbol> {
         self.scope(scope_id)
             .map(|scope| {
@@ -248,6 +259,13 @@ impl ResolvedProgram {
         self.references
             .iter()
             .filter(|reference| reference.scope == scope_id)
+            .collect()
+    }
+
+    pub fn imports_in_scope(&self, scope_id: ScopeId) -> Vec<&ResolvedImport> {
+        self.imports
+            .iter()
+            .filter(|import| import.scope == scope_id)
             .collect()
     }
 

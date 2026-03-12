@@ -1,8 +1,10 @@
 use crate::{
-    model::{ResolvedProgram, ResolvedSymbol, SymbolKind},
-    ResolverError, ResolverErrorKind, ScopeId, SourceUnitId, SymbolId,
+    model::{ResolvedImport, ResolvedProgram, ResolvedSymbol, SymbolKind},
+    ImportId, ResolverError, ResolverErrorKind, ScopeId, SourceUnitId, SymbolId,
 };
-use fol_parser::ast::{AstNode, BindingPattern, FolType, ParsedDeclScope, ParsedTopLevel};
+use fol_parser::ast::{
+    AstNode, BindingPattern, FolType, ParsedDeclScope, ParsedTopLevel, UsePathSegment,
+};
 
 pub fn collect_top_level_symbols(program: &mut ResolvedProgram) -> Result<(), Vec<ResolverError>> {
     let mut errors = Vec::new();
@@ -178,8 +180,13 @@ fn collect_symbols_from_top_level(
                 origin,
             )?;
         }
-        AstNode::UseDecl { name, .. } => {
-            insert_symbol(
+        AstNode::UseDecl {
+            name,
+            path_type,
+            path_segments,
+            ..
+        } => {
+            let symbol_id = insert_symbol(
                 program,
                 source_unit_id,
                 scope_id,
@@ -188,6 +195,15 @@ fn collect_symbols_from_top_level(
                 item,
                 origin,
             )?;
+            insert_import_record(
+                program,
+                source_unit_id,
+                scope_id,
+                symbol_id,
+                name,
+                path_type.clone(),
+                path_segments.clone(),
+            );
         }
         AstNode::Comment { .. } => {}
         node => {
@@ -327,6 +343,30 @@ pub(crate) fn top_level_duplicate_key(node: &AstNode, canonical_name: &str) -> S
         }
         _ => format!("symbol#{}", canonical_name),
     }
+}
+
+pub(crate) fn insert_import_record(
+    program: &mut ResolvedProgram,
+    source_unit_id: SourceUnitId,
+    scope_id: ScopeId,
+    alias_symbol: SymbolId,
+    alias_name: &str,
+    path_type: FolType,
+    path_segments: Vec<UsePathSegment>,
+) -> ImportId {
+    let import_id = program.imports.push(ResolvedImport {
+        id: ImportId(0),
+        alias_symbol,
+        alias_name: alias_name.to_string(),
+        path_type,
+        path_segments,
+        scope: scope_id,
+        source_unit: source_unit_id,
+    });
+    if let Some(import) = program.imports.get_mut(import_id) {
+        import.id = import_id;
+    }
+    import_id
 }
 
 fn fol_type_key(typ: &FolType) -> String {

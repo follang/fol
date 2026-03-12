@@ -54,6 +54,9 @@ mod foundation;
 #[path = "test_resolver_parts/identifier_resolution.rs"]
 mod identifier_resolution;
 #[cfg(test)]
+#[path = "test_resolver_parts/imports.rs"]
+mod imports;
+#[cfg(test)]
 #[path = "test_resolver_parts/routine_scopes.rs"]
 mod routine_scopes;
 #[cfg(test)]

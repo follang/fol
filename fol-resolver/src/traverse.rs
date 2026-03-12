@@ -1,5 +1,8 @@
 use crate::{
-    collect::{binding_names, semantic_node, top_level_duplicate_key, top_level_scope_id},
+    collect::{
+        binding_names, insert_import_record, semantic_node, top_level_duplicate_key,
+        top_level_scope_id,
+    },
     model::{
         ReferenceKind, ResolvedProgram, ResolvedReference, ResolvedSymbol, ScopeKind, SymbolKind,
     },
@@ -420,9 +423,14 @@ fn traverse_node(
         | AstNode::StdDecl { .. }
         | AstNode::Literal(_)
         | AstNode::PatternWildcard => {}
-        AstNode::UseDecl { name, .. } => {
+        AstNode::UseDecl {
+            name,
+            path_type,
+            path_segments,
+            ..
+        } => {
             if !is_top_level_node {
-                insert_local_symbol(
+                let symbol_id = insert_local_symbol(
                     program,
                     source_unit_id,
                     scope_id,
@@ -430,6 +438,15 @@ fn traverse_node(
                     SymbolKind::ImportAlias,
                     format!("symbol#{}", fol_types::canonical_identifier_key(name)),
                 )?;
+                insert_import_record(
+                    program,
+                    source_unit_id,
+                    scope_id,
+                    symbol_id,
+                    name,
+                    path_type.clone(),
+                    path_segments.clone(),
+                );
             }
         }
     }

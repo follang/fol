@@ -545,6 +545,8 @@ Status: done
 
 #### Slice 4.1
 
+Status: done
+
 - Add import record lowering from `use` declarations.
 - Bind import aliases into scope as first-class symbols.
 - Add tests for alias visibility and duplicate imported names.
