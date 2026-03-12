@@ -437,7 +437,7 @@ Target files:
 - [ ] Run `make build`.
 - [ ] Run `make test`.
 - [x] Confirm the final stream, lexer, and parser test totals and record them in `PROGRESS.md`.
-- [ ] Confirm no test is still freezing an abandoned compromise.
+- [x] Confirm no test is still freezing an abandoned compromise.
 
 ## 12. Suggested Slice Sequence
 
