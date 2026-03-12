@@ -2101,6 +2101,20 @@ mod lexer_error_tests {
     }
 
     #[test]
+    fn test_stage3_jump_returns_cleanly_after_stream_drain() {
+        let mut file_stream =
+            FileStream::from_file("test/stream/basic.fol").expect("Should read basic file");
+        let mut elements = Elements::init(&mut file_stream);
+
+        while elements.bump().is_some() {}
+
+        assert!(
+            elements.jump(0, false).is_ok(),
+            "Stage3 jump() should return cleanly instead of unwrapping None after the stream is drained"
+        );
+    }
+
+    #[test]
     fn test_nonexistent_file_error() {
         let result = std::panic::catch_unwind(|| tokenize_file("test/lexer/nonexistent.fol"));
 
