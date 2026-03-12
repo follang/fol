@@ -535,6 +535,8 @@ Status: done
 
 #### Slice 3.3
 
+Status: done
+
 - Resolve `FolType::Named` references.
 - Add tests for type declarations, aliases, generic parameters, and unresolved types.
 

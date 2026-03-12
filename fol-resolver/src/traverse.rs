@@ -8,7 +8,10 @@ use crate::{
     },
     ReferenceId, ResolverError, ResolverErrorKind, ScopeId, SourceUnitId, SymbolId,
 };
-use fol_parser::ast::{AstNode, LoopCondition, ParsedTopLevel, QualifiedPath, WhenCase};
+use fol_parser::ast::{
+    AstNode, FolType, Generic, LoopCondition, ParsedTopLevel, QualifiedPath, TypeDefinition,
+    WhenCase,
+};
 
 pub fn collect_routine_scopes(program: &mut ResolvedProgram) -> Result<(), Vec<ResolverError>> {
     let mut errors = Vec::new();
@@ -59,24 +62,36 @@ fn traverse_node(
     match semantic_node(node) {
         AstNode::FunDecl {
             syntax_id,
+            generics,
+            receiver_type,
             captures,
             params,
+            return_type,
+            error_type,
             body,
             inquiries,
             ..
         }
         | AstNode::ProDecl {
             syntax_id,
+            generics,
+            receiver_type,
             captures,
             params,
+            return_type,
+            error_type,
             body,
             inquiries,
             ..
         }
         | AstNode::LogDecl {
             syntax_id,
+            generics,
+            receiver_type,
             captures,
             params,
+            return_type,
+            error_type,
             body,
             inquiries,
             ..
@@ -94,6 +109,25 @@ fn traverse_node(
             let routine_scope = program.add_scope(ScopeKind::Routine, scope_id, source_unit_id);
             program.record_scope_for_syntax(*syntax_id, routine_scope);
 
+            insert_generic_symbols(program, source_unit_id, routine_scope, generics)?;
+            for generic in generics {
+                for constraint in &generic.constraints {
+                    resolve_type_reference(program, source_unit_id, routine_scope, constraint)?;
+                }
+            }
+            if let Some(receiver_type) = receiver_type {
+                resolve_type_reference(program, source_unit_id, routine_scope, receiver_type)?;
+            }
+            for param in params {
+                resolve_type_reference(program, source_unit_id, routine_scope, &param.param_type)?;
+            }
+            if let Some(return_type) = return_type {
+                resolve_type_reference(program, source_unit_id, routine_scope, return_type)?;
+            }
+            if let Some(error_type) = error_type {
+                resolve_type_reference(program, source_unit_id, routine_scope, error_type)?;
+            }
+
             for capture in captures {
                 insert_local_symbol(
                     program,
@@ -104,7 +138,6 @@ fn traverse_node(
                     format!("symbol#{}", fol_types::canonical_identifier_key(capture)),
                 )?;
             }
-
             for param in params {
                 insert_local_symbol(
                     program,
@@ -129,6 +162,8 @@ fn traverse_node(
         AstNode::AnonymousFun {
             captures,
             params,
+            return_type,
+            error_type,
             body,
             inquiries,
             ..
@@ -136,6 +171,8 @@ fn traverse_node(
         | AstNode::AnonymousPro {
             captures,
             params,
+            return_type,
+            error_type,
             body,
             inquiries,
             ..
@@ -143,11 +180,23 @@ fn traverse_node(
         | AstNode::AnonymousLog {
             captures,
             params,
+            return_type,
+            error_type,
             body,
             inquiries,
             ..
         } => {
             let routine_scope = program.add_scope(ScopeKind::Routine, scope_id, source_unit_id);
+
+            for param in params {
+                resolve_type_reference(program, source_unit_id, routine_scope, &param.param_type)?;
+            }
+            if let Some(return_type) = return_type {
+                resolve_type_reference(program, source_unit_id, routine_scope, return_type)?;
+            }
+            if let Some(error_type) = error_type {
+                resolve_type_reference(program, source_unit_id, routine_scope, error_type)?;
+            }
 
             for capture in captures {
                 insert_local_symbol(
@@ -322,6 +371,13 @@ fn traverse_node(
             }
         }
         AstNode::VarDecl { name, value, .. } => {
+            if let AstNode::VarDecl {
+                type_hint: Some(type_hint),
+                ..
+            } = semantic_node(node)
+            {
+                resolve_type_reference(program, source_unit_id, scope_id, type_hint)?;
+            }
             if let Some(value) = value {
                 traverse_node(program, source_unit_id, scope_id, value, false)?;
             }
@@ -337,6 +393,13 @@ fn traverse_node(
             }
         }
         AstNode::LabDecl { name, value, .. } => {
+            if let AstNode::LabDecl {
+                type_hint: Some(type_hint),
+                ..
+            } = semantic_node(node)
+            {
+                resolve_type_reference(program, source_unit_id, scope_id, type_hint)?;
+            }
             if let Some(value) = value {
                 traverse_node(program, source_unit_id, scope_id, value, false)?;
             }
@@ -352,6 +415,13 @@ fn traverse_node(
             }
         }
         AstNode::DestructureDecl { pattern, value, .. } => {
+            if let AstNode::DestructureDecl {
+                type_hint: Some(type_hint),
+                ..
+            } = semantic_node(node)
+            {
+                resolve_type_reference(program, source_unit_id, scope_id, type_hint)?;
+            }
             traverse_node(program, source_unit_id, scope_id, value, false)?;
             if !is_top_level_node {
                 for name in binding_names(pattern) {
@@ -454,14 +524,59 @@ fn traverse_node(
                 traverse_node(program, source_unit_id, scope_id, statement, false)?;
             }
         }
-        AstNode::TypeDecl { .. }
-        | AstNode::AliasDecl { .. }
-        | AstNode::DefDecl { .. }
-        | AstNode::SegDecl { .. }
-        | AstNode::ImpDecl { .. }
-        | AstNode::StdDecl { .. }
-        | AstNode::Literal(_)
-        | AstNode::PatternWildcard => {}
+        AstNode::TypeDecl {
+            generics,
+            contracts,
+            type_def,
+            ..
+        } => {
+            let type_scope =
+                program.add_scope(ScopeKind::TypeDeclaration, scope_id, source_unit_id);
+            insert_generic_symbols(program, source_unit_id, type_scope, generics)?;
+            for generic in generics {
+                for constraint in &generic.constraints {
+                    resolve_type_reference(program, source_unit_id, type_scope, constraint)?;
+                }
+            }
+            for contract in contracts {
+                resolve_type_reference(program, source_unit_id, type_scope, contract)?;
+            }
+            resolve_type_definition(program, source_unit_id, type_scope, type_def)?;
+        }
+        AstNode::AliasDecl { target, .. } => {
+            resolve_type_reference(program, source_unit_id, scope_id, target)?;
+        }
+        AstNode::DefDecl {
+            params, def_type, ..
+        } => {
+            for param in params {
+                resolve_type_reference(program, source_unit_id, scope_id, &param.param_type)?;
+            }
+            resolve_type_reference(program, source_unit_id, scope_id, def_type)?;
+        }
+        AstNode::SegDecl { seg_type, .. } => {
+            resolve_type_reference(program, source_unit_id, scope_id, seg_type)?;
+        }
+        AstNode::ImpDecl {
+            generics,
+            target,
+            body,
+            ..
+        } => {
+            let impl_scope =
+                program.add_scope(ScopeKind::TypeDeclaration, scope_id, source_unit_id);
+            insert_generic_symbols(program, source_unit_id, impl_scope, generics)?;
+            for generic in generics {
+                for constraint in &generic.constraints {
+                    resolve_type_reference(program, source_unit_id, impl_scope, constraint)?;
+                }
+            }
+            resolve_type_reference(program, source_unit_id, impl_scope, target)?;
+            for member in body {
+                traverse_node(program, source_unit_id, impl_scope, member, false)?;
+            }
+        }
+        AstNode::StdDecl { .. } | AstNode::Literal(_) | AstNode::PatternWildcard => {}
         AstNode::UseDecl {
             name,
             path_type,
@@ -621,8 +736,13 @@ fn record_function_call_reference(
     scope_id: ScopeId,
     name: &str,
 ) -> Result<ReferenceId, ResolverError> {
-    let symbol_id =
-        resolve_visible_symbol_of_kinds(program, scope_id, name, &[SymbolKind::Routine])?;
+    let symbol_id = resolve_visible_symbol_of_kinds(
+        program,
+        scope_id,
+        name,
+        &[SymbolKind::Routine],
+        Some("callable routine"),
+    )?;
     let reference_id = program.references.push(ResolvedReference {
         id: ReferenceId(0),
         kind: ReferenceKind::FunctionCall,
@@ -679,12 +799,43 @@ fn record_qualified_function_call_reference(
     Ok(reference_id)
 }
 
+fn record_named_type_reference(
+    program: &mut ResolvedProgram,
+    source_unit_id: SourceUnitId,
+    scope_id: ScopeId,
+    name: &str,
+) -> Result<ReferenceId, ResolverError> {
+    let symbol_id = resolve_visible_symbol_of_kinds(
+        program,
+        scope_id,
+        name,
+        &[
+            SymbolKind::Type,
+            SymbolKind::Alias,
+            SymbolKind::GenericParameter,
+        ],
+        Some("type"),
+    )?;
+    let reference_id = program.references.push(ResolvedReference {
+        id: ReferenceId(0),
+        kind: ReferenceKind::TypeName,
+        name: name.to_string(),
+        scope: scope_id,
+        source_unit: source_unit_id,
+        resolved: Some(symbol_id),
+    });
+    if let Some(reference) = program.references.get_mut(reference_id) {
+        reference.id = reference_id;
+    }
+    Ok(reference_id)
+}
+
 fn resolve_visible_symbol(
     program: &ResolvedProgram,
     starting_scope: ScopeId,
     name: &str,
 ) -> Result<SymbolId, ResolverError> {
-    resolve_visible_symbol_of_kinds(program, starting_scope, name, &[])
+    resolve_visible_symbol_of_kinds(program, starting_scope, name, &[], None)
 }
 
 fn resolve_visible_symbol_of_kinds(
@@ -692,6 +843,7 @@ fn resolve_visible_symbol_of_kinds(
     starting_scope: ScopeId,
     name: &str,
     allowed_kinds: &[SymbolKind],
+    missing_role: Option<&str>,
 ) -> Result<SymbolId, ResolverError> {
     let canonical_name = fol_types::canonical_identifier_key(name);
     let mut current_scope = Some(starting_scope);
@@ -727,24 +879,171 @@ fn resolve_visible_symbol_of_kinds(
 
             return Err(ResolverError::new(
                 ResolverErrorKind::UnresolvedName,
-                format!("could not resolve callable routine '{}'", name),
+                format!(
+                    "could not resolve {} '{}'",
+                    missing_role.unwrap_or("name"),
+                    name
+                ),
             ));
         }
 
         current_scope = program.scope(scope_id).and_then(|scope| scope.parent);
     }
 
-    if allowed_kinds.is_empty() {
-        Err(ResolverError::new(
-            ResolverErrorKind::UnresolvedName,
-            format!("could not resolve name '{}'", name),
-        ))
-    } else {
-        Err(ResolverError::new(
-            ResolverErrorKind::UnresolvedName,
-            format!("could not resolve callable routine '{}'", name),
-        ))
+    Err(ResolverError::new(
+        ResolverErrorKind::UnresolvedName,
+        format!(
+            "could not resolve {} '{}'",
+            missing_role.unwrap_or("name"),
+            name
+        ),
+    ))
+}
+
+fn insert_generic_symbols(
+    program: &mut ResolvedProgram,
+    source_unit_id: SourceUnitId,
+    scope_id: ScopeId,
+    generics: &[Generic],
+) -> Result<(), ResolverError> {
+    for generic in generics {
+        insert_local_symbol(
+            program,
+            source_unit_id,
+            scope_id,
+            &generic.name,
+            SymbolKind::GenericParameter,
+            format!(
+                "symbol#{}",
+                fol_types::canonical_identifier_key(&generic.name)
+            ),
+        )?;
     }
+
+    Ok(())
+}
+
+fn resolve_type_reference(
+    program: &mut ResolvedProgram,
+    source_unit_id: SourceUnitId,
+    scope_id: ScopeId,
+    typ: &FolType,
+) -> Result<(), ResolverError> {
+    match typ {
+        FolType::Named { name } => {
+            record_named_type_reference(program, source_unit_id, scope_id, name)?;
+        }
+        FolType::Array { element_type, .. }
+        | FolType::Vector { element_type }
+        | FolType::Sequence { element_type }
+        | FolType::Channel { element_type } => {
+            resolve_type_reference(program, source_unit_id, scope_id, element_type)?;
+        }
+        FolType::Matrix { element_type, .. } => {
+            resolve_type_reference(program, source_unit_id, scope_id, element_type)?;
+        }
+        FolType::Set { types } | FolType::Multiple { types } | FolType::Union { types } => {
+            for part in types {
+                resolve_type_reference(program, source_unit_id, scope_id, part)?;
+            }
+        }
+        FolType::Map {
+            key_type,
+            value_type,
+        } => {
+            resolve_type_reference(program, source_unit_id, scope_id, key_type)?;
+            resolve_type_reference(program, source_unit_id, scope_id, value_type)?;
+        }
+        FolType::Record { fields } => {
+            for field_type in fields.values() {
+                resolve_type_reference(program, source_unit_id, scope_id, field_type)?;
+            }
+        }
+        FolType::Entry { variants } => {
+            for variant in variants.values().flatten() {
+                resolve_type_reference(program, source_unit_id, scope_id, variant)?;
+            }
+        }
+        FolType::Optional { inner } | FolType::Pointer { target: inner } => {
+            resolve_type_reference(program, source_unit_id, scope_id, inner)?;
+        }
+        FolType::Error { inner } => {
+            if let Some(inner) = inner {
+                resolve_type_reference(program, source_unit_id, scope_id, inner)?;
+            }
+        }
+        FolType::Limited { base, limits } => {
+            resolve_type_reference(program, source_unit_id, scope_id, base)?;
+            for limit in limits {
+                traverse_node(program, source_unit_id, scope_id, limit, false)?;
+            }
+        }
+        FolType::Function {
+            params,
+            return_type,
+        } => {
+            for param in params {
+                resolve_type_reference(program, source_unit_id, scope_id, param)?;
+            }
+            resolve_type_reference(program, source_unit_id, scope_id, return_type)?;
+        }
+        FolType::Generic { constraints, .. } => {
+            for constraint in constraints {
+                resolve_type_reference(program, source_unit_id, scope_id, constraint)?;
+            }
+        }
+        FolType::QualifiedNamed { .. } => {}
+        FolType::Int { .. }
+        | FolType::Float { .. }
+        | FolType::Char { .. }
+        | FolType::Bool
+        | FolType::Never
+        | FolType::Any
+        | FolType::None
+        | FolType::Module { .. }
+        | FolType::Block { .. }
+        | FolType::Test { .. }
+        | FolType::Url { .. }
+        | FolType::Location { .. }
+        | FolType::Standard { .. } => {}
+    }
+
+    Ok(())
+}
+
+fn resolve_type_definition(
+    program: &mut ResolvedProgram,
+    source_unit_id: SourceUnitId,
+    scope_id: ScopeId,
+    type_def: &TypeDefinition,
+) -> Result<(), ResolverError> {
+    match type_def {
+        TypeDefinition::Record {
+            fields, members, ..
+        } => {
+            for field_type in fields.values() {
+                resolve_type_reference(program, source_unit_id, scope_id, field_type)?;
+            }
+            for member in members {
+                traverse_node(program, source_unit_id, scope_id, member, false)?;
+            }
+        }
+        TypeDefinition::Entry {
+            variants, members, ..
+        } => {
+            for variant_type in variants.values().flatten() {
+                resolve_type_reference(program, source_unit_id, scope_id, variant_type)?;
+            }
+            for member in members {
+                traverse_node(program, source_unit_id, scope_id, member, false)?;
+            }
+        }
+        TypeDefinition::Alias { target } => {
+            resolve_type_reference(program, source_unit_id, scope_id, target)?;
+        }
+    }
+
+    Ok(())
 }
 
 fn resolve_qualified_symbol(
@@ -804,6 +1103,7 @@ fn resolve_qualified_root(
         starting_scope,
         root_segment,
         &[SymbolKind::ImportAlias],
+        Some("import alias"),
     ) {
         let import = program
             .imports

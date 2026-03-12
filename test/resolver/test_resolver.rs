@@ -87,6 +87,9 @@ mod top_level_collection;
 #[path = "test_resolver_parts/top_level_duplicates.rs"]
 mod top_level_duplicates;
 #[cfg(test)]
+#[path = "test_resolver_parts/type_resolution.rs"]
+mod type_resolution;
+#[cfg(test)]
 #[path = "test_resolver_parts/unsupported_imports.rs"]
 mod unsupported_imports;
 #[cfg(test)]

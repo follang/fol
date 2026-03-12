@@ -11,6 +11,7 @@ pub enum ScopeKind {
     NamespaceRoot { namespace: String },
     SourceUnitRoot { path: String },
     Routine,
+    TypeDeclaration,
     Block,
     LoopBinder,
     RollingBinder,
@@ -49,6 +50,7 @@ pub enum SymbolKind {
     Implementation,
     Standard,
     ImportAlias,
+    GenericParameter,
     Parameter,
     Capture,
     LoopBinder,
@@ -61,6 +63,7 @@ pub enum ReferenceKind {
     FunctionCall,
     QualifiedIdentifier,
     QualifiedFunctionCall,
+    TypeName,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
