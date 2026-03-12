@@ -404,7 +404,7 @@ Target files:
 - [x] Ensure malformed tokens are reported at the offending token instead of a following separator.
 - [x] Keep malformed name-like tokens inside the parser surface that owns them instead of
   letting them fall out into generic neighboring parse paths.
-- [ ] Re-run representative `Expected X` and `Expected closing ...` matrices after AST and lexer changes.
+- [x] Re-run representative `Expected X` and `Expected closing ...` matrices after AST and lexer changes.
 - [x] Keep unsupported combination failures explicit.
 - [ ] Remove any tests that only preserve known-bad legacy parser compromises.
 
@@ -459,7 +459,7 @@ This is the recommended implementation order once the decision freeze is complet
 14. [x] Replace synthetic in-band file-boundary newlines with an explicit boundary model.
 15. [x] Remove default `Cargo.toml` package detection and replace it with the chosen FOL-native package contract.
 16. [x] Replace string-joined qualified paths with structured path representation.
-17. [ ] Re-run the parser diagnostic matrix after all AST and lexer changes.
+17. [x] Re-run the parser diagnostic matrix after all AST and lexer changes.
 18. [x] Refresh `FRONTEND_CONTRACT.md`, `PROGRESS.md`, and any touched book pages.
 19. [ ] Run final `make build`.
 20. [ ] Run final `make test`.
