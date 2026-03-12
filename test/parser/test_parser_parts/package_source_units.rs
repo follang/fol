@@ -100,3 +100,61 @@ fn test_parse_package_retains_namespace_per_source_unit() {
         [AstNode::VarDecl { name, .. }] if name == "warn_value"
     ));
 }
+
+#[test]
+fn test_parse_package_source_unit_order_matches_stream_traversal_order() {
+    let temp_root = unique_temp_root("ordering");
+    write_folder_fixture(
+        &temp_root,
+        &[
+            ("00_root.fol", "var root_first = 1\n"),
+            ("a_nested/00_alpha.fol", "var nested_alpha = 2\n"),
+            ("a_nested/10_beta.fol", "var nested_beta = 3\n"),
+            ("b_more/00_gamma.fol", "var nested_gamma = 4\n"),
+            ("m_root.fol", "var root_last = 5\n"),
+        ],
+    );
+
+    let parsed = parse_package_from_folder(
+        temp_root
+            .to_str()
+            .expect("Temporary parser ordering fixture path should be UTF-8"),
+    );
+
+    let canonical_root = std::fs::canonicalize(&temp_root)
+        .expect("Ordering fixture root should canonicalize");
+
+    fs::remove_dir_all(&temp_root).ok();
+
+    let relative_paths: Vec<String> = parsed
+        .source_units
+        .iter()
+        .map(|unit| {
+            std::path::Path::new(&unit.path)
+                .strip_prefix(&canonical_root)
+                .expect("Parsed source unit should stay under the fixture root")
+                .to_string_lossy()
+                .to_string()
+        })
+        .collect();
+
+    assert_eq!(
+        relative_paths,
+        vec![
+            "00_root.fol",
+            "a_nested/00_alpha.fol",
+            "a_nested/10_beta.fol",
+            "b_more/00_gamma.fol",
+            "m_root.fol",
+        ],
+        "Parsed source units should preserve the exact deterministic traversal order from fol-stream"
+    );
+    assert!(matches!(
+        source_unit_nodes(&parsed.source_units[0]).as_slice(),
+        [AstNode::VarDecl { name, .. }] if name == "root_first"
+    ));
+    assert!(matches!(
+        source_unit_nodes(&parsed.source_units[4]).as_slice(),
+        [AstNode::VarDecl { name, .. }] if name == "root_last"
+    ));
+}
