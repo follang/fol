@@ -316,6 +316,64 @@ mod namespace_tests {
     }
 
     #[test]
+    fn test_detached_folder_with_invalid_name_is_rejected_as_package() {
+        let temp_root = unique_temp_root("invalid_folder_package");
+        let invalid_root = temp_root.join("bad-dir");
+        fs::create_dir_all(&invalid_root).expect("Should create invalid package directory");
+        fs::write(invalid_root.join("main.fol"), "var answer = 42")
+            .expect("Should create detached fol file");
+
+        let result = Source::init(
+            invalid_root
+                .to_str()
+                .expect("Invalid package directory should be utf-8"),
+            SourceType::Folder,
+        );
+
+        assert!(result.is_err(), "Invalid derived package names should be rejected");
+        let error = format!(
+            "{}",
+            result.expect_err("Invalid package root should fail source discovery")
+        );
+        assert!(
+            error.contains("Invalid package name 'bad-dir'"),
+            "Package validation error should mention the invalid derived folder name: {}",
+            error
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_detached_file_with_invalid_parent_name_is_rejected_as_package() {
+        let temp_root = unique_temp_root("invalid_file_package");
+        let invalid_root = temp_root.join("123bad");
+        fs::create_dir_all(&invalid_root).expect("Should create invalid parent directory");
+        let file_path = invalid_root.join("main.fol");
+        fs::write(&file_path, "var answer = 42").expect("Should create detached fol file");
+
+        let result = Source::init(
+            file_path
+                .to_str()
+                .expect("Invalid package file path should be utf-8"),
+            SourceType::File,
+        );
+
+        assert!(result.is_err(), "Invalid parent-derived package names should be rejected");
+        let error = format!(
+            "{}",
+            result.expect_err("Invalid parent package root should fail source discovery")
+        );
+        assert!(
+            error.contains("Invalid package name '123bad'"),
+            "Package validation error should mention the invalid derived parent folder name: {}",
+            error
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
     fn test_source_identity_uses_canonical_path_and_preserves_call_site() {
         let file_sources = Source::init("test/legacy/main/main.fol", SourceType::File)
             .expect("Should create file-backed source");
@@ -628,6 +686,23 @@ mod namespace_tests {
         assert_ne!(pkg_a[0].namespace, pkg_b[0].namespace);
         assert_eq!(pkg_a[0].namespace, "alpha_pkg");
         assert_eq!(pkg_b[0].namespace, "beta_pkg");
+    }
+
+    #[test]
+    fn test_invalid_explicit_package_override_is_rejected() {
+        let result =
+            Source::init_with_package("test/legacy/main/main.fol", SourceType::File, "bad-dir");
+
+        assert!(result.is_err(), "Invalid explicit package overrides should be rejected");
+        let error = format!(
+            "{}",
+            result.expect_err("Invalid explicit package override should fail")
+        );
+        assert!(
+            error.contains("Invalid package name 'bad-dir'"),
+            "Explicit package validation error should mention the invalid override: {}",
+            error
+        );
     }
 
     #[test]

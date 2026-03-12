@@ -56,7 +56,8 @@ impl Source {
         source_type: SourceType,
         package_name: &str,
     ) -> Result<Vec<Self>, Box<dyn Glitch>> {
-        source(input, source_type, package_name)
+        let package_name = validate_package_name(package_name)?;
+        source(input, source_type, &package_name)
     }
 
     /// Get the full or relative path
@@ -406,7 +407,20 @@ fn detect_package_name(input_path: &str) -> Result<String, Box<dyn Glitch>> {
         })
         .unwrap_or_else(|| "root".to_string());
 
-    Ok(fallback_name)
+    validate_package_name(&fallback_name)
+}
+
+fn validate_package_name(package_name: &str) -> Result<String, Box<dyn Glitch>> {
+    if is_valid_namespace_component(package_name) {
+        Ok(package_name.to_string())
+    } else {
+        Err(Box::new(BasicError {
+            message: format!(
+                "Invalid package name '{}': package names must follow namespace identifier rules",
+                package_name
+            ),
+        }))
+    }
 }
 
 /// Compute namespace from file path relative to project root
