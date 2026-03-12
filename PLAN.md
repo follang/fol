@@ -339,7 +339,7 @@ Target files:
 ### 10.1 Settle The File-Scope Root Shape
 
 - [x] Decide whether `AstNode::Program` contains declarations only.
-- [ ] If file-scope executable statements remain supported, stop treating them as incidental declarations.
+- [x] If file-scope executable statements remain supported, stop treating them as incidental declarations.
 - [ ] Introduce an explicit root representation for mixed item/statement programs if mixed file scope remains.
 - [x] Declaration-only file scope is not the chosen contract in this hardening phase.
 - [x] Update `top_level_control_flow_and_calls.rs` and any other root-shape tests to match the chosen contract.
