@@ -3,11 +3,12 @@
 This file records the current stream, lexer, and parser contracts that the code and
 tests actually enforce today.
 
-The source-layout and package-scope alignment pass is complete. This file therefore
-describes the current enforced behavior at head, including compatibility paths that
-still exist intentionally before the next phase starts `fol-resolver`. Treat
-[`PLAN.md`](./PLAN.md) as the completion record for the finished front-end alignment
-work and [`PLAN_NEXT.md`](./PLAN_NEXT.md) as the active resolver plan.
+The source-layout and package-scope alignment pass is complete, and `fol-resolver`
+now consumes these parser outputs directly. This file therefore describes the current
+enforced stream/lexer/parser behavior at head, including compatibility paths that
+still exist intentionally around the structured parser APIs. Treat
+[`PROGRESS.md`](./PROGRESS.md) as the repo-backed implementation ledger and
+[`PLAN.md`](./PLAN.md) as the resolver milestone record.
 
 ## Decision Summary
 
@@ -21,7 +22,7 @@ work and [`PLAN_NEXT.md`](./PLAN_NEXT.md) as the active resolver plan.
   host-tool manifests.
 - Source units: the parser now has a structured `parse_package(...)` path that preserves
   source units, package/namespace identity, successful top-level origins, and explicit
-  top-level declaration visibility/scope metadata for later resolver work.
+  top-level declaration visibility/scope metadata for resolver consumption.
 - Root surface: `parse_package(...)` is the declaration-oriented package API aligned to
   the book-facing source-layout model, while the legacy `AstParser::parse()` and
   `parse_script_package(...)` compatibility paths still return one mixed and

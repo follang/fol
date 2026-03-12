@@ -1,3 +1,18 @@
+//! Whole-program name resolution for parsed FOL packages.
+//!
+//! Current milestone scope:
+//! - build a resolver-owned scope graph from `fol-parser` package output
+//! - collect top-level declarations across package, namespace, and file scopes
+//! - resolve plain and qualified value, call, type, and inquiry references
+//! - resolve `use loc` imports against the loaded source set
+//! - report unresolved, duplicate, ambiguous, and unsupported-resolution errors
+//!
+//! Non-goals for this crate:
+//! - type checking or inference
+//! - type-directed overload or member selection
+//! - ownership/borrowing analysis
+//! - runtime lowering or code generation
+
 pub mod collect;
 pub mod errors;
 pub mod ids;
@@ -18,10 +33,12 @@ pub type ResolverResult<T> = Result<T, Vec<ResolverError>>;
 pub struct Resolver;
 
 impl Resolver {
+    /// Create a resolver instance for one package-resolution run.
     pub fn new() -> Self {
         Self
     }
 
+    /// Resolve one parsed package into scopes, symbols, references, and imports.
     pub fn resolve_package(
         &mut self,
         syntax: fol_parser::ast::ParsedPackage,
@@ -34,6 +51,7 @@ impl Resolver {
     }
 }
 
+/// Resolve one parsed package with a fresh resolver instance.
 pub fn resolve_package(syntax: fol_parser::ast::ParsedPackage) -> ResolverResult<ResolvedProgram> {
     Resolver::new().resolve_package(syntax)
 }

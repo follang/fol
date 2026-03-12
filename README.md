@@ -19,12 +19,17 @@
 
 FOL is a general-purpose, systems programming language designed for robustness, efficiency, portability, expressiveness and most importantly elegance. Heavily inspired (and shamelessly copying) from languages: zig, nim, c++, go, rust, julia (in this order), hence the name - FOL (Frankenstein's Objective Language). In Albanian language "fol" means "speak".
 
-<p align="center">  ** FOL IS AN ACTIVE FRONT-END COMPILER WORKSPACE **  </p>
+<p align="center">  ** FOL IS AN ACTIVE COMPILER WORKSPACE **  </p>
 
-Current compiler status: the stream, lexer, parser, and diagnostics pipeline are implemented and actively tested. The source-layout and package-scope alignment pass is complete, so the next active compiler phase is `fol-resolver` for whole-program name resolution. After that, the main missing compiler work is later semantic analysis, type checking, ownership rules, and backend/runtime work.
+Current compiler status: the stream, lexer, parser, diagnostics, and current
+`fol-resolver` milestone are implemented and actively tested. The active compiler
+boundary is now post-resolution semantic work: type checking, deeper semantic
+analysis, ownership rules, and backend/runtime work.
 
 For exact current stream/lexer/parser behavior, treat [`FRONTEND_CONTRACT.md`](./FRONTEND_CONTRACT.md)
-as the authoritative front-end contract, treat [`PLAN.md`](./PLAN.md) as the completion record for the finished front-end alignment pass, and treat [`PLAN_NEXT.md`](./PLAN_NEXT.md) as the active next-phase resolver plan. The README is only a high-level project summary.
+as the authoritative front-end contract, treat [`PROGRESS.md`](./PROGRESS.md) as the
+repo-backed implementation ledger, and treat [`PLAN.md`](./PLAN.md) as the resolver
+milestone record. The README is only a high-level project summary.
 
 <hr>
 

@@ -665,6 +665,8 @@ Status: done
 
 #### Slice 7.3
 
+Status: done
+
 - Sync docs:
 - `PROGRESS.md`
 - `FRONTEND_CONTRACT.md`
