@@ -160,8 +160,8 @@ mod routine_declaration_parsers;
 mod declaration_option_parsers;
 #[path = "parser_parts/type_definition_parsers.rs"]
 mod type_definition_parsers;
-#[path = "parser_parts/expression_atoms_and_report_validation.rs"]
-mod expression_atoms_and_report_validation;
+#[path = "parser_parts/expression_atoms_and_literal_lowering.rs"]
+mod expression_atoms_and_literal_lowering;
 #[path = "parser_parts/access_expression_parsers.rs"]
 mod access_expression_parsers;
 #[path = "parser_parts/expression_parsers.rs"]

@@ -410,7 +410,7 @@ tests actually enforce today.
 - `parser_parts` ownership is now explicit enough to maintain without broad structural
   refactoring:
   - program/root assembly lives in `program_and_bindings`
-  - literal atom lowering lives in `expression_atoms_and_report_validation`
+  - literal atom lowering lives in `expression_atoms_and_literal_lowering`
   - statement/expression boundary behavior is locked by focused parser tests instead of
     depending on cross-module guesswork
 - The remaining overlap hotspots are documented rather than hidden:
@@ -472,7 +472,7 @@ tests actually enforce today.
   `source_kind_type_parsers.rs`, `test_type_parsers.rs`, and
   `type_references_and_blocks.rs`: type declarations, grouped type expansion, special
   type forms, source/test type forms, and general type-reference parsing.
-- `expression_parsers.rs`, `expression_atoms_and_report_validation.rs`,
+- `expression_parsers.rs`, `expression_atoms_and_literal_lowering.rs`,
   `primary_expression_parsers.rs`, `postfix_expression_parsers.rs`,
   `access_expression_parsers.rs`, `pipe_expression_parsers.rs`,
   `pipe_lambda_parsers.rs`, and `rolling_expression_parsers.rs`: expression precedence,
