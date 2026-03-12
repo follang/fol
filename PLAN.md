@@ -156,7 +156,7 @@ Target files:
 
 - [ ] Decide whether method receiver types are restricted to user-defined named types as the book says.
 - [ ] Decide whether `log` becomes a first-class routine kind in the AST.
-- [ ] Decide whether qualified paths remain string-encoded temporarily or are promoted now.
+- [x] Decide whether qualified paths remain string-encoded temporarily or are promoted now.
 
 Acceptance for Phase 0:
 
@@ -366,14 +366,14 @@ Target files:
 
 ### 10.4 Replace String-Joined Qualified Paths
 
-- [ ] Introduce a structured path representation for value paths.
-- [ ] Introduce a structured path representation for type paths.
-- [ ] Decide whether both surfaces share one path node or use separate but aligned types.
-- [ ] Preserve original segment spelling for diagnostics.
+- [x] Introduce a structured path representation for value paths.
+- [x] Introduce a structured path representation for type paths.
+- [x] Decide whether both surfaces share one path node or use separate but aligned types.
+- [x] Preserve original segment spelling for diagnostics.
 - [ ] Preserve normalized comparison keys separately if needed.
-- [ ] Stop flattening `io::console::writer` into one opaque string where later phases need segments.
-- [ ] Keep `use` import source text separate from value/type path nodes.
-- [ ] Update tests for qualified value paths, qualified type paths, and quoted path segments.
+- [x] Stop flattening `io::console::writer` into one opaque string where later phases need segments.
+- [x] Keep `use` import source text separate from value/type path nodes.
+- [x] Update tests for qualified value paths, qualified type paths, and quoted path segments.
 
 ### 10.5 Apply Book Identifier Equality To Parser-Owned Validations
 
@@ -412,7 +412,7 @@ Acceptance for Phase 3:
 
 - [x] No method receiver information is lost in the AST.
 - [x] No logical routine kind is lost in the AST.
-- [ ] Qualified path structure is preserved instead of flattened away where it matters.
+- [x] Qualified path structure is preserved instead of flattened away where it matters.
 - [ ] Parser-owned duplicate checks use the chosen identifier equality rules.
 - [ ] Root shape is explicit and no longer ambiguous to the next stage.
 
@@ -458,7 +458,7 @@ This is the recommended implementation order once the decision freeze is complet
 13. [x] Remove `Illegal` from `is_void()` and add nested malformed-token regressions.
 14. [x] Replace synthetic in-band file-boundary newlines with an explicit boundary model.
 15. [ ] Remove default `Cargo.toml` package detection and replace it with the chosen FOL-native package contract.
-16. [ ] Replace string-joined qualified paths with structured path representation.
+16. [x] Replace string-joined qualified paths with structured path representation.
 17. [ ] Re-run the parser diagnostic matrix after all AST and lexer changes.
 18. [ ] Refresh `FRONTEND_CONTRACT.md`, `PROGRESS.md`, and any touched book pages.
 19. [ ] Run final `make build`.
@@ -478,7 +478,7 @@ Do not move to the next compiler stage until every gate below is true.
 - [x] `Illegal` tokens are never skipped as whitespace.
 - [x] Method receiver types survive AST lowering.
 - [x] Logical routine kind survives AST lowering.
-- [ ] Qualified path structure survives AST lowering where the next stage needs it.
+- [x] Qualified path structure survives AST lowering where the next stage needs it.
 - [ ] Root program shape is explicit.
 - [ ] No front-end doc claims are known to contradict the code.
 - [ ] `make build` passes.
