@@ -51,6 +51,9 @@ mod block_scopes;
 #[path = "test_resolver_parts/comment_transparency.rs"]
 mod comment_transparency;
 #[cfg(test)]
+#[path = "test_resolver_parts/diagnostic_quality.rs"]
+mod diagnostic_quality;
+#[cfg(test)]
 #[path = "test_resolver_parts/foundation.rs"]
 mod foundation;
 #[cfg(test)]

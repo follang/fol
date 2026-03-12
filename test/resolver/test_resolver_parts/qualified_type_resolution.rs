@@ -134,9 +134,9 @@ fn test_resolver_reports_unresolved_qualified_type_paths() {
             error.kind() == ResolverErrorKind::UnresolvedName
                 && error
                     .to_string()
-                    .contains("could not resolve qualified path 'tools::Missing'")
+                    .contains("could not resolve qualified type 'tools::Missing'")
         }),
-        "Resolver should report unresolved qualified type paths explicitly"
+        "Resolver should report unresolved qualified type diagnostics explicitly"
     );
 
     fs::remove_dir_all(&temp_root)

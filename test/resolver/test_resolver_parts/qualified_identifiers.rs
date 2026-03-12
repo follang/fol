@@ -139,9 +139,9 @@ fn test_resolver_reports_unresolved_qualified_identifier_paths() {
             error.kind() == ResolverErrorKind::UnresolvedName
                 && error
                     .to_string()
-                    .contains("could not resolve qualified path 'tools::missing'")
+                    .contains("could not resolve qualified identifier 'tools::missing'")
         }),
-        "Resolver should report unresolved qualified identifier paths explicitly"
+        "Resolver should report unresolved qualified identifier diagnostics explicitly"
     );
 
     fs::remove_dir_all(&temp_root)

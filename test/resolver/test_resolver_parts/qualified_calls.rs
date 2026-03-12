@@ -142,9 +142,9 @@ fn test_resolver_reports_unresolved_qualified_call_paths() {
             error.kind() == ResolverErrorKind::UnresolvedName
                 && error
                     .to_string()
-                    .contains("could not resolve qualified path 'tools::missing'")
+                    .contains("could not resolve qualified callable routine 'tools::missing'")
         }),
-        "Resolver should report unresolved qualified call paths explicitly"
+        "Resolver should report unresolved qualified call diagnostics explicitly"
     );
 
     fs::remove_dir_all(&temp_root)

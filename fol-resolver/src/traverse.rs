@@ -944,6 +944,7 @@ fn record_function_call_reference(
         name,
         &[SymbolKind::Routine],
         Some("callable routine"),
+        None,
     )?;
     let reference_id = program.references.push(ResolvedReference {
         id: ReferenceId(0),
@@ -965,7 +966,14 @@ fn record_qualified_identifier_reference(
     scope_id: ScopeId,
     path: &QualifiedPath,
 ) -> Result<ReferenceId, ResolverError> {
-    let symbol_id = resolve_qualified_symbol(program, scope_id, path, &[])?;
+    let symbol_id = resolve_qualified_symbol(
+        program,
+        scope_id,
+        path,
+        &[],
+        "qualified identifier",
+        qualified_path_origin(program, path),
+    )?;
     let reference_id = program.references.push(ResolvedReference {
         id: ReferenceId(0),
         kind: ReferenceKind::QualifiedIdentifier,
@@ -986,7 +994,14 @@ fn record_qualified_function_call_reference(
     scope_id: ScopeId,
     path: &QualifiedPath,
 ) -> Result<ReferenceId, ResolverError> {
-    let symbol_id = resolve_qualified_symbol(program, scope_id, path, &[SymbolKind::Routine])?;
+    let symbol_id = resolve_qualified_symbol(
+        program,
+        scope_id,
+        path,
+        &[SymbolKind::Routine],
+        "qualified callable routine",
+        qualified_path_origin(program, path),
+    )?;
     let reference_id = program.references.push(ResolvedReference {
         id: ReferenceId(0),
         kind: ReferenceKind::QualifiedFunctionCall,
@@ -1017,6 +1032,7 @@ fn record_named_type_reference(
             SymbolKind::GenericParameter,
         ],
         Some("type"),
+        None,
     )?;
     let reference_id = program.references.push(ResolvedReference {
         id: ReferenceId(0),
@@ -1078,11 +1094,25 @@ fn resolve_inquiry_target(
             }
         }
         InquiryTarget::Named(name) | InquiryTarget::Quoted(name) => {
-            let symbol_id = resolve_visible_symbol(program, scope_id, name)?;
+            let symbol_id = resolve_visible_symbol_of_kinds(
+                program,
+                scope_id,
+                name,
+                &[],
+                Some("inquiry target"),
+                None,
+            )?;
             record_inquiry_target_reference(program, source_unit_id, scope_id, name, symbol_id);
         }
         InquiryTarget::Qualified(path) => {
-            let symbol_id = resolve_qualified_symbol(program, scope_id, path, &[])?;
+            let symbol_id = resolve_qualified_symbol(
+                program,
+                scope_id,
+                path,
+                &[],
+                "qualified inquiry target",
+                qualified_path_origin(program, path),
+            )?;
             record_inquiry_target_reference(
                 program,
                 source_unit_id,
@@ -1107,6 +1137,8 @@ fn record_qualified_type_reference(
         scope_id,
         path,
         &[SymbolKind::Type, SymbolKind::Alias],
+        "qualified type",
+        qualified_path_origin(program, path),
     )?;
     let reference_id = program.references.push(ResolvedReference {
         id: ReferenceId(0),
@@ -1127,7 +1159,7 @@ fn resolve_visible_symbol(
     starting_scope: ScopeId,
     name: &str,
 ) -> Result<SymbolId, ResolverError> {
-    resolve_visible_symbol_of_kinds(program, starting_scope, name, &[], None)
+    resolve_visible_symbol_of_kinds(program, starting_scope, name, &[], None, None)
 }
 
 fn resolve_visible_symbol_of_kinds(
@@ -1136,6 +1168,7 @@ fn resolve_visible_symbol_of_kinds(
     name: &str,
     allowed_kinds: &[SymbolKind],
     missing_role: Option<&str>,
+    origin: Option<fol_parser::ast::SyntaxOrigin>,
 ) -> Result<SymbolId, ResolverError> {
     let canonical_name = fol_types::canonical_identifier_key(name);
     let mut current_scope = Some(starting_scope);
@@ -1156,39 +1189,43 @@ fn resolve_visible_symbol_of_kinds(
                 return Ok(matching_symbols[0].id);
             }
             if matching_symbols.len() > 1 {
-                return Err(ResolverError::new(
+                return Err(error_with_optional_origin(
                     ResolverErrorKind::AmbiguousReference,
                     format!("name '{}' is ambiguous in lexical scope", name),
+                    origin,
                 ));
             }
 
             if allowed_kinds.is_empty() {
-                return Err(ResolverError::new(
+                return Err(error_with_optional_origin(
                     ResolverErrorKind::AmbiguousReference,
                     format!("name '{}' is ambiguous in lexical scope", name),
+                    origin,
                 ));
             }
 
-            return Err(ResolverError::new(
+            return Err(error_with_optional_origin(
                 ResolverErrorKind::UnresolvedName,
                 format!(
                     "could not resolve {} '{}'",
                     missing_role.unwrap_or("name"),
                     name
                 ),
+                origin,
             ));
         }
 
         current_scope = program.scope(scope_id).and_then(|scope| scope.parent);
     }
 
-    Err(ResolverError::new(
+    Err(error_with_optional_origin(
         ResolverErrorKind::UnresolvedName,
         format!(
             "could not resolve {} '{}'",
             missing_role.unwrap_or("name"),
             name
         ),
+        origin,
     ))
 }
 
@@ -1345,6 +1382,8 @@ fn resolve_qualified_symbol(
     starting_scope: ScopeId,
     path: &QualifiedPath,
     allowed_kinds: &[SymbolKind],
+    missing_role: &str,
+    origin: Option<fol_parser::ast::SyntaxOrigin>,
 ) -> Result<SymbolId, ResolverError> {
     if path.segments.len() < 2 {
         return Err(ResolverError::new(
@@ -1356,16 +1395,23 @@ fn resolve_qualified_symbol(
         ));
     }
 
-    let (mut current_scope, mut current_namespace) =
-        resolve_qualified_root(program, starting_scope, &path.segments[0])?;
+    let (mut current_scope, mut current_namespace) = resolve_qualified_root(
+        program,
+        starting_scope,
+        &path.segments[0],
+        &path.joined(),
+        missing_role,
+        origin.clone(),
+    )?;
 
     for segment in &path.segments[1..path.segments.len() - 1] {
         current_namespace.push_str("::");
         current_namespace.push_str(segment);
         current_scope = program.namespace_scope(&current_namespace).ok_or_else(|| {
-            ResolverError::new(
+            error_with_optional_origin(
                 ResolverErrorKind::UnresolvedName,
-                format!("could not resolve qualified path '{}'", path.joined()),
+                format!("could not resolve {} '{}'", missing_role, path.joined()),
+                origin.clone(),
             )
         })?;
     }
@@ -1380,6 +1426,8 @@ fn resolve_qualified_symbol(
         final_name,
         allowed_kinds,
         &path.joined(),
+        missing_role,
+        origin,
     )
 }
 
@@ -1387,6 +1435,9 @@ fn resolve_qualified_root(
     program: &ResolvedProgram,
     starting_scope: ScopeId,
     root_segment: &str,
+    full_path: &str,
+    missing_role: &str,
+    origin: Option<fol_parser::ast::SyntaxOrigin>,
 ) -> Result<(ScopeId, String), ResolverError> {
     if root_segment == program.package_name() {
         return Ok((program.program_scope, program.package_name().to_string()));
@@ -1398,6 +1449,7 @@ fn resolve_qualified_root(
         root_segment,
         &[SymbolKind::ImportAlias],
         Some("import alias"),
+        origin.clone(),
     ) {
         let import = program
             .imports
@@ -1414,9 +1466,10 @@ fn resolve_qualified_root(
         return Ok((scope_id, namespace));
     }
 
-    Err(ResolverError::new(
+    Err(error_with_optional_origin(
         ResolverErrorKind::UnresolvedName,
-        format!("could not resolve qualified path root '{}'", root_segment),
+        format!("could not resolve {} '{}'", missing_role, full_path),
+        origin,
     ))
 }
 
@@ -1426,6 +1479,8 @@ fn resolve_symbol_in_scope(
     name: &str,
     allowed_kinds: &[SymbolKind],
     full_path: &str,
+    missing_role: &str,
+    origin: Option<fol_parser::ast::SyntaxOrigin>,
 ) -> Result<SymbolId, ResolverError> {
     let canonical_name = fol_types::canonical_identifier_key(name);
     let symbols = program.symbols_named_in_scope(scope_id, &canonical_name);
@@ -1440,15 +1495,37 @@ fn resolve_symbol_in_scope(
 
     match matching_symbols.as_slice() {
         [symbol] => Ok(symbol.id),
-        [] => Err(ResolverError::new(
+        [] => Err(error_with_optional_origin(
             ResolverErrorKind::UnresolvedName,
-            format!("could not resolve qualified path '{}'", full_path),
+            format!("could not resolve {} '{}'", missing_role, full_path),
+            origin.clone(),
         )),
-        _ => Err(ResolverError::new(
+        _ => Err(error_with_optional_origin(
             ResolverErrorKind::AmbiguousReference,
-            format!("qualified path '{}' is ambiguous", full_path),
+            format!("{} '{}' is ambiguous", missing_role, full_path),
+            origin,
         )),
     }
+}
+
+fn error_with_optional_origin(
+    kind: ResolverErrorKind,
+    message: String,
+    origin: Option<fol_parser::ast::SyntaxOrigin>,
+) -> ResolverError {
+    match origin {
+        Some(origin) => ResolverError::with_origin(kind, message, origin),
+        None => ResolverError::new(kind, message),
+    }
+}
+
+fn qualified_path_origin(
+    program: &ResolvedProgram,
+    path: &QualifiedPath,
+) -> Option<fol_parser::ast::SyntaxOrigin> {
+    path.syntax_id()
+        .and_then(|syntax_id| program.syntax_index().origin(syntax_id))
+        .cloned()
 }
 
 fn scope_namespace(program: &ResolvedProgram, scope_id: ScopeId) -> String {

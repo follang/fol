@@ -604,6 +604,8 @@ Status: done
 
 #### Slice 5.1
 
+Status: done
+
 - Harden unresolved-name diagnostics:
 - exact name
 - exact role
