@@ -118,7 +118,7 @@ fn test_duplicate_and_conflicting_diagnostics_stay_surface_specific() {
 }
 
 #[test]
-fn test_representative_missing_close_diagnostics_use_expected_closing_language() {
+fn test_representative_missing_close_diagnostics_keep_shape_specific_wording() {
     for (path, expected) in [
         (
             "test/parser/simple_opt_type_missing_close.fol",
@@ -132,11 +132,23 @@ fn test_representative_missing_close_diagnostics_use_expected_closing_language()
             "test/parser/simple_pro_method_receiver_missing_close_paren.fol",
             "Expected ')' after method receiver type",
         ),
+        (
+            "test/parser/simple_call_top_level_unmatched_open_paren_arg.fol",
+            "Expected closing ')' for parenthesized expression",
+        ),
+        (
+            "test/parser/simple_fun_function_type_missing_close.fol",
+            "Expected '}' to close function type",
+        ),
+        (
+            "test/parser/simple_fun_nested_block_missing_close.fol",
+            "Expected '}' to close block",
+        ),
     ] {
         let message = first_parse_error_message(path);
         assert!(
             message.contains(expected),
-            "Expected normalized missing-close diagnostic for fixture {path}, got: {message}",
+            "Expected stable missing-close diagnostic for fixture {path}, got: {message}",
         );
     }
 }
@@ -155,6 +167,22 @@ fn test_representative_expected_x_diagnostics_name_the_missing_shape() {
         (
             "test/parser/simple_fun_field_assignment_missing_name.fol",
             "Expected field name after '.' in assignment target",
+        ),
+        (
+            "test/parser/simple_routine_grouped_params_missing_colon.fol",
+            "Expected ':' after parameter name",
+        ),
+        (
+            "test/parser/simple_routine_default_param_missing_value.fol",
+            "Expected default value expression after '=' in parameter",
+        ),
+        (
+            "test/parser/simple_fun_unary_plus_missing_operand.fol",
+            "Expected expression after unary '+'",
+        ),
+        (
+            "test/parser/simple_fun_when_star_default_missing_body.fol",
+            "Expected '{' after when default '*'",
         ),
     ] {
         let message = first_parse_error_message(path);
