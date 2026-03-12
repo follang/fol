@@ -125,6 +125,8 @@ tests actually enforce today.
 
 - The current lexer surfaces `CookedQuoted`, `RawQuoted`, `Bool`, `Float`, `Decimal`,
   `Hexadecimal`, `Octal`, and `Binary`.
+- That set is the complete numeric-family scope for this hardening phase; imaginary
+  suffix forms are intentionally outside the supported lexer/parser contract here.
 - Double-quoted content arrives at the lexer boundary as `CookedQuoted`.
 - Single-quoted content arrives at the lexer boundary as `RawQuoted`.
 - The cooked/raw distinction is explicit at the lexer boundary.
