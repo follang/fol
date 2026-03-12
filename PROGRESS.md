@@ -35,18 +35,18 @@ Authority rule for this file: code and active tests win over older aspirational 
 
 - Workspace member crates: `5`
 - Root binary crate: `1`
-- Active Rust source lines scanned: `17360`
+- Active Rust source lines scanned: `17824`
 - Core compiler Rust lines scanned:
 - `fol-types`: `228`
-- `fol-stream`: `480`
-- `fol-lexer`: `2115`
-- `fol-parser`: `14011`
+- `fol-stream`: `455`
+- `fol-lexer`: `2336`
+- `fol-parser`: `14279`
 - `fol-diagnostics`: `267`
 - Root CLI: `259`
-- Active parser fixtures: `1057`
-- Active lexer tests: `36`
-- Active stream tests: `43`
-- Active parser/integration tests in `integration`: `1159`
+- Active parser fixtures: `1148`
+- Active lexer tests: `75`
+- Active stream tests: `47`
+- Active parser/integration tests in `integration`: `1178`
 - Observed active integration failures during the run: `0`
 - Observed active integration run shape: suite is green
 
@@ -65,7 +65,8 @@ Authority rule for this file: code and active tests win over older aspirational 
 - Interpreter/runtime: missing
 - Code generation/backend: missing
 - Package/module system beyond source enumeration and syntax: partial
-- Documentation alignment with implementation: materially improved for the front-end contract, still mixed elsewhere
+- Documentation alignment with implementation: materially improved, with the remaining
+  drift concentrated in a small set of front-end decision/cleanup items
 
 ## 4. Current Known Failures
 
@@ -75,9 +76,12 @@ Authority rule for this file: code and active tests win over older aspirational 
 - `make test` passed
 - test totals observed:
 - `1` unit test
-- `1159` integration tests
-- The main remaining front-end debt is no longer parser-boundary ambiguity.
-- The remaining missing work is later-phase compiler work, not front-end hardening.
+- `1178` integration tests
+- The main remaining front-end debt is now concentrated in a few hardening decisions:
+- standalone `_` policy
+- slash-comment permanence vs compatibility-only status
+- duplicated eager buffering between `fol-stream` and lexer stage 0
+- final readiness/doc closure
 
 ## 5. Current Big Picture
 
@@ -97,8 +101,9 @@ Authority rule for this file: code and active tests win over older aspirational 
 - runtime/backend work
 - Front-end docs are now much closer to code truth:
 - [FRONTEND_CONTRACT.md](/home/bresilla/data/code/bresilla/fol/FRONTEND_CONTRACT.md) records the active stream, lexer, and parser contracts
-- `PLAN.md` records the completed hardening work
-- older aspirational docs are still behind the code in places
+- `PLAN.md` records the remaining front-end hardening work still open in this phase
+- older aspirational docs have been narrowed, but some design-level pages still talk
+  about language features that the current front-end intentionally leaves out of scope
 
 ## 6. Workspace Inventory
 
@@ -222,7 +227,7 @@ Authority rule for this file: code and active tests win over older aspirational 
 - `FileStream` implements `CharacterProvider`
 - Path validation exists
 - Canonicalization exists
-- Package-name detection from `Cargo.toml` exists
+- Entry-root package detection exists
 - Namespace derivation from directory structure exists
 - Recursive folder traversal exists
 - `.fol` filtering exists
@@ -237,10 +242,12 @@ Authority rule for this file: code and active tests win over older aspirational 
 - Non-`.mod` directories are traversed recursively.
 - Only `.fol` files are included by `from_dir`.
 - When a file path is supplied while a folder source is expected, parent-directory fallback exists.
-- Package detection walks upward until it finds `Cargo.toml`.
-- If parsing `Cargo.toml` fails to find a package name, the crate returns an error.
-- Namespace computation prepends the detected package name.
-- Namespace components reject dots and leading digits.
+- Package detection uses explicit package override or the chosen entry root.
+- Host-tool manifests do not participate in default package detection.
+- Namespace computation preserves the chosen package/namespace identity without parser-
+  side canonicalization.
+- Namespace validation is ASCII-only, rejects repeated underscore runs and leading
+  digits, and skips invalid components instead of aborting source discovery.
 - The file stream walks sources sequentially and resets row/column when switching files.
 
 ### 8.5 Test Coverage Present
@@ -503,10 +510,10 @@ Authority rule for this file: code and active tests win over older aspirational 
 
 ### 9.13 Stage 1 Caveats
 
-- Character literal support is not cleanly separate from string handling
-- Backticks become operator-ish `ANY` behavior rather than a finished surface
-- Comments are normalized into space-like output
-- Some token naming is still legacy and misspelled
+- Stage 1 now distinguishes cooked vs raw quoted literal families explicitly.
+- Backticks are authoritative comments rather than operator-ish `ANY` tokens.
+- Slash comments remain compatibility syntax in the current front-end.
+- Internal comment kinds still normalize back to parser-ignorable spacing by stage 2.
 
 ### 9.14 Stage 2 Status
 
@@ -520,7 +527,8 @@ Authority rule for this file: code and active tests win over older aspirational 
 
 ### 9.15 Stage 3 Status
 
-- Negative-number folding exists
+- Negative numbers remain parser-level; stage 3 does not fold unary minus into numeric
+  literals
 - Float folding exists
 - Number-vs-identifier normalization exists
 - Detection of missing space around number/dot patterns exists
@@ -543,22 +551,19 @@ Authority rule for this file: code and active tests win over older aspirational 
 
 ### 9.17 What Remains In The Lexer
 
-- clean up misspellings:
-- `yeild`
-- `Hexadecimal`
-- maybe other legacy enum spellings
-- decide what backticks actually mean
-- separate char literal handling cleanly from string literal handling
-- decide whether keyword registry helper `get_keyword()` should be real or removed
-- add more precise illegal-token tests
-- add more direct negative tests that do not panic via `.expect(...)`
-- rationalize legacy enum names like `Abstract` for minus
+- decide whether slash-comment compatibility becomes permanent or is retired
+- settle the standalone `_` policy against the book and parser placeholder usage
+- remove duplicated eager buffering across `fol-stream` and lexer stage 0 if the
+  front-end moves toward a more streaming model
+- keep exact source locations if the buffering model changes
+- continue shrinking legacy naming debt where it still affects diagnostics or public
+  contracts
 
 ### 9.18 Status Call
 
 - `fol-lexer`: implemented
 - Current maturity: real and usable
-- Main debt: naming cleanup, edge-case cleanup, and spec alignment
+- Main debt: a small number of remaining contract decisions and buffering-model cleanup
 
 ## 10. fol-parser Status
 
@@ -600,18 +605,19 @@ Authority rule for this file: code and active tests win over older aspirational 
 
 - `AstParser` exists
 - `ParseError` exists
-- Parser stores `routine_return_types` in a mutable registry
 - Parser has a `new()` constructor
 - Parser has `Default`
 - Parser returns `Result<AstNode, Vec<Box<dyn Glitch>>>`
-- Parser performs an initial same-file routine-signature scan before the main parse
-- Parser uses the scan to support forward report-validation checks
+- Parser owns the shared canonical identifier comparison helper used by duplicate checks
+- Parser no longer performs report/signature pre-scans as part of the front-end hardening contract
 
 ### 10.3 AST Node Inventory: Declarations
 
 - `VarDecl`
+- `DestructureDecl`
 - `FunDecl`
 - `ProDecl`
+- `LogDecl`
 - `TypeDecl`
 - `UseDecl`
 - `AliasDecl`
@@ -625,9 +631,11 @@ Authority rule for this file: code and active tests win over older aspirational 
 - `BinaryOp`
 - `UnaryOp`
 - `FunctionCall`
+- `QualifiedFunctionCall`
 - `Invoke`
 - `AnonymousFun`
 - `AnonymousPro`
+- `AnonymousLog`
 - `MethodCall`
 - `IndexAccess`
 - `SliceAccess`
@@ -635,8 +643,10 @@ Authority rule for this file: code and active tests win over older aspirational 
 - `AvailabilityAccess`
 - `FieldAccess`
 - `Identifier`
+- `QualifiedIdentifier`
 - `Literal`
 - `ContainerLiteral`
+- `RecordInit`
 - `Rolling`
 - `Range`
 
@@ -678,11 +688,11 @@ Authority rule for this file: code and active tests win over older aspirational 
 - `Module`
 - `Block`
 - `Test`
-- `Path`
 - `Url`
 - `Location`
 - `Standard`
 - `Named`
+- `QualifiedNamed`
 
 ### 10.7 Additional AST Support
 
@@ -739,12 +749,13 @@ Authority rule for this file: code and active tests win over older aspirational 
 
 ### 10.9 Parser Quirk Observed In Main Entry
 
-- When top-level `fun`, `log`, or `pro` parses successfully, the parser currently pushes routine body statements into `Program.declarations` before pushing the declaration node itself.
-- This is real current behavior.
-- This is almost certainly temporary/quirky rather than a finished AST design.
+- Top-level `fun`, `log`, and `pro` declarations now remain single root declaration
+  nodes.
+- `Program.declarations` preserves the actual mixed file-scope surface in source order
+  instead of leaking routine-body children into the root.
 - Remaining work:
-- decide whether `Program` should only contain declarations/statements actually written at root
-- remove this flattening once downstream phases exist
+- decide whether mixed file scope remains the long-term AST contract or gets an even
+  more explicit root representation later
 
 ## 11. Parser Surface: Bindings
 
