@@ -14,6 +14,7 @@ mod parser {
 
 #[cfg(test)]
 mod integration_tests {
+    use std::process::Command;
     use std::time::{SystemTime, UNIX_EPOCH};
 
     fn unique_temp_root(label: &str) -> std::path::PathBuf {
@@ -27,6 +28,13 @@ mod integration_tests {
             std::process::id(),
             stamp
         ))
+    }
+
+    fn run_fol(args: &[&str]) -> std::process::Output {
+        Command::new(env!("CARGO_BIN_EXE_fol"))
+            .args(args)
+            .output()
+            .expect("Should run fol CLI")
     }
 
     #[test]
@@ -239,6 +247,96 @@ mod integration_tests {
             diagnostics.error_count <= diagnostics.diagnostics.len(),
             "Diagnostic counters should remain consistent"
         );
+    }
+
+    #[test]
+    fn test_cli_single_file_compile_succeeds_with_package_parser() {
+        let output = run_fol(&["test/parser/simple_var.fol"]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        assert!(
+            output.status.success(),
+            "CLI should accept declaration-only single-file input, got status {:?} and output:\n{}",
+            output.status.code(),
+            stdout
+        );
+        assert!(
+            stdout.contains("Compilation successful"),
+            "Human CLI output should still report a successful compile"
+        );
+    }
+
+    #[test]
+    fn test_cli_folder_compile_succeeds_with_package_parser() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_folder_compile");
+        fs::create_dir_all(&temp_root).expect("Should create temp CLI folder fixture");
+        fs::write(temp_root.join("00_first.fol"), "var first = 1\n")
+            .expect("Should write first declaration source");
+        fs::write(temp_root.join("10_second.fol"), "var second = 2\n")
+            .expect("Should write second declaration source");
+
+        let output = run_fol(&[temp_root
+            .to_str()
+            .expect("CLI folder fixture path should be utf-8")]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        assert!(
+            output.status.success(),
+            "CLI should accept declaration-only folders, got status {:?} and output:\n{}",
+            output.status.code(),
+            stdout
+        );
+        assert!(
+            stdout.contains("Compilation successful"),
+            "Human CLI output should still report a successful folder compile"
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_cli_folder_parse_errors_keep_json_locations_with_package_parser() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_folder_parse_error");
+        fs::create_dir_all(&temp_root).expect("Should create temp CLI error fixture");
+        fs::write(temp_root.join("00_good.fol"), "var ok = 1\n").expect("Should write good source");
+        fs::write(temp_root.join("10_bad.fol"), "run(1, 2)\n")
+            .expect("Should write invalid file-root source");
+
+        let output = run_fol(&[
+            "--json",
+            temp_root
+                .to_str()
+                .expect("CLI error fixture path should be utf-8"),
+        ]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let compact = stdout.chars().filter(|c| !c.is_whitespace()).collect::<String>();
+
+        assert!(
+            !output.status.success(),
+            "CLI should fail on declaration-only package parse errors"
+        );
+        assert!(
+            stdout.contains("10_bad.fol"),
+            "JSON diagnostics should identify the failing second source unit"
+        );
+        assert!(
+            compact.contains("\"line\":1"),
+            "JSON diagnostics should preserve the failing line number"
+        );
+        assert!(
+            compact.contains("\"column\":1"),
+            "JSON diagnostics should preserve the failing column number"
+        );
+        assert!(
+            stdout.contains("Executable calls are not allowed at file root"),
+            "JSON diagnostics should keep the parser's file-root error wording"
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
     }
 
     #[test]
