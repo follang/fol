@@ -1,5 +1,6 @@
 use super::*;
 use crate::ast::BindingPattern;
+use crate::{ParsedPackage, ParsedTopLevel, SyntaxIndex, SyntaxOrigin};
 
 impl AstParser {
     pub fn new() -> Self {
@@ -14,7 +15,52 @@ impl AstParser {
         &mut self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Vec<Box<dyn Glitch>>> {
-        let mut declarations = Vec::new();
+        let (entries, _) = self.parse_top_level_entries(tokens)?;
+        Ok(AstNode::Program {
+            declarations: entries.into_iter().map(|entry| entry.node).collect(),
+        })
+    }
+
+    pub fn parse_package(
+        &mut self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<ParsedPackage, Vec<Box<dyn Glitch>>> {
+        let sources = tokens.sources().to_vec();
+        let (entries, syntax_index) = self.parse_top_level_entries(tokens)?;
+        Ok(ParsedPackage::from_sources_and_entries(
+            &sources,
+            entries,
+            syntax_index,
+        ))
+    }
+
+    fn push_top_level_entry(
+        entries: &mut Vec<ParsedTopLevel>,
+        syntax_index: &mut SyntaxIndex,
+        token: &fol_lexer::lexer::stage3::element::Element,
+        node: AstNode,
+    ) {
+        let node_id = syntax_index.insert(SyntaxOrigin::from_token(token));
+        entries.push(ParsedTopLevel { node_id, node });
+    }
+
+    fn extend_top_level_entries(
+        entries: &mut Vec<ParsedTopLevel>,
+        syntax_index: &mut SyntaxIndex,
+        token: &fol_lexer::lexer::stage3::element::Element,
+        nodes: Vec<AstNode>,
+    ) {
+        for node in nodes {
+            Self::push_top_level_entry(entries, syntax_index, token, node);
+        }
+    }
+
+    fn parse_top_level_entries(
+        &mut self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<(Vec<ParsedTopLevel>, SyntaxIndex), Vec<Box<dyn Glitch>>> {
+        let mut entries = Vec::new();
+        let mut syntax_index = SyntaxIndex::default();
         let mut errors: Vec<Box<dyn Glitch>> = Vec::new();
 
         for _ in 0..8_192 {
@@ -45,7 +91,7 @@ impl AstParser {
 
             if key.is_comment() {
                 match self.parse_comment_token(&token) {
-                    Ok(node) => declarations.push(node),
+                    Ok(node) => Self::push_top_level_entry(&mut entries, &mut syntax_index, &token, node),
                     Err(error) => errors.push(error),
                 }
                 if tokens.bump().is_none() {
@@ -61,7 +107,12 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_binding_alternative_decl(tokens) {
-                    Ok(nodes) => declarations.extend(nodes),
+                    Ok(nodes) => Self::extend_top_level_entries(
+                        &mut entries,
+                        &mut syntax_index,
+                        &token,
+                        nodes,
+                    ),
                     Err(error) => errors.push(error),
                 }
                 self.bump_if_no_progress(tokens, before);
@@ -78,7 +129,12 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_var_decl(tokens) {
-                    Ok(nodes) => declarations.extend(nodes),
+                    Ok(nodes) => Self::extend_top_level_entries(
+                        &mut entries,
+                        &mut syntax_index,
+                        &token,
+                        nodes,
+                    ),
                     Err(error) => errors.push(error),
                 }
 
@@ -102,7 +158,12 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_let_decl(tokens) {
-                    Ok(nodes) => declarations.extend(nodes),
+                    Ok(nodes) => Self::extend_top_level_entries(
+                        &mut entries,
+                        &mut syntax_index,
+                        &token,
+                        nodes,
+                    ),
                     Err(error) => errors.push(error),
                 }
 
@@ -126,7 +187,12 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_con_decl(tokens) {
-                    Ok(nodes) => declarations.extend(nodes),
+                    Ok(nodes) => Self::extend_top_level_entries(
+                        &mut entries,
+                        &mut syntax_index,
+                        &token,
+                        nodes,
+                    ),
                     Err(error) => errors.push(error),
                 }
 
@@ -150,7 +216,12 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_lab_decl(tokens) {
-                    Ok(nodes) => declarations.extend(nodes),
+                    Ok(nodes) => Self::extend_top_level_entries(
+                        &mut entries,
+                        &mut syntax_index,
+                        &token,
+                        nodes,
+                    ),
                     Err(error) => errors.push(error),
                 }
                 self.bump_if_no_progress(tokens, before);
@@ -167,7 +238,12 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_use_decl(tokens) {
-                    Ok(nodes) => declarations.extend(nodes),
+                    Ok(nodes) => Self::extend_top_level_entries(
+                        &mut entries,
+                        &mut syntax_index,
+                        &token,
+                        nodes,
+                    ),
                     Err(error) => errors.push(error),
                 }
                 self.bump_if_no_progress(tokens, before);
@@ -184,7 +260,7 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_seg_decl(tokens) {
-                    Ok(node) => declarations.push(node),
+                    Ok(node) => Self::push_top_level_entry(&mut entries, &mut syntax_index, &token, node),
                     Err(error) => errors.push(error),
                 }
                 self.bump_if_no_progress(tokens, before);
@@ -201,7 +277,7 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_imp_decl(tokens) {
-                    Ok(node) => declarations.push(node),
+                    Ok(node) => Self::push_top_level_entry(&mut entries, &mut syntax_index, &token, node),
                     Err(error) => errors.push(error),
                 }
                 self.bump_if_no_progress(tokens, before);
@@ -218,7 +294,7 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_std_decl(tokens) {
-                    Ok(node) => declarations.push(node),
+                    Ok(node) => Self::push_top_level_entry(&mut entries, &mut syntax_index, &token, node),
                     Err(error) => errors.push(error),
                 }
                 self.bump_if_no_progress(tokens, before);
@@ -235,7 +311,7 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_def_decl(tokens) {
-                    Ok(node) => declarations.push(node),
+                    Ok(node) => Self::push_top_level_entry(&mut entries, &mut syntax_index, &token, node),
                     Err(error) => errors.push(error),
                 }
                 self.bump_if_no_progress(tokens, before);
@@ -252,7 +328,7 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_alias_decl(tokens) {
-                    Ok(node) => declarations.push(node),
+                    Ok(node) => Self::push_top_level_entry(&mut entries, &mut syntax_index, &token, node),
                     Err(error) => errors.push(error),
                 }
                 self.bump_if_no_progress(tokens, before);
@@ -269,7 +345,12 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_type_decl(tokens) {
-                    Ok(nodes) => declarations.extend(nodes),
+                    Ok(nodes) => Self::extend_top_level_entries(
+                        &mut entries,
+                        &mut syntax_index,
+                        &token,
+                        nodes,
+                    ),
                     Err(error) => errors.push(error),
                 }
                 self.bump_if_no_progress(tokens, before);
@@ -286,7 +367,7 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_fun_decl(tokens) {
-                    Ok(node) => declarations.push(node),
+                    Ok(node) => Self::push_top_level_entry(&mut entries, &mut syntax_index, &token, node),
                     Err(error) => errors.push(error),
                 }
                 self.bump_if_no_progress(tokens, before);
@@ -303,7 +384,7 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_log_decl(tokens) {
-                    Ok(node) => declarations.push(node),
+                    Ok(node) => Self::push_top_level_entry(&mut entries, &mut syntax_index, &token, node),
                     Err(error) => errors.push(error),
                 }
                 self.bump_if_no_progress(tokens, before);
@@ -320,7 +401,7 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_pro_decl(tokens) {
-                    Ok(node) => declarations.push(node),
+                    Ok(node) => Self::push_top_level_entry(&mut entries, &mut syntax_index, &token, node),
                     Err(error) => errors.push(error),
                 }
                 self.bump_if_no_progress(tokens, before);
@@ -337,7 +418,7 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_return_stmt(tokens) {
-                    Ok(node) => declarations.push(node),
+                    Ok(node) => Self::push_top_level_entry(&mut entries, &mut syntax_index, &token, node),
                     Err(error) => errors.push(error),
                 }
                 self.bump_if_no_progress(tokens, before);
@@ -357,7 +438,7 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_call_stmt(tokens) {
-                    Ok(node) => declarations.push(node),
+                    Ok(node) => Self::push_top_level_entry(&mut entries, &mut syntax_index, &token, node),
                     Err(error) => errors.push(error),
                 }
                 self.bump_if_no_progress(tokens, before);
@@ -378,7 +459,7 @@ impl AstParser {
                 );
                 match self.parse_dot_builtin_call_expr(tokens) {
                     Ok(node) => {
-                        declarations.push(node);
+                        Self::push_top_level_entry(&mut entries, &mut syntax_index, &token, node);
                         self.consume_optional_semicolon(tokens);
                     }
                     Err(error) => errors.push(error),
@@ -402,7 +483,7 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_invoke_stmt(tokens) {
-                    Ok(node) => declarations.push(node),
+                    Ok(node) => Self::push_top_level_entry(&mut entries, &mut syntax_index, &token, node),
                     Err(error) => errors.push(error),
                 }
                 self.bump_if_no_progress(tokens, before);
@@ -419,7 +500,7 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_break_stmt(tokens) {
-                    Ok(node) => declarations.push(node),
+                    Ok(node) => Self::push_top_level_entry(&mut entries, &mut syntax_index, &token, node),
                     Err(error) => errors.push(error),
                 }
                 self.bump_if_no_progress(tokens, before);
@@ -436,7 +517,7 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_yield_stmt(tokens) {
-                    Ok(node) => declarations.push(node),
+                    Ok(node) => Self::push_top_level_entry(&mut entries, &mut syntax_index, &token, node),
                     Err(error) => errors.push(error),
                 }
                 self.bump_if_no_progress(tokens, before);
@@ -459,7 +540,7 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_builtin_call_stmt(tokens) {
-                    Ok(node) => declarations.push(node),
+                    Ok(node) => Self::push_top_level_entry(&mut entries, &mut syntax_index, &token, node),
                     Err(error) => errors.push(error),
                 }
                 self.bump_if_no_progress(tokens, before);
@@ -476,7 +557,7 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_when_stmt(tokens) {
-                    Ok(node) => declarations.push(node),
+                    Ok(node) => Self::push_top_level_entry(&mut entries, &mut syntax_index, &token, node),
                     Err(error) => errors.push(error),
                 }
                 self.bump_if_no_progress(tokens, before);
@@ -493,7 +574,7 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_if_stmt(tokens) {
-                    Ok(node) => declarations.push(node),
+                    Ok(node) => Self::push_top_level_entry(&mut entries, &mut syntax_index, &token, node),
                     Err(error) => errors.push(error),
                 }
                 self.bump_if_no_progress(tokens, before);
@@ -510,7 +591,7 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_select_stmt(tokens) {
-                    Ok(node) => declarations.push(node),
+                    Ok(node) => Self::push_top_level_entry(&mut entries, &mut syntax_index, &token, node),
                     Err(error) => errors.push(error),
                 }
                 self.bump_if_no_progress(tokens, before);
@@ -533,7 +614,7 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_loop_stmt(tokens) {
-                    Ok(node) => declarations.push(node),
+                    Ok(node) => Self::push_top_level_entry(&mut entries, &mut syntax_index, &token, node),
                     Err(error) => errors.push(error),
                 }
                 self.bump_if_no_progress(tokens, before);
@@ -553,7 +634,7 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_assignment_stmt(tokens) {
-                    Ok(node) => declarations.push(node),
+                    Ok(node) => Self::push_top_level_entry(&mut entries, &mut syntax_index, &token, node),
                     Err(error) => errors.push(error),
                 }
                 self.bump_if_no_progress(tokens, before);
@@ -565,19 +646,39 @@ impl AstParser {
 
             if key.is_literal() {
                 match self.parse_lexer_literal(&token) {
-                    Ok(node) => declarations.push(node),
+                    Ok(node) => Self::push_top_level_entry(&mut entries, &mut syntax_index, &token, node),
                     Err(error) => errors.push(error),
                 }
             } else if matches!(key, KEYWORD::Keyword(BUILDIN::True)) {
-                declarations.push(AstNode::Literal(Literal::Boolean(true)));
+                Self::push_top_level_entry(
+                    &mut entries,
+                    &mut syntax_index,
+                    &token,
+                    AstNode::Literal(Literal::Boolean(true)),
+                );
             } else if matches!(key, KEYWORD::Keyword(BUILDIN::False)) {
-                declarations.push(AstNode::Literal(Literal::Boolean(false)));
+                Self::push_top_level_entry(
+                    &mut entries,
+                    &mut syntax_index,
+                    &token,
+                    AstNode::Literal(Literal::Boolean(false)),
+                );
             } else if key.is_ident() && token.con().trim() == "nil" {
-                declarations.push(AstNode::Literal(Literal::Nil));
+                Self::push_top_level_entry(
+                    &mut entries,
+                    &mut syntax_index,
+                    &token,
+                    AstNode::Literal(Literal::Nil),
+                );
             } else if AstParser::token_can_be_logical_name(&key) {
-                declarations.push(AstNode::Identifier {
-                    name: token.con().trim().to_string(),
-                });
+                Self::push_top_level_entry(
+                    &mut entries,
+                    &mut syntax_index,
+                    &token,
+                    AstNode::Identifier {
+                        name: token.con().trim().to_string(),
+                    },
+                );
                 if tokens.bump().is_none() {
                     break;
                 }
@@ -590,7 +691,7 @@ impl AstParser {
         }
 
         if errors.is_empty() {
-            Ok(AstNode::Program { declarations })
+            Ok((entries, syntax_index))
         } else {
             Err(errors)
         }

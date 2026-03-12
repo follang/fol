@@ -4,7 +4,8 @@ use fol_lexer::lexer::stage3::Elements;
 use fol_lexer::token::KEYWORD;
 use fol_parser::ast::{
     AstNode, AstParser, BindingPattern, CharEncoding, CommentKind, FloatSize, FolType, InquiryTarget,
-    IntSize, Literal, Parameter, ParseError, QualifiedPath, TypeDefinition,
+    IntSize, Literal, Parameter, ParseError, ParsedPackage, ParsedSourceUnit, ParsedTopLevel,
+    QualifiedPath, SyntaxOrigin, TypeDefinition,
 };
 use fol_stream::FileStream;
 
@@ -79,6 +80,39 @@ fn use_decl_matches_path(node: &AstNode, expected_name: &str, expected_path: &st
         && use_decl_path_text(node).as_deref() == Some(expected_path)
 }
 
+fn parse_package_from_file(path: &str) -> ParsedPackage {
+    let mut file_stream = FileStream::from_file(path).expect("Should read parser package test file");
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    parser
+        .parse_package(&mut lexer)
+        .expect("Parser should produce a parsed package")
+}
+
+fn parse_package_from_folder(path: &str) -> ParsedPackage {
+    let mut file_stream =
+        FileStream::from_folder(path).expect("Should read parser package test folder");
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    parser
+        .parse_package(&mut lexer)
+        .expect("Parser should produce a parsed package")
+}
+
+fn source_unit_nodes<'a>(source_unit: &'a ParsedSourceUnit) -> Vec<&'a AstNode> {
+    source_unit.items.iter().map(|item| &item.node).collect()
+}
+
+fn parsed_top_level_origin<'a>(
+    package: &'a ParsedPackage,
+    item: &ParsedTopLevel,
+) -> &'a SyntaxOrigin {
+    package
+        .syntax_index
+        .origin(item.node_id)
+        .expect("Parsed top-level node should have a syntax origin")
+}
+
 #[cfg(test)]
 #[path = "test_parser_parts/alternative_routine_headers.rs"]
 mod alternative_routine_headers;
@@ -143,6 +177,9 @@ mod call_and_postfix_expressions;
 #[path = "test_parser_parts/comment_nodes.rs"]
 mod comment_nodes;
 #[cfg(test)]
+#[path = "test_parser_parts/source_origins.rs"]
+mod source_origins;
+#[cfg(test)]
 #[path = "test_parser_parts/call_argument_separators.rs"]
 mod call_argument_separators;
 #[cfg(test)]
@@ -175,6 +212,9 @@ mod control_flow_contexts;
 #[cfg(test)]
 #[path = "test_parser_parts/file_boundaries.rs"]
 mod file_boundaries;
+#[cfg(test)]
+#[path = "test_parser_parts/package_source_units.rs"]
+mod package_source_units;
 #[cfg(test)]
 #[path = "test_parser_parts/quoted_declaration_targets.rs"]
 mod quoted_declaration_targets;

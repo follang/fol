@@ -2,12 +2,14 @@ use crate::lexer::stage2;
 use crate::lexer::stage3::Element;
 use crate::token::*;
 use fol_stream::FileStream;
+use fol_stream::Source;
 use fol_types::*;
 
 pub struct Elements {
     elem: Box<dyn Iterator<Item = Con<Element>>>,
     win: Win<Con<Element>>,
     _in_count: usize,
+    sources: Vec<Source>,
 }
 
 impl Elements {
@@ -24,6 +26,7 @@ impl Elements {
     pub fn init(file: &mut FileStream) -> Self {
         let mut prev = Vec::with_capacity(SLIDER);
         let mut next = Vec::with_capacity(SLIDER);
+        let sources = file.sources().to_vec();
         let mut elem = Box::new(elements(file));
         for _ in 0..SLIDER {
             prev.push(Ok(Element::default()))
@@ -35,9 +38,13 @@ impl Elements {
             elem,
             win: (prev, Ok(Element::default()), next),
             _in_count: SLIDER,
+            sources,
         };
         let _ = elements.bump();
         elements
+    }
+    pub fn sources(&self) -> &[Source] {
+        &self.sources
     }
     pub fn set_key(&mut self, key: KEYWORD) -> Vod {
         if self.win.1.clone()?.key().is_space() || self.win.2[0].is_ok() {

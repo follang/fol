@@ -3,6 +3,121 @@
 
 use std::collections::HashMap;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct SyntaxNodeId(pub usize);
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SyntaxOrigin {
+    pub file: Option<String>,
+    pub line: usize,
+    pub column: usize,
+    pub length: usize,
+}
+
+impl SyntaxOrigin {
+    pub fn from_token(token: &fol_lexer::lexer::stage3::element::Element) -> Self {
+        let loc = token.loc();
+        Self {
+            file: loc.source().map(|src| src.path(true)),
+            line: loc.row(),
+            column: loc.col(),
+            length: loc.len(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct SyntaxIndex {
+    origins: Vec<SyntaxOrigin>,
+}
+
+impl SyntaxIndex {
+    pub fn insert(&mut self, origin: SyntaxOrigin) -> SyntaxNodeId {
+        let id = SyntaxNodeId(self.origins.len());
+        self.origins.push(origin);
+        id
+    }
+
+    pub fn origin(&self, id: SyntaxNodeId) -> Option<&SyntaxOrigin> {
+        self.origins.get(id.0)
+    }
+
+    pub fn len(&self) -> usize {
+        self.origins.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.origins.is_empty()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ParsedTopLevel {
+    pub node_id: SyntaxNodeId,
+    pub node: AstNode,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ParsedSourceUnit {
+    pub path: String,
+    pub package: String,
+    pub namespace: String,
+    pub items: Vec<ParsedTopLevel>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ParsedPackage {
+    pub package: String,
+    pub source_units: Vec<ParsedSourceUnit>,
+    pub syntax_index: SyntaxIndex,
+}
+
+impl ParsedPackage {
+    pub fn from_sources_and_entries(
+        sources: &[fol_stream::Source],
+        entries: Vec<ParsedTopLevel>,
+        syntax_index: SyntaxIndex,
+    ) -> Self {
+        let package = sources
+            .first()
+            .map(|source| source.package.clone())
+            .unwrap_or_default();
+        let mut source_units = sources
+            .iter()
+            .map(|source| ParsedSourceUnit {
+                path: source.path.clone(),
+                package: source.package.clone(),
+                namespace: source.namespace.clone(),
+                items: Vec::new(),
+            })
+            .collect::<Vec<_>>();
+        let mut path_to_index = HashMap::new();
+
+        for (index, source) in sources.iter().enumerate() {
+            path_to_index.insert(source.path.clone(), index);
+        }
+
+        for entry in entries {
+            let unit_index = syntax_index
+                .origin(entry.node_id)
+                .and_then(|origin| origin.file.as_ref())
+                .and_then(|file| path_to_index.get(file))
+                .copied()
+                .unwrap_or(0);
+
+            if let Some(unit) = source_units.get_mut(unit_index) {
+                unit.items.push(entry);
+            }
+        }
+
+        Self {
+            package,
+            source_units,
+            syntax_index,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UsePathSeparator {
     Slash,
@@ -1268,3 +1383,37 @@ pub trait AstVisitor {
 // Re-export modules
 pub mod parser;
 pub use parser::{AstParser, ParseError};
+
+#[cfg(test)]
+mod unit_tests {
+    use super::*;
+
+    #[test]
+    fn syntax_index_assigns_stable_insertion_order_ids() {
+        let mut index = SyntaxIndex::default();
+        let first = index.insert(SyntaxOrigin {
+            file: Some("alpha.fol".to_string()),
+            line: 1,
+            column: 1,
+            length: 3,
+        });
+        let second = index.insert(SyntaxOrigin {
+            file: Some("beta.fol".to_string()),
+            line: 2,
+            column: 4,
+            length: 2,
+        });
+
+        assert_eq!(first, SyntaxNodeId(0));
+        assert_eq!(second, SyntaxNodeId(1));
+        assert_eq!(
+            index.origin(second),
+            Some(&SyntaxOrigin {
+                file: Some("beta.fol".to_string()),
+                line: 2,
+                column: 4,
+                length: 2,
+            })
+        );
+    }
+}
