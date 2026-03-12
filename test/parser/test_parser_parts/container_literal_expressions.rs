@@ -14,7 +14,7 @@ fn test_container_literals_parse_in_assignment_and_return() {
 
     match ast {
         AstNode::Program { declarations } => {
-            let has_container_assignment = program_surface_nodes(&declarations).into_iter().any(|node| {
+            let has_container_assignment = only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Assignment { value, .. }
@@ -25,7 +25,7 @@ fn test_container_literals_parse_in_assignment_and_return() {
                 )
             });
 
-            let has_container_return = program_surface_nodes(&declarations).into_iter().any(|node| {
+            let has_container_return = only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Return { value: Some(value) }
@@ -58,7 +58,7 @@ fn test_semicolon_container_literals_parse_in_assignment_and_return() {
 
     match ast {
         AstNode::Program { declarations } => {
-            let has_container_assignment = program_surface_nodes(&declarations).into_iter().any(|node| {
+            let has_container_assignment = program_root_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Assignment { value, .. }
@@ -69,7 +69,7 @@ fn test_semicolon_container_literals_parse_in_assignment_and_return() {
                 )
             });
 
-            let has_container_return = program_surface_nodes(&declarations).into_iter().any(|node| {
+            let has_container_return = program_root_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Return { value: Some(value) }
@@ -102,15 +102,11 @@ fn test_semicolon_container_literals_parse_in_initializers() {
 
     match ast {
         AstNode::Program { declarations } => {
-            assert!(program_surface_nodes(&declarations).into_iter().any(|node| matches!(
+            assert!(only_root_routine_body_nodes(&declarations).into_iter().any(|node| matches!(
                 node,
-                AstNode::FunDecl { body, .. }
-                if body.iter().any(|stmt| matches!(
-                    stmt,
-                    AstNode::VarDecl { name, value: Some(value), .. }
-                    if name == "items"
-                        && matches!(value.as_ref(), AstNode::ContainerLiteral { elements, .. } if elements.len() == 3)
-                ))
+                AstNode::VarDecl { name, value: Some(value), .. }
+                if name == "items"
+                    && matches!(value.as_ref(), AstNode::ContainerLiteral { elements, .. } if elements.len() == 3)
             )));
         }
         _ => panic!("Expected program node"),
@@ -132,19 +128,15 @@ fn test_semicolon_container_literals_parse_in_call_args() {
 
     match ast {
         AstNode::Program { declarations } => {
-            assert!(program_surface_nodes(&declarations).into_iter().any(|node| matches!(
+            assert!(only_root_routine_body_nodes(&declarations).into_iter().any(|node| matches!(
                 node,
-                AstNode::FunDecl { body, .. }
-                if body.iter().any(|stmt| matches!(
-                    stmt,
-                    AstNode::Return { value: Some(value) }
-                    if matches!(
-                        value.as_ref(),
-                        AstNode::FunctionCall { name, args }
-                        if name == "emit"
-                            && matches!(args.as_slice(), [AstNode::ContainerLiteral { elements, .. }] if elements.len() == 3)
-                    )
-                ))
+                AstNode::Return { value: Some(value) }
+                if matches!(
+                    value.as_ref(),
+                    AstNode::FunctionCall { name, args }
+                    if name == "emit"
+                        && matches!(args.as_slice(), [AstNode::ContainerLiteral { elements, .. }] if elements.len() == 3)
+                )
             )));
         }
         _ => panic!("Expected program node"),
@@ -166,7 +158,7 @@ fn test_trailing_separator_container_literals_parse_in_assignment_and_return() {
 
     match ast {
         AstNode::Program { declarations } => {
-            let has_container_assignment = program_surface_nodes(&declarations).into_iter().any(|node| {
+            let has_container_assignment = program_root_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Assignment { value, .. }
@@ -177,7 +169,7 @@ fn test_trailing_separator_container_literals_parse_in_assignment_and_return() {
                 )
             });
 
-            let has_container_return = program_surface_nodes(&declarations).into_iter().any(|node| {
+            let has_container_return = program_root_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Return { value: Some(value) }
@@ -211,15 +203,11 @@ fn test_trailing_separator_container_literals_parse_in_initializers() {
 
     match ast {
         AstNode::Program { declarations } => {
-            assert!(program_surface_nodes(&declarations).into_iter().any(|node| matches!(
+            assert!(only_root_routine_body_nodes(&declarations).into_iter().any(|node| matches!(
                 node,
-                AstNode::FunDecl { body, .. }
-                if body.iter().any(|stmt| matches!(
-                    stmt,
-                    AstNode::VarDecl { name, value: Some(value), .. }
-                    if name == "items"
-                        && matches!(value.as_ref(), AstNode::ContainerLiteral { elements, .. } if elements.len() == 3)
-                ))
+                AstNode::VarDecl { name, value: Some(value), .. }
+                if name == "items"
+                    && matches!(value.as_ref(), AstNode::ContainerLiteral { elements, .. } if elements.len() == 3)
             )));
         }
         _ => panic!("Expected program node"),
@@ -242,19 +230,15 @@ fn test_trailing_separator_container_literals_parse_in_call_args() {
 
     match ast {
         AstNode::Program { declarations } => {
-            assert!(program_surface_nodes(&declarations).into_iter().any(|node| matches!(
+            assert!(only_root_routine_body_nodes(&declarations).into_iter().any(|node| matches!(
                 node,
-                AstNode::FunDecl { body, .. }
-                if body.iter().any(|stmt| matches!(
-                    stmt,
-                    AstNode::Return { value: Some(value) }
-                    if matches!(
-                        value.as_ref(),
-                        AstNode::FunctionCall { name, args }
-                        if name == "emit"
-                            && matches!(args.as_slice(), [AstNode::ContainerLiteral { elements, .. }] if elements.len() == 3)
-                    )
-                ))
+                AstNode::Return { value: Some(value) }
+                if matches!(
+                    value.as_ref(),
+                    AstNode::FunctionCall { name, args }
+                    if name == "emit"
+                        && matches!(args.as_slice(), [AstNode::ContainerLiteral { elements, .. }] if elements.len() == 3)
+                )
             )));
         }
         _ => panic!("Expected program node"),

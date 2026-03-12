@@ -14,7 +14,7 @@ fn test_braced_range_expressions_parse_in_assignment_and_return() {
 
     match ast {
         AstNode::Program { declarations } => {
-            let has_range_assignment = program_surface_nodes(&declarations).into_iter().any(|node| {
+            let has_range_assignment = only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Assignment { value, .. }
@@ -22,7 +22,7 @@ fn test_braced_range_expressions_parse_in_assignment_and_return() {
                 )
             });
 
-            let has_range_return = program_surface_nodes(&declarations).into_iter().any(|node| {
+            let has_range_return = only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Return { value: Some(value) }
@@ -57,7 +57,7 @@ fn test_return_expression_unary_minus_precedence() {
         .expect("Parser should parse unary precedence function");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
                 if let AstNode::Return { value: Some(value) } = node {
@@ -101,7 +101,7 @@ fn test_return_expression_unary_plus_precedence() {
         .expect("Parser should parse unary plus precedence function");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
                 if let AstNode::Return { value: Some(value) } = node {
@@ -143,7 +143,7 @@ fn test_return_expression_chained_unary_plus_precedence() {
         .expect("Parser should parse chained unary plus precedence function");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
                 if let AstNode::Return { value: Some(value) } = node {
@@ -186,7 +186,7 @@ fn test_unary_plus_preserves_call_and_method_call_expression_shapes() {
 
     let (has_call_assignment, has_method_return) = match ast {
         AstNode::Program { declarations } => {
-            let has_call_assignment = program_surface_nodes(&declarations).into_iter().any(|node| {
+            let has_call_assignment = only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Assignment { value, .. }
@@ -200,7 +200,7 @@ fn test_unary_plus_preserves_call_and_method_call_expression_shapes() {
                 )
             });
 
-            let has_method_return = program_surface_nodes(&declarations).into_iter().any(|node| {
+            let has_method_return = only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Return { value: Some(value) }
@@ -243,7 +243,7 @@ fn test_return_expression_unary_ref_parses_as_unary_expression() {
         .expect("Parser should parse unary ref function");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
                 if let AstNode::Return { value: Some(value) } = node {
@@ -282,7 +282,7 @@ fn test_return_expression_unary_deref_precedence() {
         .expect("Parser should parse unary deref precedence function");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
                 if let AstNode::Return { value: Some(value) } = node {
@@ -329,7 +329,7 @@ fn test_unary_ref_deref_chains_parse_with_expected_shape() {
 
     let (has_chain_assignment, has_chain_return) = match ast {
         AstNode::Program { declarations } => {
-            let has_chain_assignment = program_surface_nodes(&declarations).into_iter().any(|node| {
+            let has_chain_assignment = only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::Assignment { value, .. }
@@ -350,7 +350,7 @@ fn test_unary_ref_deref_chains_parse_with_expected_shape() {
                     )
                 });
 
-            let has_chain_return = program_surface_nodes(&declarations).into_iter().any(|node| {
+            let has_chain_return = only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::Return { value: Some(value) }
@@ -400,7 +400,7 @@ fn test_mixed_unary_chains_parse_with_expected_shape() {
 
     let (has_assignment_chain, has_return_chain) = match ast {
         AstNode::Program { declarations } => {
-            let has_assignment_chain = program_surface_nodes(&declarations).into_iter().any(|node| {
+            let has_assignment_chain = only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::Assignment { value, .. }
@@ -428,7 +428,7 @@ fn test_mixed_unary_chains_parse_with_expected_shape() {
                     )
                 });
 
-            let has_return_chain = program_surface_nodes(&declarations).into_iter().any(|node| {
+            let has_return_chain = only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Return { value: Some(value) }
@@ -472,7 +472,7 @@ fn test_return_expression_unary_minus_parenthesized_addition() {
         .expect("Parser should parse unary parenthesized precedence function");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
                 if let AstNode::Return { value: Some(value) } = node {
@@ -516,7 +516,7 @@ fn test_return_expression_subtraction_is_left_associative() {
         .expect("Parser should parse subtraction associativity function");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
                 if let AstNode::Return { value: Some(value) } = node {
@@ -560,7 +560,7 @@ fn test_return_expression_division_is_left_associative() {
         .expect("Parser should parse division associativity function");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
                 if let AstNode::Return { value: Some(value) } = node {
@@ -605,7 +605,7 @@ fn test_return_expression_mixed_precedence_and_associativity() {
         .expect("Parser should parse mixed precedence function");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
                 if let AstNode::Return { value: Some(value) } = node {
@@ -650,7 +650,7 @@ fn test_return_expression_division_with_grouped_rhs() {
         .expect("Parser should parse division with grouped rhs");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
                 if let AstNode::Return { value: Some(value) } = node {
@@ -694,7 +694,7 @@ fn test_assignment_statement_parsing_with_expression_value() {
         .expect("Parser should parse assignment statement");
 
     let assignment = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
                 if let AstNode::Assignment { target, value } = node {
@@ -732,7 +732,7 @@ fn test_field_assignment_target_parsing() {
     match ast {
         AstNode::Program { declarations } => {
             assert!(
-                    program_surface_nodes(&declarations).into_iter().any(|node| {
+                    only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                         matches!(
                             node,
                             AstNode::Assignment { target, value }
@@ -767,7 +767,7 @@ fn test_index_assignment_target_parsing() {
     match ast {
         AstNode::Program { declarations } => {
             assert!(
-                    program_surface_nodes(&declarations).into_iter().any(|node| {
+                    only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                         matches!(
                             node,
                             AstNode::Assignment { target, value }
