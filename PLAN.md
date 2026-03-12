@@ -649,6 +649,8 @@ Status: done
 
 #### Slice 7.2
 
+Status: done
+
 - Audit every parser AST form that can introduce or reference a name.
 - Ensure no supported syntax surface is silently skipped by resolver traversal.
 - Add fixture coverage for missed surfaces found in the audit.

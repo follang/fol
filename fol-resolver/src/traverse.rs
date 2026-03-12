@@ -385,6 +385,9 @@ fn traverse_node(
             let rolling_scope =
                 program.add_scope(ScopeKind::RollingBinder, scope_id, source_unit_id);
             for binding in bindings {
+                if let Some(type_hint) = &binding.type_hint {
+                    resolve_type_reference(program, source_unit_id, rolling_scope, type_hint)?;
+                }
                 traverse_node(
                     program,
                     source_unit_id,
@@ -537,22 +540,28 @@ fn traverse_node(
                         body,
                     } => {
                         traverse_node(
-                            program,
-                            source_unit_id,
-                            scope_id,
-                            value,
-                            false,
-                            routine_context,
-                        )?;
-                        traverse_block_body(
-                            program,
+                    program,
+                    source_unit_id,
+                    scope_id,
+                    value,
+                    false,
+                    routine_context,
+                )?;
+                traverse_block_body(
+                    program,
                             source_unit_id,
                             scope_id,
                             body,
                             routine_context,
                         )?;
                     }
-                    WhenCase::Of { body, .. } => {
+                    WhenCase::Of { type_match, body } => {
+                        resolve_type_reference(
+                            program,
+                            source_unit_id,
+                            scope_id,
+                            type_match,
+                        )?;
                         traverse_block_body(
                             program,
                             source_unit_id,
@@ -596,10 +605,14 @@ fn traverse_node(
             }
             LoopCondition::Iteration {
                 var,
+                type_hint,
                 iterable,
                 condition,
                 ..
             } => {
+                if let Some(type_hint) = type_hint {
+                    resolve_type_reference(program, source_unit_id, scope_id, type_hint)?;
+                }
                 traverse_node(
                     program,
                     source_unit_id,
@@ -640,9 +653,33 @@ fn traverse_node(
                 }
             }
         },
-        AstNode::Select { channel, body, .. } => {
+        AstNode::Select {
+            channel,
+            binding,
+            body,
+        } => {
             traverse_node(program, source_unit_id, scope_id, channel, false, routine_context)?;
-            traverse_block_body(program, source_unit_id, scope_id, body, routine_context)?;
+            let select_scope = program.add_scope(ScopeKind::Block, scope_id, source_unit_id);
+            if let Some(binding) = binding {
+                insert_local_symbol(
+                    program,
+                    source_unit_id,
+                    select_scope,
+                    binding,
+                    SymbolKind::ValueBinding,
+                    format!("symbol#{}", fol_types::canonical_identifier_key(binding)),
+                )?;
+            }
+            for statement in body {
+                traverse_node(
+                    program,
+                    source_unit_id,
+                    select_scope,
+                    statement,
+                    false,
+                    routine_context,
+                )?;
+            }
         }
         AstNode::Block { statements } => {
             traverse_block_body(program, source_unit_id, scope_id, statements, routine_context)?;
