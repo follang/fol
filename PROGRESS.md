@@ -112,12 +112,9 @@ Authority rule for this file: code and active tests win over older aspirational 
 - `Cargo.toml`: active workspace root and binary/test manifest
 - `src/main.rs`: active CLI entry point
 - `README.md`: stale relative to parser surface
-- `FEATURES.md`: stale relative to parser surface
 - `CHANGELOG.md`: present
-- `PLANNING.md`: present
 - `PLAN.md`: present
 - `PROGRESS.md`: this file, rebuilt from code
-- `test_old/`: archival material, not the active integration suite
 
 ### 6.2 Active Crates
 
