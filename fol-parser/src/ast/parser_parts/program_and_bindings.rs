@@ -154,6 +154,14 @@ impl AstParser {
                 if tokens.bump().is_none() {
                     break;
                 }
+                self.skip_layout(tokens);
+                continue;
+            }
+
+            if Self::key_is_layout_ignorable(&key) || key.is_boundary() {
+                if tokens.bump().is_none() {
+                    break;
+                }
                 continue;
             }
 
@@ -694,7 +702,7 @@ impl AstParser {
                 if tokens.bump().is_none() {
                     break;
                 }
-                self.skip_ignorable(tokens);
+                self.skip_layout(tokens);
                 continue;
             }
 

@@ -158,3 +158,97 @@ fn test_parse_package_source_unit_order_matches_stream_traversal_order() {
         [AstNode::VarDecl { name, .. }] if name == "root_last"
     ));
 }
+
+#[test]
+fn test_decl_package_keeps_root_comments_as_source_unit_items() {
+    let temp_root = unique_temp_root("decl_root_comments");
+    write_folder_fixture(
+        &temp_root,
+        &[
+            (
+                "00_alpha.fol",
+                "`[doc] alpha docs`\n`alpha note`\nvar alpha = 1\n",
+            ),
+            (
+                "10_beta.fol",
+                "`[doc] beta docs`\nvar beta = 2\n",
+            ),
+        ],
+    );
+
+    let parsed = parse_decl_package_from_folder(
+        temp_root
+            .to_str()
+            .expect("Temporary parser declaration-package fixture path should be UTF-8"),
+    );
+
+    fs::remove_dir_all(&temp_root).ok();
+
+    assert_eq!(
+        parsed.source_units.len(),
+        2,
+        "Declaration-only package parsing should still retain one source unit per file"
+    );
+    assert!(matches!(
+        source_unit_nodes(&parsed.source_units[0]).as_slice(),
+        [
+            AstNode::Comment {
+                kind: CommentKind::Doc,
+                raw,
+            },
+            AstNode::Comment {
+                kind: CommentKind::Backtick,
+                raw: note,
+            },
+            AstNode::VarDecl { name, .. },
+        ] if raw == "`[doc] alpha docs`" && note == "`alpha note`" && name == "alpha"
+    ));
+    assert!(matches!(
+        source_unit_nodes(&parsed.source_units[1]).as_slice(),
+        [
+            AstNode::Comment {
+                kind: CommentKind::Doc,
+                raw,
+            },
+            AstNode::VarDecl { name, .. },
+        ] if raw == "`[doc] beta docs`" && name == "beta"
+    ));
+}
+
+#[test]
+fn test_decl_package_preserves_comment_only_source_units() {
+    let temp_root = unique_temp_root("decl_comment_only");
+    write_folder_fixture(
+        &temp_root,
+        &[
+            ("00_notes.fol", "`[doc] package note`\n`side note`\n"),
+            ("10_values.fol", "var ready = 1\n"),
+        ],
+    );
+
+    let parsed = parse_decl_package_from_folder(
+        temp_root
+            .to_str()
+            .expect("Temporary parser comment-only fixture path should be UTF-8"),
+    );
+
+    fs::remove_dir_all(&temp_root).ok();
+
+    assert!(matches!(
+        source_unit_nodes(&parsed.source_units[0]).as_slice(),
+        [
+            AstNode::Comment {
+                kind: CommentKind::Doc,
+                raw,
+            },
+            AstNode::Comment {
+                kind: CommentKind::Backtick,
+                raw: note,
+            },
+        ] if raw == "`[doc] package note`" && note == "`side note`"
+    ));
+    assert!(matches!(
+        source_unit_nodes(&parsed.source_units[1]).as_slice(),
+        [AstNode::VarDecl { name, .. }] if name == "ready"
+    ));
+}
