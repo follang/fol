@@ -142,9 +142,9 @@ Target files:
 
 ### 7.3 Literal Authority
 
-- [ ] Decide whether the book’s cooked-double-quote and raw-single-quote model is authoritative.
-- [ ] Decide whether raw-vs-cooked needs to survive in the AST or whether parser lowering can normalize it away.
-- [ ] Decide whether imaginary literals must be implemented now or explicitly removed from the front-end scope docs.
+- [x] Decide whether the book’s cooked-double-quote and raw-single-quote model is authoritative.
+- [x] Decide whether raw-vs-cooked needs to survive in the AST or whether parser lowering can normalize it away.
+- [x] Decide whether imaginary literals must be implemented now or explicitly removed from the front-end scope docs.
 
 ### 7.4 Root Surface Authority
 
@@ -273,15 +273,15 @@ Target files:
 - [x] Add an explicit policy for raw literals not processing escapes.
 - [x] Add an explicit policy for multiline cooked strings.
 - [x] Implement backslash-line-break continuation and indentation trimming if the book remains authoritative.
-- [ ] Add fixtures for cooked char, cooked string, raw char, raw string, multiline cooked string, escaped quote, escaped backslash, and unicode escape spellings.
+- [x] Add fixtures for cooked char, cooked string, raw char, raw string, multiline cooked string, escaped quote, escaped backslash, and unicode escape spellings.
 
 ### 9.4 Finish Numeric Literal Support
 
 - [x] Rename `Deciaml` to `Decimal`.
 - [x] Rename `Hexal` to the final chosen spelling.
 - [x] Keep the payload-preserving behavior during the rename.
-- [ ] Decide and implement front-end support for imaginary numeric literals from the book.
-- [ ] Decide and implement the parser-facing token kind for imaginary literals.
+- [x] Decide and implement front-end support for imaginary numeric literals from the book, or explicitly defer them out of scope for this hardening phase.
+- [x] Decide and implement the parser-facing token kind for imaginary literals, or explicitly record that no such token kind exists in this phase.
 - [x] Decide how invalid prefixed numerics behave: one illegal token, split tokenization, or immediate lexer error.
 - [x] Add tests for invalid hex, octal, binary, underscore placement, leading-dot float adjacency, and imaginary suffixes.
 - [x] Keep unary minus parser-side.
@@ -290,7 +290,7 @@ Target files:
 
 - [x] Remove `Illegal` from `KEYWORD::is_void()`.
 - [x] Audit every parser path that currently assumes `is_void()` also means malformed input.
-- [ ] Make malformed quoted spans follow one consistent policy.
+- [x] Make malformed quoted spans follow one consistent policy.
 - [x] Make malformed comments follow one consistent policy.
 - [x] Make malformed numeric spans follow one consistent policy.
 - [ ] Ensure raw unsupported characters still produce lexer errors instead of silent token conversion.
@@ -453,8 +453,8 @@ This is the recommended implementation order once the decision freeze is complet
 8. [x] Remove slash-comment dependence or make it explicit compatibility behavior.
 9. [x] Rebuild literal quote taxonomy around the chosen cooked/raw model.
 10. [x] Implement cooked escape handling and cooked multiline continuation if that model is kept.
-11. [ ] Add imaginary literal support or explicitly remove it from the front-end scope docs.
-12. [ ] Rename typoed literal enum variants and update all call sites.
+11. [x] Add imaginary literal support or explicitly remove it from the front-end scope docs.
+12. [x] Rename typoed literal enum variants and update all call sites.
 13. [x] Remove `Illegal` from `is_void()` and add nested malformed-token regressions.
 14. [x] Replace synthetic in-band file-boundary newlines with an explicit boundary model.
 15. [ ] Remove default `Cargo.toml` package detection and replace it with the chosen FOL-native package contract.
@@ -474,7 +474,7 @@ Do not move to the next compiler stage until every gate below is true.
 - [x] Comment syntax matches the chosen authority and no longer conflicts with backtick tokenization.
 - [x] Literal quote behavior matches the chosen authority.
 - [x] Escape handling matches the chosen authority.
-- [ ] Imaginary literal status is resolved instead of sitting in a silent limbo.
+- [x] Imaginary literal status is resolved instead of sitting in a silent limbo.
 - [x] `Illegal` tokens are never skipped as whitespace.
 - [x] Method receiver types survive AST lowering.
 - [x] Logical routine kind survives AST lowering.
