@@ -21,11 +21,13 @@ Singleton literals represent one sigle values:
 4                       // intiger literal
 0xA8                    // hex-intiger literal
 4.6                     // floating-point literal
-5i                      // imaginary literal
 "c"                     // character literal
 "one"                   // string literal
 true                    // boolean literal
 ```
+
+The current hardened front-end does not yet implement imaginary literal lowering, so
+imaginary examples are intentionally omitted from the active literal surface here.
 
 ### Cluster literals
 
