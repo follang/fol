@@ -89,6 +89,16 @@ fn parse_package_from_file(path: &str) -> ParsedPackage {
         .expect("Parser should produce a parsed package")
 }
 
+fn parse_script_package_from_file(path: &str) -> ParsedPackage {
+    let mut file_stream =
+        FileStream::from_file(path).expect("Should read parser script-package test file");
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    parser
+        .parse_script_package(&mut lexer)
+        .expect("Parser should produce a mixed-surface parsed package")
+}
+
 fn parse_package_from_folder(path: &str) -> ParsedPackage {
     let mut file_stream =
         FileStream::from_folder(path).expect("Should read parser package test folder");
@@ -241,6 +251,9 @@ mod package_source_units;
 #[cfg(test)]
 #[path = "test_parser_parts/package_root_contract.rs"]
 mod package_root_contract;
+#[cfg(test)]
+#[path = "test_parser_parts/parser_api_transition.rs"]
+mod parser_api_transition;
 #[cfg(test)]
 #[path = "test_parser_parts/quoted_declaration_targets.rs"]
 mod quoted_declaration_targets;

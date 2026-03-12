@@ -17,14 +17,18 @@ impl AstParser {
         }
     }
 
-    /// Parse a token stream into an AST
+    /// Legacy mixed-root compatibility path. New callers should prefer `parse_package()`.
     pub fn parse(
         &mut self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Vec<Box<dyn Glitch>>> {
-        let (entries, _) = self.parse_top_level_entries(tokens)?;
+        let parsed = self.parse_script_package(tokens)?;
         Ok(AstNode::Program {
-            declarations: entries.into_iter().map(|entry| entry.node).collect(),
+            declarations: parsed
+                .source_units
+                .into_iter()
+                .flat_map(|unit| unit.items.into_iter().map(|item| item.node))
+                .collect(),
         })
     }
 

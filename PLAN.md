@@ -393,9 +393,9 @@ Each slice should land with tests in the same commit and be gated by:
 
 Progress snapshot as of 2026-03-12:
 
-- completed: `0.1`, `0.2`, `1.1`, `1.2`, `1.3`, `2.1`, `2.2`, `2.3`, `2.4`, `3.1`, `3.2`, `3.3`, `3.4`, `4.1`
-- in progress overall: `parse_package(...)` is now the preferred declaration-oriented package API, with an explicit mixed-surface compatibility path
-- still open: `AstParser::parse()` transition policy, CLI adoption of parsed packages, visibility prep, hardening, and docs handoff
+- completed: `0.1`, `0.2`, `1.1`, `1.2`, `1.3`, `2.1`, `2.2`, `2.3`, `2.4`, `3.1`, `3.2`, `3.3`, `3.4`, `4.1`, `4.2`
+- in progress overall: `AstParser::parse()` is now an explicit legacy compatibility shim over structured script-package parsing, while `parse_package(...)` remains the preferred declaration-oriented API
+- still open: CLI adoption of parsed packages, visibility prep, hardening, and docs handoff
 
 ### Phase 0: Planning And Contract Setup
 
@@ -510,6 +510,7 @@ Progress snapshot as of 2026-03-12:
 - temporary compatibility shim
 - or full migration away from it
 - Add tests that lock down whichever transition choice is made
+- Status: complete on 2026-03-12
 
 #### Slice 4.3
 
