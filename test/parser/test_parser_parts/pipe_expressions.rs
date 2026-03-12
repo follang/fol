@@ -490,8 +490,15 @@ fn test_pipe_expression_supports_control_transfer_stages() {
 
     assert!(
         contains_pipe_stage(&return_value, |node| matches!(node, AstNode::Yield { .. }))
-            && contains_pipe_stage(&return_value, |node| matches!(node, AstNode::Break)),
-        "Expected pipe tree to contain yield and break stages, got: {return_value:#?}"
+            && contains_pipe_stage(
+                &return_value,
+                |node| matches!(
+                    node,
+                    AstNode::Loop { body, .. }
+                    if body.iter().any(|stmt| matches!(stmt, AstNode::Break))
+                )
+            ),
+        "Expected pipe tree to contain yield and loop-wrapped break stages, got: {return_value:#?}"
     );
 }
 

@@ -83,6 +83,7 @@ impl Drop for ParseDepthGuard<'_> {
 /// Simple AST Parser for FOL
 pub struct AstParser {
     routine_depth: Cell<usize>,
+    loop_depth: Cell<usize>,
 }
 
 impl Default for AstParser {
@@ -103,6 +104,14 @@ impl AstParser {
 
     pub(super) fn is_inside_routine(&self) -> bool {
         self.routine_depth.get() > 0
+    }
+
+    pub(super) fn enter_loop_context(&self) -> ParseDepthGuard<'_> {
+        self.enter_depth(&self.loop_depth)
+    }
+
+    pub(super) fn is_inside_loop(&self) -> bool {
+        self.loop_depth.get() > 0
     }
 }
 

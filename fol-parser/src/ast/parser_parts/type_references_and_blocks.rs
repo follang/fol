@@ -467,6 +467,13 @@ impl AstParser {
             )));
         }
 
+        if !self.is_inside_loop() {
+            return Err(Box::new(ParseError::from_token(
+                &break_token,
+                "'break' is only allowed inside loops".to_string(),
+            )));
+        }
+
         let _ = tokens.bump();
         self.consume_optional_semicolon(tokens);
 

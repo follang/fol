@@ -1,3 +1,3 @@
 fun[] control_stage(value: int): int = {
-    return value | yeild value || break;
+    return value | yeild value || while(value > 0) => break;
 }

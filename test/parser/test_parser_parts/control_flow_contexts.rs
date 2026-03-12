@@ -82,3 +82,44 @@ fn test_branch_body_return_is_rejected_without_routine_context() {
         "Branch-body return should point at the nested return keyword"
     );
 }
+
+#[test]
+fn test_top_level_break_is_rejected_outside_loop_context() {
+    let error = parse_first_error_from_source("top_level_break", "break;\n");
+
+    assert!(
+        error
+            .to_string()
+            .contains("'break' is only allowed inside loops"),
+        "Top-level break should fail with loop-context wording, got: {}",
+        error
+    );
+    assert_eq!(error.line(), 1, "Top-level break should point at its own line");
+    assert_eq!(
+        error.column(),
+        1,
+        "Top-level break should point at the break keyword itself"
+    );
+}
+
+#[test]
+fn test_routine_break_is_rejected_without_loop_context() {
+    let error = parse_first_error_from_source(
+        "routine_break",
+        "fun bad(): int = {\n    break;\n}\n",
+    );
+
+    assert!(
+        error
+            .to_string()
+            .contains("'break' is only allowed inside loops"),
+        "Routine break should fail with loop-context wording, got: {}",
+        error
+    );
+    assert_eq!(error.line(), 2, "Routine break should report the break line");
+    assert_eq!(
+        error.column(),
+        5,
+        "Routine break should point at the nested break keyword"
+    );
+}

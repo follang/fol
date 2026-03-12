@@ -5,6 +5,7 @@ impl AstParser {
     pub fn new() -> Self {
         Self {
             routine_depth: Cell::new(0),
+            loop_depth: Cell::new(0),
         }
     }
 

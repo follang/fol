@@ -2,9 +2,8 @@ fun[] inspect(value: int): int = {
     return value;
     where(self) {
         if(value > 0) => value;
-        while(value > 0) => value;
+        while(value > 0) => break;
         yeild value;
-        break;
         return value;
     }
 }

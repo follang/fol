@@ -500,9 +500,12 @@ fn test_inquiry_clause_accepts_control_bodies() {
                         &inquiries[0],
                         AstNode::Inquiry { body, .. }
                         if body.iter().any(|node| matches!(node, AstNode::When { .. }))
-                            && body.iter().any(|node| matches!(node, AstNode::Loop { .. }))
+                            && body.iter().any(|node| matches!(
+                                node,
+                                AstNode::Loop { body, .. }
+                                if body.iter().any(|stmt| matches!(stmt, AstNode::Break))
+                            ))
                             && body.iter().any(|node| matches!(node, AstNode::Yield { .. }))
-                            && body.iter().any(|node| matches!(node, AstNode::Break))
                             && body.iter().any(|node| matches!(node, AstNode::Return { .. }))
                     )
             )));
