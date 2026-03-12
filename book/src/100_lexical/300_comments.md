@@ -31,6 +31,11 @@ DOC_COMMENT:
 
 ## Current front-end compatibility
 
-The hardened front-end still accepts `//` and `/* ... */` comments as compatibility
-syntax. They are not the authoritative book syntax, but they remain intentionally
-supported by the current lexer and parser.
+The hardened front-end still accepts `//` and `/* ... */` comments as frozen
+compatibility syntax. They are not the authoritative book spelling, but they remain
+intentionally supported by the current lexer and parser.
+
+The current front-end also preserves comment kind and raw spelling past lexing. In the
+parser today, standalone root comments and standalone routine-body comments lower to
+explicit AST comment nodes so later doc-comment tooling can build on retained comment
+content instead of re-scanning raw source text.

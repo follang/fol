@@ -5,8 +5,8 @@ tests actually enforce today.
 
 ## Decision Summary
 
-- Comments: backtick comments are authoritative; slash comments remain explicit
-  compatibility syntax in the current front-end.
+- Comments: backtick comments are authoritative; slash comments are frozen
+  compatibility syntax; standalone root/body comments survive as explicit AST nodes.
 - Literals: the lexer exposes cooked vs raw quoted families; the parser owns
   character-vs-string lowering; imaginary literals are currently out of scope.
 - Receivers: named `fun`, `log`, and `pro` declarations retain receiver types directly
@@ -169,17 +169,21 @@ tests actually enforce today.
 - Backtick-delimited comments are the authoritative comment syntax from the book.
 - Single-line and multiline backtick comments are the same delimited syntax family;
   newlines inside the span do not change the comment kind.
-- Stage 1 now classifies comment spans explicitly as backtick, doc, slash-line, or
-  slash-block comment kinds before later lexer stages normalize them away.
-- Slash line comments and slash block comments remain explicit compatibility behavior
-  during this hardening pass.
-- Ordinary comments are fully ignorable by the parser-facing lexer output.
-- Backtick doc-comment spellings using the `[doc]` prefix follow the same path as
-  ordinary comments at the parser boundary, but the lexer now detects that prefix
-  explicitly instead of treating it as accidental comment text.
-- Stage 2 collapses every internal comment kind back into one normalized `Void(Space)`
-  separator so parser-facing behavior stays unchanged while the lexer keeps more
-  internal structure.
+- Stage 1 classifies comment spans explicitly as backtick, doc, slash-line, or
+  slash-block comment kinds.
+- Stage 2 and stage 3 preserve those comment tokens across the lexer boundary instead
+  of collapsing them back into `Void(Space)`.
+- Slash line comments and slash block comments are intentionally retained as frozen
+  compatibility syntax in the current front-end even though backticks remain the
+  authoritative book spelling.
+- Backtick doc-comment spellings using the `[doc]` prefix stay distinct from ordinary
+  comments all the way through the parser boundary.
+- The parser currently lowers standalone root-level comments and standalone routine-body
+  comments into `AstNode::Comment { kind, raw }` nodes while preserving the original
+  comment spelling in `raw`.
+- Inline comments that appear inside other syntax forms still behave as non-semantic
+  separators in the current parser; comment retention is currently guaranteed for
+  standalone sibling nodes, not for every possible inline trivia position.
 - Comment delimiters inside quoted literals stay inside the literal payload and do not
   start comments.
 
@@ -283,6 +287,8 @@ tests actually enforce today.
 - `AstNode::Program { declarations }` is the single parser root.
 - `Program.declarations` contains real top-level declarations and top-level lowered
   statements or expressions that the parser accepts at file scope.
+- Standalone root-level comments also appear in `Program.declarations` as ordinary
+  source-ordered AST nodes rather than being stripped before parsing.
 - The current file-scope contract is intentionally mixed and script-like: declarations,
   assignments, calls, control-flow, and literal expressions may coexist in the same
   `Program.declarations` list.
@@ -301,6 +307,8 @@ tests actually enforce today.
 - Routine bodies contain the statement and lowered-expression nodes accepted by the
   body parsers, including local bindings, returns, control-flow, calls, and other
   body-level forms that the current grammar supports.
+- Standalone leading and adjacent body comments are retained in those body lists as
+  `AstNode::Comment` siblings, preserving doc-vs-ordinary kind and raw spelling.
 
 ### Declaration Family Shapes
 
