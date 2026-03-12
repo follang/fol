@@ -137,6 +137,9 @@ mod destructuring_bindings;
 #[path = "test_parser_parts/flow_bodies.rs"]
 mod flow_bodies;
 #[cfg(test)]
+#[path = "test_parser_parts/file_boundaries.rs"]
+mod file_boundaries;
+#[cfg(test)]
 #[path = "test_parser_parts/quoted_declaration_targets.rs"]
 mod quoted_declaration_targets;
 #[cfg(test)]

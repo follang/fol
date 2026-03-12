@@ -1,6 +1,21 @@
 use super::*;
 
 impl AstParser {
+    pub(super) fn ensure_complete_use_path(
+        &self,
+        token: &fol_lexer::lexer::stage3::element::Element,
+        path: &str,
+    ) -> Result<(), Box<dyn Glitch>> {
+        if path.trim_end().ends_with("::") {
+            return Err(Box::new(ParseError::from_token(
+                token,
+                "Expected name after '::' in use path".to_string(),
+            )));
+        }
+
+        Ok(())
+    }
+
     pub(super) fn parse_use_decl(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
@@ -184,6 +199,8 @@ impl AstParser {
             )));
         }
 
+        let token = tokens.curr(false)?;
+        self.ensure_complete_use_path(&token, &path)?;
         Ok(path)
     }
 }

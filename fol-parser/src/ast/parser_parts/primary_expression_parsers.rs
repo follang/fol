@@ -124,7 +124,7 @@ impl AstParser {
                 Ok(token) => token,
                 Err(_) => continue,
             };
-            if token.key().is_void() || token.key().is_comment() {
+            if Self::key_is_soft_ignorable(&token.key()) {
                 continue;
             }
             found.push(token.key());
@@ -165,7 +165,7 @@ impl AstParser {
             };
 
             let key = token.key();
-            if key.is_void() || key.is_comment() {
+            if Self::key_is_soft_ignorable(&key) {
                 continue;
             }
 
@@ -394,7 +394,7 @@ impl AstParser {
             };
 
             let key = token.key();
-            if key.is_void() || key.is_comment() {
+            if Self::key_is_soft_ignorable(&key) {
                 continue;
             }
 

@@ -14,7 +14,7 @@ impl AstParser {
 
         let mut significant = tokens.next_vec().into_iter().filter_map(Result::ok).filter(|token| {
             let key = token.key();
-            !key.is_void() && !key.is_comment()
+            !Self::key_is_soft_ignorable(&key)
         });
 
         let Some(mut name_token) = significant.next() else {
@@ -733,7 +733,7 @@ impl AstParser {
                 Err(_) => continue,
             };
             let key = token.key();
-            if key.is_void() || key.is_comment() {
+            if Self::key_is_soft_ignorable(&key) {
                 continue;
             }
             significant.push(token);

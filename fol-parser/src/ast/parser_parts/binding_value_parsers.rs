@@ -57,7 +57,7 @@ impl AstParser {
             .filter_map(Result::ok)
             .filter(|token| {
                 let key = token.key();
-                !(key.is_void() || key.is_comment())
+                !Self::key_is_soft_ignorable(&key)
             });
 
         let first = match iter.next() {

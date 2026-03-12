@@ -22,7 +22,7 @@ impl AstParser {
             };
 
             let key = token.key();
-            if key.is_void() || key.is_comment() {
+            if Self::key_is_soft_ignorable(&key) {
                 continue;
             }
 
@@ -82,7 +82,7 @@ impl AstParser {
                 Err(_) => continue,
             };
             let key = token.key();
-            if key.is_void() || key.is_comment() {
+            if Self::key_is_soft_ignorable(&key) {
                 continue;
             }
             return matches!(key, KEYWORD::Symbol(SYMBOL::Equal));
@@ -220,7 +220,7 @@ impl AstParser {
             };
 
             let key = token.key();
-            if key.is_void() || key.is_comment() {
+            if Self::key_is_soft_ignorable(&key) {
                 continue;
             }
 
@@ -327,7 +327,7 @@ impl AstParser {
             };
 
             let key = token.key();
-            if key.is_void() || key.is_comment() {
+            if Self::key_is_soft_ignorable(&key) {
                 continue;
             }
 
@@ -363,7 +363,7 @@ impl AstParser {
             };
 
             let key = token.key();
-            if key.is_void() || key.is_comment() {
+            if Self::key_is_soft_ignorable(&key) {
                 continue;
             }
 
@@ -419,7 +419,7 @@ impl AstParser {
             };
 
             let key = token.key();
-            if key.is_void() || key.is_comment() {
+            if Self::key_is_soft_ignorable(&key) {
                 continue;
             }
 
@@ -520,7 +520,7 @@ impl AstParser {
             };
 
             let key = token.key();
-            if key.is_void() || key.is_comment() {
+            if Self::key_is_soft_ignorable(&key) {
                 continue;
             }
 
@@ -545,7 +545,7 @@ impl AstParser {
             };
 
             let key = token.key();
-            if key.is_void() || key.is_comment() {
+            if Self::key_is_soft_ignorable(&key) {
                 continue;
             }
 
@@ -955,7 +955,7 @@ impl AstParser {
             };
 
             let key = token.key();
-            if key.is_void() || key.is_comment() {
+            if Self::key_is_soft_ignorable(&key) {
                 continue;
             }
 
@@ -979,7 +979,7 @@ impl AstParser {
                 Err(_) => break,
             };
 
-            if !(token.key().is_void() || token.key().is_comment()) {
+            if !Self::key_is_soft_ignorable(&token.key()) {
                 break;
             }
         }

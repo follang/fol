@@ -307,6 +307,49 @@ mod lexer_tests {
     }
 
     #[test]
+    fn test_cross_file_boundaries_survive_trailing_newlines() {
+        let tokens = tokenize_folder_contents(&[("a.fol", "alpha\n"), ("b.fol", "beta")]);
+        let significant: Vec<(KEYWORD, String)> = tokens
+            .into_iter()
+            .filter(|(key, _)| {
+                !key.is_space()
+                    && !matches!(key, KEYWORD::Void(VOID::EndLine))
+                    && !key.is_eof()
+            })
+            .collect();
+
+        assert_eq!(
+            significant,
+            vec![
+                (KEYWORD::Identifier, "alpha".to_string()),
+                (KEYWORD::Void(VOID::Boundary), String::new()),
+                (KEYWORD::Identifier, "beta".to_string()),
+            ],
+            "A trailing newline in the previous file must not erase the explicit source boundary token"
+        );
+    }
+
+    #[test]
+    fn test_cross_file_boundaries_survive_trailing_semicolons() {
+        let tokens = tokenize_folder_contents(&[("a.fol", "alpha;"), ("b.fol", "beta")]);
+        let significant: Vec<(KEYWORD, String)> = tokens
+            .into_iter()
+            .filter(|(key, _)| !key.is_space() && !key.is_eof())
+            .collect();
+
+        assert_eq!(
+            significant,
+            vec![
+                (KEYWORD::Identifier, "alpha".to_string()),
+                (KEYWORD::Symbol(SYMBOL::Semi), ";".to_string()),
+                (KEYWORD::Void(VOID::Boundary), String::new()),
+                (KEYWORD::Identifier, "beta".to_string()),
+            ],
+            "A trailing semicolon must not absorb the explicit source boundary token"
+        );
+    }
+
+    #[test]
     fn test_unterminated_quotes_stop_at_file_boundaries() {
         let tokens =
             tokenize_folder_contents(&[("a.fol", "\"unterminated"), ("b.fol", "beta")]);

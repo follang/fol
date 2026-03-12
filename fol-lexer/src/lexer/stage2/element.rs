@@ -48,6 +48,10 @@ impl fmt::Display for Element {
 }
 
 impl Element {
+    fn is_soft_layout_void(key: &KEYWORD) -> bool {
+        matches!(key, KEYWORD::Void(VOID::Space) | KEYWORD::Void(VOID::EndLine))
+    }
+
     pub fn init(key: KEYWORD, loc: point::Location, con: String) -> Self {
         Self { key, loc, con }
     }
@@ -83,14 +87,18 @@ impl Element {
         }
 
         // EOL => SPACE
-        if el.curr()?.key().is_eol() && el.peek(0)?.key().is_eol() {
-            while el.curr()?.key().is_eol() && el.peek(0)?.key().is_eol() {
+        if matches!(el.curr()?.key(), KEYWORD::Void(VOID::EndLine))
+            && matches!(el.peek(0)?.key(), KEYWORD::Void(VOID::EndLine))
+        {
+            while matches!(el.curr()?.key(), KEYWORD::Void(VOID::EndLine))
+                && matches!(el.peek(0)?.key(), KEYWORD::Void(VOID::EndLine))
+            {
                 self.bump(el);
             }
             self.set_key(Void(VOID::EndLine))
         }
 
-        if el.curr()?.key().is_eol()
+        if matches!(el.curr()?.key(), KEYWORD::Void(VOID::EndLine))
             && (el.seek(0)?.key().is_nonterm()
                 || el.peek(0)?.key().is_dot()
                 || el.seek(0)?.key().is_operator())
@@ -99,14 +107,13 @@ impl Element {
         }
         // EOL => SEMICOLON
         else if matches!(el.curr()?.key(), KEYWORD::Symbol(SYMBOL::Semi))
-            && el.peek(0)?.key().is_void()
+            && Self::is_soft_layout_void(&el.peek(0)?.key())
         {
             self.append(&el.peek(0)?.into());
             self.bump(el);
         }
         // EOL or SPACE => EOF
-        else if (matches!(el.curr()?.key(), KEYWORD::Void(VOID::Space))
-            || matches!(el.curr()?.key(), KEYWORD::Void(VOID::EndLine)))
+        else if Self::is_soft_layout_void(&el.curr()?.key())
             && el.peek(0)?.key().is_eof()
         {
             self.append(&el.peek(0)?.into());

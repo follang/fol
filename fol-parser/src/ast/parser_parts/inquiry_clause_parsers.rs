@@ -41,6 +41,13 @@ impl AstParser {
                 return Ok((body, inquiries));
             }
 
+            if token.key().is_boundary() {
+                return Err(Box::new(ParseError::from_token(
+                    &token,
+                    missing_close_message.to_string(),
+                )));
+            }
+
             if token.key().is_eof() {
                 let anchor = anchor_token.unwrap_or(token);
                 return Err(Box::new(ParseError::from_token(

@@ -1,6 +1,13 @@
 use super::*;
 
 impl AstParser {
+    pub(super) fn key_is_soft_ignorable(key: &KEYWORD) -> bool {
+        matches!(
+            key,
+            KEYWORD::Void(VOID::Space) | KEYWORD::Void(VOID::EndLine)
+        ) || key.is_comment()
+    }
+
     pub(super) fn parse_primary(
         &self,
         token: &fol_lexer::lexer::stage3::element::Element,
@@ -40,7 +47,7 @@ impl AstParser {
                 Err(_) => break,
             };
 
-            if token.key().is_void() || token.key().is_comment() {
+            if Self::key_is_soft_ignorable(&token.key()) {
                 if tokens.bump().is_none() {
                     break;
                 }

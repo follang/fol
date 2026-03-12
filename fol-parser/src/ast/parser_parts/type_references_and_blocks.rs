@@ -110,6 +110,13 @@ impl AstParser {
             let token = tokens.curr(false)?;
             let key = token.key();
 
+            if key.is_boundary() {
+                return Err(Box::new(ParseError::from_token(
+                    &token,
+                    missing_close_message.to_string(),
+                )));
+            }
+
             if key == open_key {
                 if anchor_token.is_none() {
                     anchor_token = Some(token.clone());
@@ -166,6 +173,13 @@ impl AstParser {
             if matches!(key, KEYWORD::Symbol(SYMBOL::CurlyC)) {
                 let _ = tokens.bump();
                 return Ok(body);
+            }
+
+            if key.is_boundary() {
+                return Err(Box::new(ParseError::from_token(
+                    &token,
+                    missing_close_message.to_string(),
+                )));
             }
 
             if key.is_eof() {

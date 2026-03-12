@@ -35,7 +35,7 @@ impl AstParser {
                 Err(_) => continue,
             };
             let key = token.key();
-            if key.is_void() || key.is_comment() {
+            if Self::key_is_soft_ignorable(&key) {
                 continue;
             }
 

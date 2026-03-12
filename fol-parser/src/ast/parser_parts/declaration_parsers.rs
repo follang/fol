@@ -23,7 +23,7 @@ impl AstParser {
                 Err(_) => continue,
             };
             let key = token.key();
-            if key.is_void() || key.is_comment() {
+            if Self::key_is_soft_ignorable(&key) {
                 continue;
             }
 
@@ -604,10 +604,18 @@ impl AstParser {
 
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) {
                 let _ = tokens.bump();
+                self.ensure_complete_use_path(&token, &path)?;
                 return Ok(path);
             }
 
-             Self::reject_illegal_token(&token)?;
+            if token.key().is_boundary() {
+                return Err(Box::new(ParseError::from_token(
+                    &token,
+                    "Expected '}' to close use path".to_string(),
+                )));
+            }
+
+            Self::reject_illegal_token(&token)?;
 
             let segment = match token.key() {
                 KEYWORD::Literal(LITERAL::CookedQuoted) | KEYWORD::Literal(LITERAL::RawQuoted) => {
