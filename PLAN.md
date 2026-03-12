@@ -413,7 +413,7 @@ Acceptance for Phase 3:
 - [x] No method receiver information is lost in the AST.
 - [x] No logical routine kind is lost in the AST.
 - [x] Qualified path structure is preserved instead of flattened away where it matters.
-- [ ] Parser-owned duplicate checks use the chosen identifier equality rules.
+- [x] Parser-owned duplicate checks use the chosen identifier equality rules.
 - [x] Root shape is explicit and no longer ambiguous to the next stage.
 
 ## 11. Phase 4: Docs And Contract Freeze
