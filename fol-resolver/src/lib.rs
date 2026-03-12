@@ -1,0 +1,58 @@
+pub mod errors;
+pub mod ids;
+pub mod model;
+
+pub use errors::{ResolverError, ResolverErrorKind};
+pub use ids::{IdTable, ImportId, ReferenceId, ScopeId, SourceUnitId, SymbolId};
+pub use model::{
+    ResolvedImport, ResolvedProgram, ResolvedReference, ResolvedScope, ResolvedSourceUnit,
+    ResolvedSymbol,
+};
+
+pub type ResolverResult<T> = Result<T, Vec<ResolverError>>;
+
+#[derive(Debug, Default)]
+pub struct Resolver;
+
+impl Resolver {
+    pub fn new() -> Self {
+        Self
+    }
+
+    pub fn resolve_package(
+        &mut self,
+        syntax: fol_parser::ast::ParsedPackage,
+    ) -> ResolverResult<ResolvedProgram> {
+        Ok(ResolvedProgram::new(syntax))
+    }
+}
+
+pub fn resolve_package(syntax: fol_parser::ast::ParsedPackage) -> ResolverResult<ResolvedProgram> {
+    Resolver::new().resolve_package(syntax)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::resolve_package;
+    use fol_parser::ast::{AstParser, ParsedPackage};
+    use fol_stream::FileStream;
+
+    fn parse_package(path: &str) -> ParsedPackage {
+        let mut stream = FileStream::from_file(path).expect("Should open resolver smoke fixture");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        parser
+            .parse_package(&mut lexer)
+            .expect("Resolver smoke fixture should parse as a package")
+    }
+
+    #[test]
+    fn resolver_smoke_can_lower_a_parsed_package() {
+        let resolved = resolve_package(parse_package("../test/parser/simple_var.fol"))
+            .expect("Resolver foundation should lower parsed packages");
+
+        assert_eq!(resolved.package_name(), "parser");
+        assert_eq!(resolved.source_units.len(), 1);
+        assert_eq!(resolved.syntax().source_units.len(), 1);
+    }
+}

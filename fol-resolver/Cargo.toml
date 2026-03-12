@@ -1,0 +1,15 @@
+[package]
+name = "fol-resolver"
+version = "0.1.4"
+authors = ["Trim Bresilla <trim.bresilla@gmail.com>"]
+edition = "2021"
+description = "Whole-program name resolution for FOL language"
+
+[dependencies]
+fol-types = { path = "../fol-types" }
+fol-parser = { path = "../fol-parser" }
+fol-diagnostics = { path = "../fol-diagnostics" }
+
+[dev-dependencies]
+fol-lexer = { path = "../fol-lexer" }
+fol-stream = { path = "../fol-stream" }

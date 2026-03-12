@@ -12,6 +12,10 @@ mod parser {
     include!("parser/test_parser.rs");
 }
 
+mod resolver {
+    include!("resolver/test_resolver.rs");
+}
+
 #[cfg(test)]
 mod integration_tests {
     use std::process::Command;
@@ -75,8 +79,11 @@ mod integration_tests {
             .duration_since(UNIX_EPOCH)
             .expect("System time should be after unix epoch")
             .as_nanos();
-        let temp_root = std::env::temp_dir()
-            .join(format!("fol_stream_lexer_order_{}_{}", std::process::id(), stamp));
+        let temp_root = std::env::temp_dir().join(format!(
+            "fol_stream_lexer_order_{}_{}",
+            std::process::id(),
+            stamp
+        ));
 
         fs::create_dir_all(temp_root.join("alpha_10")).expect("Should create alpha fixture dir");
         fs::create_dir_all(temp_root.join("beta_20")).expect("Should create beta fixture dir");
@@ -147,9 +154,9 @@ mod integration_tests {
         .expect("Should open literal continuity fixture");
         let mut lexer = Elements::init(&mut file_stream);
         let mut parser = AstParser::new();
-        let ast = parser
-            .parse(&mut lexer)
-            .expect("Supported literal forms should survive stream and lexer into exact AST literals");
+        let ast = parser.parse(&mut lexer).expect(
+            "Supported literal forms should survive stream and lexer into exact AST literals",
+        );
 
         match ast {
             AstNode::Program { declarations } => {
@@ -313,7 +320,10 @@ mod integration_tests {
                 .expect("CLI error fixture path should be utf-8"),
         ]);
         let stdout = String::from_utf8_lossy(&output.stdout);
-        let compact = stdout.chars().filter(|c| !c.is_whitespace()).collect::<String>();
+        let compact = stdout
+            .chars()
+            .filter(|c| !c.is_whitespace())
+            .collect::<String>();
 
         assert!(
             !output.status.success(),
@@ -435,7 +445,11 @@ mod integration_tests {
             })
             .expect("A parse error should point at the malformed second file");
 
-        assert_eq!(parse_error.line(), 1, "Second file should restart at line 1");
+        assert_eq!(
+            parse_error.line(),
+            1,
+            "Second file should restart at line 1"
+        );
         assert_eq!(
             parse_error.column(),
             1,

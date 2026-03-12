@@ -406,11 +406,15 @@ Each slice is intended to be buildable, testable, and commit-safe on its own. Ev
 
 #### Slice 0.1
 
+Status: done
+
 - Add workspace crate `fol-resolver`.
 - Add empty public API, crate wiring, and test harness inclusion.
 - Add a first resolver smoke test proving the crate is callable.
 
 #### Slice 0.2
+
+Status: done
 
 - Introduce resolver error type(s) implementing `fol_types::Glitch`.
 - Add a dedicated diagnostic-location conversion path for resolver failures.
@@ -418,11 +422,15 @@ Each slice is intended to be buildable, testable, and commit-safe on its own. Ev
 
 #### Slice 0.3
 
+Status: done
+
 - Add parser-adjacent syntax-origin support for successful AST nodes.
 - Expose a resolver-consumable parsed wrapper with syntax index metadata.
 - Add tests proving successful syntax nodes retain file/line/column origins.
 
 #### Slice 0.4
+
+Status: done
 
 - Add resolver ID types and arena/basic table utilities.
 - Add unit tests for ID stability and table behavior.

@@ -5,6 +5,7 @@ members = [
     "fol-lexer",
     "fol-parser",
     "fol-diagnostics",
+    "fol-resolver",
 ]
 
 [package]
@@ -23,6 +24,7 @@ fol-stream = { path = "fol-stream" }
 fol-lexer = { path = "fol-lexer" }
 fol-parser = { path = "fol-parser" }
 fol-diagnostics = { path = "fol-diagnostics" }
+fol-resolver = { path = "fol-resolver" }
 regex = "1"
 colored = "1"
 dyn-clone = "1"
@@ -33,4 +35,3 @@ clap = { version = "4.0", features = ["derive"] }
 [[test]]
 name = "integration"
 path = "test/run_tests.rs"
-
