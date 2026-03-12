@@ -34,14 +34,14 @@ fn source_unit_has_root_decl_family(source_unit: &ParsedSourceUnit, family: Root
     })
 }
 
-fn parse_decl_package_errors(path: &str) -> Vec<ParseError> {
+fn parse_package_errors(path: &str) -> Vec<ParseError> {
     let mut file_stream =
-        FileStream::from_file(path).expect("Should read parser declaration-package error fixture");
+        FileStream::from_file(path).expect("Should read parser package error fixture");
     let mut lexer = Elements::init(&mut file_stream);
     let mut parser = AstParser::new();
     let errors = parser
-        .parse_decl_package(&mut lexer)
-        .expect_err("Declaration-only package parsing should reject forbidden file-root forms");
+        .parse_package(&mut lexer)
+        .expect_err("Package parsing should reject forbidden book-disallowed file-root forms");
 
     errors
         .iter()
@@ -72,7 +72,7 @@ fn test_decl_package_accepts_supported_file_root_declaration_families() {
         ("test/parser/simple_ali.fol", RootDeclFamily::Alias),
         ("test/parser/simple_std_protocol.fol", RootDeclFamily::Standard),
     ] {
-        let parsed = parse_decl_package_from_file(path);
+        let parsed = parse_package_from_file(path);
 
         assert_eq!(
             parsed.source_units.len(),
@@ -90,7 +90,7 @@ fn test_decl_package_accepts_supported_file_root_declaration_families() {
 
 #[test]
 fn test_decl_package_rejects_top_level_executable_calls_as_one_root_error() {
-    let errors = parse_decl_package_errors("test/parser/simple_call_top_level.fol");
+    let errors = parse_package_errors("test/parser/simple_call_top_level.fol");
 
     assert_eq!(
         errors.len(),
@@ -110,7 +110,7 @@ fn test_decl_package_rejects_top_level_executable_calls_as_one_root_error() {
 
 #[test]
 fn test_decl_package_rejects_top_level_assignments_as_one_root_error() {
-    let errors = parse_decl_package_errors("test/parser/simple_top_level_keyword_call_and_assignment.fol");
+    let errors = parse_package_errors("test/parser/simple_top_level_keyword_call_and_assignment.fol");
 
     assert_eq!(
         errors.len(),
@@ -139,7 +139,7 @@ fn test_decl_package_rejects_top_level_assignments_as_one_root_error() {
 
 #[test]
 fn test_decl_package_rejects_top_level_when_statement_as_one_root_error() {
-    let errors = parse_decl_package_errors("test/parser/simple_when_top_level_statement.fol");
+    let errors = parse_package_errors("test/parser/simple_when_top_level_statement.fol");
 
     assert_eq!(
         errors.len(),
@@ -159,7 +159,7 @@ fn test_decl_package_rejects_top_level_when_statement_as_one_root_error() {
 
 #[test]
 fn test_decl_package_rejects_top_level_loop_statement_as_one_root_error() {
-    let errors = parse_decl_package_errors("test/parser/simple_loop_top_level.fol");
+    let errors = parse_package_errors("test/parser/simple_loop_top_level.fol");
 
     assert_eq!(
         errors.len(),
@@ -179,7 +179,7 @@ fn test_decl_package_rejects_top_level_loop_statement_as_one_root_error() {
 
 #[test]
 fn test_decl_package_rejects_literal_roots_line_by_line() {
-    let errors = parse_decl_package_errors("test/parser/simple_literal_logic.fol");
+    let errors = parse_package_errors("test/parser/simple_literal_logic.fol");
 
     assert_eq!(
         errors.len(),

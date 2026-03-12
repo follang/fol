@@ -176,7 +176,7 @@ fn test_decl_package_keeps_root_comments_as_source_unit_items() {
         ],
     );
 
-    let parsed = parse_decl_package_from_folder(
+    let parsed = parse_package_from_folder(
         temp_root
             .to_str()
             .expect("Temporary parser declaration-package fixture path should be UTF-8"),
@@ -226,7 +226,7 @@ fn test_decl_package_preserves_comment_only_source_units() {
         ],
     );
 
-    let parsed = parse_decl_package_from_folder(
+    let parsed = parse_package_from_folder(
         temp_root
             .to_str()
             .expect("Temporary parser comment-only fixture path should be UTF-8"),

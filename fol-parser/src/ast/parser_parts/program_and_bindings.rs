@@ -33,6 +33,20 @@ impl AstParser {
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<ParsedPackage, Vec<Box<dyn Glitch>>> {
         let sources = tokens.sources().to_vec();
+        let (entries, syntax_index) =
+            self.parse_top_level_entries_with_surface(tokens, RootSurface::DeclarationOnly)?;
+        Ok(ParsedPackage::from_sources_and_entries(
+            &sources,
+            entries,
+            syntax_index,
+        ))
+    }
+
+    pub fn parse_script_package(
+        &mut self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<ParsedPackage, Vec<Box<dyn Glitch>>> {
+        let sources = tokens.sources().to_vec();
         let (entries, syntax_index) = self.parse_top_level_entries(tokens)?;
         Ok(ParsedPackage::from_sources_and_entries(
             &sources,
@@ -45,14 +59,7 @@ impl AstParser {
         &mut self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<ParsedPackage, Vec<Box<dyn Glitch>>> {
-        let sources = tokens.sources().to_vec();
-        let (entries, syntax_index) =
-            self.parse_top_level_entries_with_surface(tokens, RootSurface::DeclarationOnly)?;
-        Ok(ParsedPackage::from_sources_and_entries(
-            &sources,
-            entries,
-            syntax_index,
-        ))
+        self.parse_package(tokens)
     }
 
     fn push_top_level_entry(

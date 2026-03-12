@@ -393,9 +393,9 @@ Each slice should land with tests in the same commit and be gated by:
 
 Progress snapshot as of 2026-03-12:
 
-- completed: `0.1`, `0.2`, `1.1`, `1.2`, `1.3`, `2.1`, `2.2`, `2.3`, `2.4`, `3.1`, `3.2`, `3.3`, `3.4`
-- in progress overall: declaration-only file roots are now book-aligned, with standalone comments preserved as ordinary source-unit items
-- still open: compatibility migration, visibility prep, hardening, and docs handoff
+- completed: `0.1`, `0.2`, `1.1`, `1.2`, `1.3`, `2.1`, `2.2`, `2.3`, `2.4`, `3.1`, `3.2`, `3.3`, `3.4`, `4.1`
+- in progress overall: `parse_package(...)` is now the preferred declaration-oriented package API, with an explicit mixed-surface compatibility path
+- still open: `AstParser::parse()` transition policy, CLI adoption of parsed packages, visibility prep, hardening, and docs handoff
 
 ### Phase 0: Planning And Contract Setup
 
@@ -502,6 +502,7 @@ Progress snapshot as of 2026-03-12:
 - Introduce a new parser entry point such as `parse_package(...)`
 - Make it the preferred front-end API
 - Add tests for single-file and folder input through the new API
+- Status: complete on 2026-03-12
 
 #### Slice 4.2
 
