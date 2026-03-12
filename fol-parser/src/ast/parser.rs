@@ -1,11 +1,10 @@
 // AST Parser Implementation for FOL
 
 use super::{
-    AstNode, BinaryOperator, CharEncoding, ContainerType, DeclOption, EntryVariantMeta,
-    FloatSize, FolType, FunOption, Generic, InquiryTarget, IntSize, Literal, LoopCondition,
-    Parameter, QualifiedPath, RecordFieldMeta, RollingBinding, StandardKind, SyntaxIndex,
-    SyntaxNodeId, SyntaxOrigin, TypeDefinition, TypeOption, UnaryOperator, UseOption, VarOption,
-    WhenCase,
+    AstNode, BinaryOperator, CharEncoding, ContainerType, DeclOption, EntryVariantMeta, FloatSize,
+    FolType, FunOption, Generic, InquiryTarget, IntSize, Literal, LoopCondition, Parameter,
+    QualifiedPath, RecordFieldMeta, RollingBinding, StandardKind, SyntaxIndex, SyntaxNodeId,
+    SyntaxOrigin, TypeDefinition, TypeOption, UnaryOperator, UseOption, VarOption, WhenCase,
 };
 use fol_lexer::token::{BUILDIN, KEYWORD, LITERAL, OPERATOR, SYMBOL, VOID};
 use fol_types::*;
@@ -140,21 +139,12 @@ impl AstParser {
 }
 
 pub(super) fn canonical_identifier_key(name: &str) -> String {
-    name.chars()
-        .filter(|ch| *ch != '_')
-        .map(|ch| {
-            if ch.is_ascii() {
-                ch.to_ascii_lowercase()
-            } else {
-                ch
-            }
-        })
-        .collect()
+    fol_types::canonical_identifier_key(name)
 }
 
 #[cfg(test)]
 mod tests {
-    use super::canonical_identifier_key;
+    use fol_types::canonical_identifier_key;
 
     #[test]
     fn canonical_identifier_key_normalizes_ascii_case_and_underscores() {
@@ -170,69 +160,69 @@ mod tests {
     }
 }
 
+#[path = "parser_parts/access_expression_parsers.rs"]
+mod access_expression_parsers;
 #[path = "parser_parts/binding_alternative_parsers.rs"]
 mod binding_alternative_parsers;
 #[path = "parser_parts/binding_option_parsers.rs"]
 mod binding_option_parsers;
 #[path = "parser_parts/binding_value_parsers.rs"]
 mod binding_value_parsers;
-#[path = "parser_parts/declaration_parsers.rs"]
-mod declaration_parsers;
-#[path = "parser_parts/routine_declaration_parsers.rs"]
-mod routine_declaration_parsers;
 #[path = "parser_parts/declaration_option_parsers.rs"]
 mod declaration_option_parsers;
-#[path = "parser_parts/type_definition_parsers.rs"]
-mod type_definition_parsers;
+#[path = "parser_parts/declaration_parsers.rs"]
+mod declaration_parsers;
 #[path = "parser_parts/expression_atoms_and_literal_lowering.rs"]
 mod expression_atoms_and_literal_lowering;
-#[path = "parser_parts/access_expression_parsers.rs"]
-mod access_expression_parsers;
 #[path = "parser_parts/expression_parsers.rs"]
 mod expression_parsers;
-#[path = "parser_parts/pipe_expression_parsers.rs"]
-mod pipe_expression_parsers;
-#[path = "parser_parts/pipe_lambda_parsers.rs"]
-mod pipe_lambda_parsers;
-#[path = "parser_parts/rolling_expression_parsers.rs"]
-mod rolling_expression_parsers;
+#[path = "parser_parts/flow_body_parsers.rs"]
+mod flow_body_parsers;
 #[path = "parser_parts/grouped_binding_parsers.rs"]
 mod grouped_binding_parsers;
 #[path = "parser_parts/grouped_type_parsers.rs"]
 mod grouped_type_parsers;
+#[path = "parser_parts/implementation_declaration_parsers.rs"]
+mod implementation_declaration_parsers;
+#[path = "parser_parts/inquiry_clause_parsers.rs"]
+mod inquiry_clause_parsers;
+#[path = "parser_parts/pipe_expression_parsers.rs"]
+mod pipe_expression_parsers;
+#[path = "parser_parts/pipe_lambda_parsers.rs"]
+mod pipe_lambda_parsers;
+#[path = "parser_parts/postfix_expression_parsers.rs"]
+mod postfix_expression_parsers;
+#[path = "parser_parts/primary_expression_parsers.rs"]
+mod primary_expression_parsers;
 #[path = "parser_parts/program_and_bindings.rs"]
 mod program_and_bindings;
-#[path = "parser_parts/routine_headers_and_type_lowering.rs"]
-mod routine_headers_and_type_lowering;
-#[path = "parser_parts/routine_capture_parsers.rs"]
-mod routine_capture_parsers;
+#[path = "parser_parts/rolling_expression_parsers.rs"]
+mod rolling_expression_parsers;
 #[path = "parser_parts/routine_body_parsers.rs"]
 mod routine_body_parsers;
+#[path = "parser_parts/routine_capture_parsers.rs"]
+mod routine_capture_parsers;
+#[path = "parser_parts/routine_declaration_parsers.rs"]
+mod routine_declaration_parsers;
+#[path = "parser_parts/routine_headers_and_type_lowering.rs"]
+mod routine_headers_and_type_lowering;
+#[path = "parser_parts/segment_declaration_parsers.rs"]
+mod segment_declaration_parsers;
+#[path = "parser_parts/source_kind_type_parsers.rs"]
+mod source_kind_type_parsers;
+#[path = "parser_parts/special_type_parsers.rs"]
+mod special_type_parsers;
+#[path = "parser_parts/standard_declaration_parsers.rs"]
+mod standard_declaration_parsers;
 #[path = "parser_parts/statement_parsers.rs"]
 mod statement_parsers;
+#[path = "parser_parts/test_type_parsers.rs"]
+mod test_type_parsers;
+#[path = "parser_parts/type_definition_parsers.rs"]
+mod type_definition_parsers;
 #[path = "parser_parts/type_references_and_blocks.rs"]
 mod type_references_and_blocks;
 #[path = "parser_parts/use_declaration_parsers.rs"]
 mod use_declaration_parsers;
 #[path = "parser_parts/use_option_parsers.rs"]
 mod use_option_parsers;
-#[path = "parser_parts/segment_declaration_parsers.rs"]
-mod segment_declaration_parsers;
-#[path = "parser_parts/implementation_declaration_parsers.rs"]
-mod implementation_declaration_parsers;
-#[path = "parser_parts/inquiry_clause_parsers.rs"]
-mod inquiry_clause_parsers;
-#[path = "parser_parts/flow_body_parsers.rs"]
-mod flow_body_parsers;
-#[path = "parser_parts/postfix_expression_parsers.rs"]
-mod postfix_expression_parsers;
-#[path = "parser_parts/primary_expression_parsers.rs"]
-mod primary_expression_parsers;
-#[path = "parser_parts/standard_declaration_parsers.rs"]
-mod standard_declaration_parsers;
-#[path = "parser_parts/special_type_parsers.rs"]
-mod special_type_parsers;
-#[path = "parser_parts/source_kind_type_parsers.rs"]
-mod source_kind_type_parsers;
-#[path = "parser_parts/test_type_parsers.rs"]
-mod test_type_parsers;

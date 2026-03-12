@@ -602,6 +602,8 @@ Status: done
 
 #### Slice 7.1
 
+Status: done
+
 - Extract or centralize canonical identifier comparison helpers so parser and resolver do not drift.
 - Add shared-behavior tests if this logic moves.
 
