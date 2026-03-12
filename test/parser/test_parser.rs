@@ -35,6 +35,22 @@ fn program_surface_nodes<'a>(declarations: &'a [AstNode]) -> Vec<&'a AstNode> {
     nodes
 }
 
+fn fol_type_has_qualified_segments(typ: &FolType, expected: &[&str]) -> bool {
+    matches!(
+        typ,
+        FolType::QualifiedNamed { path }
+            if path.segments
+                == expected
+                    .iter()
+                    .map(|segment| segment.to_string())
+                    .collect::<Vec<_>>()
+    )
+}
+
+fn fol_type_named_text_is(typ: &FolType, expected: &str) -> bool {
+    typ.named_text().as_deref() == Some(expected)
+}
+
 #[cfg(test)]
 #[path = "test_parser_parts/alternative_routine_headers.rs"]
 mod alternative_routine_headers;

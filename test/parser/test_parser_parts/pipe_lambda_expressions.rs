@@ -52,7 +52,7 @@ fn test_typed_pipe_lambda_expression_parsing() {
                         AstNode::AnonymousFun { params, .. }
                         if params.len() == 2
                             && matches!(params[0].param_type, FolType::Int { .. })
-                            && matches!(params[1].param_type, FolType::Named { ref name } if name == "pkg::Score")
+                            && fol_type_has_qualified_segments(&params[1].param_type, &["pkg", "Score"])
                     )
                 ))
             )));

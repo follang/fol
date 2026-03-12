@@ -99,13 +99,13 @@ fn test_routines_and_use_declarations_accept_semicolon_type_arguments() {
                     && matches!(
                         params[0].param_type,
                         FolType::Sequence { ref element_type }
-                        if matches!(element_type.as_ref(), FolType::Named { name } if name == "pkg::Input")
+                        if fol_type_has_qualified_segments(element_type.as_ref(), &["pkg", "Input"])
                     )
                     && matches!(key_type.as_ref(), FolType::Named { name } if name == "str")
                     && matches!(
                         value_type.as_ref(),
                         FolType::Vector { element_type }
-                        if matches!(element_type.as_ref(), FolType::Named { name } if name == "pkg::Output")
+                        if fol_type_has_qualified_segments(element_type.as_ref(), &["pkg", "Output"])
                     )
             )));
         }
@@ -270,13 +270,13 @@ fn test_shared_type_argument_lists_accept_trailing_separators() {
                     && matches!(
                         params[0].param_type,
                         FolType::Sequence { ref element_type }
-                        if matches!(element_type.as_ref(), FolType::Named { name } if name == "pkg::Input")
+                        if fol_type_has_qualified_segments(element_type.as_ref(), &["pkg", "Input"])
                     )
                     && matches!(key_type.as_ref(), FolType::Named { name } if name == "str")
                     && matches!(
                         value_type.as_ref(),
                         FolType::Vector { element_type }
-                        if matches!(element_type.as_ref(), FolType::Named { name } if name == "pkg::Output")
+                        if fol_type_has_qualified_segments(element_type.as_ref(), &["pkg", "Output"])
                     )
                     && body.iter().any(|stmt| matches!(
                         stmt,

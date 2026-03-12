@@ -170,10 +170,10 @@ fn test_quoted_type_references_parse_in_use_declarations() {
     match ast {
         AstNode::Program { declarations } => {
             assert!(declarations.iter().any(|node| {
-                matches!(node, AstNode::UseDecl { name, path_type: FolType::Named { name: hint }, .. } if name == "warn" && hint == "Module")
+                matches!(node, AstNode::UseDecl { name, path_type, .. } if name == "warn" && fol_type_named_text_is(path_type, "Module"))
             }));
             assert!(declarations.iter().any(|node| {
-                matches!(node, AstNode::UseDecl { name, path_type: FolType::Named { name: hint }, .. } if name == "trace" && hint == "pkg::Module")
+                matches!(node, AstNode::UseDecl { name, path_type, .. } if name == "trace" && fol_type_named_text_is(path_type, "pkg::Module"))
             }));
         }
         _ => panic!("Expected program node"),
@@ -195,10 +195,10 @@ fn test_single_quoted_type_references_parse_in_use_declarations() {
     match ast {
         AstNode::Program { declarations } => {
             assert!(declarations.iter().any(|node| {
-                matches!(node, AstNode::UseDecl { name, path_type: FolType::Named { name: hint }, .. } if name == "warn" && hint == "Module")
+                matches!(node, AstNode::UseDecl { name, path_type, .. } if name == "warn" && fol_type_named_text_is(path_type, "Module"))
             }));
             assert!(declarations.iter().any(|node| {
-                matches!(node, AstNode::UseDecl { name, path_type: FolType::Named { name: hint }, .. } if name == "trace" && hint == "pkg::Module")
+                matches!(node, AstNode::UseDecl { name, path_type, .. } if name == "trace" && fol_type_named_text_is(path_type, "pkg::Module"))
             }));
         }
         _ => panic!("Expected program node"),

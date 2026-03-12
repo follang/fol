@@ -33,9 +33,10 @@ fn test_type_declaration_accepts_quoted_names() {
                     node,
                     AstNode::TypeDecl {
                         name,
-                        type_def: TypeDefinition::Alias { target: FolType::Named { name: target } },
+                        type_def: TypeDefinition::Alias { target },
                         ..
-                    } if name == "Result" && target == "pkg::Value"
+                    } if name == "Result"
+                        && fol_type_has_qualified_segments(target, &["pkg", "Value"])
                 )
             }));
         }
@@ -73,9 +74,10 @@ fn test_type_declaration_preserves_inner_opposite_quote_chars() {
                     node,
                     AstNode::TypeDecl {
                         name,
-                        type_def: TypeDefinition::Alias { target: FolType::Named { name: target } },
+                        type_def: TypeDefinition::Alias { target },
                         ..
-                    } if name == "re'sult" && target == "pkg::Value"
+                    } if name == "re'sult"
+                        && fol_type_has_qualified_segments(target, &["pkg", "Value"])
                 )
             }));
             assert!(declarations.iter().any(|node| {
@@ -83,9 +85,10 @@ fn test_type_declaration_preserves_inner_opposite_quote_chars() {
                     node,
                     AstNode::TypeDecl {
                         name,
-                        type_def: TypeDefinition::Alias { target: FolType::Named { name: target } },
+                        type_def: TypeDefinition::Alias { target },
                         ..
-                    } if name == "quo\"te" && target == "pkg::Other"
+                    } if name == "quo\"te"
+                        && fol_type_has_qualified_segments(target, &["pkg", "Other"])
                 )
             }));
         }

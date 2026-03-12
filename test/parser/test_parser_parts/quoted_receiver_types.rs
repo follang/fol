@@ -19,14 +19,14 @@ fn test_quoted_type_references_parse_in_receiver_and_error_positions() {
                     node,
                     AstNode::FunDecl {
                         name,
-                        receiver_type: Some(FolType::Named { name: receiver }),
-                        return_type: Some(FolType::Named { name: ret }),
-                        error_type: Some(FolType::Named { name: err }),
+                        receiver_type: Some(receiver),
+                        return_type: Some(ret),
+                        error_type: Some(err),
                         ..
                     } if name == "run"
-                        && receiver == "Box"
-                        && ret == "Output"
-                        && err == "errs::Failure"
+                        && fol_type_named_text_is(receiver, "Box")
+                        && fol_type_named_text_is(ret, "Output")
+                        && fol_type_named_text_is(err, "errs::Failure")
                 )
             }));
         }
@@ -54,14 +54,14 @@ fn test_single_quoted_type_references_parse_in_receiver_and_error_positions() {
                     node,
                     AstNode::FunDecl {
                         name,
-                        receiver_type: Some(FolType::Named { name: receiver }),
-                        return_type: Some(FolType::Named { name: ret }),
-                        error_type: Some(FolType::Named { name: err }),
+                        receiver_type: Some(receiver),
+                        return_type: Some(ret),
+                        error_type: Some(err),
                         ..
                     } if name == "run"
-                        && receiver == "Box"
-                        && ret == "Output"
-                        && err == "errs::Failure"
+                        && fol_type_named_text_is(receiver, "Box")
+                        && fol_type_named_text_is(ret, "Output")
+                        && fol_type_named_text_is(err, "errs::Failure")
                 )
             }));
         }

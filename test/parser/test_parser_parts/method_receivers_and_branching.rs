@@ -133,9 +133,10 @@ fn test_function_method_receiver_supports_qualified_type_references() {
                         node,
                         AstNode::FunDecl {
                             name,
-                            receiver_type: Some(FolType::Named { name: receiver }),
+                            receiver_type: Some(receiver),
                             ..
-                        } if name == "parse_msg" && receiver == "pkg::Parser"
+                        } if name == "parse_msg"
+                            && fol_type_has_qualified_segments(receiver, &["pkg", "Parser"])
                     )
                 }),
                 "Qualified receiver function should retain its receiver type in the AST"
@@ -165,9 +166,10 @@ fn test_logical_method_receiver_supports_qualified_type_references() {
                         node,
                         AstNode::LogDecl {
                             name,
-                            receiver_type: Some(FolType::Named { name: receiver }),
+                            receiver_type: Some(receiver),
                             ..
-                        } if name == "ready" && receiver == "pkg::Parser"
+                        } if name == "ready"
+                            && fol_type_has_qualified_segments(receiver, &["pkg", "Parser"])
                     )
                 }),
                 "Qualified receiver logical method should retain its receiver type in the AST"
@@ -201,7 +203,7 @@ fn test_procedure_method_receiver_supports_bracketed_type_references() {
                             ..
                         }
                             if name == "store"
-                                && matches!(element_type.as_ref(), FolType::Named { name } if name == "pkg::Item")
+                                && fol_type_has_qualified_segments(element_type.as_ref(), &["pkg", "Item"])
                     )
                 }),
                 "Bracketed receiver procedure should retain its receiver type in the AST"

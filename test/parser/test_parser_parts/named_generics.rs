@@ -134,7 +134,7 @@ fn test_named_generic_constraints_accept_quoted_type_references() {
             let has_expected_constraints = |generics: &Vec<fol_parser::ast::Generic>| {
                 generics.len() == 2
                     && matches!(generics[0].constraints.as_slice(), [FolType::Named { name }] if name == "Bound")
-                    && matches!(generics[1].constraints.as_slice(), [FolType::Named { name }] if name == "pkg::Shape")
+                    && matches!(generics[1].constraints.as_slice(), [typ] if fol_type_has_qualified_segments(typ, &["pkg", "Shape"]))
             };
 
             assert!(declarations.iter().any(|node| {

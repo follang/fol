@@ -23,8 +23,8 @@ fn test_quoted_type_references_parse_in_binding_hints() {
                     AstNode::FunDecl { body, .. }
                     if body.iter().any(|stmt| matches!(
                         stmt,
-                        AstNode::VarDecl { name, type_hint: Some(FolType::Named { name: hint }), .. }
-                        if name == "count" && hint == "pkg::Count"
+                        AstNode::VarDecl { name, type_hint: Some(hint), .. }
+                        if name == "count" && fol_type_named_text_is(hint, "pkg::Count")
                     ))
                 )
             }));
@@ -56,8 +56,8 @@ fn test_single_quoted_type_references_parse_in_binding_hints() {
                     AstNode::FunDecl { body, .. }
                     if body.iter().any(|stmt| matches!(
                         stmt,
-                        AstNode::VarDecl { name, type_hint: Some(FolType::Named { name: hint }), .. }
-                        if name == "count" && hint == "pkg::Count"
+                        AstNode::VarDecl { name, type_hint: Some(hint), .. }
+                        if name == "count" && fol_type_named_text_is(hint, "pkg::Count")
                     ))
                 )
             }));

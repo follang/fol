@@ -119,7 +119,7 @@ fn test_quoted_type_references_parse_in_type_member_hints() {
                         ..
                     } if name == "Data"
                         && matches!(fields.get("id"), Some(FolType::Named { name }) if name == "Item")
-                        && matches!(fields.get("label"), Some(FolType::Named { name }) if name == "pkg::Label")
+                        && matches!(fields.get("label"), Some(typ) if fol_type_has_qualified_segments(typ, &["pkg", "Label"]))
                 )
             }));
             assert!(declarations.iter().any(|node| {
@@ -131,7 +131,7 @@ fn test_quoted_type_references_parse_in_type_member_hints() {
                         ..
                     } if name == "Result"
                         && matches!(variants.get("ok"), Some(Some(FolType::Named { name })) if name == "Success")
-                        && matches!(variants.get("err"), Some(Some(FolType::Named { name })) if name == "errs::Failure")
+                        && matches!(variants.get("err"), Some(Some(typ)) if fol_type_named_text_is(typ, "errs::Failure"))
                 )
             }));
         }
@@ -162,7 +162,7 @@ fn test_single_quoted_type_references_parse_in_type_member_hints() {
                         ..
                     } if name == "Data"
                         && matches!(fields.get("id"), Some(FolType::Named { name }) if name == "Item")
-                        && matches!(fields.get("label"), Some(FolType::Named { name }) if name == "pkg::Label")
+                        && matches!(fields.get("label"), Some(typ) if fol_type_has_qualified_segments(typ, &["pkg", "Label"]))
                 )
             }));
             assert!(declarations.iter().any(|node| {
@@ -174,7 +174,7 @@ fn test_single_quoted_type_references_parse_in_type_member_hints() {
                         ..
                     } if name == "Result"
                         && matches!(variants.get("ok"), Some(Some(FolType::Named { name })) if name == "Success")
-                        && matches!(variants.get("err"), Some(Some(FolType::Named { name })) if name == "errs::Failure")
+                        && matches!(variants.get("err"), Some(Some(typ)) if fol_type_named_text_is(typ, "errs::Failure"))
                 )
             }));
         }

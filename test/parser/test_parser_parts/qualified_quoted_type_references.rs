@@ -15,14 +15,14 @@ fn test_qualified_quoted_type_references_parse() {
     match ast {
         AstNode::Program { declarations } => {
             assert!(declarations.iter().any(|node| {
-                matches!(node, AstNode::AliasDecl { target: FolType::Named { name }, .. } if name == "core::Target")
+                matches!(node, AstNode::AliasDecl { target, .. } if fol_type_has_qualified_segments(target, &["core", "Target"]))
             }));
             assert!(declarations.iter().any(|node| {
                 matches!(
                     node,
-                    AstNode::FunDecl { params, return_type: Some(FolType::Named { name }), .. }
-                    if name == "errs::Output"
-                        && matches!(params.as_slice(), [Parameter { param_type: FolType::Named { name }, .. }] if name == "pkg::Input")
+                    AstNode::FunDecl { params, return_type: Some(ret), .. }
+                    if fol_type_named_text_is(ret, "errs::Output")
+                        && matches!(params.as_slice(), [Parameter { param_type, .. }] if fol_type_named_text_is(param_type, "pkg::Input"))
                 )
             }));
         }
@@ -44,14 +44,14 @@ fn test_single_quoted_type_references_parse() {
     match ast {
         AstNode::Program { declarations } => {
             assert!(declarations.iter().any(|node| {
-                matches!(node, AstNode::AliasDecl { target: FolType::Named { name }, .. } if name == "Target")
+                matches!(node, AstNode::AliasDecl { target, .. } if fol_type_named_text_is(target, "Target"))
             }));
             assert!(declarations.iter().any(|node| {
                 matches!(
                     node,
-                    AstNode::FunDecl { params, return_type: Some(FolType::Named { name }), .. }
-                    if name == "errs::Output"
-                        && matches!(params.as_slice(), [Parameter { param_type: FolType::Named { name }, .. }] if name == "pkg::Input")
+                    AstNode::FunDecl { params, return_type: Some(ret), .. }
+                    if fol_type_named_text_is(ret, "errs::Output")
+                        && matches!(params.as_slice(), [Parameter { param_type, .. }] if fol_type_named_text_is(param_type, "pkg::Input"))
                 )
             }));
         }
@@ -96,7 +96,7 @@ fn test_quoted_type_references_compose_inside_nested_type_forms() {
                         ..
                     } if name == "Mapping"
                         && matches!(key_type.as_ref(), FolType::Named { name } if name == "Key")
-                        && matches!(value_type.as_ref(), FolType::Named { name } if name == "pkg::Value")
+                        && fol_type_has_qualified_segments(value_type.as_ref(), &["pkg", "Value"])
                 )
             }));
             assert!(declarations.iter().any(|node| {
@@ -155,7 +155,7 @@ fn test_quoted_type_references_compose_inside_array_and_matrix_types() {
                         },
                         ..
                     } if name == "Grid"
-                        && matches!(element_type.as_ref(), FolType::Named { name } if name == "pkg::Cell")
+                        && fol_type_has_qualified_segments(element_type.as_ref(), &["pkg", "Cell"])
                         && dimensions.as_slice() == [4, 8]
                 )
             }));
@@ -203,7 +203,7 @@ fn test_single_quoted_type_references_compose_inside_array_and_matrix_types() {
                         },
                         ..
                     } if name == "Grid"
-                        && matches!(element_type.as_ref(), FolType::Named { name } if name == "pkg::Cell")
+                        && fol_type_has_qualified_segments(element_type.as_ref(), &["pkg", "Cell"])
                         && dimensions.as_slice() == [4, 8]
                 )
             }));

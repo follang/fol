@@ -107,7 +107,7 @@ fn test_type_alias_parsing_supports_array_types() {
                                 && matches!(
                                     element_type.as_ref(),
                                     FolType::Vector { element_type }
-                                    if matches!(element_type.as_ref(), FolType::Named { name } if name == "pkg::Value")
+                                    if fol_type_has_qualified_segments(element_type.as_ref(), &["pkg", "Value"])
                                 )
                         )
                     }),
@@ -194,7 +194,7 @@ fn test_type_alias_parsing_supports_matrix_types() {
                                 && matches!(
                                     element_type.as_ref(),
                                     FolType::Vector { element_type }
-                                    if matches!(element_type.as_ref(), FolType::Named { name } if name == "pkg::Value")
+                                    if fol_type_has_qualified_segments(element_type.as_ref(), &["pkg", "Value"])
                                 )
                         )
                     }),

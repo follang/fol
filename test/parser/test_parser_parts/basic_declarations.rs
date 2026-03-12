@@ -201,8 +201,9 @@ fn test_alias_parsing_supports_qualified_target_types() {
                         node,
                         AstNode::AliasDecl {
                             name,
-                            target: FolType::Named { name: target_name }
-                        } if name == "ResultAlias" && target_name == "pkg::result::Value"
+                            target
+                        } if name == "ResultAlias"
+                            && fol_type_has_qualified_segments(target, &["pkg", "result", "Value"])
                     )
                 }),
                 "Alias target type should preserve qualified path segments"
@@ -293,7 +294,7 @@ fn test_type_alias_parsing_supports_bracketed_target_types() {
                                 && matches!(
                                     value_type.as_ref(),
                                     FolType::Vector { element_type }
-                                    if matches!(element_type.as_ref(), FolType::Named { name } if name == "pkg::Output")
+                                    if fol_type_has_qualified_segments(element_type.as_ref(), &["pkg", "Output"])
                                 )
                         )
                     }),

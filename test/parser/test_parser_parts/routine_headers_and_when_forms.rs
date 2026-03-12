@@ -524,23 +524,23 @@ fn test_function_declaration_supports_qualified_type_references() {
         matches!(
             function_decl.1.as_slice(),
             [Parameter {
-                param_type: FolType::Named { name },
+                param_type,
                 ..
-            }] if name == "pkg::Input"
+            }] if fol_type_has_qualified_segments(param_type, &["pkg", "Input"])
         ),
         "Parameter type should preserve qualified path"
     );
     assert!(
         matches!(
             function_decl.2,
-            Some(FolType::Named { name }) if name == "pkg::Output"
+            Some(ref typ) if fol_type_has_qualified_segments(typ, &["pkg", "Output"])
         ),
         "Return type should preserve qualified path"
     );
     assert!(
         matches!(
             function_decl.3,
-            Some(FolType::Named { name }) if name == "errs::Failure"
+            Some(ref typ) if fol_type_named_text_is(typ, "errs::Failure")
         ),
         "Error type should preserve qualified path"
     );
@@ -590,7 +590,7 @@ fn test_function_declaration_supports_bracketed_type_references() {
             [Parameter {
                 param_type: FolType::Sequence { element_type },
                 ..
-            }] if matches!(element_type.as_ref(), FolType::Named { name } if name == "pkg::Input")
+            }] if fol_type_has_qualified_segments(element_type.as_ref(), &["pkg", "Input"])
         ),
         "Parameter type should preserve bracketed syntax"
     );
@@ -602,7 +602,7 @@ fn test_function_declaration_supports_bracketed_type_references() {
                     && matches!(
                         value_type.as_ref(),
                         FolType::Vector { element_type }
-                        if matches!(element_type.as_ref(), FolType::Named { name } if name == "pkg::Output")
+                        if fol_type_has_qualified_segments(element_type.as_ref(), &["pkg", "Output"])
                     )
         ),
         "Return type should preserve nested bracketed syntax"
@@ -610,7 +610,7 @@ fn test_function_declaration_supports_bracketed_type_references() {
     assert!(
         matches!(
             function_decl.3,
-            Some(FolType::Named { name }) if name == "errs::Failure"
+            Some(ref typ) if fol_type_named_text_is(typ, "errs::Failure")
         ),
         "Error type should remain intact alongside bracketed types"
     );
@@ -686,9 +686,9 @@ fn test_when_statement_supports_of_cases_with_complex_types() {
                     matches!(
                         case,
                         fol_parser::ast::WhenCase::Of {
-                            type_match: FolType::Named { name },
+                            type_match,
                             ..
-                        } if name == "pkg::Input"
+                        } if fol_type_has_qualified_segments(type_match, &["pkg", "Input"])
                     )
                 }),
                 "When statement should preserve qualified type in of-case"
@@ -705,7 +705,7 @@ fn test_when_statement_supports_of_cases_with_complex_types() {
                                     && matches!(
                                         value_type.as_ref(),
                                         FolType::Vector { element_type }
-                                        if matches!(element_type.as_ref(), FolType::Named { name } if name == "pkg::Output")
+                                        if fol_type_has_qualified_segments(element_type.as_ref(), &["pkg", "Output"])
                                     )
                         )
                     }),

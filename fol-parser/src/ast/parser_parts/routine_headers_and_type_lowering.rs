@@ -897,12 +897,14 @@ impl AstParser {
             return self.parse_function_type_reference(tokens);
         }
 
-        let mut name = Self::token_to_named_label(&token).ok_or_else(|| {
+        let first_name = Self::token_to_named_label(&token).ok_or_else(|| {
             Box::new(ParseError::from_token(
                 &token,
                 "Expected type reference".to_string(),
             )) as Box<dyn Glitch>
         })?;
+        let mut path = QualifiedPath::new(vec![first_name]);
+        let mut name = path.joined();
         let _ = tokens.bump();
 
         for _ in 0..64 {
@@ -935,12 +937,13 @@ impl AstParser {
             let segment_name =
                 Self::expect_named_label(&segment, "Expected type segment after '::'")?;
 
-            name.push_str("::");
-            name.push_str(&segment_name);
+            path.segments.push(segment_name);
+            name = path.joined();
             let _ = tokens.bump();
         }
 
         let base_name = name.clone();
+        let mut has_suffix = false;
         for _ in 0..32 {
             self.skip_ignorable(tokens);
             let open = match tokens.curr(false) {
@@ -963,6 +966,7 @@ impl AstParser {
                 return self.parse_trailing_type_limits(tokens, parsed);
             }
 
+            has_suffix = true;
             name.push_str(&self.parse_balanced_type_suffix(
                 tokens,
                 KEYWORD::Symbol(SYMBOL::SquarO),
@@ -990,7 +994,11 @@ impl AstParser {
         } else if let Some(lowered) = Self::lower_bare_source_kind_type_name(&name) {
             lowered
         } else {
-            FolType::Named { name }
+            if path.is_qualified() && !has_suffix {
+                FolType::QualifiedNamed { path }
+            } else {
+                FolType::Named { name }
+            }
         };
 
         self.parse_trailing_type_limits(tokens, base_type)

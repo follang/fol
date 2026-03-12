@@ -25,7 +25,7 @@ fn test_quoted_type_references_parse_inside_function_types() {
                         ..
                     } if name == "Handler"
                         && matches!(params.as_slice(), [FolType::Named { name }] if name == "Input")
-                        && matches!(return_type.as_ref(), FolType::Named { name } if name == "pkg::Output")
+                        && fol_type_has_qualified_segments(return_type.as_ref(), &["pkg", "Output"])
                 )
             }));
         }
@@ -59,7 +59,7 @@ fn test_single_quoted_type_references_parse_inside_function_types() {
                         ..
                     } if name == "Handler"
                         && matches!(params.as_slice(), [FolType::Named { name }] if name == "Input")
-                        && matches!(return_type.as_ref(), FolType::Named { name } if name == "pkg::Output")
+                        && fol_type_has_qualified_segments(return_type.as_ref(), &["pkg", "Output"])
                 )
             }));
         }

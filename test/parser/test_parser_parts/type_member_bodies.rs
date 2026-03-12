@@ -57,9 +57,10 @@ fn test_record_type_routine_members_retain_receiver_types() {
                         member,
                         AstNode::FunDecl {
                             name,
-                            receiver_type: Some(FolType::Named { name: receiver }),
+                            receiver_type: Some(receiver),
                             ..
-                        } if name == "parse_msg" && receiver == "pkg::Parser"
+                        } if name == "parse_msg"
+                            && fol_type_has_qualified_segments(receiver, &["pkg", "Parser"])
                     ))
                     && members.iter().any(|member| matches!(
                         member,
@@ -69,15 +70,15 @@ fn test_record_type_routine_members_retain_receiver_types() {
                             ..
                         }
                             if name == "store"
-                                && matches!(element_type.as_ref(), FolType::Named { name } if name == "pkg::Item")
+                                && fol_type_has_qualified_segments(element_type.as_ref(), &["pkg", "Item"])
                     ))
                     && members.iter().any(|member| matches!(
                         member,
                         AstNode::LogDecl {
                             name,
-                            receiver_type: Some(FolType::Named { name: receiver }),
+                            receiver_type: Some(receiver),
                             ..
-                        } if name == "ready" && receiver == "pkg::Status"
+                        } if name == "ready" && fol_type_has_qualified_segments(receiver, &["pkg", "Status"])
                     ))
             )));
         }

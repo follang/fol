@@ -599,7 +599,7 @@ fn test_type_alias_parsing_supports_container_types() {
                                 ..
                             }
                             if name == "Queue"
-                                && matches!(element_type.as_ref(), FolType::Named { name } if name == "pkg::Task")
+                                && fol_type_has_qualified_segments(element_type.as_ref(), &["pkg", "Task"])
                         )
                     }),
                     "Type alias should lower seq[...] to FolType::Sequence"
@@ -637,7 +637,7 @@ fn test_type_alias_parsing_supports_container_types() {
                                 && matches!(
                                     value_type.as_ref(),
                                     FolType::Vector { element_type }
-                                    if matches!(element_type.as_ref(), FolType::Named { name } if name == "pkg::Output")
+                                    if fol_type_has_qualified_segments(element_type.as_ref(), &["pkg", "Output"])
                                 )
                         )
                     }),

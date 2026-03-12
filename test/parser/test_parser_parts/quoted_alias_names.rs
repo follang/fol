@@ -33,8 +33,9 @@ fn test_alias_declaration_accepts_quoted_names() {
                     node,
                     AstNode::AliasDecl {
                         name,
-                        target: FolType::Named { name: target },
-                    } if name == "Result" && target == "pkg::Value"
+                        target,
+                    } if name == "Result"
+                        && fol_type_has_qualified_segments(target, &["pkg", "Value"])
                 )
             }));
         }
@@ -72,8 +73,9 @@ fn test_alias_declaration_preserves_inner_opposite_quote_chars() {
                     node,
                     AstNode::AliasDecl {
                         name,
-                        target: FolType::Named { name: target },
-                    } if name == "re'sult" && target == "pkg::Value"
+                        target,
+                    } if name == "re'sult"
+                        && fol_type_has_qualified_segments(target, &["pkg", "Value"])
                 )
             }));
             assert!(declarations.iter().any(|node| {
@@ -81,8 +83,9 @@ fn test_alias_declaration_preserves_inner_opposite_quote_chars() {
                     node,
                     AstNode::AliasDecl {
                         name,
-                        target: FolType::Named { name: target },
-                    } if name == "quo\"te" && target == "pkg::Other"
+                        target,
+                    } if name == "quo\"te"
+                        && fol_type_has_qualified_segments(target, &["pkg", "Other"])
                 )
             }));
         }
