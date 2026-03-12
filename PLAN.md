@@ -370,7 +370,7 @@ Target files:
 - [x] Introduce a structured path representation for type paths.
 - [x] Decide whether both surfaces share one path node or use separate but aligned types.
 - [x] Preserve original segment spelling for diagnostics.
-- [ ] Preserve normalized comparison keys separately if needed.
+- [x] Preserve raw qualified-path segments only in this front-end phase; derive normalized comparison keys later only if a later stage actually needs them.
 - [x] Stop flattening `io::console::writer` into one opaque string where later phases need segments.
 - [x] Keep `use` import source text separate from value/type path nodes.
 - [x] Update tests for qualified value paths, qualified type paths, and quoted path segments.

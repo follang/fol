@@ -266,6 +266,9 @@ tests actually enforce today.
 - Plain unqualified type references still use `FolType::Named { name }`.
 - `QualifiedPath.segments` preserve the accepted segment spelling in order, so later
   stages do not need to split `io::console::writer` back out of one opaque string.
+- `QualifiedPath` does not carry a second normalized comparison key in this front-end
+  phase; later semantic stages can derive comparison keys intentionally if they need
+  them for resolution or canonical lookup.
 - `use` declarations keep their import path text in the dedicated `path` field instead of
   reusing the value-path or type-path encoding.
 
