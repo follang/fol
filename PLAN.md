@@ -154,7 +154,7 @@ Target files:
 
 ### 7.5 Method And Routine Authority
 
-- [ ] Decide whether method receiver types are restricted to user-defined named types as the book says.
+- [x] Decide whether method receiver types are restricted to user-defined named types as the book says.
 - [ ] Decide whether `log` becomes a first-class routine kind in the AST.
 - [x] Decide whether qualified paths remain string-encoded temporarily or are promoted now.
 
