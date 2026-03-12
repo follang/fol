@@ -293,7 +293,7 @@ Target files:
 - [x] Make malformed quoted spans follow one consistent policy.
 - [x] Make malformed comments follow one consistent policy.
 - [x] Make malformed numeric spans follow one consistent policy.
-- [ ] Ensure raw unsupported characters still produce lexer errors instead of silent token conversion.
+- [x] Ensure raw unsupported characters still produce lexer errors instead of silent token conversion.
 - [x] Add nested-context fixtures where an illegal token appears inside calls, blocks, type references, and parameter lists.
 
 ### 9.6 Remove Stage Wrapper Debt
