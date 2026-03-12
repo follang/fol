@@ -15,7 +15,7 @@ fn test_chained_assignment_target_parsing() {
     match ast {
         AstNode::Program { declarations } => {
             assert!(
-                    program_surface_nodes(&declarations).into_iter().any(|node| {
+                    only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                         matches!(
                             node,
                             AstNode::Assignment { target, value }
@@ -59,20 +59,16 @@ fn test_quoted_field_assignment_target_parsing() {
 
     match ast {
         AstNode::Program { declarations } => {
-            assert!(program_surface_nodes(&declarations).into_iter().any(|node| {
+            assert!(only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
-                    AstNode::FunDecl { body, .. }
-                    if body.iter().any(|stmt| matches!(
-                        stmt,
-                        AstNode::Assignment { target, .. }
-                        if matches!(
-                            target.as_ref(),
-                            AstNode::FieldAccess { object, field }
-                            if field == "$"
-                                && matches!(object.as_ref(), AstNode::Identifier { name } if name == "box")
-                        )
-                    ))
+                    AstNode::Assignment { target, .. }
+                    if matches!(
+                        target.as_ref(),
+                        AstNode::FieldAccess { object, field }
+                        if field == "$"
+                            && matches!(object.as_ref(), AstNode::Identifier { name } if name == "box")
+                    )
                 )
             }));
         }
@@ -93,25 +89,24 @@ fn test_self_assignment_targets_and_this_method_calls_parse() {
 
     match ast {
         AstNode::Program { declarations } => {
-            assert!(program_surface_nodes(&declarations).into_iter().any(|node| {
+            assert!(only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
-                    AstNode::FunDecl { body, .. }
-                    if body.iter().any(|stmt| matches!(
-                        stmt,
-                        AstNode::Assignment { target, .. }
-                        if matches!(
-                            target.as_ref(),
-                            AstNode::FieldAccess { object, field }
-                            if field == "value"
-                                && matches!(object.as_ref(), AstNode::Identifier { name } if name == "self")
-                        )
-                    )) && body.iter().any(|stmt| matches!(
-                        stmt,
-                        AstNode::MethodCall { object, method, .. }
-                        if method == "log"
-                            && matches!(object.as_ref(), AstNode::Identifier { name } if name == "this")
-                    ))
+                    AstNode::Assignment { target, .. }
+                    if matches!(
+                        target.as_ref(),
+                        AstNode::FieldAccess { object, field }
+                        if field == "value"
+                            && matches!(object.as_ref(), AstNode::Identifier { name } if name == "self")
+                    )
+                )
+            }));
+            assert!(only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
+                matches!(
+                    node,
+                    AstNode::MethodCall { object, method, .. }
+                    if method == "log"
+                        && matches!(object.as_ref(), AstNode::Identifier { name } if name == "this")
                 )
             }));
         }
@@ -222,7 +217,7 @@ fn test_compound_assignment_statements_are_lowered_to_binary_ops() {
         .expect("Parser should parse compound assignment statements");
 
     let assignment_ops = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .filter_map(|node| {
                 if let AstNode::Assignment { value, .. } = node {
@@ -276,7 +271,7 @@ fn test_field_compound_assignment_target_parsing() {
     match ast {
         AstNode::Program { declarations } => {
             assert!(
-                    program_surface_nodes(&declarations).into_iter().any(|node| {
+                    only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                         matches!(
                             node,
                             AstNode::Assignment { target, value }
@@ -317,7 +312,7 @@ fn test_index_compound_assignment_target_parsing() {
     match ast {
         AstNode::Program { declarations } => {
             assert!(
-                    program_surface_nodes(&declarations).into_iter().any(|node| {
+                    only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                         matches!(
                             node,
                             AstNode::Assignment { target, value }
@@ -357,7 +352,7 @@ fn test_mod_assignment_and_comparison_expressions() {
 
     let (has_mod_assignment, return_ops, return_values) = match ast {
         AstNode::Program { declarations } => {
-            let has_mod_assignment = program_surface_nodes(&declarations).into_iter().any(|node| {
+            let has_mod_assignment = only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::Assignment { value, .. }
@@ -365,7 +360,7 @@ fn test_mod_assignment_and_comparison_expressions() {
                     )
                 });
 
-            let return_ops = program_surface_nodes(&declarations)
+            let return_ops = only_root_routine_body_nodes(&declarations)
                 .into_iter()
                 .filter_map(|node| {
                     if let AstNode::Return { value: Some(value) } = node {
@@ -380,7 +375,7 @@ fn test_mod_assignment_and_comparison_expressions() {
                 })
                 .collect::<Vec<_>>();
 
-            let return_values = program_surface_nodes(&declarations)
+            let return_values = only_root_routine_body_nodes(&declarations)
                 .into_iter()
                 .filter_map(|node| {
                     if let AstNode::Return { value } = node {
@@ -424,7 +419,7 @@ fn test_pow_expression_parsing_is_right_associative() {
     match ast {
         AstNode::Program { declarations } => {
             assert!(
-                    program_surface_nodes(&declarations).into_iter().any(|node| {
+                    only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                         matches!(
                             node,
                             AstNode::Return {
@@ -473,7 +468,7 @@ fn test_pow_compound_assignment_parsing() {
     match ast {
         AstNode::Program { declarations } => {
             assert!(
-                    program_surface_nodes(&declarations).into_iter().any(|node| {
+                    only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                         matches!(
                             node,
                             AstNode::Assignment { target, value }
@@ -510,7 +505,7 @@ fn test_logical_and_has_lower_precedence_than_comparison() {
         .expect("Parser should parse logical expression");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
                 if let AstNode::Return { value: Some(value) } = node {
@@ -564,7 +559,7 @@ fn test_logical_or_has_lower_precedence_than_and() {
         .expect("Parser should parse logical or precedence expression");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
                 if let AstNode::Return { value: Some(value) } = node {
@@ -618,7 +613,7 @@ fn test_logical_not_parses_as_unary_expression() {
         .expect("Parser should parse logical not expression");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
                 if let AstNode::Return { value: Some(value) } = node {
@@ -657,7 +652,7 @@ fn test_logical_xor_precedence_between_or_and_and() {
         .expect("Parser should parse logical xor precedence expression");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
                 if let AstNode::Return { value: Some(value) } = node {
@@ -716,7 +711,7 @@ fn test_logical_nand_lowers_to_not_of_and() {
         .expect("Parser should parse logical nand/nor expression");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
                 if let AstNode::Return { value: Some(value) } = node {
@@ -761,7 +756,7 @@ fn test_logical_nor_lowers_to_not_of_or() {
         .expect("Parser should parse logical nor expression");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
                 if let AstNode::Return { value: Some(value) } = node {
@@ -807,7 +802,7 @@ fn test_logical_not_precedence_over_comparison_and_and() {
         .expect("Parser should parse logical not precedence expression");
 
     let return_value = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
                 if let AstNode::Return { value: Some(value) } = node {
