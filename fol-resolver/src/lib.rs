@@ -7,8 +7,8 @@ pub mod traverse;
 pub use errors::{ResolverError, ResolverErrorKind};
 pub use ids::{IdTable, ImportId, ReferenceId, ScopeId, SourceUnitId, SymbolId};
 pub use model::{
-    ResolvedImport, ResolvedProgram, ResolvedReference, ResolvedScope, ResolvedSourceUnit,
-    ResolvedSymbol, ScopeKind, SymbolKind,
+    ReferenceKind, ResolvedImport, ResolvedProgram, ResolvedReference, ResolvedScope,
+    ResolvedSourceUnit, ResolvedSymbol, ScopeKind, SymbolKind,
 };
 
 pub type ResolverResult<T> = Result<T, Vec<ResolverError>>;

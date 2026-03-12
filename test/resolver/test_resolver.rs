@@ -45,6 +45,9 @@ fn unique_temp_root(label: &str) -> std::path::PathBuf {
 }
 
 #[cfg(test)]
+#[path = "test_resolver_parts/block_scopes.rs"]
+mod block_scopes;
+#[cfg(test)]
 #[path = "test_resolver_parts/foundation.rs"]
 mod foundation;
 #[cfg(test)]

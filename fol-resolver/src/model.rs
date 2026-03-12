@@ -54,6 +54,11 @@ pub enum SymbolKind {
     RollingBinder,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ReferenceKind {
+    Identifier,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResolvedSymbol {
     pub id: SymbolId,
@@ -71,6 +76,11 @@ pub struct ResolvedSymbol {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResolvedReference {
     pub id: ReferenceId,
+    pub kind: ReferenceKind,
+    pub name: String,
+    pub scope: ScopeId,
+    pub source_unit: SourceUnitId,
+    pub resolved: Option<SymbolId>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -211,6 +221,10 @@ impl ResolvedProgram {
         self.symbols.get(id)
     }
 
+    pub fn reference(&self, id: ReferenceId) -> Option<&ResolvedReference> {
+        self.references.get(id)
+    }
+
     pub fn symbols_in_scope(&self, scope_id: ScopeId) -> Vec<&ResolvedSymbol> {
         self.scope(scope_id)
             .map(|scope| {
@@ -228,6 +242,13 @@ impl ResolvedProgram {
             .and_then(|scope| scope.symbol_keys.get(key))
             .map(|ids| ids.iter().filter_map(|id| self.symbol(*id)).collect())
             .unwrap_or_default()
+    }
+
+    pub fn references_in_scope(&self, scope_id: ScopeId) -> Vec<&ResolvedReference> {
+        self.references
+            .iter()
+            .filter(|reference| reference.scope == scope_id)
+            .collect()
     }
 
     pub(crate) fn add_scope(

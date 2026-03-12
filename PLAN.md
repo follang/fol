@@ -489,6 +489,8 @@ Status: done
 
 #### Slice 2.2
 
+Status: done
+
 - Add block scopes.
 - Resolve local `var`, `lab`, and destructuring bindings with declaration-order visibility.
 - Add tests for same-scope duplicates, shadowing, and use-before-bind failures.

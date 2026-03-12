@@ -1,7 +1,9 @@
 use crate::{
-    collect::{semantic_node, top_level_duplicate_key, top_level_scope_id},
-    model::{ResolvedProgram, ResolvedSymbol, ScopeKind, SymbolKind},
-    ResolverError, ResolverErrorKind, ScopeId, SourceUnitId, SymbolId,
+    collect::{binding_names, semantic_node, top_level_duplicate_key, top_level_scope_id},
+    model::{
+        ReferenceKind, ResolvedProgram, ResolvedReference, ResolvedSymbol, ScopeKind, SymbolKind,
+    },
+    ReferenceId, ResolverError, ResolverErrorKind, ScopeId, SourceUnitId, SymbolId,
 };
 use fol_parser::ast::{AstNode, LoopCondition, ParsedTopLevel, WhenCase};
 
@@ -178,8 +180,10 @@ fn traverse_node(
         }
         AstNode::Comment { .. }
         | AstNode::Commented { .. }
-        | AstNode::Identifier { .. }
         | AstNode::QualifiedIdentifier { .. } => {}
+        AstNode::Identifier { name } => {
+            record_identifier_reference(program, source_unit_id, scope_id, name)?;
+        }
         AstNode::BinaryOp { left, right, .. } => {
             traverse_node(program, source_unit_id, scope_id, left, false)?;
             traverse_node(program, source_unit_id, scope_id, right, false)?;
@@ -187,9 +191,13 @@ fn traverse_node(
         AstNode::UnaryOp { operand, .. } => {
             traverse_node(program, source_unit_id, scope_id, operand, false)?;
         }
-        AstNode::FunctionCall { args, .. }
-        | AstNode::QualifiedFunctionCall { args, .. }
-        | AstNode::Invoke { args, .. } => {
+        AstNode::FunctionCall { args, .. } | AstNode::QualifiedFunctionCall { args, .. } => {
+            for arg in args {
+                traverse_node(program, source_unit_id, scope_id, arg, false)?;
+            }
+        }
+        AstNode::Invoke { callee, args } => {
+            traverse_node(program, source_unit_id, scope_id, callee, false)?;
             for arg in args {
                 traverse_node(program, source_unit_id, scope_id, arg, false)?;
             }
@@ -197,8 +205,11 @@ fn traverse_node(
         AstNode::NamedArgument { value, .. }
         | AstNode::Unpack { value }
         | AstNode::Spawn { task: value }
-        | AstNode::Assignment { value, .. }
         | AstNode::Return { value: Some(value) } => {
+            traverse_node(program, source_unit_id, scope_id, value, false)?;
+        }
+        AstNode::Assignment { target, value } => {
+            traverse_node(program, source_unit_id, scope_id, target, false)?;
             traverse_node(program, source_unit_id, scope_id, value, false)?;
         }
         AstNode::Return { value: None }
@@ -280,12 +291,52 @@ fn traverse_node(
                 traverse_node(program, source_unit_id, scope_id, end, false)?;
             }
         }
-        AstNode::VarDecl { value, .. } | AstNode::LabDecl { value, .. } => {
+        AstNode::VarDecl { name, value, .. } => {
             if let Some(value) = value {
                 traverse_node(program, source_unit_id, scope_id, value, false)?;
             }
+            if !is_top_level_node {
+                insert_local_symbol(
+                    program,
+                    source_unit_id,
+                    scope_id,
+                    name,
+                    SymbolKind::ValueBinding,
+                    format!("symbol#{}", fol_types::canonical_identifier_key(name)),
+                )?;
+            }
         }
-        AstNode::DestructureDecl { value, .. } | AstNode::Yield { value } => {
+        AstNode::LabDecl { name, value, .. } => {
+            if let Some(value) = value {
+                traverse_node(program, source_unit_id, scope_id, value, false)?;
+            }
+            if !is_top_level_node {
+                insert_local_symbol(
+                    program,
+                    source_unit_id,
+                    scope_id,
+                    name,
+                    SymbolKind::LabelBinding,
+                    format!("symbol#{}", fol_types::canonical_identifier_key(name)),
+                )?;
+            }
+        }
+        AstNode::DestructureDecl { pattern, value, .. } => {
+            traverse_node(program, source_unit_id, scope_id, value, false)?;
+            if !is_top_level_node {
+                for name in binding_names(pattern) {
+                    insert_local_symbol(
+                        program,
+                        source_unit_id,
+                        scope_id,
+                        &name,
+                        SymbolKind::DestructureBinding,
+                        format!("symbol#{}", fol_types::canonical_identifier_key(&name)),
+                    )?;
+                }
+            }
+        }
+        AstNode::Yield { value } => {
             traverse_node(program, source_unit_id, scope_id, value, false)?;
         }
         AstNode::When {
@@ -298,9 +349,7 @@ fn traverse_node(
                 match case {
                     WhenCase::Case { condition, body } => {
                         traverse_node(program, source_unit_id, scope_id, condition, false)?;
-                        for statement in body {
-                            traverse_node(program, source_unit_id, scope_id, statement, false)?;
-                        }
+                        traverse_block_body(program, source_unit_id, scope_id, body)?;
                     }
                     WhenCase::Is { value, body }
                     | WhenCase::In { range: value, body }
@@ -313,21 +362,15 @@ fn traverse_node(
                         body,
                     } => {
                         traverse_node(program, source_unit_id, scope_id, value, false)?;
-                        for statement in body {
-                            traverse_node(program, source_unit_id, scope_id, statement, false)?;
-                        }
+                        traverse_block_body(program, source_unit_id, scope_id, body)?;
                     }
                     WhenCase::Of { body, .. } => {
-                        for statement in body {
-                            traverse_node(program, source_unit_id, scope_id, statement, false)?;
-                        }
+                        traverse_block_body(program, source_unit_id, scope_id, body)?;
                     }
                 }
             }
             if let Some(default_body) = default {
-                for statement in default_body {
-                    traverse_node(program, source_unit_id, scope_id, statement, false)?;
-                }
+                traverse_block_body(program, source_unit_id, scope_id, default_body)?;
             }
         }
         AstNode::Loop { condition, body } => {
@@ -352,12 +395,12 @@ fn traverse_node(
         }
         AstNode::Select { channel, body, .. } => {
             traverse_node(program, source_unit_id, scope_id, channel, false)?;
-            for statement in body {
-                traverse_node(program, source_unit_id, scope_id, statement, false)?;
-            }
+            traverse_block_body(program, source_unit_id, scope_id, body)?;
         }
-        AstNode::Block { statements }
-        | AstNode::Program {
+        AstNode::Block { statements } => {
+            traverse_block_body(program, source_unit_id, scope_id, statements)?;
+        }
+        AstNode::Program {
             declarations: statements,
         } => {
             for statement in statements {
@@ -370,7 +413,6 @@ fn traverse_node(
             }
         }
         AstNode::TypeDecl { .. }
-        | AstNode::UseDecl { .. }
         | AstNode::AliasDecl { .. }
         | AstNode::DefDecl { .. }
         | AstNode::SegDecl { .. }
@@ -378,8 +420,33 @@ fn traverse_node(
         | AstNode::StdDecl { .. }
         | AstNode::Literal(_)
         | AstNode::PatternWildcard => {}
+        AstNode::UseDecl { name, .. } => {
+            if !is_top_level_node {
+                insert_local_symbol(
+                    program,
+                    source_unit_id,
+                    scope_id,
+                    name,
+                    SymbolKind::ImportAlias,
+                    format!("symbol#{}", fol_types::canonical_identifier_key(name)),
+                )?;
+            }
+        }
     }
 
+    Ok(())
+}
+
+fn traverse_block_body(
+    program: &mut ResolvedProgram,
+    source_unit_id: SourceUnitId,
+    parent_scope: ScopeId,
+    statements: &[AstNode],
+) -> Result<(), ResolverError> {
+    let block_scope = program.add_scope(ScopeKind::Block, parent_scope, source_unit_id);
+    for statement in statements {
+        traverse_node(program, source_unit_id, block_scope, statement, false)?;
+    }
     Ok(())
 }
 
@@ -469,4 +536,54 @@ fn insert_local_symbol(
         .push(symbol_id);
 
     Ok(symbol_id)
+}
+
+fn record_identifier_reference(
+    program: &mut ResolvedProgram,
+    source_unit_id: SourceUnitId,
+    scope_id: ScopeId,
+    name: &str,
+) -> Result<ReferenceId, ResolverError> {
+    let symbol_id = resolve_visible_symbol(program, scope_id, name)?;
+    let reference_id = program.references.push(ResolvedReference {
+        id: ReferenceId(0),
+        kind: ReferenceKind::Identifier,
+        name: name.to_string(),
+        scope: scope_id,
+        source_unit: source_unit_id,
+        resolved: Some(symbol_id),
+    });
+    if let Some(reference) = program.references.get_mut(reference_id) {
+        reference.id = reference_id;
+    }
+    Ok(reference_id)
+}
+
+fn resolve_visible_symbol(
+    program: &ResolvedProgram,
+    starting_scope: ScopeId,
+    name: &str,
+) -> Result<SymbolId, ResolverError> {
+    let canonical_name = fol_types::canonical_identifier_key(name);
+    let mut current_scope = Some(starting_scope);
+
+    while let Some(scope_id) = current_scope {
+        let symbols = program.symbols_named_in_scope(scope_id, &canonical_name);
+        if !symbols.is_empty() {
+            if symbols.len() == 1 {
+                return Ok(symbols[0].id);
+            }
+            return Err(ResolverError::new(
+                ResolverErrorKind::AmbiguousReference,
+                format!("name '{}' is ambiguous in lexical scope", name),
+            ));
+        }
+
+        current_scope = program.scope(scope_id).and_then(|scope| scope.parent);
+    }
+
+    Err(ResolverError::new(
+        ResolverErrorKind::UnresolvedName,
+        format!("could not resolve name '{}'", name),
+    ))
 }
