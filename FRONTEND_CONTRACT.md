@@ -197,12 +197,17 @@ tests actually enforce today.
 
 ### Stage 0 Collection
 
-- Stage 0 currently buffers the incoming character provider into a local collection
-  before later lexer passes refine the token stream.
-- That buffering is a lexer implementation choice, not part of the external stream
-  contract.
-- Any future move toward true streaming has to preserve the current source-location and
-  cross-file ordering guarantees intentionally rather than by accident.
+- Stage 0 now drains an owned `FileStream` lazily instead of collecting the entire
+  unified character stream into one local `Vec`.
+- That means the lexer no longer duplicates the whole cross-file character stream after
+  `fol-stream` has already loaded source contents eagerly.
+- The current stream/lexer boundary is therefore:
+  `fol-stream` still preloads file bodies per source
+  stage 0 consumes that source set incrementally while preserving explicit file
+  boundaries and exact locations
+- Any future move toward a different streaming model still has to preserve the current
+  source-location and cross-file ordering guarantees intentionally rather than by
+  accident.
 - The parser-facing split is stable: malformed quoted spans become `Illegal`, while raw
   unsupported characters still stop lexing with an error.
 - Raw unrecognized characters, including unsupported non-ASCII input and unsupported

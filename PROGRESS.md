@@ -80,7 +80,6 @@ Authority rule for this file: code and active tests win over older aspirational 
 - The main remaining front-end debt is now concentrated in a few hardening decisions:
 - standalone `_` policy
 - slash-comment permanence vs compatibility-only status
-- duplicated eager buffering between `fol-stream` and lexer stage 0
 - final readiness/doc closure
 
 ## 5. Current Big Picture
@@ -550,9 +549,7 @@ Authority rule for this file: code and active tests win over older aspirational 
 
 - decide whether slash-comment compatibility becomes permanent or is retired
 - settle the standalone `_` policy against the book and parser placeholder usage
-- remove duplicated eager buffering across `fol-stream` and lexer stage 0 if the
-  front-end moves toward a more streaming model
-- keep exact source locations if the buffering model changes
+- keep exact source locations if the stream/lexer loading model changes again
 - continue shrinking legacy naming debt where it still affects diagnostics or public
   contracts
 
