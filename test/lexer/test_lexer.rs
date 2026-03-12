@@ -1904,6 +1904,41 @@ mod lexer_error_tests {
     }
 
     #[test]
+    fn test_unrecognized_ascii_control_character_returns_lexer_error() {
+        let temp_path = std::env::temp_dir().join(format!(
+            "fol_lexer_bad_ascii_control_{}_{}.fol",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("System time should be after unix epoch")
+                .as_nanos()
+        ));
+        std::fs::write(&temp_path, b"\x7f")
+            .expect("Should write malformed ascii-control lexer fixture");
+
+        let mut file_stream = FileStream::from_file(
+            temp_path
+                .to_str()
+                .expect("Malformed lexer fixture path should be valid utf-8"),
+        )
+        .expect("Should open malformed ascii-control lexer fixture");
+        let lexer = Elements::init(&mut file_stream);
+
+        let error = lexer.curr(false).expect_err(
+            "Unsupported ASCII control characters should stay hard lexer errors",
+        );
+        let message = error.to_string();
+
+        assert!(
+            message.contains("is not a recognized character"),
+            "Unexpected lexer error message for unsupported ASCII control character: {}",
+            message
+        );
+
+        std::fs::remove_file(&temp_path).ok();
+    }
+
+    #[test]
     fn test_unterminated_string_literal_becomes_illegal_token() {
         let tokens = tokenize_file("test/lexer/unterminated_string.fol");
 
