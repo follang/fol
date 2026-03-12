@@ -241,7 +241,7 @@ Target files:
 
 ### 9.1 Enforce The Chosen Identifier Rules
 
-- [ ] Reject `_` as a standalone identifier if the book remains authoritative.
+- [x] Keep standalone `_` as an explicit front-end divergence instead of rejecting it immediately.
 - [x] Reject repeated underscore runs if the book remains authoritative.
 - [x] Decide whether identifier canonicalization belongs in the lexer crate, a shared front-end helper, or parser-side utilities.
 - [x] Add a single front-end identifier normalization helper that later parser checks can reuse.
