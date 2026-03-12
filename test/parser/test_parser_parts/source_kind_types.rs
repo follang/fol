@@ -18,8 +18,17 @@ fn test_url_type_references_lower_structurally() {
                 AstNode::UseDecl {
                     name,
                     path_type: FolType::Url { name: kind_name },
+                    path,
+                    path_segments,
                     ..
-                } if name == "remote" && kind_name.is_empty()
+                } if name == "remote"
+                    && kind_name.is_empty()
+                    && path == "https://example.com/api"
+                    && path_segments.as_slice()
+                        == [fol_parser::ast::UsePathSegment {
+                            separator: None,
+                            spelling: "https://example.com/api".to_string(),
+                        }]
             )));
             assert!(declarations.iter().any(|node| matches!(
                 node,

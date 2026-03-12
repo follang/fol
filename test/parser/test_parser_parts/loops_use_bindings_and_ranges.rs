@@ -214,6 +214,7 @@ fn test_use_declaration_accepts_empty_option_brackets() {
                     options,
                     path_type,
                     path,
+                    ..
                 } = node
                 {
                     Some((

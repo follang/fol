@@ -3,6 +3,18 @@
 
 use std::collections::HashMap;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum UsePathSeparator {
+    Slash,
+    DoubleColon,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UsePathSegment {
+    pub separator: Option<UsePathSeparator>,
+    pub spelling: String,
+}
+
 /// Core AST node types for FOL language
 #[derive(Debug, Clone, PartialEq)]
 pub enum AstNode {
@@ -81,6 +93,7 @@ pub enum AstNode {
         name: String,
         path_type: FolType,
         path: String,
+        path_segments: Vec<UsePathSegment>,
     },
 
     /// Alias declaration: ali name: target_type

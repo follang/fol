@@ -1,4 +1,11 @@
 use super::*;
+use crate::ast::{UsePathSegment, UsePathSeparator};
+
+#[derive(Debug, Clone)]
+struct ParsedUsePath {
+    raw: String,
+    segments: Vec<UsePathSegment>,
+}
 
 impl AstParser {
     pub(super) fn ensure_complete_use_path(
@@ -62,7 +69,7 @@ impl AstParser {
     fn parse_use_paths(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<Vec<String>, Box<dyn Glitch>> {
+    ) -> Result<Vec<ParsedUsePath>, Box<dyn Glitch>> {
         let mut paths = Vec::new();
 
         for _ in 0..256 {
@@ -70,12 +77,18 @@ impl AstParser {
             let token = tokens.curr(false)?;
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
                 let _ = tokens.bump();
-                paths.push(self.parse_use_path(tokens)?);
+                let raw = self.parse_use_path(tokens)?;
+                let segments = self.parse_use_path_segments(&raw, &token)?;
+                paths.push(ParsedUsePath { raw, segments });
             } else if token.key().is_textual_literal() {
-                paths.push(Self::exact_unquote_text(token.con()));
+                let raw = Self::exact_unquote_text(token.con());
+                let segments = self.parse_use_path_segments(&raw, &token)?;
+                paths.push(ParsedUsePath { raw, segments });
                 let _ = tokens.bump();
             } else {
-                paths.push(self.parse_direct_use_path(tokens)?);
+                let raw = self.parse_direct_use_path(tokens)?;
+                let segments = self.parse_use_path_segments(&raw, &token)?;
+                paths.push(ParsedUsePath { raw, segments });
             }
             self.skip_ignorable(tokens);
 
@@ -101,7 +114,7 @@ impl AstParser {
         options: Vec<UseOption>,
         names: Vec<String>,
         path_type: FolType,
-        paths: Vec<String>,
+        paths: Vec<ParsedUsePath>,
         use_token: &fol_lexer::lexer::stage3::element::Element,
     ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
         let assigned_paths = match paths.len() {
@@ -123,7 +136,8 @@ impl AstParser {
                 options: options.clone(),
                 name,
                 path_type: path_type.clone(),
-                path,
+                path: path.raw,
+                path_segments: path.segments,
             })
             .collect())
     }
@@ -202,5 +216,91 @@ impl AstParser {
         let token = tokens.curr(false)?;
         self.ensure_complete_use_path(&token, &path)?;
         Ok(path)
+    }
+
+    fn parse_use_path_segments(
+        &self,
+        path: &str,
+        token: &fol_lexer::lexer::stage3::element::Element,
+    ) -> Result<Vec<UsePathSegment>, Box<dyn Glitch>> {
+        if path.contains("://") {
+            return Ok(vec![UsePathSegment {
+                separator: None,
+                spelling: path.to_string(),
+            }]);
+        }
+
+        let mut segments = Vec::new();
+        let mut current = String::new();
+        let mut pending_separator = None;
+        let mut active_quote = None;
+        let mut chars = path.chars().peekable();
+
+        while let Some(ch) = chars.next() {
+            if let Some(quote) = active_quote {
+                current.push(ch);
+                if ch == quote {
+                    active_quote = None;
+                }
+                continue;
+            }
+
+            match ch {
+                '\'' | '"' => {
+                    active_quote = Some(ch);
+                    current.push(ch);
+                }
+                '/' => {
+                    self.finish_use_path_segment(
+                        &mut segments,
+                        &mut current,
+                        &mut pending_separator,
+                        token,
+                    )?;
+                    pending_separator = Some(UsePathSeparator::Slash);
+                }
+                ':' if matches!(chars.peek(), Some(':')) => {
+                    let _ = chars.next();
+                    self.finish_use_path_segment(
+                        &mut segments,
+                        &mut current,
+                        &mut pending_separator,
+                        token,
+                    )?;
+                    pending_separator = Some(UsePathSeparator::DoubleColon);
+                }
+                _ => current.push(ch),
+            }
+        }
+
+        self.finish_use_path_segment(
+            &mut segments,
+            &mut current,
+            &mut pending_separator,
+            token,
+        )?;
+
+        Ok(segments)
+    }
+
+    fn finish_use_path_segment(
+        &self,
+        segments: &mut Vec<UsePathSegment>,
+        current: &mut String,
+        pending_separator: &mut Option<UsePathSeparator>,
+        token: &fol_lexer::lexer::stage3::element::Element,
+    ) -> Result<(), Box<dyn Glitch>> {
+        if current.is_empty() {
+            return Err(Box::new(ParseError::from_token(
+                token,
+                "Expected use path segment".to_string(),
+            )));
+        }
+
+        segments.push(UsePathSegment {
+            separator: pending_separator.take(),
+            spelling: std::mem::take(current),
+        });
+        Ok(())
     }
 }
