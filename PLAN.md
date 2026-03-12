@@ -204,7 +204,7 @@ Target files:
 
 - [x] Decide whether `FileStream` remains a preload-based source set or becomes a truly lazy stream.
 - [x] If eager loading remains for now, document that explicitly and stop calling it a stronger streaming guarantee than it is.
-- [ ] If lazy loading is introduced, preserve deterministic traversal and file-boundary resets.
+- [x] Lazy loading is not introduced in this hardening phase; any future change still has to preserve deterministic traversal and file-boundary resets.
 - [x] Remove duplicated whole-input collection across `fol-stream` and lexer stage 0.
 - [x] Add one large multi-file regression to cover the chosen loading model.
 
@@ -341,7 +341,7 @@ Target files:
 - [x] Decide whether `AstNode::Program` contains declarations only.
 - [ ] If file-scope executable statements remain supported, stop treating them as incidental declarations.
 - [ ] Introduce an explicit root representation for mixed item/statement programs if mixed file scope remains.
-- [ ] If declaration-only file scope is chosen, reject top-level calls, loops, conditionals, literals, and bare identifiers with explicit diagnostics.
+- [x] Declaration-only file scope is not the chosen contract in this hardening phase.
 - [x] Update `top_level_control_flow_and_calls.rs` and any other root-shape tests to match the chosen contract.
 - [x] Update `FRONTEND_CONTRACT.md` so later phases do not have to infer module shape.
 
