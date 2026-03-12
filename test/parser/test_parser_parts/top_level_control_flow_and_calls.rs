@@ -12,7 +12,7 @@ fn test_multi_else_if_chain_lowers_to_recursive_when_defaults() {
         .expect("Parser should parse multi else-if chain");
 
     let top_when = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
                 if let AstNode::When { cases, default, .. } = node {
@@ -88,7 +88,7 @@ fn test_loop_statement_parsing_with_condition_body() {
         .expect("Parser should parse loop statement");
 
     let loop_stmt = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
                 if let AstNode::Loop { condition, body } = node {
@@ -126,7 +126,7 @@ fn test_loop_statement_parsing_with_break_body() {
         .expect("Parser should parse loop with break statement");
 
     let loop_body = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
                 if let AstNode::Loop { body, .. } = node {
@@ -157,7 +157,7 @@ fn test_loop_break_without_semicolon_is_accepted() {
         .expect("Parser should parse break without semicolon");
 
     let loop_body = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
                 if let AstNode::Loop { body, .. } = node {
@@ -188,7 +188,7 @@ fn test_loop_statement_parsing_with_yield_body() {
         .expect("Parser should parse loop with yield statement");
 
     let loop_body = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
                 if let AstNode::Loop { body, .. } = node {
@@ -221,7 +221,7 @@ fn test_loop_yield_without_semicolon_is_accepted() {
         .expect("Parser should parse yeild without semicolon");
 
     let loop_body = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
                 if let AstNode::Loop { body, .. } = node {
@@ -254,7 +254,7 @@ fn test_loop_iteration_condition_parsing_with_in() {
         .expect("Parser should parse loop iteration condition");
 
     let loop_stmt = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
                 if let AstNode::Loop { condition, body } = node {
@@ -302,7 +302,7 @@ fn test_loop_iteration_condition_with_when_guard() {
         .expect("Parser should parse iteration loop with when guard");
 
     let loop_condition = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
                 if let AstNode::Loop { condition, .. } = node {
@@ -340,7 +340,7 @@ fn test_loop_iteration_condition_supports_silent_binder() {
         .expect("Parser should parse iteration loop with '_' binder");
 
     let loop_stmt = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
                 if let AstNode::Loop { condition, body } = node {
@@ -385,7 +385,7 @@ fn test_for_statement_parsing_with_condition_body() {
         .expect("Parser should parse for statement");
 
     let loop_stmt = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
                 if let AstNode::Loop { condition, body } = node {
@@ -423,7 +423,7 @@ fn test_each_statement_parsing_with_iteration_body() {
         .expect("Parser should parse each statement");
 
     let loop_stmt = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
                 if let AstNode::Loop { condition, body } = node {
@@ -471,7 +471,7 @@ fn test_builtin_diagnostic_statements_parse_as_function_calls() {
         .expect("Parser should parse builtin diagnostic statements");
 
     let call_names = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .filter_map(|node| {
                 if let AstNode::FunctionCall { name, .. } = node {
@@ -514,7 +514,7 @@ fn test_builtin_diagnostic_statements_without_args_parse_as_empty_calls() {
         .expect("Parser should parse builtin diagnostic statements without args");
 
     let calls = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .filter_map(|node| {
                 if let AstNode::FunctionCall { name, args } = node {
@@ -565,7 +565,7 @@ fn test_function_body_identifier_calls_parse_as_functioncall_nodes() {
         .expect("Parser should parse identifier call statements");
 
     let call_names = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .filter_map(|node| {
                 if let AstNode::FunctionCall { name, .. } = node {
@@ -600,7 +600,7 @@ fn test_top_level_identifier_call_parsing() {
         .expect("Parser should parse top-level identifier call");
 
     let call = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => program_root_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
                 if let AstNode::FunctionCall { name, args } = node {
@@ -631,10 +631,10 @@ fn test_top_level_keyword_named_call_and_assignment_parsing() {
 
     match ast {
         AstNode::Program { declarations } => {
-            assert!(program_surface_nodes(&declarations).into_iter().any(|node| {
+            assert!(program_root_nodes(&declarations).into_iter().any(|node| {
                 matches!(node, AstNode::FunctionCall { name, args } if name == "get" && args.is_empty())
             }));
-            assert!(program_surface_nodes(&declarations).into_iter().any(|node| {
+            assert!(program_root_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Assignment { target, value }
@@ -659,7 +659,7 @@ fn test_top_level_multiline_identifier_call_parsing() {
         .expect("Parser should parse top-level multiline identifier call");
 
     let call = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => program_root_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
                 if let AstNode::FunctionCall { name, args } = node {
@@ -692,7 +692,7 @@ fn test_top_level_call_with_unary_plus_arguments_parsing() {
         .expect("Parser should parse top-level unary-plus call arguments");
 
     let call = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => program_root_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
                 if let AstNode::FunctionCall { name, args } = node {
@@ -740,7 +740,7 @@ fn test_call_and_method_call_with_unary_plus_arguments_parsing() {
 
     let (has_run_assignment, has_update_method_call, has_emit_return) = match ast {
         AstNode::Program { declarations } => {
-            let has_run_assignment = program_surface_nodes(&declarations).into_iter().any(|node| {
+            let has_run_assignment = only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::Assignment { value, .. }
@@ -755,7 +755,7 @@ fn test_call_and_method_call_with_unary_plus_arguments_parsing() {
                     )
                 });
 
-            let has_update_method_call = program_surface_nodes(&declarations).into_iter().any(|node| {
+            let has_update_method_call = only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::MethodCall { method, args, .. }
@@ -766,7 +766,7 @@ fn test_call_and_method_call_with_unary_plus_arguments_parsing() {
                     )
                 });
 
-            let has_emit_return = program_surface_nodes(&declarations).into_iter().any(|node| {
+            let has_emit_return = only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::Return { value: Some(value) }
@@ -813,7 +813,7 @@ fn test_top_level_call_with_unary_ref_deref_arguments_parsing() {
         .expect("Parser should parse top-level unary ref/deref call arguments");
 
     let call = match ast {
-        AstNode::Program { declarations } => program_surface_nodes(&declarations)
+        AstNode::Program { declarations } => program_root_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
                 if let AstNode::FunctionCall { name, args } = node {
@@ -856,7 +856,7 @@ fn test_call_and_method_call_with_unary_ref_deref_arguments_parsing() {
 
     let (has_run_assignment, has_update_method_call, has_emit_return) = match ast {
         AstNode::Program { declarations } => {
-            let has_run_assignment = program_surface_nodes(&declarations).into_iter().any(|node| {
+            let has_run_assignment = only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::Assignment { value, .. }
@@ -871,7 +871,7 @@ fn test_call_and_method_call_with_unary_ref_deref_arguments_parsing() {
                     )
                 });
 
-            let has_update_method_call = program_surface_nodes(&declarations).into_iter().any(|node| {
+            let has_update_method_call = only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::MethodCall { method, args, .. }
@@ -882,7 +882,7 @@ fn test_call_and_method_call_with_unary_ref_deref_arguments_parsing() {
                     )
                 });
 
-            let has_emit_return = program_surface_nodes(&declarations).into_iter().any(|node| {
+            let has_emit_return = only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                     matches!(
                         node,
                         AstNode::Return { value: Some(value) }
