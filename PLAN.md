@@ -587,6 +587,8 @@ Status: done
 
 #### Slice 4.5
 
+Status: done
+
 - Resolve `QualifiedFunctionCall` paths with the same root/path rules.
 - Add tests for successful and failing qualified call references.
 
