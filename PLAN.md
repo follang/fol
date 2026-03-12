@@ -97,8 +97,8 @@ Do not add or plan work here for:
 
 - [x] Treat the local book as the authority unless we explicitly decide to diverge.
 - [x] If code and docs disagree, close the decision the same day instead of freezing both.
-- [ ] Do not add new post-parse behavior while closing this plan.
-- [ ] Every behavior change gets a regression test.
+- [x] Do not add new post-parse behavior while closing this plan.
+- [x] Every behavior change gets a regression test.
 - [x] Every intentional front-end compromise gets written to `FRONTEND_CONTRACT.md`.
 - [x] Every removed compromise also removes the matching stale test assumptions.
 - [ ] Prefer preserving syntax facts over recomputing or guessing them later.
