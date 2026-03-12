@@ -35,7 +35,7 @@
             const path_to_root = "../../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../../searchindex-720f8919.js";
+            window.path_to_searchindex_js = "../../searchindex-a1b14eae.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../../toc-c28f7be1.js"></script>
@@ -192,11 +192,12 @@
 <pre><code>4                       // intiger literal
 0xA8                    // hex-intiger literal
 4.6                     // floating-point literal
-5i                      // imaginary literal
 "c"                     // character literal
 "one"                   // string literal
 true                    // boolean literal
 </code></pre>
+<p>The current hardened front-end does not yet implement imaginary literal lowering, so
+imaginary examples are intentionally omitted from the active literal surface here.</p>
 <h3 id="cluster-literals"><a class="header" href="#cluster-literals">Cluster literals</a></h3>
 <p>Cluster literals represent both container types and construct types. Cluster literals are always enclosed within curly brackets <code>{  }</code>. The difference between scopes and cluster literals is that cluster literals shoud always have  comma <code>,</code> within the initializaion and assignment brackets, e.g <code>{ 5, }</code>.</p>
 <h4 id="containers"><a class="header" href="#containers">Containers</a></h4>

@@ -35,7 +35,7 @@
             const path_to_root = "../../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../../searchindex-720f8919.js";
+            window.path_to_searchindex_js = "../../searchindex-a1b14eae.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../../toc-c28f7be1.js"></script>
@@ -191,7 +191,11 @@
 <pre><code>typ[ali] rgb: int[8][.range(255)] ;                        // we create a type that holds only number from 0 to 255
 typ[ali] rgbSet: set[rgb, rgb, rgb];                       // then we create a type holding the `rgb` type
 </code></pre>
-<p>Alias declaration are created because they can simplify using them multiple times, their identifier (their name) may be expressive in other contexts, and–most importantly–so that you can define (attach) methods to it (you can’t attach methods to built-in types, nor to anonymous types or types defined in other packages).</p>
+<p>Alias declaration are created because they can simplify using them multiple times,
+their identifier (their name) may be expressive in other contexts, and-most
+importantly-so that you can define (attach) methods to a named type surface. Anonymous
+types still need a named alias or extension surface first, while built-in or foreign
+types can be extended explicitly through <code>typ[ext]</code>.</p>
 <p>Attaching methods is of outmost importance, because even though instead of attaching methods you could just as easily create and use functions that accept the “original” type as parameter, only types with methods can implement standards <code>std[]</code> that list/enforce those methods, and you can’t attach methods to certain types unless you create a new type derived from them.</p>
 <h2 id="extending"><a class="header" href="#extending">Extending</a></h2>
 <p>Extensions add new functionality to an existing constructs. This includes the ability to extend types for which you do not have access to the original source code (known as retroactive modeling).</p>

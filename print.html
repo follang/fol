@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-720f8919.js";
+            window.path_to_searchindex_js = "searchindex-a1b14eae.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-c28f7be1.js"></script>
@@ -508,47 +508,61 @@ OK_EXP              `exp`
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="identifiers"><a class="header" href="#identifiers">Identifiers</a></h1>
-<p>Identifiers in FOL can be any string of letters, digits and underscores, but beginning with a letter. Two immediate following underscores __ are not allowed.</p>
-<p>IDENTIFIER:
-[a-z A-Z] [a-z A-Z 0-9 _]* | _ [a-z A-Z 0-9 _]+</p>
-<p>An identifier is any nonempty ASCII string of the following form:</p>
-<p>Either</p>
+<p>Identifiers in the current front-end are ASCII names built from letters, digits, and
+underscores, but they may not start with a digit. Repeated underscore runs <code>__</code> are
+not allowed.</p>
+<p>IDENTIFIER:</p>
+<pre><code>[a-z A-Z _] [a-z A-Z 0-9 _]*
+</code></pre>
+<p>The hardened front-end currently accepts:</p>
 <ul>
-<li>The first character is a letter.</li>
-<li>The remaining characters are alphanumeric or _.</li>
+<li>leading underscores</li>
+<li>internal underscores</li>
+<li>non-leading digits</li>
 </ul>
-<p>Or</p>
+<p>The hardened front-end currently rejects:</p>
 <ul>
-<li>The first character is _.</li>
-<li>The identifier is more than one character. _ alone is not an identifier.</li>
-<li>The remaining characters are alphanumeric or _.</li>
+<li>leading digits</li>
+<li>repeated underscore runs</li>
+<li>non-ASCII identifier spellings</li>
 </ul>
+<p><code>_</code> by itself is still accepted by the current lexer/parser boundary as a dedicated
+placeholder or binder surface. It should not be treated as an ordinary named identifier
+for later-phase semantic work.</p>
 <h2 id="identifier-equality"><a class="header" href="#identifier-equality">Identifier equality</a></h2>
-<p>Two identifiers are considered equal if the following algorithm returns true:</p>
+<p>Parser-owned duplicate checks currently treat two identifiers as equal if the following
+algorithm returns true:</p>
 <pre><code>pro sameIdentifier(a, b: string): bol = {
     result = a.replace("_", "").toLowerAscii == b.replace("_", "").toLowerAscii
 }
 </code></pre>
-<p>That means all letters are compared case insensitively within the ASCII range and underscores are ignored. This rather unorthodox way to do identifier comparisons is called partial case insensitivity and has some advantages over the conventional case sensitivity: It allows programmers to mostly use their own preferred spelling style, be it humpStyle or snake_style, and libraries written by different programmers cannot use incompatible conventions</p>
+<p>That means ASCII letters are compared case-insensitively and underscores are ignored
+for those parser-owned duplicate checks. The lexer and stream still preserve original
+identifier spelling; they do not canonicalize token or namespace text up front.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="comments"><a class="header" href="#comments">Comments</a></h1>
-<p>Comments in FOL code <strong>DON’T</strong>  follow the traditional style of line (<code>//</code>) comment forms.</p>
+<p>Backtick-delimited comments are the authoritative comment syntax in FOL.</p>
 <h2 id="normal-comments"><a class="header" href="#normal-comments">Normal comments</a></h2>
-<p>They are represented with backtick.</p>
-<p>SINGLE_LINE_COMMENT :</p>
+<p>Single-line and multiline comments use the same backtick-delimited form.</p>
+<p>SINGLE_LINE_COMMENT:</p>
 <pre><code>`this is a single line comment`
 </code></pre>
-<p>MULTI_LINE_COMMENT :</p>
-<pre><code>`this is a 
+<p>MULTI_LINE_COMMENT:</p>
+<pre><code>`this is a
 multi
 line
 comment`
 </code></pre>
-<h2 id="docs-comments"><a class="header" href="#docs-comments">Docs comments</a></h2>
-<p>Doc comments have at the beggining of comment the optinon <code>[doc]</code>.</p>
+<h2 id="doc-comments"><a class="header" href="#doc-comments">Doc comments</a></h2>
+<p>Documentation comments use the <code>[doc]</code> prefix inside the same backtick-delimited
+comment family.</p>
 <p>DOC_COMMENT:</p>
 <pre><code>`[doc] this is a documentation comment`
 </code></pre>
+<h2 id="current-front-end-compatibility"><a class="header" href="#current-front-end-compatibility">Current front-end compatibility</a></h2>
+<p>The hardened front-end still accepts <code>//</code> and <code>/* ... */</code> comments as compatibility
+syntax. They are not the authoritative book syntax, but they remain intentionally
+supported by the current lexer and parser.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="whitespaces"><a class="header" href="#whitespaces">Whitespaces</a></h1>
 <p>Whitespace is any non-empty string containing only characters that have the below Unicode properties:</p>
@@ -629,14 +643,20 @@ assert(a,b);
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="numbers"><a class="header" href="#numbers">Numbers</a></h1>
-<p>A number is either an integer, floating-point or imaginary. The grammar for recognizing the kind of number is mixed.</p>
+<p>A number in the current front-end is either an integer or a floating-point literal.
+Imaginary suffix forms are intentionally outside the hardened lexer/parser contract for
+this phase.</p>
 <h2 id="intigers"><a class="header" href="#intigers">Intigers</a></h2>
 <p>An integer has one of four forms:</p>
 <ul>
-<li>A decimal literal starts with a decimal digit and continues with any mixture of decimal digits and underscores.</li>
-<li>A hex literal starts with the character sequence <code>U+0030</code> <code>U+0078</code> (<code>0x</code>) and continues as any mixture (with at least one digit) of hex digits and underscores.</li>
-<li>An octal literal starts with the character sequence <code>U+0030 U+006F</code> (<code>0o</code>) and continues as any mixture (with at least one digit) of octal digits and underscores.</li>
-<li>A binary literal starts with the character sequence <code>U+0030 U+0062</code> (<code>0b</code>) and continues as any mixture (with at least one digit) of binary digits and underscores.</li>
+<li>A decimal literal starts with a decimal digit and continues with decimal digits and
+optional separating underscores.</li>
+<li>A hex literal starts with <code>0x</code> or <code>0X</code> and then uses hex digits with optional
+separating underscores.</li>
+<li>An octal literal starts with <code>0o</code> or <code>0O</code> and then uses octal digits with optional
+separating underscores.</li>
+<li>A binary literal starts with <code>0b</code> or <code>0B</code> and then uses binary digits with optional
+separating underscores.</li>
 </ul>
 <pre><code>var decimal: int = 45;
 var hexadec: int = 0x6HF53BD5;
@@ -655,11 +675,16 @@ assert(aNumber, bNumber)
 <ul>
 <li>A decimal literal followed by a period character <code>U+002E</code> (<code>.</code>). This is optionally followed by another decimal literal.</li>
 <li>A decimal literal that follows a period character <code>U+002E</code> (<code>.</code>).</li>
+<li>A decimal literal followed by a period with no fractional digits is also accepted by
+the current front-end.</li>
 </ul>
 <pre><code>var aFloat: flt = 3.4;
 var bFloat: flt = .4;
+var cFloat: flt = 1.;
 </code></pre>
-<h2 id="imaginary-numbers"><a class="header" href="#imaginary-numbers">Imaginary numbers</a></h2>
+<h2 id="current-front-end-note"><a class="header" href="#current-front-end-note">Current front-end note</a></h2>
+<p>Imaginary literals such as <code>5i</code> remain a language-design topic in the book, but they
+are not tokenized or lowered by the current hardened stream/lexer/parser pipeline.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="symbols"><a class="header" href="#symbols">Symbols</a></h1>
 <h2 id="operators"><a class="header" href="#operators">Operators</a></h2>
@@ -958,11 +983,12 @@ var value: int = 10;
 <pre><code>4                       // intiger literal
 0xA8                    // hex-intiger literal
 4.6                     // floating-point literal
-5i                      // imaginary literal
 "c"                     // character literal
 "one"                   // string literal
 true                    // boolean literal
 </code></pre>
+<p>The current hardened front-end does not yet implement imaginary literal lowering, so
+imaginary examples are intentionally omitted from the active literal surface here.</p>
 <h3 id="cluster-literals"><a class="header" href="#cluster-literals">Cluster literals</a></h3>
 <p>Cluster literals represent both container types and construct types. Cluster literals are always enclosed within curly brackets <code>{  }</code>. The difference between scopes and cluster literals is that cluster literals shoud always have  comma <code>,</code> within the initializaion and assignment brackets, e.g <code>{ 5, }</code>.</p>
 <h4 id="containers"><a class="header" href="#containers">Containers</a></h4>
@@ -1560,7 +1586,9 @@ parent.add({"alice","bill"})
 <pre><code>str[]
 </code></pre>
 <h2 id="number"><a class="header" href="#number">Number</a></h2>
-<p>Number type is an abstraction of intiger and float type. It can be imaginary too.</p>
+<p>Number type is an abstraction of integer and float type in the current hardened
+front-end. Imaginary-number support is still outside the active stream/lexer/parser
+contract.</p>
 <pre><code>num[]
 </code></pre>
 <h2 id="pointer"><a class="header" href="#pointer">Pointer</a></h2>
@@ -2259,13 +2287,19 @@ pro (parser)update(code: int): int = {
 }
 </code></pre>
 <p>The receiver type appears in parentheses right after <code>fun</code> or <code>pro</code>, followed by the method name.</p>
-<p>Receiver types must be user-defined named types. Builtin scalar/special language types (like <code>int</code>, <code>bol</code>, <code>str</code>, <code>flt</code>, and keyword-like builtins) are rejected for method receiver declarations.</p>
+<p>Current parser-supported receiver syntax is intentionally broader than a named-only rule.
+At parse time, receiver positions accept named, qualified, builtin-scalar, and
+bracketed/composite type references. This keeps extension-style examples such as
+<code>typ[ext] int: int; pro (int)print(): non = { ... }</code> and dispatch examples on extended
+builtin aliases in scope for the front-end.</p>
+<p>The dedicated parser-level rejection in this hardening phase is still for special
+builtin forms such as <code>any</code>, <code>none</code>, and <code>non</code>.</p>
 <p>Invalid example:</p>
-<pre><code class="language-fol">fun (int)parse_msg(code: int): str = {
+<pre><code class="language-fol">fun (any)parse_msg(code: int): str = {
     return "ok";
 }
 </code></pre>
-<p>This form reports: <code>Method receiver type must be a user-defined named type</code>.</p>
+<p>This form reports: <code>Method receiver type must be a named or scalar type</code>.</p>
 <p>Method calls use standard dot syntax:</p>
 <pre><code class="language-fol">var tool: parser = parser.new()
 var msg: str = tool.parse_msg(10)
@@ -2465,7 +2499,11 @@ log instructor(class: str): vec[str] = {
 <pre><code>typ[ali] rgb: int[8][.range(255)] ;                        // we create a type that holds only number from 0 to 255
 typ[ali] rgbSet: set[rgb, rgb, rgb];                       // then we create a type holding the `rgb` type
 </code></pre>
-<p>Alias declaration are created because they can simplify using them multiple times, their identifier (their name) may be expressive in other contexts, and–most importantly–so that you can define (attach) methods to it (you can’t attach methods to built-in types, nor to anonymous types or types defined in other packages).</p>
+<p>Alias declaration are created because they can simplify using them multiple times,
+their identifier (their name) may be expressive in other contexts, and-most
+importantly-so that you can define (attach) methods to a named type surface. Anonymous
+types still need a named alias or extension surface first, while built-in or foreign
+types can be extended explicitly through <code>typ[ext]</code>.</p>
 <p>Attaching methods is of outmost importance, because even though instead of attaching methods you could just as easily create and use functions that accept the “original” type as parameter, only types with methods can implement standards <code>std[]</code> that list/enforce those methods, and you can’t attach methods to certain types unless you create a new type derived from them.</p>
 <h2 id="extending"><a class="header" href="#extending">Extending</a></h2>
 <p>Extensions add new functionality to an existing constructs. This includes the ability to extend types for which you do not have access to the original source code (known as retroactive modeling).</p>

@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-720f8919.js";
+            window.path_to_searchindex_js = "../searchindex-a1b14eae.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-c28f7be1.js"></script>
@@ -175,23 +175,28 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="comments"><a class="header" href="#comments">Comments</a></h1>
-<p>Comments in FOL code <strong>DON’T</strong>  follow the traditional style of line (<code>//</code>) comment forms.</p>
+<p>Backtick-delimited comments are the authoritative comment syntax in FOL.</p>
 <h2 id="normal-comments"><a class="header" href="#normal-comments">Normal comments</a></h2>
-<p>They are represented with backtick.</p>
-<p>SINGLE_LINE_COMMENT :</p>
+<p>Single-line and multiline comments use the same backtick-delimited form.</p>
+<p>SINGLE_LINE_COMMENT:</p>
 <pre><code>`this is a single line comment`
 </code></pre>
-<p>MULTI_LINE_COMMENT :</p>
-<pre><code>`this is a 
+<p>MULTI_LINE_COMMENT:</p>
+<pre><code>`this is a
 multi
 line
 comment`
 </code></pre>
-<h2 id="docs-comments"><a class="header" href="#docs-comments">Docs comments</a></h2>
-<p>Doc comments have at the beggining of comment the optinon <code>[doc]</code>.</p>
+<h2 id="doc-comments"><a class="header" href="#doc-comments">Doc comments</a></h2>
+<p>Documentation comments use the <code>[doc]</code> prefix inside the same backtick-delimited
+comment family.</p>
 <p>DOC_COMMENT:</p>
 <pre><code>`[doc] this is a documentation comment`
 </code></pre>
+<h2 id="current-front-end-compatibility"><a class="header" href="#current-front-end-compatibility">Current front-end compatibility</a></h2>
+<p>The hardened front-end still accepts <code>//</code> and <code>/* ... */</code> comments as compatibility
+syntax. They are not the authoritative book syntax, but they remain intentionally
+supported by the current lexer and parser.</p>
 
                     </main>
 

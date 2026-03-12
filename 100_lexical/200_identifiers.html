@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-720f8919.js";
+            window.path_to_searchindex_js = "../searchindex-a1b14eae.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-c28f7be1.js"></script>
@@ -175,28 +175,37 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="identifiers"><a class="header" href="#identifiers">Identifiers</a></h1>
-<p>Identifiers in FOL can be any string of letters, digits and underscores, but beginning with a letter. Two immediate following underscores __ are not allowed.</p>
-<p>IDENTIFIER:
-[a-z A-Z] [a-z A-Z 0-9 _]* | _ [a-z A-Z 0-9 _]+</p>
-<p>An identifier is any nonempty ASCII string of the following form:</p>
-<p>Either</p>
+<p>Identifiers in the current front-end are ASCII names built from letters, digits, and
+underscores, but they may not start with a digit. Repeated underscore runs <code>__</code> are
+not allowed.</p>
+<p>IDENTIFIER:</p>
+<pre><code>[a-z A-Z _] [a-z A-Z 0-9 _]*
+</code></pre>
+<p>The hardened front-end currently accepts:</p>
 <ul>
-<li>The first character is a letter.</li>
-<li>The remaining characters are alphanumeric or _.</li>
+<li>leading underscores</li>
+<li>internal underscores</li>
+<li>non-leading digits</li>
 </ul>
-<p>Or</p>
+<p>The hardened front-end currently rejects:</p>
 <ul>
-<li>The first character is _.</li>
-<li>The identifier is more than one character. _ alone is not an identifier.</li>
-<li>The remaining characters are alphanumeric or _.</li>
+<li>leading digits</li>
+<li>repeated underscore runs</li>
+<li>non-ASCII identifier spellings</li>
 </ul>
+<p><code>_</code> by itself is still accepted by the current lexer/parser boundary as a dedicated
+placeholder or binder surface. It should not be treated as an ordinary named identifier
+for later-phase semantic work.</p>
 <h2 id="identifier-equality"><a class="header" href="#identifier-equality">Identifier equality</a></h2>
-<p>Two identifiers are considered equal if the following algorithm returns true:</p>
+<p>Parser-owned duplicate checks currently treat two identifiers as equal if the following
+algorithm returns true:</p>
 <pre><code>pro sameIdentifier(a, b: string): bol = {
     result = a.replace("_", "").toLowerAscii == b.replace("_", "").toLowerAscii
 }
 </code></pre>
-<p>That means all letters are compared case insensitively within the ASCII range and underscores are ignored. This rather unorthodox way to do identifier comparisons is called partial case insensitivity and has some advantages over the conventional case sensitivity: It allows programmers to mostly use their own preferred spelling style, be it humpStyle or snake_style, and libraries written by different programmers cannot use incompatible conventions</p>
+<p>That means ASCII letters are compared case-insensitively and underscores are ignored
+for those parser-owned duplicate checks. The lexer and stream still preserve original
+identifier spelling; they do not canonicalize token or namespace text up front.</p>
 
                     </main>
 

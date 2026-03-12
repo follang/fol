@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-720f8919.js";
+            window.path_to_searchindex_js = "../searchindex-a1b14eae.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-c28f7be1.js"></script>
@@ -175,14 +175,20 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="numbers"><a class="header" href="#numbers">Numbers</a></h1>
-<p>A number is either an integer, floating-point or imaginary. The grammar for recognizing the kind of number is mixed.</p>
+<p>A number in the current front-end is either an integer or a floating-point literal.
+Imaginary suffix forms are intentionally outside the hardened lexer/parser contract for
+this phase.</p>
 <h2 id="intigers"><a class="header" href="#intigers">Intigers</a></h2>
 <p>An integer has one of four forms:</p>
 <ul>
-<li>A decimal literal starts with a decimal digit and continues with any mixture of decimal digits and underscores.</li>
-<li>A hex literal starts with the character sequence <code>U+0030</code> <code>U+0078</code> (<code>0x</code>) and continues as any mixture (with at least one digit) of hex digits and underscores.</li>
-<li>An octal literal starts with the character sequence <code>U+0030 U+006F</code> (<code>0o</code>) and continues as any mixture (with at least one digit) of octal digits and underscores.</li>
-<li>A binary literal starts with the character sequence <code>U+0030 U+0062</code> (<code>0b</code>) and continues as any mixture (with at least one digit) of binary digits and underscores.</li>
+<li>A decimal literal starts with a decimal digit and continues with decimal digits and
+optional separating underscores.</li>
+<li>A hex literal starts with <code>0x</code> or <code>0X</code> and then uses hex digits with optional
+separating underscores.</li>
+<li>An octal literal starts with <code>0o</code> or <code>0O</code> and then uses octal digits with optional
+separating underscores.</li>
+<li>A binary literal starts with <code>0b</code> or <code>0B</code> and then uses binary digits with optional
+separating underscores.</li>
 </ul>
 <pre><code>var decimal: int = 45;
 var hexadec: int = 0x6HF53BD5;
@@ -201,11 +207,16 @@ assert(aNumber, bNumber)
 <ul>
 <li>A decimal literal followed by a period character <code>U+002E</code> (<code>.</code>). This is optionally followed by another decimal literal.</li>
 <li>A decimal literal that follows a period character <code>U+002E</code> (<code>.</code>).</li>
+<li>A decimal literal followed by a period with no fractional digits is also accepted by
+the current front-end.</li>
 </ul>
 <pre><code>var aFloat: flt = 3.4;
 var bFloat: flt = .4;
+var cFloat: flt = 1.;
 </code></pre>
-<h2 id="imaginary-numbers"><a class="header" href="#imaginary-numbers">Imaginary numbers</a></h2>
+<h2 id="current-front-end-note"><a class="header" href="#current-front-end-note">Current front-end note</a></h2>
+<p>Imaginary literals such as <code>5i</code> remain a language-design topic in the book, but they
+are not tokenized or lowered by the current hardened stream/lexer/parser pipeline.</p>
 
                     </main>
 

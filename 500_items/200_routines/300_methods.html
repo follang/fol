@@ -35,7 +35,7 @@
             const path_to_root = "../../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../../searchindex-720f8919.js";
+            window.path_to_searchindex_js = "../../searchindex-a1b14eae.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../../toc-c28f7be1.js"></script>
@@ -186,13 +186,19 @@ pro (parser)update(code: int): int = {
 }
 </code></pre>
 <p>The receiver type appears in parentheses right after <code>fun</code> or <code>pro</code>, followed by the method name.</p>
-<p>Receiver types must be user-defined named types. Builtin scalar/special language types (like <code>int</code>, <code>bol</code>, <code>str</code>, <code>flt</code>, and keyword-like builtins) are rejected for method receiver declarations.</p>
+<p>Current parser-supported receiver syntax is intentionally broader than a named-only rule.
+At parse time, receiver positions accept named, qualified, builtin-scalar, and
+bracketed/composite type references. This keeps extension-style examples such as
+<code>typ[ext] int: int; pro (int)print(): non = { ... }</code> and dispatch examples on extended
+builtin aliases in scope for the front-end.</p>
+<p>The dedicated parser-level rejection in this hardening phase is still for special
+builtin forms such as <code>any</code>, <code>none</code>, and <code>non</code>.</p>
 <p>Invalid example:</p>
-<pre><code class="language-fol">fun (int)parse_msg(code: int): str = {
+<pre><code class="language-fol">fun (any)parse_msg(code: int): str = {
     return "ok";
 }
 </code></pre>
-<p>This form reports: <code>Method receiver type must be a user-defined named type</code>.</p>
+<p>This form reports: <code>Method receiver type must be a named or scalar type</code>.</p>
 <p>Method calls use standard dot syntax:</p>
 <pre><code class="language-fol">var tool: parser = parser.new()
 var msg: str = tool.parse_msg(10)
