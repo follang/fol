@@ -8,7 +8,7 @@ use crate::{
     },
     ReferenceId, ResolverError, ResolverErrorKind, ScopeId, SourceUnitId, SymbolId,
 };
-use fol_parser::ast::{AstNode, LoopCondition, ParsedTopLevel, WhenCase};
+use fol_parser::ast::{AstNode, LoopCondition, ParsedTopLevel, QualifiedPath, WhenCase};
 
 pub fn collect_routine_scopes(program: &mut ResolvedProgram) -> Result<(), Vec<ResolverError>> {
     let mut errors = Vec::new();
@@ -181,11 +181,12 @@ fn traverse_node(
                 traverse_node(program, source_unit_id, routine_scope, inquiry, false)?;
             }
         }
-        AstNode::Comment { .. }
-        | AstNode::Commented { .. }
-        | AstNode::QualifiedIdentifier { .. } => {}
+        AstNode::Comment { .. } | AstNode::Commented { .. } => {}
         AstNode::Identifier { name } => {
             record_identifier_reference(program, source_unit_id, scope_id, name)?;
+        }
+        AstNode::QualifiedIdentifier { path } => {
+            record_qualified_identifier_reference(program, source_unit_id, scope_id, path)?;
         }
         AstNode::BinaryOp { left, right, .. } => {
             traverse_node(program, source_unit_id, scope_id, left, false)?;
@@ -200,7 +201,8 @@ fn traverse_node(
                 traverse_node(program, source_unit_id, scope_id, arg, false)?;
             }
         }
-        AstNode::QualifiedFunctionCall { args, .. } => {
+        AstNode::QualifiedFunctionCall { path, args } => {
+            record_qualified_function_call_reference(program, source_unit_id, scope_id, path)?;
             for arg in args {
                 traverse_node(program, source_unit_id, scope_id, arg, false)?;
             }
@@ -635,6 +637,48 @@ fn record_function_call_reference(
     Ok(reference_id)
 }
 
+fn record_qualified_identifier_reference(
+    program: &mut ResolvedProgram,
+    source_unit_id: SourceUnitId,
+    scope_id: ScopeId,
+    path: &QualifiedPath,
+) -> Result<ReferenceId, ResolverError> {
+    let symbol_id = resolve_qualified_symbol(program, scope_id, path, &[])?;
+    let reference_id = program.references.push(ResolvedReference {
+        id: ReferenceId(0),
+        kind: ReferenceKind::QualifiedIdentifier,
+        name: path.joined(),
+        scope: scope_id,
+        source_unit: source_unit_id,
+        resolved: Some(symbol_id),
+    });
+    if let Some(reference) = program.references.get_mut(reference_id) {
+        reference.id = reference_id;
+    }
+    Ok(reference_id)
+}
+
+fn record_qualified_function_call_reference(
+    program: &mut ResolvedProgram,
+    source_unit_id: SourceUnitId,
+    scope_id: ScopeId,
+    path: &QualifiedPath,
+) -> Result<ReferenceId, ResolverError> {
+    let symbol_id = resolve_qualified_symbol(program, scope_id, path, &[SymbolKind::Routine])?;
+    let reference_id = program.references.push(ResolvedReference {
+        id: ReferenceId(0),
+        kind: ReferenceKind::QualifiedFunctionCall,
+        name: path.joined(),
+        scope: scope_id,
+        source_unit: source_unit_id,
+        resolved: Some(symbol_id),
+    });
+    if let Some(reference) = program.references.get_mut(reference_id) {
+        reference.id = reference_id;
+    }
+    Ok(reference_id)
+}
+
 fn resolve_visible_symbol(
     program: &ResolvedProgram,
     starting_scope: ScopeId,
@@ -700,5 +744,127 @@ fn resolve_visible_symbol_of_kinds(
             ResolverErrorKind::UnresolvedName,
             format!("could not resolve callable routine '{}'", name),
         ))
+    }
+}
+
+fn resolve_qualified_symbol(
+    program: &ResolvedProgram,
+    starting_scope: ScopeId,
+    path: &QualifiedPath,
+    allowed_kinds: &[SymbolKind],
+) -> Result<SymbolId, ResolverError> {
+    if path.segments.len() < 2 {
+        return Err(ResolverError::new(
+            ResolverErrorKind::InvalidInput,
+            format!(
+                "qualified path '{}' must contain at least two segments",
+                path.joined()
+            ),
+        ));
+    }
+
+    let (mut current_scope, mut current_namespace) =
+        resolve_qualified_root(program, starting_scope, &path.segments[0])?;
+
+    for segment in &path.segments[1..path.segments.len() - 1] {
+        current_namespace.push_str("::");
+        current_namespace.push_str(segment);
+        current_scope = program.namespace_scope(&current_namespace).ok_or_else(|| {
+            ResolverError::new(
+                ResolverErrorKind::UnresolvedName,
+                format!("could not resolve qualified path '{}'", path.joined()),
+            )
+        })?;
+    }
+
+    let final_name = path
+        .segments
+        .last()
+        .expect("qualified paths with at least two segments should have a final segment");
+    resolve_symbol_in_scope(
+        program,
+        current_scope,
+        final_name,
+        allowed_kinds,
+        &path.joined(),
+    )
+}
+
+fn resolve_qualified_root(
+    program: &ResolvedProgram,
+    starting_scope: ScopeId,
+    root_segment: &str,
+) -> Result<(ScopeId, String), ResolverError> {
+    if root_segment == program.package_name() {
+        return Ok((program.program_scope, program.package_name().to_string()));
+    }
+
+    if let Ok(import_symbol) = resolve_visible_symbol_of_kinds(
+        program,
+        starting_scope,
+        root_segment,
+        &[SymbolKind::ImportAlias],
+    ) {
+        let import = program
+            .imports
+            .iter()
+            .find(|import| import.alias_symbol == import_symbol)
+            .and_then(|import| import.target_scope);
+        if let Some(target_scope) = import {
+            return Ok((target_scope, scope_namespace(program, target_scope)));
+        }
+    }
+
+    let namespace = format!("{}::{}", program.package_name(), root_segment);
+    if let Some(scope_id) = program.namespace_scope(&namespace) {
+        return Ok((scope_id, namespace));
+    }
+
+    Err(ResolverError::new(
+        ResolverErrorKind::UnresolvedName,
+        format!("could not resolve qualified path root '{}'", root_segment),
+    ))
+}
+
+fn resolve_symbol_in_scope(
+    program: &ResolvedProgram,
+    scope_id: ScopeId,
+    name: &str,
+    allowed_kinds: &[SymbolKind],
+    full_path: &str,
+) -> Result<SymbolId, ResolverError> {
+    let canonical_name = fol_types::canonical_identifier_key(name);
+    let symbols = program.symbols_named_in_scope(scope_id, &canonical_name);
+    let matching_symbols = if allowed_kinds.is_empty() {
+        symbols
+    } else {
+        symbols
+            .into_iter()
+            .filter(|symbol| allowed_kinds.contains(&symbol.kind))
+            .collect::<Vec<_>>()
+    };
+
+    match matching_symbols.as_slice() {
+        [symbol] => Ok(symbol.id),
+        [] => Err(ResolverError::new(
+            ResolverErrorKind::UnresolvedName,
+            format!("could not resolve qualified path '{}'", full_path),
+        )),
+        _ => Err(ResolverError::new(
+            ResolverErrorKind::AmbiguousReference,
+            format!("qualified path '{}' is ambiguous", full_path),
+        )),
+    }
+}
+
+fn scope_namespace(program: &ResolvedProgram, scope_id: ScopeId) -> String {
+    match program
+        .scope(scope_id)
+        .map(|scope| &scope.kind)
+        .expect("qualified path scope should exist")
+    {
+        ScopeKind::ProgramRoot { package } => package.clone(),
+        ScopeKind::NamespaceRoot { namespace } => namespace.clone(),
+        other => panic!("qualified path root scope must be package or namespace, got {other:?}"),
     }
 }

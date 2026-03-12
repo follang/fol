@@ -66,6 +66,9 @@ mod imports;
 #[path = "test_resolver_parts/loop_binders.rs"]
 mod loop_binders;
 #[cfg(test)]
+#[path = "test_resolver_parts/qualified_identifiers.rs"]
+mod qualified_identifiers;
+#[cfg(test)]
 #[path = "test_resolver_parts/rolling_binders.rs"]
 mod rolling_binders;
 #[cfg(test)]

@@ -580,6 +580,8 @@ Status: done
 
 #### Slice 4.4
 
+Status: done
+
 - Resolve `QualifiedIdentifier` paths using package roots, namespace roots, and import aliases.
 - Add tests for successful and failing qualified value references.
 

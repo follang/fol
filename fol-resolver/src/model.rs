@@ -59,6 +59,8 @@ pub enum SymbolKind {
 pub enum ReferenceKind {
     Identifier,
     FunctionCall,
+    QualifiedIdentifier,
+    QualifiedFunctionCall,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
