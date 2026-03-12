@@ -177,7 +177,8 @@ tests actually enforce today.
   cross-file ordering guarantees intentionally rather than by accident.
 - The parser-facing split is stable: malformed quoted spans become `Illegal`, while raw
   unsupported characters still stop lexing with an error.
-- Raw unrecognized characters still raise a lexer error instead of being silently
+- Raw unrecognized characters, including unsupported non-ASCII input and unsupported
+  ASCII control characters, still raise a lexer error instead of being silently
   converted into tokens.
 
 ## Parser Contract
