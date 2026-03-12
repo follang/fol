@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-d069bd3c.js";
+            window.path_to_searchindex_js = "searchindex-8528602a.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-c28f7be1.js"></script>
@@ -1778,7 +1778,20 @@ var getSomeVal = anymulti[3][2][0][0] | &lt; 15 | shortvar
 }
 </code></pre>
 <h3 id="scope"><a class="header" href="#scope">Scope</a></h3>
-<p>As disscussed before, files with same name share the same functions and global variables. However, those variables and functions can’t be accesed if the whole module is imported in another project. In order for a variable to be accest by the importer, it needs to be have the <code>exp</code> flag option, so <code>var[exp]</code>, or <code>var[+]</code></p>
+<p>As discussed before, files in the same package share one package scope. That means package-level functions and variables may be used across sibling files without importing those sibling files one by one.</p>
+<p>However, package-private declarations are still different from exported declarations:</p>
+<ul>
+<li>default visibility means the declaration is available inside the same package</li>
+<li><code>exp</code> / <code>+</code> means the declaration may be used through imports from outside the package</li>
+<li><code>hid</code> / <code>-</code> means the declaration is visible only inside its own file</li>
+</ul>
+<p>So the visibility model is:</p>
+<ul>
+<li>package scope by default</li>
+<li>exported outside the package with <code>exp</code></li>
+<li>file-only with <code>hid</code></li>
+</ul>
+<p>In order for a variable to be accessed by the importer, it needs the <code>exp</code> flag option, so <code>var[exp]</code>, or <code>var[+]</code>.</p>
 <p><em>module <strong>shko</strong>, file1.fol</em></p>
 <pre><code>def shko: mod[] = {
     fun[+] add(a, b: int) = { return a + b }
@@ -1795,7 +1808,7 @@ def vij: mod[] = {
     }
 }
 </code></pre>
-<p>There is even the opposite option too. If we want a function/variable to be only used inside the file ( so same package but only for that file ) then we use <code>hid</code> option flag: <code>var[hid]</code> or <code>var[-]</code></p>
+<p>There is even the opposite option too. If we want a function or variable to be used only inside its own file, even though the package is shared, then we use the <code>hid</code> option flag: <code>var[hid]</code> or <code>var[-]</code>.</p>
 <p><em>file1.fol</em></p>
 <pre><code>def shko: mod[] = {
     var[-] aVar: str = "yo, sup!"
@@ -2859,6 +2872,27 @@ pro main: int = {
 <li>system libraries</li>
 <li>local libraries</li>
 </ul>
+<h2 id="what-use-imports"><a class="header" href="#what-use-imports">What <code>use</code> imports</a></h2>
+<p><code>use</code> works against the source-layout model:</p>
+<ul>
+<li>the folder root is the package</li>
+<li>subfolders are namespaces inside that package</li>
+<li>a file is only a source file, not a separate module by itself</li>
+</ul>
+<p>So a <code>use</code> target is normally:</p>
+<ul>
+<li>a whole package</li>
+<li>or one namespace inside that package</li>
+</ul>
+<p><code>use</code> does <strong>not</strong> mean “import another file from the same folder”.
+Files in the same package already share package scope.
+Imports are for reaching another package or another namespace boundary.</p>
+<p>Also note:</p>
+<ul>
+<li><code>use</code> brings in exported functionality</li>
+<li><code>hid</code> declarations remain file-only even inside the same package</li>
+<li>importing a package does not erase the original file boundary rules</li>
+</ul>
 <h2 id="system-libraries"><a class="header" href="#system-libraries">System libraries</a></h2>
 <p>This is how including other libraries works, for example include <code>fmt</code> module from standard library:</p>
 <pre><code>use fmt: std = {"fmt"};
@@ -2888,15 +2922,75 @@ pro[] main: int = {
 <p>Then to acces only a namespace:</p>
 <pre><code>use space: loc = {"../folder/bender/space"};
 </code></pre>
+<p>That second form is namespace import, not “single file import”.
+If <code>space</code> contains multiple <code>.fol</code> files in the same folder, they still belong to the same imported namespace.</p>
 <h2 id="url-libraries"><a class="header" href="#url-libraries">URL libraries</a></h2>
 <p>Libraries can be directly URL imported:</p>
 <pre><code>use space: url = {"https://github.com/follang/std"};
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="declarations"><a class="header" href="#declarations">Declarations</a></h1>
-<p>Each file in a folder (with extension <code>.fol</code>) is part of a package. There is no need for imports or other things at the top of the file. They share the same scope, and each declaration is order independent for all files.</p>
+<p>Each <code>.fol</code> file inside a folder is part of the same package.</p>
+<p>The important part is that files are <strong>connected, but not merged</strong>:</p>
+<ul>
+<li>every physical <code>.fol</code> file is still its own source file</li>
+<li>files in the same folder share one package scope</li>
+<li>declarations are order independent across those files</li>
+<li>a declaration started in one file can <strong>not</strong> continue into the next file</li>
+</ul>
+<p>There is no need to import sibling files from the same package. They already belong to the same package scope.</p>
+<h2 id="package-namespace-and-file-scope"><a class="header" href="#package-namespace-and-file-scope">Package, Namespace, And File Scope</a></h2>
+<p>It helps to think about source layout in three layers:</p>
+<ul>
+<li><strong>package scope</strong>: all <code>.fol</code> files directly inside the package folder</li>
+<li><strong>namespace scope</strong>: declarations inside subfolders of that package</li>
+<li><strong>file scope</strong>: declarations marked <code>hid</code>, which stay visible only inside their own file</li>
+</ul>
+<p>In short:</p>
+<ul>
+<li>same folder = same package</li>
+<li>subfolder = nested namespace</li>
+<li><code>hid</code> = file only</li>
+</ul>
+<h3 id="package-scope"><a class="header" href="#package-scope">Package scope</a></h3>
+<p>Files that live directly in the package root share one package scope:</p>
+<pre><code>root/
+    math/
+        add.fol
+        sub.fol
+</code></pre>
+<p>Both <code>add.fol</code> and <code>sub.fol</code> belong to package <code>math</code>, so declarations from one file may be used by the other without importing the sibling file.</p>
+<h3 id="namespace-scope"><a class="header" href="#namespace-scope">Namespace scope</a></h3>
+<p>Subfolders do not create a new package by themselves. They create nested namespaces inside the same package:</p>
+<pre><code>root/
+    math/
+        add.fol
+        stats/
+            mean.fol
+</code></pre>
+<p>Here:</p>
+<ul>
+<li><code>add.fol</code> is in package namespace <code>math</code></li>
+<li><code>mean.fol</code> is in package namespace <code>math::stats</code></li>
+</ul>
+<p>Code may reach namespace members either by:</p>
+<ul>
+<li>direct <code>use</code></li>
+<li>or qualified access with <code>::</code></li>
+</ul>
+<h3 id="file-scope"><a class="header" href="#file-scope">File scope</a></h3>
+<p>Sometimes a declaration should stay inside one file even though the package is shared.
+That is what <code>hid</code> is for.</p>
+<pre><code>// file1.fol
+var[hid] cache_key: str = "local"
+</code></pre>
+<pre><code>// file2.fol
+pro[] main: int = {
+    .echo(cache_key)      // error: hidden declarations are file-only
+}
+</code></pre>
 <h2 id="namespaces"><a class="header" href="#namespaces">Namespaces</a></h2>
-<p>A namespace can be defined in a subfolder of the main foler. And they can be nested.</p>
+<p>A namespace can be defined in a subfolder of the main folder, and namespaces can be nested.</p>
 <p>To acces the namespace there are two ways:</p>
 <ul>
 <li>direct import with <code>use</code></li>
@@ -2918,6 +3012,17 @@ pro[] main: int = {
 }
 
 </code></pre>
+<h2 id="mental-model"><a class="header" href="#mental-model">Mental model</a></h2>
+<p>For source layout, the mental model is:</p>
+<ul>
+<li>one folder root gives one package</li>
+<li>each file in that folder is a real source file in that package</li>
+<li>subfolders extend the namespace path</li>
+<li><code>use</code> imports packages or namespaces</li>
+<li><code>hid</code> keeps a declaration private to one file</li>
+</ul>
+<p>This means FOL is <strong>not</strong> “one file = one module”.
+The package is the folder; the file is a source unit inside that package.</p>
 <h2 id="blocks"><a class="header" href="#blocks">Blocks</a></h2>
 <p>Block statement is used for scopes where members get destroyed when scope is finished. And there are two ways to define a block:</p>
 <ul>

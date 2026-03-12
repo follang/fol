@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-d069bd3c.js";
+            window.path_to_searchindex_js = "../searchindex-8528602a.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-c28f7be1.js"></script>
@@ -307,7 +307,20 @@ var getSomeVal = anymulti[3][2][0][0] | &lt; 15 | shortvar
 }
 </code></pre>
 <h3 id="scope"><a class="header" href="#scope">Scope</a></h3>
-<p>As disscussed before, files with same name share the same functions and global variables. However, those variables and functions can’t be accesed if the whole module is imported in another project. In order for a variable to be accest by the importer, it needs to be have the <code>exp</code> flag option, so <code>var[exp]</code>, or <code>var[+]</code></p>
+<p>As discussed before, files in the same package share one package scope. That means package-level functions and variables may be used across sibling files without importing those sibling files one by one.</p>
+<p>However, package-private declarations are still different from exported declarations:</p>
+<ul>
+<li>default visibility means the declaration is available inside the same package</li>
+<li><code>exp</code> / <code>+</code> means the declaration may be used through imports from outside the package</li>
+<li><code>hid</code> / <code>-</code> means the declaration is visible only inside its own file</li>
+</ul>
+<p>So the visibility model is:</p>
+<ul>
+<li>package scope by default</li>
+<li>exported outside the package with <code>exp</code></li>
+<li>file-only with <code>hid</code></li>
+</ul>
+<p>In order for a variable to be accessed by the importer, it needs the <code>exp</code> flag option, so <code>var[exp]</code>, or <code>var[+]</code>.</p>
 <p><em>module <strong>shko</strong>, file1.fol</em></p>
 <pre><code>def shko: mod[] = {
     fun[+] add(a, b: int) = { return a + b }
@@ -324,7 +337,7 @@ def vij: mod[] = {
     }
 }
 </code></pre>
-<p>There is even the opposite option too. If we want a function/variable to be only used inside the file ( so same package but only for that file ) then we use <code>hid</code> option flag: <code>var[hid]</code> or <code>var[-]</code></p>
+<p>There is even the opposite option too. If we want a function or variable to be used only inside its own file, even though the package is shared, then we use the <code>hid</code> option flag: <code>var[hid]</code> or <code>var[-]</code>.</p>
 <p><em>file1.fol</em></p>
 <pre><code>def shko: mod[] = {
     var[-] aVar: str = "yo, sup!"

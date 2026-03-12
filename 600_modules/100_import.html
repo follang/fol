@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-d069bd3c.js";
+            window.path_to_searchindex_js = "../searchindex-8528602a.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-c28f7be1.js"></script>
@@ -184,6 +184,27 @@
 <li>system libraries</li>
 <li>local libraries</li>
 </ul>
+<h2 id="what-use-imports"><a class="header" href="#what-use-imports">What <code>use</code> imports</a></h2>
+<p><code>use</code> works against the source-layout model:</p>
+<ul>
+<li>the folder root is the package</li>
+<li>subfolders are namespaces inside that package</li>
+<li>a file is only a source file, not a separate module by itself</li>
+</ul>
+<p>So a <code>use</code> target is normally:</p>
+<ul>
+<li>a whole package</li>
+<li>or one namespace inside that package</li>
+</ul>
+<p><code>use</code> does <strong>not</strong> mean “import another file from the same folder”.
+Files in the same package already share package scope.
+Imports are for reaching another package or another namespace boundary.</p>
+<p>Also note:</p>
+<ul>
+<li><code>use</code> brings in exported functionality</li>
+<li><code>hid</code> declarations remain file-only even inside the same package</li>
+<li>importing a package does not erase the original file boundary rules</li>
+</ul>
 <h2 id="system-libraries"><a class="header" href="#system-libraries">System libraries</a></h2>
 <p>This is how including other libraries works, for example include <code>fmt</code> module from standard library:</p>
 <pre><code>use fmt: std = {"fmt"};
@@ -213,6 +234,8 @@ pro[] main: int = {
 <p>Then to acces only a namespace:</p>
 <pre><code>use space: loc = {"../folder/bender/space"};
 </code></pre>
+<p>That second form is namespace import, not “single file import”.
+If <code>space</code> contains multiple <code>.fol</code> files in the same folder, they still belong to the same imported namespace.</p>
 <h2 id="url-libraries"><a class="header" href="#url-libraries">URL libraries</a></h2>
 <p>Libraries can be directly URL imported:</p>
 <pre><code>use space: url = {"https://github.com/follang/std"};
