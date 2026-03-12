@@ -146,6 +146,14 @@ impl AstParser {
         self.parse_logical_expression(tokens)
     }
 
+    fn ast_node_is_named_argument(node: &AstNode) -> bool {
+        match node {
+            AstNode::NamedArgument { .. } => true,
+            AstNode::Commented { node, .. } => Self::ast_node_is_named_argument(node.as_ref()),
+            _ => false,
+        }
+    }
+
     pub(super) fn parse_call_args(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
@@ -153,16 +161,44 @@ impl AstParser {
         let mut args = Vec::new();
         let mut seen_named_arg = false;
         for _ in 0..256 {
-            self.skip_ignorable(tokens);
+            self.skip_layout(tokens);
+            let pending_comments = self.collect_comment_nodes(tokens)?;
             let token = tokens.curr(false)?;
 
+            if !pending_comments.is_empty()
+                && matches!(
+                    token.key(),
+                    KEYWORD::Symbol(SYMBOL::Comma) | KEYWORD::Symbol(SYMBOL::Semi)
+                )
+            {
+                args.extend(pending_comments);
+                let _ = tokens.bump();
+                continue;
+            }
+
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
+                if !pending_comments.is_empty() {
+                    args.extend(pending_comments);
+                }
                 let _ = tokens.bump();
                 break;
             }
 
-            let arg = self.parse_call_argument(tokens)?;
-            let is_named = matches!(arg, AstNode::NamedArgument { .. });
+            let mut arg = self.parse_call_argument(tokens)?;
+            arg = self.attach_leading_comments(arg, pending_comments);
+            arg = self.attach_trailing_comments(
+                arg,
+                self.collect_comments_before(tokens, |key| {
+                    matches!(
+                        key,
+                        KEYWORD::Symbol(SYMBOL::Comma)
+                            | KEYWORD::Symbol(SYMBOL::Semi)
+                            | KEYWORD::Symbol(SYMBOL::RoundC)
+                    )
+                })?,
+            );
+
+            let is_named = Self::ast_node_is_named_argument(&arg);
             if !is_named && seen_named_arg {
                 return Err(Box::new(ParseError::from_token(
                     &token,
@@ -172,7 +208,7 @@ impl AstParser {
             }
             seen_named_arg |= is_named;
             args.push(arg);
-            self.skip_ignorable(tokens);
+            self.skip_layout(tokens);
 
             let sep = tokens.curr(false)?;
             if matches!(
@@ -180,7 +216,7 @@ impl AstParser {
                 KEYWORD::Symbol(SYMBOL::Comma) | KEYWORD::Symbol(SYMBOL::Semi)
             ) {
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_layout(tokens);
                 if matches!(
                     tokens.curr(false).map(|token| token.key()),
                     Ok(KEYWORD::Symbol(SYMBOL::RoundC))

@@ -1,5 +1,12 @@
 use super::*;
 
+fn unwrap_comment_wrappers<'a>(node: &'a AstNode) -> &'a AstNode {
+    match node {
+        AstNode::Commented { node, .. } => unwrap_comment_wrappers(node.as_ref()),
+        node => node,
+    }
+}
+
 #[test]
 fn test_call_expressions_in_assignment_and_return() {
     let mut file_stream = FileStream::from_file("test/parser/simple_fun_call_expr.fol")
@@ -521,12 +528,12 @@ fn test_multiline_call_arguments_with_comments_parse_with_expected_shapes() {
                         node,
                         AstNode::Assignment { value, .. }
                         if matches!(
-                            value.as_ref(),
+                            unwrap_comment_wrappers(value.as_ref()),
                             AstNode::FunctionCall { name, args }
                             if name == "combine"
                                 && args.len() == 3
-                                && matches!(args[1], AstNode::FunctionCall { ref name, args: ref inner_args } if name == "wrap" && inner_args.len() == 1)
-                                && matches!(args[2], AstNode::Literal(Literal::Integer(42)))
+                                && matches!(unwrap_comment_wrappers(&args[1]), AstNode::FunctionCall { name, args: inner_args } if name == "wrap" && inner_args.len() == 1)
+                                && matches!(unwrap_comment_wrappers(&args[2]), AstNode::Literal(Literal::Integer(42)))
                         )
                     )
                 });
@@ -573,12 +580,12 @@ fn test_multiline_call_arguments_with_slash_comments_still_parse_as_compatibilit
                         node,
                         AstNode::Assignment { value, .. }
                         if matches!(
-                            value.as_ref(),
+                            unwrap_comment_wrappers(value.as_ref()),
                             AstNode::FunctionCall { name, args }
                             if name == "combine"
                                 && args.len() == 3
-                                && matches!(args[1], AstNode::FunctionCall { ref name, args: ref inner_args } if name == "wrap" && inner_args.len() == 1)
-                                && matches!(args[2], AstNode::Literal(Literal::Integer(42)))
+                                && matches!(unwrap_comment_wrappers(&args[1]), AstNode::FunctionCall { name, args: inner_args } if name == "wrap" && inner_args.len() == 1)
+                                && matches!(unwrap_comment_wrappers(&args[2]), AstNode::Literal(Literal::Integer(42)))
                         )
                     )
                 });
@@ -607,7 +614,7 @@ fn test_multiline_call_arguments_with_slash_comments_still_parse_as_compatibilit
 }
 
 #[test]
-fn test_multiline_call_arguments_with_doc_comments_stay_parser_ignorable() {
+fn test_multiline_call_arguments_with_doc_comments_remain_ast_visible() {
     let mut file_stream =
         FileStream::from_file("test/parser/simple_fun_call_doc_comments_multiline.fol")
             .expect("Should read multiline doc-comment fixture");
@@ -616,7 +623,7 @@ fn test_multiline_call_arguments_with_doc_comments_stay_parser_ignorable() {
     let mut parser = AstParser::new();
     let ast = parser
         .parse(&mut lexer)
-        .expect("Parser should keep treating doc comments as ignorable while they remain deferred");
+        .expect("Parser should preserve doc comments without disturbing multiline call shapes");
 
     let (has_combine_assignment, has_emit_return) = match ast {
         AstNode::Program { declarations } => {
@@ -625,12 +632,12 @@ fn test_multiline_call_arguments_with_doc_comments_stay_parser_ignorable() {
                         node,
                         AstNode::Assignment { value, .. }
                         if matches!(
-                            value.as_ref(),
+                            unwrap_comment_wrappers(value.as_ref()),
                             AstNode::FunctionCall { name, args }
                             if name == "combine"
                                 && args.len() == 3
-                                && matches!(args[1], AstNode::FunctionCall { ref name, args: ref inner_args } if name == "wrap" && inner_args.len() == 1)
-                                && matches!(args[2], AstNode::Literal(Literal::Integer(42)))
+                                && matches!(unwrap_comment_wrappers(&args[1]), AstNode::FunctionCall { name, args: inner_args } if name == "wrap" && inner_args.len() == 1)
+                                && matches!(unwrap_comment_wrappers(&args[2]), AstNode::Literal(Literal::Integer(42)))
                         )
                     )
                 });
@@ -650,11 +657,11 @@ fn test_multiline_call_arguments_with_doc_comments_stay_parser_ignorable() {
 
     assert!(
         has_combine_assignment,
-        "Deferred doc comments should not disturb multiline combine(...) argument parsing"
+        "Doc comments should not disturb multiline combine(...) argument parsing while remaining AST-visible"
     );
     assert!(
         has_emit_return,
-        "Deferred doc comments should keep the trailing return emit(...) shape intact"
+        "Doc comments should keep the trailing return emit(...) shape intact"
     );
 }
 

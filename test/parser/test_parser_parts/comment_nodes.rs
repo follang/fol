@@ -316,3 +316,173 @@ fn test_postfix_comments_wrap_call_nodes() {
         _ => panic!("Expected program node"),
     }
 }
+
+#[test]
+fn test_call_argument_comments_are_preserved_on_argument_nodes() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_call_argument_comment_wrappers.fol")
+            .expect("Should read call argument comment fixture");
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should preserve leading and trailing call argument comments");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            let body = only_root_routine_body_nodes(&declarations);
+
+            assert!(matches!(
+                body[0],
+                AstNode::Return {
+                    value: Some(value),
+                } if matches!(
+                    value.as_ref(),
+                    AstNode::FunctionCall { name, args }
+                    if name == "emit"
+                        && args.len() == 2
+                        && matches!(
+                            &args[0],
+                            AstNode::Commented {
+                                leading_comments,
+                                node,
+                                trailing_comments,
+                            }
+                            if matches!(
+                                leading_comments.as_slice(),
+                                [AstNode::Comment {
+                                    kind: CommentKind::Doc,
+                                    raw,
+                                }] if raw == "`[doc] first docs`"
+                            )
+                                && matches!(
+                                    trailing_comments.as_slice(),
+                                    [AstNode::Comment {
+                                        kind: CommentKind::Backtick,
+                                        raw,
+                                    }] if raw == "`after alpha`"
+                                )
+                                && matches!(
+                                    node.as_ref(),
+                                    AstNode::Identifier { name } if name == "alpha"
+                                )
+                        )
+                        && matches!(
+                            &args[1],
+                            AstNode::Commented {
+                                leading_comments,
+                                node,
+                                trailing_comments,
+                            }
+                            if matches!(
+                                leading_comments.as_slice(),
+                                [AstNode::Comment {
+                                    kind: CommentKind::Backtick,
+                                    raw,
+                                }] if raw == "`before beta`"
+                            )
+                                && matches!(
+                                    trailing_comments.as_slice(),
+                                    [AstNode::Comment {
+                                        kind: CommentKind::Doc,
+                                        raw,
+                                    }] if raw == "`[doc] trailing beta`"
+                                )
+                                && matches!(
+                                    node.as_ref(),
+                                    AstNode::Identifier { name } if name == "beta"
+                                )
+                        )
+                )
+            ));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
+fn test_container_element_comments_are_preserved_on_element_nodes() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_container_comment_wrappers.fol")
+            .expect("Should read container comment fixture");
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should preserve leading and trailing container element comments");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            let body = only_root_routine_body_nodes(&declarations);
+
+            assert!(matches!(
+                body[0],
+                AstNode::VarDecl {
+                    name,
+                    value: Some(value),
+                    ..
+                } if name == "values"
+                    && matches!(
+                        value.as_ref(),
+                        AstNode::ContainerLiteral { elements, .. }
+                        if elements.len() == 2
+                            && matches!(
+                                &elements[0],
+                                AstNode::Commented {
+                                    leading_comments,
+                                    node,
+                                    trailing_comments,
+                                }
+                                if matches!(
+                                    leading_comments.as_slice(),
+                                    [AstNode::Comment {
+                                        kind: CommentKind::Doc,
+                                        raw,
+                                    }] if raw == "`[doc] first docs`"
+                                )
+                                    && matches!(
+                                        trailing_comments.as_slice(),
+                                        [AstNode::Comment {
+                                            kind: CommentKind::Backtick,
+                                            raw,
+                                        }] if raw == "`after alpha`"
+                                    )
+                                    && matches!(
+                                        node.as_ref(),
+                                        AstNode::Identifier { name } if name == "alpha"
+                                    )
+                            )
+                            && matches!(
+                                &elements[1],
+                                AstNode::Commented {
+                                    leading_comments,
+                                    node,
+                                    trailing_comments,
+                                }
+                                if matches!(
+                                    leading_comments.as_slice(),
+                                    [AstNode::Comment {
+                                        kind: CommentKind::Backtick,
+                                        raw,
+                                    }] if raw == "`before beta`"
+                                )
+                                    && matches!(
+                                        trailing_comments.as_slice(),
+                                        [AstNode::Comment {
+                                            kind: CommentKind::Doc,
+                                            raw,
+                                        }] if raw == "`[doc] trailing beta`"
+                                    )
+                                    && matches!(
+                                        node.as_ref(),
+                                        AstNode::Identifier { name } if name == "beta"
+                                    )
+                            )
+                    )
+            ));
+        }
+        _ => panic!("Expected program node"),
+    }
+}

@@ -659,7 +659,7 @@ impl AstParser {
         }
         let _ = tokens.bump();
 
-        self.skip_ignorable(tokens);
+        self.skip_layout(tokens);
         if matches!(
             tokens.curr(false).map(|token| token.key()),
             Ok(KEYWORD::Symbol(SYMBOL::CurlyC))
@@ -677,16 +677,44 @@ impl AstParser {
 
         let mut elements = Vec::new();
         for _ in 0..256 {
-            self.skip_ignorable(tokens);
+            self.skip_layout(tokens);
+            let pending_comments = self.collect_comment_nodes(tokens)?;
             let token = tokens.curr(false)?;
 
+            if !pending_comments.is_empty()
+                && matches!(
+                    token.key(),
+                    KEYWORD::Symbol(SYMBOL::Comma) | KEYWORD::Symbol(SYMBOL::Semi)
+                )
+            {
+                elements.extend(pending_comments);
+                let _ = tokens.bump();
+                continue;
+            }
+
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) {
+                if !pending_comments.is_empty() {
+                    elements.extend(pending_comments);
+                }
                 let _ = tokens.bump();
                 break;
             }
 
-            let expr = self.parse_logical_expression(tokens)?;
-            self.skip_ignorable(tokens);
+            let mut expr = self.parse_logical_expression(tokens)?;
+            expr = self.attach_leading_comments(expr, pending_comments);
+            expr = self.attach_trailing_comments(
+                expr,
+                self.collect_comments_before(tokens, |key| {
+                    matches!(
+                        key,
+                        KEYWORD::Keyword(BUILDIN::For)
+                            | KEYWORD::Symbol(SYMBOL::Comma)
+                            | KEYWORD::Symbol(SYMBOL::Semi)
+                            | KEYWORD::Symbol(SYMBOL::CurlyC)
+                    )
+                })?,
+            );
+            self.skip_layout(tokens);
 
             if let Ok(next) = tokens.curr(false) {
                 if matches!(next.key(), KEYWORD::Keyword(BUILDIN::For)) {
@@ -709,7 +737,7 @@ impl AstParser {
                 KEYWORD::Symbol(SYMBOL::Comma) | KEYWORD::Symbol(SYMBOL::Semi)
             ) {
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_layout(tokens);
                 if matches!(
                     tokens.curr(false).map(|token| token.key()),
                     Ok(KEYWORD::Symbol(SYMBOL::CurlyC))

@@ -1,0 +1,10 @@
+fun inspect() = {
+    var values = {
+        `[doc] first docs`
+        alpha
+        `after alpha`,
+        `before beta`
+        beta
+        `[doc] trailing beta`
+    }
+}
