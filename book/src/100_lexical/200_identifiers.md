@@ -1,27 +1,34 @@
 # Identifiers
 
-Identifiers in FOL can be any string of letters, digits and underscores, but beginning with a letter. Two immediate following underscores __ are not allowed.
+Identifiers in the current front-end are ASCII names built from letters, digits, and
+underscores, but they may not start with a digit. Repeated underscore runs `__` are
+not allowed.
 
 IDENTIFIER:
-[a-z A-Z] [a-z A-Z 0-9 _]* | _ [a-z A-Z 0-9 _]+
+```
+[a-z A-Z _] [a-z A-Z 0-9 _]*
+```
 
+The hardened front-end currently accepts:
 
-An identifier is any nonempty ASCII string of the following form:
+- leading underscores
+- internal underscores
+- non-leading digits
 
-Either
+The hardened front-end currently rejects:
 
-- The first character is a letter.
-- The remaining characters are alphanumeric or _.
+- leading digits
+- repeated underscore runs
+- non-ASCII identifier spellings
 
-Or
-
-- The first character is _.
-- The identifier is more than one character. _ alone is not an identifier.
-- The remaining characters are alphanumeric or _.
+`_` by itself is still accepted by the current lexer/parser boundary as a dedicated
+placeholder or binder surface. It should not be treated as an ordinary named identifier
+for later-phase semantic work.
 
 ## Identifier equality
 
-Two identifiers are considered equal if the following algorithm returns true:
+Parser-owned duplicate checks currently treat two identifiers as equal if the following
+algorithm returns true:
 
 ```
 pro sameIdentifier(a, b: string): bol = {
@@ -29,4 +36,6 @@ pro sameIdentifier(a, b: string): bol = {
 }
 ```
 
-That means all letters are compared case insensitively within the ASCII range and underscores are ignored. This rather unorthodox way to do identifier comparisons is called partial case insensitivity and has some advantages over the conventional case sensitivity: It allows programmers to mostly use their own preferred spelling style, be it humpStyle or snake_style, and libraries written by different programmers cannot use incompatible conventions
+That means ASCII letters are compared case-insensitively and underscores are ignored
+for those parser-owned duplicate checks. The lexer and stream still preserve original
+identifier spelling; they do not canonicalize token or namespace text up front.
