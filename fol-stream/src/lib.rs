@@ -377,9 +377,12 @@ fn check_validity(input: &str, source_type: SourceType) -> Result<String, Box<dy
 }
 
 /// Create iterator over sources from input path
-pub fn sources(input: String, source_type: SourceType) -> impl Iterator<Item = Source> {
-    let sources = Source::init(&input, source_type).unwrap_or_default();
-    sources.into_iter()
+pub fn sources(
+    input: String,
+    source_type: SourceType,
+) -> Result<impl Iterator<Item = Source>, Box<dyn Glitch>> {
+    let sources = Source::init(&input, source_type)?;
+    Ok(sources.into_iter())
 }
 
 /// Detect package name from the explicit entry root instead of host build files.

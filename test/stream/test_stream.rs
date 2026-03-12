@@ -220,6 +220,35 @@ mod stream_tests {
     }
 
     #[test]
+    fn test_sources_helper_returns_iterable_sources_on_success() {
+        let sources = fol_stream::sources(
+            "test/stream/basic.fol".to_string(),
+            fol_stream::SourceType::File,
+        )
+        .expect("sources helper should return sources for a valid file entry")
+        .collect::<Vec<_>>();
+
+        assert_eq!(sources.len(), 1, "Single-file helper should yield one source");
+        assert!(
+            sources[0].path.ends_with("test/stream/basic.fol"),
+            "Helper should preserve the requested source path"
+        );
+    }
+
+    #[test]
+    fn test_sources_helper_propagates_initialization_errors() {
+        let result = fol_stream::sources(
+            "test/stream/nonexistent.fol".to_string(),
+            fol_stream::SourceType::File,
+        );
+
+        assert!(
+            result.is_err(),
+            "sources helper should report initialization failures instead of returning an empty iterator"
+        );
+    }
+
+    #[test]
     fn test_file_input_used_as_folder_source_uses_parent_directory() {
         let from_file_as_folder = fol_stream::Source::init(
             "test/legacy/main/main.fol",
