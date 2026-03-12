@@ -51,6 +51,9 @@ mod block_scopes;
 #[path = "test_resolver_parts/foundation.rs"]
 mod foundation;
 #[cfg(test)]
+#[path = "test_resolver_parts/identifier_resolution.rs"]
+mod identifier_resolution;
+#[cfg(test)]
 #[path = "test_resolver_parts/routine_scopes.rs"]
 mod routine_scopes;
 #[cfg(test)]

@@ -515,6 +515,8 @@ Status: done
 
 #### Slice 3.1
 
+Status: done
+
 - Resolve plain identifier expressions against lexical scopes plus top-level symbols.
 - Add tests for locals, outer bindings, imports, and unresolved-name errors.
 
