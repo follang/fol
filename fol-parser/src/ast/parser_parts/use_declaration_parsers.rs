@@ -3,7 +3,6 @@ use crate::ast::{UsePathSegment, UsePathSeparator};
 
 #[derive(Debug, Clone)]
 struct ParsedUsePath {
-    raw: String,
     segments: Vec<UsePathSegment>,
 }
 
@@ -79,16 +78,16 @@ impl AstParser {
                 let _ = tokens.bump();
                 let raw = self.parse_use_path(tokens)?;
                 let segments = self.parse_use_path_segments(&raw, &token)?;
-                paths.push(ParsedUsePath { raw, segments });
+                paths.push(ParsedUsePath { segments });
             } else if token.key().is_textual_literal() {
                 let raw = Self::exact_unquote_text(token.con());
                 let segments = self.parse_use_path_segments(&raw, &token)?;
-                paths.push(ParsedUsePath { raw, segments });
+                paths.push(ParsedUsePath { segments });
                 let _ = tokens.bump();
             } else {
                 let raw = self.parse_direct_use_path(tokens)?;
                 let segments = self.parse_use_path_segments(&raw, &token)?;
-                paths.push(ParsedUsePath { raw, segments });
+                paths.push(ParsedUsePath { segments });
             }
             self.skip_ignorable(tokens);
 
@@ -136,7 +135,6 @@ impl AstParser {
                 options: options.clone(),
                 name,
                 path_type: path_type.clone(),
-                path: path.raw,
                 path_segments: path.segments,
             })
             .collect())

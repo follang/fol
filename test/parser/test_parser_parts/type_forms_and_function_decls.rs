@@ -20,10 +20,11 @@ fn test_use_declarations_support_bare_module_types() {
                         AstNode::UseDecl {
                             name,
                             path_type: FolType::Module { name: module_name },
-                            path,
                             ..
                         }
-                        if name == "fmt" && module_name.is_empty() && path == "core::fmt"
+                        if name == "fmt"
+                            && module_name.is_empty()
+                            && use_decl_path_text(node).as_deref() == Some("core::fmt")
                     )
                 }),
                 "Use declarations should lower bare mod path types to FolType::Module"

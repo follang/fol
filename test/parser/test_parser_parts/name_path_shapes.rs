@@ -154,16 +154,16 @@ fn test_parser_name_and_path_ast_shapes_stay_distinct_by_surface() {
     let mut parser = AstParser::new();
     let use_ast = parser
         .parse(&mut use_lexer)
-        .expect("Parser should preserve import path strings on use declarations");
+        .expect("Parser should preserve structured import path segments on use declarations");
 
     match use_ast {
         AstNode::Program { declarations } => {
             assert!(declarations.iter().any(|node| {
                 matches!(
                     node,
-                    AstNode::UseDecl { name, path, path_type, .. }
+                    AstNode::UseDecl { name, path_type, .. }
                     if name == "warn"
-                        && path == "std/warn"
+                        && use_decl_path_text(node).as_deref() == Some("std/warn")
                         && matches!(path_type, FolType::Module { .. })
                 )
             }));

@@ -1069,10 +1069,11 @@ fn test_use_declarations_support_module_types() {
                         AstNode::UseDecl {
                             name,
                             path_type: FolType::Module { name: module_name },
-                            path,
                             ..
                         }
-                        if name == "file" && module_name == "std" && path == "std::fs::File"
+                        if name == "file"
+                            && module_name == "std"
+                            && use_decl_path_text(node).as_deref() == Some("std::fs::File")
                     )
                 }),
                 "Use declarations should lower mod[...] path types to FolType::Module"

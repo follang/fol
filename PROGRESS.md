@@ -39,18 +39,18 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 
 - Workspace member crates: `5`
 - Root binary crate: `1`
-- Active Rust source lines scanned: `18147`
+- Active Rust source lines scanned: `18639`
 - Core compiler Rust lines scanned:
 - `fol-types`: `228`
-- `fol-stream`: `503`
-- `fol-lexer`: `2405`
-- `fol-parser`: `14572`
+- `fol-stream`: `570`
+- `fol-lexer`: `2399`
+- `fol-parser`: `15003`
 - `fol-diagnostics`: `267`
 - Root CLI and root-local source: `172`
-- Active parser fixtures: `1148`
-- Active lexer tests: `84`
-- Active stream tests: `53`
-- Parser-focused Rust tests under `test/parser`: `1068`
+- Active parser fixtures: `1156`
+- Active lexer tests: `85`
+- Active stream tests: `54`
+- Parser-focused Rust tests under `test/parser`: `1077`
 - Observed current unit test run: `1` unit test, green
 - Observed current integration run: `1223` integration tests, green
 
@@ -193,12 +193,10 @@ What is solid now:
 
 What is still true in code today:
 - `FileStream::from_sources` eagerly reads every file body into memory before lexing begins
-- `FileStream::next_char` still re-collects per-file `Vec<char>` buffers from already-loaded strings
-- `.mod` detection still uses a regex instead of a direct suffix check
 
 Risk call:
 - Low for correctness on covered behavior
-- Low-to-medium for cleanliness and future maintainability
+- Low for cleanliness and future maintainability
 
 ### 6.2 fol-lexer
 
@@ -254,7 +252,7 @@ What is solid now:
 
 What is still true in code today:
 - `AstNode::Program { declarations }` is intentionally mixed and script-like, but the field name still suggests declaration-only contents
-- `AstNode::UseDecl` still carries both raw path text and structured path segments
+- `AstNode::UseDecl` now carries only structured path segments for import spelling
 - `AstNode::get_type()` is still a heuristic AST helper that looks semantic-adjacent even though whole-program semantic analysis is not implemented
 - the parser still treats many keyword tokens as acceptable label surfaces by design, which is test-backed and now part of the current contract
 
@@ -276,7 +274,6 @@ These are not active test failures. They are the remaining front-end compromises
 - Lexer still carries compatibility behavior for slash comments even though backticks are the primary documented comment form.
 - Parser still exposes a few AST naming and helper choices that are good enough for this phase but not obviously ideal for later semantic ownership:
 - mixed-root `Program.declarations`
-- raw plus structured `use` path storage
 - heuristic `AstNode::get_type()`
 - comments are now retained much more broadly, but truly universal trivia attachment is still a later AST-shape choice rather than a finished contract item
 
@@ -296,7 +293,6 @@ This section is intentionally limited to stream, lexer, and parser. None of thes
 ### 8.3 Parser Follow-Up
 
 - decide whether `Program.declarations` should remain the long-term mixed-root carrier or be renamed later
-- decide whether raw `UseDecl.path` remains useful once later import work begins using structured segments
 - either narrow, relocate, or clearly quarantine heuristic AST helpers such as `AstNode::get_type()`
 
 ## 9. What Is Explicitly Out Of Scope For This Phase

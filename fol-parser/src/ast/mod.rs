@@ -97,13 +97,12 @@ pub enum AstNode {
 
     /// Use declaration: use[options] name: type = { path }
     ///
-    /// `path` preserves the accepted raw import spelling, while `path_segments`
-    /// retains the parsed segment/separator structure for later import work.
+    /// `path_segments` retains the parsed import segment/separator structure for
+    /// later import work.
     UseDecl {
         options: Vec<UseOption>,
         name: String,
         path_type: FolType,
-        path: String,
         path_segments: Vec<UsePathSegment>,
     },
 

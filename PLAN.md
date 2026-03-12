@@ -7,7 +7,7 @@ Scope: `fol-stream`, `fol-lexer`, `fol-parser`, and front-end contract docs only
 
 - `make build` passes.
 - `make test` passes.
-- Current observed totals: `1` unit test and `1219` integration tests, all green.
+- Current observed totals: `1` unit test and `1223` integration tests, all green.
 - The planned stream/lexer/parser follow-up work from this front-end hardening cycle is complete.
 
 ## 1. Completed Items
@@ -41,9 +41,9 @@ Scope: `fol-stream`, `fol-lexer`, `fol-parser`, and front-end contract docs only
 ### 3.5 Parser: Decide The Long-Term `use` Path Storage Shape
 
 - Done.
-- `UseDecl.path` remains the raw accepted spelling.
-- `UseDecl.path_segments` remains the structured representation for later import work.
-- The dual-field contract is now documented as intentional.
+- `UseDecl.path` was removed.
+- `UseDecl.path_segments` is the canonical representation for later import work.
+- Exact path text remains reconstructible from structured segment spelling plus separator kind.
 
 ### 3.6 Parser: Quarantine Or Relocate `AstNode::get_type()`
 

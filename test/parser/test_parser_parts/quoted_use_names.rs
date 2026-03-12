@@ -31,9 +31,9 @@ fn test_use_declaration_accepts_quoted_name() {
             assert!(declarations.iter().any(|node| {
                 matches!(
                     node,
-                    AstNode::UseDecl { name, path, path_type, .. }
+                    AstNode::UseDecl { name, path_type, .. }
                     if name == "warn"
-                        && path == "std/warn"
+                        && use_decl_path_text(node).as_deref() == Some("std/warn")
                         && matches!(path_type, FolType::Module { .. })
                 )
             }));
@@ -70,15 +70,15 @@ fn test_use_declaration_preserves_inner_opposite_quote_chars_in_names() {
             assert!(declarations.iter().any(|node| {
                 matches!(
                     node,
-                    AstNode::UseDecl { name, path, .. }
-                        if name == "wa'rn" && path == "std/warn"
+                    AstNode::UseDecl { name, .. }
+                        if name == "wa'rn" && use_decl_path_text(node).as_deref() == Some("std/warn")
                 )
             }));
             assert!(declarations.iter().any(|node| {
                 matches!(
                     node,
-                    AstNode::UseDecl { name, path, .. }
-                        if name == "tr\"ace" && path == "std/trace"
+                    AstNode::UseDecl { name, .. }
+                        if name == "tr\"ace" && use_decl_path_text(node).as_deref() == Some("std/trace")
                 )
             }));
         }
@@ -99,12 +99,12 @@ fn test_use_declaration_accepts_multiple_quoted_names() {
 
     match ast {
         AstNode::Program { declarations } => {
-            assert!(declarations.iter().any(|node| {
-                matches!(node, AstNode::UseDecl { name, path, .. } if name == "warn" && path == "std/warn")
-            }));
-            assert!(declarations.iter().any(|node| {
-                matches!(node, AstNode::UseDecl { name, path, .. } if name == "trace" && path == "std/trace")
-            }));
+            assert!(declarations
+                .iter()
+                .any(|node| use_decl_matches_path(node, "warn", "std/warn")));
+            assert!(declarations
+                .iter()
+                .any(|node| use_decl_matches_path(node, "trace", "std/trace")));
         }
         _ => panic!("Expected program node"),
     }
@@ -123,9 +123,9 @@ fn test_use_declaration_normalizes_single_quoted_paths() {
 
     match ast {
         AstNode::Program { declarations } => {
-            assert!(declarations.iter().any(|node| {
-                matches!(node, AstNode::UseDecl { name, path, .. } if name == "warn" && path == "std/warn")
-            }));
+            assert!(declarations
+                .iter()
+                .any(|node| use_decl_matches_path(node, "warn", "std/warn")));
         }
         _ => panic!("Expected program node"),
     }
@@ -145,12 +145,12 @@ fn test_use_declaration_accepts_multiple_single_quoted_names() {
 
     match ast {
         AstNode::Program { declarations } => {
-            assert!(declarations.iter().any(|node| {
-                matches!(node, AstNode::UseDecl { name, path, .. } if name == "warn" && path == "std/warn")
-            }));
-            assert!(declarations.iter().any(|node| {
-                matches!(node, AstNode::UseDecl { name, path, .. } if name == "trace" && path == "std/trace")
-            }));
+            assert!(declarations
+                .iter()
+                .any(|node| use_decl_matches_path(node, "warn", "std/warn")));
+            assert!(declarations
+                .iter()
+                .any(|node| use_decl_matches_path(node, "trace", "std/trace")));
         }
         _ => panic!("Expected program node"),
     }

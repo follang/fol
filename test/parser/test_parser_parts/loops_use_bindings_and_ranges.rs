@@ -94,14 +94,13 @@ fn test_use_declaration_parsing() {
         AstNode::Program { declarations } => program_root_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
-                if let AstNode::UseDecl {
-                    name,
-                    path_type,
-                    path,
-                    ..
-                } = node
-                {
-                    Some((name.clone(), path_type.clone(), path.clone()))
+                if let AstNode::UseDecl { name, path_type, .. } = node {
+                    Some((
+                        name.clone(),
+                        path_type.clone(),
+                        use_decl_path_text(node)
+                            .expect("Use declarations should reconstruct a path from segments"),
+                    ))
                 } else {
                     None
                 }
@@ -134,14 +133,14 @@ fn test_use_declaration_supports_multiple_names_and_paths() {
             let imports: Vec<_> = program_root_nodes(&declarations)
                 .into_iter()
                 .filter_map(|node| {
-                    if let AstNode::UseDecl {
-                        name,
-                        path_type,
-                        path,
-                        ..
-                    } = node
-                    {
-                        Some((name.clone(), path_type.clone(), path.clone()))
+                    if let AstNode::UseDecl { name, path_type, .. } = node {
+                        Some((
+                            name.clone(),
+                            path_type.clone(),
+                            use_decl_path_text(node).expect(
+                                "Use declarations should reconstruct a path from segments",
+                            ),
+                        ))
                     } else {
                         None
                     }
@@ -209,19 +208,13 @@ fn test_use_declaration_accepts_empty_option_brackets() {
         AstNode::Program { declarations } => program_root_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
-                if let AstNode::UseDecl {
-                    name,
-                    options,
-                    path_type,
-                    path,
-                    ..
-                } = node
-                {
+                if let AstNode::UseDecl { name, options, path_type, .. } = node {
                     Some((
                         name.clone(),
                         options.clone(),
                         path_type.clone(),
-                        path.clone(),
+                        use_decl_path_text(node)
+                            .expect("Use declarations should reconstruct a path from segments"),
                     ))
                 } else {
                     None
@@ -258,14 +251,13 @@ fn test_use_declaration_allows_omitted_colon_before_path_type() {
         AstNode::Program { declarations } => program_root_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
-                if let AstNode::UseDecl {
-                    name,
-                    path_type,
-                    path,
-                    ..
-                } = node
-                {
-                    Some((name.clone(), path_type.clone(), path.clone()))
+                if let AstNode::UseDecl { name, path_type, .. } = node {
+                    Some((
+                        name.clone(),
+                        path_type.clone(),
+                        use_decl_path_text(node)
+                            .expect("Use declarations should reconstruct a path from segments"),
+                    ))
                 } else {
                     None
                 }
@@ -297,14 +289,13 @@ fn test_use_declaration_unwraps_quoted_paths() {
         AstNode::Program { declarations } => program_root_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
-                if let AstNode::UseDecl {
-                    name,
-                    path_type,
-                    path,
-                    ..
-                } = node
-                {
-                    Some((name.clone(), path_type.clone(), path.clone()))
+                if let AstNode::UseDecl { name, path_type, .. } = node {
+                    Some((
+                        name.clone(),
+                        path_type.clone(),
+                        use_decl_path_text(node)
+                            .expect("Use declarations should reconstruct a path from segments"),
+                    ))
                 } else {
                     None
                 }
@@ -336,14 +327,13 @@ fn test_use_declaration_supports_qualified_and_bracketed_types() {
         AstNode::Program { declarations } => program_root_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
-                if let AstNode::UseDecl {
-                    name,
-                    path_type,
-                    path,
-                    ..
-                } = node
-                {
-                    Some((name.clone(), path_type.clone(), path.clone()))
+                if let AstNode::UseDecl { name, path_type, .. } = node {
+                    Some((
+                        name.clone(),
+                        path_type.clone(),
+                        use_decl_path_text(node)
+                            .expect("Use declarations should reconstruct a path from segments"),
+                    ))
                 } else {
                     None
                 }

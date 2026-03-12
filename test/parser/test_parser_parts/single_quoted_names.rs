@@ -20,7 +20,7 @@ fn test_single_quoted_names_parse_across_declaration_surfaces() {
                 matches!(node, AstNode::ImpDecl { name, .. } if name == "math")
             }));
             assert!(declarations.iter().any(|node| {
-                matches!(node, AstNode::UseDecl { name, path, .. } if name == "warn" && path == "std/warn")
+                use_decl_matches_path(node, "warn", "std/warn")
             }));
             assert!(declarations.iter().any(|node| {
                 matches!(node, AstNode::VarDecl { name, .. } if name == "state")

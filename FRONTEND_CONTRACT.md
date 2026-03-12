@@ -286,10 +286,10 @@ tests actually enforce today.
 - `QualifiedPath` does not carry a second normalized comparison key in this front-end
   phase; later semantic stages can derive comparison keys intentionally if they need
   them for resolution or canonical lookup.
-- `use` declarations keep their import path text in the dedicated `path` field instead of
-  reusing the value-path or type-path encoding.
-- `use` declarations also retain structured `path_segments`, preserving accepted
-  segment spelling plus the separator kind that preceded each later segment.
+- `use` declarations retain structured `path_segments`, preserving accepted segment
+  spelling plus the separator kind that preceded each later segment.
+- The old flattened import `path` field is gone; exact text is reconstructible from
+  the structured segments when needed.
 
 ### Current Root Shape
 

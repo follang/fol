@@ -49,6 +49,36 @@ fn fol_type_named_text_is(typ: &FolType, expected: &str) -> bool {
     typ.named_text().as_deref() == Some(expected)
 }
 
+fn use_path_segments_text(
+    path_segments: &[fol_parser::ast::UsePathSegment],
+) -> String {
+    let mut path = String::new();
+
+    for segment in path_segments {
+        if let Some(separator) = &segment.separator {
+            path.push_str(match separator {
+                fol_parser::ast::UsePathSeparator::Slash => "/",
+                fol_parser::ast::UsePathSeparator::DoubleColon => "::",
+            });
+        }
+        path.push_str(&segment.spelling);
+    }
+
+    path
+}
+
+fn use_decl_path_text(node: &AstNode) -> Option<String> {
+    match node {
+        AstNode::UseDecl { path_segments, .. } => Some(use_path_segments_text(path_segments)),
+        _ => None,
+    }
+}
+
+fn use_decl_matches_path(node: &AstNode, expected_name: &str, expected_path: &str) -> bool {
+    matches!(node, AstNode::UseDecl { name, .. } if name == expected_name)
+        && use_decl_path_text(node).as_deref() == Some(expected_path)
+}
+
 #[cfg(test)]
 #[path = "test_parser_parts/alternative_routine_headers.rs"]
 mod alternative_routine_headers;
