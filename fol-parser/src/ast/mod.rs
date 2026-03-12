@@ -492,7 +492,7 @@ pub enum InquiryTarget {
     ThisValue,
     Named(String),
     Quoted(String),
-    Qualified(Vec<String>),
+    Qualified(QualifiedPath),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -520,7 +520,7 @@ impl InquiryTarget {
             InquiryTarget::SelfValue => "self".to_string(),
             InquiryTarget::ThisValue => "this".to_string(),
             InquiryTarget::Named(name) | InquiryTarget::Quoted(name) => name.clone(),
-            InquiryTarget::Qualified(segments) => segments.join("::"),
+            InquiryTarget::Qualified(path) => path.joined(),
         }
     }
 
@@ -530,7 +530,7 @@ impl InquiryTarget {
             InquiryTarget::ThisValue => "this".to_string(),
             InquiryTarget::Named(name) => name.clone(),
             InquiryTarget::Quoted(name) => format!("\"{}\"", name),
-            InquiryTarget::Qualified(segments) => segments.join("::"),
+            InquiryTarget::Qualified(path) => path.joined(),
         }
     }
 }

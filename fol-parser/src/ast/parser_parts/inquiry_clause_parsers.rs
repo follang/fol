@@ -411,7 +411,7 @@ impl AstParser {
             [single] if single == "self" => InquiryTarget::SelfValue,
             [single] if single == "this" => InquiryTarget::ThisValue,
             [single] => InquiryTarget::Named(single.clone()),
-            _ => InquiryTarget::Qualified(segments),
+            _ => InquiryTarget::Qualified(QualifiedPath::new(segments)),
         })
     }
 

@@ -108,8 +108,8 @@ fn test_qualified_inquiry_targets_lower_structurally() {
                         ..
                     }
                 ]
-                if first == &vec!["pkg".to_string(), "cache".to_string()]
-                    && second == &vec!["sys".to_string(), "sink".to_string()]
+                if first.segments == vec!["pkg".to_string(), "cache".to_string()]
+                    && second.segments == vec!["sys".to_string(), "sink".to_string()]
             ));
         }
         _ => panic!("Expected program node"),
@@ -273,7 +273,10 @@ fn test_named_routine_inquiries_keep_named_quoted_and_qualified_targets() {
         ),
         (
             "test/parser/simple_fun_inquiry_qualified_target.fol",
-            InquiryTarget::Qualified(vec!["pkg".to_string(), "cache".to_string()]),
+            InquiryTarget::Qualified(QualifiedPath::new(vec![
+                "pkg".to_string(),
+                "cache".to_string(),
+            ])),
         ),
     ] {
         let mut file_stream = FileStream::from_file(path).expect("Should read inquiry fixture");
