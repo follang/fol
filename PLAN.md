@@ -95,15 +95,15 @@ Do not add or plan work here for:
 
 ## 5. Working Rules
 
-- [ ] Treat the local book as the authority unless we explicitly decide to diverge.
-- [ ] If code and docs disagree, close the decision the same day instead of freezing both.
+- [x] Treat the local book as the authority unless we explicitly decide to diverge.
+- [x] If code and docs disagree, close the decision the same day instead of freezing both.
 - [ ] Do not add new post-parse behavior while closing this plan.
 - [ ] Every behavior change gets a regression test.
-- [ ] Every intentional front-end compromise gets written to `FRONTEND_CONTRACT.md`.
+- [x] Every intentional front-end compromise gets written to `FRONTEND_CONTRACT.md`.
 - [x] Every removed compromise also removes the matching stale test assumptions.
 - [ ] Prefer preserving syntax facts over recomputing or guessing them later.
 - [ ] Do not flatten structured syntax into strings unless there is a strong reason.
-- [ ] Do not keep host-tool assumptions in the front-end contract unless they are explicit compatibility layers.
+- [x] Do not keep host-tool assumptions in the front-end contract unless they are explicit compatibility layers.
 
 ## 6. Implementation Order
 
@@ -257,7 +257,7 @@ Target files:
 - [x] Implement doc-comment detection for the `[doc]` prefix if it remains in scope.
 - [x] Decide whether doc comments become a token family, lexer side channel, or deferred metadata stream.
 - [ ] Remove slash comment logic if it is no longer part of the front-end contract.
-- [ ] Delete dead `stage2::make_comment()` if comment handling no longer needs it.
+- [x] Delete dead `stage2::make_comment()` if comment handling no longer needs it.
 - [x] Add fixtures for normal comments, doc comments, multiline comments, and unterminated comment spans.
 - [x] Add tests proving comment delimiters inside quoted literals do not start comments.
 
@@ -427,10 +427,10 @@ Target files:
 
 ### 11.1 Keep Docs Aligned To The Final Front-End
 
-- [ ] Rewrite `FRONTEND_CONTRACT.md` sections that still freeze current compromises we intentionally remove.
-- [ ] Rewrite `PROGRESS.md` to reflect the actual front-end state after the code changes.
-- [ ] Update book pages if we align code to the book and some internal docs still describe old behavior.
-- [ ] If we intentionally diverge from the book on any front-end point, record the divergence explicitly instead of letting drift accumulate again.
+- [x] Rewrite `FRONTEND_CONTRACT.md` sections that still freeze current compromises we intentionally remove.
+- [x] Rewrite `PROGRESS.md` to reflect the actual front-end state after the code changes.
+- [x] Update book pages if we align code to the book and some internal docs still describe old behavior.
+- [x] If we intentionally diverge from the book on any front-end point, record the divergence explicitly instead of letting drift accumulate again.
 
 ### 11.2 Lock Final Test And Build State
 
@@ -443,7 +443,7 @@ Target files:
 
 This is the recommended implementation order once the decision freeze is complete.
 
-1. [ ] Freeze the comment, literal, receiver, package, and root-surface decisions in `FRONTEND_CONTRACT.md`.
+1. [x] Freeze the comment, literal, receiver, package, and root-surface decisions in `FRONTEND_CONTRACT.md`.
 2. [x] Introduce one shared identifier canonicalization helper and test it directly.
 3. [x] Apply the canonicalization helper to parser duplicate checks before changing more AST shape.
 4. [x] Preserve method receiver types in the AST and add direct retention tests.
@@ -470,7 +470,7 @@ Do not move to the next compiler stage until every gate below is true.
 
 - [x] Package and namespace behavior are FOL-defined instead of host-tool-defined.
 - [x] Cross-file boundaries are explicit and do not depend on fabricated source characters.
-- [ ] Identifier rules are explicit, tested, and used consistently across stream/lexer/parser comparisons.
+- [x] Identifier rules are explicit, tested, and used consistently across stream/lexer/parser comparisons.
 - [x] Comment syntax matches the chosen authority and no longer conflicts with backtick tokenization.
 - [x] Literal quote behavior matches the chosen authority.
 - [x] Escape handling matches the chosen authority.
