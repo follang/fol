@@ -1,31 +1,36 @@
 # Comments
 
-Comments in FOL code **DON'T**  follow the traditional style of line (`//`) comment forms. 
+Backtick-delimited comments are the authoritative comment syntax in FOL.
 
 ## Normal comments
 
+Single-line and multiline comments use the same backtick-delimited form.
 
-They are represented with backtick.
-
-
-SINGLE_LINE_COMMENT :
+SINGLE_LINE_COMMENT:
 ```
 `this is a single line comment`
 ```
-MULTI_LINE_COMMENT :
+
+MULTI_LINE_COMMENT:
 ```
-`this is a 
+`this is a
 multi
 line
 comment`
 ```
 
+## Doc comments
 
-## Docs comments
-
-Doc comments have at the beggining of comment the optinon `[doc]`. 
+Documentation comments use the `[doc]` prefix inside the same backtick-delimited
+comment family.
 
 DOC_COMMENT:
 ```
 `[doc] this is a documentation comment`
 ```
+
+## Current front-end compatibility
+
+The hardened front-end still accepts `//` and `/* ... */` comments as compatibility
+syntax. They are not the authoritative book syntax, but they remain intentionally
+supported by the current lexer and parser.
