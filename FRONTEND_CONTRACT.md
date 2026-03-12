@@ -317,6 +317,9 @@ tests actually enforce today.
   repeated within the same declaration.
 - The parser rejects duplicate inquiry targets and duplicate type members in the grammar
   surfaces that already track those sets during parsing.
+- Parser-owned duplicate checks now consistently use canonical identifier comparison for
+  the surfaces audited in this hardening pass, including routine headers, captures,
+  `use` names, inquiry targets, rolling bindings, type members, and standard members.
 - Name resolution, whole-program type checking, ownership rules, and cross-file semantic
   validation are still outside the parser contract.
 
