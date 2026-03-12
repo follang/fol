@@ -16,6 +16,50 @@ pub struct Elements {
     _in_count: usize,
 }
 
+struct Gen {
+    file: FileStream,
+    previous_file: Option<String>,
+    pending: Option<Con<Part<char>>>,
+    emitted_eof: bool,
+}
+
+impl Iterator for Gen {
+    type Item = Con<Part<char>>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(part) = self.pending.take() {
+            return Some(part);
+        }
+
+        if let Some((ch, stream_loc)) = self.file.next_char() {
+            let current_file = stream_loc.file.clone();
+            let loc = point::Location::from_stream_location(&stream_loc);
+
+            if self.previous_file.is_some() && self.previous_file.as_ref() != current_file.as_ref() {
+                let mut boundary = point::Location::from_stream_location(&stream_loc);
+                boundary.adjust(stream_loc.row, 0);
+                self.pending = Some(Ok((ch, loc)));
+                self.previous_file = current_file;
+                return Some(Ok((SOURCE_BOUNDARY_CHAR, boundary)));
+            }
+
+            self.previous_file = current_file;
+            return Some(Ok((ch, loc)));
+        }
+
+        if self.emitted_eof {
+            return None;
+        }
+
+        // Downstream stages may fold trailing separators around EOF, so the
+        // synthetic marker itself stays anchored to an explicit out-of-band point.
+        let mut eof_loc = point::Location::default();
+        eof_loc.adjust(1, 0);
+        self.emitted_eof = true;
+        Some(Ok(('\0', eof_loc)))
+    }
+}
+
 impl Elements {
     fn shift_window(&mut self, incoming: Con<Part<char>>) -> Con<Part<char>> {
         let _ = self.win.0.remove(0);
@@ -49,7 +93,7 @@ impl Elements {
     pub fn init(file: &mut FileStream) -> Self {
         let mut prev = Vec::with_capacity(SLIDER);
         let mut next = Vec::with_capacity(SLIDER);
-        let mut chars = Box::new(gen(file));
+        let mut chars = Box::new(gen(std::mem::take(file)));
         for _ in 0..SLIDER {
             prev.push(Ok(('\0', point::Location::default())))
         }
@@ -110,27 +154,11 @@ impl fmt::Display for Elements {
     }
 }
 
-pub fn gen(file: &mut FileStream) -> impl Iterator<Item = Con<Part<char>>> {
-    // Collect all characters from the file stream
-    let mut chars = Vec::new();
-    let mut previous_file: Option<String> = None;
-    while let Some((ch, stream_loc)) = file.next_char() {
-        if previous_file.is_some() && previous_file.as_ref() != stream_loc.file.as_ref() {
-            let mut boundary = point::Location::from_stream_location(&stream_loc);
-            boundary.adjust(stream_loc.row, 0);
-            chars.push(Ok((SOURCE_BOUNDARY_CHAR, boundary)));
-        }
-
-        let loc = point::Location::from_stream_location(&stream_loc);
-        chars.push(Ok((ch, loc)));
-        previous_file = stream_loc.file.clone();
+pub fn gen(file: FileStream) -> impl Iterator<Item = Con<Part<char>>> {
+    Gen {
+        file,
+        previous_file: None,
+        pending: None,
+        emitted_eof: false,
     }
-
-    // Downstream stages may fold trailing separators around EOF, so the
-    // synthetic marker itself stays anchored to an explicit out-of-band point.
-    let mut eof_loc = point::Location::default();
-    eof_loc.adjust(1, 0);
-    chars.push(Ok(('\0', eof_loc)));
-
-    chars.into_iter()
 }

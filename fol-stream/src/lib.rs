@@ -121,6 +121,22 @@ pub struct FileStream {
     location: Location,
 }
 
+impl Default for FileStream {
+    fn default() -> Self {
+        Self {
+            sources: Vec::new(),
+            current_source: 0,
+            position: 0,
+            current_chars: Vec::new(),
+            location: Location {
+                row: 1,
+                col: 1,
+                file: None,
+            },
+        }
+    }
+}
+
 impl FileStream {
     /// Create from a single file path
     pub fn from_file(path: &str) -> Result<Self, Box<dyn Glitch>> {

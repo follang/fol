@@ -1776,6 +1776,77 @@ mod lexer_error_tests {
     }
 
     #[test]
+    fn test_stage0_emits_explicit_file_boundaries_with_real_second_file_locations() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("stage0_boundaries");
+        fs::create_dir_all(&temp_root).expect("Should create temp stage0 fixture dir");
+        fs::write(temp_root.join("a.fol"), "a").expect("Should write first stage0 fixture");
+        fs::write(temp_root.join("b.fol"), "b").expect("Should write second stage0 fixture");
+
+        let mut file_stream = FileStream::from_folder(
+            temp_root
+                .to_str()
+                .expect("Stage0 fixture folder path should be valid utf-8"),
+        )
+        .expect("Should create stage0 stream from folder fixture");
+        let mut chars = stage0::Elements::init(&mut file_stream);
+        let mut seen = Vec::new();
+
+        for _ in 0..10_000 {
+            let Some(part) = chars.bump() else {
+                break;
+            };
+            let part = part.expect("Stage0 should not fail for multi-file boundary fixture");
+            seen.push(part);
+            if seen.len() >= 3 {
+                break;
+            }
+        }
+
+        assert_eq!(seen.len(), 3, "Stage0 should expose first char, boundary, second char");
+
+        assert_eq!(seen[0].0, 'a');
+        assert_eq!(seen[0].1.row(), 1);
+        assert_eq!(seen[0].1.col(), 1);
+        assert!(
+            seen[0]
+                .1
+                .source()
+                .expect("First char should keep a source path")
+                .path(false)
+                .ends_with("a.fol"),
+            "First character should remain anchored to the first file"
+        );
+
+        assert_eq!(seen[1].0, stage0::SOURCE_BOUNDARY_CHAR);
+        assert_eq!(seen[1].1.row(), 1);
+        assert_eq!(seen[1].1.col(), 0);
+        assert!(
+            seen[1]
+                .1
+                .source()
+                .expect("Boundary should carry the incoming file path")
+                .path(false)
+                .ends_with("b.fol"),
+            "Boundary marker should stay anchored to the incoming file instead of pretending to belong to the previous one"
+        );
+
+        assert_eq!(seen[2].0, 'b');
+        assert_eq!(seen[2].1.row(), 1);
+        assert_eq!(seen[2].1.col(), 1);
+        assert!(
+            seen[2]
+                .1
+                .source()
+                .expect("Second char should keep a source path")
+                .path(false)
+                .ends_with("b.fol"),
+            "Second character should remain anchored to the second file"
+        );
+    }
+
+    #[test]
     fn test_stage1_window_stays_bounded_while_draining() {
         let mut file_stream =
             FileStream::from_file("test/stream/basic.fol").expect("Should read basic file");
