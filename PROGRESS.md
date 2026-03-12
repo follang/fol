@@ -8,7 +8,7 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 
 - This file answers one question: what is actually implemented right now.
 - This file is a repo-backed status ledger for the current workspace head.
-- For the current phase, the priority is front-end truth: stream, lexer, parser, diagnostics, CLI behavior, and the immediate pre-resolver source-layout alignment pass.
+- For the current phase, the priority is front-end truth: stream, lexer, parser, diagnostics, CLI behavior, and the newly finished source-layout alignment boundary that hands off cleanly to resolver work.
 - This file does not plan later semantic work.
 
 ## 1. Scan Method
@@ -30,7 +30,7 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `FRONTEND_CONTRACT.md`
 - `README.md`
 - relevant `book/src` pages for lexical rules, methods, literals, and recoverable errors
-- Rechecked the current implementation against the existing progress ledger, the active source-layout alignment plan, and the preserved next-phase resolver plan.
+- Rechecked the current implementation against the existing progress ledger, the finished source-layout alignment record, and the preserved next-phase resolver plan.
 - Ran:
 - `make build`
 - `make test`
@@ -39,20 +39,20 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 
 - Workspace member crates: `5`
 - Root binary crate: `1`
-- Active Rust source lines scanned: `18639`
+- Active Rust source lines scanned: `19424`
 - Core compiler Rust lines scanned:
 - `fol-types`: `228`
 - `fol-stream`: `570`
-- `fol-lexer`: `2399`
-- `fol-parser`: `15003`
+- `fol-lexer`: `2406`
+- `fol-parser`: `15781`
 - `fol-diagnostics`: `267`
 - Root CLI and root-local source: `172`
 - Active parser fixtures: `1156`
 - Active lexer tests: `85`
 - Active stream tests: `54`
-- Parser-focused Rust tests under `test/parser`: `1077`
+- Parser-focused Rust tests under `test/parser`: `1101`
 - Observed current unit test run: `1` unit test, green
-- Observed current integration run: `1227` integration tests, green
+- Observed current integration run: `1250` integration tests, green
 
 ## 3. Current Headline Status
 
@@ -61,8 +61,8 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `fol-parser`: large front-end surface implemented, heavily hardened, and now much closer to a stable AST contract
 - `fol-diagnostics`: implemented and wired into the CLI
 - Root CLI: implemented as parse-and-report driver
-- Stream + lexer + parser: ready to stop broad deep rescanning
-- Immediate active phase: source-layout and package-scope alignment before whole-program name resolution
+- Stream + lexer + parser: stable enough to hand off without another front-end alignment pass
+- Immediate active phase: `fol-resolver` and whole-program name resolution
 - Whole-program name resolution: missing
 - Whole-program type checking: missing
 - Ownership and borrowing enforcement: missing
@@ -76,7 +76,7 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `make test`: passed
 - Current observed totals:
 - `1` unit test passed
-- `1227` integration tests passed
+- `1250` integration tests passed
 - Observed active failures: `0`
 
 ## 5. What Has Been Completed So Far
@@ -152,8 +152,10 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - The parser now exposes `parse_package(...)` as a structured package-aware entry point.
 - Successful top-level parse nodes now retain syntax origins through parser-owned IDs and a syntax index.
 - Parser output can now preserve first-class source units with per-file path, package, namespace, and ordered items.
+- Parsed top-level items now also retain explicit declaration visibility/scope metadata for later resolver work.
 - Comments and doc comments now remain AST-visible beyond standalone root/body sibling nodes.
 - Inline expression, postfix, call-argument, and container-element comments are preserved through `AstNode::Commented { leading_comments, node, trailing_comments }`.
+- Cross-file boundary failures are now locked with exact-location tests on both the synthetic boundary token (`column 0`) and the first real token of the incoming file (`column 1`).
 - Parser failure-shape coverage is much broader:
 - unknown options
 - conflicting options
@@ -167,10 +169,11 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 ### 5.4 Contract And Docs Cleanup
 
 - `FRONTEND_CONTRACT.md` now matches the hardened stream, lexer, and parser behavior much more closely.
+- `README.md` and `PROGRESS.md` now point at the finished alignment record and the active next-phase resolver plan.
 - The lexical and routine book pages scanned in this pass are aligned with the current front-end behavior.
 - Parser-side `report` type checking and forward-signature validation are no longer described as active behavior.
 - Method receiver docs now match the current parse-time rejection rule.
-- The front-end readiness plan has been executed in code and tests for the stream/lexer/parser scope.
+- The front-end source-layout alignment plan has now been executed in code and tests for the stream/lexer/parser scope.
 
 ## 6. Current Front-End State By Layer
 
@@ -253,6 +256,8 @@ What is solid now:
 - context-sensitive control-flow acceptance
 - explicit numeric overflow rejection
 - much stronger diagnostic consistency coverage
+- exact cross-file boundary diagnostics on the declaration-oriented package parser path
+- explicit parsed top-level visibility/scope metadata for later resolver work
 
 What is still true in code today:
 - the preferred structured path is now `parse_package(...)`, but the legacy `AstNode::Program { declarations }` compatibility path is still intentionally mixed and script-like
@@ -283,7 +288,7 @@ These are not active test failures. They are the remaining front-end compromises
 
 ## 8. Current Front-End Debt Worth Tracking, But Not Blocking
 
-This section is intentionally limited to stream, lexer, and parser. None of these items currently justify another deep front-end rescan before moving on.
+This section is intentionally limited to stream, lexer, and parser. None of these items block the resolver phase.
 
 ### 8.1 Stream Follow-Up
 
@@ -319,7 +324,7 @@ These remain later-stage work. They are no longer reasons to keep front-end hard
 - The project has a real front-end pipeline:
 - `fol-stream -> fol-lexer -> fol-parser -> fol-diagnostics`
 - The pipeline is not toy-only anymore.
-- Stream, lexer, and parser behavior are now explicit enough to support later-phase work without another deep stability pass first.
+- Stream, lexer, and parser behavior are now explicit enough to support resolver work without another deep stability pass first.
 - Current validation is green and large enough to trust ordinary refactors much more than before.
 
 ### 10.2 What Is Not Implemented Yet
@@ -332,12 +337,12 @@ These remain later-stage work. They are no longer reasons to keep front-end hard
 
 - Stream: strong and contract-stable
 - Lexer: strong and contract-stable
-- Parser: broad, hardened, and contract-stable enough to move on
+- Parser: broad, hardened, source-layout-aware, and contract-stable enough to move on
 - Diagnostics baseline: green
-- Front-end as a whole: ready to stop rescanning and move to the next phase
+- Front-end as a whole: ready to stop rescanning and move to `fol-resolver`
 
 ## 11. Next Recommended Focus
 
-- Move to the post-parser phase.
+- Start `fol-resolver` from [`PLAN_NEXT.md`](./PLAN_NEXT.md).
 - Treat any remaining stream/lexer/parser work as opportunistic cleanup unless a real new bug appears.
-- Use `FRONTEND_CONTRACT.md` and the test suite as the frozen front-end reference point for the next stage.
+- Use `FRONTEND_CONTRACT.md`, [`PLAN.md`](./PLAN.md), and the test suite as the frozen front-end reference point for the next stage.

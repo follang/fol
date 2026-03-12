@@ -21,10 +21,10 @@ FOL is a general-purpose, systems programming language designed for robustness, 
 
 <p align="center">  ** FOL IS AN ACTIVE FRONT-END COMPILER WORKSPACE **  </p>
 
-Current compiler status: the stream, lexer, parser, and diagnostics pipeline are implemented and actively tested. The broad front-end hardening pass is complete enough that the active immediate phase is now source-layout and package-scope alignment before `fol-resolver`. After that, the main missing compiler work is whole-program name resolution, later-phase semantic analysis, type checking, ownership rules, and backend/runtime work.
+Current compiler status: the stream, lexer, parser, and diagnostics pipeline are implemented and actively tested. The source-layout and package-scope alignment pass is complete, so the next active compiler phase is `fol-resolver` for whole-program name resolution. After that, the main missing compiler work is later semantic analysis, type checking, ownership rules, and backend/runtime work.
 
 For exact current stream/lexer/parser behavior, treat [`FRONTEND_CONTRACT.md`](./FRONTEND_CONTRACT.md)
-as the authoritative front-end contract, and treat [`PLAN.md`](./PLAN.md) as the active pre-resolver alignment plan. The README is only a high-level project summary.
+as the authoritative front-end contract, treat [`PLAN.md`](./PLAN.md) as the completion record for the finished front-end alignment pass, and treat [`PLAN_NEXT.md`](./PLAN_NEXT.md) as the active next-phase resolver plan. The README is only a high-level project summary.
 
 <hr>
 

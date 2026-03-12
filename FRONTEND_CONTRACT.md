@@ -3,11 +3,11 @@
 This file records the current stream, lexer, and parser contracts that the code and
 tests actually enforce today.
 
-The active immediate front-end phase is source-layout and package-scope alignment
-before `fol-resolver`. This file therefore describes the current enforced behavior at
-head, including compatibility paths that still exist while that alignment work is in
-progress. It is not a promise that every current parser surface already matches the
-book-aligned target shape in [`PLAN.md`](./PLAN.md).
+The source-layout and package-scope alignment pass is complete. This file therefore
+describes the current enforced behavior at head, including compatibility paths that
+still exist intentionally before the next phase starts `fol-resolver`. Treat
+[`PLAN.md`](./PLAN.md) as the completion record for the finished front-end alignment
+work and [`PLAN_NEXT.md`](./PLAN_NEXT.md) as the active resolver plan.
 
 ## Decision Summary
 
@@ -20,10 +20,12 @@ book-aligned target shape in [`PLAN.md`](./PLAN.md).
 - Packages: package identity comes from explicit override or explicit entry root, not
   host-tool manifests.
 - Source units: the parser now has a structured `parse_package(...)` path that preserves
-  source units, package/namespace identity, and successful top-level origins.
-- Root surface: the legacy `AstParser::parse()` compatibility path still returns one
-  mixed and script-like `AstNode::Program { declarations }` root that preserves source
-  order, but the active pre-resolver plan is to tighten file roots toward the book.
+  source units, package/namespace identity, successful top-level origins, and explicit
+  top-level declaration visibility/scope metadata for later resolver work.
+- Root surface: `parse_package(...)` is the declaration-oriented package API aligned to
+  the book-facing source-layout model, while the legacy `AstParser::parse()` and
+  `parse_script_package(...)` compatibility paths still return one mixed and
+  script-like root that preserves source order.
 
 ## Intentional Book Divergences
 
@@ -467,8 +469,8 @@ book-aligned target shape in [`PLAN.md`](./PLAN.md).
   implementation quirks:
   - stream ordering and source identity are explicit
   - lexer payloads and literal families are explicit
-  - parser root shape, declaration-family shape, and supported literal lowering are
-    explicit
+  - parser root shape, declaration-family shape, source-unit structure, and top-level
+    visibility/scope metadata are explicit
   - representative parser failure modes are explicit and test-backed
 - The remaining front-end debt is narrow and declared up front:
   - later semantic passes still need whole-program resolution and type analysis
@@ -477,15 +479,19 @@ book-aligned target shape in [`PLAN.md`](./PLAN.md).
 
 ### Statement And Expression Boundaries
 
-- File scope currently accepts real root statements such as calls, invokes, assignments,
-  loops, and `when` forms in addition to declarations.
+- Declaration-oriented package parsing rejects file-root statements such as calls,
+  invokes, assignments, loops, and `when` forms; those are no longer accepted at the
+  primary parser handoff boundary.
+- The legacy mixed-root compatibility paths still accept those forms at file scope and
+  lower them into `AstNode::Program { declarations }` for older parser-era callers.
 - At both file scope and routine-body scope, a bare named callee lowers as
   `AstNode::FunctionCall`, while a grouped or otherwise computed callee lowers as
   `AstNode::Invoke`.
 - Assignment parsing stays a separate statement path at both scopes; call-like targets
   are rejected instead of being reinterpreted as assignment shapes.
-- A top-level `when` statement stays a root `AstNode::When` with nested body nodes instead
-  of being rewritten into a declaration-like wrapper.
+- Under the legacy mixed-root path, a top-level `when` statement stays a root
+  `AstNode::When` with nested body nodes instead of being rewritten into a
+  declaration-like wrapper.
 - `when` and matching forms used in expression position stay nested under their owner
   node, such as `VarDecl.value` or `Return.value`, instead of surfacing as sibling
   statements.
