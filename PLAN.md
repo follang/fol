@@ -340,7 +340,7 @@ Target files:
 
 - [x] Decide whether `AstNode::Program` contains declarations only.
 - [x] If file-scope executable statements remain supported, stop treating them as incidental declarations.
-- [ ] Introduce an explicit root representation for mixed item/statement programs if mixed file scope remains.
+- [x] Treat `AstNode::Program { declarations }` as the explicit mixed item/statement root representation for this front-end phase.
 - [x] Declaration-only file scope is not the chosen contract in this hardening phase.
 - [x] Update `top_level_control_flow_and_calls.rs` and any other root-shape tests to match the chosen contract.
 - [x] Update `FRONTEND_CONTRACT.md` so later phases do not have to infer module shape.
