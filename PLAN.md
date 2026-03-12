@@ -100,7 +100,7 @@ Do not add or plan work here for:
 - [ ] Do not add new post-parse behavior while closing this plan.
 - [ ] Every behavior change gets a regression test.
 - [ ] Every intentional front-end compromise gets written to `FRONTEND_CONTRACT.md`.
-- [ ] Every removed compromise also removes the matching stale test assumptions.
+- [x] Every removed compromise also removes the matching stale test assumptions.
 - [ ] Prefer preserving syntax facts over recomputing or guessing them later.
 - [ ] Do not flatten structured syntax into strings unless there is a strong reason.
 - [ ] Do not keep host-tool assumptions in the front-end contract unless they are explicit compatibility layers.
@@ -342,7 +342,7 @@ Target files:
 - [ ] If file-scope executable statements remain supported, stop treating them as incidental declarations.
 - [ ] Introduce an explicit root representation for mixed item/statement programs if mixed file scope remains.
 - [ ] If declaration-only file scope is chosen, reject top-level calls, loops, conditionals, literals, and bare identifiers with explicit diagnostics.
-- [ ] Update `top_level_control_flow_and_calls.rs` and any other root-shape tests to match the chosen contract.
+- [x] Update `top_level_control_flow_and_calls.rs` and any other root-shape tests to match the chosen contract.
 - [ ] Update `FRONTEND_CONTRACT.md` so later phases do not have to infer module shape.
 
 ### 10.2 Preserve Method Receiver Types In The AST

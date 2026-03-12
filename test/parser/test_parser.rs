@@ -33,20 +33,6 @@ fn only_root_routine_body_nodes<'a>(declarations: &'a [AstNode]) -> Vec<&'a AstN
         .collect()
 }
 
-fn program_surface_nodes<'a>(declarations: &'a [AstNode]) -> Vec<&'a AstNode> {
-    let mut nodes = Vec::new();
-
-    for node in declarations {
-        nodes.push(node);
-
-        if let Some(body) = node.routine_body() {
-            nodes.extend(body.iter());
-        }
-    }
-
-    nodes
-}
-
 fn fol_type_has_qualified_segments(typ: &FolType, expected: &[&str]) -> bool {
     matches!(
         typ,
