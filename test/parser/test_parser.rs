@@ -113,6 +113,29 @@ fn parsed_top_level_origin<'a>(
         .expect("Parsed top-level node should have a syntax origin")
 }
 
+fn ast_node_origin<'a>(package: &'a ParsedPackage, node: &AstNode) -> &'a SyntaxOrigin {
+    let syntax_id = node
+        .syntax_id()
+        .expect("AST node should retain a syntax id in parsed-package mode");
+    package
+        .syntax_index
+        .origin(syntax_id)
+        .expect("AST node syntax id should resolve in the package syntax index")
+}
+
+fn qualified_path_origin<'a>(
+    package: &'a ParsedPackage,
+    path: &QualifiedPath,
+) -> &'a SyntaxOrigin {
+    let syntax_id = path
+        .syntax_id()
+        .expect("Qualified path should retain a syntax id in parsed-package mode");
+    package
+        .syntax_index
+        .origin(syntax_id)
+        .expect("Qualified path syntax id should resolve in the package syntax index")
+}
+
 #[cfg(test)]
 #[path = "test_parser_parts/alternative_routine_headers.rs"]
 mod alternative_routine_headers;

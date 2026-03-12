@@ -903,7 +903,10 @@ impl AstParser {
                 "Expected type reference".to_string(),
             )) as Box<dyn Glitch>
         })?;
-        let mut path = QualifiedPath::new(vec![first_name]);
+        let mut path = QualifiedPath::with_syntax_id(
+            vec![first_name],
+            self.record_syntax_origin(&token),
+        );
         let mut name = path.joined();
         let _ = tokens.bump();
 

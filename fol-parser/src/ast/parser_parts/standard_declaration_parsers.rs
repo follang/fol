@@ -641,6 +641,7 @@ impl AstParser {
 
         Ok(match routine_kind {
             KEYWORD::Keyword(BUILDIN::Pro) => AstNode::ProDecl {
+                syntax_id: self.record_syntax_origin(&routine_token),
                 options,
                 generics,
                 name,
@@ -653,6 +654,7 @@ impl AstParser {
                 inquiries,
             },
             KEYWORD::Keyword(BUILDIN::Log) => AstNode::LogDecl {
+                syntax_id: self.record_syntax_origin(&routine_token),
                 options,
                 generics,
                 name,
@@ -665,6 +667,7 @@ impl AstParser {
                 inquiries,
             },
             _ => AstNode::FunDecl {
+                syntax_id: self.record_syntax_origin(&routine_token),
                 options,
                 generics,
                 name,

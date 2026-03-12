@@ -132,6 +132,7 @@ impl AstParser {
             .into_iter()
             .zip(assigned_paths)
             .map(|(name, path)| AstNode::UseDecl {
+                syntax_id: self.record_syntax_origin(use_token),
                 options: options.clone(),
                 name,
                 path_type: path_type.clone(),

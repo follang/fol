@@ -151,6 +151,7 @@ impl AstParser {
         expected_segment_error: &str,
     ) -> Result<QualifiedPath, Box<dyn Glitch>> {
         let root = tokens.curr(false)?;
+        let syntax_id = self.record_syntax_origin(&root);
         let mut segments = vec![Self::expect_named_label(&root, expected_root_error)?];
         let _ = tokens.bump();
 
@@ -174,7 +175,7 @@ impl AstParser {
             let _ = tokens.bump();
         }
 
-        Ok(QualifiedPath::new(segments))
+        Ok(QualifiedPath::with_syntax_id(segments, syntax_id))
     }
 
     pub(super) fn parse_index_or_slice_expression(

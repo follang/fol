@@ -161,6 +161,7 @@ pub enum AstNode {
 
     /// Function declaration: fun[options] name(params): return_type = { body }
     FunDecl {
+        syntax_id: Option<SyntaxNodeId>,
         options: Vec<FunOption>,
         generics: Vec<Generic>,
         name: String,
@@ -175,6 +176,7 @@ pub enum AstNode {
 
     /// Procedure declaration: pro[options] name(params): return_type = { body }
     ProDecl {
+        syntax_id: Option<SyntaxNodeId>,
         options: Vec<FunOption>,
         generics: Vec<Generic>,
         name: String,
@@ -189,6 +191,7 @@ pub enum AstNode {
 
     /// Logical declaration: log[options] name(params): return_type = { body }
     LogDecl {
+        syntax_id: Option<SyntaxNodeId>,
         options: Vec<FunOption>,
         generics: Vec<Generic>,
         name: String,
@@ -215,6 +218,7 @@ pub enum AstNode {
     /// `path_segments` retains the parsed import segment/separator structure for
     /// later import work.
     UseDecl {
+        syntax_id: Option<SyntaxNodeId>,
         options: Vec<UseOption>,
         name: String,
         path_type: FolType,
@@ -503,17 +507,30 @@ pub enum AstNode {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct QualifiedPath {
     pub segments: Vec<String>,
+    pub syntax_id: Option<SyntaxNodeId>,
 }
 
 impl QualifiedPath {
     pub fn new(segments: Vec<String>) -> Self {
-        Self { segments }
+        Self {
+            segments,
+            syntax_id: None,
+        }
+    }
+
+    pub fn with_syntax_id(segments: Vec<String>, syntax_id: Option<SyntaxNodeId>) -> Self {
+        Self { segments, syntax_id }
     }
 
     pub fn from_joined(path: &str) -> Self {
         Self {
             segments: path.split("::").map(|segment| segment.to_string()).collect(),
+            syntax_id: None,
         }
+    }
+
+    pub fn syntax_id(&self) -> Option<SyntaxNodeId> {
+        self.syntax_id
     }
 
     pub fn is_qualified(&self) -> bool {
@@ -951,6 +968,17 @@ pub struct RecordInitField {
 }
 
 impl AstNode {
+    pub fn syntax_id(&self) -> Option<SyntaxNodeId> {
+        match self {
+            AstNode::FunDecl { syntax_id, .. }
+            | AstNode::ProDecl { syntax_id, .. }
+            | AstNode::LogDecl { syntax_id, .. }
+            | AstNode::UseDecl { syntax_id, .. } => *syntax_id,
+            AstNode::Commented { node, .. } => node.syntax_id(),
+            _ => None,
+        }
+    }
+
     /// Return the direct body nodes for routine-like AST nodes.
     pub fn routine_body(&self) -> Option<&[AstNode]> {
         match self {

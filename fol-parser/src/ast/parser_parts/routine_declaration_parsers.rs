@@ -96,6 +96,7 @@ impl AstParser {
             )?;
 
             return Ok(AstNode::FunDecl {
+                syntax_id: self.record_syntax_origin(&fun_token),
                 options,
                 generics: alt_generics,
                 name,
@@ -157,6 +158,7 @@ impl AstParser {
         )?;
 
         Ok(AstNode::FunDecl {
+            syntax_id: self.record_syntax_origin(&fun_token),
             options,
             generics,
             name,
@@ -265,6 +267,7 @@ impl AstParser {
             )?;
 
             return Ok(AstNode::LogDecl {
+                syntax_id: self.record_syntax_origin(&log_token),
                 options,
                 generics: alt_generics,
                 name,
@@ -326,6 +329,7 @@ impl AstParser {
         )?;
 
         Ok(AstNode::LogDecl {
+            syntax_id: self.record_syntax_origin(&log_token),
             options,
             generics,
             name,
@@ -434,6 +438,7 @@ impl AstParser {
             )?;
 
             return Ok(AstNode::ProDecl {
+                syntax_id: self.record_syntax_origin(&pro_token),
                 options,
                 generics: alt_generics,
                 name,
@@ -495,6 +500,7 @@ impl AstParser {
         )?;
 
         Ok(AstNode::ProDecl {
+            syntax_id: self.record_syntax_origin(&pro_token),
             options,
             generics,
             name,

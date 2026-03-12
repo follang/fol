@@ -3,12 +3,13 @@
 use super::{
     AstNode, BinaryOperator, CharEncoding, ContainerType, DeclOption, EntryVariantMeta,
     FloatSize, FolType, FunOption, Generic, InquiryTarget, IntSize, Literal, LoopCondition,
-    Parameter, QualifiedPath, RecordFieldMeta, RollingBinding, StandardKind, TypeDefinition, TypeOption,
-    UnaryOperator, UseOption, VarOption, WhenCase,
+    Parameter, QualifiedPath, RecordFieldMeta, RollingBinding, StandardKind, SyntaxIndex,
+    SyntaxNodeId, SyntaxOrigin, TypeDefinition, TypeOption, UnaryOperator, UseOption, VarOption,
+    WhenCase,
 };
 use fol_lexer::token::{BUILDIN, KEYWORD, LITERAL, OPERATOR, SYMBOL, VOID};
 use fol_types::*;
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 
@@ -84,6 +85,7 @@ impl Drop for ParseDepthGuard<'_> {
 pub struct AstParser {
     routine_depth: Cell<usize>,
     loop_depth: Cell<usize>,
+    syntax_index: RefCell<Option<SyntaxIndex>>,
 }
 
 impl Default for AstParser {
@@ -112,6 +114,28 @@ impl AstParser {
 
     pub(super) fn is_inside_loop(&self) -> bool {
         self.loop_depth.get() > 0
+    }
+
+    pub(super) fn start_syntax_tracking(&self) {
+        let previous = self.syntax_index.replace(Some(SyntaxIndex::default()));
+        debug_assert!(
+            previous.is_none(),
+            "parser syntax tracking should not already be active"
+        );
+    }
+
+    pub(super) fn finish_syntax_tracking(&self) -> SyntaxIndex {
+        self.syntax_index.borrow_mut().take().unwrap_or_default()
+    }
+
+    pub(super) fn record_syntax_origin(
+        &self,
+        token: &fol_lexer::lexer::stage3::element::Element,
+    ) -> Option<SyntaxNodeId> {
+        self.syntax_index
+            .borrow_mut()
+            .as_mut()
+            .map(|index| index.insert(SyntaxOrigin::from_token(token)))
     }
 }
 

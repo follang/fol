@@ -294,8 +294,24 @@ fn test_named_routine_inquiries_keep_named_quoted_and_qualified_targets() {
                     panic!("Expected a function declaration");
                 };
 
+                let target = match &inquiries[0] {
+                    AstNode::Inquiry { target, .. } => target,
+                    other => panic!("Expected inquiry node, got {other:?}"),
+                };
+                let matches_expected = match (&expected, target) {
+                    (InquiryTarget::Named(expected_name), InquiryTarget::Named(name))
+                    | (InquiryTarget::Quoted(expected_name), InquiryTarget::Quoted(name)) => {
+                        name == expected_name
+                    }
+                    (
+                        InquiryTarget::Qualified(expected_path),
+                        InquiryTarget::Qualified(path),
+                    ) => path.segments == expected_path.segments,
+                    _ => false,
+                };
+
                 assert!(
-                    matches!(&inquiries[0], AstNode::Inquiry { target, .. } if target == &expected),
+                    matches_expected,
                     "Expected first inquiry target {:?} for fixture {}",
                     expected,
                     path

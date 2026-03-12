@@ -91,3 +91,130 @@ fn test_parse_package_retains_item_origins_across_multiple_files() {
     assert_eq!(first_origin.line, 1);
     assert_eq!(second_origin.line, 1);
 }
+
+#[test]
+fn test_parse_package_retains_nested_routine_origins() {
+    let temp_root = unique_temp_root("nested_routine");
+    fs::create_dir_all(&temp_root).expect("Should create temporary nested-routine fixture dir");
+    let fixture = temp_root.join("nested_routines.fol");
+    fs::write(
+        &fixture,
+        "fun outer(): int = {\n    fun inner(): int = { return 1 }\n    return inner()\n}\n",
+    )
+    .expect("Should write temporary nested-routine fixture");
+
+    let parsed = parse_package_from_file(
+        fixture
+            .to_str()
+            .expect("Temporary nested-routine fixture path should be UTF-8"),
+    );
+
+    let expected_path = std::fs::canonicalize(&fixture)
+        .expect("Nested-routine fixture path should canonicalize")
+        .to_string_lossy()
+        .to_string();
+
+    fs::remove_dir_all(&temp_root).ok();
+
+    let outer_body = match &parsed.source_units[0].items[0].node {
+        AstNode::FunDecl { body, .. } => body,
+        other => panic!("Expected top-level outer routine, got {other:?}"),
+    };
+
+    let inner_origin = ast_node_origin(&parsed, &outer_body[0]);
+    assert_eq!(inner_origin.file.as_deref(), Some(expected_path.as_str()));
+    assert_eq!(inner_origin.line, 2);
+    assert_eq!(inner_origin.column, 5);
+}
+
+#[test]
+fn test_parse_package_retains_nested_use_decl_origins() {
+    let temp_root = unique_temp_root("nested_use");
+    fs::create_dir_all(&temp_root).expect("Should create temporary nested-use fixture dir");
+    let fixture = temp_root.join("nested_use.fol");
+    fs::write(
+        &fixture,
+        "fun outer(): int = {\n    use warn: loc = {pkg::warn}\n    return 0\n}\n",
+    )
+    .expect("Should write temporary nested-use fixture");
+
+    let parsed = parse_package_from_file(
+        fixture
+            .to_str()
+            .expect("Temporary nested-use fixture path should be UTF-8"),
+    );
+
+    let expected_path = std::fs::canonicalize(&fixture)
+        .expect("Nested-use fixture path should canonicalize")
+        .to_string_lossy()
+        .to_string();
+
+    fs::remove_dir_all(&temp_root).ok();
+
+    let outer_body = match &parsed.source_units[0].items[0].node {
+        AstNode::FunDecl { body, .. } => body,
+        other => panic!("Expected top-level outer routine, got {other:?}"),
+    };
+
+    let use_origin = ast_node_origin(&parsed, &outer_body[0]);
+    assert_eq!(use_origin.file.as_deref(), Some(expected_path.as_str()));
+    assert_eq!(use_origin.line, 2);
+    assert_eq!(use_origin.column, 5);
+}
+
+#[test]
+fn test_parse_package_retains_qualified_reference_origins() {
+    let temp_root = unique_temp_root("qualified_refs");
+    fs::create_dir_all(&temp_root).expect("Should create temporary qualified-ref fixture dir");
+    let fixture = temp_root.join("qualified_refs.fol");
+    fs::write(
+        &fixture,
+        "fun outer(): int = {\n    fun inner(): pkg::Value = {\n        return pkg::value\n    }\n    return 0\n}\n",
+    )
+    .expect("Should write temporary qualified-ref fixture");
+
+    let parsed = parse_package_from_file(
+        fixture
+            .to_str()
+            .expect("Temporary qualified-ref fixture path should be UTF-8"),
+    );
+
+    let expected_path = std::fs::canonicalize(&fixture)
+        .expect("Qualified-ref fixture path should canonicalize")
+        .to_string_lossy()
+        .to_string();
+
+    fs::remove_dir_all(&temp_root).ok();
+
+    let outer_body = match &parsed.source_units[0].items[0].node {
+        AstNode::FunDecl { body, .. } => body,
+        other => panic!("Expected top-level outer routine, got {other:?}"),
+    };
+
+    let inner = match &outer_body[0] {
+        AstNode::FunDecl {
+            return_type: Some(FolType::QualifiedNamed { path }),
+            body,
+            ..
+        } => (path, body),
+        other => panic!("Expected nested routine with qualified return type, got {other:?}"),
+    };
+
+    let return_type_origin = qualified_path_origin(&parsed, inner.0);
+    assert_eq!(return_type_origin.file.as_deref(), Some(expected_path.as_str()));
+    assert_eq!(return_type_origin.line, 2);
+    assert_eq!(return_type_origin.column, 18);
+
+    let value_path = match &inner.1[0] {
+        AstNode::Return { value } => match value.as_deref() {
+            Some(AstNode::QualifiedIdentifier { path }) => path,
+            other => panic!("Expected qualified identifier return value, got {other:?}"),
+        },
+        other => panic!("Expected return statement, got {other:?}"),
+    };
+
+    let value_origin = qualified_path_origin(&parsed, value_path);
+    assert_eq!(value_origin.file.as_deref(), Some(expected_path.as_str()));
+    assert_eq!(value_origin.line, 3);
+    assert_eq!(value_origin.column, 16);
+}

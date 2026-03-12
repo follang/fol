@@ -3,6 +3,7 @@ use super::*;
 #[test]
 fn test_log_decl_syntactic_type_hint_defaults_to_bool() {
     let node = AstNode::LogDecl {
+        syntax_id: None,
         options: Vec::new(),
         generics: Vec::new(),
         name: "dating".to_string(),
@@ -43,6 +44,7 @@ fn test_log_decl_children_include_body_and_inquiries() {
         body: vec![AstNode::Literal(Literal::Boolean(true))],
     };
     let node = AstNode::LogDecl {
+        syntax_id: None,
         options: Vec::new(),
         generics: Vec::new(),
         name: "dating".to_string(),
