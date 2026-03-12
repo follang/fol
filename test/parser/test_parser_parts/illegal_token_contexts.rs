@@ -41,6 +41,26 @@ fn test_call_argument_illegal_token_reports_offending_token_location() {
 }
 
 #[test]
+fn test_call_argument_illegal_raw_token_reports_offending_token_location() {
+    let (message, line, column) =
+        parse_error_snapshot("test/parser/simple_fun_call_illegal_raw_string_arg.fol");
+
+    assert!(
+        message.contains("Parser encountered illegal token"),
+        "Illegal raw call-argument token should report an explicit illegal-token diagnostic, got: {}",
+        message
+    );
+    assert_eq!(
+        line, 2,
+        "Illegal raw call-argument token should report the call site line"
+    );
+    assert!(
+        column > 0,
+        "Illegal raw call-argument token should retain a concrete source column"
+    );
+}
+
+#[test]
 fn test_call_argument_illegal_numeric_token_reports_offending_token_location() {
     let (message, line, column) =
         parse_error_snapshot("test/parser/simple_fun_call_illegal_numeric_arg.fol");
@@ -198,6 +218,26 @@ fn test_return_expression_illegal_token_reports_offending_token_location() {
 }
 
 #[test]
+fn test_return_expression_illegal_raw_token_reports_offending_token_location() {
+    let (message, line, column) =
+        parse_error_snapshot("test/parser/simple_fun_return_illegal_raw_value.fol");
+
+    assert!(
+        message.contains("Parser encountered illegal token"),
+        "Illegal raw return-expression token should report an explicit illegal-token diagnostic, got: {}",
+        message
+    );
+    assert_eq!(
+        line, 2,
+        "Illegal raw return-expression token should report the return line"
+    );
+    assert!(
+        column > 0,
+        "Illegal raw return-expression token should retain a concrete source column"
+    );
+}
+
+#[test]
 fn test_return_expression_illegal_numeric_token_reports_offending_token_location() {
     let (message, line, column) =
         parse_error_snapshot("test/parser/simple_fun_return_illegal_numeric_value.fol");
@@ -249,6 +289,26 @@ fn test_parameter_default_illegal_token_reports_offending_token_location() {
     assert!(
         parse_error.column() > 0,
         "Illegal parameter-default token should retain a concrete source column"
+    );
+}
+
+#[test]
+fn test_parameter_default_illegal_raw_token_reports_offending_token_location() {
+    let (message, line, column) =
+        parse_error_snapshot("test/parser/simple_fun_param_default_illegal_raw_value.fol");
+
+    assert!(
+        message.contains("Parser encountered illegal token"),
+        "Illegal raw parameter-default token should report an explicit illegal-token diagnostic, got: {}",
+        message
+    );
+    assert_eq!(
+        line, 1,
+        "Illegal raw parameter-default token should report the signature line"
+    );
+    assert!(
+        column > 0,
+        "Illegal raw parameter-default token should retain a concrete source column"
     );
 }
 
