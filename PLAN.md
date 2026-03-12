@@ -256,7 +256,7 @@ Target files:
 - [x] Treat one-line and multiline backtick comments as the same delimited syntax family instead of emulating slash comments.
 - [x] Implement doc-comment detection for the `[doc]` prefix if it remains in scope.
 - [x] Decide whether doc comments become a token family, lexer side channel, or deferred metadata stream.
-- [ ] Remove slash comment logic if it is no longer part of the front-end contract.
+- [x] Keep slash comment logic only as explicit compatibility behavior while it remains part of the front-end contract.
 - [x] Delete dead `stage2::make_comment()` if comment handling no longer needs it.
 - [x] Add fixtures for normal comments, doc comments, multiline comments, and unterminated comment spans.
 - [x] Add tests proving comment delimiters inside quoted literals do not start comments.
@@ -394,7 +394,7 @@ Target files:
 - [x] Replace `trim_matches`-based name lowering with a dedicated unquote helper that matches the final lexer contract.
 - [x] Lower cooked character/string literals according to the chosen literal authority.
 - [x] Lower raw character/string literals according to the chosen literal authority.
-- [ ] Implement imaginary literal lowering if Phase 2 adds imaginary token support.
+- [x] Keep imaginary literal lowering out of scope because Phase 2 intentionally did not add imaginary token support.
 - [x] Decide whether raw-vs-cooked must survive in the AST or can be normalized away after value lowering.
 - [x] Add tests for quoted names using both quote families if both remain valid name surfaces.
 
