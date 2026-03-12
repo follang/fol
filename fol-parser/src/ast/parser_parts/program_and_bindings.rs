@@ -2,6 +2,12 @@ use super::*;
 use crate::ast::BindingPattern;
 use crate::{ParsedPackage, ParsedTopLevel, SyntaxIndex};
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum RootSurface {
+    MixedProgram,
+    DeclarationOnly,
+}
+
 impl AstParser {
     pub fn new() -> Self {
         Self {
@@ -35,6 +41,20 @@ impl AstParser {
         ))
     }
 
+    pub fn parse_decl_package(
+        &mut self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<ParsedPackage, Vec<Box<dyn Glitch>>> {
+        let sources = tokens.sources().to_vec();
+        let (entries, syntax_index) =
+            self.parse_top_level_entries_with_surface(tokens, RootSurface::DeclarationOnly)?;
+        Ok(ParsedPackage::from_sources_and_entries(
+            &sources,
+            entries,
+            syntax_index,
+        ))
+    }
+
     fn push_top_level_entry(
         &self,
         entries: &mut Vec<ParsedTopLevel>,
@@ -61,6 +81,14 @@ impl AstParser {
     fn parse_top_level_entries(
         &mut self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<(Vec<ParsedTopLevel>, SyntaxIndex), Vec<Box<dyn Glitch>>> {
+        self.parse_top_level_entries_with_surface(tokens, RootSurface::MixedProgram)
+    }
+
+    fn parse_top_level_entries_with_surface(
+        &mut self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+        surface: RootSurface,
     ) -> Result<(Vec<ParsedTopLevel>, SyntaxIndex), Vec<Box<dyn Glitch>>> {
         self.start_syntax_tracking();
         let mut entries = Vec::new();
@@ -402,6 +430,17 @@ impl AstParser {
                 }
                 self.bump_if_no_progress(tokens, before);
                 if tokens.curr(false).is_err() {
+                    break;
+                }
+                continue;
+            }
+
+            if matches!(surface, RootSurface::DeclarationOnly) {
+                errors.push(Box::new(ParseError::from_token(
+                    &token,
+                    "Expected declaration or standalone comment at file root".to_string(),
+                )));
+                if tokens.bump().is_none() {
                     break;
                 }
                 continue;

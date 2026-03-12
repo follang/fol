@@ -393,9 +393,9 @@ Each slice should land with tests in the same commit and be gated by:
 
 Progress snapshot as of 2026-03-12:
 
-- completed: `0.1`, `0.2`, `1.1`, `1.2`, `1.3`, `2.1`, `2.2`, `2.3`, `2.4`
-- in progress overall: successful parse origins and first-class source-unit parser output are started
-- still open: declaration-only file roots, compatibility migration, visibility prep, and docs handoff
+- completed: `0.1`, `0.2`, `1.1`, `1.2`, `1.3`, `2.1`, `2.2`, `2.3`, `2.4`, `3.1`
+- in progress overall: source-unit-aware parser output now has a dedicated declaration-only file-root path
+- still open: strict root rejections, compatibility migration, visibility prep, and docs handoff
 
 ### Phase 0: Planning And Contract Setup
 
@@ -472,6 +472,7 @@ Progress snapshot as of 2026-03-12:
 - Add a dedicated parser path for declaration-only file roots
 - Define the accepted top-level declaration families explicitly
 - Add positive tests for all accepted file-root declaration families
+- Status: complete on 2026-03-12
 
 #### Slice 3.2
 
