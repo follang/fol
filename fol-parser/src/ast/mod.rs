@@ -798,6 +798,19 @@ pub struct RecordInitField {
 }
 
 impl AstNode {
+    /// Return the direct body nodes for routine-like AST nodes.
+    pub fn routine_body(&self) -> Option<&[AstNode]> {
+        match self {
+            AstNode::FunDecl { body, .. }
+            | AstNode::ProDecl { body, .. }
+            | AstNode::LogDecl { body, .. }
+            | AstNode::AnonymousFun { body, .. }
+            | AstNode::AnonymousPro { body, .. }
+            | AstNode::AnonymousLog { body, .. } => Some(body.as_slice()),
+            _ => None,
+        }
+    }
+
     /// Get the type of this AST node (for type inference)
     pub fn get_type(&self) -> Option<FolType> {
         match self {

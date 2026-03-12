@@ -16,19 +16,31 @@ fn inquiry_target_is(target: &InquiryTarget, expected: &str) -> bool {
     inquiry_target_key(target) == expected
 }
 
+fn program_root_nodes<'a>(declarations: &'a [AstNode]) -> Vec<&'a AstNode> {
+    declarations.iter().collect()
+}
+
+fn only_root_routine_body_nodes<'a>(declarations: &'a [AstNode]) -> Vec<&'a AstNode> {
+    assert_eq!(
+        declarations.len(),
+        1,
+        "Expected a single root node before inspecting a routine body"
+    );
+    declarations[0]
+        .routine_body()
+        .expect("Expected the only root node to be a routine declaration")
+        .iter()
+        .collect()
+}
+
 fn program_surface_nodes<'a>(declarations: &'a [AstNode]) -> Vec<&'a AstNode> {
     let mut nodes = Vec::new();
 
     for node in declarations {
         nodes.push(node);
 
-        match node {
-            AstNode::FunDecl { body, .. }
-            | AstNode::LogDecl { body, .. }
-            | AstNode::ProDecl { body, .. } => {
-                nodes.extend(body.iter());
-            }
-            _ => {}
+        if let Some(body) = node.routine_body() {
+            nodes.extend(body.iter());
         }
     }
 
