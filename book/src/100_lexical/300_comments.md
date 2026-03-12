@@ -37,5 +37,7 @@ intentionally supported by the current lexer and parser.
 
 The current front-end also preserves comment kind and raw spelling past lexing. In the
 parser today, standalone root comments and standalone routine-body comments lower to
-explicit AST comment nodes so later doc-comment tooling can build on retained comment
-content instead of re-scanning raw source text.
+explicit AST comment nodes, and many inline expression-owned comments now survive
+through `AstNode::Commented` wrappers around the parsed node they belong to. That
+gives later doc-comment tooling retained comment content to build on instead of
+re-scanning raw source text.

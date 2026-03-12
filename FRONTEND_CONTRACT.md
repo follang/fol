@@ -6,7 +6,7 @@ tests actually enforce today.
 ## Decision Summary
 
 - Comments: backtick comments are authoritative; slash comments are frozen
-  compatibility syntax; standalone root/body comments survive as explicit AST nodes.
+  compatibility syntax; comments survive as explicit AST nodes or comment wrappers.
 - Literals: the lexer exposes cooked vs raw quoted families; the parser owns
   character-vs-string lowering; imaginary literals are currently out of scope.
 - Receivers: named `fun`, `log`, and `pro` declarations retain receiver types directly
@@ -181,12 +181,16 @@ tests actually enforce today.
   authoritative book spelling.
 - Backtick doc-comment spellings using the `[doc]` prefix stay distinct from ordinary
   comments all the way through the parser boundary.
-- The parser currently lowers standalone root-level comments and standalone routine-body
-  comments into `AstNode::Comment { kind, raw }` nodes while preserving the original
-  comment spelling in `raw`.
-- Inline comments that appear inside other syntax forms still behave as non-semantic
-  separators in the current parser; comment retention is currently guaranteed for
-  standalone sibling nodes, not for every possible inline trivia position.
+- The parser lowers standalone root-level comments and standalone routine-body comments
+  into `AstNode::Comment { kind, raw }` nodes while preserving the original comment
+  spelling in `raw`.
+- The parser also preserves comments that lead or trail many expression-owned syntax
+  nodes through `AstNode::Commented { leading_comments, node, trailing_comments }`.
+- That wrapper now covers inline expression, postfix, call-argument, and container-
+  element comment retention without changing the underlying parsed node shape.
+- Full universal trivia attachment is still intentionally out of scope for this phase;
+  some parser-owned aggregates that do not lower through `AstNode` members may still
+  need a later dedicated comment carrier if tooling wants every possible comment slot.
 - Comment delimiters inside quoted literals stay inside the literal payload and do not
   start comments.
 
@@ -314,6 +318,9 @@ tests actually enforce today.
   body-level forms that the current grammar supports.
 - Standalone leading and adjacent body comments are retained in those body lists as
   `AstNode::Comment` siblings, preserving doc-vs-ordinary kind and raw spelling.
+- Parsed expressions inside returns, assignments, postfix chains, call arguments, and
+  container literals may also be wrapped in `AstNode::Commented` when comments belong
+  to that syntax node instead of standing alone as sibling statements.
 
 ### Declaration Family Shapes
 

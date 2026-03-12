@@ -29,8 +29,9 @@ Scope: `fol-stream`, `fol-lexer`, `fol-parser`, and front-end contract docs only
 - Done for the current front-end contract.
 - Comment and doc-comment kinds survive lexing as parser-visible tokens.
 - Standalone root-level and routine-body comments are retained as `AstNode::Comment { kind, raw }`.
+- Inline expression, postfix, call-argument, and container-element comments are retained through `AstNode::Commented { leading_comments, node, trailing_comments }`.
 - Raw comment spelling is preserved for future doc-comment parsing work.
-- The current contract intentionally keeps richer inline-trivia attachment out of scope for this phase.
+- The current contract still keeps fully universal trivia attachment out of scope for this phase.
 
 ### 3.4 Parser: Clarify The Mixed-Root Program Carrier
 
@@ -68,4 +69,4 @@ Scope: `fol-stream`, `fol-lexer`, `fol-parser`, and front-end contract docs only
 ## 3. Notes
 
 - Later semantic analysis, type checking, ownership, runtime, and backend work remain out of scope for this plan.
-- If future documentation tooling needs richer comment attachment than standalone root/body comment nodes, that can be modeled as a later parser/AST extension rather than a blocker for the completed front-end hardening pass.
+- If future documentation tooling needs richer comment attachment than the current mix of `AstNode::Comment` siblings and `AstNode::Commented` wrappers, that can be modeled as a later parser/AST extension rather than a blocker for the completed front-end hardening pass.

@@ -52,7 +52,7 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - Active stream tests: `53`
 - Parser-focused Rust tests under `test/parser`: `1068`
 - Observed current unit test run: `1` unit test, green
-- Observed current integration run: `1212` integration tests, green
+- Observed current integration run: `1223` integration tests, green
 
 ## 3. Current Headline Status
 
@@ -75,7 +75,7 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `make test`: passed
 - Current observed totals:
 - `1` unit test passed
-- `1212` integration tests passed
+- `1223` integration tests passed
 - Observed active failures: `0`
 
 ## 5. What Has Been Completed So Far
@@ -148,6 +148,8 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - Empty `use` path segments now report dedicated separator-focused diagnostics.
 - Method receiver diagnostics now match the actual parser contract.
 - The stale report-era literal-lowering module name was removed.
+- Comments and doc comments now remain AST-visible beyond standalone root/body sibling nodes.
+- Inline expression, postfix, call-argument, and container-element comments are preserved through `AstNode::Commented { leading_comments, node, trailing_comments }`.
 - Parser failure-shape coverage is much broader:
 - unknown options
 - conflicting options
@@ -271,12 +273,12 @@ These are not active test failures. They are the remaining front-end compromises
 
 ### 7.2 Code vs Long-Term Shape
 
-- Stream still carries a small implementation-cleanliness mismatch between its now-explicit contract and its regex-based `.mod` detection.
 - Lexer still carries compatibility behavior for slash comments even though backticks are the primary documented comment form.
 - Parser still exposes a few AST naming and helper choices that are good enough for this phase but not obviously ideal for later semantic ownership:
 - mixed-root `Program.declarations`
 - raw plus structured `use` path storage
 - heuristic `AstNode::get_type()`
+- comments are now retained much more broadly, but truly universal trivia attachment is still a later AST-shape choice rather than a finished contract item
 
 ## 8. Current Front-End Debt Worth Tracking, But Not Blocking
 
@@ -284,8 +286,6 @@ This section is intentionally limited to stream, lexer, and parser. None of thes
 
 ### 8.1 Stream Follow-Up
 
-- replace regex-based `.mod` detection with a direct suffix check
-- remove per-file `chars().collect()` duplication from `FileStream::next_char` if stream cleanup becomes worth the churn
 - keep eager loading explicit unless there is a deliberate decision to change the front-end loading model
 
 ### 8.2 Lexer Follow-Up
