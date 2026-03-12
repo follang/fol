@@ -393,9 +393,9 @@ Each slice should land with tests in the same commit and be gated by:
 
 Progress snapshot as of 2026-03-12:
 
-- completed: `0.1`, `0.2`, `1.1`, `1.2`, `1.3`, `2.1`, `2.2`, `2.3`, `2.4`, `3.1`, `3.2`
-- in progress overall: declaration-only file roots now reject executable calls and assignments as statement-level root errors
-- still open: control-flow and literal root rejections, comment-root model finalization, compatibility migration, visibility prep, and docs handoff
+- completed: `0.1`, `0.2`, `1.1`, `1.2`, `1.3`, `2.1`, `2.2`, `2.3`, `2.4`, `3.1`, `3.2`, `3.3`
+- in progress overall: declaration-only file roots now reject calls, assignments, control-flow, and representative literal roots with explicit root diagnostics
+- still open: comment-root model finalization, compatibility migration, visibility prep, and docs handoff
 
 ### Phase 0: Planning And Contract Setup
 
@@ -484,6 +484,7 @@ Progress snapshot as of 2026-03-12:
 
 - Reject top-level control-flow and free literal-expression roots where the book does not support them
 - Add negative tests for `when`, `loop`, and representative literal roots
+- Status: complete on 2026-03-12
 
 #### Slice 3.4
 

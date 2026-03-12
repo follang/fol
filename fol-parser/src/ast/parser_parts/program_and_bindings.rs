@@ -589,6 +589,115 @@ impl AstParser {
                 continue;
             }
 
+            if matches!(surface, RootSurface::DeclarationOnly)
+                && matches!(
+                    key,
+                    KEYWORD::Keyword(BUILDIN::Return)
+                        | KEYWORD::Keyword(BUILDIN::Break)
+                        | KEYWORD::Keyword(BUILDIN::Yeild)
+                        | KEYWORD::Keyword(BUILDIN::When)
+                        | KEYWORD::Keyword(BUILDIN::If)
+                        | KEYWORD::Keyword(BUILDIN::Select)
+                        | KEYWORD::Keyword(BUILDIN::While)
+                        | KEYWORD::Keyword(BUILDIN::Loop)
+                        | KEYWORD::Keyword(BUILDIN::For)
+                        | KEYWORD::Keyword(BUILDIN::Each)
+                )
+            {
+                let before = (
+                    token.loc().row(),
+                    token.loc().col(),
+                    token.con().to_string(),
+                );
+                let hit_eof = if matches!(key, KEYWORD::Keyword(BUILDIN::Return)) {
+                    self.reject_file_root_form(
+                        tokens,
+                        &token,
+                        before,
+                        "Control-flow statements are not allowed at file root",
+                        &mut errors,
+                        |parser, tokens| parser.parse_return_stmt(tokens).map(|_| ()),
+                    )
+                } else if matches!(key, KEYWORD::Keyword(BUILDIN::Break)) {
+                    self.reject_file_root_form(
+                        tokens,
+                        &token,
+                        before,
+                        "Control-flow statements are not allowed at file root",
+                        &mut errors,
+                        |parser, tokens| parser.parse_break_stmt(tokens).map(|_| ()),
+                    )
+                } else if matches!(key, KEYWORD::Keyword(BUILDIN::Yeild)) {
+                    self.reject_file_root_form(
+                        tokens,
+                        &token,
+                        before,
+                        "Control-flow statements are not allowed at file root",
+                        &mut errors,
+                        |parser, tokens| parser.parse_yield_stmt(tokens).map(|_| ()),
+                    )
+                } else if matches!(key, KEYWORD::Keyword(BUILDIN::When)) {
+                    self.reject_file_root_form(
+                        tokens,
+                        &token,
+                        before,
+                        "Control-flow statements are not allowed at file root",
+                        &mut errors,
+                        |parser, tokens| parser.parse_when_stmt(tokens).map(|_| ()),
+                    )
+                } else if matches!(key, KEYWORD::Keyword(BUILDIN::If)) {
+                    self.reject_file_root_form(
+                        tokens,
+                        &token,
+                        before,
+                        "Control-flow statements are not allowed at file root",
+                        &mut errors,
+                        |parser, tokens| parser.parse_if_stmt(tokens).map(|_| ()),
+                    )
+                } else if matches!(key, KEYWORD::Keyword(BUILDIN::Select)) {
+                    self.reject_file_root_form(
+                        tokens,
+                        &token,
+                        before,
+                        "Control-flow statements are not allowed at file root",
+                        &mut errors,
+                        |parser, tokens| parser.parse_select_stmt(tokens).map(|_| ()),
+                    )
+                } else {
+                    self.reject_file_root_form(
+                        tokens,
+                        &token,
+                        before,
+                        "Control-flow statements are not allowed at file root",
+                        &mut errors,
+                        |parser, tokens| parser.parse_loop_stmt(tokens).map(|_| ()),
+                    )
+                };
+                if hit_eof {
+                    break;
+                }
+                continue;
+            }
+
+            if matches!(surface, RootSurface::DeclarationOnly)
+                && (key.is_literal()
+                    || matches!(
+                        key,
+                        KEYWORD::Keyword(BUILDIN::True) | KEYWORD::Keyword(BUILDIN::False)
+                    )
+                    || (key.is_ident() && token.con().trim() == "nil"))
+            {
+                errors.push(Box::new(ParseError::from_token(
+                    &token,
+                    "Literal expressions are not allowed at file root".to_string(),
+                )));
+                if tokens.bump().is_none() {
+                    break;
+                }
+                self.skip_ignorable(tokens);
+                continue;
+            }
+
             if matches!(surface, RootSurface::DeclarationOnly) {
                 errors.push(Box::new(ParseError::from_token(
                     &token,

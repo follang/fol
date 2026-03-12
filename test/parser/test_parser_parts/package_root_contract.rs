@@ -136,3 +136,65 @@ fn test_decl_package_rejects_top_level_assignments_as_one_root_error() {
     assert_eq!(errors[1].line(), 2);
     assert_eq!(errors[1].column(), 1);
 }
+
+#[test]
+fn test_decl_package_rejects_top_level_when_statement_as_one_root_error() {
+    let errors = parse_decl_package_errors("test/parser/simple_when_top_level_statement.fol");
+
+    assert_eq!(
+        errors.len(),
+        1,
+        "A forbidden top-level when statement should be rejected as one file-root error"
+    );
+    assert!(
+        errors[0]
+            .to_string()
+            .contains("Control-flow statements are not allowed at file root"),
+        "Expected control-flow file-root diagnostic, got: {}",
+        errors[0]
+    );
+    assert_eq!(errors[0].line(), 1);
+    assert_eq!(errors[0].column(), 1);
+}
+
+#[test]
+fn test_decl_package_rejects_top_level_loop_statement_as_one_root_error() {
+    let errors = parse_decl_package_errors("test/parser/simple_loop_top_level.fol");
+
+    assert_eq!(
+        errors.len(),
+        1,
+        "A forbidden top-level loop statement should be rejected as one file-root error"
+    );
+    assert!(
+        errors[0]
+            .to_string()
+            .contains("Control-flow statements are not allowed at file root"),
+        "Expected control-flow file-root diagnostic, got: {}",
+        errors[0]
+    );
+    assert_eq!(errors[0].line(), 1);
+    assert_eq!(errors[0].column(), 1);
+}
+
+#[test]
+fn test_decl_package_rejects_literal_roots_line_by_line() {
+    let errors = parse_decl_package_errors("test/parser/simple_literal_logic.fol");
+
+    assert_eq!(
+        errors.len(),
+        3,
+        "Each forbidden literal root should produce one file-root error"
+    );
+    for (index, error) in errors.iter().enumerate() {
+        assert!(
+            error
+                .to_string()
+                .contains("Literal expressions are not allowed at file root"),
+            "Expected literal file-root diagnostic, got: {}",
+            error
+        );
+        assert_eq!(error.line(), index + 1);
+        assert_eq!(error.column(), 1);
+    }
+}
