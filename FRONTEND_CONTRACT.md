@@ -3,6 +3,28 @@
 This file records the current stream, lexer, and parser contracts that the code and
 tests actually enforce today.
 
+## Decision Summary
+
+- Comments: backtick comments are authoritative; slash comments remain explicit
+  compatibility syntax in the current front-end.
+- Literals: the lexer exposes cooked vs raw quoted families; the parser owns
+  character-vs-string lowering; imaginary literals are currently out of scope.
+- Receivers: named `fun`, `log`, and `pro` declarations retain receiver types directly
+  in the AST, and receiver validation stays syntax-oriented at parser time.
+- Packages: package identity comes from explicit override or explicit entry root, not
+  host-tool manifests.
+- Root surface: file scope is intentionally mixed and script-like, represented through
+  one `AstNode::Program { declarations }` root that preserves source order.
+
+## Intentional Book Divergences
+
+- The current front-end still accepts `//` and `/* ... */` comments as compatibility
+  syntax even though backticks remain the authoritative book comment form.
+- The current lexer/parser boundary still accepts standalone `_` as a dedicated
+  placeholder or binder surface.
+- Imaginary literals remain outside the hardened stream/lexer/parser scope even though
+  some book pages still discuss them at the language-design level.
+
 ## Lexer Stage Ownership
 
 - `stage0`: consumes the unified character stream, preserves source locations, and
