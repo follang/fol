@@ -1164,6 +1164,106 @@ mod lexer_tests {
     }
 
     #[test]
+    fn test_literal_family_fixtures_keep_distinct_token_families() {
+        let cooked = tokenize_file("test/parser/simple_literal_cooked_family.fol");
+        let raw = tokenize_file("test/parser/simple_literal_raw_family.fol");
+
+        let cooked_significant: Vec<(KEYWORD, String)> = cooked
+            .into_iter()
+            .filter(|(key, _)| !key.is_void())
+            .collect();
+        let raw_significant: Vec<(KEYWORD, String)> = raw
+            .into_iter()
+            .filter(|(key, _)| !key.is_void())
+            .collect();
+
+        assert_eq!(
+            cooked_significant,
+            vec![
+                (KEYWORD::Literal(LITERAL::CookedQuoted), "\"a\"".to_string()),
+                (
+                    KEYWORD::Literal(LITERAL::CookedQuoted),
+                    "\"beta\"".to_string(),
+                ),
+            ],
+            "Cooked-family parser fixtures should still surface as cooked quoted tokens before parser lowering"
+        );
+        assert_eq!(
+            raw_significant,
+            vec![
+                (KEYWORD::Literal(LITERAL::RawQuoted), "'z'".to_string()),
+                (KEYWORD::Literal(LITERAL::RawQuoted), "'omega'".to_string()),
+            ],
+            "Raw-family parser fixtures should still surface as raw quoted tokens before parser lowering"
+        );
+    }
+
+    #[test]
+    fn test_cooked_fixture_payloads_preserve_multiline_and_escape_spelling() {
+        let multiline = tokenize_file("test/parser/simple_literal_multiline_cooked.fol");
+        let escapes = tokenize_file("test/parser/simple_literal_cooked_escape_quotes.fol");
+        let unicode = tokenize_file("test/parser/simple_literal_cooked_unicode_escapes.fol");
+
+        let multiline_significant: Vec<(KEYWORD, String)> = multiline
+            .into_iter()
+            .filter(|(key, _)| !key.is_void())
+            .collect();
+        let escape_significant: Vec<(KEYWORD, String)> = escapes
+            .into_iter()
+            .filter(|(key, _)| !key.is_void())
+            .collect();
+        let unicode_significant: Vec<(KEYWORD, String)> = unicode
+            .into_iter()
+            .filter(|(key, _)| !key.is_void())
+            .collect();
+
+        assert_eq!(
+            multiline_significant,
+            vec![(
+                KEYWORD::Literal(LITERAL::CookedQuoted),
+                "\"foo\\\n    bar\"".to_string(),
+            )],
+            "Multiline cooked fixtures should keep the physical continuation spelling in the lexer payload"
+        );
+        assert_eq!(
+            escape_significant,
+            vec![
+                (
+                    KEYWORD::Literal(LITERAL::CookedQuoted),
+                    "\"say \\\"hi\\\"\"".to_string(),
+                ),
+                (
+                    KEYWORD::Literal(LITERAL::CookedQuoted),
+                    "\"\\\\path\"".to_string(),
+                ),
+            ],
+            "Cooked quote/backslash fixtures should preserve the source escape spelling until parser lowering"
+        );
+        assert_eq!(
+            unicode_significant,
+            vec![
+                (
+                    KEYWORD::Literal(LITERAL::CookedQuoted),
+                    "\"\\65\"".to_string(),
+                ),
+                (
+                    KEYWORD::Literal(LITERAL::CookedQuoted),
+                    "\"\\x41\"".to_string(),
+                ),
+                (
+                    KEYWORD::Literal(LITERAL::CookedQuoted),
+                    "\"\\u0041\"".to_string(),
+                ),
+                (
+                    KEYWORD::Literal(LITERAL::CookedQuoted),
+                    "\"\\u{41}\"".to_string(),
+                ),
+            ],
+            "Cooked unicode fixtures should preserve each raw escape spelling in the lexer payload"
+        );
+    }
+
+    #[test]
     fn test_symbols() {
         let tokens = tokenize_file("test/lexer/symbols.fol");
 
