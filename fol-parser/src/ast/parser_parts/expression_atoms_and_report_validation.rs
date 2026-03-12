@@ -244,6 +244,15 @@ impl AstParser {
         }
 
         let normalized = value.replace('_', "");
+        let numeric_error = |message: String| {
+            Box::new(ParseError {
+                message,
+                file: None,
+                line: 0,
+                column: 0,
+                length: value.trim().len().max(1),
+            }) as Box<dyn Glitch>
+        };
 
         if let Some(hex) = normalized
             .strip_prefix("0x")
@@ -276,8 +285,27 @@ impl AstParser {
             return Ok(AstNode::Literal(Literal::Integer(int_val)));
         }
 
+        let decimal_looks_integral =
+            normalized.chars().next().is_some_and(|ch| ch.is_ascii_digit())
+                && !normalized.contains('.')
+                && !normalized.contains('e')
+                && !normalized.contains('E');
+        if decimal_looks_integral {
+            return Err(numeric_error(format!(
+                "Decimal literal '{}' is out of range for current parser literal lowering",
+                value
+            )));
+        }
+
         if let Ok(float_val) = normalized.parse::<f64>() {
             return Ok(AstNode::Literal(Literal::Float(float_val)));
+        }
+
+        if normalized.chars().next().is_some_and(|ch| ch.is_ascii_digit()) {
+            return Err(numeric_error(format!(
+                "Decimal literal '{}' is out of range for current parser literal lowering",
+                value
+            )));
         }
 
         // Default to identifier

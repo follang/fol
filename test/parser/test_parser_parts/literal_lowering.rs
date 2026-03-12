@@ -1,4 +1,46 @@
 use super::*;
+use std::fs;
+use std::time::{SystemTime, UNIX_EPOCH};
+
+fn unique_temp_root(label: &str) -> std::path::PathBuf {
+    let stamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("System time should be after unix epoch")
+        .as_nanos();
+    std::env::temp_dir().join(format!(
+        "fol_parser_literal_lowering_{}_{}_{}",
+        label,
+        std::process::id(),
+        stamp
+    ))
+}
+
+fn parse_first_error_from_source(label: &str, source: &str) -> ParseError {
+    let temp_root = unique_temp_root(label);
+    fs::create_dir_all(&temp_root).expect("Should create temporary literal fixture dir");
+    let fixture = temp_root.join("literal_lowering.fol");
+    fs::write(&fixture, source).expect("Should write temporary literal fixture");
+
+    let mut file_stream = FileStream::from_file(
+        fixture
+            .to_str()
+            .expect("Temporary literal fixture path should be UTF-8"),
+    )
+    .expect("Should open temporary literal fixture");
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject out-of-range decimal literals");
+
+    fs::remove_dir_all(&temp_root).ok();
+
+    errors
+        .first()
+        .and_then(|error| error.as_ref().as_any().downcast_ref::<ParseError>())
+        .cloned()
+        .expect("First parser error should be ParseError")
+}
 
 #[test]
 fn test_top_level_string_and_character_literals_lower_cleanly() {
@@ -119,6 +161,44 @@ fn test_parse_literal_supports_float_payloads() {
         literal,
         AstNode::Literal(Literal::Float(3.5)),
         "Float payloads should lower to Literal::Float"
+    );
+}
+
+#[test]
+fn test_parse_literal_rejects_out_of_range_decimal_instead_of_lowering_to_identifier() {
+    let parser = AstParser::new();
+    let error = parser
+        .parse_literal("9223372036854775808")
+        .expect_err("Out-of-range decimal literal should fail instead of becoming an identifier");
+
+    assert!(
+        error
+            .to_string()
+            .contains("out of range for current parser literal lowering"),
+        "Decimal overflow should report an explicit parse failure, got: {}",
+        error
+    );
+}
+
+#[test]
+fn test_top_level_out_of_range_decimal_reports_parse_error() {
+    let error = parse_first_error_from_source(
+        "decimal_overflow",
+        "9223372036854775808\n",
+    );
+
+    assert!(
+        error
+            .to_string()
+            .contains("out of range for current parser literal lowering"),
+        "Out-of-range decimal tokens should report a parse error, got: {}",
+        error
+    );
+    assert_eq!(error.line(), 1, "Decimal overflow should report its own line");
+    assert_eq!(
+        error.column(),
+        1,
+        "Decimal overflow should point at the literal token itself"
     );
 }
 
