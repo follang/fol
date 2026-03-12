@@ -1949,6 +1949,61 @@ mod lexer_error_tests {
     }
 
     #[test]
+    fn test_stage2_seek_ignore_looks_back_through_space_tokens() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("stage2_seek_ignore");
+        fs::create_dir_all(&temp_root).expect("Should create temp stage2 seek fixture dir");
+        let fixture = temp_root.join("stage2_seek_ignore.fol");
+        fs::write(&fixture, "alpha beta\n").expect("Should write stage2 seek fixture");
+
+        let mut file_stream = FileStream::from_file(
+            fixture
+                .to_str()
+                .expect("Stage2 seek fixture path should be UTF-8"),
+        )
+        .expect("Should open stage2 seek fixture");
+        let mut elements = stage2::Elements::init(&mut file_stream);
+        let _ = elements.bump();
+
+        for _ in 0..32 {
+            let token = elements
+                .curr(false)
+                .expect("Stage2 should expose a current token while seeking");
+            if token.con() == "beta" {
+                break;
+            }
+            let _ = elements.bump();
+        }
+
+        assert_eq!(
+            elements
+                .curr(false)
+                .expect("Stage2 should land on the second identifier")
+                .con(),
+            "beta"
+        );
+        assert!(
+            elements
+                .seek(0, false)
+                .expect("Stage2 seek(false) should expose the immediate previous token")
+                .key()
+                .is_space(),
+            "Stage2 seek(false) should still see the immediate space token"
+        );
+        assert_eq!(
+            elements
+                .seek(0, true)
+                .expect("Stage2 seek(true) should skip ignorable spaces when looking behind")
+                .con(),
+            "alpha",
+            "Stage2 seek(true) should inspect the reverse window instead of the forward window"
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
     fn test_stage3_window_stays_bounded_while_draining() {
         let mut file_stream =
             FileStream::from_file("test/stream/basic.fol").expect("Should read basic file");
