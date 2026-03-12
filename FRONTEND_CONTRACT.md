@@ -208,10 +208,20 @@ tests actually enforce today.
   declaration names and binding names.
 - Parser name and quoted-path lowering remove only the matching outer delimiters, so
   inner opposite-family quote characters survive unchanged in the lowered AST text.
-- Qualified value paths are currently encoded as `::`-joined strings inside the value
-  nodes that carry names, such as `Identifier { name }` and `FunctionCall { name }`.
-- Qualified type paths are currently encoded as `FolType::Named { name }` with the full
-  normalized `::`-joined path string.
+- Qualified parser-owned path structure now survives lowering through the shared
+  `QualifiedPath { segments }` node instead of being flattened immediately into joined
+  strings.
+- Qualified value references lower as `AstNode::QualifiedIdentifier { path }`.
+- Qualified free-function calls lower as `AstNode::QualifiedFunctionCall { path, args }`.
+- Qualified method-call receivers keep the same structured receiver shape instead of
+  being flattened back into `Identifier { name }`.
+- Qualified type references lower as `FolType::QualifiedNamed { path }`.
+- Qualified inquiry targets lower as `InquiryTarget::Qualified(QualifiedPath)`.
+- Plain unqualified value references and plain unqualified free-function calls still use
+  `Identifier { name }` and `FunctionCall { name, args }`.
+- Plain unqualified type references still use `FolType::Named { name }`.
+- `QualifiedPath.segments` preserve the accepted segment spelling in order, so later
+  stages do not need to split `io::console::writer` back out of one opaque string.
 - `use` declarations keep their import path text in the dedicated `path` field instead of
   reusing the value-path or type-path encoding.
 
