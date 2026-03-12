@@ -149,8 +149,9 @@ tests actually enforce today.
 
 ### Malformed-Input Policy
 
-- Unterminated single-quoted and double-quoted literal spans become parser-visible
-  `Illegal` tokens instead of hard lexer errors.
+- Unterminated single-quoted and double-quoted literal spans follow one shared quoted-
+  literal failure path and become parser-visible `Illegal` tokens instead of hard lexer
+  errors.
 - Unterminated backtick comment spans and unterminated slash block comment spans also
   become parser-visible `Illegal` tokens instead of degrading into ignorable whitespace
   or a later delimiter error.
@@ -181,6 +182,9 @@ tests actually enforce today.
 
 - Parser-supported literal lowering currently covers strings, booleans, `nil`, decimal
   integers, floats, hex, octal, and binary integers.
+- End-to-end fixtures now cover cooked character, cooked string, raw character, raw
+  string, multiline cooked string, escaped quote, escaped backslash, and cooked numeric
+  escape spellings.
 - One-element quoted payloads lower to `Literal::Character`.
 - Wider quoted payloads lower to `Literal::String`.
 - Cooked double-quoted literals decode the current supported escape set before width
@@ -194,7 +198,9 @@ tests actually enforce today.
   indentation trimming during parser lowering.
 - Raw single-quoted literals do not decode escape spellings; their inner text is lowered
   verbatim after delimiter removal.
-- Raw-vs-cooked does not survive as a separate AST value kind after literal lowering.
+- Raw-vs-cooked does not survive as a separate AST value kind after literal lowering;
+  equivalent cooked and raw payloads normalize to the same `Literal::Character` or
+  `Literal::String` AST nodes.
 - Supported prefixed and underscored numeric spellings lower to their exact integer or
   float values instead of staying as raw text in the AST.
 - End-to-end tests now lock this behavior across the full `stream -> lexer -> parser`
