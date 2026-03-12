@@ -54,8 +54,9 @@ tests actually enforce today.
   discovery.
 - Detached folders fall back to their own folder name as the package name.
 - Detached files fall back to their parent folder name as the package name.
-- Nested `Cargo.toml` files are ignored by the default front-end package
-  algorithm.
+- Host-tool build files do not participate in default package detection; the
+  front-end package algorithm only looks at the explicit entry root unless an
+  explicit package override is provided.
 - If the entry root has no usable final path segment, the deterministic fallback
   package name is `root`.
 - Explicit package overrides intentionally change logical identity without changing
