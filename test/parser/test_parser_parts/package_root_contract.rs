@@ -34,6 +34,28 @@ fn source_unit_has_root_decl_family(source_unit: &ParsedSourceUnit, family: Root
     })
 }
 
+fn parse_decl_package_errors(path: &str) -> Vec<ParseError> {
+    let mut file_stream =
+        FileStream::from_file(path).expect("Should read parser declaration-package error fixture");
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse_decl_package(&mut lexer)
+        .expect_err("Declaration-only package parsing should reject forbidden file-root forms");
+
+    errors
+        .iter()
+        .map(|error| {
+            error
+                .as_ref()
+                .as_any()
+                .downcast_ref::<ParseError>()
+                .cloned()
+                .expect("Declaration-only file-root rejection should produce ParseError values")
+        })
+        .collect()
+}
+
 #[test]
 fn test_decl_package_accepts_supported_file_root_declaration_families() {
     for (path, family) in [
@@ -64,4 +86,53 @@ fn test_decl_package_accepts_supported_file_root_declaration_families() {
             path
         );
     }
+}
+
+#[test]
+fn test_decl_package_rejects_top_level_executable_calls_as_one_root_error() {
+    let errors = parse_decl_package_errors("test/parser/simple_call_top_level.fol");
+
+    assert_eq!(
+        errors.len(),
+        1,
+        "A forbidden top-level call should be rejected as one file-root error"
+    );
+    assert!(
+        errors[0]
+            .to_string()
+            .contains("Executable calls are not allowed at file root"),
+        "Expected executable-call file-root diagnostic, got: {}",
+        errors[0]
+    );
+    assert_eq!(errors[0].line(), 1);
+    assert_eq!(errors[0].column(), 1);
+}
+
+#[test]
+fn test_decl_package_rejects_top_level_assignments_as_one_root_error() {
+    let errors = parse_decl_package_errors("test/parser/simple_top_level_keyword_call_and_assignment.fol");
+
+    assert_eq!(
+        errors.len(),
+        2,
+        "A file with one forbidden call and one forbidden assignment should yield two file-root errors"
+    );
+    assert!(
+        errors[0]
+            .to_string()
+            .contains("Executable calls are not allowed at file root"),
+        "Expected executable-call file-root diagnostic first, got: {}",
+        errors[0]
+    );
+    assert_eq!(errors[0].line(), 1);
+    assert_eq!(errors[0].column(), 1);
+    assert!(
+        errors[1]
+            .to_string()
+            .contains("Assignments are not allowed at file root"),
+        "Expected assignment file-root diagnostic second, got: {}",
+        errors[1]
+    );
+    assert_eq!(errors[1].line(), 2);
+    assert_eq!(errors[1].column(), 1);
 }

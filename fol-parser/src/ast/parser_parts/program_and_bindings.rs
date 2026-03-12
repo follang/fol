@@ -67,6 +67,32 @@ impl AstParser {
         entries.push(ParsedTopLevel { node_id, node });
     }
 
+    fn reject_file_root_form<F>(
+        &mut self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+        token: &fol_lexer::lexer::stage3::element::Element,
+        before: (usize, usize, String),
+        message: &str,
+        errors: &mut Vec<Box<dyn Glitch>>,
+        parse: F,
+    ) -> bool
+    where
+        F: FnOnce(
+            &mut Self,
+            &mut fol_lexer::lexer::stage3::Elements,
+        ) -> Result<(), Box<dyn Glitch>>,
+    {
+        match parse(self, tokens) {
+            Ok(()) => errors.push(Box::new(ParseError::from_token(
+                token,
+                message.to_string(),
+            ))),
+            Err(error) => errors.push(error),
+        }
+        self.bump_if_no_progress(tokens, before);
+        tokens.curr(false).is_err()
+    }
+
     fn extend_top_level_entries(
         &self,
         entries: &mut Vec<ParsedTopLevel>,
@@ -430,6 +456,134 @@ impl AstParser {
                 }
                 self.bump_if_no_progress(tokens, before);
                 if tokens.curr(false).is_err() {
+                    break;
+                }
+                continue;
+            }
+
+            if matches!(surface, RootSurface::DeclarationOnly)
+                && (AstParser::token_can_be_logical_name(&key) || key.is_textual_literal())
+                && self.lookahead_is_call(tokens)
+                && self.can_start_assignment(tokens)
+            {
+                let before = (
+                    token.loc().row(),
+                    token.loc().col(),
+                    token.con().to_string(),
+                );
+                if self.reject_file_root_form(
+                    tokens,
+                    &token,
+                    before,
+                    "Executable calls are not allowed at file root",
+                    &mut errors,
+                    |parser, tokens| parser.parse_call_stmt(tokens).map(|_| ()),
+                ) {
+                    break;
+                }
+                continue;
+            }
+
+            if matches!(surface, RootSurface::DeclarationOnly)
+                && matches!(key, KEYWORD::Symbol(SYMBOL::Dot))
+                && self.lookahead_is_dot_builtin_call(tokens)
+                && self.can_start_assignment(tokens)
+            {
+                let before = (
+                    token.loc().row(),
+                    token.loc().col(),
+                    token.con().to_string(),
+                );
+                if self.reject_file_root_form(
+                    tokens,
+                    &token,
+                    before,
+                    "Executable calls are not allowed at file root",
+                    &mut errors,
+                    |parser, tokens| {
+                        parser.parse_dot_builtin_call_expr(tokens)?;
+                        parser.consume_optional_semicolon(tokens);
+                        Ok(())
+                    },
+                ) {
+                    break;
+                }
+                continue;
+            }
+
+            if matches!(surface, RootSurface::DeclarationOnly)
+                && (matches!(key, KEYWORD::Symbol(SYMBOL::RoundO) | KEYWORD::Symbol(SYMBOL::Dot))
+                    || AstParser::token_can_be_logical_name(&key)
+                    || key.is_textual_literal())
+                && self.lookahead_is_general_invoke(
+                    tokens,
+                    matches!(key, KEYWORD::Symbol(SYMBOL::RoundO)),
+                )
+                && self.can_start_assignment(tokens)
+            {
+                let before = (
+                    token.loc().row(),
+                    token.loc().col(),
+                    token.con().to_string(),
+                );
+                if self.reject_file_root_form(
+                    tokens,
+                    &token,
+                    before,
+                    "Executable calls are not allowed at file root",
+                    &mut errors,
+                    |parser, tokens| parser.parse_invoke_stmt(tokens).map(|_| ()),
+                ) {
+                    break;
+                }
+                continue;
+            }
+
+            if matches!(surface, RootSurface::DeclarationOnly)
+                && matches!(
+                    key,
+                    KEYWORD::Keyword(BUILDIN::Panic)
+                        | KEYWORD::Keyword(BUILDIN::Report)
+                        | KEYWORD::Keyword(BUILDIN::Check)
+                        | KEYWORD::Keyword(BUILDIN::Assert)
+                )
+            {
+                let before = (
+                    token.loc().row(),
+                    token.loc().col(),
+                    token.con().to_string(),
+                );
+                if self.reject_file_root_form(
+                    tokens,
+                    &token,
+                    before,
+                    "Executable calls are not allowed at file root",
+                    &mut errors,
+                    |parser, tokens| parser.parse_builtin_call_stmt(tokens).map(|_| ()),
+                ) {
+                    break;
+                }
+                continue;
+            }
+
+            if matches!(surface, RootSurface::DeclarationOnly)
+                && (AstParser::token_can_be_logical_name(&key) || key.is_textual_literal())
+                && self.lookahead_is_assignment(tokens)
+                && self.can_start_assignment(tokens)
+            {
+                let before = (
+                    token.loc().row(),
+                    token.loc().col(),
+                    token.con().to_string(),
+                );
+                if self.reject_file_root_form(
+                    tokens,
+                    &token,
+                    before,
+                    "Assignments are not allowed at file root",
+                    &mut errors,
+                    |parser, tokens| parser.parse_assignment_stmt(tokens).map(|_| ()),
+                ) {
                     break;
                 }
                 continue;
