@@ -177,17 +177,6 @@ impl AstParser {
         Ok(QualifiedPath::new(segments))
     }
 
-    pub(super) fn parse_named_path(
-        &self,
-        tokens: &mut fol_lexer::lexer::stage3::Elements,
-        expected_root_error: &str,
-        expected_segment_error: &str,
-    ) -> Result<String, Box<dyn Glitch>> {
-        Ok(self
-            .parse_qualified_path(tokens, expected_root_error, expected_segment_error)?
-            .joined())
-    }
-
     pub(super) fn parse_index_or_slice_expression(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
