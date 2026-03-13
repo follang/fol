@@ -947,7 +947,7 @@ Status: done
 
 #### Slice 8.2
 
-Status: pending
+Status: done
 
 - Extend import-member exposure to plain free-call and plain named-type lookup.
 - Add tests for imported exported routines and types resolving without qualification.

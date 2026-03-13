@@ -948,7 +948,7 @@ fn record_function_call_reference(
     scope_id: ScopeId,
     name: &str,
 ) -> Result<ReferenceId, ResolverError> {
-    let symbol_id = resolve_visible_symbol_of_kinds(
+    let symbol_id = resolve_visible_or_imported_symbol_of_kinds(
         program,
         scope_id,
         name,
@@ -1032,7 +1032,7 @@ fn record_named_type_reference(
     scope_id: ScopeId,
     name: &str,
 ) -> Result<ReferenceId, ResolverError> {
-    let symbol_id = resolve_visible_symbol_of_kinds(
+    let symbol_id = resolve_visible_or_imported_symbol_of_kinds(
         program,
         scope_id,
         name,
@@ -1292,6 +1292,37 @@ fn resolve_imported_symbol_of_kinds(
             lexical_ambiguity_message(name, missing_role, &matches),
             origin,
         )),
+    }
+}
+
+fn resolve_visible_or_imported_symbol_of_kinds(
+    program: &ResolvedProgram,
+    starting_scope: ScopeId,
+    name: &str,
+    allowed_kinds: &[SymbolKind],
+    missing_role: Option<&str>,
+    origin: Option<fol_parser::ast::SyntaxOrigin>,
+) -> Result<SymbolId, ResolverError> {
+    match resolve_lexical_symbol_of_kinds(
+        program,
+        starting_scope,
+        name,
+        allowed_kinds,
+        missing_role,
+        origin.clone(),
+    ) {
+        Ok(symbol_id) => Ok(symbol_id),
+        Err(error) if error.kind() == ResolverErrorKind::UnresolvedName => {
+            resolve_imported_symbol_of_kinds(
+                program,
+                starting_scope,
+                name,
+                allowed_kinds,
+                missing_role,
+                origin,
+            )
+        }
+        Err(error) => Err(error),
     }
 }
 
