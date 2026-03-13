@@ -140,6 +140,7 @@ dependencies = [
  "fol-types",
  "lazy_static",
  "regex",
+ "serde_json",
  "terminal_size",
 ]
 
@@ -182,6 +183,7 @@ version = "0.1.4"
 dependencies = [
  "colored",
  "dyn-clone",
+ "fol-diagnostics",
  "fol-lexer",
  "fol-stream",
  "fol-types",
