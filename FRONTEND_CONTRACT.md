@@ -9,7 +9,7 @@ also complete for the present name-resolution contract, so this file describes t
 enforced stream/lexer/parser behavior at head, including compatibility paths that
 still exist intentionally around the structured parser APIs. Treat
 [`PROGRESS.md`](./PROGRESS.md) as the repo-backed implementation ledger and
-[`PLAN.md`](./PLAN.md) as the resolver phase record.
+[`PLAN.md`](./PLAN.md) as the active import-resolution phase record.
 
 ## Decision Summary
 
@@ -21,6 +21,9 @@ still exist intentionally around the structured parser APIs. Treat
   in the AST, and receiver validation stays syntax-oriented at parser time.
 - Packages: package identity comes from explicit override or explicit entry root, not
   host-tool manifests.
+- Imports: `loc` loads exact directories from disk, `std` loads exact directories
+  from an explicit std root, `pkg` loads installed package roots from an explicit
+  package-store root with required `package.fol`, and direct file imports are rejected.
 - Source units: the parser now has a structured `parse_package(...)` path that preserves
   source units, package/namespace identity, successful top-level origins, and explicit
   top-level declaration visibility/scope metadata for resolver consumption.

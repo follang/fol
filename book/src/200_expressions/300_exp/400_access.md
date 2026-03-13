@@ -19,7 +19,7 @@ In most programming languages, it is called "method-call expresion". A method ca
 
 Accesing namespaces is done through double colon operator `::`:
 ```
-use log mod[std] = { fmt::log };            // using the log namespace of fmt
+use log: std = {"fmt/log"};                 // using the log namespace of fmt
 io::console::write_out.echo();              // echoing out
 ```
 

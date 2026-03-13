@@ -4,12 +4,13 @@ An import declaration states that the source file containing the declaration dep
 
 Syntax to import a library is:
 ```
-use package_name: mod = { source }
+use alias: source_kind = { source }
 ```
 
-There are two type of import declartions:
-- system libraries
-- local libraries
+Current source kinds are:
+- `loc` for local directory imports
+- `std` for standard-library directory imports
+- `pkg` for installed external packages
 
 ## What `use` imports
 
@@ -53,7 +54,7 @@ pro[] main: int = {
 ```
 But let's say you only wanna use ONLY the `warn` functionality of `log` namespace from `fmt` module:
 ```
-use warn std = {"fmt/log.warn"};
+use warn: std = {"fmt/log"};
 
 pro[] main: int = {
     warn("Last warning!...")
@@ -79,3 +80,10 @@ External packages are imported through `pkg`:
 ```
 use space: pkg = {"space"};
 ```
+
+`pkg` imports are different from `loc` and `std`:
+
+- the imported root is an installed package root
+- that root must contain `package.fol`
+- `build.fol` is not needed for resolver-only import discovery
+- raw transport URLs do not appear in source code; package acquisition is separate

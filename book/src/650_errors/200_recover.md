@@ -59,7 +59,7 @@ own.
 
 When we use the keyword `report`, the error is returned to the routine's error variable and the routine qutis executing (the routine, not the program).
 ```
-use file: mod[std] = { std::fs::File }
+use file: std = {"fs/file"}
 
 pro main(): int = {
     pro[] fileReader(path: str): str = {
@@ -76,7 +76,7 @@ pro main(): int = {
 Form this point on, the error is concatinated up to the main function. This is known as propagating the error and gives more control to the calling code, where there might be more information or logic that dictates how the error should be handled than what you have available in the context of your code.
 
 ```
-use file: mod[std] = { std::fs::File }
+use file: std = {"fs/file"}
 
 pro main(): int = {
     var f = file.open("main.jpg");                                           // main.jpg doesn't exist

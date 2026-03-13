@@ -59,7 +59,7 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - Parser-focused Rust tests under `test/parser`: `1104`
 - Resolver-focused Rust tests under `test/resolver`: `79`
 - Observed current unit test run: `1` unit test, green
-- Observed current integration run: `1339` integration tests, green
+- Observed current integration run: `1353` integration tests, green
 
 ## 3. Current Headline Status
 
@@ -84,7 +84,7 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `make test`: passed
 - Current observed totals:
 - `1` unit test passed
-- `1339` integration tests passed
+- `1353` integration tests passed
 - Observed active failures: `0`
 
 ## 5. What Has Been Completed So Far
@@ -196,6 +196,12 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - Qualified identifiers, qualified calls, qualified type names, and inquiry targets
   resolve through namespace and import-alias roots.
 - `use loc` imports resolve against the loaded package and namespace scope set.
+- `use std` imports resolve against explicit configured std roots.
+- `use pkg` imports resolve against explicit configured package-store roots.
+- Installed `pkg` roots require `package.fol` and exclude `package.fol` / `build.fol`
+  from resolver-owned source loading.
+- Minimal `package.fol` parsing now extracts package name, version, and declared
+  pkg dependencies for installed packages.
 - Unsupported import kinds fail explicitly instead of silently degrading.
 - Imported exported values, routines, and named types are now visible through plain
   lookup after `use loc` imports instead of requiring explicit qualification only.
@@ -210,6 +216,10 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - Plain unresolved identifiers, plain free calls, and plain named types now keep
   exact non-null file/line/column origins in resolver diagnostics and CLI JSON.
 - The CLI now treats parse-clean but resolution-bad programs as failing compiles.
+- The CLI now accepts both `--std-root` and `--package-store-root` so the current
+  `loc/std/pkg` resolver contract is available end to end.
+- Recursive `pkg` dependencies now load through the shared resolver session, and
+  repeated shared package roots are deduped through canonical package identity.
 - Integration coverage now includes full happy-path resolution, cross-file import
   resolution, exact resolver-location propagation through JSON diagnostics, and
   non-null location guarantees for plain unresolved and ambiguous name cases.

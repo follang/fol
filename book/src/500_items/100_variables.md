@@ -186,7 +186,7 @@ def shko: mod[] = {
 ```
 *module **vij**, file1.fol*
 ```
-use shko: mod[loc] = {../folder/shko}
+use shko: loc = {"../folder/shko"}
 
 def vij: mod[] = {
     pro[] main: int { 

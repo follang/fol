@@ -1566,7 +1566,7 @@ Status: done
 
 #### Slice 20.1
 
-Status: pending
+Status: done
 
 - Sync `README.md`, `PROGRESS.md`, `FRONTEND_CONTRACT.md`, and relevant book pages to
   the final `loc/std/pkg` contract.
