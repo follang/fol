@@ -65,6 +65,7 @@ So:
 
 Unlike `loc` and `std`, a `pkg` import does not just point at an arbitrary source directory.
 It points at an installed package root that must define its identity and build surface explicitly.
+The package layer discovers that root first, and ordinary name resolution happens only after the package has been prepared.
 
 For a `pkg` package root:
 
@@ -109,7 +110,15 @@ This file is responsible for:
 - declaring which directories/namespaces are exported
 - defining the package surface that consumers import
 
-And this is where `def` belongs.
+`build.fol` is still an ordinary FOL file.
+It is parsed with the same front-end as other `.fol` sources.
+The difference is that the package layer only extracts package meaning from recognized top-level definitions inside it.
+
+So:
+
+- `def` is still a general FOL declaration form
+- `build.fol` is not a separate mini-language
+- only specific top-level `def` records are treated as package dependency/export definitions in the current package phase
 
 That means:
 
@@ -176,4 +185,4 @@ use space: pkg = {"space"};
 - that root must contain `build.fol`
 - `package.yaml` provides metadata only
 - `build.fol` defines dependencies and exports
-- raw transport URLs do not appear in source code; package acquisition is separate
+- raw transport URLs do not appear in source code; package acquisition and installed-package preparation are separate from ordinary source resolution

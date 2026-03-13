@@ -140,8 +140,13 @@ It is a formal package root with:
 This keeps the language model clean:
 
 - source files `use` other namespaces/packages
-- package definitions live in `build.fol`
+- package definitions are extracted from recognized top-level `def` declarations in `build.fol`
 - package metadata lives in `package.yaml`
+- package loading happens before ordinary name resolution
+
+`build.fol` itself is still ordinary FOL syntax.
+It is not a separate mini-language.
+The package layer simply gives package meaning to a narrow set of recognized top-level definitions there.
 
 ## Blocks
 

@@ -718,7 +718,7 @@ Status: done
 
 #### 8.2
 
-Status: pending
+Status: done
 
 - Update book pages covering imports/modules/package control files to the final `fol-package` contract.
 
