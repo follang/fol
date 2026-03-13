@@ -1,8 +1,7 @@
 // FOL Diagnostics - Error formatting and output
-use colored::Colorize;
-
 mod codes;
 mod model;
+mod render_human;
 
 pub use codes::DiagnosticCode;
 pub use model::{
@@ -74,96 +73,18 @@ impl DiagnosticReport {
     pub fn output(&self, format: OutputFormat) -> String {
         match format {
             OutputFormat::Json => self.to_json(),
-            OutputFormat::Human => self.to_human_readable(),
+            OutputFormat::Human => render_human::render_report(self),
         }
     }
 
     fn to_json(&self) -> String {
         serde_json::to_string_pretty(self).unwrap_or_else(|_| "{}".to_string())
     }
-
-    fn to_human_readable(&self) -> String {
-        let mut output = String::new();
-
-        for diagnostic in &self.diagnostics {
-            output.push_str(&diagnostic.to_human_readable());
-            output.push('\n');
-        }
-
-        if self.error_count > 0 || self.warning_count > 0 {
-            output.push('\n');
-            if self.error_count > 0 {
-                let label = if self.error_count == 1 { "" } else { "s" };
-                output.push_str(&format!(
-                    "{} found {} error{}",
-                    "error:".red().bold(),
-                    self.error_count,
-                    label
-                ));
-            }
-            if self.warning_count > 0 {
-                if self.error_count > 0 {
-                    output.push_str(", ");
-                }
-                let label = if self.warning_count == 1 { "" } else { "s" };
-                output.push_str(&format!(
-                    "{} {} warning{}",
-                    "warning:".yellow().bold(),
-                    self.warning_count,
-                    label
-                ));
-            }
-            output.push('\n');
-        }
-
-        output
-    }
 }
 
 impl Default for DiagnosticReport {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-impl Diagnostic {
-    fn to_human_readable(&self) -> String {
-        let mut output = String::new();
-
-        let prefix = match self.severity {
-            Severity::Error => "error".red().bold(),
-            Severity::Warning => "warning".yellow().bold(),
-            Severity::Info => "info".blue().bold(),
-        };
-
-        output.push_str(&format!("{}: {}", prefix, self.message));
-
-        if let Some(loc) = self.primary_location() {
-            output.push('\n');
-            if let Some(file) = &loc.file {
-                output.push_str(&format!(
-                    "  {} {}:{}:{}",
-                    "-->".blue().bold(),
-                    file,
-                    loc.line,
-                    loc.column
-                ));
-            } else {
-                output.push_str(&format!(
-                    "  {} line {}:{}",
-                    "-->".blue().bold(),
-                    loc.line,
-                    loc.column
-                ));
-            }
-        }
-
-        if let Some(help) = self.first_help() {
-            output.push('\n');
-            output.push_str(&format!("  {} {}", "help:".green().bold(), help));
-        }
-
-        output
     }
 }
 

@@ -546,7 +546,7 @@ Status: pending
 
 #### 2.1
 
-Status: pending
+Status: done
 
 - Split human rendering into a dedicated renderer implementation.
 
