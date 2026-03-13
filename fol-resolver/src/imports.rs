@@ -142,7 +142,6 @@ fn import_kind_label(path_type: &FolType) -> &'static str {
         FolType::Location { .. } => "loc",
         FolType::Module { .. } => "mod",
         FolType::Standard { .. } => "std",
-        FolType::Url { .. } => "url",
         _ => "unknown",
     }
 }

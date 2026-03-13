@@ -743,13 +743,6 @@ impl AstParser {
                     name.clone()
                 }
             }
-            FolType::Url { name } => {
-                if name.is_empty() {
-                    "url".to_string()
-                } else {
-                    name.clone()
-                }
-            }
             FolType::Location { name } => {
                 if name.is_empty() {
                     "loc".to_string()
@@ -956,6 +949,13 @@ impl AstParser {
         }
 
         let base_name = name.clone();
+        if !path.is_qualified() && base_name == "url" {
+            return Err(Box::new(ParseError::from_token(
+                &token,
+                "Legacy source kind 'url' was removed; use 'pkg' instead".to_string(),
+            )));
+        }
+
         let mut has_suffix = false;
         for _ in 0..32 {
             self.skip_ignorable(tokens);

@@ -204,7 +204,7 @@ fn test_special_type_forms_accept_semicolon_type_arguments() {
                 }
                 if name == "Paths"
                     && matches!(types.as_slice(),
-                        [FolType::Location { name: left }, FolType::Url { name: right }]
+                        [FolType::Location { name: left }, FolType::Package { name: right }]
                         if left == "std" && right == "web")
             )));
 

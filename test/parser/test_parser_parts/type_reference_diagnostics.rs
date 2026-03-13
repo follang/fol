@@ -96,7 +96,6 @@ fn test_module_block_test_and_source_kind_missing_close_report_type_reference_cl
         "test/parser/simple_mod_type_missing_close.fol",
         "test/parser/simple_blk_type_missing_close.fol",
         "test/parser/simple_tst_type_missing_close.fol",
-        "test/parser/simple_url_type_missing_close.fol",
         "test/parser/simple_loc_type_missing_close.fol",
         "test/parser/simple_std_type_missing_close.fol",
     ] {
@@ -106,6 +105,15 @@ fn test_module_block_test_and_source_kind_missing_close_report_type_reference_cl
             "Expected normalized missing-close diagnostic for fixture {path}, got: {message}",
         );
     }
+}
+
+#[test]
+fn test_legacy_url_source_kind_reports_pkg_migration_diagnostic() {
+    let message = first_parse_error_message("test/parser/simple_url_type_missing_close.fol");
+    assert!(
+        message.contains("Legacy source kind 'url' was removed; use 'pkg' instead"),
+        "Expected explicit pkg migration diagnostic for legacy url syntax, got: {message}",
+    );
 }
 
 #[test]

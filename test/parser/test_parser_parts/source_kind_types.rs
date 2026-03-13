@@ -44,46 +44,25 @@ fn test_pkg_type_references_lower_structurally() {
 }
 
 #[test]
-fn test_url_type_references_lower_structurally() {
+fn test_url_source_kind_reports_pkg_migration_diagnostic() {
     let mut file_stream = FileStream::from_file("test/parser/simple_source_url_types.fol")
         .expect("Should read url source-kind type fixture");
 
     let mut lexer = Elements::init(&mut file_stream);
     let mut parser = AstParser::new();
-    let ast = parser
+    let errors = parser
         .parse(&mut lexer)
-        .expect("Parser should lower url source-kind types");
+        .expect_err("Parser should reject legacy url source-kind syntax");
 
-    match ast {
-        AstNode::Program { declarations } => {
-            assert!(declarations.iter().any(|node| matches!(
-                node,
-                AstNode::UseDecl {
-                    name,
-                    path_type: FolType::Url { name: kind_name },
-                    path_segments,
-                    ..
-                } if name == "remote"
-                    && kind_name.is_empty()
-                    && path_segments.as_slice()
-                        == [fol_parser::ast::UsePathSegment {
-                            separator: None,
-                            spelling: "https://example.com/api".to_string(),
-                        }]
-            )));
-            assert!(declarations.iter().any(|node| matches!(
-                node,
-                AstNode::TypeDecl {
-                    name,
-                    type_def: TypeDefinition::Alias {
-                        target: FolType::Url { name: kind_name }
-                    },
-                    ..
-                } if name == "RemoteUrl" && kind_name == "https"
-            )));
-        }
-        _ => panic!("Expected program node"),
-    }
+    let message = errors
+        .first()
+        .and_then(|error| error.as_ref().as_any().downcast_ref::<ParseError>())
+        .expect("First parser error should be a ParseError")
+        .to_string();
+    assert!(
+        message.contains("Legacy source kind 'url' was removed; use 'pkg' instead"),
+        "Parser should direct legacy url users to pkg, got: {message}",
+    );
 }
 
 #[test]

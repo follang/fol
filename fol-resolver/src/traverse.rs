@@ -1491,7 +1491,6 @@ fn resolve_type_reference(
         | FolType::Module { .. }
         | FolType::Block { .. }
         | FolType::Test { .. }
-        | FolType::Url { .. }
         | FolType::Location { .. }
         | FolType::Standard { .. } => {}
     }

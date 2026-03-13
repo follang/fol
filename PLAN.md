@@ -1437,7 +1437,7 @@ Status: done
 
 #### Slice 14.3
 
-Status: pending
+Status: done
 
 - Decide whether legacy `url` syntax is a hard parse error immediately or a targeted
   compatibility diagnostic.

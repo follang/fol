@@ -684,9 +684,6 @@ pub enum FolType {
     Package {
         name: String,
     },
-    Url {
-        name: String,
-    },
     Location {
         name: String,
     },
