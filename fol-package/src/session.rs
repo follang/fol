@@ -545,4 +545,34 @@ mod tests {
         fs::remove_dir_all(&temp_root)
             .expect("Temporary package-session fixture directory should be removable after the test");
     }
+
+    #[test]
+    fn package_session_can_load_standard_directory_packages() {
+        let temp_root = unique_temp_root("load_standard_directory");
+        fs::create_dir_all(temp_root.join("fmt"))
+            .expect("Should create a temporary std package root fixture");
+        fs::write(temp_root.join("fmt/main.fol"), "var[exp] answer: int = 42;\n")
+            .expect("Should write the standard package fixture");
+        let mut session = PackageSession::with_config(PackageConfig {
+            std_root: Some(
+                temp_root
+                    .to_str()
+                    .expect("Temporary std fixture root should be valid UTF-8")
+                    .to_string(),
+            ),
+            package_store_root: None,
+            package_cache_root: None,
+        });
+
+        let loaded = session
+            .load_directory_package(temp_root.join("fmt").as_path(), PackageSourceKind::Standard)
+            .expect("Package session should load standard directory packages");
+
+        assert_eq!(loaded.package_name(), "fmt");
+        assert_eq!(loaded.source_kind(), PackageSourceKind::Standard);
+        assert_eq!(session.cached_package_count(), 1);
+
+        fs::remove_dir_all(&temp_root)
+            .expect("Temporary package-session fixture directory should be removable after the test");
+    }
 }

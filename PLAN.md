@@ -573,7 +573,7 @@ Status: done
 
 #### 2.4
 
-Status: pending
+Status: done
 
 - Load `std` directory packages through `fol-package`.
 

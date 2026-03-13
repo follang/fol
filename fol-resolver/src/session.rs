@@ -137,13 +137,13 @@ impl ResolverSession {
         directory: &Path,
         source_kind: PackageSourceKind,
     ) -> Result<LoadedPackage, ResolverError> {
-        if source_kind == PackageSourceKind::Local {
+        if matches!(
+            source_kind,
+            PackageSourceKind::Local | PackageSourceKind::Standard
+        ) {
             let prepared = self
                 .package_session
-                .load_directory_package(
-                    directory,
-                    fol_package::PackageSourceKind::Local,
-                )?;
+                .load_directory_package(directory, package_source_kind(source_kind))?;
             return self.load_prepared_package(prepared, None, None);
         }
 
