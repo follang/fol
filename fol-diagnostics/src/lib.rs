@@ -264,4 +264,54 @@ mod tests {
         assert!(human.contains("Test error"));
         assert!(human.contains("found 1 error"));
     }
+
+    #[test]
+    fn test_diagnostic_report_json_keeps_location_fields_for_cli_consumers() {
+        let mut report = DiagnosticReport::new();
+        let error = BasicError {
+            message: "Test error".to_string(),
+        };
+
+        report.add_error(
+            &error,
+            Some(DiagnosticLocation {
+                file: Some("pkg/main.fol".to_string()),
+                line: 7,
+                column: 3,
+                length: Some(4),
+            }),
+        );
+
+        let json = report.output(OutputFormat::Json);
+
+        assert!(json.contains("\"message\": \"Test error\""));
+        assert!(json.contains("\"file\": \"pkg/main.fol\""));
+        assert!(json.contains("\"line\": 7"));
+        assert!(json.contains("\"column\": 3"));
+        assert!(json.contains("\"length\": 4"));
+    }
+
+    #[test]
+    fn test_diagnostic_report_human_keeps_location_arrow_shape() {
+        let mut report = DiagnosticReport::new();
+        let error = BasicError {
+            message: "Test error".to_string(),
+        };
+
+        report.add_error(
+            &error,
+            Some(DiagnosticLocation {
+                file: Some("pkg/main.fol".to_string()),
+                line: 7,
+                column: 3,
+                length: Some(4),
+            }),
+        );
+
+        let human = report.output(OutputFormat::Human);
+
+        assert!(human.contains("error: Test error"));
+        assert!(human.contains("--> pkg/main.fol:7:3"));
+        assert!(human.contains("found 1 error"));
+    }
 }
