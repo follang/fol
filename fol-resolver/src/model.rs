@@ -1,6 +1,7 @@
 use crate::ids::{IdTable, ImportId, ReferenceId, ScopeId, SourceUnitId, SymbolId};
 use crate::session::LoadedPackage;
 use crate::{ResolverError, ResolverErrorKind};
+use fol_package::PackageBuildDefinition;
 use fol_parser::ast::{
     FolType, ParsedDeclScope, ParsedDeclVisibility, ParsedPackage, SyntaxIndex, SyntaxNodeId,
     SyntaxOrigin, UsePathSegment,
@@ -389,7 +390,7 @@ impl ResolvedProgram {
         source_unit_id: SourceUnitId,
         root_scope: ScopeId,
         root_name: &str,
-        build: &crate::build_definition::PackageBuildDefinition,
+        build: &PackageBuildDefinition,
     ) -> Result<(), ResolverError> {
         let foreign_package_name = loaded.program.package_name().to_string();
         let export_mappings = build

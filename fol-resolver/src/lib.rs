@@ -21,7 +21,6 @@
 //! - runtime lowering or code generation
 
 pub mod collect;
-mod build_definition;
 pub mod errors;
 pub mod ids;
 pub mod imports;

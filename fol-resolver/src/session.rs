@@ -1,10 +1,9 @@
 use crate::{
-    build_definition::{parse_package_build, PackageBuildDefinition},
     collect, imports,
     model::ResolvedProgram,
     traverse, ResolverError, ResolverErrorKind, ResolverResult,
 };
-use fol_package::{parse_package_metadata, PackageMetadata};
+use fol_package::{parse_package_build, parse_package_metadata, PackageBuildDefinition, PackageMetadata};
 use fol_parser::ast::{ParsedPackage, UsePathSegment};
 use fol_stream::{FileStream, Source, SourceType};
 use std::collections::BTreeMap;

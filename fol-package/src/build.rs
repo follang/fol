@@ -1,39 +1,39 @@
-use crate::{ResolverError, ResolverErrorKind};
+use crate::{PackageError, PackageErrorKind};
 use fol_lexer::lexer::stage3::Elements;
 use fol_parser::ast::{AstNode, AstParser, FolType, Literal, SyntaxIndex, SyntaxNodeId, SyntaxOrigin};
 use fol_stream::FileStream;
 use std::path::Path;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct BuildDependency {
+pub struct BuildDependency {
     pub alias: String,
     pub package_path: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct BuildExport {
+pub struct BuildExport {
     pub alias: String,
     pub relative_path: String,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub(crate) struct PackageBuildDefinition {
+pub struct PackageBuildDefinition {
     pub dependencies: Vec<BuildDependency>,
     pub exports: Vec<BuildExport>,
 }
 
-pub(crate) fn parse_package_build(path: &Path) -> Result<PackageBuildDefinition, ResolverError> {
+pub fn parse_package_build(path: &Path) -> Result<PackageBuildDefinition, PackageError> {
     let path_str = path.to_str().ok_or_else(|| {
-        ResolverError::new(
-            ResolverErrorKind::InvalidInput,
+        PackageError::new(
+            PackageErrorKind::InvalidInput,
             format!("package build file '{}' is not valid UTF-8", path.display()),
         )
     })?;
     let mut stream = FileStream::from_file(path_str).map_err(|error| {
-        ResolverError::new(
-            ResolverErrorKind::InvalidInput,
+        PackageError::new(
+            PackageErrorKind::InvalidInput,
             format!(
-                "resolver could not read package build file '{}': {}",
+                "package loader could not read package build file '{}': {}",
                 path.display(),
                 error
             ),
@@ -51,10 +51,10 @@ pub(crate) fn parse_package_build(path: &Path) -> Result<PackageBuildDefinition,
             .as_any()
             .downcast_ref::<fol_parser::ast::ParseError>()
         {
-            ResolverError::with_origin(
-                ResolverErrorKind::InvalidInput,
+            PackageError::with_origin(
+                PackageErrorKind::InvalidInput,
                 format!(
-                    "resolver could not parse package build file '{}': {}",
+                    "package loader could not parse package build file '{}': {}",
                     path.display(),
                     parse_error
                 ),
@@ -66,10 +66,10 @@ pub(crate) fn parse_package_build(path: &Path) -> Result<PackageBuildDefinition,
                 },
             )
         } else {
-            ResolverError::new(
-                ResolverErrorKind::InvalidInput,
+            PackageError::new(
+                PackageErrorKind::InvalidInput,
                 format!(
-                    "resolver could not parse package build file '{}': {}",
+                    "package loader could not parse package build file '{}': {}",
                     path.display(),
                     first
                 ),
@@ -77,10 +77,10 @@ pub(crate) fn parse_package_build(path: &Path) -> Result<PackageBuildDefinition,
         }
     })?;
     let source_unit = parsed.source_units.first().ok_or_else(|| {
-        ResolverError::new(
-            ResolverErrorKind::InvalidInput,
+        PackageError::new(
+            PackageErrorKind::InvalidInput,
             format!(
-                "resolver package build file '{}' did not produce any source units",
+                "package build file '{}' did not produce any source units",
                 path.display()
             ),
         )
@@ -180,7 +180,7 @@ fn build_string_body(
     body: &[AstNode],
     syntax_index: &SyntaxIndex,
     node_id: SyntaxNodeId,
-) -> Result<String, ResolverError> {
+) -> Result<String, PackageError> {
     match body {
         [AstNode::Literal(Literal::String(value))] => Ok(value.clone()),
         [AstNode::Commented { node, .. }] => match node.as_ref() {
@@ -210,17 +210,17 @@ fn build_item_error(
     syntax_index: &SyntaxIndex,
     node_id: SyntaxNodeId,
     message: impl Into<String>,
-) -> ResolverError {
+) -> PackageError {
     match syntax_index.origin(node_id).cloned() {
-        Some(origin) => ResolverError::with_origin(ResolverErrorKind::InvalidInput, message, origin),
-        None => ResolverError::new(ResolverErrorKind::InvalidInput, message),
+        Some(origin) => PackageError::with_origin(PackageErrorKind::InvalidInput, message, origin),
+        None => PackageError::new(PackageErrorKind::InvalidInput, message),
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::{parse_package_build, BuildDependency, BuildExport, PackageBuildDefinition};
-    use crate::ResolverErrorKind;
+    use crate::PackageErrorKind;
     use std::fs;
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -230,7 +230,7 @@ mod tests {
             .expect("System time should be after unix epoch")
             .as_nanos();
         std::env::temp_dir().join(format!(
-            "fol_resolver_build_definition_{}_{}_{}",
+            "fol_package_build_definition_{}_{}_{}",
             label,
             std::process::id(),
             stamp
@@ -283,7 +283,7 @@ mod tests {
         let error = parse_package_build(&build_path)
             .expect_err("Non-string build dependency targets should be rejected");
 
-        assert_eq!(error.kind(), ResolverErrorKind::InvalidInput);
+        assert_eq!(error.kind(), PackageErrorKind::InvalidInput);
         assert!(error
             .to_string()
             .contains("package build package dependency targets must be string literals"));
@@ -337,7 +337,7 @@ mod tests {
         let error = parse_package_build(&build_path)
             .expect_err("Non-string build export targets should be rejected");
 
-        assert_eq!(error.kind(), ResolverErrorKind::InvalidInput);
+        assert_eq!(error.kind(), PackageErrorKind::InvalidInput);
         assert!(error
             .to_string()
             .contains("package build export targets must be string literals"));
@@ -357,7 +357,7 @@ mod tests {
         let error = parse_package_build(&build_path)
             .expect_err("Build files should reject use declarations");
 
-        assert_eq!(error.kind(), ResolverErrorKind::InvalidInput);
+        assert_eq!(error.kind(), PackageErrorKind::InvalidInput);
         assert!(error
             .to_string()
             .contains("must use 'def' to define dependencies"));
@@ -383,7 +383,7 @@ mod tests {
         let error = parse_package_build(&build_path)
             .expect_err("Build files should reject unsupported top-level nodes");
 
-        assert_eq!(error.kind(), ResolverErrorKind::InvalidInput);
+        assert_eq!(error.kind(), PackageErrorKind::InvalidInput);
         assert!(error.to_string().contains(
             "package build files currently accept only comments, pkg dependency definitions, and loc export definitions"
         ));

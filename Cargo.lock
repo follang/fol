@@ -165,6 +165,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "fol-package"
+version = "0.1.4"
+dependencies = [
+ "fol-diagnostics",
+ "fol-lexer",
+ "fol-parser",
+ "fol-stream",
+ "fol-types",
+]
+
+[[package]]
 name = "fol-parser"
 version = "0.1.4"
 dependencies = [
@@ -181,6 +192,7 @@ version = "0.1.4"
 dependencies = [
  "fol-diagnostics",
  "fol-lexer",
+ "fol-package",
  "fol-parser",
  "fol-stream",
  "fol-types",

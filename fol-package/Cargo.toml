@@ -7,9 +7,9 @@ description = "Package discovery and acquisition for FOL language"
 
 [dependencies]
 fol-diagnostics = { path = "../fol-diagnostics" }
+fol-lexer = { path = "../fol-lexer" }
 fol-parser = { path = "../fol-parser" }
+fol-stream = { path = "../fol-stream" }
 fol-types = { path = "../fol-types" }
 
 [dev-dependencies]
-fol-lexer = { path = "../fol-lexer" }
-fol-stream = { path = "../fol-stream" }

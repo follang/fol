@@ -517,7 +517,7 @@ Status: done
 
 #### 0.4
 
-Status: pending
+Status: done
 
 - Move build-definition parsing out of `fol-resolver` into `fol-package`.
 

@@ -10,11 +10,13 @@
 //! This crate intentionally does not perform name resolution for ordinary source code.
 
 pub mod config;
+pub mod build;
 pub mod errors;
 pub mod identity;
 pub mod metadata;
 pub mod model;
 
+pub use build::{parse_package_build, BuildDependency, BuildExport, PackageBuildDefinition};
 pub use config::PackageConfig;
 pub use errors::{PackageError, PackageErrorKind};
 pub use identity::{PackageIdentity, PackageSourceKind};
