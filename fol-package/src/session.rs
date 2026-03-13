@@ -125,6 +125,11 @@ impl PackageSession {
             return Ok(cached);
         }
 
+        for dependency in &build.dependencies {
+            let path_segments = build_dependency_path_segments(&dependency.package_path)?;
+            self.load_package_from_store(store_root, &path_segments)?;
+        }
+
         let prepared_result = parse_directory_package_syntax(
             canonical_root.as_path(),
             &metadata.name,
@@ -372,6 +377,33 @@ fn import_source_label(source_kind: PackageSourceKind) -> &'static str {
         PackageSourceKind::Package => "pkg",
         PackageSourceKind::Entry => "entry",
     }
+}
+
+fn build_dependency_path_segments(
+    package_path: &str,
+) -> Result<Vec<UsePathSegment>, PackageError> {
+    let parts = package_path
+        .split('/')
+        .map(str::trim)
+        .collect::<Vec<_>>();
+    if parts.is_empty() || parts.iter().any(|part| part.is_empty()) {
+        return Err(PackageError::new(
+            PackageErrorKind::InvalidInput,
+            format!(
+                "package build dependency path '{}' must contain non-empty slash-separated segments",
+                package_path
+            ),
+        ));
+    }
+
+    Ok(parts
+        .into_iter()
+        .enumerate()
+        .map(|(index, part)| UsePathSegment {
+            separator: (index > 0).then_some(fol_parser::ast::UsePathSeparator::Slash),
+            spelling: part.to_string(),
+        })
+        .collect())
 }
 
 fn is_package_control_file(root: &Path, source: &Source) -> bool {
@@ -754,6 +786,60 @@ mod tests {
 
         assert_eq!(loaded.identity.display_name, "json");
         assert_eq!(loaded.package_name(), "json");
+
+        fs::remove_dir_all(&temp_root)
+            .expect("Temporary package-store fixture should be removable after the test");
+    }
+
+    #[test]
+    fn package_session_preloads_transitive_pkg_dependencies() {
+        let temp_root = unique_temp_root("transitive_pkg_graph");
+        let store_root = temp_root.join("store");
+        fs::create_dir_all(store_root.join("core/src/root"))
+            .expect("Should create the transitive dependency export root fixture");
+        fs::create_dir_all(store_root.join("json/src/root"))
+            .expect("Should create the direct dependency export root fixture");
+        fs::write(
+            store_root.join("core/package.yaml"),
+            "name: core\nversion: 1.0.0\n",
+        )
+        .expect("Should write the transitive dependency metadata fixture");
+        fs::write(store_root.join("core/build.fol"), "def root: loc = \"src/root\";\n")
+            .expect("Should write the transitive dependency build fixture");
+        fs::write(
+            store_root.join("core/src/root/value.fol"),
+            "var[exp] shared: int = 7;\n",
+        )
+        .expect("Should write the transitive dependency source fixture");
+        fs::write(
+            store_root.join("json/package.yaml"),
+            "name: json\nversion: 1.0.0\n",
+        )
+        .expect("Should write the direct dependency metadata fixture");
+        fs::write(
+            store_root.join("json/build.fol"),
+            "def core: pkg = \"core\";\ndef root: loc = \"src/root\";\n",
+        )
+        .expect("Should write the direct dependency build fixture");
+        fs::write(
+            store_root.join("json/src/root/value.fol"),
+            "use core: pkg = {core};\nvar[exp] answer: int = shared;\n",
+        )
+        .expect("Should write the direct dependency source fixture");
+        let mut session = PackageSession::new();
+
+        let loaded = session
+            .load_package_from_store(
+                &store_root,
+                &[UsePathSegment {
+                    separator: None,
+                    spelling: "json".to_string(),
+                }],
+            )
+            .expect("Package session should load direct package roots");
+
+        assert_eq!(loaded.identity.display_name, "json");
+        assert_eq!(session.cached_package_count(), 2);
 
         fs::remove_dir_all(&temp_root)
             .expect("Temporary package-store fixture should be removable after the test");

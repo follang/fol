@@ -202,12 +202,6 @@ impl ResolverSession {
         self.loading_stack.push(identity.clone());
 
         let loaded_result: Result<LoadedPackage, ResolverError> = (|| {
-            if source_kind == PackageSourceKind::Package {
-                if let Some(build) = build.as_ref() {
-                    self.preload_build_dependencies(build)?;
-                }
-            }
-
             let syntax =
                 parse_directory_package_syntax(
                     canonical_root.as_path(),
@@ -285,29 +279,6 @@ impl ResolverSession {
         Ok(loaded)
     }
 
-    fn preload_build_dependencies(
-        &mut self,
-        build: &PackageBuildDefinition,
-    ) -> Result<(), ResolverError> {
-        let store_root = self
-            .config()
-            .package_store_root
-            .clone()
-            .ok_or_else(|| {
-                ResolverError::new(
-                    ResolverErrorKind::InvalidInput,
-                    "resolver package loading requires an explicit package store root",
-                )
-            })?;
-
-        for dependency in &build.dependencies {
-            let path_segments = build_dependency_path_segments(&dependency.package_path)?;
-            self.load_package_from_store(Path::new(&store_root), &path_segments)?;
-        }
-
-        Ok(())
-    }
-
     fn import_cycle_error(&self, next: &PackageIdentity) -> ResolverError {
         let cycle = self
             .loading_stack
@@ -351,33 +322,6 @@ fn resolver_package_identity(identity: &fol_package::PackageIdentity) -> Package
         canonical_root: identity.canonical_root.clone(),
         display_name: identity.display_name.clone(),
     }
-}
-
-fn build_dependency_path_segments(
-    package_path: &str,
-) -> Result<Vec<UsePathSegment>, ResolverError> {
-    let parts = package_path
-        .split('/')
-        .map(str::trim)
-        .collect::<Vec<_>>();
-    if parts.is_empty() || parts.iter().any(|part| part.is_empty()) {
-        return Err(ResolverError::new(
-            ResolverErrorKind::InvalidInput,
-            format!(
-                "resolver package build dependency path '{}' must contain non-empty slash-separated segments",
-                package_path
-            ),
-        ));
-    }
-
-    Ok(parts
-        .into_iter()
-        .enumerate()
-        .map(|(index, part)| UsePathSegment {
-            separator: (index > 0).then_some(fol_parser::ast::UsePathSeparator::Slash),
-            spelling: part.to_string(),
-        })
-        .collect())
 }
 
 #[cfg(test)]

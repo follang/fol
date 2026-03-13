@@ -589,7 +589,7 @@ Status: pending
 
 #### 3.1
 
-Status: pending
+Status: done
 
 - Move transitive dependency preloading into `fol-package`.
 
