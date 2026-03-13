@@ -564,7 +564,7 @@ Status: done
 
 #### 2.4
 
-Status: pending
+Status: done
 
 - Add fallback behavior for unreadable/missing files and missing spans.
 
