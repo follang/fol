@@ -267,7 +267,7 @@ fn test_inquiry_clause_accepts_flow_body() {
                 node,
                 AstNode::FunDecl { name, inquiries, .. }
                 if name == "show"
-                    && matches!(&inquiries[0], AstNode::Inquiry { target, body } if inquiry_target_is(target, "self") && matches!(body.as_slice(), [AstNode::Identifier { name }] if name == "self"))
+                    && matches!(&inquiries[0], AstNode::Inquiry { target, body } if inquiry_target_is(target, "self") && matches!(body.as_slice(), [AstNode::Identifier { name, .. }] if name == "self"))
             )));
         }
         _ => panic!("Expected program node"),

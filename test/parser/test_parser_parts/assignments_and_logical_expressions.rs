@@ -30,12 +30,12 @@ fn test_chained_assignment_target_parsing() {
                                             container.as_ref(),
                                             AstNode::FieldAccess { object, field }
                                             if field == "items"
-                                                && matches!(object.as_ref(), AstNode::Identifier { name } if name == "obj")
+                                                && matches!(object.as_ref(), AstNode::Identifier { name, .. } if name == "obj")
                                         )
-                                            && matches!(index.as_ref(), AstNode::Identifier { name } if name == "idx")
+                                            && matches!(index.as_ref(), AstNode::Identifier { name, .. } if name == "idx")
                                     )
                             )
-                                && matches!(value.as_ref(), AstNode::Identifier { name } if name == "value")
+                                && matches!(value.as_ref(), AstNode::Identifier { name, .. } if name == "value")
                         )
                     }),
                     "Assignment target should parse as chained field/index access"
@@ -67,7 +67,7 @@ fn test_quoted_field_assignment_target_parsing() {
                         target.as_ref(),
                         AstNode::FieldAccess { object, field }
                         if field == "$"
-                            && matches!(object.as_ref(), AstNode::Identifier { name } if name == "box")
+                            && matches!(object.as_ref(), AstNode::Identifier { name, .. } if name == "box")
                     )
                 )
             }));
@@ -97,7 +97,7 @@ fn test_self_assignment_targets_and_this_method_calls_parse() {
                         target.as_ref(),
                         AstNode::FieldAccess { object, field }
                         if field == "value"
-                            && matches!(object.as_ref(), AstNode::Identifier { name } if name == "self")
+                            && matches!(object.as_ref(), AstNode::Identifier { name, .. } if name == "self")
                     )
                 )
             }));
@@ -106,7 +106,7 @@ fn test_self_assignment_targets_and_this_method_calls_parse() {
                     node,
                     AstNode::MethodCall { object, method, .. }
                     if method == "log"
-                        && matches!(object.as_ref(), AstNode::Identifier { name } if name == "this")
+                        && matches!(object.as_ref(), AstNode::Identifier { name, .. } if name == "this")
                 )
             }));
         }
@@ -279,7 +279,7 @@ fn test_field_compound_assignment_target_parsing() {
                                 target.as_ref(),
                                 AstNode::FieldAccess { object, field }
                                 if field == "current"
-                                    && matches!(object.as_ref(), AstNode::Identifier { name } if name == "obj")
+                                    && matches!(object.as_ref(), AstNode::Identifier { name, .. } if name == "obj")
                             )
                                 && matches!(
                                     value.as_ref(),
@@ -319,8 +319,8 @@ fn test_index_compound_assignment_target_parsing() {
                             if matches!(
                                 target.as_ref(),
                                 AstNode::IndexAccess { container, index }
-                                if matches!(container.as_ref(), AstNode::Identifier { name } if name == "items")
-                                    && matches!(index.as_ref(), AstNode::Identifier { name } if name == "idx")
+                                if matches!(container.as_ref(), AstNode::Identifier { name, .. } if name == "items")
+                                    && matches!(index.as_ref(), AstNode::Identifier { name, .. } if name == "idx")
                             )
                                 && matches!(
                                     value.as_ref(),
@@ -432,7 +432,7 @@ fn test_pow_expression_parsing_is_right_associative() {
                                     left,
                                     right,
                                 }
-                                if matches!(left.as_ref(), AstNode::Identifier { name } if name == "a")
+                                if matches!(left.as_ref(), AstNode::Identifier { name, .. } if name == "a")
                                     && matches!(
                                         right.as_ref(),
                                         AstNode::BinaryOp {
@@ -440,8 +440,8 @@ fn test_pow_expression_parsing_is_right_associative() {
                                             left,
                                             right,
                                         }
-                                        if matches!(left.as_ref(), AstNode::Identifier { name } if name == "b")
-                                            && matches!(right.as_ref(), AstNode::Identifier { name } if name == "c")
+                                        if matches!(left.as_ref(), AstNode::Identifier { name, .. } if name == "b")
+                                            && matches!(right.as_ref(), AstNode::Identifier { name, .. } if name == "c")
                                     )
                             )
                         )
@@ -472,7 +472,7 @@ fn test_pow_compound_assignment_parsing() {
                         matches!(
                             node,
                             AstNode::Assignment { target, value }
-                            if matches!(target.as_ref(), AstNode::Identifier { name } if name == "power")
+                            if matches!(target.as_ref(), AstNode::Identifier { name, .. } if name == "power")
                                 && matches!(
                                     value.as_ref(),
                                     AstNode::BinaryOp {
@@ -480,8 +480,8 @@ fn test_pow_compound_assignment_parsing() {
                                         left,
                                         right,
                                     }
-                                    if matches!(left.as_ref(), AstNode::Identifier { name } if name == "power")
-                                        && matches!(right.as_ref(), AstNode::Identifier { name } if name == "base")
+                                    if matches!(left.as_ref(), AstNode::Identifier { name, .. } if name == "power")
+                                        && matches!(right.as_ref(), AstNode::Identifier { name, .. } if name == "base")
                                 )
                         )
                     }),

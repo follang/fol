@@ -29,7 +29,7 @@ fn test_top_level_grouped_callee_lowers_as_invoke_not_function_call() {
         Some(AstNode::Invoke { callee, args })
             if args.len() == 1
                 && matches!(callee.as_ref(), AstNode::FunctionCall { name, args } if name == "factory" && args.is_empty())
-                && matches!(&args[0], AstNode::Identifier { name } if name == "value")
+                && matches!(&args[0], AstNode::Identifier { name, .. } if name == "value")
     ));
 }
 
@@ -58,12 +58,12 @@ fn test_routine_body_keeps_call_invoke_and_assignment_boundaries() {
         ]
             if name == "run"
                 && args.len() == 1
-                && matches!(&args[0], AstNode::Identifier { name } if name == "value")
+                && matches!(&args[0], AstNode::Identifier { name, .. } if name == "value")
                 && invoke_args.len() == 1
                 && matches!(callee.as_ref(), AstNode::FunctionCall { name, args } if name == "factory" && args.is_empty())
-                && matches!(&invoke_args[0], AstNode::Identifier { name } if name == "value")
-                && matches!(target.as_ref(), AstNode::Identifier { name } if name == "target")
-                && matches!(value.as_ref(), AstNode::Identifier { name } if name == "value")
+                && matches!(&invoke_args[0], AstNode::Identifier { name, .. } if name == "value")
+                && matches!(target.as_ref(), AstNode::Identifier { name, .. } if name == "target")
+                && matches!(value.as_ref(), AstNode::Identifier { name, .. } if name == "value")
     ));
 }
 

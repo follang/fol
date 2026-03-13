@@ -621,7 +621,10 @@ impl AstParser {
                 )) as Box<dyn Glitch>
             })?;
             let _ = tokens.bump();
-            AstNode::Identifier { name }
+            AstNode::Identifier {
+                syntax_id: self.record_syntax_origin(&token),
+                name,
+            }
         } else if Self::token_can_start_path_expression(&token)
             && matches!(
                 self.next_significant_key_from_window(tokens),

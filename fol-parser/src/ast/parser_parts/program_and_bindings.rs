@@ -993,6 +993,7 @@ impl AstParser {
                     &mut entries,
                     &token,
                     AstNode::Identifier {
+                        syntax_id: self.record_syntax_origin(&token),
                         name: token.con().trim().to_string(),
                     },
                 );
@@ -1037,6 +1038,7 @@ impl AstParser {
                 "true" => Ok(AstNode::Literal(Literal::Boolean(true))),
                 "false" => Ok(AstNode::Literal(Literal::Boolean(false))),
                 _ => Ok(AstNode::Identifier {
+                    syntax_id: self.record_syntax_origin(token),
                     name: raw.to_string(),
                 }),
             },

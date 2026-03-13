@@ -796,6 +796,7 @@ impl AstParser {
             AstNode::QualifiedIdentifier { path }
         } else {
             AstNode::Identifier {
+                syntax_id: path.syntax_id(),
                 name: path.joined(),
             }
         };
@@ -924,6 +925,7 @@ impl AstParser {
             AstNode::QualifiedIdentifier { path }
         } else {
             AstNode::Identifier {
+                syntax_id: path.syntax_id(),
                 name: path.joined(),
             }
         };

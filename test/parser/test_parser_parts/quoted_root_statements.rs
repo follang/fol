@@ -21,8 +21,8 @@ fn test_top_level_quoted_call_and_assignment_parsing() {
                 matches!(
                     node,
                     AstNode::Assignment { target, value }
-                    if matches!(target.as_ref(), AstNode::Identifier { name } if name == "slot")
-                        && matches!(value.as_ref(), AstNode::Identifier { name } if name == "ready")
+                    if matches!(target.as_ref(), AstNode::Identifier { name, .. } if name == "slot")
+                        && matches!(value.as_ref(), AstNode::Identifier { name, .. } if name == "ready")
                 )
             }));
         }
@@ -58,8 +58,8 @@ fn test_function_body_quoted_call_and_assignment_parsing() {
                 matches!(
                     node,
                     AstNode::Assignment { target, value }
-                    if matches!(target.as_ref(), AstNode::Identifier { name } if name == "state")
-                        && matches!(value.as_ref(), AstNode::Identifier { name } if name == "ready")
+                    if matches!(target.as_ref(), AstNode::Identifier { name, .. } if name == "state")
+                        && matches!(value.as_ref(), AstNode::Identifier { name, .. } if name == "ready")
                 )
             }));
         }

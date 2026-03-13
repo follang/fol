@@ -166,7 +166,7 @@ fn test_mixed_root_surface_keeps_declarations_statements_and_literals_in_order()
         matches!(
             &declarations[2],
             AstNode::Assignment { target, value }
-                if matches!(target.as_ref(), AstNode::Identifier { name } if name == "answer")
+                if matches!(target.as_ref(), AstNode::Identifier { name, .. } if name == "answer")
                     && matches!(value.as_ref(), AstNode::Literal(Literal::Integer(42)))
         ),
         "Third root node should remain the top-level assignment"

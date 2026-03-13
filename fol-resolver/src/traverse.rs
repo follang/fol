@@ -277,8 +277,16 @@ fn traverse_node(
             }
         }
         AstNode::Comment { .. } | AstNode::Commented { .. } => {}
-        AstNode::Identifier { name } => {
-            record_identifier_reference(program, source_unit_id, scope_id, name)?;
+        AstNode::Identifier { name, syntax_id } => {
+            record_identifier_reference(
+                program,
+                source_unit_id,
+                scope_id,
+                name,
+                syntax_id
+                    .and_then(|syntax_id| program.syntax_index().origin(syntax_id))
+                    .cloned(),
+            )?;
         }
         AstNode::QualifiedIdentifier { path } => {
             record_qualified_identifier_reference(program, source_unit_id, scope_id, path)?;
@@ -932,8 +940,9 @@ fn record_identifier_reference(
     source_unit_id: SourceUnitId,
     scope_id: ScopeId,
     name: &str,
+    origin: Option<fol_parser::ast::SyntaxOrigin>,
 ) -> Result<ReferenceId, ResolverError> {
-    let symbol_id = resolve_visible_symbol(program, scope_id, name)?;
+    let symbol_id = resolve_visible_symbol(program, scope_id, name, origin)?;
     let reference_id = program.references.push(ResolvedReference {
         id: ReferenceId(0),
         kind: ReferenceKind::Identifier,
@@ -1174,11 +1183,13 @@ fn resolve_visible_symbol(
     program: &ResolvedProgram,
     starting_scope: ScopeId,
     name: &str,
+    origin: Option<fol_parser::ast::SyntaxOrigin>,
 ) -> Result<SymbolId, ResolverError> {
-    match resolve_lexical_symbol_of_kinds(program, starting_scope, name, &[], None, None) {
+    match resolve_lexical_symbol_of_kinds(program, starting_scope, name, &[], None, origin.clone())
+    {
         Ok(symbol_id) => Ok(symbol_id),
         Err(error) if error.kind() == ResolverErrorKind::UnresolvedName => {
-            resolve_imported_symbol_of_kinds(program, starting_scope, name, &[], None, None)
+            resolve_imported_symbol_of_kinds(program, starting_scope, name, &[], None, origin)
         }
         Err(error) => Err(error),
     }

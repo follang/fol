@@ -515,7 +515,7 @@ fn test_function_body_let_parsing() {
                 matches!(
                     node,
                     AstNode::Return { value: Some(value) }
-                    if matches!(value.as_ref(), AstNode::Identifier { name } if name == "next")
+                    if matches!(value.as_ref(), AstNode::Identifier { name, .. } if name == "next")
                 )
             });
 
@@ -580,7 +580,7 @@ fn test_function_body_con_parsing() {
                 matches!(
                     node,
                     AstNode::Return { value: Some(value) }
-                    if matches!(value.as_ref(), AstNode::Identifier { name } if name == "next")
+                    if matches!(value.as_ref(), AstNode::Identifier { name, .. } if name == "next")
                 )
             });
 
@@ -651,7 +651,7 @@ fn test_nested_block_statements_parse_inside_function_bodies() {
             matches!(
                 statement,
                 AstNode::Return { value: Some(value) }
-                if matches!(value.as_ref(), AstNode::Identifier { name } if name == "inner")
+                if matches!(value.as_ref(), AstNode::Identifier { name, .. } if name == "inner")
             )
         }),
         "Nested block should preserve return statements"

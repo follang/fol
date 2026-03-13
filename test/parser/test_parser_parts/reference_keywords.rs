@@ -24,7 +24,7 @@ fn test_self_and_this_parse_as_identifier_expressions() {
                             value.as_ref(),
                             AstNode::FieldAccess { object, field }
                             if field == "value"
-                                && matches!(object.as_ref(), AstNode::Identifier { name } if name == "self")
+                                && matches!(object.as_ref(), AstNode::Identifier { name, .. } if name == "self")
                         )
                     )) && body.iter().any(|stmt| matches!(
                         stmt,
@@ -33,7 +33,7 @@ fn test_self_and_this_parse_as_identifier_expressions() {
                             value.as_ref(),
                             AstNode::FieldAccess { object, field }
                             if field == "count"
-                                && matches!(object.as_ref(), AstNode::Identifier { name } if name == "this")
+                                && matches!(object.as_ref(), AstNode::Identifier { name, .. } if name == "this")
                         )
                     ))
                 )

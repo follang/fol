@@ -75,8 +75,8 @@ fn test_for_and_each_support_flow_bodies() {
 
     let bodies = collect_loop_bodies(ast);
     assert_eq!(bodies.len(), 2);
-    assert!(matches!(bodies[0].as_slice(), [AstNode::Identifier { name }] if name == "item"));
-    assert!(matches!(bodies[1].as_slice(), [AstNode::Identifier { name }] if name == "current"));
+    assert!(matches!(bodies[0].as_slice(), [AstNode::Identifier { name, .. }] if name == "item"));
+    assert!(matches!(bodies[1].as_slice(), [AstNode::Identifier { name, .. }] if name == "current"));
 }
 
 #[test]
@@ -755,8 +755,8 @@ fn test_range_expressions_parse_in_assignment_and_return() {
                             end: Some(end),
                             inclusive: true
                         }
-                        if matches!(start.as_ref(), AstNode::Identifier { name } if name == "a")
-                            && matches!(end.as_ref(), AstNode::Identifier { name } if name == "b")
+                        if matches!(start.as_ref(), AstNode::Identifier { name, .. } if name == "a")
+                            && matches!(end.as_ref(), AstNode::Identifier { name, .. } if name == "b")
                     )
                 )
             });
@@ -845,7 +845,7 @@ fn test_open_start_range_expressions_parse_in_assignment_and_return() {
                             end: Some(end),
                             inclusive: true
                         }
-                        if matches!(end.as_ref(), AstNode::Identifier { name } if name == "b")
+                        if matches!(end.as_ref(), AstNode::Identifier { name, .. } if name == "b")
                     )
                 )
             });
@@ -934,7 +934,7 @@ fn test_open_end_range_expressions_parse_in_assignment_and_return() {
                             end: None,
                             inclusive: true
                         }
-                        if matches!(start.as_ref(), AstNode::Identifier { name } if name == "a")
+                        if matches!(start.as_ref(), AstNode::Identifier { name, .. } if name == "a")
                     )
                 )
             });

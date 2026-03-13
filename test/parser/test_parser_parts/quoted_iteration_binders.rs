@@ -21,7 +21,7 @@ fn test_each_iteration_accepts_quoted_binder() {
                         condition.as_ref(),
                         fol_parser::ast::LoopCondition::Iteration { var, condition: Some(_), .. }
                         if var == "line"
-                    ) && body.iter().any(|stmt| matches!(stmt, AstNode::Yield { value } if matches!(value.as_ref(), AstNode::Identifier { name } if name == "line")))
+                    ) && body.iter().any(|stmt| matches!(stmt, AstNode::Yield { value } if matches!(value.as_ref(), AstNode::Identifier { name, .. } if name == "line")))
                 )
             }));
         }

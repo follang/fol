@@ -54,7 +54,7 @@ fn test_leading_dot_builtin_call_expression() {
                                 value.as_ref(),
                                 AstNode::FunctionCall { name, args }
                                     if name == "len"
-                                        && matches!(args.as_slice(), [AstNode::Identifier { name }] if name == "items")
+                                        && matches!(args.as_slice(), [AstNode::Identifier { name, .. }] if name == "items")
                             )
                     ))
             )

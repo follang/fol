@@ -447,7 +447,10 @@ pub enum AstNode {
     FieldAccess { object: Box<AstNode>, field: String },
 
     /// Identifier reference
-    Identifier { name: String },
+    Identifier {
+        syntax_id: Option<SyntaxNodeId>,
+        name: String,
+    },
 
     /// Qualified identifier reference
     QualifiedIdentifier { path: QualifiedPath },
@@ -1052,7 +1055,8 @@ impl AstNode {
             AstNode::FunDecl { syntax_id, .. }
             | AstNode::ProDecl { syntax_id, .. }
             | AstNode::LogDecl { syntax_id, .. }
-            | AstNode::UseDecl { syntax_id, .. } => *syntax_id,
+            | AstNode::UseDecl { syntax_id, .. }
+            | AstNode::Identifier { syntax_id, .. } => *syntax_id,
             AstNode::Commented { node, .. } => node.syntax_id(),
             _ => None,
         }

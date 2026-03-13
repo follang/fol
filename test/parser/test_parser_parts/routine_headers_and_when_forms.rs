@@ -747,7 +747,7 @@ fn test_when_statement_supports_is_in_and_has_cases() {
                     matches!(
                         case,
                         fol_parser::ast::WhenCase::Is {
-                            value: AstNode::Identifier { name },
+                            value: AstNode::Identifier { name, .. },
                             ..
                         } if name == "needle"
                     )
@@ -759,7 +759,7 @@ fn test_when_statement_supports_is_in_and_has_cases() {
                     matches!(
                         case,
                         fol_parser::ast::WhenCase::In {
-                            range: AstNode::Identifier { name },
+                            range: AstNode::Identifier { name, .. },
                             ..
                         } if name == "limit"
                     )
@@ -814,7 +814,7 @@ fn test_when_statement_supports_on_cases() {
                     matches!(
                         case,
                         fol_parser::ast::WhenCase::On {
-                            channel: AstNode::Identifier { name },
+                            channel: AstNode::Identifier { name, .. },
                             ..
                         } if name == "stream"
                     )

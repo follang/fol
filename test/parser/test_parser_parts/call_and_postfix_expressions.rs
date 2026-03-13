@@ -223,7 +223,7 @@ fn test_field_access_expressions_in_assignment_and_return() {
                             value.as_ref(),
                             AstNode::FieldAccess { object, field }
                             if field == "inner"
-                                && matches!(object.as_ref(), AstNode::Identifier { name } if name == "obj")
+                                && matches!(object.as_ref(), AstNode::Identifier { name, .. } if name == "obj")
                         )
                     )
                 });
@@ -240,7 +240,7 @@ fn test_field_access_expressions_in_assignment_and_return() {
                                     object.as_ref(),
                                     AstNode::FieldAccess { object, field }
                                     if field == "inner"
-                                        && matches!(object.as_ref(), AstNode::Identifier { name } if name == "obj")
+                                        && matches!(object.as_ref(), AstNode::Identifier { name, .. } if name == "obj")
                                 )
                         )
                     )
@@ -281,8 +281,8 @@ fn test_index_access_expressions_in_assignment_and_return() {
                         if matches!(
                             value.as_ref(),
                             AstNode::IndexAccess { container, index }
-                            if matches!(container.as_ref(), AstNode::Identifier { name } if name == "items")
-                                && matches!(index.as_ref(), AstNode::Identifier { name } if name == "idx")
+                            if matches!(container.as_ref(), AstNode::Identifier { name, .. } if name == "items")
+                                && matches!(index.as_ref(), AstNode::Identifier { name, .. } if name == "idx")
                         )
                     )
                 });
@@ -294,7 +294,7 @@ fn test_index_access_expressions_in_assignment_and_return() {
                         if matches!(
                             value.as_ref(),
                             AstNode::IndexAccess { container, index }
-                            if matches!(container.as_ref(), AstNode::Identifier { name } if name == "items")
+                            if matches!(container.as_ref(), AstNode::Identifier { name, .. } if name == "items")
                                 && matches!(index.as_ref(), AstNode::BinaryOp { .. })
                         )
                     )
@@ -344,9 +344,9 @@ fn test_chained_postfix_expressions_mix_fields_indexes_and_methods() {
                                         container.as_ref(),
                                         AstNode::FieldAccess { object, field }
                                         if field == "items"
-                                            && matches!(object.as_ref(), AstNode::Identifier { name } if name == "obj")
+                                            && matches!(object.as_ref(), AstNode::Identifier { name, .. } if name == "obj")
                                     )
-                                        && matches!(index.as_ref(), AstNode::Identifier { name } if name == "idx")
+                                        && matches!(index.as_ref(), AstNode::Identifier { name, .. } if name == "idx")
                                 )
                         )
                     )
@@ -369,7 +369,7 @@ fn test_chained_postfix_expressions_mix_fields_indexes_and_methods() {
                                         if method == "format"
                                     )
                             )
-                                && matches!(index.as_ref(), AstNode::Identifier { name } if name == "idx")
+                                && matches!(index.as_ref(), AstNode::Identifier { name, .. } if name == "idx")
                         )
                     )
                 });

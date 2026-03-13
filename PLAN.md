@@ -1037,7 +1037,7 @@ Status: done
 
 #### Slice 12.1
 
-Status: pending
+Status: done
 
 - Add syntax-origin coverage for plain identifier expressions.
 - Add resolver tests proving unresolved plain names keep exact locations.

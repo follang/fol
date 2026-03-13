@@ -218,3 +218,46 @@ fn test_parse_package_retains_qualified_reference_origins() {
     assert_eq!(value_origin.line, 3);
     assert_eq!(value_origin.column, 16);
 }
+
+#[test]
+fn test_parse_package_retains_plain_identifier_origins() {
+    let temp_root = unique_temp_root("plain_identifier");
+    fs::create_dir_all(&temp_root).expect("Should create temporary identifier-origin fixture dir");
+    let fixture = temp_root.join("identifier_refs.fol");
+    fs::write(
+        &fixture,
+        "fun outer(): int = {\n    return missing\n}\n",
+    )
+    .expect("Should write temporary identifier-origin fixture");
+
+    let parsed = parse_package_from_file(
+        fixture
+            .to_str()
+            .expect("Temporary identifier-origin fixture path should be UTF-8"),
+    );
+
+    let expected_path = std::fs::canonicalize(&fixture)
+        .expect("Identifier-origin fixture path should canonicalize")
+        .to_string_lossy()
+        .to_string();
+
+    fs::remove_dir_all(&temp_root).ok();
+
+    let routine_body = match &parsed.source_units[0].items[0].node {
+        AstNode::FunDecl { body, .. } => body,
+        other => panic!("Expected top-level outer routine, got {other:?}"),
+    };
+
+    let identifier = match &routine_body[0] {
+        AstNode::Return { value } => match value.as_deref() {
+            Some(identifier @ AstNode::Identifier { .. }) => identifier,
+            other => panic!("Expected identifier return value, got {other:?}"),
+        },
+        other => panic!("Expected return statement, got {other:?}"),
+    };
+
+    let identifier_origin = ast_node_origin(&parsed, identifier);
+    assert_eq!(identifier_origin.file.as_deref(), Some(expected_path.as_str()));
+    assert_eq!(identifier_origin.line, 2);
+    assert_eq!(identifier_origin.column, 12);
+}
