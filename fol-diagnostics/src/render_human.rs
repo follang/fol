@@ -1,6 +1,6 @@
 use colored::Colorize;
 
-use crate::{source, Diagnostic, DiagnosticReport, Severity};
+use crate::{source, Diagnostic, DiagnosticLabelKind, DiagnosticReport, Severity};
 
 pub fn render_report(report: &DiagnosticReport) -> String {
     let mut output = String::new();
@@ -92,12 +92,44 @@ pub fn render_diagnostic(diagnostic: &Diagnostic) -> String {
         }
     }
 
-    if let Some(help) = diagnostic.first_help() {
+    for label in diagnostic
+        .labels
+        .iter()
+        .filter(|label| label.kind == DiagnosticLabelKind::Secondary)
+    {
+        output.push('\n');
+        output.push_str(&format!(
+            "  {} {}",
+            "note:".blue().bold(),
+            related_label_summary(label)
+        ));
+    }
+
+    for note in &diagnostic.notes {
+        output.push('\n');
+        output.push_str(&format!("  {} {}", "note:".blue().bold(), note));
+    }
+
+    for help in &diagnostic.helps {
         output.push('\n');
         output.push_str(&format!("  {} {}", "help:".green().bold(), help));
     }
 
     output
+}
+
+fn related_label_summary(label: &crate::DiagnosticLabel) -> String {
+    let location = &label.location;
+    let prefix = if let Some(file) = &location.file {
+        format!("{file}:{}:{}", location.line, location.column)
+    } else {
+        format!("line {}:{}", location.line, location.column)
+    };
+
+    match label.message.as_deref() {
+        Some(message) => format!("{prefix}: {message}"),
+        None => prefix,
+    }
 }
 
 #[cfg(test)]
@@ -149,5 +181,35 @@ mod tests {
 
         assert!(rendered.contains("var answer: int = 42;"));
         assert!(rendered.contains("^^^^^^ primary binding"));
+    }
+
+    #[test]
+    fn render_diagnostic_shows_secondary_labels_notes_and_multiple_helps() {
+        let diagnostic = Diagnostic::new(Severity::Warning, "R4002", "secondary renderer")
+            .with_primary_label(DiagnosticLocation {
+                file: Some("pkg/main.fol".to_string()),
+                line: 3,
+                column: 2,
+                length: Some(5),
+            })
+            .with_secondary_label(
+                DiagnosticLocation {
+                    file: Some("pkg/lib.fol".to_string()),
+                    line: 9,
+                    column: 1,
+                    length: Some(4),
+                },
+                "related declaration",
+            )
+            .with_note("shadowed here")
+            .with_help("rename the local binding")
+            .with_help("or qualify the imported name");
+
+        let rendered = super::render_diagnostic(&diagnostic);
+
+        assert!(rendered.contains("note: pkg/lib.fol:9:1: related declaration"));
+        assert!(rendered.contains("note: shadowed here"));
+        assert!(rendered.contains("help: rename the local binding"));
+        assert!(rendered.contains("help: or qualify the imported name"));
     }
 }

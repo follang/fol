@@ -558,7 +558,7 @@ Status: done
 
 #### 2.3
 
-Status: pending
+Status: done
 
 - Render secondary labels, notes, and helps consistently.
 
