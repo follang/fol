@@ -530,7 +530,7 @@ Status: done
 
 #### 1.3
 
-Status: pending
+Status: done
 
 - Keep backward compatibility helpers long enough so current producers can migrate incrementally.
 

@@ -89,6 +89,18 @@ impl Diagnostic {
         }
     }
 
+    pub fn error(code: impl Into<DiagnosticCode>, message: impl Into<String>) -> Self {
+        Self::new(Severity::Error, code, message)
+    }
+
+    pub fn warning(code: impl Into<DiagnosticCode>, message: impl Into<String>) -> Self {
+        Self::new(Severity::Warning, code, message)
+    }
+
+    pub fn info(code: impl Into<DiagnosticCode>, message: impl Into<String>) -> Self {
+        Self::new(Severity::Info, code, message)
+    }
+
     pub fn from_glitch(
         error: &dyn Glitch,
         severity: Severity,
@@ -129,6 +141,19 @@ impl Diagnostic {
         self
     }
 
+    pub fn with_primary_label_message(
+        mut self,
+        location: DiagnosticLocation,
+        message: impl Into<String>,
+    ) -> Self {
+        self.labels.push(DiagnosticLabel {
+            kind: DiagnosticLabelKind::Primary,
+            location,
+            message: Some(message.into()),
+        });
+        self
+    }
+
     pub fn with_note(mut self, note: impl Into<String>) -> Self {
         self.notes.push(note.into());
         self
@@ -156,6 +181,14 @@ impl Diagnostic {
 
     pub fn first_help(&self) -> Option<&str> {
         self.helps.first().map(|help| help.as_str())
+    }
+
+    pub fn legacy_location(&self) -> Option<&DiagnosticLocation> {
+        self.primary_location()
+    }
+
+    pub fn legacy_help(&self) -> Option<&str> {
+        self.first_help()
     }
 }
 

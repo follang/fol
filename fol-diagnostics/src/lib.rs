@@ -40,6 +40,32 @@ impl DiagnosticReport {
         self.add_diagnostic(diagnostic);
     }
 
+    pub fn add_coded_error(
+        &mut self,
+        code: impl Into<DiagnosticCode>,
+        message: impl Into<String>,
+        location: Option<DiagnosticLocation>,
+    ) {
+        let mut diagnostic = Diagnostic::error(code, message);
+        if let Some(location) = location {
+            diagnostic = diagnostic.with_primary_label(location);
+        }
+        self.add_diagnostic(diagnostic);
+    }
+
+    pub fn add_coded_warning(
+        &mut self,
+        code: impl Into<DiagnosticCode>,
+        message: impl Into<String>,
+        location: Option<DiagnosticLocation>,
+    ) {
+        let mut diagnostic = Diagnostic::warning(code, message);
+        if let Some(location) = location {
+            diagnostic = diagnostic.with_primary_label(location);
+        }
+        self.add_diagnostic(diagnostic);
+    }
+
     pub fn has_errors(&self) -> bool {
         self.error_count > 0
     }
@@ -313,5 +339,37 @@ mod tests {
         assert_eq!(diagnostic.code.as_str(), "R1001");
         let json = serde_json::to_string(&diagnostic).expect("Diagnostic should serialize");
         assert!(json.contains("\"code\":\"R1001\""));
+    }
+
+    #[test]
+    fn test_coded_report_helpers_preserve_legacy_location_and_help_views() {
+        let mut report = DiagnosticReport::new();
+        report.add_coded_error(
+            "R2000",
+            "explicit code",
+            Some(DiagnosticLocation {
+                file: Some("pkg/main.fol".to_string()),
+                line: 9,
+                column: 4,
+                length: Some(2),
+            }),
+        );
+
+        let diagnostic = report
+            .diagnostics
+            .first()
+            .expect("report should contain a coded diagnostic");
+
+        assert_eq!(diagnostic.code.as_str(), "R2000");
+        assert_eq!(
+            diagnostic.legacy_location(),
+            Some(&DiagnosticLocation {
+                file: Some("pkg/main.fol".to_string()),
+                line: 9,
+                column: 4,
+                length: Some(2),
+            })
+        );
+        assert_eq!(diagnostic.legacy_help(), None);
     }
 }
