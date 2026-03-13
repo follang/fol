@@ -1,4 +1,4 @@
-use crate::{PackageError, PackageErrorKind};
+use crate::{parse_package_locator, PackageError, PackageErrorKind, PackageLocator};
 use fol_lexer::lexer::stage3::Elements;
 use fol_parser::ast::{
     AstNode, AstParser, FolType, Literal, ParsedPackage, SyntaxIndex, SyntaxNodeId, SyntaxOrigin,
@@ -9,7 +9,7 @@ use std::path::Path;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BuildDependency {
     pub alias: String,
-    pub package_path: String,
+    pub locator: PackageLocator,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -117,14 +117,21 @@ pub fn extract_package_build_definition(
                             "package build dependency definitions do not accept parameters",
                         ));
                     }
+                    let dependency_target = build_string_body(
+                        "package dependency",
+                        body,
+                        &parsed.syntax_index,
+                        item.node_id,
+                    )?;
                     build.dependencies.push(BuildDependency {
                         alias: name.clone(),
-                        package_path: build_string_body(
-                            "package dependency",
-                            body,
-                            &parsed.syntax_index,
-                            item.node_id,
-                        )?,
+                        locator: parse_package_locator(&dependency_target).map_err(|error| {
+                            build_item_error(
+                                &parsed.syntax_index,
+                                item.node_id,
+                                error.message().to_string(),
+                            )
+                        })?,
                     });
                 }
                 FolType::Location { .. } => {
@@ -212,7 +219,7 @@ mod tests {
         extract_package_build_definition, parse_package_build, BuildDependency, BuildExport,
         PackageBuildDefinition,
     };
-    use crate::PackageErrorKind;
+    use crate::{PackageErrorKind, PackageLocator, PackageLocatorKind};
     use fol_parser::ast::AstParser;
     use fol_stream::FileStream;
     use std::fs;
@@ -251,11 +258,19 @@ mod tests {
                 dependencies: vec![
                     BuildDependency {
                         alias: "core".to_string(),
-                        package_path: "core".to_string(),
+                        locator: PackageLocator {
+                            kind: PackageLocatorKind::InstalledStore,
+                            raw: "core".to_string(),
+                            path_segments: vec!["core".to_string()],
+                        },
                     },
                     BuildDependency {
                         alias: "tools".to_string(),
-                        package_path: "org/tools".to_string(),
+                        locator: PackageLocator {
+                            kind: PackageLocatorKind::InstalledStore,
+                            raw: "org/tools".to_string(),
+                            path_segments: vec!["org".to_string(), "tools".to_string()],
+                        },
                     },
                 ],
                 exports: Vec::new(),
@@ -447,7 +462,11 @@ mod tests {
             PackageBuildDefinition {
                 dependencies: vec![BuildDependency {
                     alias: "core".to_string(),
-                    package_path: "core".to_string(),
+                    locator: PackageLocator {
+                        kind: PackageLocatorKind::InstalledStore,
+                        raw: "core".to_string(),
+                        path_segments: vec!["core".to_string()],
+                    },
                 }],
                 exports: vec![BuildExport {
                     alias: "root".to_string(),

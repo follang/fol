@@ -1,6 +1,6 @@
 use crate::{
     PackageBuildDefinition, PackageConfig, PackageError, PackageErrorKind, PackageIdentity,
-    PackageSourceKind, PreparedExportMount, PreparedPackage,
+    PackageLocator, PackageSourceKind, PreparedExportMount, PreparedPackage,
 };
 use fol_lexer::lexer::stage3::Elements;
 use std::collections::BTreeMap;
@@ -158,7 +158,7 @@ impl PackageSession {
         }
 
         for dependency in &build.dependencies {
-            let path_segments = build_dependency_path_segments(&dependency.package_path)?;
+            let path_segments = locator_use_path_segments(&dependency.locator);
             self.load_package_from_store(store_root, &path_segments)?;
         }
 
@@ -433,31 +433,16 @@ fn import_source_label(source_kind: PackageSourceKind) -> &'static str {
     }
 }
 
-fn build_dependency_path_segments(
-    package_path: &str,
-) -> Result<Vec<UsePathSegment>, PackageError> {
-    let parts = package_path
-        .split('/')
-        .map(str::trim)
-        .collect::<Vec<_>>();
-    if parts.is_empty() || parts.iter().any(|part| part.is_empty()) {
-        return Err(PackageError::new(
-            PackageErrorKind::InvalidInput,
-            format!(
-                "package build dependency path '{}' must contain non-empty slash-separated segments",
-                package_path
-            ),
-        ));
-    }
-
-    Ok(parts
-        .into_iter()
+fn locator_use_path_segments(locator: &PackageLocator) -> Vec<UsePathSegment> {
+    locator
+        .path_segments
+        .iter()
         .enumerate()
         .map(|(index, part)| UsePathSegment {
             separator: (index > 0).then_some(fol_parser::ast::UsePathSeparator::Slash),
-            spelling: part.to_string(),
+            spelling: part.clone(),
         })
-        .collect())
+        .collect()
 }
 
 fn compute_prepared_exports(

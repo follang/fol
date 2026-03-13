@@ -674,13 +674,13 @@ Status: pending
 
 #### 6.1
 
-Status: pending
+Status: done
 
 - Introduce a `PackageLocator` model so `build.fol` dependency strings are not treated as opaque forever.
 
 #### 6.2
 
-Status: pending
+Status: done
 
 - Support the current installed-store locators cleanly as one locator family.
 

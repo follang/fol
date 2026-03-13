@@ -57,7 +57,8 @@ mod tests {
     use super::PreparedPackage;
     use crate::{
         BuildDependency, BuildExport, PackageBuildDefinition, PackageConfig, PackageIdentity,
-        PackageMetadata, PackageSourceKind, PreparedExportMount,
+        PackageLocator, PackageLocatorKind, PackageMetadata, PackageSourceKind,
+        PreparedExportMount,
     };
     use fol_parser::ast::{AstParser, ParsedPackage};
     use fol_stream::FileStream;
@@ -121,7 +122,11 @@ mod tests {
             PackageBuildDefinition {
                 dependencies: vec![BuildDependency {
                     alias: "core".to_string(),
-                    package_path: "core".to_string(),
+                    locator: PackageLocator {
+                        kind: PackageLocatorKind::InstalledStore,
+                        raw: "core".to_string(),
+                        path_segments: vec!["core".to_string()],
+                    },
                 }],
                 exports: vec![BuildExport {
                     alias: "root".to_string(),

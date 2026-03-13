@@ -13,6 +13,7 @@ pub mod config;
 pub mod build;
 pub mod errors;
 pub mod identity;
+pub mod locator;
 pub mod metadata;
 pub mod model;
 pub mod session;
@@ -21,6 +22,7 @@ pub use build::{parse_package_build, BuildDependency, BuildExport, PackageBuildD
 pub use config::PackageConfig;
 pub use errors::{PackageError, PackageErrorKind};
 pub use identity::{PackageIdentity, PackageSourceKind};
+pub use locator::{parse_package_locator, PackageLocator, PackageLocatorKind};
 pub use metadata::{parse_package_metadata, PackageMetadata};
 pub use model::{PreparedExportMount, PreparedPackage};
 pub use session::{
