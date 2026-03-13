@@ -974,7 +974,7 @@ Status: done
 
 #### Slice 9.1
 
-Status: pending
+Status: done
 
 - Rework import-resolution ordering so qualified alias roots use resolved import targets instead of partially initialized records.
 - Add tests where alias spelling differs from namespace root spelling.
