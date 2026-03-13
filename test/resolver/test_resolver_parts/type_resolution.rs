@@ -17,6 +17,12 @@ fn test_resolver_resolves_named_types_against_top_level_type_symbols() {
             .to_str()
             .expect("Temporary resolver fixture path should be valid UTF-8"),
     );
+    let source_unit_scope = resolved
+        .source_units
+        .iter()
+        .next()
+        .expect("Resolver should keep the source unit")
+        .scope_id;
     let item_symbol = resolved
         .symbols_in_scope(resolved.program_scope)
         .into_iter()
@@ -35,7 +41,7 @@ fn test_resolver_resolves_named_types_against_top_level_type_symbols() {
 
     assert!(
         resolved
-            .references_in_scope(resolved.program_scope)
+            .references_in_scope(source_unit_scope)
             .into_iter()
             .any(|reference| {
                 reference.kind == ReferenceKind::TypeName

@@ -22,9 +22,15 @@ fn test_resolver_builds_routine_scope_for_named_routines_and_nested_named_routin
     let root_scope = resolved
         .scope(root_scope_id)
         .expect("Root routine scope should exist");
+    let source_unit_scope = resolved
+        .source_units
+        .iter()
+        .next()
+        .expect("Resolver should keep the source unit")
+        .scope_id;
 
     assert!(matches!(root_scope.kind, ScopeKind::Routine));
-    assert_eq!(root_scope.parent, Some(resolved.program_scope));
+    assert_eq!(root_scope.parent, Some(source_unit_scope));
     assert!(
         resolved
             .symbols_in_scope(root_scope_id)

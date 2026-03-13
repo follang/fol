@@ -57,6 +57,9 @@ mod ambiguity_diagnostics;
 #[path = "test_resolver_parts/diagnostic_quality.rs"]
 mod diagnostic_quality;
 #[cfg(test)]
+#[path = "test_resolver_parts/file_private_visibility.rs"]
+mod file_private_visibility;
+#[cfg(test)]
 #[path = "test_resolver_parts/foundation.rs"]
 mod foundation;
 #[cfg(test)]

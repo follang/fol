@@ -17,12 +17,18 @@ fn test_resolver_resolves_plain_identifiers_against_outer_local_scopes() {
             .to_str()
             .expect("Temporary resolver fixture path should be valid UTF-8"),
     );
+    let source_unit_scope = resolved
+        .source_units
+        .iter()
+        .next()
+        .expect("Resolver should keep the source unit")
+        .scope_id;
     let outer_scope_id = resolved
         .scopes
         .iter_with_ids()
         .find_map(|(scope_id, scope)| {
             (matches!(scope.kind, ScopeKind::Routine)
-                && scope.parent == Some(resolved.program_scope))
+                && scope.parent == Some(source_unit_scope))
             .then_some(scope_id)
         })
         .expect("Resolver should create an outer routine scope");

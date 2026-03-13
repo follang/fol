@@ -53,10 +53,14 @@ pub fn collect_routine_scopes(program: &mut ResolvedProgram) -> Result<(), Vec<R
 fn traverse_top_level_item(
     program: &mut ResolvedProgram,
     source_unit_id: SourceUnitId,
-    scope_id: ScopeId,
+    _scope_id: ScopeId,
     item: &ParsedTopLevel,
 ) -> Result<(), ResolverError> {
-    traverse_node(program, source_unit_id, scope_id, &item.node, true, None)
+    let traversal_scope = program
+        .source_unit(source_unit_id)
+        .expect("top-level traversal source unit should exist")
+        .scope_id;
+    traverse_node(program, source_unit_id, traversal_scope, &item.node, true, None)
 }
 
 fn traverse_node(

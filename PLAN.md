@@ -997,7 +997,7 @@ Status: done
 
 #### Slice 10.1
 
-Status: pending
+Status: done
 
 - Make file/source-unit scope part of semantic lookup for same-file references.
 - Add tests proving same-file routines can resolve `hid` values.
