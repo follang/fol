@@ -799,4 +799,92 @@ mod tests {
         fs::remove_dir_all(&temp_root)
             .expect("Temporary transitive package graph fixture should be removable after the test");
     }
+
+    #[test]
+    fn session_reuses_cached_shared_pkg_dependencies_across_multiple_dependents() {
+        let temp_root = unique_temp_root("shared_pkg_graph");
+        let store_root = temp_root.join("store");
+        let app_root = temp_root.join("app");
+        fs::create_dir_all(store_root.join("core"))
+            .expect("Should create the shared dependency root fixture");
+        fs::create_dir_all(store_root.join("json"))
+            .expect("Should create the first direct dependency root fixture");
+        fs::create_dir_all(store_root.join("xml"))
+            .expect("Should create the second direct dependency root fixture");
+        fs::create_dir_all(&app_root)
+            .expect("Should create the importing app fixture directory");
+        fs::write(
+            store_root.join("core/package.fol"),
+            "var name: str = \"core\";\nvar version: str = \"1.0.0\";\n",
+        )
+        .expect("Should write the shared dependency manifest");
+        fs::write(store_root.join("core/lib.fol"), "var[exp] shared: int = 7;\n")
+            .expect("Should write the shared dependency export");
+        fs::write(
+            store_root.join("json/package.fol"),
+            concat!(
+                "var name: str = \"json\";\n",
+                "var version: str = \"1.0.0\";\n",
+                "use core: pkg = {core};\n",
+            ),
+        )
+        .expect("Should write the first direct dependency manifest");
+        fs::write(
+            store_root.join("json/lib.fol"),
+            "use core: pkg = {core};\nvar[exp] left: int = shared;\n",
+        )
+        .expect("Should write the first direct dependency source");
+        fs::write(
+            store_root.join("xml/package.fol"),
+            concat!(
+                "var name: str = \"xml\";\n",
+                "var version: str = \"1.0.0\";\n",
+                "use core: pkg = {core};\n",
+            ),
+        )
+        .expect("Should write the second direct dependency manifest");
+        fs::write(
+            store_root.join("xml/lib.fol"),
+            "use core: pkg = {core};\nvar[exp] right: int = shared;\n",
+        )
+        .expect("Should write the second direct dependency source");
+        fs::write(
+            app_root.join("main.fol"),
+            concat!(
+                "use json: pkg = {json};\n",
+                "use xml: pkg = {xml};\n",
+                "fun[] main(): int = {\n",
+                "    return left + right;\n",
+                "}\n",
+            ),
+        )
+        .expect("Should write the importing app source");
+        let parsed = parse_package(
+            app_root
+                .to_str()
+                .expect("Temporary app fixture path should be valid UTF-8"),
+        );
+        let mut session = ResolverSession::with_config(ResolverConfig {
+            std_root: None,
+            package_store_root: Some(
+                store_root
+                    .to_str()
+                    .expect("Temporary package-store fixture path should be valid UTF-8")
+                    .to_string(),
+            ),
+        });
+
+        session
+            .resolve_package(parsed)
+            .expect("Shared pkg dependencies should resolve through one cached session");
+
+        assert_eq!(
+            session.cached_package_count(),
+            3,
+            "Two direct pkg imports sharing one transitive dependency should cache json, xml, and core once each",
+        );
+
+        fs::remove_dir_all(&temp_root)
+            .expect("Temporary shared package graph fixture should be removable after the test");
+    }
 }

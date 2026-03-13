@@ -1557,7 +1557,7 @@ Status: done
 
 #### Slice 19.2
 
-Status: pending
+Status: done
 
 - Add tests for transitive `pkg` imports and duplicate shared dependencies.
 - Ensure canonical package identity prevents duplicate package loads.
