@@ -732,7 +732,7 @@ Status: done
 
 #### 8.3
 
-Status: pending
+Status: done
 
 - Add end-to-end integration tests for human and JSON diagnostics with rich labels.
 

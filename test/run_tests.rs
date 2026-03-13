@@ -1006,6 +1006,74 @@ mod integration_tests {
     }
 
     #[test]
+    fn test_cli_human_resolver_errors_render_secondary_labels() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_human_resolver_labels");
+        fs::create_dir_all(temp_root.join("alpha"))
+            .expect("Should create first imported namespace fixture");
+        fs::create_dir_all(temp_root.join("beta"))
+            .expect("Should create second imported namespace fixture");
+        fs::write(temp_root.join("alpha/values.fol"), "var[exp] answer: int = 1;\n")
+            .expect("Should write first imported exported value fixture");
+        fs::write(temp_root.join("beta/values.fol"), "var[exp] answer: int = 2;\n")
+            .expect("Should write second imported exported value fixture");
+        fs::write(
+            temp_root.join("main.fol"),
+            "use alpha: loc = {alpha};\nuse beta: loc = {beta};\nfun[] main(): int = {\n    return answer;\n}\n",
+        )
+        .expect("Should write ambiguous imported plain-name fixture");
+
+        let output = run_fol(&[
+            temp_root
+                .to_str()
+                .expect("Resolver fixture path should be valid UTF-8"),
+        ]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        assert!(!output.status.success(), "Ambiguous resolver fixture should fail");
+        assert!(stdout.contains("error: ResolverAmbiguousReference"));
+        assert!(stdout.contains("note:"));
+        assert!(stdout.contains("candidate value binding declaration"));
+        assert!(stdout.contains("alpha/values.fol"));
+        assert!(stdout.contains("beta/values.fol"));
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_cli_human_package_errors_render_help_guidance() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_human_package_help");
+        let app_root = temp_root.join("app");
+        let loc_root = temp_root.join("formal_pkg");
+        fs::create_dir_all(&app_root).expect("Should create app fixture root");
+        fs::create_dir_all(&loc_root).expect("Should create loc target fixture root");
+        fs::write(loc_root.join("build.fol"), "def root: loc = \"src\";\n")
+            .expect("Should write formal package control file");
+        fs::write(
+            app_root.join("main.fol"),
+            "use formal: loc = {../formal_pkg};\nfun[] main(): int = {\n    return answer;\n}\n",
+        )
+        .expect("Should write loc misuse fixture");
+
+        let output = run_fol(&[
+            app_root
+                .to_str()
+                .expect("Package fixture path should be valid UTF-8"),
+        ]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        assert!(!output.status.success(), "Formal package loc misuse should fail");
+        assert!(stdout.contains("error: ResolverInvalidInput"));
+        assert!(stdout.contains("pkg instead of loc"));
+        assert!(stdout.contains("help: replace the import source kind with pkg for formal packages"));
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
     fn test_cli_json_modern_compiler_errors_do_not_fall_back_to_unknown_codes() {
         use std::fs;
 
