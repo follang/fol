@@ -34,6 +34,7 @@ Current import surface:
 - `pkg` imports installed package roots under an explicit `--package-store-root`
 - `pkg` roots require both `package.yaml` and `build.fol`
 - `package.yaml` is metadata-only; `build.fol` defines dependency and export records
+- stray `package.fol` files are ignored
 - consumer-visible `pkg` names come only from build-declared exported roots
 
 For exact current stream/lexer/parser behavior, treat [`FRONTEND_CONTRACT.md`](./FRONTEND_CONTRACT.md)

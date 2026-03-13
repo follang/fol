@@ -199,7 +199,7 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `use std` imports resolve against explicit configured std roots.
 - `use pkg` imports resolve against explicit configured package-store roots.
 - Installed `pkg` roots now require both `package.yaml` and `build.fol`.
-- Legacy `package.fol` package roots are rejected explicitly during `pkg` loading.
+- Stray `package.fol` files are ignored during `pkg` loading and do not satisfy package metadata requirements.
 - `package.yaml` is metadata-only and is not part of ordinary package source loading.
 - `build.fol` defines pkg dependency and export records with `def` and is not part of
   ordinary package source loading.

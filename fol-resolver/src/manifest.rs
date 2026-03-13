@@ -1,9 +1,7 @@
 use crate::{ResolverError, ResolverErrorKind};
-use fol_lexer::lexer::stage3::Elements;
-use fol_parser::ast::{AstNode, AstParser, Literal, SyntaxIndex, SyntaxNodeId, SyntaxOrigin};
-use fol_stream::FileStream;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
+use fol_parser::ast::SyntaxOrigin;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct PackageMetadata {
@@ -132,142 +130,6 @@ pub(crate) fn parse_package_metadata(path: &Path) -> Result<PackageMetadata, Res
     })
 }
 
-pub(crate) fn parse_legacy_package_manifest(path: &Path) -> Result<PackageMetadata, ResolverError> {
-    let path_str = path.to_str().ok_or_else(|| {
-        ResolverError::new(
-            ResolverErrorKind::InvalidInput,
-            format!("package manifest '{}' is not valid UTF-8", path.display()),
-        )
-    })?;
-    let mut stream = FileStream::from_file(path_str).map_err(|error| {
-        ResolverError::new(
-            ResolverErrorKind::InvalidInput,
-            format!(
-                "resolver could not read package manifest '{}': {}",
-                path.display(),
-                error
-            ),
-        )
-    })?;
-    let mut lexer = Elements::init(&mut stream);
-    let mut parser = AstParser::new();
-    let parsed = parser.parse_package(&mut lexer).map_err(|errors| {
-        let first = errors
-            .into_iter()
-            .next()
-            .expect("legacy manifest parse should produce at least one error");
-        if let Some(parse_error) = first
-            .as_ref()
-            .as_any()
-            .downcast_ref::<fol_parser::ast::ParseError>()
-        {
-            ResolverError::with_origin(
-                ResolverErrorKind::InvalidInput,
-                format!(
-                    "resolver could not parse legacy package manifest '{}': {}",
-                    path.display(),
-                    parse_error
-                ),
-                SyntaxOrigin {
-                    file: parse_error.file(),
-                    line: parse_error.line(),
-                    column: parse_error.column(),
-                    length: parse_error.length(),
-                },
-            )
-        } else {
-            ResolverError::new(
-                ResolverErrorKind::InvalidInput,
-                format!(
-                    "resolver could not parse legacy package manifest '{}': {}",
-                    path.display(),
-                    first
-                ),
-            )
-        }
-    })?;
-    let source_unit = parsed.source_units.first().ok_or_else(|| {
-        ResolverError::new(
-            ResolverErrorKind::InvalidInput,
-            format!(
-                "resolver legacy package manifest '{}' did not produce any source units",
-                path.display()
-            ),
-        )
-    })?;
-
-    let mut name = None;
-    let mut version = None;
-
-    for item in &source_unit.items {
-        match unwrap_comment_wrappers(&item.node) {
-            AstNode::Comment { .. } => {}
-            AstNode::VarDecl {
-                name: field_name,
-                value,
-                ..
-            } => match field_name.as_str() {
-                "name" => {
-                    let field_value = manifest_string_field(
-                        "name",
-                        value.as_deref(),
-                        &parsed.syntax_index,
-                        item.node_id,
-                    )?;
-                    if name.replace(field_value).is_some() {
-                        return Err(manifest_item_error(
-                            &parsed.syntax_index,
-                            item.node_id,
-                            "legacy package manifest field 'name' may only be declared once",
-                        ));
-                    }
-                }
-                "version" => {
-                    let field_value = manifest_string_field(
-                        "version",
-                        value.as_deref(),
-                        &parsed.syntax_index,
-                        item.node_id,
-                    )?;
-                    if version.replace(field_value).is_some() {
-                        return Err(manifest_item_error(
-                            &parsed.syntax_index,
-                            item.node_id,
-                            "legacy package manifest field 'version' may only be declared once",
-                        ));
-                    }
-                }
-                _ => {}
-            },
-            _ => {}
-        }
-    }
-
-    Ok(PackageMetadata {
-        name: name.ok_or_else(|| {
-            ResolverError::new(
-                ResolverErrorKind::InvalidInput,
-                format!(
-                    "legacy package manifest '{}' is missing required field 'name'",
-                    path.display()
-                ),
-            )
-        })?,
-        version: version.ok_or_else(|| {
-            ResolverError::new(
-                ResolverErrorKind::InvalidInput,
-                format!(
-                    "legacy package manifest '{}' is missing required field 'version'",
-                    path.display()
-                ),
-            )
-        })?,
-        kind: None,
-        description: None,
-        license: None,
-    })
-}
-
 fn parse_yaml_scalar(
     raw: &str,
     path: &Path,
@@ -367,45 +229,6 @@ fn non_empty_optional_field(
     }
 }
 
-fn manifest_string_field(
-    field_name: &str,
-    value: Option<&AstNode>,
-    syntax_index: &SyntaxIndex,
-    node_id: SyntaxNodeId,
-) -> Result<String, ResolverError> {
-    match value.map(unwrap_comment_wrappers) {
-        Some(AstNode::Literal(Literal::String(value))) => Ok(value.clone()),
-        Some(_) => Err(manifest_item_error(
-            syntax_index,
-            node_id,
-            format!("legacy package manifest field '{field_name}' must be a string literal"),
-        )),
-        None => Err(manifest_item_error(
-            syntax_index,
-            node_id,
-            format!("legacy package manifest field '{field_name}' must have a value"),
-        )),
-    }
-}
-
-fn unwrap_comment_wrappers(node: &AstNode) -> &AstNode {
-    match node {
-        AstNode::Commented { node, .. } => unwrap_comment_wrappers(node),
-        other => other,
-    }
-}
-
-fn manifest_item_error(
-    syntax_index: &SyntaxIndex,
-    node_id: SyntaxNodeId,
-    message: impl Into<String>,
-) -> ResolverError {
-    match syntax_index.origin(node_id).cloned() {
-        Some(origin) => ResolverError::with_origin(ResolverErrorKind::InvalidInput, message, origin),
-        None => ResolverError::new(ResolverErrorKind::InvalidInput, message),
-    }
-}
-
 fn is_valid_package_name(package_name: &str) -> bool {
     let mut chars = package_name.chars();
     let Some(first) = chars.next() else {
@@ -426,7 +249,7 @@ fn is_valid_package_name(package_name: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_legacy_package_manifest, parse_package_metadata, PackageMetadata};
+    use super::{parse_package_metadata, PackageMetadata};
     use std::fs;
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -532,34 +355,5 @@ mod tests {
 
         fs::remove_dir_all(&temp_root)
             .expect("Temporary metadata fixture root should be removable after the test");
-    }
-
-    #[test]
-    fn legacy_package_manifest_loader_still_extracts_basic_identity() {
-        let temp_root = unique_temp_root("parse_legacy_manifest");
-        fs::create_dir_all(&temp_root).expect("Should create temporary legacy manifest fixture");
-        let manifest_path = temp_root.join("package.fol");
-        fs::write(
-            &manifest_path,
-            "var name: str = \"json\";\nvar version: str = \"1.0.0\";\n",
-        )
-        .expect("Should write the legacy manifest fixture");
-
-        let metadata = parse_legacy_package_manifest(&manifest_path)
-            .expect("Legacy manifest fixture should still parse during transition");
-
-        assert_eq!(
-            metadata,
-            PackageMetadata {
-                name: "json".to_string(),
-                version: "1.0.0".to_string(),
-                kind: None,
-                description: None,
-                license: None,
-            }
-        );
-
-        fs::remove_dir_all(&temp_root)
-            .expect("Temporary legacy manifest fixture root should be removable after the test");
     }
 }

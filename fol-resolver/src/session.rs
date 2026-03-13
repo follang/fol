@@ -1,7 +1,7 @@
 use crate::{
     build_definition::{parse_package_build, PackageBuildDefinition},
     collect, imports,
-    manifest::{parse_legacy_package_manifest, parse_package_metadata, PackageMetadata},
+    manifest::{parse_package_metadata, PackageMetadata},
     model::ResolvedProgram,
     traverse, ResolverError, ResolverErrorKind, ResolverResult,
 };
@@ -160,32 +160,8 @@ impl ResolverSession {
         let target_root = resolve_directory_path(store_root, package_path);
         let canonical_root = canonical_directory_root(target_root.as_path(), PackageSourceKind::Package)?;
         let metadata_path = canonical_root.join("package.yaml");
-        let legacy_manifest_path = canonical_root.join("package.fol");
         let build_path = canonical_root.join("build.fol");
-        if metadata_path.is_file() && legacy_manifest_path.is_file() {
-            return Err(ResolverError::new(
-                ResolverErrorKind::InvalidInput,
-                format!(
-                    "resolver pkg import target '{}' contains both '{}' and legacy '{}'; package roots must use only package.yaml",
-                    canonical_root.display(),
-                    metadata_path.display(),
-                    legacy_manifest_path.display()
-                ),
-            ));
-        }
         if !metadata_path.is_file() {
-            if legacy_manifest_path.is_file() {
-                let legacy = parse_legacy_package_manifest(legacy_manifest_path.as_path())?;
-                return Err(ResolverError::new(
-                    ResolverErrorKind::InvalidInput,
-                    format!(
-                        "resolver pkg import target '{}' still uses legacy package manifest '{}'; replace it with package.yaml for package '{}'",
-                        canonical_root.display(),
-                        legacy_manifest_path.display(),
-                        legacy.name
-                    ),
-                ));
-            }
             return Err(ResolverError::new(
                 ResolverErrorKind::InvalidInput,
                 format!(
@@ -479,7 +455,7 @@ fn parse_package_from_directory(
             return Err(ResolverError::new(
                 ResolverErrorKind::InvalidInput,
                 format!(
-                    "resolver pkg import target '{}' has no loadable source files after excluding package.yaml/package.fol/build.fol",
+                    "resolver pkg import target '{}' has no loadable source files after excluding package control files",
                     root.display()
                 ),
             ));
@@ -763,10 +739,9 @@ mod tests {
                 .iter()
                 .all(|unit| {
                     !unit.path.ends_with("package.yaml")
-                        && !unit.path.ends_with("package.fol")
                         && !unit.path.ends_with("build.fol")
                 }),
-            "Installed package source loading should exclude package metadata/build files from the parsed source set",
+            "Installed package source loading should exclude package control files from the parsed source set",
         );
         assert_eq!(
             loaded
@@ -847,40 +822,8 @@ mod tests {
     }
 
     #[test]
-    fn session_rejects_legacy_package_manifests_explicitly() {
-        let temp_root = unique_temp_root("legacy_pkg_manifest");
-        let store_root = temp_root.join("store");
-        fs::create_dir_all(store_root.join("json"))
-            .expect("Should create a temporary package-store fixture");
-        fs::write(
-            store_root.join("json/package.fol"),
-            "var name: str = \"json\";\nvar version: str = \"1.0.0\";\n",
-        )
-        .expect("Should write the legacy package manifest fixture");
-        fs::write(store_root.join("json/build.fol"), "def root: loc = \"lib\";\n")
-            .expect("Should write the package build fixture");
-        let mut session = ResolverSession::new();
-
-        let error = session
-            .load_package_from_store(
-                &store_root,
-                &[UsePathSegment {
-                    separator: None,
-                    spelling: "json".to_string(),
-                }],
-            )
-            .expect_err("Session should reject legacy package manifests explicitly");
-
-        assert_eq!(error.kind(), ResolverErrorKind::InvalidInput);
-        assert!(error.to_string().contains("still uses legacy package manifest"));
-
-        fs::remove_dir_all(&temp_root)
-            .expect("Temporary package-store fixture should be removable after the test");
-    }
-
-    #[test]
-    fn session_rejects_mixed_package_metadata_and_legacy_manifests() {
-        let temp_root = unique_temp_root("mixed_pkg_manifest");
+    fn session_ignores_package_fol_when_package_yaml_is_present() {
+        let temp_root = unique_temp_root("ignored_package_fol");
         let store_root = temp_root.join("store");
         fs::create_dir_all(store_root.join("json"))
             .expect("Should create a temporary package-store fixture");
@@ -890,7 +833,41 @@ mod tests {
             store_root.join("json/package.fol"),
             "var name: str = \"json\";\nvar version: str = \"1.0.0\";\n",
         )
-        .expect("Should write the legacy package manifest fixture");
+        .expect("Should write the ignored package.fol fixture");
+        fs::write(store_root.join("json/build.fol"), "def root: loc = \"lib\";\n")
+            .expect("Should write the package build fixture");
+        fs::write(store_root.join("json/lib.fol"), "var[exp] answer: int = 42;\n")
+            .expect("Should write the package source fixture");
+        let mut session = ResolverSession::new();
+
+        let loaded = session
+            .load_package_from_store(
+                &store_root,
+                &[UsePathSegment {
+                    separator: None,
+                    spelling: "json".to_string(),
+                }],
+            )
+            .expect("Session should ignore package.fol when package.yaml is present");
+
+        assert_eq!(loaded.identity.display_name, "json");
+        assert_eq!(loaded.program.package_name(), "json");
+
+        fs::remove_dir_all(&temp_root)
+            .expect("Temporary package-store fixture should be removable after the test");
+    }
+
+    #[test]
+    fn session_package_fol_only_roots_still_fail_missing_metadata() {
+        let temp_root = unique_temp_root("package_fol_only");
+        let store_root = temp_root.join("store");
+        fs::create_dir_all(store_root.join("json"))
+            .expect("Should create a temporary package-store fixture");
+        fs::write(
+            store_root.join("json/package.fol"),
+            "var name: str = \"json\";\nvar version: str = \"1.0.0\";\n",
+        )
+        .expect("Should write the ignored package.fol fixture");
         fs::write(store_root.join("json/build.fol"), "def root: loc = \"lib\";\n")
             .expect("Should write the package build fixture");
         let mut session = ResolverSession::new();
@@ -903,10 +880,10 @@ mod tests {
                     spelling: "json".to_string(),
                 }],
             )
-            .expect_err("Session should reject mixed package metadata formats");
+            .expect_err("Session should still require package.yaml even if package.fol exists");
 
         assert_eq!(error.kind(), ResolverErrorKind::InvalidInput);
-        assert!(error.to_string().contains("contains both"));
+        assert!(error.to_string().contains("missing required package metadata"));
 
         fs::remove_dir_all(&temp_root)
             .expect("Temporary package-store fixture should be removable after the test");
@@ -971,7 +948,7 @@ mod tests {
         assert_eq!(error.kind(), ResolverErrorKind::InvalidInput);
         assert!(error
             .to_string()
-            .contains("has no loadable source files after excluding package.yaml/package.fol/build.fol"));
+            .contains("has no loadable source files after excluding package control files"));
 
         fs::remove_dir_all(&temp_root)
             .expect("Temporary package-store fixture should be removable after the test");
