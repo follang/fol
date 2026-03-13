@@ -372,4 +372,63 @@ mod tests {
         );
         assert_eq!(diagnostic.legacy_help(), None);
     }
+
+    #[test]
+    fn test_rich_diagnostic_json_roundtrip_keeps_structured_fields() {
+        let diagnostic = Diagnostic::error("R3001", "rich serialization")
+            .with_primary_label_message(
+                DiagnosticLocation {
+                    file: Some("pkg/main.fol".to_string()),
+                    line: 5,
+                    column: 7,
+                    length: Some(4),
+                },
+                "offending expression",
+            )
+            .with_secondary_label(
+                DiagnosticLocation {
+                    file: Some("pkg/lib.fol".to_string()),
+                    line: 2,
+                    column: 1,
+                    length: Some(3),
+                },
+                "related declaration",
+            )
+            .with_note("extra note")
+            .with_help("first help")
+            .with_suggestion(DiagnosticSuggestion {
+                message: "replace with `value`".to_string(),
+                replacement: Some("value".to_string()),
+                location: Some(DiagnosticLocation {
+                    file: Some("pkg/main.fol".to_string()),
+                    line: 5,
+                    column: 7,
+                    length: Some(4),
+                }),
+            });
+
+        let json = serde_json::to_string_pretty(&diagnostic)
+            .expect("rich diagnostics should serialize to JSON");
+
+        assert!(json.contains("\"labels\""));
+        assert!(json.contains("\"notes\""));
+        assert!(json.contains("\"helps\""));
+        assert!(json.contains("\"suggestions\""));
+        assert!(json.contains("\"location\""));
+        assert!(json.contains("\"help\""));
+
+        let decoded: Diagnostic =
+            serde_json::from_str(&json).expect("rich diagnostics should deserialize");
+
+        assert_eq!(decoded.code.as_str(), "R3001");
+        assert_eq!(decoded.labels.len(), 2);
+        assert_eq!(decoded.notes, vec!["extra note".to_string()]);
+        assert_eq!(decoded.helps, vec!["first help".to_string()]);
+        assert_eq!(decoded.suggestions.len(), 1);
+        assert_eq!(decoded.legacy_help(), Some("first help"));
+        assert_eq!(
+            decoded.primary_label().and_then(|label| label.message.as_deref()),
+            Some("offending expression")
+        );
+    }
 }

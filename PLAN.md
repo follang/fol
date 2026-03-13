@@ -536,7 +536,7 @@ Status: done
 
 #### 1.4
 
-Status: pending
+Status: done
 
 - Add rich-model serialization tests.
 
