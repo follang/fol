@@ -171,6 +171,10 @@ impl ToDiagnostic for ResolverError {
         if self.message.contains("requires an explicit package store root") {
             diagnostic = diagnostic.with_help("rerun with --package-store-root <DIR>");
         }
+        if self.message.contains("pkg instead of loc") {
+            diagnostic =
+                diagnostic.with_help("replace the import source kind with pkg for formal packages");
+        }
         diagnostic
     }
 }
@@ -455,6 +459,20 @@ mod tests {
         assert_eq!(
             diagnostic.notes,
             vec!["supported import source kinds are loc, std, and pkg".to_string()]
+        );
+    }
+
+    #[test]
+    fn resolver_error_to_diagnostic_adds_help_for_formal_packages_imported_via_loc() {
+        let diagnostic = ResolverError::new(
+            ResolverErrorKind::InvalidInput,
+            "resolver loc import target '/tmp/formal_pkg' contains '/tmp/formal_pkg/build.fol'; formal package roots must be imported with pkg instead of loc",
+        )
+        .to_diagnostic();
+
+        assert_eq!(
+            diagnostic.helps,
+            vec!["replace the import source kind with pkg for formal packages".to_string()]
         );
     }
 }

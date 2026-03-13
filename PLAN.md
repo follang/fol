@@ -726,7 +726,7 @@ Status: done
 
 #### 8.2
 
-Status: pending
+Status: done
 
 - Ensure JSON mode preserves the richer structure without breaking current CLI behavior expectations.
 

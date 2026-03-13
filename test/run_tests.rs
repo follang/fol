@@ -870,7 +870,11 @@ mod integration_tests {
         assert_eq!(diagnostic["location"]["column"], 1);
         assert_eq!(diagnostic["labels"].as_array().map(|items| items.len()), Some(1));
         assert_eq!(diagnostic["notes"].as_array().map(|items| items.len()), Some(0));
-        assert_eq!(diagnostic["helps"].as_array().map(|items| items.len()), Some(0));
+        assert_eq!(diagnostic["helps"].as_array().map(|items| items.len()), Some(1));
+        assert_eq!(
+            diagnostic["helps"][0],
+            "replace the import source kind with pkg for formal packages"
+        );
         let message = diagnostic["message"]
             .as_str()
             .expect("Package diagnostic message should stay a string");
@@ -941,6 +945,62 @@ mod integration_tests {
         assert!(message.contains("ResolverAmbiguousReference"));
         assert!(message.contains("name 'answer' is ambiguous in lexical scope"));
         assert!(message.contains("candidates:"));
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_cli_json_resolver_errors_keep_help_for_missing_std_roots() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_json_resolver_std_help");
+        fs::create_dir_all(&temp_root).expect("Should create resolver fixture root");
+        fs::write(
+            temp_root.join("main.fol"),
+            "use fmt: std = {fmt};\nfun[] main(): int = {\n    return 0;\n}\n",
+        )
+        .expect("Should write missing std-root fixture");
+
+        let output = run_fol(&[
+            "--json",
+            temp_root
+                .to_str()
+                .expect("Resolver fixture path should be valid UTF-8"),
+        ]);
+        let json = parse_cli_json(&output);
+        let diagnostic = &json["diagnostics"][0];
+
+        assert!(!output.status.success(), "Missing std-root fixture should fail");
+        assert_eq!(diagnostic["helps"].as_array().map(|items| items.len()), Some(1));
+        assert_eq!(diagnostic["helps"][0], "rerun with --std-root <DIR>");
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_cli_json_resolver_errors_keep_notes_for_unsupported_import_kinds() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_json_resolver_unsupported_note");
+        fs::create_dir_all(&temp_root).expect("Should create resolver fixture root");
+        fs::write(temp_root.join("main.fol"), "use fmt: mod = {core::fmt};\n")
+            .expect("Should write unsupported import fixture");
+
+        let output = run_fol(&[
+            "--json",
+            temp_root
+                .to_str()
+                .expect("Resolver fixture path should be valid UTF-8"),
+        ]);
+        let json = parse_cli_json(&output);
+        let diagnostic = &json["diagnostics"][0];
+
+        assert!(!output.status.success(), "Unsupported import fixture should fail");
+        assert_eq!(diagnostic["notes"].as_array().map(|items| items.len()), Some(1));
+        assert_eq!(
+            diagnostic["notes"][0],
+            "supported import source kinds are loc, std, and pkg"
+        );
 
         fs::remove_dir_all(&temp_root).ok();
     }
