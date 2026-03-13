@@ -642,7 +642,7 @@ Status: done
 
 #### 5.2
 
-Status: pending
+Status: done
 
 - Migrate package errors to rich diagnostics.
 

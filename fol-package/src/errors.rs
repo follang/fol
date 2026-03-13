@@ -1,4 +1,6 @@
-use fol_diagnostics::{DiagnosticCode, DiagnosticLocation, ToDiagnosticLocation};
+use fol_diagnostics::{
+    Diagnostic, DiagnosticCode, DiagnosticLocation, ToDiagnostic, ToDiagnosticLocation,
+};
 use fol_parser::ast::SyntaxOrigin;
 use fol_types::Glitch;
 
@@ -118,6 +120,16 @@ impl ToDiagnosticLocation for PackageError {
     }
 }
 
+impl ToDiagnostic for PackageError {
+    fn to_diagnostic(&self) -> Diagnostic {
+        let mut diagnostic = Diagnostic::error(self.kind.diagnostic_code(), self.to_string());
+        if let Some(location) = self.diagnostic_location() {
+            diagnostic = diagnostic.with_primary_label(location);
+        }
+        diagnostic
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{PackageError, PackageErrorKind};
@@ -233,5 +245,26 @@ mod tests {
         assert!(rendered.contains("error: PackageInvalidInput: duplicate package metadata field"));
         assert!(rendered.contains("| name: json"));
         assert!(rendered.contains("| ^^^^"));
+    }
+
+    #[test]
+    fn package_error_to_diagnostic_preserves_explicit_package_codes() {
+        let error = PackageError::with_origin(
+            PackageErrorKind::InvalidInput,
+            "duplicate package metadata field",
+            SyntaxOrigin {
+                file: Some("pkg/package.yaml".to_string()),
+                line: 2,
+                column: 1,
+                length: 4,
+            },
+        );
+        let mut report = DiagnosticReport::new();
+
+        report.add_from(&error);
+
+        let rendered = report.output(fol_diagnostics::OutputFormat::Json);
+        assert!(rendered.contains("\"code\": \"K1001\""));
+        assert!(rendered.contains("PackageInvalidInput: duplicate package metadata field"));
     }
 }
