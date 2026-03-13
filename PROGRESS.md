@@ -218,6 +218,23 @@ Authority rule for this file: code and active tests win over older docs, plans, 
   unit where ordinary scope rules allow them, and still fail outside that file.
 - Built-in `str` now exits named-type lookup instead of surfacing as an unresolved
   user-defined symbol.
+
+### 5.6 Diagnostics Shortcomings Still Open
+
+- `fol-diagnostics` currently models one primary location and one optional help
+  string per diagnostic; it does not yet support rich multi-span labels, notes,
+  or structured fix suggestions.
+- Human diagnostics still print message-plus-location only; they do not render
+  source snippets, underline spans, related labels, or fallback source
+  explanations consistently.
+- Diagnostic codes are still effectively weak and fallback-heavy; explicit
+  producer-owned stable codes have not replaced the current message-derived
+  behavior yet.
+- Parser, package, and resolver each still do some producer-specific diagnostic
+  lowering instead of sharing one consistent diagnostics-facing boundary.
+- Current diagnostics tests prove location propagation and basic renderer
+  survival, but they do not yet lock richer human-output shape or structured
+  JSON contracts.
 - Resolver diagnostics now retain exact locations where the parser exposes them and
   report competing declaration or candidate sites where useful.
 - Plain unresolved identifiers, plain free calls, and plain named types now keep
@@ -411,6 +428,9 @@ These remain later-stage work. They are no longer reasons to keep front-end hard
 
 ### 10.2 What Is Not Implemented Yet
 
+- Rich multi-span diagnostics are still missing.
+- Human diagnostics still need source-snippet and underline rendering.
+- Stable explicit diagnostic codes still need to replace message-derived fallback codes.
 - Semantic analysis is still missing.
 - Type checking is still missing.
 - Runtime or backend behavior is still missing.

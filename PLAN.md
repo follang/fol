@@ -502,7 +502,7 @@ Status: done
 
 #### 0.2
 
-Status: pending
+Status: done
 
 - Document current diagnostics shortcomings in `PROGRESS.md` and this plan so later work is measured against real gaps.
 
