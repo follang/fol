@@ -10,7 +10,7 @@ complete for the present name-resolution contract, so this file describes the
 enforced stream/lexer/parser behavior at head plus the package-loading contract
 that immediately follows those front-end surfaces. Treat
 [`PROGRESS.md`](./PROGRESS.md) as the repo-backed implementation ledger and
-[`PLAN.md`](./PLAN.md) as the active `fol-package` closeout record.
+[`PLAN.md`](./PLAN.md) as the completed `fol-package` migration record.
 
 ## Decision Summary
 

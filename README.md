@@ -49,9 +49,8 @@ Current C ABI boundary:
 For exact current stream/lexer/parser/package behavior, treat
 [`FRONTEND_CONTRACT.md`](./FRONTEND_CONTRACT.md) as the authoritative front-end
 contract, treat [`PROGRESS.md`](./PROGRESS.md) as the repo-backed implementation
-ledger, and treat [`PLAN.md`](./PLAN.md) as the active `fol-package` closeout
-record until this migration is fully closed. The README is only a high-level
-project summary.
+ledger, and treat [`PLAN.md`](./PLAN.md) as the completed `fol-package`
+migration record. The README is only a high-level project summary.
 
 <hr>
 
