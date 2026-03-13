@@ -86,7 +86,14 @@ impl PackageSession {
         path_segments: &[UsePathSegment],
     ) -> Result<PreparedPackage, PackageError> {
         let target_root = resolve_directory_path(store_root, path_segments);
-        let canonical_root = canonical_directory_root(target_root.as_path(), PackageSourceKind::Package)?;
+        let canonical_root =
+            canonical_directory_root(target_root.as_path(), PackageSourceKind::Package)?;
+        let canonical_root_str = canonical_root.to_string_lossy().to_string();
+        if let Some(cached) =
+            self.cached_package_by_root(PackageSourceKind::Package, &canonical_root_str)
+        {
+            return Ok(cached);
+        }
         let metadata_path = canonical_root.join("package.yaml");
         let build_path = canonical_root.join("build.fol");
         if !metadata_path.is_file() {
@@ -114,7 +121,7 @@ impl PackageSession {
         let build = crate::parse_package_build(build_path.as_path())?;
         let identity = PackageIdentity {
             source_kind: PackageSourceKind::Package,
-            canonical_root: canonical_root.to_string_lossy().to_string(),
+            canonical_root: canonical_root_str,
             display_name: metadata.name.clone(),
         };
 
@@ -151,6 +158,19 @@ impl PackageSession {
 
     pub(crate) fn cached_package(&self, identity: &PackageIdentity) -> Option<&PreparedPackage> {
         self.prepared_packages.get(identity)
+    }
+
+    fn cached_package_by_root(
+        &self,
+        source_kind: PackageSourceKind,
+        canonical_root: &str,
+    ) -> Option<PreparedPackage> {
+        self.prepared_packages
+            .iter()
+            .find_map(|(identity, package)| {
+                (identity.source_kind == source_kind && identity.canonical_root == canonical_root)
+                    .then(|| package.clone())
+            })
     }
 
     pub(crate) fn cache_package(&mut self, package: PreparedPackage) {
@@ -906,6 +926,98 @@ mod tests {
                 && error.to_string().contains("core"),
             "Cycle diagnostics should list the participating package roots",
         );
+
+        fs::remove_dir_all(&temp_root)
+            .expect("Temporary package-store fixture should be removable after the test");
+    }
+
+    #[test]
+    fn package_session_dedupes_shared_transitive_pkg_dependencies() {
+        let temp_root = unique_temp_root("shared_pkg_graph");
+        let store_root = temp_root.join("store");
+        fs::create_dir_all(store_root.join("core/src/root"))
+            .expect("Should create the shared dependency export root fixture");
+        fs::create_dir_all(store_root.join("json/src/root"))
+            .expect("Should create the first direct dependency export root fixture");
+        fs::create_dir_all(store_root.join("xml/src/root"))
+            .expect("Should create the second direct dependency export root fixture");
+        fs::create_dir_all(store_root.join("combo/src/root"))
+            .expect("Should create the top-level package export root fixture");
+        fs::write(
+            store_root.join("core/package.yaml"),
+            "name: core\nversion: 1.0.0\n",
+        )
+        .expect("Should write the shared dependency metadata fixture");
+        fs::write(store_root.join("core/build.fol"), "def root: loc = \"src/root\";\n")
+            .expect("Should write the shared dependency build fixture");
+        fs::write(
+            store_root.join("core/src/root/value.fol"),
+            "var[exp] shared: int = 7;\n",
+        )
+        .expect("Should write the shared dependency source fixture");
+        fs::write(
+            store_root.join("json/package.yaml"),
+            "name: json\nversion: 1.0.0\n",
+        )
+        .expect("Should write the first direct dependency metadata fixture");
+        fs::write(
+            store_root.join("json/build.fol"),
+            "def core: pkg = \"core\";\ndef root: loc = \"src/root\";\n",
+        )
+        .expect("Should write the first direct dependency build fixture");
+        fs::write(
+            store_root.join("json/src/root/value.fol"),
+            "var[exp] answer: int = 1;\n",
+        )
+        .expect("Should write the first direct dependency source fixture");
+        fs::write(
+            store_root.join("xml/package.yaml"),
+            "name: xml\nversion: 1.0.0\n",
+        )
+        .expect("Should write the second direct dependency metadata fixture");
+        fs::write(
+            store_root.join("xml/build.fol"),
+            "def core: pkg = \"core\";\ndef root: loc = \"src/root\";\n",
+        )
+        .expect("Should write the second direct dependency build fixture");
+        fs::write(
+            store_root.join("xml/src/root/value.fol"),
+            "var[exp] answer: int = 2;\n",
+        )
+        .expect("Should write the second direct dependency source fixture");
+        fs::write(
+            store_root.join("combo/package.yaml"),
+            "name: combo\nversion: 1.0.0\n",
+        )
+        .expect("Should write the top-level package metadata fixture");
+        fs::write(
+            store_root.join("combo/build.fol"),
+            concat!(
+                "def json: pkg = \"json\";\n",
+                "def xml: pkg = \"xml\";\n",
+                "def root: loc = \"src/root\";\n",
+            ),
+        )
+        .expect("Should write the top-level package build fixture");
+        fs::write(
+            store_root.join("combo/src/root/value.fol"),
+            "var[exp] answer: int = 3;\n",
+        )
+        .expect("Should write the top-level package source fixture");
+        let mut session = PackageSession::new();
+
+        let loaded = session
+            .load_package_from_store(
+                &store_root,
+                &[UsePathSegment {
+                    separator: None,
+                    spelling: "combo".to_string(),
+                }],
+            )
+            .expect("Package session should load shared dependency graphs");
+
+        assert_eq!(loaded.identity.display_name, "combo");
+        assert_eq!(session.cached_package_count(), 4);
 
         fs::remove_dir_all(&temp_root)
             .expect("Temporary package-store fixture should be removable after the test");

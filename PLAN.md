@@ -601,7 +601,7 @@ Status: done
 
 #### 3.3
 
-Status: pending
+Status: done
 
 - Move shared package dedupe into `fol-package`.
 
