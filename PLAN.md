@@ -539,7 +539,7 @@ Status: done
 
 #### 1.3
 
-Status: pending
+Status: done
 
 - Add package-loader diagnostics that keep exact origins from `build.fol` parse failures and package-definition extraction failures.
 

@@ -281,6 +281,12 @@ mod tests {
         assert!(error
             .to_string()
             .contains("package build package dependency targets must be string literals"));
+        let origin = error
+            .origin()
+            .expect("Invalid package dependency extraction should keep syntax origins");
+        assert_eq!(origin.file.as_deref(), build_path.to_str());
+        assert_eq!(origin.line, 1);
+        assert_eq!(origin.column, 1);
 
         fs::remove_dir_all(&temp_root)
             .expect("Temporary build fixture root should be removable after the test");
@@ -335,6 +341,35 @@ mod tests {
         assert!(error
             .to_string()
             .contains("package build export targets must be string literals"));
+        let origin = error
+            .origin()
+            .expect("Invalid package export extraction should keep syntax origins");
+        assert_eq!(origin.file.as_deref(), build_path.to_str());
+        assert_eq!(origin.line, 1);
+        assert_eq!(origin.column, 1);
+
+        fs::remove_dir_all(&temp_root)
+            .expect("Temporary build fixture root should be removable after the test");
+    }
+
+    #[test]
+    fn package_build_parser_keeps_exact_origins_for_parse_failures() {
+        let temp_root = unique_temp_root("build_parse_origin");
+        fs::create_dir_all(&temp_root).expect("Should create temporary build fixture root");
+        let build_path = temp_root.join("build.fol");
+        fs::write(&build_path, "def root: loc = {\n")
+            .expect("Should write the malformed build fixture");
+
+        let error = parse_package_build(&build_path)
+            .expect_err("Malformed build files should preserve parse-error origins");
+
+        assert_eq!(error.kind(), PackageErrorKind::InvalidInput);
+        let origin = error
+            .origin()
+            .expect("Malformed build parse failures should keep exact origins");
+        assert_eq!(origin.file.as_deref(), build_path.to_str());
+        assert_eq!(origin.line, 1);
+        assert!(origin.column >= 1);
 
         fs::remove_dir_all(&temp_root)
             .expect("Temporary build fixture root should be removable after the test");
