@@ -1447,7 +1447,7 @@ Status: done
 
 #### Slice 15.1
 
-Status: pending
+Status: done
 
 - Introduce a resolver session / package-loading context that can manage more than one
   parsed package.

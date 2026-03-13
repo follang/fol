@@ -22,6 +22,7 @@ pub mod errors;
 pub mod ids;
 pub mod imports;
 pub mod model;
+pub mod session;
 pub mod traverse;
 
 pub use errors::{ResolverError, ResolverErrorKind};
@@ -30,6 +31,7 @@ pub use model::{
     ReferenceKind, ResolvedImport, ResolvedProgram, ResolvedReference, ResolvedScope,
     ResolvedSourceUnit, ResolvedSymbol, ScopeKind, SymbolKind,
 };
+pub use session::{PackageIdentity, PackageSourceKind, ResolverConfig, ResolverSession};
 
 pub type ResolverResult<T> = Result<T, Vec<ResolverError>>;
 
@@ -47,11 +49,7 @@ impl Resolver {
         &mut self,
         syntax: fol_parser::ast::ParsedPackage,
     ) -> ResolverResult<ResolvedProgram> {
-        let mut program = ResolvedProgram::new(syntax);
-        collect::collect_top_level_symbols(&mut program)?;
-        imports::resolve_import_targets(&mut program)?;
-        traverse::collect_routine_scopes(&mut program)?;
-        Ok(program)
+        ResolverSession::new().resolve_package(syntax)
     }
 }
 
