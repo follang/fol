@@ -586,7 +586,7 @@ Status: done
 
 #### 3.2
 
-Status: pending
+Status: done
 
 - Keep JSON shape stable and fully structured, including labels/notes/helps/suggestions.
 
