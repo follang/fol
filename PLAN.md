@@ -1410,7 +1410,7 @@ Status: done
 
 #### Slice 24.2
 
-Status: pending
+Status: done
 
 - Resolve plain and qualified names through exported roots only.
 - Add positive and negative export-visibility tests.
