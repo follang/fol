@@ -1,9 +1,13 @@
-use crate::{PackageConfig, PackageError, PackageErrorKind, PackageIdentity, PackageSourceKind, PreparedPackage};
+use crate::{
+    PackageBuildDefinition, PackageConfig, PackageError, PackageErrorKind, PackageIdentity,
+    PackageSourceKind, PreparedExportMount, PreparedPackage,
+};
 use fol_lexer::lexer::stage3::Elements;
+use std::collections::BTreeMap;
+use std::collections::BTreeSet;
+use std::path::{Path, PathBuf};
 use fol_parser::ast::{AstParser, ParsedPackage, UsePathSegment};
 use fol_stream::{FileStream, Source, SourceType};
-use std::path::{Path, PathBuf};
-use std::collections::BTreeMap;
 
 #[derive(Debug, Default)]
 pub struct PackageSession {
@@ -142,7 +146,16 @@ impl PackageSession {
             &metadata.name,
             PackageSourceKind::Package,
         )
-        .map(|syntax| PreparedPackage::with_controls(identity.clone(), metadata, build, syntax));
+        .and_then(|syntax| {
+            let exports = compute_prepared_exports(&build, &syntax)?;
+            Ok(PreparedPackage::with_controls(
+                identity.clone(),
+                metadata,
+                build,
+                exports,
+                syntax,
+            ))
+        });
 
         self.finish_loading();
 
@@ -426,6 +439,70 @@ fn build_dependency_path_segments(
         .collect())
 }
 
+fn compute_prepared_exports(
+    build: &PackageBuildDefinition,
+    syntax: &ParsedPackage,
+) -> Result<Vec<PreparedExportMount>, PackageError> {
+    let mut exports = BTreeSet::new();
+    for export in &build.exports {
+        let source_prefix =
+            build_export_namespace_prefix(syntax.package.as_str(), export.relative_path.as_str())?;
+        let matching_namespaces = syntax
+            .source_units
+            .iter()
+            .map(|unit| unit.namespace.as_str())
+            .filter(|namespace| {
+                *namespace == source_prefix
+                    || namespace.starts_with(&format!("{source_prefix}::"))
+            })
+            .collect::<BTreeSet<_>>();
+
+        for namespace in matching_namespaces {
+            let mounted_namespace_suffix = namespace
+                .strip_prefix(source_prefix.as_str())
+                .and_then(|suffix| suffix.strip_prefix("::"))
+                .map(|suffix| suffix.to_string());
+            let mounted_namespace_suffix = if export.alias == "root" {
+                mounted_namespace_suffix
+            } else {
+                Some(match mounted_namespace_suffix {
+                    Some(suffix) => format!("{}::{suffix}", export.alias),
+                    None => export.alias.clone(),
+                })
+            };
+            exports.insert(PreparedExportMount {
+                source_namespace: namespace.to_string(),
+                mounted_namespace_suffix,
+            });
+        }
+    }
+
+    Ok(exports.into_iter().collect())
+}
+
+fn build_export_namespace_prefix(
+    package_name: &str,
+    relative_path: &str,
+) -> Result<String, PackageError> {
+    let trimmed = relative_path.trim();
+    if trimmed.is_empty() || trimmed == "." {
+        return Ok(package_name.to_string());
+    }
+
+    let segments = trimmed.split('/').map(str::trim).collect::<Vec<_>>();
+    if segments.iter().any(|segment| segment.is_empty()) {
+        return Err(PackageError::new(
+            PackageErrorKind::InvalidInput,
+            format!(
+                "package build export path '{}' must contain non-empty slash-separated segments",
+                relative_path
+            ),
+        ));
+    }
+
+    Ok(format!("{package_name}::{}", segments.join("::")))
+}
+
 fn is_package_control_file(root: &Path, source: &Source) -> bool {
     let source_path = Path::new(&source.path);
     let Some(parent) = source_path.parent() else {
@@ -446,7 +523,9 @@ mod tests {
         canonical_directory_root, infer_package_root, parse_directory_package_syntax,
         resolve_directory_path, PackageSession,
     };
-    use crate::{PackageConfig, PackageIdentity, PackageSourceKind, PreparedPackage};
+    use crate::{
+        PackageConfig, PackageIdentity, PackageSourceKind, PreparedExportMount, PreparedPackage,
+    };
     use fol_parser::ast::{AstParser, ParsedPackage, UsePathSegment};
     use fol_stream::FileStream;
     use std::fs;
@@ -742,6 +821,83 @@ mod tests {
                 .exports
                 .len(),
             1
+        );
+        assert_eq!(
+            loaded.exports,
+            vec![PreparedExportMount {
+                source_namespace: "json::lib".to_string(),
+                mounted_namespace_suffix: None,
+            }]
+        );
+
+        fs::remove_dir_all(&temp_root)
+            .expect("Temporary package-store fixture should be removable after the test");
+    }
+
+    #[test]
+    fn package_session_computes_nested_export_namespace_mounts() {
+        let temp_root = unique_temp_root("pkg_nested_exports");
+        let store_root = temp_root.join("store");
+        fs::create_dir_all(store_root.join("json/src/root"))
+            .expect("Should create the exported root fixture");
+        fs::create_dir_all(store_root.join("json/src/fmt/nested"))
+            .expect("Should create the nested export fixture");
+        fs::write(
+            store_root.join("json/package.yaml"),
+            "name: json\nversion: 1.0.0\n",
+        )
+        .expect("Should write the package metadata fixture");
+        fs::write(
+            store_root.join("json/build.fol"),
+            concat!(
+                "def root: loc = \"src/root\";\n",
+                "def fmt: loc = \"src/fmt\";\n",
+            ),
+        )
+        .expect("Should write the package build fixture");
+        fs::write(
+            store_root.join("json/src/root/value.fol"),
+            "var[exp] answer: int = 42;\n",
+        )
+        .expect("Should write the exported root source fixture");
+        fs::write(
+            store_root.join("json/src/fmt/value.fol"),
+            "var[exp] formatted: int = 7;\n",
+        )
+        .expect("Should write the exported namespace source fixture");
+        fs::write(
+            store_root.join("json/src/fmt/nested/value.fol"),
+            "var[exp] nested_value: int = 9;\n",
+        )
+        .expect("Should write the nested exported namespace source fixture");
+        let mut session = PackageSession::new();
+
+        let loaded = session
+            .load_package_from_store(
+                &store_root,
+                &[UsePathSegment {
+                    separator: None,
+                    spelling: "json".to_string(),
+                }],
+            )
+            .expect("Package session should compute concrete export namespace mounts");
+
+        assert_eq!(
+            loaded.exports,
+            vec![
+                PreparedExportMount {
+                    source_namespace: "json::src::fmt".to_string(),
+                    mounted_namespace_suffix: Some("fmt".to_string()),
+                },
+                PreparedExportMount {
+                    source_namespace: "json::src::fmt::nested".to_string(),
+                    mounted_namespace_suffix: Some("fmt::nested".to_string()),
+                },
+                PreparedExportMount {
+                    source_namespace: "json::src::root".to_string(),
+                    mounted_namespace_suffix: None,
+                },
+            ]
         );
 
         fs::remove_dir_all(&temp_root)

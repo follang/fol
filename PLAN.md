@@ -607,7 +607,7 @@ Status: done
 
 #### 3.4
 
-Status: pending
+Status: done
 
 - Compute exported roots/namespaces in `fol-package` and carry them in `PreparedPackage`.
 

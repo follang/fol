@@ -1,13 +1,18 @@
-use crate::{
-    PackageBuildDefinition, PackageIdentity, PackageMetadata, PackageSourceKind,
-};
+use crate::{PackageBuildDefinition, PackageIdentity, PackageMetadata, PackageSourceKind};
 use fol_parser::ast::ParsedPackage;
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct PreparedExportMount {
+    pub source_namespace: String,
+    pub mounted_namespace_suffix: Option<String>,
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct PreparedPackage {
     pub identity: PackageIdentity,
     pub metadata: Option<PackageMetadata>,
     pub build: Option<PackageBuildDefinition>,
+    pub exports: Vec<PreparedExportMount>,
     pub syntax: ParsedPackage,
 }
 
@@ -17,6 +22,7 @@ impl PreparedPackage {
             identity,
             metadata: None,
             build: None,
+            exports: Vec::new(),
             syntax,
         }
     }
@@ -25,12 +31,14 @@ impl PreparedPackage {
         identity: PackageIdentity,
         metadata: PackageMetadata,
         build: PackageBuildDefinition,
+        exports: Vec<PreparedExportMount>,
         syntax: ParsedPackage,
     ) -> Self {
         Self {
             identity,
             metadata: Some(metadata),
             build: Some(build),
+            exports,
             syntax,
         }
     }
@@ -49,7 +57,7 @@ mod tests {
     use super::PreparedPackage;
     use crate::{
         BuildDependency, BuildExport, PackageBuildDefinition, PackageConfig, PackageIdentity,
-        PackageMetadata, PackageSourceKind,
+        PackageMetadata, PackageSourceKind, PreparedExportMount,
     };
     use fol_parser::ast::{AstParser, ParsedPackage};
     use fol_stream::FileStream;
@@ -90,6 +98,7 @@ mod tests {
         assert_eq!(prepared.identity.display_name, "fixture");
         assert!(prepared.metadata.is_none());
         assert!(prepared.build.is_none());
+        assert!(prepared.exports.is_empty());
         assert_eq!(prepared.syntax.source_units.len(), 1);
     }
 
@@ -119,10 +128,15 @@ mod tests {
                     relative_path: "src".to_string(),
                 }],
             },
+            vec![PreparedExportMount {
+                source_namespace: "json::src".to_string(),
+                mounted_namespace_suffix: None,
+            }],
             syntax,
         );
 
         assert_eq!(prepared.metadata.as_ref().map(|meta| meta.name.as_str()), Some("json"));
         assert_eq!(prepared.build.as_ref().map(|build| build.exports.len()), Some(1));
+        assert_eq!(prepared.exports.len(), 1);
     }
 }
