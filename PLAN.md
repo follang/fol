@@ -964,7 +964,7 @@ Status: done
 
 #### Slice 8.4
 
-Status: pending
+Status: done
 
 - Add ambiguity and shadowing rules for imported plain names.
 - Local lexical bindings and direct declarations should still win where intended.

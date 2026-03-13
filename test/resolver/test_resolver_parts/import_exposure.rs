@@ -221,3 +221,86 @@ fn test_resolver_plain_import_exposure_rejects_hidden_members() {
     fs::remove_dir_all(&temp_root)
         .expect("Temporary resolver fixture directory should be removable after the test");
 }
+
+#[test]
+fn test_resolver_plain_import_exposure_reports_ambiguity_for_multiple_visible_imports() {
+    let temp_root = unique_temp_root("import_exposure_ambiguity");
+    fs::create_dir_all(temp_root.join("alpha"))
+        .expect("Should create the first imported namespace fixture directory");
+    fs::create_dir_all(temp_root.join("beta"))
+        .expect("Should create the second imported namespace fixture directory");
+    fs::write(temp_root.join("alpha/values.fol"), "var[exp] answer: int = 1;\n")
+        .expect("Should write the first imported exported value fixture");
+    fs::write(temp_root.join("beta/values.fol"), "var[exp] answer: int = 2;\n")
+        .expect("Should write the second imported exported value fixture");
+    fs::write(
+        temp_root.join("main.fol"),
+        "use alpha: loc = {alpha};\nuse beta: loc = {beta};\nfun[] main(): int = {\n    return answer;\n}\n",
+    )
+    .expect("Should write the ambiguous imported plain-name fixture");
+
+    let errors = try_resolve_package_from_folder(
+        temp_root
+            .to_str()
+            .expect("Temporary resolver fixture path should be valid UTF-8"),
+    )
+    .expect_err("Resolver should reject ambiguous imported plain names");
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == ResolverErrorKind::AmbiguousReference
+                && error
+                    .to_string()
+                    .contains("name 'answer' is ambiguous in lexical scope")
+        }),
+        "Multiple visible imports that expose the same plain name should be ambiguous"
+    );
+
+    fs::remove_dir_all(&temp_root)
+        .expect("Temporary resolver fixture directory should be removable after the test");
+}
+
+#[test]
+fn test_resolver_plain_import_exposure_still_yields_to_local_bindings() {
+    let temp_root = unique_temp_root("import_exposure_shadowing");
+    fs::create_dir_all(temp_root.join("math"))
+        .expect("Should create a temporary resolver fixture directory");
+    fs::write(temp_root.join("math/values.fol"), "var[exp] answer: int = 42;\n")
+        .expect("Should write the imported exported value fixture");
+    fs::write(
+        temp_root.join("main.fol"),
+        "use math: loc = {math};\nfun[] main(): int = {\n    var answer = 7;\n    return answer;\n}\n",
+    )
+    .expect("Should write the local-shadowing import exposure fixture");
+
+    let resolved = resolve_package_from_folder(
+        temp_root
+            .to_str()
+            .expect("Temporary resolver fixture path should be valid UTF-8"),
+    );
+    let routine_scope_id = resolved
+        .scopes
+        .iter_with_ids()
+        .find_map(|(scope_id, scope)| matches!(scope.kind, ScopeKind::Routine).then_some(scope_id))
+        .expect("Resolver should create a routine scope");
+    let local_answer = resolved
+        .symbols_in_scope(routine_scope_id)
+        .into_iter()
+        .find(|symbol| symbol.name == "answer" && symbol.kind == SymbolKind::ValueBinding)
+        .expect("Routine scope should keep the local shadowing binding");
+    let answer_reference = resolved
+        .references_in_scope(routine_scope_id)
+        .into_iter()
+        .filter(|reference| reference.kind == ReferenceKind::Identifier && reference.name == "answer")
+        .last()
+        .expect("Routine scope should record the shadowed plain identifier reference");
+
+    assert_eq!(
+        answer_reference.resolved,
+        Some(local_answer.id),
+        "Direct lexical bindings should win before imported plain-name exposure"
+    );
+
+    fs::remove_dir_all(&temp_root)
+        .expect("Temporary resolver fixture directory should be removable after the test");
+}
