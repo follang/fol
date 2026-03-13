@@ -511,7 +511,7 @@ Status: done
 
 #### 0.3
 
-Status: pending
+Status: done
 
 - Move package metadata parsing out of `fol-resolver` into `fol-package`.
 
@@ -527,7 +527,7 @@ Status: pending
 
 #### 1.1
 
-Status: pending
+Status: done
 
 - Re-home the existing `package.yaml` parser and tests under `fol-package`.
 

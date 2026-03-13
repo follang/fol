@@ -12,9 +12,11 @@
 pub mod config;
 pub mod errors;
 pub mod identity;
+pub mod metadata;
 pub mod model;
 
 pub use config::PackageConfig;
 pub use errors::{PackageError, PackageErrorKind};
 pub use identity::{PackageIdentity, PackageSourceKind};
+pub use metadata::{parse_package_metadata, PackageMetadata};
 pub use model::PreparedPackage;

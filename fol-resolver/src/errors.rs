@@ -1,4 +1,5 @@
 use crate::model::SymbolKind;
+use fol_package::PackageError;
 use fol_diagnostics::{DiagnosticLocation, ToDiagnosticLocation};
 use fol_parser::ast::SyntaxOrigin;
 use fol_types::Glitch;
@@ -112,6 +113,19 @@ impl ToDiagnosticLocation for ResolverError {
                 column: 1,
                 length: None,
             }
+        }
+    }
+}
+
+impl From<PackageError> for ResolverError {
+    fn from(error: PackageError) -> Self {
+        match error.origin().cloned() {
+            Some(origin) => ResolverError::with_origin(
+                ResolverErrorKind::InvalidInput,
+                error.message(),
+                origin,
+            ),
+            None => ResolverError::new(ResolverErrorKind::InvalidInput, error.message()),
         }
     }
 }

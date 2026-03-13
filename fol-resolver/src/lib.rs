@@ -25,7 +25,6 @@ mod build_definition;
 pub mod errors;
 pub mod ids;
 pub mod imports;
-mod manifest;
 pub mod model;
 pub mod session;
 pub mod traverse;

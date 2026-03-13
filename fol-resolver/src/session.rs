@@ -1,10 +1,10 @@
 use crate::{
     build_definition::{parse_package_build, PackageBuildDefinition},
     collect, imports,
-    manifest::{parse_package_metadata, PackageMetadata},
     model::ResolvedProgram,
     traverse, ResolverError, ResolverErrorKind, ResolverResult,
 };
+use fol_package::{parse_package_metadata, PackageMetadata};
 use fol_parser::ast::{ParsedPackage, UsePathSegment};
 use fol_stream::{FileStream, Source, SourceType};
 use std::collections::BTreeMap;
@@ -216,7 +216,7 @@ impl ResolverSession {
 
         self.loading_stack.push(identity.clone());
 
-        let loaded_result = (|| {
+        let loaded_result: Result<LoadedPackage, ResolverError> = (|| {
             if source_kind == PackageSourceKind::Package {
                 if let Some(build) = build.as_ref() {
                     self.preload_build_dependencies(build)?;
