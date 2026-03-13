@@ -305,7 +305,7 @@ fn test_postfix_comments_wrap_call_nodes() {
                         )
                         && matches!(
                             node.as_ref(),
-                            AstNode::FunctionCall { name, args }
+                            AstNode::FunctionCall { name, args, .. }
                             if name == "emit"
                                 && args.len() == 1
                                 && matches!(&args[0], AstNode::Identifier { name, .. } if name == "alpha")
@@ -339,7 +339,7 @@ fn test_call_argument_comments_are_preserved_on_argument_nodes() {
                     value: Some(value),
                 } if matches!(
                     value.as_ref(),
-                    AstNode::FunctionCall { name, args }
+                    AstNode::FunctionCall { name, args, .. }
                     if name == "emit"
                         && args.len() == 2
                         && matches!(

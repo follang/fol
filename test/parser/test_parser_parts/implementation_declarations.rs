@@ -20,7 +20,7 @@ fn test_basic_implementation_declaration_parsing() {
                     AstNode::ImpDecl { name, target, body, generics, .. }
                     if name == "Self"
                         && generics.is_empty()
-                        && matches!(target, FolType::Named { name } if name == "ID")
+                        && matches!(target, FolType::Named { name, .. } if name == "ID")
                         && body.iter().any(|stmt| matches!(stmt, AstNode::FunDecl { name, .. } if name == "ready"))
                 )
             }));
@@ -93,7 +93,7 @@ fn test_implementation_declaration_accepts_empty_marker_form() {
                 AstNode::ImpDecl { name, target, body, generics, .. }
                 if name == "Self"
                     && generics.is_empty()
-                    && matches!(target, FolType::Named { name } if name == "ID")
+                    && matches!(target, FolType::Named { name, .. } if name == "ID")
                     && body.is_empty()
             )));
         }
@@ -119,7 +119,7 @@ fn test_implementation_declaration_accepts_empty_option_marker_form() {
                 AstNode::ImpDecl { name, target, body, generics, .. }
                 if name == "Self"
                     && generics.is_empty()
-                    && matches!(target, FolType::Named { name } if name == "ID")
+                    && matches!(target, FolType::Named { name, .. } if name == "ID")
                     && body.is_empty()
             )));
         }
@@ -173,7 +173,7 @@ fn test_implementation_declaration_supports_generic_headers() {
                         && generics.len() == 2
                         && generics[0].name == "T"
                         && generics[1].name == "U"
-                        && matches!(target, FolType::Named { name } if name == "Pair[T,U]")
+                        && matches!(target, FolType::Named { name, .. } if name == "Pair[T,U]")
                 )
             }));
         }
@@ -278,7 +278,7 @@ fn test_implementation_declaration_accepts_quoted_names() {
                     node,
                     AstNode::ImpDecl { name, target, body, .. }
                     if name == "math"
-                        && matches!(target, FolType::Named { name } if name == "Number")
+                        && matches!(target, FolType::Named { name, .. } if name == "Number")
                         && body.iter().any(|stmt| matches!(stmt, AstNode::FunDecl { name, .. } if name == "run"))
                 )
             }));
@@ -440,7 +440,7 @@ fn test_generic_implementation_markers_support_structured_targets() {
                         && generics.len() == 1
                         && generics[0].name == "T"
                         && generics[0].constraints.len() == 1
-                        && matches!(element_type.as_ref(), FolType::Named { name } if name == "T")
+                        && matches!(element_type.as_ref(), FolType::Named { name, .. } if name == "T")
                         && body.is_empty()
                 )
             }));

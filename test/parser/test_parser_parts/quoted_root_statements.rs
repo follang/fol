@@ -15,7 +15,7 @@ fn test_top_level_quoted_call_and_assignment_parsing() {
     match ast {
         AstNode::Program { declarations } => {
             assert!(declarations.iter().any(|node| {
-                matches!(node, AstNode::FunctionCall { name, args } if name == "notify" && args.is_empty())
+                matches!(node, AstNode::FunctionCall { name, args, .. } if name == "notify" && args.is_empty())
             }));
             assert!(declarations.iter().any(|node| {
                 matches!(
@@ -52,7 +52,7 @@ fn test_function_body_quoted_call_and_assignment_parsing() {
                 })
                 .expect("Program should include function body");
             assert!(body.iter().any(|node| {
-                matches!(node, AstNode::FunctionCall { name, args } if name == "check" && args.is_empty())
+                matches!(node, AstNode::FunctionCall { name, args, .. } if name == "check" && args.is_empty())
             }));
             assert!(body.iter().any(|node| {
                 matches!(

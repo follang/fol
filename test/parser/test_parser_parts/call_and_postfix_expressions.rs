@@ -67,14 +67,14 @@ fn test_zero_argument_calls_in_statement_and_return_positions() {
             let has_ping_stmt = only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
-                    AstNode::FunctionCall { name, args } if name == "ping" && args.is_empty()
+                    AstNode::FunctionCall { name, args, .. } if name == "ping" && args.is_empty()
                 )
             });
 
             let has_pong_stmt = only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
-                    AstNode::FunctionCall { name, args } if name == "pong" && args.is_empty()
+                    AstNode::FunctionCall { name, args, .. } if name == "pong" && args.is_empty()
                 )
             });
 
@@ -82,7 +82,7 @@ fn test_zero_argument_calls_in_statement_and_return_positions() {
                     matches!(
                         node,
                         AstNode::Return { value: Some(value) }
-                        if matches!(value.as_ref(), AstNode::FunctionCall { name, args } if name == "emit" && args.is_empty())
+                        if matches!(value.as_ref(), AstNode::FunctionCall { name, args, .. } if name == "emit" && args.is_empty())
                     )
                 });
 
@@ -408,7 +408,7 @@ fn test_nested_function_and_method_calls_in_expression_positions() {
                         AstNode::Assignment { value, .. }
                         if matches!(
                             value.as_ref(),
-                            AstNode::FunctionCall { name, args }
+                            AstNode::FunctionCall { name, args, .. }
                             if name == "wrap"
                                 && args.len() == 1
                                 && matches!(args[0], AstNode::MethodCall { ref method, .. } if method == "get")
@@ -422,7 +422,7 @@ fn test_nested_function_and_method_calls_in_expression_positions() {
                         AstNode::Return { value: Some(value) }
                         if matches!(
                             value.as_ref(),
-                            AstNode::FunctionCall { name, args }
+                            AstNode::FunctionCall { name, args, .. }
                             if name == "emit"
                                 && args.len() == 2
                                 && matches!(args[0], AstNode::FunctionCall { ref name, .. } if name == "process")
@@ -466,10 +466,10 @@ fn test_multiline_call_arguments_parse_with_expected_shapes() {
                         AstNode::Assignment { value, .. }
                         if matches!(
                             value.as_ref(),
-                            AstNode::FunctionCall { name, args }
+                            AstNode::FunctionCall { name, args, .. }
                             if name == "compose"
                                 && args.len() == 3
-                                && matches!(args[1], AstNode::FunctionCall { ref name, args: ref inner_args } if name == "wrap" && inner_args.len() == 1)
+                                && matches!(args[1], AstNode::FunctionCall { ref name, args: ref inner_args , ..} if name == "wrap" && inner_args.len() == 1)
                         )
                     )
                 });
@@ -486,7 +486,7 @@ fn test_multiline_call_arguments_parse_with_expected_shapes() {
                     matches!(
                         node,
                         AstNode::Return { value: Some(value) }
-                        if matches!(value.as_ref(), AstNode::FunctionCall { name, args } if name == "emit" && args.len() == 1)
+                        if matches!(value.as_ref(), AstNode::FunctionCall { name, args, .. } if name == "emit" && args.len() == 1)
                     )
                 });
 
@@ -529,10 +529,10 @@ fn test_multiline_call_arguments_with_comments_parse_with_expected_shapes() {
                         AstNode::Assignment { value, .. }
                         if matches!(
                             unwrap_comment_wrappers(value.as_ref()),
-                            AstNode::FunctionCall { name, args }
+                            AstNode::FunctionCall { name, args, .. }
                             if name == "combine"
                                 && args.len() == 3
-                                && matches!(unwrap_comment_wrappers(&args[1]), AstNode::FunctionCall { name, args: inner_args } if name == "wrap" && inner_args.len() == 1)
+                                && matches!(unwrap_comment_wrappers(&args[1]), AstNode::FunctionCall { name, args: inner_args , ..} if name == "wrap" && inner_args.len() == 1)
                                 && matches!(unwrap_comment_wrappers(&args[2]), AstNode::Literal(Literal::Integer(42)))
                         )
                     )
@@ -542,7 +542,7 @@ fn test_multiline_call_arguments_with_comments_parse_with_expected_shapes() {
                     matches!(
                         node,
                         AstNode::Return { value: Some(value) }
-                        if matches!(value.as_ref(), AstNode::FunctionCall { name, args } if name == "emit" && args.len() == 1)
+                        if matches!(value.as_ref(), AstNode::FunctionCall { name, args, .. } if name == "emit" && args.len() == 1)
                     )
                 });
 
@@ -581,10 +581,10 @@ fn test_multiline_call_arguments_with_slash_comments_still_parse_as_compatibilit
                         AstNode::Assignment { value, .. }
                         if matches!(
                             unwrap_comment_wrappers(value.as_ref()),
-                            AstNode::FunctionCall { name, args }
+                            AstNode::FunctionCall { name, args, .. }
                             if name == "combine"
                                 && args.len() == 3
-                                && matches!(unwrap_comment_wrappers(&args[1]), AstNode::FunctionCall { name, args: inner_args } if name == "wrap" && inner_args.len() == 1)
+                                && matches!(unwrap_comment_wrappers(&args[1]), AstNode::FunctionCall { name, args: inner_args , ..} if name == "wrap" && inner_args.len() == 1)
                                 && matches!(unwrap_comment_wrappers(&args[2]), AstNode::Literal(Literal::Integer(42)))
                         )
                     )
@@ -594,7 +594,7 @@ fn test_multiline_call_arguments_with_slash_comments_still_parse_as_compatibilit
                     matches!(
                         node,
                         AstNode::Return { value: Some(value) }
-                        if matches!(value.as_ref(), AstNode::FunctionCall { name, args } if name == "emit" && args.len() == 1)
+                        if matches!(value.as_ref(), AstNode::FunctionCall { name, args, .. } if name == "emit" && args.len() == 1)
                     )
                 });
 
@@ -633,10 +633,10 @@ fn test_multiline_call_arguments_with_doc_comments_remain_ast_visible() {
                         AstNode::Assignment { value, .. }
                         if matches!(
                             unwrap_comment_wrappers(value.as_ref()),
-                            AstNode::FunctionCall { name, args }
+                            AstNode::FunctionCall { name, args, .. }
                             if name == "combine"
                                 && args.len() == 3
-                                && matches!(unwrap_comment_wrappers(&args[1]), AstNode::FunctionCall { name, args: inner_args } if name == "wrap" && inner_args.len() == 1)
+                                && matches!(unwrap_comment_wrappers(&args[1]), AstNode::FunctionCall { name, args: inner_args , ..} if name == "wrap" && inner_args.len() == 1)
                                 && matches!(unwrap_comment_wrappers(&args[2]), AstNode::Literal(Literal::Integer(42)))
                         )
                     )
@@ -646,7 +646,7 @@ fn test_multiline_call_arguments_with_doc_comments_remain_ast_visible() {
                     matches!(
                         node,
                         AstNode::Return { value: Some(value) }
-                        if matches!(value.as_ref(), AstNode::FunctionCall { name, args } if name == "emit" && args.len() == 1)
+                        if matches!(value.as_ref(), AstNode::FunctionCall { name, args, .. } if name == "emit" && args.len() == 1)
                     )
                 });
 

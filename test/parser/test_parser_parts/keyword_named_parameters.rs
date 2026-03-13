@@ -48,7 +48,7 @@ fn test_function_type_references_accept_keyword_named_parameters() {
                         [Parameter {
                             param_type: FolType::Function { params, .. },
                             ..
-                        }] if matches!(params.as_slice(), [FolType::Int { .. }, FolType::Named { name }] if name == "str")
+                        }] if matches!(params.as_slice(), [FolType::Int { .. }, FolType::Named { name, .. }] if name == "str")
                     )
                 )
             }));

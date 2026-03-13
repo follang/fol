@@ -192,7 +192,7 @@ fn test_unary_plus_preserves_call_and_method_call_expression_shapes() {
                     AstNode::Assignment { value, .. }
                     if matches!(
                         value.as_ref(),
-                        AstNode::FunctionCall { name, args }
+                        AstNode::FunctionCall { name, args, .. }
                         if name == "compute"
                             && args.len() == 1
                             && matches!(&args[0], AstNode::Identifier { name, .. } if name == "a")

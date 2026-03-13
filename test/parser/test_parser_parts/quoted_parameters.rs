@@ -63,7 +63,7 @@ fn test_function_type_references_accept_quoted_parameters() {
                         [Parameter {
                             param_type: FolType::Function { params, .. },
                             ..
-                        }] if matches!(params.as_slice(), [FolType::Int { .. }, FolType::Named { name }] if name == "str")
+                        }] if matches!(params.as_slice(), [FolType::Int { .. }, FolType::Named { name, .. }] if name == "str")
                     )
                 )
             }));
@@ -105,7 +105,7 @@ fn test_single_quoted_parameters_parse() {
                             [Parameter {
                                 param_type: FolType::Function { params, .. },
                                 ..
-                            }] if matches!(params.as_slice(), [FolType::Int { .. }, FolType::Named { name }] if name == "str")
+                            }] if matches!(params.as_slice(), [FolType::Int { .. }, FolType::Named { name, .. }] if name == "str")
                         )
                 )
             }));

@@ -139,11 +139,11 @@ fn test_function_declaration_error_type_parsing() {
 
     assert_eq!(function_decl.0, "read_data");
     assert!(
-        matches!(function_decl.1, Some(FolType::Named { name }) if name == "str"),
+        matches!(function_decl.1, Some(FolType::Named { name, .. }) if name == "str"),
         "Function should parse return type in first ':' slot"
     );
     assert!(
-        matches!(function_decl.2, Some(FolType::Named { name }) if name == "io_err"),
+        matches!(function_decl.2, Some(FolType::Named { name, .. }) if name == "io_err"),
         "Function should parse error type in second ':' slot"
     );
 }
@@ -191,7 +191,7 @@ fn test_procedure_declaration_error_type_parsing() {
         "Procedure should parse return type in first ':' slot"
     );
     assert!(
-        matches!(procedure_decl.2, Some(FolType::Named { name }) if name == "io_err"),
+        matches!(procedure_decl.2, Some(FolType::Named { name, .. }) if name == "io_err"),
         "Procedure should parse error type in second ':' slot"
     );
 }

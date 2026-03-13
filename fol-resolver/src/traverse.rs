@@ -298,8 +298,20 @@ fn traverse_node(
         AstNode::UnaryOp { operand, .. } => {
             traverse_node(program, source_unit_id, scope_id, operand, false, routine_context)?;
         }
-        AstNode::FunctionCall { name, args } => {
-            record_function_call_reference(program, source_unit_id, scope_id, name)?;
+        AstNode::FunctionCall {
+            name,
+            args,
+            syntax_id,
+        } => {
+            record_function_call_reference(
+                program,
+                source_unit_id,
+                scope_id,
+                name,
+                syntax_id
+                    .and_then(|syntax_id| program.syntax_index().origin(syntax_id))
+                    .cloned(),
+            )?;
             for arg in args {
                 traverse_node(program, source_unit_id, scope_id, arg, false, routine_context)?;
             }
@@ -962,6 +974,7 @@ fn record_function_call_reference(
     source_unit_id: SourceUnitId,
     scope_id: ScopeId,
     name: &str,
+    origin: Option<fol_parser::ast::SyntaxOrigin>,
 ) -> Result<ReferenceId, ResolverError> {
     let symbol_id = resolve_visible_or_imported_symbol_of_kinds(
         program,
@@ -969,7 +982,7 @@ fn record_function_call_reference(
         name,
         &[SymbolKind::Routine],
         Some("callable routine"),
-        None,
+        origin,
     )?;
     let reference_id = program.references.push(ResolvedReference {
         id: ReferenceId(0),
@@ -1046,6 +1059,7 @@ fn record_named_type_reference(
     source_unit_id: SourceUnitId,
     scope_id: ScopeId,
     name: &str,
+    origin: Option<fol_parser::ast::SyntaxOrigin>,
 ) -> Result<ReferenceId, ResolverError> {
     let symbol_id = resolve_visible_or_imported_symbol_of_kinds(
         program,
@@ -1057,7 +1071,7 @@ fn record_named_type_reference(
             SymbolKind::GenericParameter,
         ],
         Some("type"),
-        None,
+        origin,
     )?;
     let reference_id = program.references.push(ResolvedReference {
         id: ReferenceId(0),
@@ -1393,8 +1407,16 @@ fn resolve_type_reference(
 ) -> Result<(), ResolverError> {
     match typ {
         typ if typ.is_builtin_str() => {}
-        FolType::Named { name } => {
-            record_named_type_reference(program, source_unit_id, scope_id, name)?;
+        FolType::Named { name, syntax_id } => {
+            record_named_type_reference(
+                program,
+                source_unit_id,
+                scope_id,
+                name,
+                syntax_id
+                    .and_then(|syntax_id| program.syntax_index().origin(syntax_id))
+                    .cloned(),
+            )?;
         }
         FolType::Array { element_type, .. }
         | FolType::Vector { element_type }

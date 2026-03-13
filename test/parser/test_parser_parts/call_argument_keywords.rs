@@ -18,7 +18,7 @@ fn test_function_calls_support_keyword_arguments() {
                 AstNode::Assignment { value, .. }
                 if matches!(
                     value.as_ref(),
-                    AstNode::FunctionCall { name, args }
+                    AstNode::FunctionCall { name, args, .. }
                     if name == "calc"
                         && args.len() == 3
                         && matches!(&args[0], AstNode::NamedArgument { name, .. } if name == "el3")
@@ -54,7 +54,7 @@ fn test_function_calls_support_mixed_keyword_arguments() {
                 AstNode::Assignment { value, .. }
                 if matches!(
                     value.as_ref(),
-                    AstNode::FunctionCall { name, args }
+                    AstNode::FunctionCall { name, args, .. }
                     if name == "calc"
                         && args.len() == 5
                         && !matches!(&args[0], AstNode::NamedArgument { .. })
@@ -187,7 +187,7 @@ fn test_keyword_call_arguments_accept_semicolon_separators() {
                 AstNode::Assignment { value, .. }
                 if matches!(
                     value.as_ref(),
-                    AstNode::FunctionCall { name, args }
+                    AstNode::FunctionCall { name, args, .. }
                     if name == "calc"
                         && args.len() == 3
                         && matches!(&args[0], AstNode::NamedArgument { name, .. } if name == "el3")
@@ -224,7 +224,7 @@ fn test_keyword_call_arguments_accept_trailing_separators() {
                 AstNode::Assignment { value, .. }
                 if matches!(
                     value.as_ref(),
-                    AstNode::FunctionCall { name, args }
+                    AstNode::FunctionCall { name, args, .. }
                     if name == "calc"
                         && args.len() == 3
                         && matches!(&args[0], AstNode::NamedArgument { name, .. } if name == "el3")
@@ -258,7 +258,7 @@ fn test_keyword_function_call_statements_parse() {
         AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
             matches!(
                 node,
-                AstNode::FunctionCall { name, args }
+                AstNode::FunctionCall { name, args, .. }
                 if name == "calc"
                     && args.len() == 3
                     && matches!(&args[0], AstNode::NamedArgument { name, .. } if name == "el3")

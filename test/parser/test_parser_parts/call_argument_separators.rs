@@ -16,7 +16,7 @@ fn test_call_argument_lists_accept_trailing_commas() {
             let has_ping_two_args = only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
-                    AstNode::FunctionCall { name, args }
+                    AstNode::FunctionCall { name, args, .. }
                     if name == "ping" && args.len() == 2
                 )
             });
@@ -33,7 +33,7 @@ fn test_call_argument_lists_accept_trailing_commas() {
                 matches!(
                     node,
                     AstNode::Return { value: Some(value) }
-                    if matches!(value.as_ref(), AstNode::FunctionCall { name, args } if name == "emit" && args.len() == 1)
+                    if matches!(value.as_ref(), AstNode::FunctionCall { name, args, .. } if name == "emit" && args.len() == 1)
                 )
             });
 
@@ -63,7 +63,7 @@ fn test_call_argument_lists_accept_semicolons() {
             let has_ping_two_args = only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
-                    AstNode::FunctionCall { name, args }
+                    AstNode::FunctionCall { name, args, .. }
                     if name == "ping" && args.len() == 2
                 )
             });
@@ -80,7 +80,7 @@ fn test_call_argument_lists_accept_semicolons() {
                 matches!(
                     node,
                     AstNode::Return { value: Some(value) }
-                    if matches!(value.as_ref(), AstNode::FunctionCall { name, args } if name == "emit" && args.len() == 2)
+                    if matches!(value.as_ref(), AstNode::FunctionCall { name, args, .. } if name == "emit" && args.len() == 2)
                 )
             });
 
@@ -111,7 +111,7 @@ fn test_call_argument_lists_accept_mixed_separators() {
             let has_ping_three_args = only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
-                    AstNode::FunctionCall { name, args }
+                    AstNode::FunctionCall { name, args, .. }
                     if name == "ping" && args.len() == 3
                 )
             });
@@ -128,7 +128,7 @@ fn test_call_argument_lists_accept_mixed_separators() {
                 matches!(
                     node,
                     AstNode::Return { value: Some(value) }
-                    if matches!(value.as_ref(), AstNode::FunctionCall { name, args } if name == "emit" && args.len() == 3)
+                    if matches!(value.as_ref(), AstNode::FunctionCall { name, args, .. } if name == "emit" && args.len() == 3)
                 )
             });
 
@@ -160,7 +160,7 @@ fn test_semicolon_call_arguments_parse_in_initializers() {
                 node,
                 AstNode::VarDecl { name, value: Some(value), .. }
                 if name == "value"
-                    && matches!(value.as_ref(), AstNode::FunctionCall { name, args } if name == "emit" && args.len() == 2)
+                    && matches!(value.as_ref(), AstNode::FunctionCall { name, args, .. } if name == "emit" && args.len() == 2)
             )));
         }
         _ => panic!("Expected program node"),
@@ -187,10 +187,10 @@ fn test_nested_calls_with_trailing_commas_preserve_argument_shapes() {
                     AstNode::Assignment { value, .. }
                     if matches!(
                         value.as_ref(),
-                        AstNode::FunctionCall { name, args }
+                        AstNode::FunctionCall { name, args, .. }
                         if name == "outer"
                             && args.len() == 2
-                            && matches!(args[0], AstNode::FunctionCall { ref name, args: ref nested_args } if name == "inner" && nested_args.len() == 1)
+                            && matches!(args[0], AstNode::FunctionCall { ref name, args: ref nested_args , ..} if name == "inner" && nested_args.len() == 1)
                             && matches!(args[1], AstNode::MethodCall { ref method, args: ref nested_args, .. } if method == "run" && nested_args.len() == 1)
                     )
                 )
@@ -200,7 +200,7 @@ fn test_nested_calls_with_trailing_commas_preserve_argument_shapes() {
                 matches!(
                     node,
                     AstNode::Return { value: Some(value) }
-                    if matches!(value.as_ref(), AstNode::FunctionCall { name, args } if name == "done" && args.len() == 1)
+                    if matches!(value.as_ref(), AstNode::FunctionCall { name, args, .. } if name == "done" && args.len() == 1)
                 )
             });
 
@@ -233,10 +233,10 @@ fn test_nested_calls_with_semicolons_preserve_argument_shapes() {
                     AstNode::Assignment { value, .. }
                     if matches!(
                         value.as_ref(),
-                        AstNode::FunctionCall { name, args }
+                        AstNode::FunctionCall { name, args, .. }
                         if name == "outer"
                             && args.len() == 2
-                            && matches!(args[0], AstNode::FunctionCall { ref name, args: ref nested_args } if name == "inner" && nested_args.len() == 1)
+                            && matches!(args[0], AstNode::FunctionCall { ref name, args: ref nested_args , ..} if name == "inner" && nested_args.len() == 1)
                             && matches!(args[1], AstNode::MethodCall { ref method, args: ref nested_args, .. } if method == "run" && nested_args.len() == 1)
                     )
                 )
@@ -246,7 +246,7 @@ fn test_nested_calls_with_semicolons_preserve_argument_shapes() {
                 matches!(
                     node,
                     AstNode::Return { value: Some(value) }
-                    if matches!(value.as_ref(), AstNode::FunctionCall { name, args } if name == "done" && args.len() == 1)
+                    if matches!(value.as_ref(), AstNode::FunctionCall { name, args, .. } if name == "done" && args.len() == 1)
                 )
             });
 

@@ -67,7 +67,7 @@ fn test_parse_package_rejects_script_roots_while_parse_accepts_them() {
     match ast {
         AstNode::Program { declarations } => {
             assert!(declarations.iter().any(|node| {
-                matches!(node, AstNode::FunctionCall { name, args } if name == "run" && args.len() == 2)
+                matches!(node, AstNode::FunctionCall { name, args, .. } if name == "run" && args.len() == 2)
             }));
         }
         _ => panic!("Expected program node"),

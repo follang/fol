@@ -22,7 +22,7 @@ fn test_top_level_type_record_fields_support_keyword_names() {
                         ..
                     }
                     if matches!(fields.get("get"), Some(FolType::Int { size: None, signed: true }))
-                        && matches!(fields.get("log"), Some(FolType::Named { name }) if name == "str")
+                        && matches!(fields.get("log"), Some(FolType::Named { name, .. }) if name == "str")
                 )
             }));
         }
@@ -78,7 +78,7 @@ fn test_type_entry_definition_supports_keyword_variant_names() {
                         ..
                     }
                     if matches!(variants.get("get"), Some(Some(FolType::Int { size: None, signed: true })))
-                        && matches!(variants.get("log"), Some(Some(FolType::Named { name })) if name == "str")
+                        && matches!(variants.get("log"), Some(Some(FolType::Named { name, .. })) if name == "str")
                 )
             }));
         }

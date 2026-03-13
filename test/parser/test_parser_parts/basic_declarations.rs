@@ -153,7 +153,7 @@ fn test_top_level_alias_parsing() {
             let has_text_alias = declarations.iter().any(|node| {
                 matches!(
                     node,
-                    AstNode::AliasDecl { name, target: FolType::Named { name: target_name } }
+                    AstNode::AliasDecl { name, target: FolType::Named { name: target_name , ..} }
                     if name == "Text" && target_name == "str"
                 )
             });
@@ -231,7 +231,7 @@ fn test_top_level_type_alias_parsing() {
                         node,
                         AstNode::TypeDecl {
                             name,
-                            type_def: TypeDefinition::Alias { target: FolType::Named { name: target_name } },
+                            type_def: TypeDefinition::Alias { target: FolType::Named { name: target_name , ..} },
                             ..
                         }
                         if name == "Text" && target_name == "str"
@@ -290,7 +290,7 @@ fn test_type_alias_parsing_supports_bracketed_target_types() {
                                 ..
                             }
                             if name == "OutputMap"
-                                && matches!(key_type.as_ref(), FolType::Named { name } if name == "str")
+                                && matches!(key_type.as_ref(), FolType::Named { name, .. } if name == "str")
                                 && matches!(
                                     value_type.as_ref(),
                                     FolType::Vector { element_type }
@@ -358,7 +358,7 @@ fn test_top_level_type_record_parsing() {
                                 ..
                             }
                             if name == "Person"
-                                && matches!(fields.get("name"), Some(FolType::Named { name }) if name == "str")
+                                && matches!(fields.get("name"), Some(FolType::Named { name, .. }) if name == "str")
                                 && matches!(fields.get("age"), Some(FolType::Int { size: None, signed: true }))
                         )
                     }),
@@ -392,7 +392,7 @@ fn test_top_level_type_record_marker_parsing() {
                                 ..
                             }
                             if name == "User"
-                                && matches!(fields.get("name"), Some(FolType::Named { name }) if name == "str")
+                                && matches!(fields.get("name"), Some(FolType::Named { name, .. }) if name == "str")
                                 && matches!(fields.get("age"), Some(FolType::Int { size: None, signed: true }))
                         )
                     }),
@@ -426,8 +426,8 @@ fn test_top_level_type_record_fields_support_var_prefix_and_defaults() {
                                 ..
                             }
                             if name == "User"
-                                && matches!(fields.get("username"), Some(FolType::Named { name }) if name == "str")
-                                && matches!(fields.get("email"), Some(FolType::Named { name }) if name == "str")
+                                && matches!(fields.get("username"), Some(FolType::Named { name, .. }) if name == "str")
+                                && matches!(fields.get("email"), Some(FolType::Named { name, .. }) if name == "str")
                                 && matches!(fields.get("sign_in_count"), Some(FolType::Int { size: None, signed: true }))
                                 && matches!(fields.get("active"), Some(FolType::Bool))
                         )
@@ -549,7 +549,7 @@ fn test_top_level_type_record_fields_support_lab_prefix() {
                         type_def: TypeDefinition::Record { fields, .. },
                         ..
                     }
-                    if matches!(fields.get("name"), Some(FolType::Named { name }) if name == "str")
+                    if matches!(fields.get("name"), Some(FolType::Named { name, .. }) if name == "str")
                         && matches!(fields.get("size"), Some(FolType::Int { size: None, signed: true }))
                         && matches!(fields.get("ready"), Some(FolType::Bool))
                 )
@@ -608,7 +608,7 @@ fn test_top_level_type_record_marker_accepts_empty_brackets() {
                                 ..
                             }
                             if name == "User"
-                                && matches!(fields.get("name"), Some(FolType::Named { name }) if name == "str")
+                                && matches!(fields.get("name"), Some(FolType::Named { name, .. }) if name == "str")
                                 && matches!(fields.get("age"), Some(FolType::Int { size: None, signed: true }))
                         )
                     }),
@@ -650,7 +650,7 @@ fn test_type_generic_headers_parse() {
                                     if name == "T"
                                         && matches!(
                                             constraints.as_slice(),
-                                            [FolType::Named { name }] if name == "item"
+                                            [FolType::Named { name, .. }] if name == "item"
                                         )
                             )
                     )
@@ -778,8 +778,8 @@ fn test_type_generic_headers_accept_semicolon_separators() {
                                     ]
                                     if first == "T"
                                         && second == "U"
-                                        && matches!(first_constraints.as_slice(), [FolType::Named { name }] if name == "left")
-                                        && matches!(second_constraints.as_slice(), [FolType::Named { name }] if name == "right")
+                                        && matches!(first_constraints.as_slice(), [FolType::Named { name, .. }] if name == "left")
+                                        && matches!(second_constraints.as_slice(), [FolType::Named { name, .. }] if name == "right")
                                 )
                         )
                     }),
@@ -893,10 +893,10 @@ fn test_top_level_type_entry_parsing() {
                                 ..
                             }
                             if name == "Color"
-                                && matches!(variants.get("BLUE"), Some(Some(FolType::Named { name })) if name == "str")
-                                && matches!(variants.get("RED"), Some(Some(FolType::Named { name })) if name == "str")
-                                && matches!(variants.get("BLACK"), Some(Some(FolType::Named { name })) if name == "str")
-                                && matches!(variants.get("WHITE"), Some(Some(FolType::Named { name })) if name == "str")
+                                && matches!(variants.get("BLUE"), Some(Some(FolType::Named { name, .. })) if name == "str")
+                                && matches!(variants.get("RED"), Some(Some(FolType::Named { name, .. })) if name == "str")
+                                && matches!(variants.get("BLACK"), Some(Some(FolType::Named { name, .. })) if name == "str")
+                                && matches!(variants.get("WHITE"), Some(Some(FolType::Named { name, .. })) if name == "str")
                         )
                     }),
                     "Parser should build TypeDecl entry variants with shared type hints"
@@ -929,10 +929,10 @@ fn test_top_level_type_entry_parsing_accepts_comma_separators() {
                                 ..
                             }
                             if name == "ColorCodes"
-                                && matches!(variants.get("BLUE"), Some(Some(FolType::Named { name })) if name == "str")
-                                && matches!(variants.get("RED"), Some(Some(FolType::Named { name })) if name == "str")
-                                && matches!(variants.get("BLACK"), Some(Some(FolType::Named { name })) if name == "str")
-                                && matches!(variants.get("WHITE"), Some(Some(FolType::Named { name })) if name == "str")
+                                && matches!(variants.get("BLUE"), Some(Some(FolType::Named { name, .. })) if name == "str")
+                                && matches!(variants.get("RED"), Some(Some(FolType::Named { name, .. })) if name == "str")
+                                && matches!(variants.get("BLACK"), Some(Some(FolType::Named { name, .. })) if name == "str")
+                                && matches!(variants.get("WHITE"), Some(Some(FolType::Named { name, .. })) if name == "str")
                         )
                     }),
                     "Parser should accept comma-separated entry variants, including trailing comma"
@@ -966,10 +966,10 @@ fn test_top_level_type_entry_marker_accepts_empty_brackets() {
                                 ..
                             }
                             if name == "Color"
-                                && matches!(variants.get("BLUE"), Some(Some(FolType::Named { name })) if name == "str")
-                                && matches!(variants.get("RED"), Some(Some(FolType::Named { name })) if name == "str")
-                                && matches!(variants.get("BLACK"), Some(Some(FolType::Named { name })) if name == "str")
-                                && matches!(variants.get("WHITE"), Some(Some(FolType::Named { name })) if name == "str")
+                                && matches!(variants.get("BLUE"), Some(Some(FolType::Named { name, .. })) if name == "str")
+                                && matches!(variants.get("RED"), Some(Some(FolType::Named { name, .. })) if name == "str")
+                                && matches!(variants.get("BLACK"), Some(Some(FolType::Named { name, .. })) if name == "str")
+                                && matches!(variants.get("WHITE"), Some(Some(FolType::Named { name, .. })) if name == "str")
                         )
                     }),
                     "Parser should treat ent[] marker the same as ent marker"

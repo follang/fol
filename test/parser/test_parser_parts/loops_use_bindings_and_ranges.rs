@@ -347,7 +347,7 @@ fn test_use_declaration_supports_qualified_and_bracketed_types() {
         matches!(
             use_decl.1,
             FolType::Map { key_type, value_type }
-                if matches!(key_type.as_ref(), FolType::Named { name } if name == "str")
+                if matches!(key_type.as_ref(), FolType::Named { name, .. } if name == "str")
                     && fol_type_has_qualified_segments(value_type.as_ref(), &["pkg", "Value"])
         ),
         "Use declaration should preserve qualified bracketed source-kind type"
@@ -488,7 +488,7 @@ fn test_var_parsing_supports_qualified_and_bracketed_type_hints() {
                 matches!(
                     var_decl.1,
                     Some(FolType::Map { key_type, value_type })
-                        if matches!(key_type.as_ref(), FolType::Named { name } if name == "str")
+                        if matches!(key_type.as_ref(), FolType::Named { name, .. } if name == "str")
                             && fol_type_has_qualified_segments(value_type.as_ref(), &["pkg", "Value"])
                 ),
                 "Var type hint should preserve qualified bracketed syntax"
@@ -522,7 +522,7 @@ fn test_let_parsing_supports_bracketed_type_hints() {
                                 ..
                             }
                             if name == "cache"
-                                && matches!(key_type.as_ref(), FolType::Named { name } if name == "str")
+                                && matches!(key_type.as_ref(), FolType::Named { name, .. } if name == "str")
                                 && matches!(
                                     value_type.as_ref(),
                                     FolType::Vector { element_type }

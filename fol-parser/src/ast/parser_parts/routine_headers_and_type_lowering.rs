@@ -177,11 +177,13 @@ impl AstParser {
                         first_untyped = Some(token.clone());
                     }
                     FolType::Named {
+                        syntax_id: None,
                         name: "any".to_string(),
                     }
                 }
             } else {
                 FolType::Named {
+                    syntax_id: None,
                     name: "any".to_string(),
                 }
             };
@@ -732,7 +734,7 @@ impl AstParser {
         match typ {
             FolType::Limited { base, .. } => Self::fol_type_label(base),
             FolType::Channel { .. } => "chn".to_string(),
-            FolType::Named { name } => name.clone(),
+            FolType::Named { name, .. } => name.clone(),
             FolType::QualifiedNamed { path } => path.joined(),
             FolType::Url { name } => {
                 if name.is_empty() {
@@ -1001,7 +1003,10 @@ impl AstParser {
             if path.is_qualified() && !has_suffix {
                 FolType::QualifiedNamed { path }
             } else {
-                FolType::Named { name }
+                FolType::Named {
+                    syntax_id: path.syntax_id(),
+                    name,
+                }
             }
         };
 

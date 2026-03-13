@@ -61,7 +61,11 @@ impl AstParser {
         let args =
             self.parse_open_paren_and_call_args(tokens, "Expected '(' after builtin call name")?;
 
-        Ok(AstNode::FunctionCall { name, args })
+        Ok(AstNode::FunctionCall {
+            syntax_id: self.record_syntax_origin(&name_token),
+            name,
+            args,
+        })
     }
 
     fn lookahead_is_named_call_arg(

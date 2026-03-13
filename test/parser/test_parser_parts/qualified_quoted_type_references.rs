@@ -82,7 +82,7 @@ fn test_quoted_type_references_compose_inside_nested_type_forms() {
                         },
                         ..
                     } if name == "Boxed"
-                        && matches!(element_type.as_ref(), FolType::Named { name } if name == "Item")
+                        && matches!(element_type.as_ref(), FolType::Named { name, .. } if name == "Item")
                 )
             }));
             assert!(declarations.iter().any(|node| {
@@ -95,7 +95,7 @@ fn test_quoted_type_references_compose_inside_nested_type_forms() {
                         },
                         ..
                     } if name == "Mapping"
-                        && matches!(key_type.as_ref(), FolType::Named { name } if name == "Key")
+                        && matches!(key_type.as_ref(), FolType::Named { name, .. } if name == "Key")
                         && fol_type_has_qualified_segments(value_type.as_ref(), &["pkg", "Value"])
                 )
             }));
@@ -109,7 +109,7 @@ fn test_quoted_type_references_compose_inside_nested_type_forms() {
                         },
                         ..
                     } if name == "Maybe"
-                        && matches!(inner.as_ref(), FolType::Named { name } if name == "Inner")
+                        && matches!(inner.as_ref(), FolType::Named { name, .. } if name == "Inner")
                 )
             }));
         }
@@ -141,7 +141,7 @@ fn test_quoted_type_references_compose_inside_array_and_matrix_types() {
                         },
                         ..
                     } if name == "Buffer"
-                        && matches!(element_type.as_ref(), FolType::Named { name } if name == "Byte")
+                        && matches!(element_type.as_ref(), FolType::Named { name, .. } if name == "Byte")
                         && *size == Some(16)
                 )
             }));
@@ -189,7 +189,7 @@ fn test_single_quoted_type_references_compose_inside_array_and_matrix_types() {
                         },
                         ..
                     } if name == "Buffer"
-                        && matches!(element_type.as_ref(), FolType::Named { name } if name == "Byte")
+                        && matches!(element_type.as_ref(), FolType::Named { name, .. } if name == "Byte")
                         && *size == Some(16)
                 )
             }));

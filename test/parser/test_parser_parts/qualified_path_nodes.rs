@@ -35,6 +35,7 @@ fn test_qualified_path_from_joined_keeps_single_and_multi_segment_shapes() {
 #[test]
 fn test_named_type_helpers_preserve_flat_and_structured_forms() {
     let flat = FolType::Named {
+        syntax_id: None,
         name: "value".to_string(),
     };
     assert_eq!(flat.named_text().as_deref(), Some("value"));

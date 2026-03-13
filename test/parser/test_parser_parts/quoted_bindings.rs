@@ -18,7 +18,7 @@ fn test_top_level_var_declaration_accepts_quoted_name() {
                     node,
                     AstNode::VarDecl { name, type_hint, value, .. }
                     if name == "state"
-                        && matches!(type_hint, Some(FolType::Named { name }) if name == "str")
+                        && matches!(type_hint, Some(FolType::Named { name, .. }) if name == "str")
                         && matches!(value.as_deref(), Some(AstNode::Identifier { name, .. }) if name == "ready")
                 )
             }));

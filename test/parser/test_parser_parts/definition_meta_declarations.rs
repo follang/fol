@@ -18,7 +18,7 @@ fn test_macro_definition_parsing() {
                 AstNode::DefDecl {
                     name,
                     params,
-                    def_type: FolType::Named { name: def_kind },
+                    def_type: FolType::Named { name: def_kind , ..},
                     body,
                     ..
                 }
@@ -52,7 +52,7 @@ fn test_alternative_definition_parsing() {
                 AstNode::DefDecl {
                     name,
                     params,
-                    def_type: FolType::Named { name: def_kind },
+                    def_type: FolType::Named { name: def_kind , ..},
                     body,
                     ..
                 }
@@ -84,7 +84,7 @@ fn test_default_definition_parsing() {
                 AstNode::DefDecl {
                     name,
                     params,
-                    def_type: FolType::Named { name: def_kind },
+                    def_type: FolType::Named { name: def_kind , ..},
                     body,
                     ..
                 }
@@ -144,7 +144,7 @@ fn test_macro_definitions_allow_overloads_by_parameter_type() {
                         node,
                         AstNode::DefDecl {
                             name,
-                            def_type: FolType::Named { name: kind },
+                            def_type: FolType::Named { name: kind , ..},
                             ..
                         } if name == "!" && kind == "mac"
                     )
@@ -175,7 +175,7 @@ fn test_macro_definitions_accept_grouped_parameters() {
                 AstNode::DefDecl {
                     name,
                     params,
-                    def_type: FolType::Named { name: def_kind },
+                    def_type: FolType::Named { name: def_kind , ..},
                     ..
                 }
                 if name == "swap"
@@ -208,7 +208,7 @@ fn test_macro_definitions_accept_semicolon_parameter_separators() {
                 AstNode::DefDecl {
                     name,
                     params,
-                    def_type: FolType::Named { name: def_kind },
+                    def_type: FolType::Named { name: def_kind , ..},
                     ..
                 }
                 if name == "pair"
@@ -239,8 +239,8 @@ fn test_meta_definitions_parse_inside_routine_bodies() {
                 node,
                 AstNode::FunDecl { name, body, .. }
                 if name == "build"
-                    && body.iter().any(|stmt| matches!(stmt, AstNode::DefDecl { name, def_type: FolType::Named { name: kind }, .. } if name == "$" && kind == "mac"))
-                    && body.iter().any(|stmt| matches!(stmt, AstNode::DefDecl { name, def_type: FolType::Named { name: kind }, .. } if name == "+var" && kind == "alt"))
+                    && body.iter().any(|stmt| matches!(stmt, AstNode::DefDecl { name, def_type: FolType::Named { name: kind , ..}, .. } if name == "$" && kind == "mac"))
+                    && body.iter().any(|stmt| matches!(stmt, AstNode::DefDecl { name, def_type: FolType::Named { name: kind , ..}, .. } if name == "+var" && kind == "alt"))
             )));
         }
         _ => panic!("Expected program node"),
@@ -265,8 +265,8 @@ fn test_meta_definitions_parse_inside_definition_bodies() {
                 node,
                 AstNode::DefDecl { name, def_type: FolType::Module { .. }, body, .. }
                 if name == "meta"
-                    && body.iter().any(|stmt| matches!(stmt, AstNode::DefDecl { name, def_type: FolType::Named { name: kind }, .. } if name == "$" && kind == "mac"))
-                    && body.iter().any(|stmt| matches!(stmt, AstNode::DefDecl { name, def_type: FolType::Named { name: kind }, .. } if name == "str" && kind == "def[]"))
+                    && body.iter().any(|stmt| matches!(stmt, AstNode::DefDecl { name, def_type: FolType::Named { name: kind , ..}, .. } if name == "$" && kind == "mac"))
+                    && body.iter().any(|stmt| matches!(stmt, AstNode::DefDecl { name, def_type: FolType::Named { name: kind , ..}, .. } if name == "str" && kind == "def[]"))
             )));
         }
         _ => panic!("Expected program node"),

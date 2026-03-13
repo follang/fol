@@ -146,6 +146,22 @@ fn qualified_path_origin<'a>(
         .expect("Qualified path syntax id should resolve in the package syntax index")
 }
 
+fn fol_type_origin<'a>(package: &'a ParsedPackage, typ: &FolType) -> &'a SyntaxOrigin {
+    let syntax_id = match typ {
+        FolType::Named { syntax_id, .. } => syntax_id
+            .expect("Named type should retain a syntax id in parsed-package mode"),
+        FolType::QualifiedNamed { path } => path
+            .syntax_id()
+            .expect("Qualified named type should retain a syntax id in parsed-package mode"),
+        other => panic!("Expected a named type that retains syntax origins, got {other:?}"),
+    };
+
+    package
+        .syntax_index
+        .origin(syntax_id)
+        .expect("Named type syntax id should resolve in the package syntax index")
+}
+
 #[cfg(test)]
 #[path = "test_parser_parts/alternative_routine_headers.rs"]
 mod alternative_routine_headers;

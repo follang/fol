@@ -354,7 +354,7 @@ fn test_function_types_are_supported_in_use_and_binding_declarations() {
                                 ..
                             }
                             if name == "callback"
-                                && matches!(params.as_slice(), [FolType::Named { name }] if name == "str")
+                                && matches!(params.as_slice(), [FolType::Named { name, .. }] if name == "str")
                                 && matches!(return_type.as_ref(), FolType::Int { size: None, signed: true })
                         )
                     }),
@@ -392,8 +392,8 @@ fn test_function_types_are_supported_in_use_and_binding_declarations() {
                                         ..
                                     }
                                     if name == "formatter"
-                                        && matches!(params.as_slice(), [FolType::Named { name }] if name == "str")
-                                        && matches!(return_type.as_ref(), FolType::Named { name } if name == "str")
+                                        && matches!(params.as_slice(), [FolType::Named { name, .. }] if name == "str")
+                                        && matches!(return_type.as_ref(), FolType::Named { name, .. } if name == "str")
                                 ))
                         )
                     }),
@@ -875,14 +875,14 @@ fn test_routine_generic_headers_parse_for_functions_and_procedures() {
                                     if name == "T"
                                         && matches!(
                                             constraints.as_slice(),
-                                            [FolType::Named { name }] if name == "foo"
+                                            [FolType::Named { name, .. }] if name == "foo"
                                         )
                             )
                             && matches!(
                                 params.as_slice(),
                                 [Parameter {
                                     name,
-                                    param_type: FolType::Named { name: type_name },
+                                    param_type: FolType::Named { name: type_name , ..},
                                     ..
                                 }] if name == "value" && type_name == "T"
                             )

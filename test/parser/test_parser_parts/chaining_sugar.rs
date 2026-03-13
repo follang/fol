@@ -17,7 +17,7 @@ fn test_optional_unwrap_postfix_parses() {
         AstNode::Program { declarations }
             if declarations.iter().any(|node| matches!(
                 node,
-                AstNode::FunctionCall { name, args }
+                AstNode::FunctionCall { name, args, .. }
                     if name == "echo"
                         && matches!(
                             args.as_slice(),

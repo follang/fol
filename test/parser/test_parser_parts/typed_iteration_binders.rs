@@ -30,7 +30,7 @@ fn test_top_level_each_iteration_supports_typed_binder() {
             loop_stmt.0,
             fol_parser::ast::LoopCondition::Iteration {
                 var,
-                type_hint: Some(FolType::Named { name }),
+                type_hint: Some(FolType::Named { name, .. }),
                 condition: Some(_),
                 ..
             } if var == "line" && name == "str"
@@ -103,7 +103,7 @@ fn test_top_level_loop_iteration_supports_typed_binder() {
             loop_stmt.0,
             fol_parser::ast::LoopCondition::Iteration {
                 var,
-                type_hint: Some(FolType::Named { name }),
+                type_hint: Some(FolType::Named { name, .. }),
                 condition: Some(_),
                 ..
             } if var == "line" && name == "str"
@@ -149,7 +149,7 @@ fn test_top_level_for_iteration_supports_typed_binder() {
             loop_stmt.0,
             fol_parser::ast::LoopCondition::Iteration {
                 var,
-                type_hint: Some(FolType::Named { name }),
+                type_hint: Some(FolType::Named { name, .. }),
                 condition: Some(_),
                 ..
             } if var == "item" && name == "str"
@@ -186,7 +186,7 @@ fn test_top_level_each_iteration_supports_typed_silent_binder() {
                         condition.as_ref(),
                         fol_parser::ast::LoopCondition::Iteration {
                             var,
-                            type_hint: Some(FolType::Named { name }),
+                            type_hint: Some(FolType::Named { name, .. }),
                             condition: Some(_),
                             ..
                         } if var == "_" && name == "str"
@@ -219,7 +219,7 @@ fn test_top_level_loop_iteration_supports_typed_silent_binder() {
                         condition.as_ref(),
                         fol_parser::ast::LoopCondition::Iteration {
                             var,
-                            type_hint: Some(FolType::Named { name }),
+                            type_hint: Some(FolType::Named { name, .. }),
                             condition: Some(_),
                             ..
                         } if var == "_" && name == "str"
@@ -252,7 +252,7 @@ fn test_top_level_for_iteration_supports_typed_silent_binder() {
                         condition.as_ref(),
                         fol_parser::ast::LoopCondition::Iteration {
                             var,
-                            type_hint: Some(FolType::Named { name }),
+                            type_hint: Some(FolType::Named { name, .. }),
                             condition: Some(_),
                             ..
                         } if var == "_" && name == "str"
@@ -312,7 +312,7 @@ fn test_top_level_each_iteration_supports_keyword_typed_binder() {
                         condition.as_ref(),
                         fol_parser::ast::LoopCondition::Iteration {
                             var,
-                            type_hint: Some(FolType::Named { name }),
+                            type_hint: Some(FolType::Named { name, .. }),
                             condition: Some(_),
                             ..
                         } if var == "get" && name == "str"
@@ -345,7 +345,7 @@ fn test_top_level_loop_iteration_supports_keyword_typed_binder() {
                         condition.as_ref(),
                         fol_parser::ast::LoopCondition::Iteration {
                             var,
-                            type_hint: Some(FolType::Named { name }),
+                            type_hint: Some(FolType::Named { name, .. }),
                             condition: Some(_),
                             ..
                         } if var == "std" && name == "str"

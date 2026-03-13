@@ -1044,7 +1044,7 @@ Status: done
 
 #### Slice 12.2
 
-Status: pending
+Status: done
 
 - Add syntax-origin coverage for plain free-call names and plain named-type references.
 - Add resolver tests proving unresolved plain calls and plain named types keep exact locations.

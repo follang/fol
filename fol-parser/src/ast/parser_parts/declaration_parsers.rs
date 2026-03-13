@@ -654,6 +654,7 @@ impl AstParser {
             .iter()
             .filter(|generic| generic.constraints.is_empty())
             .map(|generic| FolType::Named {
+                syntax_id: None,
                 name: generic.name.clone(),
             })
             .collect()

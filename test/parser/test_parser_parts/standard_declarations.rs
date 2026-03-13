@@ -76,7 +76,7 @@ fn test_protocol_standard_accepts_alias_members() {
                     AstNode::StdDecl { name, kind: StandardKind::Protocol, body, .. }
                     if name == "geometry"
                         && body.iter().any(|stmt| matches!(stmt, AstNode::AliasDecl { name, .. } if name == "Area"))
-                        && body.iter().any(|stmt| matches!(stmt, AstNode::FunDecl { name, return_type: Some(FolType::Named { name: ret }), .. } if name == "area" && ret == "Area"))
+                        && body.iter().any(|stmt| matches!(stmt, AstNode::FunDecl { name, return_type: Some(FolType::Named { name: ret , ..}), .. } if name == "area" && ret == "Area"))
                 )
             }));
         }
@@ -103,7 +103,7 @@ fn test_protocol_standard_accepts_type_members() {
                     AstNode::StdDecl { name, kind: StandardKind::Protocol, body, .. }
                     if name == "geometry"
                         && body.iter().any(|stmt| matches!(stmt, AstNode::TypeDecl { name, .. } if name == "Area"))
-                        && body.iter().any(|stmt| matches!(stmt, AstNode::FunDecl { name, return_type: Some(FolType::Named { name: ret }), .. } if name == "area" && ret == "Area"))
+                        && body.iter().any(|stmt| matches!(stmt, AstNode::FunDecl { name, return_type: Some(FolType::Named { name: ret , ..}), .. } if name == "area" && ret == "Area"))
                 )
             }));
         }
@@ -285,7 +285,7 @@ fn test_blueprint_standard_accepts_alias_members() {
                     AstNode::StdDecl { name, kind: StandardKind::Blueprint, body, .. }
                     if name == "geometry"
                         && body.iter().any(|stmt| matches!(stmt, AstNode::AliasDecl { name, .. } if name == "Color"))
-                        && body.iter().any(|stmt| matches!(stmt, AstNode::VarDecl { name, type_hint: Some(FolType::Named { name: typ }), .. } if name == "color" && typ == "Color"))
+                        && body.iter().any(|stmt| matches!(stmt, AstNode::VarDecl { name, type_hint: Some(FolType::Named { name: typ , ..}), .. } if name == "color" && typ == "Color"))
                 )
             }));
         }
@@ -312,7 +312,7 @@ fn test_blueprint_standard_accepts_type_members() {
                     AstNode::StdDecl { name, kind: StandardKind::Blueprint, body, .. }
                     if name == "geometry"
                         && body.iter().any(|stmt| matches!(stmt, AstNode::TypeDecl { name, .. } if name == "Color"))
-                        && body.iter().any(|stmt| matches!(stmt, AstNode::VarDecl { name, type_hint: Some(FolType::Named { name: typ }), .. } if name == "color" && typ == "Color"))
+                        && body.iter().any(|stmt| matches!(stmt, AstNode::VarDecl { name, type_hint: Some(FolType::Named { name: typ , ..}), .. } if name == "color" && typ == "Color"))
                 )
             }));
         }
@@ -367,7 +367,7 @@ fn test_extended_standard_accepts_alias_members() {
                     AstNode::StdDecl { name, kind: StandardKind::Extended, body, .. }
                     if name == "geometry"
                         && body.iter().any(|stmt| matches!(stmt, AstNode::AliasDecl { name, .. } if name == "Color"))
-                        && body.iter().any(|stmt| matches!(stmt, AstNode::VarDecl { name, type_hint: Some(FolType::Named { name: typ }), .. } if name == "color" && typ == "Color"))
+                        && body.iter().any(|stmt| matches!(stmt, AstNode::VarDecl { name, type_hint: Some(FolType::Named { name: typ , ..}), .. } if name == "color" && typ == "Color"))
                 )
             }));
         }
@@ -394,7 +394,7 @@ fn test_extended_standard_accepts_type_members() {
                     AstNode::StdDecl { name, kind: StandardKind::Extended, body, .. }
                     if name == "geometry"
                         && body.iter().any(|stmt| matches!(stmt, AstNode::TypeDecl { name, .. } if name == "Color"))
-                        && body.iter().any(|stmt| matches!(stmt, AstNode::VarDecl { name, type_hint: Some(FolType::Named { name: typ }), .. } if name == "color" && typ == "Color"))
+                        && body.iter().any(|stmt| matches!(stmt, AstNode::VarDecl { name, type_hint: Some(FolType::Named { name: typ , ..}), .. } if name == "color" && typ == "Color"))
                 )
             }));
         }
@@ -1006,7 +1006,7 @@ fn test_extended_standards_accept_grouped_type_members() {
                         member,
                         AstNode::TypeDecl {
                             name,
-                            type_def: TypeDefinition::Alias { target: FolType::Named { name: target } },
+                            type_def: TypeDefinition::Alias { target: FolType::Named { name: target , ..} },
                             ..
                         } if name == "Label" && target == "str"
                     ))

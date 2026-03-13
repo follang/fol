@@ -19,7 +19,7 @@ fn test_book_keyword_call_example_parses() {
                 AstNode::ProDecl { body, .. }
                 if body.iter().any(|stmt| matches!(
                     stmt,
-                    AstNode::FunctionCall { name, args }
+                    AstNode::FunctionCall { name, args, .. }
                     if name == "calc"
                         && args.len() == 3
                         && matches!(&args[0], AstNode::NamedArgument { name, .. } if name == "el3")
@@ -56,7 +56,7 @@ fn test_book_mixed_keyword_call_example_parses() {
                 AstNode::ProDecl { body, .. }
                 if body.iter().any(|stmt| matches!(
                     stmt,
-                    AstNode::FunctionCall { name, args }
+                    AstNode::FunctionCall { name, args, .. }
                     if name == "calc"
                         && args.len() == 5
                         && !matches!(&args[0], AstNode::NamedArgument { .. })
@@ -275,7 +275,7 @@ fn test_book_variadic_call_example_parses() {
                 if name == "main"
                     && body.iter().any(|stmt| matches!(
                         stmt,
-                        AstNode::FunctionCall { name, args }
+                        AstNode::FunctionCall { name, args, .. }
                         if name == "calc" && args.len() == 5
                     ))
             )

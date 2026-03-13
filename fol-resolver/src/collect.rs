@@ -380,7 +380,7 @@ pub(crate) fn insert_import_record(
 
 fn fol_type_key(typ: &FolType) -> String {
     match typ {
-        FolType::Named { name } => fol_types::canonical_identifier_key(name),
+        FolType::Named { name, .. } => fol_types::canonical_identifier_key(name),
         FolType::QualifiedNamed { path } => path
             .segments
             .iter()

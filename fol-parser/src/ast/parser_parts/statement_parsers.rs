@@ -69,6 +69,7 @@ impl AstParser {
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Box<dyn Glitch>> {
         let keyword_token = tokens.curr(false)?;
+        let syntax_id = self.record_syntax_origin(&keyword_token);
         let name = match keyword_token.key() {
             KEYWORD::Keyword(BUILDIN::Panic) => "panic",
             KEYWORD::Keyword(BUILDIN::Report) => "report",
@@ -123,7 +124,11 @@ impl AstParser {
 
         self.consume_optional_semicolon(tokens);
 
-        Ok(AstNode::FunctionCall { name, args })
+        Ok(AstNode::FunctionCall {
+            syntax_id,
+            name,
+            args,
+        })
     }
 
     pub(super) fn parse_when_stmt(
@@ -906,6 +911,7 @@ impl AstParser {
             AstNode::QualifiedFunctionCall { path, args }
         } else {
             AstNode::FunctionCall {
+                syntax_id: path.syntax_id(),
                 name: path.joined(),
                 args,
             }

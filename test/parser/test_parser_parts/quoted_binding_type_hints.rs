@@ -15,7 +15,7 @@ fn test_quoted_type_references_parse_in_binding_hints() {
     match ast {
         AstNode::Program { declarations } => {
             assert!(declarations.iter().any(|node| {
-                matches!(node, AstNode::VarDecl { name, type_hint: Some(FolType::Named { name: hint }), .. } if name == "value" && hint == "Item")
+                matches!(node, AstNode::VarDecl { name, type_hint: Some(FolType::Named { name: hint , ..}), .. } if name == "value" && hint == "Item")
             }));
             assert!(declarations.iter().any(|node| {
                 matches!(
@@ -48,7 +48,7 @@ fn test_single_quoted_type_references_parse_in_binding_hints() {
     match ast {
         AstNode::Program { declarations } => {
             assert!(declarations.iter().any(|node| {
-                matches!(node, AstNode::VarDecl { name, type_hint: Some(FolType::Named { name: hint }), .. } if name == "value" && hint == "Item")
+                matches!(node, AstNode::VarDecl { name, type_hint: Some(FolType::Named { name: hint , ..}), .. } if name == "value" && hint == "Item")
             }));
             assert!(declarations.iter().any(|node| {
                 matches!(

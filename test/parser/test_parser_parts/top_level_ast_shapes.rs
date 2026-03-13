@@ -89,7 +89,7 @@ fn test_type_member_routines_stay_nested_and_do_not_leak_to_root() {
         } => {
             assert_eq!(name, "Computer", "Fixture should parse the Computer type");
             assert!(
-                matches!(fields.get("brand"), Some(FolType::Named { name }) if name == "str"),
+                matches!(fields.get("brand"), Some(FolType::Named { name, .. }) if name == "str"),
                 "Record field should remain on the type definition"
             );
             assert_eq!(members.len(), 3, "All three routine members should stay nested");
@@ -158,7 +158,7 @@ fn test_mixed_root_surface_keeps_declarations_statements_and_literals_in_order()
     assert!(
         matches!(
             &declarations[1],
-            AstNode::FunctionCall { name, args } if name == "notify" && args.is_empty()
+            AstNode::FunctionCall { name, args, .. } if name == "notify" && args.is_empty()
         ),
         "Second root node should remain the top-level function call"
     );

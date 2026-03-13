@@ -139,15 +139,29 @@ fn test_resolver_reports_unresolved_named_types() {
             .expect("Temporary resolver fixture path should be valid UTF-8"),
     )
     .expect_err("Resolver should reject unresolved named types");
+    let error = errors
+        .iter()
+        .find(|error| error.kind() == ResolverErrorKind::UnresolvedName)
+        .expect("Resolver should report unresolved-name errors for missing type names");
+    let origin = error
+        .origin()
+        .expect("Plain unresolved named types should keep exact syntax origins");
 
     assert!(
-        errors.iter().any(|error| {
-            error.kind() == ResolverErrorKind::UnresolvedName
-                && error
-                    .to_string()
-                    .contains("could not resolve type 'Missing'")
-        }),
+        error.to_string().contains("could not resolve type 'Missing'"),
         "Resolver should report unresolved named type references explicitly"
+    );
+    assert_eq!(origin.line, 1);
+    assert_eq!(origin.column, 19);
+    assert_eq!(
+        origin.file.as_deref(),
+        Some(
+            temp_root
+                .join("main.fol")
+                .to_str()
+                .expect("Temporary resolver fixture path should be valid UTF-8")
+        ),
+        "Plain unresolved named types should retain their exact source file"
     );
 
     fs::remove_dir_all(&temp_root)

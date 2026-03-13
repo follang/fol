@@ -18,7 +18,7 @@ fn test_top_level_leading_dot_builtin_call_statement() {
             AstNode::Program { declarations }
                 if declarations.iter().any(|node| matches!(
                     node,
-                    AstNode::FunctionCall { name, args }
+                    AstNode::FunctionCall { name, args, .. }
                         if name == "echo"
                             && matches!(args.as_slice(), [AstNode::Literal(Literal::String(_))])
                 ))
@@ -52,7 +52,7 @@ fn test_leading_dot_builtin_call_expression() {
                         } if name == "size"
                             && matches!(
                                 value.as_ref(),
-                                AstNode::FunctionCall { name, args }
+                                AstNode::FunctionCall { name, args, .. }
                                     if name == "len"
                                         && matches!(args.as_slice(), [AstNode::Identifier { name, .. }] if name == "items")
                             )
