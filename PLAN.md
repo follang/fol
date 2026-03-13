@@ -552,7 +552,7 @@ Status: done
 
 #### 2.2
 
-Status: pending
+Status: done
 
 - Render primary spans with source lines and underline markers.
 

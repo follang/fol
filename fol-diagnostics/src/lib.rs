@@ -2,6 +2,7 @@
 mod codes;
 mod model;
 mod render_human;
+mod source;
 
 pub use codes::DiagnosticCode;
 pub use model::{
