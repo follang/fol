@@ -33,6 +33,53 @@ impl PackageSession {
         self.prepared_packages.len()
     }
 
+    pub fn load_directory_package(
+        &mut self,
+        directory: &Path,
+        source_kind: PackageSourceKind,
+    ) -> Result<PreparedPackage, PackageError> {
+        let canonical_root = canonical_directory_root(directory, source_kind)?;
+        let display_name = canonical_root
+            .file_name()
+            .and_then(|name| name.to_str())
+            .filter(|name| !name.is_empty())
+            .ok_or_else(|| {
+                PackageError::new(
+                    PackageErrorKind::InvalidInput,
+                    format!(
+                        "package loader could not derive a package name from '{}'",
+                        canonical_root.display()
+                    ),
+                )
+            })?
+            .to_string();
+        let identity = PackageIdentity {
+            source_kind,
+            canonical_root: canonical_root.to_string_lossy().to_string(),
+            display_name: display_name.clone(),
+        };
+
+        self.begin_loading(&identity)?;
+
+        if let Some(cached) = self.cached_package(&identity).cloned() {
+            self.finish_loading();
+            return Ok(cached);
+        }
+
+        let prepared_result = parse_directory_package_syntax(
+            canonical_root.as_path(),
+            &display_name,
+            source_kind,
+        )
+        .map(|syntax| PreparedPackage::new(identity.clone(), syntax));
+
+        self.finish_loading();
+
+        let prepared = prepared_result?;
+        self.cache_package(prepared.clone());
+        Ok(prepared)
+    }
+
     #[cfg(test)]
     pub(crate) fn loading_depth(&self) -> usize {
         self.loading_stack.len()
@@ -450,6 +497,50 @@ mod tests {
 
         assert_eq!(parsed.package, "dep");
         assert_eq!(parsed.source_units.len(), 1);
+
+        fs::remove_dir_all(&temp_root)
+            .expect("Temporary package-session fixture directory should be removable after the test");
+    }
+
+    #[test]
+    fn package_session_can_load_local_directory_packages() {
+        let temp_root = unique_temp_root("load_local_directory");
+        fs::create_dir_all(temp_root.join("dep"))
+            .expect("Should create a temporary package root fixture");
+        fs::write(temp_root.join("dep/main.fol"), "var[exp] answer: int = 42;\n")
+            .expect("Should write the dependency package fixture");
+        let mut session = PackageSession::new();
+
+        let loaded = session
+            .load_directory_package(temp_root.join("dep").as_path(), PackageSourceKind::Local)
+            .expect("Package session should load local directory packages");
+
+        assert_eq!(loaded.package_name(), "dep");
+        assert_eq!(loaded.source_kind(), PackageSourceKind::Local);
+        assert_eq!(session.cached_package_count(), 1);
+
+        fs::remove_dir_all(&temp_root)
+            .expect("Temporary package-session fixture directory should be removable after the test");
+    }
+
+    #[test]
+    fn package_session_reuses_cached_local_directory_packages() {
+        let temp_root = unique_temp_root("load_local_directory_cache");
+        fs::create_dir_all(temp_root.join("dep"))
+            .expect("Should create a temporary package root fixture");
+        fs::write(temp_root.join("dep/main.fol"), "var[exp] answer: int = 42;\n")
+            .expect("Should write the dependency package fixture");
+        let mut session = PackageSession::new();
+
+        let first = session
+            .load_directory_package(temp_root.join("dep").as_path(), PackageSourceKind::Local)
+            .expect("Package session should load the local directory the first time");
+        let second = session
+            .load_directory_package(temp_root.join("dep").as_path(), PackageSourceKind::Local)
+            .expect("Package session should reuse cached local directories");
+
+        assert_eq!(first.identity, second.identity);
+        assert_eq!(session.cached_package_count(), 1);
 
         fs::remove_dir_all(&temp_root)
             .expect("Temporary package-session fixture directory should be removable after the test");

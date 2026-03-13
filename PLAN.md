@@ -567,7 +567,7 @@ Status: done
 
 #### 2.3
 
-Status: pending
+Status: done
 
 - Load `loc` directory packages through `fol-package`.
 

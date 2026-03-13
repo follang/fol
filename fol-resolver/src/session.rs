@@ -5,7 +5,7 @@ use crate::{
 };
 use fol_package::{
     canonical_directory_root, infer_package_root, parse_package_build, parse_package_metadata,
-    parse_directory_package_syntax, PackageBuildDefinition, PackageMetadata,
+    parse_directory_package_syntax, PackageBuildDefinition, PackageMetadata, PackageSession,
 };
 use fol_parser::ast::{ParsedPackage, UsePathSegment};
 use std::collections::BTreeMap;
@@ -43,6 +43,7 @@ pub(crate) struct LoadedPackage {
 #[derive(Debug, Default)]
 pub struct ResolverSession {
     config: ResolverConfig,
+    package_session: PackageSession,
     loaded_packages: BTreeMap<PackageIdentity, LoadedPackage>,
     loading_stack: Vec<PackageIdentity>,
 }
@@ -54,6 +55,7 @@ impl ResolverSession {
 
     pub fn with_config(config: ResolverConfig) -> Self {
         Self {
+            package_session: PackageSession::with_config(package_config_from_resolver(&config)),
             config,
             loaded_packages: BTreeMap::new(),
             loading_stack: Vec::new(),
@@ -135,6 +137,16 @@ impl ResolverSession {
         directory: &Path,
         source_kind: PackageSourceKind,
     ) -> Result<LoadedPackage, ResolverError> {
+        if source_kind == PackageSourceKind::Local {
+            let prepared = self
+                .package_session
+                .load_directory_package(
+                    directory,
+                    fol_package::PackageSourceKind::Local,
+                )?;
+            return self.load_prepared_package(prepared, None, None);
+        }
+
         let canonical_root =
             canonical_directory_root(directory, package_source_kind(source_kind))?;
         let display_name = canonical_root
@@ -260,6 +272,53 @@ impl ResolverSession {
         Ok(loaded)
     }
 
+    fn load_prepared_package(
+        &mut self,
+        prepared: fol_package::PreparedPackage,
+        metadata: Option<PackageMetadata>,
+        build: Option<PackageBuildDefinition>,
+    ) -> Result<LoadedPackage, ResolverError> {
+        let identity = resolver_package_identity(&prepared.identity);
+
+        if self.loading_stack.contains(&identity) {
+            return Err(self.import_cycle_error(&identity));
+        }
+
+        if let Some(cached) = self.cached_package(&identity) {
+            return Ok(cached.clone());
+        }
+
+        self.loading_stack.push(identity.clone());
+
+        let loaded_result: Result<LoadedPackage, ResolverError> = (|| {
+            let program = self
+                .resolve_parsed_package(prepared.syntax.clone(), None)
+                .map_err(|errors| {
+                    errors.into_iter().next().unwrap_or_else(|| {
+                        ResolverError::new(
+                            ResolverErrorKind::Internal,
+                            format!(
+                                "resolver failed to load package root '{}'",
+                                prepared.identity.canonical_root
+                            ),
+                        )
+                    })
+                })?;
+            Ok(LoadedPackage {
+                identity,
+                metadata,
+                build,
+                program,
+            })
+        })();
+
+        self.loading_stack.pop();
+
+        let loaded = loaded_result?;
+        self.cache_package(loaded.clone());
+        Ok(loaded)
+    }
+
     fn preload_build_dependencies(
         &mut self,
         build: &PackageBuildDefinition,
@@ -317,6 +376,27 @@ fn package_source_kind(source_kind: PackageSourceKind) -> fol_package::PackageSo
         PackageSourceKind::Local => fol_package::PackageSourceKind::Local,
         PackageSourceKind::Standard => fol_package::PackageSourceKind::Standard,
         PackageSourceKind::Package => fol_package::PackageSourceKind::Package,
+    }
+}
+
+fn package_config_from_resolver(config: &ResolverConfig) -> fol_package::PackageConfig {
+    fol_package::PackageConfig {
+        std_root: config.std_root.clone(),
+        package_store_root: config.package_store_root.clone(),
+        package_cache_root: None,
+    }
+}
+
+fn resolver_package_identity(identity: &fol_package::PackageIdentity) -> PackageIdentity {
+    PackageIdentity {
+        source_kind: match identity.source_kind {
+            fol_package::PackageSourceKind::Entry => PackageSourceKind::Entry,
+            fol_package::PackageSourceKind::Local => PackageSourceKind::Local,
+            fol_package::PackageSourceKind::Standard => PackageSourceKind::Standard,
+            fol_package::PackageSourceKind::Package => PackageSourceKind::Package,
+        },
+        canonical_root: identity.canonical_root.clone(),
+        display_name: identity.display_name.clone(),
     }
 }
 
