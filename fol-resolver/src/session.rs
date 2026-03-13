@@ -6,7 +6,7 @@ use crate::{
 use fol_parser::ast::ParsedPackage;
 use fol_stream::{FileStream, Source, SourceType};
 use std::collections::BTreeMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ResolverConfig {
@@ -130,16 +130,7 @@ impl ResolverSession {
         directory: &Path,
         source_kind: PackageSourceKind,
     ) -> Result<LoadedPackage, ResolverError> {
-        let canonical_root = std::fs::canonicalize(directory).map_err(|error| {
-            ResolverError::new(
-                ResolverErrorKind::InvalidInput,
-                format!(
-                    "resolver could not canonicalize package root '{}': {}",
-                    directory.display(),
-                    error
-                ),
-            )
-        })?;
+        let canonical_root = canonical_directory_root(directory)?;
         let display_name = canonical_root
             .file_name()
             .and_then(|name| name.to_str())
@@ -227,6 +218,60 @@ pub(crate) fn infer_package_root(syntax: &ParsedPackage) -> Result<std::path::Pa
     }
 
     Ok(common_root)
+}
+
+fn canonical_directory_root(directory: &Path) -> Result<PathBuf, ResolverError> {
+    let metadata = std::fs::metadata(directory).map_err(|error| {
+        if error.kind() == std::io::ErrorKind::NotFound {
+            ResolverError::new(
+                ResolverErrorKind::InvalidInput,
+                format!(
+                    "resolver loc import target '{}' does not exist",
+                    directory.display()
+                ),
+            )
+        } else {
+            ResolverError::new(
+                ResolverErrorKind::InvalidInput,
+                format!(
+                    "resolver could not inspect package root '{}': {}",
+                    directory.display(),
+                    error
+                ),
+            )
+        }
+    })?;
+
+    if metadata.is_file() {
+        return Err(ResolverError::new(
+            ResolverErrorKind::InvalidInput,
+            format!(
+                "resolver loc import target '{}' must point to a directory, not a file",
+                directory.display()
+            ),
+        ));
+    }
+
+    if !metadata.is_dir() {
+        return Err(ResolverError::new(
+            ResolverErrorKind::InvalidInput,
+            format!(
+                "resolver loc import target '{}' must point to a directory",
+                directory.display()
+            ),
+        ));
+    }
+
+    std::fs::canonicalize(directory).map_err(|error| {
+        ResolverError::new(
+            ResolverErrorKind::InvalidInput,
+            format!(
+                "resolver could not canonicalize package root '{}': {}",
+                directory.display(),
+                error
+            ),
+        )
+    })
 }
 
 fn parse_package_from_directory(

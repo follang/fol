@@ -252,9 +252,50 @@ fn test_resolver_reports_missing_use_loc_targets() {
             error.kind() == ResolverErrorKind::InvalidInput
                 && error
                     .to_string()
-                    .contains("resolver could not canonicalize package root")
+                    .contains("resolver loc import target")
+                && error.to_string().contains("does not exist")
         }),
-        "Resolver should report missing directory targets through the filesystem loader path"
+        "Resolver should report missing directory targets explicitly"
+    );
+
+    fs::remove_dir_all(&temp_root)
+        .expect("Temporary resolver fixture directory should be removable after the test");
+}
+
+#[test]
+fn test_resolver_rejects_use_loc_file_targets_explicitly() {
+    let temp_root = unique_temp_root("use_loc_file_target");
+    fs::create_dir_all(temp_root.join("app"))
+        .expect("Should create the importing package root fixture directory");
+    fs::create_dir_all(temp_root.join("shared"))
+        .expect("Should create the imported fixture directory");
+    fs::write(
+        temp_root.join("shared/value.fol"),
+        "var[exp] value: int = 1;\n",
+    )
+    .expect("Should write the imported file fixture");
+    fs::write(
+        temp_root.join("app/main.fol"),
+        "use value: loc = {\"../shared/value.fol\"};\nfun[] main(): int = {\n    return 0;\n}\n",
+    )
+    .expect("Should write the file-target import fixture");
+
+    let errors = try_resolve_package_from_folder(
+        temp_root
+            .join("app")
+            .to_str()
+            .expect("Temporary resolver fixture path should be valid UTF-8"),
+    )
+    .expect_err("Resolver should reject direct file targets for loc imports");
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == ResolverErrorKind::InvalidInput
+                && error
+                    .to_string()
+                    .contains("must point to a directory, not a file")
+        }),
+        "Resolver should report direct file loc imports explicitly"
     );
 
     fs::remove_dir_all(&temp_root)

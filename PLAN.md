@@ -1487,7 +1487,7 @@ Status: done
 
 #### Slice 16.3
 
-Status: pending
+Status: done
 
 - Reject `loc` file targets explicitly.
 - Add diagnostics for non-directory and missing-directory targets.
