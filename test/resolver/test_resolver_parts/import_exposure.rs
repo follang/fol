@@ -1,5 +1,5 @@
-use super::{resolve_package_from_folder, unique_temp_root};
-use fol_resolver::{ReferenceKind, ScopeKind, SymbolKind};
+use super::{resolve_package_from_folder, try_resolve_package_from_folder, unique_temp_root};
+use fol_resolver::{ReferenceKind, ResolverErrorKind, ScopeKind, SymbolKind};
 use std::fs;
 
 #[test]
@@ -152,6 +152,70 @@ fn test_resolver_resolves_plain_named_types_against_imported_exported_types() {
         type_reference.resolved,
         Some(number_symbol.id),
         "Plain named types should resolve against imported exported type symbols"
+    );
+
+    fs::remove_dir_all(&temp_root)
+        .expect("Temporary resolver fixture directory should be removable after the test");
+}
+
+#[test]
+fn test_resolver_plain_import_exposure_rejects_non_exported_members() {
+    let temp_root = unique_temp_root("import_exposure_non_exported");
+    fs::create_dir_all(temp_root.join("math"))
+        .expect("Should create a temporary resolver fixture directory");
+    fs::write(temp_root.join("math/values.fol"), "var answer: int = 42;\n")
+        .expect("Should write the non-exported imported value fixture");
+    fs::write(
+        temp_root.join("main.fol"),
+        "use math: loc = {math};\nfun[] main(): int = {\n    return answer;\n}\n",
+    )
+    .expect("Should write the non-exported import lookup fixture");
+
+    let errors = try_resolve_package_from_folder(
+        temp_root
+            .to_str()
+            .expect("Temporary resolver fixture path should be valid UTF-8"),
+    )
+    .expect_err("Resolver should reject plain lookup against non-exported imported members");
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == ResolverErrorKind::UnresolvedName
+                && error.to_string().contains("could not resolve name 'answer'")
+        }),
+        "Plain import exposure should not surface package-visible members without exp visibility"
+    );
+
+    fs::remove_dir_all(&temp_root)
+        .expect("Temporary resolver fixture directory should be removable after the test");
+}
+
+#[test]
+fn test_resolver_plain_import_exposure_rejects_hidden_members() {
+    let temp_root = unique_temp_root("import_exposure_hidden");
+    fs::create_dir_all(temp_root.join("math"))
+        .expect("Should create a temporary resolver fixture directory");
+    fs::write(temp_root.join("math/values.fol"), "var[hid] answer: int = 42;\n")
+        .expect("Should write the hidden imported value fixture");
+    fs::write(
+        temp_root.join("main.fol"),
+        "use math: loc = {math};\nfun[] main(): int = {\n    return answer;\n}\n",
+    )
+    .expect("Should write the hidden import lookup fixture");
+
+    let errors = try_resolve_package_from_folder(
+        temp_root
+            .to_str()
+            .expect("Temporary resolver fixture path should be valid UTF-8"),
+    )
+    .expect_err("Resolver should reject plain lookup against hidden imported members");
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == ResolverErrorKind::UnresolvedName
+                && error.to_string().contains("could not resolve name 'answer'")
+        }),
+        "Plain import exposure should never surface file-private imported members"
     );
 
     fs::remove_dir_all(&temp_root)

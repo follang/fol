@@ -954,7 +954,7 @@ Status: done
 
 #### Slice 8.3
 
-Status: pending
+Status: done
 
 - Filter import-visible members by declaration visibility.
 - `exp` is import-visible.

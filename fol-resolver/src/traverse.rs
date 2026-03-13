@@ -10,8 +10,8 @@ use crate::{
     ReferenceId, ResolverError, ResolverErrorKind, ScopeId, SourceUnitId, SymbolId,
 };
 use fol_parser::ast::{
-    AstNode, FolType, Generic, InquiryTarget, LoopCondition, ParsedTopLevel, QualifiedPath,
-    TypeDefinition, WhenCase,
+    AstNode, FolType, Generic, InquiryTarget, LoopCondition, ParsedDeclVisibility,
+    ParsedTopLevel, QualifiedPath, TypeDefinition, WhenCase,
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -1264,11 +1264,12 @@ fn resolve_imported_symbol_of_kinds(
             };
             let imported_symbols = program.symbols_named_in_scope(target_scope, &canonical_name);
             if allowed_kinds.is_empty() {
-                matches.extend(imported_symbols);
+                matches.extend(imported_symbols.into_iter().filter(import_visible_symbol));
             } else {
                 matches.extend(
                     imported_symbols
                         .into_iter()
+                        .filter(import_visible_symbol)
                         .filter(|symbol| allowed_kinds.contains(&symbol.kind)),
                 );
             }
@@ -1678,6 +1679,10 @@ fn describe_symbol_candidates(symbols: &[&ResolvedSymbol]) -> String {
         })
         .collect::<Vec<_>>()
         .join("; ")
+}
+
+fn import_visible_symbol(symbol: &&ResolvedSymbol) -> bool {
+    symbol.visibility == Some(ParsedDeclVisibility::Exported)
 }
 
 fn lexical_ambiguity_message(
