@@ -1,4 +1,4 @@
-use crate::{ResolvedProgram, ResolverError, ResolverErrorKind, ScopeId};
+use crate::{ImportId, ResolvedProgram, ResolverError, ResolverErrorKind, ScopeId};
 use crate::model::ScopeKind;
 use fol_parser::ast::FolType;
 use std::collections::BTreeSet;
@@ -12,38 +12,8 @@ pub fn resolve_import_targets(program: &mut ResolvedProgram) -> Result<(), Vec<R
         .collect::<Vec<_>>();
 
     for import_id in import_ids {
-        let Some(import) = program.import(import_id).cloned() else {
-            continue;
-        };
-
-        match &import.path_type {
-            FolType::Location { .. } => match resolve_location_target(program, &import) {
-                Ok(target_scope) => {
-                    if let Some(import_slot) = program.imports.get_mut(import_id) {
-                        import_slot.target_scope = Some(target_scope);
-                    }
-                }
-                Err(error) => errors.push(error),
-            },
-            _ => {
-                let origin = program
-                    .symbol(import.alias_symbol)
-                    .and_then(|symbol| symbol.origin.clone());
-                let message = format!(
-                    "resolver does not support '{}' imports yet",
-                    import_kind_label(&import.path_type)
-                );
-                match origin {
-                    Some(origin) => errors.push(ResolverError::with_origin(
-                        ResolverErrorKind::Unsupported,
-                        message,
-                        origin,
-                    )),
-                    None => {
-                        errors.push(ResolverError::new(ResolverErrorKind::Unsupported, message))
-                    }
-                }
-            }
+        if let Err(error) = resolve_import_target(program, import_id) {
+            errors.push(error);
         }
     }
 
@@ -51,6 +21,42 @@ pub fn resolve_import_targets(program: &mut ResolvedProgram) -> Result<(), Vec<R
         Ok(())
     } else {
         Err(errors)
+    }
+}
+
+pub fn resolve_import_target(
+    program: &mut ResolvedProgram,
+    import_id: ImportId,
+) -> Result<(), ResolverError> {
+    let Some(import) = program.import(import_id).cloned() else {
+        return Ok(());
+    };
+
+    match &import.path_type {
+        FolType::Location { .. } => {
+            let target_scope = resolve_location_target(program, &import)?;
+            if let Some(import_slot) = program.imports.get_mut(import_id) {
+                import_slot.target_scope = Some(target_scope);
+            }
+            Ok(())
+        }
+        _ => {
+            let origin = program
+                .symbol(import.alias_symbol)
+                .and_then(|symbol| symbol.origin.clone());
+            let message = format!(
+                "resolver does not support '{}' imports yet",
+                import_kind_label(&import.path_type)
+            );
+            match origin {
+                Some(origin) => Err(ResolverError::with_origin(
+                    ResolverErrorKind::Unsupported,
+                    message,
+                    origin,
+                )),
+                None => Err(ResolverError::new(ResolverErrorKind::Unsupported, message)),
+            }
+        }
     }
 }
 

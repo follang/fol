@@ -162,6 +162,56 @@ fn test_resolver_resolves_qualified_types_through_non_matching_import_alias_root
 }
 
 #[test]
+fn test_resolver_resolves_qualified_types_through_non_matching_local_import_alias_roots() {
+    let temp_root = unique_temp_root("qualified_type_nonmatching_local_import_alias");
+    fs::create_dir_all(temp_root.join("math"))
+        .expect("Should create a temporary resolver fixture directory");
+    fs::write(temp_root.join("math/types.fol"), "typ[exp] Number: int;\n")
+        .expect("Should write the imported namespace type fixture");
+    fs::write(
+        temp_root.join("main.fol"),
+        "fun[] main(value: int): int = {\n    use tools: loc = {math};\n    var local: tools::Number = value;\n    return local;\n}\n",
+    )
+    .expect("Should write the qualified non-matching local import-alias type fixture");
+
+    let resolved = resolve_package_from_folder(
+        temp_root
+            .to_str()
+            .expect("Temporary resolver fixture path should be valid UTF-8"),
+    );
+    let routine_scope_id = resolved
+        .scopes
+        .iter_with_ids()
+        .find_map(|(scope_id, scope)| matches!(scope.kind, ScopeKind::Routine).then_some(scope_id))
+        .expect("Resolver should create a routine scope");
+    let import = resolved
+        .imports_in_scope(routine_scope_id)
+        .into_iter()
+        .find(|import| import.alias_name == "tools")
+        .expect("Routine scope should keep the local tools import alias");
+    let number_symbol = resolved
+        .symbols_in_scope(import.target_scope.expect("Import target should resolve"))
+        .into_iter()
+        .find(|symbol| symbol.name == "Number" && symbol.kind == SymbolKind::Type)
+        .expect("Imported namespace scope should keep the qualified type symbol");
+
+    assert!(
+        resolved
+            .references_in_scope(routine_scope_id)
+            .into_iter()
+            .any(|reference| {
+                reference.kind == ReferenceKind::QualifiedTypeName
+                    && reference.name == "tools::Number"
+                    && reference.resolved == Some(number_symbol.id)
+            }),
+        "Qualified types should resolve through local import aliases with non-matching spellings"
+    );
+
+    fs::remove_dir_all(&temp_root)
+        .expect("Temporary resolver fixture directory should be removable after the test");
+}
+
+#[test]
 fn test_resolver_reports_unresolved_qualified_type_paths() {
     let temp_root = unique_temp_root("qualified_type_missing");
     fs::create_dir_all(temp_root.join("tools"))

@@ -4,6 +4,7 @@ use crate::{
         top_level_scope_id,
     },
     errors::{format_origin_brief, symbol_kind_label},
+    imports,
     model::{
         ReferenceKind, ResolvedProgram, ResolvedReference, ResolvedSymbol, ScopeKind, SymbolKind,
     },
@@ -787,7 +788,7 @@ fn traverse_node(
                     SymbolKind::ImportAlias,
                     format!("symbol#{}", fol_types::canonical_identifier_key(name)),
                 )?;
-                insert_import_record(
+                let import_id = insert_import_record(
                     program,
                     source_unit_id,
                     scope_id,
@@ -796,6 +797,7 @@ fn traverse_node(
                     path_type.clone(),
                     path_segments.clone(),
                 );
+                imports::resolve_import_target(program, import_id)?;
             }
         }
     }

@@ -988,7 +988,7 @@ Status: done
 
 #### Slice 9.3
 
-Status: pending
+Status: done
 
 - Ensure local `use` declarations inside routines/blocks participate in the same qualified-root rules.
 - Add tests for local import aliases with non-matching alias names.

@@ -170,6 +170,61 @@ fn test_resolver_resolves_qualified_calls_through_non_matching_import_alias_root
 }
 
 #[test]
+fn test_resolver_resolves_qualified_calls_through_non_matching_local_import_alias_roots() {
+    let temp_root = unique_temp_root("qualified_call_nonmatching_local_import_alias");
+    fs::create_dir_all(temp_root.join("math"))
+        .expect("Should create a temporary resolver fixture directory");
+    fs::write(
+        temp_root.join("math/helpers.fol"),
+        "fun[exp] emit(value: int): int = {\n    return value;\n}\n",
+    )
+    .expect("Should write the imported namespace routine fixture");
+    fs::write(
+        temp_root.join("main.fol"),
+        "fun[] main(input: int): int = {\n    {\n        use tools: loc = {math};\n        return tools::emit(input);\n    }\n}\n",
+    )
+    .expect("Should write the qualified non-matching local import-alias call fixture");
+
+    let resolved = resolve_package_from_folder(
+        temp_root
+            .to_str()
+            .expect("Temporary resolver fixture path should be valid UTF-8"),
+    );
+    let block_scope_id = resolved
+        .scopes
+        .iter_with_ids()
+        .find_map(|(scope_id, scope)| matches!(scope.kind, ScopeKind::Block).then_some(scope_id))
+        .expect("Resolver should create a block scope for the nested local import");
+    let import = resolved
+        .imports_in_scope(block_scope_id)
+        .into_iter()
+        .find(|import| import.alias_name == "tools")
+        .expect("Block scope should keep the local tools import alias");
+    let emit_symbol = resolved
+        .symbols_in_scope(import.target_scope.expect("Import target should resolve"))
+        .into_iter()
+        .find(|symbol| symbol.name == "emit" && symbol.kind == SymbolKind::Routine)
+        .expect("Imported namespace scope should keep the qualified routine symbol");
+    let emit_reference = resolved
+        .references_in_scope(block_scope_id)
+        .into_iter()
+        .find(|reference| {
+            reference.kind == ReferenceKind::QualifiedFunctionCall
+                && reference.name == "tools::emit"
+        })
+        .expect("Block scope should record the qualified non-matching local import-alias call");
+
+    assert_eq!(
+        emit_reference.resolved,
+        Some(emit_symbol.id),
+        "Qualified calls should resolve through local import aliases with non-matching spellings"
+    );
+
+    fs::remove_dir_all(&temp_root)
+        .expect("Temporary resolver fixture directory should be removable after the test");
+}
+
+#[test]
 fn test_resolver_reports_unresolved_qualified_call_paths() {
     let temp_root = unique_temp_root("qualified_call_missing");
     fs::create_dir_all(temp_root.join("tools"))

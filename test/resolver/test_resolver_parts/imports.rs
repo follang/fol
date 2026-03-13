@@ -97,7 +97,14 @@ fn test_resolver_keeps_local_use_aliases_visible_in_routine_scopes() {
 #[test]
 fn test_resolver_rejects_duplicate_local_import_aliases() {
     let temp_root = unique_temp_root("imports_duplicate_alias");
-    fs::create_dir_all(&temp_root).expect("Should create a temporary resolver fixture directory");
+    fs::create_dir_all(temp_root.join("core/helper"))
+        .expect("Should create the first helper namespace fixture directory");
+    fs::create_dir_all(temp_root.join("core/helper2"))
+        .expect("Should create the second helper namespace fixture directory");
+    fs::write(temp_root.join("core/helper/mod.fol"), "var[exp] value: int = 1;\n")
+        .expect("Should write the first helper namespace fixture");
+    fs::write(temp_root.join("core/helper2/mod.fol"), "var[exp] value: int = 2;\n")
+        .expect("Should write the second helper namespace fixture");
     fs::write(
         temp_root.join("main.fol"),
         "fun[] main(): int = {\n    use helper: loc = {core::helper};\n    use helper: loc = {core::helper2};\n    return 0;\n}\n",
