@@ -1357,7 +1357,7 @@ Status: done
 
 #### Slice 22.2
 
-Status: pending
+Status: done
 
 - Implement dependency-definition extraction from `build.fol`.
 - Ensure `def`, not `use`, is the accepted definition mechanism.
