@@ -324,6 +324,55 @@ mod integration_tests {
     }
 
     #[test]
+    fn test_cli_accepts_explicit_package_store_root_configuration() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_package_store_root");
+        let store_root = temp_root.join("store");
+        let app_root = temp_root.join("app");
+        fs::create_dir_all(store_root.join("json"))
+            .expect("Should create the package-store fixture directory");
+        fs::create_dir_all(&app_root)
+            .expect("Should create the importing package root fixture directory");
+        fs::write(
+            store_root.join("json/package.fol"),
+            "var name: str = \"json\";\nvar version: str = \"1.0.0\";\n",
+        )
+        .expect("Should write the installed package manifest fixture");
+        fs::write(store_root.join("json/lib.fol"), "var[exp] answer: int = 42;\n")
+            .expect("Should write the installed package export fixture");
+        fs::write(
+            app_root.join("main.fol"),
+            "use json: pkg = {json};\nfun[] main(): int = {\n    return answer;\n}\n",
+        )
+        .expect("Should write the pkg import fixture");
+
+        let output = run_fol(&[
+            "--package-store-root",
+            store_root
+                .to_str()
+                .expect("Temporary package-store fixture path should be valid UTF-8"),
+            app_root
+                .to_str()
+                .expect("Temporary app fixture path should be valid UTF-8"),
+        ]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        assert!(
+            output.status.success(),
+            "CLI should accept an explicit package-store root and resolve pkg imports, got status {:?} and output:\n{}",
+            output.status.code(),
+            stdout,
+        );
+        assert!(
+            stdout.contains("Compilation successful"),
+            "Human CLI output should still report a successful compile for pkg-imported packages"
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
     fn test_cli_folder_compile_succeeds_with_package_parser() {
         use std::fs;
 

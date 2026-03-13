@@ -36,6 +36,12 @@ fn main() {
                 .value_name("DIR")
                 .help("Explicit standard-library root for std imports"),
         )
+        .arg(
+            Arg::new("package-store-root")
+                .long("package-store-root")
+                .value_name("DIR")
+                .help("Explicit installed package-store root for pkg imports"),
+        )
         .get_matches();
 
     let file_path = matches
@@ -46,7 +52,7 @@ fn main() {
     let json_output = matches.get_flag("json");
     let resolver_config = fol_resolver::ResolverConfig {
         std_root: matches.get_one::<String>("std-root").cloned(),
-        package_store_root: None,
+        package_store_root: matches.get_one::<String>("package-store-root").cloned(),
     };
     let output_format = if json_output {
         OutputFormat::Json

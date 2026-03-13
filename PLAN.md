@@ -1541,7 +1541,7 @@ Status: done
 
 #### Slice 18.3
 
-Status: pending
+Status: done
 
 - Resolve `pkg` imports against a local installed package store first.
 - Do not add git fetching yet in this slice.

@@ -92,6 +92,14 @@ pub(crate) fn resolve_import_target_with_session(
             }
             Ok(())
         }
+        FolType::Package { .. } => {
+            let target_scope = resolve_package_target_from_store(session, program, &import)
+                .map_err(|error| import_error_from(program, import.alias_symbol, error))?;
+            if let Some(import_slot) = program.imports.get_mut(import_id) {
+                import_slot.target_scope = Some(target_scope);
+            }
+            Ok(())
+        }
         _ => resolve_import_target(program, import_id),
     }
 }
@@ -133,6 +141,34 @@ fn resolve_standard_target_from_disk(
     let target_path = resolve_directory_path(Path::new(std_root), &import.path_segments);
     let loaded =
         session.load_package_from_directory(target_path.as_path(), PackageSourceKind::Standard)?;
+    program.mount_loaded_package(&loaded)
+}
+
+fn resolve_package_target_from_store(
+    session: &mut ResolverSession,
+    program: &mut ResolvedProgram,
+    import: &crate::ResolvedImport,
+) -> Result<ScopeId, ResolverError> {
+    let store_root = session
+        .config()
+        .package_store_root
+        .clone()
+        .ok_or_else(|| {
+            ResolverError::new(
+                ResolverErrorKind::InvalidInput,
+                format!(
+                    "resolver pkg import '{}' requires an explicit package store root",
+                    import
+                        .path_segments
+                        .iter()
+                        .map(|segment| segment.spelling.as_str())
+                        .collect::<Vec<_>>()
+                        .join("/")
+                ),
+            )
+        })?;
+    let loaded =
+        session.load_package_from_store(Path::new(&store_root), &import.path_segments)?;
     program.mount_loaded_package(&loaded)
 }
 
