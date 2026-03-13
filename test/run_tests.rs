@@ -337,6 +337,38 @@ mod integration_tests {
     }
 
     #[test]
+    fn test_cli_single_file_compile_succeeds_with_builtin_str_types() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_builtin_str_compile");
+        fs::create_dir_all(&temp_root).expect("Should create temp CLI builtin-str fixture dir");
+        let fixture = temp_root.join("main.fol");
+        fs::write(
+            &fixture,
+            "ali Text: str;\ntyp User: rec = {\n    var name: str;\n};\nfun[] main(path: str): Text = {\n    var local: str = path;\n    return local;\n}\n",
+        )
+        .expect("Should write builtin str CLI fixture");
+
+        let output = run_fol(&[fixture
+            .to_str()
+            .expect("CLI builtin str fixture path should be utf-8")]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        assert!(
+            output.status.success(),
+            "CLI should accept builtin str across alias, type, and routine surfaces, got status {:?} and output:\n{}",
+            output.status.code(),
+            stdout
+        );
+        assert!(
+            !stdout.contains("could not resolve type 'str'"),
+            "CLI output should no longer report resolver failures for builtin str"
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
     fn test_cli_folder_parse_errors_keep_json_locations_with_package_parser() {
         use std::fs;
 

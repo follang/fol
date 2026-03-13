@@ -1028,7 +1028,7 @@ Status: done
 
 #### Slice 11.2
 
-Status: pending
+Status: done
 
 - Extend `str` coverage across routine signatures, local declarations, and alias/type-definition surfaces that already consume `FolType`.
 - Add end-to-end CLI tests proving `str` no longer hits unresolved-type diagnostics.

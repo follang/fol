@@ -188,3 +188,53 @@ fn test_resolver_treats_str_as_a_builtin_type() {
     fs::remove_dir_all(&temp_root)
         .expect("Temporary resolver fixture directory should be removable after the test");
 }
+
+#[test]
+fn test_resolver_treats_str_as_builtin_across_alias_and_type_definition_surfaces() {
+    let temp_root = unique_temp_root("type_resolution_builtin_str_surfaces");
+    fs::create_dir_all(&temp_root).expect("Should create a temporary resolver fixture directory");
+    fs::write(
+        temp_root.join("main.fol"),
+        "ali Text: str;\ntyp Label: str;\ntyp User: rec = {\n    var name: str;\n};\nfun[] main(value: Text): Label = {\n    var local: str = value;\n    return local;\n}\n",
+    )
+    .expect("Should write the builtin str surface coverage fixture");
+
+    let resolved = resolve_package_from_folder(
+        temp_root
+            .to_str()
+            .expect("Temporary resolver fixture path should be valid UTF-8"),
+    );
+    let source_unit_scope = resolved
+        .source_units
+        .iter()
+        .next()
+        .expect("Resolver should keep the source unit")
+        .scope_id;
+    let routine_scope_id = resolved
+        .scopes
+        .iter_with_ids()
+        .find_map(|(scope_id, scope)| matches!(scope.kind, ScopeKind::Routine).then_some(scope_id))
+        .expect("Resolver should create a routine scope");
+
+    assert!(
+        resolved
+            .references_in_scope(source_unit_scope)
+            .into_iter()
+            .all(|reference| {
+                !(reference.kind == ReferenceKind::TypeName && reference.name == "str")
+            }),
+        "Builtin str should stay out of top-level alias and type-definition reference lowering"
+    );
+    assert!(
+        resolved
+            .references_in_scope(routine_scope_id)
+            .into_iter()
+            .all(|reference| {
+                !(reference.kind == ReferenceKind::TypeName && reference.name == "str")
+            }),
+        "Builtin str should stay out of routine signature and local type-hint reference lowering"
+    );
+
+    fs::remove_dir_all(&temp_root)
+        .expect("Temporary resolver fixture directory should be removable after the test");
+}
