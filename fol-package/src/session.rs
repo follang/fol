@@ -80,6 +80,65 @@ impl PackageSession {
         Ok(prepared)
     }
 
+    pub fn load_package_from_store(
+        &mut self,
+        store_root: &Path,
+        path_segments: &[UsePathSegment],
+    ) -> Result<PreparedPackage, PackageError> {
+        let target_root = resolve_directory_path(store_root, path_segments);
+        let canonical_root = canonical_directory_root(target_root.as_path(), PackageSourceKind::Package)?;
+        let metadata_path = canonical_root.join("package.yaml");
+        let build_path = canonical_root.join("build.fol");
+        if !metadata_path.is_file() {
+            return Err(PackageError::new(
+                PackageErrorKind::InvalidInput,
+                format!(
+                    "package pkg import target '{}' is missing required package metadata '{}'",
+                    canonical_root.display(),
+                    metadata_path.display()
+                ),
+            ));
+        }
+        if !build_path.is_file() {
+            return Err(PackageError::new(
+                PackageErrorKind::InvalidInput,
+                format!(
+                    "package pkg import target '{}' is missing required package build file '{}'",
+                    canonical_root.display(),
+                    build_path.display()
+                ),
+            ));
+        }
+
+        let metadata = crate::parse_package_metadata(metadata_path.as_path())?;
+        let build = crate::parse_package_build(build_path.as_path())?;
+        let identity = PackageIdentity {
+            source_kind: PackageSourceKind::Package,
+            canonical_root: canonical_root.to_string_lossy().to_string(),
+            display_name: metadata.name.clone(),
+        };
+
+        self.begin_loading(&identity)?;
+
+        if let Some(cached) = self.cached_package(&identity).cloned() {
+            self.finish_loading();
+            return Ok(cached);
+        }
+
+        let prepared_result = parse_directory_package_syntax(
+            canonical_root.as_path(),
+            &metadata.name,
+            PackageSourceKind::Package,
+        )
+        .map(|syntax| PreparedPackage::with_controls(identity.clone(), metadata, build, syntax));
+
+        self.finish_loading();
+
+        let prepared = prepared_result?;
+        self.cache_package(prepared.clone());
+        Ok(prepared)
+    }
+
     #[cfg(test)]
     pub(crate) fn loading_depth(&self) -> usize {
         self.loading_stack.len()
@@ -574,5 +633,129 @@ mod tests {
 
         fs::remove_dir_all(&temp_root)
             .expect("Temporary package-session fixture directory should be removable after the test");
+    }
+
+    #[test]
+    fn package_session_can_load_installed_pkg_roots_with_required_controls() {
+        let temp_root = unique_temp_root("load_pkg_root");
+        let store_root = temp_root.join("store");
+        fs::create_dir_all(store_root.join("json"))
+            .expect("Should create a temporary package-store fixture");
+        fs::write(
+            store_root.join("json/package.yaml"),
+            concat!("name: json\n", "version: 1.0.0\n", "kind: lib\n"),
+        )
+        .expect("Should write the package metadata fixture");
+        fs::write(store_root.join("json/lib.fol"), "var[exp] answer: int = 42;\n")
+            .expect("Should write the package source fixture");
+        fs::write(store_root.join("json/build.fol"), "def root: loc = \"lib\";\n")
+            .expect("Should write the package build fixture");
+        let mut session = PackageSession::new();
+
+        let loaded = session
+            .load_package_from_store(
+                &store_root,
+                &[UsePathSegment {
+                    separator: None,
+                    spelling: "json".to_string(),
+                }],
+            )
+            .expect("Package session should load installed package roots from the package store");
+
+        assert_eq!(loaded.identity.source_kind, PackageSourceKind::Package);
+        assert_eq!(loaded.identity.display_name, "json");
+        assert_eq!(loaded.package_name(), "json");
+        assert_eq!(loaded.syntax.source_units.len(), 1);
+        assert!(
+            loaded
+                .syntax
+                .source_units
+                .iter()
+                .all(|unit| !unit.path.ends_with("package.yaml") && !unit.path.ends_with("build.fol")),
+            "Installed package source loading should exclude package control files from the parsed source set",
+        );
+        assert_eq!(
+            loaded
+                .metadata
+                .as_ref()
+                .expect("Installed package roots should retain parsed package metadata")
+                .version,
+            "1.0.0"
+        );
+        assert_eq!(
+            loaded
+                .build
+                .as_ref()
+                .expect("Installed package roots should retain parsed build definitions")
+                .exports
+                .len(),
+            1
+        );
+
+        fs::remove_dir_all(&temp_root)
+            .expect("Temporary package-store fixture should be removable after the test");
+    }
+
+    #[test]
+    fn package_session_rejects_pkg_roots_without_required_metadata() {
+        let temp_root = unique_temp_root("missing_pkg_metadata");
+        let store_root = temp_root.join("store");
+        fs::create_dir_all(store_root.join("json"))
+            .expect("Should create a temporary package-store fixture");
+        fs::write(store_root.join("json/lib.fol"), "var[exp] answer: int = 42;\n")
+            .expect("Should write the package source fixture");
+        let mut session = PackageSession::new();
+
+        let error = session
+            .load_package_from_store(
+                &store_root,
+                &[UsePathSegment {
+                    separator: None,
+                    spelling: "json".to_string(),
+                }],
+            )
+            .expect_err("Package session should reject installed package roots without metadata");
+
+        assert_eq!(error.kind(), crate::PackageErrorKind::InvalidInput);
+        assert!(error.to_string().contains("missing required package metadata"));
+
+        fs::remove_dir_all(&temp_root)
+            .expect("Temporary package-store fixture should be removable after the test");
+    }
+
+    #[test]
+    fn package_session_ignores_package_fol_when_package_yaml_is_present() {
+        let temp_root = unique_temp_root("ignored_package_fol");
+        let store_root = temp_root.join("store");
+        fs::create_dir_all(store_root.join("json"))
+            .expect("Should create a temporary package-store fixture");
+        fs::write(store_root.join("json/package.yaml"), "name: json\nversion: 1.0.0\n")
+            .expect("Should write the package metadata fixture");
+        fs::write(
+            store_root.join("json/package.fol"),
+            "var name: str = \"json\";\nvar version: str = \"1.0.0\";\n",
+        )
+        .expect("Should write the ignored package.fol fixture");
+        fs::write(store_root.join("json/build.fol"), "def root: loc = \"lib\";\n")
+            .expect("Should write the package build fixture");
+        fs::write(store_root.join("json/lib.fol"), "var[exp] answer: int = 42;\n")
+            .expect("Should write the package source fixture");
+        let mut session = PackageSession::new();
+
+        let loaded = session
+            .load_package_from_store(
+                &store_root,
+                &[UsePathSegment {
+                    separator: None,
+                    spelling: "json".to_string(),
+                }],
+            )
+            .expect("Package session should ignore package.fol when package.yaml is present");
+
+        assert_eq!(loaded.identity.display_name, "json");
+        assert_eq!(loaded.package_name(), "json");
+
+        fs::remove_dir_all(&temp_root)
+            .expect("Temporary package-store fixture should be removable after the test");
     }
 }

@@ -579,7 +579,7 @@ Status: done
 
 #### 2.5
 
-Status: pending
+Status: done
 
 - Load installed `pkg` roots through `fol-package` with required `package.yaml` + `build.fol`.
 

@@ -4,8 +4,8 @@ use crate::{
     traverse, ResolverError, ResolverErrorKind, ResolverResult,
 };
 use fol_package::{
-    canonical_directory_root, infer_package_root, parse_package_build, parse_package_metadata,
-    parse_directory_package_syntax, PackageBuildDefinition, PackageMetadata, PackageSession,
+    canonical_directory_root, infer_package_root, parse_directory_package_syntax,
+    PackageBuildDefinition, PackageMetadata, PackageSession,
 };
 use fol_parser::ast::{ParsedPackage, UsePathSegment};
 use std::collections::BTreeMap;
@@ -144,7 +144,7 @@ impl ResolverSession {
             let prepared = self
                 .package_session
                 .load_directory_package(directory, package_source_kind(source_kind))?;
-            return self.load_prepared_package(prepared, None, None);
+            return self.load_prepared_package(prepared);
         }
 
         let canonical_root =
@@ -171,42 +171,10 @@ impl ResolverSession {
         store_root: &Path,
         package_path: &[UsePathSegment],
     ) -> Result<LoadedPackage, ResolverError> {
-        let target_root = resolve_directory_path(store_root, package_path);
-        let canonical_root = canonical_directory_root(
-            target_root.as_path(),
-            package_source_kind(PackageSourceKind::Package),
-        )?;
-        let metadata_path = canonical_root.join("package.yaml");
-        let build_path = canonical_root.join("build.fol");
-        if !metadata_path.is_file() {
-            return Err(ResolverError::new(
-                ResolverErrorKind::InvalidInput,
-                format!(
-                    "resolver pkg import target '{}' is missing required package metadata '{}'",
-                    canonical_root.display(),
-                    metadata_path.display()
-                ),
-            ));
-        }
-        if !build_path.is_file() {
-            return Err(ResolverError::new(
-                ResolverErrorKind::InvalidInput,
-                format!(
-                    "resolver pkg import target '{}' is missing required package build file '{}'",
-                    canonical_root.display(),
-                    build_path.display()
-                ),
-            ));
-        }
-        let metadata = parse_package_metadata(metadata_path.as_path())?;
-        let build = parse_package_build(build_path.as_path())?;
-        self.load_package_from_root(
-            canonical_root,
-            PackageSourceKind::Package,
-            metadata.name.clone(),
-            Some(metadata),
-            Some(build),
-        )
+        let prepared = self
+            .package_session
+            .load_package_from_store(store_root, package_path)?;
+        self.load_prepared_package(prepared)
     }
 
     fn load_package_from_root(
@@ -275,8 +243,6 @@ impl ResolverSession {
     fn load_prepared_package(
         &mut self,
         prepared: fol_package::PreparedPackage,
-        metadata: Option<PackageMetadata>,
-        build: Option<PackageBuildDefinition>,
     ) -> Result<LoadedPackage, ResolverError> {
         let identity = resolver_package_identity(&prepared.identity);
 
@@ -306,8 +272,8 @@ impl ResolverSession {
                 })?;
             Ok(LoadedPackage {
                 identity,
-                metadata,
-                build,
+                metadata: prepared.metadata.clone(),
+                build: prepared.build.clone(),
                 program,
             })
         })();
@@ -354,19 +320,6 @@ impl ResolverSession {
             ResolverErrorKind::ImportCycle,
             format!("import cycle detected while loading package roots: {cycle}"),
         )
-    }
-}
-
-fn resolve_directory_path(source_dir: &Path, path_segments: &[UsePathSegment]) -> PathBuf {
-    let mut relative = PathBuf::new();
-    for segment in path_segments {
-        relative.push(&segment.spelling);
-    }
-
-    if relative.is_absolute() {
-        relative
-    } else {
-        source_dir.join(relative)
     }
 }
 

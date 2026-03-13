@@ -1,15 +1,38 @@
-use crate::{PackageIdentity, PackageSourceKind};
+use crate::{
+    PackageBuildDefinition, PackageIdentity, PackageMetadata, PackageSourceKind,
+};
 use fol_parser::ast::ParsedPackage;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct PreparedPackage {
     pub identity: PackageIdentity,
+    pub metadata: Option<PackageMetadata>,
+    pub build: Option<PackageBuildDefinition>,
     pub syntax: ParsedPackage,
 }
 
 impl PreparedPackage {
     pub fn new(identity: PackageIdentity, syntax: ParsedPackage) -> Self {
-        Self { identity, syntax }
+        Self {
+            identity,
+            metadata: None,
+            build: None,
+            syntax,
+        }
+    }
+
+    pub fn with_controls(
+        identity: PackageIdentity,
+        metadata: PackageMetadata,
+        build: PackageBuildDefinition,
+        syntax: ParsedPackage,
+    ) -> Self {
+        Self {
+            identity,
+            metadata: Some(metadata),
+            build: Some(build),
+            syntax,
+        }
     }
 
     pub fn package_name(&self) -> &str {
@@ -24,7 +47,10 @@ impl PreparedPackage {
 #[cfg(test)]
 mod tests {
     use super::PreparedPackage;
-    use crate::{PackageConfig, PackageIdentity, PackageSourceKind};
+    use crate::{
+        BuildDependency, BuildExport, PackageBuildDefinition, PackageConfig, PackageIdentity,
+        PackageMetadata, PackageSourceKind,
+    };
     use fol_parser::ast::{AstParser, ParsedPackage};
     use fol_stream::FileStream;
 
@@ -62,6 +88,41 @@ mod tests {
         assert_eq!(prepared.package_name(), "parser");
         assert_eq!(prepared.source_kind(), PackageSourceKind::Entry);
         assert_eq!(prepared.identity.display_name, "fixture");
+        assert!(prepared.metadata.is_none());
+        assert!(prepared.build.is_none());
         assert_eq!(prepared.syntax.source_units.len(), 1);
+    }
+
+    #[test]
+    fn prepared_package_can_carry_metadata_and_build_controls() {
+        let syntax = parse_fixture_package();
+        let prepared = PreparedPackage::with_controls(
+            PackageIdentity {
+                source_kind: PackageSourceKind::Package,
+                canonical_root: "/tmp/pkg/json".to_string(),
+                display_name: "json".to_string(),
+            },
+            PackageMetadata {
+                name: "json".to_string(),
+                version: "1.0.0".to_string(),
+                kind: Some("lib".to_string()),
+                description: None,
+                license: None,
+            },
+            PackageBuildDefinition {
+                dependencies: vec![BuildDependency {
+                    alias: "core".to_string(),
+                    package_path: "core".to_string(),
+                }],
+                exports: vec![BuildExport {
+                    alias: "root".to_string(),
+                    relative_path: "src".to_string(),
+                }],
+            },
+            syntax,
+        );
+
+        assert_eq!(prepared.metadata.as_ref().map(|meta| meta.name.as_str()), Some("json"));
+        assert_eq!(prepared.build.as_ref().map(|build| build.exports.len()), Some(1));
     }
 }
