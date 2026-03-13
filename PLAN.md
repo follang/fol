@@ -1387,7 +1387,7 @@ Status: done
 
 #### Slice 23.2
 
-Status: pending
+Status: done
 
 - Stop reading dependencies from package metadata.
 - Read dependency edges from `build.fol` instead.

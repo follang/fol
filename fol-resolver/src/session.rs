@@ -238,10 +238,18 @@ impl ResolverSession {
             return Ok(cached.clone());
         }
 
-        let syntax = parse_package_from_directory(canonical_root.as_path(), &display_name, source_kind)?;
-        let program = self
-            .resolve_parsed_package(syntax, Some(identity.clone()))
-            .map_err(|errors| {
+        self.loading_stack.push(identity.clone());
+
+        let loaded_result = (|| {
+            if source_kind == PackageSourceKind::Package {
+                if let Some(build) = build.as_ref() {
+                    self.preload_build_dependencies(build)?;
+                }
+            }
+
+            let syntax =
+                parse_package_from_directory(canonical_root.as_path(), &display_name, source_kind)?;
+            let program = self.resolve_parsed_package(syntax, None).map_err(|errors| {
                 errors.into_iter().next().unwrap_or_else(|| {
                     ResolverError::new(
                         ResolverErrorKind::Internal,
@@ -252,14 +260,42 @@ impl ResolverSession {
                     )
                 })
             })?;
-        let loaded = LoadedPackage {
-            identity,
-            metadata,
-            build,
-            program,
-        };
+            Ok(LoadedPackage {
+                identity,
+                metadata,
+                build,
+                program,
+            })
+        })();
+
+        self.loading_stack.pop();
+
+        let loaded = loaded_result?;
         self.cache_package(loaded.clone());
         Ok(loaded)
+    }
+
+    fn preload_build_dependencies(
+        &mut self,
+        build: &PackageBuildDefinition,
+    ) -> Result<(), ResolverError> {
+        let store_root = self
+            .config()
+            .package_store_root
+            .clone()
+            .ok_or_else(|| {
+                ResolverError::new(
+                    ResolverErrorKind::InvalidInput,
+                    "resolver package loading requires an explicit package store root",
+                )
+            })?;
+
+        for dependency in &build.dependencies {
+            let path_segments = build_dependency_path_segments(&dependency.package_path)?;
+            self.load_package_from_store(Path::new(&store_root), &path_segments)?;
+        }
+
+        Ok(())
     }
 
     fn import_cycle_error(&self, next: &PackageIdentity) -> ResolverError {
@@ -385,6 +421,33 @@ fn resolve_directory_path(source_dir: &Path, path_segments: &[UsePathSegment]) -
     } else {
         source_dir.join(relative)
     }
+}
+
+fn build_dependency_path_segments(
+    package_path: &str,
+) -> Result<Vec<UsePathSegment>, ResolverError> {
+    let parts = package_path
+        .split('/')
+        .map(str::trim)
+        .collect::<Vec<_>>();
+    if parts.is_empty() || parts.iter().any(|part| part.is_empty()) {
+        return Err(ResolverError::new(
+            ResolverErrorKind::InvalidInput,
+            format!(
+                "resolver package build dependency path '{}' must contain non-empty slash-separated segments",
+                package_path
+            ),
+        ));
+    }
+
+    Ok(parts
+        .into_iter()
+        .enumerate()
+        .map(|(index, part)| UsePathSegment {
+            separator: (index > 0).then_some(fol_parser::ast::UsePathSeparator::Slash),
+            spelling: part.to_string(),
+        })
+        .collect())
 }
 
 fn parse_package_from_directory(
@@ -950,6 +1013,67 @@ mod tests {
 
         fs::remove_dir_all(&temp_root)
             .expect("Temporary transitive package graph fixture should be removable after the test");
+    }
+
+    #[test]
+    fn session_preloads_pkg_dependencies_from_build_definitions() {
+        let temp_root = unique_temp_root("build_pkg_preload");
+        let store_root = temp_root.join("store");
+        fs::create_dir_all(store_root.join("core"))
+            .expect("Should create the dependency root fixture");
+        fs::create_dir_all(store_root.join("json"))
+            .expect("Should create the dependent package root fixture");
+        fs::write(
+            store_root.join("core/package.yaml"),
+            "name: core\nversion: 1.0.0\n",
+        )
+        .expect("Should write the dependency metadata");
+        fs::write(store_root.join("core/build.fol"), "def root: loc = \"lib\";\n")
+            .expect("Should write the dependency build fixture");
+        fs::write(store_root.join("core/lib.fol"), "var[exp] shared: int = 7;\n")
+            .expect("Should write the dependency source fixture");
+        fs::write(
+            store_root.join("json/package.yaml"),
+            "name: json\nversion: 1.0.0\n",
+        )
+        .expect("Should write the dependent package metadata");
+        fs::write(
+            store_root.join("json/build.fol"),
+            "def core: pkg = \"core\";\ndef root: loc = \"lib\";\n",
+        )
+        .expect("Should write the dependent package build fixture");
+        fs::write(store_root.join("json/lib.fol"), "var[exp] answer: int = 42;\n")
+            .expect("Should write the dependent package source fixture");
+        let mut session = ResolverSession::with_config(ResolverConfig {
+            std_root: None,
+            package_store_root: Some(
+                store_root
+                    .to_str()
+                    .expect("Temporary package-store fixture path should be valid UTF-8")
+                    .to_string(),
+            ),
+        });
+
+        let loaded = session
+            .load_package_from_store(
+                &store_root,
+                &[UsePathSegment {
+                    separator: None,
+                    spelling: "json".to_string(),
+                }],
+            )
+            .expect("Session should load build-declared pkg dependencies eagerly");
+
+        assert_eq!(loaded.identity.display_name, "json");
+        assert_eq!(loaded.build.as_ref().map(|build| build.dependencies.len()), Some(1));
+        assert_eq!(
+            session.cached_package_count(),
+            2,
+            "Loading a package root should also cache any build-declared pkg dependencies",
+        );
+
+        fs::remove_dir_all(&temp_root)
+            .expect("Temporary build-preload fixture directory should be removable after the test");
     }
 
     #[test]
