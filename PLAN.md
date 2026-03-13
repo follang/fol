@@ -1051,7 +1051,7 @@ Status: done
 
 #### Slice 12.3
 
-Status: pending
+Status: done
 
 - Add CLI JSON integration tests for the new non-null location guarantees.
 - Ensure these checks cover unresolved and ambiguous plain-name scenarios.

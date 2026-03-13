@@ -544,6 +544,124 @@ mod integration_tests {
     }
 
     #[test]
+    fn test_cli_resolver_errors_keep_exact_json_locations_for_plain_unresolved_names() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_resolver_plain_unresolved_location");
+        fs::create_dir_all(&temp_root).expect("Should create temp CLI resolver fixture");
+        let main_file = temp_root.join("main.fol");
+        fs::write(&main_file, "fun[] main(): int = {\n    return missing;\n}\n")
+            .expect("Should write unresolved plain-name fixture");
+
+        let output = run_fol(&[
+            "--json",
+            temp_root
+                .to_str()
+                .expect("CLI resolver fixture path should be utf-8"),
+        ]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let compact = stdout
+            .chars()
+            .filter(|c| !c.is_whitespace())
+            .collect::<String>();
+
+        assert!(
+            !output.status.success(),
+            "CLI should fail in JSON mode when resolver rejects an unresolved plain name"
+        );
+        assert!(
+            stdout.contains(
+                main_file
+                    .to_str()
+                    .expect("Temporary resolver fixture path should be valid UTF-8")
+            ),
+            "JSON resolver diagnostics should keep the exact source file for plain unresolved names"
+        );
+        assert!(
+            !compact.contains("\"file\":null"),
+            "JSON resolver diagnostics for plain unresolved names should never drop the file field"
+        );
+        assert!(
+            compact.contains("\"line\":2"),
+            "JSON resolver diagnostics should preserve the exact failing line number"
+        );
+        assert!(
+            compact.contains("\"column\":12"),
+            "JSON resolver diagnostics should preserve the exact plain-name column"
+        );
+        assert!(
+            stdout.contains("could not resolve name 'missing'"),
+            "JSON resolver diagnostics should keep the exact unresolved plain-name wording"
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_cli_resolver_errors_keep_exact_json_locations_for_ambiguous_plain_names() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_resolver_plain_ambiguity_location");
+        fs::create_dir_all(temp_root.join("alpha"))
+            .expect("Should create first imported namespace fixture");
+        fs::create_dir_all(temp_root.join("beta"))
+            .expect("Should create second imported namespace fixture");
+        fs::write(temp_root.join("alpha/values.fol"), "var[exp] answer: int = 1;\n")
+            .expect("Should write first imported exported value fixture");
+        fs::write(temp_root.join("beta/values.fol"), "var[exp] answer: int = 2;\n")
+            .expect("Should write second imported exported value fixture");
+        let main_file = temp_root.join("main.fol");
+        fs::write(
+            &main_file,
+            "use alpha: loc = {alpha};\nuse beta: loc = {beta};\nfun[] main(): int = {\n    return answer;\n}\n",
+        )
+        .expect("Should write ambiguous imported plain-name fixture");
+
+        let output = run_fol(&[
+            "--json",
+            temp_root
+                .to_str()
+                .expect("CLI resolver fixture path should be utf-8"),
+        ]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let compact = stdout
+            .chars()
+            .filter(|c| !c.is_whitespace())
+            .collect::<String>();
+
+        assert!(
+            !output.status.success(),
+            "CLI should fail in JSON mode when resolver rejects an ambiguous plain name"
+        );
+        assert!(
+            stdout.contains(
+                main_file
+                    .to_str()
+                    .expect("Temporary resolver fixture path should be valid UTF-8")
+            ),
+            "JSON resolver diagnostics should keep the exact source file for ambiguous plain names"
+        );
+        assert!(
+            !compact.contains("\"file\":null"),
+            "JSON resolver diagnostics for ambiguous plain names should never drop the file field"
+        );
+        assert!(
+            compact.contains("\"line\":4"),
+            "JSON resolver diagnostics should preserve the exact ambiguous line number"
+        );
+        assert!(
+            compact.contains("\"column\":12"),
+            "JSON resolver diagnostics should preserve the exact ambiguous plain-name column"
+        );
+        assert!(
+            stdout.contains("name 'answer' is ambiguous in lexical scope"),
+            "JSON resolver diagnostics should keep the exact ambiguous plain-name wording"
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
     fn test_parser_error_locations_reach_diagnostics_outputs() {
         use fol_diagnostics::{DiagnosticLocation, DiagnosticReport, OutputFormat};
         use fol_lexer::lexer::stage3::Elements;
