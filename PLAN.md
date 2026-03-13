@@ -1462,7 +1462,7 @@ Status: done
 
 #### Slice 15.3
 
-Status: pending
+Status: done
 
 - Add cycle detection for imported package graphs.
 - Emit explicit import-cycle diagnostics with the participating roots.

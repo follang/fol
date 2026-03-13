@@ -10,6 +10,7 @@ pub enum ResolverErrorKind {
     UnresolvedName,
     DuplicateSymbol,
     AmbiguousReference,
+    ImportCycle,
     Internal,
 }
 
@@ -21,6 +22,7 @@ impl ResolverErrorKind {
             Self::UnresolvedName => "ResolverUnresolvedName",
             Self::DuplicateSymbol => "ResolverDuplicateSymbol",
             Self::AmbiguousReference => "ResolverAmbiguousReference",
+            Self::ImportCycle => "ResolverImportCycle",
             Self::Internal => "ResolverInternal",
         }
     }

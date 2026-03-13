@@ -97,6 +97,9 @@ impl ResolverSession {
         current_identity: Option<PackageIdentity>,
     ) -> ResolverResult<ResolvedProgram> {
         if let Some(identity) = current_identity {
+            if self.loading_stack.contains(&identity) {
+                return Err(vec![self.import_cycle_error(&identity)]);
+            }
             self.loading_stack.push(identity);
         }
 
@@ -156,6 +159,10 @@ impl ResolverSession {
             display_name: display_name.clone(),
         };
 
+        if self.loading_stack.contains(&identity) {
+            return Err(self.import_cycle_error(&identity));
+        }
+
         if let Some(cached) = self.cached_package(&identity) {
             return Ok(cached.clone());
         }
@@ -177,6 +184,20 @@ impl ResolverSession {
         let loaded = LoadedPackage { identity, program };
         self.cache_package(loaded.clone());
         Ok(loaded)
+    }
+
+    fn import_cycle_error(&self, next: &PackageIdentity) -> ResolverError {
+        let cycle = self
+            .loading_stack
+            .iter()
+            .map(|identity| identity.canonical_root.as_str())
+            .chain(std::iter::once(next.canonical_root.as_str()))
+            .collect::<Vec<_>>()
+            .join(" -> ");
+        ResolverError::new(
+            ResolverErrorKind::ImportCycle,
+            format!("import cycle detected while loading package roots: {cycle}"),
+        )
     }
 }
 
@@ -281,7 +302,10 @@ fn parse_package_from_directory(
 
 #[cfg(test)]
 mod tests {
-    use super::{infer_package_root, PackageIdentity, PackageSourceKind, ResolverConfig, ResolverSession};
+    use super::{
+        infer_package_root, PackageIdentity, PackageSourceKind, ResolverConfig, ResolverSession,
+    };
+    use crate::ResolverErrorKind;
     use fol_lexer::lexer::stage3::Elements;
     use fol_parser::ast::AstParser;
     use fol_stream::FileStream;
@@ -404,6 +428,43 @@ mod tests {
 
         assert_eq!(first.identity, second.identity);
         assert_eq!(session.cached_package_count(), 1);
+
+        fs::remove_dir_all(&temp_root)
+            .expect("Temporary session fixture directory should be removable after the test");
+    }
+
+    #[test]
+    fn session_reports_explicit_import_cycles_with_participating_roots() {
+        let temp_root = unique_temp_root("import_cycle");
+        fs::create_dir_all(temp_root.join("dep"))
+            .expect("Should create a temporary package root fixture");
+        fs::write(temp_root.join("dep/main.fol"), "var[exp] answer: int = 42;\n")
+            .expect("Should write the dependency package fixture");
+        let canonical_root = std::fs::canonicalize(temp_root.join("dep"))
+            .expect("Temporary dependency root should canonicalize");
+        let identity = PackageIdentity {
+            source_kind: PackageSourceKind::Local,
+            canonical_root: canonical_root.to_string_lossy().to_string(),
+            display_name: "dep".to_string(),
+        };
+        let mut session = ResolverSession::new();
+        session.loading_stack.push(identity.clone());
+
+        let error = session
+            .load_package_from_directory(canonical_root.as_path(), PackageSourceKind::Local)
+            .expect_err("Session should reject canonical package roots already in the load stack");
+
+        assert_eq!(error.kind(), ResolverErrorKind::ImportCycle);
+        assert!(
+            error
+                .to_string()
+                .contains("import cycle detected while loading package roots"),
+            "Import cycle diagnostics should explain the active loading cycle",
+        );
+        assert!(
+            error.to_string().contains(&identity.canonical_root),
+            "Import cycle diagnostics should list the participating canonical roots",
+        );
 
         fs::remove_dir_all(&temp_root)
             .expect("Temporary session fixture directory should be removable after the test");
