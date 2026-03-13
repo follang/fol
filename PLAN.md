@@ -496,7 +496,7 @@ Status: pending
 
 #### 0.1
 
-Status: pending
+Status: done
 
 - Freeze the diagnostics scope: this phase is about structured reporting, not new semantic checks.
 

@@ -25,8 +25,11 @@ Current compiler status: `fol-stream`, `fol-lexer`, `fol-parser`,
 `fol-package`, `fol-resolver`, diagnostics, and the root CLI are implemented and
 actively tested. Package loading now flows through `fol-package`, which prepares
 directory and installed-package surfaces ahead of name resolution. The active
-compiler boundary is post-resolution semantic work: type checking, deeper
-semantic analysis, ownership rules, and backend/runtime work.
+compiler phase is diagnostics and error-reporting hardening: richer structured
+diagnostics, better human rendering, and stable compiler-facing error codes.
+This phase is intentionally infrastructure-focused and does not expand semantic
+analysis. Type checking, deeper semantic analysis, ownership rules, and
+backend/runtime work remain the next major semantic milestone after diagnostics.
 
 Current import surface:
 - `loc` imports exact filesystem directories

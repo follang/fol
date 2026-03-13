@@ -75,7 +75,7 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - Stream + lexer + parser: stable and consumed by package loading and resolver
 - Package loading and package preparation: implemented for `loc`, `std`, and installed `pkg`
 - Whole-program name resolution: implemented for the current contract
-- Immediate active phase: post-resolution semantic analysis and type checking
+- Immediate active phase: diagnostics and error-reporting hardening
 - Whole-program type checking: missing
 - Ownership and borrowing enforcement: missing
 - Standard or protocol conformance analysis: missing
@@ -426,8 +426,10 @@ These remain later-stage work. They are no longer reasons to keep front-end hard
 
 ## 11. Next Recommended Focus
 
-- Create the next plan around type checking, deeper semantic analysis, and
-  type-directed member resolution.
+- Finish the diagnostics hardening pass before starting type checking.
+- Keep the diagnostics phase scoped to reporting infrastructure, not new semantic rules.
+- After diagnostics are stable, create the next plan around type checking,
+  deeper semantic analysis, and type-directed member resolution.
 - Treat any remaining stream/lexer/parser/resolver work as opportunistic cleanup unless
   a real new bug appears.
 - Use `FRONTEND_CONTRACT.md`, [`PROGRESS.md`](./PROGRESS.md), [`PLAN.md`](./PLAN.md),
