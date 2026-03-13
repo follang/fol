@@ -16,6 +16,8 @@ fn test_resolver_resolves_pkg_imports_from_the_configured_package_store_root() {
         "name: json\nversion: 1.0.0\n",
     )
     .expect("Should write the installed package metadata fixture");
+    fs::write(store_root.join("json/build.fol"), "def root: loc = \"lib\";\n")
+        .expect("Should write the installed package build fixture");
     fs::write(store_root.join("json/lib.fol"), "var[exp] answer: int = 42;\n")
         .expect("Should write the installed package export fixture");
     fs::write(

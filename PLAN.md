@@ -1325,7 +1325,7 @@ Status: done
 
 #### Slice 20.2
 
-Status: pending
+Status: done
 
 - Add explicit compatibility diagnostics for legacy `package.fol` package roots.
 - Add tests locking the legacy rejection wording.
@@ -1380,7 +1380,7 @@ Status: done
 
 #### Slice 23.1
 
-Status: pending
+Status: done
 
 - Change `pkg` root loading to require both `package.yaml` and `build.fol`.
 - Reject missing-file combinations explicitly.

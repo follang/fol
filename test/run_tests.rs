@@ -335,10 +335,12 @@ mod integration_tests {
         fs::create_dir_all(&app_root)
             .expect("Should create the importing package root fixture directory");
         fs::write(
-            store_root.join("json/package.fol"),
-            "var name: str = \"json\";\nvar version: str = \"1.0.0\";\n",
+            store_root.join("json/package.yaml"),
+            "name: json\nversion: 1.0.0\n",
         )
-        .expect("Should write the installed package manifest fixture");
+        .expect("Should write the installed package metadata fixture");
+        fs::write(store_root.join("json/build.fol"), "def root: loc = \"lib\";\n")
+            .expect("Should write the installed package build fixture");
         fs::write(store_root.join("json/lib.fol"), "var[exp] answer: int = 42;\n")
             .expect("Should write the installed package export fixture");
         fs::write(
