@@ -102,7 +102,7 @@ impl AstParser {
             return Err(Box::new(ParseError::from_token(
                 &def_type_token,
                 format!(
-                    "Definition declarations currently support only mod[...], blk[...], tst[...], mac, alt, or def[] types, found '{}'",
+                    "Definition declarations currently support only mod[...], blk[...], tst[...], pkg, loc, mac, alt, or def[] types, found '{}'",
                     Self::fol_type_label(&def_type)
                 ),
             )));
@@ -679,7 +679,11 @@ impl AstParser {
 
     fn is_supported_definition_type(&self, def_type: &FolType) -> bool {
         match def_type {
-            FolType::Module { .. } | FolType::Block { .. } | FolType::Test { .. } => true,
+            FolType::Module { .. }
+            | FolType::Block { .. }
+            | FolType::Test { .. }
+            | FolType::Package { .. }
+            | FolType::Location { .. } => true,
             other => matches!(
                 other.named_text().as_deref(),
                 Some("mac" | "alt" | "def[]" | "def")

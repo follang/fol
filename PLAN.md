@@ -1350,7 +1350,7 @@ Status: done
 
 #### Slice 22.1
 
-Status: pending
+Status: done
 
 - Freeze the initial `build.fol` package-definition grammar.
 - Keep the grammar intentionally narrow and resolver-driven.

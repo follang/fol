@@ -727,7 +727,7 @@ fn test_def_invalid_type_reports_parse_error() {
     let first_message = parse_error.to_string();
     assert!(
         first_message.contains(
-            "Definition declarations currently support only mod[...], blk[...], tst[...], mac, alt, or def[] types, found"
+            "Definition declarations currently support only mod[...], blk[...], tst[...], pkg, loc, mac, alt, or def[] types, found"
         ) && first_message.contains("Int"),
         "Invalid definition type should report the supported def target kinds, got: {}",
         first_message

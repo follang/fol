@@ -244,6 +244,9 @@ mod container_literal_expressions;
 #[path = "test_parser_parts/definition_declarations.rs"]
 mod definition_declarations;
 #[cfg(test)]
+#[path = "test_parser_parts/build_definition_declarations.rs"]
+mod build_definition_declarations;
+#[cfg(test)]
 #[path = "test_parser_parts/definition_meta_declarations.rs"]
 mod definition_meta_declarations;
 #[cfg(test)]
