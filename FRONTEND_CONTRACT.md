@@ -4,11 +4,12 @@ This file records the current stream, lexer, and parser contracts that the code 
 tests actually enforce today.
 
 The source-layout and package-scope alignment pass is complete, and `fol-resolver`
-now consumes these parser outputs directly. This file therefore describes the current
+now consumes these parser outputs directly. The current resolver hardening pass is
+also complete for the present name-resolution contract, so this file describes the
 enforced stream/lexer/parser behavior at head, including compatibility paths that
 still exist intentionally around the structured parser APIs. Treat
 [`PROGRESS.md`](./PROGRESS.md) as the repo-backed implementation ledger and
-[`PLAN.md`](./PLAN.md) as the resolver milestone record.
+[`PLAN.md`](./PLAN.md) as the resolver phase record.
 
 ## Decision Summary
 

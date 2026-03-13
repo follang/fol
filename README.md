@@ -21,15 +21,17 @@ FOL is a general-purpose, systems programming language designed for robustness, 
 
 <p align="center">  ** FOL IS AN ACTIVE COMPILER WORKSPACE **  </p>
 
-Current compiler status: the stream, lexer, parser, diagnostics, and current
-`fol-resolver` milestone are implemented and actively tested. The active compiler
-boundary is now post-resolution semantic work: type checking, deeper semantic
-analysis, ownership rules, and backend/runtime work.
+Current compiler status: the stream, lexer, parser, diagnostics, and
+`fol-resolver` are implemented and actively tested. The resolver hardening pass
+for plain import exposure, file-private `hid`, built-in `str`, and exact
+resolver diagnostics is now complete. The active compiler boundary is
+post-resolution semantic work: type checking, deeper semantic analysis,
+ownership rules, and backend/runtime work.
 
 For exact current stream/lexer/parser behavior, treat [`FRONTEND_CONTRACT.md`](./FRONTEND_CONTRACT.md)
 as the authoritative front-end contract, treat [`PROGRESS.md`](./PROGRESS.md) as the
 repo-backed implementation ledger, and treat [`PLAN.md`](./PLAN.md) as the resolver
-milestone record. The README is only a high-level project summary.
+phase record. The README is only a high-level project summary.
 
 <hr>
 

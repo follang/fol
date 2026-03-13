@@ -44,33 +44,33 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 
 - Workspace member crates: `6`
 - Root binary crate: `1`
-- Active Rust source lines scanned: `22339`
+- Active Rust source lines scanned: `22588`
 - Core compiler Rust lines scanned:
 - `fol-types`: `259`
 - `fol-stream`: `570`
 - `fol-lexer`: `2406`
-- `fol-parser`: `15771`
-- `fol-resolver`: `2779`
+- `fol-parser`: `15846`
+- `fol-resolver`: `3062`
 - `fol-diagnostics`: `267`
 - Root CLI and root-local source: `178`
 - Active parser fixtures: `1281`
 - Active lexer tests: `85`
 - Active stream tests: `54`
-- Parser-focused Rust tests under `test/parser`: `1101`
-- Resolver-focused Rust tests under `test/resolver`: `59`
+- Parser-focused Rust tests under `test/parser`: `1104`
+- Resolver-focused Rust tests under `test/resolver`: `79`
 - Observed current unit test run: `1` unit test, green
-- Observed current integration run: `1313` integration tests, green
+- Observed current integration run: `1339` integration tests, green
 
 ## 3. Current Headline Status
 
 - `fol-stream`: implemented, actively used, and now explicit about failure and namespace validity
 - `fol-lexer`: implemented, actively used, and materially hardened on malformed-input and helper-path behavior
 - `fol-parser`: large front-end surface implemented, heavily hardened, and now much closer to a stable AST contract
-- `fol-resolver`: implemented for the current whole-program name-resolution milestone
+- `fol-resolver`: implemented for the current whole-program name-resolution contract
 - `fol-diagnostics`: implemented and wired into the CLI
 - Root CLI: implemented as parse-and-resolve driver
 - Stream + lexer + parser: stable and consumed by resolver
-- Whole-program name resolution: implemented for the current milestone
+- Whole-program name resolution: implemented for the current contract
 - Immediate active phase: post-resolution semantic analysis and type checking
 - Whole-program type checking: missing
 - Ownership and borrowing enforcement: missing
@@ -84,7 +84,7 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `make test`: passed
 - Current observed totals:
 - `1` unit test passed
-- `1313` integration tests passed
+- `1339` integration tests passed
 - Observed active failures: `0`
 
 ## 5. What Has Been Completed So Far
@@ -177,7 +177,7 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 ### 5.4 Contract And Docs Cleanup
 
 - `FRONTEND_CONTRACT.md` now matches the hardened stream, lexer, and parser behavior much more closely.
-- `README.md`, `FRONTEND_CONTRACT.md`, and `PROGRESS.md` now describe resolver as an implemented milestone instead of a future phase.
+- `README.md`, `FRONTEND_CONTRACT.md`, and `PROGRESS.md` now describe resolver as an implemented phase instead of a future phase.
 - The lexical and routine book pages scanned in this pass are aligned with the current front-end behavior.
 - Parser-side `report` type checking and forward-signature validation are no longer described as active behavior.
 - Method receiver docs now match the current parse-time rejection rule.
@@ -197,11 +197,22 @@ Authority rule for this file: code and active tests win over older docs, plans, 
   resolve through namespace and import-alias roots.
 - `use loc` imports resolve against the loaded package and namespace scope set.
 - Unsupported import kinds fail explicitly instead of silently degrading.
+- Imported exported values, routines, and named types are now visible through plain
+  lookup after `use loc` imports instead of requiring explicit qualification only.
+- Qualified alias-root resolution now works even when the local alias spelling does
+  not match the imported namespace root spelling.
+- File-private `hid` declarations now resolve everywhere inside their own source
+  unit where ordinary scope rules allow them, and still fail outside that file.
+- Built-in `str` now exits named-type lookup instead of surfacing as an unresolved
+  user-defined symbol.
 - Resolver diagnostics now retain exact locations where the parser exposes them and
   report competing declaration or candidate sites where useful.
+- Plain unresolved identifiers, plain free calls, and plain named types now keep
+  exact non-null file/line/column origins in resolver diagnostics and CLI JSON.
 - The CLI now treats parse-clean but resolution-bad programs as failing compiles.
 - Integration coverage now includes full happy-path resolution, cross-file import
-  resolution, and exact resolver-location propagation through JSON diagnostics.
+  resolution, exact resolver-location propagation through JSON diagnostics, and
+  non-null location guarantees for plain unresolved and ambiguous name cases.
 
 ## 6. Current Front-End State By Layer
 

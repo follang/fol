@@ -1060,14 +1060,16 @@ Status: done
 
 #### Slice 13.1
 
-Status: pending
+Status: done
 
 - Sync `PROGRESS.md`, `README.md`, `FRONTEND_CONTRACT.md`, and resolver crate docs after the continuation work lands.
 - Rewrite the resolver definition-of-done section so it reflects the finished semantic contract, not just the first milestone pass.
 
-## 19. Revised Definition Of Done For The Resolver Phase
+## 19. Resolver Phase Completion Record
 
-The resolver phase should now be considered complete only when:
+The resolver phase is now complete for the current language contract at head.
+
+Completed criteria:
 
 - the original slices above are complete
 - imported exported names are visible through `use` in plain lookup
@@ -1075,6 +1077,8 @@ The resolver phase should now be considered complete only when:
 - file-private `hid` names resolve inside the same file and nowhere else
 - built-in `str` no longer enters unresolved named-type lookup
 - plain unresolved identifier/call/type diagnostics keep exact non-null locations
+- CLI JSON diagnostics keep exact non-null locations for unresolved and ambiguous plain-name cases
 - the new tests in sections 17 and 18 are green
 
-Only after that should `fol-resolver` be treated as complete enough to stop hardening and move on to the next semantic phase.
+The next phase can now move on to post-resolution semantic work instead of further
+resolver hardening.
