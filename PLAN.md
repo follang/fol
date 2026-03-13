@@ -1517,7 +1517,7 @@ Status: done
 
 #### Slice 17.3
 
-Status: pending
+Status: done
 
 - Add tests for package-root and namespace-root `std` imports.
 - Add negative tests for missing std targets and file targets.
