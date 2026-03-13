@@ -9,6 +9,8 @@ description = "Whole-program name resolution for FOL language"
 fol-types = { path = "../fol-types" }
 fol-parser = { path = "../fol-parser" }
 fol-diagnostics = { path = "../fol-diagnostics" }
+fol-lexer = { path = "../fol-lexer" }
+fol-stream = { path = "../fol-stream" }
 
 [dev-dependencies]
 fol-lexer = { path = "../fol-lexer" }

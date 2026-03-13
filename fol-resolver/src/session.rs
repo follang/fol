@@ -4,6 +4,7 @@ use crate::{
     traverse, ResolverError, ResolverErrorKind, ResolverResult,
 };
 use fol_parser::ast::ParsedPackage;
+use fol_stream::{FileStream, Source, SourceType};
 use std::collections::BTreeMap;
 use std::path::Path;
 
@@ -28,15 +29,16 @@ pub struct PackageIdentity {
     pub display_name: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct PackageSurface {
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct LoadedPackage {
     pub identity: PackageIdentity,
+    pub program: ResolvedProgram,
 }
 
 #[derive(Debug, Default)]
 pub struct ResolverSession {
     config: ResolverConfig,
-    loaded_packages: BTreeMap<PackageIdentity, PackageSurface>,
+    loaded_packages: BTreeMap<PackageIdentity, LoadedPackage>,
     loading_stack: Vec<PackageIdentity>,
 }
 
@@ -110,13 +112,71 @@ impl ResolverSession {
         collected.map(|_| program)
     }
 
-    pub(crate) fn cached_surface(&self, identity: &PackageIdentity) -> Option<&PackageSurface> {
+    pub(crate) fn cached_package(&self, identity: &PackageIdentity) -> Option<&LoadedPackage> {
         self.loaded_packages.get(identity)
     }
 
-    pub(crate) fn cache_surface(&mut self, surface: PackageSurface) {
+    pub(crate) fn cache_package(&mut self, package: LoadedPackage) {
         self.loaded_packages
-            .insert(surface.identity.clone(), surface);
+            .insert(package.identity.clone(), package);
+    }
+
+    pub(crate) fn load_package_from_directory(
+        &mut self,
+        directory: &Path,
+        source_kind: PackageSourceKind,
+    ) -> Result<LoadedPackage, ResolverError> {
+        let canonical_root = std::fs::canonicalize(directory).map_err(|error| {
+            ResolverError::new(
+                ResolverErrorKind::InvalidInput,
+                format!(
+                    "resolver could not canonicalize package root '{}': {}",
+                    directory.display(),
+                    error
+                ),
+            )
+        })?;
+        let display_name = canonical_root
+            .file_name()
+            .and_then(|name| name.to_str())
+            .filter(|name| !name.is_empty())
+            .ok_or_else(|| {
+                ResolverError::new(
+                    ResolverErrorKind::InvalidInput,
+                    format!(
+                        "resolver could not derive a package name from '{}'",
+                        canonical_root.display()
+                    ),
+                )
+            })?
+            .to_string();
+        let identity = PackageIdentity {
+            source_kind,
+            canonical_root: canonical_root.to_string_lossy().to_string(),
+            display_name: display_name.clone(),
+        };
+
+        if let Some(cached) = self.cached_package(&identity) {
+            return Ok(cached.clone());
+        }
+
+        let syntax = parse_package_from_directory(canonical_root.as_path(), &display_name)?;
+        let program = self
+            .resolve_parsed_package(syntax, Some(identity.clone()))
+            .map_err(|errors| {
+                errors.into_iter().next().unwrap_or_else(|| {
+                    ResolverError::new(
+                        ResolverErrorKind::Internal,
+                        format!(
+                            "resolver failed to load package root '{}'",
+                            canonical_root.display()
+                        ),
+                    )
+                })
+            })?;
+        let loaded = LoadedPackage { identity, program };
+        self.cache_package(loaded.clone());
+        Ok(loaded)
     }
 }
 
@@ -147,12 +207,86 @@ pub(crate) fn infer_package_root(syntax: &ParsedPackage) -> Result<std::path::Pa
     Ok(common_root)
 }
 
+fn parse_package_from_directory(
+    root: &Path,
+    display_name: &str,
+) -> Result<ParsedPackage, ResolverError> {
+    let root_str = root.to_str().ok_or_else(|| {
+        ResolverError::new(
+            ResolverErrorKind::InvalidInput,
+            format!("package root '{}' is not valid UTF-8", root.display()),
+        )
+    })?;
+    let sources = Source::init_with_package(root_str, SourceType::Folder, display_name).map_err(
+        |error| {
+            ResolverError::new(
+                ResolverErrorKind::InvalidInput,
+                format!(
+                    "resolver could not initialize package sources from '{}': {}",
+                    root.display(),
+                    error
+                ),
+            )
+        },
+    )?;
+    let mut stream = FileStream::from_sources(sources).map_err(|error| {
+        ResolverError::new(
+            ResolverErrorKind::InvalidInput,
+            format!(
+                "resolver could not read package sources from '{}': {}",
+                root.display(),
+                error
+            ),
+        )
+    })?;
+    let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+    let mut parser = fol_parser::ast::AstParser::new();
+
+    parser.parse_package(&mut lexer).map_err(|errors| {
+        let first = errors
+            .into_iter()
+            .next()
+            .expect("parse_package should produce at least one error");
+        if let Some(parse_error) = first
+            .as_ref()
+            .as_any()
+            .downcast_ref::<fol_parser::ast::ParseError>()
+        {
+            ResolverError::with_origin(
+                ResolverErrorKind::InvalidInput,
+                format!(
+                    "resolver could not parse imported package '{}': {}",
+                    root.display(),
+                    parse_error
+                ),
+                fol_parser::ast::SyntaxOrigin {
+                    file: parse_error.file(),
+                    line: parse_error.line(),
+                    column: parse_error.column(),
+                    length: parse_error.length(),
+                },
+            )
+        } else {
+            ResolverError::new(
+                ResolverErrorKind::InvalidInput,
+                format!(
+                    "resolver could not parse imported package '{}': {}",
+                    root.display(),
+                    first
+                ),
+            )
+        }
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::{infer_package_root, PackageIdentity, PackageSourceKind, ResolverConfig, ResolverSession};
     use fol_lexer::lexer::stage3::Elements;
     use fol_parser::ast::AstParser;
     use fol_stream::FileStream;
+    use std::{fs, path::Path};
+    use std::time::{SystemTime, UNIX_EPOCH};
 
     fn parse_package(path: &str) -> fol_parser::ast::ParsedPackage {
         let mut stream = FileStream::from_folder(path).expect("Should open parser fixture folder");
@@ -161,6 +295,19 @@ mod tests {
         parser
             .parse_package(&mut lexer)
             .expect("Fixture folder should parse as a package")
+    }
+
+    fn unique_temp_root(label: &str) -> std::path::PathBuf {
+        let stamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("System time should be after unix epoch")
+            .as_nanos();
+        std::env::temp_dir().join(format!(
+            "fol_resolver_session_{}_{}_{}",
+            label,
+            std::process::id(),
+            stamp
+        ))
     }
 
     #[test]
@@ -199,11 +346,66 @@ mod tests {
             canonical_root: "/tmp/example".to_string(),
             display_name: "example".to_string(),
         };
-        session.cache_surface(super::PackageSurface {
+        session.cache_package(super::LoadedPackage {
             identity: identity.clone(),
+            program: super::parse_package_from_directory(
+                Path::new("../test/parser/source_units"),
+                "source_units",
+            )
+            .map(|syntax| {
+                let mut nested = ResolverSession::new();
+                nested
+                    .resolve_parsed_package(syntax, None)
+                    .expect("Fixture package should resolve")
+            })
+            .expect("Fixture package should parse"),
         });
 
-        assert!(session.cached_surface(&identity).is_some());
+        assert!(session.cached_package(&identity).is_some());
         assert_eq!(session.cached_package_count(), 1);
+    }
+
+    #[test]
+    fn session_can_load_additional_package_roots_from_directories() {
+        let temp_root = unique_temp_root("load_package_root");
+        fs::create_dir_all(temp_root.join("dep"))
+            .expect("Should create a temporary package root fixture");
+        fs::write(temp_root.join("dep/main.fol"), "var[exp] answer: int = 42;\n")
+            .expect("Should write the dependency package fixture");
+        let mut session = ResolverSession::new();
+
+        let loaded = session
+            .load_package_from_directory(&temp_root.join("dep"), PackageSourceKind::Local)
+            .expect("Session should load additional package roots from disk");
+
+        assert_eq!(loaded.program.package_name(), "dep");
+        assert_eq!(loaded.program.source_units.len(), 1);
+        assert_eq!(session.cached_package_count(), 1);
+
+        fs::remove_dir_all(&temp_root)
+            .expect("Temporary session fixture directory should be removable after the test");
+    }
+
+    #[test]
+    fn session_reuses_cached_packages_for_repeated_canonical_roots() {
+        let temp_root = unique_temp_root("load_package_cache");
+        fs::create_dir_all(temp_root.join("dep"))
+            .expect("Should create a temporary package root fixture");
+        fs::write(temp_root.join("dep/main.fol"), "var[exp] answer: int = 42;\n")
+            .expect("Should write the dependency package fixture");
+        let mut session = ResolverSession::new();
+
+        let first = session
+            .load_package_from_directory(&temp_root.join("dep"), PackageSourceKind::Local)
+            .expect("Session should load the package root the first time");
+        let second = session
+            .load_package_from_directory(&temp_root.join("dep"), PackageSourceKind::Local)
+            .expect("Session should reuse the cached package root");
+
+        assert_eq!(first.identity, second.identity);
+        assert_eq!(session.cached_package_count(), 1);
+
+        fs::remove_dir_all(&temp_root)
+            .expect("Temporary session fixture directory should be removable after the test");
     }
 }

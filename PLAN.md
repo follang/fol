@@ -1455,7 +1455,7 @@ Status: done
 
 #### Slice 15.2
 
-Status: pending
+Status: done
 
 - Add recursive package parsing + resolution entry points for imported packages.
 - Prevent repeated loads of the same canonical package root.
