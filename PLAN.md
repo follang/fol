@@ -1417,7 +1417,7 @@ Status: done
 
 #### Slice 24.3
 
-Status: pending
+Status: done
 
 - Rewire transitive `pkg` dependency loading through `build.fol` dependency records.
 - Keep cache and cycle behavior intact.

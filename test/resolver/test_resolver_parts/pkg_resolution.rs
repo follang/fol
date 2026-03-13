@@ -349,3 +349,97 @@ fn test_resolver_pkg_qualified_names_reject_unexported_internal_namespaces() {
     fs::remove_dir_all(&temp_root)
         .expect("Temporary resolver fixture directory should be removable after the test");
 }
+
+#[test]
+fn test_resolver_pkg_transitive_dependencies_follow_build_definitions() {
+    let temp_root = unique_temp_root("pkg_transitive_build_graph");
+    let store_root = temp_root.join("store");
+    let app_root = temp_root.join("app");
+    fs::create_dir_all(store_root.join("core/src/root"))
+        .expect("Should create the transitive dependency export root fixture");
+    fs::create_dir_all(store_root.join("json/src/root"))
+        .expect("Should create the direct dependency export root fixture");
+    fs::create_dir_all(&app_root)
+        .expect("Should create the importing package root fixture directory");
+    fs::write(
+        store_root.join("core/package.yaml"),
+        "name: core\nversion: 1.0.0\n",
+    )
+    .expect("Should write the transitive dependency metadata fixture");
+    fs::write(store_root.join("core/build.fol"), "def root: loc = \"src/root\";\n")
+        .expect("Should write the transitive dependency build fixture");
+    fs::write(
+        store_root.join("core/src/root/value.fol"),
+        "var[exp] shared: int = 7;\n",
+    )
+    .expect("Should write the transitive dependency source fixture");
+    fs::write(
+        store_root.join("json/package.yaml"),
+        "name: json\nversion: 1.0.0\n",
+    )
+    .expect("Should write the direct dependency metadata fixture");
+    fs::write(
+        store_root.join("json/build.fol"),
+        "def core: pkg = \"core\";\ndef root: loc = \"src/root\";\n",
+    )
+    .expect("Should write the direct dependency build fixture");
+    fs::write(
+        store_root.join("json/src/root/value.fol"),
+        "use core: pkg = {core};\nvar[exp] answer: int = shared;\n",
+    )
+    .expect("Should write the direct dependency source fixture");
+    fs::write(
+        app_root.join("main.fol"),
+        "use json: pkg = {json};\nfun[] main(): int = {\n    return answer;\n}\n",
+    )
+    .expect("Should write the transitive pkg import fixture");
+
+    let resolved = resolve_package_from_folder_with_config(
+        app_root
+            .to_str()
+            .expect("Temporary resolver fixture path should be valid UTF-8"),
+        ResolverConfig {
+            std_root: None,
+            package_store_root: Some(
+                store_root
+                    .to_str()
+                    .expect("Temporary package-store fixture path should be valid UTF-8")
+                    .to_string(),
+            ),
+        },
+    );
+    let import = resolved
+        .imports_in_scope(resolved.program_scope)
+        .into_iter()
+        .find(|import| import.alias_name == "json")
+        .expect("Resolver should keep the pkg import record");
+    let target_scope = import
+        .target_scope
+        .expect("Configured pkg imports should resolve to a mounted root scope");
+    let answer_symbol = resolved
+        .symbols_in_scope(target_scope)
+        .into_iter()
+        .find(|symbol| symbol.name == "answer" && symbol.kind == SymbolKind::ValueBinding)
+        .expect("Mounted pkg roots should expose exported root symbols");
+    let routine_scope_id = resolved
+        .scopes
+        .iter_with_ids()
+        .find_map(|(scope_id, scope)| matches!(scope.kind, ScopeKind::Routine).then_some(scope_id))
+        .expect("Resolver should create a routine scope");
+    let answer_reference = resolved
+        .references_in_scope(routine_scope_id)
+        .into_iter()
+        .find(|reference| {
+            reference.kind == ReferenceKind::Identifier && reference.name == "answer"
+        })
+        .expect("Routine scope should record the transitive pkg-imported identifier reference");
+
+    assert_eq!(
+        answer_reference.resolved,
+        Some(answer_symbol.id),
+        "Pkg imports should resolve through build-declared transitive dependencies",
+    );
+
+    fs::remove_dir_all(&temp_root)
+        .expect("Temporary resolver fixture directory should be removable after the test");
+}
