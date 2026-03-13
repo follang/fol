@@ -686,7 +686,7 @@ Status: done
 
 #### 6.3
 
-Status: pending
+Status: done
 
 - Add explicit placeholder diagnostics for future git locator forms that are parsed but not yet fetched, or defer parsing them entirely with a documented boundary.
 

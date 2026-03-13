@@ -14,6 +14,15 @@ pub struct PackageLocator {
 
 pub fn parse_package_locator(raw: &str) -> Result<PackageLocator, PackageError> {
     let trimmed = raw.trim();
+    if looks_like_future_git_locator(trimmed) {
+        return Err(PackageError::new(
+            PackageErrorKind::Unsupported,
+            format!(
+                "package dependency locator '{}' looks like a future git or remote locator; only installed-store slash paths are supported today",
+                raw
+            ),
+        ));
+    }
     let parts = trimmed.split('/').map(str::trim).collect::<Vec<_>>();
     if trimmed.is_empty() || parts.iter().any(|part| part.is_empty()) {
         return Err(PackageError::new(
@@ -30,6 +39,13 @@ pub fn parse_package_locator(raw: &str) -> Result<PackageLocator, PackageError> 
         raw: trimmed.to_string(),
         path_segments: parts.into_iter().map(str::to_string).collect(),
     })
+}
+
+fn looks_like_future_git_locator(raw: &str) -> bool {
+    raw.contains("://")
+        || raw.starts_with("git+")
+        || raw.starts_with("git@")
+        || raw.ends_with(".git")
 }
 
 #[cfg(test)]
@@ -62,6 +78,20 @@ mod tests {
                 .to_string()
                 .contains("must contain non-empty slash-separated segments"),
             "Invalid locators should explain the accepted slash-separated path form",
+        );
+    }
+
+    #[test]
+    fn package_locator_reports_remote_git_forms_as_explicit_placeholders() {
+        let error = parse_package_locator("https://github.com/follang/json.git")
+            .expect_err("Remote git-like locators should fail with an explicit placeholder diagnostic");
+
+        assert_eq!(error.kind(), crate::PackageErrorKind::Unsupported);
+        assert!(
+            error
+                .to_string()
+                .contains("future git or remote locator"),
+            "Remote locators should fail with an explicit future-support diagnostic",
         );
     }
 }
