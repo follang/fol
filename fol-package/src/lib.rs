@@ -18,7 +18,10 @@ pub mod metadata;
 pub mod model;
 pub mod session;
 
-pub use build::{parse_package_build, BuildDependency, BuildExport, PackageBuildDefinition};
+pub use build::{
+    parse_package_build, BuildDependency, BuildExport, PackageBuildDefinition,
+    PackageNativeArtifact, PackageNativeArtifactKind,
+};
 pub use config::PackageConfig;
 pub use errors::{PackageError, PackageErrorKind};
 pub use identity::{PackageIdentity, PackageSourceKind};

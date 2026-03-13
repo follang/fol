@@ -18,10 +18,26 @@ pub struct BuildExport {
     pub relative_path: String,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PackageNativeArtifactKind {
+    Header,
+    Object,
+    StaticLibrary,
+    SharedLibrary,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PackageNativeArtifact {
+    pub alias: String,
+    pub kind: PackageNativeArtifactKind,
+    pub relative_path: String,
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct PackageBuildDefinition {
     pub dependencies: Vec<BuildDependency>,
     pub exports: Vec<BuildExport>,
+    pub native_artifacts: Vec<PackageNativeArtifact>,
 }
 
 pub fn parse_package_build(path: &Path) -> Result<PackageBuildDefinition, PackageError> {
@@ -159,9 +175,42 @@ pub fn extract_package_build_definition(
                         )?,
                     });
                 }
+                FolType::Named { name: type_name, .. } => {
+                    if let Some(kind) = native_artifact_kind(type_name.as_str()) {
+                        if !options.is_empty() {
+                            return Err(build_item_error(
+                                &parsed.syntax_index,
+                                item.node_id,
+                                "package native artifact definitions do not accept declaration options",
+                            ));
+                        }
+                        if !params.is_empty() {
+                            return Err(build_item_error(
+                                &parsed.syntax_index,
+                                item.node_id,
+                                "package native artifact definitions do not accept parameters",
+                            ));
+                        }
+                        build.native_artifacts.push(PackageNativeArtifact {
+                            alias: name.clone(),
+                            kind,
+                            relative_path: build_string_body(
+                                "native artifact",
+                                body,
+                                &parsed.syntax_index,
+                                item.node_id,
+                            )?,
+                        });
+                    } else {
+                        // Ordinary FOL defs in build.fol are allowed; only pkg/loc defs
+                        // and reserved native-artifact placeholder defs participate in
+                        // phase-one package extraction.
+                    }
+                }
                 _ => {
                     // Ordinary FOL defs in build.fol are allowed; only pkg/loc defs
-                    // participate in phase-one package extraction.
+                    // and reserved native-artifact placeholder defs participate in
+                    // phase-one package extraction.
                 }
             },
             _ => {}
@@ -202,6 +251,16 @@ fn unwrap_comment_wrappers(node: &AstNode) -> &AstNode {
     }
 }
 
+fn native_artifact_kind(name: &str) -> Option<PackageNativeArtifactKind> {
+    match name {
+        "header" => Some(PackageNativeArtifactKind::Header),
+        "object" => Some(PackageNativeArtifactKind::Object),
+        "static_lib" => Some(PackageNativeArtifactKind::StaticLibrary),
+        "shared_lib" => Some(PackageNativeArtifactKind::SharedLibrary),
+        _ => None,
+    }
+}
+
 fn build_item_error(
     syntax_index: &SyntaxIndex,
     node_id: SyntaxNodeId,
@@ -217,7 +276,7 @@ fn build_item_error(
 mod tests {
     use super::{
         extract_package_build_definition, parse_package_build, BuildDependency, BuildExport,
-        PackageBuildDefinition,
+        PackageBuildDefinition, PackageNativeArtifact, PackageNativeArtifactKind,
     };
     use crate::{PackageErrorKind, PackageLocator, PackageLocatorKind};
     use fol_parser::ast::AstParser;
@@ -274,6 +333,7 @@ mod tests {
                     },
                 ],
                 exports: Vec::new(),
+                native_artifacts: Vec::new(),
             }
         );
 
@@ -334,8 +394,60 @@ mod tests {
                         relative_path: "src/fmt".to_string(),
                     },
                 ],
+                native_artifacts: Vec::new(),
             }
         );
+
+        fs::remove_dir_all(&temp_root)
+            .expect("Temporary build fixture root should be removable after the test");
+    }
+
+    #[test]
+    fn package_build_parser_extracts_reserved_native_artifact_placeholders() {
+        let temp_root = unique_temp_root("native_artifact_defs");
+        fs::create_dir_all(&temp_root).expect("Should create temporary build fixture root");
+        let build_path = temp_root.join("build.fol");
+        fs::write(
+            &build_path,
+            concat!(
+                "def api: header = \"include/api.h\";\n",
+                "def math_obj: object = \"build/math.o\";\n",
+                "def c_runtime: static_lib = \"build/libc_runtime.a\";\n",
+                "def plugin: shared_lib = \"build/libplugin.so\";\n",
+            ),
+        )
+        .expect("Should write the build native artifact fixture");
+
+        let build =
+            parse_package_build(&build_path).expect("Build native artifact fixture should parse");
+
+        assert_eq!(
+            build.native_artifacts,
+            vec![
+                PackageNativeArtifact {
+                    alias: "api".to_string(),
+                    kind: PackageNativeArtifactKind::Header,
+                    relative_path: "include/api.h".to_string(),
+                },
+                PackageNativeArtifact {
+                    alias: "math_obj".to_string(),
+                    kind: PackageNativeArtifactKind::Object,
+                    relative_path: "build/math.o".to_string(),
+                },
+                PackageNativeArtifact {
+                    alias: "c_runtime".to_string(),
+                    kind: PackageNativeArtifactKind::StaticLibrary,
+                    relative_path: "build/libc_runtime.a".to_string(),
+                },
+                PackageNativeArtifact {
+                    alias: "plugin".to_string(),
+                    kind: PackageNativeArtifactKind::SharedLibrary,
+                    relative_path: "build/libplugin.so".to_string(),
+                },
+            ],
+        );
+        assert!(build.dependencies.is_empty());
+        assert!(build.exports.is_empty());
 
         fs::remove_dir_all(&temp_root)
             .expect("Temporary build fixture root should be removable after the test");
@@ -403,6 +515,7 @@ mod tests {
 
         assert!(build.dependencies.is_empty());
         assert!(build.exports.is_empty());
+        assert!(build.native_artifacts.is_empty());
 
         fs::remove_dir_all(&temp_root)
             .expect("Temporary build fixture root should be removable after the test");
@@ -421,6 +534,7 @@ mod tests {
 
         assert!(build.dependencies.is_empty());
         assert!(build.exports.is_empty());
+        assert!(build.native_artifacts.is_empty());
 
         fs::remove_dir_all(&temp_root)
             .expect("Temporary build fixture root should be removable after the test");
@@ -472,6 +586,7 @@ mod tests {
                     alias: "root".to_string(),
                     relative_path: "src".to_string(),
                 }],
+                native_artifacts: Vec::new(),
             }
         );
 

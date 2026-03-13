@@ -696,7 +696,7 @@ Status: pending
 
 #### 7.1
 
-Status: pending
+Status: done
 
 - Add package-model placeholders for future native artifact records without making them active semantics.
 

@@ -57,8 +57,8 @@ mod tests {
     use super::PreparedPackage;
     use crate::{
         BuildDependency, BuildExport, PackageBuildDefinition, PackageConfig, PackageIdentity,
-        PackageLocator, PackageLocatorKind, PackageMetadata, PackageSourceKind,
-        PreparedExportMount,
+        PackageLocator, PackageLocatorKind, PackageMetadata, PackageNativeArtifact,
+        PackageNativeArtifactKind, PackageSourceKind, PreparedExportMount,
     };
     use fol_parser::ast::{AstParser, ParsedPackage};
     use fol_stream::FileStream;
@@ -132,6 +132,11 @@ mod tests {
                     alias: "root".to_string(),
                     relative_path: "src".to_string(),
                 }],
+                native_artifacts: vec![PackageNativeArtifact {
+                    alias: "api".to_string(),
+                    kind: PackageNativeArtifactKind::Header,
+                    relative_path: "include/api.h".to_string(),
+                }],
             },
             vec![PreparedExportMount {
                 source_namespace: "json::src".to_string(),
@@ -142,6 +147,13 @@ mod tests {
 
         assert_eq!(prepared.metadata.as_ref().map(|meta| meta.name.as_str()), Some("json"));
         assert_eq!(prepared.build.as_ref().map(|build| build.exports.len()), Some(1));
+        assert_eq!(
+            prepared
+                .build
+                .as_ref()
+                .map(|build| build.native_artifacts.len()),
+            Some(1)
+        );
         assert_eq!(prepared.exports.len(), 1);
     }
 }
