@@ -148,6 +148,87 @@ fn test_resolver_resolves_use_loc_against_nested_namespaces() {
 }
 
 #[test]
+fn test_resolver_keeps_imported_loc_directory_files_connected_under_one_root() {
+    let temp_root = unique_temp_root("use_loc_connected_surface");
+    fs::create_dir_all(temp_root.join("app"))
+        .expect("Should create the importing package root fixture directory");
+    fs::create_dir_all(temp_root.join("shared"))
+        .expect("Should create the imported package-root fixture directory");
+    fs::write(
+        temp_root.join("shared/values.fol"),
+        "var[exp] root_value: int = 1;\n",
+    )
+    .expect("Should write the imported root export fixture");
+    fs::write(
+        temp_root.join("shared/helpers.fol"),
+        "fun[exp] emit(value: int): int = {\n    return value;\n}\n",
+    )
+    .expect("Should write the second imported root export fixture");
+    fs::write(
+        temp_root.join("app/main.fol"),
+        "use shared: loc = {\"../shared\"};\nfun[] main(): int = {\n    return emit(root_value);\n}\n",
+    )
+    .expect("Should write the connected imported-root fixture");
+
+    let resolved = resolve_package_from_folder(
+        temp_root
+            .join("app")
+            .to_str()
+            .expect("Temporary resolver fixture path should be valid UTF-8"),
+    );
+    let import = resolved
+        .imports_in_scope(resolved.program_scope)
+        .into_iter()
+        .find(|import| import.alias_name == "shared")
+        .expect("Resolver should keep the connected imported root alias");
+    let target_scope = import
+        .target_scope
+        .expect("Connected loc directory imports should resolve to a mounted root scope");
+    let root_value_symbol = resolved
+        .symbols_in_scope(target_scope)
+        .into_iter()
+        .find(|symbol| symbol.name == "root_value" && symbol.kind == SymbolKind::ValueBinding)
+        .expect("Mounted imported roots should expose exported root-level symbols");
+    let emit_symbol = resolved
+        .symbols_in_scope(target_scope)
+        .into_iter()
+        .find(|symbol| symbol.name == "emit" && symbol.kind == SymbolKind::Routine)
+        .expect("Mounted imported roots should expose exported symbols from multiple root files");
+    let routine_scope_id = resolved
+        .scopes
+        .iter_with_ids()
+        .find_map(|(scope_id, scope)| matches!(scope.kind, ScopeKind::Routine).then_some(scope_id))
+        .expect("Resolver should create a routine scope for the importing package");
+    let root_value_reference = resolved
+        .references_in_scope(routine_scope_id)
+        .into_iter()
+        .find(|reference| {
+            reference.kind == ReferenceKind::Identifier && reference.name == "root_value"
+        })
+        .expect("Routine scope should record the plain imported root-member reference");
+    let emit_reference = resolved
+        .references_in_scope(routine_scope_id)
+        .into_iter()
+        .find(|reference| {
+            reference.kind == ReferenceKind::FunctionCall && reference.name == "emit"
+        })
+        .expect("Routine scope should record the imported routine reference from the second root file");
+
+    assert!(
+        matches!(
+            resolved.scope(target_scope).map(|scope| &scope.kind),
+            Some(ScopeKind::ProgramRoot { package }) if package == "shared"
+        ),
+        "Connected loc directory imports should still mount the exact imported directory as the root scope",
+    );
+    assert_eq!(root_value_reference.resolved, Some(root_value_symbol.id));
+    assert_eq!(emit_reference.resolved, Some(emit_symbol.id));
+
+    fs::remove_dir_all(&temp_root)
+        .expect("Temporary connected loc fixture directory should be removable after the test");
+}
+
+#[test]
 fn test_resolver_reports_missing_use_loc_targets() {
     let temp_root = unique_temp_root("use_loc_missing_target");
     fs::create_dir_all(temp_root.join("app"))

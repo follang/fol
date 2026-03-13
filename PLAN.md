@@ -1479,7 +1479,7 @@ Status: done
 
 #### Slice 16.2
 
-Status: pending
+Status: done
 
 - Define and implement root-mount semantics for imported `loc` directories.
 - Ensure files inside the loaded directory become connected source units under one
