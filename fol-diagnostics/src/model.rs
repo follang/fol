@@ -127,6 +127,13 @@ impl Diagnostic {
         self
     }
 
+    pub fn with_optional_primary_label(mut self, location: Option<DiagnosticLocation>) -> Self {
+        if let Some(location) = location {
+            self = self.with_primary_label(location);
+        }
+        self
+    }
+
     pub fn with_secondary_label(
         mut self,
         location: DiagnosticLocation,
@@ -137,6 +144,17 @@ impl Diagnostic {
             location,
             message: Some(message.into()),
         });
+        self
+    }
+
+    pub fn with_optional_secondary_label(
+        mut self,
+        location: Option<DiagnosticLocation>,
+        message: impl Into<String>,
+    ) -> Self {
+        if let Some(location) = location {
+            self = self.with_secondary_label(location, message);
+        }
         self
     }
 
@@ -158,13 +176,38 @@ impl Diagnostic {
         self
     }
 
+    pub fn with_note_if(mut self, condition: bool, note: impl Into<String>) -> Self {
+        if condition {
+            self = self.with_note(note);
+        }
+        self
+    }
+
     pub fn with_help(mut self, help: impl Into<String>) -> Self {
         self.helps.push(help.into());
         self
     }
 
+    pub fn with_help_if(mut self, condition: bool, help: impl Into<String>) -> Self {
+        if condition {
+            self = self.with_help(help);
+        }
+        self
+    }
+
     pub fn with_suggestion(mut self, suggestion: DiagnosticSuggestion) -> Self {
         self.suggestions.push(suggestion);
+        self
+    }
+
+    pub fn with_suggestion_if(
+        mut self,
+        condition: bool,
+        suggestion: DiagnosticSuggestion,
+    ) -> Self {
+        if condition {
+            self = self.with_suggestion(suggestion);
+        }
         self
     }
 

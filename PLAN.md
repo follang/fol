@@ -660,7 +660,7 @@ Status: done
 
 #### 5.5
 
-Status: pending
+Status: done
 
 - Add low-friction helper APIs so future typechecker errors can adopt the system without duplication.
 

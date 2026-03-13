@@ -262,6 +262,40 @@ mod tests {
     }
 
     #[test]
+    fn test_diagnostic_helper_builders_support_optional_and_conditional_paths() {
+        let diagnostic = Diagnostic::error("R3999", "helper builder")
+            .with_optional_primary_label(Some(DiagnosticLocation {
+                file: Some("pkg/main.fol".to_string()),
+                line: 3,
+                column: 4,
+                length: Some(5),
+            }))
+            .with_optional_secondary_label(None, "should be skipped")
+            .with_note_if(true, "keep this note")
+            .with_note_if(false, "skip this note")
+            .with_help_if(true, "keep this help")
+            .with_help_if(false, "skip this help")
+            .with_suggestion_if(
+                true,
+                DiagnosticSuggestion {
+                    message: "replace with `value`".to_string(),
+                    replacement: Some("value".to_string()),
+                    location: Some(DiagnosticLocation {
+                        file: Some("pkg/main.fol".to_string()),
+                        line: 3,
+                        column: 4,
+                        length: Some(5),
+                    }),
+                },
+            );
+
+        assert_eq!(diagnostic.labels.len(), 1);
+        assert_eq!(diagnostic.notes, vec!["keep this note".to_string()]);
+        assert_eq!(diagnostic.helps, vec!["keep this help".to_string()]);
+        assert_eq!(diagnostic.suggestions.len(), 1);
+    }
+
+    #[test]
     fn test_coded_report_helpers_preserve_legacy_location_and_help_views() {
         let mut report = DiagnosticReport::new();
         report.add_coded_error(
