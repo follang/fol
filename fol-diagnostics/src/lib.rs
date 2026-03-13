@@ -86,23 +86,6 @@ impl Default for DiagnosticReport {
     }
 }
 
-/// Extract error code from error message for categorization
-fn extract_error_code(message: &str) -> DiagnosticCode {
-    if message.contains("LexerSpaceAdd") {
-        DiagnosticCode::new("E0001")
-    } else if message.contains("ParserMissmatch") {
-        DiagnosticCode::new("E0002")
-    } else if message.contains("ReadingBadContent") {
-        DiagnosticCode::new("E0003")
-    } else if message.contains("GettingNoEntry") {
-        DiagnosticCode::new("E0004")
-    } else if message.contains("GettingWrongPath") {
-        DiagnosticCode::new("E0005")
-    } else {
-        DiagnosticCode::unknown()
-    }
-}
-
 /// Helper trait to convert locations to diagnostic locations
 pub trait ToDiagnosticLocation {
     fn to_diagnostic_location(&self, file: Option<String>) -> DiagnosticLocation;
@@ -258,6 +241,16 @@ mod tests {
         assert_eq!(diagnostic.code.as_str(), "R1001");
         let json = serde_json::to_string(&diagnostic).expect("Diagnostic should serialize");
         assert!(json.contains("\"code\":\"R1001\""));
+    }
+
+    #[test]
+    fn test_glitch_fallback_no_longer_guesses_codes_from_messages() {
+        let error = BasicError {
+            message: "ParserMissmatch: legacy text should not drive modern codes".to_string(),
+        };
+        let diagnostic = Diagnostic::from_glitch(&error, Severity::Error, None);
+
+        assert_eq!(diagnostic.code, DiagnosticCode::unknown());
     }
 
     #[test]

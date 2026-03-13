@@ -107,8 +107,7 @@ impl Diagnostic {
         location: Option<DiagnosticLocation>,
     ) -> Self {
         let error_msg = error.to_string();
-        let mut diagnostic =
-            Self::new(severity, crate::extract_error_code(&error_msg), error_msg);
+        let mut diagnostic = Self::new(severity, DiagnosticCode::unknown(), error_msg);
         if let Some(location) = location {
             diagnostic.labels.push(DiagnosticLabel {
                 kind: DiagnosticLabelKind::Primary,

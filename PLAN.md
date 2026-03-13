@@ -620,7 +620,7 @@ Status: done
 
 #### 4.4
 
-Status: pending
+Status: done
 
 - Remove or quarantine `extract_error_code(...)` message parsing once modern mappings are in place.
 
