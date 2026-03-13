@@ -35,8 +35,7 @@ pub struct PackageIdentity {
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct LoadedPackage {
     pub identity: PackageIdentity,
-    pub metadata: Option<PackageMetadata>,
-    pub build: Option<PackageBuildDefinition>,
+    pub prepared: PreparedPackage,
     pub program: ResolvedProgram,
 }
 
@@ -212,8 +211,27 @@ impl ResolverSession {
             })?;
             Ok(LoadedPackage {
                 identity,
-                metadata,
-                build,
+                prepared: match (metadata, build) {
+                    (Some(metadata), Some(build)) => PreparedPackage::with_controls(
+                        fol_package::PackageIdentity {
+                            source_kind: package_source_kind(source_kind),
+                            canonical_root: canonical_root.to_string_lossy().to_string(),
+                            display_name: display_name.clone(),
+                        },
+                        metadata,
+                        build,
+                        Vec::new(),
+                        program.syntax().clone(),
+                    ),
+                    _ => PreparedPackage::new(
+                        fol_package::PackageIdentity {
+                            source_kind: package_source_kind(source_kind),
+                            canonical_root: canonical_root.to_string_lossy().to_string(),
+                            display_name: display_name.clone(),
+                        },
+                        program.syntax().clone(),
+                    ),
+                },
                 program,
             })
         })();
@@ -257,8 +275,7 @@ impl ResolverSession {
                 })?;
             Ok(LoadedPackage {
                 identity,
-                metadata: prepared.metadata.clone(),
-                build: prepared.build.clone(),
+                prepared,
                 program,
             })
         })();
@@ -319,7 +336,7 @@ fn resolver_package_identity(identity: &fol_package::PackageIdentity) -> Package
 mod tests {
     use super::{PackageIdentity, PackageSourceKind, ResolverConfig, ResolverSession};
     use crate::ResolverErrorKind;
-    use fol_package::infer_package_root;
+    use fol_package::{infer_package_root, PreparedPackage};
     use fol_parser::ast::UsePathSegment;
     use fol_lexer::lexer::stage3::Elements;
     use fol_parser::ast::AstParser;
@@ -387,8 +404,19 @@ mod tests {
         };
         session.cache_package(super::LoadedPackage {
             identity: identity.clone(),
-            metadata: None,
-            build: None,
+            prepared: PreparedPackage::new(
+                fol_package::PackageIdentity {
+                    source_kind: fol_package::PackageSourceKind::Local,
+                    canonical_root: identity.canonical_root.clone(),
+                    display_name: identity.display_name.clone(),
+                },
+                super::parse_package_from_directory(
+                    Path::new("../test/parser/source_units"),
+                    "source_units",
+                    PackageSourceKind::Local,
+                )
+                .expect("Fixture package should parse"),
+            ),
             program: super::parse_package_from_directory(
                 Path::new("../test/parser/source_units"),
                 "source_units",
@@ -422,8 +450,8 @@ mod tests {
 
         assert_eq!(loaded.program.package_name(), "dep");
         assert_eq!(loaded.program.source_units.len(), 1);
-        assert!(loaded.metadata.is_none());
-        assert!(loaded.build.is_none());
+        assert!(loaded.prepared.metadata.is_none());
+        assert!(loaded.prepared.build.is_none());
         assert_eq!(session.cached_package_count(), 1);
 
         fs::remove_dir_all(&temp_root)
@@ -534,6 +562,7 @@ mod tests {
         );
         assert_eq!(
             loaded
+                .prepared
                 .metadata
                 .as_ref()
                 .expect("Installed package roots should retain parsed package metadata")
@@ -542,6 +571,7 @@ mod tests {
         );
         assert_eq!(
             loaded
+                .prepared
                 .build
                 .as_ref()
                 .expect("Installed package roots should retain parsed build definitions")
@@ -862,7 +892,14 @@ mod tests {
             .expect("Session should load build-declared pkg dependencies eagerly");
 
         assert_eq!(loaded.identity.display_name, "json");
-        assert_eq!(loaded.build.as_ref().map(|build| build.dependencies.len()), Some(1));
+        assert_eq!(
+            loaded
+                .prepared
+                .build
+                .as_ref()
+                .map(|build| build.dependencies.len()),
+            Some(1)
+        );
         assert_eq!(
             session.cached_package_count(),
             2,

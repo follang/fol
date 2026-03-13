@@ -629,7 +629,7 @@ Status: done
 
 #### 4.2
 
-Status: pending
+Status: done
 
 - Remove resolver-owned metadata/build parsing modules or reduce them to thin adapters slated for deletion.
 

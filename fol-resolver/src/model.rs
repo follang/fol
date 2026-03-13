@@ -1,7 +1,6 @@
 use crate::ids::{IdTable, ImportId, ReferenceId, ScopeId, SourceUnitId, SymbolId};
 use crate::session::LoadedPackage;
 use crate::{ResolverError, ResolverErrorKind};
-use fol_package::PackageBuildDefinition;
 use fol_parser::ast::{
     FolType, ParsedDeclScope, ParsedDeclVisibility, ParsedPackage, SyntaxIndex, SyntaxNodeId,
     SyntaxOrigin, UsePathSegment,
@@ -362,19 +361,18 @@ impl ResolvedProgram {
         }
         self.namespace_scopes.insert(root_name.clone(), root_scope);
 
-        if loaded.identity.source_kind == crate::PackageSourceKind::Package {
-            if let Some(build) = loaded.build.as_ref() {
+        if loaded.identity.source_kind == crate::PackageSourceKind::Package
+            && !loaded.prepared.exports.is_empty()
+        {
                 self.mount_declared_package_exports(
                     loaded,
                     source_unit_id,
                     root_scope,
                     &root_name,
-                    build,
                 )?;
                 self.mounted_package_roots
                     .insert(loaded.identity.canonical_root.clone(), root_scope);
                 return Ok(root_scope);
-            }
         }
 
         self.mount_all_exported_package_scopes(loaded, source_unit_id, root_scope, &root_name)?;
@@ -390,30 +388,15 @@ impl ResolvedProgram {
         source_unit_id: SourceUnitId,
         root_scope: ScopeId,
         root_name: &str,
-        build: &PackageBuildDefinition,
     ) -> Result<(), ResolverError> {
-        let foreign_package_name = loaded.program.package_name().to_string();
-        let export_mappings = build
-            .exports
-            .iter()
-            .map(|export| {
-                Ok((
-                    build_export_namespace_prefix(&foreign_package_name, &export.relative_path)?,
-                    if export.alias == "root" {
-                        root_name.to_string()
-                    } else {
-                        format!("{root_name}::{}", export.alias)
-                    },
-                ))
-            })
-            .collect::<Result<Vec<_>, ResolverError>>()?;
-
         for (foreign_scope_id, foreign_namespace, foreign_symbols) in exported_symbol_scopes(&loaded.program) {
-            for (foreign_prefix, mounted_prefix) in &export_mappings {
-                let Some(mounted_namespace) =
-                    remap_exported_namespace(&foreign_namespace, foreign_prefix, mounted_prefix)
-                else {
+            for export in &loaded.prepared.exports {
+                if foreign_namespace != export.source_namespace {
                     continue;
+                }
+                let mounted_namespace = match export.mounted_namespace_suffix.as_deref() {
+                    Some(suffix) => format!("{root_name}::{suffix}"),
+                    None => root_name.to_string(),
                 };
                 let mounted_scope = if mounted_namespace == root_name {
                     root_scope
@@ -564,43 +547,6 @@ fn remap_loaded_namespace(namespace: &str, foreign_package_name: &str, mounted_r
         format!("{mounted_root}::{suffix}")
     } else {
         namespace.to_string()
-    }
-}
-
-fn build_export_namespace_prefix(
-    foreign_package_name: &str,
-    relative_path: &str,
-) -> Result<String, ResolverError> {
-    let trimmed = relative_path.trim();
-    if trimmed.is_empty() || trimmed == "." {
-        return Ok(foreign_package_name.to_string());
-    }
-
-    let segments = trimmed.split('/').map(str::trim).collect::<Vec<_>>();
-    if segments.iter().any(|segment| segment.is_empty()) {
-        return Err(ResolverError::new(
-            ResolverErrorKind::InvalidInput,
-            format!(
-                "package build export path '{}' must contain non-empty slash-separated segments",
-                relative_path
-            ),
-        ));
-    }
-
-    Ok(format!("{foreign_package_name}::{}", segments.join("::")))
-}
-
-fn remap_exported_namespace(
-    foreign_namespace: &str,
-    foreign_prefix: &str,
-    mounted_prefix: &str,
-) -> Option<String> {
-    if foreign_namespace == foreign_prefix {
-        Some(mounted_prefix.to_string())
-    } else {
-        foreign_namespace
-            .strip_prefix(&format!("{foreign_prefix}::"))
-            .map(|suffix| format!("{mounted_prefix}::{suffix}"))
     }
 }
 
