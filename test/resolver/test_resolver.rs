@@ -1,6 +1,6 @@
 use fol_lexer::lexer::stage3::Elements;
 use fol_parser::ast::AstParser;
-use fol_resolver::{resolve_package, ResolvedProgram, ResolverError};
+use fol_resolver::{resolve_package, resolve_package_with_config, ResolvedProgram, ResolverConfig, ResolverError};
 use fol_stream::FileStream;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -21,6 +21,18 @@ fn resolve_package_from_folder(path: &str) -> ResolvedProgram {
 }
 
 fn try_resolve_package_from_folder(path: &str) -> Result<ResolvedProgram, Vec<ResolverError>> {
+    try_resolve_package_from_folder_with_config(path, ResolverConfig::default())
+}
+
+fn resolve_package_from_folder_with_config(path: &str, config: ResolverConfig) -> ResolvedProgram {
+    try_resolve_package_from_folder_with_config(path, config)
+        .expect("Resolver test fixture should resolve successfully")
+}
+
+fn try_resolve_package_from_folder_with_config(
+    path: &str,
+    config: ResolverConfig,
+) -> Result<ResolvedProgram, Vec<ResolverError>> {
     let mut file_stream = FileStream::from_folder(path).expect("Should read resolver test folder");
     let mut lexer = Elements::init(&mut file_stream);
     let mut parser = AstParser::new();
@@ -28,7 +40,7 @@ fn try_resolve_package_from_folder(path: &str) -> Result<ResolvedProgram, Vec<Re
         .parse_package(&mut lexer)
         .expect("Resolver test fixture should parse as a package");
 
-    resolve_package(parsed)
+    resolve_package_with_config(parsed, config)
 }
 
 fn unique_temp_root(label: &str) -> std::path::PathBuf {
@@ -116,6 +128,9 @@ mod top_level_duplicates;
 #[cfg(test)]
 #[path = "test_resolver_parts/type_resolution.rs"]
 mod type_resolution;
+#[cfg(test)]
+#[path = "test_resolver_parts/std_resolution.rs"]
+mod std_resolution;
 #[cfg(test)]
 #[path = "test_resolver_parts/unsupported_imports.rs"]
 mod unsupported_imports;

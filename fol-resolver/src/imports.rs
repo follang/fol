@@ -84,6 +84,14 @@ pub(crate) fn resolve_import_target_with_session(
             }
             Ok(())
         }
+        FolType::Standard { .. } => {
+            let target_scope = resolve_standard_target_from_disk(session, program, &import)
+                .map_err(|error| import_error_from(program, import.alias_symbol, error))?;
+            if let Some(import_slot) = program.imports.get_mut(import_id) {
+                import_slot.target_scope = Some(target_scope);
+            }
+            Ok(())
+        }
         _ => resolve_import_target(program, import_id),
     }
 }
@@ -100,6 +108,31 @@ fn resolve_location_target_from_disk(
     let source_dir = source_path.parent().unwrap_or_else(|| Path::new("."));
     let target_path = resolve_directory_path(source_dir, &import.path_segments);
     let loaded = session.load_package_from_directory(target_path.as_path(), PackageSourceKind::Local)?;
+    program.mount_loaded_package(&loaded)
+}
+
+fn resolve_standard_target_from_disk(
+    session: &mut ResolverSession,
+    program: &mut ResolvedProgram,
+    import: &crate::ResolvedImport,
+) -> Result<ScopeId, ResolverError> {
+    let std_root = session.config().std_root.as_deref().ok_or_else(|| {
+        ResolverError::new(
+            ResolverErrorKind::InvalidInput,
+            format!(
+                "resolver std import '{}' requires an explicit std root",
+                import
+                    .path_segments
+                    .iter()
+                    .map(|segment| segment.spelling.as_str())
+                    .collect::<Vec<_>>()
+                    .join("/")
+            ),
+        )
+    })?;
+    let target_path = resolve_directory_path(Path::new(std_root), &import.path_segments);
+    let loaded =
+        session.load_package_from_directory(target_path.as_path(), PackageSourceKind::Standard)?;
     program.mount_loaded_package(&loaded)
 }
 

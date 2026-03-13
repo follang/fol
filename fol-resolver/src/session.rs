@@ -130,7 +130,7 @@ impl ResolverSession {
         directory: &Path,
         source_kind: PackageSourceKind,
     ) -> Result<LoadedPackage, ResolverError> {
-        let canonical_root = canonical_directory_root(directory)?;
+        let canonical_root = canonical_directory_root(directory, source_kind)?;
         let display_name = canonical_root
             .file_name()
             .and_then(|name| name.to_str())
@@ -220,21 +220,25 @@ pub(crate) fn infer_package_root(syntax: &ParsedPackage) -> Result<std::path::Pa
     Ok(common_root)
 }
 
-fn canonical_directory_root(directory: &Path) -> Result<PathBuf, ResolverError> {
+fn canonical_directory_root(
+    directory: &Path,
+    source_kind: PackageSourceKind,
+) -> Result<PathBuf, ResolverError> {
     let metadata = std::fs::metadata(directory).map_err(|error| {
+        let label = import_source_label(source_kind);
         if error.kind() == std::io::ErrorKind::NotFound {
             ResolverError::new(
                 ResolverErrorKind::InvalidInput,
                 format!(
-                    "resolver loc import target '{}' does not exist",
-                    directory.display()
+                    "resolver {label} import target '{}' does not exist",
+                    directory.display(),
                 ),
             )
         } else {
             ResolverError::new(
                 ResolverErrorKind::InvalidInput,
                 format!(
-                    "resolver could not inspect package root '{}': {}",
+                    "resolver could not inspect {label} import target '{}': {}",
                     directory.display(),
                     error
                 ),
@@ -243,21 +247,23 @@ fn canonical_directory_root(directory: &Path) -> Result<PathBuf, ResolverError> 
     })?;
 
     if metadata.is_file() {
+        let label = import_source_label(source_kind);
         return Err(ResolverError::new(
             ResolverErrorKind::InvalidInput,
             format!(
-                "resolver loc import target '{}' must point to a directory, not a file",
-                directory.display()
+                "resolver {label} import target '{}' must point to a directory, not a file",
+                directory.display(),
             ),
         ));
     }
 
     if !metadata.is_dir() {
+        let label = import_source_label(source_kind);
         return Err(ResolverError::new(
             ResolverErrorKind::InvalidInput,
             format!(
-                "resolver loc import target '{}' must point to a directory",
-                directory.display()
+                "resolver {label} import target '{}' must point to a directory",
+                directory.display(),
             ),
         ));
     }
@@ -266,12 +272,22 @@ fn canonical_directory_root(directory: &Path) -> Result<PathBuf, ResolverError> 
         ResolverError::new(
             ResolverErrorKind::InvalidInput,
             format!(
-                "resolver could not canonicalize package root '{}': {}",
+                "resolver could not canonicalize {} import target '{}': {}",
+                import_source_label(source_kind),
                 directory.display(),
                 error
             ),
         )
     })
+}
+
+fn import_source_label(source_kind: PackageSourceKind) -> &'static str {
+    match source_kind {
+        PackageSourceKind::Local => "loc",
+        PackageSourceKind::Standard => "std",
+        PackageSourceKind::Package => "pkg",
+        PackageSourceKind::Entry => "entry",
+    }
 }
 
 fn parse_package_from_directory(

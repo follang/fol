@@ -6,7 +6,6 @@ use std::fs;
 fn test_resolver_rejects_non_location_import_kinds_explicitly() {
     let fixtures = [
         ("unsupported_mod", "mod", "use fmt: mod = {core::fmt};\n"),
-        ("unsupported_std", "std", "use fmt: std = {fmt/log};\n"),
         ("unsupported_pkg", "pkg", "use remote: pkg = {json};\n"),
     ];
 

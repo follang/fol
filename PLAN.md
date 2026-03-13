@@ -1510,7 +1510,7 @@ Status: done
 
 #### Slice 17.2
 
-Status: pending
+Status: done
 
 - Implement `std` directory loading using the same package-loading machinery as `loc`.
 - Keep std-specific diagnostics distinct and clear.
