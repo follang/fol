@@ -6,6 +6,7 @@ use super::{
     QualifiedPath, RecordFieldMeta, RollingBinding, StandardKind, SyntaxIndex, SyntaxNodeId,
     SyntaxOrigin, TypeDefinition, TypeOption, UnaryOperator, UseOption, VarOption, WhenCase,
 };
+use fol_diagnostics::{Diagnostic, DiagnosticLocation, ToDiagnostic};
 use fol_lexer::token::{BUILDIN, KEYWORD, LITERAL, OPERATOR, SYMBOL, VOID};
 use fol_types::*;
 use std::cell::{Cell, RefCell};
@@ -117,6 +118,19 @@ impl Glitch for ParseError {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+impl ToDiagnostic for ParseError {
+    fn to_diagnostic(&self) -> Diagnostic {
+        Diagnostic::error(self.diagnostic_code(), self.message.clone()).with_primary_label(
+            DiagnosticLocation {
+                file: self.file(),
+                line: self.line(),
+                column: self.column(),
+                length: Some(self.length()),
+            },
+        )
     }
 }
 
@@ -238,6 +252,30 @@ mod tests {
         assert_eq!(
             ParseErrorKind::classify("Expected ')' after tuple element"),
             ParseErrorKind::Syntax
+        );
+    }
+
+    #[test]
+    fn parse_error_to_diagnostic_preserves_parser_codes() {
+        let error = ParseError {
+            message: "Executable calls are not allowed at file root".to_string(),
+            file: Some("pkg/main.fol".to_string()),
+            line: 1,
+            column: 1,
+            length: 3,
+        };
+        let diagnostic = error.to_diagnostic();
+
+        assert_eq!(diagnostic.code.as_str(), "P1002");
+        assert_eq!(diagnostic.message, "Executable calls are not allowed at file root");
+        assert_eq!(
+            diagnostic.primary_location(),
+            Some(&DiagnosticLocation {
+                file: Some("pkg/main.fol".to_string()),
+                line: 1,
+                column: 1,
+                length: Some(3),
+            })
         );
     }
 }

@@ -8,9 +8,10 @@
 // - fol-types
 use clap::{Arg, Command};
 use fol_diagnostics::{DiagnosticLocation, DiagnosticReport, OutputFormat};
-use fol_package::{PackageConfig, PackageSession};
+use fol_package::{PackageConfig, PackageSession, PackageError};
 use fol_parser::ast::{AstParser, ParseError};
 use fol_stream::FileStream;
+use fol_types::Glitch;
 use std::path::Path;
 
 fn main() {
@@ -140,7 +141,7 @@ fn compile_file(
             let prepared = match package_session.prepare_entry_package(package) {
                 Ok(prepared) => prepared,
                 Err(error) => {
-                    diagnostics.add_error(&error, error.diagnostic_location());
+                    report_compiler_glitch(diagnostics, &error);
                     return Err(());
                 }
             };
@@ -155,16 +156,15 @@ fn compile_file(
                 }
                 Err(resolve_errors) => {
                     for error in resolve_errors {
-                        diagnostics.add_error(&error, error.diagnostic_location());
+                        report_compiler_glitch(diagnostics, &error);
                     }
                     return Err(());
                 }
             }
         }
         Err(parse_errors) => {
-            // Add parse errors to diagnostics
             for error in parse_errors {
-                diagnostics.add_error(error.as_ref(), parser_error_location(error.as_ref()));
+                report_compiler_glitch(diagnostics, error.as_ref());
             }
             return Err(());
         }
@@ -189,16 +189,24 @@ fn report_input_error(
     );
 }
 
-fn parser_error_location(error: &dyn fol_types::Glitch) -> Option<DiagnosticLocation> {
-    error
+fn report_compiler_glitch(diagnostics: &mut DiagnosticReport, error: &dyn Glitch) {
+    if let Some(parse_error) = error.as_any().downcast_ref::<ParseError>() {
+        diagnostics.add_from(parse_error);
+        return;
+    }
+    if let Some(package_error) = error.as_any().downcast_ref::<PackageError>() {
+        diagnostics.add_from(package_error);
+        return;
+    }
+    if let Some(resolver_error) = error
         .as_any()
-        .downcast_ref::<ParseError>()
-        .map(|parse_error| DiagnosticLocation {
-            file: parse_error.file(),
-            line: parse_error.line(),
-            column: parse_error.column(),
-            length: Some(parse_error.length()),
-        })
+        .downcast_ref::<fol_resolver::ResolverError>()
+    {
+        diagnostics.add_from(resolver_error);
+        return;
+    }
+
+    diagnostics.add_error(error, None);
 }
 
 fn package_config_from_resolver(resolver_config: &fol_resolver::ResolverConfig) -> PackageConfig {

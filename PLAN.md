@@ -654,7 +654,7 @@ Status: done
 
 #### 5.4
 
-Status: pending
+Status: done
 
 - Migrate parser errors to rich diagnostics and remove CLI downcast special-casing.
 
