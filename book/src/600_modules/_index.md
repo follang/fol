@@ -11,4 +11,4 @@ It covers:
 At a high level:
 - files in the same package contribute to the same package surface
 - namespaces are expressed through folder structure and `::` access
-- imported sources are classified by source kind such as `loc`, `url`, and `std`
+- imported sources are classified by source kind such as `loc`, `pkg`, and `std`

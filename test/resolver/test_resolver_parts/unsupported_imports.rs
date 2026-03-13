@@ -5,15 +5,12 @@ use std::fs;
 #[test]
 fn test_resolver_rejects_non_location_import_kinds_explicitly() {
     let fixtures = [
-        ("unsupported_mod", "use fmt: mod = {core::fmt};\n"),
-        ("unsupported_std", "use fmt: std = {fmt/log};\n"),
-        (
-            "unsupported_url",
-            "use remote: url = {\"https://example.com/api\"};\n",
-        ),
+        ("unsupported_mod", "mod", "use fmt: mod = {core::fmt};\n"),
+        ("unsupported_std", "std", "use fmt: std = {fmt/log};\n"),
+        ("unsupported_pkg", "pkg", "use remote: pkg = {json};\n"),
     ];
 
-    for (label, source) in fixtures {
+    for (label, kind, source) in fixtures {
         let temp_root = unique_temp_root(label);
         fs::create_dir_all(&temp_root)
             .expect("Should create a temporary resolver fixture directory");
@@ -30,8 +27,11 @@ fn test_resolver_rejects_non_location_import_kinds_explicitly() {
         assert!(
             errors
                 .iter()
-                .any(|error| error.kind() == ResolverErrorKind::Unsupported),
-            "Resolver should report unsupported import kinds explicitly for fixture {}",
+                .any(|error| error.kind() == ResolverErrorKind::Unsupported
+                    && error
+                        .to_string()
+                        .contains(&format!("resolver does not support '{kind}' imports yet"))),
+            "Resolver should report unsupported import kinds explicitly for fixture {} and mention the exact source kind",
             label
         );
 

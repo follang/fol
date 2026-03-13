@@ -61,7 +61,7 @@ The book uses the following terms consistently:
 - type definition:
   a declaration form that creates a new named type
 - source kind:
-  an import/source locator family such as `loc`, `url`, or `std`
+  an import/source locator family such as `loc`, `pkg`, or `std`
 
 ## Examples vs Grammar
 

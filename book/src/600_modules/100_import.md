@@ -73,9 +73,9 @@ use space: loc = {"../folder/bender/space"};
 That second form is namespace import, not "single file import".
 If `space` contains multiple `.fol` files in the same folder, they still belong to the same imported namespace.
 
-## URL libraries
-Libraries can be directly URL imported:
+## External packages
+External packages are imported through `pkg`:
 
 ```
-use space: url = {"https://github.com/follang/std"};
+use space: pkg = {"space"};
 ```

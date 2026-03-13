@@ -138,6 +138,7 @@ fn import_error(
 
 fn import_kind_label(path_type: &FolType) -> &'static str {
     match path_type {
+        FolType::Package { .. } => "pkg",
         FolType::Location { .. } => "loc",
         FolType::Module { .. } => "mod",
         FolType::Standard { .. } => "std",

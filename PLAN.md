@@ -1430,7 +1430,7 @@ Status: done
 
 #### Slice 14.2
 
-Status: pending
+Status: done
 
 - Update resolver unsupported-import diagnostics to talk about `pkg` instead of `url`.
 - Update tests, docs, and book examples that still mention `url`.
