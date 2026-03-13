@@ -9,8 +9,8 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - This file answers one question: what is actually implemented right now.
 - This file is a repo-backed status ledger for the current workspace head.
 - For the current phase, the priority is repository truth: stream, lexer, parser,
-  resolver, diagnostics, CLI behavior, and the handoff boundary into post-resolution
-  semantic work.
+  package loading, resolver, diagnostics, CLI behavior, and the handoff boundary
+  into post-resolution semantic work.
 - This file does not plan later semantic or backend work.
 
 ## 1. Scan Method
@@ -21,6 +21,7 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `fol-stream`
 - `fol-lexer`
 - `fol-parser`
+- `fol-package`
 - `fol-resolver`
 - `fol-diagnostics`
 - `src`
@@ -42,34 +43,37 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 
 ## 2. Snapshot Metrics
 
-- Workspace member crates: `6`
+- Workspace member crates: `7`
 - Root binary crate: `1`
-- Active Rust source lines scanned: `22588`
+- Active Rust source lines scanned: `26922`
 - Core compiler Rust lines scanned:
 - `fol-types`: `259`
 - `fol-stream`: `570`
 - `fol-lexer`: `2406`
-- `fol-parser`: `15846`
-- `fol-resolver`: `3062`
+- `fol-parser`: `15857`
+- `fol-package`: `2779`
+- `fol-resolver`: `4542`
 - `fol-diagnostics`: `267`
-- Root CLI and root-local source: `178`
-- Active parser fixtures: `1281`
+- Root CLI and root-local source: `242`
+- Active parser fixtures: `1283`
 - Active lexer tests: `85`
 - Active stream tests: `54`
-- Parser-focused Rust tests under `test/parser`: `1104`
-- Resolver-focused Rust tests under `test/resolver`: `79`
-- Observed current unit test run: `1` unit test, green
-- Observed current integration run: `1353` integration tests, green
+- Parser-focused Rust tests under `test/parser`: `1108`
+- Resolver-focused Rust tests under `test/resolver`: `96`
+- Observed current unit test run: `2` unit tests, green
+- Observed current integration run: `1363` integration tests, green
 
 ## 3. Current Headline Status
 
 - `fol-stream`: implemented, actively used, and now explicit about failure and namespace validity
 - `fol-lexer`: implemented, actively used, and materially hardened on malformed-input and helper-path behavior
 - `fol-parser`: large front-end surface implemented, heavily hardened, and now much closer to a stable AST contract
+- `fol-package`: implemented as the package-loading and package-definition boundary before resolver
 - `fol-resolver`: implemented for the current whole-program name-resolution contract
 - `fol-diagnostics`: implemented and wired into the CLI
-- Root CLI: implemented as parse-and-resolve driver
-- Stream + lexer + parser: stable and consumed by resolver
+- Root CLI: implemented as parse-and-package-prepare-and-resolve driver
+- Stream + lexer + parser: stable and consumed by package loading and resolver
+- Package loading and package preparation: implemented for `loc`, `std`, and installed `pkg`
 - Whole-program name resolution: implemented for the current contract
 - Immediate active phase: post-resolution semantic analysis and type checking
 - Whole-program type checking: missing
@@ -83,8 +87,8 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `make build`: passed
 - `make test`: passed
 - Current observed totals:
-- `1` unit test passed
-- `1353` integration tests passed
+- `2` unit tests passed
+- `1363` integration tests passed
 - Observed active failures: `0`
 
 ## 5. What Has Been Completed So Far
@@ -218,6 +222,31 @@ Authority rule for this file: code and active tests win over older docs, plans, 
   report competing declaration or candidate sites where useful.
 - Plain unresolved identifiers, plain free calls, and plain named types now keep
   exact non-null file/line/column origins in resolver diagnostics and CLI JSON.
+
+### 5.6 Package Loading Milestone
+
+- `fol-package` now exists as a workspace crate and sits between parser output and
+  resolver package consumption.
+- `fol-package` owns `package.yaml` metadata parsing.
+- `fol-package` owns `build.fol` extraction for dependency, export, and inert
+  native-artifact placeholder records.
+- `fol-package` owns package-session caching, cycle detection, shared dependency
+  dedupe, and directory/store loading.
+- Entry packages are now prepared through `fol-package` before resolution instead
+  of being handed directly from parser output into the resolver.
+- `loc` and `std` imports resolve as exact directories through `fol-package`.
+- `pkg` imports resolve as installed package roots with required `package.yaml`
+  plus `build.fol`, while stray `package.fol` files stay ignored.
+- Control files remain excluded from ordinary package source parsing.
+- `build.fol` export declarations are now lowered into concrete prepared export
+  mounts before resolver namespace mounting.
+- Installed-store dependency strings are now represented as `PackageLocator`
+  records instead of opaque raw strings.
+- Future remote or git-like locators now fail with explicit placeholder
+  diagnostics instead of silently looking like valid installed-store paths.
+- Reserved native-artifact definitions such as `header`, `object`, `static_lib`,
+  and `shared_lib` are preserved as inert package-build records for future C ABI
+  work and are not active resolver semantics today.
 - The CLI now treats parse-clean but resolution-bad programs as failing compiles.
 - The CLI now accepts both `--std-root` and `--package-store-root` so the current
   `loc/std/pkg` resolver contract is available end to end.

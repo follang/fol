@@ -21,12 +21,12 @@ FOL is a general-purpose, systems programming language designed for robustness, 
 
 <p align="center">  ** FOL IS AN ACTIVE COMPILER WORKSPACE **  </p>
 
-Current compiler status: the stream, lexer, parser, diagnostics, and
-`fol-resolver` are implemented and actively tested. The resolver hardening pass
-for plain import exposure, file-private `hid`, built-in `str`, and exact
-resolver diagnostics is now complete. The active compiler boundary is
-post-resolution semantic work: type checking, deeper semantic analysis,
-ownership rules, and backend/runtime work.
+Current compiler status: `fol-stream`, `fol-lexer`, `fol-parser`,
+`fol-package`, `fol-resolver`, diagnostics, and the root CLI are implemented and
+actively tested. Package loading now flows through `fol-package`, which prepares
+directory and installed-package surfaces ahead of name resolution. The active
+compiler boundary is post-resolution semantic work: type checking, deeper
+semantic analysis, ownership rules, and backend/runtime work.
 
 Current import surface:
 - `loc` imports exact filesystem directories
@@ -46,10 +46,12 @@ Current C ABI boundary:
 - native artifact loading, compilation, and linking are future `fol-package` /
   package-build work, not resolver work
 
-For exact current stream/lexer/parser behavior, treat [`FRONTEND_CONTRACT.md`](./FRONTEND_CONTRACT.md)
-as the authoritative front-end contract, treat [`PROGRESS.md`](./PROGRESS.md) as the
-repo-backed implementation ledger, and treat [`PLAN.md`](./PLAN.md) as the completed
-package-import reset record. The README is only a high-level project summary.
+For exact current stream/lexer/parser/package behavior, treat
+[`FRONTEND_CONTRACT.md`](./FRONTEND_CONTRACT.md) as the authoritative front-end
+contract, treat [`PROGRESS.md`](./PROGRESS.md) as the repo-backed implementation
+ledger, and treat [`PLAN.md`](./PLAN.md) as the active `fol-package` closeout
+record until this migration is fully closed. The README is only a high-level
+project summary.
 
 <hr>
 

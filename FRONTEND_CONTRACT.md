@@ -1,15 +1,16 @@
 # Front-End Contract
 
-This file records the current stream, lexer, and parser contracts that the code and
-tests actually enforce today.
+This file records the current stream, lexer, parser, and package-loading boundary
+contracts that the code and tests actually enforce today.
 
-The source-layout and package-scope alignment pass is complete, and `fol-resolver`
-now consumes these parser outputs directly. The current resolver hardening pass is
-also complete for the present name-resolution contract, so this file describes the
-enforced stream/lexer/parser behavior at head, including compatibility paths that
-still exist intentionally around the structured parser APIs. Treat
+The source-layout and package-scope alignment pass is complete, `fol-package` now
+owns package loading and package-definition extraction, and `fol-resolver` consumes
+prepared packages from that boundary. The current resolver hardening pass is also
+complete for the present name-resolution contract, so this file describes the
+enforced stream/lexer/parser behavior at head plus the package-loading contract
+that immediately follows those front-end surfaces. Treat
 [`PROGRESS.md`](./PROGRESS.md) as the repo-backed implementation ledger and
-[`PLAN.md`](./PLAN.md) as the active import-resolution phase record.
+[`PLAN.md`](./PLAN.md) as the active `fol-package` closeout record.
 
 ## Decision Summary
 
@@ -25,7 +26,11 @@ still exist intentionally around the structured parser APIs. Treat
   from an explicit std root, `pkg` loads installed package roots from an explicit
   package-store root with required `package.yaml` + `build.fol`; `package.yaml` is
   metadata-only, `build.fol` defines dependency/export records, stray `package.fol`
-  files are ignored, and direct file imports are rejected.
+  files are ignored, direct file imports are rejected, and git-like locator forms
+  currently fail with explicit placeholder diagnostics instead of being fetched.
+- Package boundary: `fol-package` is now the owner of package metadata parsing,
+  build-definition extraction, package caching/cycle handling, export-mount
+  preparation, and directory/store package loading ahead of resolver work.
 - Source units: the parser now has a structured `parse_package(...)` path that preserves
   source units, package/namespace identity, successful top-level origins, and explicit
   top-level declaration visibility/scope metadata for resolver consumption.

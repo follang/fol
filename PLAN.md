@@ -712,7 +712,7 @@ Status: pending
 
 #### 8.1
 
-Status: pending
+Status: done
 
 - Update `README.md`, `PROGRESS.md`, and `FRONTEND_CONTRACT.md` so package loading is described through `fol-package`, not `fol-resolver`.
 
