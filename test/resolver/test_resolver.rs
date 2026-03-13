@@ -132,6 +132,9 @@ mod type_resolution;
 #[path = "test_resolver_parts/pkg_resolution.rs"]
 mod pkg_resolution;
 #[cfg(test)]
+#[path = "test_resolver_parts/provider_boundary.rs"]
+mod provider_boundary;
+#[cfg(test)]
 #[path = "test_resolver_parts/std_resolution.rs"]
 mod std_resolution;
 #[cfg(test)]

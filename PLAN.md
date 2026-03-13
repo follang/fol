@@ -641,7 +641,7 @@ Status: done
 
 #### 4.4
 
-Status: pending
+Status: done
 
 - Keep resolver import semantics stable while changing only the provider boundary.
 
