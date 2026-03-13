@@ -45,8 +45,8 @@ impl Resolver {
     ) -> ResolverResult<ResolvedProgram> {
         let mut program = ResolvedProgram::new(syntax);
         collect::collect_top_level_symbols(&mut program)?;
-        traverse::collect_routine_scopes(&mut program)?;
         imports::resolve_import_targets(&mut program)?;
+        traverse::collect_routine_scopes(&mut program)?;
         Ok(program)
     }
 }

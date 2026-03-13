@@ -72,6 +72,9 @@ mod identifier_resolution;
 #[path = "test_resolver_parts/imports.rs"]
 mod imports;
 #[cfg(test)]
+#[path = "test_resolver_parts/import_exposure.rs"]
+mod import_exposure;
+#[cfg(test)]
 #[path = "test_resolver_parts/inquiry_resolution.rs"]
 mod inquiry_resolution;
 #[cfg(test)]

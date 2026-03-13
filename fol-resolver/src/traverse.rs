@@ -1169,10 +1169,16 @@ fn resolve_visible_symbol(
     starting_scope: ScopeId,
     name: &str,
 ) -> Result<SymbolId, ResolverError> {
-    resolve_visible_symbol_of_kinds(program, starting_scope, name, &[], None, None)
+    match resolve_lexical_symbol_of_kinds(program, starting_scope, name, &[], None, None) {
+        Ok(symbol_id) => Ok(symbol_id),
+        Err(error) if error.kind() == ResolverErrorKind::UnresolvedName => {
+            resolve_imported_symbol_of_kinds(program, starting_scope, name, &[], None, None)
+        }
+        Err(error) => Err(error),
+    }
 }
 
-fn resolve_visible_symbol_of_kinds(
+fn resolve_lexical_symbol_of_kinds(
     program: &ResolvedProgram,
     starting_scope: ScopeId,
     name: &str,
@@ -1237,6 +1243,74 @@ fn resolve_visible_symbol_of_kinds(
         ),
         origin,
     ))
+}
+
+fn resolve_imported_symbol_of_kinds(
+    program: &ResolvedProgram,
+    starting_scope: ScopeId,
+    name: &str,
+    allowed_kinds: &[SymbolKind],
+    missing_role: Option<&str>,
+    origin: Option<fol_parser::ast::SyntaxOrigin>,
+) -> Result<SymbolId, ResolverError> {
+    let canonical_name = fol_types::canonical_identifier_key(name);
+    let mut current_scope = Some(starting_scope);
+    let mut matches = Vec::new();
+
+    while let Some(scope_id) = current_scope {
+        for import in program.imports_in_scope(scope_id) {
+            let Some(target_scope) = import.target_scope else {
+                continue;
+            };
+            let imported_symbols = program.symbols_named_in_scope(target_scope, &canonical_name);
+            if allowed_kinds.is_empty() {
+                matches.extend(imported_symbols);
+            } else {
+                matches.extend(
+                    imported_symbols
+                        .into_iter()
+                        .filter(|symbol| allowed_kinds.contains(&symbol.kind)),
+                );
+            }
+        }
+        current_scope = program.scope(scope_id).and_then(|scope| scope.parent);
+    }
+
+    match matches.as_slice() {
+        [symbol] => Ok(symbol.id),
+        [] => Err(error_with_optional_origin(
+            ResolverErrorKind::UnresolvedName,
+            format!(
+                "could not resolve {} '{}'",
+                missing_role.unwrap_or("name"),
+                name
+            ),
+            origin,
+        )),
+        _ => Err(error_with_optional_origin(
+            ResolverErrorKind::AmbiguousReference,
+            lexical_ambiguity_message(name, missing_role, &matches),
+            origin,
+        )),
+    }
+}
+
+fn resolve_visible_symbol_of_kinds(
+    program: &ResolvedProgram,
+    starting_scope: ScopeId,
+    name: &str,
+    allowed_kinds: &[SymbolKind],
+    missing_role: Option<&str>,
+    origin: Option<fol_parser::ast::SyntaxOrigin>,
+) -> Result<SymbolId, ResolverError> {
+    resolve_lexical_symbol_of_kinds(
+        program,
+        starting_scope,
+        name,
+        allowed_kinds,
+        missing_role,
+        origin,
+    )
 }
 
 fn insert_generic_symbols(

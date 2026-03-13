@@ -699,3 +699,382 @@ Only after resolver is stable should the next phase start:
 - later backend/runtime work
 
 That is later work. This plan is only the bridge from syntax to resolved names.
+
+## 14. Continuation After Deep Scan
+
+The milestone above closed the first resolver implementation pass, but a deep scan on 2026-03-13 found several semantic gaps that are too important to leave as "later polish".
+
+The resolver should therefore not be treated as semantically complete yet.
+
+This continuation keeps the completed history above intact and defines the remaining work required before `fol-resolver` can be considered genuinely done for the current language contract.
+
+## 15. Verified Gaps Reopened By The Scan
+
+### 15.1 Imported Names Are Not Exposed Through `use`
+
+Current behavior:
+
+- `use` lowers into an alias symbol plus an import record.
+- Plain name lookup does not expose exported declarations from the imported target.
+- In practice, `use math: loc = {math}` followed by `return answer` still fails.
+
+Required behavior:
+
+- `use` must expose exported declarations from the imported package or namespace.
+- The alias symbol itself must still exist and remain usable for qualified access.
+- Imported plain names must participate in resolution without requiring the caller to restate the namespace root in every use site.
+
+Resolver contract to implement:
+
+- local lexical bindings still win over imported names
+- imported names may shadow nothing automatically; if multiple visible imports expose the same canonical name, resolution must become ambiguous
+- `hid` declarations must never become import-visible
+- non-exported declarations must not be exposed through imports
+- imported exported routines, values, types, aliases, and other named top-level declarations should all follow the same visibility filter
+
+### 15.2 Qualified Paths Through Import Aliases Are Not Reliable
+
+Current behavior:
+
+- qualified paths work through package roots
+- qualified paths work through namespace roots
+- qualified paths only work through import aliases when the alias spelling accidentally matches the target namespace root already handled by fallback logic
+
+Required behavior:
+
+- `use api: loc = {net::http}` must allow:
+- `api::handler`
+- `api::handler()`
+- `api::Number`
+- qualified inquiry targets rooted at `api`
+
+This must work for:
+
+- top-level `use`
+- local `use` inside routines or blocks
+- alias spellings that differ from the imported namespace root
+
+Implementation constraint:
+
+- import targets must be resolved before qualified-root lookup depends on them, or traversal must be split so qualified-path binding happens only after import targets are known
+
+### 15.3 File-Private `hid` Visibility Is Structurally Modeled But Semantically Broken
+
+Current behavior:
+
+- parser and resolver record `hid` as file scope
+- same-file routines do not actually see file-private declarations
+- cross-file isolation therefore exists accidentally, but same-file visibility is broken
+
+Required behavior:
+
+- a `hid` declaration must be visible everywhere inside its own source file where the language allows that declaration kind to be referenced
+- the same declaration must remain invisible from sibling files, even in the same package or namespace
+
+Design rule:
+
+- source-unit/file scope must participate in real lookup, not only in metadata
+- fixing this must not accidentally leak file-private names to sibling files through package or namespace scopes
+
+### 15.4 Built-In `str` Is Still Being Treated As A User-Defined Name
+
+Current behavior:
+
+- book-level code using `str` still resolves as an unresolved named type
+
+Required behavior:
+
+- `str` must behave like a real built-in type keyword, not as a resolver lookup against user symbols
+
+Scope boundary:
+
+- this continuation only requires the built-in `str` contract to be made correct
+- do not silently broaden this into a larger type-system redesign
+- any additional keyword-type gaps such as `num` should be treated separately once the language contract is clarified
+
+### 15.5 Exact Origin Coverage Is Still Incomplete For Common Unresolved Names
+
+Current behavior:
+
+- qualified-path diagnostics usually keep exact locations
+- unresolved plain identifiers, plain free calls, and plain named types can still surface with `location: null`
+
+Required behavior:
+
+- every resolver-produced unresolved or ambiguity diagnostic for supported reference forms must carry real file, line, column, and length data
+- this includes at minimum:
+- plain identifier expressions
+- plain free calls
+- plain named type references
+
+Design rule:
+
+- origin coverage must come from parser-visible syntax IDs or equivalent stable syntax handles
+- resolver must not fabricate fake locations for these cases
+
+## 16. Resolver Semantics To Finish Before Calling This Phase Done
+
+### 16.1 Plain Lookup Must Gain Import Exposure Semantics
+
+Resolution order should become:
+
+- nearest lexical declarations in the current scope chain
+- imported exported names visible from the current scope chain
+- ambiguity if multiple equally visible imported targets expose the same canonical name and no direct lexical declaration wins
+
+Notes:
+
+- plain import exposure should not mutate parser AST
+- imported-name lookup should be resolver-owned, explicit, and testable
+- imported-name exposure should use canonical identifier comparison, not raw spelling only
+
+### 16.2 Qualified Lookup Must Use Real Import Targets
+
+Qualified-root resolution should support three root families cleanly:
+
+- package root
+- namespace root
+- resolved import alias
+
+Notes:
+
+- alias-root success must not depend on alias spelling matching the namespace name
+- local import aliases must work in the same way as top-level aliases
+- qualified type, value, call, and inquiry resolution should share one coherent root-resolution policy
+
+### 16.3 File Scope Must Be Part Of Semantic Lookup
+
+Same-file name resolution should distinguish:
+
+- package-visible declarations
+- namespace-visible declarations
+- file-visible declarations
+
+Required guarantee:
+
+- file-private names are visible from same-file routines and same-file top-level declarations where language rules allow lookup
+- file-private names are not visible from any other source unit
+
+### 16.4 Built-In `str` Must Exit The Named-Lookup Path
+
+One of these must happen explicitly:
+
+- parser lowers `str` into a dedicated built-in `FolType` variant
+- or resolver treats parser-produced `str` as a built-in special case in a narrowly defined, test-backed way
+
+Preferred direction:
+
+- keep built-in type identity in parser/type representation, not in ad-hoc resolver string matching
+
+### 16.5 Resolver Diagnostics Must Be Exact For Plain References
+
+Required end state:
+
+- unresolved `missing`
+- unresolved `helper(...)`
+- unresolved `MissingType`
+
+must all produce non-null locations in CLI JSON and in resolver diagnostic structs.
+
+## 17. Test Expansion Required By This Continuation
+
+The current suite is broad, but the reopened gaps need a second wave of tests that are more semantic than structural.
+
+### 17.1 Import Exposure Tests
+
+Required new tests:
+
+- success: imported exported value resolves as a plain identifier
+- success: imported exported routine resolves as a plain free call
+- success: imported exported type resolves as a plain named type
+- failure: imported non-exported declaration stays unresolved
+- failure: imported `hid` declaration stays unresolved
+- ambiguity: two imports expose the same plain exported name
+- precedence: local lexical binding beats imported plain name
+- precedence: direct same-scope declaration beats imported plain name
+
+### 17.2 Qualified Import Alias Tests
+
+Required new tests:
+
+- success: `use api: loc = {net::http}` plus `api::handler`
+- success: `use api: loc = {net::http}` plus `api::handler()`
+- success: `use api: loc = {net::http}` plus `api::Number`
+- success: same cases for local `use` inside a routine
+- failure: missing alias-root target still reports the exact qualified path location
+
+### 17.3 File-Private Visibility Tests
+
+Required new tests:
+
+- success: same-file routine can resolve a `hid` value
+- success: same-file routine can resolve a `hid` routine or type where relevant
+- failure: sibling file in same package cannot resolve the `hid` symbol
+- failure: nested namespace file cannot resolve the `hid` symbol from another file
+- coverage: file-private forward references inside one file still follow the chosen top-level forward-reference contract
+
+### 17.4 Built-In `str` Tests
+
+Required new tests:
+
+- parser-level or resolver-level positive test for `str` parameter types
+- positive test for `str` local/field/type-alias surfaces that currently use named-type resolution
+- negative control proving user-defined `str` declarations do not replace the built-in meaning unless the language explicitly intends that
+
+### 17.5 Diagnostic Origin Tests
+
+Required new tests:
+
+- unresolved plain identifier returns exact file/line/column
+- unresolved plain free call returns exact file/line/column
+- unresolved plain named type returns exact file/line/column
+- ambiguous imported plain name returns exact use-site location
+- CLI JSON path keeps those locations without dropping them to `null`
+
+## 18. Continuation Execution Slices
+
+These slices are new pending work. They are part of the same resolver phase and should be implemented with the same discipline as before: buildable, test-backed, and commit-safe one slice at a time.
+
+### Phase 8: Import Exposure Semantics
+
+#### Slice 8.1
+
+Status: done
+
+- Add resolver-owned import-member exposure for plain lookup.
+- Keep the alias symbol itself intact.
+- Add tests for imported exported value resolution as a plain identifier.
+
+#### Slice 8.2
+
+Status: pending
+
+- Extend import-member exposure to plain free-call and plain named-type lookup.
+- Add tests for imported exported routines and types resolving without qualification.
+
+#### Slice 8.3
+
+Status: pending
+
+- Filter import-visible members by declaration visibility.
+- `exp` is import-visible.
+- default/package-visible is not import-visible outside the imported boundary.
+- `hid` is never import-visible.
+- Add positive and negative tests for exported vs non-exported vs hidden imported declarations.
+
+#### Slice 8.4
+
+Status: pending
+
+- Add ambiguity and shadowing rules for imported plain names.
+- Local lexical bindings and direct declarations should still win where intended.
+- Add tests for duplicate exported names across multiple imports and for local shadowing of imported names.
+
+### Phase 9: Qualified Import Alias Completion
+
+#### Slice 9.1
+
+Status: pending
+
+- Rework import-resolution ordering so qualified alias roots use resolved import targets instead of partially initialized records.
+- Add tests where alias spelling differs from namespace root spelling.
+
+#### Slice 9.2
+
+Status: pending
+
+- Extend the alias-root fix across qualified identifiers, qualified calls, qualified type names, and qualified inquiry targets.
+- Add tests for all supported qualified reference families.
+
+#### Slice 9.3
+
+Status: pending
+
+- Ensure local `use` declarations inside routines/blocks participate in the same qualified-root rules.
+- Add tests for local import aliases with non-matching alias names.
+
+### Phase 10: File-Private Visibility Semantics
+
+#### Slice 10.1
+
+Status: pending
+
+- Make file/source-unit scope part of semantic lookup for same-file references.
+- Add tests proving same-file routines can resolve `hid` values.
+
+#### Slice 10.2
+
+Status: pending
+
+- Extend same-file `hid` visibility across other relevant named declaration kinds.
+- Add tests for same-file hidden routines and types where parser/resolver surfaces exist.
+
+#### Slice 10.3
+
+Status: pending
+
+- Lock the negative side of the contract: sibling files and other namespaces must still fail to resolve `hid` names.
+- Add multi-file package tests and cross-namespace negative tests.
+
+### Phase 11: Built-In `str` Completion
+
+#### Slice 11.1
+
+Status: pending
+
+- Add explicit built-in handling for `str` in parser/type representation or a narrowly scoped resolver bridge if parser work is truly unnecessary.
+- Prefer a representation-level fix over ad-hoc string checks.
+- Add focused parser/resolver tests for `str`.
+
+#### Slice 11.2
+
+Status: pending
+
+- Extend `str` coverage across routine signatures, local declarations, and alias/type-definition surfaces that already consume `FolType`.
+- Add end-to-end CLI tests proving `str` no longer hits unresolved-type diagnostics.
+
+### Phase 12: Exact Origin Completion
+
+#### Slice 12.1
+
+Status: pending
+
+- Add syntax-origin coverage for plain identifier expressions.
+- Add resolver tests proving unresolved plain names keep exact locations.
+
+#### Slice 12.2
+
+Status: pending
+
+- Add syntax-origin coverage for plain free-call names and plain named-type references.
+- Add resolver tests proving unresolved plain calls and plain named types keep exact locations.
+
+#### Slice 12.3
+
+Status: pending
+
+- Add CLI JSON integration tests for the new non-null location guarantees.
+- Ensure these checks cover unresolved and ambiguous plain-name scenarios.
+
+### Phase 13: Docs And Re-Closeout
+
+#### Slice 13.1
+
+Status: pending
+
+- Sync `PROGRESS.md`, `README.md`, `FRONTEND_CONTRACT.md`, and resolver crate docs after the continuation work lands.
+- Rewrite the resolver definition-of-done section so it reflects the finished semantic contract, not just the first milestone pass.
+
+## 19. Revised Definition Of Done For The Resolver Phase
+
+The resolver phase should now be considered complete only when:
+
+- the original slices above are complete
+- imported exported names are visible through `use` in plain lookup
+- qualified alias-root resolution works regardless of alias spelling
+- file-private `hid` names resolve inside the same file and nowhere else
+- built-in `str` no longer enters unresolved named-type lookup
+- plain unresolved identifier/call/type diagnostics keep exact non-null locations
+- the new tests in sections 17 and 18 are green
+
+Only after that should `fol-resolver` be treated as complete enough to stop hardening and move on to the next semantic phase.
