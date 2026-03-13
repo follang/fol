@@ -947,6 +947,37 @@ mod tests {
     }
 
     #[test]
+    fn session_rejects_pkg_roots_with_only_control_files_after_exclusion() {
+        let temp_root = unique_temp_root("pkg_control_only");
+        let store_root = temp_root.join("store");
+        fs::create_dir_all(store_root.join("json"))
+            .expect("Should create a temporary package-store fixture");
+        fs::write(store_root.join("json/package.yaml"), "name: json\nversion: 1.0.0\n")
+            .expect("Should write the package metadata fixture");
+        fs::write(store_root.join("json/build.fol"), "def root: loc = \"src\";\n")
+            .expect("Should write the package build fixture");
+        let mut session = ResolverSession::new();
+
+        let error = session
+            .load_package_from_store(
+                &store_root,
+                &[UsePathSegment {
+                    separator: None,
+                    spelling: "json".to_string(),
+                }],
+            )
+            .expect_err("Session should reject pkg roots whose control files are the only files present");
+
+        assert_eq!(error.kind(), ResolverErrorKind::InvalidInput);
+        assert!(error
+            .to_string()
+            .contains("has no loadable source files after excluding package.yaml/package.fol/build.fol"));
+
+        fs::remove_dir_all(&temp_root)
+            .expect("Temporary package-store fixture should be removable after the test");
+    }
+
+    #[test]
     fn session_recursively_loads_transitive_pkg_dependencies_from_store() {
         let temp_root = unique_temp_root("transitive_pkg_graph");
         let store_root = temp_root.join("store");

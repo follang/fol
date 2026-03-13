@@ -1394,7 +1394,7 @@ Status: done
 
 #### Slice 23.3
 
-Status: pending
+Status: done
 
 - Keep `package.yaml` and `build.fol` out of ordinary package source-unit parsing.
 - Add tests locking the parsed-source exclusion behavior.
