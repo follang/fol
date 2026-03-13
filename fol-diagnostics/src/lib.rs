@@ -1,8 +1,10 @@
 // FOL Diagnostics - Error formatting and output
 use colored::Colorize;
 
+mod codes;
 mod model;
 
+pub use codes::DiagnosticCode;
 pub use model::{
     Diagnostic, DiagnosticLabel, DiagnosticLabelKind, DiagnosticLocation, DiagnosticReport,
     DiagnosticSuggestion, Severity,
@@ -140,19 +142,19 @@ impl Diagnostic {
 }
 
 /// Extract error code from error message for categorization
-fn extract_error_code(message: &str) -> String {
+fn extract_error_code(message: &str) -> DiagnosticCode {
     if message.contains("LexerSpaceAdd") {
-        "E0001".to_string()
+        DiagnosticCode::new("E0001")
     } else if message.contains("ParserMissmatch") {
-        "E0002".to_string()
+        DiagnosticCode::new("E0002")
     } else if message.contains("ReadingBadContent") {
-        "E0003".to_string()
+        DiagnosticCode::new("E0003")
     } else if message.contains("GettingNoEntry") {
-        "E0004".to_string()
+        DiagnosticCode::new("E0004")
     } else if message.contains("GettingWrongPath") {
-        "E0005".to_string()
+        DiagnosticCode::new("E0005")
     } else {
-        "E0000".to_string()
+        DiagnosticCode::unknown()
     }
 }
 
@@ -298,5 +300,18 @@ mod tests {
         assert_eq!(diagnostic.labels.len(), 2);
         assert_eq!(diagnostic.notes, vec!["note text".to_string()]);
         assert_eq!(diagnostic.helps.len(), 2);
+    }
+
+    #[test]
+    fn test_diagnostic_code_is_a_stable_model_type() {
+        let diagnostic = Diagnostic::new(
+            Severity::Warning,
+            DiagnosticCode::new("R1001"),
+            "structured code",
+        );
+
+        assert_eq!(diagnostic.code.as_str(), "R1001");
+        let json = serde_json::to_string(&diagnostic).expect("Diagnostic should serialize");
+        assert!(json.contains("\"code\":\"R1001\""));
     }
 }

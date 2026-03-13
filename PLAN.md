@@ -524,7 +524,7 @@ Status: done
 
 #### 1.2
 
-Status: pending
+Status: done
 
 - Introduce stable diagnostic-code representation separate from message parsing.
 

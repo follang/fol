@@ -2,6 +2,8 @@ use fol_types::Glitch;
 use serde::ser::SerializeStruct;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
+use crate::DiagnosticCode;
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct DiagnosticLocation {
     pub file: Option<String>,
@@ -43,7 +45,7 @@ pub struct DiagnosticSuggestion {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Diagnostic {
     pub severity: Severity,
-    pub code: String,
+    pub code: DiagnosticCode,
     pub message: String,
     pub labels: Vec<DiagnosticLabel>,
     pub notes: Vec<String>,
@@ -54,7 +56,7 @@ pub struct Diagnostic {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 struct DiagnosticWire {
     severity: Severity,
-    code: String,
+    code: DiagnosticCode,
     message: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     location: Option<DiagnosticLocation>,
@@ -71,7 +73,11 @@ struct DiagnosticWire {
 }
 
 impl Diagnostic {
-    pub fn new(severity: Severity, code: impl Into<String>, message: impl Into<String>) -> Self {
+    pub fn new(
+        severity: Severity,
+        code: impl Into<DiagnosticCode>,
+        message: impl Into<String>,
+    ) -> Self {
         Self {
             severity,
             code: code.into(),
