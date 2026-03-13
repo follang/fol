@@ -688,7 +688,7 @@ Status: done
 
 #### 6.4
 
-Status: pending
+Status: done
 
 - Freeze the wording and label strategy for multi-location diagnostics with tests.
 

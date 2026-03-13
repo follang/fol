@@ -354,6 +354,8 @@ mod tests {
             .to_diagnostic();
 
         assert_eq!(diagnostic.labels.len(), 2);
+        assert_eq!(diagnostic.labels[0].location.line, 3);
+        assert_eq!(diagnostic.labels[0].message, None);
         assert_eq!(
             diagnostic.labels[1].message.as_deref(),
             Some("first package metadata field declaration")

@@ -190,3 +190,50 @@ fn test_resolver_ambiguous_plain_calls_lower_candidate_sites_as_secondary_labels
     fs::remove_dir_all(&temp_root)
         .expect("Temporary resolver fixture directory should be removable after the test");
 }
+
+#[test]
+fn test_resolver_ambiguity_diagnostics_keep_primary_use_site_before_candidate_labels() {
+    let temp_root = unique_temp_root("ambiguous_call_label_order");
+    fs::create_dir_all(&temp_root).expect("Should create a temporary resolver fixture directory");
+    let first_file = temp_root.join("00_first.fol");
+    let second_file = temp_root.join("10_second.fol");
+    fs::write(
+        &first_file,
+        "fun[] helper(value: int): int = {\n    return value;\n}\n",
+    )
+    .expect("Should write the first overload fixture");
+    fs::write(
+        &second_file,
+        "fun[] helper(value: seq[int]): int = {\n    return 0;\n}\n\nfun[] main(values: seq[int]): int = {\n    return helper(values);\n}\n",
+    )
+    .expect("Should write the second overload fixture");
+
+    let errors = try_resolve_package_from_folder(
+        temp_root
+            .to_str()
+            .expect("Temporary resolver fixture path should be valid UTF-8"),
+    )
+    .expect_err("Overloaded plain calls should be ambiguous without type-directed resolution");
+    let diagnostic = errors
+        .iter()
+        .find(|error| error.kind() == ResolverErrorKind::AmbiguousReference)
+        .expect("Resolver should report an ambiguous reference error")
+        .to_diagnostic();
+
+    assert_eq!(diagnostic.labels[0].location.file.as_deref(), second_file.to_str());
+    assert_eq!(diagnostic.labels[0].location.line, 6);
+    assert_eq!(diagnostic.labels[0].message, None);
+    assert_eq!(diagnostic.labels[1].location.file.as_deref(), first_file.to_str());
+    assert_eq!(
+        diagnostic.labels[1].message.as_deref(),
+        Some("candidate routine declaration")
+    );
+    assert_eq!(diagnostic.labels[2].location.file.as_deref(), second_file.to_str());
+    assert_eq!(
+        diagnostic.labels[2].message.as_deref(),
+        Some("candidate routine declaration")
+    );
+
+    fs::remove_dir_all(&temp_root)
+        .expect("Temporary resolver fixture directory should be removable after the test");
+}
