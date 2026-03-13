@@ -123,17 +123,35 @@ pub(crate) fn parse_package_build(path: &Path) -> Result<PackageBuildDefinition,
                     });
                 }
                 FolType::Location { .. } => {
-                    return Err(build_item_error(
-                        &parsed.syntax_index,
-                        item.node_id,
-                        "package build export definitions are not implemented yet",
-                    ));
+                    if !options.is_empty() {
+                        return Err(build_item_error(
+                            &parsed.syntax_index,
+                            item.node_id,
+                            "package build export definitions do not accept declaration options",
+                        ));
+                    }
+                    if !params.is_empty() {
+                        return Err(build_item_error(
+                            &parsed.syntax_index,
+                            item.node_id,
+                            "package build export definitions do not accept parameters",
+                        ));
+                    }
+                    build.exports.push(BuildExport {
+                        alias: name.clone(),
+                        relative_path: build_string_body(
+                            "export",
+                            body,
+                            &parsed.syntax_index,
+                            item.node_id,
+                        )?,
+                    });
                 }
                 _ => {
                     return Err(build_item_error(
                         &parsed.syntax_index,
                         item.node_id,
-                        "package build files currently accept only pkg dependency definitions",
+                        "package build files currently accept only pkg dependency and loc export definitions",
                     ));
                 }
             },
@@ -148,7 +166,7 @@ pub(crate) fn parse_package_build(path: &Path) -> Result<PackageBuildDefinition,
                 return Err(build_item_error(
                     &parsed.syntax_index,
                     item.node_id,
-                    "package build files currently accept only comments and pkg dependency definitions",
+                    "package build files currently accept only comments, pkg dependency definitions, and loc export definitions",
                 ));
             }
         }
@@ -201,7 +219,7 @@ fn build_item_error(
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_package_build, BuildDependency, PackageBuildDefinition};
+    use super::{parse_package_build, BuildDependency, BuildExport, PackageBuildDefinition};
     use crate::ResolverErrorKind;
     use std::fs;
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -269,6 +287,60 @@ mod tests {
         assert!(error
             .to_string()
             .contains("package build package dependency targets must be string literals"));
+
+        fs::remove_dir_all(&temp_root)
+            .expect("Temporary build fixture root should be removable after the test");
+    }
+
+    #[test]
+    fn package_build_parser_extracts_loc_export_definitions() {
+        let temp_root = unique_temp_root("loc_defs");
+        fs::create_dir_all(&temp_root).expect("Should create temporary build fixture root");
+        let build_path = temp_root.join("build.fol");
+        fs::write(
+            &build_path,
+            "def root: loc = \"src\";\ndef fmt: loc = \"src/fmt\";\n",
+        )
+        .expect("Should write the build export fixture");
+
+        let build = parse_package_build(&build_path).expect("Build export fixture should parse");
+
+        assert_eq!(
+            build,
+            PackageBuildDefinition {
+                dependencies: Vec::new(),
+                exports: vec![
+                    BuildExport {
+                        alias: "root".to_string(),
+                        relative_path: "src".to_string(),
+                    },
+                    BuildExport {
+                        alias: "fmt".to_string(),
+                        relative_path: "src/fmt".to_string(),
+                    },
+                ],
+            }
+        );
+
+        fs::remove_dir_all(&temp_root)
+            .expect("Temporary build fixture root should be removable after the test");
+    }
+
+    #[test]
+    fn package_build_parser_rejects_non_string_export_targets() {
+        let temp_root = unique_temp_root("loc_non_string_target");
+        fs::create_dir_all(&temp_root).expect("Should create temporary build fixture root");
+        let build_path = temp_root.join("build.fol");
+        fs::write(&build_path, "def root: loc = src;\n")
+            .expect("Should write the invalid build export fixture");
+
+        let error = parse_package_build(&build_path)
+            .expect_err("Non-string build export targets should be rejected");
+
+        assert_eq!(error.kind(), ResolverErrorKind::InvalidInput);
+        assert!(error
+            .to_string()
+            .contains("package build export targets must be string literals"));
 
         fs::remove_dir_all(&temp_root)
             .expect("Temporary build fixture root should be removable after the test");

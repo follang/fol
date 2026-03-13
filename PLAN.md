@@ -1364,7 +1364,7 @@ Status: done
 
 #### Slice 22.3
 
-Status: pending
+Status: done
 
 - Implement export-definition extraction from `build.fol`.
 - Add negative tests for invalid export forms.
