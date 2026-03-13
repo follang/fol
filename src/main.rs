@@ -8,6 +8,7 @@
 // - fol-types
 use clap::{Arg, Command};
 use fol_diagnostics::{DiagnosticLocation, DiagnosticReport, OutputFormat};
+use fol_package::{PackageConfig, PackageSession};
 use fol_parser::ast::{AstParser, ParseError};
 use fol_stream::FileStream;
 use std::path::Path;
@@ -132,19 +133,34 @@ fn compile_file(
     // 3. Parse the book-aligned package shape
     let mut ast_parser = AstParser::new();
     match ast_parser.parse_package(&mut lexer) {
-        Ok(package) => match fol_resolver::resolve_package_with_config(package, resolver_config.clone()) {
-            Ok(_) => {
-                if !diagnostics.has_errors() {
-                    return Ok(());
-                }
-            }
-            Err(resolve_errors) => {
-                for error in resolve_errors {
+        Ok(package) => {
+            let package_session = PackageSession::with_config(package_config_from_resolver(
+                resolver_config,
+            ));
+            let prepared = match package_session.prepare_entry_package(package) {
+                Ok(prepared) => prepared,
+                Err(error) => {
                     diagnostics.add_error(&error, error.diagnostic_location());
+                    return Err(());
                 }
-                return Err(());
+            };
+            match fol_resolver::resolve_prepared_package_with_config(
+                prepared,
+                resolver_config.clone(),
+            ) {
+                Ok(_) => {
+                    if !diagnostics.has_errors() {
+                        return Ok(());
+                    }
+                }
+                Err(resolve_errors) => {
+                    for error in resolve_errors {
+                        diagnostics.add_error(&error, error.diagnostic_location());
+                    }
+                    return Err(());
+                }
             }
-        },
+        }
         Err(parse_errors) => {
             // Add parse errors to diagnostics
             for error in parse_errors {
@@ -185,6 +201,14 @@ fn parser_error_location(error: &dyn fol_types::Glitch) -> Option<DiagnosticLoca
         })
 }
 
+fn package_config_from_resolver(resolver_config: &fol_resolver::ResolverConfig) -> PackageConfig {
+    PackageConfig {
+        std_root: resolver_config.std_root.clone(),
+        package_store_root: resolver_config.package_store_root.clone(),
+        package_cache_root: None,
+    }
+}
+
 #[test]
 fn compile_missing_file_reports_error() {
     let mut diagnostics = DiagnosticReport::new();
@@ -198,5 +222,21 @@ fn compile_missing_file_reports_error() {
     assert!(
         diagnostics.has_errors(),
         "Missing file should emit diagnostics"
+    );
+}
+
+#[test]
+fn compile_simple_file_succeeds_through_package_preparation_boundary() {
+    let mut diagnostics = DiagnosticReport::new();
+    let result = compile_file(
+        "./test/parser/simple_var.fol",
+        &fol_resolver::ResolverConfig::default(),
+        &mut diagnostics,
+    );
+
+    assert!(result.is_ok(), "Simple files should compile through prepared entry packages");
+    assert!(
+        !diagnostics.has_errors(),
+        "Successful prepared-package compilation should not emit diagnostics",
     );
 }

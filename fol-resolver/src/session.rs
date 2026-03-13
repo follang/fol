@@ -79,7 +79,7 @@ impl ResolverSession {
         self.resolve_prepared_package(prepared)
     }
 
-    pub(crate) fn resolve_prepared_package(
+    pub fn resolve_prepared_package(
         &mut self,
         prepared: PreparedPackage,
     ) -> ResolverResult<ResolvedProgram> {

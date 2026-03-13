@@ -24,6 +24,7 @@ fol-types = { path = "fol-types" }
 fol-stream = { path = "fol-stream" }  
 fol-lexer = { path = "fol-lexer" }
 fol-parser = { path = "fol-parser" }
+fol-package = { path = "fol-package" }
 fol-diagnostics = { path = "fol-diagnostics" }
 fol-resolver = { path = "fol-resolver" }
 regex = "1"

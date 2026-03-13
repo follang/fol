@@ -651,7 +651,7 @@ Status: pending
 
 #### 5.1
 
-Status: pending
+Status: done
 
 - Wire the root CLI through `fol-package` configuration before resolver.
 

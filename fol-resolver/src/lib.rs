@@ -72,6 +72,15 @@ impl Resolver {
     ) -> ResolverResult<ResolvedProgram> {
         ResolverSession::new().resolve_prepared_package(prepared)
     }
+
+    /// Resolve one fol-package prepared package with an explicit resolver configuration.
+    pub fn resolve_prepared_package_with_config(
+        &mut self,
+        prepared: PreparedPackage,
+        config: ResolverConfig,
+    ) -> ResolverResult<ResolvedProgram> {
+        ResolverSession::with_config(config).resolve_prepared_package(prepared)
+    }
 }
 
 /// Resolve one parsed package with a fresh resolver instance.
@@ -90,6 +99,14 @@ pub fn resolve_package_with_config(
 /// Resolve one fol-package prepared package with a fresh resolver instance.
 pub fn resolve_prepared_package(prepared: PreparedPackage) -> ResolverResult<ResolvedProgram> {
     Resolver::new().resolve_prepared_package(prepared)
+}
+
+/// Resolve one fol-package prepared package with an explicit resolver configuration.
+pub fn resolve_prepared_package_with_config(
+    prepared: PreparedPackage,
+    config: ResolverConfig,
+) -> ResolverResult<ResolvedProgram> {
+    Resolver::new().resolve_prepared_package_with_config(prepared, config)
 }
 
 #[cfg(test)]
