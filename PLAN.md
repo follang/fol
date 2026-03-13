@@ -1534,7 +1534,7 @@ Status: done
 
 #### Slice 18.2
 
-Status: pending
+Status: done
 
 - Add package-root discovery and validation for installed external packages.
 - Reject missing or malformed `package.fol` explicitly.

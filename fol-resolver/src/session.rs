@@ -1,9 +1,10 @@
 use crate::{
     collect, imports,
+    manifest::{parse_package_manifest, PackageManifest},
     model::ResolvedProgram,
     traverse, ResolverError, ResolverErrorKind, ResolverResult,
 };
-use fol_parser::ast::ParsedPackage;
+use fol_parser::ast::{ParsedPackage, UsePathSegment};
 use fol_stream::{FileStream, Source, SourceType};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -32,6 +33,7 @@ pub struct PackageIdentity {
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct LoadedPackage {
     pub identity: PackageIdentity,
+    pub manifest: Option<PackageManifest>,
     pub program: ResolvedProgram,
 }
 
@@ -145,6 +147,43 @@ impl ResolverSession {
                 )
             })?
             .to_string();
+        self.load_package_from_root(canonical_root, source_kind, display_name, None)
+    }
+
+    pub(crate) fn load_package_from_store(
+        &mut self,
+        store_root: &Path,
+        package_path: &[UsePathSegment],
+    ) -> Result<LoadedPackage, ResolverError> {
+        let target_root = resolve_directory_path(store_root, package_path);
+        let canonical_root = canonical_directory_root(target_root.as_path(), PackageSourceKind::Package)?;
+        let manifest_path = canonical_root.join("package.fol");
+        if !manifest_path.is_file() {
+            return Err(ResolverError::new(
+                ResolverErrorKind::InvalidInput,
+                format!(
+                    "resolver pkg import target '{}' is missing required package manifest '{}'",
+                    canonical_root.display(),
+                    manifest_path.display()
+                ),
+            ));
+        }
+        let manifest = parse_package_manifest(manifest_path.as_path())?;
+        self.load_package_from_root(
+            canonical_root,
+            PackageSourceKind::Package,
+            manifest.name.clone(),
+            Some(manifest),
+        )
+    }
+
+    fn load_package_from_root(
+        &mut self,
+        canonical_root: PathBuf,
+        source_kind: PackageSourceKind,
+        display_name: String,
+        manifest: Option<PackageManifest>,
+    ) -> Result<LoadedPackage, ResolverError> {
         let identity = PackageIdentity {
             source_kind,
             canonical_root: canonical_root.to_string_lossy().to_string(),
@@ -159,7 +198,7 @@ impl ResolverSession {
             return Ok(cached.clone());
         }
 
-        let syntax = parse_package_from_directory(canonical_root.as_path(), &display_name)?;
+        let syntax = parse_package_from_directory(canonical_root.as_path(), &display_name, source_kind)?;
         let program = self
             .resolve_parsed_package(syntax, Some(identity.clone()))
             .map_err(|errors| {
@@ -173,7 +212,11 @@ impl ResolverSession {
                     )
                 })
             })?;
-        let loaded = LoadedPackage { identity, program };
+        let loaded = LoadedPackage {
+            identity,
+            manifest,
+            program,
+        };
         self.cache_package(loaded.clone());
         Ok(loaded)
     }
@@ -290,9 +333,23 @@ fn import_source_label(source_kind: PackageSourceKind) -> &'static str {
     }
 }
 
+fn resolve_directory_path(source_dir: &Path, path_segments: &[UsePathSegment]) -> PathBuf {
+    let mut relative = PathBuf::new();
+    for segment in path_segments {
+        relative.push(&segment.spelling);
+    }
+
+    if relative.is_absolute() {
+        relative
+    } else {
+        source_dir.join(relative)
+    }
+}
+
 fn parse_package_from_directory(
     root: &Path,
     display_name: &str,
+    source_kind: PackageSourceKind,
 ) -> Result<ParsedPackage, ResolverError> {
     let root_str = root.to_str().ok_or_else(|| {
         ResolverError::new(
@@ -300,7 +357,7 @@ fn parse_package_from_directory(
             format!("package root '{}' is not valid UTF-8", root.display()),
         )
     })?;
-    let sources = Source::init_with_package(root_str, SourceType::Folder, display_name).map_err(
+    let mut sources = Source::init_with_package(root_str, SourceType::Folder, display_name).map_err(
         |error| {
             ResolverError::new(
                 ResolverErrorKind::InvalidInput,
@@ -309,9 +366,21 @@ fn parse_package_from_directory(
                     root.display(),
                     error
                 ),
-            )
-        },
-    )?;
+                )
+            },
+        )?;
+    if source_kind == PackageSourceKind::Package {
+        sources.retain(|source| !is_package_control_file(root, source));
+        if sources.is_empty() {
+            return Err(ResolverError::new(
+                ResolverErrorKind::InvalidInput,
+                format!(
+                    "resolver pkg import target '{}' has no loadable source files after excluding package.fol/build.fol",
+                    root.display()
+                ),
+            ));
+        }
+    }
     let mut stream = FileStream::from_sources(sources).map_err(|error| {
         ResolverError::new(
             ResolverErrorKind::InvalidInput,
@@ -362,12 +431,27 @@ fn parse_package_from_directory(
     })
 }
 
+fn is_package_control_file(root: &Path, source: &Source) -> bool {
+    let source_path = Path::new(&source.path);
+    let Some(parent) = source_path.parent() else {
+        return false;
+    };
+    if parent != root {
+        return false;
+    }
+    matches!(
+        source_path.file_name().and_then(|name| name.to_str()),
+        Some("package.fol") | Some("build.fol")
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
         infer_package_root, PackageIdentity, PackageSourceKind, ResolverConfig, ResolverSession,
     };
     use crate::ResolverErrorKind;
+    use fol_parser::ast::UsePathSegment;
     use fol_lexer::lexer::stage3::Elements;
     use fol_parser::ast::AstParser;
     use fol_stream::FileStream;
@@ -434,9 +518,11 @@ mod tests {
         };
         session.cache_package(super::LoadedPackage {
             identity: identity.clone(),
+            manifest: None,
             program: super::parse_package_from_directory(
                 Path::new("../test/parser/source_units"),
                 "source_units",
+                PackageSourceKind::Local,
             )
             .map(|syntax| {
                 let mut nested = ResolverSession::new();
@@ -466,6 +552,7 @@ mod tests {
 
         assert_eq!(loaded.program.package_name(), "dep");
         assert_eq!(loaded.program.source_units.len(), 1);
+        assert!(loaded.manifest.is_none());
         assert_eq!(session.cached_package_count(), 1);
 
         fs::remove_dir_all(&temp_root)
@@ -530,5 +617,120 @@ mod tests {
 
         fs::remove_dir_all(&temp_root)
             .expect("Temporary session fixture directory should be removable after the test");
+    }
+
+    #[test]
+    fn session_can_load_installed_pkg_roots_with_required_manifests() {
+        let temp_root = unique_temp_root("load_pkg_root");
+        let store_root = temp_root.join("store");
+        fs::create_dir_all(store_root.join("json"))
+            .expect("Should create a temporary package-store fixture");
+        fs::write(
+            store_root.join("json/package.fol"),
+            concat!(
+                "var name: str = \"json\";\n",
+                "var version: str = \"1.0.0\";\n",
+                "use serde: pkg = {serde};\n",
+            ),
+        )
+        .expect("Should write the package manifest fixture");
+        fs::write(store_root.join("json/lib.fol"), "var[exp] answer: int = 42;\n")
+            .expect("Should write the package source fixture");
+        fs::write(store_root.join("json/build.fol"), "fun[] build(): int = { return 0; }\n")
+            .expect("Should write the package build script fixture");
+        let mut session = ResolverSession::new();
+
+        let loaded = session
+            .load_package_from_store(
+                &store_root,
+                &[UsePathSegment {
+                    separator: None,
+                    spelling: "json".to_string(),
+                }],
+            )
+            .expect("Session should load installed package roots from the package store");
+
+        assert_eq!(loaded.identity.source_kind, PackageSourceKind::Package);
+        assert_eq!(loaded.identity.display_name, "json");
+        assert_eq!(loaded.program.package_name(), "json");
+        assert_eq!(loaded.program.source_units.len(), 1);
+        assert!(
+            loaded
+                .program
+                .source_units
+                .iter()
+                .all(|unit| !unit.path.ends_with("package.fol") && !unit.path.ends_with("build.fol")),
+            "Installed package source loading should exclude package.fol/build.fol from the parsed source set",
+        );
+        assert_eq!(
+            loaded
+                .manifest
+                .as_ref()
+                .expect("Installed package roots should retain parsed manifest metadata")
+                .version,
+            "1.0.0"
+        );
+
+        fs::remove_dir_all(&temp_root)
+            .expect("Temporary package-store fixture should be removable after the test");
+    }
+
+    #[test]
+    fn session_rejects_pkg_roots_without_required_manifests() {
+        let temp_root = unique_temp_root("missing_pkg_manifest");
+        let store_root = temp_root.join("store");
+        fs::create_dir_all(store_root.join("json"))
+            .expect("Should create a temporary package-store fixture");
+        fs::write(store_root.join("json/lib.fol"), "var[exp] answer: int = 42;\n")
+            .expect("Should write the package source fixture");
+        let mut session = ResolverSession::new();
+
+        let error = session
+            .load_package_from_store(
+                &store_root,
+                &[UsePathSegment {
+                    separator: None,
+                    spelling: "json".to_string(),
+                }],
+            )
+            .expect_err("Session should reject installed package roots without package manifests");
+
+        assert_eq!(error.kind(), ResolverErrorKind::InvalidInput);
+        assert!(error.to_string().contains("missing required package manifest"));
+
+        fs::remove_dir_all(&temp_root)
+            .expect("Temporary package-store fixture should be removable after the test");
+    }
+
+    #[test]
+    fn session_rejects_malformed_pkg_manifests_explicitly() {
+        let temp_root = unique_temp_root("malformed_pkg_manifest");
+        let store_root = temp_root.join("store");
+        fs::create_dir_all(store_root.join("json"))
+            .expect("Should create a temporary package-store fixture");
+        fs::write(
+            store_root.join("json/package.fol"),
+            "var name: str = \"json\";\n",
+        )
+        .expect("Should write the malformed package manifest fixture");
+        fs::write(store_root.join("json/lib.fol"), "var[exp] answer: int = 42;\n")
+            .expect("Should write the package source fixture");
+        let mut session = ResolverSession::new();
+
+        let error = session
+            .load_package_from_store(
+                &store_root,
+                &[UsePathSegment {
+                    separator: None,
+                    spelling: "json".to_string(),
+                }],
+            )
+            .expect_err("Session should reject malformed package manifests");
+
+        assert_eq!(error.kind(), ResolverErrorKind::InvalidInput);
+        assert!(error.to_string().contains("missing required field 'version'"));
+
+        fs::remove_dir_all(&temp_root)
+            .expect("Temporary package-store fixture should be removable after the test");
     }
 }
