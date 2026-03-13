@@ -834,6 +834,47 @@ mod integration_tests {
     }
 
     #[test]
+    fn test_parser_human_diagnostics_keep_snippet_shape() {
+        use fol_diagnostics::{DiagnosticLocation, DiagnosticReport, OutputFormat};
+        use fol_lexer::lexer::stage3::Elements;
+        use fol_lexer::token::KEYWORD;
+        use fol_parser::ast::{AstParser, ParseError};
+        use fol_stream::FileStream;
+
+        let mut file_stream =
+            FileStream::from_file("test/parser/simple_var.fol").expect("Should read test file");
+
+        let mut lexer = Elements::init(&mut file_stream);
+        lexer
+            .set_key(KEYWORD::Illegal)
+            .expect("Should force illegal token");
+
+        let mut parser = AstParser::new();
+        let mut diagnostics = DiagnosticReport::new();
+        let parse_errors = parser
+            .parse(&mut lexer)
+            .expect_err("Parser should fail on illegal token");
+
+        for error in parse_errors {
+            let location = error
+                .as_any()
+                .downcast_ref::<ParseError>()
+                .map(|parse_error| DiagnosticLocation {
+                    file: parse_error.file(),
+                    line: parse_error.line(),
+                    column: parse_error.column(),
+                    length: Some(parse_error.length()),
+                });
+            diagnostics.add_error(error.as_ref(), location);
+        }
+
+        let human = diagnostics.output(OutputFormat::Human);
+        assert!(human.contains("| var x: int = 42;"));
+        assert!(human.contains("^"));
+        assert!(human.contains("simple_var.fol"));
+    }
+
+    #[test]
     fn test_multi_file_parser_errors_keep_second_file_locations() {
         use fol_diagnostics::{DiagnosticLocation, DiagnosticReport, OutputFormat};
         use fol_lexer::lexer::stage3::Elements;

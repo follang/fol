@@ -114,6 +114,7 @@ mod tests {
     use super::{PackageError, PackageErrorKind};
     use fol_diagnostics::DiagnosticReport;
     use fol_parser::ast::SyntaxOrigin;
+    use std::time::{SystemTime, UNIX_EPOCH};
 
     #[test]
     fn package_error_formats_with_kind_prefix() {
@@ -172,5 +173,36 @@ mod tests {
         assert!(rendered.contains("PackageInvalidInput"));
         assert!(rendered.contains("pkg/package.yaml"));
         assert!(rendered.contains("\"line\": 2"));
+    }
+
+    #[test]
+    fn package_error_human_output_keeps_snippet_shape() {
+        let stamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock should be stable enough for temp file names")
+            .as_nanos();
+        let path = std::env::temp_dir().join(format!("fol_package_diagnostic_{stamp}.yaml"));
+        std::fs::write(&path, "name: json\nversion: 1.0.0\n")
+            .expect("package diagnostic fixture should be writable");
+        let error = PackageError::with_origin(
+            PackageErrorKind::InvalidInput,
+            "duplicate package metadata field",
+            SyntaxOrigin {
+                file: Some(path.to_string_lossy().into_owned()),
+                line: 1,
+                column: 1,
+                length: 4,
+            },
+        );
+        let mut report = DiagnosticReport::new();
+
+        report.add_error(&error, error.diagnostic_location());
+
+        let rendered = report.output(fol_diagnostics::OutputFormat::Human);
+        let _ = std::fs::remove_file(&path);
+
+        assert!(rendered.contains("error: PackageInvalidInput: duplicate package metadata field"));
+        assert!(rendered.contains("| name: json"));
+        assert!(rendered.contains("| ^^^^"));
     }
 }

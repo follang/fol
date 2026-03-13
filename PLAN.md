@@ -570,7 +570,7 @@ Status: done
 
 #### 2.5
 
-Status: pending
+Status: done
 
 - Lock human-output snapshot tests for representative parser/package/resolver diagnostics.
 

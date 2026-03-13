@@ -188,6 +188,7 @@ mod tests {
     use super::{resolver_package_message, ResolverError, ResolverErrorKind};
     use fol_diagnostics::DiagnosticReport;
     use fol_parser::ast::SyntaxOrigin;
+    use std::time::{SystemTime, UNIX_EPOCH};
 
     #[test]
     fn resolver_error_formats_with_kind_prefix() {
@@ -258,5 +259,35 @@ mod tests {
             resolver_package_message("package std import target '/tmp/std/fmt' does not exist"),
             "resolver std import target '/tmp/std/fmt' does not exist"
         );
+    }
+
+    #[test]
+    fn resolver_error_human_output_keeps_snippet_shape() {
+        let stamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock should be stable enough for temp file names")
+            .as_nanos();
+        let path = std::env::temp_dir().join(format!("fol_resolver_diagnostic_{stamp}.fol"));
+        std::fs::write(&path, "return answer;\n").expect("resolver diagnostic fixture should be writable");
+        let error = ResolverError::with_origin(
+            ResolverErrorKind::UnresolvedName,
+            "could not resolve `answer`",
+            SyntaxOrigin {
+                file: Some(path.to_string_lossy().into_owned()),
+                line: 1,
+                column: 8,
+                length: 6,
+            },
+        );
+        let mut report = DiagnosticReport::new();
+
+        report.add_error(&error, error.diagnostic_location());
+
+        let rendered = report.output(fol_diagnostics::OutputFormat::Human);
+        let _ = std::fs::remove_file(&path);
+
+        assert!(rendered.contains("error: ResolverUnresolvedName: could not resolve `answer`"));
+        assert!(rendered.contains("| return answer;"));
+        assert!(rendered.contains("|        ^^^^^^"));
     }
 }
