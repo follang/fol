@@ -37,6 +37,7 @@ pub struct PackageError {
     kind: PackageErrorKind,
     message: String,
     origin: Option<SyntaxOrigin>,
+    related_origins: Vec<(SyntaxOrigin, String)>,
 }
 
 impl PackageError {
@@ -45,6 +46,7 @@ impl PackageError {
             kind,
             message: message.into(),
             origin: None,
+            related_origins: Vec::new(),
         }
     }
 
@@ -57,6 +59,7 @@ impl PackageError {
             kind,
             message: message.into(),
             origin: Some(origin),
+            related_origins: Vec::new(),
         }
     }
 
@@ -79,6 +82,15 @@ impl PackageError {
             column: origin.column,
             length: Some(origin.length),
         })
+    }
+
+    pub fn with_related_origin(
+        mut self,
+        origin: SyntaxOrigin,
+        message: impl Into<String>,
+    ) -> Self {
+        self.related_origins.push((origin, message.into()));
+        self
     }
 }
 
@@ -125,6 +137,17 @@ impl ToDiagnostic for PackageError {
         let mut diagnostic = Diagnostic::error(self.kind.diagnostic_code(), self.to_string());
         if let Some(location) = self.diagnostic_location() {
             diagnostic = diagnostic.with_primary_label(location);
+        }
+        for (origin, message) in &self.related_origins {
+            diagnostic = diagnostic.with_secondary_label(
+                DiagnosticLocation {
+                    file: origin.file.clone(),
+                    line: origin.line,
+                    column: origin.column,
+                    length: Some(origin.length),
+                },
+                message.clone(),
+            );
         }
         diagnostic
     }
@@ -266,5 +289,36 @@ mod tests {
         let rendered = report.output(fol_diagnostics::OutputFormat::Json);
         assert!(rendered.contains("\"code\": \"K1001\""));
         assert!(rendered.contains("PackageInvalidInput: duplicate package metadata field"));
+    }
+
+    #[test]
+    fn package_error_to_diagnostic_keeps_related_origins_as_secondary_labels() {
+        let diagnostic = PackageError::with_origin(
+            PackageErrorKind::InvalidInput,
+            "duplicate package metadata field",
+            SyntaxOrigin {
+                file: Some("pkg/package.yaml".to_string()),
+                line: 3,
+                column: 1,
+                length: 4,
+            },
+        )
+        .with_related_origin(
+            SyntaxOrigin {
+                file: Some("pkg/package.yaml".to_string()),
+                line: 1,
+                column: 1,
+                length: 4,
+            },
+            "first package metadata field declaration",
+        )
+        .to_diagnostic();
+
+        assert_eq!(diagnostic.labels.len(), 2);
+        assert_eq!(
+            diagnostic.labels[1].message.as_deref(),
+            Some("first package metadata field declaration")
+        );
+        assert_eq!(diagnostic.labels[1].location.line, 1);
     }
 }

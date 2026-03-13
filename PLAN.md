@@ -682,7 +682,7 @@ Status: done
 
 #### 6.3
 
-Status: pending
+Status: done
 
 - Add related labels for package-control diagnostics where a second site matters.
 

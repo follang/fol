@@ -24,7 +24,7 @@ pub fn parse_package_metadata(path: &Path) -> Result<PackageMetadata, PackageErr
         )
     })?;
 
-    let mut fields = BTreeMap::new();
+    let mut fields: BTreeMap<String, (String, SyntaxOrigin)> = BTreeMap::new();
     let supported_fields = BTreeSet::from(["name", "version", "kind", "description", "license"]);
     for (index, line) in raw.lines().enumerate() {
         let line_no = index + 1;
@@ -65,19 +65,26 @@ pub fn parse_package_metadata(path: &Path) -> Result<PackageMetadata, PackageErr
         }
         let value_offset = line.find(':').unwrap_or(0) + 2;
         let value = parse_yaml_scalar(raw_value.trim(), path, line_no, value_offset)?;
+        let origin = SyntaxOrigin {
+            file: Some(path.to_string_lossy().to_string()),
+            line: line_no,
+            column: 1,
+            length: key.len(),
+        };
 
-        if fields.insert(key.to_string(), value).is_some() {
+        if let Some((_, first_origin)) = fields.insert(key.to_string(), (value, origin.clone())) {
             return Err(metadata_line_error(
                 path,
                 line_no,
                 1,
                 key.len(),
                 format!("package metadata field '{key}' may only be declared once"),
-            ));
+            )
+            .with_related_origin(first_origin, "first package metadata field declaration"));
         }
     }
 
-    let name = fields.remove("name").ok_or_else(|| {
+    let name = fields.remove("name").map(|(value, _)| value).ok_or_else(|| {
         PackageError::new(
             PackageErrorKind::InvalidInput,
             format!(
@@ -96,7 +103,7 @@ pub fn parse_package_metadata(path: &Path) -> Result<PackageMetadata, PackageErr
             ),
         ));
     }
-    let version = fields.remove("version").ok_or_else(|| {
+    let version = fields.remove("version").map(|(value, _)| value).ok_or_else(|| {
         PackageError::new(
             PackageErrorKind::InvalidInput,
             format!(
@@ -118,9 +125,17 @@ pub fn parse_package_metadata(path: &Path) -> Result<PackageMetadata, PackageErr
     Ok(PackageMetadata {
         name,
         version,
-        kind: non_empty_optional_field(path, "kind", fields.remove("kind"))?,
-        description: non_empty_optional_field(path, "description", fields.remove("description"))?,
-        license: non_empty_optional_field(path, "license", fields.remove("license"))?,
+        kind: non_empty_optional_field(path, "kind", fields.remove("kind").map(|(value, _)| value))?,
+        description: non_empty_optional_field(
+            path,
+            "description",
+            fields.remove("description").map(|(value, _)| value),
+        )?,
+        license: non_empty_optional_field(
+            path,
+            "license",
+            fields.remove("license").map(|(value, _)| value),
+        )?,
     })
 }
 
@@ -244,6 +259,7 @@ fn is_valid_package_name(package_name: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::{parse_package_metadata, PackageMetadata};
+    use fol_diagnostics::ToDiagnostic;
     use std::fs;
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -317,6 +333,32 @@ mod tests {
             .expect("Duplicate metadata errors should keep exact line origins");
         assert_eq!(origin.line, 3);
         assert_eq!(origin.column, 1);
+
+        fs::remove_dir_all(&temp_root)
+            .expect("Temporary metadata fixture root should be removable after the test");
+    }
+
+    #[test]
+    fn yaml_metadata_parser_lowers_duplicate_fields_with_first_site_secondary_label() {
+        let temp_root = unique_temp_root("duplicate_field_secondary_label");
+        fs::create_dir_all(&temp_root).expect("Should create temporary metadata fixture root");
+        let metadata_path = temp_root.join("package.yaml");
+        fs::write(
+            &metadata_path,
+            "name: json\nversion: 1.0.0\nname: other\n",
+        )
+        .expect("Should write the duplicate metadata fixture");
+
+        let diagnostic = parse_package_metadata(&metadata_path)
+            .expect_err("Duplicate metadata fields should be rejected")
+            .to_diagnostic();
+
+        assert_eq!(diagnostic.labels.len(), 2);
+        assert_eq!(
+            diagnostic.labels[1].message.as_deref(),
+            Some("first package metadata field declaration")
+        );
+        assert_eq!(diagnostic.labels[1].location.line, 1);
 
         fs::remove_dir_all(&temp_root)
             .expect("Temporary metadata fixture root should be removable after the test");
