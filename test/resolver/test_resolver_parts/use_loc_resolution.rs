@@ -303,6 +303,51 @@ fn test_resolver_rejects_use_loc_file_targets_explicitly() {
 }
 
 #[test]
+fn test_resolver_rejects_use_loc_targets_that_define_build_fol() {
+    let temp_root = unique_temp_root("use_loc_build_target");
+    fs::create_dir_all(temp_root.join("app"))
+        .expect("Should create the importing package root fixture directory");
+    fs::create_dir_all(temp_root.join("shared"))
+        .expect("Should create the imported fixture directory");
+    fs::write(
+        temp_root.join("shared/value.fol"),
+        "var[exp] value: int = 1;\n",
+    )
+    .expect("Should write the imported value fixture");
+    fs::write(
+        temp_root.join("shared/build.fol"),
+        "def root: loc = \"src\";\n",
+    )
+    .expect("Should write the formal package build marker");
+    fs::write(
+        temp_root.join("app/main.fol"),
+        "use shared: loc = {\"../shared\"};\nfun[] main(): int = {\n    return 0;\n}\n",
+    )
+    .expect("Should write the build-root loc import fixture");
+
+    let errors = try_resolve_package_from_folder(
+        temp_root
+            .join("app")
+            .to_str()
+            .expect("Temporary resolver fixture path should be valid UTF-8"),
+    )
+    .expect_err("Resolver should reject formal package roots through loc imports");
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == ResolverErrorKind::InvalidInput
+                && error
+                    .to_string()
+                    .contains("must be imported with pkg instead of loc")
+        }),
+        "Resolver should explain that build.fol roots belong to pkg imports"
+    );
+
+    fs::remove_dir_all(&temp_root)
+        .expect("Temporary resolver fixture directory should be removable after the test");
+}
+
+#[test]
 fn test_resolver_uses_exact_directory_targets_without_namespace_ambiguity() {
     let temp_root = unique_temp_root("use_loc_exact_directory_target");
     fs::create_dir_all(temp_root.join("app/shared"))

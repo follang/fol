@@ -26,8 +26,9 @@ that immediately follows those front-end surfaces. Treat
   from an explicit std root, `pkg` loads installed package roots from an explicit
   package-store root with required `package.yaml` + `build.fol`; `package.yaml` is
   metadata-only, `build.fol` defines dependency/export records, stray `package.fol`
-  files are ignored, direct file imports are rejected, and git-like locator forms
-  currently fail with explicit placeholder diagnostics instead of being fetched.
+  files are ignored, direct file imports are rejected, `loc` rejects formal roots
+  that already define `build.fol`, and git-like locator forms currently fail with
+  explicit placeholder diagnostics instead of being fetched.
 - Package boundary: `fol-package` is now the owner of package metadata parsing,
   build-definition extraction, package caching/cycle handling, export-mount
   preparation, and directory/store package loading ahead of resolver work.

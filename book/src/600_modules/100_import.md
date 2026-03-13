@@ -170,6 +170,7 @@ That second form is namespace import, not "single file import".
 If `space` contains multiple `.fol` files in the same folder, they still belong to the same imported namespace.
 
 `loc` does not require `package.yaml` or `build.fol`.
+But if the target directory already defines `build.fol` at its root, that directory is treated as a formal package root and should be imported through `pkg`, not `loc`.
 
 ## External packages
 External packages are imported through `pkg`:

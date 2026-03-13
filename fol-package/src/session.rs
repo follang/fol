@@ -64,6 +64,7 @@ impl PackageSession {
         source_kind: PackageSourceKind,
     ) -> Result<PreparedPackage, PackageError> {
         let canonical_root = canonical_directory_root(directory, source_kind)?;
+        reject_formal_package_roots_for_directory_imports(canonical_root.as_path(), source_kind)?;
         let display_name = canonical_root
             .file_name()
             .and_then(|name| name.to_str())
@@ -433,6 +434,29 @@ fn import_source_label(source_kind: PackageSourceKind) -> &'static str {
     }
 }
 
+fn reject_formal_package_roots_for_directory_imports(
+    root: &Path,
+    source_kind: PackageSourceKind,
+) -> Result<(), PackageError> {
+    if source_kind != PackageSourceKind::Local {
+        return Ok(());
+    }
+
+    let build_path = root.join("build.fol");
+    if build_path.is_file() {
+        return Err(PackageError::new(
+            PackageErrorKind::InvalidInput,
+            format!(
+                "package loc import target '{}' contains '{}'; formal package roots must be imported with pkg instead of loc",
+                root.display(),
+                build_path.display()
+            ),
+        ));
+    }
+
+    Ok(())
+}
+
 fn locator_use_path_segments(locator: &PackageLocator) -> Vec<UsePathSegment> {
     locator
         .path_segments
@@ -731,6 +755,33 @@ mod tests {
         assert_eq!(loaded.package_name(), "dep");
         assert_eq!(loaded.source_kind(), PackageSourceKind::Local);
         assert_eq!(session.cached_package_count(), 1);
+
+        fs::remove_dir_all(&temp_root)
+            .expect("Temporary package-session fixture directory should be removable after the test");
+    }
+
+    #[test]
+    fn package_session_rejects_local_directory_targets_that_define_build_fol() {
+        let temp_root = unique_temp_root("load_local_directory_with_build");
+        fs::create_dir_all(temp_root.join("dep"))
+            .expect("Should create a temporary package root fixture");
+        fs::write(temp_root.join("dep/lib.fol"), "var[exp] answer: int = 42;\n")
+            .expect("Should write the dependency package fixture");
+        fs::write(temp_root.join("dep/build.fol"), "def root: loc = \"src\";\n")
+            .expect("Should write the formal package build marker");
+        let mut session = PackageSession::new();
+
+        let error = session
+            .load_directory_package(temp_root.join("dep").as_path(), PackageSourceKind::Local)
+            .expect_err("Local directory imports should reject formal package roots");
+
+        assert_eq!(error.kind(), crate::PackageErrorKind::InvalidInput);
+        assert!(
+            error
+                .to_string()
+                .contains("must be imported with pkg instead of loc"),
+            "Local directory import errors should explain that formal package roots belong to pkg",
+        );
 
         fs::remove_dir_all(&temp_root)
             .expect("Temporary package-session fixture directory should be removable after the test");
