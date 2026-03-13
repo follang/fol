@@ -505,7 +505,7 @@ Status: done
 
 #### 0.2
 
-Status: pending
+Status: done
 
 - Define `PackageConfig`, `PackageSourceKind`, `PackageIdentity`, and `PreparedPackage` in `fol-package`.
 
