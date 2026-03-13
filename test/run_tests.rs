@@ -18,6 +18,7 @@ mod resolver {
 
 #[cfg(test)]
 mod integration_tests {
+    use serde_json::Value;
     use std::process::Command;
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -39,6 +40,14 @@ mod integration_tests {
             .args(args)
             .output()
             .expect("Should run fol CLI")
+    }
+
+    fn parse_cli_json(output: &std::process::Output) -> Value {
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let json_start = stdout
+            .find('{')
+            .expect("CLI JSON output should contain a JSON object");
+        serde_json::from_str(&stdout[json_start..]).expect("CLI JSON output should stay valid")
     }
 
     #[test]
@@ -771,6 +780,157 @@ mod integration_tests {
             stdout.contains("name 'answer' is ambiguous in lexical scope"),
             "JSON resolver diagnostics should keep the exact ambiguous plain-name wording"
         );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_cli_json_parser_errors_keep_structured_fields() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_json_parser_structured");
+        fs::create_dir_all(&temp_root).expect("Should create temp parser fixture");
+        fs::write(temp_root.join("00_good.fol"), "var ok = 1\n").expect("Should write good source");
+        let bad_file = temp_root.join("10_bad.fol");
+        fs::write(&bad_file, "run(1, 2)\n").expect("Should write invalid file-root source");
+
+        let output = run_fol(&[
+            "--json",
+            temp_root
+                .to_str()
+                .expect("CLI parser fixture path should be utf-8"),
+        ]);
+        let json = parse_cli_json(&output);
+        let diagnostic = &json["diagnostics"][0];
+
+        assert!(!output.status.success(), "Parser fixture should fail in JSON mode");
+        assert_eq!(json["error_count"], 1);
+        assert_eq!(json["warning_count"], 0);
+        assert_eq!(diagnostic["severity"], "Error");
+        assert!(diagnostic["code"].as_str().is_some());
+        assert_eq!(diagnostic["message"], "Executable calls are not allowed at file root");
+        assert_eq!(
+            diagnostic["location"]["file"],
+            bad_file
+                .to_str()
+                .expect("Temporary parser fixture path should be valid UTF-8")
+        );
+        assert_eq!(diagnostic["location"]["line"], 1);
+        assert_eq!(diagnostic["location"]["column"], 1);
+        assert_eq!(diagnostic["location"]["length"], 3);
+        assert_eq!(diagnostic["labels"].as_array().map(|items| items.len()), Some(1));
+        assert_eq!(diagnostic["notes"].as_array().map(|items| items.len()), Some(0));
+        assert_eq!(diagnostic["helps"].as_array().map(|items| items.len()), Some(0));
+        assert_eq!(
+            diagnostic["suggestions"].as_array().map(|items| items.len()),
+            Some(0)
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_cli_json_package_errors_keep_structured_fields() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_json_package_structured");
+        let app_root = temp_root.join("app");
+        let loc_root = temp_root.join("formal_pkg");
+        fs::create_dir_all(&app_root).expect("Should create app fixture root");
+        fs::create_dir_all(&loc_root).expect("Should create loc target fixture root");
+        fs::write(loc_root.join("build.fol"), "def root: loc = \"src\";\n")
+            .expect("Should write formal package control file");
+        let main_file = app_root.join("main.fol");
+        fs::write(
+            &main_file,
+            "use formal: loc = {../formal_pkg};\nfun[] main(): int = {\n    return answer;\n}\n",
+        )
+        .expect("Should write loc misuse fixture");
+
+        let output = run_fol(&[
+            "--json",
+            app_root
+                .to_str()
+                .expect("CLI package fixture path should be utf-8"),
+        ]);
+        let json = parse_cli_json(&output);
+        let diagnostic = &json["diagnostics"][0];
+
+        assert!(!output.status.success(), "Package fixture should fail in JSON mode");
+        assert_eq!(json["error_count"], 1);
+        assert_eq!(diagnostic["severity"], "Error");
+        assert!(diagnostic["code"].as_str().is_some());
+        assert_eq!(
+            diagnostic["location"]["file"],
+            main_file
+                .to_str()
+                .expect("Temporary package fixture path should be valid UTF-8")
+        );
+        assert_eq!(diagnostic["location"]["line"], 1);
+        assert_eq!(diagnostic["location"]["column"], 1);
+        assert_eq!(diagnostic["labels"].as_array().map(|items| items.len()), Some(1));
+        assert_eq!(diagnostic["notes"].as_array().map(|items| items.len()), Some(0));
+        assert_eq!(diagnostic["helps"].as_array().map(|items| items.len()), Some(0));
+        let message = diagnostic["message"]
+            .as_str()
+            .expect("Package diagnostic message should stay a string");
+        assert!(message.contains("build.fol"));
+        assert!(message.contains("pkg instead of loc"));
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_cli_json_resolver_errors_keep_structured_fields() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_json_resolver_structured");
+        fs::create_dir_all(temp_root.join("alpha"))
+            .expect("Should create first imported namespace fixture");
+        fs::create_dir_all(temp_root.join("beta"))
+            .expect("Should create second imported namespace fixture");
+        fs::write(temp_root.join("alpha/values.fol"), "var[exp] answer: int = 1;\n")
+            .expect("Should write first imported exported value fixture");
+        fs::write(temp_root.join("beta/values.fol"), "var[exp] answer: int = 2;\n")
+            .expect("Should write second imported exported value fixture");
+        let main_file = temp_root.join("main.fol");
+        fs::write(
+            &main_file,
+            "use alpha: loc = {alpha};\nuse beta: loc = {beta};\nfun[] main(): int = {\n    return answer;\n}\n",
+        )
+        .expect("Should write ambiguous imported plain-name fixture");
+
+        let output = run_fol(&[
+            "--json",
+            temp_root
+                .to_str()
+                .expect("CLI resolver fixture path should be utf-8"),
+        ]);
+        let json = parse_cli_json(&output);
+        let diagnostic = &json["diagnostics"][0];
+
+        assert!(!output.status.success(), "Resolver fixture should fail in JSON mode");
+        assert_eq!(json["error_count"], 1);
+        assert_eq!(diagnostic["severity"], "Error");
+        assert!(diagnostic["code"].as_str().is_some());
+        assert_eq!(
+            diagnostic["location"]["file"],
+            main_file
+                .to_str()
+                .expect("Temporary resolver fixture path should be valid UTF-8")
+        );
+        assert_eq!(diagnostic["location"]["line"], 4);
+        assert_eq!(diagnostic["location"]["column"], 12);
+        assert_eq!(diagnostic["location"]["length"], 6);
+        assert_eq!(diagnostic["labels"].as_array().map(|items| items.len()), Some(1));
+        assert_eq!(diagnostic["notes"].as_array().map(|items| items.len()), Some(0));
+        assert_eq!(diagnostic["helps"].as_array().map(|items| items.len()), Some(0));
+        let message = diagnostic["message"]
+            .as_str()
+            .expect("Resolver diagnostic message should stay a string");
+        assert!(message.contains("ResolverAmbiguousReference"));
+        assert!(message.contains("name 'answer' is ambiguous in lexical scope"));
+        assert!(message.contains("candidates:"));
 
         fs::remove_dir_all(&temp_root).ok();
     }

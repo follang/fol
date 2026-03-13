@@ -592,7 +592,7 @@ Status: done
 
 #### 3.3
 
-Status: pending
+Status: done
 
 - Add exact JSON fixture tests for real compiler errors.
 
