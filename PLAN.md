@@ -635,7 +635,7 @@ Status: done
 
 #### 4.3
 
-Status: pending
+Status: done
 
 - Remove resolver-owned package root loading and caching logic that now belongs in `fol-package`.
 

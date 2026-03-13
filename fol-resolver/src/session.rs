@@ -3,13 +3,10 @@ use crate::{
     model::ResolvedProgram,
     traverse, ResolverError, ResolverErrorKind, ResolverResult,
 };
-use fol_package::{
-    canonical_directory_root, parse_directory_package_syntax, PackageBuildDefinition,
-    PackageMetadata, PackageSession, PreparedPackage,
-};
+use fol_package::{PackageSession, PreparedPackage};
 use fol_parser::ast::{ParsedPackage, UsePathSegment};
 use std::collections::BTreeMap;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ResolverConfig {
@@ -127,33 +124,10 @@ impl ResolverSession {
         directory: &Path,
         source_kind: PackageSourceKind,
     ) -> Result<LoadedPackage, ResolverError> {
-        if matches!(
-            source_kind,
-            PackageSourceKind::Local | PackageSourceKind::Standard
-        ) {
-            let prepared = self
-                .package_session
-                .load_directory_package(directory, package_source_kind(source_kind))?;
-            return self.load_prepared_package(prepared);
-        }
-
-        let canonical_root =
-            canonical_directory_root(directory, package_source_kind(source_kind))?;
-        let display_name = canonical_root
-            .file_name()
-            .and_then(|name| name.to_str())
-            .filter(|name| !name.is_empty())
-            .ok_or_else(|| {
-                ResolverError::new(
-                    ResolverErrorKind::InvalidInput,
-                    format!(
-                        "resolver could not derive a package name from '{}'",
-                        canonical_root.display()
-                    ),
-                )
-            })?
-            .to_string();
-        self.load_package_from_root(canonical_root, source_kind, display_name, None, None)
+        let prepared = self
+            .package_session
+            .load_directory_package(directory, package_source_kind(source_kind))?;
+        self.load_prepared_package(prepared)
     }
 
     pub(crate) fn load_package_from_store(
@@ -165,82 +139,6 @@ impl ResolverSession {
             .package_session
             .load_package_from_store(store_root, package_path)?;
         self.load_prepared_package(prepared)
-    }
-
-    fn load_package_from_root(
-        &mut self,
-        canonical_root: PathBuf,
-        source_kind: PackageSourceKind,
-        display_name: String,
-        metadata: Option<PackageMetadata>,
-        build: Option<PackageBuildDefinition>,
-    ) -> Result<LoadedPackage, ResolverError> {
-        let identity = PackageIdentity {
-            source_kind,
-            canonical_root: canonical_root.to_string_lossy().to_string(),
-            display_name: display_name.clone(),
-        };
-
-        if self.loading_stack.contains(&identity) {
-            return Err(self.import_cycle_error(&identity));
-        }
-
-        if let Some(cached) = self.cached_package(&identity) {
-            return Ok(cached.clone());
-        }
-
-        self.loading_stack.push(identity.clone());
-
-        let loaded_result: Result<LoadedPackage, ResolverError> = (|| {
-            let syntax =
-                parse_directory_package_syntax(
-                    canonical_root.as_path(),
-                    &display_name,
-                    package_source_kind(source_kind),
-                )?;
-            let program = self.resolve_parsed_package(syntax, None).map_err(|errors| {
-                errors.into_iter().next().unwrap_or_else(|| {
-                    ResolverError::new(
-                        ResolverErrorKind::Internal,
-                        format!(
-                            "resolver failed to load package root '{}'",
-                            canonical_root.display()
-                        ),
-                    )
-                })
-            })?;
-            Ok(LoadedPackage {
-                identity,
-                prepared: match (metadata, build) {
-                    (Some(metadata), Some(build)) => PreparedPackage::with_controls(
-                        fol_package::PackageIdentity {
-                            source_kind: package_source_kind(source_kind),
-                            canonical_root: canonical_root.to_string_lossy().to_string(),
-                            display_name: display_name.clone(),
-                        },
-                        metadata,
-                        build,
-                        Vec::new(),
-                        program.syntax().clone(),
-                    ),
-                    _ => PreparedPackage::new(
-                        fol_package::PackageIdentity {
-                            source_kind: package_source_kind(source_kind),
-                            canonical_root: canonical_root.to_string_lossy().to_string(),
-                            display_name: display_name.clone(),
-                        },
-                        program.syntax().clone(),
-                    ),
-                },
-                program,
-            })
-        })();
-
-        self.loading_stack.pop();
-
-        let loaded = loaded_result?;
-        self.cache_package(loaded.clone());
-        Ok(loaded)
     }
 
     fn load_prepared_package(
