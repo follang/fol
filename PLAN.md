@@ -561,7 +561,7 @@ Status: done
 
 #### 2.2
 
-Status: pending
+Status: done
 
 - Move canonical directory/package-root loading logic out of resolver session code.
 

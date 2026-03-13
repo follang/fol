@@ -23,4 +23,7 @@ pub use errors::{PackageError, PackageErrorKind};
 pub use identity::{PackageIdentity, PackageSourceKind};
 pub use metadata::{parse_package_metadata, PackageMetadata};
 pub use model::PreparedPackage;
-pub use session::PackageSession;
+pub use session::{
+    canonical_directory_root, infer_package_root, parse_directory_package_syntax,
+    resolve_directory_path, PackageSession,
+};

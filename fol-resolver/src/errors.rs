@@ -119,15 +119,40 @@ impl ToDiagnosticLocation for ResolverError {
 
 impl From<PackageError> for ResolverError {
     fn from(error: PackageError) -> Self {
+        let kind = match error.kind() {
+            fol_package::PackageErrorKind::InvalidInput => ResolverErrorKind::InvalidInput,
+            fol_package::PackageErrorKind::Unsupported => ResolverErrorKind::Unsupported,
+            fol_package::PackageErrorKind::ImportCycle => ResolverErrorKind::ImportCycle,
+            fol_package::PackageErrorKind::Internal => ResolverErrorKind::Internal,
+        };
+        let message = resolver_package_message(error.message());
         match error.origin().cloned() {
-            Some(origin) => ResolverError::with_origin(
-                ResolverErrorKind::InvalidInput,
-                error.message(),
-                origin,
-            ),
-            None => ResolverError::new(ResolverErrorKind::InvalidInput, error.message()),
+            Some(origin) => ResolverError::with_origin(kind, message, origin),
+            None => ResolverError::new(kind, message),
         }
     }
+}
+
+fn resolver_package_message(message: &str) -> String {
+    if let Some(rest) = message.strip_prefix("package loader ") {
+        return format!("resolver {rest}");
+    }
+    if let Some(rest) = message.strip_prefix("package loading ") {
+        return format!("resolver {rest}");
+    }
+    if let Some(rest) = message.strip_prefix("package loc import target ") {
+        return format!("resolver loc import target {rest}");
+    }
+    if let Some(rest) = message.strip_prefix("package std import target ") {
+        return format!("resolver std import target {rest}");
+    }
+    if let Some(rest) = message.strip_prefix("package pkg import target ") {
+        return format!("resolver pkg import target {rest}");
+    }
+    if let Some(rest) = message.strip_prefix("package entry import target ") {
+        return format!("resolver entry import target {rest}");
+    }
+    message.to_string()
 }
 
 pub(crate) fn format_origin_brief(origin: &SyntaxOrigin) -> String {
@@ -160,7 +185,7 @@ pub(crate) fn symbol_kind_label(kind: SymbolKind) -> &'static str {
 
 #[cfg(test)]
 mod tests {
-    use super::{ResolverError, ResolverErrorKind};
+    use super::{resolver_package_message, ResolverError, ResolverErrorKind};
     use fol_diagnostics::DiagnosticReport;
     use fol_parser::ast::SyntaxOrigin;
 
@@ -221,5 +246,17 @@ mod tests {
         assert!(rendered.contains("ResolverDuplicateSymbol"));
         assert!(rendered.contains("pkg/main.fol"));
         assert!(rendered.contains("\"line\": 7"));
+    }
+
+    #[test]
+    fn resolver_error_translation_rewrites_package_loader_prefixes() {
+        assert_eq!(
+            resolver_package_message("package loader could not inspect loc import target '/tmp/x': nope"),
+            "resolver could not inspect loc import target '/tmp/x': nope"
+        );
+        assert_eq!(
+            resolver_package_message("package std import target '/tmp/std/fmt' does not exist"),
+            "resolver std import target '/tmp/std/fmt' does not exist"
+        );
     }
 }
