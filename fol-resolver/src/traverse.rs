@@ -1289,18 +1289,18 @@ fn resolve_lexical_symbol_of_kinds(
                 return Ok(matching_symbols[0].id);
             }
             if matching_symbols.len() > 1 {
-                return Err(error_with_optional_origin(
-                    ResolverErrorKind::AmbiguousReference,
+                return Err(ambiguity_error_with_optional_origin(
                     lexical_ambiguity_message(name, missing_role, &matching_symbols),
                     origin,
+                    &matching_symbols,
                 ));
             }
 
             if allowed_kinds.is_empty() {
-                return Err(error_with_optional_origin(
-                    ResolverErrorKind::AmbiguousReference,
+                return Err(ambiguity_error_with_optional_origin(
                     lexical_ambiguity_message(name, missing_role, &matching_symbols),
                     origin,
+                    &matching_symbols,
                 ));
             }
 
@@ -1377,10 +1377,10 @@ fn resolve_imported_symbol_of_kinds(
             ),
             origin,
         )),
-        _ => Err(error_with_optional_origin(
-            ResolverErrorKind::AmbiguousReference,
+        _ => Err(ambiguity_error_with_optional_origin(
             lexical_ambiguity_message(name, missing_role, &matches),
             origin,
+            &matches,
         )),
     }
 }
@@ -1716,8 +1716,7 @@ fn resolve_symbol_in_scope(
             format!("could not resolve {} '{}'", missing_role, full_path),
             origin.clone(),
         )),
-        _ => Err(error_with_optional_origin(
-            ResolverErrorKind::AmbiguousReference,
+        _ => Err(ambiguity_error_with_optional_origin(
             format!(
                 "{} '{}' is ambiguous; candidates: {}",
                 missing_role,
@@ -1725,6 +1724,7 @@ fn resolve_symbol_in_scope(
                 describe_symbol_candidates(&matching_symbols)
             ),
             origin,
+            &matching_symbols,
         )),
     }
 }
@@ -1738,6 +1738,36 @@ fn error_with_optional_origin(
         Some(origin) => ResolverError::with_origin(kind, message, origin),
         None => ResolverError::new(kind, message),
     }
+}
+
+fn ambiguity_error_with_optional_origin(
+    message: String,
+    origin: Option<fol_parser::ast::SyntaxOrigin>,
+    symbols: &[&ResolvedSymbol],
+) -> ResolverError {
+    let mut error =
+        error_with_optional_origin(ResolverErrorKind::AmbiguousReference, message, origin);
+    let mut seen = std::collections::BTreeSet::new();
+
+    for symbol in symbols {
+        let Some(symbol_origin) = symbol.origin.clone() else {
+            continue;
+        };
+        let dedupe_key = (
+            symbol_origin.file.clone(),
+            symbol_origin.line,
+            symbol_origin.column,
+            symbol_origin.length,
+        );
+        if seen.insert(dedupe_key) {
+            error = error.with_related_origin(
+                symbol_origin,
+                format!("candidate {} declaration", symbol_kind_label(symbol.kind)),
+            );
+        }
+    }
+
+    error
 }
 
 fn qualified_path_origin(

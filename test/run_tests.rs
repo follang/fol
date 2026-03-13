@@ -922,7 +922,17 @@ mod integration_tests {
         assert_eq!(diagnostic["location"]["line"], 4);
         assert_eq!(diagnostic["location"]["column"], 12);
         assert_eq!(diagnostic["location"]["length"], 6);
-        assert_eq!(diagnostic["labels"].as_array().map(|items| items.len()), Some(1));
+        assert_eq!(diagnostic["labels"].as_array().map(|items| items.len()), Some(3));
+        assert_eq!(diagnostic["labels"][1]["kind"], "Secondary");
+        assert_eq!(diagnostic["labels"][2]["kind"], "Secondary");
+        assert_eq!(
+            diagnostic["labels"][1]["message"],
+            "candidate value binding declaration"
+        );
+        assert_eq!(
+            diagnostic["labels"][2]["message"],
+            "candidate value binding declaration"
+        );
         assert_eq!(diagnostic["notes"].as_array().map(|items| items.len()), Some(0));
         assert_eq!(diagnostic["helps"].as_array().map(|items| items.len()), Some(0));
         let message = diagnostic["message"]

@@ -676,7 +676,7 @@ Status: done
 
 #### 6.2
 
-Status: pending
+Status: done
 
 - Add related labels for ambiguity diagnostics.
 
