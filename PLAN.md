@@ -1574,22 +1574,33 @@ Status: done
 
 #### Slice 20.2
 
-Status: pending
+Status: done
 
 - Rewrite the import-resolution definition of done once `loc`, `std`, and `pkg` are
   all implemented and test-backed.
 
 ## 30. Definition Of Done For This Continuation
 
-This continuation should be considered complete only when:
+This continuation is complete at head.
+
+Satisfied completion criteria:
 
 - `url` is gone from the active import contract
-- `pkg` exists and is parser/resolver-visible
-- `loc` loads real directories from disk rather than only matching already-loaded scopes
-- `std` loads from a configured std root
-- `pkg` resolves against installed external packages with `package.fol`
+- `pkg` is parser-visible and resolver-visible
+- `loc` loads real directories from disk
+- `std` loads from an explicit configured std root
+- `pkg` resolves against installed external packages with required `package.fol`
+- transitive `pkg` dependencies resolve through the shared resolver session
+- shared package roots dedupe through canonical package identity
 - `use` never imports a single file directly
 - `build.fol` is not required for resolver-only package discovery
 - the test matrix in section 28 is green
 
-Only after that should the import-source expansion be treated as complete.
+Current validated baseline for this closeout:
+
+- `make build` passed
+- `make test` passed
+- `1` unit test passed
+- `1353` integration tests passed
+
+Remaining in-scope work for this continuation: none.
