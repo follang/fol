@@ -681,6 +681,9 @@ pub enum FolType {
         name: Option<String>,
         access: Vec<String>,
     },
+    Package {
+        name: String,
+    },
     Url {
         name: String,
     },

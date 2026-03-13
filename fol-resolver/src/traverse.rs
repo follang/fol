@@ -1487,6 +1487,7 @@ fn resolve_type_reference(
         | FolType::Never
         | FolType::Any
         | FolType::None
+        | FolType::Package { .. }
         | FolType::Module { .. }
         | FolType::Block { .. }
         | FolType::Test { .. }

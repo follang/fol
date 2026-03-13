@@ -7,6 +7,23 @@ impl AstParser {
         base_name: &str,
     ) -> Result<Option<FolType>, Box<dyn Glitch>> {
         match base_name {
+            "pkg" => {
+                let args = self.parse_type_argument_list(tokens)?;
+                if args.len() > 1 {
+                    let token = tokens.curr(false)?;
+                    return Err(Box::new(ParseError::from_token(
+                        &token,
+                        "Expected zero or one type argument for pkg[...]".to_string(),
+                    )));
+                }
+                let name = match args.into_iter().next() {
+                    None => String::new(),
+                    Some(other) => other
+                        .named_text()
+                        .unwrap_or_else(|| Self::fol_type_label(&other)),
+                };
+                Ok(Some(FolType::Package { name }))
+            }
             "url" => {
                 let args = self.parse_type_argument_list(tokens)?;
                 if args.len() > 1 {
@@ -64,6 +81,9 @@ impl AstParser {
 
     pub(super) fn lower_bare_source_kind_type_name(name: &str) -> Option<FolType> {
         match name {
+            "pkg" => Some(FolType::Package {
+                name: String::new(),
+            }),
             "url" => Some(FolType::Url {
                 name: String::new(),
             }),

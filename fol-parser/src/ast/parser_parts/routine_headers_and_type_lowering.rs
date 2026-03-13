@@ -736,6 +736,13 @@ impl AstParser {
             FolType::Channel { .. } => "chn".to_string(),
             FolType::Named { name, .. } => name.clone(),
             FolType::QualifiedNamed { path } => path.joined(),
+            FolType::Package { name } => {
+                if name.is_empty() {
+                    "pkg".to_string()
+                } else {
+                    name.clone()
+                }
+            }
             FolType::Url { name } => {
                 if name.is_empty() {
                     "url".to_string()

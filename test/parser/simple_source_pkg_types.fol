@@ -1,0 +1,2 @@
+use json: pkg = {"json"};
+typ JsonPkg: pkg[registry];

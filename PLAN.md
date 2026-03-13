@@ -1082,3 +1082,514 @@ Completed criteria:
 
 The next phase can now move on to post-resolution semantic work instead of further
 resolver hardening.
+
+## 20. Next Continuation: `loc`, `std`, And `pkg` Imports
+
+This section defines the next import-resolution expansion after the current
+resolver phase.
+
+The goal is to keep `use` simple and consistent with the source-layout model that
+already exists:
+
+- a directory is the importable unit
+- files are source units inside that directory-backed package or namespace
+- `use` does not import one physical file as a first-class language concept
+
+The new source-kind contract should become:
+
+- `loc`: local filesystem directory import, no manifest required
+- `std`: standard-library directory import, no manifest required
+- `pkg`: external package import, manifest required
+- `url`: removed from the language surface and replaced by `pkg`
+
+## 21. Hard Decisions For This Phase
+
+These decisions should be treated as the target contract unless intentionally
+reopened.
+
+### 21.1 `use` Imports Directories, Not Files
+
+- `use` should always resolve to a directory-backed package root or namespace root.
+- Resolver may load many `.fol` files from that directory.
+- That does **not** mean the language supports direct file imports.
+- A path ending in `foo.fol` should be rejected for `loc`, `std`, and `pkg`.
+
+Reason:
+
+- the front end already models folders as packages and files as source units
+- same-folder files already share package scope
+- direct file imports would fight the current package/file model and make `hid`
+  semantics more confusing
+
+### 21.2 `loc` Is Manifest-Free
+
+- `loc` should point to a real directory on the local filesystem.
+- No `package.fol` is required.
+- No `build.fol` is required.
+- Resolver should treat the target directory as a package root or namespace root
+  based on the chosen mount rules below.
+
+Intended use:
+
+- local workspace packages
+- ad-hoc imports in monorepos
+- examples, tests, and private code sharing without packaging ceremony
+
+### 21.3 `std` Is Toolchain-Rooted And Manifest-Free
+
+- `std` should resolve exactly like `loc`, but under a compiler/toolchain-owned
+  standard-library root.
+- It should not require `package.fol`.
+- It should not require `build.fol`.
+- The stdlib may be empty initially; the contract still needs to exist now.
+
+### 21.4 `pkg` Replaces `url`
+
+- `url` should be removed from the user-facing import contract.
+- `pkg` becomes the external dependency source kind.
+- `pkg` is not a raw URL import in source code.
+- `pkg` resolves through package metadata and an installed/fetched package store.
+
+### 21.5 `pkg` Requires `package.fol`
+
+- external packages must expose a package root manifest named `package.fol`
+- `build.fol` may exist at the root, but resolver must not require it just to
+  discover and resolve imports
+- `build.fol` is build-system input, not basic resolver identity input
+
+### 21.6 `package.yaml` Stays Out Of Scope For V1
+
+- supporting both `package.fol` and `package.yaml` as equal first-class manifests
+  would create unnecessary ambiguity in the first package-system version
+- the first implementation should stabilize one canonical manifest format:
+  `package.fol`
+
+If YAML support is ever added later, it should be a compatibility/import format,
+not a second authoritative manifest.
+
+## 22. Required Architectural Shift
+
+Current resolver behavior is narrower:
+
+- `loc` only resolves against namespaces that are already present in the currently
+  loaded source set
+- resolver does not yet load another directory from disk for an import target
+- resolver explicitly rejects `std` and `url`
+
+That means this phase is not just a few new match arms in `imports.rs`.
+
+We need a new import-loading layer that can:
+
+- canonicalize and validate import roots
+- load additional source trees on demand
+- parse imported packages into `ParsedPackage`
+- resolve imported packages recursively
+- cache already loaded packages by canonical identity
+- prevent import cycles from causing infinite recursion
+
+This likely means introducing a resolver-adjacent session object rather than keeping
+all import behavior inside one single-package `ResolvedProgram`.
+
+## 23. Semantic Contract By Source Kind
+
+### 23.1 `loc`
+
+`loc` should accept:
+
+- a relative directory path
+- an absolute directory path
+- a directory that represents a package root
+- a subdirectory inside a package root, when that subdirectory is intended to be
+  imported as a namespace root
+
+`loc` should reject:
+
+- a missing path
+- a non-directory target
+- a direct file target
+- a directory with no `.fol` sources in the chosen imported subtree
+
+Suggested meaning:
+
+- `use math: loc = {"../shared/math"}` imports that directory as a package root
+- `use http: loc = {"../shared/net/http"}` imports that directory as a namespace root
+
+Resolver behavior:
+
+- package-root import exposes that package root
+- namespace-root import exposes that namespace root
+- imported exported names become visible through the alias according to the same
+  import visibility rules already implemented for in-memory imports
+
+### 23.2 `std`
+
+`std` should behave like `loc`, but the path is resolved relative to a configured
+stdlib root.
+
+Examples:
+
+- `use fmt: std = {"fmt"}`
+- `use io: std = {"core/io"}`
+
+Resolver behavior:
+
+- standard library packages are loaded from the std root
+- they participate in the same package/namespace resolution model as other imports
+- they are not special in the AST beyond the source kind
+
+### 23.3 `pkg`
+
+`pkg` should resolve through an installed or fetched package root that contains
+`package.fol`.
+
+Examples:
+
+- `use json: pkg = {"json"}`
+- `use serde: pkg = {"serde"}`
+
+Important rule:
+
+- source code should not embed raw transport URLs for package acquisition
+- package source acquisition belongs to package metadata and tool commands, not to
+  the `use` statement itself
+
+## 24. Package / Namespace Mount Rules
+
+This is the most important place to stay explicit.
+
+### 24.1 Package-Root Import
+
+If the imported directory is treated as a package root:
+
+- its direct `.fol` files are package scope
+- its subdirectories are namespaces
+- the imported alias points at the package root scope
+
+### 24.2 Namespace-Root Import
+
+If the imported directory is treated as a namespace root:
+
+- the directory is loaded as the root of an imported namespace surface
+- the alias points at that namespace scope
+- nested subdirectories extend below that namespace root
+
+### 24.3 Recommended Rule For `loc` And `std`
+
+To keep things simple:
+
+- the exact directory supplied in `use ... = { ... }` is the loaded root
+- that root is the imported scope
+- files directly inside it are root members of that imported surface
+- nested folders extend from there
+
+That avoids requiring a manifest just to discover a higher package root for `loc`
+and `std`.
+
+### 24.4 Recommended Rule For `pkg`
+
+For `pkg`, the imported root is always the package root discovered by `package.fol`.
+
+- `package.fol` defines the package identity
+- subdirectories define namespaces under that package
+- the imported alias normally points at the package root unless the manifest later
+  supports explicit subpackage exports
+
+## 25. Package Identity Rules
+
+### 25.1 `loc` Package Identity
+
+For manifest-free local imports, package identity must still be stable enough for:
+
+- duplicate-package caching
+- cycle detection
+- diagnostics
+
+Recommended rule:
+
+- canonical directory path is the primary identity key
+- package display name defaults to the final directory name
+- the local `use` alias does not change package identity; it only creates the local
+  import binding
+
+### 25.2 `std` Package Identity
+
+Recommended rule:
+
+- identity key = canonical std-root path + requested relative directory
+- display name defaults to the final directory name unless later overridden by std
+  package metadata
+
+### 25.3 `pkg` Package Identity
+
+Recommended rule:
+
+- identity comes from `package.fol`
+- package root canonical path participates in cache identity for installed/fetched
+  packages
+- manifest name/version/source identity should be validated against the installed
+  path when package tooling is added
+
+## 26. `package.fol` And `build.fol`
+
+### 26.1 `package.fol`
+
+`package.fol` should be the canonical manifest for external packages.
+
+At minimum it should eventually carry:
+
+- package name
+- version
+- source identity or origin metadata
+- dependency list
+- optional export or public-root metadata if the package system needs it later
+
+### 26.2 `build.fol`
+
+`build.fol` should remain separate from the manifest.
+
+Resolver should not need to execute or even parse `build.fol` to import a package.
+
+`build.fol` belongs to:
+
+- building
+- testing
+- packaging
+- install/publish workflows
+
+Not to:
+
+- basic package discovery
+- package identity
+- name resolution of imported declarations
+
+## 27. Recommended Implementation Boundary
+
+The resolver should not become a general network or git client.
+
+Recommended split:
+
+- parser/resolver understand source kinds and imported package graphs
+- a separate package-loading layer handles filesystem discovery and package-store lookup
+- a later package-management layer handles git fetching, caching, and lockfile work
+
+That means:
+
+- `loc` and `std` can be implemented first entirely locally
+- `pkg` can first resolve only against an installed local package store
+- git fetch can be added later without distorting resolver internals
+
+## 28. Test Matrix Required For This Phase
+
+### 28.1 `loc` Tests
+
+- success: import local package-root directory
+- success: import local namespace directory
+- success: imported exported values/routines/types resolve through local alias
+- failure: file path target is rejected
+- failure: missing directory is rejected
+- failure: empty directory with no `.fol` sources is rejected
+- failure: canonical duplicate imports do not create duplicated package loads
+- failure: local import cycle is reported cleanly
+
+### 28.2 `std` Tests
+
+- success: import std package root from configured std root
+- success: import std namespace directory
+- failure: missing std package reports explicit unresolved std target
+- failure: file target under std root is rejected
+
+### 28.3 `pkg` Tests
+
+- success: installed external package with `package.fol` resolves
+- success: exported names from `pkg` package resolve through plain and qualified lookup
+- failure: package root without `package.fol` is rejected
+- failure: installed package with malformed `package.fol` is rejected explicitly
+- failure: missing installed package reports explicit unresolved package error
+
+### 28.4 Transition Tests
+
+- `url` is rejected explicitly after removal
+- `loc` behavior no longer depends on the current compile root already containing the
+  target package
+- imported packages can themselves use `loc`, `std`, or `pkg` according to the chosen
+  recursion rules
+
+## 29. Execution Slices
+
+These slices are the recommended implementation order.
+
+### Phase 14: Source-Kind Surface Cleanup
+
+#### Slice 14.1
+
+Status: done
+
+- Remove `url` from the parser-facing source-kind contract.
+- Add `pkg` as the new parser-visible source kind.
+- Update `FolType` and parser lowering accordingly.
+
+#### Slice 14.2
+
+Status: pending
+
+- Update resolver unsupported-import diagnostics to talk about `pkg` instead of `url`.
+- Update tests, docs, and book examples that still mention `url`.
+
+#### Slice 14.3
+
+Status: pending
+
+- Decide whether legacy `url` syntax is a hard parse error immediately or a targeted
+  compatibility diagnostic.
+- Add tests locking that decision.
+
+### Phase 15: Import Loading Foundation
+
+#### Slice 15.1
+
+Status: pending
+
+- Introduce a resolver session / package-loading context that can manage more than one
+  parsed package.
+- Keep canonical package identity and loaded-package caches there.
+
+#### Slice 15.2
+
+Status: pending
+
+- Add recursive package parsing + resolution entry points for imported packages.
+- Prevent repeated loads of the same canonical package root.
+
+#### Slice 15.3
+
+Status: pending
+
+- Add cycle detection for imported package graphs.
+- Emit explicit import-cycle diagnostics with the participating roots.
+
+### Phase 16: Real `loc` Directory Imports
+
+#### Slice 16.1
+
+Status: pending
+
+- Change `loc` from “resolve against current loaded source set only” to “load target
+  directory from disk”.
+- Accept canonical directory targets only.
+
+#### Slice 16.2
+
+Status: pending
+
+- Define and implement root-mount semantics for imported `loc` directories.
+- Ensure files inside the loaded directory become connected source units under one
+  imported root.
+
+#### Slice 16.3
+
+Status: pending
+
+- Reject `loc` file targets explicitly.
+- Add diagnostics for non-directory and missing-directory targets.
+
+#### Slice 16.4
+
+Status: pending
+
+- Add import-cache and duplicate-load handling for the same canonical local package.
+- Add tests for repeated imports and alias-only renaming.
+
+### Phase 17: `std` Import Roots
+
+#### Slice 17.1
+
+Status: pending
+
+- Define std-root discovery for CLI and tests.
+- Prefer one explicit configured root over implicit host-environment guessing.
+
+#### Slice 17.2
+
+Status: pending
+
+- Implement `std` directory loading using the same package-loading machinery as `loc`.
+- Keep std-specific diagnostics distinct and clear.
+
+#### Slice 17.3
+
+Status: pending
+
+- Add tests for package-root and namespace-root `std` imports.
+- Add negative tests for missing std targets and file targets.
+
+### Phase 18: `pkg` Manifest Foundation
+
+#### Slice 18.1
+
+Status: pending
+
+- Define the minimal `package.fol` schema needed for package identity and dependency
+  declaration.
+- Keep `build.fol` explicitly out of resolver-critical discovery.
+
+#### Slice 18.2
+
+Status: pending
+
+- Add package-root discovery and validation for installed external packages.
+- Reject missing or malformed `package.fol` explicitly.
+
+#### Slice 18.3
+
+Status: pending
+
+- Resolve `pkg` imports against a local installed package store first.
+- Do not add git fetching yet in this slice.
+
+### Phase 19: `pkg` Graph Resolution
+
+#### Slice 19.1
+
+Status: pending
+
+- Allow imported external packages to bring in their own dependencies recursively.
+- Reuse the same session-level cache and cycle detection.
+
+#### Slice 19.2
+
+Status: pending
+
+- Add tests for transitive `pkg` imports and duplicate shared dependencies.
+- Ensure canonical package identity prevents duplicate package loads.
+
+### Phase 20: Docs And Closeout
+
+#### Slice 20.1
+
+Status: pending
+
+- Sync `README.md`, `PROGRESS.md`, `FRONTEND_CONTRACT.md`, and relevant book pages to
+  the final `loc/std/pkg` contract.
+- Remove stale `url` wording everywhere.
+
+#### Slice 20.2
+
+Status: pending
+
+- Rewrite the import-resolution definition of done once `loc`, `std`, and `pkg` are
+  all implemented and test-backed.
+
+## 30. Definition Of Done For This Continuation
+
+This continuation should be considered complete only when:
+
+- `url` is gone from the active import contract
+- `pkg` exists and is parser/resolver-visible
+- `loc` loads real directories from disk rather than only matching already-loaded scopes
+- `std` loads from a configured std root
+- `pkg` resolves against installed external packages with `package.fol`
+- `use` never imports a single file directly
+- `build.fol` is not required for resolver-only package discovery
+- the test matrix in section 28 is green
+
+Only after that should the import-source expansion be treated as complete.

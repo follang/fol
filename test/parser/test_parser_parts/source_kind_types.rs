@@ -1,6 +1,49 @@
 use super::*;
 
 #[test]
+fn test_pkg_type_references_lower_structurally() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_source_pkg_types.fol")
+        .expect("Should read pkg source-kind type fixture");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let ast = parser
+        .parse(&mut lexer)
+        .expect("Parser should lower pkg source-kind types");
+
+    match ast {
+        AstNode::Program { declarations } => {
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::UseDecl {
+                    name,
+                    path_type: FolType::Package { name: kind_name },
+                    path_segments,
+                    ..
+                } if name == "json"
+                    && kind_name.is_empty()
+                    && path_segments.as_slice()
+                        == [fol_parser::ast::UsePathSegment {
+                            separator: None,
+                            spelling: "json".to_string(),
+                        }]
+            )));
+            assert!(declarations.iter().any(|node| matches!(
+                node,
+                AstNode::TypeDecl {
+                    name,
+                    type_def: TypeDefinition::Alias {
+                        target: FolType::Package { name: kind_name }
+                    },
+                    ..
+                } if name == "JsonPkg" && kind_name == "registry"
+            )));
+        }
+        _ => panic!("Expected program node"),
+    }
+}
+
+#[test]
 fn test_url_type_references_lower_structurally() {
     let mut file_stream = FileStream::from_file("test/parser/simple_source_url_types.fol")
         .expect("Should read url source-kind type fixture");
