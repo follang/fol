@@ -1,48 +1,18 @@
 // FOL Diagnostics - Error formatting and output
 use colored::Colorize;
-use fol_types::Glitch;
-use serde::{Deserialize, Serialize};
+
+mod model;
+
+pub use model::{
+    Diagnostic, DiagnosticLabel, DiagnosticLabelKind, DiagnosticLocation, DiagnosticReport,
+    DiagnosticSuggestion, Severity,
+};
 
 /// Output format for diagnostics
 #[derive(Debug, Clone, PartialEq)]
 pub enum OutputFormat {
     Human,
     Json,
-}
-
-/// Location information for diagnostics
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DiagnosticLocation {
-    pub file: Option<String>,
-    pub line: usize,
-    pub column: usize,
-    pub length: Option<usize>,
-}
-
-/// Severity levels for diagnostics
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum Severity {
-    Error,
-    Warning,
-    Info,
-}
-
-/// A single diagnostic message
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Diagnostic {
-    pub severity: Severity,
-    pub code: String,
-    pub message: String,
-    pub location: Option<DiagnosticLocation>,
-    pub help: Option<String>,
-}
-
-/// Collection of diagnostics
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DiagnosticReport {
-    pub diagnostics: Vec<Diagnostic>,
-    pub error_count: usize,
-    pub warning_count: usize,
 }
 
 impl DiagnosticReport {
@@ -63,7 +33,7 @@ impl DiagnosticReport {
         self.diagnostics.push(diagnostic);
     }
 
-    pub fn add_error(&mut self, error: &dyn Glitch, location: Option<DiagnosticLocation>) {
+    pub fn add_error(&mut self, error: &dyn fol_types::Glitch, location: Option<DiagnosticLocation>) {
         let diagnostic = Diagnostic::from_glitch(error, Severity::Error, location);
         self.add_diagnostic(diagnostic);
     }
@@ -92,7 +62,6 @@ impl DiagnosticReport {
             output.push('\n');
         }
 
-        // Summary
         if self.error_count > 0 || self.warning_count > 0 {
             output.push('\n');
             if self.error_count > 0 {
@@ -130,27 +99,9 @@ impl Default for DiagnosticReport {
 }
 
 impl Diagnostic {
-    pub fn from_glitch(
-        error: &dyn Glitch,
-        severity: Severity,
-        location: Option<DiagnosticLocation>,
-    ) -> Self {
-        let error_msg = error.to_string();
-        let code = extract_error_code(&error_msg);
-
-        Self {
-            severity,
-            code,
-            message: error_msg,
-            location,
-            help: None,
-        }
-    }
-
     fn to_human_readable(&self) -> String {
         let mut output = String::new();
 
-        // Error prefix with severity
         let prefix = match self.severity {
             Severity::Error => "error".red().bold(),
             Severity::Warning => "warning".yellow().bold(),
@@ -159,8 +110,7 @@ impl Diagnostic {
 
         output.push_str(&format!("{}: {}", prefix, self.message));
 
-        // Location information
-        if let Some(loc) = &self.location {
+        if let Some(loc) = self.primary_location() {
             output.push('\n');
             if let Some(file) = &loc.file {
                 output.push_str(&format!(
@@ -180,8 +130,7 @@ impl Diagnostic {
             }
         }
 
-        // Help text
-        if let Some(help) = &self.help {
+        if let Some(help) = self.first_help() {
             output.push('\n');
             output.push_str(&format!("  {} {}", "help:".green().bold(), help));
         }
@@ -203,7 +152,7 @@ fn extract_error_code(message: &str) -> String {
     } else if message.contains("GettingWrongPath") {
         "E0005".to_string()
     } else {
-        "E0000".to_string() // Unknown error
+        "E0000".to_string()
     }
 }
 
@@ -213,7 +162,6 @@ pub trait ToDiagnosticLocation {
 }
 
 impl DiagnosticLocation {
-    /// Create from fol-lexer point::Location (if available)
     pub fn from_point_location(loc: &impl PointLocationLike) -> Self {
         Self {
             file: loc.get_file_path(),
@@ -313,5 +261,42 @@ mod tests {
         assert!(human.contains("error: Test error"));
         assert!(human.contains("--> pkg/main.fol:7:3"));
         assert!(human.contains("found 1 error"));
+    }
+
+    #[test]
+    fn test_diagnostic_rich_model_keeps_primary_location_and_first_help_compatibility() {
+        let diagnostic = Diagnostic::new(Severity::Error, "E9000", "rich model")
+            .with_primary_label(DiagnosticLocation {
+                file: Some("pkg/main.fol".to_string()),
+                line: 4,
+                column: 2,
+                length: Some(3),
+            })
+            .with_help("first help")
+            .with_help("second help")
+            .with_note("note text")
+            .with_secondary_label(
+                DiagnosticLocation {
+                    file: Some("pkg/lib.fol".to_string()),
+                    line: 8,
+                    column: 1,
+                    length: Some(5),
+                },
+                "related declaration",
+            );
+
+        assert_eq!(
+            diagnostic.primary_location(),
+            Some(&DiagnosticLocation {
+                file: Some("pkg/main.fol".to_string()),
+                line: 4,
+                column: 2,
+                length: Some(3),
+            })
+        );
+        assert_eq!(diagnostic.first_help(), Some("first help"));
+        assert_eq!(diagnostic.labels.len(), 2);
+        assert_eq!(diagnostic.notes, vec!["note text".to_string()]);
+        assert_eq!(diagnostic.helps.len(), 2);
     }
 }

@@ -518,7 +518,7 @@ Status: pending
 
 #### 1.1
 
-Status: pending
+Status: done
 
 - Replace the flat `Diagnostic { location, help }` shape with structured labels, notes, helps, and suggestions.
 
