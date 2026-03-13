@@ -1526,7 +1526,7 @@ Status: done
 
 #### Slice 18.1
 
-Status: pending
+Status: done
 
 - Define the minimal `package.fol` schema needed for package identity and dependency
   declaration.
