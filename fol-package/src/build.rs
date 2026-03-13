@@ -459,4 +459,56 @@ mod tests {
         fs::remove_dir_all(&temp_root)
             .expect("Temporary build fixture root should be removable after the test");
     }
+
+    #[test]
+    fn package_build_parser_rejects_pkg_defs_with_parameters() {
+        let temp_root = unique_temp_root("pkg_def_params");
+        fs::create_dir_all(&temp_root).expect("Should create temporary build fixture root");
+        let build_path = temp_root.join("build.fol");
+        fs::write(&build_path, "def core(name: str): pkg = \"core\";\n")
+            .expect("Should write the unsupported build dependency fixture");
+
+        let error = parse_package_build(&build_path)
+            .expect_err("Phase-one package extraction should reject pkg defs with parameters");
+
+        assert_eq!(error.kind(), PackageErrorKind::InvalidInput);
+        assert!(error
+            .to_string()
+            .contains("package build dependency definitions do not accept parameters"));
+        let origin = error
+            .origin()
+            .expect("Unsupported package dependency defs should keep exact origins");
+        assert_eq!(origin.file.as_deref(), build_path.to_str());
+        assert_eq!(origin.line, 1);
+        assert_eq!(origin.column, 1);
+
+        fs::remove_dir_all(&temp_root)
+            .expect("Temporary build fixture root should be removable after the test");
+    }
+
+    #[test]
+    fn package_build_parser_rejects_loc_defs_with_options() {
+        let temp_root = unique_temp_root("loc_def_options");
+        fs::create_dir_all(&temp_root).expect("Should create temporary build fixture root");
+        let build_path = temp_root.join("build.fol");
+        fs::write(&build_path, "def[exp] root: loc = \"src\";\n")
+            .expect("Should write the unsupported build export fixture");
+
+        let error = parse_package_build(&build_path)
+            .expect_err("Phase-one package extraction should reject loc defs with options");
+
+        assert_eq!(error.kind(), PackageErrorKind::InvalidInput);
+        assert!(error
+            .to_string()
+            .contains("package build export definitions do not accept declaration options"));
+        let origin = error
+            .origin()
+            .expect("Unsupported package export defs should keep exact origins");
+        assert_eq!(origin.file.as_deref(), build_path.to_str());
+        assert_eq!(origin.line, 1);
+        assert_eq!(origin.column, 1);
+
+        fs::remove_dir_all(&temp_root)
+            .expect("Temporary build fixture root should be removable after the test");
+    }
 }

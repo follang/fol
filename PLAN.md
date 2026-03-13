@@ -545,7 +545,7 @@ Status: done
 
 #### 1.4
 
-Status: pending
+Status: done
 
 - Lock explicit tests that `build.fol` is parsed as ordinary FOL, while phase-one package extraction recognizes `def ...: pkg` and `def ...: loc` and ignores or explicitly rejects only unsupported package-definition shapes.
 
