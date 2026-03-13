@@ -614,7 +614,7 @@ Status: done
 
 #### 4.3
 
-Status: pending
+Status: done
 
 - Introduce a proper parse error kind or equivalent structured mapping for parser diagnostics.
 

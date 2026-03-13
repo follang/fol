@@ -21,6 +21,15 @@ pub struct ParseError {
     length: usize,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ParseErrorKind {
+    Syntax,
+    FileRoot,
+    Context,
+    Literal,
+    Unsupported,
+}
+
 impl ParseError {
     pub fn from_token(token: &fol_lexer::lexer::stage3::element::Element, message: String) -> Self {
         let loc = token.loc();
@@ -31,6 +40,14 @@ impl ParseError {
             column: loc.col(),
             length: loc.len(),
         }
+    }
+
+    pub fn kind(&self) -> ParseErrorKind {
+        ParseErrorKind::classify(&self.message)
+    }
+
+    pub fn diagnostic_code(&self) -> &'static str {
+        self.kind().diagnostic_code()
     }
 
     pub fn file(&self) -> Option<String> {
@@ -47,6 +64,41 @@ impl ParseError {
 
     pub fn length(&self) -> usize {
         self.length
+    }
+}
+
+impl ParseErrorKind {
+    fn classify(message: &str) -> Self {
+        if message.contains("at file root") {
+            Self::FileRoot
+        } else if message.contains("outside routines")
+            || message.contains("outside routine bodies")
+            || message.contains("outside loops")
+        {
+            Self::Context
+        } else if message.contains("numeric literal")
+            || message.contains("decimal literal")
+            || message.contains("literal is out of range")
+        {
+            Self::Literal
+        } else if message.contains("not implemented")
+            || message.contains("unsupported")
+            || message.contains("out of scope")
+        {
+            Self::Unsupported
+        } else {
+            Self::Syntax
+        }
+    }
+
+    pub fn diagnostic_code(self) -> &'static str {
+        match self {
+            Self::Syntax => "P1001",
+            Self::FileRoot => "P1002",
+            Self::Context => "P1003",
+            Self::Literal => "P1004",
+            Self::Unsupported => "P1005",
+        }
     }
 }
 
@@ -144,6 +196,7 @@ pub(super) fn canonical_identifier_key(name: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    use super::{ParseErrorKind, *};
     use fol_types::canonical_identifier_key;
 
     #[test]
@@ -157,6 +210,35 @@ mod tests {
     fn canonical_identifier_key_preserves_non_ascii_while_normalizing_ascii() {
         assert_eq!(canonical_identifier_key("Straße_Name"), "straßename");
         assert_eq!(canonical_identifier_key("Δelta_Name"), "Δeltaname");
+    }
+
+    #[test]
+    fn parse_error_kind_classifies_file_root_messages() {
+        assert_eq!(
+            ParseErrorKind::classify("Executable calls are not allowed at file root"),
+            ParseErrorKind::FileRoot
+        );
+        assert_eq!(ParseErrorKind::FileRoot.diagnostic_code(), "P1002");
+    }
+
+    #[test]
+    fn parse_error_kind_classifies_context_literal_and_fallback_messages() {
+        assert_eq!(
+            ParseErrorKind::classify("break is not allowed outside loops"),
+            ParseErrorKind::Context
+        );
+        assert_eq!(
+            ParseErrorKind::classify("decimal literal is out of range for i64"),
+            ParseErrorKind::Literal
+        );
+        assert_eq!(
+            ParseErrorKind::classify("this parser surface is not implemented yet"),
+            ParseErrorKind::Unsupported
+        );
+        assert_eq!(
+            ParseErrorKind::classify("Expected ')' after tuple element"),
+            ParseErrorKind::Syntax
+        );
     }
 }
 
