@@ -1011,7 +1011,7 @@ Status: done
 
 #### Slice 10.3
 
-Status: pending
+Status: done
 
 - Lock the negative side of the contract: sibling files and other namespaces must still fail to resolve `hid` names.
 - Add multi-file package tests and cross-namespace negative tests.
