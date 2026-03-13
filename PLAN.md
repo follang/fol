@@ -1334,7 +1334,7 @@ Status: pending
 
 #### Slice 21.1
 
-Status: pending
+Status: done
 
 - Replace the current AST-based manifest parser with a YAML metadata loader.
 - Introduce a resolver-owned `PackageMetadata` model.

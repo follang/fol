@@ -1,6 +1,6 @@
 use crate::{
     collect, imports,
-    manifest::{parse_package_manifest, PackageManifest},
+    manifest::{parse_legacy_package_manifest, parse_package_metadata, PackageMetadata},
     model::ResolvedProgram,
     traverse, ResolverError, ResolverErrorKind, ResolverResult,
 };
@@ -33,7 +33,7 @@ pub struct PackageIdentity {
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct LoadedPackage {
     pub identity: PackageIdentity,
-    pub manifest: Option<PackageManifest>,
+    pub metadata: Option<PackageMetadata>,
     pub program: ResolvedProgram,
 }
 
@@ -157,23 +157,27 @@ impl ResolverSession {
     ) -> Result<LoadedPackage, ResolverError> {
         let target_root = resolve_directory_path(store_root, package_path);
         let canonical_root = canonical_directory_root(target_root.as_path(), PackageSourceKind::Package)?;
-        let manifest_path = canonical_root.join("package.fol");
-        if !manifest_path.is_file() {
+        let metadata_path = canonical_root.join("package.yaml");
+        let legacy_manifest_path = canonical_root.join("package.fol");
+        let metadata = if metadata_path.is_file() {
+            parse_package_metadata(metadata_path.as_path())?
+        } else if legacy_manifest_path.is_file() {
+            parse_legacy_package_manifest(legacy_manifest_path.as_path())?
+        } else {
             return Err(ResolverError::new(
                 ResolverErrorKind::InvalidInput,
                 format!(
-                    "resolver pkg import target '{}' is missing required package manifest '{}'",
+                    "resolver pkg import target '{}' is missing required package metadata '{}'",
                     canonical_root.display(),
-                    manifest_path.display()
+                    metadata_path.display()
                 ),
             ));
-        }
-        let manifest = parse_package_manifest(manifest_path.as_path())?;
+        };
         self.load_package_from_root(
             canonical_root,
             PackageSourceKind::Package,
-            manifest.name.clone(),
-            Some(manifest),
+            metadata.name.clone(),
+            Some(metadata),
         )
     }
 
@@ -182,7 +186,7 @@ impl ResolverSession {
         canonical_root: PathBuf,
         source_kind: PackageSourceKind,
         display_name: String,
-        manifest: Option<PackageManifest>,
+        metadata: Option<PackageMetadata>,
     ) -> Result<LoadedPackage, ResolverError> {
         let identity = PackageIdentity {
             source_kind,
@@ -214,7 +218,7 @@ impl ResolverSession {
             })?;
         let loaded = LoadedPackage {
             identity,
-            manifest,
+            metadata,
             program,
         };
         self.cache_package(loaded.clone());
@@ -375,7 +379,7 @@ fn parse_package_from_directory(
             return Err(ResolverError::new(
                 ResolverErrorKind::InvalidInput,
                 format!(
-                    "resolver pkg import target '{}' has no loadable source files after excluding package.fol/build.fol",
+                    "resolver pkg import target '{}' has no loadable source files after excluding package.yaml/package.fol/build.fol",
                     root.display()
                 ),
             ));
@@ -441,7 +445,7 @@ fn is_package_control_file(root: &Path, source: &Source) -> bool {
     }
     matches!(
         source_path.file_name().and_then(|name| name.to_str()),
-        Some("package.fol") | Some("build.fol")
+        Some("package.yaml") | Some("package.fol") | Some("build.fol")
     )
 }
 
@@ -518,7 +522,7 @@ mod tests {
         };
         session.cache_package(super::LoadedPackage {
             identity: identity.clone(),
-            manifest: None,
+            metadata: None,
             program: super::parse_package_from_directory(
                 Path::new("../test/parser/source_units"),
                 "source_units",
@@ -552,7 +556,7 @@ mod tests {
 
         assert_eq!(loaded.program.package_name(), "dep");
         assert_eq!(loaded.program.source_units.len(), 1);
-        assert!(loaded.manifest.is_none());
+        assert!(loaded.metadata.is_none());
         assert_eq!(session.cached_package_count(), 1);
 
         fs::remove_dir_all(&temp_root)
@@ -620,20 +624,16 @@ mod tests {
     }
 
     #[test]
-    fn session_can_load_installed_pkg_roots_with_required_manifests() {
+    fn session_can_load_installed_pkg_roots_with_required_metadata() {
         let temp_root = unique_temp_root("load_pkg_root");
         let store_root = temp_root.join("store");
         fs::create_dir_all(store_root.join("json"))
             .expect("Should create a temporary package-store fixture");
         fs::write(
-            store_root.join("json/package.fol"),
-            concat!(
-                "var name: str = \"json\";\n",
-                "var version: str = \"1.0.0\";\n",
-                "use serde: pkg = {serde};\n",
-            ),
+            store_root.join("json/package.yaml"),
+            concat!("name: json\n", "version: 1.0.0\n", "kind: lib\n"),
         )
-        .expect("Should write the package manifest fixture");
+        .expect("Should write the package metadata fixture");
         fs::write(store_root.join("json/lib.fol"), "var[exp] answer: int = 42;\n")
             .expect("Should write the package source fixture");
         fs::write(store_root.join("json/build.fol"), "fun[] build(): int = { return 0; }\n")
@@ -659,14 +659,18 @@ mod tests {
                 .program
                 .source_units
                 .iter()
-                .all(|unit| !unit.path.ends_with("package.fol") && !unit.path.ends_with("build.fol")),
-            "Installed package source loading should exclude package.fol/build.fol from the parsed source set",
+                .all(|unit| {
+                    !unit.path.ends_with("package.yaml")
+                        && !unit.path.ends_with("package.fol")
+                        && !unit.path.ends_with("build.fol")
+                }),
+            "Installed package source loading should exclude package metadata/build files from the parsed source set",
         );
         assert_eq!(
             loaded
-                .manifest
+                .metadata
                 .as_ref()
-                .expect("Installed package roots should retain parsed manifest metadata")
+                .expect("Installed package roots should retain parsed package metadata")
                 .version,
             "1.0.0"
         );
@@ -676,8 +680,8 @@ mod tests {
     }
 
     #[test]
-    fn session_rejects_pkg_roots_without_required_manifests() {
-        let temp_root = unique_temp_root("missing_pkg_manifest");
+    fn session_rejects_pkg_roots_without_required_metadata() {
+        let temp_root = unique_temp_root("missing_pkg_metadata");
         let store_root = temp_root.join("store");
         fs::create_dir_all(store_root.join("json"))
             .expect("Should create a temporary package-store fixture");
@@ -693,26 +697,26 @@ mod tests {
                     spelling: "json".to_string(),
                 }],
             )
-            .expect_err("Session should reject installed package roots without package manifests");
+            .expect_err("Session should reject installed package roots without package metadata");
 
         assert_eq!(error.kind(), ResolverErrorKind::InvalidInput);
-        assert!(error.to_string().contains("missing required package manifest"));
+        assert!(error.to_string().contains("missing required package metadata"));
 
         fs::remove_dir_all(&temp_root)
             .expect("Temporary package-store fixture should be removable after the test");
     }
 
     #[test]
-    fn session_rejects_malformed_pkg_manifests_explicitly() {
-        let temp_root = unique_temp_root("malformed_pkg_manifest");
+    fn session_rejects_malformed_pkg_metadata_explicitly() {
+        let temp_root = unique_temp_root("malformed_pkg_metadata");
         let store_root = temp_root.join("store");
         fs::create_dir_all(store_root.join("json"))
             .expect("Should create a temporary package-store fixture");
         fs::write(
-            store_root.join("json/package.fol"),
-            "var name: str = \"json\";\n",
+            store_root.join("json/package.yaml"),
+            "name json\n",
         )
-        .expect("Should write the malformed package manifest fixture");
+        .expect("Should write the malformed package metadata fixture");
         fs::write(store_root.join("json/lib.fol"), "var[exp] answer: int = 42;\n")
             .expect("Should write the package source fixture");
         let mut session = ResolverSession::new();
@@ -725,10 +729,10 @@ mod tests {
                     spelling: "json".to_string(),
                 }],
             )
-            .expect_err("Session should reject malformed package manifests");
+            .expect_err("Session should reject malformed package metadata");
 
         assert_eq!(error.kind(), ResolverErrorKind::InvalidInput);
-        assert!(error.to_string().contains("missing required field 'version'"));
+        assert!(error.to_string().contains("must follow 'key: value' form"));
 
         fs::remove_dir_all(&temp_root)
             .expect("Temporary package-store fixture should be removable after the test");
@@ -746,21 +750,17 @@ mod tests {
         fs::create_dir_all(&app_root)
             .expect("Should create the importing app fixture directory");
         fs::write(
-            store_root.join("core/package.fol"),
-            "var name: str = \"core\";\nvar version: str = \"1.0.0\";\n",
+            store_root.join("core/package.yaml"),
+            "name: core\nversion: 1.0.0\n",
         )
-        .expect("Should write the transitive dependency manifest");
+        .expect("Should write the transitive dependency metadata");
         fs::write(store_root.join("core/lib.fol"), "var[exp] shared: int = 7;\n")
             .expect("Should write the transitive dependency export");
         fs::write(
-            store_root.join("json/package.fol"),
-            concat!(
-                "var name: str = \"json\";\n",
-                "var version: str = \"1.0.0\";\n",
-                "use core: pkg = {core};\n",
-            ),
+            store_root.join("json/package.yaml"),
+            "name: json\nversion: 1.0.0\n",
         )
-        .expect("Should write the direct dependency manifest");
+        .expect("Should write the direct dependency metadata");
         fs::write(
             store_root.join("json/lib.fol"),
             "use core: pkg = {core};\nvar[exp] answer: int = shared;\n",
@@ -814,35 +814,27 @@ mod tests {
         fs::create_dir_all(&app_root)
             .expect("Should create the importing app fixture directory");
         fs::write(
-            store_root.join("core/package.fol"),
-            "var name: str = \"core\";\nvar version: str = \"1.0.0\";\n",
+            store_root.join("core/package.yaml"),
+            "name: core\nversion: 1.0.0\n",
         )
-        .expect("Should write the shared dependency manifest");
+        .expect("Should write the shared dependency metadata");
         fs::write(store_root.join("core/lib.fol"), "var[exp] shared: int = 7;\n")
             .expect("Should write the shared dependency export");
         fs::write(
-            store_root.join("json/package.fol"),
-            concat!(
-                "var name: str = \"json\";\n",
-                "var version: str = \"1.0.0\";\n",
-                "use core: pkg = {core};\n",
-            ),
+            store_root.join("json/package.yaml"),
+            "name: json\nversion: 1.0.0\n",
         )
-        .expect("Should write the first direct dependency manifest");
+        .expect("Should write the first direct dependency metadata");
         fs::write(
             store_root.join("json/lib.fol"),
             "use core: pkg = {core};\nvar[exp] left: int = shared;\n",
         )
         .expect("Should write the first direct dependency source");
         fs::write(
-            store_root.join("xml/package.fol"),
-            concat!(
-                "var name: str = \"xml\";\n",
-                "var version: str = \"1.0.0\";\n",
-                "use core: pkg = {core};\n",
-            ),
+            store_root.join("xml/package.yaml"),
+            "name: xml\nversion: 1.0.0\n",
         )
-        .expect("Should write the second direct dependency manifest");
+        .expect("Should write the second direct dependency metadata");
         fs::write(
             store_root.join("xml/lib.fol"),
             "use core: pkg = {core};\nvar[exp] right: int = shared;\n",

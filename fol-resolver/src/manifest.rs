@@ -1,24 +1,101 @@
 use crate::{ResolverError, ResolverErrorKind};
 use fol_lexer::lexer::stage3::Elements;
-use fol_parser::ast::{AstNode, AstParser, FolType, Literal, SyntaxIndex, SyntaxNodeId, SyntaxOrigin, UsePathSegment};
+use fol_parser::ast::{AstNode, AstParser, Literal, SyntaxIndex, SyntaxNodeId, SyntaxOrigin};
 use fol_stream::FileStream;
-use std::collections::BTreeSet;
+use std::collections::BTreeMap;
 use std::path::Path;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct ManifestDependency {
-    pub alias: String,
-    pub package_path: Vec<UsePathSegment>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct PackageManifest {
+pub(crate) struct PackageMetadata {
     pub name: String,
     pub version: String,
-    pub dependencies: Vec<ManifestDependency>,
+    pub kind: Option<String>,
+    pub description: Option<String>,
+    pub license: Option<String>,
 }
 
-pub(crate) fn parse_package_manifest(path: &Path) -> Result<PackageManifest, ResolverError> {
+pub(crate) fn parse_package_metadata(path: &Path) -> Result<PackageMetadata, ResolverError> {
+    let raw = std::fs::read_to_string(path).map_err(|error| {
+        ResolverError::new(
+            ResolverErrorKind::InvalidInput,
+            format!(
+                "resolver could not read package metadata '{}': {}",
+                path.display(),
+                error
+            ),
+        )
+    })?;
+
+    let mut fields = BTreeMap::new();
+    for (index, line) in raw.lines().enumerate() {
+        let line_no = index + 1;
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            continue;
+        }
+
+        let Some((raw_key, raw_value)) = trimmed.split_once(':') else {
+            return Err(metadata_line_error(
+                path,
+                line_no,
+                1,
+                line.len().max(1),
+                "package metadata lines must follow 'key: value' form",
+            ));
+        };
+        let key = raw_key.trim();
+        if key.is_empty() {
+            return Err(metadata_line_error(
+                path,
+                line_no,
+                1,
+                line.len().max(1),
+                "package metadata keys may not be empty",
+            ));
+        }
+        let value_offset = line.find(':').unwrap_or(0) + 2;
+        let value = parse_yaml_scalar(raw_value.trim(), path, line_no, value_offset)?;
+
+        if fields.insert(key.to_string(), value).is_some() {
+            return Err(metadata_line_error(
+                path,
+                line_no,
+                1,
+                key.len(),
+                format!("package metadata field '{key}' may only be declared once"),
+            ));
+        }
+    }
+
+    let name = fields.remove("name").ok_or_else(|| {
+        ResolverError::new(
+            ResolverErrorKind::InvalidInput,
+            format!(
+                "package metadata '{}' is missing required field 'name'",
+                path.display()
+            ),
+        )
+    })?;
+    let version = fields.remove("version").ok_or_else(|| {
+        ResolverError::new(
+            ResolverErrorKind::InvalidInput,
+            format!(
+                "package metadata '{}' is missing required field 'version'",
+                path.display()
+            ),
+        )
+    })?;
+
+    Ok(PackageMetadata {
+        name,
+        version,
+        kind: fields.remove("kind"),
+        description: fields.remove("description"),
+        license: fields.remove("license"),
+    })
+}
+
+pub(crate) fn parse_legacy_package_manifest(path: &Path) -> Result<PackageMetadata, ResolverError> {
     let path_str = path.to_str().ok_or_else(|| {
         ResolverError::new(
             ResolverErrorKind::InvalidInput,
@@ -41,7 +118,7 @@ pub(crate) fn parse_package_manifest(path: &Path) -> Result<PackageManifest, Res
         let first = errors
             .into_iter()
             .next()
-            .expect("manifest parse should produce at least one error");
+            .expect("legacy manifest parse should produce at least one error");
         if let Some(parse_error) = first
             .as_ref()
             .as_any()
@@ -50,7 +127,7 @@ pub(crate) fn parse_package_manifest(path: &Path) -> Result<PackageManifest, Res
             ResolverError::with_origin(
                 ResolverErrorKind::InvalidInput,
                 format!(
-                    "resolver could not parse package manifest '{}': {}",
+                    "resolver could not parse legacy package manifest '{}': {}",
                     path.display(),
                     parse_error
                 ),
@@ -65,7 +142,7 @@ pub(crate) fn parse_package_manifest(path: &Path) -> Result<PackageManifest, Res
             ResolverError::new(
                 ResolverErrorKind::InvalidInput,
                 format!(
-                    "resolver could not parse package manifest '{}': {}",
+                    "resolver could not parse legacy package manifest '{}': {}",
                     path.display(),
                     first
                 ),
@@ -76,7 +153,7 @@ pub(crate) fn parse_package_manifest(path: &Path) -> Result<PackageManifest, Res
         ResolverError::new(
             ResolverErrorKind::InvalidInput,
             format!(
-                "resolver package manifest '{}' did not produce any source units",
+                "resolver legacy package manifest '{}' did not produce any source units",
                 path.display()
             ),
         )
@@ -84,8 +161,6 @@ pub(crate) fn parse_package_manifest(path: &Path) -> Result<PackageManifest, Res
 
     let mut name = None;
     let mut version = None;
-    let mut dependencies = Vec::new();
-    let mut dependency_aliases = BTreeSet::new();
 
     for item in &source_unit.items {
         match unwrap_comment_wrappers(&item.node) {
@@ -106,7 +181,7 @@ pub(crate) fn parse_package_manifest(path: &Path) -> Result<PackageManifest, Res
                         return Err(manifest_item_error(
                             &parsed.syntax_index,
                             item.node_id,
-                            "package manifest field 'name' may only be declared once",
+                            "legacy package manifest field 'name' may only be declared once",
                         ));
                     }
                 }
@@ -121,102 +196,120 @@ pub(crate) fn parse_package_manifest(path: &Path) -> Result<PackageManifest, Res
                         return Err(manifest_item_error(
                             &parsed.syntax_index,
                             item.node_id,
-                            "package manifest field 'version' may only be declared once",
+                            "legacy package manifest field 'version' may only be declared once",
                         ));
                     }
                 }
-                other => {
-                    return Err(manifest_item_error(
-                        &parsed.syntax_index,
-                        item.node_id,
-                        format!(
-                            "unsupported package manifest field '{other}'; expected only 'name', 'version', and pkg dependencies"
-                        ),
-                    ));
-                }
+                _ => {}
             },
-            AstNode::UseDecl {
-                name: alias,
-                path_type,
-                path_segments,
-                ..
-            } => {
-                if !matches!(path_type, FolType::Package { .. }) {
-                    return Err(manifest_item_error(
-                        &parsed.syntax_index,
-                        item.node_id,
-                        "package manifest dependencies must use the 'pkg' source kind",
-                    ));
-                }
-                let canonical_alias = fol_types::canonical_identifier_key(alias);
-                if !dependency_aliases.insert(canonical_alias) {
-                    return Err(manifest_item_error(
-                        &parsed.syntax_index,
-                        item.node_id,
-                        format!(
-                            "package manifest dependency alias '{}' is declared more than once",
-                            alias
-                        ),
-                    ));
-                }
-                dependencies.push(ManifestDependency {
-                    alias: alias.clone(),
-                    package_path: path_segments.clone(),
-                });
-            }
-            _ => {
-                return Err(manifest_item_error(
-                    &parsed.syntax_index,
-                    item.node_id,
-                    "package manifests may only contain comments, string fields, and pkg dependencies",
-                ));
-            }
+            _ => {}
         }
     }
 
-    let name = name.ok_or_else(|| {
-        ResolverError::new(
-            ResolverErrorKind::InvalidInput,
-            format!(
-                "package manifest '{}' is missing required field 'name'",
-                path.display()
-            ),
-        )
-    })?;
-    if !is_valid_package_name(&name) {
-        return Err(ResolverError::new(
-            ResolverErrorKind::InvalidInput,
-            format!(
-                "package manifest '{}' has invalid package name '{}'; package names must follow namespace identifier rules",
-                path.display(),
-                name
-            ),
-        ));
-    }
-    let version = version.ok_or_else(|| {
-        ResolverError::new(
-            ResolverErrorKind::InvalidInput,
-            format!(
-                "package manifest '{}' is missing required field 'version'",
-                path.display()
-            ),
-        )
-    })?;
-    if version.trim().is_empty() {
-        return Err(ResolverError::new(
-            ResolverErrorKind::InvalidInput,
-            format!(
-                "package manifest '{}' has an empty version string",
-                path.display()
-            ),
+    Ok(PackageMetadata {
+        name: name.ok_or_else(|| {
+            ResolverError::new(
+                ResolverErrorKind::InvalidInput,
+                format!(
+                    "legacy package manifest '{}' is missing required field 'name'",
+                    path.display()
+                ),
+            )
+        })?,
+        version: version.ok_or_else(|| {
+            ResolverError::new(
+                ResolverErrorKind::InvalidInput,
+                format!(
+                    "legacy package manifest '{}' is missing required field 'version'",
+                    path.display()
+                ),
+            )
+        })?,
+        kind: None,
+        description: None,
+        license: None,
+    })
+}
+
+fn parse_yaml_scalar(
+    raw: &str,
+    path: &Path,
+    line: usize,
+    column: usize,
+) -> Result<String, ResolverError> {
+    if raw.is_empty() {
+        return Err(metadata_line_error(
+            path,
+            line,
+            column,
+            1,
+            "package metadata values may not be empty",
         ));
     }
 
-    Ok(PackageManifest {
-        name,
-        version,
-        dependencies,
-    })
+    let raw = strip_inline_comment(raw).trim();
+    if raw.is_empty() {
+        return Err(metadata_line_error(
+            path,
+            line,
+            column,
+            1,
+            "package metadata values may not be empty",
+        ));
+    }
+
+    if let Some(unquoted) = strip_matching_quotes(raw) {
+        return Ok(unquoted.to_string());
+    }
+
+    Ok(raw.to_string())
+}
+
+fn strip_inline_comment(raw: &str) -> &str {
+    let mut in_single = false;
+    let mut in_double = false;
+
+    for (index, ch) in raw.char_indices() {
+        match ch {
+            '\'' if !in_double => in_single = !in_single,
+            '"' if !in_single => in_double = !in_double,
+            '#' if !in_single && !in_double => return &raw[..index],
+            _ => {}
+        }
+    }
+
+    raw
+}
+
+fn strip_matching_quotes(raw: &str) -> Option<&str> {
+    let bytes = raw.as_bytes();
+    if bytes.len() >= 2 && bytes.first() == bytes.last() {
+        match bytes[0] {
+            b'"' | b'\'' => Some(&raw[1..raw.len() - 1]),
+            _ => None,
+        }
+    } else {
+        None
+    }
+}
+
+fn metadata_line_error(
+    path: &Path,
+    line: usize,
+    column: usize,
+    length: usize,
+    message: impl Into<String>,
+) -> ResolverError {
+    ResolverError::with_origin(
+        ResolverErrorKind::InvalidInput,
+        message,
+        SyntaxOrigin {
+            file: Some(path.to_string_lossy().to_string()),
+            line,
+            column,
+            length,
+        },
+    )
 }
 
 fn manifest_string_field(
@@ -230,12 +323,12 @@ fn manifest_string_field(
         Some(_) => Err(manifest_item_error(
             syntax_index,
             node_id,
-            format!("package manifest field '{field_name}' must be a string literal"),
+            format!("legacy package manifest field '{field_name}' must be a string literal"),
         )),
         None => Err(manifest_item_error(
             syntax_index,
             node_id,
-            format!("package manifest field '{field_name}' must have a value"),
+            format!("legacy package manifest field '{field_name}' must have a value"),
         )),
     }
 }
@@ -258,29 +351,9 @@ fn manifest_item_error(
     }
 }
 
-fn is_valid_package_name(name: &str) -> bool {
-    let mut chars = name.chars();
-    let Some(first) = chars.next() else {
-        return false;
-    };
-
-    if !first.is_ascii() || first.is_ascii_digit() || !(first.is_ascii_alphabetic() || first == '_')
-    {
-        return false;
-    }
-
-    if name.contains("__") {
-        return false;
-    }
-
-    chars.all(|ch| ch.is_ascii() && (ch.is_ascii_alphanumeric() || ch == '_'))
-}
-
 #[cfg(test)]
 mod tests {
-    use super::{parse_package_manifest, ManifestDependency, PackageManifest};
-    use crate::ResolverErrorKind;
-    use fol_parser::ast::{UsePathSegment, UsePathSeparator};
+    use super::{parse_legacy_package_manifest, parse_package_metadata, PackageMetadata};
     use std::fs;
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -290,7 +363,7 @@ mod tests {
             .expect("System time should be after unix epoch")
             .as_nanos();
         std::env::temp_dir().join(format!(
-            "fol_resolver_manifest_{}_{}_{}",
+            "fol_resolver_metadata_{}_{}_{}",
             label,
             std::process::id(),
             stamp
@@ -298,120 +371,66 @@ mod tests {
     }
 
     #[test]
-    fn package_manifest_parser_extracts_identity_and_pkg_dependencies() {
-        let temp_root = unique_temp_root("parse_manifest");
-        fs::create_dir_all(&temp_root).expect("Should create temporary manifest fixture root");
-        let manifest_path = temp_root.join("package.fol");
+    fn package_metadata_loader_extracts_identity_and_optional_fields() {
+        let temp_root = unique_temp_root("parse_yaml_metadata");
+        fs::create_dir_all(&temp_root).expect("Should create temporary metadata fixture root");
+        let metadata_path = temp_root.join("package.yaml");
         fs::write(
-            &manifest_path,
+            &metadata_path,
             concat!(
-                "` package metadata `\n",
-                "var name: str = \"json\";\n",
-                "var version: str = \"1.0.0\";\n",
-                "use serde: pkg = {serde};\n",
-                "use fmt: pkg = {core/fmt};\n",
+                "name: json\n",
+                "version: 1.0.0\n",
+                "kind: lib\n",
+                "description: \"JSON support\"\n",
+                "license: MIT\n",
             ),
         )
-        .expect("Should write the manifest fixture");
+        .expect("Should write the YAML metadata fixture");
 
-        let manifest =
-            parse_package_manifest(&manifest_path).expect("Manifest fixture should parse");
+        let metadata =
+            parse_package_metadata(&metadata_path).expect("YAML metadata fixture should parse");
 
         assert_eq!(
-            manifest,
-            PackageManifest {
+            metadata,
+            PackageMetadata {
                 name: "json".to_string(),
                 version: "1.0.0".to_string(),
-                dependencies: vec![
-                    ManifestDependency {
-                        alias: "serde".to_string(),
-                        package_path: vec![UsePathSegment {
-                            separator: None,
-                            spelling: "serde".to_string(),
-                        }],
-                    },
-                    ManifestDependency {
-                        alias: "fmt".to_string(),
-                        package_path: vec![
-                            UsePathSegment {
-                                separator: None,
-                                spelling: "core".to_string(),
-                            },
-                            UsePathSegment {
-                                separator: Some(UsePathSeparator::Slash),
-                                spelling: "fmt".to_string(),
-                            },
-                        ],
-                    },
-                ],
+                kind: Some("lib".to_string()),
+                description: Some("JSON support".to_string()),
+                license: Some("MIT".to_string()),
             }
         );
 
         fs::remove_dir_all(&temp_root)
-            .expect("Temporary manifest fixture root should be removable after the test");
+            .expect("Temporary metadata fixture root should be removable after the test");
     }
 
     #[test]
-    fn package_manifest_parser_rejects_missing_required_fields() {
-        let temp_root = unique_temp_root("missing_manifest_fields");
-        fs::create_dir_all(&temp_root).expect("Should create temporary manifest fixture root");
-        let manifest_path = temp_root.join("package.fol");
-        fs::write(&manifest_path, "var name: str = \"json\";\n")
-            .expect("Should write the incomplete manifest fixture");
-
-        let error = parse_package_manifest(&manifest_path)
-            .expect_err("Manifest parser should reject missing version fields");
-
-        assert_eq!(error.kind(), ResolverErrorKind::InvalidInput);
-        assert!(error.to_string().contains("missing required field 'version'"));
-
-        fs::remove_dir_all(&temp_root)
-            .expect("Temporary manifest fixture root should be removable after the test");
-    }
-
-    #[test]
-    fn package_manifest_parser_rejects_non_string_identity_fields() {
-        let temp_root = unique_temp_root("manifest_non_string_field");
-        fs::create_dir_all(&temp_root).expect("Should create temporary manifest fixture root");
+    fn legacy_package_manifest_loader_still_extracts_basic_identity() {
+        let temp_root = unique_temp_root("parse_legacy_manifest");
+        fs::create_dir_all(&temp_root).expect("Should create temporary legacy manifest fixture");
         let manifest_path = temp_root.join("package.fol");
         fs::write(
             &manifest_path,
-            "var name: str = 1;\nvar version: str = \"1.0.0\";\n",
+            "var name: str = \"json\";\nvar version: str = \"1.0.0\";\n",
         )
-        .expect("Should write the malformed manifest fixture");
+        .expect("Should write the legacy manifest fixture");
 
-        let error = parse_package_manifest(&manifest_path)
-            .expect_err("Manifest parser should reject non-string identity fields");
+        let metadata = parse_legacy_package_manifest(&manifest_path)
+            .expect("Legacy manifest fixture should still parse during transition");
 
-        assert_eq!(error.kind(), ResolverErrorKind::InvalidInput);
-        assert!(error.to_string().contains("field 'name' must be a string literal"));
+        assert_eq!(
+            metadata,
+            PackageMetadata {
+                name: "json".to_string(),
+                version: "1.0.0".to_string(),
+                kind: None,
+                description: None,
+                license: None,
+            }
+        );
 
         fs::remove_dir_all(&temp_root)
-            .expect("Temporary manifest fixture root should be removable after the test");
-    }
-
-    #[test]
-    fn package_manifest_parser_rejects_non_pkg_dependencies() {
-        let temp_root = unique_temp_root("manifest_non_pkg_dep");
-        fs::create_dir_all(&temp_root).expect("Should create temporary manifest fixture root");
-        let manifest_path = temp_root.join("package.fol");
-        fs::write(
-            &manifest_path,
-            concat!(
-                "var name: str = \"json\";\n",
-                "var version: str = \"1.0.0\";\n",
-                "use fmt: loc = {\"../fmt\"};\n",
-            ),
-        )
-        .expect("Should write the malformed manifest fixture");
-
-        let error = parse_package_manifest(&manifest_path)
-            .expect_err("Manifest parser should reject non-pkg dependencies");
-
-        assert_eq!(error.kind(), ResolverErrorKind::InvalidInput);
-        assert!(error.to_string().contains("must use the 'pkg' source kind"));
-
-        fs::remove_dir_all(&temp_root)
-            .expect("Temporary manifest fixture root should be removable after the test");
+            .expect("Temporary legacy manifest fixture root should be removable after the test");
     }
 }
