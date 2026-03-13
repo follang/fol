@@ -657,7 +657,7 @@ Status: done
 
 #### 5.2
 
-Status: pending
+Status: done
 
 - Keep `--std-root` and `--package-store-root` working through the new crate boundary.
 

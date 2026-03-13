@@ -324,6 +324,50 @@ mod integration_tests {
     }
 
     #[test]
+    fn test_cli_resolves_std_imports_with_explicit_std_root_configuration() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_std_root_import");
+        let std_root = temp_root.join("std");
+        let app_root = temp_root.join("app");
+        fs::create_dir_all(std_root.join("fmt"))
+            .expect("Should create the standard-library fixture directory");
+        fs::create_dir_all(&app_root)
+            .expect("Should create the importing package root fixture directory");
+        fs::write(std_root.join("fmt/value.fol"), "var[exp] answer: int = 42;\n")
+            .expect("Should write the standard-library export fixture");
+        fs::write(
+            app_root.join("main.fol"),
+            "use fmt: std = {fmt};\nfun[] main(): int = {\n    return answer;\n}\n",
+        )
+        .expect("Should write the std import fixture");
+
+        let output = run_fol(&[
+            "--std-root",
+            std_root
+                .to_str()
+                .expect("Temporary std-root fixture path should be valid UTF-8"),
+            app_root
+                .to_str()
+                .expect("Temporary app fixture path should be valid UTF-8"),
+        ]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        assert!(
+            output.status.success(),
+            "CLI should resolve std imports through an explicit std-root flag, got status {:?} and output:\n{}",
+            output.status.code(),
+            stdout,
+        );
+        assert!(
+            stdout.contains("Compilation successful"),
+            "Human CLI output should still report a successful compile for std-imported packages",
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
     fn test_cli_accepts_explicit_package_store_root_configuration() {
         use std::fs;
 
