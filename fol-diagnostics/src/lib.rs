@@ -49,6 +49,24 @@ impl DiagnosticReport {
         self.add_diagnostic(diagnostic);
     }
 
+    pub fn add_warning(
+        &mut self,
+        warning: &dyn fol_types::Glitch,
+        location: Option<DiagnosticLocation>,
+    ) {
+        let diagnostic = Diagnostic::from_glitch(warning, Severity::Warning, location);
+        self.add_diagnostic(diagnostic);
+    }
+
+    pub fn add_info(
+        &mut self,
+        info: &dyn fol_types::Glitch,
+        location: Option<DiagnosticLocation>,
+    ) {
+        let diagnostic = Diagnostic::from_glitch(info, Severity::Info, location);
+        self.add_diagnostic(diagnostic);
+    }
+
     pub fn add_coded_error(
         &mut self,
         code: impl Into<DiagnosticCode>,
@@ -69,6 +87,19 @@ impl DiagnosticReport {
         location: Option<DiagnosticLocation>,
     ) {
         let mut diagnostic = Diagnostic::warning(code, message);
+        if let Some(location) = location {
+            diagnostic = diagnostic.with_primary_label(location);
+        }
+        self.add_diagnostic(diagnostic);
+    }
+
+    pub fn add_coded_info(
+        &mut self,
+        code: impl Into<DiagnosticCode>,
+        message: impl Into<String>,
+        location: Option<DiagnosticLocation>,
+    ) {
+        let mut diagnostic = Diagnostic::info(code, message);
         if let Some(location) = location {
             diagnostic = diagnostic.with_primary_label(location);
         }
@@ -202,6 +233,26 @@ mod tests {
     }
 
     #[test]
+    fn test_diagnostic_report_warning_and_info_helpers_track_severity_counts() {
+        let mut report = DiagnosticReport::new();
+        let warning = BasicError {
+            message: "Test warning".to_string(),
+        };
+        let info = BasicError {
+            message: "Test info".to_string(),
+        };
+
+        report.add_warning(&warning, None);
+        report.add_info(&info, None);
+
+        assert_eq!(report.error_count, 0);
+        assert_eq!(report.warning_count, 1);
+        assert_eq!(report.diagnostics.len(), 2);
+        assert_eq!(report.diagnostics[0].severity, Severity::Warning);
+        assert_eq!(report.diagnostics[1].severity, Severity::Info);
+    }
+
+    #[test]
     fn test_diagnostic_rich_model_keeps_primary_location_and_first_help_compatibility() {
         let diagnostic = Diagnostic::new(Severity::Error, "E9000", "rich model")
             .with_primary_label(DiagnosticLocation {
@@ -325,6 +376,36 @@ mod tests {
             })
         );
         assert_eq!(diagnostic.legacy_help(), None);
+    }
+
+    #[test]
+    fn test_coded_report_info_helper_keeps_primary_location() {
+        let mut report = DiagnosticReport::new();
+        report.add_coded_info(
+            "I2001",
+            "coded info",
+            Some(DiagnosticLocation {
+                file: Some("pkg/main.fol".to_string()),
+                line: 2,
+                column: 6,
+                length: Some(4),
+            }),
+        );
+
+        assert_eq!(report.error_count, 0);
+        assert_eq!(report.warning_count, 0);
+        assert_eq!(report.diagnostics.len(), 1);
+        assert_eq!(report.diagnostics[0].severity, Severity::Info);
+        assert_eq!(report.diagnostics[0].code.as_str(), "I2001");
+        assert_eq!(
+            report.diagnostics[0].primary_location(),
+            Some(&DiagnosticLocation {
+                file: Some("pkg/main.fol".to_string()),
+                line: 2,
+                column: 6,
+                length: Some(4),
+            })
+        );
     }
 
     struct FakeProducer;

@@ -698,7 +698,7 @@ Status: pending
 
 #### 7.1
 
-Status: pending
+Status: done
 
 - Add explicit APIs for warnings and info diagnostics.
 
