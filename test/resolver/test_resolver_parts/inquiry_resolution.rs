@@ -115,6 +115,66 @@ fn test_resolver_resolves_qualified_inquiry_targets_against_namespace_symbols() 
 }
 
 #[test]
+fn test_resolver_resolves_qualified_inquiry_targets_against_non_matching_import_alias_roots() {
+    let temp_root = unique_temp_root("inquiry_nonmatching_import_alias");
+    fs::create_dir_all(temp_root.join("math"))
+        .expect("Should create a temporary resolver fixture directory");
+    fs::write(
+        temp_root.join("math/helpers.fol"),
+        "fun[exp] emit(value: int): int = {\n    return value;\n}\n",
+    )
+    .expect("Should write the imported inquiry namespace fixture");
+    fs::write(
+        temp_root.join("main.fol"),
+        "use tools: loc = {math};\nfun[] main(input: int): int = {\n    return tools::emit(input);\n    where(tools::emit) {\n        tools::emit(input);\n    }\n}\n",
+    )
+    .expect("Should write the qualified non-matching import-alias inquiry fixture");
+
+    let resolved = resolve_package_from_folder(
+        temp_root
+            .to_str()
+            .expect("Temporary resolver fixture path should be valid UTF-8"),
+    );
+    let import = resolved
+        .imports_in_scope(resolved.program_scope)
+        .into_iter()
+        .find(|import| import.alias_name == "tools")
+        .expect("Program scope should keep the tools import alias");
+    let emit_symbol = resolved
+        .symbols_in_scope(import.target_scope.expect("Import target should resolve"))
+        .into_iter()
+        .find(|symbol| symbol.name == "emit" && symbol.kind == SymbolKind::Routine)
+        .expect("Imported namespace scope should keep the emit routine symbol");
+    let main_scope_id = resolved
+        .scopes
+        .iter_with_ids()
+        .find_map(|(scope_id, scope)| {
+            (matches!(scope.kind, ScopeKind::Routine)
+                && resolved
+                    .symbols_in_scope(scope_id)
+                    .into_iter()
+                    .any(|symbol| symbol.name == "input" && symbol.kind == SymbolKind::Parameter))
+            .then_some(scope_id)
+        })
+        .expect("Resolver should create a routine scope for main");
+
+    assert!(
+        resolved
+            .references_in_scope(main_scope_id)
+            .into_iter()
+            .any(|reference| {
+                reference.kind == ReferenceKind::InquiryTarget
+                    && reference.name == "tools::emit"
+                    && reference.resolved == Some(emit_symbol.id)
+            }),
+        "Qualified inquiry targets should resolve through import aliases even when alias spelling differs from the namespace root"
+    );
+
+    fs::remove_dir_all(&temp_root)
+        .expect("Temporary resolver fixture directory should be removable after the test");
+}
+
+#[test]
 fn test_resolver_rejects_this_inquiry_targets_without_declared_return_types() {
     let temp_root = unique_temp_root("inquiry_this_without_return");
     fs::create_dir_all(&temp_root).expect("Should create a temporary resolver fixture directory");

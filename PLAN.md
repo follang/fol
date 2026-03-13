@@ -981,7 +981,7 @@ Status: done
 
 #### Slice 9.2
 
-Status: pending
+Status: done
 
 - Extend the alias-root fix across qualified identifiers, qualified calls, qualified type names, and qualified inquiry targets.
 - Add tests for all supported qualified reference families.
