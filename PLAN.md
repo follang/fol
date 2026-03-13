@@ -720,7 +720,7 @@ Status: pending
 
 #### 8.1
 
-Status: pending
+Status: done
 
 - Update the CLI to consume rich diagnostics without custom per-error-type special cases.
 
