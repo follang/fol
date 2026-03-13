@@ -271,4 +271,17 @@ mod tests {
         assert!(rendered.contains("| value"));
         assert!(rendered.contains("|  ^"));
     }
+
+    #[test]
+    fn render_report_shows_warning_and_info_severities_distinctly() {
+        let mut report = crate::DiagnosticReport::new();
+        report.add_diagnostic(Diagnostic::warning("W4005", "warning renderer"));
+        report.add_diagnostic(Diagnostic::info("I4006", "info renderer"));
+
+        let rendered = super::render_report(&report);
+
+        assert!(rendered.contains("warning: warning renderer"));
+        assert!(rendered.contains("info: info renderer"));
+        assert!(rendered.contains("warning: 1 warning"));
+    }
 }

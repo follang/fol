@@ -84,4 +84,18 @@ mod tests {
         assert_eq!(diagnostic["helps"][0], "rename the local binding");
         assert_eq!(diagnostic["suggestions"][0]["replacement"], "other_name");
     }
+
+    #[test]
+    fn render_report_serializes_warning_and_info_severities() {
+        let mut report = DiagnosticReport::new();
+        report.add_diagnostic(Diagnostic::warning("W5002", "json warning"));
+        report.add_diagnostic(Diagnostic::info("I5003", "json info"));
+
+        let rendered = super::render_report(&report);
+        let json: Value = serde_json::from_str(&rendered).expect("JSON renderer should stay valid");
+
+        assert_eq!(json["warning_count"], 1);
+        assert_eq!(json["diagnostics"][0]["severity"], "Warning");
+        assert_eq!(json["diagnostics"][1]["severity"], "Info");
+    }
 }

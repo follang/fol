@@ -710,7 +710,7 @@ Status: done
 
 #### 7.3
 
-Status: pending
+Status: done
 
 - Add representative tests for warning/info rendering, even if compiler producers still mostly emit errors.
 
