@@ -1550,7 +1550,7 @@ Status: done
 
 #### Slice 19.1
 
-Status: pending
+Status: done
 
 - Allow imported external packages to bring in their own dependencies recursively.
 - Reuse the same session-level cache and cycle detection.
