@@ -39,6 +39,13 @@ Current import surface:
 - stray `package.fol` files are ignored
 - consumer-visible `pkg` names come only from build-declared exported roots
 
+Current C ABI boundary:
+- `build.fol` may now preserve inert native-artifact placeholders such as `header`,
+  `object`, `static_lib`, and `shared_lib`
+- `.h`, `.o`, static-library, and shared-library handling is not implemented yet
+- native artifact loading, compilation, and linking are future `fol-package` /
+  package-build work, not resolver work
+
 For exact current stream/lexer/parser behavior, treat [`FRONTEND_CONTRACT.md`](./FRONTEND_CONTRACT.md)
 as the authoritative front-end contract, treat [`PROGRESS.md`](./PROGRESS.md) as the
 repo-backed implementation ledger, and treat [`PLAN.md`](./PLAN.md) as the completed

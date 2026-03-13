@@ -702,7 +702,7 @@ Status: done
 
 #### 7.2
 
-Status: pending
+Status: done
 
 - Document that `.h`, `.o`, static-lib, and shared-lib handling is future package/build work, not resolver work.
 
