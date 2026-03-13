@@ -1004,7 +1004,7 @@ Status: done
 
 #### Slice 10.2
 
-Status: pending
+Status: done
 
 - Extend same-file `hid` visibility across other relevant named declaration kinds.
 - Add tests for same-file hidden routines and types where parser/resolver surfaces exist.

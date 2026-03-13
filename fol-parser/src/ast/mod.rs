@@ -923,6 +923,7 @@ pub enum VarOption {
 #[derive(Debug, Clone, PartialEq)]
 pub enum FunOption {
     Export,   // exp or +
+    Hidden,   // hid or -
     Mutable,  // mut
     Iterator, // itr
 }
@@ -1461,6 +1462,11 @@ fn var_decl_visibility(options: &[VarOption]) -> ParsedDeclVisibility {
 
 fn fun_decl_visibility(options: &[FunOption]) -> ParsedDeclVisibility {
     if options
+        .iter()
+        .any(|option| matches!(option, FunOption::Hidden))
+    {
+        ParsedDeclVisibility::Hidden
+    } else if options
         .iter()
         .any(|option| matches!(option, FunOption::Export))
     {

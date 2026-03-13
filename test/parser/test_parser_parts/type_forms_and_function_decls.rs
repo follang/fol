@@ -833,6 +833,17 @@ fn test_routine_option_brackets_parse_for_functions_and_procedures() {
                 }),
                 "pro[+, itr] should parse export and iterator routine options"
             );
+            assert!(
+                program_root_nodes(&declarations).into_iter().any(|node| {
+                    matches!(
+                        node,
+                        AstNode::FunDecl { name, options, .. }
+                        if name == "helper"
+                            && options == &vec![fol_parser::ast::FunOption::Hidden]
+                    )
+                }),
+                "fun[hid] should parse the hidden routine option"
+            );
         }
         _ => panic!("Expected program node"),
     }

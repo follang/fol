@@ -435,6 +435,7 @@ impl AstParser {
 
             let option = match token.con().trim() {
                 "+" | "exp" | "export" => FunOption::Export,
+                "-" | "hid" | "hidden" => FunOption::Hidden,
                 "mut" | "mutable" => FunOption::Mutable,
                 "itr" | "iter" | "iterator" => FunOption::Iterator,
                 _ => {
