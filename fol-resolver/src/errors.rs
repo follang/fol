@@ -1,6 +1,8 @@
 use crate::model::SymbolKind;
 use fol_package::PackageError;
-use fol_diagnostics::{DiagnosticCode, DiagnosticLocation, ToDiagnosticLocation};
+use fol_diagnostics::{
+    Diagnostic, DiagnosticCode, DiagnosticLocation, ToDiagnostic, ToDiagnosticLocation,
+};
 use fol_parser::ast::SyntaxOrigin;
 use fol_types::Glitch;
 
@@ -126,6 +128,16 @@ impl ToDiagnosticLocation for ResolverError {
                 length: None,
             }
         }
+    }
+}
+
+impl ToDiagnostic for ResolverError {
+    fn to_diagnostic(&self) -> Diagnostic {
+        let mut diagnostic = Diagnostic::error(self.kind.diagnostic_code(), self.to_string());
+        if let Some(location) = self.diagnostic_location() {
+            diagnostic = diagnostic.with_primary_label(location);
+        }
+        diagnostic
     }
 }
 
@@ -333,5 +345,26 @@ mod tests {
         assert!(rendered.contains("error: ResolverUnresolvedName: could not resolve `answer`"));
         assert!(rendered.contains("| return answer;"));
         assert!(rendered.contains("|        ^^^^^^"));
+    }
+
+    #[test]
+    fn resolver_error_to_diagnostic_preserves_explicit_resolver_codes() {
+        let error = ResolverError::with_origin(
+            ResolverErrorKind::UnresolvedName,
+            "could not resolve `answer`",
+            SyntaxOrigin {
+                file: Some("pkg/main.fol".to_string()),
+                line: 2,
+                column: 12,
+                length: 6,
+            },
+        );
+        let mut report = DiagnosticReport::new();
+
+        report.add_from(&error);
+
+        let rendered = report.output(fol_diagnostics::OutputFormat::Json);
+        assert!(rendered.contains("\"code\": \"R1003\""));
+        assert!(rendered.contains("ResolverUnresolvedName: could not resolve `answer`"));
     }
 }

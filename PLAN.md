@@ -648,7 +648,7 @@ Status: done
 
 #### 5.3
 
-Status: pending
+Status: done
 
 - Migrate resolver errors to rich diagnostics.
 
