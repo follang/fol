@@ -345,4 +345,56 @@ mod tests {
         fs::remove_dir_all(&temp_root)
             .expect("Temporary build fixture root should be removable after the test");
     }
+
+    #[test]
+    fn package_build_parser_rejects_use_declarations_with_exact_locations() {
+        let temp_root = unique_temp_root("build_use_decl");
+        fs::create_dir_all(&temp_root).expect("Should create temporary build fixture root");
+        let build_path = temp_root.join("build.fol");
+        fs::write(&build_path, "use core: pkg = {core};\n")
+            .expect("Should write the invalid build use fixture");
+
+        let error = parse_package_build(&build_path)
+            .expect_err("Build files should reject use declarations");
+
+        assert_eq!(error.kind(), ResolverErrorKind::InvalidInput);
+        assert!(error
+            .to_string()
+            .contains("must use 'def' to define dependencies"));
+        let origin = error
+            .origin()
+            .expect("Build-file validation errors should retain syntax origins");
+        assert_eq!(origin.file.as_deref(), build_path.to_str());
+        assert_eq!(origin.line, 1);
+        assert_eq!(origin.column, 1);
+
+        fs::remove_dir_all(&temp_root)
+            .expect("Temporary build fixture root should be removable after the test");
+    }
+
+    #[test]
+    fn package_build_parser_rejects_unsupported_top_level_nodes_with_exact_locations() {
+        let temp_root = unique_temp_root("build_var_decl");
+        fs::create_dir_all(&temp_root).expect("Should create temporary build fixture root");
+        let build_path = temp_root.join("build.fol");
+        fs::write(&build_path, "var name: str = \"json\";\n")
+            .expect("Should write the invalid build declaration fixture");
+
+        let error = parse_package_build(&build_path)
+            .expect_err("Build files should reject unsupported top-level nodes");
+
+        assert_eq!(error.kind(), ResolverErrorKind::InvalidInput);
+        assert!(error.to_string().contains(
+            "package build files currently accept only comments, pkg dependency definitions, and loc export definitions"
+        ));
+        let origin = error
+            .origin()
+            .expect("Unsupported build nodes should keep syntax origins");
+        assert_eq!(origin.file.as_deref(), build_path.to_str());
+        assert_eq!(origin.line, 1);
+        assert_eq!(origin.column, 1);
+
+        fs::remove_dir_all(&temp_root)
+            .expect("Temporary build fixture root should be removable after the test");
+    }
 }

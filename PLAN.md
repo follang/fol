@@ -1371,7 +1371,7 @@ Status: done
 
 #### Slice 22.4
 
-Status: pending
+Status: done
 
 - Reject unsupported nodes inside `build.fol` with exact diagnostics.
 - Add location-precise tests for those failures.
