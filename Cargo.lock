@@ -133,6 +133,7 @@ dependencies = [
  "dyn-clone",
  "fol-diagnostics",
  "fol-lexer",
+ "fol-package",
  "fol-parser",
  "fol-resolver",
  "fol-stream",
