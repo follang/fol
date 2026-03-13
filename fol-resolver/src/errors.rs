@@ -1,6 +1,6 @@
 use crate::model::SymbolKind;
 use fol_package::PackageError;
-use fol_diagnostics::{DiagnosticLocation, ToDiagnosticLocation};
+use fol_diagnostics::{DiagnosticCode, DiagnosticLocation, ToDiagnosticLocation};
 use fol_parser::ast::SyntaxOrigin;
 use fol_types::Glitch;
 
@@ -25,6 +25,18 @@ impl ResolverErrorKind {
             Self::AmbiguousReference => "ResolverAmbiguousReference",
             Self::ImportCycle => "ResolverImportCycle",
             Self::Internal => "ResolverInternal",
+        }
+    }
+
+    pub fn diagnostic_code(self) -> DiagnosticCode {
+        match self {
+            Self::InvalidInput => DiagnosticCode::new("R1001"),
+            Self::Unsupported => DiagnosticCode::new("R1002"),
+            Self::UnresolvedName => DiagnosticCode::new("R1003"),
+            Self::DuplicateSymbol => DiagnosticCode::new("R1004"),
+            Self::AmbiguousReference => DiagnosticCode::new("R1005"),
+            Self::ImportCycle => DiagnosticCode::new("R1006"),
+            Self::Internal => DiagnosticCode::new("R1099"),
         }
     }
 }
@@ -186,7 +198,7 @@ pub(crate) fn symbol_kind_label(kind: SymbolKind) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::{resolver_package_message, ResolverError, ResolverErrorKind};
-    use fol_diagnostics::DiagnosticReport;
+    use fol_diagnostics::{DiagnosticCode, DiagnosticReport};
     use fol_parser::ast::SyntaxOrigin;
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -258,6 +270,38 @@ mod tests {
         assert_eq!(
             resolver_package_message("package std import target '/tmp/std/fmt' does not exist"),
             "resolver std import target '/tmp/std/fmt' does not exist"
+        );
+    }
+
+    #[test]
+    fn resolver_error_kinds_map_to_stable_diagnostic_codes() {
+        assert_eq!(
+            ResolverErrorKind::InvalidInput.diagnostic_code(),
+            DiagnosticCode::new("R1001")
+        );
+        assert_eq!(
+            ResolverErrorKind::Unsupported.diagnostic_code(),
+            DiagnosticCode::new("R1002")
+        );
+        assert_eq!(
+            ResolverErrorKind::UnresolvedName.diagnostic_code(),
+            DiagnosticCode::new("R1003")
+        );
+        assert_eq!(
+            ResolverErrorKind::DuplicateSymbol.diagnostic_code(),
+            DiagnosticCode::new("R1004")
+        );
+        assert_eq!(
+            ResolverErrorKind::AmbiguousReference.diagnostic_code(),
+            DiagnosticCode::new("R1005")
+        );
+        assert_eq!(
+            ResolverErrorKind::ImportCycle.diagnostic_code(),
+            DiagnosticCode::new("R1006")
+        );
+        assert_eq!(
+            ResolverErrorKind::Internal.diagnostic_code(),
+            DiagnosticCode::new("R1099")
         );
     }
 

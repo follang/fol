@@ -608,7 +608,7 @@ Status: done
 
 #### 4.2
 
-Status: pending
+Status: done
 
 - Add explicit code mapping for resolver error kinds.
 
