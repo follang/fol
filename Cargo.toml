@@ -4,6 +4,7 @@ members = [
     "fol-stream", 
     "fol-lexer",
     "fol-parser",
+    "fol-package",
     "fol-diagnostics",
     "fol-resolver",
 ]

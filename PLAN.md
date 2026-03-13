@@ -499,7 +499,7 @@ Status: pending
 
 #### 0.1
 
-Status: pending
+Status: done
 
 - Add `fol-package` to the workspace and create the crate shell.
 
