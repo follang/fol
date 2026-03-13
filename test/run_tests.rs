@@ -339,9 +339,11 @@ mod integration_tests {
             "name: json\nversion: 1.0.0\n",
         )
         .expect("Should write the installed package metadata fixture");
-        fs::write(store_root.join("json/build.fol"), "def root: loc = \"lib\";\n")
+        fs::create_dir_all(store_root.join("json/src"))
+            .expect("Should create the installed package export root fixture");
+        fs::write(store_root.join("json/build.fol"), "def root: loc = \"src\";\n")
             .expect("Should write the installed package build fixture");
-        fs::write(store_root.join("json/lib.fol"), "var[exp] answer: int = 42;\n")
+        fs::write(store_root.join("json/src/lib.fol"), "var[exp] answer: int = 42;\n")
             .expect("Should write the installed package export fixture");
         fs::write(
             app_root.join("main.fol"),

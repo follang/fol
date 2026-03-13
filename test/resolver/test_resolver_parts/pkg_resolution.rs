@@ -16,9 +16,11 @@ fn test_resolver_resolves_pkg_imports_from_the_configured_package_store_root() {
         "name: json\nversion: 1.0.0\n",
     )
     .expect("Should write the installed package metadata fixture");
-    fs::write(store_root.join("json/build.fol"), "def root: loc = \"lib\";\n")
+    fs::create_dir_all(store_root.join("json/src"))
+        .expect("Should create the installed package export root fixture");
+    fs::write(store_root.join("json/build.fol"), "def root: loc = \"src\";\n")
         .expect("Should write the installed package build fixture");
-    fs::write(store_root.join("json/lib.fol"), "var[exp] answer: int = 42;\n")
+    fs::write(store_root.join("json/src/lib.fol"), "var[exp] answer: int = 42;\n")
         .expect("Should write the installed package export fixture");
     fs::write(
         app_root.join("main.fol"),
@@ -74,6 +76,68 @@ fn test_resolver_resolves_pkg_imports_from_the_configured_package_store_root() {
         "Configured pkg imports should mount the installed package root as the imported root scope",
     );
     assert_eq!(answer_reference.resolved, Some(answer_symbol.id));
+
+    fs::remove_dir_all(&temp_root)
+        .expect("Temporary resolver fixture directory should be removable after the test");
+}
+
+#[test]
+fn test_resolver_pkg_imports_hide_non_exported_internal_roots() {
+    let temp_root = unique_temp_root("pkg_hidden_internal_root");
+    let store_root = temp_root.join("store");
+    let app_root = temp_root.join("app");
+    fs::create_dir_all(store_root.join("json/src/public"))
+        .expect("Should create the exported source root fixture");
+    fs::create_dir_all(store_root.join("json/src/internal"))
+        .expect("Should create the internal source root fixture");
+    fs::create_dir_all(&app_root)
+        .expect("Should create the importing package root fixture directory");
+    fs::write(
+        store_root.join("json/package.yaml"),
+        "name: json\nversion: 1.0.0\n",
+    )
+    .expect("Should write the installed package metadata fixture");
+    fs::write(store_root.join("json/build.fol"), "def root: loc = \"src/public\";\n")
+        .expect("Should write the installed package build fixture");
+    fs::write(
+        store_root.join("json/src/public/value.fol"),
+        "var[exp] answer: int = 42;\n",
+    )
+    .expect("Should write the exported source fixture");
+    fs::write(
+        store_root.join("json/src/internal/secret.fol"),
+        "var[exp] secret: int = 7;\n",
+    )
+    .expect("Should write the internal source fixture");
+    fs::write(
+        app_root.join("main.fol"),
+        "use json: pkg = {json};\nfun[] main(): int = {\n    return secret;\n}\n",
+    )
+    .expect("Should write the internal pkg import fixture");
+
+    let errors = try_resolve_package_from_folder_with_config(
+        app_root
+            .to_str()
+            .expect("Temporary resolver fixture path should be valid UTF-8"),
+        ResolverConfig {
+            std_root: None,
+            package_store_root: Some(
+                store_root
+                    .to_str()
+                    .expect("Temporary package-store fixture path should be valid UTF-8")
+                    .to_string(),
+            ),
+        },
+    )
+    .expect_err("Resolver should hide non-exported internal pkg roots from consumers");
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == ResolverErrorKind::UnresolvedName
+                && error.to_string().contains("could not resolve name 'secret'")
+        }),
+        "Pkg imports should not expose exported symbols from internal roots that build.fol does not export",
+    );
 
     fs::remove_dir_all(&temp_root)
         .expect("Temporary resolver fixture directory should be removable after the test");

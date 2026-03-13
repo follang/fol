@@ -1403,7 +1403,7 @@ Status: done
 
 #### Slice 24.1
 
-Status: pending
+Status: done
 
 - Mount only `build.fol`-exported roots into consumer-visible `pkg` imports.
 - Keep non-exported roots internal to the package.

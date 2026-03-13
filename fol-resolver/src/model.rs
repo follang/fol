@@ -361,6 +361,90 @@ impl ResolvedProgram {
         }
         self.namespace_scopes.insert(root_name.clone(), root_scope);
 
+        if loaded.identity.source_kind == crate::PackageSourceKind::Package {
+            if let Some(build) = loaded.build.as_ref() {
+                self.mount_declared_package_exports(
+                    loaded,
+                    source_unit_id,
+                    root_scope,
+                    &root_name,
+                    build,
+                )?;
+                self.mounted_package_roots
+                    .insert(loaded.identity.canonical_root.clone(), root_scope);
+                return Ok(root_scope);
+            }
+        }
+
+        self.mount_all_exported_package_scopes(loaded, source_unit_id, root_scope, &root_name)?;
+
+        self.mounted_package_roots
+            .insert(loaded.identity.canonical_root.clone(), root_scope);
+        Ok(root_scope)
+    }
+
+    fn mount_declared_package_exports(
+        &mut self,
+        loaded: &LoadedPackage,
+        source_unit_id: SourceUnitId,
+        root_scope: ScopeId,
+        root_name: &str,
+        build: &crate::build_definition::PackageBuildDefinition,
+    ) -> Result<(), ResolverError> {
+        let foreign_package_name = loaded.program.package_name().to_string();
+        let export_mappings = build
+            .exports
+            .iter()
+            .map(|export| {
+                Ok((
+                    build_export_namespace_prefix(&foreign_package_name, &export.relative_path)?,
+                    if export.alias == "root" {
+                        root_name.to_string()
+                    } else {
+                        format!("{root_name}::{}", export.alias)
+                    },
+                ))
+            })
+            .collect::<Result<Vec<_>, ResolverError>>()?;
+
+        for (foreign_scope_id, foreign_namespace, foreign_symbols) in exported_symbol_scopes(&loaded.program) {
+            for (foreign_prefix, mounted_prefix) in &export_mappings {
+                let Some(mounted_namespace) =
+                    remap_exported_namespace(&foreign_namespace, foreign_prefix, mounted_prefix)
+                else {
+                    continue;
+                };
+                let mounted_scope = if mounted_namespace == root_name {
+                    root_scope
+                } else {
+                    ensure_namespace_scope(
+                        &mut self.scopes,
+                        &mut self.namespace_scopes,
+                        root_scope,
+                        root_name,
+                        &mounted_namespace,
+                    )
+                };
+                self.mount_visible_symbols_from_scope(
+                    loaded,
+                    source_unit_id,
+                    foreign_scope_id,
+                    foreign_symbols.as_slice(),
+                    mounted_scope,
+                )?;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn mount_all_exported_package_scopes(
+        &mut self,
+        loaded: &LoadedPackage,
+        source_unit_id: SourceUnitId,
+        root_scope: ScopeId,
+        root_name: &str,
+    ) -> Result<(), ResolverError> {
         let mut mounted_scopes = BTreeMap::new();
         mounted_scopes.insert(loaded.program.program_scope, root_scope);
         let foreign_package_name = loaded.program.package_name().to_string();
@@ -377,50 +461,54 @@ impl ResolvedProgram {
 
         for (foreign_scope_id, foreign_namespace) in foreign_namespaces {
             let mounted_namespace =
-                remap_loaded_namespace(&foreign_namespace, &foreign_package_name, &root_name);
+                remap_loaded_namespace(&foreign_namespace, &foreign_package_name, root_name);
             let mounted_scope = ensure_namespace_scope(
                 &mut self.scopes,
                 &mut self.namespace_scopes,
                 root_scope,
-                &root_name,
+                root_name,
                 &mounted_namespace,
             );
             mounted_scopes.insert(foreign_scope_id, mounted_scope);
         }
 
-        let export_scopes = loaded
-            .program
-            .scopes
-            .iter_with_ids()
-            .filter_map(|(scope_id, scope)| {
-                matches!(
-                    scope.kind,
-                    ScopeKind::ProgramRoot { .. } | ScopeKind::NamespaceRoot { .. }
-                )
-                .then_some((scope_id, scope.symbols.clone()))
-            })
-            .collect::<Vec<_>>();
-
-        for (foreign_scope_id, foreign_symbols) in export_scopes {
+        for (foreign_scope_id, _, foreign_symbols) in exported_symbol_scopes(&loaded.program) {
             let mounted_scope = *mounted_scopes
                 .get(&foreign_scope_id)
                 .expect("mounted export scope should exist");
-            for foreign_symbol_id in foreign_symbols {
-                let Some(symbol) = loaded.program.symbol(foreign_symbol_id) else {
-                    continue;
-                };
-                if symbol.visibility != Some(ParsedDeclVisibility::Exported)
-                    || symbol.kind == SymbolKind::ImportAlias
-                {
-                    continue;
-                }
-                self.insert_mounted_symbol(mounted_scope, source_unit_id, symbol.clone())?;
-            }
+            self.mount_visible_symbols_from_scope(
+                loaded,
+                source_unit_id,
+                foreign_scope_id,
+                foreign_symbols.as_slice(),
+                mounted_scope,
+            )?;
         }
 
-        self.mounted_package_roots
-            .insert(loaded.identity.canonical_root.clone(), root_scope);
-        Ok(root_scope)
+        Ok(())
+    }
+
+    fn mount_visible_symbols_from_scope(
+        &mut self,
+        loaded: &LoadedPackage,
+        source_unit_id: SourceUnitId,
+        _foreign_scope_id: ScopeId,
+        foreign_symbols: &[SymbolId],
+        mounted_scope: ScopeId,
+    ) -> Result<(), ResolverError> {
+        for foreign_symbol_id in foreign_symbols {
+            let Some(symbol) = loaded.program.symbol(*foreign_symbol_id) else {
+                continue;
+            };
+            if symbol.visibility != Some(ParsedDeclVisibility::Exported)
+                || symbol.kind == SymbolKind::ImportAlias
+            {
+                continue;
+            }
+            self.insert_mounted_symbol(mounted_scope, source_unit_id, symbol.clone())?;
+        }
+
+        Ok(())
     }
 
     fn insert_mounted_symbol(
@@ -475,6 +563,65 @@ fn remap_loaded_namespace(namespace: &str, foreign_package_name: &str, mounted_r
         format!("{mounted_root}::{suffix}")
     } else {
         namespace.to_string()
+    }
+}
+
+fn build_export_namespace_prefix(
+    foreign_package_name: &str,
+    relative_path: &str,
+) -> Result<String, ResolverError> {
+    let trimmed = relative_path.trim();
+    if trimmed.is_empty() || trimmed == "." {
+        return Ok(foreign_package_name.to_string());
+    }
+
+    let segments = trimmed.split('/').map(str::trim).collect::<Vec<_>>();
+    if segments.iter().any(|segment| segment.is_empty()) {
+        return Err(ResolverError::new(
+            ResolverErrorKind::InvalidInput,
+            format!(
+                "package build export path '{}' must contain non-empty slash-separated segments",
+                relative_path
+            ),
+        ));
+    }
+
+    Ok(format!("{foreign_package_name}::{}", segments.join("::")))
+}
+
+fn remap_exported_namespace(
+    foreign_namespace: &str,
+    foreign_prefix: &str,
+    mounted_prefix: &str,
+) -> Option<String> {
+    if foreign_namespace == foreign_prefix {
+        Some(mounted_prefix.to_string())
+    } else {
+        foreign_namespace
+            .strip_prefix(&format!("{foreign_prefix}::"))
+            .map(|suffix| format!("{mounted_prefix}::{suffix}"))
+    }
+}
+
+fn exported_symbol_scopes(program: &ResolvedProgram) -> Vec<(ScopeId, String, Vec<SymbolId>)> {
+    let mut scopes = program
+        .scopes
+        .iter_with_ids()
+        .filter_map(|(scope_id, scope)| {
+            namespace_for_export_scope(&scope.kind).map(|namespace| {
+                (scope_id, namespace, scope.symbols.clone())
+            })
+        })
+        .collect::<Vec<_>>();
+    scopes.sort_by_key(|(_, namespace, _)| namespace.matches("::").count());
+    scopes
+}
+
+fn namespace_for_export_scope(kind: &ScopeKind) -> Option<String> {
+    match kind {
+        ScopeKind::ProgramRoot { package } => Some(package.clone()),
+        ScopeKind::NamespaceRoot { namespace } => Some(namespace.clone()),
+        _ => None,
     }
 }
 
