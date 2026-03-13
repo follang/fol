@@ -15,6 +15,7 @@ pub mod errors;
 pub mod identity;
 pub mod metadata;
 pub mod model;
+pub mod session;
 
 pub use build::{parse_package_build, BuildDependency, BuildExport, PackageBuildDefinition};
 pub use config::PackageConfig;
@@ -22,3 +23,4 @@ pub use errors::{PackageError, PackageErrorKind};
 pub use identity::{PackageIdentity, PackageSourceKind};
 pub use metadata::{parse_package_metadata, PackageMetadata};
 pub use model::PreparedPackage;
+pub use session::PackageSession;

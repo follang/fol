@@ -555,7 +555,7 @@ Status: pending
 
 #### 2.1
 
-Status: pending
+Status: done
 
 - Build a `PackageSession` in `fol-package` with package cache and loading stack.
 
