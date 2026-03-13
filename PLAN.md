@@ -670,7 +670,7 @@ Status: pending
 
 #### 6.1
 
-Status: pending
+Status: done
 
 - Add related labels for duplicate symbol diagnostics.
 

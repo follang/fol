@@ -264,6 +264,18 @@ fn insert_symbol(
                         length: name.len(),
                     })
             }),
+        )
+        .with_related_origin(
+            existing
+                .origin
+                .clone()
+                .unwrap_or(fol_parser::ast::SyntaxOrigin {
+                    file: None,
+                    line: 1,
+                    column: 1,
+                    length: name.len(),
+                }),
+            format!("first {} declaration", symbol_kind_label(existing.kind)),
         ));
     }
     let symbol_id = program.symbols.push(ResolvedSymbol {

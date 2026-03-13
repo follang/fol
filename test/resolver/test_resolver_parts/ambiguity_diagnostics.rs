@@ -1,4 +1,5 @@
 use super::{try_resolve_package_from_folder, unique_temp_root};
+use fol_diagnostics::ToDiagnostic;
 use fol_resolver::ResolverErrorKind;
 use std::fs;
 
@@ -49,6 +50,46 @@ fn test_resolver_duplicate_top_level_diagnostics_include_first_declaration_site(
                 .expect("Temporary resolver fixture path should be valid UTF-8")
         ),
         "Duplicate diagnostics should still point at the conflicting declaration as the primary site"
+    );
+
+    fs::remove_dir_all(&temp_root)
+        .expect("Temporary resolver fixture directory should be removable after the test");
+}
+
+#[test]
+fn test_resolver_duplicate_top_level_diagnostics_lower_first_site_as_secondary_label() {
+    let temp_root = unique_temp_root("duplicate_symbol_secondary_labels");
+    fs::create_dir_all(&temp_root).expect("Should create a temporary resolver fixture directory");
+    let first_file = temp_root.join("00_first.fol");
+    let second_file = temp_root.join("10_second.fol");
+    fs::write(&first_file, "var value: int = 1;\n").expect("Should write first duplicate fixture");
+    fs::write(&second_file, "var value: int = 2;\n")
+        .expect("Should write second duplicate fixture");
+
+    let errors = try_resolve_package_from_folder(
+        temp_root
+            .to_str()
+            .expect("Temporary resolver fixture path should be valid UTF-8"),
+    )
+    .expect_err("Duplicate top-level symbols should fail resolver collection");
+    let diagnostic = errors
+        .iter()
+        .find(|error| error.kind() == ResolverErrorKind::DuplicateSymbol)
+        .expect("Resolver should report a duplicate symbol error")
+        .to_diagnostic();
+
+    assert_eq!(diagnostic.labels.len(), 2);
+    assert_eq!(
+        diagnostic.labels[1].location.file.as_deref(),
+        Some(
+            first_file
+                .to_str()
+                .expect("Temporary resolver fixture path should be valid UTF-8")
+        )
+    );
+    assert_eq!(
+        diagnostic.labels[1].message.as_deref(),
+        Some("first value binding declaration")
     );
 
     fs::remove_dir_all(&temp_root)
