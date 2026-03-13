@@ -602,7 +602,7 @@ Status: pending
 
 #### 4.1
 
-Status: pending
+Status: done
 
 - Add explicit code mapping for package error kinds.
 

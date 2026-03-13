@@ -1,4 +1,4 @@
-use fol_diagnostics::{DiagnosticLocation, ToDiagnosticLocation};
+use fol_diagnostics::{DiagnosticCode, DiagnosticLocation, ToDiagnosticLocation};
 use fol_parser::ast::SyntaxOrigin;
 use fol_types::Glitch;
 
@@ -17,6 +17,15 @@ impl PackageErrorKind {
             Self::Unsupported => "PackageUnsupported",
             Self::ImportCycle => "PackageImportCycle",
             Self::Internal => "PackageInternal",
+        }
+    }
+
+    pub fn diagnostic_code(self) -> DiagnosticCode {
+        match self {
+            Self::InvalidInput => DiagnosticCode::new("K1001"),
+            Self::Unsupported => DiagnosticCode::new("K1002"),
+            Self::ImportCycle => DiagnosticCode::new("K1003"),
+            Self::Internal => DiagnosticCode::new("K1099"),
         }
     }
 }
@@ -112,7 +121,7 @@ impl ToDiagnosticLocation for PackageError {
 #[cfg(test)]
 mod tests {
     use super::{PackageError, PackageErrorKind};
-    use fol_diagnostics::DiagnosticReport;
+    use fol_diagnostics::{DiagnosticCode, DiagnosticReport};
     use fol_parser::ast::SyntaxOrigin;
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -173,6 +182,26 @@ mod tests {
         assert!(rendered.contains("PackageInvalidInput"));
         assert!(rendered.contains("pkg/package.yaml"));
         assert!(rendered.contains("\"line\": 2"));
+    }
+
+    #[test]
+    fn package_error_kinds_map_to_stable_diagnostic_codes() {
+        assert_eq!(
+            PackageErrorKind::InvalidInput.diagnostic_code(),
+            DiagnosticCode::new("K1001")
+        );
+        assert_eq!(
+            PackageErrorKind::Unsupported.diagnostic_code(),
+            DiagnosticCode::new("K1002")
+        );
+        assert_eq!(
+            PackageErrorKind::ImportCycle.diagnostic_code(),
+            DiagnosticCode::new("K1003")
+        );
+        assert_eq!(
+            PackageErrorKind::Internal.diagnostic_code(),
+            DiagnosticCode::new("K1099")
+        );
     }
 
     #[test]
