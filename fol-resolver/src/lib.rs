@@ -35,6 +35,7 @@ pub use model::{
     ResolvedSourceUnit, ResolvedSymbol, ScopeKind, SymbolKind,
 };
 pub use session::{PackageIdentity, PackageSourceKind, ResolverConfig, ResolverSession};
+pub use fol_package::PreparedPackage;
 
 pub type ResolverResult<T> = Result<T, Vec<ResolverError>>;
 
@@ -63,6 +64,14 @@ impl Resolver {
     ) -> ResolverResult<ResolvedProgram> {
         ResolverSession::with_config(config).resolve_package(syntax)
     }
+
+    /// Resolve one fol-package prepared package with a fresh resolver session.
+    pub fn resolve_prepared_package(
+        &mut self,
+        prepared: PreparedPackage,
+    ) -> ResolverResult<ResolvedProgram> {
+        ResolverSession::new().resolve_prepared_package(prepared)
+    }
 }
 
 /// Resolve one parsed package with a fresh resolver instance.
@@ -78,9 +87,15 @@ pub fn resolve_package_with_config(
     Resolver::new().resolve_package_with_config(syntax, config)
 }
 
+/// Resolve one fol-package prepared package with a fresh resolver instance.
+pub fn resolve_prepared_package(prepared: PreparedPackage) -> ResolverResult<ResolvedProgram> {
+    Resolver::new().resolve_prepared_package(prepared)
+}
+
 #[cfg(test)]
 mod tests {
-    use super::resolve_package;
+    use super::{resolve_package, resolve_prepared_package};
+    use fol_package::PackageSession;
     use fol_parser::ast::{AstParser, ParsedPackage};
     use fol_stream::FileStream;
 
@@ -101,5 +116,19 @@ mod tests {
         assert_eq!(resolved.package_name(), "parser");
         assert_eq!(resolved.source_units.len(), 1);
         assert_eq!(resolved.syntax().source_units.len(), 1);
+    }
+
+    #[test]
+    fn resolver_smoke_can_lower_a_prepared_package() {
+        let session = PackageSession::new();
+        let prepared = session
+            .prepare_entry_package(parse_package("../test/parser/simple_var.fol"))
+            .expect("Prepared-package smoke fixture should prepare");
+
+        let resolved = resolve_prepared_package(prepared)
+            .expect("Resolver foundation should lower prepared packages");
+
+        assert_eq!(resolved.package_name(), "parser");
+        assert_eq!(resolved.source_units.len(), 1);
     }
 }

@@ -4,8 +4,8 @@ use crate::{
     traverse, ResolverError, ResolverErrorKind, ResolverResult,
 };
 use fol_package::{
-    canonical_directory_root, infer_package_root, parse_directory_package_syntax,
-    PackageBuildDefinition, PackageMetadata, PackageSession,
+    canonical_directory_root, parse_directory_package_syntax, PackageBuildDefinition,
+    PackageMetadata, PackageSession, PreparedPackage,
 };
 use fol_parser::ast::{ParsedPackage, UsePathSegment};
 use std::collections::BTreeMap;
@@ -76,27 +76,18 @@ impl ResolverSession {
     }
 
     pub fn resolve_package(&mut self, syntax: ParsedPackage) -> ResolverResult<ResolvedProgram> {
-        self.resolve_entry_package(syntax)
+        let prepared = self
+            .package_session
+            .prepare_entry_package(syntax)
+            .map_err(|error| vec![error.into()])?;
+        self.resolve_prepared_package(prepared)
     }
 
-    pub(crate) fn resolve_entry_package(
+    pub(crate) fn resolve_prepared_package(
         &mut self,
-        syntax: ParsedPackage,
+        prepared: PreparedPackage,
     ) -> ResolverResult<ResolvedProgram> {
-        let inferred_root = infer_package_root(&syntax).map_err(|error| vec![error.into()])?;
-        self.resolve_parsed_package(
-            syntax,
-            Some(PackageIdentity {
-                source_kind: PackageSourceKind::Entry,
-                display_name: inferred_root
-                    .file_name()
-                    .and_then(|name| name.to_str())
-                    .filter(|name| !name.is_empty())
-                    .unwrap_or("root")
-                    .to_string(),
-                canonical_root: inferred_root.to_string_lossy().to_string(),
-            }),
-        )
+        self.resolve_parsed_package(prepared.syntax.clone(), Some(resolver_package_identity(&prepared.identity)))
     }
 
     pub(crate) fn resolve_parsed_package(

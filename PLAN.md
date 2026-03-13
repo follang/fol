@@ -623,7 +623,7 @@ Status: pending
 
 #### 4.1
 
-Status: pending
+Status: done
 
 - Make `fol-resolver` depend on `fol-package` for package preparation.
 

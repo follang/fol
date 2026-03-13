@@ -37,6 +37,27 @@ impl PackageSession {
         self.prepared_packages.len()
     }
 
+    pub fn prepare_entry_package(
+        &self,
+        syntax: ParsedPackage,
+    ) -> Result<PreparedPackage, PackageError> {
+        let inferred_root = infer_package_root(&syntax)?;
+        let display_name = inferred_root
+            .file_name()
+            .and_then(|name| name.to_str())
+            .filter(|name| !name.is_empty())
+            .unwrap_or("root")
+            .to_string();
+        Ok(PreparedPackage::new(
+            PackageIdentity {
+                source_kind: PackageSourceKind::Entry,
+                canonical_root: inferred_root.to_string_lossy().to_string(),
+                display_name,
+            },
+            syntax,
+        ))
+    }
+
     pub fn load_directory_package(
         &mut self,
         directory: &Path,
@@ -588,6 +609,23 @@ mod tests {
 
         assert!(session.cached_package(&identity).is_some());
         assert_eq!(session.cached_package_count(), 1);
+    }
+
+    #[test]
+    fn package_session_can_prepare_entry_packages_from_parsed_syntax() {
+        let session = PackageSession::new();
+        let prepared = session
+            .prepare_entry_package(parse_fixture_package())
+            .expect("Package session should prepare parsed entry packages");
+
+        assert_eq!(prepared.identity.source_kind, PackageSourceKind::Entry);
+        assert!(
+            prepared.identity.canonical_root.ends_with("parser"),
+            "Prepared entry packages should infer a canonical package root from parsed source units",
+        );
+        assert_eq!(prepared.package_name(), "parser");
+        assert!(prepared.metadata.is_none());
+        assert!(prepared.build.is_none());
     }
 
     #[test]
