@@ -149,6 +149,10 @@ impl ToDiagnostic for PackageError {
                 message.clone(),
             );
         }
+        if self.message.contains("pkg instead of loc") {
+            diagnostic =
+                diagnostic.with_help("replace the import source kind with pkg for formal packages");
+        }
         diagnostic
     }
 }
@@ -320,5 +324,19 @@ mod tests {
             Some("first package metadata field declaration")
         );
         assert_eq!(diagnostic.labels[1].location.line, 1);
+    }
+
+    #[test]
+    fn package_error_to_diagnostic_adds_help_for_formal_packages_imported_via_loc() {
+        let diagnostic = PackageError::new(
+            PackageErrorKind::InvalidInput,
+            "package loc import target '/tmp/formal_pkg' contains '/tmp/formal_pkg/build.fol'; formal package roots must be imported with pkg instead of loc",
+        )
+        .to_diagnostic();
+
+        assert_eq!(
+            diagnostic.helps,
+            vec!["replace the import source kind with pkg for formal packages".to_string()]
+        );
     }
 }

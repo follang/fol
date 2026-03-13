@@ -160,6 +160,17 @@ impl ToDiagnostic for ResolverError {
                 message.clone(),
             );
         }
+        if self.kind == ResolverErrorKind::Unsupported && self.message.contains("imports yet") {
+            diagnostic = diagnostic.with_note(
+                "supported import source kinds are loc, std, and pkg",
+            );
+        }
+        if self.message.contains("requires an explicit std root") {
+            diagnostic = diagnostic.with_help("rerun with --std-root <DIR>");
+        }
+        if self.message.contains("requires an explicit package store root") {
+            diagnostic = diagnostic.with_help("rerun with --package-store-root <DIR>");
+        }
         diagnostic
     }
 }
@@ -419,6 +430,31 @@ mod tests {
         assert_eq!(
             diagnostic.labels[1].location.file.as_deref(),
             Some("pkg/00_first.fol")
+        );
+    }
+
+    #[test]
+    fn resolver_error_to_diagnostic_adds_help_for_missing_std_root() {
+        let diagnostic = ResolverError::new(
+            ResolverErrorKind::InvalidInput,
+            "resolver std import 'fmt' requires an explicit std root",
+        )
+        .to_diagnostic();
+
+        assert_eq!(diagnostic.helps, vec!["rerun with --std-root <DIR>".to_string()]);
+    }
+
+    #[test]
+    fn resolver_error_to_diagnostic_adds_note_for_unsupported_import_kinds() {
+        let diagnostic = ResolverError::new(
+            ResolverErrorKind::Unsupported,
+            "resolver does not support 'url' imports yet",
+        )
+        .to_diagnostic();
+
+        assert_eq!(
+            diagnostic.notes,
+            vec!["supported import source kinds are loc, std, and pkg".to_string()]
         );
     }
 }

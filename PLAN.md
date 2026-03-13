@@ -704,7 +704,7 @@ Status: done
 
 #### 7.2
 
-Status: pending
+Status: done
 
 - Start using `help` and `notes` for migration/unsupported guidance where current errors already imply it.
 
