@@ -844,4 +844,70 @@ mod tests {
         fs::remove_dir_all(&temp_root)
             .expect("Temporary package-store fixture should be removable after the test");
     }
+
+    #[test]
+    fn package_session_reports_explicit_pkg_dependency_cycles() {
+        let temp_root = unique_temp_root("cyclic_pkg_graph");
+        let store_root = temp_root.join("store");
+        fs::create_dir_all(store_root.join("json/src/root"))
+            .expect("Should create the first cyclic package fixture");
+        fs::create_dir_all(store_root.join("core/src/root"))
+            .expect("Should create the second cyclic package fixture");
+        fs::write(
+            store_root.join("json/package.yaml"),
+            "name: json\nversion: 1.0.0\n",
+        )
+        .expect("Should write the first package metadata fixture");
+        fs::write(
+            store_root.join("json/build.fol"),
+            "def core: pkg = \"core\";\ndef root: loc = \"src/root\";\n",
+        )
+        .expect("Should write the first package build fixture");
+        fs::write(
+            store_root.join("json/src/root/value.fol"),
+            "var[exp] answer: int = 1;\n",
+        )
+        .expect("Should write the first package source fixture");
+        fs::write(
+            store_root.join("core/package.yaml"),
+            "name: core\nversion: 1.0.0\n",
+        )
+        .expect("Should write the second package metadata fixture");
+        fs::write(
+            store_root.join("core/build.fol"),
+            "def json: pkg = \"json\";\ndef root: loc = \"src/root\";\n",
+        )
+        .expect("Should write the second package build fixture");
+        fs::write(
+            store_root.join("core/src/root/value.fol"),
+            "var[exp] shared: int = 2;\n",
+        )
+        .expect("Should write the second package source fixture");
+        let mut session = PackageSession::new();
+
+        let error = session
+            .load_package_from_store(
+                &store_root,
+                &[UsePathSegment {
+                    separator: None,
+                    spelling: "json".to_string(),
+                }],
+            )
+            .expect_err("Package session should reject cyclic package dependency graphs");
+
+        assert_eq!(error.kind(), crate::PackageErrorKind::ImportCycle);
+        assert!(error
+            .to_string()
+            .contains("package import cycle detected while loading package roots"));
+        assert!(
+            error
+                .to_string()
+                .contains("json")
+                && error.to_string().contains("core"),
+            "Cycle diagnostics should list the participating package roots",
+        );
+
+        fs::remove_dir_all(&temp_root)
+            .expect("Temporary package-store fixture should be removable after the test");
+    }
 }

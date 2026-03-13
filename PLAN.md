@@ -595,7 +595,7 @@ Status: done
 
 #### 3.2
 
-Status: pending
+Status: done
 
 - Move package-load cycle detection into `fol-package`.
 
