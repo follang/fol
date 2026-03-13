@@ -1,9 +1,15 @@
-use crate::{ImportId, ResolvedProgram, ResolverError, ResolverErrorKind, ScopeId};
+use crate::{
+    ImportId, PackageSourceKind, ResolvedProgram, ResolverError, ResolverErrorKind,
+    ResolverSession, ScopeId,
+};
 use crate::model::ScopeKind;
 use fol_parser::ast::FolType;
-use std::collections::BTreeSet;
+use std::path::{Path, PathBuf};
 
-pub fn resolve_import_targets(program: &mut ResolvedProgram) -> Result<(), Vec<ResolverError>> {
+pub fn resolve_import_targets(
+    session: &mut ResolverSession,
+    program: &mut ResolvedProgram,
+) -> Result<(), Vec<ResolverError>> {
     let mut errors = Vec::new();
     let import_ids = program
         .imports
@@ -12,7 +18,7 @@ pub fn resolve_import_targets(program: &mut ResolvedProgram) -> Result<(), Vec<R
         .collect::<Vec<_>>();
 
     for import_id in import_ids {
-        if let Err(error) = resolve_import_target(program, import_id) {
+        if let Err(error) = resolve_import_target_with_session(session, program, import_id) {
             errors.push(error);
         }
     }
@@ -34,7 +40,7 @@ pub fn resolve_import_target(
 
     match &import.path_type {
         FolType::Location { .. } => {
-            let target_scope = resolve_location_target(program, &import)?;
+            let target_scope = resolve_location_target_in_loaded_set(program, &import)?;
             if let Some(import_slot) = program.imports.get_mut(import_id) {
                 import_slot.target_scope = Some(target_scope);
             }
@@ -60,7 +66,44 @@ pub fn resolve_import_target(
     }
 }
 
-fn resolve_location_target(
+pub(crate) fn resolve_import_target_with_session(
+    session: &mut ResolverSession,
+    program: &mut ResolvedProgram,
+    import_id: ImportId,
+) -> Result<(), ResolverError> {
+    let Some(import) = program.import(import_id).cloned() else {
+        return Ok(());
+    };
+
+    match &import.path_type {
+        FolType::Location { .. } => {
+            let target_scope = resolve_location_target_from_disk(session, program, &import)
+                .map_err(|error| import_error_from(program, import.alias_symbol, error))?;
+            if let Some(import_slot) = program.imports.get_mut(import_id) {
+                import_slot.target_scope = Some(target_scope);
+            }
+            Ok(())
+        }
+        _ => resolve_import_target(program, import_id),
+    }
+}
+
+fn resolve_location_target_from_disk(
+    session: &mut ResolverSession,
+    program: &mut ResolvedProgram,
+    import: &crate::ResolvedImport,
+) -> Result<ScopeId, ResolverError> {
+    let source_unit = program
+        .source_unit(import.source_unit)
+        .expect("import source unit should exist while resolving imports");
+    let source_path = Path::new(&source_unit.path);
+    let source_dir = source_path.parent().unwrap_or_else(|| Path::new("."));
+    let target_path = resolve_directory_path(source_dir, &import.path_segments);
+    let loaded = session.load_package_from_directory(target_path.as_path(), PackageSourceKind::Local)?;
+    program.mount_loaded_package(&loaded)
+}
+
+fn resolve_location_target_in_loaded_set(
     program: &ResolvedProgram,
     import: &crate::ResolvedImport,
 ) -> Result<ScopeId, ResolverError> {
@@ -74,7 +117,7 @@ fn resolve_location_target(
         .map(|segment| segment.spelling.clone())
         .collect::<Vec<_>>();
     let joined = relative_suffix.join("::");
-    let mut candidate_names = BTreeSet::new();
+    let mut candidate_names = std::collections::BTreeSet::new();
 
     if !joined.is_empty() {
         candidate_names.insert(joined.clone());
@@ -133,6 +176,36 @@ fn import_error(
     {
         Some(origin) => ResolverError::with_origin(kind, message, origin),
         None => ResolverError::new(kind, message),
+    }
+}
+
+fn import_error_from(
+    program: &ResolvedProgram,
+    alias_symbol: crate::SymbolId,
+    error: ResolverError,
+) -> ResolverError {
+    if error.origin().is_some() {
+        error
+    } else {
+        import_error(
+            program,
+            alias_symbol,
+            error.kind(),
+            error.message().to_string(),
+        )
+    }
+}
+
+fn resolve_directory_path(source_dir: &Path, path_segments: &[fol_parser::ast::UsePathSegment]) -> PathBuf {
+    let mut relative = PathBuf::new();
+    for segment in path_segments {
+        relative.push(&segment.spelling);
+    }
+
+    if relative.is_absolute() {
+        relative
+    } else {
+        source_dir.join(relative)
     }
 }
 

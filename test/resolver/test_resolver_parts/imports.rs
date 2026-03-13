@@ -40,8 +40,14 @@ fn test_resolver_lowers_top_level_use_declarations_into_import_records() {
         "Resolver import records should preserve parsed use-path segments"
     );
     assert!(
-        import.target_scope.is_some(),
-        "Location imports should resolve to a concrete package or namespace scope"
+        matches!(
+            import
+                .target_scope
+                .and_then(|scope_id| resolved.scope(scope_id))
+                .map(|scope| &scope.kind),
+            Some(ScopeKind::ProgramRoot { package }) if package == "math"
+        ),
+        "Location imports should mount the exact target directory as the imported root scope"
     );
 
     fs::remove_dir_all(&temp_root)
@@ -89,6 +95,16 @@ fn test_resolver_keeps_local_use_aliases_visible_in_routine_scopes() {
 
     assert_eq!(local_import.alias_symbol, helper_symbol.id);
     assert_eq!(helper_reference.resolved, Some(helper_symbol.id));
+    assert!(
+        matches!(
+            local_import
+                .target_scope
+                .and_then(|scope_id| resolved.scope(scope_id))
+                .map(|scope| &scope.kind),
+            Some(ScopeKind::ProgramRoot { package }) if package == "helper"
+        ),
+        "Routine-local location imports should load the referenced directory and mount it as a root scope"
+    );
 
     fs::remove_dir_all(&temp_root)
         .expect("Temporary resolver fixture directory should be removable after the test");

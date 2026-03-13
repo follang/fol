@@ -60,6 +60,10 @@ impl ResolverError {
         self.kind
     }
 
+    pub fn message(&self) -> &str {
+        &self.message
+    }
+
     pub fn origin(&self) -> Option<&SyntaxOrigin> {
         self.origin.as_ref()
     }

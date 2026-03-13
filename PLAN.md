@@ -1471,7 +1471,7 @@ Status: done
 
 #### Slice 16.1
 
-Status: pending
+Status: done
 
 - Change `loc` from “resolve against current loaded source set only” to “load target
   directory from disk”.

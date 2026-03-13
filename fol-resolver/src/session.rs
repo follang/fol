@@ -63,6 +63,7 @@ impl ResolverSession {
         self.loaded_packages.len()
     }
 
+    #[cfg(test)]
     pub(crate) fn loading_depth(&self) -> usize {
         self.loading_stack.len()
     }
@@ -105,8 +106,8 @@ impl ResolverSession {
 
         let mut program = ResolvedProgram::new(syntax);
         let collected = collect::collect_top_level_symbols(&mut program)
-            .and_then(|_| imports::resolve_import_targets(&mut program))
-            .and_then(|_| traverse::collect_routine_scopes(&mut program));
+            .and_then(|_| imports::resolve_import_targets(self, &mut program))
+            .and_then(|_| traverse::collect_routine_scopes(self, &mut program));
 
         if !self.loading_stack.is_empty() {
             self.loading_stack.pop();

@@ -65,7 +65,7 @@ fn test_resolver_resolves_qualified_identifiers_through_import_alias_roots() {
     let temp_root = unique_temp_root("qualified_identifier_import_alias");
     fs::create_dir_all(temp_root.join("math"))
         .expect("Should create a temporary resolver fixture directory");
-    fs::write(temp_root.join("math/values.fol"), "var answer: int = 42;\n")
+    fs::write(temp_root.join("math/values.fol"), "var[exp] answer: int = 42;\n")
         .expect("Should write the imported namespace fixture");
     fs::write(
         temp_root.join("main.fol"),

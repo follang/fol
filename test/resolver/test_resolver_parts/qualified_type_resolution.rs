@@ -62,7 +62,7 @@ fn test_resolver_resolves_qualified_types_through_import_alias_roots() {
     let temp_root = unique_temp_root("qualified_type_import_alias");
     fs::create_dir_all(temp_root.join("math"))
         .expect("Should create a temporary resolver fixture directory");
-    fs::write(temp_root.join("math/types.fol"), "ali Number: int;\n")
+    fs::write(temp_root.join("math/types.fol"), "typ[exp] Number: int;\n")
         .expect("Should write the imported namespace type fixture");
     fs::write(
         temp_root.join("main.fol"),
@@ -83,8 +83,8 @@ fn test_resolver_resolves_qualified_types_through_import_alias_roots() {
     let number_symbol = resolved
         .symbols_in_scope(import.target_scope.expect("Import target should resolve"))
         .into_iter()
-        .find(|symbol| symbol.name == "Number" && symbol.kind == SymbolKind::Alias)
-        .expect("Imported namespace scope should keep the qualified alias symbol");
+        .find(|symbol| symbol.name == "Number" && symbol.kind == SymbolKind::Type)
+        .expect("Imported namespace scope should keep the qualified type symbol");
     let routine_scope_id = resolved
         .scopes
         .iter_with_ids()

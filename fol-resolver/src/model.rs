@@ -1,4 +1,6 @@
 use crate::ids::{IdTable, ImportId, ReferenceId, ScopeId, SourceUnitId, SymbolId};
+use crate::session::LoadedPackage;
+use crate::{ResolverError, ResolverErrorKind};
 use fol_parser::ast::{
     FolType, ParsedDeclScope, ParsedDeclVisibility, ParsedPackage, SyntaxIndex, SyntaxNodeId,
     SyntaxOrigin, UsePathSegment,
@@ -110,6 +112,7 @@ pub struct ResolvedProgram {
     pub program_scope: ScopeId,
     namespace_scopes: BTreeMap<String, ScopeId>,
     syntax_scopes: BTreeMap<SyntaxNodeId, ScopeId>,
+    mounted_package_roots: BTreeMap<String, ScopeId>,
     pub source_units: IdTable<SourceUnitId, ResolvedSourceUnit>,
     pub scopes: IdTable<ScopeId, ResolvedScope>,
     pub symbols: IdTable<SymbolId, ResolvedSymbol>,
@@ -197,6 +200,7 @@ impl ResolvedProgram {
             program_scope,
             namespace_scopes,
             syntax_scopes: BTreeMap::new(),
+            mounted_package_roots: BTreeMap::new(),
             source_units,
             scopes,
             symbols: IdTable::new(),
@@ -306,6 +310,171 @@ impl ResolvedProgram {
         if let Some(syntax_id) = syntax_id {
             self.syntax_scopes.insert(syntax_id, scope_id);
         }
+    }
+
+    pub(crate) fn mount_loaded_package(
+        &mut self,
+        loaded: &LoadedPackage,
+    ) -> Result<ScopeId, ResolverError> {
+        if let Some(scope_id) = self
+            .mounted_package_roots
+            .get(&loaded.identity.canonical_root)
+            .copied()
+        {
+            return Ok(scope_id);
+        }
+
+        let root_name = loaded.identity.display_name.clone();
+        if let Some(existing_scope) = self.namespace_scopes.get(&root_name).copied() {
+            self.mounted_package_roots
+                .insert(loaded.identity.canonical_root.clone(), existing_scope);
+            return Ok(existing_scope);
+        }
+
+        let source_unit_id = self.source_units.push(ResolvedSourceUnit {
+            id: SourceUnitId(0),
+            path: loaded.identity.canonical_root.clone(),
+            package: root_name.clone(),
+            namespace: root_name.clone(),
+            scope_id: ScopeId(0),
+            top_level_nodes: Vec::new(),
+        });
+        if let Some(unit) = self.source_units.get_mut(source_unit_id) {
+            unit.id = source_unit_id;
+        }
+
+        let root_scope = self.scopes.push(ResolvedScope {
+            id: ScopeId(0),
+            kind: ScopeKind::ProgramRoot {
+                package: root_name.clone(),
+            },
+            parent: None,
+            source_unit: Some(source_unit_id),
+            symbols: Vec::new(),
+            symbol_keys: BTreeMap::new(),
+        });
+        if let Some(scope) = self.scopes.get_mut(root_scope) {
+            scope.id = root_scope;
+        }
+        if let Some(unit) = self.source_units.get_mut(source_unit_id) {
+            unit.scope_id = root_scope;
+        }
+        self.namespace_scopes.insert(root_name.clone(), root_scope);
+
+        let mut mounted_scopes = BTreeMap::new();
+        mounted_scopes.insert(loaded.program.program_scope, root_scope);
+        let foreign_package_name = loaded.program.package_name().to_string();
+        let mut foreign_namespaces = loaded
+            .program
+            .scopes
+            .iter_with_ids()
+            .filter_map(|(scope_id, scope)| match &scope.kind {
+                ScopeKind::NamespaceRoot { namespace } => Some((scope_id, namespace.clone())),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        foreign_namespaces.sort_by_key(|(_, namespace)| namespace.matches("::").count());
+
+        for (foreign_scope_id, foreign_namespace) in foreign_namespaces {
+            let mounted_namespace =
+                remap_loaded_namespace(&foreign_namespace, &foreign_package_name, &root_name);
+            let mounted_scope = ensure_namespace_scope(
+                &mut self.scopes,
+                &mut self.namespace_scopes,
+                root_scope,
+                &root_name,
+                &mounted_namespace,
+            );
+            mounted_scopes.insert(foreign_scope_id, mounted_scope);
+        }
+
+        let export_scopes = loaded
+            .program
+            .scopes
+            .iter_with_ids()
+            .filter_map(|(scope_id, scope)| {
+                matches!(
+                    scope.kind,
+                    ScopeKind::ProgramRoot { .. } | ScopeKind::NamespaceRoot { .. }
+                )
+                .then_some((scope_id, scope.symbols.clone()))
+            })
+            .collect::<Vec<_>>();
+
+        for (foreign_scope_id, foreign_symbols) in export_scopes {
+            let mounted_scope = *mounted_scopes
+                .get(&foreign_scope_id)
+                .expect("mounted export scope should exist");
+            for foreign_symbol_id in foreign_symbols {
+                let Some(symbol) = loaded.program.symbol(foreign_symbol_id) else {
+                    continue;
+                };
+                if symbol.visibility != Some(ParsedDeclVisibility::Exported)
+                    || symbol.kind == SymbolKind::ImportAlias
+                {
+                    continue;
+                }
+                self.insert_mounted_symbol(mounted_scope, source_unit_id, symbol.clone())?;
+            }
+        }
+
+        self.mounted_package_roots
+            .insert(loaded.identity.canonical_root.clone(), root_scope);
+        Ok(root_scope)
+    }
+
+    fn insert_mounted_symbol(
+        &mut self,
+        scope_id: ScopeId,
+        source_unit_id: SourceUnitId,
+        symbol: ResolvedSymbol,
+    ) -> Result<SymbolId, ResolverError> {
+        let canonical_name = symbol.canonical_name.clone();
+        if let Some(existing) = self
+            .scope(scope_id)
+            .and_then(|scope| scope.symbol_keys.get(&canonical_name))
+            .into_iter()
+            .flat_map(|ids| ids.iter())
+            .filter_map(|id| self.symbol(*id))
+            .find(|existing| existing.duplicate_key == symbol.duplicate_key)
+        {
+            return Err(ResolverError::new(
+                ResolverErrorKind::DuplicateSymbol,
+                format!(
+                    "mounted imported symbol '{}' conflicts with existing symbol '{}'",
+                    symbol.name, existing.name
+                ),
+            ));
+        }
+
+        let symbol_id = self.symbols.push(ResolvedSymbol {
+            id: SymbolId(0),
+            scope: scope_id,
+            source_unit: source_unit_id,
+            ..symbol
+        });
+        if let Some(inserted) = self.symbols.get_mut(symbol_id) {
+            inserted.id = symbol_id;
+        }
+
+        let scope = self
+            .scopes
+            .get_mut(scope_id)
+            .expect("mounted symbol target scope should exist");
+        scope.symbols.push(symbol_id);
+        scope.symbol_keys.entry(canonical_name).or_default().push(symbol_id);
+
+        Ok(symbol_id)
+    }
+}
+
+fn remap_loaded_namespace(namespace: &str, foreign_package_name: &str, mounted_root: &str) -> String {
+    if namespace == foreign_package_name {
+        mounted_root.to_string()
+    } else if let Some(suffix) = namespace.strip_prefix(&format!("{foreign_package_name}::")) {
+        format!("{mounted_root}::{suffix}")
+    } else {
+        namespace.to_string()
     }
 }
 

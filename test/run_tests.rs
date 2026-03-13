@@ -245,11 +245,6 @@ mod integration_tests {
         let temp_root = unique_temp_root("pipeline_cross_file_import");
         fs::create_dir_all(temp_root.join("net/http"))
             .expect("Should create a temporary integration fixture directory");
-        let package = temp_root
-            .file_name()
-            .expect("Integration fixture root should have a folder name")
-            .to_string_lossy()
-            .to_string();
         fs::write(temp_root.join("net/http/route.fol"), "var handler: int = 1;\n")
             .expect("Should write the imported namespace fixture");
         fs::write(
@@ -271,19 +266,21 @@ mod integration_tests {
             .expect("Cross-file import fixture should parse cleanly");
         let resolved =
             resolve_package(parsed).expect("Cross-file import fixture should resolve cleanly");
-        let expected_scope = resolved
-            .namespace_scope(&format!("{package}::net::http"))
-            .expect("Imported namespace scope should exist");
         let import = resolved
             .imports_in_scope(resolved.program_scope)
             .into_iter()
             .find(|import| import.alias_name == "http")
             .expect("Resolved program should keep the import record");
 
-        assert_eq!(
-            import.target_scope,
-            Some(expected_scope),
-            "Cross-file full pipeline runs should resolve location imports against namespace scopes"
+        assert!(
+            matches!(
+                import
+                    .target_scope
+                    .and_then(|scope_id| resolved.scope(scope_id))
+                    .map(|scope| &scope.kind),
+                Some(fol_resolver::ScopeKind::ProgramRoot { package }) if package == "http"
+            ),
+            "Cross-file full pipeline runs should mount exact loc directories as imported root scopes"
         );
 
         fs::remove_dir_all(&temp_root).ok();

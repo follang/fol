@@ -67,7 +67,7 @@ fn test_resolver_resolves_qualified_calls_through_import_alias_roots() {
         .expect("Should create a temporary resolver fixture directory");
     fs::write(
         temp_root.join("math/helpers.fol"),
-        "fun[] emit(value: int): int = {\n    return value;\n}\n",
+        "fun[exp] emit(value: int): int = {\n    return value;\n}\n",
     )
     .expect("Should write the imported namespace routine fixture");
     fs::write(
