@@ -30,6 +30,12 @@ fn main() {
                 .help("Output diagnostics in JSON format")
                 .action(clap::ArgAction::SetTrue),
         )
+        .arg(
+            Arg::new("std-root")
+                .long("std-root")
+                .value_name("DIR")
+                .help("Explicit standard-library root for std imports"),
+        )
         .get_matches();
 
     let file_path = matches
@@ -38,6 +44,10 @@ fn main() {
         .unwrap_or("./test/main/main.fol");
 
     let json_output = matches.get_flag("json");
+    let resolver_config = fol_resolver::ResolverConfig {
+        std_root: matches.get_one::<String>("std-root").cloned(),
+        package_store_root: None,
+    };
     let output_format = if json_output {
         OutputFormat::Json
     } else {
@@ -53,7 +63,7 @@ fn main() {
     }
 
     // Try to compile the file
-    match compile_file(file_path, &mut diagnostics) {
+    match compile_file(file_path, &resolver_config, &mut diagnostics) {
         Ok(_) => {
             if !json_output && !diagnostics.has_errors() {
                 println!("✓ Compilation successful!");
@@ -76,7 +86,11 @@ fn main() {
     }
 }
 
-fn compile_file(file_path: &str, diagnostics: &mut DiagnosticReport) -> Result<(), ()> {
+fn compile_file(
+    file_path: &str,
+    resolver_config: &fol_resolver::ResolverConfig,
+    diagnostics: &mut DiagnosticReport,
+) -> Result<(), ()> {
     // Check if file exists
     let path = Path::new(file_path);
     if !path.exists() {
@@ -112,7 +126,7 @@ fn compile_file(file_path: &str, diagnostics: &mut DiagnosticReport) -> Result<(
     // 3. Parse the book-aligned package shape
     let mut ast_parser = AstParser::new();
     match ast_parser.parse_package(&mut lexer) {
-        Ok(package) => match fol_resolver::resolve_package(package) {
+        Ok(package) => match fol_resolver::resolve_package_with_config(package, resolver_config.clone()) {
             Ok(_) => {
                 if !diagnostics.has_errors() {
                     return Ok(());
@@ -168,7 +182,11 @@ fn parser_error_location(error: &dyn fol_types::Glitch) -> Option<DiagnosticLoca
 #[test]
 fn compile_missing_file_reports_error() {
     let mut diagnostics = DiagnosticReport::new();
-    let result = compile_file("./test/does-not-exist.fol", &mut diagnostics);
+    let result = compile_file(
+        "./test/does-not-exist.fol",
+        &fol_resolver::ResolverConfig::default(),
+        &mut diagnostics,
+    );
 
     assert!(result.is_err(), "Missing file should fail compilation");
     assert!(

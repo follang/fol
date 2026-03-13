@@ -304,6 +304,26 @@ mod integration_tests {
     }
 
     #[test]
+    fn test_cli_accepts_explicit_std_root_configuration() {
+        let temp_root = unique_temp_root("cli_std_root");
+        let output = run_fol(&[
+            "--std-root",
+            temp_root
+                .to_str()
+                .expect("Temporary std-root fixture path should be valid UTF-8"),
+            "test/parser/simple_var.fol",
+        ]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        assert!(
+            output.status.success(),
+            "CLI should accept an explicit std-root flag even before std imports are used, got status {:?} and output:\n{}",
+            output.status.code(),
+            stdout,
+        );
+    }
+
+    #[test]
     fn test_cli_folder_compile_succeeds_with_package_parser() {
         use std::fs;
 

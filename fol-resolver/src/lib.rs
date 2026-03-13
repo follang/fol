@@ -51,11 +51,28 @@ impl Resolver {
     ) -> ResolverResult<ResolvedProgram> {
         ResolverSession::new().resolve_package(syntax)
     }
+
+    /// Resolve one parsed package with an explicit resolver configuration.
+    pub fn resolve_package_with_config(
+        &mut self,
+        syntax: fol_parser::ast::ParsedPackage,
+        config: ResolverConfig,
+    ) -> ResolverResult<ResolvedProgram> {
+        ResolverSession::with_config(config).resolve_package(syntax)
+    }
 }
 
 /// Resolve one parsed package with a fresh resolver instance.
 pub fn resolve_package(syntax: fol_parser::ast::ParsedPackage) -> ResolverResult<ResolvedProgram> {
     Resolver::new().resolve_package(syntax)
+}
+
+/// Resolve one parsed package with an explicit resolver configuration.
+pub fn resolve_package_with_config(
+    syntax: fol_parser::ast::ParsedPackage,
+    config: ResolverConfig,
+) -> ResolverResult<ResolvedProgram> {
+    Resolver::new().resolve_package_with_config(syntax, config)
 }
 
 #[cfg(test)]

@@ -1503,7 +1503,7 @@ Status: done
 
 #### Slice 17.1
 
-Status: pending
+Status: done
 
 - Define std-root discovery for CLI and tests.
 - Prefer one explicit configured root over implicit host-environment guessing.
