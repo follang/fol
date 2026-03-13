@@ -936,6 +936,83 @@ mod integration_tests {
     }
 
     #[test]
+    fn test_cli_json_modern_compiler_errors_do_not_fall_back_to_unknown_codes() {
+        use std::fs;
+
+        let parser_root = unique_temp_root("cli_json_known_parser_code");
+        fs::create_dir_all(&parser_root).expect("Should create parser fixture root");
+        fs::write(parser_root.join("bad.fol"), "run(1, 2)\n").expect("Should write parser fixture");
+        let parser_output = run_fol(&[
+            "--json",
+            parser_root
+                .to_str()
+                .expect("Parser fixture path should be valid UTF-8"),
+        ]);
+        let parser_json = parse_cli_json(&parser_output);
+        assert_ne!(
+            parser_json["diagnostics"][0]["code"],
+            "E0000",
+            "Parser diagnostics should use explicit structured parser codes"
+        );
+
+        let package_root = unique_temp_root("cli_json_known_package_code");
+        let app_root = package_root.join("app");
+        let loc_root = package_root.join("formal_pkg");
+        fs::create_dir_all(&app_root).expect("Should create app fixture root");
+        fs::create_dir_all(&loc_root).expect("Should create loc target fixture root");
+        fs::write(loc_root.join("build.fol"), "def root: loc = \"src\";\n")
+            .expect("Should write formal package control file");
+        fs::write(
+            app_root.join("main.fol"),
+            "use formal: loc = {../formal_pkg};\nfun[] main(): int = {\n    return answer;\n}\n",
+        )
+        .expect("Should write package fixture");
+        let package_output = run_fol(&[
+            "--json",
+            app_root
+                .to_str()
+                .expect("Package fixture path should be valid UTF-8"),
+        ]);
+        let package_json = parse_cli_json(&package_output);
+        assert_ne!(
+            package_json["diagnostics"][0]["code"],
+            "E0000",
+            "Package diagnostics should use explicit structured package codes"
+        );
+
+        let resolver_root = unique_temp_root("cli_json_known_resolver_code");
+        fs::create_dir_all(resolver_root.join("alpha"))
+            .expect("Should create first imported namespace fixture");
+        fs::create_dir_all(resolver_root.join("beta"))
+            .expect("Should create second imported namespace fixture");
+        fs::write(resolver_root.join("alpha/values.fol"), "var[exp] answer: int = 1;\n")
+            .expect("Should write first imported exported value fixture");
+        fs::write(resolver_root.join("beta/values.fol"), "var[exp] answer: int = 2;\n")
+            .expect("Should write second imported exported value fixture");
+        fs::write(
+            resolver_root.join("main.fol"),
+            "use alpha: loc = {alpha};\nuse beta: loc = {beta};\nfun[] main(): int = {\n    return answer;\n}\n",
+        )
+        .expect("Should write resolver fixture");
+        let resolver_output = run_fol(&[
+            "--json",
+            resolver_root
+                .to_str()
+                .expect("Resolver fixture path should be valid UTF-8"),
+        ]);
+        let resolver_json = parse_cli_json(&resolver_output);
+        assert_ne!(
+            resolver_json["diagnostics"][0]["code"],
+            "E0000",
+            "Resolver diagnostics should use explicit structured resolver codes"
+        );
+
+        fs::remove_dir_all(&parser_root).ok();
+        fs::remove_dir_all(&package_root).ok();
+        fs::remove_dir_all(&resolver_root).ok();
+    }
+
+    #[test]
     fn test_parser_error_locations_reach_diagnostics_outputs() {
         use fol_diagnostics::{DiagnosticLocation, DiagnosticReport, OutputFormat};
         use fol_lexer::lexer::stage3::Elements;

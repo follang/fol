@@ -626,7 +626,7 @@ Status: done
 
 #### 4.5
 
-Status: pending
+Status: done
 
 - Add tests proving no modern compiler errors fall back to unknown generic code by accident.
 
