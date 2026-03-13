@@ -1,6 +1,6 @@
 # FOL Project Progress
 
-Last scan: 2026-03-13
+Last scan: 2026-03-14
 Scan basis: repository code, active tests, current docs, and a fresh `make build` + `make test`
 Authority rule for this file: code and active tests win over older docs, plans, and historical assumptions
 
@@ -36,7 +36,7 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `README.md`
 - relevant `book/src` pages for lexical rules, methods, literals, and recoverable errors
 - Rechecked the current implementation against the existing progress ledger and the
-  active resolver milestone record.
+  active diagnostics milestone record.
 - Ran:
 - `make build`
 - `make test`
@@ -60,8 +60,8 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - Active stream tests: `54`
 - Parser-focused Rust tests under `test/parser`: `1108`
 - Resolver-focused Rust tests under `test/resolver`: `96`
-- Observed current unit test run: `2` unit tests, green
-- Observed current integration run: `1363` integration tests, green
+- Observed current unit test run: `4` unit tests, green
+- Observed current integration run: `1376` integration tests, green
 
 ## 3. Current Headline Status
 
@@ -70,12 +70,12 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `fol-parser`: large front-end surface implemented, heavily hardened, and now much closer to a stable AST contract
 - `fol-package`: implemented as the package-loading and package-definition boundary before resolver
 - `fol-resolver`: implemented for the current whole-program name-resolution contract
-- `fol-diagnostics`: implemented and wired into the CLI
+- `fol-diagnostics`: implemented, structured, and wired into the CLI
 - Root CLI: implemented as parse-and-package-prepare-and-resolve driver
 - Stream + lexer + parser: stable and consumed by package loading and resolver
 - Package loading and package preparation: implemented for `loc`, `std`, and installed `pkg`
 - Whole-program name resolution: implemented for the current contract
-- Immediate active phase: diagnostics and error-reporting hardening
+- Immediate active phase: type checking and post-resolution semantic work
 - Whole-program type checking: missing
 - Ownership and borrowing enforcement: missing
 - Standard or protocol conformance analysis: missing
@@ -87,8 +87,8 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `make build`: passed
 - `make test`: passed
 - Current observed totals:
-- `2` unit tests passed
-- `1363` integration tests passed
+- `4` unit tests passed
+- `1376` integration tests passed
 - Observed active failures: `0`
 
 ## 5. What Has Been Completed So Far
@@ -219,26 +219,30 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - Built-in `str` now exits named-type lookup instead of surfacing as an unresolved
   user-defined symbol.
 
-### 5.6 Diagnostics Shortcomings Still Open
+### 5.6 Diagnostics Milestone
 
-- `fol-diagnostics` currently models one primary location and one optional help
-  string per diagnostic; it does not yet support rich multi-span labels, notes,
-  or structured fix suggestions.
-- Human diagnostics still print message-plus-location only; they do not render
-  source snippets, underline spans, related labels, or fallback source
-  explanations consistently.
-- Diagnostic codes are still effectively weak and fallback-heavy; explicit
-  producer-owned stable codes have not replaced the current message-derived
-  behavior yet.
-- Parser, package, and resolver each still do some producer-specific diagnostic
-  lowering instead of sharing one consistent diagnostics-facing boundary.
-- Current diagnostics tests prove location propagation and basic renderer
-  survival, but they do not yet lock richer human-output shape or structured
-  JSON contracts.
-- Resolver diagnostics now retain exact locations where the parser exposes them and
-  report competing declaration or candidate sites where useful.
-- Plain unresolved identifiers, plain free calls, and plain named types now keep
-  exact non-null file/line/column origins in resolver diagnostics and CLI JSON.
+- `fol-diagnostics` now models structured diagnostics with:
+- one primary label
+- zero or more secondary labels
+- notes
+- helps
+- suggestions
+- Human diagnostics now render source snippets, underline primary spans, surface
+  related labels as note-style entries, and fall back cleanly when source text
+  cannot be loaded.
+- JSON diagnostics now preserve the richer structure directly, including primary
+  location, secondary labels, notes, helps, and suggestions.
+- Parser, package, and resolver now lower into stable producer-owned diagnostic
+  codes instead of relying on message-derived fallback guessing.
+- The CLI now routes compiler glitches through one shared lowering boundary
+  instead of keeping per-producer downcast ladders in the entrypoint.
+- Duplicate, ambiguity, and duplicate-package-field diagnostics now preserve
+  related sites structurally instead of only embedding them in prose.
+- Warning and info report paths are now first-class and renderer-tested even
+  though current compiler producers still emit mostly errors.
+- Resolver diagnostics now retain exact locations where the parser exposes them,
+  including plain unresolved identifiers, plain free calls, plain named types,
+  and structured competing-declaration sites.
 
 ### 5.6 Package Loading Milestone
 
@@ -420,7 +424,7 @@ These remain later-stage work. They are no longer reasons to keep front-end hard
 ### 10.1 What Is Ready
 
 - The project has a real front-end pipeline:
-- `fol-stream -> fol-lexer -> fol-parser -> fol-resolver -> fol-diagnostics`
+- `fol-stream -> fol-lexer -> fol-parser -> fol-package -> fol-resolver -> fol-diagnostics`
 - The pipeline is not toy-only anymore.
 - Stream, lexer, parser, and resolver behavior are now explicit enough to move to the
   next semantic phase without another deep stability pass first.
@@ -428,9 +432,6 @@ These remain later-stage work. They are no longer reasons to keep front-end hard
 
 ### 10.2 What Is Not Implemented Yet
 
-- Rich multi-span diagnostics are still missing.
-- Human diagnostics still need source-snippet and underline rendering.
-- Stable explicit diagnostic codes still need to replace message-derived fallback codes.
 - Semantic analysis is still missing.
 - Type checking is still missing.
 - Runtime or backend behavior is still missing.
@@ -441,15 +442,17 @@ These remain later-stage work. They are no longer reasons to keep front-end hard
 - Lexer: strong and contract-stable
 - Parser: broad, hardened, source-layout-aware, and contract-stable enough to move on
 - Resolver: implemented and broad enough for the current name-resolution milestone
-- Diagnostics baseline: green
+- Diagnostics: structured, stable, and contract-backed
 - Current compiler core: ready to move beyond name resolution
 
 ## 11. Next Recommended Focus
 
-- Finish the diagnostics hardening pass before starting type checking.
-- Keep the diagnostics phase scoped to reporting infrastructure, not new semantic rules.
-- After diagnostics are stable, create the next plan around type checking,
-  deeper semantic analysis, and type-directed member resolution.
+- Start the type-checking phase on top of the now-stable package and resolver
+  boundaries.
+- Keep early type-checking scope tight: declared-type validation, expression
+  typing, call checking, return checking, and assignment compatibility.
+- Treat diagnostics as infrastructure-complete for parser/package/resolver and
+  extend it only when new semantic producers need additional lowering.
 - Treat any remaining stream/lexer/parser/resolver work as opportunistic cleanup unless
   a real new bug appears.
 - Use `FRONTEND_CONTRACT.md`, [`PROGRESS.md`](./PROGRESS.md), [`PLAN.md`](./PLAN.md),

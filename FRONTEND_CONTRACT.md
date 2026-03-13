@@ -6,11 +6,12 @@ contracts that the code and tests actually enforce today.
 The source-layout and package-scope alignment pass is complete, `fol-package` now
 owns package loading and package-definition extraction, and `fol-resolver` consumes
 prepared packages from that boundary. The current resolver hardening pass is also
-complete for the present name-resolution contract, so this file describes the
-enforced stream/lexer/parser behavior at head plus the package-loading contract
-that immediately follows those front-end surfaces. Treat
+complete for the present name-resolution contract. The diagnostics hardening pass
+for parser/package/resolver is also complete, so this file describes the enforced
+stream/lexer/parser behavior at head plus the package-loading and diagnostic
+contracts that immediately follow those front-end surfaces. Treat
 [`PROGRESS.md`](./PROGRESS.md) as the repo-backed implementation ledger and
-[`PLAN.md`](./PLAN.md) as the completed `fol-package` migration record.
+[`PLAN.md`](./PLAN.md) as the active diagnostics hardening record.
 
 ## Decision Summary
 
@@ -32,6 +33,9 @@ that immediately follows those front-end surfaces. Treat
 - Package boundary: `fol-package` is now the owner of package metadata parsing,
   build-definition extraction, package caching/cycle handling, export-mount
   preparation, and directory/store package loading ahead of resolver work.
+- Diagnostics: parser, package, and resolver now lower to structured diagnostics
+  with stable producer-owned codes, exact primary locations, related labels,
+  notes, helps, and consistent human/JSON output.
 - Source units: the parser now has a structured `parse_package(...)` path that preserves
   source units, package/namespace identity, successful top-level origins, and explicit
   top-level declaration visibility/scope metadata for resolver consumption.
