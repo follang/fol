@@ -613,7 +613,7 @@ Status: done
 
 #### 3.5
 
-Status: pending
+Status: done
 
 - Lock tests that control files are excluded from ordinary package source parsing.
 
