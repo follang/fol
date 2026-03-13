@@ -11,6 +11,10 @@ pub use model::{
     DiagnosticSuggestion, Severity,
 };
 
+pub trait ToDiagnostic {
+    fn to_diagnostic(&self) -> Diagnostic;
+}
+
 /// Output format for diagnostics
 #[derive(Debug, Clone, PartialEq)]
 pub enum OutputFormat {
@@ -34,6 +38,10 @@ impl DiagnosticReport {
             Severity::Info => {}
         }
         self.diagnostics.push(diagnostic);
+    }
+
+    pub fn add_from<T: ToDiagnostic>(&mut self, producer: &T) {
+        self.add_diagnostic(producer.to_diagnostic());
     }
 
     pub fn add_error(&mut self, error: &dyn fol_types::Glitch, location: Option<DiagnosticLocation>) {
@@ -283,6 +291,25 @@ mod tests {
             })
         );
         assert_eq!(diagnostic.legacy_help(), None);
+    }
+
+    struct FakeProducer;
+
+    impl ToDiagnostic for FakeProducer {
+        fn to_diagnostic(&self) -> Diagnostic {
+            Diagnostic::warning("X1000", "converted warning")
+        }
+    }
+
+    #[test]
+    fn test_report_add_from_uses_producer_lowering() {
+        let mut report = DiagnosticReport::new();
+        report.add_from(&FakeProducer);
+
+        assert_eq!(report.warning_count, 1);
+        assert_eq!(report.error_count, 0);
+        assert_eq!(report.diagnostics.len(), 1);
+        assert_eq!(report.diagnostics[0].code.as_str(), "X1000");
     }
 
     #[test]

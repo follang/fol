@@ -636,7 +636,7 @@ Status: pending
 
 #### 5.1
 
-Status: pending
+Status: done
 
 - Add a producer-side lowering trait such as `ToDiagnostic`.
 
