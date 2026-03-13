@@ -32,6 +32,8 @@ Current import surface:
 - `loc` imports exact filesystem directories
 - `std` imports exact directories under an explicit `--std-root`
 - `pkg` imports installed package roots under an explicit `--package-store-root`
+- no explicit cache/store-management CLI flag is exposed yet; that is deferred until
+  locator/fetch work needs a user-facing cache contract
 - `pkg` roots require both `package.yaml` and `build.fol`
 - `package.yaml` is metadata-only; `build.fol` defines dependency and export records
 - stray `package.fol` files are ignored

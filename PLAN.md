@@ -663,9 +663,10 @@ Status: done
 
 #### 5.3
 
-Status: pending
+Status: done
 
 - Decide whether a new explicit cache/store flag is needed now or deferred.
+- Decision: defer a dedicated cache/store-management CLI flag until locator and fetch semantics need a stable user-facing cache contract.
 
 ### Phase 6: Locator And Distribution Groundwork
 
