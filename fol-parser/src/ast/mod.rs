@@ -743,6 +743,10 @@ impl InquiryTarget {
 }
 
 impl FolType {
+    pub fn is_builtin_str(&self) -> bool {
+        matches!(self, FolType::Named { name } if name == "str")
+    }
+
     pub fn named_text(&self) -> Option<String> {
         match self {
             FolType::Named { name } => Some(name.clone()),
@@ -1593,5 +1597,21 @@ mod unit_tests {
                 length: 2,
             })
         );
+    }
+
+    #[test]
+    fn fol_type_recognizes_builtin_str_without_treating_other_names_as_builtin() {
+        assert!(FolType::Named {
+            name: "str".to_string()
+        }
+        .is_builtin_str());
+        assert!(!FolType::Named {
+            name: "String".to_string()
+        }
+        .is_builtin_str());
+        assert!(!FolType::QualifiedNamed {
+            path: QualifiedPath::from_joined("pkg::str")
+        }
+        .is_builtin_str());
     }
 }

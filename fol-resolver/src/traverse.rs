@@ -1381,6 +1381,7 @@ fn resolve_type_reference(
     typ: &FolType,
 ) -> Result<(), ResolverError> {
     match typ {
+        typ if typ.is_builtin_str() => {}
         FolType::Named { name } => {
             record_named_type_reference(program, source_unit_id, scope_id, name)?;
         }

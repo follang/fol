@@ -1020,7 +1020,7 @@ Status: done
 
 #### Slice 11.1
 
-Status: pending
+Status: done
 
 - Add explicit built-in handling for `str` in parser/type representation or a narrowly scoped resolver bridge if parser work is truly unnecessary.
 - Prefer a representation-level fix over ad-hoc string checks.

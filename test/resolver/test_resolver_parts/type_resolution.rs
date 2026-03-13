@@ -153,3 +153,38 @@ fn test_resolver_reports_unresolved_named_types() {
     fs::remove_dir_all(&temp_root)
         .expect("Temporary resolver fixture directory should be removable after the test");
 }
+
+#[test]
+fn test_resolver_treats_str_as_a_builtin_type() {
+    let temp_root = unique_temp_root("type_resolution_builtin_str");
+    fs::create_dir_all(&temp_root).expect("Should create a temporary resolver fixture directory");
+    fs::write(
+        temp_root.join("main.fol"),
+        "fun[] main(path: str): str = {\n    var local: str = path;\n    return local;\n}\n",
+    )
+    .expect("Should write the builtin str resolver fixture");
+
+    let resolved = resolve_package_from_folder(
+        temp_root
+            .to_str()
+            .expect("Temporary resolver fixture path should be valid UTF-8"),
+    );
+    let routine_scope_id = resolved
+        .scopes
+        .iter_with_ids()
+        .find_map(|(scope_id, scope)| matches!(scope.kind, ScopeKind::Routine).then_some(scope_id))
+        .expect("Resolver should create a routine scope");
+
+    assert!(
+        resolved
+            .references_in_scope(routine_scope_id)
+            .into_iter()
+            .all(|reference| {
+                !(reference.kind == ReferenceKind::TypeName && reference.name == "str")
+            }),
+        "Builtin str should not enter named-type resolution as a user-defined symbol"
+    );
+
+    fs::remove_dir_all(&temp_root)
+        .expect("Temporary resolver fixture directory should be removable after the test");
+}
