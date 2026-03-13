@@ -32,12 +32,14 @@ Current import surface:
 - `loc` imports exact filesystem directories
 - `std` imports exact directories under an explicit `--std-root`
 - `pkg` imports installed package roots under an explicit `--package-store-root`
-- `pkg` roots require `package.fol`; `build.fol` is not used for resolver discovery
+- `pkg` roots require both `package.yaml` and `build.fol`
+- `package.yaml` is metadata-only; `build.fol` defines dependency and export records
+- consumer-visible `pkg` names come only from build-declared exported roots
 
 For exact current stream/lexer/parser behavior, treat [`FRONTEND_CONTRACT.md`](./FRONTEND_CONTRACT.md)
 as the authoritative front-end contract, treat [`PROGRESS.md`](./PROGRESS.md) as the
-repo-backed implementation ledger, and treat [`PLAN.md`](./PLAN.md) as the active
-import-resolution phase record. The README is only a high-level project summary.
+repo-backed implementation ledger, and treat [`PLAN.md`](./PLAN.md) as the completed
+package-import reset record. The README is only a high-level project summary.
 
 <hr>
 

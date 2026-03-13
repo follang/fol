@@ -1426,22 +1426,22 @@ Status: done
 
 #### Slice 25.1
 
-Status: pending
+Status: done
 
 - Sync `README.md`, `PROGRESS.md`, `FRONTEND_CONTRACT.md`, and the book to the final
   `package.yaml` + `build.fol` contract.
 
 #### Slice 25.2
 
-Status: pending
+Status: done
 
 - Rewrite the definition of done once the reset is implemented and fully tested.
 
 ## 28. Definition Of Done For This Reset
 
-This reset is not complete at head.
+This reset is complete at head.
 
-It is complete only when all of the following are true:
+It is complete because all of the following are true:
 
 - `loc` remains manifest-free
 - `std` remains manifest-free for the current stdlib phase
@@ -1456,6 +1456,9 @@ It is complete only when all of the following are true:
 
 Current state at head:
 
-- the previous `package.fol`-based continuation is implemented
-- that implementation is now considered superseded for `pkg`
-- this reset must be completed before the package-system contract is considered settled
+- the previous `package.fol`-based continuation is superseded for `pkg`
+- `pkg` now requires `package.yaml` + `build.fol`
+- legacy `package.fol` package roots are rejected explicitly
+- build-defined export roots now control consumer-visible `pkg` namespaces
+- build-defined dependency records now drive transitive `pkg` loading
+- latest validation is green with `make build` and `make test`

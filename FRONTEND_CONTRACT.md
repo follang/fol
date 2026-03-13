@@ -23,7 +23,9 @@ still exist intentionally around the structured parser APIs. Treat
   host-tool manifests.
 - Imports: `loc` loads exact directories from disk, `std` loads exact directories
   from an explicit std root, `pkg` loads installed package roots from an explicit
-  package-store root with required `package.fol`, and direct file imports are rejected.
+  package-store root with required `package.yaml` + `build.fol`; `package.yaml` is
+  metadata-only, `build.fol` defines dependency/export records, and direct file
+  imports are rejected.
 - Source units: the parser now has a structured `parse_package(...)` path that preserves
   source units, package/namespace identity, successful top-level origins, and explicit
   top-level declaration visibility/scope metadata for resolver consumption.

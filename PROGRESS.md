@@ -198,13 +198,16 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `use loc` imports resolve against the loaded package and namespace scope set.
 - `use std` imports resolve against explicit configured std roots.
 - `use pkg` imports resolve against explicit configured package-store roots.
-- Installed `pkg` roots require `package.fol` and exclude `package.fol` / `build.fol`
-  from resolver-owned source loading.
-- Minimal `package.fol` parsing now extracts package name, version, and declared
-  pkg dependencies for installed packages.
+- Installed `pkg` roots now require both `package.yaml` and `build.fol`.
+- Legacy `package.fol` package roots are rejected explicitly during `pkg` loading.
+- `package.yaml` is metadata-only and is not part of ordinary package source loading.
+- `build.fol` defines pkg dependency and export records with `def` and is not part of
+  ordinary package source loading.
+- Consumer-visible `pkg` imports now mount only the roots and namespaces exported by
+  `build.fol`, instead of exposing every exported symbol under the package root.
 - Unsupported import kinds fail explicitly instead of silently degrading.
 - Imported exported values, routines, and named types are now visible through plain
-  lookup after `use loc` imports instead of requiring explicit qualification only.
+  lookup after supported imports instead of requiring explicit qualification only.
 - Qualified alias-root resolution now works even when the local alias spelling does
   not match the imported namespace root spelling.
 - File-private `hid` declarations now resolve everywhere inside their own source
@@ -218,7 +221,7 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - The CLI now treats parse-clean but resolution-bad programs as failing compiles.
 - The CLI now accepts both `--std-root` and `--package-store-root` so the current
   `loc/std/pkg` resolver contract is available end to end.
-- Recursive `pkg` dependencies now load through the shared resolver session, and
+- Recursive `pkg` dependencies now load through `build.fol` dependency records, and
   repeated shared package roots are deduped through canonical package identity.
 - Integration coverage now includes full happy-path resolution, cross-file import
   resolution, exact resolver-location propagation through JSON diagnostics, and

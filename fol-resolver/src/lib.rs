@@ -4,8 +4,11 @@
 //! - build a resolver-owned scope graph from `fol-parser` package output
 //! - collect top-level declarations across package, namespace, and file scopes
 //! - resolve plain and qualified value, call, type, and inquiry references
-//! - expose imported exported names through plain lookup after `use loc`
+//! - expose imported exported names through plain lookup after supported imports
 //! - resolve `use loc` imports against the loaded source set
+//! - resolve `use std` imports against configured std roots
+//! - resolve `use pkg` imports against installed `package.yaml` + `build.fol` roots
+//! - mount only `build.fol`-declared export roots for consumer-visible `pkg` imports
 //! - keep file-private `hid` visibility inside the owning source unit only
 //! - treat built-in `str` as a builtin instead of a user-defined type lookup
 //! - report unresolved, duplicate, ambiguous, and unsupported-resolution errors
