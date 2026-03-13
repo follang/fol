@@ -580,7 +580,7 @@ Status: pending
 
 #### 3.1
 
-Status: pending
+Status: done
 
 - Split JSON rendering into a dedicated renderer implementation over the rich model.
 

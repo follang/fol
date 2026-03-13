@@ -2,6 +2,7 @@
 mod codes;
 mod model;
 mod render_human;
+mod render_json;
 mod source;
 
 pub use codes::DiagnosticCode;
@@ -73,13 +74,9 @@ impl DiagnosticReport {
     /// Output the report in the specified format
     pub fn output(&self, format: OutputFormat) -> String {
         match format {
-            OutputFormat::Json => self.to_json(),
+            OutputFormat::Json => render_json::render_report(self),
             OutputFormat::Human => render_human::render_report(self),
         }
-    }
-
-    fn to_json(&self) -> String {
-        serde_json::to_string_pretty(self).unwrap_or_else(|_| "{}".to_string())
     }
 }
 
