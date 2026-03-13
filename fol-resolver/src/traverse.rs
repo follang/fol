@@ -1327,7 +1327,7 @@ fn resolve_imported_symbol_of_kinds(
 ) -> Result<SymbolId, ResolverError> {
     let canonical_name = fol_types::canonical_identifier_key(name);
     let mut current_scope = Some(starting_scope);
-    let mut matches = Vec::new();
+    let mut matches = std::collections::BTreeMap::new();
 
     while let Some(scope_id) = current_scope {
         for import in program.imports_in_scope(scope_id) {
@@ -1336,18 +1336,23 @@ fn resolve_imported_symbol_of_kinds(
             };
             let imported_symbols = program.symbols_named_in_scope(target_scope, &canonical_name);
             if allowed_kinds.is_empty() {
-                matches.extend(imported_symbols.into_iter().filter(import_visible_symbol));
+                for symbol in imported_symbols.into_iter().filter(import_visible_symbol) {
+                    matches.entry(symbol.id).or_insert(symbol);
+                }
             } else {
-                matches.extend(
-                    imported_symbols
-                        .into_iter()
-                        .filter(import_visible_symbol)
-                        .filter(|symbol| allowed_kinds.contains(&symbol.kind)),
-                );
+                for symbol in imported_symbols
+                    .into_iter()
+                    .filter(import_visible_symbol)
+                    .filter(|symbol| allowed_kinds.contains(&symbol.kind))
+                {
+                    matches.entry(symbol.id).or_insert(symbol);
+                }
             }
         }
         current_scope = program.scope(scope_id).and_then(|scope| scope.parent);
     }
+
+    let matches = matches.into_values().collect::<Vec<_>>();
 
     match matches.as_slice() {
         [symbol] => Ok(symbol.id),

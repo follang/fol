@@ -1494,7 +1494,7 @@ Status: done
 
 #### Slice 16.4
 
-Status: pending
+Status: done
 
 - Add import-cache and duplicate-load handling for the same canonical local package.
 - Add tests for repeated imports and alias-only renaming.

@@ -304,3 +304,63 @@ fn test_resolver_plain_import_exposure_still_yields_to_local_bindings() {
     fs::remove_dir_all(&temp_root)
         .expect("Temporary resolver fixture directory should be removable after the test");
 }
+
+#[test]
+fn test_resolver_plain_import_exposure_dedupes_repeated_imports_of_the_same_directory() {
+    let temp_root = unique_temp_root("import_exposure_duplicate_root");
+    fs::create_dir_all(temp_root.join("shared"))
+        .expect("Should create a temporary resolver fixture directory");
+    fs::write(temp_root.join("shared/values.fol"), "var[exp] answer: int = 42;\n")
+        .expect("Should write the shared imported exported value fixture");
+    fs::write(
+        temp_root.join("main.fol"),
+        "use alpha: loc = {shared};\nuse beta: loc = {shared};\nfun[] main(): int = {\n    return answer;\n}\n",
+    )
+    .expect("Should write the repeated-import plain exposure fixture");
+
+    let resolved = resolve_package_from_folder(
+        temp_root
+            .to_str()
+            .expect("Temporary resolver fixture path should be valid UTF-8"),
+    );
+    let imports = resolved.imports_in_scope(resolved.program_scope);
+    let alpha = imports
+        .iter()
+        .find(|import| import.alias_name == "alpha")
+        .expect("Program scope should keep the first import alias");
+    let beta = imports
+        .iter()
+        .find(|import| import.alias_name == "beta")
+        .expect("Program scope should keep the second import alias");
+    let answer_symbol = resolved
+        .symbols_in_scope(alpha.target_scope.expect("First import target should resolve"))
+        .into_iter()
+        .find(|symbol| symbol.name == "answer" && symbol.kind == SymbolKind::ValueBinding)
+        .expect("Mounted imported root should keep the exported value binding");
+    let routine_scope_id = resolved
+        .scopes
+        .iter_with_ids()
+        .find_map(|(scope_id, scope)| matches!(scope.kind, ScopeKind::Routine).then_some(scope_id))
+        .expect("Resolver should create a routine scope");
+    let answer_reference = resolved
+        .references_in_scope(routine_scope_id)
+        .into_iter()
+        .find(|reference| {
+            reference.kind == ReferenceKind::Identifier && reference.name == "answer"
+        })
+        .expect("Routine scope should record the repeated-import plain identifier reference");
+
+    assert_eq!(
+        alpha.target_scope,
+        beta.target_scope,
+        "Repeated loc imports of the same canonical directory should share one mounted target scope"
+    );
+    assert_eq!(
+        answer_reference.resolved,
+        Some(answer_symbol.id),
+        "Repeated loc imports of the same directory should not make plain imported names ambiguous"
+    );
+
+    fs::remove_dir_all(&temp_root)
+        .expect("Temporary resolver fixture directory should be removable after the test");
+}
