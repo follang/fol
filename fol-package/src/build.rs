@@ -1,6 +1,8 @@
 use crate::{PackageError, PackageErrorKind};
 use fol_lexer::lexer::stage3::Elements;
-use fol_parser::ast::{AstNode, AstParser, FolType, Literal, SyntaxIndex, SyntaxNodeId, SyntaxOrigin};
+use fol_parser::ast::{
+    AstNode, AstParser, FolType, Literal, ParsedPackage, SyntaxIndex, SyntaxNodeId, SyntaxOrigin,
+};
 use fol_stream::FileStream;
 use std::path::Path;
 
@@ -76,13 +78,16 @@ pub fn parse_package_build(path: &Path) -> Result<PackageBuildDefinition, Packag
             )
         }
     })?;
+    extract_package_build_definition(&parsed)
+}
+
+pub fn extract_package_build_definition(
+    parsed: &ParsedPackage,
+) -> Result<PackageBuildDefinition, PackageError> {
     let source_unit = parsed.source_units.first().ok_or_else(|| {
         PackageError::new(
             PackageErrorKind::InvalidInput,
-            format!(
-                "package build file '{}' did not produce any source units",
-                path.display()
-            ),
+            "package build parsing did not produce any source units",
         )
     })?;
 
@@ -148,27 +153,11 @@ pub fn parse_package_build(path: &Path) -> Result<PackageBuildDefinition, Packag
                     });
                 }
                 _ => {
-                    return Err(build_item_error(
-                        &parsed.syntax_index,
-                        item.node_id,
-                        "package build files currently accept only pkg dependency and loc export definitions",
-                    ));
+                    // Ordinary FOL defs in build.fol are allowed; only pkg/loc defs
+                    // participate in phase-one package extraction.
                 }
             },
-            AstNode::UseDecl { .. } => {
-                return Err(build_item_error(
-                    &parsed.syntax_index,
-                    item.node_id,
-                    "package build files must use 'def' to define dependencies; 'use' is not allowed here",
-                ));
-            }
-            _ => {
-                return Err(build_item_error(
-                    &parsed.syntax_index,
-                    item.node_id,
-                    "package build files currently accept only comments, pkg dependency definitions, and loc export definitions",
-                ));
-            }
+            _ => {}
         }
     }
 
@@ -219,8 +208,13 @@ fn build_item_error(
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_package_build, BuildDependency, BuildExport, PackageBuildDefinition};
+    use super::{
+        extract_package_build_definition, parse_package_build, BuildDependency, BuildExport,
+        PackageBuildDefinition,
+    };
     use crate::PackageErrorKind;
+    use fol_parser::ast::AstParser;
+    use fol_stream::FileStream;
     use std::fs;
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -354,45 +348,78 @@ mod tests {
         fs::write(&build_path, "use core: pkg = {core};\n")
             .expect("Should write the invalid build use fixture");
 
-        let error = parse_package_build(&build_path)
-            .expect_err("Build files should reject use declarations");
+        let build = parse_package_build(&build_path)
+            .expect("Build files should parse ordinary use declarations even though they do not define package edges");
 
-        assert_eq!(error.kind(), PackageErrorKind::InvalidInput);
-        assert!(error
-            .to_string()
-            .contains("must use 'def' to define dependencies"));
-        let origin = error
-            .origin()
-            .expect("Build-file validation errors should retain syntax origins");
-        assert_eq!(origin.file.as_deref(), build_path.to_str());
-        assert_eq!(origin.line, 1);
-        assert_eq!(origin.column, 1);
+        assert!(build.dependencies.is_empty());
+        assert!(build.exports.is_empty());
 
         fs::remove_dir_all(&temp_root)
             .expect("Temporary build fixture root should be removable after the test");
     }
 
     #[test]
-    fn package_build_parser_rejects_unsupported_top_level_nodes_with_exact_locations() {
+    fn package_build_parser_ignores_unrelated_top_level_fol_declarations() {
         let temp_root = unique_temp_root("build_var_decl");
         fs::create_dir_all(&temp_root).expect("Should create temporary build fixture root");
         let build_path = temp_root.join("build.fol");
         fs::write(&build_path, "var name: str = \"json\";\n")
             .expect("Should write the invalid build declaration fixture");
 
-        let error = parse_package_build(&build_path)
-            .expect_err("Build files should reject unsupported top-level nodes");
+        let build = parse_package_build(&build_path)
+            .expect("Build files should allow unrelated top-level FOL declarations in phase one");
 
-        assert_eq!(error.kind(), PackageErrorKind::InvalidInput);
-        assert!(error.to_string().contains(
-            "package build files currently accept only comments, pkg dependency definitions, and loc export definitions"
-        ));
-        let origin = error
-            .origin()
-            .expect("Unsupported build nodes should keep syntax origins");
-        assert_eq!(origin.file.as_deref(), build_path.to_str());
-        assert_eq!(origin.line, 1);
-        assert_eq!(origin.column, 1);
+        assert!(build.dependencies.is_empty());
+        assert!(build.exports.is_empty());
+
+        fs::remove_dir_all(&temp_root)
+            .expect("Temporary build fixture root should be removable after the test");
+    }
+
+    #[test]
+    fn package_build_extractor_keeps_recognized_defs_from_mixed_ordinary_build_files() {
+        let temp_root = unique_temp_root("mixed_build_file");
+        fs::create_dir_all(&temp_root).expect("Should create temporary build fixture root");
+        let build_path = temp_root.join("build.fol");
+        fs::write(
+            &build_path,
+            concat!(
+                "var name: str = \"json\";\n",
+                "use fmt: loc = {\"../fmt\"};\n",
+                "fun[] helper(): int = { return 1; }\n",
+                "def core: pkg = \"core\";\n",
+                "def root: loc = \"src\";\n",
+            ),
+        )
+        .expect("Should write the mixed build fixture");
+        let mut stream = FileStream::from_file(
+            build_path
+                .to_str()
+                .expect("Temporary build fixture path should be valid UTF-8"),
+        )
+        .expect("Should open the mixed build fixture");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let parsed = parser
+            .parse_package(&mut lexer)
+            .expect("Mixed build fixture should parse as ordinary FOL");
+
+        let build = extract_package_build_definition(&parsed)
+            .expect("Package extraction should keep only recognized build definitions");
+
+        assert_eq!(
+            build,
+            PackageBuildDefinition {
+                dependencies: vec![BuildDependency {
+                    alias: "core".to_string(),
+                    package_path: "core".to_string(),
+                }],
+                exports: vec![BuildExport {
+                    alias: "root".to_string(),
+                    relative_path: "src".to_string(),
+                }],
+            }
+        );
 
         fs::remove_dir_all(&temp_root)
             .expect("Temporary build fixture root should be removable after the test");

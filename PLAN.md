@@ -533,7 +533,7 @@ Status: done
 
 #### 1.2
 
-Status: pending
+Status: done
 
 - Replace the current narrow `build.fol` schema parser with a `fol-package` build extractor over ordinary parsed FOL packages.
 
