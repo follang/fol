@@ -2,7 +2,7 @@ use crate::{ResolverError, ResolverErrorKind};
 use fol_lexer::lexer::stage3::Elements;
 use fol_parser::ast::{AstNode, AstParser, Literal, SyntaxIndex, SyntaxNodeId, SyntaxOrigin};
 use fol_stream::FileStream;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -27,6 +27,13 @@ pub(crate) fn parse_package_metadata(path: &Path) -> Result<PackageMetadata, Res
     })?;
 
     let mut fields = BTreeMap::new();
+    let supported_fields = BTreeSet::from([
+        "name",
+        "version",
+        "kind",
+        "description",
+        "license",
+    ]);
     for (index, line) in raw.lines().enumerate() {
         let line_no = index + 1;
         let trimmed = line.trim();
@@ -53,6 +60,17 @@ pub(crate) fn parse_package_metadata(path: &Path) -> Result<PackageMetadata, Res
                 "package metadata keys may not be empty",
             ));
         }
+        if !supported_fields.contains(key) {
+            return Err(metadata_line_error(
+                path,
+                line_no,
+                1,
+                key.len(),
+                format!(
+                    "unsupported package metadata field '{key}'; expected only name, version, kind, description, or license"
+                ),
+            ));
+        }
         let value_offset = line.find(':').unwrap_or(0) + 2;
         let value = parse_yaml_scalar(raw_value.trim(), path, line_no, value_offset)?;
 
@@ -76,6 +94,16 @@ pub(crate) fn parse_package_metadata(path: &Path) -> Result<PackageMetadata, Res
             ),
         )
     })?;
+    if !is_valid_package_name(&name) {
+        return Err(ResolverError::new(
+            ResolverErrorKind::InvalidInput,
+            format!(
+                "package metadata '{}' has invalid package name '{}'; package names must follow namespace identifier rules",
+                path.display(),
+                name
+            ),
+        ));
+    }
     let version = fields.remove("version").ok_or_else(|| {
         ResolverError::new(
             ResolverErrorKind::InvalidInput,
@@ -85,13 +113,22 @@ pub(crate) fn parse_package_metadata(path: &Path) -> Result<PackageMetadata, Res
             ),
         )
     })?;
+    if version.trim().is_empty() {
+        return Err(ResolverError::new(
+            ResolverErrorKind::InvalidInput,
+            format!(
+                "package metadata '{}' has an empty version string",
+                path.display()
+            ),
+        ));
+    }
 
     Ok(PackageMetadata {
         name,
         version,
-        kind: fields.remove("kind"),
-        description: fields.remove("description"),
-        license: fields.remove("license"),
+        kind: non_empty_optional_field(path, "kind", fields.remove("kind"))?,
+        description: non_empty_optional_field(path, "description", fields.remove("description"))?,
+        license: non_empty_optional_field(path, "license", fields.remove("license"))?,
     })
 }
 
@@ -312,6 +349,24 @@ fn metadata_line_error(
     )
 }
 
+fn non_empty_optional_field(
+    path: &Path,
+    field_name: &str,
+    value: Option<String>,
+) -> Result<Option<String>, ResolverError> {
+    match value {
+        Some(value) if value.trim().is_empty() => Err(ResolverError::new(
+            ResolverErrorKind::InvalidInput,
+            format!(
+                "package metadata '{}' has an empty '{}' field",
+                path.display(),
+                field_name
+            ),
+        )),
+        other => Ok(other),
+    }
+}
+
 fn manifest_string_field(
     field_name: &str,
     value: Option<&AstNode>,
@@ -349,6 +404,24 @@ fn manifest_item_error(
         Some(origin) => ResolverError::with_origin(ResolverErrorKind::InvalidInput, message, origin),
         None => ResolverError::new(ResolverErrorKind::InvalidInput, message),
     }
+}
+
+fn is_valid_package_name(package_name: &str) -> bool {
+    let mut chars = package_name.chars();
+    let Some(first) = chars.next() else {
+        return false;
+    };
+
+    if !first.is_ascii() || first.is_ascii_digit() || !(first.is_ascii_alphabetic() || first == '_')
+    {
+        return false;
+    }
+
+    if package_name.contains("__") {
+        return false;
+    }
+
+    chars.all(|ch| ch.is_ascii() && (ch.is_ascii_alphanumeric() || ch == '_'))
 }
 
 #[cfg(test)]
@@ -400,6 +473,62 @@ mod tests {
                 license: Some("MIT".to_string()),
             }
         );
+
+        fs::remove_dir_all(&temp_root)
+            .expect("Temporary metadata fixture root should be removable after the test");
+    }
+
+    #[test]
+    fn package_metadata_loader_rejects_unknown_fields() {
+        let temp_root = unique_temp_root("unknown_yaml_field");
+        fs::create_dir_all(&temp_root).expect("Should create temporary metadata fixture root");
+        let metadata_path = temp_root.join("package.yaml");
+        fs::write(
+            &metadata_path,
+            "name: json\nversion: 1.0.0\nauthors: Trim\n",
+        )
+        .expect("Should write the unknown-field metadata fixture");
+
+        let error = parse_package_metadata(&metadata_path)
+            .expect_err("Unknown package metadata fields should be rejected");
+
+        assert!(error
+            .to_string()
+            .contains("unsupported package metadata field 'authors'"));
+
+        fs::remove_dir_all(&temp_root)
+            .expect("Temporary metadata fixture root should be removable after the test");
+    }
+
+    #[test]
+    fn package_metadata_loader_rejects_invalid_package_names() {
+        let temp_root = unique_temp_root("invalid_package_name");
+        fs::create_dir_all(&temp_root).expect("Should create temporary metadata fixture root");
+        let metadata_path = temp_root.join("package.yaml");
+        fs::write(&metadata_path, "name: 1json\nversion: 1.0.0\n")
+            .expect("Should write the invalid-name metadata fixture");
+
+        let error = parse_package_metadata(&metadata_path)
+            .expect_err("Invalid package names should be rejected");
+
+        assert!(error.to_string().contains("invalid package name '1json'"));
+
+        fs::remove_dir_all(&temp_root)
+            .expect("Temporary metadata fixture root should be removable after the test");
+    }
+
+    #[test]
+    fn package_metadata_loader_rejects_missing_required_fields() {
+        let temp_root = unique_temp_root("missing_yaml_field");
+        fs::create_dir_all(&temp_root).expect("Should create temporary metadata fixture root");
+        let metadata_path = temp_root.join("package.yaml");
+        fs::write(&metadata_path, "name: json\n")
+            .expect("Should write the incomplete metadata fixture");
+
+        let error = parse_package_metadata(&metadata_path)
+            .expect_err("Missing required metadata fields should be rejected");
+
+        assert!(error.to_string().contains("missing required field 'version'"));
 
         fs::remove_dir_all(&temp_root)
             .expect("Temporary metadata fixture root should be removable after the test");

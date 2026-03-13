@@ -1341,7 +1341,7 @@ Status: done
 
 #### Slice 21.2
 
-Status: pending
+Status: done
 
 - Validate required and optional metadata fields.
 - Add targeted tests for missing, malformed, and unknown-field cases.
