@@ -3195,7 +3195,7 @@ fn workspace_expression_typing_expands_imported_alias_record_shells_for_field_ac
 }
 
 #[test]
-fn reopened_v1_blocker_loc_imported_values_still_fail_typecheck() {
+fn legacy_single_package_typecheck_rejects_imported_loc_values_explicitly() {
     let root = unique_temp_dir("reopened_loc_import");
     create_dir_all(&root).expect("Fixture root should be creatable");
     write_fixture_files(
@@ -3210,7 +3210,7 @@ fn reopened_v1_blocker_loc_imported_values_still_fail_typecheck() {
     );
 
     let errors = typecheck_fixture_entry_with_config(&root, "app", ResolverConfig::default())
-        .expect_err("Current head should still fail imported loc value typing");
+        .expect_err("legacy single-package typechecking should still reject imported loc values");
 
     assert!(
         errors.iter().any(|error| {
@@ -3220,12 +3220,12 @@ fn reopened_v1_blocker_loc_imported_values_still_fail_typecheck() {
                     .contains("requires workspace-aware typechecking in V1")
                 && error.diagnostic_location().is_some()
         }),
-        "Expected the explicit loc-import blocker diagnostic, got: {errors:?}"
+        "Expected the explicit legacy loc-import diagnostic, got: {errors:?}"
     );
 }
 
 #[test]
-fn reopened_v1_blocker_std_imported_values_still_fail_typecheck() {
+fn legacy_single_package_typecheck_rejects_imported_std_values_explicitly() {
     let root = unique_temp_dir("reopened_std_import");
     let std_root = root.join("std");
     create_dir_all(&std_root).expect("Std root should be creatable");
@@ -3253,7 +3253,7 @@ fn reopened_v1_blocker_std_imported_values_still_fail_typecheck() {
             package_store_root: None,
         },
     )
-    .expect_err("Current head should still fail imported std value typing");
+    .expect_err("legacy single-package typechecking should still reject imported std values");
 
     assert!(
         errors.iter().any(|error| {
@@ -3263,12 +3263,12 @@ fn reopened_v1_blocker_std_imported_values_still_fail_typecheck() {
                     .contains("requires workspace-aware typechecking in V1")
                 && error.diagnostic_location().is_some()
         }),
-        "Expected the explicit std-import blocker diagnostic, got: {errors:?}"
+        "Expected the explicit legacy std-import diagnostic, got: {errors:?}"
     );
 }
 
 #[test]
-fn reopened_v1_blocker_pkg_imported_values_still_fail_typecheck() {
+fn legacy_single_package_typecheck_rejects_imported_pkg_values_explicitly() {
     let root = unique_temp_dir("reopened_pkg_import");
     let store_root = root.join("store");
     create_dir_all(&store_root).expect("Package store root should be creatable");
@@ -3298,7 +3298,7 @@ fn reopened_v1_blocker_pkg_imported_values_still_fail_typecheck() {
             ),
         },
     )
-    .expect_err("Current head should still fail imported pkg value typing");
+    .expect_err("legacy single-package typechecking should still reject imported pkg values");
 
     assert!(
         errors.iter().any(|error| {
@@ -3308,12 +3308,12 @@ fn reopened_v1_blocker_pkg_imported_values_still_fail_typecheck() {
                     .contains("requires workspace-aware typechecking in V1")
                 && error.diagnostic_location().is_some()
         }),
-        "Expected the explicit pkg-import blocker diagnostic, got: {errors:?}"
+        "Expected the explicit legacy pkg-import diagnostic, got: {errors:?}"
     );
 }
 
 #[test]
-fn reopened_v1_blocker_imported_routine_calls_still_fail_typecheck() {
+fn legacy_single_package_typecheck_rejects_imported_routine_calls_explicitly() {
     let root = unique_temp_dir("reopened_imported_call");
     create_dir_all(&root).expect("Fixture root should be creatable");
     write_fixture_files(
@@ -3331,7 +3331,7 @@ fn reopened_v1_blocker_imported_routine_calls_still_fail_typecheck() {
     );
 
     let errors = typecheck_fixture_entry_with_config(&root, "app", ResolverConfig::default())
-        .expect_err("Current head should still fail imported routine call typing");
+        .expect_err("legacy single-package typechecking should still reject imported routine calls");
 
     assert!(
         errors.iter().any(|error| {
@@ -3341,7 +3341,7 @@ fn reopened_v1_blocker_imported_routine_calls_still_fail_typecheck() {
                     .contains("requires workspace-aware typechecking in V1")
                 && error.diagnostic_location().is_some()
         }),
-        "Expected the explicit imported-call blocker diagnostic, got: {errors:?}"
+        "Expected the explicit legacy imported-call diagnostic, got: {errors:?}"
     );
 }
 

@@ -603,7 +603,7 @@ Status: done
 
 #### 9.3
 
-Status: pending
+Status: done
 
 - Keep direct-folder entry packages, `std`, and installed `pkg` paths all
   working through the full:
