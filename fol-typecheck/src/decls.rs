@@ -84,6 +84,7 @@ fn lower_top_level_declaration(
         AstNode::FunDecl {
             syntax_id,
             name,
+            receiver_type,
             params,
             return_type,
             error_type,
@@ -94,6 +95,7 @@ fn lower_top_level_declaration(
         | AstNode::ProDecl {
             syntax_id,
             name,
+            receiver_type,
             params,
             return_type,
             error_type,
@@ -104,6 +106,7 @@ fn lower_top_level_declaration(
         | AstNode::LogDecl {
             syntax_id,
             name,
+            receiver_type,
             params,
             return_type,
             error_type,
@@ -117,6 +120,7 @@ fn lower_top_level_declaration(
                 source_unit_id,
                 name,
                 *syntax_id,
+                receiver_type.as_ref(),
                 params,
                 return_type.as_ref(),
                 error_type.as_ref(),
@@ -244,6 +248,7 @@ fn lower_nested_declarations_in_node(
         AstNode::FunDecl {
             syntax_id,
             name,
+            receiver_type,
             params,
             return_type,
             error_type,
@@ -254,6 +259,7 @@ fn lower_nested_declarations_in_node(
         | AstNode::ProDecl {
             syntax_id,
             name,
+            receiver_type,
             params,
             return_type,
             error_type,
@@ -264,6 +270,7 @@ fn lower_nested_declarations_in_node(
         | AstNode::LogDecl {
             syntax_id,
             name,
+            receiver_type,
             params,
             return_type,
             error_type,
@@ -277,6 +284,7 @@ fn lower_nested_declarations_in_node(
                 source_unit_id,
                 name,
                 *syntax_id,
+                receiver_type.as_ref(),
                 params,
                 return_type.as_ref(),
                 error_type.as_ref(),
@@ -343,6 +351,7 @@ fn lower_named_routine_signature(
     source_unit_id: SourceUnitId,
     name: &str,
     syntax_id: Option<SyntaxNodeId>,
+    receiver_type: Option<&FolType>,
     params: &[fol_parser::ast::Parameter],
     return_type: Option<&FolType>,
     error_type: Option<&FolType>,
@@ -373,6 +382,10 @@ fn lower_named_routine_signature(
         .as_ref()
         .map(|ty| lower_type(typed, resolved, signature_scope, ty))
         .transpose()?;
+    let lowered_receiver = receiver_type
+        .as_ref()
+        .map(|ty| lower_type(typed, resolved, signature_scope, ty))
+        .transpose()?;
     let routine_type = typed
         .type_table_mut()
         .intern(CheckedType::Routine(RoutineType {
@@ -381,6 +394,7 @@ fn lower_named_routine_signature(
             error_type: lowered_error,
         }));
     record_symbol_type(typed, symbol_id, routine_type)?;
+    record_symbol_receiver_type(typed, symbol_id, lowered_receiver)?;
     Ok(signature_scope)
 }
 
@@ -617,6 +631,18 @@ fn record_symbol_type(
         .typed_symbol_mut(symbol_id)
         .ok_or_else(|| internal_error("typed symbol table lost a resolved symbol", None))?;
     symbol.declared_type = Some(type_id);
+    Ok(())
+}
+
+fn record_symbol_receiver_type(
+    typed: &mut TypedProgram,
+    symbol_id: SymbolId,
+    type_id: Option<CheckedTypeId>,
+) -> Result<(), TypecheckError> {
+    let symbol = typed
+        .typed_symbol_mut(symbol_id)
+        .ok_or_else(|| internal_error("typed symbol table lost a resolved declaration", None))?;
+    symbol.receiver_type = type_id;
     Ok(())
 }
 

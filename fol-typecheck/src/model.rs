@@ -20,6 +20,7 @@ pub struct TypedSymbol {
     pub scope_id: ScopeId,
     pub source_unit_id: SourceUnitId,
     pub declared_type: Option<CheckedTypeId>,
+    pub receiver_type: Option<CheckedTypeId>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -144,6 +145,7 @@ impl TypedProgram {
                         scope_id: symbol.scope,
                         source_unit_id: symbol.source_unit,
                         declared_type: None,
+                        receiver_type: None,
                     },
                 )
             })

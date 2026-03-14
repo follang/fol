@@ -212,7 +212,17 @@ impl TypecheckSession {
         let foreign_type = foreign_package
             .program
             .typed_symbol(provenance.foreign_symbol)
-            .and_then(|symbol| symbol.declared_type)
+            .ok_or_else(|| {
+                TypecheckError::new(
+                    TypecheckErrorKind::Internal,
+                    format!(
+                        "mounted imported symbol {} does not retain foreign typed facts",
+                        provenance.foreign_symbol.0
+                    ),
+                )
+            })?;
+        let foreign_declared_type = foreign_type
+            .declared_type
             .ok_or_else(|| {
                 TypecheckError::new(
                     TypecheckErrorKind::Internal,
@@ -226,10 +236,23 @@ impl TypecheckSession {
             typed,
             &foreign_package.identity,
             &foreign_package.program,
-            foreign_type,
+            foreign_declared_type,
             mounted_symbol_map,
             imported_cache,
         )?;
+        let translated_receiver = foreign_type
+            .receiver_type
+            .map(|receiver_type| {
+                self.import_type_id(
+                    typed,
+                    &foreign_package.identity,
+                    &foreign_package.program,
+                    receiver_type,
+                    mounted_symbol_map,
+                    imported_cache,
+                )
+            })
+            .transpose()?;
         let typed_symbol = typed.typed_symbol_mut(local_symbol_id).ok_or_else(|| {
             TypecheckError::new(
                 TypecheckErrorKind::Internal,
@@ -237,6 +260,7 @@ impl TypecheckSession {
             )
         })?;
         typed_symbol.declared_type = Some(translated);
+        typed_symbol.receiver_type = translated_receiver;
         Ok(())
     }
 

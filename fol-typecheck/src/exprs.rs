@@ -1049,7 +1049,7 @@ fn type_method_call(
             format!("method receiver for '{method}' does not have a type"),
         )
     })?;
-    let signature = routine_signature_for_method(typed, resolved, method, object_type)?;
+    let signature = routine_signature_for_method(typed, method, object_type)?;
     check_call_arguments(typed, resolved, context, &signature, args, method, None)?;
     Ok(signature.return_type)
 }
@@ -1411,53 +1411,27 @@ fn routine_signature_for_symbol(
 
 fn routine_signature_for_method(
     typed: &mut TypedProgram,
-    resolved: &ResolvedProgram,
     method: &str,
     object_type: CheckedTypeId,
 ) -> Result<RoutineType, TypecheckError> {
     let mut matches = Vec::new();
 
-    for (source_unit_index, source_unit) in resolved.syntax().source_units.iter().enumerate() {
-        let source_unit_id = SourceUnitId(source_unit_index);
-        let scope_id = resolved
-            .source_unit(source_unit_id)
-            .map(|unit| unit.scope_id)
-            .ok_or_else(|| internal_error("resolved source unit disappeared for method lookup", None))?;
-        for item in &source_unit.items {
-            match &item.node {
-                AstNode::FunDecl {
-                    name,
-                    receiver_type: Some(receiver_type),
-                    ..
-                }
-                | AstNode::ProDecl {
-                    name,
-                    receiver_type: Some(receiver_type),
-                    ..
-                }
-                | AstNode::LogDecl {
-                    name,
-                    receiver_type: Some(receiver_type),
-                    ..
-                } if name == method => {
-                    let lowered_receiver = decls::lower_type(typed, resolved, scope_id, receiver_type)?;
-                    if lowered_receiver == object_type {
-                        if let Some(symbol_id) = resolved
-                            .symbols
-                            .iter_with_ids()
-                            .find(|(_, symbol)| {
-                                symbol.source_unit == source_unit_id
-                                    && symbol.kind == SymbolKind::Routine
-                                    && symbol.name == *name
-                            })
-                            .map(|(symbol_id, _)| symbol_id)
-                        {
-                            matches.push(routine_signature_for_symbol(typed, symbol_id, None)?);
-                        }
-                    }
-                }
-                _ => {}
-            }
+    let candidate_ids = typed
+        .resolved()
+        .symbols
+        .iter_with_ids()
+        .filter_map(|(symbol_id, symbol)| {
+            (symbol.kind == SymbolKind::Routine && symbol.name == method).then_some(symbol_id)
+        })
+        .collect::<Vec<_>>();
+
+    for symbol_id in candidate_ids {
+        if typed
+            .typed_symbol(symbol_id)
+            .and_then(|symbol| symbol.receiver_type)
+            .is_some_and(|receiver_type| receiver_type == object_type)
+        {
+            matches.push(routine_signature_for_symbol(typed, symbol_id, None)?);
         }
     }
 

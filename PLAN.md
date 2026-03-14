@@ -431,7 +431,7 @@ Status: done
 
 #### 4.4
 
-Status: pending
+Status: done
 
 - Move method lookup onto typed package facts instead of entry-package syntax
   scanning so imported receiver methods can work.
