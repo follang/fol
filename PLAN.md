@@ -553,7 +553,7 @@ Status: done
 
 #### 7.4
 
-Status: pending
+Status: done
 
 - Add regression tests that a valid parsed+resolved `V1` program no longer
   trips internal-looking typecheck fallbacks in the reopened areas.

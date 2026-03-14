@@ -3333,6 +3333,49 @@ fn typecheck_reports_explicit_local_binding_type_requirements() {
 }
 
 #[test]
+fn reopened_v1_import_failures_no_longer_use_raw_lowered_type_fallbacks() {
+    let root = unique_temp_dir("reopened_loc_import_regression");
+    create_dir_all(&root).expect("Fixture root should be creatable");
+    write_fixture_files(
+        &root,
+        &[
+            ("shared/lib.fol", "var[exp] answer: int = 42;\n"),
+            (
+                "app/main.fol",
+                "use shared: loc = {\"../shared\"};\nfun[] main(): int = {\n    return answer;\n}\n",
+            ),
+        ],
+    );
+
+    let errors = typecheck_fixture_entry_with_config(&root, "app", ResolverConfig::default())
+        .expect_err("Legacy single-program typecheck should still reject imported value typing");
+
+    assert!(
+        errors.iter().all(|error| {
+            error.kind() != TypecheckErrorKind::Internal
+                && !error.message().contains("does not have a lowered type yet")
+        }),
+        "Imported fallback regressions should no longer surface raw lowered-type wording, got: {errors:?}"
+    );
+}
+
+#[test]
+fn reopened_v1_binding_failures_no_longer_use_raw_lowered_type_fallbacks() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] main(): int = {\n    var mystery\n    return mystery;\n}\n",
+    )]);
+
+    assert!(
+        errors.iter().all(|error| {
+            error.kind() != TypecheckErrorKind::Internal
+                && !error.message().contains("does not have a lowered type yet")
+        }),
+        "Binding fallback regressions should no longer surface raw lowered-type wording, got: {errors:?}"
+    );
+}
+
+#[test]
 fn nil_typing_rejects_missing_expected_shell_contexts() {
     let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",
