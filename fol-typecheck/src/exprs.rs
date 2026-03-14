@@ -1,10 +1,13 @@
 use crate::{CheckedTypeId, TypecheckError, TypecheckErrorKind, TypecheckResult, TypedProgram};
 use fol_parser::ast::{AstNode, Literal, QualifiedPath, SyntaxNodeId, SyntaxOrigin};
-use fol_resolver::{ReferenceId, ReferenceKind, ResolvedProgram, SourceUnitId, SymbolId};
+use fol_resolver::{
+    ReferenceId, ReferenceKind, ResolvedProgram, ScopeId, SourceUnitId, SymbolId, SymbolKind,
+};
 
 #[derive(Debug, Clone, Copy)]
 struct TypeContext {
     source_unit_id: SourceUnitId,
+    scope_id: ScopeId,
 }
 
 pub fn type_program(typed: &mut TypedProgram) -> TypecheckResult<()> {
@@ -13,8 +16,19 @@ pub fn type_program(typed: &mut TypedProgram) -> TypecheckResult<()> {
     let mut errors = Vec::new();
 
     for (source_unit_index, source_unit) in syntax.source_units.iter().enumerate() {
+        let source_unit_id = SourceUnitId(source_unit_index);
+        let scope_id = match resolved.source_unit(source_unit_id).map(|unit| unit.scope_id) {
+            Some(scope_id) => scope_id,
+            None => {
+                return Err(vec![internal_error(
+                    "resolved source unit disappeared",
+                    None,
+                )])
+            }
+        };
         let context = TypeContext {
-            source_unit_id: SourceUnitId(source_unit_index),
+            source_unit_id,
+            scope_id,
         };
         for item in &source_unit.items {
             if let Err(error) = type_node(typed, &resolved, context, &item.node) {
@@ -39,6 +53,25 @@ fn type_node(
     match node {
         AstNode::Comment { .. } => Ok(None),
         AstNode::Commented { node, .. } => type_node(typed, resolved, context, node),
+        AstNode::VarDecl {
+            name,
+            type_hint: _,
+            value,
+            ..
+        }
+        | AstNode::LabDecl {
+            name,
+            type_hint: _,
+            value,
+            ..
+        } => type_binding_initializer(
+            typed,
+            resolved,
+            context,
+            name,
+            value.as_deref(),
+            binding_kind_for(node),
+        ),
         AstNode::Literal(literal) => Ok(Some(type_literal(typed, literal)?)),
         AstNode::Identifier { name, syntax_id } => {
             type_identifier_reference(typed, resolved, context, name, *syntax_id)
@@ -46,6 +79,40 @@ fn type_node(
         AstNode::QualifiedIdentifier { path } => {
             type_qualified_identifier_reference(typed, resolved, context, path)
         }
+        AstNode::FunDecl {
+            syntax_id,
+            body,
+            inquiries,
+            ..
+        }
+        | AstNode::ProDecl {
+            syntax_id,
+            body,
+            inquiries,
+            ..
+        }
+        | AstNode::LogDecl {
+            syntax_id,
+            body,
+            inquiries,
+            ..
+        } => {
+            let routine_scope = syntax_id
+                .and_then(|syntax_id| resolved.scope_for_syntax(syntax_id))
+                .unwrap_or(context.scope_id);
+            let routine_context = TypeContext {
+                source_unit_id: context.source_unit_id,
+                scope_id: routine_scope,
+            };
+            let body_type = type_body(typed, resolved, routine_context, body)?;
+            let _ = type_body(typed, resolved, routine_context, inquiries)?;
+            if let (Some(syntax_id), Some(type_id)) = (syntax_id, body_type) {
+                typed.record_node_type(*syntax_id, context.source_unit_id, type_id)?;
+            }
+            Ok(body_type)
+        }
+        AstNode::Block { statements } => type_body(typed, resolved, context, statements),
+        AstNode::Program { declarations } => type_body(typed, resolved, context, declarations),
         _ => {
             for child in node.children() {
                 let _ = type_node(typed, resolved, context, child)?;
@@ -53,6 +120,22 @@ fn type_node(
             Ok(None)
         }
     }
+}
+
+fn type_body(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    nodes: &[AstNode],
+) -> Result<Option<CheckedTypeId>, TypecheckError> {
+    let mut final_type = None;
+    for node in nodes {
+        let node_type = type_node(typed, resolved, context, node)?;
+        if node_type.is_some() {
+            final_type = node_type;
+        }
+    }
+    Ok(final_type)
 }
 
 fn type_literal(
@@ -72,6 +155,49 @@ fn type_literal(
             ));
         }
     })
+}
+
+fn type_binding_initializer(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    name: &str,
+    value: Option<&AstNode>,
+    symbol_kind: SymbolKind,
+) -> Result<Option<CheckedTypeId>, TypecheckError> {
+    let initializer_type = value
+        .map(|value| type_node(typed, resolved, context, value))
+        .transpose()?
+        .flatten();
+
+    let Some(symbol_id) = find_symbol_in_scope(
+        resolved,
+        context.source_unit_id,
+        context.scope_id,
+        name,
+        symbol_kind,
+    ) else {
+        return Ok(initializer_type);
+    };
+    let declared_type = typed
+        .typed_symbol(symbol_id)
+        .and_then(|symbol| symbol.declared_type);
+
+    match (declared_type, initializer_type) {
+        (Some(expected), Some(actual)) => {
+            ensure_assignable(typed, expected, actual, format!("initializer for '{name}'"), None)?;
+            Ok(Some(expected))
+        }
+        (None, Some(inferred)) => {
+            let symbol = typed
+                .typed_symbol_mut(symbol_id)
+                .ok_or_else(|| internal_error("typed symbol table lost an inferred binding", None))?;
+            symbol.declared_type = Some(inferred);
+            Ok(Some(inferred))
+        }
+        (Some(expected), None) => Ok(Some(expected)),
+        (None, None) => Ok(None),
+    }
 }
 
 fn type_identifier_reference(
@@ -207,6 +333,78 @@ fn symbol_type(
 
 fn origin_for(resolved: &ResolvedProgram, syntax_id: SyntaxNodeId) -> Option<SyntaxOrigin> {
     resolved.syntax_index().origin(syntax_id).cloned()
+}
+
+fn find_symbol_in_scope(
+    resolved: &ResolvedProgram,
+    source_unit_id: SourceUnitId,
+    scope_id: ScopeId,
+    name: &str,
+    kind: SymbolKind,
+) -> Option<SymbolId> {
+    resolved
+        .symbols
+        .iter_with_ids()
+        .find(|(_, symbol)| {
+            symbol.source_unit == source_unit_id
+                && symbol.scope == scope_id
+                && symbol.name == name
+                && symbol.kind == kind
+        })
+        .map(|(symbol_id, _)| symbol_id)
+}
+
+fn binding_kind_for(node: &AstNode) -> SymbolKind {
+    match node {
+        AstNode::LabDecl { .. } => SymbolKind::LabelBinding,
+        _ => SymbolKind::ValueBinding,
+    }
+}
+
+fn ensure_assignable(
+    typed: &TypedProgram,
+    expected: CheckedTypeId,
+    actual: CheckedTypeId,
+    surface: String,
+    origin: Option<SyntaxOrigin>,
+) -> Result<(), TypecheckError> {
+    if expected == actual || actual == typed.builtin_types().never {
+        return Ok(());
+    }
+
+    Err(TypecheckError::with_origin(
+        TypecheckErrorKind::IncompatibleType,
+        format!(
+            "{surface} expects '{}' but got '{}'",
+            describe_type(typed, expected),
+            describe_type(typed, actual)
+        ),
+        origin.unwrap_or(SyntaxOrigin {
+            file: None,
+            line: 1,
+            column: 1,
+            length: 1,
+        }),
+    ))
+}
+
+fn describe_type(typed: &TypedProgram, type_id: CheckedTypeId) -> String {
+    format!(
+        "{:?}",
+        typed
+            .type_table()
+            .get(type_id)
+            .cloned()
+            .unwrap_or(crate::CheckedType::Builtin(crate::BuiltinType::Never))
+    )
+}
+
+fn internal_error(message: impl Into<String>, origin: Option<SyntaxOrigin>) -> TypecheckError {
+    if let Some(origin) = origin {
+        TypecheckError::with_origin(TypecheckErrorKind::Internal, message, origin)
+    } else {
+        TypecheckError::new(TypecheckErrorKind::Internal, message)
+    }
 }
 
 #[cfg(test)]

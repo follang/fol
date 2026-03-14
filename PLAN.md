@@ -477,7 +477,7 @@ Status: done
 
 #### 3.2
 
-Status: pending
+Status: done
 
 - Type block/final-expression bodies and local initializer surfaces.
 

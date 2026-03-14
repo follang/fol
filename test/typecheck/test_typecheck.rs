@@ -97,6 +97,37 @@ fn find_typed_reference<'a>(
         .expect("typed reference facts should exist")
 }
 
+fn find_named_routine_syntax_id(
+    typed: &fol_typecheck::TypedProgram,
+    name: &str,
+) -> fol_parser::ast::SyntaxNodeId {
+    typed
+        .resolved()
+        .syntax()
+        .source_units
+        .iter()
+        .flat_map(|unit| unit.items.iter())
+        .find_map(|item| match &item.node {
+            fol_parser::ast::AstNode::FunDecl {
+                name: routine_name,
+                syntax_id: Some(syntax_id),
+                ..
+            }
+            | fol_parser::ast::AstNode::ProDecl {
+                name: routine_name,
+                syntax_id: Some(syntax_id),
+                ..
+            }
+            | fol_parser::ast::AstNode::LogDecl {
+                name: routine_name,
+                syntax_id: Some(syntax_id),
+                ..
+            } if routine_name == name => Some(*syntax_id),
+            _ => None,
+        })
+        .expect("named routine syntax id should exist")
+}
+
 #[test]
 fn typechecker_foundation_smoke_constructs_public_api() {
     let _ = Typechecker::new();
@@ -392,6 +423,46 @@ fn expression_typing_resolves_qualified_identifier_references_to_declared_types(
         typed
             .type_table()
             .get(reference.resolved_type.expect("qualified identifier should receive a type")),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+}
+
+#[test]
+fn expression_typing_infers_local_binding_types_from_initializers() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "fun[] demo(): int = {\n\
+             let current = 1;\n\
+             return current;\n\
+         }\n",
+    )]);
+
+    let (_current_id, current) = find_typed_symbol(&typed, "current", SymbolKind::ValueBinding);
+
+    assert_eq!(
+        typed
+            .type_table()
+            .get(current.declared_type.expect("initializer should infer local type")),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+}
+
+#[test]
+fn expression_typing_keeps_final_routine_body_expression_types() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "var total: int = 1\n\
+         fun[] demo(): int = {\n\
+             total\n\
+         }\n",
+    )]);
+    let syntax_id = find_named_routine_syntax_id(&typed, "demo");
+
+    assert_eq!(
+        typed
+            .typed_node(syntax_id)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
         Some(&CheckedType::Builtin(BuiltinType::Int))
     );
 }
