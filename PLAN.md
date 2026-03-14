@@ -401,7 +401,7 @@ Status: done
 
 #### 3.6
 
-Status: pending
+Status: done
 
 - Lock transitive imported declaration typing tests for `pkg`.
 

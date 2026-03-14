@@ -2499,6 +2499,98 @@ fn workspace_typechecking_keeps_direct_pkg_import_declaration_facts() {
 }
 
 #[test]
+fn workspace_typechecking_keeps_transitive_pkg_import_declaration_facts() {
+    let root = unique_temp_dir("workspace_transitive_pkg_decls");
+    let store_root = root.join("store");
+    create_dir_all(&store_root).expect("Package store root should be creatable");
+    write_fixture_files(
+        &root,
+        &[
+            ("store/core/package.yaml", "name: core\nversion: 1.0.0\n"),
+            ("store/core/build.fol", "def root: loc = \"src\";\n"),
+            ("store/core/src/lib.fol", "typ[exp] Count: int;\n"),
+            ("store/json/package.yaml", "name: json\nversion: 1.0.0\n"),
+            (
+                "store/json/build.fol",
+                concat!(
+                    "def core: pkg = \"core\";\n",
+                    "def root: loc = \"src\";\n",
+                ),
+            ),
+            (
+                "store/json/src/lib.fol",
+                concat!(
+                    "use core: pkg = {core};\n",
+                    "var[exp] answer: Count = 42;\n",
+                    "fun[exp] bump(value: Count): Count = {\n",
+                    "    return value + 1;\n",
+                    "}\n",
+                ),
+            ),
+            (
+                "app/main.fol",
+                "use json: pkg = {json};\nfun[] main(): int = {\n    return 0;\n}\n",
+            ),
+        ],
+    );
+
+    let typed = typecheck_fixture_workspace_entry_with_config(
+        &root,
+        "app",
+        ResolverConfig {
+            std_root: None,
+            package_store_root: Some(
+                store_root
+                    .to_str()
+                    .expect("Package store root should be valid UTF-8")
+                    .to_string(),
+            ),
+        },
+    )
+    .expect("Workspace entry typing should keep transitive pkg declaration facts");
+
+    let (_answer_id, answer) = find_typed_symbol(&typed, "answer", SymbolKind::ValueBinding);
+    let (_bump_id, bump) = find_typed_symbol(&typed, "bump", SymbolKind::Routine);
+
+    assert!(matches!(
+        typed
+            .type_table()
+            .get(answer.declared_type.expect("transitive imported values should keep declared types")),
+        Some(CheckedType::Declared {
+            name,
+            kind: DeclaredTypeKind::Type,
+            ..
+        }) if name == "Count"
+    ));
+
+    let signature = match typed.type_table().get(
+        bump.declared_type
+            .expect("transitive imported routines should keep translated signatures"),
+    ) {
+        Some(CheckedType::Routine(signature)) => signature,
+        other => panic!("expected transitive imported routine signature, got {other:?}"),
+    };
+    assert!(matches!(
+        typed.type_table().get(signature.params[0]),
+        Some(CheckedType::Declared {
+            name,
+            kind: DeclaredTypeKind::Type,
+            ..
+        }) if name == "Count"
+    ));
+    assert!(matches!(
+        signature
+            .return_type
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(CheckedType::Declared {
+            name,
+            kind: DeclaredTypeKind::Type,
+            ..
+        }) if name == "Count"
+    ));
+}
+
+#[test]
 fn reopened_v1_blocker_loc_imported_values_still_fail_typecheck() {
     let root = unique_temp_dir("reopened_loc_import");
     create_dir_all(&root).expect("Fixture root should be creatable");
