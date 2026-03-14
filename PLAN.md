@@ -591,7 +591,7 @@ Status: done
 
 #### 6.4
 
-Status: pending
+Status: done
 
 - Lock literal-fit behavior for integer/float declarations and argument passing.
 

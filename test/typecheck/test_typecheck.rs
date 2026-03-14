@@ -1553,6 +1553,55 @@ fn cast_policy_rejects_as_and_cast_surfaces_in_v1() {
 }
 
 #[test]
+fn literal_family_policy_accepts_matching_integer_and_float_sites() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "fun[] take_int(value: int): int = {\n\
+             return value;\n\
+         }\n\
+         fun[] take_float(value: flt): flt = {\n\
+             return value;\n\
+         }\n\
+         fun[] good_int(): int = {\n\
+             var count: int = 1;\n\
+             return take_int(2);\n\
+         }\n\
+         fun[] good_float(): flt = {\n\
+             var ratio: flt = 1.5;\n\
+             return take_float(2.5);\n\
+         }\n",
+    )]);
+
+    let (_count_id, count) = find_typed_symbol(&typed, "count", SymbolKind::ValueBinding);
+    let (_ratio_id, ratio) = find_typed_symbol(&typed, "ratio", SymbolKind::ValueBinding);
+    let good_int = find_named_routine_syntax_id(&typed, "good_int");
+    let good_float = find_named_routine_syntax_id(&typed, "good_float");
+
+    assert_eq!(
+        typed.type_table().get(count.declared_type.expect("int literal binding should lower")),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+    assert_eq!(
+        typed.type_table().get(ratio.declared_type.expect("float literal binding should lower")),
+        Some(&CheckedType::Builtin(BuiltinType::Float))
+    );
+    assert_eq!(
+        typed
+            .typed_node(good_int)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+    assert_eq!(
+        typed
+            .typed_node(good_float)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Float))
+    );
+}
+
+#[test]
 fn declaration_signature_lowering_resolves_qualified_named_types() {
     let typed = typecheck_fixture_folder(&[
         ("util/types.fol", "ali Count: int\n"),
