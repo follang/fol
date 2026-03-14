@@ -6,10 +6,12 @@
 
 pub mod builtins;
 pub mod errors;
+pub mod model;
 pub mod types;
 
 pub use builtins::BuiltinTypeIds;
 pub use errors::{TypecheckError, TypecheckErrorKind};
+pub use model::TypedProgram;
 pub use types::{BuiltinType, CheckedType, CheckedTypeId, TypeTable};
 
 pub type TypecheckResult<T> = Result<T, Vec<TypecheckError>>;
@@ -21,12 +23,21 @@ impl Typechecker {
     pub fn new() -> Self {
         Self
     }
+
+    pub fn check_resolved_program(
+        &mut self,
+        resolved: fol_resolver::ResolvedProgram,
+    ) -> TypecheckResult<TypedProgram> {
+        Ok(TypedProgram::from_resolved(resolved))
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::{TypecheckError, TypecheckErrorKind, Typechecker};
     use fol_parser::ast::SyntaxOrigin;
+    use fol_resolver::resolve_package;
+    use fol_stream::FileStream;
 
     #[test]
     fn typechecker_foundation_can_be_constructed() {
@@ -53,5 +64,25 @@ mod tests {
                 .line,
             3
         );
+    }
+
+    #[test]
+    fn typechecker_can_wrap_a_resolved_program_in_a_typed_shell() {
+        let fixture_path = concat!(env!("CARGO_MANIFEST_DIR"), "/../test/parser/simple_var.fol");
+        let mut stream = FileStream::from_file(fixture_path).expect("Should open typecheck fixture");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = fol_parser::ast::AstParser::new();
+        let syntax = parser
+            .parse_package(&mut lexer)
+            .expect("Typecheck fixture should parse");
+        let resolved = resolve_package(syntax).expect("Typecheck fixture should resolve");
+
+        let typed = Typechecker::new()
+            .check_resolved_program(resolved)
+            .expect("Typed shell should accept resolved programs");
+
+        assert_eq!(typed.package_name(), "parser");
+        assert_eq!(typed.type_table().len(), 6);
+        assert_eq!(typed.resolved().source_units.len(), 1);
     }
 }

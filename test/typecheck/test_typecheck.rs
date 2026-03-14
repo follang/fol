@@ -1,6 +1,23 @@
 use fol_diagnostics::{DiagnosticCode, DiagnosticLocation, ToDiagnostic};
-use fol_parser::ast::SyntaxOrigin;
-use fol_typecheck::{BuiltinType, BuiltinTypeIds, CheckedType, TypeTable, TypecheckError, TypecheckErrorKind, Typechecker};
+use fol_parser::ast::{AstParser, SyntaxOrigin};
+use fol_resolver::resolve_package;
+use fol_stream::FileStream;
+use fol_typecheck::{
+    BuiltinType, BuiltinTypeIds, CheckedType, TypeTable, TypecheckError, TypecheckErrorKind,
+    Typechecker,
+};
+
+fn resolve_fixture(path: &str) -> fol_resolver::ResolvedProgram {
+    let fixture_path = format!("{}/{}", env!("CARGO_MANIFEST_DIR"), path);
+    let mut stream = FileStream::from_file(&fixture_path).expect("Should open typecheck fixture");
+    let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+    let mut parser = AstParser::new();
+    let syntax = parser
+        .parse_package(&mut lexer)
+        .expect("Typecheck fixture should parse as a package");
+
+    resolve_package(syntax).expect("Typecheck fixture should resolve cleanly")
+}
 
 #[test]
 fn typechecker_foundation_smoke_constructs_public_api() {
@@ -88,4 +105,20 @@ fn builtin_type_installation_reuses_existing_slots() {
 
     assert_eq!(first, second);
     assert_eq!(table.len(), 6);
+}
+
+#[test]
+fn typechecker_wraps_resolved_programs_in_a_typed_shell() {
+    let resolved = resolve_fixture("test/parser/simple_var.fol");
+    let typed = Typechecker::new()
+        .check_resolved_program(resolved)
+        .expect("Typed shell should accept resolved programs");
+
+    assert_eq!(typed.package_name(), "parser");
+    assert_eq!(typed.type_table().len(), 6);
+    assert_eq!(
+        typed.type_table().get(typed.builtin_types().bool_),
+        Some(&CheckedType::Builtin(BuiltinType::Bool))
+    );
+    assert_eq!(typed.resolved().source_units.len(), 1);
 }

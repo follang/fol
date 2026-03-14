@@ -216,6 +216,7 @@ version = "0.1.0"
 dependencies = [
  "fol-diagnostics",
  "fol-parser",
+ "fol-resolver",
  "fol-types",
 ]
 

@@ -405,7 +405,7 @@ Status: done
 
 #### 0.4
 
-Status: pending
+Status: done
 
 - Add smoke coverage from `ResolvedProgram` into a no-op `TypedProgram` shell.
 
