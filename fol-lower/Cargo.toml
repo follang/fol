@@ -8,3 +8,6 @@ name = "fol_lower"
 path = "src/lib.rs"
 
 [dependencies]
+fol-diagnostics = { path = "../fol-diagnostics" }
+fol-parser = { path = "../fol-parser" }
+fol-types = { path = "../fol-types" }

@@ -2,7 +2,7 @@
 
 mod errors;
 
-pub use errors::LoweringError;
+pub use errors::{LoweringError, LoweringErrorKind};
 
 pub type LoweringResult<T> = Result<T, Vec<LoweringError>>;
 
@@ -17,7 +17,7 @@ impl Lowerer {
 
 #[cfg(test)]
 mod tests {
-    use super::{Lowerer, LoweringError, LoweringResult};
+    use super::{Lowerer, LoweringError, LoweringErrorKind, LoweringResult};
 
     #[test]
     fn lowering_api_exposes_constructor_and_result_alias() {
@@ -29,11 +29,14 @@ mod tests {
 
     #[test]
     fn lowering_api_exposes_basic_error_surface() {
-        let error = LoweringError::new("lowering shell is not implemented yet");
+        let error = LoweringError::with_kind(
+            LoweringErrorKind::Unsupported,
+            "lowering shell is not implemented yet",
+        );
         assert_eq!(error.message(), "lowering shell is not implemented yet");
         assert_eq!(
             error.to_string(),
-            "LoweringError: lowering shell is not implemented yet"
+            "LoweringUnsupported: lowering shell is not implemented yet"
         );
     }
 }
