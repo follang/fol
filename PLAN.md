@@ -613,7 +613,7 @@ Status: done
 
 #### 7.2
 
-Status: pending
+Status: done
 
 - Emit explicit unsupported diagnostics for `V2` contract/conformance surfaces such as standards, protocols, blueprints, and extensions.
 

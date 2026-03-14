@@ -1608,7 +1608,9 @@ fn v1_boundary_rejects_generic_headers_and_meta_declarations() {
          "fun demo(T)(value: int): int = {\n\
              return value;\n\
          }\n\
-         typ Box(T): rec = {\n\
+         typ Bound: rec = {\n\
+         }\n\
+         typ Box(T: Bound): rec = {\n\
              value: int\n\
          }\n\
          def helper: mod = {\n\
@@ -1652,6 +1654,66 @@ fn v1_boundary_rejects_generic_headers_and_meta_declarations() {
                     .contains("segment/meta declarations are part of the V2 language milestone")
         }),
         "Expected a seg/meta boundary diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
+fn v1_boundary_rejects_contract_and_conformance_surfaces() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "typ geo: rec = {\n\
+         }\n\
+         typ Shape(geo): rec[] = {\n\
+             value: int\n\
+         }\n\
+         typ[ext] StrExt: str\n\
+         typ Box: rec = {\n\
+         }\n\
+         imp Self: Box = {\n\
+             fun ready(): bol = {\n\
+                 return true;\n\
+             }\n\
+         }\n\
+         std geometry: blu = {\n\
+             var width: int;\n\
+         };\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::Unsupported
+                && error
+                    .message()
+                    .contains("type contract conformance is part of the V2 language milestone")
+        }),
+        "Expected a type-contract boundary diagnostic, got: {errors:?}"
+    );
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::Unsupported
+                && error
+                    .message()
+                    .contains("type extension declarations are part of the V2 language milestone")
+        }),
+        "Expected a type-extension boundary diagnostic, got: {errors:?}"
+    );
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::Unsupported
+                && error
+                    .message()
+                    .contains("implementation declarations are part of the V2 language milestone")
+        }),
+        "Expected an implementation boundary diagnostic, got: {errors:?}"
+    );
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::Unsupported
+                && error
+                    .message()
+                    .contains("blueprint standards are part of the V2 language milestone")
+        }),
+        "Expected a blueprint-standard boundary diagnostic, got: {errors:?}"
     );
 }
 

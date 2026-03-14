@@ -4,6 +4,7 @@ use crate::{
 };
 use fol_parser::ast::{
     AstNode, BindingPattern, FolType, ParsedTopLevel, SyntaxOrigin, SyntaxNodeId, TypeDefinition,
+    TypeOption,
 };
 use fol_resolver::{ResolvedProgram, ScopeId, SourceUnitId, SymbolId, SymbolKind};
 use std::collections::BTreeMap;
@@ -691,6 +692,16 @@ fn unsupported_v1_decl_with_origin(
         {
             Some("generic routine semantics are not part of the V1 typecheck milestone")
         }
+        AstNode::TypeDecl { contracts, .. } if !contracts.is_empty() => {
+            Some("type contract conformance is part of the V2 language milestone, not the V1 typecheck milestone")
+        }
+        AstNode::TypeDecl { options, .. }
+            if options
+                .iter()
+                .any(|option| matches!(option, TypeOption::Extension)) =>
+        {
+            Some("type extension declarations are part of the V2 language milestone, not the V1 typecheck milestone")
+        }
         AstNode::TypeDecl { generics, .. } if !generics.is_empty() => {
             Some("generic type semantics are not part of the V1 typecheck milestone")
         }
@@ -700,6 +711,20 @@ fn unsupported_v1_decl_with_origin(
         AstNode::SegDecl { .. } => {
             Some("segment/meta declarations are part of the V2 language milestone, not the V1 typecheck milestone")
         }
+        AstNode::ImpDecl { .. } => {
+            Some("implementation declarations are part of the V2 language milestone, not the V1 typecheck milestone")
+        }
+        AstNode::StdDecl { kind, .. } => Some(match kind {
+            fol_parser::ast::StandardKind::Protocol => {
+                "protocol standards are part of the V2 language milestone, not the V1 typecheck milestone"
+            }
+            fol_parser::ast::StandardKind::Blueprint => {
+                "blueprint standards are part of the V2 language milestone, not the V1 typecheck milestone"
+            }
+            fol_parser::ast::StandardKind::Extended => {
+                "extended standards are part of the V2 language milestone, not the V1 typecheck milestone"
+            }
+        }),
         _ => None,
     }?;
 
