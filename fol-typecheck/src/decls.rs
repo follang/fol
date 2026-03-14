@@ -232,6 +232,83 @@ fn lower_nested_declarations_in_node(
                 }
             }
         }
+        AstNode::FunDecl {
+            syntax_id,
+            name,
+            params,
+            return_type,
+            error_type,
+            body,
+            inquiries,
+            ..
+        }
+        | AstNode::ProDecl {
+            syntax_id,
+            name,
+            params,
+            return_type,
+            error_type,
+            body,
+            inquiries,
+            ..
+        }
+        | AstNode::LogDecl {
+            syntax_id,
+            name,
+            params,
+            return_type,
+            error_type,
+            body,
+            inquiries,
+            ..
+        } => {
+            let routine_scope = lower_named_routine_signature(
+                typed,
+                resolved,
+                source_unit_id,
+                name,
+                *syntax_id,
+                params,
+                return_type.as_ref(),
+                error_type.as_ref(),
+            )?;
+            lower_nested_declarations_in_nodes(typed, resolved, source_unit_id, routine_scope, body)?;
+            lower_nested_declarations_in_nodes(
+                typed,
+                resolved,
+                source_unit_id,
+                routine_scope,
+                inquiries,
+            )?;
+        }
+        AstNode::AnonymousFun {
+            params,
+            return_type,
+            error_type,
+            ..
+        }
+        | AstNode::AnonymousPro {
+            params,
+            return_type,
+            error_type,
+            ..
+        }
+        | AstNode::AnonymousLog {
+            params,
+            return_type,
+            error_type,
+            ..
+        } => {
+            for param in params {
+                let _ = lower_type(typed, resolved, current_scope, &param.param_type)?;
+            }
+            if let Some(return_type) = return_type {
+                let _ = lower_type(typed, resolved, current_scope, return_type)?;
+            }
+            if let Some(error_type) = error_type {
+                let _ = lower_type(typed, resolved, current_scope, error_type)?;
+            }
+        }
         AstNode::Block { statements } => {
             lower_nested_declarations_in_nodes(typed, resolved, source_unit_id, current_scope, statements)?;
         }

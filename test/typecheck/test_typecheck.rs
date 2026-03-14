@@ -374,3 +374,37 @@ fn declaration_signature_lowering_checks_local_bindings() {
         Some(&CheckedType::Builtin(BuiltinType::Int))
     );
 }
+
+#[test]
+fn declaration_signature_lowering_checks_nested_routine_signatures() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "fun[] demo(seed: int): int = {\n\
+             fun[] helper(item: str): int = {\n\
+                 return seed;\n\
+             };\n\
+             return seed;\n\
+         }\n",
+    )]);
+
+    let (_helper_id, helper) = find_typed_symbol(&typed, "helper", SymbolKind::Routine);
+    let helper_type = typed
+        .type_table()
+        .get(helper.declared_type.expect("nested routine should lower"))
+        .expect("nested routine type should exist");
+    let CheckedType::Routine(helper_type) = helper_type else {
+        panic!("nested routine should lower to a routine type");
+    };
+
+    assert_eq!(helper_type.error_type, None);
+    assert_eq!(
+        typed.type_table().get(helper_type.params[0]),
+        Some(&CheckedType::Builtin(BuiltinType::Str))
+    );
+    assert_eq!(
+        typed
+            .type_table()
+            .get(helper_type.return_type.expect("nested routine return should lower")),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+}

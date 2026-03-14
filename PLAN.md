@@ -449,7 +449,7 @@ Status: done
 
 #### 2.2
 
-Status: pending
+Status: done
 
 - Check routine parameter, return, and error-type declarations.
 
