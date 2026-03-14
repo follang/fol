@@ -28,16 +28,13 @@ are implemented and actively tested. Package loading now flows through
 name resolution. The diagnostics hardening pass is complete for parser, package
 loading, resolver, type checking, and the CLI: diagnostics carry stable
 producer-owned codes, exact primary locations, related labels, notes, helps,
-and consistent human/JSON rendering. `fol-typecheck` now covers a large local
-`V1` declaration, expression, control-flow, container, conversion, and
-unsupported-surface boundary subset, and the CLI runs it after resolution. The
-full `V1` typecheck milestone is still reopened for:
-- imported `loc` / `std` / `pkg` graph-aware typing
-- imported method parity
-- final named aggregate expansion parity
+and consistent human/JSON rendering. `fol-typecheck` now covers the full
+current `V1` declaration, expression, control-flow, aggregate, shell,
+conversion, and unsupported-surface boundary, including workspace-aware
+`loc` / `std` / `pkg` imports through the root CLI.
 
-The next major compiler work should stay inside `V1` until that reopened
-typecheck plan is complete.
+The next major compiler work should stay inside `V1`: later semantic and
+lowering stages that can carry a validated program toward a real binary.
 
 Current import surface:
 - `loc` imports exact filesystem directories

@@ -616,7 +616,7 @@ Status: pending
 
 #### 10.1
 
-Status: pending
+Status: done
 
 - Update `README.md`, `PROGRESS.md`, and this plan to describe `fol-typecheck`
   as the full `V1` typechecker only after the reopened import/optional work is

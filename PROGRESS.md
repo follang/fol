@@ -64,8 +64,8 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - Parser-focused Rust tests under `test/parser`: `1108`
 - Resolver-focused Rust tests under `test/resolver`: `100`
 - Typecheck-focused Rust tests under `test/typecheck`: `67`
-- Observed current unit test run: `5` unit tests, green
-- Observed current integration run: `1446` integration tests, green
+- Observed current unit test run: `8` unit tests, green
+- Observed current integration run: `1503` integration tests, green
 
 ## 3. Current Headline Status
 
@@ -74,14 +74,14 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `fol-parser`: large front-end surface implemented, heavily hardened, and now much closer to a stable AST contract
 - `fol-package`: implemented as the package-loading and package-definition boundary before resolver
 - `fol-resolver`: implemented for the current whole-program name-resolution contract
-- `fol-typecheck`: implemented for a large local `V1` semantic subset and wired into the CLI
+- `fol-typecheck`: implemented for the full current `V1` semantic boundary and wired into the CLI
 - `fol-diagnostics`: implemented, structured, and wired into the CLI
 - Root CLI: implemented as parse-and-package-prepare-and-resolve-and-typecheck driver
 - Stream + lexer + parser: stable and consumed by package loading and resolver
 - Package loading and package preparation: implemented for `loc`, `std`, and installed `pkg`
 - Whole-program name resolution: implemented for the current contract
-- Whole-program type checking: substantial, but still reopened before it can be called the full `V1` typechecker
-- Immediate active phase: finish the reopened `V1` typechecker across imported package graphs
+- Whole-program type checking: implemented for the full current `V1` boundary
+- Immediate active phase: move to later `V1` compiler stages after typechecking
 - Ownership and borrowing enforcement: missing
 - Standard or protocol conformance analysis: missing
 - Backend, interpreter, or code generation: missing
@@ -92,8 +92,8 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `make build`: passed
 - `make test`: passed
 - Current observed totals:
-- `5` unit tests passed
-- `1446` integration tests passed
+- `8` unit tests passed
+- `1503` integration tests passed
 - Observed active failures: `0`
 
 ## 5. What Has Been Completed So Far
@@ -326,14 +326,13 @@ Authority rule for this file: code and active tests win over older docs, plans, 
   silently passing unchecked.
 - Ordinary typechecking now rejects `build.fol` package-definition files as out
   of scope for source-program semantics.
-- CLI integration coverage now includes successful typechecked compiles, human
-  typecheck failures, and exact JSON typecheck diagnostics.
-- The reopened current blockers are:
-- imported exported symbols from `loc`, `std`, and `pkg` are still not fully
-  typed end to end
-- imported method lookup still needs graph-aware parity
-- So the current active limitation is no longer parser or resolver coverage; it
-  is finishing the full `V1` typechecker boundary.
+- Resolver workspaces now lower into typed workspaces so imported `loc`, `std`,
+  and `pkg` symbols keep their declaration facts and expression parity.
+- Imported method lookup now runs against typed foreign-package facts instead of
+  entry-package syntax scans.
+- CLI integration coverage now includes successful imported-symbol compiles,
+  imported typecheck failures, and exact JSON diagnostics for reopened surfaces.
+- The reopened `V1` blockers are closed for the current language boundary.
 
 ## 6. Current Front-End State By Layer
 
@@ -486,7 +485,7 @@ These remain later-stage work. They are no longer reasons to keep the current
 - `fol-diagnostics` now sits alongside that pipeline as the shared reporting layer.
 - The pipeline is not toy-only anymore.
 - Stream, lexer, parser, package loading, resolver, diagnostics, and the current
-  `V1` typechecker behavior are explicit enough to move to later `V1` compiler
+  full `V1` typechecker behavior are explicit enough to move to later `V1` compiler
   stages without another deep stability pass first.
 - Current validation is green and large enough to trust ordinary refactors much more than before.
 
@@ -503,7 +502,7 @@ These remain later-stage work. They are no longer reasons to keep the current
 - Parser: broad, hardened, source-layout-aware, and contract-stable enough to move on
 - Package loading: implemented and broad enough for the current `loc/std/pkg` contract
 - Resolver: implemented and broad enough for the current name-resolution milestone
-- Typechecker: implemented for the current `V1` semantic subset and enforced through the CLI
+- Typechecker: implemented for the full current `V1` semantic boundary and enforced through the CLI
 - Diagnostics: structured, stable, and contract-backed
 - Current compiler core: ready to move beyond the post-resolution semantic boundary and into later `V1` compiler stages
 
