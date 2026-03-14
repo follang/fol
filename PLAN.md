@@ -374,7 +374,7 @@ Status: done
 
 #### 3.2
 
-Status: pending
+Status: done
 
 - Make imported exported values expose real declared types during expression
   typing.

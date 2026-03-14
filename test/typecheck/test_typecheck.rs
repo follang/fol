@@ -120,6 +120,15 @@ fn typecheck_fixture_workspace_with_config(
     Typechecker::new().check_resolved_workspace(resolved)
 }
 
+fn typecheck_fixture_workspace_entry_with_config(
+    root: &Path,
+    entry: &str,
+    config: ResolverConfig,
+) -> Result<fol_typecheck::TypedProgram, Vec<TypecheckError>> {
+    typecheck_fixture_workspace_with_config(root, entry, config)
+        .map(|typed| typed.entry_program().clone())
+}
+
 fn find_typed_symbol<'a>(
     typed: &'a fol_typecheck::TypedProgram,
     name: &str,
@@ -2161,6 +2170,40 @@ fn workspace_typechecking_keeps_loaded_package_declaration_signatures() {
             name: "Count".to_string(),
             kind: DeclaredTypeKind::Alias,
         })
+    );
+}
+
+#[test]
+fn workspace_expression_typing_keeps_plain_imported_value_reference_types() {
+    let root = unique_temp_dir("workspace_imported_value_reference_types");
+    create_dir_all(&root).expect("Fixture root should be creatable");
+    write_fixture_files(
+        &root,
+        &[
+            ("shared/lib.fol", "var[exp] answer: int = 42;\n"),
+            (
+                "app/main.fol",
+                concat!(
+                    "use shared: loc = {\"../shared\"};\n",
+                    "fun[] main(): int = {\n",
+                    "    return answer;\n",
+                    "}\n",
+                ),
+            ),
+        ],
+    );
+
+    let typed = typecheck_fixture_workspace_entry_with_config(&root, "app", ResolverConfig::default())
+        .expect("Workspace entry typing should accept imported value references");
+    let reference = find_typed_reference(&typed, "answer", ReferenceKind::Identifier);
+
+    assert_eq!(
+        typed.type_table().get(
+            reference
+                .resolved_type
+                .expect("imported value references should keep a resolved type"),
+        ),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
     );
 }
 
