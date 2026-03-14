@@ -286,7 +286,7 @@ Status: done
 
 #### 0.3
 
-Status: pending
+Status: done
 
 - Add focused failing tests that lock the current real blockers before fixing
   them:

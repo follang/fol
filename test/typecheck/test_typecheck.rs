@@ -1,7 +1,7 @@
 use fol_diagnostics::{DiagnosticCode, DiagnosticLocation, ToDiagnostic};
 use fol_parser::ast::{AstParser, SyntaxOrigin};
 use fol_resolver::resolve_package;
-use fol_resolver::{ReferenceKind, SourceUnitId, SymbolId, SymbolKind};
+use fol_resolver::{ReferenceKind, ResolverConfig, SourceUnitId, SymbolId, SymbolKind};
 use fol_stream::FileStream;
 use fol_typecheck::{
     BuiltinType, BuiltinTypeIds, CheckedType, DeclaredTypeKind, RoutineType, TypeTable,
@@ -78,6 +78,26 @@ fn typecheck_fixture_folder_errors(files: &[(&str, &str)]) -> Vec<TypecheckError
     Typechecker::new()
         .check_resolved_program(resolved)
         .expect_err("Fixture folder should fail typechecking")
+}
+
+fn typecheck_fixture_entry_with_config(
+    root: &Path,
+    entry: &str,
+    config: ResolverConfig,
+) -> Result<fol_typecheck::TypedProgram, Vec<TypecheckError>> {
+    let entry_root = root.join(entry);
+    let mut stream =
+        FileStream::from_folder(entry_root.to_str().expect("fixture path should be utf8"))
+            .expect("Fixture folder should stream");
+    let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+    let mut parser = AstParser::new();
+    let syntax = parser
+        .parse_package(&mut lexer)
+        .expect("Fixture folder should parse as a package");
+    let resolved = fol_resolver::resolve_package_with_config(syntax, config)
+        .expect("Fixture folder should resolve cleanly");
+
+    Typechecker::new().check_resolved_program(resolved)
 }
 
 fn find_typed_symbol<'a>(
@@ -1836,6 +1856,185 @@ fn ordinary_typechecking_rejects_build_fol_source_units() {
                 .is_some_and(|file| file.ends_with("build.fol"))
         }),
         "Expected build.fol boundary diagnostics to keep the source-unit path, got: {errors:?}"
+    );
+}
+
+#[test]
+fn reopened_v1_blocker_loc_imported_values_still_fail_typecheck() {
+    let root = unique_temp_dir("reopened_loc_import");
+    create_dir_all(&root).expect("Fixture root should be creatable");
+    write_fixture_files(
+        &root,
+        &[
+            ("shared/lib.fol", "var[exp] answer: int = 42;\n"),
+            (
+                "app/main.fol",
+                "use shared: loc = {\"../shared\"};\nfun[] main(): int = {\n    return answer;\n}\n",
+            ),
+        ],
+    );
+
+    let errors = typecheck_fixture_entry_with_config(&root, "app", ResolverConfig::default())
+        .expect_err("Current head should still fail imported loc value typing");
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error.message().contains("does not have a lowered type yet")
+                && error.diagnostic_location().is_some()
+        }),
+        "Expected the reopened loc-import blocker diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
+fn reopened_v1_blocker_std_imported_values_still_fail_typecheck() {
+    let root = unique_temp_dir("reopened_std_import");
+    let std_root = root.join("std");
+    create_dir_all(&std_root).expect("Std root should be creatable");
+    write_fixture_files(
+        &root,
+        &[
+            ("std/fmt/value.fol", "var[exp] answer: int = 42;\n"),
+            (
+                "app/main.fol",
+                "use fmt: std = {fmt};\nfun[] main(): int = {\n    return answer;\n}\n",
+            ),
+        ],
+    );
+
+    let errors = typecheck_fixture_entry_with_config(
+        &root,
+        "app",
+        ResolverConfig {
+            std_root: Some(
+                std_root
+                    .to_str()
+                    .expect("std fixture path should be utf8")
+                    .to_string(),
+            ),
+            package_store_root: None,
+        },
+    )
+    .expect_err("Current head should still fail imported std value typing");
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error.message().contains("does not have a lowered type yet")
+                && error.diagnostic_location().is_some()
+        }),
+        "Expected the reopened std-import blocker diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
+fn reopened_v1_blocker_pkg_imported_values_still_fail_typecheck() {
+    let root = unique_temp_dir("reopened_pkg_import");
+    let store_root = root.join("store");
+    create_dir_all(&store_root).expect("Package store root should be creatable");
+    write_fixture_files(
+        &root,
+        &[
+            ("store/json/package.yaml", "name: json\nversion: 1.0.0\n"),
+            ("store/json/build.fol", "def root: loc = \"src\";\n"),
+            ("store/json/src/lib.fol", "var[exp] answer: int = 42;\n"),
+            (
+                "app/main.fol",
+                "use json: pkg = {json};\nfun[] main(): int = {\n    return answer;\n}\n",
+            ),
+        ],
+    );
+
+    let errors = typecheck_fixture_entry_with_config(
+        &root,
+        "app",
+        ResolverConfig {
+            std_root: None,
+            package_store_root: Some(
+                store_root
+                    .to_str()
+                    .expect("package store fixture path should be utf8")
+                    .to_string(),
+            ),
+        },
+    )
+    .expect_err("Current head should still fail imported pkg value typing");
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error.message().contains("does not have a lowered type yet")
+                && error.diagnostic_location().is_some()
+        }),
+        "Expected the reopened pkg-import blocker diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
+fn reopened_v1_blocker_imported_routine_calls_still_fail_typecheck() {
+    let root = unique_temp_dir("reopened_imported_call");
+    create_dir_all(&root).expect("Fixture root should be creatable");
+    write_fixture_files(
+        &root,
+        &[
+            (
+                "shared/lib.fol",
+                "fun[exp] answer(): int = {\n    return 42;\n}\n",
+            ),
+            (
+                "app/main.fol",
+                "use shared: loc = {\"../shared\"};\nfun[] main(): int = {\n    return answer();\n}\n",
+            ),
+        ],
+    );
+
+    let errors = typecheck_fixture_entry_with_config(&root, "app", ResolverConfig::default())
+        .expect_err("Current head should still fail imported routine call typing");
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error.message().contains("does not have a lowered type yet")
+                && error.diagnostic_location().is_some()
+        }),
+        "Expected the reopened imported-call blocker diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
+fn reopened_v1_blocker_nil_literals_are_still_explicitly_unsupported() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "ali MaybeText: opt[str]\nvar label: MaybeText = nil\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::Unsupported
+                && error
+                    .message()
+                    .contains("nil literals are not part of the V1 expression typing milestone")
+        }),
+        "Expected the reopened nil blocker diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
+fn reopened_v1_blocker_postfix_unwrap_is_still_explicitly_unsupported() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "ali MaybeText: opt[str]\nfun[] main(value: MaybeText): str = {\n    return value!;\n}\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::Unsupported
+                && error
+                    .message()
+                    .contains("unwrap operators are not part of the V1 typecheck milestone")
+        }),
+        "Expected the reopened unwrap blocker diagnostic, got: {errors:?}"
     );
 }
 
