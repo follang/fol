@@ -17,7 +17,7 @@ fn test_named_record_initializer_parsing() {
                 matches!(
                     node,
                     AstNode::VarDecl { value: Some(value), .. }
-                        if matches!(value.as_ref(), AstNode::RecordInit { fields } if fields.len() == 4)
+                        if matches!(value.as_ref(), AstNode::RecordInit { fields, .. } if fields.len() == 4)
                 )
             }));
         }
@@ -42,7 +42,7 @@ fn test_nested_record_initializer_parsing() {
                 matches!(
                     node,
                     AstNode::VarDecl { value: Some(value), .. }
-                        if matches!(value.as_ref(), AstNode::RecordInit { fields }
+                        if matches!(value.as_ref(), AstNode::RecordInit { fields, .. }
                             if fields.iter().any(|field|
                                 field.name == "MonthlySalary"
                                     && matches!(field.value, AstNode::RecordInit { .. })))

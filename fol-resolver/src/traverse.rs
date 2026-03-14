@@ -414,7 +414,7 @@ fn traverse_node(
                 traverse_node(session, program, source_unit_id, scope_id, element, false, routine_context)?;
             }
         }
-        AstNode::RecordInit { fields } => {
+        AstNode::RecordInit { fields, .. } => {
             for field in fields {
                 traverse_node(
                     session,

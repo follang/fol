@@ -136,7 +136,10 @@ fn type_node_with_expectation(
             elements,
             expected_type,
         ),
-        AstNode::RecordInit { fields } => {
+        AstNode::RecordInit {
+            syntax_id: _,
+            fields,
+        } => {
             type_record_init(typed, resolved, context, fields, expected_type)
         }
         AstNode::Identifier { name, syntax_id } => {
@@ -961,10 +964,24 @@ fn type_record_init(
     fields: &[fol_parser::ast::RecordInitField],
     expected_type: Option<CheckedTypeId>,
 ) -> Result<Option<CheckedTypeId>, TypecheckError> {
+    let initializer_origin = fields
+        .first()
+        .and_then(|field| node_origin(resolved, &field.value));
     let Some(expected_type) = expected_type else {
-        return Err(TypecheckError::new(
-            TypecheckErrorKind::Unsupported,
-            "record initializers require an expected record type in V1",
+        return Err(initializer_origin.clone().map_or_else(
+            || {
+                TypecheckError::new(
+                    TypecheckErrorKind::Unsupported,
+                    "record initializers require an expected record type in V1",
+                )
+            },
+            |origin| {
+                TypecheckError::with_origin(
+                    TypecheckErrorKind::Unsupported,
+                    "record initializers require an expected record type in V1",
+                    origin,
+                )
+            },
         ));
     };
     let apparent = apparent_type_id(typed, expected_type)?;
@@ -972,53 +989,108 @@ fn type_record_init(
         fields: expected_fields,
     }) = typed.type_table().get(apparent)
     else {
-        return Err(TypecheckError::new(
-            TypecheckErrorKind::InvalidInput,
-            format!(
-                "record initializer requires a record expected type, got '{}'",
-                describe_type(typed, expected_type)
-            ),
+        return Err(initializer_origin.clone().map_or_else(
+            || {
+                TypecheckError::new(
+                    TypecheckErrorKind::InvalidInput,
+                    format!(
+                        "record initializer requires a record expected type, got '{}'",
+                        describe_type(typed, expected_type)
+                    ),
+                )
+            },
+            |origin| {
+                TypecheckError::with_origin(
+                    TypecheckErrorKind::InvalidInput,
+                    format!(
+                        "record initializer requires a record expected type, got '{}'",
+                        describe_type(typed, expected_type)
+                    ),
+                    origin,
+                )
+            },
         ));
     };
     let expected_fields = expected_fields.clone();
     let mut seen = BTreeSet::new();
 
     for field in fields {
+        let field_origin = node_origin(resolved, &field.value);
         let Some(field_type) = expected_fields.get(&field.name).copied() else {
-            return Err(TypecheckError::new(
-                TypecheckErrorKind::InvalidInput,
-                format!(
-                    "record initializer does not define a field named '{}'",
-                    field.name
-                ),
-            ));
-        };
-        if !seen.insert(field.name.clone()) {
-            return Err(TypecheckError::new(
-                TypecheckErrorKind::InvalidInput,
-                format!(
-                    "record initializer repeats the field '{}'",
-                    field.name
-                ),
-            ));
-        }
-        let actual =
-            type_node_with_expectation(typed, resolved, context, &field.value, Some(field_type))?
-                .ok_or_else(|| {
+            return Err(field_origin.clone().map_or_else(
+                || {
                     TypecheckError::new(
                         TypecheckErrorKind::InvalidInput,
                         format!(
-                            "record initializer field '{}' does not have a type",
+                            "record initializer does not define a field named '{}'",
                             field.name
                         ),
                     )
-                })?;
+                },
+                |origin| {
+                    TypecheckError::with_origin(
+                        TypecheckErrorKind::InvalidInput,
+                        format!(
+                            "record initializer does not define a field named '{}'",
+                            field.name
+                        ),
+                        origin,
+                    )
+                },
+            ));
+        };
+        if !seen.insert(field.name.clone()) {
+            return Err(field_origin.clone().map_or_else(
+                || {
+                    TypecheckError::new(
+                        TypecheckErrorKind::InvalidInput,
+                        format!("record initializer repeats the field '{}'", field.name),
+                    )
+                },
+                |origin| {
+                    TypecheckError::with_origin(
+                        TypecheckErrorKind::InvalidInput,
+                        format!("record initializer repeats the field '{}'", field.name),
+                        origin,
+                    )
+                },
+            ));
+        }
+        let actual = type_node_with_expectation(typed, resolved, context, &field.value, Some(field_type))
+            .map_err(|error| {
+                field_origin
+                    .clone()
+                    .map_or(error.clone(), |origin| error.with_fallback_origin(origin))
+            })?
+            .ok_or_else(|| {
+                field_origin.clone().map_or_else(
+                    || {
+                        TypecheckError::new(
+                            TypecheckErrorKind::InvalidInput,
+                            format!(
+                                "record initializer field '{}' does not have a type",
+                                field.name
+                            ),
+                        )
+                    },
+                    |origin| {
+                        TypecheckError::with_origin(
+                            TypecheckErrorKind::InvalidInput,
+                            format!(
+                                "record initializer field '{}' does not have a type",
+                                field.name
+                            ),
+                            origin,
+                        )
+                    },
+                )
+            })?;
         ensure_assignable(
             typed,
             field_type,
             actual,
             format!("record field '{}'", field.name),
-            None,
+            field_origin.clone(),
         )?;
     }
 
@@ -1028,12 +1100,26 @@ fn type_record_init(
         .cloned()
         .collect::<Vec<_>>();
     if !missing.is_empty() {
-        return Err(TypecheckError::new(
-            TypecheckErrorKind::IncompatibleType,
-            format!(
-                "record initializer is missing required fields: {}",
-                missing.join(", ")
-            ),
+        return Err(initializer_origin.map_or_else(
+            || {
+                TypecheckError::new(
+                    TypecheckErrorKind::IncompatibleType,
+                    format!(
+                        "record initializer is missing required fields: {}",
+                        missing.join(", ")
+                    ),
+                )
+            },
+            |origin| {
+                TypecheckError::with_origin(
+                    TypecheckErrorKind::IncompatibleType,
+                    format!(
+                        "record initializer is missing required fields: {}",
+                        missing.join(", ")
+                    ),
+                    origin,
+                )
+            },
         ));
     }
 
@@ -2385,20 +2471,17 @@ fn ensure_assignable(
         return Ok(());
     }
 
-    Err(TypecheckError::with_origin(
-        TypecheckErrorKind::IncompatibleType,
-        format!(
-            "{surface} expects '{}' but got '{}'",
-            describe_type(typed, expected),
-            describe_type(typed, actual)
-        ),
-        origin.unwrap_or(SyntaxOrigin {
-            file: None,
-            line: 1,
-            column: 1,
-            length: 1,
-        }),
-    ))
+    let message = format!(
+        "{surface} expects '{}' but got '{}'",
+        describe_type(typed, expected),
+        describe_type(typed, actual)
+    );
+    Err(match origin {
+        Some(origin) => {
+            TypecheckError::with_origin(TypecheckErrorKind::IncompatibleType, message, origin)
+        }
+        None => TypecheckError::new(TypecheckErrorKind::IncompatibleType, message),
+    })
 }
 
 fn is_v1_assignable(

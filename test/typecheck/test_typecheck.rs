@@ -1432,6 +1432,88 @@ fn record_initializer_typing_rejects_missing_unknown_and_mismatched_fields() {
 }
 
 #[test]
+fn nested_record_initializer_mismatches_keep_inner_value_locations() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "typ Meta: rec = {\n\
+             ok: bol\n\
+         }\n\
+         typ User: rec = {\n\
+             meta: Meta\n\
+         }\n\
+         fun[] main(): User = {\n\
+             return { meta = { ok = 1 } };\n\
+         }\n",
+    )]);
+
+    let error = errors
+        .iter()
+        .find(|error| error.message().contains("record field 'ok' expects"))
+        .expect("Expected nested record-field mismatch diagnostic");
+    let location = error
+        .diagnostic_location()
+        .expect("Expected nested record-field mismatch location");
+
+    assert_eq!(location.line, 8);
+    assert_eq!(location.column, 17);
+    assert_eq!(location.length, Some(1));
+    assert!(
+        location
+            .file
+            .as_deref()
+            .is_some_and(|file| file.ends_with("/main.fol")),
+        "Expected nested record mismatch to point at main.fol, got: {location:?}"
+    );
+}
+
+#[test]
+fn imported_nested_record_initializer_mismatches_keep_inner_value_locations() {
+    let root = unique_temp_dir("workspace_imported_nested_record_locations");
+    create_dir_all(&root).expect("Fixture root should be creatable");
+    write_fixture_files(
+        &root,
+        &[
+            (
+                "shared/lib.fol",
+                concat!(
+                    "typ[exp] Meta: rec = {\n",
+                    "    ok: bol;\n",
+                    "}\n",
+                    "typ[exp] User: rec = {\n",
+                    "    meta: Meta;\n",
+                    "}\n",
+                ),
+            ),
+            (
+                "app/main.fol",
+                concat!(
+                    "use shared: loc = {\"../shared\"};\n",
+                    "var user: User = { meta = { ok = 1 } };\n",
+                ),
+            ),
+        ],
+    );
+
+    let errors =
+        typecheck_fixture_workspace_entry_with_config(&root, "app", ResolverConfig::default())
+            .expect_err("Workspace entry typing should reject imported nested record mismatches");
+    let error = errors
+        .iter()
+        .find(|error| error.message().contains("record field 'ok' expects"))
+        .expect("Expected imported nested record-field mismatch diagnostic");
+
+    assert_eq!(
+        error.diagnostic_location(),
+        Some(DiagnosticLocation {
+            file: Some(root.join("app/main.fol").display().to_string()),
+            line: 2,
+            column: 27,
+            length: Some(1),
+        })
+    );
+}
+
+#[test]
 fn workspace_record_initializer_typing_accepts_imported_named_record_contexts() {
     let root = unique_temp_dir("workspace_imported_record_initializers");
     create_dir_all(&root).expect("Fixture root should be creatable");

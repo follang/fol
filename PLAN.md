@@ -571,7 +571,7 @@ Status: done
 
 #### 8.2
 
-Status: pending
+Status: done
 
 - Ensure nested aggregate/type mismatch diagnostics keep the real field/value
   site instead of generic fallback origins.

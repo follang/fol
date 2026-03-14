@@ -47,6 +47,7 @@ impl AstParser {
     fn parse_record_init_fields_after_open(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
+        open_token: &fol_lexer::lexer::stage3::element::Element,
     ) -> Result<AstNode, Box<dyn Glitch>> {
         let mut fields = Vec::new();
         for _ in 0..256 {
@@ -103,7 +104,10 @@ impl AstParser {
             )));
         }
 
-        Ok(AstNode::RecordInit { fields })
+        Ok(AstNode::RecordInit {
+            syntax_id: self.record_syntax_origin(open_token),
+            fields,
+        })
     }
 
     fn lookahead_is_spawn_expression(
@@ -675,7 +679,7 @@ impl AstParser {
         }
 
         if self.lookahead_is_record_init_field(tokens) {
-            return self.parse_record_init_fields_after_open(tokens);
+            return self.parse_record_init_fields_after_open(tokens, &open);
         }
 
         let mut elements = Vec::new();
