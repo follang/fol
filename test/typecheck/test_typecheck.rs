@@ -1615,6 +1615,59 @@ fn workspace_entry_value_typing_accepts_imported_named_entry_contexts() {
 }
 
 #[test]
+fn workspace_aggregate_typing_keeps_qualified_imported_record_and_entry_surfaces() {
+    let root = unique_temp_dir("workspace_qualified_imported_aggregates");
+    create_dir_all(&root).expect("Fixture root should be creatable");
+    write_fixture_files(
+        &root,
+        &[
+            (
+                "shared/lib.fol",
+                concat!(
+                    "typ[exp] User: rec = {\n",
+                    "    count: int;\n",
+                    "}\n",
+                    "var[exp] current: User = { count = 1 };\n",
+                    "typ[exp] Status: ent = {\n",
+                    "    var OK: int = 1;\n",
+                    "    var FAIL: int = 2;\n",
+                    "}\n",
+                    "fun[exp] echo(status: Status): Status = {\n",
+                    "    return status;\n",
+                    "}\n",
+                ),
+            ),
+            (
+                "app/main.fol",
+                concat!(
+                    "use shared: loc = {\"../shared\"};\n",
+                    "fun[] main(): Status = {\n",
+                    "    var total: int = shared::current.count;\n",
+                    "    return shared::echo(shared::Status.OK);\n",
+                    "}\n",
+                ),
+            ),
+        ],
+    );
+
+    let typed = typecheck_fixture_workspace_entry_with_config(&root, "app", ResolverConfig::default())
+        .expect("Workspace entry typing should keep qualified imported record and entry aggregate surfaces");
+    let syntax_id = find_named_routine_syntax_id(&typed, "main");
+
+    assert!(matches!(
+        typed
+            .typed_node(syntax_id)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(CheckedType::Declared {
+            name,
+            kind: DeclaredTypeKind::Type,
+            ..
+        }) if name == "Status"
+    ));
+}
+
+#[test]
 fn shell_typing_accepts_optional_and_error_payload_lifting() {
     let typed = typecheck_fixture_folder(&[(
         "main.fol",

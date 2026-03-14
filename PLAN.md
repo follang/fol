@@ -474,7 +474,7 @@ Status: done
 
 #### 5.4
 
-Status: pending
+Status: done
 
 - Lock local and imported aggregate tests:
 - named record binding initialization
