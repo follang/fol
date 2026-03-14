@@ -596,7 +596,7 @@ Status: done
 
 #### 9.2
 
-Status: pending
+Status: done
 
 - Add failing CLI integration tests for imported-symbol type errors and imported
   aggregate/optional-shell errors.

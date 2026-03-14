@@ -1153,6 +1153,134 @@ mod integration_tests {
     }
 
     #[test]
+    fn test_cli_typecheck_imported_symbol_mismatches_fail_full_chain() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_typecheck_imported_symbol_error");
+        let shared_root = temp_root.join("shared");
+        let app_root = temp_root.join("app");
+        fs::create_dir_all(&shared_root).expect("Should create shared fixture root");
+        fs::create_dir_all(&app_root).expect("Should create app fixture root");
+        fs::write(shared_root.join("lib.fol"), "var[exp] answer: int = 42;\n")
+            .expect("Should write imported binding fixture");
+        fs::write(
+            app_root.join("main.fol"),
+            "use shared: loc = {\"../shared\"};\nvar label: str = answer;\n",
+        )
+        .expect("Should write imported binding consumer fixture");
+
+        let output = run_fol(&[app_root
+            .to_str()
+            .expect("CLI imported binding fixture path should be utf-8")]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        assert!(
+            !output.status.success(),
+            "CLI should fail when imported symbol typing mismatches in the entry package"
+        );
+        assert!(
+            stdout.contains("initializer for 'label' expects"),
+            "CLI should preserve the imported binding mismatch wording"
+        );
+        assert!(
+            stdout.contains("main.fol"),
+            "CLI should preserve the imported binding consumer path"
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_cli_typecheck_imported_aggregate_mismatches_fail_full_chain() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_typecheck_imported_aggregate_error");
+        let shared_root = temp_root.join("shared");
+        let app_root = temp_root.join("app");
+        fs::create_dir_all(&shared_root).expect("Should create shared fixture root");
+        fs::create_dir_all(&app_root).expect("Should create app fixture root");
+        fs::write(
+            shared_root.join("types.fol"),
+            "typ[exp] Meta: rec = {\n    ok: bol\n}\n\
+             typ[exp] User: rec = {\n    meta: Meta\n}\n",
+        )
+        .expect("Should write imported aggregate fixture");
+        fs::write(
+            app_root.join("main.fol"),
+            "use shared: loc = {\"../shared\"};\n\
+             fun[] main(): shared::User = {\n\
+                 return { meta = { ok = 1 } };\n\
+             }\n",
+        )
+        .expect("Should write imported aggregate consumer fixture");
+
+        let output = run_fol(&[app_root
+            .to_str()
+            .expect("CLI imported aggregate fixture path should be utf-8")]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        assert!(
+            !output.status.success(),
+            "CLI should fail when imported aggregate typing mismatches in the entry package"
+        );
+        assert!(
+            stdout.contains("record field 'ok' expects"),
+            "CLI should preserve the imported aggregate mismatch wording"
+        );
+        assert!(
+            stdout.contains("main.fol"),
+            "CLI should preserve the imported aggregate consumer path"
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_cli_typecheck_imported_optional_shell_mismatches_fail_full_chain() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_typecheck_imported_shell_error");
+        let shared_root = temp_root.join("shared");
+        let app_root = temp_root.join("app");
+        fs::create_dir_all(&shared_root).expect("Should create shared fixture root");
+        fs::create_dir_all(&app_root).expect("Should create app fixture root");
+        fs::write(
+            shared_root.join("types.fol"),
+            "typ[exp] MaybeText: opt[str];\n",
+        )
+        .expect("Should write imported shell fixture");
+        fs::write(
+            app_root.join("main.fol"),
+            "use shared: loc = {\"../shared\"};\nvar value: int = 1;\nvar label: shared::MaybeText = value;\n",
+        )
+        .expect("Should write imported shell consumer fixture");
+
+        let output = run_fol(&[app_root
+            .to_str()
+            .expect("CLI imported shell fixture path should be utf-8")]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        assert!(
+            !output.status.success(),
+            "CLI should fail when imported optional shell typing mismatches in the entry package"
+        );
+        assert!(
+            stdout.contains("initializer for 'label' expects"),
+            "CLI should preserve the imported shell mismatch wording"
+        );
+        assert!(
+            stdout.contains("MaybeText") || stdout.contains("opt[str]"),
+            "CLI should preserve the imported shell type identity"
+        );
+        assert!(
+            stdout.contains("main.fol"),
+            "CLI should preserve the imported shell consumer path"
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
     fn test_cli_json_typecheck_errors_keep_structured_fields() {
         use std::fs;
 
