@@ -438,7 +438,7 @@ Status: done
 
 #### 4.5
 
-Status: pending
+Status: done
 
 - Lock imported method-call tests across direct and qualified import roots.
 
