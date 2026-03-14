@@ -89,7 +89,7 @@ fn test_body_leading_comments_are_preserved_as_ast_nodes() {
                 body[3],
                 AstNode::Return {
                     value: Some(ref value),
-                } if matches!(value.as_ref(), AstNode::Identifier { name } if name == "alpha")
+                } if matches!(value.as_ref(), AstNode::Identifier { name, .. } if name == "alpha")
             ));
         }
         _ => panic!("Expected program node"),
@@ -190,7 +190,7 @@ fn test_body_comments_between_statements_are_preserved() {
                 body[3],
                 AstNode::Return {
                     value: Some(ref value),
-                } if matches!(value.as_ref(), AstNode::Identifier { name } if name == "beta")
+                } if matches!(value.as_ref(), AstNode::Identifier { name, .. } if name == "beta")
             ));
         }
         _ => panic!("Expected program node"),
@@ -239,7 +239,7 @@ fn test_expression_comments_wrap_binary_nodes_and_rhs_nodes() {
                                 left,
                                 right,
                             }
-                            if matches!(left.as_ref(), AstNode::Identifier { name } if name == "alpha")
+                            if matches!(left.as_ref(), AstNode::Identifier { name, .. } if name == "alpha")
                                 && matches!(
                                     right.as_ref(),
                                     AstNode::Commented {
@@ -257,7 +257,7 @@ fn test_expression_comments_wrap_binary_nodes_and_rhs_nodes() {
                                         )
                                         && matches!(
                                             node.as_ref(),
-                                            AstNode::Identifier { name } if name == "beta"
+                                            AstNode::Identifier { name, .. } if name == "beta"
                                         )
                                 )
                         )
@@ -305,10 +305,10 @@ fn test_postfix_comments_wrap_call_nodes() {
                         )
                         && matches!(
                             node.as_ref(),
-                            AstNode::FunctionCall { name, args }
+                            AstNode::FunctionCall { name, args, .. }
                             if name == "emit"
                                 && args.len() == 1
-                                && matches!(&args[0], AstNode::Identifier { name } if name == "alpha")
+                                && matches!(&args[0], AstNode::Identifier { name, .. } if name == "alpha")
                         )
                 )
             ));
@@ -339,7 +339,7 @@ fn test_call_argument_comments_are_preserved_on_argument_nodes() {
                     value: Some(value),
                 } if matches!(
                     value.as_ref(),
-                    AstNode::FunctionCall { name, args }
+                    AstNode::FunctionCall { name, args, .. }
                     if name == "emit"
                         && args.len() == 2
                         && matches!(
@@ -365,7 +365,7 @@ fn test_call_argument_comments_are_preserved_on_argument_nodes() {
                                 )
                                 && matches!(
                                     node.as_ref(),
-                                    AstNode::Identifier { name } if name == "alpha"
+                                    AstNode::Identifier { name, .. } if name == "alpha"
                                 )
                         )
                         && matches!(
@@ -391,7 +391,7 @@ fn test_call_argument_comments_are_preserved_on_argument_nodes() {
                                 )
                                 && matches!(
                                     node.as_ref(),
-                                    AstNode::Identifier { name } if name == "beta"
+                                    AstNode::Identifier { name, .. } if name == "beta"
                                 )
                         )
                 )
@@ -451,7 +451,7 @@ fn test_container_element_comments_are_preserved_on_element_nodes() {
                                     )
                                     && matches!(
                                         node.as_ref(),
-                                        AstNode::Identifier { name } if name == "alpha"
+                                        AstNode::Identifier { name, .. } if name == "alpha"
                                     )
                             )
                             && matches!(
@@ -477,7 +477,7 @@ fn test_container_element_comments_are_preserved_on_element_nodes() {
                                     )
                                     && matches!(
                                         node.as_ref(),
-                                        AstNode::Identifier { name } if name == "beta"
+                                        AstNode::Identifier { name, .. } if name == "beta"
                                     )
                             )
                     )

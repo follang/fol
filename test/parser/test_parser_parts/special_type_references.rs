@@ -179,12 +179,12 @@ fn test_union_type_references_lower_structurally() {
                         params.as_slice(),
                         [Parameter { param_type: FolType::Union { types: input_types }, .. }]
                         if matches!(input_types.as_slice(),
-                            [FolType::Named { name: left }, FolType::Char { .. }]
+                            [FolType::Named { name: left , ..}, FolType::Char { .. }]
                             if left == "str"
                         )
                     )
                     && matches!(types.as_slice(),
-                        [FolType::Named { name: left }, FolType::Char { .. }]
+                        [FolType::Named { name: left , ..}, FolType::Char { .. }]
                         if left == "str"
                     )
             )));
@@ -229,9 +229,9 @@ fn test_optional_type_shorthand_references_lower_structurally() {
                     && matches!(
                         params.as_slice(),
                         [Parameter { param_type: FolType::Optional { inner: param_inner }, .. }]
-                        if matches!(param_inner.as_ref(), FolType::Named { name } if name == "str")
+                        if matches!(param_inner.as_ref(), FolType::Named { name, .. } if name == "str")
                     )
-                    && matches!(inner.as_ref(), FolType::Named { name } if name == "str")
+                    && matches!(inner.as_ref(), FolType::Named { name, .. } if name == "str")
             )));
         }
         _ => panic!("Expected program node"),
@@ -341,7 +341,7 @@ fn test_channel_type_references_lower_structurally() {
                     type_hint: Some(FolType::Channel { element_type }),
                     ..
                 } if name == "channel"
-                    && matches!(element_type.as_ref(), FolType::Named { name } if name == "str")
+                    && matches!(element_type.as_ref(), FolType::Named { name, .. } if name == "str")
             )));
 
             assert!(declarations.iter().any(|node| matches!(
@@ -353,7 +353,7 @@ fn test_channel_type_references_lower_structurally() {
                     },
                     ..
                 } if name == "StringChannel"
-                    && matches!(element_type.as_ref(), FolType::Named { name } if name == "str")
+                    && matches!(element_type.as_ref(), FolType::Named { name, .. } if name == "str")
             )));
         }
         _ => panic!("Expected program node"),

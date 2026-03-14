@@ -1,0 +1,15 @@
+[package]
+name = "fol-package"
+version = "0.1.4"
+authors = ["Trim Bresilla <trim.bresilla@gmail.com>"]
+edition = "2021"
+description = "Package discovery and acquisition for FOL language"
+
+[dependencies]
+fol-diagnostics = { path = "../fol-diagnostics" }
+fol-lexer = { path = "../fol-lexer" }
+fol-parser = { path = "../fol-parser" }
+fol-stream = { path = "../fol-stream" }
+fol-types = { path = "../fol-types" }
+
+[dev-dependencies]

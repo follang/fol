@@ -227,7 +227,7 @@ fn test_routine_parameters_support_grouped_names_and_semicolon_separators() {
                                     [
                                         Parameter { name: first, param_type: FolType::Int { size: None, signed: true }, default: None, .. },
                                         Parameter { name: second, param_type: FolType::Int { size: None, signed: true }, default: None, .. },
-                                        Parameter { name: label, param_type: FolType::Named { name: label_ty }, default: Some(AstNode::Literal(Literal::Character('x'))), .. }
+                                        Parameter { name: label, param_type: FolType::Named { name: label_ty , ..}, default: Some(AstNode::Literal(Literal::Character('x'))), .. }
                                     ] if first == "a"
                                         && second == "b"
                                         && label == "label"
@@ -598,7 +598,7 @@ fn test_function_declaration_supports_bracketed_type_references() {
         matches!(
             function_decl.2,
             Some(FolType::Map { key_type, value_type })
-                if matches!(key_type.as_ref(), FolType::Named { name } if name == "str")
+                if matches!(key_type.as_ref(), FolType::Named { name, .. } if name == "str")
                     && matches!(
                         value_type.as_ref(),
                         FolType::Vector { element_type }
@@ -701,7 +701,7 @@ fn test_when_statement_supports_of_cases_with_complex_types() {
                                 type_match: FolType::Map { key_type, value_type },
                                 ..
                             }
-                                if matches!(key_type.as_ref(), FolType::Named { name } if name == "str")
+                                if matches!(key_type.as_ref(), FolType::Named { name, .. } if name == "str")
                                     && matches!(
                                         value_type.as_ref(),
                                         FolType::Vector { element_type }
@@ -747,7 +747,7 @@ fn test_when_statement_supports_is_in_and_has_cases() {
                     matches!(
                         case,
                         fol_parser::ast::WhenCase::Is {
-                            value: AstNode::Identifier { name },
+                            value: AstNode::Identifier { name, .. },
                             ..
                         } if name == "needle"
                     )
@@ -759,7 +759,7 @@ fn test_when_statement_supports_is_in_and_has_cases() {
                     matches!(
                         case,
                         fol_parser::ast::WhenCase::In {
-                            range: AstNode::Identifier { name },
+                            range: AstNode::Identifier { name, .. },
                             ..
                         } if name == "limit"
                     )
@@ -814,7 +814,7 @@ fn test_when_statement_supports_on_cases() {
                     matches!(
                         case,
                         fol_parser::ast::WhenCase::On {
-                            channel: AstNode::Identifier { name },
+                            channel: AstNode::Identifier { name, .. },
                             ..
                         } if name == "stream"
                     )

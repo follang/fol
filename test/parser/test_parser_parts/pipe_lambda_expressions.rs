@@ -388,7 +388,7 @@ fn test_pipe_lambda_supports_grouped_parameters() {
                         if params.len() == 3
                             && matches!(params[0].param_type, FolType::Int { .. })
                             && matches!(params[1].param_type, FolType::Int { .. })
-                            && matches!(params[2].param_type, FolType::Named { ref name } if name == "str")
+                            && matches!(params[2].param_type, FolType::Named { ref name , ..} if name == "str")
                     )
                 ))
             )));
@@ -423,7 +423,7 @@ fn test_pipe_lambda_supports_semicolon_parameter_groups() {
                         if params.len() == 3
                             && matches!(params[0].param_type, FolType::Int { .. })
                             && matches!(params[1].param_type, FolType::Int { .. })
-                            && matches!(params[2].param_type, FolType::Named { ref name } if name == "str")
+                            && matches!(params[2].param_type, FolType::Named { ref name , ..} if name == "str")
                     )
                 ))
             )));
@@ -483,7 +483,7 @@ fn test_semicolon_pipe_lambda_parameters_in_call_args() {
                     AstNode::Return { value: Some(value) }
                     if matches!(
                         value.as_ref(),
-                        AstNode::FunctionCall { name, args }
+                        AstNode::FunctionCall { name, args, .. }
                         if name == "emit"
                             && matches!(args.as_slice(), [AstNode::AnonymousFun { params, .. }] if params.len() == 2)
                     )
@@ -573,7 +573,7 @@ fn test_trailing_pipe_lambda_separator_in_call_args() {
                     AstNode::Return { value: Some(value) }
                     if matches!(
                         value.as_ref(),
-                        AstNode::FunctionCall { name, args }
+                        AstNode::FunctionCall { name, args, .. }
                         if name == "emit"
                             && matches!(args.as_slice(), [AstNode::AnonymousFun { params, .. }] if params.len() == 2)
                     )

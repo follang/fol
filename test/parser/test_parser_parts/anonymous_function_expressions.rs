@@ -583,7 +583,7 @@ fn test_shorthand_anonymous_function_error_type_parsing() {
                         && body.iter().any(|stmt| matches!(
                             stmt,
                             AstNode::Return { value: Some(value) }
-                            if matches!(value.as_ref(), AstNode::AnonymousFun { error_type: Some(FolType::Named { name }), .. } if name == "Failure")
+                            if matches!(value.as_ref(), AstNode::AnonymousFun { error_type: Some(FolType::Named { name, .. }), .. } if name == "Failure")
                         ))
                 )
             }));
@@ -650,7 +650,7 @@ fn test_shorthand_anonymous_function_flow_error_type_parsing() {
                             stmt,
                             AstNode::Return { value: Some(value) }
                             if matches!(value.as_ref(), AstNode::AnonymousFun {
-                                error_type: Some(FolType::Named { name }),
+                                error_type: Some(FolType::Named { name, .. }),
                                 body,
                                 ..
                             } if name == "Failure" && !body.is_empty())
@@ -801,7 +801,7 @@ fn test_shorthand_anonymous_function_flow_error_type_in_initializer() {
                             AstNode::VarDecl { name, value: Some(value), .. }
                             if name == "f"
                                 && matches!(value.as_ref(), AstNode::AnonymousFun {
-                                    error_type: Some(FolType::Named { name }),
+                                    error_type: Some(FolType::Named { name, .. }),
                                     body,
                                     ..
                                 } if name == "Failure" && !body.is_empty())
@@ -836,7 +836,7 @@ fn test_shorthand_anonymous_function_flow_return_type_in_call_args() {
                         && body.iter().any(|stmt| matches!(
                             stmt,
                             AstNode::Return { value: Some(value) }
-                            if matches!(value.as_ref(), AstNode::FunctionCall { name, args }
+                            if matches!(value.as_ref(), AstNode::FunctionCall { name, args, .. }
                                 if name == "emit"
                                     && matches!(args.as_slice(), [AstNode::AnonymousFun {
                                         return_type: Some(FolType::Int { .. }),
@@ -874,10 +874,10 @@ fn test_shorthand_anonymous_function_flow_error_type_in_call_args() {
                         && body.iter().any(|stmt| matches!(
                             stmt,
                             AstNode::Return { value: Some(value) }
-                            if matches!(value.as_ref(), AstNode::FunctionCall { name, args }
+                            if matches!(value.as_ref(), AstNode::FunctionCall { name, args, .. }
                                 if name == "emit"
                                     && matches!(args.as_slice(), [AstNode::AnonymousFun {
-                                        error_type: Some(FolType::Named { name }),
+                                        error_type: Some(FolType::Named { name, .. }),
                                         body,
                                         ..
                                     }] if name == "Failure" && !body.is_empty()))
@@ -949,7 +949,7 @@ fn test_shorthand_anonymous_function_flow_error_type_in_logical_bodies() {
                             stmt,
                             AstNode::Return { value: Some(value) }
                             if matches!(value.as_ref(), AstNode::AnonymousFun {
-                                error_type: Some(FolType::Named { name }),
+                                error_type: Some(FolType::Named { name, .. }),
                                 body,
                                 ..
                             } if name == "Failure" && !body.is_empty())

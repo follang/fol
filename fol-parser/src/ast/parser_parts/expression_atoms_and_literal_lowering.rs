@@ -76,6 +76,7 @@ impl AstParser {
 
         if Self::token_can_be_logical_name(&token.key()) {
             return Ok(AstNode::Identifier {
+                syntax_id: self.record_syntax_origin(token),
                 name: token.con().trim().to_string(),
             });
         }
@@ -468,6 +469,7 @@ impl AstParser {
 
         // Default to identifier
         Ok(AstNode::Identifier {
+            syntax_id: None,
             name: value.to_string(),
         })
     }

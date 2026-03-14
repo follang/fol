@@ -1,13 +1,17 @@
 # Front-End Contract
 
-This file records the current stream, lexer, and parser contracts that the code and
-tests actually enforce today.
+This file records the current stream, lexer, parser, and package-loading boundary
+contracts that the code and tests actually enforce today.
 
-The source-layout and package-scope alignment pass is complete. This file therefore
-describes the current enforced behavior at head, including compatibility paths that
-still exist intentionally before the next phase starts `fol-resolver`. Treat
-[`PLAN.md`](./PLAN.md) as the completion record for the finished front-end alignment
-work and [`PLAN_NEXT.md`](./PLAN_NEXT.md) as the active resolver plan.
+The source-layout and package-scope alignment pass is complete, `fol-package` now
+owns package loading and package-definition extraction, and `fol-resolver` consumes
+prepared packages from that boundary. The current resolver hardening pass is also
+complete for the present name-resolution contract. The diagnostics hardening pass
+for parser/package/resolver is also complete, so this file describes the enforced
+stream/lexer/parser behavior at head plus the package-loading and diagnostic
+contracts that immediately follow those front-end surfaces. Treat
+[`PROGRESS.md`](./PROGRESS.md) as the repo-backed implementation ledger and
+[`PLAN.md`](./PLAN.md) as the active diagnostics hardening record.
 
 ## Decision Summary
 
@@ -19,9 +23,22 @@ work and [`PLAN_NEXT.md`](./PLAN_NEXT.md) as the active resolver plan.
   in the AST, and receiver validation stays syntax-oriented at parser time.
 - Packages: package identity comes from explicit override or explicit entry root, not
   host-tool manifests.
+- Imports: `loc` loads exact directories from disk, `std` loads exact directories
+  from an explicit std root, `pkg` loads installed package roots from an explicit
+  package-store root with required `package.yaml` + `build.fol`; `package.yaml` is
+  metadata-only, `build.fol` defines dependency/export records, stray `package.fol`
+  files are ignored, direct file imports are rejected, `loc` rejects formal roots
+  that already define `build.fol`, and git-like locator forms currently fail with
+  explicit placeholder diagnostics instead of being fetched.
+- Package boundary: `fol-package` is now the owner of package metadata parsing,
+  build-definition extraction, package caching/cycle handling, export-mount
+  preparation, and directory/store package loading ahead of resolver work.
+- Diagnostics: parser, package, and resolver now lower to structured diagnostics
+  with stable producer-owned codes, exact primary locations, related labels,
+  notes, helps, and consistent human/JSON output.
 - Source units: the parser now has a structured `parse_package(...)` path that preserves
   source units, package/namespace identity, successful top-level origins, and explicit
-  top-level declaration visibility/scope metadata for later resolver work.
+  top-level declaration visibility/scope metadata for resolver consumption.
 - Root surface: `parse_package(...)` is the declaration-oriented package API aligned to
   the book-facing source-layout model, while the legacy `AstParser::parse()` and
   `parse_script_package(...)` compatibility paths still return one mixed and

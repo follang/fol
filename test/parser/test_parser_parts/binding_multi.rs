@@ -347,7 +347,7 @@ fn test_mixed_binding_entries_expand_in_order() {
             assert!(matches!(vars[2].0, "three"));
             assert!(matches!(
                 vars[2].1.as_ref(),
-                Some(FolType::Named { name }) if name == "str"
+                Some(FolType::Named { name, .. }) if name == "str"
             ));
             assert!(matches!(
                 vars[2].2.as_ref(),

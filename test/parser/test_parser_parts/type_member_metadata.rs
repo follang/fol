@@ -206,8 +206,8 @@ fn test_record_grouped_fields_are_retained() {
                 if name == "Pair"
                     && matches!(fields.get("left"), Some(FolType::Int { .. }))
                     && matches!(fields.get("right"), Some(FolType::Int { .. }))
-                    && matches!(fields.get("label"), Some(FolType::Named { name }) if name == "str")
-                    && matches!(fields.get("title"), Some(FolType::Named { name }) if name == "str")
+                    && matches!(fields.get("label"), Some(FolType::Named { name, .. }) if name == "str")
+                    && matches!(fields.get("title"), Some(FolType::Named { name, .. }) if name == "str")
                     && matches!(field_meta.get("label"), Some(RecordFieldMeta { default: Some(_), options }) if options.contains(&VarOption::Immutable))
                     && matches!(field_meta.get("title"), Some(RecordFieldMeta { default: Some(_), options }) if options.contains(&VarOption::Immutable))
             )));

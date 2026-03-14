@@ -19,12 +19,43 @@
 
 FOL is a general-purpose, systems programming language designed for robustness, efficiency, portability, expressiveness and most importantly elegance. Heavily inspired (and shamelessly copying) from languages: zig, nim, c++, go, rust, julia (in this order), hence the name - FOL (Frankenstein's Objective Language). In Albanian language "fol" means "speak".
 
-<p align="center">  ** FOL IS AN ACTIVE FRONT-END COMPILER WORKSPACE **  </p>
+<p align="center">  ** FOL IS AN ACTIVE COMPILER WORKSPACE **  </p>
 
-Current compiler status: the stream, lexer, parser, and diagnostics pipeline are implemented and actively tested. The source-layout and package-scope alignment pass is complete, so the next active compiler phase is `fol-resolver` for whole-program name resolution. After that, the main missing compiler work is later semantic analysis, type checking, ownership rules, and backend/runtime work.
+Current compiler status: `fol-stream`, `fol-lexer`, `fol-parser`,
+`fol-package`, `fol-resolver`, diagnostics, and the root CLI are implemented and
+actively tested. Package loading now flows through `fol-package`, which prepares
+directory and installed-package surfaces ahead of name resolution. The
+diagnostics hardening pass is now complete for parser, package loading, resolver,
+and the CLI: diagnostics carry stable producer-owned codes, exact primary
+locations, related labels, notes, helps, and consistent human/JSON rendering.
+Type checking, deeper semantic analysis, ownership rules, and backend/runtime
+work are now the next major semantic milestone.
 
-For exact current stream/lexer/parser behavior, treat [`FRONTEND_CONTRACT.md`](./FRONTEND_CONTRACT.md)
-as the authoritative front-end contract, treat [`PLAN.md`](./PLAN.md) as the completion record for the finished front-end alignment pass, and treat [`PLAN_NEXT.md`](./PLAN_NEXT.md) as the active next-phase resolver plan. The README is only a high-level project summary.
+Current import surface:
+- `loc` imports exact filesystem directories
+- `std` imports exact directories under an explicit `--std-root`
+- `pkg` imports installed package roots under an explicit `--package-store-root`
+- no explicit cache/store-management CLI flag is exposed yet; that is deferred until
+  locator/fetch work needs a user-facing cache contract
+- `loc` rejects directory targets that already define `build.fol`; formal package
+  roots belong to `pkg`
+- `pkg` roots require both `package.yaml` and `build.fol`
+- `package.yaml` is metadata-only; `build.fol` defines dependency and export records
+- stray `package.fol` files are ignored
+- consumer-visible `pkg` names come only from build-declared exported roots
+
+Current C ABI boundary:
+- `build.fol` may now preserve inert native-artifact placeholders such as `header`,
+  `object`, `static_lib`, and `shared_lib`
+- `.h`, `.o`, static-library, and shared-library handling is not implemented yet
+- native artifact loading, compilation, and linking are future `fol-package` /
+  package-build work, not resolver work
+
+For exact current stream/lexer/parser/package/diagnostics behavior, treat
+[`FRONTEND_CONTRACT.md`](./FRONTEND_CONTRACT.md) as the authoritative front-end
+contract, treat [`PROGRESS.md`](./PROGRESS.md) as the repo-backed implementation
+ledger, and treat [`PLAN.md`](./PLAN.md) as the active diagnostics completion
+record. The README is only a high-level project summary.
 
 <hr>
 
@@ -63,7 +94,7 @@ __*Everything*__ in **FOL** is declared like below:
 #### example:
 
 ```
-use log: mod[std] = {fmt::log};
+use log: std = {"fmt/log"};
 
 
 def argo: mod[init] = {

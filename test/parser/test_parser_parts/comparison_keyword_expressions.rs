@@ -38,8 +38,8 @@ fn test_function_return_parses_in_expression() {
                 op: fol_parser::ast::BinaryOperator::In,
                 ref left,
                 ref right,
-            } if matches!(left.as_ref(), AstNode::Identifier { name } if name == "item")
-                && matches!(right.as_ref(), AstNode::Identifier { name } if name == "items")
+            } if matches!(left.as_ref(), AstNode::Identifier { name, .. } if name == "item")
+                && matches!(right.as_ref(), AstNode::Identifier { name, .. } if name == "items")
         ),
         "Return expression should lower into BinaryOperator::In",
     );
@@ -88,8 +88,8 @@ fn test_function_return_parses_has_expression() {
                 op: fol_parser::ast::BinaryOperator::Has,
                 ref left,
                 ref right,
-            } if matches!(left.as_ref(), AstNode::Identifier { name } if name == "user")
-                && matches!(right.as_ref(), AstNode::Identifier { name } if name == "name")
+            } if matches!(left.as_ref(), AstNode::Identifier { name, .. } if name == "user")
+                && matches!(right.as_ref(), AstNode::Identifier { name, .. } if name == "name")
         ),
         "Return expression should lower into BinaryOperator::Has",
     );
@@ -138,8 +138,8 @@ fn test_function_return_parses_is_expression() {
                 op: fol_parser::ast::BinaryOperator::Is,
                 ref left,
                 ref right,
-            } if matches!(left.as_ref(), AstNode::Identifier { name } if name == "value")
-                && matches!(right.as_ref(), AstNode::Identifier { name } if name == "expected")
+            } if matches!(left.as_ref(), AstNode::Identifier { name, .. } if name == "value")
+                && matches!(right.as_ref(), AstNode::Identifier { name, .. } if name == "expected")
         ),
         "Return expression should lower into BinaryOperator::Is",
     );
@@ -188,8 +188,8 @@ fn test_function_return_parses_as_expression() {
                 op: fol_parser::ast::BinaryOperator::As,
                 ref left,
                 ref right,
-            } if matches!(left.as_ref(), AstNode::Identifier { name } if name == "value")
-                && matches!(right.as_ref(), AstNode::Identifier { name } if name == "text")
+            } if matches!(left.as_ref(), AstNode::Identifier { name, .. } if name == "value")
+                && matches!(right.as_ref(), AstNode::Identifier { name, .. } if name == "text")
         ),
         "Return expression should lower into BinaryOperator::As",
     );
@@ -233,8 +233,8 @@ fn test_function_return_parses_cast_expression() {
                 op: fol_parser::ast::BinaryOperator::Cast,
                 ref left,
                 ref right,
-            } if matches!(left.as_ref(), AstNode::Identifier { name } if name == "value")
-                && matches!(right.as_ref(), AstNode::Identifier { name } if name == "target")
+            } if matches!(left.as_ref(), AstNode::Identifier { name, .. } if name == "value")
+                && matches!(right.as_ref(), AstNode::Identifier { name, .. } if name == "target")
         ),
         "Return expression should lower into BinaryOperator::Cast",
     );

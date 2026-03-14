@@ -18,7 +18,7 @@ fn test_function_calls_support_unpack_arguments() {
                 AstNode::Assignment { value, .. }
                 if matches!(
                     value.as_ref(),
-                    AstNode::FunctionCall { name, args }
+                    AstNode::FunctionCall { name, args, .. }
                     if name == "calc"
                         && args.len() == 2
                         && matches!(&args[0], AstNode::Literal(Literal::Boolean(true)))
@@ -125,7 +125,7 @@ fn test_unpack_arguments_accept_semicolon_separators() {
                 AstNode::Assignment { value, .. }
                 if matches!(
                     value.as_ref(),
-                    AstNode::FunctionCall { name, args }
+                    AstNode::FunctionCall { name, args, .. }
                     if name == "calc"
                         && args.len() == 2
                         && matches!(&args[0], AstNode::Literal(Literal::Boolean(true)))
@@ -161,7 +161,7 @@ fn test_unpack_arguments_accept_trailing_separators() {
                 AstNode::Assignment { value, .. }
                 if matches!(
                     value.as_ref(),
-                    AstNode::FunctionCall { name, args }
+                    AstNode::FunctionCall { name, args, .. }
                     if name == "calc"
                         && args.len() == 2
                         && matches!(&args[0], AstNode::Literal(Literal::Boolean(true)))
@@ -194,7 +194,7 @@ fn test_unpack_function_call_statements_parse() {
         AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations).into_iter().any(|node| {
             matches!(
                 node,
-                AstNode::FunctionCall { name, args }
+                AstNode::FunctionCall { name, args, .. }
                 if name == "calc"
                     && args.len() == 2
                     && matches!(&args[0], AstNode::Literal(Literal::Boolean(true)))

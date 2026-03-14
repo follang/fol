@@ -5,3 +5,7 @@ fun[] pure_add(a: int, b: int): int = {
 pro[+, itr] publish(path: str): int = {
     return 1;
 }
+
+fun[hid] helper(value: int): int = {
+    return value;
+}

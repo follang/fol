@@ -27,7 +27,7 @@ fn test_when_flow_bodies_parsing() {
                                 WhenCase::Has { body: second_body, .. }
                             ]
                             if matches!(body.as_slice(), [AstNode::Literal(Literal::Integer(0))])
-                                && matches!(second_body.as_slice(), [AstNode::Identifier { name }] if name == "value")
+                                && matches!(second_body.as_slice(), [AstNode::Identifier { name, .. }] if name == "value")
                         )
                     ))
                 )
@@ -59,7 +59,7 @@ fn test_if_flow_bodies_parsing() {
                         AstNode::When { cases, default, .. }
                         if matches!(cases.as_slice(),
                             [WhenCase::Case { body, .. }]
-                            if matches!(body.as_slice(), [AstNode::Identifier { name }] if name == "value")
+                            if matches!(body.as_slice(), [AstNode::Identifier { name, .. }] if name == "value")
                         )
                         && matches!(default, Some(default_body)
                             if matches!(default_body.as_slice(), [AstNode::Literal(Literal::Integer(0))]))
@@ -92,7 +92,7 @@ fn test_when_dollar_default_flow_body_parsing() {
                         stmt,
                         AstNode::When { default, .. }
                         if matches!(default, Some(default_body)
-                            if matches!(default_body.as_slice(), [AstNode::Identifier { name }] if name == "value"))
+                            if matches!(default_body.as_slice(), [AstNode::Identifier { name, .. }] if name == "value"))
                     ))
                 )
             }));

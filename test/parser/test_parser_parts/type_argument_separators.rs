@@ -49,7 +49,7 @@ fn test_aliases_and_bindings_accept_semicolon_type_arguments() {
                         ..
                     }
                     if name == "cache"
-                        && matches!(key_type.as_ref(), FolType::Named { name } if name == "str")
+                        && matches!(key_type.as_ref(), FolType::Named { name, .. } if name == "str")
                         && matches!(
                             value_type.as_ref(),
                             FolType::Vector { element_type }
@@ -101,7 +101,7 @@ fn test_routines_and_use_declarations_accept_semicolon_type_arguments() {
                         FolType::Sequence { ref element_type }
                         if fol_type_has_qualified_segments(element_type.as_ref(), &["pkg", "Input"])
                     )
-                    && matches!(key_type.as_ref(), FolType::Named { name } if name == "str")
+                    && matches!(key_type.as_ref(), FolType::Named { name, .. } if name == "str")
                     && matches!(
                         value_type.as_ref(),
                         FolType::Vector { element_type }
@@ -153,7 +153,7 @@ fn test_type_bodies_accept_semicolon_type_arguments() {
                     && matches!(
                         variants.get("Data"),
                         Some(Some(FolType::Map { key_type, value_type }))
-                        if matches!(key_type.as_ref(), FolType::Named { name } if name == "str")
+                        if matches!(key_type.as_ref(), FolType::Named { name, .. } if name == "str")
                             && matches!(
                                 value_type.as_ref(),
                                 FolType::Vector { element_type }
@@ -204,7 +204,7 @@ fn test_special_type_forms_accept_semicolon_type_arguments() {
                 }
                 if name == "Paths"
                     && matches!(types.as_slice(),
-                        [FolType::Location { name: left }, FolType::Url { name: right }]
+                        [FolType::Location { name: left }, FolType::Package { name: right }]
                         if left == "std" && right == "web")
             )));
 
@@ -249,7 +249,7 @@ fn test_shared_type_argument_lists_accept_trailing_separators() {
                     ..
                 }
                 if name == "Lookup"
-                    && matches!(key_type.as_ref(), FolType::Named { name } if name == "str")
+                    && matches!(key_type.as_ref(), FolType::Named { name, .. } if name == "str")
                     && matches!(
                         value_type.as_ref(),
                         FolType::Vector { element_type }
@@ -272,7 +272,7 @@ fn test_shared_type_argument_lists_accept_trailing_separators() {
                         FolType::Sequence { ref element_type }
                         if fol_type_has_qualified_segments(element_type.as_ref(), &["pkg", "Input"])
                     )
-                    && matches!(key_type.as_ref(), FolType::Named { name } if name == "str")
+                    && matches!(key_type.as_ref(), FolType::Named { name, .. } if name == "str")
                     && matches!(
                         value_type.as_ref(),
                         FolType::Vector { element_type }
@@ -286,7 +286,7 @@ fn test_shared_type_argument_lists_accept_trailing_separators() {
                             ..
                         }
                         if name == "cache"
-                            && matches!(key_type.as_ref(), FolType::Named { name } if name == "str")
+                            && matches!(key_type.as_ref(), FolType::Named { name, .. } if name == "str")
                             && matches!(
                                 value_type.as_ref(),
                                 FolType::Vector { element_type }

@@ -133,11 +133,14 @@ dependencies = [
  "dyn-clone",
  "fol-diagnostics",
  "fol-lexer",
+ "fol-package",
  "fol-parser",
+ "fol-resolver",
  "fol-stream",
  "fol-types",
  "lazy_static",
  "regex",
+ "serde_json",
  "terminal_size",
 ]
 
@@ -164,12 +167,36 @@ dependencies = [
 ]
 
 [[package]]
+name = "fol-package"
+version = "0.1.4"
+dependencies = [
+ "fol-diagnostics",
+ "fol-lexer",
+ "fol-parser",
+ "fol-stream",
+ "fol-types",
+]
+
+[[package]]
 name = "fol-parser"
 version = "0.1.4"
 dependencies = [
  "colored",
  "dyn-clone",
+ "fol-diagnostics",
  "fol-lexer",
+ "fol-stream",
+ "fol-types",
+]
+
+[[package]]
+name = "fol-resolver"
+version = "0.1.4"
+dependencies = [
+ "fol-diagnostics",
+ "fol-lexer",
+ "fol-package",
+ "fol-parser",
  "fol-stream",
  "fol-types",
 ]

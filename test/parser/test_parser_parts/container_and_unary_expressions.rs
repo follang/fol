@@ -118,11 +118,11 @@ fn test_return_expression_unary_plus_precedence() {
         AstNode::BinaryOp { op, left, right } => {
             assert!(matches!(op, fol_parser::ast::BinaryOperator::Mul));
             assert!(
-                matches!(left.as_ref(), AstNode::Identifier { name } if name == "a"),
+                matches!(left.as_ref(), AstNode::Identifier { name, .. } if name == "a"),
                 "Left side should parse to identifier 'a' under unary plus"
             );
             assert!(
-                matches!(right.as_ref(), AstNode::Identifier { name } if name == "b"),
+                matches!(right.as_ref(), AstNode::Identifier { name, .. } if name == "b"),
                 "Right side should parse to identifier 'b'"
             );
         }
@@ -160,11 +160,11 @@ fn test_return_expression_chained_unary_plus_precedence() {
         AstNode::BinaryOp { op, left, right } => {
             assert!(matches!(op, fol_parser::ast::BinaryOperator::Mul));
             assert!(
-                matches!(left.as_ref(), AstNode::Identifier { name } if name == "a"),
+                matches!(left.as_ref(), AstNode::Identifier { name, .. } if name == "a"),
                 "Left side should parse to identifier 'a' under chained unary plus"
             );
             assert!(
-                matches!(right.as_ref(), AstNode::Identifier { name } if name == "b"),
+                matches!(right.as_ref(), AstNode::Identifier { name, .. } if name == "b"),
                 "Right side should parse to identifier 'b'"
             );
         }
@@ -192,10 +192,10 @@ fn test_unary_plus_preserves_call_and_method_call_expression_shapes() {
                     AstNode::Assignment { value, .. }
                     if matches!(
                         value.as_ref(),
-                        AstNode::FunctionCall { name, args }
+                        AstNode::FunctionCall { name, args, .. }
                         if name == "compute"
                             && args.len() == 1
-                            && matches!(&args[0], AstNode::Identifier { name } if name == "a")
+                            && matches!(&args[0], AstNode::Identifier { name, .. } if name == "a")
                     )
                 )
             });
@@ -207,10 +207,10 @@ fn test_unary_plus_preserves_call_and_method_call_expression_shapes() {
                     if matches!(
                         value.as_ref(),
                         AstNode::MethodCall { object, method, args }
-                        if matches!(object.as_ref(), AstNode::Identifier { name } if name == "obj")
+                        if matches!(object.as_ref(), AstNode::Identifier { name, .. } if name == "obj")
                             && method == "get"
                             && args.len() == 1
-                            && matches!(&args[0], AstNode::Identifier { name } if name == "a")
+                            && matches!(&args[0], AstNode::Identifier { name, .. } if name == "a")
                     )
                 )
             });
@@ -262,7 +262,7 @@ fn test_return_expression_unary_ref_parses_as_unary_expression() {
             AstNode::UnaryOp {
                 op: fol_parser::ast::UnaryOperator::Ref,
                 operand
-            } if matches!(operand.as_ref(), AstNode::Identifier { name } if name == "a")
+            } if matches!(operand.as_ref(), AstNode::Identifier { name, .. } if name == "a")
         ),
         "Return value should be unary ref of identifier 'a'"
     );
@@ -308,8 +308,8 @@ fn test_return_expression_unary_deref_precedence() {
                 AstNode::UnaryOp {
                     op: fol_parser::ast::UnaryOperator::Deref,
                     operand
-                } if matches!(operand.as_ref(), AstNode::Identifier { name } if name == "a")
-            ) && matches!(right.as_ref(), AstNode::Identifier { name } if name == "b")
+                } if matches!(operand.as_ref(), AstNode::Identifier { name, .. } if name == "a")
+            ) && matches!(right.as_ref(), AstNode::Identifier { name, .. } if name == "b")
         ),
         "Return value should be multiplication with unary deref on left operand"
     );
@@ -344,7 +344,7 @@ fn test_unary_ref_deref_chains_parse_with_expected_shape() {
                                 AstNode::UnaryOp {
                                     op: fol_parser::ast::UnaryOperator::Ref,
                                     operand,
-                                } if matches!(operand.as_ref(), AstNode::Identifier { name } if name == "a")
+                                } if matches!(operand.as_ref(), AstNode::Identifier { name, .. } if name == "a")
                             )
                         )
                     )
@@ -365,7 +365,7 @@ fn test_unary_ref_deref_chains_parse_with_expected_shape() {
                                 AstNode::UnaryOp {
                                     op: fol_parser::ast::UnaryOperator::Deref,
                                     operand,
-                                } if matches!(operand.as_ref(), AstNode::Identifier { name } if name == "a")
+                                } if matches!(operand.as_ref(), AstNode::Identifier { name, .. } if name == "a")
                             )
                         )
                     )
@@ -421,7 +421,7 @@ fn test_mixed_unary_chains_parse_with_expected_shape() {
                                     AstNode::UnaryOp {
                                         op: fol_parser::ast::UnaryOperator::Ref,
                                         operand,
-                                    } if matches!(operand.as_ref(), AstNode::Identifier { name } if name == "a")
+                                    } if matches!(operand.as_ref(), AstNode::Identifier { name, .. } if name == "a")
                                 )
                             )
                         )
@@ -438,7 +438,7 @@ fn test_mixed_unary_chains_parse_with_expected_shape() {
                             op: fol_parser::ast::UnaryOperator::Not,
                             operand,
                         }
-                        if matches!(operand.as_ref(), AstNode::Identifier { name } if name == "a")
+                        if matches!(operand.as_ref(), AstNode::Identifier { name, .. } if name == "a")
                     )
                 )
             });
@@ -708,7 +708,7 @@ fn test_assignment_statement_parsing_with_expression_value() {
     };
 
     assert!(
-        matches!(assignment.0, AstNode::Identifier { name } if name == "result"),
+        matches!(assignment.0, AstNode::Identifier { name, .. } if name == "result"),
         "Assignment target should be identifier 'result'"
     );
     assert!(
@@ -740,9 +740,9 @@ fn test_field_assignment_target_parsing() {
                                 target.as_ref(),
                                 AstNode::FieldAccess { object, field }
                                 if field == "current"
-                                    && matches!(object.as_ref(), AstNode::Identifier { name } if name == "obj")
+                                    && matches!(object.as_ref(), AstNode::Identifier { name, .. } if name == "obj")
                             )
-                                && matches!(value.as_ref(), AstNode::Identifier { name } if name == "value")
+                                && matches!(value.as_ref(), AstNode::Identifier { name, .. } if name == "value")
                         )
                     }),
                     "Assignment target should parse as field access"
@@ -774,10 +774,10 @@ fn test_index_assignment_target_parsing() {
                             if matches!(
                                 target.as_ref(),
                                 AstNode::IndexAccess { container, index }
-                                if matches!(container.as_ref(), AstNode::Identifier { name } if name == "items")
-                                    && matches!(index.as_ref(), AstNode::Identifier { name } if name == "idx")
+                                if matches!(container.as_ref(), AstNode::Identifier { name, .. } if name == "items")
+                                    && matches!(index.as_ref(), AstNode::Identifier { name, .. } if name == "idx")
                             )
-                                && matches!(value.as_ref(), AstNode::Identifier { name } if name == "value")
+                                && matches!(value.as_ref(), AstNode::Identifier { name, .. } if name == "value")
                         )
                     }),
                     "Assignment target should parse as index access"

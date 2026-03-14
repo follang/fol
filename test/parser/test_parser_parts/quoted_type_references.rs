@@ -14,13 +14,13 @@ fn test_root_quoted_type_references_parse_across_declarations() {
     match ast {
         AstNode::Program { declarations } => {
             assert!(declarations.iter().any(|node| {
-                matches!(node, AstNode::AliasDecl { target: FolType::Named { name }, .. } if name == "Target")
+                matches!(node, AstNode::AliasDecl { target: FolType::Named { name, .. }, .. } if name == "Target")
             }));
             assert!(declarations.iter().any(|node| {
                 matches!(
                     node,
                     AstNode::TypeDecl {
-                        type_def: TypeDefinition::Alias { target: FolType::Named { name } },
+                        type_def: TypeDefinition::Alias { target: FolType::Named { name, .. } },
                         ..
                     } if name == "Payload"
                 )
@@ -28,9 +28,9 @@ fn test_root_quoted_type_references_parse_across_declarations() {
             assert!(declarations.iter().any(|node| {
                 matches!(
                     node,
-                    AstNode::FunDecl { params, return_type: Some(FolType::Named { name }), .. }
+                    AstNode::FunDecl { params, return_type: Some(FolType::Named { name, .. }), .. }
                     if name == "Output"
-                        && matches!(params.as_slice(), [Parameter { param_type: FolType::Named { name }, .. }] if name == "Input")
+                        && matches!(params.as_slice(), [Parameter { param_type: FolType::Named { name, .. }, .. }] if name == "Input")
                 )
             }));
         }

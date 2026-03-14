@@ -29,7 +29,11 @@ impl AstParser {
                     let _ = tokens.bump();
                     let args = self.parse_call_args(tokens)?;
                     node = self.attach_leading_comments(match node {
-                        AstNode::Identifier { name } => AstNode::FunctionCall { name, args },
+                        AstNode::Identifier { name, syntax_id } => AstNode::FunctionCall {
+                            syntax_id,
+                            name,
+                            args,
+                        },
                         AstNode::QualifiedIdentifier { path } => {
                             AstNode::QualifiedFunctionCall { path, args }
                         }

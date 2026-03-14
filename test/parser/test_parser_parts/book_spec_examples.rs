@@ -61,7 +61,7 @@ fn test_book_extended_aliases_example() {
                 AstNode::TypeDecl {
                     name,
                     options,
-                    type_def: TypeDefinition::Alias { target: FolType::Named { name: target } },
+                    type_def: TypeDefinition::Alias { target: FolType::Named { name: target , ..} },
                     ..
                 } if name == "str"
                     && target == "str"
@@ -173,7 +173,7 @@ fn test_book_type_contract_record_example() {
                     ..
                 }
                 if name == "rect"
-                    && matches!(contracts.as_slice(), [FolType::Named { name }] if name == "geo")
+                    && matches!(contracts.as_slice(), [FolType::Named { name, .. }] if name == "geo")
                     && fields.contains_key("width")
                     && fields.contains_key("height")
             )));
@@ -199,7 +199,7 @@ fn test_book_macro_definition_examples() {
                 .iter()
                 .filter(|node| matches!(
                     node,
-                    AstNode::DefDecl { name, def_type: FolType::Named { name: def_kind }, params, .. }
+                    AstNode::DefDecl { name, def_type: FolType::Named { name: def_kind , ..}, params, .. }
                     if (name == "!" || name == "*") && def_kind == "mac" && !params.is_empty()
                 ))
                 .count();
@@ -227,7 +227,7 @@ fn test_book_alternative_definition_examples() {
                 .iter()
                 .filter(|node| matches!(
                     node,
-                    AstNode::DefDecl { name, def_type: FolType::Named { name: def_kind }, body, .. }
+                    AstNode::DefDecl { name, def_type: FolType::Named { name: def_kind , ..}, body, .. }
                     if (name == "+var" || name == "~var" || name == ".pointer_content")
                         && def_kind == "alt"
                         && matches!(body.as_slice(), [AstNode::Literal(Literal::String(_))])
@@ -256,7 +256,7 @@ fn test_book_default_definition_example() {
                 node,
                 AstNode::DefDecl {
                     name,
-                    def_type: FolType::Named { name: def_kind },
+                    def_type: FolType::Named { name: def_kind , ..},
                     body,
                     ..
                 }

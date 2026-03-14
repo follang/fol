@@ -177,11 +177,13 @@ impl AstParser {
                         first_untyped = Some(token.clone());
                     }
                     FolType::Named {
+                        syntax_id: None,
                         name: "any".to_string(),
                     }
                 }
             } else {
                 FolType::Named {
+                    syntax_id: None,
                     name: "any".to_string(),
                 }
             };
@@ -435,6 +437,7 @@ impl AstParser {
 
             let option = match token.con().trim() {
                 "+" | "exp" | "export" => FunOption::Export,
+                "-" | "hid" | "hidden" => FunOption::Hidden,
                 "mut" | "mutable" => FunOption::Mutable,
                 "itr" | "iter" | "iterator" => FunOption::Iterator,
                 _ => {
@@ -731,11 +734,11 @@ impl AstParser {
         match typ {
             FolType::Limited { base, .. } => Self::fol_type_label(base),
             FolType::Channel { .. } => "chn".to_string(),
-            FolType::Named { name } => name.clone(),
+            FolType::Named { name, .. } => name.clone(),
             FolType::QualifiedNamed { path } => path.joined(),
-            FolType::Url { name } => {
+            FolType::Package { name } => {
                 if name.is_empty() {
-                    "url".to_string()
+                    "pkg".to_string()
                 } else {
                     name.clone()
                 }
@@ -946,6 +949,13 @@ impl AstParser {
         }
 
         let base_name = name.clone();
+        if !path.is_qualified() && base_name == "url" {
+            return Err(Box::new(ParseError::from_token(
+                &token,
+                "Legacy source kind 'url' was removed; use 'pkg' instead".to_string(),
+            )));
+        }
+
         let mut has_suffix = false;
         for _ in 0..32 {
             self.skip_ignorable(tokens);
@@ -1000,7 +1010,10 @@ impl AstParser {
             if path.is_qualified() && !has_suffix {
                 FolType::QualifiedNamed { path }
             } else {
-                FolType::Named { name }
+                FolType::Named {
+                    syntax_id: path.syntax_id(),
+                    name,
+                }
             }
         };
 

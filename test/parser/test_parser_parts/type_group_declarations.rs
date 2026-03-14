@@ -26,7 +26,7 @@ fn test_grouped_type_declarations_expand_into_multiple_nodes() {
                 node,
                 AstNode::TypeDecl {
                     name,
-                    type_def: TypeDefinition::Alias { target: FolType::Named { name: target } },
+                    type_def: TypeDefinition::Alias { target: FolType::Named { name: target , ..} },
                     ..
                 } if name == "Label" && target == "str"
             )));
@@ -95,7 +95,7 @@ fn test_multi_name_type_alias_declarations_expand_into_multiple_nodes() {
                 AstNode::TypeDecl {
                     name,
                     options,
-                    type_def: TypeDefinition::Alias { target: FolType::Named { name: target } },
+                    type_def: TypeDefinition::Alias { target: FolType::Named { name: target , ..} },
                     ..
                 } if name == "TextAlias"
                     && target == "str"
@@ -126,7 +126,7 @@ fn test_multi_name_type_declarations_share_object_definitions() {
                     node,
                     AstNode::TypeDecl { name, type_def: TypeDefinition::Record { fields, .. }, .. }
                     if (name == "User" || name == "Admin")
-                        && matches!(fields.get("name"), Some(FolType::Named { name }) if name == "str")
+                        && matches!(fields.get("name"), Some(FolType::Named { name, .. }) if name == "str")
                 ))
                 .count();
             assert_eq!(matched, 2, "Expected shared object definition for both names");

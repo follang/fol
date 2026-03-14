@@ -1,15 +1,17 @@
 # FOL Project Progress
 
-Last scan: 2026-03-12
-Scan basis: repository code, active tests, current front-end docs, and a fresh `make build` + `make test`
+Last scan: 2026-03-14
+Scan basis: repository code, active tests, current docs, and a fresh `make build` + `make test`
 Authority rule for this file: code and active tests win over older docs, plans, and historical assumptions
 
 ## 0. Purpose
 
 - This file answers one question: what is actually implemented right now.
 - This file is a repo-backed status ledger for the current workspace head.
-- For the current phase, the priority is front-end truth: stream, lexer, parser, diagnostics, CLI behavior, and the newly finished source-layout alignment boundary that hands off cleanly to resolver work.
-- This file does not plan later semantic work.
+- For the current phase, the priority is repository truth: stream, lexer, parser,
+  package loading, resolver, diagnostics, CLI behavior, and the handoff boundary
+  into post-resolution semantic work.
+- This file does not plan later semantic or backend work.
 
 ## 1. Scan Method
 
@@ -19,51 +21,61 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `fol-stream`
 - `fol-lexer`
 - `fol-parser`
+- `fol-package`
+- `fol-resolver`
 - `fol-diagnostics`
 - `src`
 - Scanned active tests under:
 - `test/stream`
 - `test/lexer`
 - `test/parser`
+- `test/resolver`
 - `test/run_tests.rs`
 - Rescanned current front-end contract and user-facing docs:
 - `FRONTEND_CONTRACT.md`
 - `README.md`
 - relevant `book/src` pages for lexical rules, methods, literals, and recoverable errors
-- Rechecked the current implementation against the existing progress ledger, the finished source-layout alignment record, and the preserved next-phase resolver plan.
+- Rechecked the current implementation against the existing progress ledger and the
+  active diagnostics milestone record.
 - Ran:
 - `make build`
 - `make test`
 
 ## 2. Snapshot Metrics
 
-- Workspace member crates: `5`
+- Workspace member crates: `7`
 - Root binary crate: `1`
-- Active Rust source lines scanned: `19424`
+- Active Rust source lines scanned: `26922`
 - Core compiler Rust lines scanned:
-- `fol-types`: `228`
+- `fol-types`: `259`
 - `fol-stream`: `570`
 - `fol-lexer`: `2406`
-- `fol-parser`: `15781`
+- `fol-parser`: `15857`
+- `fol-package`: `2779`
+- `fol-resolver`: `4542`
 - `fol-diagnostics`: `267`
-- Root CLI and root-local source: `172`
-- Active parser fixtures: `1156`
+- Root CLI and root-local source: `242`
+- Active parser fixtures: `1283`
 - Active lexer tests: `85`
 - Active stream tests: `54`
-- Parser-focused Rust tests under `test/parser`: `1101`
-- Observed current unit test run: `1` unit test, green
-- Observed current integration run: `1250` integration tests, green
+- Parser-focused Rust tests under `test/parser`: `1108`
+- Resolver-focused Rust tests under `test/resolver`: `96`
+- Observed current unit test run: `4` unit tests, green
+- Observed current integration run: `1376` integration tests, green
 
 ## 3. Current Headline Status
 
 - `fol-stream`: implemented, actively used, and now explicit about failure and namespace validity
 - `fol-lexer`: implemented, actively used, and materially hardened on malformed-input and helper-path behavior
 - `fol-parser`: large front-end surface implemented, heavily hardened, and now much closer to a stable AST contract
-- `fol-diagnostics`: implemented and wired into the CLI
-- Root CLI: implemented as parse-and-report driver
-- Stream + lexer + parser: stable enough to hand off without another front-end alignment pass
-- Immediate active phase: `fol-resolver` and whole-program name resolution
-- Whole-program name resolution: missing
+- `fol-package`: implemented as the package-loading and package-definition boundary before resolver
+- `fol-resolver`: implemented for the current whole-program name-resolution contract
+- `fol-diagnostics`: implemented, structured, and wired into the CLI
+- Root CLI: implemented as parse-and-package-prepare-and-resolve driver
+- Stream + lexer + parser: stable and consumed by package loading and resolver
+- Package loading and package preparation: implemented for `loc`, `std`, and installed `pkg`
+- Whole-program name resolution: implemented for the current contract
+- Immediate active phase: type checking and post-resolution semantic work
 - Whole-program type checking: missing
 - Ownership and borrowing enforcement: missing
 - Standard or protocol conformance analysis: missing
@@ -75,8 +87,8 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `make build`: passed
 - `make test`: passed
 - Current observed totals:
-- `1` unit test passed
-- `1250` integration tests passed
+- `4` unit tests passed
+- `1376` integration tests passed
 - Observed active failures: `0`
 
 ## 5. What Has Been Completed So Far
@@ -152,7 +164,7 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - The parser now exposes `parse_package(...)` as a structured package-aware entry point.
 - Successful top-level parse nodes now retain syntax origins through parser-owned IDs and a syntax index.
 - Parser output can now preserve first-class source units with per-file path, package, namespace, and ordered items.
-- Parsed top-level items now also retain explicit declaration visibility/scope metadata for later resolver work.
+- Parsed top-level items now also retain explicit declaration visibility/scope metadata for resolver-owned scope building.
 - Comments and doc comments now remain AST-visible beyond standalone root/body sibling nodes.
 - Inline expression, postfix, call-argument, and container-element comments are preserved through `AstNode::Commented { leading_comments, node, trailing_comments }`.
 - Cross-file boundary failures are now locked with exact-location tests on both the synthetic boundary token (`column 0`) and the first real token of the incoming file (`column 1`).
@@ -169,11 +181,101 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 ### 5.4 Contract And Docs Cleanup
 
 - `FRONTEND_CONTRACT.md` now matches the hardened stream, lexer, and parser behavior much more closely.
-- `README.md` and `PROGRESS.md` now point at the finished alignment record and the active next-phase resolver plan.
+- `README.md`, `FRONTEND_CONTRACT.md`, and `PROGRESS.md` now describe resolver as an implemented phase instead of a future phase.
 - The lexical and routine book pages scanned in this pass are aligned with the current front-end behavior.
 - Parser-side `report` type checking and forward-signature validation are no longer described as active behavior.
 - Method receiver docs now match the current parse-time rejection rule.
 - The front-end source-layout alignment plan has now been executed in code and tests for the stream/lexer/parser scope.
+
+### 5.5 Resolver Milestone
+
+- `fol-resolver` now exists as a workspace crate and is wired into the root CLI.
+- Resolver-owned IDs and tables are explicit for source units, scopes, symbols,
+  references, and imports.
+- The resolver builds program, namespace, source-unit, routine, block, loop-binder,
+  and rolling-binder scopes.
+- Top-level declarations are collected across package, namespace, and file scopes with
+  explicit duplicate handling.
+- Plain identifiers and free calls resolve through lexical scope chains.
+- Qualified identifiers, qualified calls, qualified type names, and inquiry targets
+  resolve through namespace and import-alias roots.
+- `use loc` imports resolve against the loaded package and namespace scope set.
+- `use std` imports resolve against explicit configured std roots.
+- `use pkg` imports resolve against explicit configured package-store roots.
+- Installed `pkg` roots now require both `package.yaml` and `build.fol`.
+- Stray `package.fol` files are ignored during `pkg` loading and do not satisfy package metadata requirements.
+- `package.yaml` is metadata-only and is not part of ordinary package source loading.
+- `build.fol` defines pkg dependency and export records with `def` and is not part of
+  ordinary package source loading.
+- Consumer-visible `pkg` imports now mount only the roots and namespaces exported by
+  `build.fol`, instead of exposing every exported symbol under the package root.
+- Unsupported import kinds fail explicitly instead of silently degrading.
+- Imported exported values, routines, and named types are now visible through plain
+  lookup after supported imports instead of requiring explicit qualification only.
+- Qualified alias-root resolution now works even when the local alias spelling does
+  not match the imported namespace root spelling.
+- File-private `hid` declarations now resolve everywhere inside their own source
+  unit where ordinary scope rules allow them, and still fail outside that file.
+- Built-in `str` now exits named-type lookup instead of surfacing as an unresolved
+  user-defined symbol.
+
+### 5.6 Diagnostics Milestone
+
+- `fol-diagnostics` now models structured diagnostics with:
+- one primary label
+- zero or more secondary labels
+- notes
+- helps
+- suggestions
+- Human diagnostics now render source snippets, underline primary spans, surface
+  related labels as note-style entries, and fall back cleanly when source text
+  cannot be loaded.
+- JSON diagnostics now preserve the richer structure directly, including primary
+  location, secondary labels, notes, helps, and suggestions.
+- Parser, package, and resolver now lower into stable producer-owned diagnostic
+  codes instead of relying on message-derived fallback guessing.
+- The CLI now routes compiler glitches through one shared lowering boundary
+  instead of keeping per-producer downcast ladders in the entrypoint.
+- Duplicate, ambiguity, and duplicate-package-field diagnostics now preserve
+  related sites structurally instead of only embedding them in prose.
+- Warning and info report paths are now first-class and renderer-tested even
+  though current compiler producers still emit mostly errors.
+- Resolver diagnostics now retain exact locations where the parser exposes them,
+  including plain unresolved identifiers, plain free calls, plain named types,
+  and structured competing-declaration sites.
+
+### 5.6 Package Loading Milestone
+
+- `fol-package` now exists as a workspace crate and sits between parser output and
+  resolver package consumption.
+- `fol-package` owns `package.yaml` metadata parsing.
+- `fol-package` owns `build.fol` extraction for dependency, export, and inert
+  native-artifact placeholder records.
+- `fol-package` owns package-session caching, cycle detection, shared dependency
+  dedupe, and directory/store loading.
+- Entry packages are now prepared through `fol-package` before resolution instead
+  of being handed directly from parser output into the resolver.
+- `loc` and `std` imports resolve as exact directories through `fol-package`.
+- `pkg` imports resolve as installed package roots with required `package.yaml`
+  plus `build.fol`, while stray `package.fol` files stay ignored.
+- Control files remain excluded from ordinary package source parsing.
+- `build.fol` export declarations are now lowered into concrete prepared export
+  mounts before resolver namespace mounting.
+- Installed-store dependency strings are now represented as `PackageLocator`
+  records instead of opaque raw strings.
+- Future remote or git-like locators now fail with explicit placeholder
+  diagnostics instead of silently looking like valid installed-store paths.
+- Reserved native-artifact definitions such as `header`, `object`, `static_lib`,
+  and `shared_lib` are preserved as inert package-build records for future C ABI
+  work and are not active resolver semantics today.
+- The CLI now treats parse-clean but resolution-bad programs as failing compiles.
+- The CLI now accepts both `--std-root` and `--package-store-root` so the current
+  `loc/std/pkg` resolver contract is available end to end.
+- Recursive `pkg` dependencies now load through `build.fol` dependency records, and
+  repeated shared package roots are deduped through canonical package identity.
+- Integration coverage now includes full happy-path resolution, cross-file import
+  resolution, exact resolver-location propagation through JSON diagnostics, and
+  non-null location guarantees for plain unresolved and ambiguous name cases.
 
 ## 6. Current Front-End State By Layer
 
@@ -257,7 +359,7 @@ What is solid now:
 - explicit numeric overflow rejection
 - much stronger diagnostic consistency coverage
 - exact cross-file boundary diagnostics on the declaration-oriented package parser path
-- explicit parsed top-level visibility/scope metadata for later resolver work
+- explicit parsed top-level visibility/scope metadata for resolver-owned scope building
 
 What is still true in code today:
 - the preferred structured path is now `parse_package(...)`, but the legacy `AstNode::Program { declarations }` compatibility path is still intentionally mixed and script-like
@@ -288,7 +390,8 @@ These are not active test failures. They are the remaining front-end compromises
 
 ## 8. Current Front-End Debt Worth Tracking, But Not Blocking
 
-This section is intentionally limited to stream, lexer, and parser. None of these items block the resolver phase.
+This section is intentionally limited to stream, lexer, and parser. None of these
+items block the current post-resolver phase.
 
 ### 8.1 Stream Follow-Up
 
@@ -306,7 +409,6 @@ This section is intentionally limited to stream, lexer, and parser. None of thes
 
 ## 9. What Is Explicitly Out Of Scope For This Phase
 
-- whole-program resolution
 - type checking
 - ownership analysis
 - standard or protocol conformance
@@ -322,9 +424,10 @@ These remain later-stage work. They are no longer reasons to keep front-end hard
 ### 10.1 What Is Ready
 
 - The project has a real front-end pipeline:
-- `fol-stream -> fol-lexer -> fol-parser -> fol-diagnostics`
+- `fol-stream -> fol-lexer -> fol-parser -> fol-package -> fol-resolver -> fol-diagnostics`
 - The pipeline is not toy-only anymore.
-- Stream, lexer, and parser behavior are now explicit enough to support resolver work without another deep stability pass first.
+- Stream, lexer, parser, and resolver behavior are now explicit enough to move to the
+  next semantic phase without another deep stability pass first.
 - Current validation is green and large enough to trust ordinary refactors much more than before.
 
 ### 10.2 What Is Not Implemented Yet
@@ -338,11 +441,19 @@ These remain later-stage work. They are no longer reasons to keep front-end hard
 - Stream: strong and contract-stable
 - Lexer: strong and contract-stable
 - Parser: broad, hardened, source-layout-aware, and contract-stable enough to move on
-- Diagnostics baseline: green
-- Front-end as a whole: ready to stop rescanning and move to `fol-resolver`
+- Resolver: implemented and broad enough for the current name-resolution milestone
+- Diagnostics: structured, stable, and contract-backed
+- Current compiler core: ready to move beyond name resolution
 
 ## 11. Next Recommended Focus
 
-- Start `fol-resolver` from [`PLAN_NEXT.md`](./PLAN_NEXT.md).
-- Treat any remaining stream/lexer/parser work as opportunistic cleanup unless a real new bug appears.
-- Use `FRONTEND_CONTRACT.md`, [`PLAN.md`](./PLAN.md), and the test suite as the frozen front-end reference point for the next stage.
+- Start the type-checking phase on top of the now-stable package and resolver
+  boundaries.
+- Keep early type-checking scope tight: declared-type validation, expression
+  typing, call checking, return checking, and assignment compatibility.
+- Treat diagnostics as infrastructure-complete for parser/package/resolver and
+  extend it only when new semantic producers need additional lowering.
+- Treat any remaining stream/lexer/parser/resolver work as opportunistic cleanup unless
+  a real new bug appears.
+- Use `FRONTEND_CONTRACT.md`, [`PROGRESS.md`](./PROGRESS.md), [`PLAN.md`](./PLAN.md),
+  and the test suite as the frozen reference point for the next stage.

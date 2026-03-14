@@ -133,7 +133,7 @@ fn test_semicolon_container_literals_parse_in_call_args() {
                 AstNode::Return { value: Some(value) }
                 if matches!(
                     value.as_ref(),
-                    AstNode::FunctionCall { name, args }
+                    AstNode::FunctionCall { name, args, .. }
                     if name == "emit"
                         && matches!(args.as_slice(), [AstNode::ContainerLiteral { elements, .. }] if elements.len() == 3)
                 )
@@ -235,7 +235,7 @@ fn test_trailing_separator_container_literals_parse_in_call_args() {
                 AstNode::Return { value: Some(value) }
                 if matches!(
                     value.as_ref(),
-                    AstNode::FunctionCall { name, args }
+                    AstNode::FunctionCall { name, args, .. }
                     if name == "emit"
                         && matches!(args.as_slice(), [AstNode::ContainerLiteral { elements, .. }] if elements.len() == 3)
                 )

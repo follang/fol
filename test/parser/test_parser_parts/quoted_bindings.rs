@@ -18,8 +18,8 @@ fn test_top_level_var_declaration_accepts_quoted_name() {
                     node,
                     AstNode::VarDecl { name, type_hint, value, .. }
                     if name == "state"
-                        && matches!(type_hint, Some(FolType::Named { name }) if name == "str")
-                        && matches!(value.as_deref(), Some(AstNode::Identifier { name }) if name == "ready")
+                        && matches!(type_hint, Some(FolType::Named { name, .. }) if name == "str")
+                        && matches!(value.as_deref(), Some(AstNode::Identifier { name, .. }) if name == "ready")
                 )
             }));
         }
@@ -108,7 +108,7 @@ fn test_segmented_quoted_binding_names_parse() {
                     node,
                     AstNode::VarDecl { name, value, .. }
                     if name == "left"
-                        && matches!(value.as_deref(), Some(AstNode::Identifier { name }) if name == "one")
+                        && matches!(value.as_deref(), Some(AstNode::Identifier { name, .. }) if name == "one")
                 )
             }));
             assert!(declarations.iter().any(|node| {
@@ -116,7 +116,7 @@ fn test_segmented_quoted_binding_names_parse() {
                     node,
                     AstNode::VarDecl { name, value, .. }
                     if name == "right"
-                        && matches!(value.as_deref(), Some(AstNode::Identifier { name }) if name == "two")
+                        && matches!(value.as_deref(), Some(AstNode::Identifier { name, .. }) if name == "two")
                 )
             }));
         }

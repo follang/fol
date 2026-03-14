@@ -25,7 +25,7 @@ fn test_function_body_accepts_quoted_call_expression_values() {
                 matches!(
                     node,
                     AstNode::Return { value: Some(value) }
-                    if matches!(value.as_ref(), AstNode::FunctionCall { name, args } if name == "make_err" && args.len() == 1)
+                    if matches!(value.as_ref(), AstNode::FunctionCall { name, args, .. } if name == "make_err" && args.len() == 1)
                 )
             }));
         }

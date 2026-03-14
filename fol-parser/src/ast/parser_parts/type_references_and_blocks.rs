@@ -388,6 +388,7 @@ impl AstParser {
 
             if AstParser::token_can_be_logical_name(&key) {
                 body.push(AstNode::Identifier {
+                    syntax_id: self.record_syntax_origin(&token),
                     name: token.con().trim().to_string(),
                 });
             } else if key.is_literal() {

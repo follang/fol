@@ -1,48 +1,25 @@
 // FOL Diagnostics - Error formatting and output
-use colored::Colorize;
-use fol_types::Glitch;
-use serde::{Deserialize, Serialize};
+mod codes;
+mod model;
+mod render_human;
+mod render_json;
+mod source;
+
+pub use codes::DiagnosticCode;
+pub use model::{
+    Diagnostic, DiagnosticLabel, DiagnosticLabelKind, DiagnosticLocation, DiagnosticReport,
+    DiagnosticSuggestion, Severity,
+};
+
+pub trait ToDiagnostic {
+    fn to_diagnostic(&self) -> Diagnostic;
+}
 
 /// Output format for diagnostics
 #[derive(Debug, Clone, PartialEq)]
 pub enum OutputFormat {
     Human,
     Json,
-}
-
-/// Location information for diagnostics
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DiagnosticLocation {
-    pub file: Option<String>,
-    pub line: usize,
-    pub column: usize,
-    pub length: Option<usize>,
-}
-
-/// Severity levels for diagnostics
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum Severity {
-    Error,
-    Warning,
-    Info,
-}
-
-/// A single diagnostic message
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Diagnostic {
-    pub severity: Severity,
-    pub code: String,
-    pub message: String,
-    pub location: Option<DiagnosticLocation>,
-    pub help: Option<String>,
-}
-
-/// Collection of diagnostics
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DiagnosticReport {
-    pub diagnostics: Vec<Diagnostic>,
-    pub error_count: usize,
-    pub warning_count: usize,
 }
 
 impl DiagnosticReport {
@@ -63,8 +40,69 @@ impl DiagnosticReport {
         self.diagnostics.push(diagnostic);
     }
 
-    pub fn add_error(&mut self, error: &dyn Glitch, location: Option<DiagnosticLocation>) {
+    pub fn add_from<T: ToDiagnostic>(&mut self, producer: &T) {
+        self.add_diagnostic(producer.to_diagnostic());
+    }
+
+    pub fn add_error(&mut self, error: &dyn fol_types::Glitch, location: Option<DiagnosticLocation>) {
         let diagnostic = Diagnostic::from_glitch(error, Severity::Error, location);
+        self.add_diagnostic(diagnostic);
+    }
+
+    pub fn add_warning(
+        &mut self,
+        warning: &dyn fol_types::Glitch,
+        location: Option<DiagnosticLocation>,
+    ) {
+        let diagnostic = Diagnostic::from_glitch(warning, Severity::Warning, location);
+        self.add_diagnostic(diagnostic);
+    }
+
+    pub fn add_info(
+        &mut self,
+        info: &dyn fol_types::Glitch,
+        location: Option<DiagnosticLocation>,
+    ) {
+        let diagnostic = Diagnostic::from_glitch(info, Severity::Info, location);
+        self.add_diagnostic(diagnostic);
+    }
+
+    pub fn add_coded_error(
+        &mut self,
+        code: impl Into<DiagnosticCode>,
+        message: impl Into<String>,
+        location: Option<DiagnosticLocation>,
+    ) {
+        let mut diagnostic = Diagnostic::error(code, message);
+        if let Some(location) = location {
+            diagnostic = diagnostic.with_primary_label(location);
+        }
+        self.add_diagnostic(diagnostic);
+    }
+
+    pub fn add_coded_warning(
+        &mut self,
+        code: impl Into<DiagnosticCode>,
+        message: impl Into<String>,
+        location: Option<DiagnosticLocation>,
+    ) {
+        let mut diagnostic = Diagnostic::warning(code, message);
+        if let Some(location) = location {
+            diagnostic = diagnostic.with_primary_label(location);
+        }
+        self.add_diagnostic(diagnostic);
+    }
+
+    pub fn add_coded_info(
+        &mut self,
+        code: impl Into<DiagnosticCode>,
+        message: impl Into<String>,
+        location: Option<DiagnosticLocation>,
+    ) {
+        let mut diagnostic = Diagnostic::info(code, message);
+        if let Some(location) = location {
+            diagnostic = diagnostic.with_primary_label(location);
+        }
         self.add_diagnostic(diagnostic);
     }
 
@@ -75,51 +113,9 @@ impl DiagnosticReport {
     /// Output the report in the specified format
     pub fn output(&self, format: OutputFormat) -> String {
         match format {
-            OutputFormat::Json => self.to_json(),
-            OutputFormat::Human => self.to_human_readable(),
+            OutputFormat::Json => render_json::render_report(self),
+            OutputFormat::Human => render_human::render_report(self),
         }
-    }
-
-    fn to_json(&self) -> String {
-        serde_json::to_string_pretty(self).unwrap_or_else(|_| "{}".to_string())
-    }
-
-    fn to_human_readable(&self) -> String {
-        let mut output = String::new();
-
-        for diagnostic in &self.diagnostics {
-            output.push_str(&diagnostic.to_human_readable());
-            output.push('\n');
-        }
-
-        // Summary
-        if self.error_count > 0 || self.warning_count > 0 {
-            output.push('\n');
-            if self.error_count > 0 {
-                let label = if self.error_count == 1 { "" } else { "s" };
-                output.push_str(&format!(
-                    "{} found {} error{}",
-                    "error:".red().bold(),
-                    self.error_count,
-                    label
-                ));
-            }
-            if self.warning_count > 0 {
-                if self.error_count > 0 {
-                    output.push_str(", ");
-                }
-                let label = if self.warning_count == 1 { "" } else { "s" };
-                output.push_str(&format!(
-                    "{} {} warning{}",
-                    "warning:".yellow().bold(),
-                    self.warning_count,
-                    label
-                ));
-            }
-            output.push('\n');
-        }
-
-        output
     }
 }
 
@@ -129,91 +125,12 @@ impl Default for DiagnosticReport {
     }
 }
 
-impl Diagnostic {
-    pub fn from_glitch(
-        error: &dyn Glitch,
-        severity: Severity,
-        location: Option<DiagnosticLocation>,
-    ) -> Self {
-        let error_msg = error.to_string();
-        let code = extract_error_code(&error_msg);
-
-        Self {
-            severity,
-            code,
-            message: error_msg,
-            location,
-            help: None,
-        }
-    }
-
-    fn to_human_readable(&self) -> String {
-        let mut output = String::new();
-
-        // Error prefix with severity
-        let prefix = match self.severity {
-            Severity::Error => "error".red().bold(),
-            Severity::Warning => "warning".yellow().bold(),
-            Severity::Info => "info".blue().bold(),
-        };
-
-        output.push_str(&format!("{}: {}", prefix, self.message));
-
-        // Location information
-        if let Some(loc) = &self.location {
-            output.push('\n');
-            if let Some(file) = &loc.file {
-                output.push_str(&format!(
-                    "  {} {}:{}:{}",
-                    "-->".blue().bold(),
-                    file,
-                    loc.line,
-                    loc.column
-                ));
-            } else {
-                output.push_str(&format!(
-                    "  {} line {}:{}",
-                    "-->".blue().bold(),
-                    loc.line,
-                    loc.column
-                ));
-            }
-        }
-
-        // Help text
-        if let Some(help) = &self.help {
-            output.push('\n');
-            output.push_str(&format!("  {} {}", "help:".green().bold(), help));
-        }
-
-        output
-    }
-}
-
-/// Extract error code from error message for categorization
-fn extract_error_code(message: &str) -> String {
-    if message.contains("LexerSpaceAdd") {
-        "E0001".to_string()
-    } else if message.contains("ParserMissmatch") {
-        "E0002".to_string()
-    } else if message.contains("ReadingBadContent") {
-        "E0003".to_string()
-    } else if message.contains("GettingNoEntry") {
-        "E0004".to_string()
-    } else if message.contains("GettingWrongPath") {
-        "E0005".to_string()
-    } else {
-        "E0000".to_string() // Unknown error
-    }
-}
-
 /// Helper trait to convert locations to diagnostic locations
 pub trait ToDiagnosticLocation {
     fn to_diagnostic_location(&self, file: Option<String>) -> DiagnosticLocation;
 }
 
 impl DiagnosticLocation {
-    /// Create from fol-lexer point::Location (if available)
     pub fn from_point_location(loc: &impl PointLocationLike) -> Self {
         Self {
             file: loc.get_file_path(),
@@ -263,5 +180,309 @@ mod tests {
         let human = report.output(OutputFormat::Human);
         assert!(human.contains("Test error"));
         assert!(human.contains("found 1 error"));
+    }
+
+    #[test]
+    fn test_diagnostic_report_json_keeps_location_fields_for_cli_consumers() {
+        let mut report = DiagnosticReport::new();
+        let error = BasicError {
+            message: "Test error".to_string(),
+        };
+
+        report.add_error(
+            &error,
+            Some(DiagnosticLocation {
+                file: Some("pkg/main.fol".to_string()),
+                line: 7,
+                column: 3,
+                length: Some(4),
+            }),
+        );
+
+        let json = report.output(OutputFormat::Json);
+
+        assert!(json.contains("\"message\": \"Test error\""));
+        assert!(json.contains("\"file\": \"pkg/main.fol\""));
+        assert!(json.contains("\"line\": 7"));
+        assert!(json.contains("\"column\": 3"));
+        assert!(json.contains("\"length\": 4"));
+    }
+
+    #[test]
+    fn test_diagnostic_report_human_keeps_location_arrow_shape() {
+        let mut report = DiagnosticReport::new();
+        let error = BasicError {
+            message: "Test error".to_string(),
+        };
+
+        report.add_error(
+            &error,
+            Some(DiagnosticLocation {
+                file: Some("pkg/main.fol".to_string()),
+                line: 7,
+                column: 3,
+                length: Some(4),
+            }),
+        );
+
+        let human = report.output(OutputFormat::Human);
+
+        assert!(human.contains("error: Test error"));
+        assert!(human.contains("--> pkg/main.fol:7:3"));
+        assert!(human.contains("found 1 error"));
+    }
+
+    #[test]
+    fn test_diagnostic_report_warning_and_info_helpers_track_severity_counts() {
+        let mut report = DiagnosticReport::new();
+        let warning = BasicError {
+            message: "Test warning".to_string(),
+        };
+        let info = BasicError {
+            message: "Test info".to_string(),
+        };
+
+        report.add_warning(&warning, None);
+        report.add_info(&info, None);
+
+        assert_eq!(report.error_count, 0);
+        assert_eq!(report.warning_count, 1);
+        assert_eq!(report.diagnostics.len(), 2);
+        assert_eq!(report.diagnostics[0].severity, Severity::Warning);
+        assert_eq!(report.diagnostics[1].severity, Severity::Info);
+    }
+
+    #[test]
+    fn test_diagnostic_rich_model_keeps_primary_location_and_first_help_compatibility() {
+        let diagnostic = Diagnostic::new(Severity::Error, "E9000", "rich model")
+            .with_primary_label(DiagnosticLocation {
+                file: Some("pkg/main.fol".to_string()),
+                line: 4,
+                column: 2,
+                length: Some(3),
+            })
+            .with_help("first help")
+            .with_help("second help")
+            .with_note("note text")
+            .with_secondary_label(
+                DiagnosticLocation {
+                    file: Some("pkg/lib.fol".to_string()),
+                    line: 8,
+                    column: 1,
+                    length: Some(5),
+                },
+                "related declaration",
+            );
+
+        assert_eq!(
+            diagnostic.primary_location(),
+            Some(&DiagnosticLocation {
+                file: Some("pkg/main.fol".to_string()),
+                line: 4,
+                column: 2,
+                length: Some(3),
+            })
+        );
+        assert_eq!(diagnostic.first_help(), Some("first help"));
+        assert_eq!(diagnostic.labels.len(), 2);
+        assert_eq!(diagnostic.notes, vec!["note text".to_string()]);
+        assert_eq!(diagnostic.helps.len(), 2);
+    }
+
+    #[test]
+    fn test_diagnostic_code_is_a_stable_model_type() {
+        let diagnostic = Diagnostic::new(
+            Severity::Warning,
+            DiagnosticCode::new("R1001"),
+            "structured code",
+        );
+
+        assert_eq!(diagnostic.code.as_str(), "R1001");
+        let json = serde_json::to_string(&diagnostic).expect("Diagnostic should serialize");
+        assert!(json.contains("\"code\":\"R1001\""));
+    }
+
+    #[test]
+    fn test_glitch_fallback_no_longer_guesses_codes_from_messages() {
+        let error = BasicError {
+            message: "ParserMissmatch: legacy text should not drive modern codes".to_string(),
+        };
+        let diagnostic = Diagnostic::from_glitch(&error, Severity::Error, None);
+
+        assert_eq!(diagnostic.code, DiagnosticCode::unknown());
+    }
+
+    #[test]
+    fn test_diagnostic_helper_builders_support_optional_and_conditional_paths() {
+        let diagnostic = Diagnostic::error("R3999", "helper builder")
+            .with_optional_primary_label(Some(DiagnosticLocation {
+                file: Some("pkg/main.fol".to_string()),
+                line: 3,
+                column: 4,
+                length: Some(5),
+            }))
+            .with_optional_secondary_label(None, "should be skipped")
+            .with_note_if(true, "keep this note")
+            .with_note_if(false, "skip this note")
+            .with_help_if(true, "keep this help")
+            .with_help_if(false, "skip this help")
+            .with_suggestion_if(
+                true,
+                DiagnosticSuggestion {
+                    message: "replace with `value`".to_string(),
+                    replacement: Some("value".to_string()),
+                    location: Some(DiagnosticLocation {
+                        file: Some("pkg/main.fol".to_string()),
+                        line: 3,
+                        column: 4,
+                        length: Some(5),
+                    }),
+                },
+            );
+
+        assert_eq!(diagnostic.labels.len(), 1);
+        assert_eq!(diagnostic.notes, vec!["keep this note".to_string()]);
+        assert_eq!(diagnostic.helps, vec!["keep this help".to_string()]);
+        assert_eq!(diagnostic.suggestions.len(), 1);
+    }
+
+    #[test]
+    fn test_coded_report_helpers_preserve_legacy_location_and_help_views() {
+        let mut report = DiagnosticReport::new();
+        report.add_coded_error(
+            "R2000",
+            "explicit code",
+            Some(DiagnosticLocation {
+                file: Some("pkg/main.fol".to_string()),
+                line: 9,
+                column: 4,
+                length: Some(2),
+            }),
+        );
+
+        let diagnostic = report
+            .diagnostics
+            .first()
+            .expect("report should contain a coded diagnostic");
+
+        assert_eq!(diagnostic.code.as_str(), "R2000");
+        assert_eq!(
+            diagnostic.legacy_location(),
+            Some(&DiagnosticLocation {
+                file: Some("pkg/main.fol".to_string()),
+                line: 9,
+                column: 4,
+                length: Some(2),
+            })
+        );
+        assert_eq!(diagnostic.legacy_help(), None);
+    }
+
+    #[test]
+    fn test_coded_report_info_helper_keeps_primary_location() {
+        let mut report = DiagnosticReport::new();
+        report.add_coded_info(
+            "I2001",
+            "coded info",
+            Some(DiagnosticLocation {
+                file: Some("pkg/main.fol".to_string()),
+                line: 2,
+                column: 6,
+                length: Some(4),
+            }),
+        );
+
+        assert_eq!(report.error_count, 0);
+        assert_eq!(report.warning_count, 0);
+        assert_eq!(report.diagnostics.len(), 1);
+        assert_eq!(report.diagnostics[0].severity, Severity::Info);
+        assert_eq!(report.diagnostics[0].code.as_str(), "I2001");
+        assert_eq!(
+            report.diagnostics[0].primary_location(),
+            Some(&DiagnosticLocation {
+                file: Some("pkg/main.fol".to_string()),
+                line: 2,
+                column: 6,
+                length: Some(4),
+            })
+        );
+    }
+
+    struct FakeProducer;
+
+    impl ToDiagnostic for FakeProducer {
+        fn to_diagnostic(&self) -> Diagnostic {
+            Diagnostic::warning("X1000", "converted warning")
+        }
+    }
+
+    #[test]
+    fn test_report_add_from_uses_producer_lowering() {
+        let mut report = DiagnosticReport::new();
+        report.add_from(&FakeProducer);
+
+        assert_eq!(report.warning_count, 1);
+        assert_eq!(report.error_count, 0);
+        assert_eq!(report.diagnostics.len(), 1);
+        assert_eq!(report.diagnostics[0].code.as_str(), "X1000");
+    }
+
+    #[test]
+    fn test_rich_diagnostic_json_roundtrip_keeps_structured_fields() {
+        let diagnostic = Diagnostic::error("R3001", "rich serialization")
+            .with_primary_label_message(
+                DiagnosticLocation {
+                    file: Some("pkg/main.fol".to_string()),
+                    line: 5,
+                    column: 7,
+                    length: Some(4),
+                },
+                "offending expression",
+            )
+            .with_secondary_label(
+                DiagnosticLocation {
+                    file: Some("pkg/lib.fol".to_string()),
+                    line: 2,
+                    column: 1,
+                    length: Some(3),
+                },
+                "related declaration",
+            )
+            .with_note("extra note")
+            .with_help("first help")
+            .with_suggestion(DiagnosticSuggestion {
+                message: "replace with `value`".to_string(),
+                replacement: Some("value".to_string()),
+                location: Some(DiagnosticLocation {
+                    file: Some("pkg/main.fol".to_string()),
+                    line: 5,
+                    column: 7,
+                    length: Some(4),
+                }),
+            });
+
+        let json = serde_json::to_string_pretty(&diagnostic)
+            .expect("rich diagnostics should serialize to JSON");
+
+        assert!(json.contains("\"labels\""));
+        assert!(json.contains("\"notes\""));
+        assert!(json.contains("\"helps\""));
+        assert!(json.contains("\"suggestions\""));
+        assert!(json.contains("\"location\""));
+        assert!(json.contains("\"help\""));
+
+        let decoded: Diagnostic =
+            serde_json::from_str(&json).expect("rich diagnostics should deserialize");
+
+        assert_eq!(decoded.code.as_str(), "R3001");
+        assert_eq!(decoded.labels.len(), 2);
+        assert_eq!(decoded.notes, vec!["extra note".to_string()]);
+        assert_eq!(decoded.helps, vec!["first help".to_string()]);
+        assert_eq!(decoded.suggestions.len(), 1);
+        assert_eq!(decoded.legacy_help(), Some("first help"));
+        assert_eq!(
+            decoded.primary_label().and_then(|label| label.message.as_deref()),
+            Some("offending expression")
+        );
     }
 }

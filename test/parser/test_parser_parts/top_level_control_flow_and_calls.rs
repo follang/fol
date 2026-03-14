@@ -517,7 +517,7 @@ fn test_builtin_diagnostic_statements_without_args_parse_as_empty_calls() {
         AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)
             .into_iter()
             .filter_map(|node| {
-                if let AstNode::FunctionCall { name, args } = node {
+                if let AstNode::FunctionCall { name, args, .. } = node {
                     Some((name.clone(), args.len()))
                 } else {
                     None
@@ -603,7 +603,7 @@ fn test_top_level_identifier_call_parsing() {
         AstNode::Program { declarations } => program_root_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
-                if let AstNode::FunctionCall { name, args } = node {
+                if let AstNode::FunctionCall { name, args, .. } = node {
                     Some((name.clone(), args.len()))
                 } else {
                     None
@@ -632,14 +632,14 @@ fn test_top_level_keyword_named_call_and_assignment_parsing() {
     match ast {
         AstNode::Program { declarations } => {
             assert!(program_root_nodes(&declarations).into_iter().any(|node| {
-                matches!(node, AstNode::FunctionCall { name, args } if name == "get" && args.is_empty())
+                matches!(node, AstNode::FunctionCall { name, args, .. } if name == "get" && args.is_empty())
             }));
             assert!(program_root_nodes(&declarations).into_iter().any(|node| {
                 matches!(
                     node,
                     AstNode::Assignment { target, value }
-                    if matches!(target.as_ref(), AstNode::Identifier { name } if name == "std")
-                        && matches!(value.as_ref(), AstNode::Identifier { name } if name == "ready")
+                    if matches!(target.as_ref(), AstNode::Identifier { name, .. } if name == "std")
+                        && matches!(value.as_ref(), AstNode::Identifier { name, .. } if name == "ready")
                 )
             }));
         }
@@ -662,7 +662,7 @@ fn test_top_level_multiline_identifier_call_parsing() {
         AstNode::Program { declarations } => program_root_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
-                if let AstNode::FunctionCall { name, args } = node {
+                if let AstNode::FunctionCall { name, args, .. } = node {
                     Some((name.clone(), args.len()))
                 } else {
                     None
@@ -695,7 +695,7 @@ fn test_top_level_call_with_unary_plus_arguments_parsing() {
         AstNode::Program { declarations } => program_root_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
-                if let AstNode::FunctionCall { name, args } = node {
+                if let AstNode::FunctionCall { name, args, .. } = node {
                     Some((name.clone(), args.clone()))
                 } else {
                     None
@@ -712,7 +712,7 @@ fn test_top_level_call_with_unary_plus_arguments_parsing() {
         "Top-level unary-plus call should have two args"
     );
     assert!(
-        matches!(&call.1[0], AstNode::Identifier { name } if name == "a"),
+        matches!(&call.1[0], AstNode::Identifier { name, .. } if name == "a"),
         "Unary plus on first arg should fold to identifier 'a'"
     );
     assert!(
@@ -746,10 +746,10 @@ fn test_call_and_method_call_with_unary_plus_arguments_parsing() {
                         AstNode::Assignment { value, .. }
                         if matches!(
                             value.as_ref(),
-                            AstNode::FunctionCall { name, args }
+                            AstNode::FunctionCall { name, args, .. }
                             if name == "run"
                                 && args.len() == 2
-                                && matches!(&args[0], AstNode::Identifier { name } if name == "a")
+                                && matches!(&args[0], AstNode::Identifier { name, .. } if name == "a")
                                 && matches!(&args[1], AstNode::BinaryOp { op: fol_parser::ast::BinaryOperator::Add, .. })
                         )
                     )
@@ -761,7 +761,7 @@ fn test_call_and_method_call_with_unary_plus_arguments_parsing() {
                         AstNode::MethodCall { method, args, .. }
                         if method == "update"
                             && args.len() == 2
-                            && matches!(&args[0], AstNode::Identifier { name } if name == "a")
+                            && matches!(&args[0], AstNode::Identifier { name, .. } if name == "a")
                             && matches!(&args[1], AstNode::BinaryOp { op: fol_parser::ast::BinaryOperator::Add, .. })
                     )
                 });
@@ -772,10 +772,10 @@ fn test_call_and_method_call_with_unary_plus_arguments_parsing() {
                         AstNode::Return { value: Some(value) }
                         if matches!(
                             value.as_ref(),
-                            AstNode::FunctionCall { name, args }
+                            AstNode::FunctionCall { name, args, .. }
                             if name == "emit"
                                 && args.len() == 2
-                                && matches!(&args[0], AstNode::Identifier { name } if name == "a")
+                                && matches!(&args[0], AstNode::Identifier { name, .. } if name == "a")
                                 && matches!(&args[1], AstNode::BinaryOp { op: fol_parser::ast::BinaryOperator::Add, .. })
                         )
                     )
@@ -816,7 +816,7 @@ fn test_top_level_call_with_unary_ref_deref_arguments_parsing() {
         AstNode::Program { declarations } => program_root_nodes(&declarations)
             .into_iter()
             .find_map(|node| {
-                if let AstNode::FunctionCall { name, args } = node {
+                if let AstNode::FunctionCall { name, args, .. } = node {
                     Some((name.clone(), args.clone()))
                 } else {
                     None
@@ -833,11 +833,11 @@ fn test_top_level_call_with_unary_ref_deref_arguments_parsing() {
         "Top-level unary ref/deref call should have two args"
     );
     assert!(
-        matches!(&call.1[0], AstNode::UnaryOp { op: fol_parser::ast::UnaryOperator::Ref, operand } if matches!(operand.as_ref(), AstNode::Identifier { name } if name == "a")),
+        matches!(&call.1[0], AstNode::UnaryOp { op: fol_parser::ast::UnaryOperator::Ref, operand } if matches!(operand.as_ref(), AstNode::Identifier { name, .. } if name == "a")),
         "First arg should parse as unary ref of identifier 'a'"
     );
     assert!(
-        matches!(&call.1[1], AstNode::UnaryOp { op: fol_parser::ast::UnaryOperator::Deref, operand } if matches!(operand.as_ref(), AstNode::Identifier { name } if name == "b")),
+        matches!(&call.1[1], AstNode::UnaryOp { op: fol_parser::ast::UnaryOperator::Deref, operand } if matches!(operand.as_ref(), AstNode::Identifier { name, .. } if name == "b")),
         "Second arg should parse as unary deref of identifier 'b'"
     );
 }
@@ -862,11 +862,11 @@ fn test_call_and_method_call_with_unary_ref_deref_arguments_parsing() {
                         AstNode::Assignment { value, .. }
                         if matches!(
                             value.as_ref(),
-                            AstNode::FunctionCall { name, args }
+                            AstNode::FunctionCall { name, args, .. }
                             if name == "run"
                                 && args.len() == 2
-                                && matches!(&args[0], AstNode::UnaryOp { op: fol_parser::ast::UnaryOperator::Ref, operand } if matches!(operand.as_ref(), AstNode::Identifier { name } if name == "a"))
-                                && matches!(&args[1], AstNode::UnaryOp { op: fol_parser::ast::UnaryOperator::Deref, operand } if matches!(operand.as_ref(), AstNode::Identifier { name } if name == "b"))
+                                && matches!(&args[0], AstNode::UnaryOp { op: fol_parser::ast::UnaryOperator::Ref, operand } if matches!(operand.as_ref(), AstNode::Identifier { name, .. } if name == "a"))
+                                && matches!(&args[1], AstNode::UnaryOp { op: fol_parser::ast::UnaryOperator::Deref, operand } if matches!(operand.as_ref(), AstNode::Identifier { name, .. } if name == "b"))
                         )
                     )
                 });
@@ -877,8 +877,8 @@ fn test_call_and_method_call_with_unary_ref_deref_arguments_parsing() {
                         AstNode::MethodCall { method, args, .. }
                         if method == "update"
                             && args.len() == 2
-                            && matches!(&args[0], AstNode::UnaryOp { op: fol_parser::ast::UnaryOperator::Ref, operand } if matches!(operand.as_ref(), AstNode::Identifier { name } if name == "a"))
-                            && matches!(&args[1], AstNode::UnaryOp { op: fol_parser::ast::UnaryOperator::Deref, operand } if matches!(operand.as_ref(), AstNode::Identifier { name } if name == "b"))
+                            && matches!(&args[0], AstNode::UnaryOp { op: fol_parser::ast::UnaryOperator::Ref, operand } if matches!(operand.as_ref(), AstNode::Identifier { name, .. } if name == "a"))
+                            && matches!(&args[1], AstNode::UnaryOp { op: fol_parser::ast::UnaryOperator::Deref, operand } if matches!(operand.as_ref(), AstNode::Identifier { name, .. } if name == "b"))
                     )
                 });
 
@@ -888,11 +888,11 @@ fn test_call_and_method_call_with_unary_ref_deref_arguments_parsing() {
                         AstNode::Return { value: Some(value) }
                         if matches!(
                             value.as_ref(),
-                            AstNode::FunctionCall { name, args }
+                            AstNode::FunctionCall { name, args, .. }
                             if name == "emit"
                                 && args.len() == 2
-                                && matches!(&args[0], AstNode::UnaryOp { op: fol_parser::ast::UnaryOperator::Ref, operand } if matches!(operand.as_ref(), AstNode::Identifier { name } if name == "a"))
-                                && matches!(&args[1], AstNode::UnaryOp { op: fol_parser::ast::UnaryOperator::Deref, operand } if matches!(operand.as_ref(), AstNode::Identifier { name } if name == "b"))
+                                && matches!(&args[0], AstNode::UnaryOp { op: fol_parser::ast::UnaryOperator::Ref, operand } if matches!(operand.as_ref(), AstNode::Identifier { name, .. } if name == "a"))
+                                && matches!(&args[1], AstNode::UnaryOp { op: fol_parser::ast::UnaryOperator::Deref, operand } if matches!(operand.as_ref(), AstNode::Identifier { name, .. } if name == "b"))
                         )
                     )
                 });

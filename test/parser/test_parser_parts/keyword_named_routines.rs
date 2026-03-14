@@ -27,7 +27,7 @@ fn test_keyword_named_routines_and_calls_parse() {
                         && body.iter().any(|stmt| matches!(
                             stmt,
                             AstNode::Assignment { value, .. }
-                            if matches!(value.as_ref(), AstNode::FunctionCall { name, args } if name == "get" && args.len() == 1)
+                            if matches!(value.as_ref(), AstNode::FunctionCall { name, args, .. } if name == "get" && args.len() == 1)
                         ))
                         && body.iter().any(|stmt| matches!(
                             stmt,

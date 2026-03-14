@@ -793,7 +793,7 @@ fn test_pipe_expression_parsing_in_call_arguments() {
                         }
                         if matches!(
                             value.as_ref(),
-                            AstNode::FunctionCall { name, args }
+                            AstNode::FunctionCall { name, args, .. }
                             if name == "emit"
                                 && matches!(args.as_slice(), [AstNode::BinaryOp { op: BinaryOperator::Pipe, .. }])
                         )

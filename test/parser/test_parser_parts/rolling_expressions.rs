@@ -29,7 +29,7 @@ fn test_simple_rolling_expression_parses_in_return_position() {
             AstNode::Rolling { bindings, condition: None, .. }
                 if bindings.len() == 1
                     && bindings[0].name == "x"
-                    && matches!(bindings[0].iterable, AstNode::Identifier { ref name } if name == "items")
+                    && matches!(bindings[0].iterable, AstNode::Identifier { ref name, .. } if name == "items")
         ),
         "Return value should parse as rolling expression"
     );

@@ -20,7 +20,7 @@ fn test_object_type_marker_lowers_to_record_definition() {
                     type_def: TypeDefinition::Record { fields, .. },
                     ..
                 } if name == "File"
-                    && matches!(fields.get("name"), Some(FolType::Named { name }) if name == "str")
+                    && matches!(fields.get("name"), Some(FolType::Named { name, .. }) if name == "str")
             )));
         }
         _ => panic!("Expected program node"),

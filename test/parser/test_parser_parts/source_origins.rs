@@ -218,3 +218,130 @@ fn test_parse_package_retains_qualified_reference_origins() {
     assert_eq!(value_origin.line, 3);
     assert_eq!(value_origin.column, 16);
 }
+
+#[test]
+fn test_parse_package_retains_plain_identifier_origins() {
+    let temp_root = unique_temp_root("plain_identifier");
+    fs::create_dir_all(&temp_root).expect("Should create temporary identifier-origin fixture dir");
+    let fixture = temp_root.join("identifier_refs.fol");
+    fs::write(
+        &fixture,
+        "fun outer(): int = {\n    return missing\n}\n",
+    )
+    .expect("Should write temporary identifier-origin fixture");
+
+    let parsed = parse_package_from_file(
+        fixture
+            .to_str()
+            .expect("Temporary identifier-origin fixture path should be UTF-8"),
+    );
+
+    let expected_path = std::fs::canonicalize(&fixture)
+        .expect("Identifier-origin fixture path should canonicalize")
+        .to_string_lossy()
+        .to_string();
+
+    fs::remove_dir_all(&temp_root).ok();
+
+    let routine_body = match &parsed.source_units[0].items[0].node {
+        AstNode::FunDecl { body, .. } => body,
+        other => panic!("Expected top-level outer routine, got {other:?}"),
+    };
+
+    let identifier = match &routine_body[0] {
+        AstNode::Return { value } => match value.as_deref() {
+            Some(identifier @ AstNode::Identifier { .. }) => identifier,
+            other => panic!("Expected identifier return value, got {other:?}"),
+        },
+        other => panic!("Expected return statement, got {other:?}"),
+    };
+
+    let identifier_origin = ast_node_origin(&parsed, identifier);
+    assert_eq!(identifier_origin.file.as_deref(), Some(expected_path.as_str()));
+    assert_eq!(identifier_origin.line, 2);
+    assert_eq!(identifier_origin.column, 12);
+}
+
+#[test]
+fn test_parse_package_retains_plain_free_call_origins() {
+    let temp_root = unique_temp_root("plain_free_call");
+    fs::create_dir_all(&temp_root).expect("Should create temporary call-origin fixture dir");
+    let fixture = temp_root.join("call_refs.fol");
+    fs::write(
+        &fixture,
+        "fun outer(): int = {\n    return helper(1)\n}\n",
+    )
+    .expect("Should write temporary call-origin fixture");
+
+    let parsed = parse_package_from_file(
+        fixture
+            .to_str()
+            .expect("Temporary call-origin fixture path should be UTF-8"),
+    );
+
+    let expected_path = std::fs::canonicalize(&fixture)
+        .expect("Call-origin fixture path should canonicalize")
+        .to_string_lossy()
+        .to_string();
+
+    fs::remove_dir_all(&temp_root).ok();
+
+    let routine_body = match &parsed.source_units[0].items[0].node {
+        AstNode::FunDecl { body, .. } => body,
+        other => panic!("Expected top-level outer routine, got {other:?}"),
+    };
+
+    let call = match &routine_body[0] {
+        AstNode::Return { value } => match value.as_deref() {
+            Some(call @ AstNode::FunctionCall { .. }) => call,
+            other => panic!("Expected free-call return value, got {other:?}"),
+        },
+        other => panic!("Expected return statement, got {other:?}"),
+    };
+
+    let call_origin = ast_node_origin(&parsed, call);
+    assert_eq!(call_origin.file.as_deref(), Some(expected_path.as_str()));
+    assert_eq!(call_origin.line, 2);
+    assert_eq!(call_origin.column, 12);
+}
+
+#[test]
+fn test_parse_package_retains_plain_named_type_origins() {
+    let temp_root = unique_temp_root("plain_named_type");
+    fs::create_dir_all(&temp_root).expect("Should create temporary type-origin fixture dir");
+    let fixture = temp_root.join("type_refs.fol");
+    fs::write(&fixture, "fun outer(value: Missing): Missing = {\n    return value\n}\n")
+        .expect("Should write temporary type-origin fixture");
+
+    let parsed = parse_package_from_file(
+        fixture
+            .to_str()
+            .expect("Temporary type-origin fixture path should be UTF-8"),
+    );
+
+    let expected_path = std::fs::canonicalize(&fixture)
+        .expect("Type-origin fixture path should canonicalize")
+        .to_string_lossy()
+        .to_string();
+
+    fs::remove_dir_all(&temp_root).ok();
+
+    let (parameter_type, return_type) = match &parsed.source_units[0].items[0].node {
+        AstNode::FunDecl {
+            params,
+            return_type: Some(return_type),
+            ..
+        } => (&params[0].param_type, return_type),
+        other => panic!("Expected top-level outer routine, got {other:?}"),
+    };
+
+    let parameter_origin = fol_type_origin(&parsed, parameter_type);
+    assert_eq!(parameter_origin.file.as_deref(), Some(expected_path.as_str()));
+    assert_eq!(parameter_origin.line, 1);
+    assert_eq!(parameter_origin.column, 18);
+
+    let return_origin = fol_type_origin(&parsed, return_type);
+    assert_eq!(return_origin.file.as_deref(), Some(expected_path.as_str()));
+    assert_eq!(return_origin.line, 1);
+    assert_eq!(return_origin.column, 28);
+}

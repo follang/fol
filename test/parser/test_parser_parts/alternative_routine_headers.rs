@@ -601,7 +601,7 @@ fn test_alternative_function_header_with_generics() {
                     name,
                     generics,
                     params,
-                    return_type: Some(FolType::Named { name: type_name }),
+                    return_type: Some(FolType::Named { name: type_name , ..}),
                     ..
                 }
                 if name == "id"
@@ -635,7 +635,7 @@ fn test_alternative_function_header_with_generics_supports_flow_body() {
                     name,
                     generics,
                     params,
-                    return_type: Some(FolType::Named { name: type_name }),
+                    return_type: Some(FolType::Named { name: type_name , ..}),
                     body,
                     ..
                 }
@@ -670,7 +670,7 @@ fn test_alternative_procedure_header_with_generics() {
                     name,
                     generics,
                     params,
-                    return_type: Some(FolType::Named { name: type_name }),
+                    return_type: Some(FolType::Named { name: type_name , ..}),
                     ..
                 }
                 if name == "wrap"
@@ -704,7 +704,7 @@ fn test_alternative_procedure_header_with_generics_supports_flow_body() {
                     name,
                     generics,
                     params,
-                    return_type: Some(FolType::Named { name: type_name }),
+                    return_type: Some(FolType::Named { name: type_name , ..}),
                     body,
                     ..
                 }
@@ -739,7 +739,7 @@ fn test_alternative_logical_header_with_generics() {
                     name,
                     generics,
                     params,
-                    return_type: Some(FolType::Named { name: type_name }),
+                    return_type: Some(FolType::Named { name: type_name , ..}),
                     ..
                 }
                 if name == "decide"
@@ -773,7 +773,7 @@ fn test_alternative_logical_header_with_generics_supports_flow_body() {
                     name,
                     generics,
                     params,
-                    return_type: Some(FolType::Named { name: type_name }),
+                    return_type: Some(FolType::Named { name: type_name , ..}),
                     body,
                     ..
                 }

@@ -28,8 +28,8 @@ fn test_top_level_grouped_callee_lowers_as_invoke_not_function_call() {
         declarations.first(),
         Some(AstNode::Invoke { callee, args })
             if args.len() == 1
-                && matches!(callee.as_ref(), AstNode::FunctionCall { name, args } if name == "factory" && args.is_empty())
-                && matches!(&args[0], AstNode::Identifier { name } if name == "value")
+                && matches!(callee.as_ref(), AstNode::FunctionCall { name, args, .. } if name == "factory" && args.is_empty())
+                && matches!(&args[0], AstNode::Identifier { name, .. } if name == "value")
     ));
 }
 
@@ -52,18 +52,18 @@ fn test_routine_body_keeps_call_invoke_and_assignment_boundaries() {
     assert!(matches!(
         body.as_slice(),
         [
-            AstNode::FunctionCall { name, args },
+            AstNode::FunctionCall { name, args, .. },
             AstNode::Invoke { callee, args: invoke_args },
             AstNode::Assignment { target, value }
         ]
             if name == "run"
                 && args.len() == 1
-                && matches!(&args[0], AstNode::Identifier { name } if name == "value")
+                && matches!(&args[0], AstNode::Identifier { name, .. } if name == "value")
                 && invoke_args.len() == 1
-                && matches!(callee.as_ref(), AstNode::FunctionCall { name, args } if name == "factory" && args.is_empty())
-                && matches!(&invoke_args[0], AstNode::Identifier { name } if name == "value")
-                && matches!(target.as_ref(), AstNode::Identifier { name } if name == "target")
-                && matches!(value.as_ref(), AstNode::Identifier { name } if name == "value")
+                && matches!(callee.as_ref(), AstNode::FunctionCall { name, args, .. } if name == "factory" && args.is_empty())
+                && matches!(&invoke_args[0], AstNode::Identifier { name, .. } if name == "value")
+                && matches!(target.as_ref(), AstNode::Identifier { name, .. } if name == "target")
+                && matches!(value.as_ref(), AstNode::Identifier { name, .. } if name == "value")
     ));
 }
 
@@ -78,12 +78,12 @@ fn test_top_level_when_stays_a_root_statement_with_nested_bodies() {
             if matches!(
                 cases.as_slice(),
                 [fol_parser::ast::WhenCase::Case { body, .. }]
-                    if matches!(body.as_slice(), [AstNode::FunctionCall { name, args }] if name == "run" && args.is_empty())
+                    if matches!(body.as_slice(), [AstNode::FunctionCall { name, args, .. }] if name == "run" && args.is_empty())
             )
                 && matches!(
                     default,
                     Some(default_body)
-                        if matches!(default_body.as_slice(), [AstNode::FunctionCall { name, args }] if name == "stop" && args.is_empty())
+                        if matches!(default_body.as_slice(), [AstNode::FunctionCall { name, args, .. }] if name == "stop" && args.is_empty())
                 )
     ));
 }

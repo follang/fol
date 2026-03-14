@@ -615,7 +615,7 @@ fn test_when_statement_parsing_with_case_and_default() {
     };
 
     assert!(
-        matches!(when_stmt.0, AstNode::Identifier { name } if name == "a"),
+        matches!(when_stmt.0, AstNode::Identifier { name, .. } if name == "a"),
         "When expression should parse identifier a"
     );
     assert_eq!(when_stmt.1.len(), 1, "When should include one case");
@@ -653,7 +653,7 @@ fn test_when_statement_parsing_with_multiple_cases() {
     };
 
     assert!(
-        matches!(when_stmt.0, AstNode::Identifier { name } if name == "a"),
+        matches!(when_stmt.0, AstNode::Identifier { name, .. } if name == "a"),
         "When expression should parse identifier a"
     );
     assert_eq!(

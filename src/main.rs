@@ -6,9 +6,12 @@
 // - fol-parser
 // - fol-diagnostics
 // - fol-types
+mod compiler_diagnostics;
+
 use clap::{Arg, Command};
 use fol_diagnostics::{DiagnosticLocation, DiagnosticReport, OutputFormat};
-use fol_parser::ast::{AstParser, ParseError};
+use fol_package::{PackageConfig, PackageSession};
+use fol_parser::ast::AstParser;
 use fol_stream::FileStream;
 use std::path::Path;
 
@@ -30,6 +33,18 @@ fn main() {
                 .help("Output diagnostics in JSON format")
                 .action(clap::ArgAction::SetTrue),
         )
+        .arg(
+            Arg::new("std-root")
+                .long("std-root")
+                .value_name("DIR")
+                .help("Explicit standard-library root for std imports"),
+        )
+        .arg(
+            Arg::new("package-store-root")
+                .long("package-store-root")
+                .value_name("DIR")
+                .help("Explicit installed package-store root for pkg imports"),
+        )
         .get_matches();
 
     let file_path = matches
@@ -38,6 +53,10 @@ fn main() {
         .unwrap_or("./test/main/main.fol");
 
     let json_output = matches.get_flag("json");
+    let resolver_config = fol_resolver::ResolverConfig {
+        std_root: matches.get_one::<String>("std-root").cloned(),
+        package_store_root: matches.get_one::<String>("package-store-root").cloned(),
+    };
     let output_format = if json_output {
         OutputFormat::Json
     } else {
@@ -53,7 +72,7 @@ fn main() {
     }
 
     // Try to compile the file
-    match compile_file(file_path, &mut diagnostics) {
+    match compile_file(file_path, &resolver_config, &mut diagnostics) {
         Ok(_) => {
             if !json_output && !diagnostics.has_errors() {
                 println!("✓ Compilation successful!");
@@ -76,7 +95,11 @@ fn main() {
     }
 }
 
-fn compile_file(file_path: &str, diagnostics: &mut DiagnosticReport) -> Result<(), ()> {
+fn compile_file(
+    file_path: &str,
+    resolver_config: &fol_resolver::ResolverConfig,
+    diagnostics: &mut DiagnosticReport,
+) -> Result<(), ()> {
     // Check if file exists
     let path = Path::new(file_path);
     if !path.exists() {
@@ -112,17 +135,37 @@ fn compile_file(file_path: &str, diagnostics: &mut DiagnosticReport) -> Result<(
     // 3. Parse the book-aligned package shape
     let mut ast_parser = AstParser::new();
     match ast_parser.parse_package(&mut lexer) {
-        Ok(_package) => {
-            // Successfully parsed package
-            if !diagnostics.has_errors() {
-                // Could add semantic analysis, type checking, etc. here
-                return Ok(());
+        Ok(package) => {
+            let package_session = PackageSession::with_config(package_config_from_resolver(
+                resolver_config,
+            ));
+            let prepared = match package_session.prepare_entry_package(package) {
+                Ok(prepared) => prepared,
+                Err(error) => {
+                    compiler_diagnostics::add_compiler_glitch(diagnostics, &error);
+                    return Err(());
+                }
+            };
+            match fol_resolver::resolve_prepared_package_with_config(
+                prepared,
+                resolver_config.clone(),
+            ) {
+                Ok(_) => {
+                    if !diagnostics.has_errors() {
+                        return Ok(());
+                    }
+                }
+                Err(resolve_errors) => {
+                    for error in resolve_errors {
+                        compiler_diagnostics::add_compiler_glitch(diagnostics, &error);
+                    }
+                    return Err(());
+                }
             }
         }
         Err(parse_errors) => {
-            // Add parse errors to diagnostics
             for error in parse_errors {
-                diagnostics.add_error(error.as_ref(), parser_error_location(error.as_ref()));
+                compiler_diagnostics::add_compiler_glitch(diagnostics, error.as_ref());
             }
             return Err(());
         }
@@ -147,26 +190,42 @@ fn report_input_error(
     );
 }
 
-fn parser_error_location(error: &dyn fol_types::Glitch) -> Option<DiagnosticLocation> {
-    error
-        .as_any()
-        .downcast_ref::<ParseError>()
-        .map(|parse_error| DiagnosticLocation {
-            file: parse_error.file(),
-            line: parse_error.line(),
-            column: parse_error.column(),
-            length: Some(parse_error.length()),
-        })
+fn package_config_from_resolver(resolver_config: &fol_resolver::ResolverConfig) -> PackageConfig {
+    PackageConfig {
+        std_root: resolver_config.std_root.clone(),
+        package_store_root: resolver_config.package_store_root.clone(),
+        package_cache_root: None,
+    }
 }
 
 #[test]
 fn compile_missing_file_reports_error() {
     let mut diagnostics = DiagnosticReport::new();
-    let result = compile_file("./test/does-not-exist.fol", &mut diagnostics);
+    let result = compile_file(
+        "./test/does-not-exist.fol",
+        &fol_resolver::ResolverConfig::default(),
+        &mut diagnostics,
+    );
 
     assert!(result.is_err(), "Missing file should fail compilation");
     assert!(
         diagnostics.has_errors(),
         "Missing file should emit diagnostics"
+    );
+}
+
+#[test]
+fn compile_simple_file_succeeds_through_package_preparation_boundary() {
+    let mut diagnostics = DiagnosticReport::new();
+    let result = compile_file(
+        "./test/parser/simple_var.fol",
+        &fol_resolver::ResolverConfig::default(),
+        &mut diagnostics,
+    );
+
+    assert!(result.is_ok(), "Simple files should compile through prepared entry packages");
+    assert!(
+        !diagnostics.has_errors(),
+        "Successful prepared-package compilation should not emit diagnostics",
     );
 }

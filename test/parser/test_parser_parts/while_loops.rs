@@ -25,7 +25,7 @@ fn test_function_while_loop_parsing() {
                                 condition,
                                 body,
                             }
-                            if matches!(condition.as_ref(), LoopCondition::Condition(expr) if matches!(expr.as_ref(), AstNode::Identifier { name } if name == "flag"))
+                            if matches!(condition.as_ref(), LoopCondition::Condition(expr) if matches!(expr.as_ref(), AstNode::Identifier { name, .. } if name == "flag"))
                                 && body.iter().any(|node| matches!(node, AstNode::Break))
                         ))
                 )
@@ -59,7 +59,7 @@ fn test_top_level_while_loop_parsing() {
             assert!(matches!(
                 condition.as_ref(),
                 LoopCondition::Condition(expr)
-                if matches!(expr.as_ref(), AstNode::Identifier { name } if name == "ready")
+                if matches!(expr.as_ref(), AstNode::Identifier { name, .. } if name == "ready")
             ));
             assert!(body.iter().any(|node| matches!(node, AstNode::Yield { .. })));
             assert!(body.iter().any(|node| matches!(node, AstNode::Break)));

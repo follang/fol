@@ -204,7 +204,7 @@ pro main(): int = {
 Alternatively, the `return` and `report` statements can be used to return a value or error earlier from within the function, even from inside loops or other control flow mechanisms.
 **The example below is just to show the `return` and `report` statements, there is a better way to handle errors as shown in [error section](/docs/spec/error)**
 ```
-use file: mod[std] = { std::fs::File }
+use file: std = {"fs/file"}
 
 pro main(): int = {
     fun[] fileReader(path: str): str = {

@@ -21,7 +21,7 @@ fn test_each_iteration_accepts_quoted_binder() {
                         condition.as_ref(),
                         fol_parser::ast::LoopCondition::Iteration { var, condition: Some(_), .. }
                         if var == "line"
-                    ) && body.iter().any(|stmt| matches!(stmt, AstNode::Yield { value } if matches!(value.as_ref(), AstNode::Identifier { name } if name == "line")))
+                    ) && body.iter().any(|stmt| matches!(stmt, AstNode::Yield { value } if matches!(value.as_ref(), AstNode::Identifier { name, .. } if name == "line")))
                 )
             }));
         }
@@ -51,7 +51,7 @@ fn test_for_iteration_accepts_typed_quoted_binder() {
                         condition.as_ref(),
                         fol_parser::ast::LoopCondition::Iteration {
                             var,
-                            type_hint: Some(FolType::Named { name }),
+                            type_hint: Some(FolType::Named { name, .. }),
                             condition: Some(_),
                             ..
                         } if var == "item" && name == "str"
@@ -115,7 +115,7 @@ fn test_loop_iteration_accepts_typed_single_quoted_binder() {
                         condition.as_ref(),
                         fol_parser::ast::LoopCondition::Iteration {
                             var,
-                            type_hint: Some(FolType::Named { name }),
+                            type_hint: Some(FolType::Named { name, .. }),
                             condition: Some(_),
                             ..
                         } if var == "item" && name == "str"

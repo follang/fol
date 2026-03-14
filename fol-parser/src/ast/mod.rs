@@ -326,7 +326,11 @@ pub enum AstNode {
     },
 
     /// Function call: function_name(args)
-    FunctionCall { name: String, args: Vec<AstNode> },
+    FunctionCall {
+        syntax_id: Option<SyntaxNodeId>,
+        name: String,
+        args: Vec<AstNode>,
+    },
 
     /// Qualified function call: a::b::call(args)
     QualifiedFunctionCall { path: QualifiedPath, args: Vec<AstNode> },
@@ -447,7 +451,10 @@ pub enum AstNode {
     FieldAccess { object: Box<AstNode>, field: String },
 
     /// Identifier reference
-    Identifier { name: String },
+    Identifier {
+        syntax_id: Option<SyntaxNodeId>,
+        name: String,
+    },
 
     /// Qualified identifier reference
     QualifiedIdentifier { path: QualifiedPath },
@@ -674,7 +681,7 @@ pub enum FolType {
         name: Option<String>,
         access: Vec<String>,
     },
-    Url {
+    Package {
         name: String,
     },
     Location {
@@ -686,6 +693,7 @@ pub enum FolType {
 
     // User-defined type reference
     Named {
+        syntax_id: Option<SyntaxNodeId>,
         name: String,
     },
     QualifiedNamed {
@@ -743,9 +751,13 @@ impl InquiryTarget {
 }
 
 impl FolType {
+    pub fn is_builtin_str(&self) -> bool {
+        matches!(self, FolType::Named { name, .. } if name == "str")
+    }
+
     pub fn named_text(&self) -> Option<String> {
         match self {
-            FolType::Named { name } => Some(name.clone()),
+            FolType::Named { name, .. } => Some(name.clone()),
             FolType::QualifiedNamed { path } => Some(path.joined()),
             _ => None,
         }
@@ -923,6 +935,7 @@ pub enum VarOption {
 #[derive(Debug, Clone, PartialEq)]
 pub enum FunOption {
     Export,   // exp or +
+    Hidden,   // hid or -
     Mutable,  // mut
     Iterator, // itr
 }
@@ -1047,7 +1060,9 @@ impl AstNode {
             AstNode::FunDecl { syntax_id, .. }
             | AstNode::ProDecl { syntax_id, .. }
             | AstNode::LogDecl { syntax_id, .. }
-            | AstNode::UseDecl { syntax_id, .. } => *syntax_id,
+            | AstNode::UseDecl { syntax_id, .. }
+            | AstNode::Identifier { syntax_id, .. }
+            | AstNode::FunctionCall { syntax_id, .. } => *syntax_id,
             AstNode::Commented { node, .. } => node.syntax_id(),
             _ => None,
         }
@@ -1078,6 +1093,7 @@ impl AstNode {
             }),
             AstNode::Literal(Literal::Float(_)) => Some(FolType::Float { size: None }),
             AstNode::Literal(Literal::String(_)) => Some(FolType::Named {
+                syntax_id: None,
                 name: "str".to_string(),
             }),
             AstNode::Literal(Literal::Character(_)) => Some(FolType::Char {
@@ -1462,6 +1478,11 @@ fn var_decl_visibility(options: &[VarOption]) -> ParsedDeclVisibility {
 fn fun_decl_visibility(options: &[FunOption]) -> ParsedDeclVisibility {
     if options
         .iter()
+        .any(|option| matches!(option, FunOption::Hidden))
+    {
+        ParsedDeclVisibility::Hidden
+    } else if options
+        .iter()
         .any(|option| matches!(option, FunOption::Export))
     {
         ParsedDeclVisibility::Exported
@@ -1587,5 +1608,23 @@ mod unit_tests {
                 length: 2,
             })
         );
+    }
+
+    #[test]
+    fn fol_type_recognizes_builtin_str_without_treating_other_names_as_builtin() {
+        assert!(FolType::Named {
+            syntax_id: None,
+            name: "str".to_string()
+        }
+        .is_builtin_str());
+        assert!(!FolType::Named {
+            syntax_id: None,
+            name: "String".to_string()
+        }
+        .is_builtin_str());
+        assert!(!FolType::QualifiedNamed {
+            path: QualifiedPath::from_joined("pkg::str")
+        }
+        .is_builtin_str());
     }
 }

@@ -3,8 +3,12 @@ use super::*;
 impl AstParser {
     fn channel_endpoint_from_pattern(&self, pattern: &AstNode) -> Option<crate::ast::ChannelEndpoint> {
         match pattern {
-            AstNode::Identifier { name } if name == "tx" => Some(crate::ast::ChannelEndpoint::Tx),
-            AstNode::Identifier { name } if name == "rx" => Some(crate::ast::ChannelEndpoint::Rx),
+            AstNode::Identifier { name, .. } if name == "tx" => {
+                Some(crate::ast::ChannelEndpoint::Tx)
+            }
+            AstNode::Identifier { name, .. } if name == "rx" => {
+                Some(crate::ast::ChannelEndpoint::Rx)
+            }
             _ => None,
         }
     }

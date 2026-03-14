@@ -18,7 +18,7 @@ fn test_record_type_retains_standard_contract_headers() {
                 node,
                 AstNode::TypeDecl { name, contracts, type_def: TypeDefinition::Record { .. }, .. }
                 if name == "Rect"
-                    && matches!(contracts.as_slice(), [FolType::Named { name }] if name == "geo")
+                    && matches!(contracts.as_slice(), [FolType::Named { name, .. }] if name == "geo")
             )));
         }
         _ => panic!("Expected program node"),
@@ -44,7 +44,7 @@ fn test_record_type_retains_multiple_contract_headers() {
                 AstNode::TypeDecl { name, contracts, type_def: TypeDefinition::Record { .. }, .. }
                 if name == "Shape"
                     && matches!(contracts.as_slice(),
-                        [FolType::Named { name: first }, FolType::Named { name: second }]
+                        [FolType::Named { name: first , ..}, FolType::Named { name: second , ..}]
                         if first == "geo" && second == "draw")
             )));
         }
@@ -69,7 +69,7 @@ fn test_entry_type_retains_contract_headers() {
                 node,
                 AstNode::TypeDecl { name, contracts, type_def: TypeDefinition::Entry { .. }, .. }
                 if name == "Status"
-                    && matches!(contracts.as_slice(), [FolType::Named { name }] if name == "display")
+                    && matches!(contracts.as_slice(), [FolType::Named { name, .. }] if name == "display")
             )));
         }
         _ => panic!("Expected program node"),
@@ -95,7 +95,7 @@ fn test_record_type_contracts_follow_generic_separator_rules() {
                 AstNode::TypeDecl { name, contracts, type_def: TypeDefinition::Record { .. }, .. }
                 if name == "Shape"
                     && matches!(contracts.as_slice(),
-                        [FolType::Named { name: first }, FolType::Named { name: second }]
+                        [FolType::Named { name: first , ..}, FolType::Named { name: second , ..}]
                         if first == "geo" && second == "draw")
             )));
         }
@@ -121,7 +121,7 @@ fn test_record_type_contracts_accept_keyword_and_quoted_names() {
                 AstNode::TypeDecl { name, contracts, type_def: TypeDefinition::Record { .. }, .. }
                 if name == "Box"
                     && matches!(contracts.as_slice(),
-                        [FolType::Named { name: first }, FolType::Named { name: second }]
+                        [FolType::Named { name: first , ..}, FolType::Named { name: second , ..}]
                         if first == "get" && second == "item")
             )));
         }
@@ -198,7 +198,7 @@ fn test_record_type_retains_explicit_contract_headers() {
                     && generics.len() == 1
                     && generics[0].name == "T"
                     && matches!(contracts.as_slice(),
-                        [FolType::Named { name: first }, FolType::Named { name: second }]
+                        [FolType::Named { name: first , ..}, FolType::Named { name: second , ..}]
                         if first == "geo" && second == "draw")
             )));
         }
@@ -225,7 +225,7 @@ fn test_entry_type_retains_explicit_contract_headers() {
                 AstNode::TypeDecl { name, contracts, type_def: TypeDefinition::Entry { .. }, .. }
                 if name == "Status"
                     && matches!(contracts.as_slice(),
-                        [FolType::Named { name: first }, FolType::Named { name: second }]
+                        [FolType::Named { name: first , ..}, FolType::Named { name: second , ..}]
                         if first == "display" && second == "serialize")
             )));
         }
@@ -284,7 +284,7 @@ fn test_explicit_type_contract_headers_accept_trailing_separators() {
                 AstNode::TypeDecl { name, contracts, type_def: TypeDefinition::Record { .. }, .. }
                 if name == "Shape"
                     && matches!(contracts.as_slice(),
-                        [FolType::Named { name: first }, FolType::Named { name: second }]
+                        [FolType::Named { name: first , ..}, FolType::Named { name: second , ..}]
                         if first == "geo" && second == "draw")
             )));
         }

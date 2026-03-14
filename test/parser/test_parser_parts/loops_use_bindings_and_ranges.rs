@@ -75,8 +75,8 @@ fn test_for_and_each_support_flow_bodies() {
 
     let bodies = collect_loop_bodies(ast);
     assert_eq!(bodies.len(), 2);
-    assert!(matches!(bodies[0].as_slice(), [AstNode::Identifier { name }] if name == "item"));
-    assert!(matches!(bodies[1].as_slice(), [AstNode::Identifier { name }] if name == "current"));
+    assert!(matches!(bodies[0].as_slice(), [AstNode::Identifier { name, .. }] if name == "item"));
+    assert!(matches!(bodies[1].as_slice(), [AstNode::Identifier { name, .. }] if name == "current"));
 }
 
 #[test]
@@ -347,7 +347,7 @@ fn test_use_declaration_supports_qualified_and_bracketed_types() {
         matches!(
             use_decl.1,
             FolType::Map { key_type, value_type }
-                if matches!(key_type.as_ref(), FolType::Named { name } if name == "str")
+                if matches!(key_type.as_ref(), FolType::Named { name, .. } if name == "str")
                     && fol_type_has_qualified_segments(value_type.as_ref(), &["pkg", "Value"])
         ),
         "Use declaration should preserve qualified bracketed source-kind type"
@@ -488,7 +488,7 @@ fn test_var_parsing_supports_qualified_and_bracketed_type_hints() {
                 matches!(
                     var_decl.1,
                     Some(FolType::Map { key_type, value_type })
-                        if matches!(key_type.as_ref(), FolType::Named { name } if name == "str")
+                        if matches!(key_type.as_ref(), FolType::Named { name, .. } if name == "str")
                             && fol_type_has_qualified_segments(value_type.as_ref(), &["pkg", "Value"])
                 ),
                 "Var type hint should preserve qualified bracketed syntax"
@@ -522,7 +522,7 @@ fn test_let_parsing_supports_bracketed_type_hints() {
                                 ..
                             }
                             if name == "cache"
-                                && matches!(key_type.as_ref(), FolType::Named { name } if name == "str")
+                                && matches!(key_type.as_ref(), FolType::Named { name, .. } if name == "str")
                                 && matches!(
                                     value_type.as_ref(),
                                     FolType::Vector { element_type }
@@ -755,8 +755,8 @@ fn test_range_expressions_parse_in_assignment_and_return() {
                             end: Some(end),
                             inclusive: true
                         }
-                        if matches!(start.as_ref(), AstNode::Identifier { name } if name == "a")
-                            && matches!(end.as_ref(), AstNode::Identifier { name } if name == "b")
+                        if matches!(start.as_ref(), AstNode::Identifier { name, .. } if name == "a")
+                            && matches!(end.as_ref(), AstNode::Identifier { name, .. } if name == "b")
                     )
                 )
             });
@@ -845,7 +845,7 @@ fn test_open_start_range_expressions_parse_in_assignment_and_return() {
                             end: Some(end),
                             inclusive: true
                         }
-                        if matches!(end.as_ref(), AstNode::Identifier { name } if name == "b")
+                        if matches!(end.as_ref(), AstNode::Identifier { name, .. } if name == "b")
                     )
                 )
             });
@@ -934,7 +934,7 @@ fn test_open_end_range_expressions_parse_in_assignment_and_return() {
                             end: None,
                             inclusive: true
                         }
-                        if matches!(start.as_ref(), AstNode::Identifier { name } if name == "a")
+                        if matches!(start.as_ref(), AstNode::Identifier { name, .. } if name == "a")
                     )
                 )
             });

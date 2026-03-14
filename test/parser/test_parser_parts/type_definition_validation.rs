@@ -146,7 +146,7 @@ fn test_type_entry_definition_supports_lab_variants() {
                         ..
                     }
                     if matches!(variants.get("None"), Some(Some(FolType::None)))
-                        && matches!(variants.get("Some"), Some(Some(FolType::Named { name })) if name == "str")
+                        && matches!(variants.get("Some"), Some(Some(FolType::Named { name, .. })) if name == "str")
                         && matches!(variants.get("Many"), Some(Some(FolType::Int { size: None, signed: true })))
                 )
             }));
@@ -448,7 +448,7 @@ fn test_type_alias_parsing_supports_special_boxed_types() {
                             ..
                         }
                         if name == "MaybeText"
-                            && matches!(inner.as_ref(), FolType::Named { name } if name == "str")
+                            && matches!(inner.as_ref(), FolType::Named { name, .. } if name == "str")
                     )
                 }),
                 "Type alias should lower opt[...] to FolType::Optional"
@@ -467,7 +467,7 @@ fn test_type_alias_parsing_supports_special_boxed_types() {
                             if name == "Pair"
                                 && types.len() == 2
                                 && matches!(types.first(), Some(FolType::Int { size: None, signed: true }))
-                                && matches!(types.get(1), Some(FolType::Named { name }) if name == "str")
+                                && matches!(types.get(1), Some(FolType::Named { name, .. }) if name == "str")
                         )
                     }),
                     "Type alias should lower mul[...] to FolType::Multiple"
@@ -501,7 +501,7 @@ fn test_type_alias_parsing_supports_special_boxed_types() {
                             ..
                         }
                         if name == "Failure"
-                            && matches!(inner.as_ref(), FolType::Named { name } if name == "str")
+                            && matches!(inner.as_ref(), FolType::Named { name, .. } if name == "str")
                     )
                 }),
                 "Type alias should lower err[T] to FolType::Error with payload"
@@ -582,7 +582,7 @@ fn test_type_alias_parsing_supports_container_types() {
                                 ..
                             }
                             if name == "Names"
-                                && matches!(element_type.as_ref(), FolType::Named { name } if name == "str")
+                                && matches!(element_type.as_ref(), FolType::Named { name, .. } if name == "str")
                         )
                     }),
                     "Type alias should lower vec[...] to FolType::Vector"
@@ -633,7 +633,7 @@ fn test_type_alias_parsing_supports_container_types() {
                                 ..
                             }
                             if name == "Lookup"
-                                && matches!(key_type.as_ref(), FolType::Named { name } if name == "str")
+                                && matches!(key_type.as_ref(), FolType::Named { name, .. } if name == "str")
                                 && matches!(
                                     value_type.as_ref(),
                                     FolType::Vector { element_type }
