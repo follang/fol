@@ -530,7 +530,7 @@ Status: pending
 
 #### 7.1
 
-Status: pending
+Status: done
 
 - Eliminate the current user-triggerable imported-symbol fallback:
 - `resolved symbol X does not have a lowered type yet`

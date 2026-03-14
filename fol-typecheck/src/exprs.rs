@@ -1403,15 +1403,16 @@ fn routine_signature_for_reference(
                 }),
             )
         })?;
-    routine_signature_for_symbol(typed, symbol_id, origin)
+    routine_signature_for_symbol(typed, resolved, symbol_id, origin)
 }
 
 fn routine_signature_for_symbol(
     typed: &TypedProgram,
+    resolved: &ResolvedProgram,
     symbol_id: SymbolId,
     origin: Option<SyntaxOrigin>,
 ) -> Result<RoutineType, TypecheckError> {
-    let type_id = symbol_type(typed, symbol_id, origin.clone())?;
+    let type_id = symbol_type(typed, resolved, symbol_id, origin.clone())?;
     match typed.type_table().get(type_id) {
         Some(CheckedType::Routine(signature)) => Ok(signature.clone()),
         _ => Err(TypecheckError::with_origin(
@@ -1449,7 +1450,12 @@ fn routine_signature_for_method(
             .and_then(|symbol| symbol.receiver_type)
             .is_some_and(|receiver_type| receiver_type == object_type)
         {
-            matches.push(routine_signature_for_symbol(typed, symbol_id, None)?);
+            matches.push(routine_signature_for_symbol(
+                typed,
+                typed.resolved(),
+                symbol_id,
+                None,
+            )?);
         }
     }
 
@@ -1533,7 +1539,7 @@ fn type_for_reference(
                 }),
             )
         })?;
-    let type_id = symbol_type(typed, symbol_id, origin.clone())?;
+    let type_id = symbol_type(typed, resolved, symbol_id, origin.clone())?;
     let typed_reference = typed.typed_reference_mut(reference_id).ok_or_else(|| {
         TypecheckError::with_origin(
             TypecheckErrorKind::Internal,
@@ -1552,24 +1558,41 @@ fn type_for_reference(
 
 fn symbol_type(
     typed: &TypedProgram,
+    resolved: &ResolvedProgram,
     symbol_id: SymbolId,
     origin: Option<SyntaxOrigin>,
 ) -> Result<CheckedTypeId, TypecheckError> {
-    typed
+    if let Some(type_id) = typed
         .typed_symbol(symbol_id)
         .and_then(|symbol| symbol.declared_type)
-        .ok_or_else(|| {
-            TypecheckError::with_origin(
-                TypecheckErrorKind::InvalidInput,
-                format!("resolved symbol {} does not have a lowered type yet", symbol_id.0),
-                origin.unwrap_or(SyntaxOrigin {
-                    file: None,
-                    line: 1,
-                    column: 1,
-                    length: 1,
-                }),
-            )
-        })
+    {
+        return Ok(type_id);
+    }
+
+    let fallback_origin = origin.unwrap_or(SyntaxOrigin {
+        file: None,
+        line: 1,
+        column: 1,
+        length: 1,
+    });
+    if let Some(symbol) = resolved.symbol(symbol_id) {
+        if symbol.mounted_from.is_some() {
+            return Err(TypecheckError::with_origin(
+                TypecheckErrorKind::Unsupported,
+                format!(
+                    "imported symbol '{}' requires workspace-aware typechecking in V1; the legacy single-package path is not sufficient",
+                    symbol.name
+                ),
+                fallback_origin,
+            ));
+        }
+    }
+
+    Err(TypecheckError::with_origin(
+        TypecheckErrorKind::InvalidInput,
+        format!("resolved symbol {} does not have a lowered type yet", symbol_id.0),
+        fallback_origin,
+    ))
 }
 
 fn apparent_type_id(

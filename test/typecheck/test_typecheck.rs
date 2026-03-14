@@ -3132,11 +3132,13 @@ fn reopened_v1_blocker_loc_imported_values_still_fail_typecheck() {
 
     assert!(
         errors.iter().any(|error| {
-            error.kind() == TypecheckErrorKind::InvalidInput
-                && error.message().contains("does not have a lowered type yet")
+            error.kind() == TypecheckErrorKind::Unsupported
+                && error
+                    .message()
+                    .contains("requires workspace-aware typechecking in V1")
                 && error.diagnostic_location().is_some()
         }),
-        "Expected the reopened loc-import blocker diagnostic, got: {errors:?}"
+        "Expected the explicit loc-import blocker diagnostic, got: {errors:?}"
     );
 }
 
@@ -3173,11 +3175,13 @@ fn reopened_v1_blocker_std_imported_values_still_fail_typecheck() {
 
     assert!(
         errors.iter().any(|error| {
-            error.kind() == TypecheckErrorKind::InvalidInput
-                && error.message().contains("does not have a lowered type yet")
+            error.kind() == TypecheckErrorKind::Unsupported
+                && error
+                    .message()
+                    .contains("requires workspace-aware typechecking in V1")
                 && error.diagnostic_location().is_some()
         }),
-        "Expected the reopened std-import blocker diagnostic, got: {errors:?}"
+        "Expected the explicit std-import blocker diagnostic, got: {errors:?}"
     );
 }
 
@@ -3216,11 +3220,13 @@ fn reopened_v1_blocker_pkg_imported_values_still_fail_typecheck() {
 
     assert!(
         errors.iter().any(|error| {
-            error.kind() == TypecheckErrorKind::InvalidInput
-                && error.message().contains("does not have a lowered type yet")
+            error.kind() == TypecheckErrorKind::Unsupported
+                && error
+                    .message()
+                    .contains("requires workspace-aware typechecking in V1")
                 && error.diagnostic_location().is_some()
         }),
-        "Expected the reopened pkg-import blocker diagnostic, got: {errors:?}"
+        "Expected the explicit pkg-import blocker diagnostic, got: {errors:?}"
     );
 }
 
@@ -3247,11 +3253,13 @@ fn reopened_v1_blocker_imported_routine_calls_still_fail_typecheck() {
 
     assert!(
         errors.iter().any(|error| {
-            error.kind() == TypecheckErrorKind::InvalidInput
-                && error.message().contains("does not have a lowered type yet")
+            error.kind() == TypecheckErrorKind::Unsupported
+                && error
+                    .message()
+                    .contains("requires workspace-aware typechecking in V1")
                 && error.diagnostic_location().is_some()
         }),
-        "Expected the reopened imported-call blocker diagnostic, got: {errors:?}"
+        "Expected the explicit imported-call blocker diagnostic, got: {errors:?}"
     );
 }
 
