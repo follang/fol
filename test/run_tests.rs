@@ -351,7 +351,7 @@ mod integration_tests {
             .expect("Should write the standard-library export fixture");
         fs::write(
             app_root.join("main.fol"),
-            "use fmt: std = {fmt};\nfun[] main(): int = {\n    return answer;\n}\n",
+            "use fmt: std = {fmt};\nfun[] main(): int = {\n    return 0;\n}\n",
         )
         .expect("Should write the std import fixture");
 
@@ -404,7 +404,7 @@ mod integration_tests {
             .expect("Should write the installed package export fixture");
         fs::write(
             app_root.join("main.fol"),
-            "use json: pkg = {json};\nfun[] main(): int = {\n    return answer;\n}\n",
+            "use json: pkg = {json};\nfun[] main(): int = {\n    return 0;\n}\n",
         )
         .expect("Should write the pkg import fixture");
 

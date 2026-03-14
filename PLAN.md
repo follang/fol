@@ -635,7 +635,7 @@ Status: pending
 
 #### 8.1
 
-Status: pending
+Status: done
 
 - Wire the root CLI to run `fol-typecheck` after resolver.
 

@@ -2,6 +2,7 @@ use fol_diagnostics::{Diagnostic, DiagnosticReport, ToDiagnostic};
 use fol_package::PackageError;
 use fol_parser::ast::ParseError;
 use fol_resolver::ResolverError;
+use fol_typecheck::TypecheckError;
 use fol_types::Glitch;
 
 pub fn add_compiler_glitch(report: &mut DiagnosticReport, error: &dyn Glitch) {
@@ -29,6 +30,12 @@ fn lower_compiler_glitch(error: &dyn Glitch) -> Option<Diagnostic> {
                 .downcast_ref::<ResolverError>()
                 .map(ToDiagnostic::to_diagnostic)
         })
+        .or_else(|| {
+            error
+                .as_any()
+                .downcast_ref::<TypecheckError>()
+                .map(ToDiagnostic::to_diagnostic)
+        })
 }
 
 #[cfg(test)]
@@ -39,6 +46,7 @@ mod tests {
     use fol_parser::ast::AstParser;
     use fol_resolver::{ResolverError, ResolverErrorKind};
     use fol_stream::FileStream;
+    use fol_typecheck::{TypecheckError, TypecheckErrorKind};
     use fol_types::{BasicError, Glitch};
     use std::fs;
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -66,6 +74,7 @@ mod tests {
             .expect("parser fixture should produce one error");
         let package = PackageError::new(PackageErrorKind::InvalidInput, "package issue");
         let resolver = ResolverError::new(ResolverErrorKind::Unsupported, "resolver issue");
+        let typecheck = TypecheckError::new(TypecheckErrorKind::Unsupported, "typecheck issue");
 
         assert_eq!(
             lower_compiler_glitch(parse.as_ref())
@@ -87,6 +96,13 @@ mod tests {
                 .code
                 .as_str(),
             "R1002"
+        );
+        assert_eq!(
+            lower_compiler_glitch(&typecheck as &dyn Glitch)
+                .expect("typecheck errors should lower")
+                .code
+                .as_str(),
+            "T1002"
         );
 
         let _ = fs::remove_file(path);
