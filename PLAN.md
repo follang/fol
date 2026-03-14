@@ -317,7 +317,7 @@ Status: done
 
 #### 1.3
 
-Status: pending
+Status: done
 
 - Add tests that direct, repeated, and transitive package loads are all retained
   in the semantic handoff model without changing resolver name-resolution
