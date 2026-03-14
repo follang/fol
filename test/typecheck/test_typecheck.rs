@@ -1813,6 +1813,33 @@ fn v1_boundary_rejects_v3_expression_surfaces() {
 }
 
 #[test]
+fn ordinary_typechecking_rejects_build_fol_source_units() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "build.fol",
+        "`package build`\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::Unsupported
+                && error
+                    .message()
+                    .contains("ordinary typechecking does not interpret build.fol package semantics")
+        }),
+        "Expected a build.fol typechecking boundary diagnostic, got: {errors:?}"
+    );
+    assert!(
+        errors.iter().any(|error| {
+            error
+                .origin()
+                .and_then(|origin| origin.file.as_deref())
+                .is_some_and(|file| file.ends_with("build.fol"))
+        }),
+        "Expected build.fol boundary diagnostics to keep the source-unit path, got: {errors:?}"
+    );
+}
+
+#[test]
 fn declaration_signature_lowering_resolves_qualified_named_types() {
     let typed = typecheck_fixture_folder(&[
         ("util/types.fol", "ali Count: int\n"),

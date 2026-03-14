@@ -625,7 +625,7 @@ Status: done
 
 #### 7.4
 
-Status: pending
+Status: done
 
 - Make the boundary explicit that `build.fol` package semantics are not part of ordinary typechecking yet.
 

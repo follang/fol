@@ -26,6 +26,19 @@ pub fn type_program(typed: &mut TypedProgram) -> TypecheckResult<()> {
 
     for (source_unit_index, source_unit) in syntax.source_units.iter().enumerate() {
         let source_unit_id = SourceUnitId(source_unit_index);
+        if is_build_source_unit(&source_unit.path) {
+            errors.push(TypecheckError::with_origin(
+                TypecheckErrorKind::Unsupported,
+                "ordinary typechecking does not interpret build.fol package semantics; use package/build tooling instead",
+                SyntaxOrigin {
+                    file: Some(source_unit.path.clone()),
+                    line: 1,
+                    column: 1,
+                    length: 9,
+                },
+            ));
+            continue;
+        }
         let scope_id = match resolved.source_unit(source_unit_id).map(|unit| unit.scope_id) {
             Some(scope_id) => scope_id,
             None => {
@@ -62,6 +75,10 @@ fn type_node(
     node: &AstNode,
 ) -> Result<Option<CheckedTypeId>, TypecheckError> {
     type_node_with_expectation(typed, resolved, context, node, None)
+}
+
+fn is_build_source_unit(path: &str) -> bool {
+    path == "build.fol" || path.ends_with("/build.fol")
 }
 
 fn type_node_with_expectation(
