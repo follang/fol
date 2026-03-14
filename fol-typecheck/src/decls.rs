@@ -3,8 +3,8 @@ use crate::{
     TypecheckErrorKind, TypecheckResult, TypedProgram,
 };
 use fol_parser::ast::{
-    AstNode, BindingPattern, FolType, ParsedTopLevel, SyntaxOrigin, SyntaxNodeId, TypeDefinition,
-    TypeOption,
+    AstNode, BindingPattern, FolType, Parameter, ParsedTopLevel, SyntaxOrigin, SyntaxNodeId,
+    TypeDefinition, TypeOption, VarOption,
 };
 use fol_resolver::{ResolvedProgram, ScopeId, SourceUnitId, SymbolId, SymbolKind};
 use std::collections::BTreeMap;
@@ -685,6 +685,9 @@ fn unsupported_v1_decl_with_origin(
     origin: Option<SyntaxOrigin>,
 ) -> Option<TypecheckError> {
     let message = match node {
+        AstNode::VarDecl { options, .. } | AstNode::LabDecl { options, .. } => {
+            unsupported_binding_surface_message(options)
+        }
         AstNode::FunDecl { generics, .. }
         | AstNode::ProDecl { generics, .. }
         | AstNode::LogDecl { generics, .. }
@@ -692,6 +695,9 @@ fn unsupported_v1_decl_with_origin(
         {
             Some("generic routine semantics are not part of the V1 typecheck milestone")
         }
+        AstNode::FunDecl { params, .. }
+        | AstNode::ProDecl { params, .. }
+        | AstNode::LogDecl { params, .. } => unsupported_routine_param_surface_message(params),
         AstNode::TypeDecl { contracts, .. } if !contracts.is_empty() => {
             Some("type contract conformance is part of the V2 language milestone, not the V1 typecheck milestone")
         }
@@ -732,6 +738,41 @@ fn unsupported_v1_decl_with_origin(
         Some(origin) => TypecheckError::with_origin(TypecheckErrorKind::Unsupported, message, origin),
         None => TypecheckError::new(TypecheckErrorKind::Unsupported, message),
     })
+}
+
+pub(crate) fn unsupported_routine_param_surface_message(
+    params: &[Parameter],
+) -> Option<&'static str> {
+    if params.iter().any(|param| param.is_mutex) {
+        Some("mutex parameter semantics are part of the V3 systems milestone, not the V1 typecheck milestone")
+    } else if params.iter().any(|param| param.is_borrowable) {
+        Some("borrowable parameter semantics are part of the V3 systems milestone, not the V1 typecheck milestone")
+    } else {
+        None
+    }
+}
+
+fn unsupported_binding_surface_message(options: &[VarOption]) -> Option<&'static str> {
+    if options
+        .iter()
+        .any(|option| matches!(option, VarOption::Borrowing))
+    {
+        Some("borrowing binding semantics are part of the V3 systems milestone, not the V1 typecheck milestone")
+    } else if options.iter().any(|option| matches!(option, VarOption::New)) {
+        Some("heap/new binding semantics are part of the V3 systems milestone, not the V1 typecheck milestone")
+    } else if options
+        .iter()
+        .any(|option| matches!(option, VarOption::Static))
+    {
+        Some("static binding semantics are not part of the V1 typecheck milestone")
+    } else if options
+        .iter()
+        .any(|option| matches!(option, VarOption::Reactive))
+    {
+        Some("reactive binding semantics are not part of the V1 typecheck milestone")
+    } else {
+        None
+    }
 }
 
 fn type_origin(resolved: &ResolvedProgram, typ: &FolType) -> Option<SyntaxOrigin> {

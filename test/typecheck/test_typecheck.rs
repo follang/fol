@@ -1718,6 +1718,101 @@ fn v1_boundary_rejects_contract_and_conformance_surfaces() {
 }
 
 #[test]
+fn v1_boundary_rejects_v3_declaration_surfaces() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "!var cached: int = 1\n\
+         ?var watching: int = 1\n\
+         @var fresh: int = 1\n\
+         var[bor] borrowed: int = 1\n\
+         ali Bus: chn[int]\n\
+         fun hold(((meshes)): vec[int]): int = {\n\
+             return 0;\n\
+         }\n\
+         ",
+    )]);
+
+    for expected in [
+        "static binding semantics are not part of the V1 typecheck milestone",
+        "reactive binding semantics are not part of the V1 typecheck milestone",
+        "heap/new binding semantics are part of the V3 systems milestone",
+        "borrowing binding semantics are part of the V3 systems milestone",
+        "channel types are not part of the V1 typecheck milestone",
+        "mutex parameter semantics are part of the V3 systems milestone",
+    ] {
+        assert!(
+            errors.iter().any(|error| {
+                error.kind() == TypecheckErrorKind::Unsupported
+                    && error.message().contains(expected)
+            }),
+            "Expected a V3 declaration boundary diagnostic containing '{expected}', got: {errors:?}"
+        );
+    }
+}
+
+#[test]
+fn v1_boundary_rejects_v3_expression_surfaces() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun rangeDemo(): int = {\n\
+             var span: int = 0;\n\
+             span = 1..2;\n\
+             return 0;\n\
+         }\n\
+         fun channelDemo(value: int): int = {\n\
+             var recv: int = 0;\n\
+             recv = value[rx];\n\
+             return 0;\n\
+         }\n\
+         fun spawnDemo(value: int): int = {\n\
+             var task: int = 0;\n\
+             task = [>]value;\n\
+             return 0;\n\
+         }\n\
+         fun asyncDemo(value: int): int = {\n\
+             var next: int = 0;\n\
+             next = value | async;\n\
+             return 0;\n\
+         }\n\
+         fun awaitDemo(value: int): int = {\n\
+             var next: int = 0;\n\
+             next = value | await;\n\
+             return 0;\n\
+         }\n\
+         pro selectDemo(value: int): int = {\n\
+             select(value) {\n\
+                 return 0;\n\
+             }\n\
+         }\n\
+         fun anonDemo(): int = {\n\
+             var worker: int = 0;\n\
+             worker = fun(((locks)): vec[int]): int = {\n\
+                 return 0;\n\
+             };\n\
+             return 0;\n\
+         }\n",
+    )]);
+
+    for expected in [
+        "range expressions are not part of the V1 typecheck milestone",
+        "channel endpoint access is part of the V3 systems milestone",
+        "coroutine spawn expressions are part of the V3 systems milestone",
+        "async pipe stages are part of the V3 systems milestone",
+        "await pipe stages are part of the V3 systems milestone",
+        "select/channel semantics are part of the V3 systems milestone",
+        "mutex parameter semantics are part of the V3 systems milestone",
+    ] {
+        assert!(
+            errors.iter().any(|error| {
+                error.kind() == TypecheckErrorKind::Unsupported
+                    && error.message().contains(expected)
+            }),
+            "Expected a V3 expression boundary diagnostic containing '{expected}', got: {errors:?}"
+        );
+    }
+}
+
+#[test]
 fn declaration_signature_lowering_resolves_qualified_named_types() {
     let typed = typecheck_fixture_folder(&[
         ("util/types.fol", "ali Count: int\n"),

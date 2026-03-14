@@ -120,9 +120,23 @@ fn type_node_with_expectation(
         AstNode::QualifiedIdentifier { path } => {
             type_qualified_identifier_reference(typed, resolved, context, path)
         }
+        AstNode::AsyncStage => Err(TypecheckError::new(
+            TypecheckErrorKind::Unsupported,
+            "async pipe stages are part of the V3 systems milestone, not the V1 typecheck milestone",
+        )),
+        AstNode::AwaitStage => Err(TypecheckError::new(
+            TypecheckErrorKind::Unsupported,
+            "await pipe stages are part of the V3 systems milestone, not the V1 typecheck milestone",
+        )),
+        AstNode::Spawn { .. } => Err(unsupported_node_surface(
+            resolved,
+            node,
+            "coroutine spawn expressions are part of the V3 systems milestone, not the V1 typecheck milestone",
+        )),
         AstNode::FunDecl {
             name,
             syntax_id,
+            params,
             return_type,
             error_type,
             body,
@@ -132,6 +146,7 @@ fn type_node_with_expectation(
         | AstNode::ProDecl {
             name,
             syntax_id,
+            params,
             return_type,
             error_type,
             body,
@@ -141,12 +156,16 @@ fn type_node_with_expectation(
         | AstNode::LogDecl {
             name,
             syntax_id,
+            params,
             return_type,
             error_type,
             body,
             inquiries,
             ..
         } => {
+            if let Some(message) = decls::unsupported_routine_param_surface_message(params) {
+                return Err(unsupported_node_surface(resolved, node, message));
+            }
             let routine_scope = syntax_id
                 .and_then(|syntax_id| resolved.scope_for_syntax(syntax_id))
                 .unwrap_or(context.scope_id);
@@ -181,6 +200,54 @@ fn type_node_with_expectation(
                 typed.record_node_type(*syntax_id, context.source_unit_id, type_id)?;
             }
             Ok(body_type)
+        }
+        AstNode::AnonymousFun {
+            params,
+            return_type,
+            error_type,
+            body,
+            inquiries,
+            ..
+        }
+        | AstNode::AnonymousPro {
+            params,
+            return_type,
+            error_type,
+            body,
+            inquiries,
+            ..
+        }
+        | AstNode::AnonymousLog {
+            params,
+            return_type,
+            error_type,
+            body,
+            inquiries,
+            ..
+        } => {
+            if let Some(message) = decls::unsupported_routine_param_surface_message(params) {
+                return Err(unsupported_node_surface(resolved, node, message));
+            }
+            for param in params {
+                let _ = decls::lower_type(typed, resolved, context.scope_id, &param.param_type)?;
+            }
+            let expected_return_type = return_type
+                .as_ref()
+                .map(|ty| decls::lower_type(typed, resolved, context.scope_id, ty))
+                .transpose()?;
+            let expected_error_type = error_type
+                .as_ref()
+                .map(|ty| decls::lower_type(typed, resolved, context.scope_id, ty))
+                .transpose()?;
+            let routine_context = TypeContext {
+                source_unit_id: context.source_unit_id,
+                scope_id: context.scope_id,
+                routine_return_type: expected_return_type,
+                routine_error_type: expected_error_type,
+            };
+            let body_type = type_body(typed, resolved, routine_context, body)?;
+            let _ = type_body(typed, resolved, routine_context, inquiries)?;
+            Ok(expected_return_type.or(body_type))
         }
         AstNode::Block { statements } => type_body(typed, resolved, context, statements),
         AstNode::Program { declarations } => type_body(typed, resolved, context, declarations),
@@ -239,6 +306,11 @@ fn type_node_with_expectation(
         AstNode::FieldAccess { object, field } => {
             type_field_access(typed, resolved, context, object, field)
         }
+        AstNode::ChannelAccess { .. } => Err(unsupported_node_surface(
+            resolved,
+            node,
+            "channel endpoint access is part of the V3 systems milestone, not the V1 typecheck milestone",
+        )),
         AstNode::IndexAccess { container, index } => {
             type_index_access(typed, resolved, context, container, index)
         }
@@ -258,6 +330,21 @@ fn type_node_with_expectation(
         AstNode::PatternAccess { .. } => Err(TypecheckError::new(
             TypecheckErrorKind::Unsupported,
             "pattern access is not part of the V1 typecheck milestone",
+        )),
+        AstNode::Rolling { .. } => Err(unsupported_node_surface(
+            resolved,
+            node,
+            "rolling/comprehension expressions are not part of the V1 typecheck milestone",
+        )),
+        AstNode::Range { .. } => Err(unsupported_node_surface(
+            resolved,
+            node,
+            "range expressions are not part of the V1 typecheck milestone",
+        )),
+        AstNode::Select { .. } => Err(unsupported_node_surface(
+            resolved,
+            node,
+            "select/channel semantics are part of the V3 systems milestone, not the V1 typecheck milestone",
         )),
         AstNode::Return { value } => type_return(typed, resolved, context, value.as_deref()),
         AstNode::Break => Ok(Some(typed.builtin_types().never)),
@@ -316,6 +403,26 @@ fn type_binary_op(
                 left,
                 right,
                 "explicit 'cast' operators are not part of the V1 typecheck milestone",
+            ));
+        }
+        BinaryOperator::Pipe | BinaryOperator::PipeOr
+            if matches!(strip_comments(right), AstNode::AsyncStage) =>
+        {
+            return Err(unsupported_binary_surface(
+                resolved,
+                left,
+                right,
+                "async pipe stages are part of the V3 systems milestone, not the V1 typecheck milestone",
+            ));
+        }
+        BinaryOperator::Pipe | BinaryOperator::PipeOr
+            if matches!(strip_comments(right), AstNode::AwaitStage) =>
+        {
+            return Err(unsupported_binary_surface(
+                resolved,
+                left,
+                right,
+                "await pipe stages are part of the V3 systems milestone, not the V1 typecheck milestone",
             ));
         }
         _ => {}
@@ -2162,6 +2269,18 @@ fn unsupported_binary_surface(
     message: impl Into<String>,
 ) -> TypecheckError {
     if let Some(origin) = node_origin(resolved, left).or_else(|| node_origin(resolved, right)) {
+        TypecheckError::with_origin(TypecheckErrorKind::Unsupported, message, origin)
+    } else {
+        TypecheckError::new(TypecheckErrorKind::Unsupported, message)
+    }
+}
+
+fn unsupported_node_surface(
+    resolved: &ResolvedProgram,
+    node: &AstNode,
+    message: impl Into<String>,
+) -> TypecheckError {
+    if let Some(origin) = node_origin(resolved, node) {
         TypecheckError::with_origin(TypecheckErrorKind::Unsupported, message, origin)
     } else {
         TypecheckError::new(TypecheckErrorKind::Unsupported, message)

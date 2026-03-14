@@ -619,7 +619,7 @@ Status: done
 
 #### 7.3
 
-Status: pending
+Status: done
 
 - Emit explicit unsupported diagnostics for `V3` systems surfaces such as ownership, borrowing, pointers, eventuals, coroutines, channels, and C ABI, plus remaining non-`V1` reactive/static/range semantics.
 
