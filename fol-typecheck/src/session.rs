@@ -1,4 +1,4 @@
-use crate::{decls, TypecheckResult, TypedProgram};
+use crate::{decls, exprs, TypecheckResult, TypedProgram};
 
 #[derive(Debug, Default)]
 pub struct TypecheckSession;
@@ -14,7 +14,7 @@ impl TypecheckSession {
     ) -> TypecheckResult<TypedProgram> {
         let mut typed = TypedProgram::from_resolved(resolved);
         decls::lower_declaration_signatures(&mut typed)?;
+        exprs::type_program(&mut typed)?;
         Ok(typed)
     }
 }
-

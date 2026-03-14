@@ -164,6 +164,30 @@ impl TypedProgram {
     ) -> Option<&TypedReference> {
         self.references.get(&reference_id)
     }
+
+    pub(crate) fn typed_reference_mut(
+        &mut self,
+        reference_id: fol_resolver::ReferenceId,
+    ) -> Option<&mut TypedReference> {
+        self.references.get_mut(&reference_id)
+    }
+
+    pub(crate) fn record_node_type(
+        &mut self,
+        syntax_id: SyntaxNodeId,
+        source_unit_id: SourceUnitId,
+        type_id: CheckedTypeId,
+    ) -> Result<(), crate::TypecheckError> {
+        self.nodes
+            .entry(syntax_id)
+            .or_insert(TypedNode {
+                syntax_id,
+                source_unit_id,
+                inferred_type: None,
+            })
+            .inferred_type = Some(type_id);
+        Ok(())
+    }
 }
 
 #[cfg(test)]

@@ -1,7 +1,7 @@
 use fol_diagnostics::{DiagnosticCode, DiagnosticLocation, ToDiagnostic};
 use fol_parser::ast::{AstParser, SyntaxOrigin};
 use fol_resolver::resolve_package;
-use fol_resolver::{SourceUnitId, SymbolId, SymbolKind};
+use fol_resolver::{ReferenceKind, SourceUnitId, SymbolId, SymbolKind};
 use fol_stream::FileStream;
 use fol_typecheck::{
     BuiltinType, BuiltinTypeIds, CheckedType, DeclaredTypeKind, RoutineType, TypeTable,
@@ -78,6 +78,23 @@ fn find_typed_symbol<'a>(
         .expect("typed symbol facts should exist for resolved symbol");
 
     (symbol_id, symbol)
+}
+
+fn find_typed_reference<'a>(
+    typed: &'a fol_typecheck::TypedProgram,
+    name: &str,
+    kind: ReferenceKind,
+) -> &'a fol_typecheck::TypedReference {
+    let reference_id = typed
+        .resolved()
+        .references
+        .iter_with_ids()
+        .find(|(_, reference)| reference.name == name && reference.kind == kind)
+        .map(|(reference_id, _)| reference_id)
+        .expect("typed fixture reference should exist");
+    typed
+        .typed_reference(reference_id)
+        .expect("typed reference facts should exist")
 }
 
 #[test]
@@ -299,7 +316,7 @@ fn declaration_signature_lowering_keeps_builtin_str_types_builtin() {
 fn declaration_signature_lowering_keeps_named_types_as_declared_symbols() {
     let typed = typecheck_fixture_folder(&[
         ("types.fol", "typ Point: rec = {\n}\n"),
-        ("main.fol", "var current: Point = nil\n"),
+        ("main.fol", "var current: Point\n"),
     ]);
 
     let (point_id, _point) = find_typed_symbol(&typed, "Point", SymbolKind::Type);
@@ -334,6 +351,48 @@ fn declaration_signature_lowering_keeps_alias_references_as_alias_symbols() {
             name: "Count".to_string(),
             kind: DeclaredTypeKind::Alias,
         })
+    );
+}
+
+#[test]
+fn expression_typing_resolves_plain_identifier_references_to_declared_types() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "var total: int = 1\n\
+         fun[] read(): int = {\n\
+             return total;\n\
+         }\n",
+    )]);
+
+    let reference = find_typed_reference(&typed, "total", ReferenceKind::Identifier);
+
+    assert_eq!(
+        typed
+            .type_table()
+            .get(reference.resolved_type.expect("identifier should receive a type")),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+}
+
+#[test]
+fn expression_typing_resolves_qualified_identifier_references_to_declared_types() {
+    let typed = typecheck_fixture_folder(&[
+        ("util/value.fol", "var[exp] total: int = 1\n"),
+        (
+            "main.fol",
+            "fun[] read(): int = {\n\
+                 return util::total;\n\
+             }\n",
+        ),
+    ]);
+
+    let reference = find_typed_reference(&typed, "util::total", ReferenceKind::QualifiedIdentifier);
+
+    assert_eq!(
+        typed
+            .type_table()
+            .get(reference.resolved_type.expect("qualified identifier should receive a type")),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
     );
 }
 

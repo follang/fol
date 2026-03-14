@@ -345,7 +345,16 @@ fn lower_named_routine_signature(
         .ok_or_else(|| internal_error("resolved routine scope disappeared", None))?;
     let mut lowered_params = Vec::new();
     for param in params {
-        lowered_params.push(lower_type(typed, resolved, signature_scope, &param.param_type)?);
+        let param_type = lower_type(typed, resolved, signature_scope, &param.param_type)?;
+        let param_symbol_id = find_symbol_id_in_scope(
+            resolved,
+            source_unit_id,
+            signature_scope,
+            &[SymbolKind::Parameter],
+            &param.name,
+        )?;
+        record_symbol_type(typed, param_symbol_id, param_type)?;
+        lowered_params.push(param_type);
     }
     let lowered_return = return_type
         .as_ref()

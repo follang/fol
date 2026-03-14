@@ -7,6 +7,7 @@
 pub mod builtins;
 pub mod decls;
 pub mod errors;
+pub mod exprs;
 pub mod model;
 pub mod session;
 pub mod types;

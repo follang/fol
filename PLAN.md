@@ -471,7 +471,7 @@ Status: pending
 
 #### 3.1
 
-Status: pending
+Status: done
 
 - Type literals and resolved plain/qualified identifiers.
 
