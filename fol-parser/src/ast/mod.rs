@@ -470,6 +470,7 @@ pub enum AstNode {
 
     /// Record/object initializer: { field = value, ... }
     RecordInit {
+        syntax_id: Option<SyntaxNodeId>,
         fields: Vec<RecordInitField>,
     },
 
@@ -1062,7 +1063,8 @@ impl AstNode {
             | AstNode::LogDecl { syntax_id, .. }
             | AstNode::UseDecl { syntax_id, .. }
             | AstNode::Identifier { syntax_id, .. }
-            | AstNode::FunctionCall { syntax_id, .. } => *syntax_id,
+            | AstNode::FunctionCall { syntax_id, .. }
+            | AstNode::RecordInit { syntax_id, .. } => *syntax_id,
             AstNode::Commented { node, .. } => node.syntax_id(),
             _ => None,
         }
@@ -1370,7 +1372,7 @@ impl AstNode {
                 children
             }
             AstNode::ContainerLiteral { elements, .. } => elements.iter().collect(),
-            AstNode::RecordInit { fields } => fields.iter().map(|field| &field.value).collect(),
+            AstNode::RecordInit { fields, .. } => fields.iter().map(|field| &field.value).collect(),
             AstNode::Rolling {
                 expr,
                 bindings,

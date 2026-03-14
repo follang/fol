@@ -1,6 +1,9 @@
 use fol_lexer::lexer::stage3::Elements;
 use fol_parser::ast::AstParser;
-use fol_resolver::{resolve_package, resolve_package_with_config, ResolvedProgram, ResolverConfig, ResolverError};
+use fol_resolver::{
+    resolve_package, resolve_package_with_config, resolve_package_workspace_with_config,
+    ResolvedProgram, ResolvedWorkspace, ResolverConfig, ResolverError,
+};
 use fol_stream::FileStream;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -41,6 +44,21 @@ fn try_resolve_package_from_folder_with_config(
         .expect("Resolver test fixture should parse as a package");
 
     resolve_package_with_config(parsed, config)
+}
+
+fn resolve_workspace_from_folder_with_config(
+    path: &str,
+    config: ResolverConfig,
+) -> ResolvedWorkspace {
+    let mut file_stream = FileStream::from_folder(path).expect("Should read resolver test folder");
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let parsed = parser
+        .parse_package(&mut lexer)
+        .expect("Resolver test fixture should parse as a package");
+
+    resolve_package_workspace_with_config(parsed, config)
+        .expect("Resolver workspace fixture should resolve successfully")
 }
 
 fn unique_temp_root(label: &str) -> std::path::PathBuf {
@@ -113,6 +131,9 @@ mod routine_scopes;
 #[cfg(test)]
 #[path = "test_resolver_parts/source_units.rs"]
 mod source_units;
+#[cfg(test)]
+#[path = "test_resolver_parts/workspace.rs"]
+mod workspace;
 #[cfg(test)]
 #[path = "test_resolver_parts/shadowing_contract.rs"]
 mod shadowing_contract;

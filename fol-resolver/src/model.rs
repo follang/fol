@@ -1,6 +1,7 @@
 use crate::ids::{IdTable, ImportId, ReferenceId, ScopeId, SourceUnitId, SymbolId};
-use crate::session::LoadedPackage;
+use crate::session::{LoadedPackage, PackageIdentity};
 use crate::{ResolverError, ResolverErrorKind};
+use fol_package::PreparedPackage;
 use fol_parser::ast::{
     FolType, ParsedDeclScope, ParsedDeclVisibility, ParsedPackage, SyntaxIndex, SyntaxNodeId,
     SyntaxOrigin, UsePathSegment,
@@ -71,6 +72,12 @@ pub enum ReferenceKind {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MountedSymbolProvenance {
+    pub package_identity: PackageIdentity,
+    pub foreign_symbol: SymbolId,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResolvedSymbol {
     pub id: SymbolId,
     pub name: String,
@@ -82,12 +89,14 @@ pub struct ResolvedSymbol {
     pub origin: Option<SyntaxOrigin>,
     pub visibility: Option<ParsedDeclVisibility>,
     pub declaration_scope: Option<ParsedDeclScope>,
+    pub mounted_from: Option<MountedSymbolProvenance>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResolvedReference {
     pub id: ReferenceId,
     pub kind: ReferenceKind,
+    pub syntax_id: Option<SyntaxNodeId>,
     pub name: String,
     pub scope: ScopeId,
     pub source_unit: SourceUnitId,
@@ -104,6 +113,84 @@ pub struct ResolvedImport {
     pub scope: ScopeId,
     pub source_unit: SourceUnitId,
     pub target_scope: Option<ScopeId>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ResolvedPackage {
+    pub identity: PackageIdentity,
+    pub prepared: PreparedPackage,
+    pub program: ResolvedProgram,
+}
+
+impl ResolvedPackage {
+    pub(crate) fn from_loaded(loaded: LoadedPackage) -> Self {
+        Self {
+            identity: loaded.identity,
+            prepared: loaded.prepared,
+            program: loaded.program,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ResolvedWorkspace {
+    entry_identity: PackageIdentity,
+    packages: BTreeMap<PackageIdentity, ResolvedPackage>,
+}
+
+impl ResolvedWorkspace {
+    pub(crate) fn new(
+        entry_identity: PackageIdentity,
+        entry_prepared: PreparedPackage,
+        entry_program: ResolvedProgram,
+        loaded_packages: impl IntoIterator<Item = LoadedPackage>,
+    ) -> Self {
+        let mut packages = BTreeMap::new();
+        packages.insert(
+            entry_identity.clone(),
+            ResolvedPackage {
+                identity: entry_identity.clone(),
+                prepared: entry_prepared,
+                program: entry_program,
+            },
+        );
+
+        for loaded in loaded_packages {
+            let package = ResolvedPackage::from_loaded(loaded);
+            packages.insert(package.identity.clone(), package);
+        }
+
+        Self {
+            entry_identity,
+            packages,
+        }
+    }
+
+    pub fn entry_identity(&self) -> &PackageIdentity {
+        &self.entry_identity
+    }
+
+    pub fn entry_package(&self) -> &ResolvedPackage {
+        self.packages
+            .get(&self.entry_identity)
+            .expect("resolved workspace should always contain the entry package")
+    }
+
+    pub fn entry_program(&self) -> &ResolvedProgram {
+        &self.entry_package().program
+    }
+
+    pub fn package(&self, identity: &PackageIdentity) -> Option<&ResolvedPackage> {
+        self.packages.get(identity)
+    }
+
+    pub fn packages(&self) -> impl Iterator<Item = &ResolvedPackage> {
+        self.packages.values()
+    }
+
+    pub fn package_count(&self) -> usize {
+        self.packages.len()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -489,7 +576,12 @@ impl ResolvedProgram {
             {
                 continue;
             }
-            self.insert_mounted_symbol(mounted_scope, source_unit_id, symbol.clone())?;
+            self.insert_mounted_symbol(
+                mounted_scope,
+                source_unit_id,
+                symbol.clone(),
+                &loaded.identity,
+            )?;
         }
 
         Ok(())
@@ -500,7 +592,9 @@ impl ResolvedProgram {
         scope_id: ScopeId,
         source_unit_id: SourceUnitId,
         symbol: ResolvedSymbol,
+        package_identity: &PackageIdentity,
     ) -> Result<SymbolId, ResolverError> {
+        let foreign_symbol_id = symbol.id;
         let canonical_name = symbol.canonical_name.clone();
         if let Some(existing) = self
             .scope(scope_id)
@@ -523,6 +617,10 @@ impl ResolvedProgram {
             id: SymbolId(0),
             scope: scope_id,
             source_unit: source_unit_id,
+            mounted_from: Some(MountedSymbolProvenance {
+                package_identity: package_identity.clone(),
+                foreign_symbol: foreign_symbol_id,
+            }),
             ..symbol
         });
         if let Some(inserted) = self.symbols.get_mut(symbol_id) {

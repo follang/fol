@@ -289,6 +289,7 @@ fn insert_symbol(
         origin,
         visibility: item.meta.visibility,
         declaration_scope: item.meta.scope,
+        mounted_from: None,
     });
 
     if let Some(symbol) = program.symbols.get_mut(symbol_id) {

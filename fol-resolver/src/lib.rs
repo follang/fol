@@ -31,8 +31,9 @@ pub mod traverse;
 pub use errors::{ResolverError, ResolverErrorKind};
 pub use ids::{IdTable, ImportId, ReferenceId, ScopeId, SourceUnitId, SymbolId};
 pub use model::{
-    ReferenceKind, ResolvedImport, ResolvedProgram, ResolvedReference, ResolvedScope,
-    ResolvedSourceUnit, ResolvedSymbol, ScopeKind, SymbolKind,
+    MountedSymbolProvenance, ReferenceKind, ResolvedImport, ResolvedPackage, ResolvedProgram,
+    ResolvedReference, ResolvedScope, ResolvedSourceUnit, ResolvedSymbol, ResolvedWorkspace,
+    ScopeKind, SymbolKind,
 };
 pub use session::{PackageIdentity, PackageSourceKind, ResolverConfig, ResolverSession};
 pub use fol_package::PreparedPackage;
@@ -49,6 +50,10 @@ impl Resolver {
     }
 
     /// Resolve one parsed package into scopes, symbols, references, and imports.
+    ///
+    /// This is the legacy single-program compatibility surface. New semantic
+    /// consumers should prefer the workspace APIs and then read the entry
+    /// package from the returned `ResolvedWorkspace`.
     pub fn resolve_package(
         &mut self,
         syntax: fol_parser::ast::ParsedPackage,
@@ -57,6 +62,8 @@ impl Resolver {
     }
 
     /// Resolve one parsed package with an explicit resolver configuration.
+    ///
+    /// This is the legacy single-program compatibility surface.
     pub fn resolve_package_with_config(
         &mut self,
         syntax: fol_parser::ast::ParsedPackage,
@@ -65,7 +72,26 @@ impl Resolver {
         ResolverSession::with_config(config).resolve_package(syntax)
     }
 
+    /// Resolve one parsed package into a graph-aware semantic workspace.
+    pub fn resolve_package_workspace(
+        &mut self,
+        syntax: fol_parser::ast::ParsedPackage,
+    ) -> ResolverResult<ResolvedWorkspace> {
+        ResolverSession::new().resolve_package_workspace(syntax)
+    }
+
+    /// Resolve one parsed package into a graph-aware semantic workspace with explicit config.
+    pub fn resolve_package_workspace_with_config(
+        &mut self,
+        syntax: fol_parser::ast::ParsedPackage,
+        config: ResolverConfig,
+    ) -> ResolverResult<ResolvedWorkspace> {
+        ResolverSession::with_config(config).resolve_package_workspace(syntax)
+    }
+
     /// Resolve one fol-package prepared package with a fresh resolver session.
+    ///
+    /// This is the legacy single-program compatibility surface.
     pub fn resolve_prepared_package(
         &mut self,
         prepared: PreparedPackage,
@@ -74,12 +100,31 @@ impl Resolver {
     }
 
     /// Resolve one fol-package prepared package with an explicit resolver configuration.
+    ///
+    /// This is the legacy single-program compatibility surface.
     pub fn resolve_prepared_package_with_config(
         &mut self,
         prepared: PreparedPackage,
         config: ResolverConfig,
     ) -> ResolverResult<ResolvedProgram> {
         ResolverSession::with_config(config).resolve_prepared_package(prepared)
+    }
+
+    /// Resolve one fol-package prepared package into a graph-aware semantic workspace.
+    pub fn resolve_prepared_workspace(
+        &mut self,
+        prepared: PreparedPackage,
+    ) -> ResolverResult<ResolvedWorkspace> {
+        ResolverSession::new().resolve_prepared_workspace(prepared)
+    }
+
+    /// Resolve one fol-package prepared package into a graph-aware semantic workspace with explicit config.
+    pub fn resolve_prepared_workspace_with_config(
+        &mut self,
+        prepared: PreparedPackage,
+        config: ResolverConfig,
+    ) -> ResolverResult<ResolvedWorkspace> {
+        ResolverSession::with_config(config).resolve_prepared_workspace(prepared)
     }
 }
 
@@ -96,6 +141,21 @@ pub fn resolve_package_with_config(
     Resolver::new().resolve_package_with_config(syntax, config)
 }
 
+/// Resolve one parsed package into a graph-aware semantic workspace with a fresh resolver instance.
+pub fn resolve_package_workspace(
+    syntax: fol_parser::ast::ParsedPackage,
+) -> ResolverResult<ResolvedWorkspace> {
+    Resolver::new().resolve_package_workspace(syntax)
+}
+
+/// Resolve one parsed package into a graph-aware semantic workspace with explicit config.
+pub fn resolve_package_workspace_with_config(
+    syntax: fol_parser::ast::ParsedPackage,
+    config: ResolverConfig,
+) -> ResolverResult<ResolvedWorkspace> {
+    Resolver::new().resolve_package_workspace_with_config(syntax, config)
+}
+
 /// Resolve one fol-package prepared package with a fresh resolver instance.
 pub fn resolve_prepared_package(prepared: PreparedPackage) -> ResolverResult<ResolvedProgram> {
     Resolver::new().resolve_prepared_package(prepared)
@@ -109,9 +169,22 @@ pub fn resolve_prepared_package_with_config(
     Resolver::new().resolve_prepared_package_with_config(prepared, config)
 }
 
+/// Resolve one fol-package prepared package into a graph-aware semantic workspace with a fresh resolver instance.
+pub fn resolve_prepared_workspace(prepared: PreparedPackage) -> ResolverResult<ResolvedWorkspace> {
+    Resolver::new().resolve_prepared_workspace(prepared)
+}
+
+/// Resolve one fol-package prepared package into a graph-aware semantic workspace with explicit config.
+pub fn resolve_prepared_workspace_with_config(
+    prepared: PreparedPackage,
+    config: ResolverConfig,
+) -> ResolverResult<ResolvedWorkspace> {
+    Resolver::new().resolve_prepared_workspace_with_config(prepared, config)
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{resolve_package, resolve_prepared_package};
+    use super::{resolve_package, resolve_package_workspace, resolve_prepared_package, resolve_prepared_workspace};
     use fol_package::PackageSession;
     use fol_parser::ast::{AstParser, ParsedPackage};
     use fol_stream::FileStream;
@@ -147,5 +220,29 @@ mod tests {
 
         assert_eq!(resolved.package_name(), "parser");
         assert_eq!(resolved.source_units.len(), 1);
+    }
+
+    #[test]
+    fn resolver_smoke_can_lower_a_workspace_from_a_parsed_package() {
+        let workspace = resolve_package_workspace(parse_package("../test/parser/simple_var.fol"))
+            .expect("Resolver workspace should lower parsed packages");
+
+        assert_eq!(workspace.package_count(), 1);
+        assert_eq!(workspace.entry_program().package_name(), "parser");
+        assert_eq!(workspace.entry_package().prepared.syntax.package, "parser");
+    }
+
+    #[test]
+    fn resolver_smoke_can_lower_a_workspace_from_a_prepared_package() {
+        let session = PackageSession::new();
+        let prepared = session
+            .prepare_entry_package(parse_package("../test/parser/simple_var.fol"))
+            .expect("Prepared-package smoke fixture should prepare");
+
+        let workspace = resolve_prepared_workspace(prepared)
+            .expect("Resolver workspace should lower prepared packages");
+
+        assert_eq!(workspace.package_count(), 1);
+        assert_eq!(workspace.entry_program().package_name(), "parser");
     }
 }

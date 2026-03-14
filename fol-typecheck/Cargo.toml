@@ -1,0 +1,14 @@
+[package]
+name = "fol-typecheck"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "fol_typecheck"
+path = "src/lib.rs"
+
+[dependencies]
+fol-diagnostics = { path = "../fol-diagnostics" }
+fol-parser = { path = "../fol-parser" }
+fol-resolver = { path = "../fol-resolver" }
+fol-types = { path = "../fol-types" }
