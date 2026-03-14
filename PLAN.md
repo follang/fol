@@ -573,7 +573,7 @@ Status: pending
 
 #### 6.1
 
-Status: pending
+Status: done
 
 - Freeze unary/binary operator typing matrices for the supported scalar families.
 

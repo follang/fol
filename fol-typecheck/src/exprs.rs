@@ -3,8 +3,8 @@ use crate::{
     TypecheckResult, TypedProgram,
 };
 use fol_parser::ast::{
-    AstNode, ContainerType, Literal, LoopCondition, QualifiedPath, SyntaxNodeId, SyntaxOrigin,
-    WhenCase,
+    AstNode, BinaryOperator, ContainerType, Literal, LoopCondition, QualifiedPath, SyntaxNodeId,
+    SyntaxOrigin, UnaryOperator, WhenCase,
 };
 use fol_resolver::{
     ReferenceId, ReferenceKind, ResolvedProgram, ScopeId, SourceUnitId, SymbolId, SymbolKind,
@@ -76,6 +76,10 @@ fn type_node_with_expectation(
         AstNode::Commented { node, .. } => {
             type_node_with_expectation(typed, resolved, context, node, expected_type)
         }
+        AstNode::BinaryOp { op, left, right } => {
+            type_binary_op(typed, resolved, context, op, left, right)
+        }
+        AstNode::UnaryOp { op, operand } => type_unary_op(typed, resolved, context, op, operand),
         AstNode::VarDecl {
             name,
             type_hint: _,
@@ -287,6 +291,121 @@ fn type_body(
         }
     }
     Ok(final_type)
+}
+
+fn type_binary_op(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    op: &BinaryOperator,
+    left: &AstNode,
+    right: &AstNode,
+) -> Result<Option<CheckedTypeId>, TypecheckError> {
+    let left_type = type_node(typed, resolved, context, left)?.ok_or_else(|| {
+        TypecheckError::new(
+            TypecheckErrorKind::InvalidInput,
+            "binary operator left operand does not have a type",
+        )
+    })?;
+    let right_type = type_node(typed, resolved, context, right)?.ok_or_else(|| {
+        TypecheckError::new(
+            TypecheckErrorKind::InvalidInput,
+            "binary operator right operand does not have a type",
+        )
+    })?;
+    let left_apparent = apparent_type_id(typed, left_type)?;
+    let right_apparent = apparent_type_id(typed, right_type)?;
+
+    match op {
+        BinaryOperator::Add => match (
+            typed.type_table().get(left_apparent),
+            typed.type_table().get(right_apparent),
+        ) {
+            (Some(CheckedType::Builtin(crate::BuiltinType::Int)), Some(CheckedType::Builtin(crate::BuiltinType::Int))) => Ok(Some(typed.builtin_types().int)),
+            (Some(CheckedType::Builtin(crate::BuiltinType::Float)), Some(CheckedType::Builtin(crate::BuiltinType::Float))) => Ok(Some(typed.builtin_types().float)),
+            (Some(CheckedType::Builtin(crate::BuiltinType::Str)), Some(CheckedType::Builtin(crate::BuiltinType::Str))) => Ok(Some(typed.builtin_types().str_)),
+            _ => Err(invalid_binary_operator_error(typed, op, left_type, right_type)),
+        },
+        BinaryOperator::Sub
+        | BinaryOperator::Mul
+        | BinaryOperator::Div
+        | BinaryOperator::Mod
+        | BinaryOperator::Pow => match (
+            typed.type_table().get(left_apparent),
+            typed.type_table().get(right_apparent),
+        ) {
+            (Some(CheckedType::Builtin(crate::BuiltinType::Int)), Some(CheckedType::Builtin(crate::BuiltinType::Int))) => Ok(Some(typed.builtin_types().int)),
+            (Some(CheckedType::Builtin(crate::BuiltinType::Float)), Some(CheckedType::Builtin(crate::BuiltinType::Float))) => Ok(Some(typed.builtin_types().float)),
+            _ => Err(invalid_binary_operator_error(typed, op, left_type, right_type)),
+        },
+        BinaryOperator::Eq | BinaryOperator::Ne => {
+            if left_apparent == right_apparent && is_equality_type(typed, left_apparent) {
+                Ok(Some(typed.builtin_types().bool_))
+            } else {
+                Err(invalid_binary_operator_error(typed, op, left_type, right_type))
+            }
+        }
+        BinaryOperator::Lt | BinaryOperator::Le | BinaryOperator::Gt | BinaryOperator::Ge => {
+            if left_apparent == right_apparent && is_ordered_type(typed, left_apparent) {
+                Ok(Some(typed.builtin_types().bool_))
+            } else {
+                Err(invalid_binary_operator_error(typed, op, left_type, right_type))
+            }
+        }
+        BinaryOperator::And | BinaryOperator::Or | BinaryOperator::Xor => {
+            if left_apparent == typed.builtin_types().bool_
+                && right_apparent == typed.builtin_types().bool_
+            {
+                Ok(Some(typed.builtin_types().bool_))
+            } else {
+                Err(invalid_binary_operator_error(typed, op, left_type, right_type))
+            }
+        }
+        _ => Ok(None),
+    }
+}
+
+fn type_unary_op(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    op: &UnaryOperator,
+    operand: &AstNode,
+) -> Result<Option<CheckedTypeId>, TypecheckError> {
+    let operand_type = type_node(typed, resolved, context, operand)?.ok_or_else(|| {
+        TypecheckError::new(
+            TypecheckErrorKind::InvalidInput,
+            "unary operator operand does not have a type",
+        )
+    })?;
+    let apparent = apparent_type_id(typed, operand_type)?;
+
+    match op {
+        UnaryOperator::Neg => match typed.type_table().get(apparent) {
+            Some(CheckedType::Builtin(crate::BuiltinType::Int)) => {
+                Ok(Some(typed.builtin_types().int))
+            }
+            Some(CheckedType::Builtin(crate::BuiltinType::Float)) => {
+                Ok(Some(typed.builtin_types().float))
+            }
+            _ => Err(invalid_unary_operator_error(typed, op, operand_type)),
+        },
+        UnaryOperator::Not => {
+            if apparent == typed.builtin_types().bool_ {
+                Ok(Some(typed.builtin_types().bool_))
+            } else {
+                Err(invalid_unary_operator_error(typed, op, operand_type))
+            }
+        }
+        UnaryOperator::Ref | UnaryOperator::Deref => Err(TypecheckError::new(
+            TypecheckErrorKind::Unsupported,
+            "pointer operators are part of the V3 systems milestone, not the V1 typecheck milestone",
+        )),
+        UnaryOperator::Unwrap => Err(TypecheckError::new(
+            TypecheckErrorKind::Unsupported,
+            "unwrap operators are not part of the V1 typecheck milestone",
+        )),
+    }
 }
 
 fn type_literal(
@@ -1966,6 +2085,59 @@ fn describe_type(typed: &TypedProgram, type_id: CheckedTypeId) -> String {
             .get(type_id)
             .cloned()
             .unwrap_or(crate::CheckedType::Builtin(crate::BuiltinType::Never))
+    )
+}
+
+fn invalid_binary_operator_error(
+    typed: &TypedProgram,
+    op: &BinaryOperator,
+    left: CheckedTypeId,
+    right: CheckedTypeId,
+) -> TypecheckError {
+    TypecheckError::new(
+        TypecheckErrorKind::InvalidInput,
+        format!(
+            "binary operator '{:?}' is not valid for '{}' and '{}'",
+            op,
+            describe_type(typed, left),
+            describe_type(typed, right)
+        ),
+    )
+}
+
+fn invalid_unary_operator_error(
+    typed: &TypedProgram,
+    op: &UnaryOperator,
+    operand: CheckedTypeId,
+) -> TypecheckError {
+    TypecheckError::new(
+        TypecheckErrorKind::InvalidInput,
+        format!(
+            "unary operator '{:?}' is not valid for '{}'",
+            op,
+            describe_type(typed, operand)
+        ),
+    )
+}
+
+fn is_equality_type(typed: &TypedProgram, type_id: CheckedTypeId) -> bool {
+    matches!(
+        typed.type_table().get(type_id),
+        Some(CheckedType::Builtin(crate::BuiltinType::Int))
+            | Some(CheckedType::Builtin(crate::BuiltinType::Float))
+            | Some(CheckedType::Builtin(crate::BuiltinType::Bool))
+            | Some(CheckedType::Builtin(crate::BuiltinType::Char))
+            | Some(CheckedType::Builtin(crate::BuiltinType::Str))
+    )
+}
+
+fn is_ordered_type(typed: &TypedProgram, type_id: CheckedTypeId) -> bool {
+    matches!(
+        typed.type_table().get(type_id),
+        Some(CheckedType::Builtin(crate::BuiltinType::Int))
+            | Some(CheckedType::Builtin(crate::BuiltinType::Float))
+            | Some(CheckedType::Builtin(crate::BuiltinType::Char))
+            | Some(CheckedType::Builtin(crate::BuiltinType::Str))
     )
 }
 

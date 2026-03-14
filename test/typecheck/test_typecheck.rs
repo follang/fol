@@ -1387,6 +1387,82 @@ fn shell_typing_rejects_pointer_surfaces_as_v3_only() {
 }
 
 #[test]
+fn operator_typing_accepts_v1_scalar_operator_families() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "fun[] math(): int = {\n\
+             return 1 + 2 * 3 - 4 % 2;\n\
+         }\n\
+         fun[] text(): str = {\n\
+             return \"ab\" + \"cd\";\n\
+         }\n\
+         fun[] compare(): bol = {\n\
+             return 1 < 2 and 3 != 4;\n\
+         }\n\
+         fun[] invert(flag: bol): bol = {\n\
+             return not flag xor false;\n\
+         }\n",
+    )]);
+
+    for (name, expected) in [
+        ("math", CheckedType::Builtin(BuiltinType::Int)),
+        ("text", CheckedType::Builtin(BuiltinType::Str)),
+        ("compare", CheckedType::Builtin(BuiltinType::Bool)),
+        ("invert", CheckedType::Builtin(BuiltinType::Bool)),
+    ] {
+        let syntax_id = find_named_routine_syntax_id(&typed, name);
+        assert_eq!(
+            typed
+                .typed_node(syntax_id)
+                .and_then(|node| node.inferred_type)
+                .and_then(|type_id| typed.type_table().get(type_id)),
+            Some(&expected),
+            "Expected {name} to typecheck as {expected:?}"
+        );
+    }
+}
+
+#[test]
+fn operator_typing_rejects_invalid_scalar_pairs_and_pointer_operators() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] bad_math(): int = {\n\
+             return true + 1;\n\
+         }\n\
+         fun[] bad_logic(): bol = {\n\
+             return 1 and 2;\n\
+         }\n\
+         fun[] bad_ref(value: int): int = {\n\
+             return &value;\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error.message().contains("binary operator 'Add' is not valid")
+        }),
+        "Expected an invalid arithmetic-operator diagnostic, got: {errors:?}"
+    );
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error.message().contains("binary operator 'And' is not valid")
+        }),
+        "Expected an invalid logical-operator diagnostic, got: {errors:?}"
+    );
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::Unsupported
+                && error
+                    .message()
+                    .contains("pointer operators are part of the V3 systems milestone")
+        }),
+        "Expected a pointer-operator boundary diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
 fn declaration_signature_lowering_resolves_qualified_named_types() {
     let typed = typecheck_fixture_folder(&[
         ("util/types.fol", "ali Count: int\n"),
