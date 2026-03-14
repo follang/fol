@@ -173,7 +173,12 @@ name = "fol-lower"
 version = "0.1.0"
 dependencies = [
  "fol-diagnostics",
+ "fol-lexer",
+ "fol-package",
  "fol-parser",
+ "fol-resolver",
+ "fol-stream",
+ "fol-typecheck",
  "fol-types",
 ]
 

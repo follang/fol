@@ -6,6 +6,9 @@ pub use errors::{LoweringError, LoweringErrorKind};
 
 pub type LoweringResult<T> = Result<T, Vec<LoweringError>>;
 
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct LoweredWorkspace;
+
 #[derive(Debug, Default)]
 pub struct Lowerer;
 
@@ -13,11 +16,25 @@ impl Lowerer {
     pub fn new() -> Self {
         Self
     }
+
+    pub fn lower_typed_workspace(
+        &mut self,
+        _typed: fol_typecheck::TypedWorkspace,
+    ) -> LoweringResult<LoweredWorkspace> {
+        Err(vec![LoweringError::with_kind(
+            LoweringErrorKind::Unsupported,
+            "lowering session is not implemented yet",
+        )])
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{Lowerer, LoweringError, LoweringErrorKind, LoweringResult};
+    use super::{LoweredWorkspace, Lowerer, LoweringError, LoweringErrorKind, LoweringResult};
+    use fol_parser::ast::AstParser;
+    use fol_resolver::resolve_workspace;
+    use fol_stream::FileStream;
+    use fol_typecheck::Typechecker;
 
     #[test]
     fn lowering_api_exposes_constructor_and_result_alias() {
@@ -38,5 +55,33 @@ mod tests {
             error.to_string(),
             "LoweringUnsupported: lowering shell is not implemented yet"
         );
+    }
+
+    #[test]
+    fn lowering_smoke_accepts_typed_workspace_inputs() {
+        let fixture_path = concat!(env!("CARGO_MANIFEST_DIR"), "/../test/parser/simple_var.fol");
+        let mut stream = FileStream::from_file(fixture_path).expect("Should open lowering fixture");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let syntax = parser
+            .parse_package(&mut lexer)
+            .expect("Lowering fixture should parse");
+        let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+        let typed = Typechecker::new()
+            .check_resolved_workspace(resolved)
+            .expect("Lowering fixture should typecheck");
+
+        let error = Lowerer::new()
+            .lower_typed_workspace(typed)
+            .expect_err("Lowering shell should currently stop at an explicit stub");
+
+        assert_eq!(error.len(), 1);
+        assert_eq!(error[0].kind(), LoweringErrorKind::Unsupported);
+        assert_eq!(error[0].message(), "lowering session is not implemented yet");
+    }
+
+    #[test]
+    fn lowered_workspace_shell_is_constructible() {
+        let _ = LoweredWorkspace;
     }
 }
