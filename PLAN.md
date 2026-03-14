@@ -357,7 +357,7 @@ Status: done
 
 #### 2.4
 
-Status: pending
+Status: done
 
 - Add tests that the new graph-aware typechecker still preserves the current
   successful local-only behavior.

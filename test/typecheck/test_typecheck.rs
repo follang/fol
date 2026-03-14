@@ -1991,6 +1991,99 @@ fn workspace_typechecking_imports_mounted_value_and_routine_types_from_foreign_p
 }
 
 #[test]
+fn workspace_typechecking_preserves_local_only_success_shape() {
+    let root = unique_temp_dir("workspace_typecheck_local_only");
+    create_dir_all(&root).expect("Fixture root should be creatable");
+    write_fixture_files(
+        &root,
+        &[(
+            "app/main.fol",
+            concat!(
+                "ali Count: int\n",
+                "fun[] helper(value: Count): Count = {\n",
+                "    return value;\n",
+                "}\n",
+            ),
+        )],
+    );
+
+    let direct = typecheck_fixture_entry_with_config(&root, "app", ResolverConfig::default())
+        .expect("Direct typechecking should still accept local-only packages");
+    let workspace = typecheck_fixture_workspace_with_config(&root, "app", ResolverConfig::default())
+        .expect("Workspace typechecking should preserve local-only packages");
+    let workspace_entry = workspace.entry_program();
+
+    assert_eq!(workspace.package_count(), 1);
+
+    let (direct_count_id, _direct_count) = find_typed_symbol(&direct, "Count", SymbolKind::Alias);
+    let (workspace_count_id, _workspace_count) =
+        find_typed_symbol(workspace_entry, "Count", SymbolKind::Alias);
+    let (_direct_helper_id, direct_helper) =
+        find_typed_symbol(&direct, "helper", SymbolKind::Routine);
+    let (_workspace_helper_id, workspace_helper) =
+        find_typed_symbol(workspace_entry, "helper", SymbolKind::Routine);
+
+    let direct_signature = match direct
+        .type_table()
+        .get(direct_helper.declared_type.expect("direct helper should have a signature"))
+    {
+        Some(CheckedType::Routine(signature)) => signature,
+        other => panic!("expected direct helper routine signature, got {other:?}"),
+    };
+    assert_eq!(direct_signature.params.len(), 1);
+    assert_eq!(direct_signature.error_type, None);
+    assert_eq!(
+        direct.type_table().get(direct_signature.params[0]),
+        Some(&CheckedType::Declared {
+            symbol: direct_count_id,
+            name: "Count".to_string(),
+            kind: DeclaredTypeKind::Alias,
+        })
+    );
+    assert_eq!(
+        direct_signature
+            .return_type
+            .and_then(|type_id| direct.type_table().get(type_id)),
+        Some(&CheckedType::Declared {
+            symbol: direct_count_id,
+            name: "Count".to_string(),
+            kind: DeclaredTypeKind::Alias,
+        })
+    );
+
+    let workspace_signature = match workspace_entry.type_table().get(
+        workspace_helper
+            .declared_type
+            .expect("workspace helper should have a signature"),
+    ) {
+        Some(CheckedType::Routine(signature)) => signature,
+        other => panic!("expected workspace helper routine signature, got {other:?}"),
+    };
+    assert_eq!(workspace_signature.params.len(), 1);
+    assert_eq!(workspace_signature.error_type, None);
+    assert_eq!(
+        workspace_entry
+            .type_table()
+            .get(workspace_signature.params[0]),
+        Some(&CheckedType::Declared {
+            symbol: workspace_count_id,
+            name: "Count".to_string(),
+            kind: DeclaredTypeKind::Alias,
+        })
+    );
+    assert_eq!(
+        workspace_signature
+            .return_type
+            .and_then(|type_id| workspace_entry.type_table().get(type_id)),
+        Some(&CheckedType::Declared {
+            symbol: workspace_count_id,
+            name: "Count".to_string(),
+            kind: DeclaredTypeKind::Alias,
+        })
+    );
+}
+
+#[test]
 fn reopened_v1_blocker_loc_imported_values_still_fail_typecheck() {
     let root = unique_temp_dir("reopened_loc_import");
     create_dir_all(&root).expect("Fixture root should be creatable");
