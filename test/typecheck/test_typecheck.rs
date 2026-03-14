@@ -283,3 +283,76 @@ fn declaration_signature_lowering_records_top_level_type_facts() {
     );
     assert_eq!(typed.resolved().source_units.get(SourceUnitId(0)).map(|unit| unit.package.as_str()), Some(typed.package_name()));
 }
+
+#[test]
+fn declaration_signature_lowering_keeps_builtin_str_types_builtin() {
+    let typed = typecheck_fixture_folder(&[("main.fol", "var label: str = \"ok\"\n")]);
+    let (_label_id, label) = find_typed_symbol(&typed, "label", SymbolKind::ValueBinding);
+
+    assert_eq!(
+        typed.type_table().get(label.declared_type.expect("binding should lower")),
+        Some(&CheckedType::Builtin(BuiltinType::Str))
+    );
+}
+
+#[test]
+fn declaration_signature_lowering_keeps_named_types_as_declared_symbols() {
+    let typed = typecheck_fixture_folder(&[
+        ("types.fol", "typ Point: rec = {\n}\n"),
+        ("main.fol", "var current: Point = nil\n"),
+    ]);
+
+    let (point_id, _point) = find_typed_symbol(&typed, "Point", SymbolKind::Type);
+    let (_current_id, current) = find_typed_symbol(&typed, "current", SymbolKind::ValueBinding);
+
+    assert_eq!(
+        typed
+            .type_table()
+            .get(current.declared_type.expect("binding should lower")),
+        Some(&CheckedType::Declared {
+            symbol: point_id,
+            name: "Point".to_string(),
+            kind: DeclaredTypeKind::Type,
+        })
+    );
+}
+
+#[test]
+fn declaration_signature_lowering_keeps_alias_references_as_alias_symbols() {
+    let typed = typecheck_fixture_folder(&[
+        ("types.fol", "ali Count: int\n"),
+        ("main.fol", "var total: Count = 1\n"),
+    ]);
+
+    let (count_id, _count) = find_typed_symbol(&typed, "Count", SymbolKind::Alias);
+    let (_total_id, total) = find_typed_symbol(&typed, "total", SymbolKind::ValueBinding);
+
+    assert_eq!(
+        typed.type_table().get(total.declared_type.expect("binding should lower")),
+        Some(&CheckedType::Declared {
+            symbol: count_id,
+            name: "Count".to_string(),
+            kind: DeclaredTypeKind::Alias,
+        })
+    );
+}
+
+#[test]
+fn declaration_signature_lowering_resolves_qualified_named_types() {
+    let typed = typecheck_fixture_folder(&[
+        ("util/types.fol", "ali Count: int\n"),
+        ("main.fol", "var total: util::Count = 1\n"),
+    ]);
+
+    let (count_id, _count) = find_typed_symbol(&typed, "Count", SymbolKind::Alias);
+    let (_total_id, total) = find_typed_symbol(&typed, "total", SymbolKind::ValueBinding);
+
+    assert_eq!(
+        typed.type_table().get(total.declared_type.expect("binding should lower")),
+        Some(&CheckedType::Declared {
+            symbol: count_id,
+            name: "Count".to_string(),
+            kind: DeclaredTypeKind::Alias,
+        })
+    );
+}

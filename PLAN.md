@@ -433,7 +433,7 @@ Status: done
 
 #### 1.4
 
-Status: pending
+Status: done
 
 - Lock tests for builtin `str`, named types, aliases, and qualified named-type lowering.
 
