@@ -505,7 +505,7 @@ Status: pending
 
 #### 4.1
 
-Status: pending
+Status: done
 
 - Enforce `return` compatibility with declared routine return types.
 

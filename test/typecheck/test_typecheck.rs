@@ -302,8 +302,9 @@ fn declaration_signature_lowering_records_top_level_type_facts() {
         (
             "main.fol",
             "var total: Distance = 1\n\
+             var holder: Person\n\
              fun[] size(value: Distance): Person = {\n\
-                 return total\n\
+                 return holder\n\
              }\n",
         ),
     ]);
@@ -720,6 +721,63 @@ fn expression_typing_rejects_non_indexable_receivers() {
                     .contains("index access requires an array, vector, sequence, or map receiver")
         }),
         "Expected a non-indexable access diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
+fn routine_return_typing_rejects_explicit_return_mismatches() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] demo(): int = {\n\
+             return false;\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::IncompatibleType
+                && error.message().contains("return expects")
+        }),
+        "Expected a return-type mismatch diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
+fn routine_return_typing_rejects_final_body_expression_mismatches() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "var flag: bol = false\n\
+         fun[] demo(): int = {\n\
+             flag\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::IncompatibleType
+                && error.message().contains("routine 'demo' body expects")
+        }),
+        "Expected a routine-body mismatch diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
+fn routine_return_typing_rejects_missing_return_values_for_typed_routines() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] demo(): int = {\n\
+             return;\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error
+                    .message()
+                    .contains("return requires a value for routines with a declared return type")
+        }),
+        "Expected a missing-return-value diagnostic, got: {errors:?}"
     );
 }
 

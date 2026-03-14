@@ -12,6 +12,8 @@ use std::collections::BTreeSet;
 struct TypeContext {
     source_unit_id: SourceUnitId,
     scope_id: ScopeId,
+    routine_return_type: Option<CheckedTypeId>,
+    routine_error_type: Option<CheckedTypeId>,
 }
 
 pub fn type_program(typed: &mut TypedProgram) -> TypecheckResult<()> {
@@ -33,6 +35,8 @@ pub fn type_program(typed: &mut TypedProgram) -> TypecheckResult<()> {
         let context = TypeContext {
             source_unit_id,
             scope_id,
+            routine_return_type: None,
+            routine_error_type: None,
         };
         for item in &source_unit.items {
             if let Err(error) = type_node(typed, &resolved, context, &item.node) {
@@ -84,19 +88,28 @@ fn type_node(
             type_qualified_identifier_reference(typed, resolved, context, path)
         }
         AstNode::FunDecl {
+            name,
             syntax_id,
+            return_type,
+            error_type,
             body,
             inquiries,
             ..
         }
         | AstNode::ProDecl {
+            name,
             syntax_id,
+            return_type,
+            error_type,
             body,
             inquiries,
             ..
         }
         | AstNode::LogDecl {
+            name,
             syntax_id,
+            return_type,
+            error_type,
             body,
             inquiries,
             ..
@@ -104,13 +117,34 @@ fn type_node(
             let routine_scope = syntax_id
                 .and_then(|syntax_id| resolved.scope_for_syntax(syntax_id))
                 .unwrap_or(context.scope_id);
+            let expected_return_type = return_type
+                .as_ref()
+                .map(|ty| decls::lower_type(typed, resolved, routine_scope, ty))
+                .transpose()?;
+            let expected_error_type = error_type
+                .as_ref()
+                .map(|ty| decls::lower_type(typed, resolved, routine_scope, ty))
+                .transpose()?;
             let routine_context = TypeContext {
                 source_unit_id: context.source_unit_id,
                 scope_id: routine_scope,
+                routine_return_type: expected_return_type,
+                routine_error_type: expected_error_type,
             };
             let body_type = type_body(typed, resolved, routine_context, body)?;
             let _ = type_body(typed, resolved, routine_context, inquiries)?;
-            if let (Some(syntax_id), Some(type_id)) = (syntax_id, body_type) {
+            if let (Some(expected), Some(actual)) = (expected_return_type, body_type) {
+                ensure_assignable(
+                    typed,
+                    expected,
+                    actual,
+                    format!("routine '{name}' body"),
+                    syntax_id.and_then(|id| origin_for(resolved, id)),
+                )?;
+            }
+            if let (Some(syntax_id), Some(type_id)) =
+                (syntax_id, expected_return_type.or(body_type))
+            {
                 typed.record_node_type(*syntax_id, context.source_unit_id, type_id)?;
             }
             Ok(body_type)
@@ -174,11 +208,7 @@ fn type_node(
             TypecheckErrorKind::Unsupported,
             "pattern access is not part of the V1 typecheck milestone",
         )),
-        AstNode::Return { value } => value
-            .as_deref()
-            .map(|value| type_node(typed, resolved, context, value))
-            .transpose()
-            .map(|value| value.flatten()),
+        AstNode::Return { value } => type_return(typed, resolved, context, value.as_deref()),
         AstNode::Yield { value } => type_node(typed, resolved, context, value),
         _ => {
             for child in node.children() {
@@ -355,6 +385,38 @@ fn type_method_call(
     let signature = routine_signature_for_method(typed, resolved, method, object_type)?;
     check_call_arguments(typed, resolved, context, &signature, args, method, None)?;
     Ok(signature.return_type)
+}
+
+fn type_return(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    value: Option<&AstNode>,
+) -> Result<Option<CheckedTypeId>, TypecheckError> {
+    let Some(expected) = context.routine_return_type else {
+        return match value {
+            Some(_) => Err(TypecheckError::new(
+                TypecheckErrorKind::InvalidInput,
+                "return with a value requires a declared routine return type in V1",
+            )),
+            None => Ok(None),
+        };
+    };
+
+    let Some(value) = value else {
+        return Err(TypecheckError::new(
+            TypecheckErrorKind::InvalidInput,
+            "return requires a value for routines with a declared return type",
+        ));
+    };
+    let actual = type_node(typed, resolved, context, value)?.ok_or_else(|| {
+        TypecheckError::new(
+            TypecheckErrorKind::InvalidInput,
+            "return expression does not have a type",
+        )
+    })?;
+    ensure_assignable(typed, expected, actual, "return".to_string(), None)?;
+    Ok(Some(actual))
 }
 
 fn type_field_access(
