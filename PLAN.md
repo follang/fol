@@ -276,7 +276,7 @@ Status: done
 
 #### 0.2
 
-Status: pending
+Status: done
 
 - Freeze the reopened `V1` boundary in code/docs terms:
 - imported graph typing is required

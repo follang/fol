@@ -74,14 +74,14 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `fol-parser`: large front-end surface implemented, heavily hardened, and now much closer to a stable AST contract
 - `fol-package`: implemented as the package-loading and package-definition boundary before resolver
 - `fol-resolver`: implemented for the current whole-program name-resolution contract
-- `fol-typecheck`: implemented for the current `V1` semantic subset and wired into the CLI
+- `fol-typecheck`: implemented for a large local `V1` semantic subset and wired into the CLI
 - `fol-diagnostics`: implemented, structured, and wired into the CLI
 - Root CLI: implemented as parse-and-package-prepare-and-resolve-and-typecheck driver
 - Stream + lexer + parser: stable and consumed by package loading and resolver
 - Package loading and package preparation: implemented for `loc`, `std`, and installed `pkg`
 - Whole-program name resolution: implemented for the current contract
-- Whole-program type checking: implemented for the current `V1` contract, with later-language and later-systems surfaces rejected explicitly
-- Immediate active phase: carry the `V1` subset beyond typechecking toward later compiler stages
+- Whole-program type checking: substantial, but still reopened before it can be called the full `V1` typechecker
+- Immediate active phase: finish the reopened `V1` typechecker across imported package graphs and optional-shell semantics
 - Ownership and borrowing enforcement: missing
 - Standard or protocol conformance analysis: missing
 - Backend, interpreter, or code generation: missing
@@ -328,6 +328,14 @@ Authority rule for this file: code and active tests win over older docs, plans, 
   of scope for source-program semantics.
 - CLI integration coverage now includes successful typechecked compiles, human
   typecheck failures, and exact JSON typecheck diagnostics.
+- The reopened current blockers are:
+- imported exported symbols from `loc`, `std`, and `pkg` are still not fully
+  typed end to end
+- imported method lookup still needs graph-aware parity
+- `nil` and postfix unwrap are still outside the implemented `V1` semantic
+  contract
+- So the current active limitation is no longer parser or resolver coverage; it
+  is finishing the full `V1` typechecker boundary.
 
 ## 6. Current Front-End State By Layer
 
