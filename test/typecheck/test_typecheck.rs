@@ -908,6 +908,69 @@ fn when_result_typing_rejects_branch_type_mismatches() {
 }
 
 #[test]
+fn loop_typing_infers_iteration_binder_types_and_checks_bool_guards() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "fun[] demo(items: seq[int], ready: bol, limit: int): int = {\n\
+             loop(item in items when ready) {\n\
+                 break;\n\
+             }\n\
+             return limit;\n\
+         }\n",
+    )]);
+
+    let (_item_id, item) = find_typed_symbol(&typed, "item", SymbolKind::LoopBinder);
+
+    assert_eq!(
+        typed
+            .type_table()
+            .get(item.declared_type.expect("loop binder should infer an element type")),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+}
+
+#[test]
+fn loop_typing_rejects_non_boolean_conditions_and_reserved_yields() {
+    let condition_errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] bad(limit: int): int = {\n\
+             loop(limit) {\n\
+                 break;\n\
+             }\n\
+             return limit;\n\
+         }\n",
+    )]);
+
+    assert!(
+        condition_errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::IncompatibleType
+                && error.message().contains("loop condition expects")
+        }),
+        "Expected a non-boolean loop condition diagnostic, got: {condition_errors:?}"
+    );
+
+    let yield_errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] bad(items: seq[int]): seq[int] = {\n\
+             loop(item in items) {\n\
+                 yeild item;\n\
+             }\n\
+             return items;\n\
+         }\n",
+    )]);
+
+    assert!(
+        yield_errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::Unsupported
+                && error
+                    .message()
+                    .contains("yeild typing is not part of the V1 typecheck milestone")
+        }),
+        "Expected an explicit yeild boundary diagnostic, got: {yield_errors:?}"
+    );
+}
+
+#[test]
 fn declaration_signature_lowering_resolves_qualified_named_types() {
     let typed = typecheck_fixture_folder(&[
         ("util/types.fol", "ali Count: int\n"),

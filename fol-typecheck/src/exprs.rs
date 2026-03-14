@@ -2,11 +2,13 @@ use crate::{
     decls, CheckedType, CheckedTypeId, RoutineType, TypecheckError, TypecheckErrorKind,
     TypecheckResult, TypedProgram,
 };
-use fol_parser::ast::{AstNode, Literal, QualifiedPath, SyntaxNodeId, SyntaxOrigin, WhenCase};
+use fol_parser::ast::{
+    AstNode, Literal, LoopCondition, QualifiedPath, SyntaxNodeId, SyntaxOrigin, WhenCase,
+};
 use fol_resolver::{
     ReferenceId, ReferenceKind, ResolvedProgram, ScopeId, SourceUnitId, SymbolId, SymbolKind,
 };
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, VecDeque};
 
 #[derive(Debug, Clone, Copy)]
 struct TypeContext {
@@ -156,6 +158,7 @@ fn type_node(
             cases,
             default,
         } => type_when(typed, resolved, context, expr, cases, default.as_deref()),
+        AstNode::Loop { condition, body } => type_loop(typed, resolved, context, condition, body),
         AstNode::Assignment { target, value } => {
             ensure_assignable_target(target)?;
             let expected = type_node(typed, resolved, context, target)?.ok_or_else(|| {
@@ -219,7 +222,11 @@ fn type_node(
             "pattern access is not part of the V1 typecheck milestone",
         )),
         AstNode::Return { value } => type_return(typed, resolved, context, value.as_deref()),
-        AstNode::Yield { value } => type_node(typed, resolved, context, value),
+        AstNode::Break => Ok(Some(typed.builtin_types().never)),
+        AstNode::Yield { .. } => Err(TypecheckError::new(
+            TypecheckErrorKind::Unsupported,
+            "yeild typing is not part of the V1 typecheck milestone",
+        )),
         _ => {
             for child in node.children() {
                 let _ = type_node(typed, resolved, context, child)?;
@@ -362,6 +369,103 @@ fn type_when(
     }
 
     Ok(Some(expected))
+}
+
+fn type_loop(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    condition: &LoopCondition,
+    body: &[AstNode],
+) -> Result<Option<CheckedTypeId>, TypecheckError> {
+    match condition {
+        LoopCondition::Condition(condition) => {
+            let condition_type = type_node(typed, resolved, context, condition)?.ok_or_else(|| {
+                TypecheckError::new(
+                    TypecheckErrorKind::InvalidInput,
+                    "loop condition does not have a type",
+                )
+            })?;
+            ensure_assignable(
+                typed,
+                typed.builtin_types().bool_,
+                condition_type,
+                "loop condition".to_string(),
+                None,
+            )?;
+            let _ = type_body(typed, resolved, context, body)?;
+        }
+        LoopCondition::Iteration {
+            var,
+            type_hint,
+            iterable,
+            condition,
+        } => {
+            let iterable_type = type_node(typed, resolved, context, iterable)?.ok_or_else(|| {
+                TypecheckError::new(
+                    TypecheckErrorKind::InvalidInput,
+                    "loop iterable does not have a type",
+                )
+            })?;
+            let item_type = iterable_element_type(typed, iterable_type)?;
+            let binder_scope =
+                loop_binder_scope(resolved, context.source_unit_id, context.scope_id, var, condition, body)?;
+            if let Some(type_hint) = type_hint {
+                let hinted = decls::lower_type(typed, resolved, binder_scope, type_hint)?;
+                ensure_assignable(
+                    typed,
+                    hinted,
+                    item_type,
+                    format!("loop binder '{var}'"),
+                    None,
+                )?;
+                record_symbol_type(
+                    typed,
+                    resolved,
+                    context.source_unit_id,
+                    binder_scope,
+                    var,
+                    SymbolKind::LoopBinder,
+                    hinted,
+                )?;
+            } else {
+                record_symbol_type(
+                    typed,
+                    resolved,
+                    context.source_unit_id,
+                    binder_scope,
+                    var,
+                    SymbolKind::LoopBinder,
+                    item_type,
+                )?;
+            }
+            let loop_context = TypeContext {
+                source_unit_id: context.source_unit_id,
+                scope_id: binder_scope,
+                routine_return_type: context.routine_return_type,
+                routine_error_type: context.routine_error_type,
+            };
+            if let Some(condition) = condition.as_deref() {
+                let condition_type =
+                    type_node(typed, resolved, loop_context, condition)?.ok_or_else(|| {
+                        TypecheckError::new(
+                            TypecheckErrorKind::InvalidInput,
+                            "loop guard does not have a type",
+                        )
+                    })?;
+                ensure_assignable(
+                    typed,
+                    typed.builtin_types().bool_,
+                    condition_type,
+                    "loop guard".to_string(),
+                    None,
+                )?;
+            }
+            let _ = type_body(typed, resolved, loop_context, body)?;
+        }
+    }
+
+    Ok(None)
 }
 
 fn type_function_call(
@@ -534,6 +638,41 @@ fn type_return(
     })?;
     ensure_assignable(typed, expected, actual, "return".to_string(), None)?;
     Ok(Some(actual))
+}
+
+fn iterable_element_type(
+    typed: &TypedProgram,
+    iterable_type: CheckedTypeId,
+) -> Result<CheckedTypeId, TypecheckError> {
+    let apparent = apparent_type_id(typed, iterable_type)?;
+    match typed.type_table().get(apparent) {
+        Some(CheckedType::Array { element_type, .. })
+        | Some(CheckedType::Vector { element_type })
+        | Some(CheckedType::Sequence { element_type }) => Ok(*element_type),
+        Some(CheckedType::Set { member_types }) => {
+            let Some(first) = member_types.first().copied() else {
+                return Err(TypecheckError::new(
+                    TypecheckErrorKind::InvalidInput,
+                    "cannot infer an iteration element type from an empty set",
+                ));
+            };
+            if member_types.iter().all(|member| *member == first) {
+                Ok(first)
+            } else {
+                Err(TypecheckError::new(
+                    TypecheckErrorKind::Unsupported,
+                    "heterogeneous set iteration is not part of the V1 typecheck milestone",
+                ))
+            }
+        }
+        _ => Err(TypecheckError::new(
+            TypecheckErrorKind::InvalidInput,
+            format!(
+                "loop iteration requires an array, vector, sequence, or homogeneous set receiver, got '{}'",
+                describe_type(typed, iterable_type)
+            ),
+        )),
+    }
 }
 
 fn type_field_access(
@@ -1007,6 +1146,99 @@ fn origin_for(resolved: &ResolvedProgram, syntax_id: SyntaxNodeId) -> Option<Syn
     resolved.syntax_index().origin(syntax_id).cloned()
 }
 
+fn loop_binder_scope(
+    resolved: &ResolvedProgram,
+    source_unit_id: SourceUnitId,
+    parent_scope_id: ScopeId,
+    binder_name: &str,
+    condition: &Option<Box<AstNode>>,
+    body: &[AstNode],
+) -> Result<ScopeId, TypecheckError> {
+    let mut syntax_ids = BTreeSet::new();
+    if let Some(condition) = condition.as_deref() {
+        collect_syntax_ids(condition, &mut syntax_ids);
+    }
+    for node in body {
+        collect_syntax_ids(node, &mut syntax_ids);
+    }
+
+    let mut referenced_scopes = BTreeSet::new();
+    for reference in resolved.references.iter() {
+        let Some(syntax_id) = reference.syntax_id else {
+            continue;
+        };
+        if !syntax_ids.contains(&syntax_id) {
+            continue;
+        }
+        let Some(symbol_id) = reference.resolved else {
+            continue;
+        };
+        let Some(symbol) = resolved.symbol(symbol_id) else {
+            continue;
+        };
+        if symbol.source_unit == source_unit_id
+            && symbol.kind == SymbolKind::LoopBinder
+            && symbol.name == binder_name
+        {
+            referenced_scopes.insert(symbol.scope);
+        }
+    }
+
+    if let Some(scope_id) = single_scope(referenced_scopes) {
+        return Ok(scope_id);
+    }
+
+    let mut queue = VecDeque::from([parent_scope_id]);
+    let mut matched_scopes = BTreeSet::new();
+    while let Some(scope_id) = queue.pop_front() {
+        for (child_scope_id, child_scope) in resolved.scopes.iter_with_ids() {
+            if child_scope.parent != Some(scope_id) || child_scope.source_unit != Some(source_unit_id) {
+                continue;
+            }
+            queue.push_back(child_scope_id);
+            if child_scope.kind != fol_resolver::ScopeKind::LoopBinder {
+                continue;
+            }
+            if resolved
+                .symbols
+                .iter()
+                .any(|symbol| {
+                    symbol.source_unit == source_unit_id
+                        && symbol.scope == child_scope_id
+                        && symbol.kind == SymbolKind::LoopBinder
+                        && symbol.name == binder_name
+                })
+            {
+                matched_scopes.insert(child_scope_id);
+            }
+        }
+    }
+
+    single_scope(matched_scopes).ok_or_else(|| {
+        TypecheckError::new(
+            TypecheckErrorKind::Internal,
+            format!("could not uniquely recover the loop binder scope for '{binder_name}'"),
+        )
+    })
+}
+
+fn single_scope(scopes: BTreeSet<ScopeId>) -> Option<ScopeId> {
+    if scopes.len() == 1 {
+        scopes.into_iter().next()
+    } else {
+        None
+    }
+}
+
+fn collect_syntax_ids(node: &AstNode, syntax_ids: &mut BTreeSet<SyntaxNodeId>) {
+    if let Some(syntax_id) = node.syntax_id() {
+        syntax_ids.insert(syntax_id);
+    }
+    for child in node.children() {
+        collect_syntax_ids(child, syntax_ids);
+    }
+}
+
 fn find_symbol_in_scope(
     resolved: &ResolvedProgram,
     source_unit_id: SourceUnitId,
@@ -1024,6 +1256,31 @@ fn find_symbol_in_scope(
                 && symbol.kind == kind
         })
         .map(|(symbol_id, _)| symbol_id)
+}
+
+fn record_symbol_type(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    source_unit_id: SourceUnitId,
+    scope_id: ScopeId,
+    name: &str,
+    kind: SymbolKind,
+    type_id: CheckedTypeId,
+) -> Result<(), TypecheckError> {
+    let Some(symbol_id) = find_symbol_in_scope(resolved, source_unit_id, scope_id, name, kind) else {
+        return Err(internal_error(
+            format!("typed symbol facts lost local symbol '{name}'"),
+            None,
+        ));
+    };
+    let Some(symbol) = typed.typed_symbol_mut(symbol_id) else {
+        return Err(internal_error(
+            format!("typed symbol facts lost local symbol '{name}'"),
+            None,
+        ));
+    };
+    symbol.declared_type = Some(type_id);
+    Ok(())
 }
 
 fn binding_kind_for(node: &AstNode) -> SymbolKind {

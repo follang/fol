@@ -495,7 +495,7 @@ Status: done
 
 #### 3.5
 
-Status: pending
+Status: done
 
 - Type field access, index access, slice/access basics, and non-callable/non-indexable errors.
 
@@ -523,7 +523,7 @@ Status: done
 
 #### 4.4
 
-Status: pending
+Status: done
 
 - Type loop/control-flow basics and reserve `break`/`yeild` behavior explicitly.
 
