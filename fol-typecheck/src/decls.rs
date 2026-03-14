@@ -629,7 +629,9 @@ fn symbol_kind_for_node(node: &AstNode) -> SymbolKind {
 fn unsupported_type_error(resolved: &ResolvedProgram, typ: &FolType) -> TypecheckError {
     let label = match typ {
         FolType::Matrix { .. } => "matrix types are not part of the V1 typecheck milestone",
-        FolType::Pointer { .. } => "pointer types are not part of the V1 typecheck milestone",
+        FolType::Pointer { .. } => {
+            "pointer types are part of the V3 systems milestone, not the V1 typecheck milestone"
+        }
         FolType::Channel { .. } => "channel types are not part of the V1 typecheck milestone",
         FolType::Multiple { .. } => "multiple types are not part of the V1 typecheck milestone",
         FolType::Union { .. } => "union types are not part of the V1 typecheck milestone",

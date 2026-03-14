@@ -563,7 +563,7 @@ Status: done
 
 #### 5.5
 
-Status: pending
+Status: done
 
 - Add structural typing checks for optional/error shells used by current surfaces and make pointer surfaces fail explicitly as `V3` semantics.
 

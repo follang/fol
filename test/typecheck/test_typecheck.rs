@@ -1291,6 +1291,102 @@ fn entry_value_typing_rejects_unknown_variants() {
 }
 
 #[test]
+fn shell_typing_accepts_optional_and_error_payload_lifting() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "ali MaybeText: opt[str]\n\
+         ali Failure: err[str]\n\
+         var label: MaybeText = \"ok\"\n\
+         var issue: Failure = \"bad\"\n\
+         fun[] maybe(): MaybeText = {\n\
+             return \"ready\";\n\
+         }\n\
+         fun[] fail(): int: Failure = {\n\
+             report \"broken\";\n\
+         }\n",
+    )]);
+
+    let (maybe_id, _maybe_alias) = find_typed_symbol(&typed, "MaybeText", SymbolKind::Alias);
+    let (failure_id, _failure_alias) = find_typed_symbol(&typed, "Failure", SymbolKind::Alias);
+    let (_label_id, label) = find_typed_symbol(&typed, "label", SymbolKind::ValueBinding);
+    let (_issue_id, issue) = find_typed_symbol(&typed, "issue", SymbolKind::ValueBinding);
+    let maybe_syntax = find_named_routine_syntax_id(&typed, "maybe");
+    let fail_syntax = find_named_routine_syntax_id(&typed, "fail");
+
+    assert_eq!(
+        typed.type_table().get(label.declared_type.expect("optional binding should lower")),
+        Some(&CheckedType::Declared {
+            symbol: maybe_id,
+            name: "MaybeText".to_string(),
+            kind: DeclaredTypeKind::Alias,
+        })
+    );
+    assert_eq!(
+        typed.type_table().get(issue.declared_type.expect("error binding should lower")),
+        Some(&CheckedType::Declared {
+            symbol: failure_id,
+            name: "Failure".to_string(),
+            kind: DeclaredTypeKind::Alias,
+        })
+    );
+    assert_eq!(
+        typed
+            .typed_node(maybe_syntax)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Declared {
+            symbol: maybe_id,
+            name: "MaybeText".to_string(),
+            kind: DeclaredTypeKind::Alias,
+        })
+    );
+    assert_eq!(
+        typed
+            .typed_node(fail_syntax)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+}
+
+#[test]
+fn shell_typing_rejects_mismatched_optional_payloads() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "ali MaybeText: opt[str]\n\
+         fun[] bad(): int = {\n\
+             var label: MaybeText = 1;\n\
+             return 0;\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::IncompatibleType
+                && error
+                    .message()
+                    .contains("initializer for 'label' expects")
+        }),
+        "Expected an optional-shell mismatch diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
+fn shell_typing_rejects_pointer_surfaces_as_v3_only() {
+    let errors = typecheck_fixture_folder_errors(&[("main.fol", "ali CounterPtr: ptr[int]\n")]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::Unsupported
+                && error
+                    .message()
+                    .contains("pointer types are part of the V3 systems milestone")
+        }),
+        "Expected a V3 pointer-boundary diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
 fn declaration_signature_lowering_resolves_qualified_named_types() {
     let typed = typecheck_fixture_folder(&[
         ("util/types.fol", "ali Count: int\n"),

@@ -1922,8 +1922,24 @@ fn ensure_assignable(
     surface: String,
     origin: Option<SyntaxOrigin>,
 ) -> Result<(), TypecheckError> {
-    if expected == actual || actual == typed.builtin_types().never {
+    if actual == typed.builtin_types().never {
         return Ok(());
+    }
+
+    let expected_apparent = apparent_type_id(typed, expected)?;
+    let actual_apparent = apparent_type_id(typed, actual)?;
+    if expected == actual || expected_apparent == actual_apparent {
+        return Ok(());
+    }
+
+    match typed.type_table().get(expected_apparent) {
+        Some(CheckedType::Optional { inner }) if *inner == actual_apparent => {
+            return Ok(());
+        }
+        Some(CheckedType::Error { inner: Some(inner) }) if *inner == actual_apparent => {
+            return Ok(());
+        }
+        _ => {}
     }
 
     Err(TypecheckError::with_origin(
