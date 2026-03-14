@@ -1463,6 +1463,60 @@ fn operator_typing_rejects_invalid_scalar_pairs_and_pointer_operators() {
 }
 
 #[test]
+fn coercion_policy_rejects_implicit_int_float_cross_family_conversions() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] take_float(value: flt): flt = {\n\
+             return value;\n\
+         }\n\
+         fun[] bad_binding(): int = {\n\
+             var count: int = 1.5;\n\
+             return count;\n\
+         }\n\
+         fun[] bad_call(): flt = {\n\
+             return take_float(1);\n\
+         }\n\
+         fun[] bad_return(): int = {\n\
+             return 1.5;\n\
+         }\n\
+         fun[] bad_report(): int : int = {\n\
+             report 1.5;\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::IncompatibleType
+                && error
+                    .message()
+                    .contains("initializer for 'count' expects")
+        }),
+        "Expected an initializer coercion diagnostic, got: {errors:?}"
+    );
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::IncompatibleType
+                && error.message().contains("call to 'take_float' expects")
+        }),
+        "Expected a call coercion diagnostic, got: {errors:?}"
+    );
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::IncompatibleType
+                && error.message().contains("return expects")
+        }),
+        "Expected a return coercion diagnostic, got: {errors:?}"
+    );
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::IncompatibleType
+                && error.message().contains("report expects")
+        }),
+        "Expected a report coercion diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
 fn declaration_signature_lowering_resolves_qualified_named_types() {
     let typed = typecheck_fixture_folder(&[
         ("util/types.fol", "ali Count: int\n"),

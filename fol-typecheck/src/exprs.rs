@@ -2041,24 +2041,8 @@ fn ensure_assignable(
     surface: String,
     origin: Option<SyntaxOrigin>,
 ) -> Result<(), TypecheckError> {
-    if actual == typed.builtin_types().never {
+    if is_v1_assignable(typed, expected, actual)? {
         return Ok(());
-    }
-
-    let expected_apparent = apparent_type_id(typed, expected)?;
-    let actual_apparent = apparent_type_id(typed, actual)?;
-    if expected == actual || expected_apparent == actual_apparent {
-        return Ok(());
-    }
-
-    match typed.type_table().get(expected_apparent) {
-        Some(CheckedType::Optional { inner }) if *inner == actual_apparent => {
-            return Ok(());
-        }
-        Some(CheckedType::Error { inner: Some(inner) }) if *inner == actual_apparent => {
-            return Ok(());
-        }
-        _ => {}
     }
 
     Err(TypecheckError::with_origin(
@@ -2075,6 +2059,28 @@ fn ensure_assignable(
             length: 1,
         }),
     ))
+}
+
+fn is_v1_assignable(
+    typed: &TypedProgram,
+    expected: CheckedTypeId,
+    actual: CheckedTypeId,
+) -> Result<bool, TypecheckError> {
+    if actual == typed.builtin_types().never {
+        return Ok(true);
+    }
+
+    let expected_apparent = apparent_type_id(typed, expected)?;
+    let actual_apparent = apparent_type_id(typed, actual)?;
+    if expected == actual || expected_apparent == actual_apparent {
+        return Ok(true);
+    }
+
+    Ok(match typed.type_table().get(expected_apparent) {
+        Some(CheckedType::Optional { inner }) if *inner == actual_apparent => true,
+        Some(CheckedType::Error { inner: Some(inner) }) if *inner == actual_apparent => true,
+        _ => false,
+    })
 }
 
 fn describe_type(typed: &TypedProgram, type_id: CheckedTypeId) -> String {

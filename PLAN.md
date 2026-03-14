@@ -579,7 +579,7 @@ Status: done
 
 #### 6.2
 
-Status: pending
+Status: done
 
 - Implement the narrow v1 coercion policy and use it in assignment/call/return/report checking.
 
