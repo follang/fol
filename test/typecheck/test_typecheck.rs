@@ -1361,6 +1361,33 @@ fn record_initializer_typing_accepts_nested_record_construction() {
 }
 
 #[test]
+fn record_initializer_typing_accepts_named_binding_and_call_argument_contexts() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "typ User: rec = {\n\
+             name: str;\n\
+             count: int\n\
+         }\n\
+         fun[] count(user: User): int = {\n\
+             return user.count;\n\
+         }\n\
+         fun[] build(): int = {\n\
+             var current: User = { name = \"ok\", count = 1 };\n\
+             return count({ name = \"next\", count = 2 });\n\
+         }\n",
+    )]);
+
+    let syntax_id = find_named_routine_syntax_id(&typed, "build");
+    assert_eq!(
+        typed
+            .typed_node(syntax_id)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+}
+
+#[test]
 fn record_initializer_typing_rejects_missing_unknown_and_mismatched_fields() {
     let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",
@@ -1401,6 +1428,51 @@ fn record_initializer_typing_rejects_missing_unknown_and_mismatched_fields() {
                     .contains("does not define a field named 'extra'")
         }),
         "Expected an unknown-record-field diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
+fn workspace_record_initializer_typing_accepts_imported_named_record_contexts() {
+    let root = unique_temp_dir("workspace_imported_record_initializers");
+    create_dir_all(&root).expect("Fixture root should be creatable");
+    write_fixture_files(
+        &root,
+        &[
+            (
+                "shared/lib.fol",
+                concat!(
+                    "typ[exp] User: rec = {\n",
+                    "    name: str;\n",
+                    "    count: int;\n",
+                    "}\n",
+                    "fun[exp] count(user: User): int = {\n",
+                    "    return user.count;\n",
+                    "}\n",
+                ),
+            ),
+            (
+                "app/main.fol",
+                concat!(
+                    "use shared: loc = {\"../shared\"};\n",
+                    "var imported_user: User = { name = \"ok\", count = 1 };\n",
+                    "fun[] main(): int = {\n",
+                    "    return count({ name = \"next\", count = 2 });\n",
+                    "}\n",
+                ),
+            ),
+        ],
+    );
+
+    let typed = typecheck_fixture_workspace_entry_with_config(&root, "app", ResolverConfig::default())
+        .expect("Workspace entry typing should accept imported named record initializers in bindings and call arguments");
+    let syntax_id = find_named_routine_syntax_id(&typed, "main");
+
+    assert_eq!(
+        typed
+            .typed_node(syntax_id)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
     );
 }
 

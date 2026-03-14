@@ -456,7 +456,7 @@ Status: done
 
 #### 5.2
 
-Status: pending
+Status: done
 
 - Ensure record initializers work against named expected types in all already-
   intended `V1` contexts:
