@@ -971,6 +971,48 @@ fn loop_typing_rejects_non_boolean_conditions_and_reserved_yields() {
 }
 
 #[test]
+fn control_never_typing_allows_panic_and_skips_unreachable_tails() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "fun[] demo(): int = {\n\
+             panic \"boom\";\n\
+             return \"bad\";\n\
+         }\n",
+    )]);
+
+    let syntax_id = find_named_routine_syntax_id(&typed, "demo");
+    assert_eq!(
+        typed
+            .typed_node(syntax_id)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+}
+
+#[test]
+fn control_never_typing_treats_report_branches_as_early_exits() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "fun[] demo(flag: bol): int : str = {\n\
+             when(flag) {\n\
+                 case(true) { report \"bad\"; }\n\
+                 * { 1 }\n\
+             }\n\
+         }\n",
+    )]);
+
+    let syntax_id = find_named_routine_syntax_id(&typed, "demo");
+    assert_eq!(
+        typed
+            .typed_node(syntax_id)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+}
+
+#[test]
 fn declaration_signature_lowering_resolves_qualified_named_types() {
     let typed = typecheck_fixture_folder(&[
         ("util/types.fol", "ali Count: int\n"),

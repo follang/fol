@@ -529,7 +529,7 @@ Status: done
 
 #### 4.5
 
-Status: pending
+Status: done
 
 - Introduce `never`-aware control typing for `panic`, early exits, and unreachable tails.
 

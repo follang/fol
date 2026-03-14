@@ -185,6 +185,11 @@ fn type_node(
         AstNode::FunctionCall {
             name,
             args,
+            syntax_id: _,
+        } if name == "panic" => type_panic_call(typed, resolved, context, args),
+        AstNode::FunctionCall {
+            name,
+            args,
             syntax_id,
         } if name == "report" => type_report_call(typed, resolved, context, args, *syntax_id),
         AstNode::FunctionCall {
@@ -245,8 +250,11 @@ fn type_body(
     let mut final_type = None;
     for node in nodes {
         let node_type = type_node(typed, resolved, context, node)?;
-        if node_type.is_some() {
-            final_type = node_type;
+        if let Some(node_type) = node_type {
+            final_type = Some(node_type);
+            if node_type == typed.builtin_types().never {
+                return Ok(final_type);
+            }
         }
     }
     Ok(final_type)
@@ -545,7 +553,19 @@ fn type_report_call(
         )
     })?;
     ensure_assignable(typed, expected, actual, "report".to_string(), origin)?;
-    Ok(Some(actual))
+    Ok(Some(typed.builtin_types().never))
+}
+
+fn type_panic_call(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    args: &[AstNode],
+) -> Result<Option<CheckedTypeId>, TypecheckError> {
+    for arg in args {
+        let _ = type_node(typed, resolved, context, arg)?;
+    }
+    Ok(Some(typed.builtin_types().never))
 }
 
 fn type_qualified_function_call(
@@ -637,7 +657,7 @@ fn type_return(
         )
     })?;
     ensure_assignable(typed, expected, actual, "return".to_string(), None)?;
-    Ok(Some(actual))
+    Ok(Some(typed.builtin_types().never))
 }
 
 fn iterable_element_type(
