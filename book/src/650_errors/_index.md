@@ -12,6 +12,7 @@ The detailed chapters explain:
 - how each category behaves
 - how routines expose recoverable error types
 - how error-aware forms interact with control flow and pipes
+- how the current compiler reports syntax, package, and resolver failures
 
 ## Current compiler diagnostics
 
@@ -29,3 +30,6 @@ before full semantic analysis is implemented:
 The exact wording of messages is still implementation detail, but the current
 compiler contract is that locations and structured diagnostic shape are stable
 enough to build tests and tooling around them.
+
+For the detailed compiler-facing reporting model, see
+[Compiler Diagnostics](/docs/spec/errors/300_diagnostics).

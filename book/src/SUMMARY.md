@@ -48,6 +48,7 @@
 - [Error Handling](./650_errors/_index.md)
   - [Breaking Errors](./650_errors/100_braking.md)
   - [Recoverable Errors](./650_errors/200_recover.md)
+  - [Compiler Diagnostics](./650_errors/300_diagnostics.md)
 - [Syntactic Sugar](./700_sugar/_index.md)
   - [Silent Forms](./700_sugar/100_silents.md)
   - [Pipes](./700_sugar/200_pipes.md)
