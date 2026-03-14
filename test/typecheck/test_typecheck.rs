@@ -3307,20 +3307,28 @@ fn nil_typing_rejects_missing_expected_shell_contexts() {
 }
 
 #[test]
-fn reopened_v1_blocker_postfix_unwrap_is_still_explicitly_unsupported() {
+fn shell_typing_accepts_postfix_unwrap_for_optional_and_typed_error_values() {
+    let _typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "ali MaybeText: opt[str]\nali Failure: err[str]\nfun[] take_text(value: MaybeText): str = {\n    return value!;\n}\nfun[] take_error(value: Failure): str = {\n    return value!;\n}\n",
+    )]);
+}
+
+#[test]
+fn shell_typing_rejects_postfix_unwrap_for_bare_error_shells() {
     let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",
-        "ali MaybeText: opt[str]\nfun[] main(value: MaybeText): str = {\n    return value!;\n}\n",
+        "ali BareFailure: err[]\nfun[] main(value: BareFailure): str = {\n    return value!;\n}\n",
     )]);
 
     assert!(
         errors.iter().any(|error| {
-            error.kind() == TypecheckErrorKind::Unsupported
+            error.kind() == TypecheckErrorKind::InvalidInput
                 && error
                     .message()
-                    .contains("unwrap operators are not part of the V1 typecheck milestone")
+                    .contains("unwrap requires an opt[...] or err[...] shell with a value type in V1")
         }),
-        "Expected the reopened unwrap blocker diagnostic, got: {errors:?}"
+        "Expected the unwrap shell diagnostic, got: {errors:?}"
     );
 }
 

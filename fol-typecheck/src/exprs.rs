@@ -545,10 +545,16 @@ fn type_unary_op(
             TypecheckErrorKind::Unsupported,
             "pointer operators are part of the V3 systems milestone, not the V1 typecheck milestone",
         )),
-        UnaryOperator::Unwrap => Err(TypecheckError::new(
-            TypecheckErrorKind::Unsupported,
-            "unwrap operators are not part of the V1 typecheck milestone",
-        )),
+        UnaryOperator::Unwrap => {
+            if let Some(inner) = unwrap_shell_result_type(typed, operand_type)? {
+                Ok(Some(inner))
+            } else {
+                Err(TypecheckError::new(
+                    TypecheckErrorKind::InvalidInput,
+                    "unwrap requires an opt[...] or err[...] shell with a value type in V1",
+                ))
+            }
+        }
     }
 }
 

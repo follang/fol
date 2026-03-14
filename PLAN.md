@@ -501,7 +501,7 @@ Status: done
 
 #### 6.3
 
-Status: pending
+Status: done
 
 - Implement postfix unwrap typing for the accepted `V1` shell contexts.
 
