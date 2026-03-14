@@ -11,7 +11,7 @@ pub mod types;
 
 pub use builtins::BuiltinTypeIds;
 pub use errors::{TypecheckError, TypecheckErrorKind};
-pub use model::TypedProgram;
+pub use model::{TypedNode, TypedProgram, TypedReference, TypedSourceUnit, TypedSymbol};
 pub use types::{
     BuiltinType, CheckedType, CheckedTypeId, DeclaredTypeKind, RoutineType, TypeTable,
 };

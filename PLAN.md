@@ -421,7 +421,7 @@ Status: done
 
 #### 1.2
 
-Status: pending
+Status: done
 
 - Add `TypedProgram`, `TypedSourceUnit`, `TypedSymbol`, and `TypedNode` result models.
 

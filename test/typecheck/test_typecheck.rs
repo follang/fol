@@ -112,17 +112,25 @@ fn builtin_type_installation_reuses_existing_slots() {
 #[test]
 fn typechecker_wraps_resolved_programs_in_a_typed_shell() {
     let resolved = resolve_fixture("test/parser/simple_var.fol");
+    let top_level_node = resolved
+        .source_units
+        .get(fol_resolver::SourceUnitId(0))
+        .expect("resolved source unit should exist")
+        .top_level_nodes[0];
     let typed = Typechecker::new()
         .check_resolved_program(resolved)
         .expect("Typed shell should accept resolved programs");
 
     assert_eq!(typed.package_name(), "parser");
+    assert_eq!(typed.source_units().len(), 1);
     assert_eq!(typed.type_table().len(), 6);
     assert_eq!(
         typed.type_table().get(typed.builtin_types().bool_),
         Some(&CheckedType::Builtin(BuiltinType::Bool))
     );
     assert_eq!(typed.resolved().source_units.len(), 1);
+    assert!(typed.typed_node(top_level_node).is_some());
+    assert!(typed.typed_symbol(SymbolId(0)).is_some());
 }
 
 #[test]

@@ -1,21 +1,124 @@
-use crate::{BuiltinTypeIds, TypeTable};
+use crate::{BuiltinTypeIds, CheckedTypeId, TypeTable};
+use fol_parser::ast::SyntaxNodeId;
+use fol_resolver::{ReferenceKind, ScopeId, SourceUnitId, SymbolId, SymbolKind};
+use std::collections::BTreeMap;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TypedSourceUnit {
+    pub source_unit_id: SourceUnitId,
+    pub path: String,
+    pub package: String,
+    pub namespace: String,
+    pub scope_id: ScopeId,
+    pub top_level_nodes: Vec<SyntaxNodeId>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TypedSymbol {
+    pub symbol_id: SymbolId,
+    pub kind: SymbolKind,
+    pub scope_id: ScopeId,
+    pub source_unit_id: SourceUnitId,
+    pub declared_type: Option<CheckedTypeId>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TypedNode {
+    pub syntax_id: SyntaxNodeId,
+    pub source_unit_id: SourceUnitId,
+    pub inferred_type: Option<CheckedTypeId>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TypedReference {
+    pub reference_id: fol_resolver::ReferenceId,
+    pub kind: ReferenceKind,
+    pub source_unit_id: SourceUnitId,
+    pub resolved_type: Option<CheckedTypeId>,
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TypedProgram {
     resolved: fol_resolver::ResolvedProgram,
     type_table: TypeTable,
     builtins: BuiltinTypeIds,
+    source_units: Vec<TypedSourceUnit>,
+    symbols: BTreeMap<SymbolId, TypedSymbol>,
+    nodes: BTreeMap<SyntaxNodeId, TypedNode>,
+    references: BTreeMap<fol_resolver::ReferenceId, TypedReference>,
 }
 
 impl TypedProgram {
     pub fn from_resolved(resolved: fol_resolver::ResolvedProgram) -> Self {
         let mut type_table = TypeTable::new();
         let builtins = BuiltinTypeIds::install(&mut type_table);
+        let source_units = resolved
+            .source_units
+            .iter_with_ids()
+            .map(|(source_unit_id, unit)| TypedSourceUnit {
+                source_unit_id,
+                path: unit.path.clone(),
+                package: unit.package.clone(),
+                namespace: unit.namespace.clone(),
+                scope_id: unit.scope_id,
+                top_level_nodes: unit.top_level_nodes.clone(),
+            })
+            .collect::<Vec<_>>();
+        let symbols = resolved
+            .symbols
+            .iter_with_ids()
+            .map(|(symbol_id, symbol)| {
+                (
+                    symbol_id,
+                    TypedSymbol {
+                        symbol_id,
+                        kind: symbol.kind,
+                        scope_id: symbol.scope,
+                        source_unit_id: symbol.source_unit,
+                        declared_type: None,
+                    },
+                )
+            })
+            .collect::<BTreeMap<_, _>>();
+        let nodes = source_units
+            .iter()
+            .flat_map(|unit| {
+                unit.top_level_nodes.iter().copied().map(move |syntax_id| {
+                    (
+                        syntax_id,
+                        TypedNode {
+                            syntax_id,
+                            source_unit_id: unit.source_unit_id,
+                            inferred_type: None,
+                        },
+                    )
+                })
+            })
+            .collect::<BTreeMap<_, _>>();
+        let references = resolved
+            .references
+            .iter_with_ids()
+            .map(|(reference_id, reference)| {
+                (
+                    reference_id,
+                    TypedReference {
+                        reference_id,
+                        kind: reference.kind,
+                        source_unit_id: reference.source_unit,
+                        resolved_type: None,
+                    },
+                )
+            })
+            .collect::<BTreeMap<_, _>>();
 
         Self {
             resolved,
             type_table,
             builtins,
+            source_units,
+            symbols,
+            nodes,
+            references,
         }
     }
 
@@ -33,6 +136,25 @@ impl TypedProgram {
 
     pub fn builtin_types(&self) -> BuiltinTypeIds {
         self.builtins
+    }
+
+    pub fn source_units(&self) -> &[TypedSourceUnit] {
+        &self.source_units
+    }
+
+    pub fn typed_symbol(&self, symbol_id: SymbolId) -> Option<&TypedSymbol> {
+        self.symbols.get(&symbol_id)
+    }
+
+    pub fn typed_node(&self, syntax_id: SyntaxNodeId) -> Option<&TypedNode> {
+        self.nodes.get(&syntax_id)
+    }
+
+    pub fn typed_reference(
+        &self,
+        reference_id: fol_resolver::ReferenceId,
+    ) -> Option<&TypedReference> {
+        self.references.get(&reference_id)
     }
 }
 
@@ -61,6 +183,13 @@ mod tests {
         assert_eq!(
             typed.type_table().get(typed.builtin_types().str_),
             Some(&CheckedType::Builtin(BuiltinType::Str))
+        );
+        assert_eq!(typed.source_units().len(), 1);
+        assert_eq!(
+            typed.source_units()[0].top_level_nodes,
+            typed.resolved().source_units.get(fol_resolver::SourceUnitId(0))
+                .expect("resolved source unit should exist")
+                .top_level_nodes
         );
     }
 }
