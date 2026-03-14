@@ -395,7 +395,7 @@ Status: done
 
 #### 3.5
 
-Status: pending
+Status: done
 
 - Lock direct imported declaration typing tests for `loc`, `std`, and `pkg`.
 

@@ -175,6 +175,65 @@ fn find_typed_reference<'a>(
         .expect("typed reference facts should exist")
 }
 
+fn assert_imported_declared_count_binding_and_routine(
+    typed: &fol_typecheck::TypedProgram,
+    count_symbol: SymbolKind,
+) {
+    let (count_id, _count) = find_typed_symbol(typed, "Count", count_symbol);
+    let (_answer_id, answer) = find_typed_symbol(typed, "answer", SymbolKind::ValueBinding);
+    let (_bump_id, bump) = find_typed_symbol(typed, "bump", SymbolKind::Routine);
+
+    assert_eq!(
+        typed.type_table().get(
+            answer
+                .declared_type
+                .expect("imported values should keep declared semantic types"),
+        ),
+        Some(&CheckedType::Declared {
+            symbol: count_id,
+            name: "Count".to_string(),
+            kind: match count_symbol {
+                SymbolKind::Alias => DeclaredTypeKind::Alias,
+                _ => DeclaredTypeKind::Type,
+            },
+        })
+    );
+
+    let signature = match typed.type_table().get(
+        bump.declared_type
+            .expect("imported routines should keep translated signatures"),
+    ) {
+        Some(CheckedType::Routine(signature)) => signature,
+        other => panic!("expected imported routine signature, got {other:?}"),
+    };
+    assert_eq!(signature.params.len(), 1);
+    assert_eq!(signature.error_type, None);
+    assert_eq!(
+        typed.type_table().get(signature.params[0]),
+        Some(&CheckedType::Declared {
+            symbol: count_id,
+            name: "Count".to_string(),
+            kind: match count_symbol {
+                SymbolKind::Alias => DeclaredTypeKind::Alias,
+                _ => DeclaredTypeKind::Type,
+            },
+        })
+    );
+    assert_eq!(
+        signature
+            .return_type
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Declared {
+            symbol: count_id,
+            name: "Count".to_string(),
+            kind: match count_symbol {
+                SymbolKind::Alias => DeclaredTypeKind::Alias,
+                _ => DeclaredTypeKind::Type,
+            },
+        })
+    );
+}
+
 fn find_named_routine_syntax_id(
     typed: &fol_typecheck::TypedProgram,
     name: &str,
@@ -2319,6 +2378,124 @@ fn workspace_typechecking_imports_alias_record_and_entry_type_facts() {
             variants: outcome_variants,
         })
     );
+}
+
+#[test]
+fn workspace_typechecking_keeps_direct_loc_import_declaration_facts() {
+    let root = unique_temp_dir("workspace_direct_loc_decls");
+    create_dir_all(&root).expect("Fixture root should be creatable");
+    write_fixture_files(
+        &root,
+        &[
+            (
+                "shared/lib.fol",
+                concat!(
+                    "typ[exp] Count: int;\n",
+                    "var[exp] answer: Count = 42;\n",
+                    "fun[exp] bump(value: Count): Count = {\n",
+                    "    return value + 1;\n",
+                    "}\n",
+                ),
+            ),
+            (
+                "app/main.fol",
+                "use shared: loc = {\"../shared\"};\nfun[] main(): int = {\n    return 0;\n}\n",
+            ),
+        ],
+    );
+
+    let typed = typecheck_fixture_workspace_entry_with_config(&root, "app", ResolverConfig::default())
+        .expect("Workspace entry typing should keep direct loc import declaration facts");
+
+    assert_imported_declared_count_binding_and_routine(&typed, SymbolKind::Type);
+}
+
+#[test]
+fn workspace_typechecking_keeps_direct_std_import_declaration_facts() {
+    let root = unique_temp_dir("workspace_direct_std_decls");
+    let std_root = root.join("std");
+    create_dir_all(&std_root).expect("Std root should be creatable");
+    write_fixture_files(
+        &root,
+        &[
+            (
+                "std/fmt/lib.fol",
+                concat!(
+                    "typ[exp] Count: int;\n",
+                    "var[exp] answer: Count = 42;\n",
+                    "fun[exp] bump(value: Count): Count = {\n",
+                    "    return value + 1;\n",
+                    "}\n",
+                ),
+            ),
+            (
+                "app/main.fol",
+                "use fmt: std = {fmt};\nfun[] main(): int = {\n    return 0;\n}\n",
+            ),
+        ],
+    );
+
+    let typed = typecheck_fixture_workspace_entry_with_config(
+        &root,
+        "app",
+        ResolverConfig {
+            std_root: Some(
+                std_root
+                    .to_str()
+                    .expect("Std root should be valid UTF-8")
+                    .to_string(),
+            ),
+            package_store_root: None,
+        },
+    )
+    .expect("Workspace entry typing should keep direct std import declaration facts");
+
+    assert_imported_declared_count_binding_and_routine(&typed, SymbolKind::Type);
+}
+
+#[test]
+fn workspace_typechecking_keeps_direct_pkg_import_declaration_facts() {
+    let root = unique_temp_dir("workspace_direct_pkg_decls");
+    let store_root = root.join("store");
+    create_dir_all(&store_root).expect("Package store root should be creatable");
+    write_fixture_files(
+        &root,
+        &[
+            ("store/json/package.yaml", "name: json\nversion: 1.0.0\n"),
+            ("store/json/build.fol", "def root: loc = \"src\";\n"),
+            (
+                "store/json/src/lib.fol",
+                concat!(
+                    "typ[exp] Count: int;\n",
+                    "var[exp] answer: Count = 42;\n",
+                    "fun[exp] bump(value: Count): Count = {\n",
+                    "    return value + 1;\n",
+                    "}\n",
+                ),
+            ),
+            (
+                "app/main.fol",
+                "use json: pkg = {json};\nfun[] main(): int = {\n    return 0;\n}\n",
+            ),
+        ],
+    );
+
+    let typed = typecheck_fixture_workspace_entry_with_config(
+        &root,
+        "app",
+        ResolverConfig {
+            std_root: None,
+            package_store_root: Some(
+                store_root
+                    .to_str()
+                    .expect("Package store root should be valid UTF-8")
+                    .to_string(),
+            ),
+        },
+    )
+    .expect("Workspace entry typing should keep direct pkg import declaration facts");
+
+    assert_imported_declared_count_binding_and_routine(&typed, SymbolKind::Type);
 }
 
 #[test]
