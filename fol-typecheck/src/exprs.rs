@@ -1,4 +1,7 @@
-use crate::{CheckedTypeId, TypecheckError, TypecheckErrorKind, TypecheckResult, TypedProgram};
+use crate::{
+    decls, CheckedType, CheckedTypeId, RoutineType, TypecheckError, TypecheckErrorKind,
+    TypecheckResult, TypedProgram,
+};
 use fol_parser::ast::{AstNode, Literal, QualifiedPath, SyntaxNodeId, SyntaxOrigin};
 use fol_resolver::{
     ReferenceId, ReferenceKind, ResolvedProgram, ScopeId, SourceUnitId, SymbolId, SymbolKind,
@@ -136,6 +139,23 @@ fn type_node(
             )?;
             Ok(Some(expected))
         }
+        AstNode::FunctionCall {
+            name,
+            args,
+            syntax_id,
+        } => type_function_call(typed, resolved, context, name, args, *syntax_id),
+        AstNode::QualifiedFunctionCall { path, args } => {
+            type_qualified_function_call(typed, resolved, context, path, args)
+        }
+        AstNode::MethodCall { object, method, args } => {
+            type_method_call(typed, resolved, context, object, method, args)
+        }
+        AstNode::Return { value } => value
+            .as_deref()
+            .map(|value| type_node(typed, resolved, context, value))
+            .transpose()
+            .map(|value| value.flatten()),
+        AstNode::Yield { value } => type_node(typed, resolved, context, value),
         _ => {
             for child in node.children() {
                 let _ = type_node(typed, resolved, context, child)?;
@@ -223,6 +243,96 @@ fn type_binding_initializer(
     }
 }
 
+fn type_function_call(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    name: &str,
+    args: &[AstNode],
+    syntax_id: Option<SyntaxNodeId>,
+) -> Result<Option<CheckedTypeId>, TypecheckError> {
+    let syntax_id = syntax_id.ok_or_else(|| {
+        TypecheckError::new(
+            TypecheckErrorKind::InvalidInput,
+            format!("function call '{name}' does not retain a syntax id"),
+        )
+    })?;
+    let reference_id =
+        find_reference_by_syntax(resolved, syntax_id, ReferenceKind::FunctionCall, name)?;
+    let signature = routine_signature_for_reference(typed, resolved, reference_id, origin_for(resolved, syntax_id))?;
+    check_call_arguments(typed, resolved, context, &signature, args, name, origin_for(resolved, syntax_id))?;
+    if let Some(return_type) = signature.return_type {
+        let typed_reference = typed
+            .typed_reference_mut(reference_id)
+            .ok_or_else(|| internal_error("typed call reference disappeared", None))?;
+        typed_reference.resolved_type = Some(return_type);
+        typed.record_node_type(syntax_id, context.source_unit_id, return_type)?;
+        Ok(Some(return_type))
+    } else {
+        Ok(None)
+    }
+}
+
+fn type_qualified_function_call(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    path: &QualifiedPath,
+    args: &[AstNode],
+) -> Result<Option<CheckedTypeId>, TypecheckError> {
+    let syntax_id = path.syntax_id().ok_or_else(|| {
+        TypecheckError::new(
+            TypecheckErrorKind::InvalidInput,
+            format!("qualified function call '{}' does not retain a syntax id", path.joined()),
+        )
+    })?;
+    let reference_id = find_reference_by_syntax(
+        resolved,
+        syntax_id,
+        ReferenceKind::QualifiedFunctionCall,
+        &path.joined(),
+    )?;
+    let signature = routine_signature_for_reference(typed, resolved, reference_id, origin_for(resolved, syntax_id))?;
+    check_call_arguments(
+        typed,
+        resolved,
+        context,
+        &signature,
+        args,
+        &path.joined(),
+        origin_for(resolved, syntax_id),
+    )?;
+    if let Some(return_type) = signature.return_type {
+        let typed_reference = typed
+            .typed_reference_mut(reference_id)
+            .ok_or_else(|| internal_error("typed qualified call reference disappeared", None))?;
+        typed_reference.resolved_type = Some(return_type);
+        typed.record_node_type(syntax_id, context.source_unit_id, return_type)?;
+        Ok(Some(return_type))
+    } else {
+        Ok(None)
+    }
+}
+
+fn type_method_call(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    object: &AstNode,
+    method: &str,
+    args: &[AstNode],
+) -> Result<Option<CheckedTypeId>, TypecheckError> {
+    let object_type = type_node(typed, resolved, context, object)?.ok_or_else(|| {
+        TypecheckError::new(
+            TypecheckErrorKind::InvalidInput,
+            format!("method receiver for '{method}' does not have a type"),
+        )
+    })?;
+    let signature = routine_signature_for_method(typed, resolved, method, object_type)?;
+    check_call_arguments(typed, resolved, context, &signature, args, method, None)?;
+    Ok(signature.return_type)
+}
+
 fn type_identifier_reference(
     typed: &mut TypedProgram,
     resolved: &ResolvedProgram,
@@ -292,6 +402,161 @@ fn find_reference_by_syntax(
                 }),
             )
         })
+}
+
+fn routine_signature_for_reference(
+    typed: &TypedProgram,
+    resolved: &ResolvedProgram,
+    reference_id: ReferenceId,
+    origin: Option<SyntaxOrigin>,
+) -> Result<RoutineType, TypecheckError> {
+    let symbol_id = resolved
+        .reference(reference_id)
+        .and_then(|reference| reference.resolved)
+        .ok_or_else(|| {
+            TypecheckError::with_origin(
+                TypecheckErrorKind::InvalidInput,
+                "call reference lost its resolved routine symbol",
+                origin.clone().unwrap_or(SyntaxOrigin {
+                    file: None,
+                    line: 1,
+                    column: 1,
+                    length: 1,
+                }),
+            )
+        })?;
+    routine_signature_for_symbol(typed, symbol_id, origin)
+}
+
+fn routine_signature_for_symbol(
+    typed: &TypedProgram,
+    symbol_id: SymbolId,
+    origin: Option<SyntaxOrigin>,
+) -> Result<RoutineType, TypecheckError> {
+    let type_id = symbol_type(typed, symbol_id, origin.clone())?;
+    match typed.type_table().get(type_id) {
+        Some(CheckedType::Routine(signature)) => Ok(signature.clone()),
+        _ => Err(TypecheckError::with_origin(
+            TypecheckErrorKind::InvalidInput,
+            format!("resolved routine symbol {} is not callable", symbol_id.0),
+            origin.unwrap_or(SyntaxOrigin {
+                file: None,
+                line: 1,
+                column: 1,
+                length: 1,
+            }),
+        )),
+    }
+}
+
+fn routine_signature_for_method(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    method: &str,
+    object_type: CheckedTypeId,
+) -> Result<RoutineType, TypecheckError> {
+    let mut matches = Vec::new();
+
+    for (source_unit_index, source_unit) in resolved.syntax().source_units.iter().enumerate() {
+        let source_unit_id = SourceUnitId(source_unit_index);
+        let scope_id = resolved
+            .source_unit(source_unit_id)
+            .map(|unit| unit.scope_id)
+            .ok_or_else(|| internal_error("resolved source unit disappeared for method lookup", None))?;
+        for item in &source_unit.items {
+            match &item.node {
+                AstNode::FunDecl {
+                    name,
+                    receiver_type: Some(receiver_type),
+                    ..
+                }
+                | AstNode::ProDecl {
+                    name,
+                    receiver_type: Some(receiver_type),
+                    ..
+                }
+                | AstNode::LogDecl {
+                    name,
+                    receiver_type: Some(receiver_type),
+                    ..
+                } if name == method => {
+                    let lowered_receiver = decls::lower_type(typed, resolved, scope_id, receiver_type)?;
+                    if lowered_receiver == object_type {
+                        if let Some(symbol_id) = resolved
+                            .symbols
+                            .iter_with_ids()
+                            .find(|(_, symbol)| {
+                                symbol.source_unit == source_unit_id
+                                    && symbol.kind == SymbolKind::Routine
+                                    && symbol.name == *name
+                            })
+                            .map(|(symbol_id, _)| symbol_id)
+                        {
+                            matches.push(routine_signature_for_symbol(typed, symbol_id, None)?);
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
+    match matches.len() {
+        1 => Ok(matches.remove(0)),
+        0 => Err(TypecheckError::new(
+            TypecheckErrorKind::InvalidInput,
+            format!("method '{method}' is not available for the receiver type in V1"),
+        )),
+        _ => Err(TypecheckError::new(
+            TypecheckErrorKind::InvalidInput,
+            format!("method '{method}' is ambiguous for the receiver type"),
+        )),
+    }
+}
+
+fn check_call_arguments(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    signature: &RoutineType,
+    args: &[AstNode],
+    callee: &str,
+    origin: Option<SyntaxOrigin>,
+) -> Result<(), TypecheckError> {
+    if signature.params.len() != args.len() {
+        return Err(TypecheckError::with_origin(
+            TypecheckErrorKind::InvalidInput,
+            format!(
+                "call to '{callee}' expects {} args but got {}",
+                signature.params.len(),
+                args.len()
+            ),
+            origin.unwrap_or(SyntaxOrigin {
+                file: None,
+                line: 1,
+                column: 1,
+                length: callee.len(),
+            }),
+        ));
+    }
+
+    for (expected, arg) in signature.params.iter().zip(args) {
+        let actual = type_node(typed, resolved, context, arg)?.ok_or_else(|| {
+            TypecheckError::new(
+                TypecheckErrorKind::InvalidInput,
+                format!("argument for '{callee}' does not have a type"),
+            )
+        })?;
+        ensure_assignable(
+            typed,
+            *expected,
+            actual,
+            format!("call to '{callee}'"),
+            origin.clone(),
+        )?;
+    }
+
+    Ok(())
 }
 
 fn type_for_reference(

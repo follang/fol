@@ -375,7 +375,7 @@ fn lower_named_routine_signature(
     Ok(signature_scope)
 }
 
-fn lower_type(
+pub(crate) fn lower_type(
     typed: &mut TypedProgram,
     resolved: &ResolvedProgram,
     scope_id: ScopeId,

@@ -527,6 +527,99 @@ fn expression_typing_rejects_assignments_with_mismatched_value_types() {
 }
 
 #[test]
+fn expression_typing_types_free_calls_against_routine_signatures() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "fun[] id(value: int): int = {\n\
+             return value;\n\
+         }\n\
+         fun[] demo(): int = {\n\
+             return id(1);\n\
+         }\n",
+    )]);
+
+    let reference = find_typed_reference(&typed, "id", ReferenceKind::FunctionCall);
+    assert_eq!(
+        typed
+            .type_table()
+            .get(reference.resolved_type.expect("free call should receive a result type")),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+}
+
+#[test]
+fn expression_typing_rejects_free_call_arity_mismatches() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] id(value: int): int = {\n\
+             return value;\n\
+         }\n\
+         fun[] demo(): int = {\n\
+             return id();\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error.message().contains("expects 1 args but got 0")
+        }),
+        "Expected an arity diagnostic for free call mismatch, got: {errors:?}"
+    );
+}
+
+#[test]
+fn expression_typing_types_method_calls_against_explicit_receiver_routines() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "typ Counter: rec = {\n\
+             value: int\n\
+         }\n\
+         var current: Counter\n\
+         fun (Counter)read(): int = {\n\
+             return 1;\n\
+         }\n\
+         fun[] demo(): int = {\n\
+             return current.read();\n\
+         }\n",
+    )]);
+
+    let syntax_id = find_named_routine_syntax_id(&typed, "demo");
+    assert_eq!(
+        typed
+            .typed_node(syntax_id)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+}
+
+#[test]
+fn expression_typing_rejects_method_call_arity_mismatches() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "typ Counter: rec = {\n\
+             value: int\n\
+         }\n\
+         var current: Counter\n\
+         fun (Counter)read(value: int): int = {\n\
+             return value;\n\
+         }\n\
+         fun[] demo(): int = {\n\
+             return current.read();\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error.message().contains("expects 1 args but got 0")
+        }),
+        "Expected an arity diagnostic for method call mismatch, got: {errors:?}"
+    );
+}
+
+#[test]
 fn declaration_signature_lowering_resolves_qualified_named_types() {
     let typed = typecheck_fixture_folder(&[
         ("util/types.fol", "ali Count: int\n"),

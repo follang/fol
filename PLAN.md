@@ -489,7 +489,7 @@ Status: done
 
 #### 3.4
 
-Status: pending
+Status: done
 
 - Type free calls and method calls, including arity checks.
 
