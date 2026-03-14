@@ -483,7 +483,7 @@ Status: done
 
 #### 3.3
 
-Status: pending
+Status: done
 
 - Type assignments and assignment-target compatibility.
 

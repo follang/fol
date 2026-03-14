@@ -113,6 +113,29 @@ fn type_node(
         }
         AstNode::Block { statements } => type_body(typed, resolved, context, statements),
         AstNode::Program { declarations } => type_body(typed, resolved, context, declarations),
+        AstNode::Assignment { target, value } => {
+            ensure_assignable_target(target)?;
+            let expected = type_node(typed, resolved, context, target)?.ok_or_else(|| {
+                TypecheckError::new(
+                    TypecheckErrorKind::InvalidInput,
+                    "assignment target does not have a type",
+                )
+            })?;
+            let actual = type_node(typed, resolved, context, value)?.ok_or_else(|| {
+                TypecheckError::new(
+                    TypecheckErrorKind::InvalidInput,
+                    "assignment value does not have a type",
+                )
+            })?;
+            ensure_assignable(
+                typed,
+                expected,
+                actual,
+                "assignment".to_string(),
+                None,
+            )?;
+            Ok(Some(expected))
+        }
         _ => {
             for child in node.children() {
                 let _ = type_node(typed, resolved, context, child)?;
@@ -404,6 +427,16 @@ fn internal_error(message: impl Into<String>, origin: Option<SyntaxOrigin>) -> T
         TypecheckError::with_origin(TypecheckErrorKind::Internal, message, origin)
     } else {
         TypecheckError::new(TypecheckErrorKind::Internal, message)
+    }
+}
+
+fn ensure_assignable_target(target: &AstNode) -> Result<(), TypecheckError> {
+    match target {
+        AstNode::Identifier { .. } | AstNode::QualifiedIdentifier { .. } => Ok(()),
+        _ => Err(TypecheckError::new(
+            TypecheckErrorKind::InvalidInput,
+            "assignment targets must currently be plain or qualified identifiers",
+        )),
     }
 }
 

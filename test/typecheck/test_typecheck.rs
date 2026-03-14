@@ -61,6 +61,25 @@ fn typecheck_fixture_folder(files: &[(&str, &str)]) -> fol_typecheck::TypedProgr
         .expect("Fixture folder should typecheck declaration signatures")
 }
 
+fn typecheck_fixture_folder_errors(files: &[(&str, &str)]) -> Vec<TypecheckError> {
+    let root = unique_temp_dir("package_errors");
+    create_dir_all(&root).expect("Fixture root should be creatable");
+    write_fixture_files(&root, files);
+
+    let mut stream = FileStream::from_folder(root.to_str().expect("fixture path should be utf8"))
+        .expect("Fixture folder should stream");
+    let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+    let mut parser = AstParser::new();
+    let syntax = parser
+        .parse_package(&mut lexer)
+        .expect("Fixture folder should parse as a package");
+    let resolved = resolve_package(syntax).expect("Fixture folder should resolve cleanly");
+
+    Typechecker::new()
+        .check_resolved_program(resolved)
+        .expect_err("Fixture folder should fail typechecking")
+}
+
 fn find_typed_symbol<'a>(
     typed: &'a fol_typecheck::TypedProgram,
     name: &str,
@@ -464,6 +483,46 @@ fn expression_typing_keeps_final_routine_body_expression_types() {
             .and_then(|node| node.inferred_type)
             .and_then(|type_id| typed.type_table().get(type_id)),
         Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+}
+
+#[test]
+fn expression_typing_accepts_assignments_with_matching_types() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "var total: int = 1\n\
+         fun[] demo(): int = {\n\
+             total = 2;\n\
+             return total;\n\
+         }\n",
+    )]);
+
+    let reference = find_typed_reference(&typed, "total", ReferenceKind::Identifier);
+    assert_eq!(
+        typed
+            .type_table()
+            .get(reference.resolved_type.expect("identifier should keep its type after assignment")),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+}
+
+#[test]
+fn expression_typing_rejects_assignments_with_mismatched_value_types() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "var total: int = 1\n\
+         fun[] demo(): int = {\n\
+             total = \"bad\";\n\
+             return total;\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::IncompatibleType
+                && error.message().contains("assignment expects")
+        }),
+        "Expected an incompatible assignment diagnostic, got: {errors:?}"
     );
 }
 
