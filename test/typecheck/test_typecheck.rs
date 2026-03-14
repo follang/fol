@@ -1500,6 +1500,39 @@ fn entry_value_typing_accepts_entry_variant_accesses() {
 }
 
 #[test]
+fn entry_value_typing_accepts_named_entry_binding_return_and_call_contexts() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "typ Status: ent = {\n\
+             var OK: int = 1;\n\
+             var FAIL: int = 2;\n\
+         }\n\
+         fun[] echo(status: Status): Status = {\n\
+             return status;\n\
+         }\n\
+         fun[] main(): Status = {\n\
+             var current: Status = Status.OK;\n\
+             return echo(Status.FAIL);\n\
+         }\n",
+    )]);
+
+    let (status_id, _status) = find_typed_symbol(&typed, "Status", SymbolKind::Type);
+    let syntax_id = find_named_routine_syntax_id(&typed, "main");
+
+    assert_eq!(
+        typed
+            .typed_node(syntax_id)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Declared {
+            symbol: status_id,
+            name: "Status".to_string(),
+            kind: DeclaredTypeKind::Type,
+        })
+    );
+}
+
+#[test]
 fn entry_value_typing_rejects_unknown_variants() {
     let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",
@@ -1520,6 +1553,65 @@ fn entry_value_typing_rejects_unknown_variants() {
         }),
         "Expected an unknown-entry-variant diagnostic, got: {errors:?}"
     );
+}
+
+#[test]
+fn workspace_entry_value_typing_accepts_imported_named_entry_contexts() {
+    let root = unique_temp_dir("workspace_imported_entry_values");
+    create_dir_all(&root).expect("Fixture root should be creatable");
+    write_fixture_files(
+        &root,
+        &[
+            (
+                "shared/lib.fol",
+                concat!(
+                    "typ[exp] Status: ent = {\n",
+                    "    var OK: int = 1;\n",
+                    "    var FAIL: int = 2;\n",
+                    "}\n",
+                    "fun[exp] echo(status: Status): Status = {\n",
+                    "    return status;\n",
+                    "}\n",
+                ),
+            ),
+            (
+                "app/main.fol",
+                concat!(
+                    "use shared: loc = {\"../shared\"};\n",
+                    "var imported_status: Status = Status.OK;\n",
+                    "fun[] main(): Status = {\n",
+                    "    return echo(Status.FAIL);\n",
+                    "}\n",
+                ),
+            ),
+        ],
+    );
+
+    let typed = typecheck_fixture_workspace_entry_with_config(&root, "app", ResolverConfig::default())
+        .expect("Workspace entry typing should accept imported named entry values in bindings, returns, and call arguments");
+    let (_status_id, status) = find_typed_symbol(&typed, "Status", SymbolKind::Type);
+    let syntax_id = find_named_routine_syntax_id(&typed, "main");
+
+    assert_eq!(
+        typed.type_table().get(status.declared_type.expect("imported entry type should retain a declared shell")),
+        Some(&CheckedType::Entry {
+            variants: BTreeMap::from([
+                ("FAIL".to_string(), Some(typed.builtin_types().int)),
+                ("OK".to_string(), Some(typed.builtin_types().int)),
+            ]),
+        })
+    );
+    assert!(matches!(
+        typed
+            .typed_node(syntax_id)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(CheckedType::Declared {
+            name,
+            kind: DeclaredTypeKind::Type,
+            ..
+        }) if name == "Status"
+    ));
 }
 
 #[test]

@@ -467,7 +467,7 @@ Status: done
 
 #### 5.3
 
-Status: pending
+Status: done
 
 - Ensure entry/variant value surfaces work against named expected types in the
   same set of contexts.

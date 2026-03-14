@@ -321,7 +321,7 @@ fn type_node_with_expectation(
             type_method_call(typed, resolved, context, object, method, args)
         }
         AstNode::FieldAccess { object, field } => {
-            type_field_access(typed, resolved, context, object, field)
+            type_field_access(typed, resolved, context, object, field, expected_type)
         }
         AstNode::ChannelAccess { .. } => Err(unsupported_node_surface(
             resolved,
@@ -1128,6 +1128,7 @@ fn type_field_access(
     context: TypeContext,
     object: &AstNode,
     field: &str,
+    expected_type: Option<CheckedTypeId>,
 ) -> Result<Option<CheckedTypeId>, TypecheckError> {
     let object_type = type_node(typed, resolved, context, object)?.ok_or_else(|| {
         TypecheckError::new(
@@ -1146,6 +1147,12 @@ fn type_field_access(
             })
         }
         Some(CheckedType::Entry { variants }) => {
+            if let Some(expected_type) = expected_type {
+                let expected_apparent = apparent_type_id(typed, expected_type)?;
+                if expected_apparent == resolved_type && variants.contains_key(field) {
+                    return Ok(Some(expected_type));
+                }
+            }
             variants.get(field).copied().flatten().map(Some).ok_or_else(|| {
                 TypecheckError::new(
                     TypecheckErrorKind::InvalidInput,
