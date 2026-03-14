@@ -597,7 +597,7 @@ Status: done
 
 #### 6.5
 
-Status: pending
+Status: done
 
 - Sync docs to the real coercion vs cast contract once frozen in code.
 
