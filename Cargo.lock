@@ -133,6 +133,7 @@ dependencies = [
  "dyn-clone",
  "fol-diagnostics",
  "fol-lexer",
+ "fol-lower",
  "fol-package",
  "fol-parser",
  "fol-resolver",
@@ -166,6 +167,10 @@ dependencies = [
  "lazy_static",
  "regex",
 ]
+
+[[package]]
+name = "fol-lower"
+version = "0.1.0"
 
 [[package]]
 name = "fol-package"
