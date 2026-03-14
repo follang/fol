@@ -356,3 +356,21 @@ fn declaration_signature_lowering_resolves_qualified_named_types() {
         })
     );
 }
+
+#[test]
+fn declaration_signature_lowering_checks_local_bindings() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "fun[] demo(): int = {\n\
+             var local: int = 1;\n\
+             return local;\n\
+         }\n",
+    )]);
+
+    let (_local_id, local) = find_typed_symbol(&typed, "local", SymbolKind::ValueBinding);
+
+    assert_eq!(
+        typed.type_table().get(local.declared_type.expect("local binding should lower")),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+}

@@ -443,7 +443,7 @@ Status: pending
 
 #### 2.1
 
-Status: pending
+Status: done
 
 - Check declared types on bindings and destructuring surfaces.
 

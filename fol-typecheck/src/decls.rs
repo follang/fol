@@ -82,6 +82,8 @@ fn lower_top_level_declaration(
             params,
             return_type,
             error_type,
+            body,
+            inquiries,
             ..
         }
         | AstNode::ProDecl {
@@ -90,6 +92,8 @@ fn lower_top_level_declaration(
             params,
             return_type,
             error_type,
+            body,
+            inquiries,
             ..
         }
         | AstNode::LogDecl {
@@ -98,33 +102,28 @@ fn lower_top_level_declaration(
             params,
             return_type,
             error_type,
+            body,
+            inquiries,
             ..
         } => {
-            let symbol_id = find_symbol_id(resolved, source_unit_id, &[SymbolKind::Routine], name)?;
-            let signature_scope = syntax_id
-                .and_then(|id| resolved.scope_for_syntax(id))
-                .or_else(|| resolved.symbol(symbol_id).map(|symbol| symbol.scope))
-                .ok_or_else(|| internal_error("resolved routine scope disappeared", None))?;
-            let mut lowered_params = Vec::new();
-            for param in params {
-                lowered_params.push(lower_type(typed, resolved, signature_scope, &param.param_type)?);
-            }
-            let lowered_return = return_type
-                .as_ref()
-                .map(|ty| lower_type(typed, resolved, signature_scope, ty))
-                .transpose()?;
-            let lowered_error = error_type
-                .as_ref()
-                .map(|ty| lower_type(typed, resolved, signature_scope, ty))
-                .transpose()?;
-            let routine_type = typed
-                .type_table_mut()
-                .intern(CheckedType::Routine(RoutineType {
-                    params: lowered_params,
-                    return_type: lowered_return,
-                    error_type: lowered_error,
-                }));
-            record_symbol_type(typed, symbol_id, routine_type)?;
+            let signature_scope = lower_named_routine_signature(
+                typed,
+                resolved,
+                source_unit_id,
+                name,
+                *syntax_id,
+                params,
+                return_type.as_ref(),
+                error_type.as_ref(),
+            )?;
+            lower_nested_declarations_in_nodes(typed, resolved, source_unit_id, signature_scope, body)?;
+            lower_nested_declarations_in_nodes(
+                typed,
+                resolved,
+                source_unit_id,
+                signature_scope,
+                inquiries,
+            )?;
         }
         AstNode::TypeDecl { name, type_def, .. } => {
             let symbol_id = find_symbol_id(resolved, source_unit_id, &[SymbolKind::Type], name)?;
@@ -175,6 +174,119 @@ fn lower_top_level_declaration(
     }
 
     Ok(())
+}
+
+fn lower_nested_declarations_in_nodes(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    source_unit_id: SourceUnitId,
+    current_scope: ScopeId,
+    nodes: &[AstNode],
+) -> Result<(), TypecheckError> {
+    for node in nodes {
+        lower_nested_declarations_in_node(typed, resolved, source_unit_id, current_scope, node)?;
+    }
+    Ok(())
+}
+
+fn lower_nested_declarations_in_node(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    source_unit_id: SourceUnitId,
+    current_scope: ScopeId,
+    node: &AstNode,
+) -> Result<(), TypecheckError> {
+    match node {
+        AstNode::VarDecl {
+            name, type_hint, ..
+        }
+        | AstNode::LabDecl {
+            name, type_hint, ..
+        } => {
+            if let Some(type_hint) = type_hint {
+                let symbol_id = find_symbol_id_in_scope(
+                    resolved,
+                    source_unit_id,
+                    current_scope,
+                    &[symbol_kind_for_node(node)],
+                    name,
+                )?;
+                let type_id = lower_type(typed, resolved, current_scope, type_hint)?;
+                record_symbol_type(typed, symbol_id, type_id)?;
+            }
+        }
+        AstNode::DestructureDecl {
+            pattern, type_hint, ..
+        } => {
+            if let Some(type_hint) = type_hint {
+                let type_id = lower_type(typed, resolved, current_scope, type_hint)?;
+                for name in binding_names(pattern) {
+                    let symbol_id = find_symbol_id_in_scope(
+                        resolved,
+                        source_unit_id,
+                        current_scope,
+                        &[SymbolKind::DestructureBinding],
+                        &name,
+                    )?;
+                    record_symbol_type(typed, symbol_id, type_id)?;
+                }
+            }
+        }
+        AstNode::Block { statements } => {
+            lower_nested_declarations_in_nodes(typed, resolved, source_unit_id, current_scope, statements)?;
+        }
+        AstNode::Inquiry { body, .. } => {
+            lower_nested_declarations_in_nodes(typed, resolved, source_unit_id, current_scope, body)?;
+        }
+        AstNode::Commented { node, .. } => {
+            lower_nested_declarations_in_node(typed, resolved, source_unit_id, current_scope, node)?;
+        }
+        _ => {
+            for child in node.children() {
+                lower_nested_declarations_in_node(typed, resolved, source_unit_id, current_scope, child)?;
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn lower_named_routine_signature(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    source_unit_id: SourceUnitId,
+    name: &str,
+    syntax_id: Option<SyntaxNodeId>,
+    params: &[fol_parser::ast::Parameter],
+    return_type: Option<&FolType>,
+    error_type: Option<&FolType>,
+) -> Result<ScopeId, TypecheckError> {
+    let symbol_id = find_symbol_id(resolved, source_unit_id, &[SymbolKind::Routine], name)?;
+    let signature_scope = syntax_id
+        .and_then(|id| resolved.scope_for_syntax(id))
+        .or_else(|| resolved.symbol(symbol_id).map(|symbol| symbol.scope))
+        .ok_or_else(|| internal_error("resolved routine scope disappeared", None))?;
+    let mut lowered_params = Vec::new();
+    for param in params {
+        lowered_params.push(lower_type(typed, resolved, signature_scope, &param.param_type)?);
+    }
+    let lowered_return = return_type
+        .as_ref()
+        .map(|ty| lower_type(typed, resolved, signature_scope, ty))
+        .transpose()?;
+    let lowered_error = error_type
+        .as_ref()
+        .map(|ty| lower_type(typed, resolved, signature_scope, ty))
+        .transpose()?;
+    let routine_type = typed
+        .type_table_mut()
+        .intern(CheckedType::Routine(RoutineType {
+            params: lowered_params,
+            return_type: lowered_return,
+            error_type: lowered_error,
+        }));
+    record_symbol_type(typed, symbol_id, routine_type)?;
+    Ok(signature_scope)
 }
 
 fn lower_type(
@@ -368,6 +480,34 @@ fn find_symbol_id(
         .ok_or_else(|| {
             internal_error(
                 format!("resolved declaration symbol '{name}' is missing from typed lowering"),
+                None,
+            )
+        })
+}
+
+fn find_symbol_id_in_scope(
+    resolved: &ResolvedProgram,
+    source_unit_id: SourceUnitId,
+    scope_id: ScopeId,
+    allowed_kinds: &[SymbolKind],
+    name: &str,
+) -> Result<SymbolId, TypecheckError> {
+    resolved
+        .symbols
+        .iter_with_ids()
+        .find(|(_, symbol)| {
+            symbol.source_unit == source_unit_id
+                && symbol.scope == scope_id
+                && symbol.name == name
+                && allowed_kinds.contains(&symbol.kind)
+        })
+        .map(|(symbol_id, _)| symbol_id)
+        .ok_or_else(|| {
+            internal_error(
+                format!(
+                    "resolved declaration symbol '{name}' is missing from typed lowering for scope {}",
+                    scope_id.0
+                ),
                 None,
             )
         })
