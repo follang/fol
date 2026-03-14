@@ -3,6 +3,7 @@
 mod errors;
 pub mod ids;
 pub mod model;
+pub mod types;
 
 pub use errors::{LoweringError, LoweringErrorKind};
 pub use ids::{
@@ -11,6 +12,9 @@ pub use ids::{
 };
 pub use model::{
     LoweredPackage, LoweredSourceMap, LoweredSourceMapEntry, LoweredSourceSymbol, LoweredWorkspace,
+};
+pub use types::{
+    LoweredBuiltinType, LoweredRoutineType, LoweredType, LoweredTypeTable,
 };
 
 pub type LoweringResult<T> = Result<T, Vec<LoweringError>>;
