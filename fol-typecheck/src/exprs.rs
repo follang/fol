@@ -1598,6 +1598,33 @@ fn apparent_type_id(
     }
 }
 
+fn expected_nil_shell_type(
+    typed: &TypedProgram,
+    expected_type: Option<CheckedTypeId>,
+) -> Result<Option<CheckedTypeId>, TypecheckError> {
+    let Some(expected_type) = expected_type else {
+        return Ok(None);
+    };
+    let expected_apparent = apparent_type_id(typed, expected_type)?;
+    Ok(match typed.type_table().get(expected_apparent) {
+        Some(CheckedType::Optional { .. }) | Some(CheckedType::Error { .. }) => Some(expected_type),
+        _ => None,
+    })
+}
+
+fn unwrap_shell_result_type(
+    typed: &TypedProgram,
+    operand_type: CheckedTypeId,
+) -> Result<Option<CheckedTypeId>, TypecheckError> {
+    let apparent = apparent_type_id(typed, operand_type)?;
+    Ok(match typed.type_table().get(apparent) {
+        Some(CheckedType::Optional { inner }) => Some(*inner),
+        Some(CheckedType::Error { inner: Some(inner) }) => Some(*inner),
+        Some(CheckedType::Error { inner: None }) => None,
+        _ => None,
+    })
+}
+
 fn origin_for(resolved: &ResolvedProgram, syntax_id: SyntaxNodeId) -> Option<SyntaxOrigin> {
     resolved.syntax_index().origin(syntax_id).cloned()
 }
@@ -2357,14 +2384,13 @@ fn ensure_assignable_target(target: &AstNode) -> Result<(), TypecheckError> {
 
 #[cfg(test)]
 mod tests {
-    use super::type_literal;
-    use crate::{BuiltinType, TypedProgram};
+    use super::{expected_nil_shell_type, type_literal, unwrap_shell_result_type};
+    use crate::{BuiltinType, CheckedType, TypedProgram};
     use fol_parser::ast::{AstParser, Literal};
     use fol_resolver::resolve_package;
     use fol_stream::FileStream;
 
-    #[test]
-    fn literal_typing_maps_v1_scalar_literals_to_builtin_types() {
+    fn typed_fixture_program() -> TypedProgram {
         let fixture_path = concat!(env!("CARGO_MANIFEST_DIR"), "/../test/parser/simple_var.fol");
         let mut stream = FileStream::from_file(fixture_path).expect("Should open expression fixture");
         let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
@@ -2373,7 +2399,12 @@ mod tests {
             .parse_package(&mut lexer)
             .expect("Expression fixture should parse");
         let resolved = resolve_package(syntax).expect("Expression fixture should resolve");
-        let mut typed = TypedProgram::from_resolved(resolved);
+        TypedProgram::from_resolved(resolved)
+    }
+
+    #[test]
+    fn literal_typing_maps_v1_scalar_literals_to_builtin_types() {
+        let mut typed = typed_fixture_program();
 
         assert_eq!(
             typed.type_table().get(type_literal(&mut typed, &Literal::Integer(1)).unwrap()),
@@ -2384,6 +2415,67 @@ mod tests {
                 .type_table()
                 .get(type_literal(&mut typed, &Literal::String("ok".to_string())).unwrap()),
             Some(&crate::CheckedType::Builtin(BuiltinType::Str))
+        );
+    }
+
+    #[test]
+    fn nil_contract_only_accepts_optional_and_error_expected_shells() {
+        let mut typed = typed_fixture_program();
+        let int_type = typed.builtin_types().int;
+        let str_type = typed.builtin_types().str_;
+        let optional_str = typed
+            .type_table_mut()
+            .intern(CheckedType::Optional { inner: str_type });
+        let bare_error = typed
+            .type_table_mut()
+            .intern(CheckedType::Error { inner: None });
+        let typed_error = typed
+            .type_table_mut()
+            .intern(CheckedType::Error { inner: Some(str_type) });
+
+        assert_eq!(expected_nil_shell_type(&typed, None).unwrap(), None);
+        assert_eq!(
+            expected_nil_shell_type(&typed, Some(optional_str)).unwrap(),
+            Some(optional_str)
+        );
+        assert_eq!(
+            expected_nil_shell_type(&typed, Some(bare_error)).unwrap(),
+            Some(bare_error)
+        );
+        assert_eq!(
+            expected_nil_shell_type(&typed, Some(typed_error)).unwrap(),
+            Some(typed_error)
+        );
+        assert_eq!(expected_nil_shell_type(&typed, Some(int_type)).unwrap(), None);
+    }
+
+    #[test]
+    fn unwrap_contract_only_accepts_optional_and_typed_error_shells() {
+        let mut typed = typed_fixture_program();
+        let str_type = typed.builtin_types().str_;
+        let bool_type = typed.builtin_types().bool_;
+        let optional_str = typed
+            .type_table_mut()
+            .intern(CheckedType::Optional { inner: str_type });
+        let bare_error = typed
+            .type_table_mut()
+            .intern(CheckedType::Error { inner: None });
+        let typed_error = typed
+            .type_table_mut()
+            .intern(CheckedType::Error { inner: Some(bool_type) });
+
+        assert_eq!(
+            unwrap_shell_result_type(&typed, optional_str).unwrap(),
+            Some(str_type)
+        );
+        assert_eq!(
+            unwrap_shell_result_type(&typed, typed_error).unwrap(),
+            Some(bool_type)
+        );
+        assert_eq!(unwrap_shell_result_type(&typed, bare_error).unwrap(), None);
+        assert_eq!(
+            unwrap_shell_result_type(&typed, typed.builtin_types().int).unwrap(),
+            None
         );
     }
 }

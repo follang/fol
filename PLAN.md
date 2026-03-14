@@ -488,7 +488,7 @@ Status: pending
 
 #### 6.1
 
-Status: pending
+Status: done
 
 - Freeze the exact `nil` contract for `V1`, including where `nil` is accepted
   and what expected-type context is required.
