@@ -147,11 +147,11 @@ fn compile_file(
                     return Err(());
                 }
             };
-            match fol_resolver::resolve_prepared_package_with_config(
+            match fol_resolver::resolve_prepared_workspace_with_config(
                 prepared,
                 resolver_config.clone(),
             ) {
-                Ok(resolved) => match Typechecker::new().check_resolved_program(resolved) {
+                Ok(resolved) => match Typechecker::new().check_resolved_workspace(resolved) {
                     Ok(_) => {
                         if !diagnostics.has_errors() {
                             return Ok(());

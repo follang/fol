@@ -1186,6 +1186,148 @@ mod integration_tests {
     }
 
     #[test]
+    fn test_cli_json_typecheck_imported_binding_mismatches_keep_exact_locations() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_typecheck_imported_binding_json");
+        let shared_root = temp_root.join("shared");
+        let app_root = temp_root.join("app");
+        fs::create_dir_all(&shared_root).expect("Should create shared fixture root");
+        fs::create_dir_all(&app_root).expect("Should create app fixture root");
+        fs::write(shared_root.join("lib.fol"), "var[exp] answer: int = 42;\n")
+            .expect("Should write imported binding fixture");
+        fs::write(
+            app_root.join("main.fol"),
+            "use shared: loc = {\"../shared\"};\nvar label: str = answer;\n",
+        )
+        .expect("Should write imported binding consumer fixture");
+
+        let output = run_fol(&[
+            "--json",
+            app_root
+                .to_str()
+                .expect("CLI imported binding fixture path should be utf-8"),
+        ]);
+        let report = parse_cli_json(&output);
+        let first = report["diagnostics"][0].clone();
+
+        assert!(!output.status.success(), "CLI should fail on imported binding mismatches");
+        assert_eq!(first["code"], "T1003");
+        assert_eq!(first["location"]["line"], 2);
+        assert_eq!(first["location"]["column"], 18);
+        assert_eq!(first["location"]["length"], 6);
+        assert!(
+            first["location"]["file"]
+                .as_str()
+                .is_some_and(|file| file.ends_with("/app/main.fol")),
+            "CLI JSON diagnostics should preserve the imported binding consumer path"
+        );
+        assert!(
+            first["message"]
+                .as_str()
+                .is_some_and(|message| message.contains("initializer for 'label' expects")),
+            "CLI JSON diagnostics should preserve the imported binding mismatch message"
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_cli_json_typecheck_nil_shell_errors_keep_exact_locations() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_typecheck_nil_json");
+        fs::create_dir_all(&temp_root).expect("Should create nil fixture root");
+        fs::write(
+            temp_root.join("main.fol"),
+            "ali MaybeText: opt[str]\nvar label = nil\n",
+        )
+        .expect("Should write nil fixture");
+
+        let output = run_fol(&[
+            "--json",
+            temp_root
+                .to_str()
+                .expect("CLI nil fixture path should be utf-8"),
+        ]);
+        let report = parse_cli_json(&output);
+        let first = report["diagnostics"][0].clone();
+
+        assert!(!output.status.success(), "CLI should fail on unsupported nil shell contexts");
+        assert_eq!(first["code"], "T1001");
+        assert_eq!(first["location"]["line"], 2);
+        assert_eq!(first["location"]["column"], 1);
+        assert_eq!(first["location"]["length"], 3);
+        assert!(
+            first["location"]["file"]
+                .as_str()
+                .is_some_and(|file| file.ends_with("/main.fol")),
+            "CLI JSON diagnostics should preserve the nil fixture path"
+        );
+        assert!(
+            first["message"].as_str().is_some_and(|message| {
+                message.contains("nil literals require an expected opt[...] or err[...] shell type in V1")
+            }),
+            "CLI JSON diagnostics should preserve the nil shell message"
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_cli_json_typecheck_nested_record_mismatches_keep_exact_locations() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_typecheck_nested_record_json");
+        fs::create_dir_all(&temp_root).expect("Should create nested record fixture root");
+        fs::write(
+            temp_root.join("main.fol"),
+            "typ Meta: rec = {\n\
+                 ok: bol\n\
+             }\n\
+             typ User: rec = {\n\
+                 meta: Meta\n\
+             }\n\
+             fun[] main(): User = {\n\
+                 return { meta = { ok = 1 } };\n\
+             }\n",
+        )
+        .expect("Should write nested record mismatch fixture");
+
+        let output = run_fol(&[
+            "--json",
+            temp_root
+                .to_str()
+                .expect("CLI nested record fixture path should be utf-8"),
+        ]);
+        let report = parse_cli_json(&output);
+        let first = report["diagnostics"][0].clone();
+
+        assert!(
+            !output.status.success(),
+            "CLI should fail on nested record mismatches"
+        );
+        assert_eq!(first["code"], "T1003");
+        assert_eq!(first["location"]["line"], 8);
+        assert_eq!(first["location"]["column"], 17);
+        assert_eq!(first["location"]["length"], 1);
+        assert!(
+            first["location"]["file"]
+                .as_str()
+                .is_some_and(|file| file.ends_with("/main.fol")),
+            "CLI JSON diagnostics should preserve the nested record fixture path"
+        );
+        assert!(
+            first["message"]
+                .as_str()
+                .is_some_and(|message| message.contains("record field 'ok' expects")),
+            "CLI JSON diagnostics should preserve the nested record mismatch message"
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
     fn test_cli_json_modern_compiler_errors_do_not_fall_back_to_unknown_codes() {
         use std::fs;
 

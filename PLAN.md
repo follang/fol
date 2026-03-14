@@ -578,7 +578,7 @@ Status: done
 
 #### 8.3
 
-Status: pending
+Status: done
 
 - Add CLI JSON integration tests for the reopened surfaces so the exact
   structured diagnostic shape remains locked end to end.
