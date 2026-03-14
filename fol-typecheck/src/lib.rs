@@ -12,7 +12,9 @@ pub mod types;
 pub use builtins::BuiltinTypeIds;
 pub use errors::{TypecheckError, TypecheckErrorKind};
 pub use model::TypedProgram;
-pub use types::{BuiltinType, CheckedType, CheckedTypeId, TypeTable};
+pub use types::{
+    BuiltinType, CheckedType, CheckedTypeId, DeclaredTypeKind, RoutineType, TypeTable,
+};
 
 pub type TypecheckResult<T> = Result<T, Vec<TypecheckError>>;
 

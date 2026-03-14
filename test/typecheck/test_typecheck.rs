@@ -1,11 +1,13 @@
 use fol_diagnostics::{DiagnosticCode, DiagnosticLocation, ToDiagnostic};
 use fol_parser::ast::{AstParser, SyntaxOrigin};
 use fol_resolver::resolve_package;
+use fol_resolver::SymbolId;
 use fol_stream::FileStream;
 use fol_typecheck::{
-    BuiltinType, BuiltinTypeIds, CheckedType, TypeTable, TypecheckError, TypecheckErrorKind,
-    Typechecker,
+    BuiltinType, BuiltinTypeIds, CheckedType, DeclaredTypeKind, RoutineType, TypeTable,
+    TypecheckError, TypecheckErrorKind, Typechecker,
 };
+use std::collections::BTreeMap;
 
 fn resolve_fixture(path: &str) -> fol_resolver::ResolvedProgram {
     let fixture_path = format!("{}/{}", env!("CARGO_MANIFEST_DIR"), path);
@@ -121,4 +123,34 @@ fn typechecker_wraps_resolved_programs_in_a_typed_shell() {
         Some(&CheckedType::Builtin(BuiltinType::Bool))
     );
     assert_eq!(typed.resolved().source_units.len(), 1);
+}
+
+#[test]
+fn semantic_type_table_covers_declared_and_structural_shapes() {
+    let mut table = TypeTable::new();
+    let int_id = table.intern_builtin(BuiltinType::Int);
+    let alias_id = table.intern(CheckedType::Declared {
+        symbol: SymbolId(9),
+        name: "Meters".to_string(),
+        kind: DeclaredTypeKind::Alias,
+    });
+
+    let mut fields = BTreeMap::new();
+    fields.insert("value".to_string(), alias_id);
+    let record = table.intern(CheckedType::Record { fields });
+    let routine = table.intern(CheckedType::Routine(RoutineType {
+        params: vec![alias_id],
+        return_type: int_id,
+        error_type: None,
+    }));
+
+    assert_ne!(record, routine);
+    assert_eq!(
+        table.get(alias_id),
+        Some(&CheckedType::Declared {
+            symbol: SymbolId(9),
+            name: "Meters".to_string(),
+            kind: DeclaredTypeKind::Alias,
+        })
+    );
 }

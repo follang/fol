@@ -415,7 +415,7 @@ Status: pending
 
 #### 1.1
 
-Status: pending
+Status: done
 
 - Define normalized semantic types for the currently implemented builtin and declared type surface.
 
