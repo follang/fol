@@ -83,3 +83,53 @@ impl<I: LoweringId, T> IdTable<I, T> {
             .map(|(index, value)| (I::from_index(index), value))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        IdTable, LoweredBlockId, LoweredGlobalId, LoweredInstrId, LoweredLocalId, LoweredPackageId,
+        LoweredRoutineId, LoweredTypeId, LoweringId,
+    };
+
+    #[test]
+    fn lowering_ids_round_trip_indexes() {
+        let ids = [
+            LoweredPackageId::from_index(0).0,
+            LoweredGlobalId::from_index(1).0,
+            LoweredRoutineId::from_index(2).0,
+            LoweredBlockId::from_index(3).0,
+            LoweredLocalId::from_index(4).0,
+            LoweredInstrId::from_index(5).0,
+            LoweredTypeId::from_index(6).0,
+        ];
+
+        assert_eq!(ids, [0, 1, 2, 3, 4, 5, 6]);
+    }
+
+    #[test]
+    fn id_table_pushes_values_in_stable_order() {
+        let mut table = IdTable::<LoweredRoutineId, &str>::new();
+
+        let alpha = table.push("alpha");
+        let beta = table.push("beta");
+
+        assert_eq!(alpha.0, 0);
+        assert_eq!(beta.0, 1);
+        assert_eq!(table.get(alpha), Some(&"alpha"));
+        assert_eq!(table.get(beta), Some(&"beta"));
+    }
+
+    #[test]
+    fn id_table_iter_with_ids_matches_insert_order() {
+        let mut table = IdTable::<LoweredBlockId, &str>::new();
+        table.push("entry");
+        table.push("exit");
+
+        let collected = table
+            .iter_with_ids()
+            .map(|(id, value)| (id.0, *value))
+            .collect::<Vec<_>>();
+
+        assert_eq!(collected, vec![(0, "entry"), (1, "exit")]);
+    }
+}

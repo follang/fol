@@ -493,7 +493,7 @@ This plan is complete only when all of the following are true:
 - `1.2` `done` Define `LoweredWorkspace`, `LoweredPackage`, and source-map shells.
 - `1.3` `done` Define `LoweredTypeTable` and lowered runtime type shapes.
 - `1.4` `done` Define `LoweredRoutine`, `LoweredBlock`, `LoweredInstr`, and `LoweredTerminator`.
-- `1.5` `pending` Add unit tests for deterministic ID allocation and core IR invariants.
+- `1.5` `done` Add unit tests for deterministic ID allocation and core IR invariants.
 
 ### Phase 2. Typed Workspace Translation
 

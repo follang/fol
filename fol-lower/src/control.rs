@@ -81,6 +81,12 @@ pub struct LoweredBlock {
     pub terminator: Option<LoweredTerminator>,
 }
 
+impl LoweredBlock {
+    pub fn is_terminated(&self) -> bool {
+        self.terminator.is_some()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LoweredRoutine {
     pub id: LoweredRoutineId,
@@ -147,6 +153,18 @@ mod tests {
 
         assert_eq!(block.id, LoweredBlockId(1));
         assert_eq!(block.instructions, vec![LoweredInstrId(0)]);
+        assert!(block.is_terminated());
         assert_eq!(instr.result, Some(LoweredLocalId(0)));
+    }
+
+    #[test]
+    fn lowered_blocks_report_missing_terminators_explicitly() {
+        let block = LoweredBlock {
+            id: LoweredBlockId(2),
+            instructions: Vec::new(),
+            terminator: None,
+        };
+
+        assert!(!block.is_terminated());
     }
 }
