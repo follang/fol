@@ -589,7 +589,7 @@ Status: pending
 
 #### 9.1
 
-Status: pending
+Status: done
 
 - Replace the current root-flag-only `loc/std/pkg` CLI acceptance fixtures with
   real typechecked imported-symbol success cases.

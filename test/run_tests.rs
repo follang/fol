@@ -317,22 +317,36 @@ mod integration_tests {
     }
 
     #[test]
-    fn test_cli_accepts_explicit_std_root_configuration() {
-        let temp_root = unique_temp_root("cli_std_root");
-        let output = run_fol(&[
-            "--std-root",
-            temp_root
-                .to_str()
-                .expect("Temporary std-root fixture path should be valid UTF-8"),
-            "test/parser/simple_var.fol",
-        ]);
+    fn test_cli_typecheck_accepts_loc_imported_symbols_after_workspace_handoff() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_loc_import");
+        let shared_root = temp_root.join("shared");
+        let app_root = temp_root.join("app");
+        fs::create_dir_all(&shared_root).expect("Should create the shared fixture directory");
+        fs::create_dir_all(&app_root).expect("Should create the app fixture directory");
+        fs::write(shared_root.join("lib.fol"), "var[exp] answer: int = 42;\n")
+            .expect("Should write the shared export fixture");
+        fs::write(
+            app_root.join("main.fol"),
+            "use shared: loc = {\"../shared\"};\nfun[] main(): int = {\n    return answer;\n}\n",
+        )
+        .expect("Should write the loc import fixture");
+
+        let output = run_fol(&[app_root
+            .to_str()
+            .expect("Temporary app fixture path should be valid UTF-8")]);
         let stdout = String::from_utf8_lossy(&output.stdout);
 
         assert!(
             output.status.success(),
-            "CLI should accept an explicit std-root flag even before std imports are used, got status {:?} and output:\n{}",
+            "CLI should typecheck imported loc symbols through the full workspace-aware chain, got status {:?} and output:\n{}",
             output.status.code(),
             stdout,
+        );
+        assert!(
+            stdout.contains("Compilation successful"),
+            "Human CLI output should still report a successful compile for loc-imported packages"
         );
     }
 
@@ -351,7 +365,7 @@ mod integration_tests {
             .expect("Should write the standard-library export fixture");
         fs::write(
             app_root.join("main.fol"),
-            "use fmt: std = {fmt};\nfun[] main(): int = {\n    return 0;\n}\n",
+            "use fmt: std = {fmt};\nfun[] main(): int = {\n    return answer;\n}\n",
         )
         .expect("Should write the std import fixture");
 
@@ -404,7 +418,7 @@ mod integration_tests {
             .expect("Should write the installed package export fixture");
         fs::write(
             app_root.join("main.fol"),
-            "use json: pkg = {json};\nfun[] main(): int = {\n    return 0;\n}\n",
+            "use json: pkg = {json};\nfun[] main(): int = {\n    return answer;\n}\n",
         )
         .expect("Should write the pkg import fixture");
 
