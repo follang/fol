@@ -422,68 +422,34 @@ fn type_container_literal(
         .flatten();
     let container_kind = expected_container
         .as_ref()
-        .map(|shape| shape.kind.clone())
+        .map(ExpectedContainerShape::kind)
         .unwrap_or(container_type);
-    let mut inferred_element = expected_container.as_ref().map(|shape| shape.element_type);
-
-    let element_nodes = elements
-        .iter()
-        .filter(|element| !matches!(element, AstNode::Comment { .. }))
-        .collect::<Vec<_>>();
-    if element_nodes.is_empty() {
-        let Some(expected_container) = expected_container else {
-            return Err(TypecheckError::new(
-                TypecheckErrorKind::Unsupported,
-                "empty container literals require an expected container type in V1",
-            ));
-        };
-        return Ok(Some(intern_container_shape(
-            typed,
-            expected_container.kind,
-            expected_container.element_type,
-            expected_container.array_size,
-        )));
-    }
-
-    for element in element_nodes {
-        let actual = type_node_with_expectation(
+    match container_kind {
+        ContainerType::Array | ContainerType::Vector | ContainerType::Sequence => {
+            type_linear_container_literal(
+                typed,
+                resolved,
+                context,
+                container_kind,
+                elements,
+                expected_container.as_ref(),
+            )
+        }
+        ContainerType::Set => type_set_literal(
             typed,
             resolved,
             context,
-            element,
-            inferred_element,
-        )?
-        .ok_or_else(|| {
-            TypecheckError::new(
-                TypecheckErrorKind::InvalidInput,
-                "container element does not have a type",
-            )
-        })?;
-        if let Some(expected) = inferred_element {
-            ensure_assignable(
-                typed,
-                expected,
-                actual,
-                "container element".to_string(),
-                None,
-            )?;
-        } else {
-            inferred_element = Some(actual);
-        }
+            elements,
+            expected_container.as_ref(),
+        ),
+        ContainerType::Map => type_map_literal(
+            typed,
+            resolved,
+            context,
+            elements,
+            expected_container.as_ref(),
+        ),
     }
-
-    let element_type = inferred_element.ok_or_else(|| {
-        TypecheckError::new(
-            TypecheckErrorKind::InvalidInput,
-            "container literal could not infer an element type",
-        )
-    })?;
-    Ok(Some(intern_container_shape(
-        typed,
-        container_kind,
-        element_type,
-        expected_container.and_then(|shape| shape.array_size),
-    )))
 }
 
 fn type_loop(
@@ -881,10 +847,20 @@ fn type_index_access(
             )?;
             Ok(Some(*value_type))
         }
+        Some(CheckedType::Set { member_types }) => {
+            ensure_assignable(
+                typed,
+                typed.builtin_types().int,
+                index_type,
+                "set index".to_string(),
+                None,
+            )?;
+            type_set_index_access(typed, member_types, index)
+        }
         _ => Err(TypecheckError::new(
             TypecheckErrorKind::InvalidInput,
             format!(
-                "index access requires an array, vector, sequence, or map receiver, got '{}'",
+                "index access requires an array, vector, sequence, set, or map receiver, got '{}'",
                 describe_type(typed, container_type)
             ),
         )),
@@ -1361,10 +1337,36 @@ fn single_scope(scopes: BTreeSet<ScopeId>) -> Option<ScopeId> {
 }
 
 #[derive(Debug, Clone)]
-struct ExpectedContainerShape {
-    kind: ContainerType,
-    element_type: CheckedTypeId,
-    array_size: Option<usize>,
+enum ExpectedContainerShape {
+    Array {
+        element_type: CheckedTypeId,
+        size: Option<usize>,
+    },
+    Vector {
+        element_type: CheckedTypeId,
+    },
+    Sequence {
+        element_type: CheckedTypeId,
+    },
+    Set {
+        member_types: Vec<CheckedTypeId>,
+    },
+    Map {
+        key_type: CheckedTypeId,
+        value_type: CheckedTypeId,
+    },
+}
+
+impl ExpectedContainerShape {
+    fn kind(&self) -> ContainerType {
+        match self {
+            Self::Array { .. } => ContainerType::Array,
+            Self::Vector { .. } => ContainerType::Vector,
+            Self::Sequence { .. } => ContainerType::Sequence,
+            Self::Set { .. } => ContainerType::Set,
+            Self::Map { .. } => ContainerType::Map,
+        }
+    }
 }
 
 fn expected_container_shape(
@@ -1373,26 +1375,280 @@ fn expected_container_shape(
 ) -> Result<Option<ExpectedContainerShape>, TypecheckError> {
     let apparent = apparent_type_id(typed, expected_type)?;
     Ok(match typed.type_table().get(apparent) {
-        Some(CheckedType::Array { element_type, size }) => Some(ExpectedContainerShape {
-            kind: ContainerType::Array,
+        Some(CheckedType::Array { element_type, size }) => Some(ExpectedContainerShape::Array {
             element_type: *element_type,
-            array_size: *size,
+            size: *size,
         }),
-        Some(CheckedType::Vector { element_type }) => Some(ExpectedContainerShape {
-            kind: ContainerType::Vector,
+        Some(CheckedType::Vector { element_type }) => Some(ExpectedContainerShape::Vector {
             element_type: *element_type,
-            array_size: None,
         }),
-        Some(CheckedType::Sequence { element_type }) => Some(ExpectedContainerShape {
-            kind: ContainerType::Sequence,
+        Some(CheckedType::Sequence { element_type }) => Some(ExpectedContainerShape::Sequence {
             element_type: *element_type,
-            array_size: None,
+        }),
+        Some(CheckedType::Set { member_types }) => Some(ExpectedContainerShape::Set {
+            member_types: member_types.clone(),
+        }),
+        Some(CheckedType::Map {
+            key_type,
+            value_type,
+        }) => Some(ExpectedContainerShape::Map {
+            key_type: *key_type,
+            value_type: *value_type,
         }),
         _ => None,
     })
 }
 
-fn intern_container_shape(
+fn type_linear_container_literal(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    kind: ContainerType,
+    elements: &[AstNode],
+    expected_container: Option<&ExpectedContainerShape>,
+) -> Result<Option<CheckedTypeId>, TypecheckError> {
+    let mut inferred_element = expected_container.and_then(|shape| match shape {
+        ExpectedContainerShape::Array { element_type, .. }
+        | ExpectedContainerShape::Vector { element_type }
+        | ExpectedContainerShape::Sequence { element_type } => Some(*element_type),
+        _ => None,
+    });
+    let element_nodes = container_elements(elements);
+    if element_nodes.is_empty() {
+        let Some(expected_container) = expected_container else {
+            return Err(TypecheckError::new(
+                TypecheckErrorKind::Unsupported,
+                "empty container literals require an expected container type in V1",
+            ));
+        };
+        return Ok(Some(intern_linear_container_shape(
+            typed,
+            kind,
+            inferred_element.expect("linear expected containers should carry an element type"),
+            match expected_container {
+                ExpectedContainerShape::Array { size, .. } => *size,
+                _ => None,
+            },
+        )));
+    }
+
+    for element in element_nodes {
+        let actual = type_node_with_expectation(
+            typed,
+            resolved,
+            context,
+            element,
+            inferred_element,
+        )?
+        .ok_or_else(|| {
+            TypecheckError::new(
+                TypecheckErrorKind::InvalidInput,
+                "container element does not have a type",
+            )
+        })?;
+        if let Some(expected) = inferred_element {
+            ensure_assignable(
+                typed,
+                expected,
+                actual,
+                "container element".to_string(),
+                None,
+            )?;
+        } else {
+            inferred_element = Some(actual);
+        }
+    }
+
+    let element_type = inferred_element.ok_or_else(|| {
+        TypecheckError::new(
+            TypecheckErrorKind::InvalidInput,
+            "container literal could not infer an element type",
+        )
+    })?;
+    let array_size = match expected_container {
+        Some(ExpectedContainerShape::Array { size, .. }) => *size,
+        _ => None,
+    };
+    Ok(Some(intern_linear_container_shape(
+        typed,
+        kind,
+        element_type,
+        array_size,
+    )))
+}
+
+fn type_set_literal(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    elements: &[AstNode],
+    expected_container: Option<&ExpectedContainerShape>,
+) -> Result<Option<CheckedTypeId>, TypecheckError> {
+    let element_nodes = container_elements(elements);
+    let mut member_types = Vec::new();
+
+    if element_nodes.is_empty() {
+        let Some(ExpectedContainerShape::Set { member_types }) = expected_container else {
+            return Err(TypecheckError::new(
+                TypecheckErrorKind::Unsupported,
+                "empty container literals require an expected container type in V1",
+            ));
+        };
+        return Ok(Some(
+            typed
+                .type_table_mut()
+                .intern(CheckedType::Set { member_types: member_types.clone() }),
+        ));
+    }
+
+    let expected_members = match expected_container {
+        Some(ExpectedContainerShape::Set { member_types }) => Some(member_types.as_slice()),
+        _ => None,
+    };
+    if let Some(expected_members) = expected_members {
+        if expected_members.len() != element_nodes.len() {
+            return Err(TypecheckError::new(
+                TypecheckErrorKind::IncompatibleType,
+                format!(
+                    "set literal expects {} elements but got {}",
+                    expected_members.len(),
+                    element_nodes.len()
+                ),
+            ));
+        }
+    }
+
+    for (index, element) in element_nodes.iter().enumerate() {
+        let expected = expected_members.and_then(|members| members.get(index)).copied();
+        let actual = type_node_with_expectation(typed, resolved, context, element, expected)?
+            .ok_or_else(|| {
+                TypecheckError::new(
+                    TypecheckErrorKind::InvalidInput,
+                    "set member does not have a type",
+                )
+            })?;
+        if let Some(expected) = expected {
+            ensure_assignable(
+                typed,
+                expected,
+                actual,
+                format!("set member {}", index),
+                None,
+            )?;
+            member_types.push(expected);
+        } else {
+            member_types.push(actual);
+        }
+    }
+
+    Ok(Some(
+        typed
+            .type_table_mut()
+            .intern(CheckedType::Set { member_types }),
+    ))
+}
+
+fn type_map_literal(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    elements: &[AstNode],
+    expected_container: Option<&ExpectedContainerShape>,
+) -> Result<Option<CheckedTypeId>, TypecheckError> {
+    let element_nodes = container_elements(elements);
+    let mut inferred_key_type = match expected_container {
+        Some(ExpectedContainerShape::Map { key_type, .. }) => Some(*key_type),
+        _ => None,
+    };
+    let mut inferred_value_type = match expected_container {
+        Some(ExpectedContainerShape::Map { value_type, .. }) => Some(*value_type),
+        _ => None,
+    };
+
+    if element_nodes.is_empty() {
+        let Some(ExpectedContainerShape::Map {
+            key_type,
+            value_type,
+        }) = expected_container
+        else {
+            return Err(TypecheckError::new(
+                TypecheckErrorKind::Unsupported,
+                "empty container literals require an expected container type in V1",
+            ));
+        };
+        return Ok(Some(
+            typed
+                .type_table_mut()
+                .intern(CheckedType::Map {
+                    key_type: *key_type,
+                    value_type: *value_type,
+                }),
+        ));
+    }
+
+    for pair in element_nodes {
+        let (key, value) = map_literal_pair(pair)?;
+        let actual_key =
+            type_node_with_expectation(typed, resolved, context, key, inferred_key_type)?
+                .ok_or_else(|| {
+                    TypecheckError::new(
+                        TypecheckErrorKind::InvalidInput,
+                        "map key does not have a type",
+                    )
+                })?;
+        let actual_value =
+            type_node_with_expectation(typed, resolved, context, value, inferred_value_type)?
+                .ok_or_else(|| {
+                    TypecheckError::new(
+                        TypecheckErrorKind::InvalidInput,
+                        "map value does not have a type",
+                    )
+                })?;
+        if let Some(expected_key) = inferred_key_type {
+            ensure_assignable(
+                typed,
+                expected_key,
+                actual_key,
+                "map key".to_string(),
+                None,
+            )?;
+        } else {
+            inferred_key_type = Some(actual_key);
+        }
+        if let Some(expected_value) = inferred_value_type {
+            ensure_assignable(
+                typed,
+                expected_value,
+                actual_value,
+                "map value".to_string(),
+                None,
+            )?;
+        } else {
+            inferred_value_type = Some(actual_value);
+        }
+    }
+
+    Ok(Some(
+        typed
+            .type_table_mut()
+            .intern(CheckedType::Map {
+                key_type: inferred_key_type.ok_or_else(|| {
+                    TypecheckError::new(
+                        TypecheckErrorKind::InvalidInput,
+                        "map literal could not infer a key type",
+                    )
+                })?,
+                value_type: inferred_value_type.ok_or_else(|| {
+                    TypecheckError::new(
+                        TypecheckErrorKind::InvalidInput,
+                        "map literal could not infer a value type",
+                    )
+                })?,
+            }),
+    ))
+}
+
+fn intern_linear_container_shape(
     typed: &mut TypedProgram,
     kind: ContainerType,
     element_type: CheckedTypeId,
@@ -1409,10 +1665,94 @@ fn intern_container_shape(
         ContainerType::Sequence => typed
             .type_table_mut()
             .intern(CheckedType::Sequence { element_type }),
-        ContainerType::Set | ContainerType::Map => typed.type_table_mut().intern(CheckedType::Array {
-            element_type,
-            size: array_size,
-        }),
+        ContainerType::Set | ContainerType::Map => unreachable!(
+            "set/map shapes must be interned through dedicated container helpers"
+        ),
+    }
+}
+
+fn container_elements(elements: &[AstNode]) -> Vec<&AstNode> {
+    elements
+        .iter()
+        .filter(|element| !matches!(element, AstNode::Comment { .. }))
+        .collect()
+}
+
+fn map_literal_pair(pair: &AstNode) -> Result<(&AstNode, &AstNode), TypecheckError> {
+    match strip_comments(pair) {
+        AstNode::ContainerLiteral { elements, .. } => {
+            let pair_items = container_elements(elements);
+            if let [key, value] = pair_items.as_slice() {
+                Ok((*key, *value))
+            } else {
+                Err(TypecheckError::new(
+                    TypecheckErrorKind::InvalidInput,
+                    "map literals require each element to be a two-value pair",
+                ))
+            }
+        }
+        _ => Err(TypecheckError::new(
+            TypecheckErrorKind::InvalidInput,
+            "map literals require each element to be a two-value pair",
+        )),
+    }
+}
+
+fn strip_comments(node: &AstNode) -> &AstNode {
+    match node {
+        AstNode::Commented { node, .. } => strip_comments(node),
+        _ => node,
+    }
+}
+
+fn type_set_index_access(
+    _typed: &TypedProgram,
+    member_types: &[CheckedTypeId],
+    index: &AstNode,
+) -> Result<Option<CheckedTypeId>, TypecheckError> {
+    let Some(index_value) = literal_integer_value(index) else {
+        let Some(first) = member_types.first().copied() else {
+            return Err(TypecheckError::new(
+                TypecheckErrorKind::InvalidInput,
+                "cannot index an empty set value in V1",
+            ));
+        };
+        if member_types.iter().all(|member| *member == first) {
+            return Ok(Some(first));
+        }
+        return Err(TypecheckError::new(
+            TypecheckErrorKind::Unsupported,
+            "non-literal indexing into heterogeneous sets is not part of the V1 typecheck milestone",
+        ));
+    };
+
+    if index_value < 0 {
+        return Err(TypecheckError::new(
+            TypecheckErrorKind::InvalidInput,
+            "set index literals must be non-negative",
+        ));
+    }
+
+    member_types
+        .get(index_value as usize)
+        .copied()
+        .map(Some)
+        .ok_or_else(|| {
+            TypecheckError::new(
+                TypecheckErrorKind::InvalidInput,
+                format!(
+                    "set index {} is out of bounds for a {}-member set",
+                    index_value,
+                    member_types.len()
+                ),
+            )
+        })
+}
+
+fn literal_integer_value(node: &AstNode) -> Option<i64> {
+    match strip_comments(node) {
+        AstNode::Literal(Literal::Integer(value)) => Some(*value),
+        _ => None,
     }
 }
 

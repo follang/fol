@@ -718,7 +718,7 @@ fn expression_typing_rejects_non_indexable_receivers() {
             error.kind() == TypecheckErrorKind::InvalidInput
                 && error
                     .message()
-                    .contains("index access requires an array, vector, sequence, or map receiver")
+                    .contains("index access requires an array, vector, sequence, set, or map receiver")
         }),
         "Expected a non-indexable access diagnostic, got: {errors:?}"
     );
@@ -1077,6 +1077,83 @@ fn container_literal_typing_rejects_mixed_element_families() {
                 && error.message().contains("container element expects")
         }),
         "Expected a mixed-container-element diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
+fn container_literal_typing_accepts_set_and_map_contexts() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "fun[] tuple_second(): str = {\n\
+             var parts: set[int, str] = {1, \"two\"};\n\
+             return parts[1];\n\
+         }\n\
+         fun[] lookup(): int = {\n\
+             var counts: map[str, int] = {{\"US\", 45}, {\"DE\", 82}};\n\
+             return counts[\"US\"];\n\
+         }\n",
+    )]);
+
+    let (_parts_id, parts) = find_typed_symbol(&typed, "parts", SymbolKind::ValueBinding);
+    let (_counts_id, counts) = find_typed_symbol(&typed, "counts", SymbolKind::ValueBinding);
+    let tuple_second = find_named_routine_syntax_id(&typed, "tuple_second");
+    let lookup = find_named_routine_syntax_id(&typed, "lookup");
+
+    assert!(matches!(
+        typed.type_table().get(parts.declared_type.expect("set binding should lower")),
+        Some(CheckedType::Set { member_types })
+            if member_types == &vec![typed.builtin_types().int, typed.builtin_types().str_]
+    ));
+    assert!(matches!(
+        typed.type_table().get(counts.declared_type.expect("map binding should lower")),
+        Some(CheckedType::Map { key_type, value_type })
+            if *key_type == typed.builtin_types().str_
+                && *value_type == typed.builtin_types().int
+    ));
+    assert_eq!(
+        typed
+            .typed_node(tuple_second)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Str))
+    );
+    assert_eq!(
+        typed
+            .typed_node(lookup)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+}
+
+#[test]
+fn container_literal_typing_rejects_bad_map_pairs_and_nonliteral_heterogeneous_set_indexes() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] bad_map(): map[str, int] = {\n\
+             return {{1, 45}};\n\
+         }\n\
+         fun[] bad_set(idx: int): int = {\n\
+             var parts: set[int, str] = {1, \"two\"};\n\
+             return parts[idx];\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::IncompatibleType
+                && error.message().contains("map key expects")
+        }),
+        "Expected a map-key compatibility diagnostic, got: {errors:?}"
+    );
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::Unsupported
+                && error
+                    .message()
+                    .contains("heterogeneous sets is not part of the V1 typecheck milestone")
+        }),
+        "Expected a heterogeneous-set indexing diagnostic, got: {errors:?}"
     );
 }
 

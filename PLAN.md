@@ -545,7 +545,7 @@ Status: done
 
 #### 5.2
 
-Status: pending
+Status: done
 
 - Type set/map literals and container access compatibility.
 
