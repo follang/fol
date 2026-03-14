@@ -507,7 +507,7 @@ Status: done
 
 #### 6.4
 
-Status: pending
+Status: done
 
 - Lock tests for:
 - `nil` in bindings

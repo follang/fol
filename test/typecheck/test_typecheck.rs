@@ -3333,6 +3333,40 @@ fn shell_typing_rejects_postfix_unwrap_for_bare_error_shells() {
 }
 
 #[test]
+fn shell_typing_accepts_nil_in_return_and_call_argument_contexts() {
+    let _typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "ali MaybeText: opt[str]\nfun[] echo(value: MaybeText): MaybeText = {\n    return value;\n}\nfun[] make(): MaybeText = {\n    return nil;\n}\nfun[] main(): MaybeText = {\n    return echo(nil);\n}\n",
+    )]);
+}
+
+#[test]
+fn shell_typing_accepts_postfix_unwrap_in_binding_and_return_contexts() {
+    let _typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "ali MaybeText: opt[str]\nfun[] main(value: MaybeText): str = {\n    var label: str = value!;\n    return value!;\n}\n",
+    )]);
+}
+
+#[test]
+fn shell_typing_rejects_postfix_unwrap_for_non_shell_targets() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] main(value: int): int = {\n    return value!;\n}\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error
+                    .message()
+                    .contains("unwrap requires an opt[...] or err[...] shell with a value type in V1")
+        }),
+        "Expected the unwrap non-shell diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
 fn declaration_signature_lowering_resolves_qualified_named_types() {
     let typed = typecheck_fixture_folder(&[
         ("util/types.fol", "ali Count: int\n"),
