@@ -35,7 +35,7 @@
             const path_to_root = "../../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../../searchindex-8528602a.js";
+            window.path_to_searchindex_js = "../../searchindex-363c26c2.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../../toc-c28f7be1.js"></script>
@@ -333,7 +333,7 @@ pro main: int = {
 </code></pre>
 <p>Alternatively, the <code>return</code> and <code>report</code> statements can be used to return a value or error earlier from within the function, even from inside loops or other control flow mechanisms.
 <strong>The example below is just to show the <code>return</code> and <code>report</code> statements, there is a better way to handle errors as shown in <a href="/docs/spec/error">error section</a></strong></p>
-<pre><code>use file: mod[std] = { std::fs::File }
+<pre><code>use file: std = {"fs/file"}
 
 pro main(): int = {
     fun[] fileReader(path: str): str = {

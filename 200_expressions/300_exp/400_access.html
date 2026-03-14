@@ -35,7 +35,7 @@
             const path_to_root = "../../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../../searchindex-8528602a.js";
+            window.path_to_searchindex_js = "../../searchindex-363c26c2.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../../toc-c28f7be1.js"></script>
@@ -188,7 +188,7 @@
 </code></pre>
 <h2 id="namespaces-access"><a class="header" href="#namespaces-access">Namespaces access</a></h2>
 <p>Accesing namespaces is done through double colon operator <code>::</code>:</p>
-<pre><code>use log mod[std] = { fmt::log };            // using the log namespace of fmt
+<pre><code>use log: std = {"fmt/log"};                 // using the log namespace of fmt
 io::console::write_out.echo();              // echoing out
 </code></pre>
 <h2 id="container-access"><a class="header" href="#container-access">Container access</a></h2>

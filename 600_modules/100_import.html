@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-8528602a.js";
+            window.path_to_searchindex_js = "../searchindex-363c26c2.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-c28f7be1.js"></script>
@@ -177,12 +177,13 @@
                         <h1 id="imports"><a class="header" href="#imports">Imports</a></h1>
 <p>An import declaration states that the source file containing the declaration depends on functionality of the imported package and enables access to exported identifiers of that package.</p>
 <p>Syntax to import a library is:</p>
-<pre><code>use package_name: mod = { source }
+<pre><code>use alias: source_kind = { source }
 </code></pre>
-<p>There are two type of import declartions:</p>
+<p>Current source kinds are:</p>
 <ul>
-<li>system libraries</li>
-<li>local libraries</li>
+<li><code>loc</code> for local directory imports</li>
+<li><code>std</code> for standard-library directory imports</li>
+<li><code>pkg</code> for installed external packages</li>
 </ul>
 <h2 id="what-use-imports"><a class="header" href="#what-use-imports">What <code>use</code> imports</a></h2>
 <p><code>use</code> works against the source-layout model:</p>
@@ -204,6 +205,87 @@ Imports are for reaching another package or another namespace boundary.</p>
 <li><code>use</code> brings in exported functionality</li>
 <li><code>hid</code> declarations remain file-only even inside the same package</li>
 <li>importing a package does not erase the original file boundary rules</li>
+<li><code>use</code> is for consuming functionality, not for defining package dependencies</li>
+</ul>
+<h2 id="import-kinds"><a class="header" href="#import-kinds">Import kinds</a></h2>
+<h3 id="loc"><a class="header" href="#loc"><code>loc</code></a></h3>
+<p><code>loc</code> is the simplest import kind:</p>
+<ul>
+<li>it points to a local directory</li>
+<li>that directory is scanned as a FOL package / namespace tree</li>
+<li>no <code>package.yaml</code> is required</li>
+<li>no <code>build.fol</code> is required</li>
+</ul>
+<p>This makes <code>loc</code> useful for local workspace code, experiments, and monorepo-style sharing.</p>
+<h3 id="std"><a class="header" href="#std"><code>std</code></a></h3>
+<p><code>std</code> works like <code>loc</code>, except the directory is resolved from the toolchain’s standard-library root.</p>
+<p>So:</p>
+<ul>
+<li><code>std</code> imports are directory-backed</li>
+<li>they are owned by the FOL toolchain</li>
+<li>they do not need user-managed package metadata in source code</li>
+</ul>
+<h3 id="pkg"><a class="header" href="#pkg"><code>pkg</code></a></h3>
+<p><code>pkg</code> is for formal external packages.</p>
+<p>Unlike <code>loc</code> and <code>std</code>, a <code>pkg</code> import does not just point at an arbitrary source directory.
+It points at an installed package root that must define its identity and build surface explicitly.
+The package layer discovers that root first, and ordinary name resolution happens only after the package has been prepared.</p>
+<p>For a <code>pkg</code> package root:</p>
+<ul>
+<li><code>package.yaml</code> is required</li>
+<li><code>build.fol</code> is required</li>
+<li><code>package.yaml</code> stores metadata only</li>
+<li><code>build.fol</code> declares dependencies and exports</li>
+</ul>
+<h2 id="package-metadata-and-build-files"><a class="header" href="#package-metadata-and-build-files">Package Metadata And Build Files</a></h2>
+<p>Formal packages use two files at the root:</p>
+<ul>
+<li><code>package.yaml</code></li>
+<li><code>build.fol</code></li>
+</ul>
+<h3 id="packageyaml"><a class="header" href="#packageyaml"><code>package.yaml</code></a></h3>
+<p><code>package.yaml</code> is metadata only.
+It is intentionally not a normal <code>.fol</code> source file.</p>
+<p>Typical metadata belongs here:</p>
+<ul>
+<li>package name</li>
+<li>version</li>
+<li>package kind</li>
+<li>human-oriented description/license/author data</li>
+</ul>
+<p>What does <strong>not</strong> belong here:</p>
+<ul>
+<li><code>use</code></li>
+<li>dependency edges</li>
+<li>export wiring</li>
+<li>build logic</li>
+</ul>
+<h3 id="buildfol"><a class="header" href="#buildfol"><code>build.fol</code></a></h3>
+<p><code>build.fol</code> is where the package is assembled.</p>
+<p>This file is responsible for:</p>
+<ul>
+<li>declaring package dependencies</li>
+<li>declaring which directories/namespaces are exported</li>
+<li>defining the package surface that consumers import</li>
+</ul>
+<p><code>build.fol</code> is still an ordinary FOL file.
+It is parsed with the same front-end as other <code>.fol</code> sources.
+The difference is that the package layer only extracts package meaning from recognized top-level definitions inside it.</p>
+<p>So:</p>
+<ul>
+<li><code>def</code> is still a general FOL declaration form</li>
+<li><code>build.fol</code> is not a separate mini-language</li>
+<li>only specific top-level <code>def</code> records are treated as package dependency/export definitions in the current package phase</li>
+</ul>
+<p>That means:</p>
+<ul>
+<li>ordinary source <code>.fol</code> files use <code>use</code> to consume packages/namespaces</li>
+<li><code>build.fol</code> uses <code>def</code> to define package dependencies and exports</li>
+</ul>
+<p>So <code>use</code> and <code>def</code> serve different jobs:</p>
+<ul>
+<li><code>use</code> = consume functionality</li>
+<li><code>def</code> in <code>build.fol</code> = define package graph / exported surface</li>
 </ul>
 <h2 id="system-libraries"><a class="header" href="#system-libraries">System libraries</a></h2>
 <p>This is how including other libraries works, for example include <code>fmt</code> module from standard library:</p>
@@ -221,14 +303,14 @@ pro[] main: int = {
 }
 </code></pre>
 <p>But let’s say you only wanna use ONLY the <code>warn</code> functionality of <code>log</code> namespace from <code>fmt</code> module:</p>
-<pre><code>use warn std = {"fmt/log.warn"};
+<pre><code>use warn: std = {"fmt/log"};
 
 pro[] main: int = {
     warn("Last warning!...")
 }
 </code></pre>
 <h2 id="local-libraries"><a class="header" href="#local-libraries">Local libraries</a></h2>
-<p>To include a local package (example, package name <code>bender</code>), then we include the folder where it is, followed by the package name (folder is where files are located, package is the name defned with mod[])</p>
+<p>To include a local package or namespace, point <code>loc</code> at the directory:</p>
 <pre><code>use bend: loc = {"../folder/bender"};
 </code></pre>
 <p>Then to acces only a namespace:</p>
@@ -236,10 +318,21 @@ pro[] main: int = {
 </code></pre>
 <p>That second form is namespace import, not “single file import”.
 If <code>space</code> contains multiple <code>.fol</code> files in the same folder, they still belong to the same imported namespace.</p>
-<h2 id="url-libraries"><a class="header" href="#url-libraries">URL libraries</a></h2>
-<p>Libraries can be directly URL imported:</p>
-<pre><code>use space: url = {"https://github.com/follang/std"};
+<p><code>loc</code> does not require <code>package.yaml</code> or <code>build.fol</code>.
+But if the target directory already defines <code>build.fol</code> at its root, that directory is treated as a formal package root and should be imported through <code>pkg</code>, not <code>loc</code>.</p>
+<h2 id="external-packages"><a class="header" href="#external-packages">External packages</a></h2>
+<p>External packages are imported through <code>pkg</code>:</p>
+<pre><code>use space: pkg = {"space"};
 </code></pre>
+<p><code>pkg</code> imports are different from <code>loc</code> and <code>std</code>:</p>
+<ul>
+<li>the imported root is an installed package root</li>
+<li>that root must contain <code>package.yaml</code></li>
+<li>that root must contain <code>build.fol</code></li>
+<li><code>package.yaml</code> provides metadata only</li>
+<li><code>build.fol</code> defines dependencies and exports</li>
+<li>raw transport URLs do not appear in source code; package acquisition and installed-package preparation are separate from ordinary source resolution</li>
+</ul>
 
                     </main>
 

@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-8528602a.js";
+            window.path_to_searchindex_js = "../searchindex-363c26c2.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-c28f7be1.js"></script>
@@ -218,7 +218,7 @@ fun make_code(path: str): int = {
 error type is <code>str</code>, but the current parser does not diagnose that mismatch on its
 own.</p>
 <p>When we use the keyword <code>report</code>, the error is returned to the routine’s error variable and the routine qutis executing (the routine, not the program).</p>
-<pre><code>use file: mod[std] = { std::fs::File }
+<pre><code>use file: std = {"fs/file"}
 
 pro main(): int = {
     pro[] fileReader(path: str): str = {
@@ -232,7 +232,7 @@ pro main(): int = {
 }
 </code></pre>
 <p>Form this point on, the error is concatinated up to the main function. This is known as propagating the error and gives more control to the calling code, where there might be more information or logic that dictates how the error should be handled than what you have available in the context of your code.</p>
-<pre><code>use file: mod[std] = { std::fs::File }
+<pre><code>use file: std = {"fs/file"}
 
 pro main(): int = {
     var f = file.open("main.jpg");                                           // main.jpg doesn't exist

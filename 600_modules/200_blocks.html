@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-8528602a.js";
+            window.path_to_searchindex_js = "../searchindex-363c26c2.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-c28f7be1.js"></script>
@@ -196,6 +196,7 @@
 <li>same folder = same package</li>
 <li>subfolder = nested namespace</li>
 <li><code>hid</code> = file only</li>
+<li>files are never imported directly as standalone modules</li>
 </ul>
 <h3 id="package-scope"><a class="header" href="#package-scope">Package scope</a></h3>
 <p>Files that live directly in the package root share one package scope:</p>
@@ -265,9 +266,35 @@ pro[] main: int = {
 <li>subfolders extend the namespace path</li>
 <li><code>use</code> imports packages or namespaces</li>
 <li><code>hid</code> keeps a declaration private to one file</li>
+<li><code>loc</code> imports a local directory tree without package metadata</li>
+<li><code>std</code> imports a toolchain-owned directory tree</li>
+<li><code>pkg</code> imports a formal external package defined by <code>package.yaml</code> + <code>build.fol</code></li>
 </ul>
 <p>This means FOL is <strong>not</strong> “one file = one module”.
 The package is the folder; the file is a source unit inside that package.</p>
+<h2 id="package-roots"><a class="header" href="#package-roots">Package Roots</a></h2>
+<p>When a directory is treated as a package root, the exact contract depends on the import kind:</p>
+<ul>
+<li><code>loc</code>: plain local directory import, no package metadata required</li>
+<li><code>std</code>: toolchain standard-library directory import</li>
+<li><code>pkg</code>: installed external package import with explicit root files</li>
+</ul>
+<p>For <code>pkg</code>, the root is not just “a folder containing <code>.fol</code> files”.
+It is a formal package root with:</p>
+<ul>
+<li><code>package.yaml</code> for metadata</li>
+<li><code>build.fol</code> for dependencies and exports</li>
+</ul>
+<p>This keeps the language model clean:</p>
+<ul>
+<li>source files <code>use</code> other namespaces/packages</li>
+<li>package definitions are extracted from recognized top-level <code>def</code> declarations in <code>build.fol</code></li>
+<li>package metadata lives in <code>package.yaml</code></li>
+<li>package loading happens before ordinary name resolution</li>
+</ul>
+<p><code>build.fol</code> itself is still ordinary FOL syntax.
+It is not a separate mini-language.
+The package layer simply gives package meaning to a narrow set of recognized top-level definitions there.</p>
 <h2 id="blocks"><a class="header" href="#blocks">Blocks</a></h2>
 <p>Block statement is used for scopes where members get destroyed when scope is finished. And there are two ways to define a block:</p>
 <ul>

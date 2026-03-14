@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-8528602a.js";
+            window.path_to_searchindex_js = "../searchindex-363c26c2.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-c28f7be1.js"></script>
@@ -189,6 +189,21 @@ errors that can be propagated or handled, typically associated with <code>report
 <li>how routines expose recoverable error types</li>
 <li>how error-aware forms interact with control flow and pipes</li>
 </ul>
+<h2 id="current-compiler-diagnostics"><a class="header" href="#current-compiler-diagnostics">Current compiler diagnostics</a></h2>
+<p>The current compiler surface already guarantees a few reporting behaviors even
+before full semantic analysis is implemented:</p>
+<ul>
+<li>parser, package-loading, and resolver failures keep exact primary
+<code>file:line:column</code> locations</li>
+<li>human-readable diagnostics render source snippets and underline the primary span</li>
+<li>related sites such as duplicate declarations or ambiguity candidates can appear
+as secondary labels</li>
+<li>JSON diagnostics preserve the same structured information with labels, notes,
+helps, and stable producer-owned diagnostic codes</li>
+</ul>
+<p>The exact wording of messages is still implementation detail, but the current
+compiler contract is that locations and structured diagnostic shape are stable
+enough to build tests and tooling around them.</p>
 
                     </main>
 
