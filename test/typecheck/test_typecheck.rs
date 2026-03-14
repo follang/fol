@@ -782,6 +782,85 @@ fn routine_return_typing_rejects_missing_return_values_for_typed_routines() {
 }
 
 #[test]
+fn routine_error_typing_accepts_matching_report_values() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "fun[] demo(): int : str = {\n\
+             report \"bad\";\n\
+             return 1;\n\
+         }\n",
+    )]);
+
+    let syntax_id = find_named_routine_syntax_id(&typed, "demo");
+    assert_eq!(
+        typed
+            .typed_node(syntax_id)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+}
+
+#[test]
+fn routine_error_typing_rejects_report_value_mismatches() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] demo(): int : str = {\n\
+             report 1;\n\
+             return 1;\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::IncompatibleType
+                && error.message().contains("report expects")
+        }),
+        "Expected a report-type mismatch diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
+fn routine_error_typing_requires_declared_error_types() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] demo(): int = {\n\
+             report \"bad\";\n\
+             return 1;\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error
+                    .message()
+                    .contains("report requires a declared routine error type")
+        }),
+        "Expected a missing-error-type diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
+fn routine_error_typing_rejects_missing_report_values() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] demo(): int : str = {\n\
+             report;\n\
+             return 1;\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error.message().contains("report expects exactly 1 value in V1 but got 0")
+        }),
+        "Expected a missing-report-value diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
 fn declaration_signature_lowering_resolves_qualified_named_types() {
     let typed = typecheck_fixture_folder(&[
         ("util/types.fol", "ali Count: int\n"),

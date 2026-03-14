@@ -178,6 +178,11 @@ fn type_node(
             name,
             args,
             syntax_id,
+        } if name == "report" => type_report_call(typed, resolved, context, args, *syntax_id),
+        AstNode::FunctionCall {
+            name,
+            args,
+            syntax_id,
         } => type_function_call(typed, resolved, context, name, args, *syntax_id),
         AstNode::QualifiedFunctionCall { path, args } => {
             type_qualified_function_call(typed, resolved, context, path, args)
@@ -325,6 +330,56 @@ fn type_function_call(
     } else {
         Ok(None)
     }
+}
+
+fn type_report_call(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    args: &[AstNode],
+    syntax_id: Option<SyntaxNodeId>,
+) -> Result<Option<CheckedTypeId>, TypecheckError> {
+    let origin = syntax_id.and_then(|syntax_id| origin_for(resolved, syntax_id));
+    let Some(expected) = context.routine_error_type else {
+        return Err(TypecheckError::with_origin(
+            TypecheckErrorKind::InvalidInput,
+            "report requires a declared routine error type in V1",
+            origin.unwrap_or(SyntaxOrigin {
+                file: None,
+                line: 1,
+                column: 1,
+                length: "report".len(),
+            }),
+        ));
+    };
+
+    if args.len() != 1 {
+        return Err(TypecheckError::with_origin(
+            TypecheckErrorKind::InvalidInput,
+            format!("report expects exactly 1 value in V1 but got {}", args.len()),
+            origin.unwrap_or(SyntaxOrigin {
+                file: None,
+                line: 1,
+                column: 1,
+                length: "report".len(),
+            }),
+        ));
+    }
+
+    let actual = type_node(typed, resolved, context, &args[0])?.ok_or_else(|| {
+        TypecheckError::with_origin(
+            TypecheckErrorKind::InvalidInput,
+            "report expression does not have a type",
+            origin.clone().unwrap_or(SyntaxOrigin {
+                file: None,
+                line: 1,
+                column: 1,
+                length: "report".len(),
+            }),
+        )
+    })?;
+    ensure_assignable(typed, expected, actual, "report".to_string(), origin)?;
+    Ok(Some(actual))
 }
 
 fn type_qualified_function_call(

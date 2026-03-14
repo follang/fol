@@ -511,7 +511,7 @@ Status: done
 
 #### 4.2
 
-Status: pending
+Status: done
 
 - Enforce `report` compatibility with declared routine error types.
 

@@ -323,16 +323,18 @@ fn traverse_node(
             args,
             syntax_id,
         } => {
-            record_function_call_reference(
-                program,
-                source_unit_id,
-                scope_id,
-                name,
-                *syntax_id,
-                syntax_id
-                    .and_then(|syntax_id| program.syntax_index().origin(syntax_id))
-                    .cloned(),
-            )?;
+            if !is_builtin_diagnostic_call(name) {
+                record_function_call_reference(
+                    program,
+                    source_unit_id,
+                    scope_id,
+                    name,
+                    *syntax_id,
+                    syntax_id
+                        .and_then(|syntax_id| program.syntax_index().origin(syntax_id))
+                        .cloned(),
+                )?;
+            }
             for arg in args {
                 traverse_node(session, program, source_unit_id, scope_id, arg, false, routine_context)?;
             }
@@ -1024,6 +1026,10 @@ fn record_identifier_reference(
         reference.id = reference_id;
     }
     Ok(reference_id)
+}
+
+fn is_builtin_diagnostic_call(name: &str) -> bool {
+    matches!(name, "panic" | "report" | "check" | "assert")
 }
 
 fn record_function_call_reference(
