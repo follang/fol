@@ -1517,6 +1517,42 @@ fn coercion_policy_rejects_implicit_int_float_cross_family_conversions() {
 }
 
 #[test]
+fn cast_policy_rejects_as_and_cast_surfaces_in_v1() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "var text: str = \"label\"\n\
+         var target: int = 0\n\
+         fun[] bad_as(value: int): int = {\n\
+             return value as text;\n\
+         }\n\
+         fun[] bad_cast(value: int): int = {\n\
+             return value cast target;\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::Unsupported
+                && error
+                    .message()
+                    .contains("explicit 'as' casts are not part of the V1 typecheck milestone")
+                && error.diagnostic_location().is_some()
+        }),
+        "Expected an unsupported 'as' cast diagnostic, got: {errors:?}"
+    );
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::Unsupported
+                && error
+                    .message()
+                    .contains("explicit 'cast' operators are not part of the V1 typecheck milestone")
+                && error.diagnostic_location().is_some()
+        }),
+        "Expected an unsupported 'cast' diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
 fn declaration_signature_lowering_resolves_qualified_named_types() {
     let typed = typecheck_fixture_folder(&[
         ("util/types.fol", "ali Count: int\n"),

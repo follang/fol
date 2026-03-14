@@ -585,7 +585,7 @@ Status: done
 
 #### 6.3
 
-Status: pending
+Status: done
 
 - Implement explicit cast legality checks or reject unsupported cast families with exact diagnostics.
 

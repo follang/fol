@@ -301,6 +301,26 @@ fn type_binary_op(
     left: &AstNode,
     right: &AstNode,
 ) -> Result<Option<CheckedTypeId>, TypecheckError> {
+    match op {
+        BinaryOperator::As => {
+            return Err(unsupported_binary_surface(
+                resolved,
+                left,
+                right,
+                "explicit 'as' casts are not part of the V1 typecheck milestone",
+            ));
+        }
+        BinaryOperator::Cast => {
+            return Err(unsupported_binary_surface(
+                resolved,
+                left,
+                right,
+                "explicit 'cast' operators are not part of the V1 typecheck milestone",
+            ));
+        }
+        _ => {}
+    }
+
     let left_type = type_node(typed, resolved, context, left)?.ok_or_else(|| {
         TypecheckError::new(
             TypecheckErrorKind::InvalidInput,
@@ -1983,6 +2003,15 @@ fn collect_syntax_ids(node: &AstNode, syntax_ids: &mut BTreeSet<SyntaxNodeId>) {
     }
 }
 
+fn node_origin(resolved: &ResolvedProgram, node: &AstNode) -> Option<SyntaxOrigin> {
+    let mut syntax_ids = BTreeSet::new();
+    collect_syntax_ids(node, &mut syntax_ids);
+    syntax_ids
+        .into_iter()
+        .next()
+        .and_then(|syntax_id| origin_for(resolved, syntax_id))
+}
+
 fn find_symbol_in_scope(
     resolved: &ResolvedProgram,
     source_unit_id: SourceUnitId,
@@ -2124,6 +2153,19 @@ fn invalid_unary_operator_error(
             describe_type(typed, operand)
         ),
     )
+}
+
+fn unsupported_binary_surface(
+    resolved: &ResolvedProgram,
+    left: &AstNode,
+    right: &AstNode,
+    message: impl Into<String>,
+) -> TypecheckError {
+    if let Some(origin) = node_origin(resolved, left).or_else(|| node_origin(resolved, right)) {
+        TypecheckError::with_origin(TypecheckErrorKind::Unsupported, message, origin)
+    } else {
+        TypecheckError::new(TypecheckErrorKind::Unsupported, message)
+    }
 }
 
 fn is_equality_type(typed: &TypedProgram, type_id: CheckedTypeId) -> bool {
