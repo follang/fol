@@ -22,14 +22,17 @@ FOL is a general-purpose, systems programming language designed for robustness, 
 <p align="center">  ** FOL IS AN ACTIVE COMPILER WORKSPACE **  </p>
 
 Current compiler status: `fol-stream`, `fol-lexer`, `fol-parser`,
-`fol-package`, `fol-resolver`, diagnostics, and the root CLI are implemented and
-actively tested. Package loading now flows through `fol-package`, which prepares
-directory and installed-package surfaces ahead of name resolution. The
-diagnostics hardening pass is now complete for parser, package loading, resolver,
-and the CLI: diagnostics carry stable producer-owned codes, exact primary
-locations, related labels, notes, helps, and consistent human/JSON rendering.
-Type checking, deeper semantic analysis, ownership rules, and backend/runtime
-work are now the next major semantic milestone.
+`fol-package`, `fol-resolver`, `fol-typecheck`, diagnostics, and the root CLI
+are implemented and actively tested. Package loading now flows through
+`fol-package`, which prepares directory and installed-package surfaces ahead of
+name resolution. The diagnostics hardening pass is complete for parser, package
+loading, resolver, type checking, and the CLI: diagnostics carry stable
+producer-owned codes, exact primary locations, related labels, notes, helps,
+and consistent human/JSON rendering. `fol-typecheck` now covers the current V1
+declaration, expression, control-flow, container, conversion, and unsupported-
+surface boundary contract, and the CLI runs it after resolution. The next major
+compiler work should stay inside V1 and carry that subset toward later
+lowering/backend stages.
 
 Current import surface:
 - `loc` imports exact filesystem directories
@@ -51,11 +54,11 @@ Current C ABI boundary:
 - native artifact loading, compilation, and linking are future `fol-package` /
   package-build work, not resolver work
 
-For exact current stream/lexer/parser/package/diagnostics behavior, treat
-[`FRONTEND_CONTRACT.md`](./FRONTEND_CONTRACT.md) as the authoritative front-end
-contract, treat [`PROGRESS.md`](./PROGRESS.md) as the repo-backed implementation
-ledger, and treat [`PLAN.md`](./PLAN.md) as the active diagnostics completion
-record. The README is only a high-level project summary.
+For exact current implementation status, treat [`PROGRESS.md`](./PROGRESS.md) as
+the repo-backed implementation ledger, treat [`VERSIONS.md`](./VERSIONS.md) as
+the V1/V2/V3 language-boundary document, and treat [`PLAN.md`](./PLAN.md) as
+the active compiler milestone plan. The README is only a high-level project
+summary.
 
 <hr>
 

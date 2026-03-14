@@ -647,9 +647,9 @@ Status: done
 
 #### 8.3
 
-Status: pending
+Status: done
 
-- Update `README.md`, `PROGRESS.md`, and `FRONTEND_CONTRACT.md` to describe the new stage boundary.
+- Update the active repo status docs to describe the new stage boundary.
 
 #### 8.4
 

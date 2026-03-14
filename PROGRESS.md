@@ -9,8 +9,8 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - This file answers one question: what is actually implemented right now.
 - This file is a repo-backed status ledger for the current workspace head.
 - For the current phase, the priority is repository truth: stream, lexer, parser,
-  package loading, resolver, diagnostics, CLI behavior, and the handoff boundary
-  into post-resolution semantic work.
+  package loading, resolver, type checking, diagnostics, CLI behavior, and the
+  current V1 compiler boundary.
 - This file does not plan later semantic or backend work.
 
 ## 1. Scan Method
@@ -23,6 +23,7 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `fol-parser`
 - `fol-package`
 - `fol-resolver`
+- `fol-typecheck`
 - `fol-diagnostics`
 - `src`
 - Scanned active tests under:
@@ -30,22 +31,23 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `test/lexer`
 - `test/parser`
 - `test/resolver`
+- `test/typecheck`
 - `test/run_tests.rs`
-- Rescanned current front-end contract and user-facing docs:
-- `FRONTEND_CONTRACT.md`
+- Rescanned current user-facing docs:
 - `README.md`
+- `VERSIONS.md`
 - relevant `book/src` pages for lexical rules, methods, literals, and recoverable errors
 - Rechecked the current implementation against the existing progress ledger and the
-  active diagnostics milestone record.
+  active V1 typecheck milestone record.
 - Ran:
 - `make build`
 - `make test`
 
 ## 2. Snapshot Metrics
 
-- Workspace member crates: `7`
+- Workspace member crates: `8`
 - Root binary crate: `1`
-- Active Rust source lines scanned: `26922`
+- Active Rust source lines scanned: `32648`
 - Core compiler Rust lines scanned:
 - `fol-types`: `259`
 - `fol-stream`: `570`
@@ -53,15 +55,17 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `fol-parser`: `15857`
 - `fol-package`: `2779`
 - `fol-resolver`: `4542`
-- `fol-diagnostics`: `267`
-- Root CLI and root-local source: `242`
+- `fol-typecheck`: `3931`
+- `fol-diagnostics`: `1206`
+- Root CLI and root-local source: `397`
 - Active parser fixtures: `1283`
 - Active lexer tests: `85`
 - Active stream tests: `54`
 - Parser-focused Rust tests under `test/parser`: `1108`
-- Resolver-focused Rust tests under `test/resolver`: `96`
-- Observed current unit test run: `4` unit tests, green
-- Observed current integration run: `1376` integration tests, green
+- Resolver-focused Rust tests under `test/resolver`: `100`
+- Typecheck-focused Rust tests under `test/typecheck`: `67`
+- Observed current unit test run: `5` unit tests, green
+- Observed current integration run: `1446` integration tests, green
 
 ## 3. Current Headline Status
 
@@ -70,13 +74,14 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `fol-parser`: large front-end surface implemented, heavily hardened, and now much closer to a stable AST contract
 - `fol-package`: implemented as the package-loading and package-definition boundary before resolver
 - `fol-resolver`: implemented for the current whole-program name-resolution contract
+- `fol-typecheck`: implemented for the current `V1` semantic subset and wired into the CLI
 - `fol-diagnostics`: implemented, structured, and wired into the CLI
-- Root CLI: implemented as parse-and-package-prepare-and-resolve driver
+- Root CLI: implemented as parse-and-package-prepare-and-resolve-and-typecheck driver
 - Stream + lexer + parser: stable and consumed by package loading and resolver
 - Package loading and package preparation: implemented for `loc`, `std`, and installed `pkg`
 - Whole-program name resolution: implemented for the current contract
-- Immediate active phase: type checking and post-resolution semantic work
-- Whole-program type checking: missing
+- Whole-program type checking: implemented for the current `V1` contract, with later-language and later-systems surfaces rejected explicitly
+- Immediate active phase: carry the `V1` subset beyond typechecking toward later compiler stages
 - Ownership and borrowing enforcement: missing
 - Standard or protocol conformance analysis: missing
 - Backend, interpreter, or code generation: missing
@@ -87,8 +92,8 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `make build`: passed
 - `make test`: passed
 - Current observed totals:
-- `4` unit tests passed
-- `1376` integration tests passed
+- `5` unit tests passed
+- `1446` integration tests passed
 - Observed active failures: `0`
 
 ## 5. What Has Been Completed So Far
@@ -180,8 +185,8 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 
 ### 5.4 Contract And Docs Cleanup
 
-- `FRONTEND_CONTRACT.md` now matches the hardened stream, lexer, and parser behavior much more closely.
-- `README.md`, `FRONTEND_CONTRACT.md`, and `PROGRESS.md` now describe resolver as an implemented phase instead of a future phase.
+- The earlier front-end contract sync work was completed during the stream/lexer/parser hardening phase.
+- `README.md` and `PROGRESS.md` now describe resolver and typechecking as implemented stages instead of future phases.
 - The lexical and routine book pages scanned in this pass are aligned with the current front-end behavior.
 - Parser-side `report` type checking and forward-signature validation are no longer described as active behavior.
 - Method receiver docs now match the current parse-time rejection rule.
@@ -244,7 +249,7 @@ Authority rule for this file: code and active tests win over older docs, plans, 
   including plain unresolved identifiers, plain free calls, plain named types,
   and structured competing-declaration sites.
 
-### 5.6 Package Loading Milestone
+### 5.7 Package Loading Milestone
 
 - `fol-package` now exists as a workspace crate and sits between parser output and
   resolver package consumption.
@@ -276,6 +281,53 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - Integration coverage now includes full happy-path resolution, cross-file import
   resolution, exact resolver-location propagation through JSON diagnostics, and
   non-null location guarantees for plain unresolved and ambiguous name cases.
+
+### 5.8 Typecheck Milestone
+
+- `fol-typecheck` now exists as a workspace crate and is wired into the root CLI
+  after resolver.
+- The typechecker installs canonical builtin `V1` scalar types and interns
+  normalized semantic type shapes.
+- `ResolvedProgram` now lowers into a typed shell with typed symbol, reference,
+  and syntax-node facts.
+- Declaration signatures are checked across:
+- bindings
+- aliases
+- record and entry members
+- routine parameters
+- routine returns
+- routine error types
+- cross-file and qualified named-type references
+- Core expression typing now covers:
+- literals
+- plain and qualified identifiers
+- block/final-body expressions
+- assignments
+- free calls
+- method calls
+- field access
+- index access
+- basic slice access
+- Routine/control typing now covers:
+- `return`
+- `report`
+- `when` result agreement
+- loop guard basics
+- `never`-aware early-exit handling for `panic`, `return`, and `report`
+- Aggregate typing now covers:
+- array / vector / sequence literals
+- set / map literals
+- record construction
+- entry value surfaces
+- optional and error shell compatibility at the currently implemented `V1` surfaces
+- The initial `V1` operator, coercion, and cast contract is now explicit and
+  test-backed.
+- `V2` and `V3` surfaces now fail explicitly during typechecking instead of
+  silently passing unchecked.
+- Ordinary typechecking now rejects `build.fol` package-definition files as out
+  of scope for source-program semantics.
+- CLI integration coverage now includes successful typechecked compiles, human
+  typecheck failures, and exact JSON typecheck diagnostics.
 
 ## 6. Current Front-End State By Layer
 
@@ -377,8 +429,8 @@ These are not active test failures. They are the remaining front-end compromises
 
 ### 7.1 Code vs Docs
 
-- No material contradiction was found in the scanned front-end contract pages after the latest doc sync.
-- `README.md` still speaks at a high level rather than pinning exact parser contract details, which is acceptable but less precise than `FRONTEND_CONTRACT.md`.
+- No material contradiction was found in the scanned active repo docs after the latest doc sync.
+- `README.md` still speaks at a high level rather than pinning exact compiler contracts, which is acceptable because `PROGRESS.md`, `VERSIONS.md`, and the test suite carry the exact repo-backed detail.
 
 ### 7.2 Code vs Long-Term Shape
 
@@ -407,33 +459,35 @@ items block the current post-resolver phase.
 - decide whether `Program.declarations` should remain the long-term mixed-root carrier or be renamed later
 - either narrow, relocate, or clearly quarantine heuristic AST helpers such as `AstNode::get_type()`
 
-## 9. What Is Explicitly Out Of Scope For This Phase
+## 9. What Is Explicitly Out Of Scope For The Current V1 Milestone
 
-- type checking
-- ownership analysis
-- standard or protocol conformance
+- `V2` language semantics such as standards, protocols, blueprints, extensions, and generics
+- `V3` systems semantics such as ownership, borrowing, eventuals, coroutines, channels, pointers, and C ABI
 - runtime behavior
 - interpreter or backend
 - code generation
 - optimization
 
-These remain later-stage work. They are no longer reasons to keep front-end hardening open.
+These remain later-stage work. They are no longer reasons to keep the current
+`V1` stream/parser/package/resolver/typecheck milestone open.
 
 ## 10. Current Readiness Call
 
 ### 10.1 What Is Ready
 
 - The project has a real front-end pipeline:
-- `fol-stream -> fol-lexer -> fol-parser -> fol-package -> fol-resolver -> fol-diagnostics`
+- `fol-stream -> fol-lexer -> fol-parser -> fol-package -> fol-resolver -> fol-typecheck`
+- `fol-diagnostics` now sits alongside that pipeline as the shared reporting layer.
 - The pipeline is not toy-only anymore.
-- Stream, lexer, parser, and resolver behavior are now explicit enough to move to the
-  next semantic phase without another deep stability pass first.
+- Stream, lexer, parser, package loading, resolver, diagnostics, and the current
+  `V1` typechecker behavior are explicit enough to move to later `V1` compiler
+  stages without another deep stability pass first.
 - Current validation is green and large enough to trust ordinary refactors much more than before.
 
 ### 10.2 What Is Not Implemented Yet
 
-- Semantic analysis is still missing.
-- Type checking is still missing.
+- Full-language semantic analysis is still missing.
+- Later `V1` compiler stages after typechecking are still missing.
 - Runtime or backend behavior is still missing.
 
 ### 10.3 Bottom-Line Status
@@ -441,19 +495,22 @@ These remain later-stage work. They are no longer reasons to keep front-end hard
 - Stream: strong and contract-stable
 - Lexer: strong and contract-stable
 - Parser: broad, hardened, source-layout-aware, and contract-stable enough to move on
+- Package loading: implemented and broad enough for the current `loc/std/pkg` contract
 - Resolver: implemented and broad enough for the current name-resolution milestone
+- Typechecker: implemented for the current `V1` semantic subset and enforced through the CLI
 - Diagnostics: structured, stable, and contract-backed
-- Current compiler core: ready to move beyond name resolution
+- Current compiler core: ready to move beyond the post-resolution semantic boundary and into later `V1` compiler stages
 
 ## 11. Next Recommended Focus
 
-- Start the type-checking phase on top of the now-stable package and resolver
-  boundaries.
-- Keep early type-checking scope tight: declared-type validation, expression
-  typing, call checking, return checking, and assignment compatibility.
-- Treat diagnostics as infrastructure-complete for parser/package/resolver and
-  extend it only when new semantic producers need additional lowering.
-- Treat any remaining stream/lexer/parser/resolver work as opportunistic cleanup unless
-  a real new bug appears.
-- Use `FRONTEND_CONTRACT.md`, [`PROGRESS.md`](./PROGRESS.md), [`PLAN.md`](./PLAN.md),
-  and the test suite as the frozen reference point for the next stage.
+- Treat the current `fol-typecheck` milestone as real compiler infrastructure,
+  not as a placeholder crate.
+- Keep the next work inside `V1`: later semantic and lowering stages that can
+  eventually carry a `V1` program toward a binary-producing pipeline.
+- Treat diagnostics as infrastructure-complete for parser/package/resolver/typecheck
+  and extend it only when later compiler stages need richer producer lowering.
+- Treat any remaining stream/lexer/parser/package/resolver/typecheck work as
+  opportunistic cleanup unless a real new bug appears.
+- Use [`PROGRESS.md`](./PROGRESS.md), [`VERSIONS.md`](./VERSIONS.md),
+  [`PLAN.md`](./PLAN.md), and the test suite as the frozen reference point for
+  the next stage.
