@@ -557,7 +557,7 @@ Status: done
 
 #### 5.4
 
-Status: pending
+Status: done
 
 - Type entry/enum-like value surfaces.
 

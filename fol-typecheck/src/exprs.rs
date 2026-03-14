@@ -874,16 +874,26 @@ fn type_field_access(
     })?;
     let resolved_type = apparent_type_id(typed, object_type)?;
     match typed.type_table().get(resolved_type) {
-        Some(CheckedType::Record { fields }) => fields.get(field).copied().map(Some).ok_or_else(|| {
-            TypecheckError::new(
-                TypecheckErrorKind::InvalidInput,
-                format!("record receiver does not expose a field named '{field}'"),
-            )
-        }),
+        Some(CheckedType::Record { fields }) => {
+            fields.get(field).copied().map(Some).ok_or_else(|| {
+                TypecheckError::new(
+                    TypecheckErrorKind::InvalidInput,
+                    format!("record receiver does not expose a field named '{field}'"),
+                )
+            })
+        }
+        Some(CheckedType::Entry { variants }) => {
+            variants.get(field).copied().flatten().map(Some).ok_or_else(|| {
+                TypecheckError::new(
+                    TypecheckErrorKind::InvalidInput,
+                    format!("entry receiver does not expose a variant named '{field}'"),
+                )
+            })
+        }
         _ => Err(TypecheckError::new(
             TypecheckErrorKind::InvalidInput,
             format!(
-                "field access '.{field}' requires a record-like receiver, got '{}'",
+                "field access '.{field}' requires a record-like or entry-like receiver, got '{}'",
                 describe_type(typed, object_type)
             ),
         )),

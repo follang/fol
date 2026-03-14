@@ -656,7 +656,7 @@ fn expression_typing_rejects_field_access_on_non_records() {
             error.kind() == TypecheckErrorKind::InvalidInput
                 && error
                     .message()
-                    .contains("field access '.total' requires a record-like receiver")
+                    .contains("field access '.total' requires a record-like or entry-like receiver")
         }),
         "Expected a non-record field-access diagnostic, got: {errors:?}"
     );
@@ -1241,6 +1241,52 @@ fn record_initializer_typing_rejects_missing_unknown_and_mismatched_fields() {
                     .contains("does not define a field named 'extra'")
         }),
         "Expected an unknown-record-field diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
+fn entry_value_typing_accepts_entry_variant_accesses() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "typ Color: ent = {\n\
+             var BLUE: str = \"#0037cd\";\n\
+             var RED: str = \"#ff0000\";\n\
+         }\n\
+         fun[] blue(): str = {\n\
+             return Color.BLUE;\n\
+         }\n",
+    )]);
+
+    let syntax_id = find_named_routine_syntax_id(&typed, "blue");
+    assert_eq!(
+        typed
+            .typed_node(syntax_id)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Str))
+    );
+}
+
+#[test]
+fn entry_value_typing_rejects_unknown_variants() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "typ Color: ent = {\n\
+             var BLUE: str = \"#0037cd\";\n\
+         }\n\
+         fun[] bad(): str = {\n\
+             return Color.BLACK;\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error
+                    .message()
+                    .contains("entry receiver does not expose a variant named 'BLACK'")
+        }),
+        "Expected an unknown-entry-variant diagnostic, got: {errors:?}"
     );
 }
 
