@@ -81,7 +81,7 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - Package loading and package preparation: implemented for `loc`, `std`, and installed `pkg`
 - Whole-program name resolution: implemented for the current contract
 - Whole-program type checking: substantial, but still reopened before it can be called the full `V1` typechecker
-- Immediate active phase: finish the reopened `V1` typechecker across imported package graphs and optional-shell semantics
+- Immediate active phase: finish the reopened `V1` typechecker across imported package graphs
 - Ownership and borrowing enforcement: missing
 - Standard or protocol conformance analysis: missing
 - Backend, interpreter, or code generation: missing
@@ -332,8 +332,6 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - imported exported symbols from `loc`, `std`, and `pkg` are still not fully
   typed end to end
 - imported method lookup still needs graph-aware parity
-- `nil` and postfix unwrap are still outside the implemented `V1` semantic
-  contract
 - So the current active limitation is no longer parser or resolver coverage; it
   is finishing the full `V1` typechecker boundary.
 

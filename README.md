@@ -35,7 +35,6 @@ full `V1` typecheck milestone is still reopened for:
 - imported `loc` / `std` / `pkg` graph-aware typing
 - imported method parity
 - final named aggregate expansion parity
-- `nil` and postfix unwrap as real `V1` semantics
 
 The next major compiler work should stay inside `V1` until that reopened
 typecheck plan is complete.

@@ -38,3 +38,7 @@ any[]
 ```
 nil
 ```
+
+In the current `V1` compiler milestone, `nil` is accepted only when type
+checking already knows it is flowing into an `opt[...]` or `err[...]` shell.
+Plain inference from `nil` alone is not supported.

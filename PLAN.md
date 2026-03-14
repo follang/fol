@@ -519,7 +519,7 @@ Status: done
 
 #### 6.5
 
-Status: pending
+Status: done
 
 - Sync `README.md`, `PROGRESS.md`, and relevant book/type pages to the final
   `nil`/unwrap `V1` contract once frozen.
