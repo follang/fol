@@ -539,7 +539,7 @@ Status: pending
 
 #### 5.1
 
-Status: pending
+Status: done
 
 - Type array/vector/sequence literals and element agreement.
 

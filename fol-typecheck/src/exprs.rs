@@ -3,7 +3,8 @@ use crate::{
     TypecheckResult, TypedProgram,
 };
 use fol_parser::ast::{
-    AstNode, Literal, LoopCondition, QualifiedPath, SyntaxNodeId, SyntaxOrigin, WhenCase,
+    AstNode, ContainerType, Literal, LoopCondition, QualifiedPath, SyntaxNodeId, SyntaxOrigin,
+    WhenCase,
 };
 use fol_resolver::{
     ReferenceId, ReferenceKind, ResolvedProgram, ScopeId, SourceUnitId, SymbolId, SymbolKind,
@@ -60,9 +61,21 @@ fn type_node(
     context: TypeContext,
     node: &AstNode,
 ) -> Result<Option<CheckedTypeId>, TypecheckError> {
+    type_node_with_expectation(typed, resolved, context, node, None)
+}
+
+fn type_node_with_expectation(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    node: &AstNode,
+    expected_type: Option<CheckedTypeId>,
+) -> Result<Option<CheckedTypeId>, TypecheckError> {
     match node {
         AstNode::Comment { .. } => Ok(None),
-        AstNode::Commented { node, .. } => type_node(typed, resolved, context, node),
+        AstNode::Commented { node, .. } => {
+            type_node_with_expectation(typed, resolved, context, node, expected_type)
+        }
         AstNode::VarDecl {
             name,
             type_hint: _,
@@ -83,6 +96,17 @@ fn type_node(
             binding_kind_for(node),
         ),
         AstNode::Literal(literal) => Ok(Some(type_literal(typed, literal)?)),
+        AstNode::ContainerLiteral {
+            container_type,
+            elements,
+        } => type_container_literal(
+            typed,
+            resolved,
+            context,
+            container_type.clone(),
+            elements,
+            expected_type,
+        ),
         AstNode::Identifier { name, syntax_id } => {
             type_identifier_reference(typed, resolved, context, name, *syntax_id)
         }
@@ -167,7 +191,9 @@ fn type_node(
                     "assignment target does not have a type",
                 )
             })?;
-            let actual = type_node(typed, resolved, context, value)?.ok_or_else(|| {
+            let actual =
+                type_node_with_expectation(typed, resolved, context, value, Some(expected))?
+                    .ok_or_else(|| {
                 TypecheckError::new(
                     TypecheckErrorKind::InvalidInput,
                     "assignment value does not have a type",
@@ -287,11 +313,6 @@ fn type_binding_initializer(
     value: Option<&AstNode>,
     symbol_kind: SymbolKind,
 ) -> Result<Option<CheckedTypeId>, TypecheckError> {
-    let initializer_type = value
-        .map(|value| type_node(typed, resolved, context, value))
-        .transpose()?
-        .flatten();
-
     let Some(symbol_id) = find_symbol_in_scope(
         resolved,
         context.source_unit_id,
@@ -299,11 +320,19 @@ fn type_binding_initializer(
         name,
         symbol_kind,
     ) else {
+        let initializer_type = value
+            .map(|value| type_node_with_expectation(typed, resolved, context, value, None))
+            .transpose()?
+            .flatten();
         return Ok(initializer_type);
     };
     let declared_type = typed
         .typed_symbol(symbol_id)
         .and_then(|symbol| symbol.declared_type);
+    let initializer_type = value
+        .map(|value| type_node_with_expectation(typed, resolved, context, value, declared_type))
+        .transpose()?
+        .flatten();
 
     match (declared_type, initializer_type) {
         (Some(expected), Some(actual)) => {
@@ -377,6 +406,84 @@ fn type_when(
     }
 
     Ok(Some(expected))
+}
+
+fn type_container_literal(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    container_type: ContainerType,
+    elements: &[AstNode],
+    expected_type: Option<CheckedTypeId>,
+) -> Result<Option<CheckedTypeId>, TypecheckError> {
+    let expected_container = expected_type
+        .map(|expected| expected_container_shape(typed, expected))
+        .transpose()?
+        .flatten();
+    let container_kind = expected_container
+        .as_ref()
+        .map(|shape| shape.kind.clone())
+        .unwrap_or(container_type);
+    let mut inferred_element = expected_container.as_ref().map(|shape| shape.element_type);
+
+    let element_nodes = elements
+        .iter()
+        .filter(|element| !matches!(element, AstNode::Comment { .. }))
+        .collect::<Vec<_>>();
+    if element_nodes.is_empty() {
+        let Some(expected_container) = expected_container else {
+            return Err(TypecheckError::new(
+                TypecheckErrorKind::Unsupported,
+                "empty container literals require an expected container type in V1",
+            ));
+        };
+        return Ok(Some(intern_container_shape(
+            typed,
+            expected_container.kind,
+            expected_container.element_type,
+            expected_container.array_size,
+        )));
+    }
+
+    for element in element_nodes {
+        let actual = type_node_with_expectation(
+            typed,
+            resolved,
+            context,
+            element,
+            inferred_element,
+        )?
+        .ok_or_else(|| {
+            TypecheckError::new(
+                TypecheckErrorKind::InvalidInput,
+                "container element does not have a type",
+            )
+        })?;
+        if let Some(expected) = inferred_element {
+            ensure_assignable(
+                typed,
+                expected,
+                actual,
+                "container element".to_string(),
+                None,
+            )?;
+        } else {
+            inferred_element = Some(actual);
+        }
+    }
+
+    let element_type = inferred_element.ok_or_else(|| {
+        TypecheckError::new(
+            TypecheckErrorKind::InvalidInput,
+            "container literal could not infer an element type",
+        )
+    })?;
+    Ok(Some(intern_container_shape(
+        typed,
+        container_kind,
+        element_type,
+        expected_container.and_then(|shape| shape.array_size),
+    )))
 }
 
 fn type_loop(
@@ -540,7 +647,8 @@ fn type_report_call(
         ));
     }
 
-    let actual = type_node(typed, resolved, context, &args[0])?.ok_or_else(|| {
+    let actual = type_node_with_expectation(typed, resolved, context, &args[0], Some(expected))?
+        .ok_or_else(|| {
         TypecheckError::with_origin(
             TypecheckErrorKind::InvalidInput,
             "report expression does not have a type",
@@ -650,7 +758,8 @@ fn type_return(
             "return requires a value for routines with a declared return type",
         ));
     };
-    let actual = type_node(typed, resolved, context, value)?.ok_or_else(|| {
+    let actual = type_node_with_expectation(typed, resolved, context, value, Some(expected))?
+        .ok_or_else(|| {
         TypecheckError::new(
             TypecheckErrorKind::InvalidInput,
             "return expression does not have a type",
@@ -1054,7 +1163,8 @@ fn check_call_arguments(
     }
 
     for (expected, arg) in signature.params.iter().zip(args) {
-        let actual = type_node(typed, resolved, context, arg)?.ok_or_else(|| {
+        let actual = type_node_with_expectation(typed, resolved, context, arg, Some(*expected))?
+            .ok_or_else(|| {
             TypecheckError::new(
                 TypecheckErrorKind::InvalidInput,
                 format!("argument for '{callee}' does not have a type"),
@@ -1247,6 +1357,62 @@ fn single_scope(scopes: BTreeSet<ScopeId>) -> Option<ScopeId> {
         scopes.into_iter().next()
     } else {
         None
+    }
+}
+
+#[derive(Debug, Clone)]
+struct ExpectedContainerShape {
+    kind: ContainerType,
+    element_type: CheckedTypeId,
+    array_size: Option<usize>,
+}
+
+fn expected_container_shape(
+    typed: &TypedProgram,
+    expected_type: CheckedTypeId,
+) -> Result<Option<ExpectedContainerShape>, TypecheckError> {
+    let apparent = apparent_type_id(typed, expected_type)?;
+    Ok(match typed.type_table().get(apparent) {
+        Some(CheckedType::Array { element_type, size }) => Some(ExpectedContainerShape {
+            kind: ContainerType::Array,
+            element_type: *element_type,
+            array_size: *size,
+        }),
+        Some(CheckedType::Vector { element_type }) => Some(ExpectedContainerShape {
+            kind: ContainerType::Vector,
+            element_type: *element_type,
+            array_size: None,
+        }),
+        Some(CheckedType::Sequence { element_type }) => Some(ExpectedContainerShape {
+            kind: ContainerType::Sequence,
+            element_type: *element_type,
+            array_size: None,
+        }),
+        _ => None,
+    })
+}
+
+fn intern_container_shape(
+    typed: &mut TypedProgram,
+    kind: ContainerType,
+    element_type: CheckedTypeId,
+    array_size: Option<usize>,
+) -> CheckedTypeId {
+    match kind {
+        ContainerType::Array => typed.type_table_mut().intern(CheckedType::Array {
+            element_type,
+            size: array_size,
+        }),
+        ContainerType::Vector => typed
+            .type_table_mut()
+            .intern(CheckedType::Vector { element_type }),
+        ContainerType::Sequence => typed
+            .type_table_mut()
+            .intern(CheckedType::Sequence { element_type }),
+        ContainerType::Set | ContainerType::Map => typed.type_table_mut().intern(CheckedType::Array {
+            element_type,
+            size: array_size,
+        }),
     }
 }
 

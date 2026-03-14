@@ -1013,6 +1013,74 @@ fn control_never_typing_treats_report_branches_as_early_exits() {
 }
 
 #[test]
+fn container_literal_typing_accepts_array_vector_and_sequence_contexts() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "fun[] make_arr(): arr[int, 3] = {\n\
+             return {1, 2, 3};\n\
+         }\n\
+         fun[] make_vec(): vec[int] = {\n\
+             return {1, 2, 3};\n\
+         }\n\
+         fun[] make_seq(): seq[int] = {\n\
+             return {1, 2, 3};\n\
+         }\n",
+    )]);
+
+    for (name, expected_label) in [
+        ("make_arr", "Array"),
+        ("make_vec", "Vector"),
+        ("make_seq", "Sequence"),
+    ] {
+        let syntax_id = find_named_routine_syntax_id(&typed, name);
+        let inferred = typed
+            .typed_node(syntax_id)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id));
+        assert!(
+            matches!(
+                inferred,
+                Some(CheckedType::Array { element_type, .. })
+                    if expected_label == "Array"
+                        && typed.type_table().get(*element_type)
+                            == Some(&CheckedType::Builtin(BuiltinType::Int))
+            ) || matches!(
+                inferred,
+                Some(CheckedType::Vector { element_type })
+                    if expected_label == "Vector"
+                        && typed.type_table().get(*element_type)
+                            == Some(&CheckedType::Builtin(BuiltinType::Int))
+            ) || matches!(
+                inferred,
+                Some(CheckedType::Sequence { element_type })
+                    if expected_label == "Sequence"
+                        && typed.type_table().get(*element_type)
+                            == Some(&CheckedType::Builtin(BuiltinType::Int))
+            ),
+            "Expected {name} to keep a {expected_label} container type, got {inferred:?}"
+        );
+    }
+}
+
+#[test]
+fn container_literal_typing_rejects_mixed_element_families() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] bad(): vec[int] = {\n\
+             return {1, false};\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::IncompatibleType
+                && error.message().contains("container element expects")
+        }),
+        "Expected a mixed-container-element diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
 fn declaration_signature_lowering_resolves_qualified_named_types() {
     let typed = typecheck_fixture_folder(&[
         ("util/types.fol", "ali Count: int\n"),
