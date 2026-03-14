@@ -418,7 +418,7 @@ Status: done
 
 #### 4.2
 
-Status: pending
+Status: done
 
 - Make plain imported routine calls typecheck with argument and return checking.
 

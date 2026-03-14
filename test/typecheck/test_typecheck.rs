@@ -2651,6 +2651,43 @@ fn workspace_expression_typing_keeps_plain_imported_value_types_in_bindings_retu
 }
 
 #[test]
+fn workspace_expression_typing_rejects_plain_imported_call_argument_mismatches() {
+    let root = unique_temp_dir("workspace_imported_call_checks");
+    create_dir_all(&root).expect("Fixture root should be creatable");
+    write_fixture_files(
+        &root,
+        &[
+            (
+                "shared/lib.fol",
+                "fun[exp] emit(value: int): int = {\n    return value;\n}\n",
+            ),
+            (
+                "app/main.fol",
+                concat!(
+                    "use shared: loc = {\"../shared\"};\n",
+                    "fun[] main(): int = {\n",
+                    "    return emit(\"bad\");\n",
+                    "}\n",
+                ),
+            ),
+        ],
+    );
+
+    let errors = typecheck_fixture_workspace_entry_with_config(&root, "app", ResolverConfig::default())
+        .expect_err("Workspace entry typing should reject imported call argument mismatches");
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::IncompatibleType
+                && error
+                    .message()
+                    .contains("call to 'emit' expects 'Builtin(Int)'")
+        }),
+        "Expected imported-call argument mismatch diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
 fn reopened_v1_blocker_loc_imported_values_still_fail_typecheck() {
     let root = unique_temp_dir("reopened_loc_import");
     create_dir_all(&root).expect("Fixture root should be creatable");
