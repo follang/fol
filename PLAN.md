@@ -381,7 +381,7 @@ Status: done
 
 #### 3.3
 
-Status: pending
+Status: done
 
 - Make imported exported routines expose real callable signatures during
   expression typing.

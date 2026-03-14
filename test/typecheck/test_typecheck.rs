@@ -2208,6 +2208,47 @@ fn workspace_expression_typing_keeps_plain_imported_value_reference_types() {
 }
 
 #[test]
+fn workspace_expression_typing_keeps_plain_imported_call_types() {
+    let root = unique_temp_dir("workspace_imported_call_types");
+    create_dir_all(&root).expect("Fixture root should be creatable");
+    write_fixture_files(
+        &root,
+        &[
+            (
+                "shared/lib.fol",
+                concat!(
+                    "fun[exp] answer(): int = {\n",
+                    "    return 42;\n",
+                    "}\n",
+                ),
+            ),
+            (
+                "app/main.fol",
+                concat!(
+                    "use shared: loc = {\"../shared\"};\n",
+                    "fun[] main(): int = {\n",
+                    "    return answer();\n",
+                    "}\n",
+                ),
+            ),
+        ],
+    );
+
+    let typed = typecheck_fixture_workspace_entry_with_config(&root, "app", ResolverConfig::default())
+        .expect("Workspace entry typing should accept imported routine calls");
+    let reference = find_typed_reference(&typed, "answer", ReferenceKind::FunctionCall);
+
+    assert_eq!(
+        typed.type_table().get(
+            reference
+                .resolved_type
+                .expect("imported call references should keep a resolved type"),
+        ),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+}
+
+#[test]
 fn reopened_v1_blocker_loc_imported_values_still_fail_typecheck() {
     let root = unique_temp_dir("reopened_loc_import");
     create_dir_all(&root).expect("Fixture root should be creatable");
