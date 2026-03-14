@@ -985,6 +985,7 @@ fn insert_local_symbol(
         origin: None,
         visibility: None,
         declaration_scope: None,
+        mounted_from: None,
     });
     if let Some(symbol) = program.symbols.get_mut(symbol_id) {
         symbol.id = symbol_id;

@@ -72,6 +72,12 @@ pub enum ReferenceKind {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MountedSymbolProvenance {
+    pub package_identity: PackageIdentity,
+    pub foreign_symbol: SymbolId,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResolvedSymbol {
     pub id: SymbolId,
     pub name: String,
@@ -83,6 +89,7 @@ pub struct ResolvedSymbol {
     pub origin: Option<SyntaxOrigin>,
     pub visibility: Option<ParsedDeclVisibility>,
     pub declaration_scope: Option<ParsedDeclScope>,
+    pub mounted_from: Option<MountedSymbolProvenance>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -569,7 +576,12 @@ impl ResolvedProgram {
             {
                 continue;
             }
-            self.insert_mounted_symbol(mounted_scope, source_unit_id, symbol.clone())?;
+            self.insert_mounted_symbol(
+                mounted_scope,
+                source_unit_id,
+                symbol.clone(),
+                &loaded.identity,
+            )?;
         }
 
         Ok(())
@@ -580,7 +592,9 @@ impl ResolvedProgram {
         scope_id: ScopeId,
         source_unit_id: SourceUnitId,
         symbol: ResolvedSymbol,
+        package_identity: &PackageIdentity,
     ) -> Result<SymbolId, ResolverError> {
+        let foreign_symbol_id = symbol.id;
         let canonical_name = symbol.canonical_name.clone();
         if let Some(existing) = self
             .scope(scope_id)
@@ -603,6 +617,10 @@ impl ResolvedProgram {
             id: SymbolId(0),
             scope: scope_id,
             source_unit: source_unit_id,
+            mounted_from: Some(MountedSymbolProvenance {
+                package_identity: package_identity.clone(),
+                foreign_symbol: foreign_symbol_id,
+            }),
             ..symbol
         });
         if let Some(inserted) = self.symbols.get_mut(symbol_id) {

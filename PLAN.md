@@ -310,7 +310,7 @@ Status: done
 
 #### 1.2
 
-Status: pending
+Status: done
 
 - Preserve mounted imported symbol provenance so later stages can recover the
   foreign package identity and original foreign symbol id.

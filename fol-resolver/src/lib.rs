@@ -31,8 +31,9 @@ pub mod traverse;
 pub use errors::{ResolverError, ResolverErrorKind};
 pub use ids::{IdTable, ImportId, ReferenceId, ScopeId, SourceUnitId, SymbolId};
 pub use model::{
-    ReferenceKind, ResolvedImport, ResolvedPackage, ResolvedProgram, ResolvedReference,
-    ResolvedScope, ResolvedSourceUnit, ResolvedSymbol, ResolvedWorkspace, ScopeKind, SymbolKind,
+    MountedSymbolProvenance, ReferenceKind, ResolvedImport, ResolvedPackage, ResolvedProgram,
+    ResolvedReference, ResolvedScope, ResolvedSourceUnit, ResolvedSymbol, ResolvedWorkspace,
+    ScopeKind, SymbolKind,
 };
 pub use session::{PackageIdentity, PackageSourceKind, ResolverConfig, ResolverSession};
 pub use fol_package::PreparedPackage;
