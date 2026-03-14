@@ -517,7 +517,7 @@ Status: done
 
 #### 4.3
 
-Status: pending
+Status: done
 
 - Type `if`/`when` branch agreement where result typing matters.
 

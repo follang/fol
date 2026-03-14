@@ -2,7 +2,7 @@ use crate::{
     decls, CheckedType, CheckedTypeId, RoutineType, TypecheckError, TypecheckErrorKind,
     TypecheckResult, TypedProgram,
 };
-use fol_parser::ast::{AstNode, Literal, QualifiedPath, SyntaxNodeId, SyntaxOrigin};
+use fol_parser::ast::{AstNode, Literal, QualifiedPath, SyntaxNodeId, SyntaxOrigin, WhenCase};
 use fol_resolver::{
     ReferenceId, ReferenceKind, ResolvedProgram, ScopeId, SourceUnitId, SymbolId, SymbolKind,
 };
@@ -151,6 +151,11 @@ fn type_node(
         }
         AstNode::Block { statements } => type_body(typed, resolved, context, statements),
         AstNode::Program { declarations } => type_body(typed, resolved, context, declarations),
+        AstNode::When {
+            expr,
+            cases,
+            default,
+        } => type_when(typed, resolved, context, expr, cases, default.as_deref()),
         AstNode::Assignment { target, value } => {
             ensure_assignable_target(target)?;
             let expected = type_node(typed, resolved, context, target)?.ok_or_else(|| {
@@ -300,6 +305,63 @@ fn type_binding_initializer(
         (Some(expected), None) => Ok(Some(expected)),
         (None, None) => Ok(None),
     }
+}
+
+fn type_when(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    expr: &AstNode,
+    cases: &[WhenCase],
+    default: Option<&[AstNode]>,
+) -> Result<Option<CheckedTypeId>, TypecheckError> {
+    let _ = type_node(typed, resolved, context, expr)?;
+    let mut case_types = Vec::new();
+
+    for case in cases {
+        match case {
+            WhenCase::Case { condition, body }
+            | WhenCase::Is {
+                value: condition,
+                body,
+            }
+            | WhenCase::In {
+                range: condition,
+                body,
+            }
+            | WhenCase::Has {
+                member: condition,
+                body,
+            }
+            | WhenCase::On {
+                channel: condition,
+                body,
+            } => {
+                let _ = type_node(typed, resolved, context, condition)?;
+                case_types.push(type_body(typed, resolved, context, body)?);
+            }
+            WhenCase::Of { type_match, body } => {
+                let _ = decls::lower_type(typed, resolved, context.scope_id, type_match)?;
+                case_types.push(type_body(typed, resolved, context, body)?);
+            }
+        }
+    }
+
+    let Some(default) = default else {
+        return Ok(None);
+    };
+    let Some(expected) = type_body(typed, resolved, context, default)? else {
+        return Ok(None);
+    };
+
+    for case_type in case_types {
+        let Some(actual) = case_type else {
+            return Ok(None);
+        };
+        ensure_assignable(typed, expected, actual, "when branch".to_string(), None)?;
+    }
+
+    Ok(Some(expected))
 }
 
 fn type_function_call(

@@ -861,6 +861,53 @@ fn routine_error_typing_rejects_missing_report_values() {
 }
 
 #[test]
+fn when_result_typing_accepts_matching_branch_values() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "var yes: int = 1\n\
+         var no: int = 2\n\
+         fun[] demo(flag: bol): int = {\n\
+             when(flag) {\n\
+                 case(true) { yes }\n\
+                 * { no }\n\
+             }\n\
+         }\n",
+    )]);
+
+    let syntax_id = find_named_routine_syntax_id(&typed, "demo");
+    assert_eq!(
+        typed
+            .typed_node(syntax_id)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+}
+
+#[test]
+fn when_result_typing_rejects_branch_type_mismatches() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "var yes: int = 1\n\
+         var no: bol = false\n\
+         fun[] demo(flag: bol): int = {\n\
+             when(flag) {\n\
+                 case(true) { yes }\n\
+                 * { no }\n\
+             }\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::IncompatibleType
+                && error.message().contains("when branch expects")
+        }),
+        "Expected a when-branch mismatch diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
 fn declaration_signature_lowering_resolves_qualified_named_types() {
     let typed = typecheck_fixture_folder(&[
         ("util/types.fol", "ali Count: int\n"),
