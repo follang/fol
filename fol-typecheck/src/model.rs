@@ -1,6 +1,6 @@
 use crate::{BuiltinTypeIds, CheckedTypeId, TypeTable};
 use fol_parser::ast::SyntaxNodeId;
-use fol_resolver::{ReferenceKind, ScopeId, SourceUnitId, SymbolId, SymbolKind};
+use fol_resolver::{PackageIdentity, ReferenceKind, ScopeId, SourceUnitId, SymbolId, SymbolKind};
 use std::collections::BTreeMap;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -46,6 +46,74 @@ pub struct TypedProgram {
     symbols: BTreeMap<SymbolId, TypedSymbol>,
     nodes: BTreeMap<SyntaxNodeId, TypedNode>,
     references: BTreeMap<fol_resolver::ReferenceId, TypedReference>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TypedPackage {
+    pub identity: PackageIdentity,
+    pub program: TypedProgram,
+}
+
+impl TypedPackage {
+    pub fn new(identity: PackageIdentity, program: TypedProgram) -> Self {
+        Self { identity, program }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TypedWorkspace {
+    entry_identity: PackageIdentity,
+    packages: BTreeMap<PackageIdentity, TypedPackage>,
+}
+
+impl TypedWorkspace {
+    pub fn single(entry_identity: PackageIdentity, entry_program: TypedProgram) -> Self {
+        let mut packages = BTreeMap::new();
+        packages.insert(
+            entry_identity.clone(),
+            TypedPackage::new(entry_identity.clone(), entry_program),
+        );
+        Self {
+            entry_identity,
+            packages,
+        }
+    }
+
+    pub(crate) fn new(
+        entry_identity: PackageIdentity,
+        packages: BTreeMap<PackageIdentity, TypedPackage>,
+    ) -> Self {
+        Self {
+            entry_identity,
+            packages,
+        }
+    }
+
+    pub fn entry_identity(&self) -> &PackageIdentity {
+        &self.entry_identity
+    }
+
+    pub fn entry_package(&self) -> &TypedPackage {
+        self.packages
+            .get(&self.entry_identity)
+            .expect("typed workspace should always retain the entry package")
+    }
+
+    pub fn entry_program(&self) -> &TypedProgram {
+        &self.entry_package().program
+    }
+
+    pub fn package(&self, identity: &PackageIdentity) -> Option<&TypedPackage> {
+        self.packages.get(identity)
+    }
+
+    pub fn packages(&self) -> impl Iterator<Item = &TypedPackage> {
+        self.packages.values()
+    }
+
+    pub fn package_count(&self) -> usize {
+        self.packages.len()
+    }
 }
 
 impl TypedProgram {
@@ -192,7 +260,7 @@ impl TypedProgram {
 
 #[cfg(test)]
 mod tests {
-    use super::TypedProgram;
+    use super::{TypedProgram, TypedWorkspace};
     use crate::{BuiltinType, CheckedType};
     use fol_parser::ast::AstParser;
     use fol_resolver::resolve_package;
@@ -223,5 +291,28 @@ mod tests {
                 .expect("resolved source unit should exist")
                 .top_level_nodes
         );
+    }
+
+    #[test]
+    fn typed_workspace_single_package_shell_exposes_entry_program() {
+        let fixture_path = concat!(env!("CARGO_MANIFEST_DIR"), "/../test/parser/simple_var.fol");
+        let mut stream = FileStream::from_file(fixture_path).expect("Should open typecheck fixture");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let syntax = parser
+            .parse_package(&mut lexer)
+            .expect("Typecheck fixture should parse");
+        let resolved = resolve_package(syntax).expect("Typecheck fixture should resolve");
+        let entry_identity = fol_resolver::PackageIdentity {
+            source_kind: fol_resolver::PackageSourceKind::Entry,
+            canonical_root: resolved.package_name().to_string(),
+            display_name: resolved.package_name().to_string(),
+        };
+
+        let workspace = TypedWorkspace::single(entry_identity.clone(), TypedProgram::from_resolved(resolved));
+
+        assert_eq!(workspace.package_count(), 1);
+        assert_eq!(workspace.entry_identity(), &entry_identity);
+        assert_eq!(workspace.entry_program().package_name(), "parser");
     }
 }

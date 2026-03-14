@@ -336,7 +336,7 @@ Status: pending
 
 #### 2.1
 
-Status: pending
+Status: done
 
 - Add `TypedPackage` / `TypedWorkspace` result models so typechecking can track
   per-package semantic facts instead of only one entry package shell.
