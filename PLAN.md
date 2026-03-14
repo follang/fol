@@ -325,7 +325,7 @@ Status: done
 
 #### 1.4
 
-Status: pending
+Status: done
 
 - Keep the old single-package resolver API available only as a compatibility
   shim while the CLI and typechecker move to the graph-aware path.

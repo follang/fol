@@ -1,4 +1,6 @@
-use super::{resolve_workspace_from_folder_with_config, unique_temp_root};
+use super::{
+    resolve_package_from_folder, resolve_workspace_from_folder_with_config, unique_temp_root,
+};
 use fol_resolver::{ReferenceKind, ResolverConfig};
 use std::fs;
 
@@ -175,6 +177,47 @@ fn test_resolver_workspace_keeps_transitive_loaded_packages() {
                     && reference.resolved.is_some()
             }),
         "Workspace handoff should preserve existing entry-package resolution"
+    );
+
+    fs::remove_dir_all(&temp_root)
+        .expect("Temporary resolver fixture directory should be removable after the test");
+}
+
+#[test]
+fn test_resolver_legacy_program_api_matches_workspace_entry_program() {
+    let temp_root = unique_temp_root("workspace_compatibility");
+    fs::create_dir_all(temp_root.join("app"))
+        .expect("Should create the importing package root fixture directory");
+    fs::create_dir_all(temp_root.join("shared"))
+        .expect("Should create the imported package root fixture directory");
+    fs::write(temp_root.join("shared/lib.fol"), "var[exp] answer: int = 42;\n")
+        .expect("Should write the imported package fixture");
+    fs::write(
+        temp_root.join("app/main.fol"),
+        "use shared: loc = {\"../shared\"};\nfun[] main(): int = {\n    return answer;\n}\n",
+    )
+    .expect("Should write the importing package fixture");
+
+    let app_root = temp_root
+        .join("app")
+        .to_str()
+        .expect("Temporary resolver fixture path should be valid UTF-8")
+        .to_string();
+    let legacy = resolve_package_from_folder(&app_root);
+    let workspace = resolve_workspace_from_folder_with_config(&app_root, ResolverConfig::default());
+    let entry = workspace.entry_program();
+
+    assert_eq!(legacy.package_name(), entry.package_name());
+    assert_eq!(legacy.source_units.len(), entry.source_units.len());
+    assert_eq!(legacy.references.len(), entry.references.len());
+    assert_eq!(legacy.imports.len(), entry.imports.len());
+    assert!(
+        entry.references.iter().any(|reference| {
+            reference.kind == ReferenceKind::Identifier
+                && reference.name == "answer"
+                && reference.resolved.is_some()
+        }),
+        "Workspace entry program should preserve the existing entry-package resolution contract"
     );
 
     fs::remove_dir_all(&temp_root)
