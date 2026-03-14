@@ -2,17 +2,18 @@
 
 mod errors;
 pub mod ids;
+pub mod model;
 
 pub use errors::{LoweringError, LoweringErrorKind};
 pub use ids::{
     IdTable, LoweredBlockId, LoweredGlobalId, LoweredInstrId, LoweredLocalId, LoweredPackageId,
     LoweredRoutineId, LoweredTypeId,
 };
+pub use model::{
+    LoweredPackage, LoweredSourceMap, LoweredSourceMapEntry, LoweredSourceSymbol, LoweredWorkspace,
+};
 
 pub type LoweringResult<T> = Result<T, Vec<LoweringError>>;
-
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct LoweredWorkspace;
 
 #[derive(Debug, Default)]
 pub struct Lowerer;
