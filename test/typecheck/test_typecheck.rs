@@ -175,6 +175,24 @@ fn find_typed_reference<'a>(
         .expect("typed reference facts should exist")
 }
 
+fn find_typed_references<'a>(
+    typed: &'a fol_typecheck::TypedProgram,
+    name: &str,
+    kind: ReferenceKind,
+) -> Vec<&'a fol_typecheck::TypedReference> {
+    typed
+        .resolved()
+        .references
+        .iter_with_ids()
+        .filter(|(_, reference)| reference.name == name && reference.kind == kind)
+        .map(|(reference_id, _)| {
+            typed
+                .typed_reference(reference_id)
+                .expect("typed reference facts should exist")
+        })
+        .collect()
+}
+
 fn assert_imported_declared_count_binding_and_routine(
     typed: &fol_typecheck::TypedProgram,
     count_symbol: SymbolKind,
@@ -2588,6 +2606,48 @@ fn workspace_typechecking_keeps_transitive_pkg_import_declaration_facts() {
             ..
         }) if name == "Count"
     ));
+}
+
+#[test]
+fn workspace_expression_typing_keeps_plain_imported_value_types_in_bindings_returns_and_call_args() {
+    let root = unique_temp_dir("workspace_imported_value_contexts");
+    create_dir_all(&root).expect("Fixture root should be creatable");
+    write_fixture_files(
+        &root,
+        &[
+            ("shared/lib.fol", "var[exp] answer: int = 42;\n"),
+            (
+                "app/main.fol",
+                concat!(
+                    "use shared: loc = {\"../shared\"};\n",
+                    "fun[] echo(value: int): int = {\n",
+                    "    return value;\n",
+                    "}\n",
+                    "fun[] main(): int = {\n",
+                    "    var current: int = answer;\n",
+                    "    var echoed: int = echo(answer);\n",
+                    "    return answer;\n",
+                    "}\n",
+                ),
+            ),
+        ],
+    );
+
+    let typed = typecheck_fixture_workspace_entry_with_config(&root, "app", ResolverConfig::default())
+        .expect("Workspace entry typing should accept plain imported values in all basic expression contexts");
+    let references = find_typed_references(&typed, "answer", ReferenceKind::Identifier);
+
+    assert_eq!(references.len(), 3, "expected imported value references in binding, call argument, and return");
+    for reference in references {
+        assert_eq!(
+            typed.type_table().get(
+                reference
+                    .resolved_type
+                    .expect("imported value references should keep a resolved type"),
+            ),
+            Some(&CheckedType::Builtin(BuiltinType::Int))
+        );
+    }
 }
 
 #[test]

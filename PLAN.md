@@ -411,7 +411,7 @@ Status: pending
 
 #### 4.1
 
-Status: pending
+Status: done
 
 - Make plain imported value references typecheck in bindings, returns, and call
   arguments.
