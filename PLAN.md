@@ -483,7 +483,7 @@ This plan is complete only when all of the following are true:
 ### Phase 0. Crate Foundation
 
 - `0.1` `done` Add `fol-lower` to the workspace and root crate dependencies.
-- `0.2` `pending` Add `fol-lower` public API shell with `LoweringResult`, `Lowerer`, and error surface.
+- `0.2` `done` Add `fol-lower` public API shell with `LoweringResult`, `Lowerer`, and error surface.
 - `0.3` `pending` Add lowering error kinds and diagnostics integration.
 - `0.4` `pending` Add smoke tests proving a typed workspace can be handed to the lowerer.
 
