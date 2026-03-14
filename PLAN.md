@@ -495,7 +495,7 @@ Status: done
 
 #### 6.2
 
-Status: pending
+Status: done
 
 - Implement `nil` typing for the accepted `V1` optional/error shell contexts.
 

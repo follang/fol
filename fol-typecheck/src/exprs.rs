@@ -116,7 +116,7 @@ fn type_node_with_expectation(
             value.as_deref(),
             binding_kind_for(node),
         ),
-        AstNode::Literal(literal) => Ok(Some(type_literal(typed, literal)?)),
+        AstNode::Literal(literal) => Ok(Some(type_literal(typed, literal, expected_type)?)),
         AstNode::ContainerLiteral {
             container_type,
             elements,
@@ -555,6 +555,7 @@ fn type_unary_op(
 fn type_literal(
     typed: &mut TypedProgram,
     literal: &Literal,
+    expected_type: Option<CheckedTypeId>,
 ) -> Result<CheckedTypeId, TypecheckError> {
     Ok(match literal {
         Literal::Integer(_) => typed.builtin_types().int,
@@ -563,10 +564,14 @@ fn type_literal(
         Literal::Character(_) => typed.builtin_types().char_,
         Literal::Boolean(_) => typed.builtin_types().bool_,
         Literal::Nil => {
-            return Err(TypecheckError::new(
-                TypecheckErrorKind::Unsupported,
-                "nil literals are not part of the V1 expression typing milestone",
-            ));
+            if let Some(shell_type) = expected_nil_shell_type(typed, expected_type)? {
+                shell_type
+            } else {
+                return Err(TypecheckError::new(
+                    TypecheckErrorKind::InvalidInput,
+                    "nil literals require an expected opt[...] or err[...] shell type in V1",
+                ));
+            }
         }
     })
 }
@@ -2407,13 +2412,13 @@ mod tests {
         let mut typed = typed_fixture_program();
 
         assert_eq!(
-            typed.type_table().get(type_literal(&mut typed, &Literal::Integer(1)).unwrap()),
+            typed.type_table().get(type_literal(&mut typed, &Literal::Integer(1), None).unwrap()),
             Some(&crate::CheckedType::Builtin(BuiltinType::Int))
         );
         assert_eq!(
             typed
                 .type_table()
-                .get(type_literal(&mut typed, &Literal::String("ok".to_string())).unwrap()),
+                .get(type_literal(&mut typed, &Literal::String("ok".to_string()), None).unwrap()),
             Some(&crate::CheckedType::Builtin(BuiltinType::Str))
         );
     }

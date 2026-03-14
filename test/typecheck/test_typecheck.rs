@@ -3256,20 +3256,53 @@ fn reopened_v1_blocker_imported_routine_calls_still_fail_typecheck() {
 }
 
 #[test]
-fn reopened_v1_blocker_nil_literals_are_still_explicitly_unsupported() {
+fn shell_typing_accepts_nil_in_optional_and_error_binding_contexts() {
+    let typed = typecheck_fixture_folder(&[
+        (
+            "main.fol",
+            "ali MaybeText: opt[str]\nali Failure: err[str]\nali BareFailure: err[]\nvar label: MaybeText = nil\nvar raised: Failure = nil\nvar empty: BareFailure = nil\n",
+        ),
+    ]);
+
+    let (_label_id, label) = find_typed_symbol(&typed, "label", SymbolKind::ValueBinding);
+    let (_raised_id, raised) = find_typed_symbol(&typed, "raised", SymbolKind::ValueBinding);
+    let (_empty_id, empty) = find_typed_symbol(&typed, "empty", SymbolKind::ValueBinding);
+
+    assert!(matches!(
+        typed
+            .type_table()
+            .get(label.declared_type.expect("label should keep its declared type")),
+        Some(CheckedType::Declared { name, .. }) if name == "MaybeText"
+    ));
+    assert!(matches!(
+        typed
+            .type_table()
+            .get(raised.declared_type.expect("raised should keep its declared type")),
+        Some(CheckedType::Declared { name, .. }) if name == "Failure"
+    ));
+    assert!(matches!(
+        typed
+            .type_table()
+            .get(empty.declared_type.expect("empty should keep its declared type")),
+        Some(CheckedType::Declared { name, .. }) if name == "BareFailure"
+    ));
+}
+
+#[test]
+fn nil_typing_rejects_missing_expected_shell_contexts() {
     let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",
-        "ali MaybeText: opt[str]\nvar label: MaybeText = nil\n",
+        "var label = nil\n",
     )]);
 
     assert!(
         errors.iter().any(|error| {
-            error.kind() == TypecheckErrorKind::Unsupported
+            error.kind() == TypecheckErrorKind::InvalidInput
                 && error
                     .message()
-                    .contains("nil literals are not part of the V1 expression typing milestone")
+                    .contains("nil literals require an expected opt[...] or err[...] shell type in V1")
         }),
-        "Expected the reopened nil blocker diagnostic, got: {errors:?}"
+        "Expected the nil expected-shell diagnostic, got: {errors:?}"
     );
 }
 
