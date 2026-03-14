@@ -107,6 +107,9 @@ fn type_node_with_expectation(
             elements,
             expected_type,
         ),
+        AstNode::RecordInit { fields } => {
+            type_record_init(typed, resolved, context, fields, expected_type)
+        }
         AstNode::Identifier { name, syntax_id } => {
             type_identifier_reference(typed, resolved, context, name, *syntax_id)
         }
@@ -628,6 +631,92 @@ fn type_report_call(
     })?;
     ensure_assignable(typed, expected, actual, "report".to_string(), origin)?;
     Ok(Some(typed.builtin_types().never))
+}
+
+fn type_record_init(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    fields: &[fol_parser::ast::RecordInitField],
+    expected_type: Option<CheckedTypeId>,
+) -> Result<Option<CheckedTypeId>, TypecheckError> {
+    let Some(expected_type) = expected_type else {
+        return Err(TypecheckError::new(
+            TypecheckErrorKind::Unsupported,
+            "record initializers require an expected record type in V1",
+        ));
+    };
+    let apparent = apparent_type_id(typed, expected_type)?;
+    let Some(CheckedType::Record {
+        fields: expected_fields,
+    }) = typed.type_table().get(apparent)
+    else {
+        return Err(TypecheckError::new(
+            TypecheckErrorKind::InvalidInput,
+            format!(
+                "record initializer requires a record expected type, got '{}'",
+                describe_type(typed, expected_type)
+            ),
+        ));
+    };
+    let expected_fields = expected_fields.clone();
+    let mut seen = BTreeSet::new();
+
+    for field in fields {
+        let Some(field_type) = expected_fields.get(&field.name).copied() else {
+            return Err(TypecheckError::new(
+                TypecheckErrorKind::InvalidInput,
+                format!(
+                    "record initializer does not define a field named '{}'",
+                    field.name
+                ),
+            ));
+        };
+        if !seen.insert(field.name.clone()) {
+            return Err(TypecheckError::new(
+                TypecheckErrorKind::InvalidInput,
+                format!(
+                    "record initializer repeats the field '{}'",
+                    field.name
+                ),
+            ));
+        }
+        let actual =
+            type_node_with_expectation(typed, resolved, context, &field.value, Some(field_type))?
+                .ok_or_else(|| {
+                    TypecheckError::new(
+                        TypecheckErrorKind::InvalidInput,
+                        format!(
+                            "record initializer field '{}' does not have a type",
+                            field.name
+                        ),
+                    )
+                })?;
+        ensure_assignable(
+            typed,
+            field_type,
+            actual,
+            format!("record field '{}'", field.name),
+            None,
+        )?;
+    }
+
+    let missing = expected_fields
+        .keys()
+        .filter(|name| !seen.contains(*name))
+        .cloned()
+        .collect::<Vec<_>>();
+    if !missing.is_empty() {
+        return Err(TypecheckError::new(
+            TypecheckErrorKind::IncompatibleType,
+            format!(
+                "record initializer is missing required fields: {}",
+                missing.join(", ")
+            ),
+        ));
+    }
+
+    Ok(Some(expected_type))
 }
 
 fn type_panic_call(

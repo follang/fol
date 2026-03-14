@@ -551,7 +551,7 @@ Status: done
 
 #### 5.3
 
-Status: pending
+Status: done
 
 - Type record construction and field initializer compatibility.
 

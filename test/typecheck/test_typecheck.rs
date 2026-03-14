@@ -1158,6 +1158,93 @@ fn container_literal_typing_rejects_bad_map_pairs_and_nonliteral_heterogeneous_s
 }
 
 #[test]
+fn record_initializer_typing_accepts_nested_record_construction() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "typ Bonus: rec = {\n\
+             hta: int;\n\
+             ra: int\n\
+         }\n\
+         typ Salary: rec = {\n\
+             basic: int;\n\
+             bonus: Bonus\n\
+         }\n\
+         typ Employee: rec = {\n\
+             name: str;\n\
+             salary: Salary\n\
+         }\n\
+         fun[] build(): Employee = {\n\
+             return {\n\
+                 name = \"Mark\",\n\
+                 salary = {\n\
+                     basic = 15000,\n\
+                     bonus = { hta = 2100, ra = 5000 },\n\
+                 },\n\
+             };\n\
+         }\n",
+    )]);
+
+    let (employee_id, _employee) = find_typed_symbol(&typed, "Employee", SymbolKind::Type);
+    let syntax_id = find_named_routine_syntax_id(&typed, "build");
+
+    assert_eq!(
+        typed
+            .typed_node(syntax_id)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Declared {
+            symbol: employee_id,
+            name: "Employee".to_string(),
+            kind: DeclaredTypeKind::Type,
+        })
+    );
+}
+
+#[test]
+fn record_initializer_typing_rejects_missing_unknown_and_mismatched_fields() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "typ User: rec = {\n\
+             name: str;\n\
+             count: int\n\
+         }\n\
+         fun[] bad_type(): User = {\n\
+             return { name = false, count = 1 };\n\
+         }\n\
+         fun[] bad_field(): User = {\n\
+             return { name = \"ok\" };\n\
+         }\n\
+         fun[] unknown_field(): User = {\n\
+             return { name = \"ok\", count = 1, extra = 3 };\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::IncompatibleType
+                && error.message().contains("record field 'name' expects")
+        }),
+        "Expected a mismatched record-field diagnostic, got: {errors:?}"
+    );
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::IncompatibleType
+                && error.message().contains("missing required fields: count")
+        }),
+        "Expected a missing-record-field diagnostic, got: {errors:?}"
+    );
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error
+                    .message()
+                    .contains("does not define a field named 'extra'")
+        }),
+        "Expected an unknown-record-field diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
 fn declaration_signature_lowering_resolves_qualified_named_types() {
     let typed = typecheck_fixture_folder(&[
         ("util/types.fol", "ali Count: int\n"),
