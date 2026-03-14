@@ -1,8 +1,13 @@
 //! Lowering from typed `V1` FOL workspaces into a backend-oriented IR.
 
 mod errors;
+pub mod ids;
 
 pub use errors::{LoweringError, LoweringErrorKind};
+pub use ids::{
+    IdTable, LoweredBlockId, LoweredGlobalId, LoweredInstrId, LoweredLocalId, LoweredPackageId,
+    LoweredRoutineId, LoweredTypeId,
+};
 
 pub type LoweringResult<T> = Result<T, Vec<LoweringError>>;
 

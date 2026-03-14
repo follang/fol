@@ -1,0 +1,85 @@
+use std::marker::PhantomData;
+
+pub trait LoweringId: Copy + Eq + Ord {
+    fn from_index(index: usize) -> Self;
+    fn index(self) -> usize;
+}
+
+macro_rules! define_lowering_id {
+    ($name:ident) => {
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+        pub struct $name(pub usize);
+
+        impl LoweringId for $name {
+            fn from_index(index: usize) -> Self {
+                Self(index)
+            }
+
+            fn index(self) -> usize {
+                self.0
+            }
+        }
+    };
+}
+
+define_lowering_id!(LoweredPackageId);
+define_lowering_id!(LoweredGlobalId);
+define_lowering_id!(LoweredRoutineId);
+define_lowering_id!(LoweredBlockId);
+define_lowering_id!(LoweredLocalId);
+define_lowering_id!(LoweredInstrId);
+define_lowering_id!(LoweredTypeId);
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IdTable<I, T> {
+    entries: Vec<T>,
+    _marker: PhantomData<I>,
+}
+
+impl<I, T> Default for IdTable<I, T> {
+    fn default() -> Self {
+        Self {
+            entries: Vec::new(),
+            _marker: PhantomData,
+        }
+    }
+}
+
+impl<I: LoweringId, T> IdTable<I, T> {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn push(&mut self, value: T) -> I {
+        let id = I::from_index(self.entries.len());
+        self.entries.push(value);
+        id
+    }
+
+    pub fn get(&self, id: I) -> Option<&T> {
+        self.entries.get(id.index())
+    }
+
+    pub fn get_mut(&mut self, id: I) -> Option<&mut T> {
+        self.entries.get_mut(id.index())
+    }
+
+    pub fn len(&self) -> usize {
+        self.entries.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.entries.is_empty()
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &T> {
+        self.entries.iter()
+    }
+
+    pub fn iter_with_ids(&self) -> impl Iterator<Item = (I, &T)> {
+        self.entries
+            .iter()
+            .enumerate()
+            .map(|(index, value)| (I::from_index(index), value))
+    }
+}

@@ -489,7 +489,7 @@ This plan is complete only when all of the following are true:
 
 ### Phase 1. IR Model Foundation
 
-- `1.1` `pending` Define lowering-owned ID types for packages, globals, routines, blocks, locals, instructions, and lowered types.
+- `1.1` `done` Define lowering-owned ID types for packages, globals, routines, blocks, locals, instructions, and lowered types.
 - `1.2` `pending` Define `LoweredWorkspace`, `LoweredPackage`, and source-map shells.
 - `1.3` `pending` Define `LoweredTypeTable` and lowered runtime type shapes.
 - `1.4` `pending` Define `LoweredRoutine`, `LoweredBlock`, `LoweredInstr`, and `LoweredTerminator`.
