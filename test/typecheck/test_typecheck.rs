@@ -620,6 +620,110 @@ fn expression_typing_rejects_method_call_arity_mismatches() {
 }
 
 #[test]
+fn expression_typing_types_field_access_against_named_record_receivers() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "typ Counter: rec = {\n\
+             value: int\n\
+         }\n\
+         fun[] read(counter: Counter): int = {\n\
+             return counter.value;\n\
+         }\n",
+    )]);
+
+    let syntax_id = find_named_routine_syntax_id(&typed, "read");
+    assert_eq!(
+        typed
+            .typed_node(syntax_id)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+}
+
+#[test]
+fn expression_typing_rejects_field_access_on_non_records() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] bad(value: int): int = {\n\
+             return value.total;\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error
+                    .message()
+                    .contains("field access '.total' requires a record-like receiver")
+        }),
+        "Expected a non-record field-access diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
+fn expression_typing_types_container_index_accesses() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "fun[] head(values: vec[int]): int = {\n\
+             return values[0];\n\
+         }\n",
+    )]);
+
+    let syntax_id = find_named_routine_syntax_id(&typed, "head");
+    assert_eq!(
+        typed
+            .typed_node(syntax_id)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+}
+
+#[test]
+fn expression_typing_types_basic_slice_accesses() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "fun[] tail(values: vec[int]): vec[int] = {\n\
+             return values[1:];\n\
+         }\n",
+    )]);
+
+    let syntax_id = find_named_routine_syntax_id(&typed, "tail");
+    let inferred = typed
+        .typed_node(syntax_id)
+        .and_then(|node| node.inferred_type)
+        .and_then(|type_id| typed.type_table().get(type_id));
+
+    assert!(matches!(
+        inferred,
+        Some(CheckedType::Vector { element_type })
+            if typed.type_table().get(*element_type)
+                == Some(&CheckedType::Builtin(BuiltinType::Int))
+    ));
+}
+
+#[test]
+fn expression_typing_rejects_non_indexable_receivers() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] bad(value: int): int = {\n\
+             return value[0];\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error
+                    .message()
+                    .contains("index access requires an array, vector, sequence, or map receiver")
+        }),
+        "Expected a non-indexable access diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
 fn declaration_signature_lowering_resolves_qualified_named_types() {
     let typed = typecheck_fixture_folder(&[
         ("util/types.fol", "ali Count: int\n"),

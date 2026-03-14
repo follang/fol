@@ -6,6 +6,7 @@ use fol_parser::ast::{AstNode, Literal, QualifiedPath, SyntaxNodeId, SyntaxOrigi
 use fol_resolver::{
     ReferenceId, ReferenceKind, ResolvedProgram, ScopeId, SourceUnitId, SymbolId, SymbolKind,
 };
+use std::collections::BTreeSet;
 
 #[derive(Debug, Clone, Copy)]
 struct TypeContext {
@@ -150,6 +151,29 @@ fn type_node(
         AstNode::MethodCall { object, method, args } => {
             type_method_call(typed, resolved, context, object, method, args)
         }
+        AstNode::FieldAccess { object, field } => {
+            type_field_access(typed, resolved, context, object, field)
+        }
+        AstNode::IndexAccess { container, index } => {
+            type_index_access(typed, resolved, context, container, index)
+        }
+        AstNode::SliceAccess {
+            container,
+            start,
+            end,
+            ..
+        } => type_slice_access(
+            typed,
+            resolved,
+            context,
+            container,
+            start.as_deref(),
+            end.as_deref(),
+        ),
+        AstNode::PatternAccess { .. } => Err(TypecheckError::new(
+            TypecheckErrorKind::Unsupported,
+            "pattern access is not part of the V1 typecheck milestone",
+        )),
         AstNode::Return { value } => value
             .as_deref()
             .map(|value| type_node(typed, resolved, context, value))
@@ -331,6 +355,157 @@ fn type_method_call(
     let signature = routine_signature_for_method(typed, resolved, method, object_type)?;
     check_call_arguments(typed, resolved, context, &signature, args, method, None)?;
     Ok(signature.return_type)
+}
+
+fn type_field_access(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    object: &AstNode,
+    field: &str,
+) -> Result<Option<CheckedTypeId>, TypecheckError> {
+    let object_type = type_node(typed, resolved, context, object)?.ok_or_else(|| {
+        TypecheckError::new(
+            TypecheckErrorKind::InvalidInput,
+            format!("field access '.{field}' does not have a typed receiver"),
+        )
+    })?;
+    let resolved_type = apparent_type_id(typed, object_type)?;
+    match typed.type_table().get(resolved_type) {
+        Some(CheckedType::Record { fields }) => fields.get(field).copied().map(Some).ok_or_else(|| {
+            TypecheckError::new(
+                TypecheckErrorKind::InvalidInput,
+                format!("record receiver does not expose a field named '{field}'"),
+            )
+        }),
+        _ => Err(TypecheckError::new(
+            TypecheckErrorKind::InvalidInput,
+            format!(
+                "field access '.{field}' requires a record-like receiver, got '{}'",
+                describe_type(typed, object_type)
+            ),
+        )),
+    }
+}
+
+fn type_index_access(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    container: &AstNode,
+    index: &AstNode,
+) -> Result<Option<CheckedTypeId>, TypecheckError> {
+    let container_type = type_node(typed, resolved, context, container)?.ok_or_else(|| {
+        TypecheckError::new(
+            TypecheckErrorKind::InvalidInput,
+            "index access does not have a typed container",
+        )
+    })?;
+    let index_type = type_node(typed, resolved, context, index)?.ok_or_else(|| {
+        TypecheckError::new(
+            TypecheckErrorKind::InvalidInput,
+            "index access does not have a typed index expression",
+        )
+    })?;
+    let resolved_type = apparent_type_id(typed, container_type)?;
+    match typed.type_table().get(resolved_type) {
+        Some(CheckedType::Array { element_type, .. })
+        | Some(CheckedType::Vector { element_type })
+        | Some(CheckedType::Sequence { element_type }) => {
+            ensure_assignable(
+                typed,
+                typed.builtin_types().int,
+                index_type,
+                "container index".to_string(),
+                None,
+            )?;
+            Ok(Some(*element_type))
+        }
+        Some(CheckedType::Map {
+            key_type,
+            value_type,
+        }) => {
+            ensure_assignable(
+                typed,
+                *key_type,
+                index_type,
+                "map key".to_string(),
+                None,
+            )?;
+            Ok(Some(*value_type))
+        }
+        _ => Err(TypecheckError::new(
+            TypecheckErrorKind::InvalidInput,
+            format!(
+                "index access requires an array, vector, sequence, or map receiver, got '{}'",
+                describe_type(typed, container_type)
+            ),
+        )),
+    }
+}
+
+fn type_slice_access(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    container: &AstNode,
+    start: Option<&AstNode>,
+    end: Option<&AstNode>,
+) -> Result<Option<CheckedTypeId>, TypecheckError> {
+    let container_type = type_node(typed, resolved, context, container)?.ok_or_else(|| {
+        TypecheckError::new(
+            TypecheckErrorKind::InvalidInput,
+            "slice access does not have a typed container",
+        )
+    })?;
+    for bound in [start, end].into_iter().flatten() {
+        let bound_type = type_node(typed, resolved, context, bound)?.ok_or_else(|| {
+            TypecheckError::new(
+                TypecheckErrorKind::InvalidInput,
+                "slice bound does not have a type",
+            )
+        })?;
+        ensure_assignable(
+            typed,
+            typed.builtin_types().int,
+            bound_type,
+            "slice bound".to_string(),
+            None,
+        )?;
+    }
+    let resolved_type = apparent_type_id(typed, container_type)?;
+    match typed.type_table().get(resolved_type) {
+        Some(CheckedType::Array { element_type, .. }) => {
+            let element_type = *element_type;
+            Ok(Some(typed.type_table_mut().intern(CheckedType::Array {
+                element_type,
+                size: None,
+            })))
+        }
+        Some(CheckedType::Vector { element_type }) => {
+            let element_type = *element_type;
+            Ok(Some(
+                typed
+                    .type_table_mut()
+                    .intern(CheckedType::Vector { element_type }),
+            ))
+        }
+        Some(CheckedType::Sequence { element_type }) => {
+            let element_type = *element_type;
+            Ok(Some(
+                typed
+                    .type_table_mut()
+                    .intern(CheckedType::Sequence { element_type }),
+            ))
+        }
+        _ => Err(TypecheckError::new(
+            TypecheckErrorKind::InvalidInput,
+            format!(
+                "slice access requires an array, vector, or sequence receiver, got '{}'",
+                describe_type(typed, container_type)
+            ),
+        )),
+    }
 }
 
 fn type_identifier_reference(
@@ -617,6 +792,36 @@ fn symbol_type(
                 }),
             )
         })
+}
+
+fn apparent_type_id(
+    typed: &TypedProgram,
+    type_id: CheckedTypeId,
+) -> Result<CheckedTypeId, TypecheckError> {
+    let mut current = type_id;
+    let mut seen = BTreeSet::new();
+
+    loop {
+        match typed.type_table().get(current) {
+            Some(CheckedType::Declared { symbol, .. }) => {
+                if !seen.insert(*symbol) {
+                    return Err(TypecheckError::new(
+                        TypecheckErrorKind::InvalidInput,
+                        "declared type expansion encountered a cycle",
+                    ));
+                }
+                let Some(next) = typed.typed_symbol(*symbol).and_then(|symbol| symbol.declared_type)
+                else {
+                    return Ok(current);
+                };
+                if next == current {
+                    return Ok(current);
+                }
+                current = next;
+            }
+            _ => return Ok(current),
+        }
+    }
 }
 
 fn origin_for(resolved: &ResolvedProgram, syntax_id: SyntaxNodeId) -> Option<SyntaxOrigin> {
