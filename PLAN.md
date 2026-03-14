@@ -303,7 +303,7 @@ Status: pending
 
 #### 1.1
 
-Status: pending
+Status: done
 
 - Add a resolver-owned workspace/package-graph model that exposes the entry
   package plus loaded packages to later semantic phases.

@@ -1,6 +1,6 @@
 use crate::{
     collect, imports,
-    model::ResolvedProgram,
+    model::{ResolvedProgram, ResolvedWorkspace},
     traverse, ResolverError, ResolverErrorKind, ResolverResult,
 };
 use fol_package::{PackageSession, PreparedPackage};
@@ -79,11 +79,39 @@ impl ResolverSession {
         self.resolve_prepared_package(prepared)
     }
 
+    pub fn resolve_package_workspace(
+        &mut self,
+        syntax: ParsedPackage,
+    ) -> ResolverResult<ResolvedWorkspace> {
+        let prepared = self
+            .package_session
+            .prepare_entry_package(syntax)
+            .map_err(|error| vec![error.into()])?;
+        self.resolve_prepared_workspace(prepared)
+    }
+
     pub fn resolve_prepared_package(
         &mut self,
         prepared: PreparedPackage,
     ) -> ResolverResult<ResolvedProgram> {
-        self.resolve_parsed_package(prepared.syntax.clone(), Some(resolver_package_identity(&prepared.identity)))
+        self.resolve_prepared_workspace(prepared)
+            .map(|workspace| workspace.entry_package().program.clone())
+    }
+
+    pub fn resolve_prepared_workspace(
+        &mut self,
+        prepared: PreparedPackage,
+    ) -> ResolverResult<ResolvedWorkspace> {
+        let entry_identity = resolver_package_identity(&prepared.identity);
+        let entry_program =
+            self.resolve_parsed_package(prepared.syntax.clone(), Some(entry_identity.clone()))?;
+
+        Ok(ResolvedWorkspace::new(
+            entry_identity,
+            prepared,
+            entry_program,
+            self.loaded_packages.values().cloned().collect::<Vec<_>>(),
+        ))
     }
 
     pub(crate) fn resolve_parsed_package(

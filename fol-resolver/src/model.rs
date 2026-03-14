@@ -1,6 +1,7 @@
 use crate::ids::{IdTable, ImportId, ReferenceId, ScopeId, SourceUnitId, SymbolId};
-use crate::session::LoadedPackage;
+use crate::session::{LoadedPackage, PackageIdentity};
 use crate::{ResolverError, ResolverErrorKind};
+use fol_package::PreparedPackage;
 use fol_parser::ast::{
     FolType, ParsedDeclScope, ParsedDeclVisibility, ParsedPackage, SyntaxIndex, SyntaxNodeId,
     SyntaxOrigin, UsePathSegment,
@@ -105,6 +106,84 @@ pub struct ResolvedImport {
     pub scope: ScopeId,
     pub source_unit: SourceUnitId,
     pub target_scope: Option<ScopeId>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ResolvedPackage {
+    pub identity: PackageIdentity,
+    pub prepared: PreparedPackage,
+    pub program: ResolvedProgram,
+}
+
+impl ResolvedPackage {
+    pub(crate) fn from_loaded(loaded: LoadedPackage) -> Self {
+        Self {
+            identity: loaded.identity,
+            prepared: loaded.prepared,
+            program: loaded.program,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ResolvedWorkspace {
+    entry_identity: PackageIdentity,
+    packages: BTreeMap<PackageIdentity, ResolvedPackage>,
+}
+
+impl ResolvedWorkspace {
+    pub(crate) fn new(
+        entry_identity: PackageIdentity,
+        entry_prepared: PreparedPackage,
+        entry_program: ResolvedProgram,
+        loaded_packages: impl IntoIterator<Item = LoadedPackage>,
+    ) -> Self {
+        let mut packages = BTreeMap::new();
+        packages.insert(
+            entry_identity.clone(),
+            ResolvedPackage {
+                identity: entry_identity.clone(),
+                prepared: entry_prepared,
+                program: entry_program,
+            },
+        );
+
+        for loaded in loaded_packages {
+            let package = ResolvedPackage::from_loaded(loaded);
+            packages.insert(package.identity.clone(), package);
+        }
+
+        Self {
+            entry_identity,
+            packages,
+        }
+    }
+
+    pub fn entry_identity(&self) -> &PackageIdentity {
+        &self.entry_identity
+    }
+
+    pub fn entry_package(&self) -> &ResolvedPackage {
+        self.packages
+            .get(&self.entry_identity)
+            .expect("resolved workspace should always contain the entry package")
+    }
+
+    pub fn entry_program(&self) -> &ResolvedProgram {
+        &self.entry_package().program
+    }
+
+    pub fn package(&self, identity: &PackageIdentity) -> Option<&ResolvedPackage> {
+        self.packages.get(identity)
+    }
+
+    pub fn packages(&self) -> impl Iterator<Item = &ResolvedPackage> {
+        self.packages.values()
+    }
+
+    pub fn package_count(&self) -> usize {
+        self.packages.len()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
