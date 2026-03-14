@@ -1,0 +1,152 @@
+use crate::ids::{
+    IdTable, LoweredBlockId, LoweredGlobalId, LoweredInstrId, LoweredLocalId, LoweredRoutineId,
+    LoweredTypeId,
+};
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum LoweredOperand {
+    Local(LoweredLocalId),
+    Global(LoweredGlobalId),
+    Int(i64),
+    Bool(bool),
+    Char(char),
+    Str(String),
+    Nil,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LoweredLocal {
+    pub id: LoweredLocalId,
+    pub type_id: Option<LoweredTypeId>,
+    pub name: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum LoweredInstrKind {
+    Const(LoweredOperand),
+    LoadGlobal {
+        global: LoweredGlobalId,
+    },
+    LoadLocal {
+        local: LoweredLocalId,
+    },
+    StoreLocal {
+        local: LoweredLocalId,
+        value: LoweredLocalId,
+    },
+    Call {
+        callee: LoweredRoutineId,
+        args: Vec<LoweredLocalId>,
+    },
+    FieldAccess {
+        base: LoweredLocalId,
+        field: String,
+    },
+    Cast {
+        operand: LoweredLocalId,
+        target_type: LoweredTypeId,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LoweredInstr {
+    pub id: LoweredInstrId,
+    pub result: Option<LoweredLocalId>,
+    pub kind: LoweredInstrKind,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum LoweredTerminator {
+    Jump {
+        target: LoweredBlockId,
+    },
+    Branch {
+        condition: LoweredLocalId,
+        then_block: LoweredBlockId,
+        else_block: LoweredBlockId,
+    },
+    Return {
+        value: Option<LoweredLocalId>,
+    },
+    Report {
+        value: Option<LoweredLocalId>,
+    },
+    Unreachable,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LoweredBlock {
+    pub id: LoweredBlockId,
+    pub instructions: Vec<LoweredInstrId>,
+    pub terminator: Option<LoweredTerminator>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LoweredRoutine {
+    pub id: LoweredRoutineId,
+    pub name: String,
+    pub signature: Option<LoweredTypeId>,
+    pub params: Vec<LoweredLocalId>,
+    pub locals: IdTable<LoweredLocalId, LoweredLocal>,
+    pub blocks: IdTable<LoweredBlockId, LoweredBlock>,
+    pub instructions: IdTable<LoweredInstrId, LoweredInstr>,
+    pub entry_block: LoweredBlockId,
+}
+
+impl LoweredRoutine {
+    pub fn new(id: LoweredRoutineId, name: impl Into<String>, entry_block: LoweredBlockId) -> Self {
+        Self {
+            id,
+            name: name.into(),
+            signature: None,
+            params: Vec::new(),
+            locals: IdTable::new(),
+            blocks: IdTable::new(),
+            instructions: IdTable::new(),
+            entry_block,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        LoweredBlock, LoweredInstr, LoweredInstrKind, LoweredLocal, LoweredOperand, LoweredRoutine,
+        LoweredTerminator,
+    };
+    use crate::ids::{LoweredBlockId, LoweredInstrId, LoweredLocalId, LoweredRoutineId};
+
+    #[test]
+    fn lowered_routine_shell_keeps_entry_block_and_named_locals() {
+        let mut routine = LoweredRoutine::new(LoweredRoutineId(0), "main", LoweredBlockId(0));
+        let local_id = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(0),
+            type_id: None,
+            name: Some("tmp".to_string()),
+        });
+
+        assert_eq!(routine.entry_block, LoweredBlockId(0));
+        assert_eq!(local_id, LoweredLocalId(0));
+        assert_eq!(routine.locals.get(local_id).and_then(|local| local.name.as_deref()), Some("tmp"));
+    }
+
+    #[test]
+    fn lowered_blocks_and_terminators_form_a_control_shell() {
+        let block = LoweredBlock {
+            id: LoweredBlockId(1),
+            instructions: vec![LoweredInstrId(0)],
+            terminator: Some(LoweredTerminator::Return {
+                value: Some(LoweredLocalId(0)),
+            }),
+        };
+        let instr = LoweredInstr {
+            id: LoweredInstrId(0),
+            result: Some(LoweredLocalId(0)),
+            kind: LoweredInstrKind::Const(LoweredOperand::Int(42)),
+        };
+
+        assert_eq!(block.id, LoweredBlockId(1));
+        assert_eq!(block.instructions, vec![LoweredInstrId(0)]);
+        assert_eq!(instr.result, Some(LoweredLocalId(0)));
+    }
+}

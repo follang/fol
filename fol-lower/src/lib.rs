@@ -3,6 +3,7 @@
 mod errors;
 pub mod ids;
 pub mod model;
+pub mod control;
 pub mod types;
 
 pub use errors::{LoweringError, LoweringErrorKind};
@@ -95,3 +96,7 @@ mod tests {
         let _ = LoweredWorkspace;
     }
 }
+pub use control::{
+    LoweredBlock, LoweredInstr, LoweredInstrKind, LoweredLocal, LoweredOperand, LoweredRoutine,
+    LoweredTerminator,
+};

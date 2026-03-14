@@ -492,7 +492,7 @@ This plan is complete only when all of the following are true:
 - `1.1` `done` Define lowering-owned ID types for packages, globals, routines, blocks, locals, instructions, and lowered types.
 - `1.2` `done` Define `LoweredWorkspace`, `LoweredPackage`, and source-map shells.
 - `1.3` `done` Define `LoweredTypeTable` and lowered runtime type shapes.
-- `1.4` `pending` Define `LoweredRoutine`, `LoweredBlock`, `LoweredInstr`, and `LoweredTerminator`.
+- `1.4` `done` Define `LoweredRoutine`, `LoweredBlock`, `LoweredInstr`, and `LoweredTerminator`.
 - `1.5` `pending` Add unit tests for deterministic ID allocation and core IR invariants.
 
 ### Phase 2. Typed Workspace Translation
