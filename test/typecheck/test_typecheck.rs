@@ -2688,6 +2688,60 @@ fn workspace_expression_typing_rejects_plain_imported_call_argument_mismatches()
 }
 
 #[test]
+fn workspace_expression_typing_keeps_qualified_imported_value_and_call_types() {
+    let root = unique_temp_dir("workspace_qualified_import_types");
+    create_dir_all(&root).expect("Fixture root should be creatable");
+    write_fixture_files(
+        &root,
+        &[
+            (
+                "shared/lib.fol",
+                concat!(
+                    "var[exp] answer: int = 42;\n",
+                    "fun[exp] emit(value: int): int = {\n",
+                    "    return value;\n",
+                    "}\n",
+                ),
+            ),
+            (
+                "app/main.fol",
+                concat!(
+                    "use shared: loc = {\"../shared\"};\n",
+                    "fun[] main(): int = {\n",
+                    "    var current: int = shared::answer;\n",
+                    "    return shared::emit(current);\n",
+                    "}\n",
+                ),
+            ),
+        ],
+    );
+
+    let typed = typecheck_fixture_workspace_entry_with_config(&root, "app", ResolverConfig::default())
+        .expect("Workspace entry typing should accept qualified imported value and call references");
+    let value_reference =
+        find_typed_reference(&typed, "shared::answer", ReferenceKind::QualifiedIdentifier);
+    let call_reference =
+        find_typed_reference(&typed, "shared::emit", ReferenceKind::QualifiedFunctionCall);
+
+    assert_eq!(
+        typed.type_table().get(
+            value_reference
+                .resolved_type
+                .expect("qualified imported value references should keep a resolved type"),
+        ),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+    assert_eq!(
+        typed.type_table().get(
+            call_reference
+                .resolved_type
+                .expect("qualified imported call references should keep a resolved type"),
+        ),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+}
+
+#[test]
 fn reopened_v1_blocker_loc_imported_values_still_fail_typecheck() {
     let root = unique_temp_dir("reopened_loc_import");
     create_dir_all(&root).expect("Fixture root should be creatable");

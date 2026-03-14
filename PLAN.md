@@ -424,7 +424,7 @@ Status: done
 
 #### 4.3
 
-Status: pending
+Status: done
 
 - Make qualified imported value/routine references typecheck with the same
   parity as local and plain imported references.
