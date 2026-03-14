@@ -3376,6 +3376,189 @@ fn reopened_v1_binding_failures_no_longer_use_raw_lowered_type_fallbacks() {
 }
 
 #[test]
+fn reopened_v1_imported_value_diagnostics_keep_binding_site_locations() {
+    let root = unique_temp_dir("reopened_imported_value_locations");
+    create_dir_all(&root).expect("Fixture root should be creatable");
+    write_fixture_files(
+        &root,
+        &[
+            ("shared/lib.fol", "var[exp] answer: int = 42;\n"),
+            (
+                "app/main.fol",
+                "use shared: loc = {\"../shared\"};\nvar label: str = answer;\n",
+            ),
+        ],
+    );
+
+    let errors =
+        typecheck_fixture_workspace_entry_with_config(&root, "app", ResolverConfig::default())
+            .expect_err("Workspace entry typing should reject imported binding mismatches");
+    let error = errors
+        .iter()
+        .find(|error| error.message().contains("initializer for 'label' expects"))
+        .expect("Expected imported binding mismatch diagnostic");
+
+    assert_eq!(
+        error.diagnostic_location(),
+        Some(DiagnosticLocation {
+            file: Some(root.join("app/main.fol").display().to_string()),
+            line: 2,
+            column: 18,
+            length: Some(6),
+        })
+    );
+}
+
+#[test]
+fn reopened_v1_imported_call_diagnostics_keep_call_site_locations() {
+    let root = unique_temp_dir("reopened_imported_call_locations");
+    create_dir_all(&root).expect("Fixture root should be creatable");
+    write_fixture_files(
+        &root,
+        &[
+            (
+                "shared/lib.fol",
+                "fun[exp] twice(value: int): int = {\n    return value;\n}\n",
+            ),
+            (
+                "app/main.fol",
+                "use shared: loc = {\"../shared\"};\nfun[] main(): int = {\n    return twice(\"bad\");\n}\n",
+            ),
+        ],
+    );
+
+    let errors =
+        typecheck_fixture_workspace_entry_with_config(&root, "app", ResolverConfig::default())
+            .expect_err("Workspace entry typing should reject imported call argument mismatches");
+    let error = errors
+        .iter()
+        .find(|error| error.message().contains("call to 'twice' expects"))
+        .expect("Expected imported call mismatch diagnostic");
+
+    assert_eq!(
+        error.diagnostic_location(),
+        Some(DiagnosticLocation {
+            file: Some(root.join("app/main.fol").display().to_string()),
+            line: 3,
+            column: 12,
+            length: Some(5),
+        })
+    );
+}
+
+#[test]
+fn reopened_v1_imported_method_diagnostics_keep_call_site_locations() {
+    let root = unique_temp_dir("reopened_imported_method_locations");
+    create_dir_all(&root).expect("Fixture root should be creatable");
+    write_fixture_files(
+        &root,
+        &[
+            (
+                "shared/lib.fol",
+                concat!(
+                    "typ[exp] User: rec = {\n",
+                    "    count: int;\n",
+                    "}\n",
+                    "fun[exp] bump(user: User, step: int): int = {\n",
+                    "    return step;\n",
+                    "}\n",
+                ),
+            ),
+            (
+                "app/main.fol",
+                concat!(
+                    "use shared: loc = {\"../shared\"};\n",
+                    "fun[] main(): int = {\n",
+                    "    var user: User = { count = 1 };\n",
+                    "    return user.bump();\n",
+                    "}\n",
+                ),
+            ),
+        ],
+    );
+
+    let errors =
+        typecheck_fixture_workspace_entry_with_config(&root, "app", ResolverConfig::default())
+            .expect_err("Workspace entry typing should reject imported method argument mismatches");
+    assert!(
+        errors.iter().any(|error| error.message().contains("bump")),
+        "Expected imported method diagnostics to mention 'bump', got: {errors:?}"
+    );
+    assert!(
+        errors.iter().any(|error| {
+            error.diagnostic_location()
+                == Some(DiagnosticLocation {
+                    file: Some(root.join("app/main.fol").display().to_string()),
+                    line: 4,
+                    column: 12,
+                    length: Some(4),
+                })
+        }),
+        "Expected imported method diagnostics to preserve the call-site location, got: {errors:?}"
+    );
+}
+
+#[test]
+fn reopened_v1_nil_diagnostics_keep_binding_site_locations() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "ali MaybeText: opt[str]\nvar label = nil\n",
+    )]);
+    let error = errors
+        .iter()
+        .find(|error| {
+            error
+                .message()
+                .contains("nil literals require an expected opt[...] or err[...] shell type in V1")
+        })
+        .expect("Expected nil expected-shell diagnostic");
+    let location = error
+        .diagnostic_location()
+        .expect("Expected nil diagnostic location");
+
+    assert_eq!(location.line, 2);
+    assert_eq!(location.column, 1);
+    assert_eq!(location.length, Some(3));
+    assert!(
+        location
+            .file
+            .as_deref()
+            .is_some_and(|file| file.ends_with("/main.fol")),
+        "Expected nil diagnostic file to point at main.fol, got: {location:?}"
+    );
+}
+
+#[test]
+fn reopened_v1_unwrap_diagnostics_keep_receiver_site_locations() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] main(): int = {\n    var count: int = 1;\n    return count!;\n}\n",
+    )]);
+    let error = errors
+        .iter()
+        .find(|error| {
+            error
+                .message()
+                .contains("unwrap requires an opt[...] or err[...] shell with a value type in V1")
+        })
+        .expect("Expected unwrap shell diagnostic");
+    let location = error
+        .diagnostic_location()
+        .expect("Expected unwrap diagnostic location");
+
+    assert_eq!(location.line, 3);
+    assert_eq!(location.column, 12);
+    assert_eq!(location.length, Some(5));
+    assert!(
+        location
+            .file
+            .as_deref()
+            .is_some_and(|file| file.ends_with("/main.fol")),
+        "Expected unwrap diagnostic file to point at main.fol, got: {location:?}"
+    );
+}
+
+#[test]
 fn nil_typing_rejects_missing_expected_shell_contexts() {
     let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",

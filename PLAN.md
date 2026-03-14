@@ -564,7 +564,7 @@ Status: pending
 
 #### 8.1
 
-Status: pending
+Status: done
 
 - Ensure imported-value, imported-call, imported-method, `nil`, and unwrap
   diagnostics all keep exact primary locations.

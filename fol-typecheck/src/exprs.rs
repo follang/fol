@@ -96,7 +96,9 @@ fn type_node_with_expectation(
         AstNode::BinaryOp { op, left, right } => {
             type_binary_op(typed, resolved, context, op, left, right)
         }
-        AstNode::UnaryOp { op, operand } => type_unary_op(typed, resolved, context, op, operand),
+        AstNode::UnaryOp { op, operand } => {
+            type_unary_op(typed, resolved, context, node, op, operand)
+        }
         AstNode::VarDecl {
             name,
             type_hint: _,
@@ -116,7 +118,13 @@ fn type_node_with_expectation(
             value.as_deref(),
             binding_kind_for(node),
         ),
-        AstNode::Literal(literal) => Ok(Some(type_literal(typed, literal, expected_type)?)),
+        AstNode::Literal(literal) => Ok(Some(type_literal(
+            typed,
+            resolved,
+            node,
+            literal,
+            expected_type,
+        )?)),
         AstNode::ContainerLiteral {
             container_type,
             elements,
@@ -318,7 +326,7 @@ fn type_node_with_expectation(
             type_qualified_function_call(typed, resolved, context, path, args)
         }
         AstNode::MethodCall { object, method, args } => {
-            type_method_call(typed, resolved, context, object, method, args)
+            type_method_call(typed, resolved, context, node, object, method, args)
         }
         AstNode::FieldAccess { object, field } => {
             type_field_access(typed, resolved, context, object, field, expected_type)
@@ -513,6 +521,7 @@ fn type_unary_op(
     typed: &mut TypedProgram,
     resolved: &ResolvedProgram,
     context: TypeContext,
+    node: &AstNode,
     op: &UnaryOperator,
     operand: &AstNode,
 ) -> Result<Option<CheckedTypeId>, TypecheckError> {
@@ -549,7 +558,9 @@ fn type_unary_op(
             if let Some(inner) = unwrap_shell_result_type(typed, operand_type)? {
                 Ok(Some(inner))
             } else {
-                Err(TypecheckError::new(
+                Err(with_node_origin(
+                    resolved,
+                    node,
                     TypecheckErrorKind::InvalidInput,
                     "unwrap requires an opt[...] or err[...] shell with a value type in V1",
                 ))
@@ -560,6 +571,8 @@ fn type_unary_op(
 
 fn type_literal(
     typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    node: &AstNode,
     literal: &Literal,
     expected_type: Option<CheckedTypeId>,
 ) -> Result<CheckedTypeId, TypecheckError> {
@@ -573,7 +586,9 @@ fn type_literal(
             if let Some(shell_type) = expected_nil_shell_type(typed, expected_type)? {
                 shell_type
             } else {
-                return Err(TypecheckError::new(
+                return Err(with_node_origin(
+                    resolved,
+                    node,
                     TypecheckErrorKind::InvalidInput,
                     "nil literals require an expected opt[...] or err[...] shell type in V1",
                 ));
@@ -590,6 +605,16 @@ fn type_binding_initializer(
     value: Option<&AstNode>,
     symbol_kind: SymbolKind,
 ) -> Result<Option<CheckedTypeId>, TypecheckError> {
+    let binding_origin = find_symbol_in_scope_chain(
+        resolved,
+        context.source_unit_id,
+        context.scope_id,
+        name,
+        symbol_kind,
+    )
+    .and_then(|symbol_id| resolved.symbol(symbol_id))
+    .and_then(|symbol| symbol.origin.clone());
+
     let Some(symbol_id) = find_symbol_in_scope_chain(
         resolved,
         context.source_unit_id,
@@ -598,7 +623,14 @@ fn type_binding_initializer(
         symbol_kind,
     ) else {
         let initializer_type = value
-            .map(|value| type_node_with_expectation(typed, resolved, context, value, None))
+            .map(|value| {
+                type_node_with_expectation(typed, resolved, context, value, None).map_err(
+                    |error| {
+                        node_origin(resolved, value)
+                            .map_or(error.clone(), |origin| error.with_fallback_origin(origin))
+                    },
+                )
+            })
             .transpose()?
             .flatten();
         return Ok(initializer_type);
@@ -607,13 +639,28 @@ fn type_binding_initializer(
         .typed_symbol(symbol_id)
         .and_then(|symbol| symbol.declared_type);
     let initializer_type = value
-        .map(|value| type_node_with_expectation(typed, resolved, context, value, declared_type))
+        .map(|value| {
+            type_node_with_expectation(typed, resolved, context, value, declared_type).map_err(
+                |error| {
+                    binding_origin
+                        .clone()
+                        .or_else(|| node_origin(resolved, value))
+                        .map_or(error.clone(), |origin| error.with_fallback_origin(origin))
+                },
+            )
+        })
         .transpose()?
         .flatten();
 
     match (declared_type, initializer_type) {
         (Some(expected), Some(actual)) => {
-            ensure_assignable(typed, expected, actual, format!("initializer for '{name}'"), None)?;
+            ensure_assignable(
+                typed,
+                expected,
+                actual,
+                format!("initializer for '{name}'"),
+                value.and_then(|node| node_origin(resolved, node)),
+            )?;
             Ok(Some(expected))
         }
         (None, Some(inferred)) => {
@@ -1050,6 +1097,7 @@ fn type_method_call(
     typed: &mut TypedProgram,
     resolved: &ResolvedProgram,
     context: TypeContext,
+    node: &AstNode,
     object: &AstNode,
     method: &str,
     args: &[AstNode],
@@ -1060,8 +1108,9 @@ fn type_method_call(
             format!("method receiver for '{method}' does not have a type"),
         )
     })?;
-    let signature = routine_signature_for_method(typed, method, object_type)?;
-    check_call_arguments(typed, resolved, context, &signature, args, method, None)?;
+    let origin = node_origin(resolved, node);
+    let signature = routine_signature_for_method(typed, method, object_type, origin.clone())?;
+    check_call_arguments(typed, resolved, context, &signature, args, method, origin)?;
     Ok(signature.return_type)
 }
 
@@ -1087,14 +1136,24 @@ fn type_return(
             "return requires a value for routines with a declared return type",
         ));
     };
-    let actual = type_node_with_expectation(typed, resolved, context, value, Some(expected))?
+    let actual = type_node_with_expectation(typed, resolved, context, value, Some(expected))
+        .map_err(|error| {
+            node_origin(resolved, value)
+                .map_or(error.clone(), |origin| error.with_fallback_origin(origin))
+        })?
         .ok_or_else(|| {
-        TypecheckError::new(
-            TypecheckErrorKind::InvalidInput,
-            "return expression does not have a type",
-        )
-    })?;
-    ensure_assignable(typed, expected, actual, "return".to_string(), None)?;
+            TypecheckError::new(
+                TypecheckErrorKind::InvalidInput,
+                "return expression does not have a type",
+            )
+        })?;
+    ensure_assignable(
+        typed,
+        expected,
+        actual,
+        "return".to_string(),
+        node_origin(resolved, value),
+    )?;
     Ok(Some(typed.builtin_types().never))
 }
 
@@ -1432,6 +1491,7 @@ fn routine_signature_for_method(
     typed: &mut TypedProgram,
     method: &str,
     object_type: CheckedTypeId,
+    origin: Option<SyntaxOrigin>,
 ) -> Result<RoutineType, TypecheckError> {
     let mut matches = Vec::new();
 
@@ -1454,20 +1514,42 @@ fn routine_signature_for_method(
                 typed,
                 typed.resolved(),
                 symbol_id,
-                None,
+                origin.clone(),
             )?);
         }
     }
 
     match matches.len() {
         1 => Ok(matches.remove(0)),
-        0 => Err(TypecheckError::new(
-            TypecheckErrorKind::InvalidInput,
-            format!("method '{method}' is not available for the receiver type in V1"),
+        0 => Err(origin.clone().map_or_else(
+            || {
+                TypecheckError::new(
+                    TypecheckErrorKind::InvalidInput,
+                    format!("method '{method}' is not available for the receiver type in V1"),
+                )
+            },
+            |origin| {
+                TypecheckError::with_origin(
+                    TypecheckErrorKind::InvalidInput,
+                    format!("method '{method}' is not available for the receiver type in V1"),
+                    origin,
+                )
+            },
         )),
-        _ => Err(TypecheckError::new(
-            TypecheckErrorKind::InvalidInput,
-            format!("method '{method}' is ambiguous for the receiver type"),
+        _ => Err(origin.map_or_else(
+            || {
+                TypecheckError::new(
+                    TypecheckErrorKind::InvalidInput,
+                    format!("method '{method}' is ambiguous for the receiver type"),
+                )
+            },
+            |origin| {
+                TypecheckError::with_origin(
+                    TypecheckErrorKind::InvalidInput,
+                    format!("method '{method}' is ambiguous for the receiver type"),
+                    origin,
+                )
+            },
         )),
     }
 }
@@ -1499,13 +1581,19 @@ fn check_call_arguments(
     }
 
     for (expected, arg) in signature.params.iter().zip(args) {
-        let actual = type_node_with_expectation(typed, resolved, context, arg, Some(*expected))?
+        let actual = type_node_with_expectation(typed, resolved, context, arg, Some(*expected))
+            .map_err(|error| {
+                origin
+                    .clone()
+                    .or_else(|| node_origin(resolved, arg))
+                    .map_or(error.clone(), |origin| error.with_fallback_origin(origin))
+            })?
             .ok_or_else(|| {
-            TypecheckError::new(
-                TypecheckErrorKind::InvalidInput,
-                format!("argument for '{callee}' does not have a type"),
-            )
-        })?;
+                TypecheckError::new(
+                    TypecheckErrorKind::InvalidInput,
+                    format!("argument for '{callee}' does not have a type"),
+                )
+            })?;
         ensure_assignable(
             typed,
             *expected,
@@ -2196,6 +2284,19 @@ fn node_origin(resolved: &ResolvedProgram, node: &AstNode) -> Option<SyntaxOrigi
         .into_iter()
         .next()
         .and_then(|syntax_id| origin_for(resolved, syntax_id))
+}
+
+fn with_node_origin(
+    resolved: &ResolvedProgram,
+    node: &AstNode,
+    kind: TypecheckErrorKind,
+    message: impl Into<String>,
+) -> TypecheckError {
+    if let Some(origin) = node_origin(resolved, node) {
+        TypecheckError::with_origin(kind, message, origin)
+    } else {
+        TypecheckError::new(kind, message)
+    }
 }
 
 fn find_symbol_in_scope(

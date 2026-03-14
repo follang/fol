@@ -75,6 +75,13 @@ impl TypecheckError {
         self.origin.as_ref()
     }
 
+    pub fn with_fallback_origin(mut self, origin: SyntaxOrigin) -> Self {
+        if self.origin.is_none() {
+            self.origin = Some(origin);
+        }
+        self
+    }
+
     pub fn diagnostic_location(&self) -> Option<DiagnosticLocation> {
         self.origin.as_ref().map(|origin| DiagnosticLocation {
             file: origin.file.clone(),
