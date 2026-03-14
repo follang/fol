@@ -302,6 +302,7 @@ fn traverse_node(
                 source_unit_id,
                 scope_id,
                 name,
+                *syntax_id,
                 syntax_id
                     .and_then(|syntax_id| program.syntax_index().origin(syntax_id))
                     .cloned(),
@@ -327,6 +328,7 @@ fn traverse_node(
                 source_unit_id,
                 scope_id,
                 name,
+                *syntax_id,
                 syntax_id
                     .and_then(|syntax_id| program.syntax_index().origin(syntax_id))
                     .cloned(),
@@ -1005,12 +1007,14 @@ fn record_identifier_reference(
     source_unit_id: SourceUnitId,
     scope_id: ScopeId,
     name: &str,
+    syntax_id: Option<fol_parser::ast::SyntaxNodeId>,
     origin: Option<fol_parser::ast::SyntaxOrigin>,
 ) -> Result<ReferenceId, ResolverError> {
     let symbol_id = resolve_visible_symbol(program, scope_id, name, origin)?;
     let reference_id = program.references.push(ResolvedReference {
         id: ReferenceId(0),
         kind: ReferenceKind::Identifier,
+        syntax_id,
         name: name.to_string(),
         scope: scope_id,
         source_unit: source_unit_id,
@@ -1027,6 +1031,7 @@ fn record_function_call_reference(
     source_unit_id: SourceUnitId,
     scope_id: ScopeId,
     name: &str,
+    syntax_id: Option<fol_parser::ast::SyntaxNodeId>,
     origin: Option<fol_parser::ast::SyntaxOrigin>,
 ) -> Result<ReferenceId, ResolverError> {
     let symbol_id = resolve_visible_or_imported_symbol_of_kinds(
@@ -1040,6 +1045,7 @@ fn record_function_call_reference(
     let reference_id = program.references.push(ResolvedReference {
         id: ReferenceId(0),
         kind: ReferenceKind::FunctionCall,
+        syntax_id,
         name: name.to_string(),
         scope: scope_id,
         source_unit: source_unit_id,
@@ -1068,6 +1074,7 @@ fn record_qualified_identifier_reference(
     let reference_id = program.references.push(ResolvedReference {
         id: ReferenceId(0),
         kind: ReferenceKind::QualifiedIdentifier,
+        syntax_id: path.syntax_id(),
         name: path.joined(),
         scope: scope_id,
         source_unit: source_unit_id,
@@ -1096,6 +1103,7 @@ fn record_qualified_function_call_reference(
     let reference_id = program.references.push(ResolvedReference {
         id: ReferenceId(0),
         kind: ReferenceKind::QualifiedFunctionCall,
+        syntax_id: path.syntax_id(),
         name: path.joined(),
         scope: scope_id,
         source_unit: source_unit_id,
@@ -1112,6 +1120,7 @@ fn record_named_type_reference(
     source_unit_id: SourceUnitId,
     scope_id: ScopeId,
     name: &str,
+    syntax_id: Option<fol_parser::ast::SyntaxNodeId>,
     origin: Option<fol_parser::ast::SyntaxOrigin>,
 ) -> Result<ReferenceId, ResolverError> {
     let symbol_id = resolve_visible_or_imported_symbol_of_kinds(
@@ -1129,6 +1138,7 @@ fn record_named_type_reference(
     let reference_id = program.references.push(ResolvedReference {
         id: ReferenceId(0),
         kind: ReferenceKind::TypeName,
+        syntax_id,
         name: name.to_string(),
         scope: scope_id,
         source_unit: source_unit_id,
@@ -1150,6 +1160,7 @@ fn record_inquiry_target_reference(
     let reference_id = program.references.push(ResolvedReference {
         id: ReferenceId(0),
         kind: ReferenceKind::InquiryTarget,
+        syntax_id: None,
         name: name.to_string(),
         scope: scope_id,
         source_unit: source_unit_id,
@@ -1235,6 +1246,7 @@ fn record_qualified_type_reference(
     let reference_id = program.references.push(ResolvedReference {
         id: ReferenceId(0),
         kind: ReferenceKind::QualifiedTypeName,
+        syntax_id: path.syntax_id(),
         name: path.joined(),
         scope: scope_id,
         source_unit: source_unit_id,
@@ -1472,6 +1484,7 @@ fn resolve_type_reference(
                 source_unit_id,
                 scope_id,
                 name,
+                *syntax_id,
                 syntax_id
                     .and_then(|syntax_id| program.syntax_index().origin(syntax_id))
                     .cloned(),

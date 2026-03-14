@@ -5,8 +5,10 @@
 //! grow semantic types, typed results, and diagnostics incrementally.
 
 pub mod builtins;
+pub mod decls;
 pub mod errors;
 pub mod model;
+pub mod session;
 pub mod types;
 
 pub use builtins::BuiltinTypeIds;
@@ -30,7 +32,7 @@ impl Typechecker {
         &mut self,
         resolved: fol_resolver::ResolvedProgram,
     ) -> TypecheckResult<TypedProgram> {
-        Ok(TypedProgram::from_resolved(resolved))
+        session::TypecheckSession::new().check_resolved_program(resolved)
     }
 }
 

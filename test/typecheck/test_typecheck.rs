@@ -1,13 +1,16 @@
 use fol_diagnostics::{DiagnosticCode, DiagnosticLocation, ToDiagnostic};
 use fol_parser::ast::{AstParser, SyntaxOrigin};
 use fol_resolver::resolve_package;
-use fol_resolver::SymbolId;
+use fol_resolver::{SourceUnitId, SymbolId, SymbolKind};
 use fol_stream::FileStream;
 use fol_typecheck::{
     BuiltinType, BuiltinTypeIds, CheckedType, DeclaredTypeKind, RoutineType, TypeTable,
     TypecheckError, TypecheckErrorKind, Typechecker,
 };
 use std::collections::BTreeMap;
+use std::fs::{create_dir_all, write};
+use std::path::{Path, PathBuf};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 fn resolve_fixture(path: &str) -> fol_resolver::ResolvedProgram {
     let fixture_path = format!("{}/{}", env!("CARGO_MANIFEST_DIR"), path);
@@ -19,6 +22,62 @@ fn resolve_fixture(path: &str) -> fol_resolver::ResolvedProgram {
         .expect("Typecheck fixture should parse as a package");
 
     resolve_package(syntax).expect("Typecheck fixture should resolve cleanly")
+}
+
+fn unique_temp_dir(prefix: &str) -> PathBuf {
+    let nonce = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("System time should be after unix epoch")
+        .as_nanos();
+    std::env::temp_dir().join(format!("fol_typecheck_{prefix}_{nonce}"))
+}
+
+fn write_fixture_files(root: &Path, files: &[(&str, &str)]) {
+    for (relative_path, contents) in files {
+        let path = root.join(relative_path);
+        if let Some(parent) = path.parent() {
+            create_dir_all(parent).expect("Fixture parent directories should be creatable");
+        }
+        write(&path, contents).expect("Fixture file should be writable");
+    }
+}
+
+fn typecheck_fixture_folder(files: &[(&str, &str)]) -> fol_typecheck::TypedProgram {
+    let root = unique_temp_dir("package");
+    create_dir_all(&root).expect("Fixture root should be creatable");
+    write_fixture_files(&root, files);
+
+    let mut stream = FileStream::from_folder(root.to_str().expect("fixture path should be utf8"))
+        .expect("Fixture folder should stream");
+    let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+    let mut parser = AstParser::new();
+    let syntax = parser
+        .parse_package(&mut lexer)
+        .expect("Fixture folder should parse as a package");
+    let resolved = resolve_package(syntax).expect("Fixture folder should resolve cleanly");
+
+    Typechecker::new()
+        .check_resolved_program(resolved)
+        .expect("Fixture folder should typecheck declaration signatures")
+}
+
+fn find_typed_symbol<'a>(
+    typed: &'a fol_typecheck::TypedProgram,
+    name: &str,
+    kind: SymbolKind,
+) -> (SymbolId, &'a fol_typecheck::TypedSymbol) {
+    let symbol_id = typed
+        .resolved()
+        .symbols
+        .iter_with_ids()
+        .find(|(_, symbol)| symbol.name == name && symbol.kind == kind)
+        .map(|(symbol_id, _)| symbol_id)
+        .expect("typed fixture symbol should exist");
+    let symbol = typed
+        .typed_symbol(symbol_id)
+        .expect("typed symbol facts should exist for resolved symbol");
+
+    (symbol_id, symbol)
 }
 
 #[test]
@@ -148,7 +207,7 @@ fn semantic_type_table_covers_declared_and_structural_shapes() {
     let record = table.intern(CheckedType::Record { fields });
     let routine = table.intern(CheckedType::Routine(RoutineType {
         params: vec![alias_id],
-        return_type: int_id,
+        return_type: Some(int_id),
         error_type: None,
     }));
 
@@ -161,4 +220,66 @@ fn semantic_type_table_covers_declared_and_structural_shapes() {
             kind: DeclaredTypeKind::Alias,
         })
     );
+}
+
+#[test]
+fn declaration_signature_lowering_records_top_level_type_facts() {
+    let typed = typecheck_fixture_folder(&[
+        (
+            "types.fol",
+            "ali Distance: int\n\
+             typ Person: rec = {\n\
+                 name: str\n\
+             }\n",
+        ),
+        (
+            "main.fol",
+            "var total: Distance = 1\n\
+             fun[] size(value: Distance): Person = {\n\
+                 return total\n\
+             }\n",
+        ),
+    ]);
+
+    let (distance_id, distance) = find_typed_symbol(&typed, "Distance", SymbolKind::Alias);
+    let (person_id, person) = find_typed_symbol(&typed, "Person", SymbolKind::Type);
+    let (_size_id, size) = find_typed_symbol(&typed, "size", SymbolKind::Routine);
+
+    assert_eq!(
+        typed.type_table().get(distance.declared_type.expect("alias should lower")),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+    assert_eq!(
+        typed.type_table().get(person.declared_type.expect("record should lower")),
+        Some(&CheckedType::Record {
+            fields: BTreeMap::from([("name".to_string(), typed.builtin_types().str_)])
+        })
+    );
+    let routine_type_id = size.declared_type.expect("routine should lower");
+    let routine_type = typed
+        .type_table()
+        .get(routine_type_id)
+        .expect("lowered routine type should exist");
+    let CheckedType::Routine(routine) = routine_type else {
+        panic!("lowered routine signature should be represented as a routine type");
+    };
+    assert_eq!(routine.error_type, None);
+    assert_eq!(routine.params.len(), 1);
+    assert_eq!(
+        typed.type_table().get(routine.params[0]),
+        Some(&CheckedType::Declared {
+            symbol: distance_id,
+            name: "Distance".to_string(),
+            kind: DeclaredTypeKind::Alias,
+        })
+    );
+    assert_eq!(
+        typed.type_table().get(routine.return_type.expect("routine return type should lower")),
+        Some(&CheckedType::Declared {
+            symbol: person_id,
+            name: "Person".to_string(),
+            kind: DeclaredTypeKind::Type,
+        })
+    );
+    assert_eq!(typed.resolved().source_units.get(SourceUnitId(0)).map(|unit| unit.package.as_str()), Some(typed.package_name()));
 }

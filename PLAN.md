@@ -427,7 +427,7 @@ Status: done
 
 #### 1.3
 
-Status: pending
+Status: done
 
 - Lower resolved declaration signatures into semantic type facts without checking bodies yet.
 

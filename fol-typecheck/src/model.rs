@@ -138,12 +138,20 @@ impl TypedProgram {
         self.builtins
     }
 
+    pub(crate) fn type_table_mut(&mut self) -> &mut TypeTable {
+        &mut self.type_table
+    }
+
     pub fn source_units(&self) -> &[TypedSourceUnit] {
         &self.source_units
     }
 
     pub fn typed_symbol(&self, symbol_id: SymbolId) -> Option<&TypedSymbol> {
         self.symbols.get(&symbol_id)
+    }
+
+    pub(crate) fn typed_symbol_mut(&mut self, symbol_id: SymbolId) -> Option<&mut TypedSymbol> {
+        self.symbols.get_mut(&symbol_id)
     }
 
     pub fn typed_node(&self, syntax_id: SyntaxNodeId) -> Option<&TypedNode> {

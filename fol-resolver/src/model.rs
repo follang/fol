@@ -88,6 +88,7 @@ pub struct ResolvedSymbol {
 pub struct ResolvedReference {
     pub id: ReferenceId,
     pub kind: ReferenceKind,
+    pub syntax_id: Option<SyntaxNodeId>,
     pub name: String,
     pub scope: ScopeId,
     pub source_unit: SourceUnitId,

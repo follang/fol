@@ -25,7 +25,7 @@ pub enum DeclaredTypeKind {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RoutineType {
     pub params: Vec<CheckedTypeId>,
-    pub return_type: CheckedTypeId,
+    pub return_type: Option<CheckedTypeId>,
     pub error_type: Option<CheckedTypeId>,
 }
 
@@ -148,7 +148,7 @@ mod tests {
         let record_second = table.intern(CheckedType::Record { fields });
         let routine = table.intern(CheckedType::Routine(RoutineType {
             params: vec![declared, int_id],
-            return_type: declared,
+            return_type: Some(declared),
             error_type: None,
         }));
 
