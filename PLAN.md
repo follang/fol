@@ -368,7 +368,7 @@ Status: pending
 
 #### 3.1
 
-Status: pending
+Status: done
 
 - Lower declaration signatures for loaded packages as well as the entry package.
 

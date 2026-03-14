@@ -139,6 +139,16 @@ fn find_typed_symbol<'a>(
     (symbol_id, symbol)
 }
 
+fn find_typed_package<'a>(
+    typed: &'a fol_typecheck::TypedWorkspace,
+    display_name: &str,
+) -> &'a fol_typecheck::TypedPackage {
+    typed
+        .packages()
+        .find(|package| package.identity.display_name == display_name)
+        .expect("typed workspace package should exist")
+}
+
 fn find_typed_reference<'a>(
     typed: &'a fol_typecheck::TypedProgram,
     name: &str,
@@ -2077,6 +2087,77 @@ fn workspace_typechecking_preserves_local_only_success_shape() {
             .and_then(|type_id| workspace_entry.type_table().get(type_id)),
         Some(&CheckedType::Declared {
             symbol: workspace_count_id,
+            name: "Count".to_string(),
+            kind: DeclaredTypeKind::Alias,
+        })
+    );
+}
+
+#[test]
+fn workspace_typechecking_keeps_loaded_package_declaration_signatures() {
+    let root = unique_temp_dir("workspace_typecheck_loaded_package_decls");
+    create_dir_all(&root).expect("Fixture root should be creatable");
+    write_fixture_files(
+        &root,
+        &[
+            (
+                "shared/lib.fol",
+                concat!(
+                    "ali Count: int\n",
+                    "var[exp] answer: Count = 42;\n",
+                    "fun[exp] bump(value: Count): Count = {\n",
+                    "    return value + 1;\n",
+                    "}\n",
+                ),
+            ),
+            (
+                "app/main.fol",
+                "use shared: loc = {\"../shared\"};\nfun[] main(): int = {\n    return 0;\n}\n",
+            ),
+        ],
+    );
+
+    let typed = typecheck_fixture_workspace_with_config(&root, "app", ResolverConfig::default())
+        .expect("Workspace typechecking should type loaded package declarations before entry typing");
+    let shared = &find_typed_package(&typed, "shared").program;
+
+    let (count_id, _count) = find_typed_symbol(shared, "Count", SymbolKind::Alias);
+    let (_answer_id, answer) = find_typed_symbol(shared, "answer", SymbolKind::ValueBinding);
+    let (_bump_id, bump) = find_typed_symbol(shared, "bump", SymbolKind::Routine);
+
+    assert_eq!(
+        shared
+            .type_table()
+            .get(answer.declared_type.expect("loaded package values should lower declared types")),
+        Some(&CheckedType::Declared {
+            symbol: count_id,
+            name: "Count".to_string(),
+            kind: DeclaredTypeKind::Alias,
+        })
+    );
+    let signature = match shared
+        .type_table()
+        .get(bump.declared_type.expect("loaded package routines should lower signatures"))
+    {
+        Some(CheckedType::Routine(signature)) => signature,
+        other => panic!("expected loaded package routine signature, got {other:?}"),
+    };
+    assert_eq!(signature.params.len(), 1);
+    assert_eq!(signature.error_type, None);
+    assert_eq!(
+        shared.type_table().get(signature.params[0]),
+        Some(&CheckedType::Declared {
+            symbol: count_id,
+            name: "Count".to_string(),
+            kind: DeclaredTypeKind::Alias,
+        })
+    );
+    assert_eq!(
+        signature
+            .return_type
+            .and_then(|type_id| shared.type_table().get(type_id)),
+        Some(&CheckedType::Declared {
+            symbol: count_id,
             name: "Count".to_string(),
             kind: DeclaredTypeKind::Alias,
         })
