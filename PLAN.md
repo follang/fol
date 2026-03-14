@@ -350,7 +350,7 @@ Status: done
 
 #### 2.3
 
-Status: pending
+Status: done
 
 - Teach the typechecker to answer mounted imported symbol types by following
   mounted-symbol provenance back into typed foreign package facts.

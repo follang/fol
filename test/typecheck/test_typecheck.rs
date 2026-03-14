@@ -1943,6 +1943,54 @@ fn workspace_typechecking_dedupes_repeated_loaded_packages() {
 }
 
 #[test]
+fn workspace_typechecking_imports_mounted_value_and_routine_types_from_foreign_packages() {
+    let root = unique_temp_dir("workspace_typecheck_mounted_types");
+    create_dir_all(&root).expect("Fixture root should be creatable");
+    write_fixture_files(
+        &root,
+        &[
+            (
+                "shared/lib.fol",
+                concat!(
+                    "var[exp] answer: int = 42;\n",
+                    "fun[exp] bump(value: int): int = {\n",
+                    "    return value + 1;\n",
+                    "}\n",
+                ),
+            ),
+            (
+                "app/main.fol",
+                "use shared: loc = {\"../shared\"};\nfun[] main(): int = {\n    return 0;\n}\n",
+            ),
+        ],
+    );
+
+    let typed = typecheck_fixture_workspace_with_config(&root, "app", ResolverConfig::default())
+        .expect("Workspace typechecking should import mounted symbol facts from dependency packages");
+    let entry = typed.entry_program();
+
+    let (_answer_id, answer) = find_typed_symbol(entry, "answer", SymbolKind::ValueBinding);
+    assert_eq!(
+        entry
+            .type_table()
+            .get(answer.declared_type.expect("mounted imported values should keep translated types")),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+
+    let (_bump_id, bump) = find_typed_symbol(entry, "bump", SymbolKind::Routine);
+    assert_eq!(
+        entry
+            .type_table()
+            .get(bump.declared_type.expect("mounted imported routines should keep translated signatures")),
+        Some(&CheckedType::Routine(RoutineType {
+            params: vec![entry.builtin_types().int],
+            return_type: Some(entry.builtin_types().int),
+            error_type: None,
+        }))
+    );
+}
+
+#[test]
 fn reopened_v1_blocker_loc_imported_values_still_fail_typecheck() {
     let root = unique_temp_dir("reopened_loc_import");
     create_dir_all(&root).expect("Fixture root should be creatable");
