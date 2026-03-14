@@ -1,11 +1,16 @@
 //! Lowering from typed `V1` FOL workspaces into a backend-oriented IR.
 
 mod errors;
+pub mod control;
 pub mod ids;
 pub mod model;
-pub mod control;
+pub mod session;
 pub mod types;
 
+pub use control::{
+    LoweredBlock, LoweredInstr, LoweredInstrKind, LoweredLocal, LoweredOperand, LoweredRoutine,
+    LoweredTerminator,
+};
 pub use errors::{LoweringError, LoweringErrorKind};
 pub use ids::{
     IdTable, LoweredBlockId, LoweredGlobalId, LoweredInstrId, LoweredLocalId, LoweredPackageId,
@@ -14,6 +19,7 @@ pub use ids::{
 pub use model::{
     LoweredPackage, LoweredSourceMap, LoweredSourceMapEntry, LoweredSourceSymbol, LoweredWorkspace,
 };
+pub use session::LoweringSession;
 pub use types::{
     LoweredBuiltinType, LoweredRoutineType, LoweredType, LoweredTypeTable,
 };
@@ -30,12 +36,9 @@ impl Lowerer {
 
     pub fn lower_typed_workspace(
         &mut self,
-        _typed: fol_typecheck::TypedWorkspace,
+        typed: fol_typecheck::TypedWorkspace,
     ) -> LoweringResult<LoweredWorkspace> {
-        Err(vec![LoweringError::with_kind(
-            LoweringErrorKind::Unsupported,
-            "lowering session is not implemented yet",
-        )])
+        LoweringSession::new(typed).lower_workspace()
     }
 }
 
@@ -96,7 +99,3 @@ mod tests {
         let _ = LoweredWorkspace;
     }
 }
-pub use control::{
-    LoweredBlock, LoweredInstr, LoweredInstrKind, LoweredLocal, LoweredOperand, LoweredRoutine,
-    LoweredTerminator,
-};
