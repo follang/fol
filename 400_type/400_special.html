@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-571e6460.js";
+            window.path_to_searchindex_js = "../searchindex-b39b9665.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-114bd97f.js"></script>
@@ -199,6 +199,9 @@
 <h2 id="null"><a class="header" href="#null">Null</a></h2>
 <pre><code>nil
 </code></pre>
+<p>In the current <code>V1</code> compiler milestone, <code>nil</code> is accepted only when type
+checking already knows it is flowing into an <code>opt[...]</code> or <code>err[...]</code> shell.
+Plain inference from <code>nil</code> alone is not supported.</p>
 
                     </main>
 

@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-571e6460.js";
+            window.path_to_searchindex_js = "../searchindex-b39b9665.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-114bd97f.js"></script>
@@ -182,11 +182,24 @@ printString = "Hello, World!"
 .echo(printString!)
 </code></pre>
 <p>In this example, we declare an optional string and give it a value of “Hello, World!” Since we know that the variable stores a <code>str</code>, we can unconditionally unwrap the value and echo it. Of course, unconditional unwrapping is typically bad practice, so I’m only showing it for the purposes of showing off optionals.</p>
+<p>Current <code>V1</code> compiler note:</p>
+<ul>
+<li><code>nil</code> is type-checked only when the surrounding context already expects an
+<code>opt[...]</code> or <code>err[...]</code> shell.</li>
+<li>A standalone <code>nil</code> with no expected shell type is rejected during
+typechecking.</li>
+<li>Postfix unwrap <code>value!</code> is currently type-checked for <code>opt[T]</code> and <code>err[T]</code>
+and yields <code>T</code>.</li>
+<li>Bare <code>err[]</code> does not currently support postfix unwrap because there is no
+payload value to recover.</li>
+</ul>
 <p>At any rate, optional chaining takes this concept of optionals and applies it to method calls and fields. For instance, imagine we have some long chain of method calls:</p>
 <pre><code>important_char = commandline_input.split('-').get(5).charAt(7)
 </code></pre>
 <p>In this example, we take some command line input and split it by hyphen. Then, we grab the fifth token and pull out the seventh character. If at any point, one of these method calls fails, our program will crash.</p>
 <p>With optional chaining, we can actually catch the NIL return values at any point in the chain and fail gracefully. Instead of a crash, we get an important_char value of NIL. Now, that’s quite a bit more desirable than dealing with the pyramid of doom.</p>
+<p>The current <code>V1</code> compiler milestone only implements the plain <code>nil</code>/<code>!</code>
+surfaces described above. Full optional chaining remains later work.</p>
 
                     </main>
 

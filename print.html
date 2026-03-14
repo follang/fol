@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-571e6460.js";
+            window.path_to_searchindex_js = "searchindex-b39b9665.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-114bd97f.js"></script>
@@ -1629,6 +1629,9 @@ contract.</p>
 <h2 id="null"><a class="header" href="#null">Null</a></h2>
 <pre><code>nil
 </code></pre>
+<p>In the current <code>V1</code> compiler milestone, <code>nil</code> is accepted only when type
+checking already knows it is flowing into an <code>opt[...]</code> or <code>err[...]</code> shell.
+Plain inference from <code>nil</code> alone is not supported.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="declarations-and-items"><a class="header" href="#declarations-and-items">Declarations And Items</a></h1>
 <p>This section covers the main named program elements of FOL.</p>
@@ -3765,11 +3768,24 @@ printString = "Hello, World!"
 .echo(printString!)
 </code></pre>
 <p>In this example, we declare an optional string and give it a value of “Hello, World!” Since we know that the variable stores a <code>str</code>, we can unconditionally unwrap the value and echo it. Of course, unconditional unwrapping is typically bad practice, so I’m only showing it for the purposes of showing off optionals.</p>
+<p>Current <code>V1</code> compiler note:</p>
+<ul>
+<li><code>nil</code> is type-checked only when the surrounding context already expects an
+<code>opt[...]</code> or <code>err[...]</code> shell.</li>
+<li>A standalone <code>nil</code> with no expected shell type is rejected during
+typechecking.</li>
+<li>Postfix unwrap <code>value!</code> is currently type-checked for <code>opt[T]</code> and <code>err[T]</code>
+and yields <code>T</code>.</li>
+<li>Bare <code>err[]</code> does not currently support postfix unwrap because there is no
+payload value to recover.</li>
+</ul>
 <p>At any rate, optional chaining takes this concept of optionals and applies it to method calls and fields. For instance, imagine we have some long chain of method calls:</p>
 <pre><code>important_char = commandline_input.split('-').get(5).charAt(7)
 </code></pre>
 <p>In this example, we take some command line input and split it by hyphen. Then, we grab the fifth token and pull out the seventh character. If at any point, one of these method calls fails, our program will crash.</p>
 <p>With optional chaining, we can actually catch the NIL return values at any point in the chain and fail gracefully. Instead of a crash, we get an important_char value of NIL. Now, that’s quite a bit more desirable than dealing with the pyramid of doom.</p>
+<p>The current <code>V1</code> compiler milestone only implements the plain <code>nil</code>/<code>!</code>
+surfaces described above. Full optional chaining remains later work.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="value-conversion"><a class="header" href="#value-conversion">Value Conversion</a></h1>
 <p>This section covers conversions between types.</p>
@@ -3782,8 +3798,106 @@ conversions that should be explicit in source</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="coercion"><a class="header" href="#coercion">Coercion</a></h1>
+<p>The book-level idea of coercion is simple:</p>
+<ul>
+<li>coercion is implicit</li>
+<li>it should only happen when the conversion is safe and unambiguous</li>
+</ul>
+<p>For the current <code>V1</code> compiler milestone, that contract is intentionally narrow.</p>
+<p><code>V1</code> coercion currently allows:</p>
+<ul>
+<li>exact type matches</li>
+<li>alias-wrapped values whose apparent type matches the expected type</li>
+<li><code>never</code> flowing into any expected type</li>
+<li>the current optional/error shell lifting used by ordinary <code>V1</code> surfaces</li>
+</ul>
+<p><code>V1</code> coercion currently does not allow:</p>
+<ul>
+<li>implicit <code>int -&gt; flt</code></li>
+<li>implicit <code>flt -&gt; int</code></li>
+<li>implicit width or signedness changes</li>
+<li>implicit container reshaping</li>
+<li>implicit string/character/container conversions</li>
+</ul>
+<p>So today the rule is:</p>
+<ul>
+<li>if two values are not already the same semantic family, the compiler should
+reject the implicit conversion</li>
+</ul>
+<p>This is deliberate.
+The conversion chapter in the language design is broader than the current
+compiler guarantee, and <code>V1</code> chooses explicit rejection over silent guessing.</p>
+<p>Examples that are accepted in <code>V1</code>:</p>
+<pre><code class="language-fol">var count: int = 1
+var ratio: flt = 1.5
+
+fun[] take_int(value: int): int = {
+    return value;
+}
+
+fun[] take_float(value: flt): flt = {
+    return value;
+}
+</code></pre>
+<p>Examples that are rejected in <code>V1</code>:</p>
+<pre><code class="language-fol">var count: int = 1.5
+var ratio: flt = 1
+</code></pre>
+<pre><code class="language-fol">fun[] take_float(value: flt): flt = {
+    return value;
+}
+
+fun[] bad(): flt = {
+    return take_float(1);
+}
+</code></pre>
+<p>Later versions may widen this contract, but <code>V1</code> keeps coercion intentionally
+small so type behavior stays predictable.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="casting"><a class="header" href="#casting">Casting</a></h1>
+<p>Casting is the explicit side of value conversion.</p>
+<p>The long-term language direction is:</p>
+<ul>
+<li>coercion stays implicit and narrow</li>
+<li>casting stays explicit and source-visible</li>
+</ul>
+<p>For the current <code>V1</code> compiler milestone, casting syntax is parsed, but casting
+semantics are not implemented yet.</p>
+<p>That means:</p>
+<ul>
+<li><code>value as target</code></li>
+<li><code>value cast target</code></li>
+</ul>
+<p>are both valid syntax surfaces, but they are not part of the supported <code>V1</code>
+type system.</p>
+<p>The current compiler behavior is explicit:</p>
+<ul>
+<li>it does not silently reinterpret these expressions</li>
+<li>it does not treat them as ordinary coercions</li>
+<li>it reports them as unsupported <code>V1</code> typecheck surfaces</li>
+</ul>
+<p>Example:</p>
+<pre><code class="language-fol">fun[] bad_as(value: int): int = {
+    return value as text;
+}
+
+fun[] bad_cast(value: int): int = {
+    return value cast target;
+}
+</code></pre>
+<p>Both forms currently fail during typechecking.</p>
+<p>This boundary is intentional.
+Before FOL can support casting for real, the compiler needs a stable legality
+contract answering questions such as:</p>
+<ul>
+<li>which scalar casts are allowed</li>
+<li>whether lossy casts are permitted</li>
+<li>whether container casts exist</li>
+<li>how aliases interact with explicit conversion</li>
+<li>how future foreign/ABI types participate in conversion</li>
+</ul>
+<p>Until that contract exists, <code>V1</code> treats cast syntax as parsed-but-unsupported
+instead of guessing semantics.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="memory-model"><a class="header" href="#memory-model">Memory Model</a></h1>
 <p>This section explains how FOL talks about storage, ownership, allocation, and pointer-like behavior.</p>

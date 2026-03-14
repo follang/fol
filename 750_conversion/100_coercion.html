@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-571e6460.js";
+            window.path_to_searchindex_js = "../searchindex-b39b9665.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-114bd97f.js"></script>
@@ -175,6 +175,61 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="coercion"><a class="header" href="#coercion">Coercion</a></h1>
+<p>The book-level idea of coercion is simple:</p>
+<ul>
+<li>coercion is implicit</li>
+<li>it should only happen when the conversion is safe and unambiguous</li>
+</ul>
+<p>For the current <code>V1</code> compiler milestone, that contract is intentionally narrow.</p>
+<p><code>V1</code> coercion currently allows:</p>
+<ul>
+<li>exact type matches</li>
+<li>alias-wrapped values whose apparent type matches the expected type</li>
+<li><code>never</code> flowing into any expected type</li>
+<li>the current optional/error shell lifting used by ordinary <code>V1</code> surfaces</li>
+</ul>
+<p><code>V1</code> coercion currently does not allow:</p>
+<ul>
+<li>implicit <code>int -&gt; flt</code></li>
+<li>implicit <code>flt -&gt; int</code></li>
+<li>implicit width or signedness changes</li>
+<li>implicit container reshaping</li>
+<li>implicit string/character/container conversions</li>
+</ul>
+<p>So today the rule is:</p>
+<ul>
+<li>if two values are not already the same semantic family, the compiler should
+reject the implicit conversion</li>
+</ul>
+<p>This is deliberate.
+The conversion chapter in the language design is broader than the current
+compiler guarantee, and <code>V1</code> chooses explicit rejection over silent guessing.</p>
+<p>Examples that are accepted in <code>V1</code>:</p>
+<pre><code class="language-fol">var count: int = 1
+var ratio: flt = 1.5
+
+fun[] take_int(value: int): int = {
+    return value;
+}
+
+fun[] take_float(value: flt): flt = {
+    return value;
+}
+</code></pre>
+<p>Examples that are rejected in <code>V1</code>:</p>
+<pre><code class="language-fol">var count: int = 1.5
+var ratio: flt = 1
+</code></pre>
+<pre><code class="language-fol">fun[] take_float(value: flt): flt = {
+    return value;
+}
+
+fun[] bad(): flt = {
+    return take_float(1);
+}
+</code></pre>
+<p>Later versions may widen this contract, but <code>V1</code> keeps coercion intentionally
+small so type behavior stays predictable.</p>
 
                     </main>
 
