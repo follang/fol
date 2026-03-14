@@ -448,7 +448,7 @@ Status: pending
 
 #### 5.1
 
-Status: pending
+Status: done
 
 - Complete apparent-type expansion for named declared types so aggregate
   operations do not stop at opaque declared shells when the underlying type is

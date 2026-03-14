@@ -579,7 +579,7 @@ fn type_binding_initializer(
     value: Option<&AstNode>,
     symbol_kind: SymbolKind,
 ) -> Result<Option<CheckedTypeId>, TypecheckError> {
-    let Some(symbol_id) = find_symbol_in_scope(
+    let Some(symbol_id) = find_symbol_in_scope_chain(
         resolved,
         context.source_unit_id,
         context.scope_id,
@@ -1562,6 +1562,13 @@ fn apparent_type_id(
     let mut seen = BTreeSet::new();
 
     loop {
+        if let Some(next) = typed.apparent_type_override(current) {
+            if next == current {
+                return Ok(current);
+            }
+            current = next;
+            continue;
+        }
         match typed.type_table().get(current) {
             Some(CheckedType::Declared { symbol, .. }) => {
                 if !seen.insert(*symbol) {
@@ -2129,6 +2136,24 @@ fn find_symbol_in_scope(
         .map(|(symbol_id, _)| symbol_id)
 }
 
+fn find_symbol_in_scope_chain(
+    resolved: &ResolvedProgram,
+    source_unit_id: SourceUnitId,
+    scope_id: ScopeId,
+    name: &str,
+    kind: SymbolKind,
+) -> Option<SymbolId> {
+    let mut current_scope = Some(scope_id);
+    while let Some(scope_id) = current_scope {
+        if let Some(symbol_id) = find_symbol_in_scope(resolved, source_unit_id, scope_id, name, kind)
+        {
+            return Some(symbol_id);
+        }
+        current_scope = resolved.scope(scope_id).and_then(|scope| scope.parent);
+    }
+    None
+}
+
 fn record_symbol_type(
     typed: &mut TypedProgram,
     resolved: &ResolvedProgram,
@@ -2138,7 +2163,13 @@ fn record_symbol_type(
     kind: SymbolKind,
     type_id: CheckedTypeId,
 ) -> Result<(), TypecheckError> {
-    let Some(symbol_id) = find_symbol_in_scope(resolved, source_unit_id, scope_id, name, kind) else {
+    let Some(symbol_id) = find_symbol_in_scope_chain(
+        resolved,
+        source_unit_id,
+        scope_id,
+        name,
+        kind,
+    ) else {
         return Err(internal_error(
             format!("typed symbol facts lost local symbol '{name}'"),
             None,

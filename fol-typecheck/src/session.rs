@@ -291,18 +291,43 @@ impl TypecheckSession {
         let translated = match source_type {
             CheckedType::Builtin(builtin) => target_program.type_table_mut().intern_builtin(builtin),
             CheckedType::Declared { symbol, name, kind } => {
-                let translated_symbol = translated_symbol_id(
+                if let Some(translated_symbol) = translated_symbol_id(
                     source_identity,
                     source_program,
                     symbol,
                     mounted_symbol_map,
-                )
-                .unwrap_or(symbol);
-                target_program.type_table_mut().intern(CheckedType::Declared {
-                    symbol: translated_symbol,
-                    name,
-                    kind,
-                })
+                ) {
+                    target_program.type_table_mut().intern(CheckedType::Declared {
+                        symbol: translated_symbol,
+                        name,
+                        kind,
+                    })
+                } else if let Some(expanded_type) = source_program
+                    .typed_symbol(symbol)
+                    .and_then(|typed_symbol| typed_symbol.declared_type)
+                {
+                    let shell_type = target_program.type_table_mut().intern(CheckedType::Declared {
+                        symbol,
+                        name,
+                        kind,
+                    });
+                    let apparent_type = self.import_type_id(
+                        target_program,
+                        source_identity,
+                        source_program,
+                        expanded_type,
+                        mounted_symbol_map,
+                        imported_cache,
+                    )?;
+                    target_program.record_apparent_type_override(shell_type, apparent_type);
+                    shell_type
+                } else {
+                    target_program.type_table_mut().intern(CheckedType::Declared {
+                        symbol,
+                        name,
+                        kind,
+                    })
+                }
             }
             CheckedType::Array { element_type, size } => {
                 let element_type = self.import_type_id(

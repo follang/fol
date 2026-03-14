@@ -799,6 +799,30 @@ fn expression_typing_rejects_field_access_on_non_records() {
 }
 
 #[test]
+fn expression_typing_expands_alias_record_shells_for_field_access() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "typ CounterShape: rec = {\n\
+             value: int\n\
+         }\n\
+         ali Counter: CounterShape\n\
+         var current: Counter = { value = 1 }\n\
+         fun[] read(): int = {\n\
+             return current.value;\n\
+         }\n",
+    )]);
+
+    let syntax_id = find_named_routine_syntax_id(&typed, "read");
+    assert_eq!(
+        typed
+            .typed_node(syntax_id)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+}
+
+#[test]
 fn expression_typing_types_container_index_accesses() {
     let typed = typecheck_fixture_folder(&[(
         "main.fol",
@@ -2818,6 +2842,48 @@ fn workspace_expression_typing_types_qualified_imported_method_calls() {
 
     let typed = typecheck_fixture_workspace_entry_with_config(&root, "app", ResolverConfig::default())
         .expect("Workspace entry typing should accept qualified imported method calls through typed package facts");
+    let syntax_id = find_named_routine_syntax_id(&typed, "main");
+
+    assert_eq!(
+        typed
+            .typed_node(syntax_id)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+}
+
+#[test]
+fn workspace_expression_typing_expands_imported_alias_record_shells_for_field_access() {
+    let root = unique_temp_dir("workspace_imported_alias_record_field_access");
+    create_dir_all(&root).expect("Fixture root should be creatable");
+    write_fixture_files(
+        &root,
+        &[
+            (
+                "shared/lib.fol",
+                concat!(
+                    "typ CounterShape: rec = {\n",
+                    "    value: int;\n",
+                    "}\n",
+                    "ali Counter: CounterShape\n",
+                    "var[exp] current: Counter = { value = 1 }\n",
+                ),
+            ),
+            (
+                "app/main.fol",
+                concat!(
+                    "use shared: loc = {\"../shared\"};\n",
+                    "fun[] main(): int = {\n",
+                    "    return current.value;\n",
+                    "}\n",
+                ),
+            ),
+        ],
+    );
+
+    let typed = typecheck_fixture_workspace_entry_with_config(&root, "app", ResolverConfig::default())
+        .expect("Workspace entry typing should expand imported alias record shells for field access");
     let syntax_id = find_named_routine_syntax_id(&typed, "main");
 
     assert_eq!(

@@ -47,6 +47,7 @@ pub struct TypedProgram {
     symbols: BTreeMap<SymbolId, TypedSymbol>,
     nodes: BTreeMap<SyntaxNodeId, TypedNode>,
     references: BTreeMap<fol_resolver::ReferenceId, TypedReference>,
+    apparent_type_overrides: BTreeMap<CheckedTypeId, CheckedTypeId>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -189,6 +190,7 @@ impl TypedProgram {
             symbols,
             nodes,
             references,
+            apparent_type_overrides: BTreeMap::new(),
         }
     }
 
@@ -257,6 +259,21 @@ impl TypedProgram {
             })
             .inferred_type = Some(type_id);
         Ok(())
+    }
+
+    pub(crate) fn record_apparent_type_override(
+        &mut self,
+        shell_type: CheckedTypeId,
+        apparent_type: CheckedTypeId,
+    ) {
+        self.apparent_type_overrides.insert(shell_type, apparent_type);
+    }
+
+    pub(crate) fn apparent_type_override(
+        &self,
+        type_id: CheckedTypeId,
+    ) -> Option<CheckedTypeId> {
+        self.apparent_type_overrides.get(&type_id).copied()
     }
 }
 
