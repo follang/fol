@@ -3297,6 +3297,38 @@ fn shell_typing_accepts_nil_in_optional_and_error_binding_contexts() {
 }
 
 #[test]
+fn reopened_v1_audit_top_level_untyped_bindings_still_hit_generic_type_fallbacks() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "var mystery\nfun[] main(): int = {\n    return mystery;\n}\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error.message().contains("does not have a lowered type yet")
+        }),
+        "Expected the current top-level binding fallback diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
+fn reopened_v1_audit_local_untyped_bindings_still_hit_generic_type_fallbacks() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] main(): int = {\n    var mystery\n    return mystery;\n}\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error.message().contains("does not have a lowered type yet")
+        }),
+        "Expected the current local binding fallback diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
 fn nil_typing_rejects_missing_expected_shell_contexts() {
     let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",

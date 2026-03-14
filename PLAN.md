@@ -537,7 +537,7 @@ Status: done
 
 #### 7.2
 
-Status: pending
+Status: done
 
 - Audit current `TypecheckInvalidInput` and `TypecheckInternal` fallback paths
   that can still be reached from valid parsed+resolved `V1` programs.
