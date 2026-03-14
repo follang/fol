@@ -2249,6 +2249,79 @@ fn workspace_expression_typing_keeps_plain_imported_call_types() {
 }
 
 #[test]
+fn workspace_typechecking_imports_alias_record_and_entry_type_facts() {
+    let root = unique_temp_dir("workspace_imported_type_facts");
+    create_dir_all(&root).expect("Fixture root should be creatable");
+    write_fixture_files(
+        &root,
+        &[
+            (
+                "shared/lib.fol",
+                concat!(
+                    "typ[exp] Count: int;\n",
+                    "typ[exp] Point: rec = {\n",
+                    "    x: int;\n",
+                    "    y: int;\n",
+                    "}\n",
+                    "typ[exp] Outcome: ent = {\n",
+                    "    var Ok: int = 1;\n",
+                    "    con Fail: str = \"bad\";\n",
+                    "}\n",
+                ),
+            ),
+            (
+                "app/main.fol",
+                "use shared: loc = {\"../shared\"};\nfun[] main(): int = {\n    return 0;\n}\n",
+            ),
+        ],
+    );
+
+    let typed = typecheck_fixture_workspace_entry_with_config(&root, "app", ResolverConfig::default())
+        .expect("Workspace entry typing should import semantic type facts for exported type surfaces");
+
+    let (_count_id, count) = find_typed_symbol(&typed, "Count", SymbolKind::Type);
+    let (_point_id, point) = find_typed_symbol(&typed, "Point", SymbolKind::Type);
+    let (_outcome_id, outcome) = find_typed_symbol(&typed, "Outcome", SymbolKind::Type);
+
+    assert_eq!(
+        typed.type_table().get(
+            count
+                .declared_type
+                .expect("imported aliases should keep lowered semantic types"),
+        ),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+
+    let point_fields = BTreeMap::from([
+        ("x".to_string(), typed.builtin_types().int),
+        ("y".to_string(), typed.builtin_types().int),
+    ]);
+    assert_eq!(
+        typed.type_table().get(
+            point
+                .declared_type
+                .expect("imported record types should keep lowered semantic types"),
+        ),
+        Some(&CheckedType::Record { fields: point_fields })
+    );
+
+    let outcome_variants = BTreeMap::from([
+        ("Fail".to_string(), Some(typed.builtin_types().str_)),
+        ("Ok".to_string(), Some(typed.builtin_types().int)),
+    ]);
+    assert_eq!(
+        typed.type_table().get(
+            outcome
+                .declared_type
+                .expect("imported entry types should keep lowered semantic types"),
+        ),
+        Some(&CheckedType::Entry {
+            variants: outcome_variants,
+        })
+    );
+}
+
+#[test]
 fn reopened_v1_blocker_loc_imported_values_still_fail_typecheck() {
     let root = unique_temp_dir("reopened_loc_import");
     create_dir_all(&root).expect("Fixture root should be creatable");

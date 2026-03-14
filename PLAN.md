@@ -388,7 +388,7 @@ Status: done
 
 #### 3.4
 
-Status: pending
+Status: done
 
 - Make imported exported aliases, records, and entries expose real declared
   semantic type facts, not opaque unresolved placeholders.
