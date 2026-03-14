@@ -393,7 +393,7 @@ Status: done
 
 #### 0.2
 
-Status: pending
+Status: done
 
 - Add `TypecheckError` kinds and exact diagnostic-location plumbing.
 

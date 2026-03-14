@@ -4,6 +4,12 @@
 //! the workspace boundary and a small public API surface so later commits can
 //! grow semantic types, typed results, and diagnostics incrementally.
 
+pub mod errors;
+
+pub use errors::{TypecheckError, TypecheckErrorKind};
+
+pub type TypecheckResult<T> = Result<T, Vec<TypecheckError>>;
+
 #[derive(Debug, Default)]
 pub struct Typechecker;
 
@@ -15,10 +21,33 @@ impl Typechecker {
 
 #[cfg(test)]
 mod tests {
-    use super::Typechecker;
+    use super::{TypecheckError, TypecheckErrorKind, Typechecker};
+    use fol_parser::ast::SyntaxOrigin;
 
     #[test]
     fn typechecker_foundation_can_be_constructed() {
         let _ = Typechecker::new();
+    }
+
+    #[test]
+    fn typechecker_foundation_exposes_typecheck_error_surface() {
+        let error = TypecheckError::with_origin(
+            TypecheckErrorKind::Unsupported,
+            "generics are not part of the V1 typecheck milestone",
+            SyntaxOrigin {
+                file: Some("pkg/main.fol".to_string()),
+                line: 3,
+                column: 5,
+                length: 7,
+            },
+        );
+
+        assert_eq!(error.kind(), TypecheckErrorKind::Unsupported);
+        assert_eq!(
+            error.diagnostic_location()
+                .expect("Typecheck error should expose its syntax origin")
+                .line,
+            3
+        );
     }
 }
