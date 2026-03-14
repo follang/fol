@@ -455,7 +455,7 @@ Status: done
 
 #### 2.3
 
-Status: pending
+Status: done
 
 - Check alias declarations and record/entry member type declarations.
 

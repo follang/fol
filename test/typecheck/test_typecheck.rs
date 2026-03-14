@@ -408,3 +408,50 @@ fn declaration_signature_lowering_checks_nested_routine_signatures() {
         Some(&CheckedType::Builtin(BuiltinType::Int))
     );
 }
+
+#[test]
+fn declaration_signature_lowering_keeps_alias_target_types_exact() {
+    let typed = typecheck_fixture_folder(&[
+        ("types.fol", "ali PathLabel: str\n"),
+        ("main.fol", "var current: PathLabel = \"main\"\n"),
+    ]);
+
+    let (alias_id, alias) = find_typed_symbol(&typed, "PathLabel", SymbolKind::Alias);
+    let (_current_id, current) = find_typed_symbol(&typed, "current", SymbolKind::ValueBinding);
+
+    assert_eq!(
+        typed.type_table().get(alias.declared_type.expect("alias should lower")),
+        Some(&CheckedType::Builtin(BuiltinType::Str))
+    );
+    assert_eq!(
+        typed.type_table().get(current.declared_type.expect("binding should lower")),
+        Some(&CheckedType::Declared {
+            symbol: alias_id,
+            name: "PathLabel".to_string(),
+            kind: DeclaredTypeKind::Alias,
+        })
+    );
+}
+
+#[test]
+fn declaration_signature_lowering_records_entry_variant_payload_types() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "typ Token: ent = {\n\
+             var Word: str = \"word\";\n\
+             con Number: int = 1;\n\
+         }\n",
+    )]);
+
+    let (_token_id, token) = find_typed_symbol(&typed, "Token", SymbolKind::Type);
+    let CheckedType::Entry { variants } = typed
+        .type_table()
+        .get(token.declared_type.expect("entry type should lower"))
+        .expect("entry type facts should exist")
+    else {
+        panic!("entry declaration should lower to an entry semantic type");
+    };
+
+    assert_eq!(variants.get("Word"), Some(&Some(typed.builtin_types().str_)));
+    assert_eq!(variants.get("Number"), Some(&Some(typed.builtin_types().int)));
+}
