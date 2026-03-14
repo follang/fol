@@ -455,3 +455,65 @@ fn declaration_signature_lowering_records_entry_variant_payload_types() {
     assert_eq!(variants.get("Word"), Some(&Some(typed.builtin_types().str_)));
     assert_eq!(variants.get("Number"), Some(&Some(typed.builtin_types().int)));
 }
+
+#[test]
+fn declaration_signature_lowering_allows_forward_cross_file_alias_references() {
+    let typed = typecheck_fixture_folder(&[
+        ("00_main.fol", "var total: Count = 1\n"),
+        ("10_types.fol", "ali Count: int\n"),
+    ]);
+
+    let (count_id, _count) = find_typed_symbol(&typed, "Count", SymbolKind::Alias);
+    let (_total_id, total) = find_typed_symbol(&typed, "total", SymbolKind::ValueBinding);
+
+    assert_eq!(
+        typed.type_table().get(total.declared_type.expect("binding should lower")),
+        Some(&CheckedType::Declared {
+            symbol: count_id,
+            name: "Count".to_string(),
+            kind: DeclaredTypeKind::Alias,
+        })
+    );
+}
+
+#[test]
+fn declaration_signature_lowering_allows_cross_file_named_type_references_in_routine_signatures() {
+    let typed = typecheck_fixture_folder(&[
+        (
+            "00_main.fol",
+            "fun[] load(item: model::User): model::User = {\n\
+                 return item;\n\
+             }\n",
+        ),
+        ("model/user.fol", "typ User: rec = {\n    name: str\n}\n"),
+    ]);
+
+    let (user_id, _user) = find_typed_symbol(&typed, "User", SymbolKind::Type);
+    let (_load_id, load) = find_typed_symbol(&typed, "load", SymbolKind::Routine);
+    let CheckedType::Routine(load_type) = typed
+        .type_table()
+        .get(load.declared_type.expect("routine should lower"))
+        .expect("routine type should exist")
+    else {
+        panic!("routine declaration should lower to a routine semantic type");
+    };
+
+    assert_eq!(
+        typed.type_table().get(load_type.params[0]),
+        Some(&CheckedType::Declared {
+            symbol: user_id,
+            name: "User".to_string(),
+            kind: DeclaredTypeKind::Type,
+        })
+    );
+    assert_eq!(
+        typed
+            .type_table()
+            .get(load_type.return_type.expect("routine return type should lower")),
+        Some(&CheckedType::Declared {
+            symbol: user_id,
+            name: "User".to_string(),
+            kind: DeclaredTypeKind::Type,
+        })
+    );
+}

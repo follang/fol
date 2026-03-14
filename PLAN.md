@@ -461,7 +461,7 @@ Status: done
 
 #### 2.4
 
-Status: pending
+Status: done
 
 - Lock forward and cross-file declared-type extraction tests through resolver output.
 
