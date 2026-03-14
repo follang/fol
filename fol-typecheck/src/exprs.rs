@@ -1586,6 +1586,19 @@ fn symbol_type(
                 fallback_origin,
             ));
         }
+        if matches!(
+            symbol.kind,
+            SymbolKind::ValueBinding | SymbolKind::LabelBinding | SymbolKind::DestructureBinding
+        ) {
+            return Err(TypecheckError::with_origin(
+                TypecheckErrorKind::InvalidInput,
+                format!(
+                    "binding '{}' needs a declared type or an inferable initializer in V1",
+                    symbol.name
+                ),
+                symbol.origin.clone().unwrap_or(fallback_origin),
+            ));
+        }
     }
 
     Err(TypecheckError::with_origin(

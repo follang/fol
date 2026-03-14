@@ -3297,7 +3297,7 @@ fn shell_typing_accepts_nil_in_optional_and_error_binding_contexts() {
 }
 
 #[test]
-fn reopened_v1_audit_top_level_untyped_bindings_still_hit_generic_type_fallbacks() {
+fn typecheck_reports_explicit_top_level_binding_type_requirements() {
     let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",
         "var mystery\nfun[] main(): int = {\n    return mystery;\n}\n",
@@ -3306,14 +3306,16 @@ fn reopened_v1_audit_top_level_untyped_bindings_still_hit_generic_type_fallbacks
     assert!(
         errors.iter().any(|error| {
             error.kind() == TypecheckErrorKind::InvalidInput
-                && error.message().contains("does not have a lowered type yet")
+                && error
+                    .message()
+                    .contains("binding 'mystery' needs a declared type or an inferable initializer in V1")
         }),
-        "Expected the current top-level binding fallback diagnostic, got: {errors:?}"
+        "Expected the explicit top-level binding type diagnostic, got: {errors:?}"
     );
 }
 
 #[test]
-fn reopened_v1_audit_local_untyped_bindings_still_hit_generic_type_fallbacks() {
+fn typecheck_reports_explicit_local_binding_type_requirements() {
     let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",
         "fun[] main(): int = {\n    var mystery\n    return mystery;\n}\n",
@@ -3322,9 +3324,11 @@ fn reopened_v1_audit_local_untyped_bindings_still_hit_generic_type_fallbacks() {
     assert!(
         errors.iter().any(|error| {
             error.kind() == TypecheckErrorKind::InvalidInput
-                && error.message().contains("does not have a lowered type yet")
+                && error
+                    .message()
+                    .contains("binding 'mystery' needs a declared type or an inferable initializer in V1")
         }),
-        "Expected the current local binding fallback diagnostic, got: {errors:?}"
+        "Expected the explicit local binding type diagnostic, got: {errors:?}"
     );
 }
 

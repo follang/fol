@@ -544,7 +544,7 @@ Status: done
 
 #### 7.3
 
-Status: pending
+Status: done
 
 - Replace audited fallback failures with either:
 - success
