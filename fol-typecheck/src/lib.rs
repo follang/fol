@@ -38,6 +38,13 @@ impl Typechecker {
     ) -> TypecheckResult<TypedProgram> {
         session::TypecheckSession::new().check_resolved_program(resolved)
     }
+
+    pub fn check_resolved_workspace(
+        &mut self,
+        resolved: fol_resolver::ResolvedWorkspace,
+    ) -> TypecheckResult<TypedWorkspace> {
+        session::TypecheckSession::new().check_resolved_workspace(resolved)
+    }
 }
 
 #[cfg(test)]

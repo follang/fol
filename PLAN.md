@@ -343,7 +343,7 @@ Status: done
 
 #### 2.2
 
-Status: pending
+Status: done
 
 - Typecheck each loaded package once and cache typed package facts by package
   identity.

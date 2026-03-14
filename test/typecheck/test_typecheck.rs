@@ -1,6 +1,6 @@
 use fol_diagnostics::{DiagnosticCode, DiagnosticLocation, ToDiagnostic};
 use fol_parser::ast::{AstParser, SyntaxOrigin};
-use fol_resolver::resolve_package;
+use fol_resolver::{resolve_package, resolve_package_workspace_with_config};
 use fol_resolver::{ReferenceKind, ResolverConfig, SourceUnitId, SymbolId, SymbolKind};
 use fol_stream::FileStream;
 use fol_typecheck::{
@@ -98,6 +98,26 @@ fn typecheck_fixture_entry_with_config(
         .expect("Fixture folder should resolve cleanly");
 
     Typechecker::new().check_resolved_program(resolved)
+}
+
+fn typecheck_fixture_workspace_with_config(
+    root: &Path,
+    entry: &str,
+    config: ResolverConfig,
+) -> Result<fol_typecheck::TypedWorkspace, Vec<TypecheckError>> {
+    let entry_root = root.join(entry);
+    let mut stream =
+        FileStream::from_folder(entry_root.to_str().expect("fixture path should be utf8"))
+            .expect("Fixture folder should stream");
+    let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+    let mut parser = AstParser::new();
+    let syntax = parser
+        .parse_package(&mut lexer)
+        .expect("Fixture folder should parse as a package");
+    let resolved = resolve_package_workspace_with_config(syntax, config)
+        .expect("Fixture folder should resolve cleanly as a workspace");
+
+    Typechecker::new().check_resolved_workspace(resolved)
 }
 
 fn find_typed_symbol<'a>(
@@ -1856,6 +1876,69 @@ fn ordinary_typechecking_rejects_build_fol_source_units() {
                 .is_some_and(|file| file.ends_with("build.fol"))
         }),
         "Expected build.fol boundary diagnostics to keep the source-unit path, got: {errors:?}"
+    );
+}
+
+#[test]
+fn workspace_typechecking_caches_loaded_packages_by_identity() {
+    let root = unique_temp_dir("workspace_typecheck_cache");
+    create_dir_all(&root).expect("Fixture root should be creatable");
+    write_fixture_files(
+        &root,
+        &[
+            ("shared/lib.fol", "var[exp] answer: int = 42;\n"),
+            (
+                "app/main.fol",
+                "use shared: loc = {\"../shared\"};\nfun[] main(): int = {\n    return 0;\n}\n",
+            ),
+        ],
+    );
+
+    let typed = typecheck_fixture_workspace_with_config(&root, "app", ResolverConfig::default())
+        .expect("Workspace typechecking should accept packages that do not yet use imported values");
+
+    assert_eq!(typed.package_count(), 2);
+    assert_eq!(typed.entry_program().package_name(), "app");
+    assert!(
+        typed
+            .packages()
+            .any(|package| package.identity.display_name == "shared"),
+        "Typed workspace should retain typed facts for directly loaded packages"
+    );
+}
+
+#[test]
+fn workspace_typechecking_dedupes_repeated_loaded_packages() {
+    let root = unique_temp_dir("workspace_typecheck_dedupe");
+    create_dir_all(&root).expect("Fixture root should be creatable");
+    write_fixture_files(
+        &root,
+        &[
+            ("shared/lib.fol", "var[exp] answer: int = 42;\n"),
+            (
+                "app/main.fol",
+                concat!(
+                    "use left: loc = {\"../shared\"};\n",
+                    "use right: loc = {\"../shared\"};\n",
+                    "fun[] main(): int = {\n",
+                    "    return 0;\n",
+                    "}\n",
+                ),
+            ),
+        ],
+    );
+
+    let typed = typecheck_fixture_workspace_with_config(&root, "app", ResolverConfig::default())
+        .expect("Workspace typechecking should reuse one typed package per identity");
+
+    assert_eq!(typed.package_count(), 2);
+    assert_eq!(
+        typed
+            .packages()
+            .filter(|package| package.identity.display_name == "shared")
+            .count(),
+        1,
+        "Typed workspace should cache one typed package fact per package identity"
     );
 }
 
