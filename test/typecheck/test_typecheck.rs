@@ -1,6 +1,6 @@
 use fol_diagnostics::{DiagnosticCode, DiagnosticLocation, ToDiagnostic};
 use fol_parser::ast::SyntaxOrigin;
-use fol_typecheck::{TypecheckError, TypecheckErrorKind, Typechecker};
+use fol_typecheck::{BuiltinType, BuiltinTypeIds, CheckedType, TypeTable, TypecheckError, TypecheckErrorKind, Typechecker};
 
 #[test]
 fn typechecker_foundation_smoke_constructs_public_api() {
@@ -65,4 +65,27 @@ fn typecheck_errors_lower_to_stable_structured_diagnostics() {
         })
     );
     assert_eq!(diagnostic.labels.len(), 2);
+}
+
+#[test]
+fn builtin_type_tables_install_v1_scalar_types_canonically() {
+    let mut table = TypeTable::new();
+    let builtins = BuiltinTypeIds::install(&mut table);
+
+    assert_eq!(table.len(), 6);
+    assert_eq!(table.get(builtins.int), Some(&CheckedType::Builtin(BuiltinType::Int)));
+    assert_eq!(
+        table.get(builtins.str_),
+        Some(&CheckedType::Builtin(BuiltinType::Str))
+    );
+}
+
+#[test]
+fn builtin_type_installation_reuses_existing_slots() {
+    let mut table = TypeTable::new();
+    let first = BuiltinTypeIds::install(&mut table);
+    let second = BuiltinTypeIds::install(&mut table);
+
+    assert_eq!(first, second);
+    assert_eq!(table.len(), 6);
 }

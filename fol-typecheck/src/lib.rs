@@ -4,9 +4,13 @@
 //! the workspace boundary and a small public API surface so later commits can
 //! grow semantic types, typed results, and diagnostics incrementally.
 
+pub mod builtins;
 pub mod errors;
+pub mod types;
 
+pub use builtins::BuiltinTypeIds;
 pub use errors::{TypecheckError, TypecheckErrorKind};
+pub use types::{BuiltinType, CheckedType, CheckedTypeId, TypeTable};
 
 pub type TypecheckResult<T> = Result<T, Vec<TypecheckError>>;
 

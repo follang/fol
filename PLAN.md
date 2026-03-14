@@ -399,7 +399,7 @@ Status: done
 
 #### 0.3
 
-Status: pending
+Status: done
 
 - Add semantic type interning/canonical builtin type tables.
 
