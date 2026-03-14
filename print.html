@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-363c26c2.js";
+            window.path_to_searchindex_js = "searchindex-571e6460.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-c28f7be1.js"></script>
+        <script src="toc-114bd97f.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -3188,6 +3188,7 @@ errors that can be propagated or handled, typically associated with <code>report
 <li>how each category behaves</li>
 <li>how routines expose recoverable error types</li>
 <li>how error-aware forms interact with control flow and pipes</li>
+<li>how the current compiler reports syntax, package, and resolver failures</li>
 </ul>
 <h2 id="current-compiler-diagnostics"><a class="header" href="#current-compiler-diagnostics">Current compiler diagnostics</a></h2>
 <p>The current compiler surface already guarantees a few reporting behaviors even
@@ -3204,6 +3205,8 @@ helps, and stable producer-owned diagnostic codes</li>
 <p>The exact wording of messages is still implementation detail, but the current
 compiler contract is that locations and structured diagnostic shape are stable
 enough to build tests and tooling around them.</p>
+<p>For the detailed compiler-facing reporting model, see
+<a href="/docs/spec/errors/300_diagnostics">Compiler Diagnostics</a>.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="breaking-errors"><a class="header" href="#breaking-errors">Breaking errors</a></h1>
 <p><code>panic</code> keyword allows a program to terminate immediately and provide feedback to the caller of the program. It should be used when a program reaches an unrecoverable state. This most commonly occurs when a bug of some kind has been detected and it’s not clear to the programmer how to handle the error.</p>
@@ -3319,6 +3322,256 @@ pro main(): int = {
     }
 }
 </code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="compiler-diagnostics"><a class="header" href="#compiler-diagnostics">Compiler Diagnostics</a></h1>
+<p>This chapter is about compiler reporting, not about language-level <code>panic</code> or
+<code>report</code> semantics.</p>
+<p>In other words:</p>
+<ul>
+<li><code>panic</code> and <code>report</code> describe what <em>your program</em> does</li>
+<li>diagnostics describe what <em>the compiler</em> tells you when it cannot continue or
+when it wants to surface important information</li>
+</ul>
+<h2 id="why-this-chapter-exists"><a class="header" href="#why-this-chapter-exists">Why this chapter exists</a></h2>
+<p>FOL now has a real compiler pipeline:</p>
+<ul>
+<li><code>fol-stream</code></li>
+<li><code>fol-lexer</code></li>
+<li><code>fol-parser</code></li>
+<li><code>fol-package</code></li>
+<li><code>fol-resolver</code></li>
+<li><code>fol-diagnostics</code></li>
+</ul>
+<p>That means errors are no longer just loose strings printed from one place.
+Compiler failures now move through a shared diagnostics layer with stable
+structure.</p>
+<p>This matters for three reasons:</p>
+<ul>
+<li>humans need readable compiler output</li>
+<li>tests need stable enough structure to assert against</li>
+<li>future tools need a machine-readable format that is not just a copy of the
+human renderer</li>
+</ul>
+<h2 id="what-a-diagnostic-contains"><a class="header" href="#what-a-diagnostic-contains">What a diagnostic contains</a></h2>
+<p>At the current compiler stage, a diagnostic can carry:</p>
+<ul>
+<li>severity</li>
+<li>main message</li>
+<li>one primary location</li>
+<li>zero or more related locations</li>
+<li>notes</li>
+<li>helps</li>
+<li>suggestions</li>
+<li>a stable producer-owned code in the structured model</li>
+</ul>
+<p>The current compiler mostly emits <code>Error</code>, but the reporting layer also supports
+<code>Warning</code> and <code>Info</code>.</p>
+<h2 id="primary-location"><a class="header" href="#primary-location">Primary location</a></h2>
+<p>The most important part of a diagnostic is its primary location.</p>
+<p>That location is currently expressed as:</p>
+<ul>
+<li>file</li>
+<li>line</li>
+<li>column</li>
+<li>optional span length</li>
+</ul>
+<p>This is what allows the compiler to point at the exact token or source span that
+caused the failure.</p>
+<p>Typical examples:</p>
+<ul>
+<li>a parser error at the token that made a declaration invalid</li>
+<li>a package-loading error at the control file or package root that failed</li>
+<li>a resolver error at the unresolved identifier or ambiguous reference</li>
+</ul>
+<h2 id="related-locations"><a class="header" href="#related-locations">Related locations</a></h2>
+<p>Some compiler failures are not well described by one location alone.</p>
+<p>For example:</p>
+<ul>
+<li>duplicate declarations</li>
+<li>ambiguous references</li>
+<li>duplicate package metadata fields</li>
+</ul>
+<p>In those cases the compiler keeps one primary site and can also attach related
+sites as secondary labels.</p>
+<p>That allows the compiler to say things like:</p>
+<ul>
+<li>this declaration conflicts with an earlier declaration</li>
+<li>this name could refer to either of these two candidates</li>
+<li>this metadata field was already defined elsewhere</li>
+</ul>
+<h2 id="notes-helps-and-suggestions"><a class="header" href="#notes-helps-and-suggestions">Notes, helps, and suggestions</a></h2>
+<p>FOL diagnostics separate extra guidance into different buckets instead of
+forcing everything into one long message.</p>
+<p>The current contract is:</p>
+<ul>
+<li>the main message says what went wrong</li>
+<li>notes add technical context</li>
+<li>helps add actionable guidance</li>
+<li>suggestions describe a possible replacement or next step when the producer can
+express one</li>
+</ul>
+<p>This split matters because tooling and tests can preserve structure instead of
+trying to parse intent back out of prose.</p>
+<h2 id="human-readable-diagnostics"><a class="header" href="#human-readable-diagnostics">Human-readable diagnostics</a></h2>
+<p>By default the CLI prints human-readable diagnostics.</p>
+<p>The current renderer is designed around:</p>
+<ul>
+<li>a severity-prefixed message</li>
+<li>an arrow line with <code>file:line:column</code></li>
+<li>a source snippet when the file and line can be loaded</li>
+<li>an underline for the primary span</li>
+<li>note-style summaries for related labels</li>
+<li>note/help lines after the main snippet</li>
+</ul>
+<p>Illustrative shape:</p>
+<pre><code class="language-text">error: could not resolve name `answer`
+  --&gt; app/main.fol:3:12
+    |
+  3 |     return answer
+    |            ^^^^^^ unresolved name
+  note: no visible declaration with that name was found in the current scope chain
+  help: check imports or declare the name before use
+</code></pre>
+<p>This example is intentionally illustrative.</p>
+<p>The current contract is about the information that survives:</p>
+<ul>
+<li>exact primary location</li>
+<li>snippet-oriented rendering when source is available</li>
+<li>related labels, notes, and helps</li>
+</ul>
+<p>The exact wording and final formatting details can still evolve.</p>
+<h2 id="source-fallbacks"><a class="header" href="#source-fallbacks">Source fallbacks</a></h2>
+<p>Sometimes the compiler knows the location but cannot render the source line
+itself.</p>
+<p>Examples:</p>
+<ul>
+<li>the file is no longer readable</li>
+<li>the file path is missing</li>
+<li>the requested line is outside the current file contents</li>
+</ul>
+<p>In those cases the compiler still keeps the location and falls back cleanly
+instead of crashing the renderer.</p>
+<p>So the priority order is:</p>
+<ol>
+<li>exact location</li>
+<li>source snippet when available</li>
+<li>explicit fallback note when the snippet cannot be shown</li>
+</ol>
+<h2 id="json-diagnostics"><a class="header" href="#json-diagnostics">JSON diagnostics</a></h2>
+<p>When the CLI is invoked with <code>--json</code>, diagnostics are emitted as structured
+JSON instead of human-readable text.</p>
+<p>This output is meant for scripts, tests, editor tooling, and future integration
+layers.</p>
+<p>Important rule:</p>
+<ul>
+<li>JSON is not a lossy summary of human output</li>
+</ul>
+<p>Instead, both human and JSON outputs are generated from the same structured
+diagnostic model.</p>
+<p>That means JSON can preserve:</p>
+<ul>
+<li>severity</li>
+<li>code</li>
+<li>message</li>
+<li>primary location</li>
+<li>related labels</li>
+<li>notes</li>
+<li>helps</li>
+<li>suggestions</li>
+</ul>
+<p>Illustrative shape:</p>
+<pre><code class="language-json">{
+  "severity": "Error",
+  "code": "R2001",
+  "message": "could not resolve name `answer`",
+  "location": {
+    "file": "app/main.fol",
+    "line": 3,
+    "column": 12,
+    "length": 6
+  },
+  "labels": [
+    {
+      "kind": "Primary",
+      "message": "unresolved name",
+      "location": {
+        "file": "app/main.fol",
+        "line": 3,
+        "column": 12,
+        "length": 6
+      }
+    }
+  ],
+  "notes": [
+    "no visible declaration with that name was found in the current scope chain"
+  ],
+  "helps": [
+    "check imports or declare the name before use"
+  ],
+  "suggestions": []
+}
+</code></pre>
+<p>Again, the exact payload can evolve, but the important guarantee is that the
+structured fields are first-class rather than reverse-engineered from text.</p>
+<h2 id="which-compiler-phases-currently-participate"><a class="header" href="#which-compiler-phases-currently-participate">Which compiler phases currently participate</a></h2>
+<p>At head, the main producers that lower into the shared diagnostics layer are:</p>
+<ul>
+<li>parser</li>
+<li>package loading</li>
+<li>resolver</li>
+</ul>
+<p>That means diagnostics are already strong across:</p>
+<ul>
+<li>syntax errors</li>
+<li>package metadata and package-root errors</li>
+<li>import-loading failures</li>
+<li>unresolved names</li>
+<li>duplicate names</li>
+<li>ambiguous references</li>
+</ul>
+<p>Later phases, especially type checking, will add more semantic diagnostics on
+top of the same reporting infrastructure.</p>
+<h2 id="stable-codes"><a class="header" href="#stable-codes">Stable codes</a></h2>
+<p>The current diagnostics model carries stable producer-owned codes.</p>
+<p>The important idea is not the exact prefix letters.
+The important idea is ownership and stability:</p>
+<ul>
+<li>parser owns parser-family codes</li>
+<li>package loading owns package-family codes</li>
+<li>resolver owns resolver-family codes</li>
+<li>future semantic phases will own their own families as well</li>
+</ul>
+<p>This is better than deriving codes from free-form message text, because message
+wording can change without breaking code identity.</p>
+<h2 id="what-diagnostics-do-not-guarantee"><a class="header" href="#what-diagnostics-do-not-guarantee">What diagnostics do not guarantee</a></h2>
+<p>Diagnostics are strong, but they are not a substitute for the later semantic
+phases.</p>
+<p>Current limits still matter:</p>
+<ul>
+<li>parser diagnostics do not imply type checking has happened</li>
+<li><code>report</code> compatibility still belongs to later semantic work</li>
+<li>type mismatch, coercion, and conversion diagnostics are future type-checker work</li>
+<li>ownership and borrowing diagnostics are future semantic work</li>
+<li>C ABI diagnostics are future package/type/backend work</li>
+</ul>
+<p>So the current guarantee is:</p>
+<ul>
+<li>if stream, lexer, parser, package loading, or resolver can identify the
+problem now, diagnostics should be structured and exact</li>
+</ul>
+<p>But not:</p>
+<ul>
+<li>all language-semantic errors already exist today</li>
+</ul>
+<h2 id="practical-rule-of-thumb"><a class="header" href="#practical-rule-of-thumb">Practical rule of thumb</a></h2>
+<p>When reading compiler output, think in this order:</p>
+<ol>
+<li>trust the primary location first</li>
+<li>use related labels to understand competing or earlier sites</li>
+<li>read notes for technical context</li>
+<li>read helps for the most actionable next step</li>
+</ol>
+<p>That mental model matches how the compiler currently structures reporting.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="syntactic-sugar"><a class="header" href="#syntactic-sugar">Syntactic Sugar</a></h1>
 <p>This section collects forms that are primarily about expressiveness, convenience, or alternate notation.</p>

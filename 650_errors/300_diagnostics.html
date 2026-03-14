@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Introduction - FOL Language Specification</title>
+        <title>Compiler Diagnostics - FOL Language Specification</title>
 
 
         <!-- Custom HTML head -->
@@ -12,33 +12,33 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff">
 
-        <link rel="icon" href="favicon-de23e50b.svg">
-        <link rel="shortcut icon" href="favicon-8114d1fc.png">
-        <link rel="stylesheet" href="css/variables-8adf115d.css">
-        <link rel="stylesheet" href="css/general-2459343d.css">
-        <link rel="stylesheet" href="css/chrome-ae938929.css">
-        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+        <link rel="icon" href="../favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="../favicon-8114d1fc.png">
+        <link rel="stylesheet" href="../css/variables-8adf115d.css">
+        <link rel="stylesheet" href="../css/general-2459343d.css">
+        <link rel="stylesheet" href="../css/chrome-ae938929.css">
+        <link rel="stylesheet" href="../css/print-9e4910d8.css" media="print">
 
         <!-- Fonts -->
-        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+        <link rel="stylesheet" href="../fonts/fonts-9644e21d.css">
 
         <!-- Highlight.js Stylesheets -->
-        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
-        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
-        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+        <link rel="stylesheet" id="mdbook-highlight-css" href="../highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="../tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="../ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
-            const path_to_root = "";
+            const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-571e6460.js";
+            window.path_to_searchindex_js = "../searchindex-571e6460.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-114bd97f.js"></script>
+        <script src="../toc-114bd97f.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -105,7 +105,7 @@
             <!-- populated by js -->
             <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
             <noscript>
-                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
             </noscript>
             <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
                 <div class="sidebar-resize-indicator"></div>
@@ -140,7 +140,7 @@
                     <h1 class="menu-title">FOL Language Specification</h1>
 
                     <div class="right-buttons">
-                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
                             <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
                         </a>
 
@@ -174,100 +174,265 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="fol-language-specification"><a class="header" href="#fol-language-specification">FOL Language Specification</a></h1>
-<p>FOL is intended as a general-purpose and systems-oriented programming language with a compact declaration syntax, a rich type system, and a strong preference for explicit structure.</p>
-<p>This book is the specification draft for the language.</p>
-<h2 id="core-shape"><a class="header" href="#core-shape">Core Shape</a></h2>
-<p>Much of the surface syntax follows the same high-level shape:</p>
-<pre><code class="language-fol">declaration[options] name: type = { body }
-</code></pre>
-<p>That pattern appears across:</p>
+                        <h1 id="compiler-diagnostics"><a class="header" href="#compiler-diagnostics">Compiler Diagnostics</a></h1>
+<p>This chapter is about compiler reporting, not about language-level <code>panic</code> or
+<code>report</code> semantics.</p>
+<p>In other words:</p>
 <ul>
-<li>bindings</li>
-<li>routines</li>
-<li>type declarations</li>
-<li>module-like declarations</li>
-<li>standards and implementations</li>
+<li><code>panic</code> and <code>report</code> describe what <em>your program</em> does</li>
+<li>diagnostics describe what <em>the compiler</em> tells you when it cannot continue or
+when it wants to surface important information</li>
 </ul>
-<h2 id="main-declaration-families"><a class="header" href="#main-declaration-families">Main Declaration Families</a></h2>
-<p>The main declaration families are:</p>
-<pre><code class="language-fol">use    // import declarations
-def    // named definitions such as modules, blocks, and tests
-seg    // segment/module-like declarations
-imp    // implementation declarations
-
-var    // mutable bindings
-let    // immutable local bindings
-con    // constants
-lab    // labels and label-like bindings
-
-fun    // functions
-pro    // procedures
-log    // logical routines
-
-typ    // named types
-ali    // aliases
-std    // standards: protocol, blueprint, extension
-</code></pre>
-<h2 id="expression-and-control-surface"><a class="header" href="#expression-and-control-surface">Expression And Control Surface</a></h2>
-<p>FOL combines block-oriented control flow with expression forms:</p>
-<pre><code class="language-fol">if (condition) { ... }
-when (value) { ... }
-while (condition) { ... }
-loop (condition) { ... }
-for (binder in iterable) { ... }
-each (binder in iterable) { ... }
-</code></pre>
-<p>Expressions include:</p>
+<h2 id="why-this-chapter-exists"><a class="header" href="#why-this-chapter-exists">Why this chapter exists</a></h2>
+<p>FOL now has a real compiler pipeline:</p>
 <ul>
-<li>literals</li>
-<li>calls and method calls</li>
-<li>ranges and container literals</li>
-<li>access forms</li>
-<li>pipes</li>
-<li>rolling expressions</li>
-<li>anonymous routines and lambdas</li>
+<li><code>fol-stream</code></li>
+<li><code>fol-lexer</code></li>
+<li><code>fol-parser</code></li>
+<li><code>fol-package</code></li>
+<li><code>fol-resolver</code></li>
+<li><code>fol-diagnostics</code></li>
 </ul>
-<h2 id="how-to-use-this-book"><a class="header" href="#how-to-use-this-book">How To Use This Book</a></h2>
-<p>The book is organized from language foundation to higher-level facilities:</p>
+<p>That means errors are no longer just loose strings printed from one place.
+Compiler failures now move through a shared diagnostics layer with stable
+structure.</p>
+<p>This matters for three reasons:</p>
+<ul>
+<li>humans need readable compiler output</li>
+<li>tests need stable enough structure to assert against</li>
+<li>future tools need a machine-readable format that is not just a copy of the
+human renderer</li>
+</ul>
+<h2 id="what-a-diagnostic-contains"><a class="header" href="#what-a-diagnostic-contains">What a diagnostic contains</a></h2>
+<p>At the current compiler stage, a diagnostic can carry:</p>
+<ul>
+<li>severity</li>
+<li>main message</li>
+<li>one primary location</li>
+<li>zero or more related locations</li>
+<li>notes</li>
+<li>helps</li>
+<li>suggestions</li>
+<li>a stable producer-owned code in the structured model</li>
+</ul>
+<p>The current compiler mostly emits <code>Error</code>, but the reporting layer also supports
+<code>Warning</code> and <code>Info</code>.</p>
+<h2 id="primary-location"><a class="header" href="#primary-location">Primary location</a></h2>
+<p>The most important part of a diagnostic is its primary location.</p>
+<p>That location is currently expressed as:</p>
+<ul>
+<li>file</li>
+<li>line</li>
+<li>column</li>
+<li>optional span length</li>
+</ul>
+<p>This is what allows the compiler to point at the exact token or source span that
+caused the failure.</p>
+<p>Typical examples:</p>
+<ul>
+<li>a parser error at the token that made a declaration invalid</li>
+<li>a package-loading error at the control file or package root that failed</li>
+<li>a resolver error at the unresolved identifier or ambiguous reference</li>
+</ul>
+<h2 id="related-locations"><a class="header" href="#related-locations">Related locations</a></h2>
+<p>Some compiler failures are not well described by one location alone.</p>
+<p>For example:</p>
+<ul>
+<li>duplicate declarations</li>
+<li>ambiguous references</li>
+<li>duplicate package metadata fields</li>
+</ul>
+<p>In those cases the compiler keeps one primary site and can also attach related
+sites as secondary labels.</p>
+<p>That allows the compiler to say things like:</p>
+<ul>
+<li>this declaration conflicts with an earlier declaration</li>
+<li>this name could refer to either of these two candidates</li>
+<li>this metadata field was already defined elsewhere</li>
+</ul>
+<h2 id="notes-helps-and-suggestions"><a class="header" href="#notes-helps-and-suggestions">Notes, helps, and suggestions</a></h2>
+<p>FOL diagnostics separate extra guidance into different buckets instead of
+forcing everything into one long message.</p>
+<p>The current contract is:</p>
+<ul>
+<li>the main message says what went wrong</li>
+<li>notes add technical context</li>
+<li>helps add actionable guidance</li>
+<li>suggestions describe a possible replacement or next step when the producer can
+express one</li>
+</ul>
+<p>This split matters because tooling and tests can preserve structure instead of
+trying to parse intent back out of prose.</p>
+<h2 id="human-readable-diagnostics"><a class="header" href="#human-readable-diagnostics">Human-readable diagnostics</a></h2>
+<p>By default the CLI prints human-readable diagnostics.</p>
+<p>The current renderer is designed around:</p>
+<ul>
+<li>a severity-prefixed message</li>
+<li>an arrow line with <code>file:line:column</code></li>
+<li>a source snippet when the file and line can be loaded</li>
+<li>an underline for the primary span</li>
+<li>note-style summaries for related labels</li>
+<li>note/help lines after the main snippet</li>
+</ul>
+<p>Illustrative shape:</p>
+<pre><code class="language-text">error: could not resolve name `answer`
+  --&gt; app/main.fol:3:12
+    |
+  3 |     return answer
+    |            ^^^^^^ unresolved name
+  note: no visible declaration with that name was found in the current scope chain
+  help: check imports or declare the name before use
+</code></pre>
+<p>This example is intentionally illustrative.</p>
+<p>The current contract is about the information that survives:</p>
+<ul>
+<li>exact primary location</li>
+<li>snippet-oriented rendering when source is available</li>
+<li>related labels, notes, and helps</li>
+</ul>
+<p>The exact wording and final formatting details can still evolve.</p>
+<h2 id="source-fallbacks"><a class="header" href="#source-fallbacks">Source fallbacks</a></h2>
+<p>Sometimes the compiler knows the location but cannot render the source line
+itself.</p>
+<p>Examples:</p>
+<ul>
+<li>the file is no longer readable</li>
+<li>the file path is missing</li>
+<li>the requested line is outside the current file contents</li>
+</ul>
+<p>In those cases the compiler still keeps the location and falls back cleanly
+instead of crashing the renderer.</p>
+<p>So the priority order is:</p>
 <ol>
-<li>lexical structure</li>
-<li>statements and expressions</li>
-<li>metaprogramming</li>
-<li>types</li>
-<li>declarations and items</li>
-<li>modules and source layout</li>
-<li>errors</li>
-<li>sugar and convenience forms</li>
-<li>conversions</li>
-<li>memory model</li>
-<li>concurrency</li>
+<li>exact location</li>
+<li>source snippet when available</li>
+<li>explicit fallback note when the snippet cannot be shown</li>
 </ol>
-<p>Read <a href="./000_overview/100_conventions.html">Notation And Conventions</a> before using chapter examples as a normative reference.</p>
-<h2 id="example"><a class="header" href="#example">Example</a></h2>
-<pre><code class="language-fol">use log: std = {"fmt/log"};
-
-def argo: mod[] = {
-    con[hidden] prefix: str = "arith";
-
-    pro[export] main(): int = {
-        log.warn("Last warning!");
-        .echo(add(3, 5));
-        return 0;
+<h2 id="json-diagnostics"><a class="header" href="#json-diagnostics">JSON diagnostics</a></h2>
+<p>When the CLI is invoked with <code>--json</code>, diagnostics are emitted as structured
+JSON instead of human-readable text.</p>
+<p>This output is meant for scripts, tests, editor tooling, and future integration
+layers.</p>
+<p>Important rule:</p>
+<ul>
+<li>JSON is not a lossy summary of human output</li>
+</ul>
+<p>Instead, both human and JSON outputs are generated from the same structured
+diagnostic model.</p>
+<p>That means JSON can preserve:</p>
+<ul>
+<li>severity</li>
+<li>code</li>
+<li>message</li>
+<li>primary location</li>
+<li>related labels</li>
+<li>notes</li>
+<li>helps</li>
+<li>suggestions</li>
+</ul>
+<p>Illustrative shape:</p>
+<pre><code class="language-json">{
+  "severity": "Error",
+  "code": "R2001",
+  "message": "could not resolve name `answer`",
+  "location": {
+    "file": "app/main.fol",
+    "line": 3,
+    "column": 12,
+    "length": 6
+  },
+  "labels": [
+    {
+      "kind": "Primary",
+      "message": "unresolved name",
+      "location": {
+        "file": "app/main.fol",
+        "line": 3,
+        "column": 12,
+        "length": 6
+      }
     }
-
-    fun add(a, b: int): int = {
-        return a + b;
-    }
+  ],
+  "notes": [
+    "no visible declaration with that name was found in the current scope chain"
+  ],
+  "helps": [
+    "check imports or declare the name before use"
+  ],
+  "suggestions": []
 }
 </code></pre>
+<p>Again, the exact payload can evolve, but the important guarantee is that the
+structured fields are first-class rather than reverse-engineered from text.</p>
+<h2 id="which-compiler-phases-currently-participate"><a class="header" href="#which-compiler-phases-currently-participate">Which compiler phases currently participate</a></h2>
+<p>At head, the main producers that lower into the shared diagnostics layer are:</p>
+<ul>
+<li>parser</li>
+<li>package loading</li>
+<li>resolver</li>
+</ul>
+<p>That means diagnostics are already strong across:</p>
+<ul>
+<li>syntax errors</li>
+<li>package metadata and package-root errors</li>
+<li>import-loading failures</li>
+<li>unresolved names</li>
+<li>duplicate names</li>
+<li>ambiguous references</li>
+</ul>
+<p>Later phases, especially type checking, will add more semantic diagnostics on
+top of the same reporting infrastructure.</p>
+<h2 id="stable-codes"><a class="header" href="#stable-codes">Stable codes</a></h2>
+<p>The current diagnostics model carries stable producer-owned codes.</p>
+<p>The important idea is not the exact prefix letters.
+The important idea is ownership and stability:</p>
+<ul>
+<li>parser owns parser-family codes</li>
+<li>package loading owns package-family codes</li>
+<li>resolver owns resolver-family codes</li>
+<li>future semantic phases will own their own families as well</li>
+</ul>
+<p>This is better than deriving codes from free-form message text, because message
+wording can change without breaking code identity.</p>
+<h2 id="what-diagnostics-do-not-guarantee"><a class="header" href="#what-diagnostics-do-not-guarantee">What diagnostics do not guarantee</a></h2>
+<p>Diagnostics are strong, but they are not a substitute for the later semantic
+phases.</p>
+<p>Current limits still matter:</p>
+<ul>
+<li>parser diagnostics do not imply type checking has happened</li>
+<li><code>report</code> compatibility still belongs to later semantic work</li>
+<li>type mismatch, coercion, and conversion diagnostics are future type-checker work</li>
+<li>ownership and borrowing diagnostics are future semantic work</li>
+<li>C ABI diagnostics are future package/type/backend work</li>
+</ul>
+<p>So the current guarantee is:</p>
+<ul>
+<li>if stream, lexer, parser, package loading, or resolver can identify the
+problem now, diagnostics should be structured and exact</li>
+</ul>
+<p>But not:</p>
+<ul>
+<li>all language-semantic errors already exist today</li>
+</ul>
+<h2 id="practical-rule-of-thumb"><a class="header" href="#practical-rule-of-thumb">Practical rule of thumb</a></h2>
+<p>When reading compiler output, think in this order:</p>
+<ol>
+<li>trust the primary location first</li>
+<li>use related labels to understand competing or earlier sites</li>
+<li>read notes for technical context</li>
+<li>read helps for the most actionable next step</li>
+</ol>
+<p>That mental model matches how the compiler currently structures reporting.</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../650_errors/200_recover.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
 
-                            <a rel="next prefetch" href="000_overview/_index.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../700_sugar/_index.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -277,8 +442,11 @@ def argo: mod[] = {
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../650_errors/200_recover.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
 
-                    <a rel="next prefetch" href="000_overview/_index.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../700_sugar/_index.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>
@@ -298,13 +466,13 @@ def argo: mod[] = {
         </script>
 
 
-        <script src="elasticlunr-ef4e11c1.min.js"></script>
-        <script src="mark-09e88c2c.min.js"></script>
-        <script src="searcher-c2a407aa.js"></script>
+        <script src="../elasticlunr-ef4e11c1.min.js"></script>
+        <script src="../mark-09e88c2c.min.js"></script>
+        <script src="../searcher-c2a407aa.js"></script>
 
-        <script src="clipboard-1626706a.min.js"></script>
-        <script src="highlight-abc7f01d.js"></script>
-        <script src="book-a0b12cfe.js"></script>
+        <script src="../clipboard-1626706a.min.js"></script>
+        <script src="../highlight-abc7f01d.js"></script>
+        <script src="../book-a0b12cfe.js"></script>
 
         <!-- Custom JS scripts -->
 

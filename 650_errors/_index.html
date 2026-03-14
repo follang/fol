@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-363c26c2.js";
+            window.path_to_searchindex_js = "../searchindex-571e6460.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-c28f7be1.js"></script>
+        <script src="../toc-114bd97f.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -188,6 +188,7 @@ errors that can be propagated or handled, typically associated with <code>report
 <li>how each category behaves</li>
 <li>how routines expose recoverable error types</li>
 <li>how error-aware forms interact with control flow and pipes</li>
+<li>how the current compiler reports syntax, package, and resolver failures</li>
 </ul>
 <h2 id="current-compiler-diagnostics"><a class="header" href="#current-compiler-diagnostics">Current compiler diagnostics</a></h2>
 <p>The current compiler surface already guarantees a few reporting behaviors even
@@ -204,6 +205,8 @@ helps, and stable producer-owned diagnostic codes</li>
 <p>The exact wording of messages is still implementation detail, but the current
 compiler contract is that locations and structured diagnostic shape are stable
 enough to build tests and tooling around them.</p>
+<p>For the detailed compiler-facing reporting model, see
+<a href="/docs/spec/errors/300_diagnostics">Compiler Diagnostics</a>.</p>
 
                     </main>
 
