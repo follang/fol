@@ -16,6 +16,10 @@ mod resolver {
     include!("resolver/test_resolver.rs");
 }
 
+mod typecheck {
+    include!("typecheck/test_typecheck.rs");
+}
+
 #[cfg(test)]
 mod integration_tests {
     use serde_json::Value;

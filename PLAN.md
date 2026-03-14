@@ -1,7 +1,7 @@
-# FOL Typecheck Plan
+# FOL V1 Typecheck Plan
 
-Last rebuilt: 2026-03-13
-Scope: `fol-typecheck` plus the minimal resolver/CLI/doc refactors required to insert whole-program type checking after `fol-resolver`
+Last rebuilt: 2026-03-14
+Scope: `fol-typecheck` plus the minimal resolver/CLI/doc refactors required to insert whole-program type checking after `fol-resolver` for the `V1` language subset only
 
 ## 0. Purpose
 
@@ -13,7 +13,13 @@ Scope: `fol-typecheck` plus the minimal resolver/CLI/doc refactors required to i
   - `fol-resolver`
 - The next compiler question is no longer "what does this name refer to?"
 - The next compiler question is "is this resolved program type-correct, and what is the type of every meaningful expression and declaration surface?"
-- This plan defines the first real whole-program typechecking milestone.
+- This plan defines the first real whole-program typechecking milestone for
+  `V1`, not for the entire long-term book surface.
+- The version boundary for the language now lives in [`VERSIONS.md`](./VERSIONS.md).
+- That means this plan is intentionally narrower than the whole book:
+  - it must make the `V1` core language real
+  - it must reject `V2` and `V3` features explicitly
+  - it must not quietly expand into later-version semantics
 
 ## 1. What Was Scanned For This Plan
 
@@ -39,6 +45,9 @@ This plan is based on the current code plus the relevant book chapters that defi
 - `book/src/200_expressions/200_sta/100_control.md`
 - `book/src/650_errors/*`
 - `book/src/750_conversion/*`
+- `book/src/800_memory/*`
+- `book/src/900_processor/*`
+- [`VERSIONS.md`](./VERSIONS.md)
 
 ### 1.3 Important Scan Outcome
 
@@ -48,9 +57,9 @@ This plan is based on the current code plus the relevant book chapters that defi
   - many advanced surfaces exist syntactically but have no current semantic contract in code
   - ownership/borrowing and standard/contract enforcement are clearly later phases
 - Therefore the typechecker plan must be explicit about:
-  - what v1 will fully support
-  - what v1 will reject with exact unsupported diagnostics
-  - what must remain outside this phase
+  - what `V1` will fully support
+  - what `V2` and `V3` surfaces it will reject with exact unsupported diagnostics
+  - what later compiler work still belongs to `V1` after typechecking
 
 ## 2. Main Decision
 
@@ -69,9 +78,10 @@ That means:
 - `fol-typecheck` consumes resolver output, not raw parser output
 - package discovery/import loading remains package work
 - name binding and import visibility remain resolver work
-- type rules, type inference, coercion policy, and typed diagnostics become typechecker work
+- type rules, type inference, coercion policy, and typed diagnostics for the
+  `V1` language subset become typechecker work
 
-## 3. What `fol-typecheck` Must Own
+## 3. What `fol-typecheck` Must Own For V1
 
 `fol-typecheck` is responsible for:
 
@@ -102,7 +112,10 @@ That means:
 - linking
 - code generation
 
-## 4. What Must Stay Out Of `fol-typecheck`
+## 4. What Must Stay Out Of This V1 Plan
+
+Anything assigned to `V2` or `V3` in [`VERSIONS.md`](./VERSIONS.md) is outside
+this plan unless it is needed only for an explicit unsupported diagnostic.
 
 These remain elsewhere:
 
@@ -118,8 +131,9 @@ These remain elsewhere:
   - import aliasing
   - package/namespace/file visibility
 - later semantic passes
+  - standards / protocol / blueprint / extension fulfillment
+  - generics beyond structural preservation
   - ownership/borrowing
-  - standard/protocol fulfillment
   - effect/purity enforcement
 - later backend phases
   - calling convention lowering
@@ -128,37 +142,15 @@ These remain elsewhere:
 
 ## 5. C ABI Boundary
 
-Full C ABI compatibility does not belong inside `fol-typecheck` alone.
+Full C ABI compatibility is a `V3` feature in [`VERSIONS.md`](./VERSIONS.md).
 
-It spans multiple layers:
+It does not belong in this `V1` typecheck plan.
 
-- `fol-package`
-  - declares and distributes native artifacts
-  - owns package/build metadata about headers, objects, static libraries, and shared libraries
-  - already has inert placeholder records for this work
-- future foreign-surface crate, likely `fol-cabi` or `fol-ffi`
-  - parses `.h` files
-  - normalizes C declarations into compiler-facing foreign type and symbol models
-  - records import/export header surfaces
-- `fol-resolver`
-  - mounts foreign declarations into package-visible symbol space
-- `fol-typecheck`
-  - validates FOL declarations against foreign signatures
-  - checks argument/result compatibility for C calls
-  - checks ABI-safe type mappings
-- later backend/link step
-  - passes `.o`, `.a`, `.so`, and platform linker inputs through to the final binary/shared-lib output
-  - applies target ABI calling convention lowering
+The only active requirement here is:
 
-### 5.1 Decision For This Plan
-
-This `fol-typecheck` plan does **not** implement C ABI.
-
-But the plan must avoid blocking it later:
-
-- semantic type representations should be able to grow a foreign/extern type family later
-- typed symbol metadata should be able to mark foreign callables later
-- diagnostics should not assume every callable/type originated from native FOL declarations
+- `V1` must fail explicitly if a source surface requires foreign/ABI semantics
+- the typechecker data model should avoid obviously blocking a later foreign type
+  family
 
 ## 6. V1 Typechecking Contract
 
@@ -183,25 +175,33 @@ The first milestone must be strict and honest.
 - `return`
 - `report`
 - record field typing
+- entry member typing
 - simple container typing:
   - arrays
   - vectors
   - sequences
   - sets
   - maps
-- basic optional / pointer / error structural checking
+- basic optional / error structural checking
 - exact diagnostics
 
 ### 6.2 Explicitly Unsupported But Diagnosed In V1
 
 These must not silently pass unchecked:
 
-- generics beyond basic declaration-surface preservation
-- standards/contracts/full protocol conformance
-- reactive/static/ownership semantics
-- matrix/channel semantics beyond structural parsing
-- advanced `any` / `multiple` / `union` flow-sensitive semantics
-- native/C ABI semantics
+- `V2` surfaces:
+  - generics beyond basic declaration-surface preservation
+  - standards / contracts / protocol / blueprint / extension conformance
+  - advanced `any` / `multiple` / `union` semantics
+  - advanced meta-level language semantics
+- `V3` surfaces:
+  - ownership / borrowing semantics
+  - pointer semantics
+  - eventual / coroutine / channel / mutex semantics
+  - native / C ABI semantics
+- additional non-`V1` surfaces:
+  - matrix semantics beyond structural parsing
+  - reactive / static / range-constrained semantic enforcement
 - build-script semantics for `build.fol`
 
 If encountered, they should produce explicit `TypecheckUnsupported` errors with exact locations.
@@ -221,7 +221,7 @@ V1 coercion should be intentionally narrow:
 - no implicit int-to-float coercion
 - no implicit float-to-int coercion
 - no implicit signed-width changes
-- no implicit pointer/container/string structural conversions
+- no implicit container/string structural conversions
 
 ### 7.2 Cast Policy For V1
 
@@ -387,7 +387,7 @@ Status: pending
 
 #### 0.1
 
-Status: pending
+Status: done
 
 - Add `fol-typecheck` to the workspace with a small public API and smoke tests.
 
@@ -565,7 +565,7 @@ Status: pending
 
 Status: pending
 
-- Add structural typing checks for optional/pointer/error shells used by current surfaces.
+- Add structural typing checks for optional/error shells used by current surfaces and make pointer surfaces fail explicitly as `V3` semantics.
 
 ### Phase 6: Operators And Conversions
 
@@ -601,7 +601,7 @@ Status: pending
 
 - Sync docs to the real coercion vs cast contract once frozen in code.
 
-### Phase 7: Unsupported Advanced Surfaces
+### Phase 7: Explicit V2 And V3 Boundaries
 
 Status: pending
 
@@ -609,19 +609,19 @@ Status: pending
 
 Status: pending
 
-- Emit explicit unsupported diagnostics for generic semantic surfaces that v1 does not actually enforce yet.
+- Emit explicit unsupported diagnostics for generic semantic surfaces that `V1` does not actually enforce yet.
 
 #### 7.2
 
 Status: pending
 
-- Emit explicit unsupported diagnostics for standards/contracts and protocol-style conformance surfaces.
+- Emit explicit unsupported diagnostics for `V2` contract/conformance surfaces such as standards, protocols, blueprints, and extensions.
 
 #### 7.3
 
 Status: pending
 
-- Emit explicit unsupported diagnostics for reactive/static/ownership/range semantics outside this milestone.
+- Emit explicit unsupported diagnostics for `V3` systems surfaces such as ownership, borrowing, pointers, eventuals, coroutines, channels, and C ABI, plus remaining non-`V1` reactive/static/range semantics.
 
 #### 7.4
 
@@ -663,20 +663,33 @@ This plan is complete when all of the following are true:
 
 - `fol-typecheck` exists as a workspace crate
 - it consumes `ResolvedProgram`
-- it produces a typed semantic result
+- it produces a typed semantic result for the `V1` language subset
 - declaration signatures are checked
 - core expression/call/assignment/return/report surfaces are checked
 - the initial coercion/cast contract is explicit and test-backed
-- unsupported advanced surfaces fail explicitly instead of silently passing unchecked
+- `V2` and `V3` surfaces fail explicitly instead of silently passing unchecked
 - the CLI runs typechecking after resolution
 - exact type diagnostics survive to CLI JSON
-- docs describe `fol-typecheck` as the next stage in the compiler chain
+- docs describe `fol-typecheck` as the next `V1` semantic stage in the compiler chain
 
 ## 14. Next Boundary After This Plan
 
-If this plan finishes cleanly, the next major semantic phases are likely:
+If this plan finishes cleanly, the next compiler work should still stay inside
+`V1` until the compiler can carry the `V1` subset toward a binary-producing
+pipeline.
 
-- standards/contracts conformance
-- ownership/borrowing analysis
-- future foreign/C ABI integration
-- lowering/codegen/backend work
+That means the immediate follow-up should be the remaining `V1` compiler stages,
+not a jump to `V2` features.
+
+Only after `V1` has been carried through later compiler stages should the
+project return to:
+
+- `V2` language semantics:
+  - standards / contracts conformance
+  - generics
+  - richer advanced type semantics
+- `V3` systems and interop:
+  - ownership / borrowing analysis
+  - future foreign / C ABI integration
+- and in parallel with the `V1` compiler path itself:
+  - lowering / codegen / backend work

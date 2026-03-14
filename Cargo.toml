@@ -7,6 +7,7 @@ members = [
     "fol-package",
     "fol-diagnostics",
     "fol-resolver",
+    "fol-typecheck",
 ]
 
 [package]
@@ -27,6 +28,7 @@ fol-parser = { path = "fol-parser" }
 fol-package = { path = "fol-package" }
 fol-diagnostics = { path = "fol-diagnostics" }
 fol-resolver = { path = "fol-resolver" }
+fol-typecheck = { path = "fol-typecheck" }
 regex = "1"
 colored = "1"
 dyn-clone = "1"
