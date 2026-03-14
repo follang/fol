@@ -1078,6 +1078,114 @@ mod integration_tests {
     }
 
     #[test]
+    fn test_cli_typecheck_accepts_v1_programs_after_resolution() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_typecheck_success");
+        fs::create_dir_all(&temp_root).expect("Should create temp CLI typecheck fixture");
+        fs::write(
+            temp_root.join("main.fol"),
+            "var value: int = 1\nfun[] main(): int = {\n    return value;\n}\n",
+        )
+        .expect("Should write the successful typecheck fixture");
+
+        let output = run_fol(&[temp_root
+            .to_str()
+            .expect("CLI typecheck fixture path should be utf-8")]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        assert!(
+            output.status.success(),
+            "CLI should accept parse-clean, resolve-clean, type-correct V1 programs, got status {:?} and output:\n{}",
+            output.status.code(),
+            stdout,
+        );
+        assert!(
+            stdout.contains("Compilation successful"),
+            "Human CLI output should still report a successful compile after typechecking"
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_cli_typecheck_errors_fail_parse_clean_programs() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_typecheck_error");
+        fs::create_dir_all(&temp_root).expect("Should create temp CLI typecheck error fixture");
+        fs::write(temp_root.join("main.fol"), "var[bor] borrowed: int = 1\n")
+            .expect("Should write the unsupported typecheck fixture");
+
+        let output = run_fol(&[temp_root
+            .to_str()
+            .expect("CLI typecheck error fixture path should be utf-8")]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        assert!(
+            !output.status.success(),
+            "CLI should fail when typechecking rejects a parse-clean, resolve-clean program"
+        );
+        assert!(
+            stdout.contains("borrowing binding semantics are part of the V3 systems milestone"),
+            "CLI diagnostics should surface the typecheck unsupported message"
+        );
+        assert!(
+            stdout.contains("main.fol"),
+            "CLI diagnostics should preserve the failing source-unit path"
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_cli_json_typecheck_errors_keep_structured_fields() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_typecheck_error_json");
+        fs::create_dir_all(&temp_root).expect("Should create temp CLI typecheck JSON fixture");
+        fs::write(temp_root.join("main.fol"), "var[bor] borrowed: int = 1\n")
+            .expect("Should write the unsupported typecheck fixture");
+
+        let output = run_fol(&[
+            "--json",
+            temp_root
+                .to_str()
+                .expect("CLI typecheck JSON fixture path should be utf-8"),
+        ]);
+        let report = parse_cli_json(&output);
+        let diagnostics = report["diagnostics"]
+            .as_array()
+            .expect("CLI JSON diagnostics should stay array-shaped");
+        let first = diagnostics
+            .first()
+            .expect("CLI JSON diagnostics should include one typecheck error");
+
+        assert!(
+            !output.status.success(),
+            "CLI should fail in JSON mode when typechecking rejects a parse-clean program"
+        );
+        assert_eq!(first["code"], "T1002");
+        assert_eq!(first["location"]["line"], 1);
+        assert_eq!(first["location"]["column"], 1);
+        assert!(
+            first["location"]["file"]
+                .as_str()
+                .is_some_and(|file| file.ends_with("main.fol")),
+            "CLI JSON diagnostics should preserve the failing source-unit path"
+        );
+        assert!(
+            first["message"]
+                .as_str()
+                .is_some_and(|message| message.contains("borrowing binding semantics")),
+            "CLI JSON diagnostics should preserve the typecheck failure message"
+        );
+        assert_eq!(first["labels"].as_array().map(|items| items.len()), Some(1));
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
     fn test_cli_json_modern_compiler_errors_do_not_fall_back_to_unknown_codes() {
         use std::fs;
 

@@ -641,7 +641,7 @@ Status: done
 
 #### 8.2
 
-Status: pending
+Status: done
 
 - Add end-to-end integration tests for successful and failing typecheck runs, including JSON diagnostics.
 
