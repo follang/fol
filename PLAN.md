@@ -607,7 +607,7 @@ Status: pending
 
 #### 7.1
 
-Status: pending
+Status: done
 
 - Emit explicit unsupported diagnostics for generic semantic surfaces that `V1` does not actually enforce yet.
 

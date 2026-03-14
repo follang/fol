@@ -37,6 +37,10 @@ fn lower_top_level_declaration(
     source_unit_id: SourceUnitId,
     item: &ParsedTopLevel,
 ) -> Result<(), TypecheckError> {
+    if let Some(error) = unsupported_v1_top_level_decl(resolved, item) {
+        return Err(error);
+    }
+
     match &item.node {
         AstNode::VarDecl {
             name, type_hint, ..
@@ -196,6 +200,10 @@ fn lower_nested_declarations_in_node(
     current_scope: ScopeId,
     node: &AstNode,
 ) -> Result<(), TypecheckError> {
+    if let Some(error) = unsupported_v1_nested_decl(resolved, node) {
+        return Err(error);
+    }
+
     match node {
         AstNode::VarDecl {
             name, type_hint, ..
@@ -656,6 +664,51 @@ fn unsupported_type_error(resolved: &ResolvedProgram, typ: &FolType) -> Typechec
     }
 }
 
+fn unsupported_v1_top_level_decl(
+    resolved: &ResolvedProgram,
+    item: &ParsedTopLevel,
+) -> Option<TypecheckError> {
+    let origin = resolved.syntax_index().origin(item.node_id).cloned();
+    unsupported_v1_decl_with_origin(&item.node, origin)
+}
+
+fn unsupported_v1_nested_decl(
+    resolved: &ResolvedProgram,
+    node: &AstNode,
+) -> Option<TypecheckError> {
+    unsupported_v1_decl_with_origin(node, node_origin(resolved, node))
+}
+
+fn unsupported_v1_decl_with_origin(
+    node: &AstNode,
+    origin: Option<SyntaxOrigin>,
+) -> Option<TypecheckError> {
+    let message = match node {
+        AstNode::FunDecl { generics, .. }
+        | AstNode::ProDecl { generics, .. }
+        | AstNode::LogDecl { generics, .. }
+            if !generics.is_empty() =>
+        {
+            Some("generic routine semantics are not part of the V1 typecheck milestone")
+        }
+        AstNode::TypeDecl { generics, .. } if !generics.is_empty() => {
+            Some("generic type semantics are not part of the V1 typecheck milestone")
+        }
+        AstNode::DefDecl { .. } => {
+            Some("definition/meta declarations are part of the V2 language milestone, not the V1 typecheck milestone")
+        }
+        AstNode::SegDecl { .. } => {
+            Some("segment/meta declarations are part of the V2 language milestone, not the V1 typecheck milestone")
+        }
+        _ => None,
+    }?;
+
+    Some(match origin {
+        Some(origin) => TypecheckError::with_origin(TypecheckErrorKind::Unsupported, message, origin),
+        None => TypecheckError::new(TypecheckErrorKind::Unsupported, message),
+    })
+}
+
 fn type_origin(resolved: &ResolvedProgram, typ: &FolType) -> Option<SyntaxOrigin> {
     match typ {
         FolType::Named { syntax_id, .. } => syntax_id
@@ -667,6 +720,20 @@ fn type_origin(resolved: &ResolvedProgram, typ: &FolType) -> Option<SyntaxOrigin
             .cloned(),
         _ => None,
     }
+}
+
+fn node_origin(resolved: &ResolvedProgram, node: &AstNode) -> Option<SyntaxOrigin> {
+    if let Some(syntax_id) = node.syntax_id() {
+        return resolved.syntax_index().origin(syntax_id).cloned();
+    }
+
+    for child in node.children() {
+        if let Some(origin) = node_origin(resolved, child) {
+            return Some(origin);
+        }
+    }
+
+    None
 }
 
 fn invalid_input_error(message: impl Into<String>, origin: Option<SyntaxOrigin>) -> TypecheckError {

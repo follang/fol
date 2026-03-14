@@ -1602,6 +1602,60 @@ fn literal_family_policy_accepts_matching_integer_and_float_sites() {
 }
 
 #[test]
+fn v1_boundary_rejects_generic_headers_and_meta_declarations() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+         "fun demo(T)(value: int): int = {\n\
+             return value;\n\
+         }\n\
+         typ Box(T): rec = {\n\
+             value: int\n\
+         }\n\
+         def helper: mod = {\n\
+         }\n\
+         seg core: mod = {\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::Unsupported
+                && error
+                    .message()
+                    .contains("generic routine semantics are not part of the V1 typecheck milestone")
+        }),
+        "Expected a generic-routine boundary diagnostic, got: {errors:?}"
+    );
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::Unsupported
+                && error
+                    .message()
+                    .contains("generic type semantics are not part of the V1 typecheck milestone")
+        }),
+        "Expected a generic-type boundary diagnostic, got: {errors:?}"
+    );
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::Unsupported
+                && error
+                    .message()
+                    .contains("definition/meta declarations are part of the V2 language milestone")
+        }),
+        "Expected a def/meta boundary diagnostic, got: {errors:?}"
+    );
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::Unsupported
+                && error
+                    .message()
+                    .contains("segment/meta declarations are part of the V2 language milestone")
+        }),
+        "Expected a seg/meta boundary diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
 fn declaration_signature_lowering_resolves_qualified_named_types() {
     let typed = typecheck_fixture_folder(&[
         ("util/types.fol", "ali Count: int\n"),
