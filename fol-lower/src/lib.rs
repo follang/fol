@@ -1,5 +1,6 @@
 //! Lowering from typed `V1` FOL workspaces into a backend-oriented IR.
 
+mod boundaries;
 mod errors;
 pub mod control;
 pub mod decls;
@@ -16,6 +17,7 @@ pub use control::{
     LoweredBlock, LoweredInstr, LoweredInstrKind, LoweredLocal, LoweredOperand, LoweredRoutine,
     LoweredTerminator,
 };
+pub use boundaries::{v1_lowering_boundaries, UnsupportedLoweringSurface};
 pub use errors::{LoweringError, LoweringErrorKind};
 pub use ids::{
     IdTable, LoweredBlockId, LoweredGlobalId, LoweredInstrId, LoweredLocalId, LoweredPackageId,
