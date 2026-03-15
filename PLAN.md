@@ -135,7 +135,7 @@ Each fix must land with:
 ### Phase 4. End-To-End Proof
 
 - `4.1` `done` Add CLI success coverage for a real multi-surface `V1` program that includes records, routine parameters, non-empty containers, loops, and value-producing `when`.
-- `4.2` `pending` Add `--dump-lowered` snapshot coverage for that same real `V1` program so the lowered shape is inspectable and stable.
+- `4.2` `done` Add `--dump-lowered` snapshot coverage for that same real `V1` program so the lowered shape is inspectable and stable.
 - `4.3` `pending` Re-run the earlier failing sample families and lock them as regression tests.
 
 ### Phase 5. Documentation Closeout

@@ -23,6 +23,7 @@ mod typecheck {
 #[cfg(test)]
 mod integration_tests {
     use serde_json::Value;
+    use std::path::{Path, PathBuf};
     use std::process::Command;
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -52,6 +53,124 @@ mod integration_tests {
             .find('{')
             .expect("CLI JSON output should contain a JSON object");
         serde_json::from_str(&stdout[json_start..]).expect("CLI JSON output should stay valid")
+    }
+
+    fn write_combined_lowering_repro_fixture(root: &Path) -> PathBuf {
+        let fixture = root.join("main.fol");
+        std::fs::write(
+            &fixture,
+            concat!(
+                "var enabled: bol = true\n",
+                "var default_name: str = \"Ada\"\n",
+                "var low_count: int = 1\n",
+                "var high_count: int = 7\n",
+                "typ NameTag: rec = {\n",
+                "    label: str;\n",
+                "    code: int\n",
+                "}\n",
+                "typ Audit: rec = {\n",
+                "    active: bol;\n",
+                "    marker: NameTag\n",
+                "}\n",
+                "typ User: rec = {\n",
+                "    name: str;\n",
+                "    count: int;\n",
+                "    audit: Audit\n",
+                "}\n",
+                "fun[] build_tag(): NameTag = {\n",
+                "    return { label = \"stable\", code = high_count }\n",
+                "}\n",
+                "fun[] build_user(flag: bol): User = {\n",
+                "    return {\n",
+                "        name = default_name,\n",
+                "        count = high_count,\n",
+                "        audit = {\n",
+                "            active = flag,\n",
+                "            marker = build_tag(),\n",
+                "        },\n",
+                "    }\n",
+                "}\n",
+                "fun[] choose_count(flag: bol): int = {\n",
+                "    when(flag) {\n",
+                "        case(true) { high_count }\n",
+                "        * { low_count }\n",
+                "    }\n",
+                "}\n",
+                "fun[] main(flag: bol): int = {\n",
+                "    var current: User = build_user(flag)\n",
+                "    var names: seq[str] = {\"Ada\", \"Lin\"}\n",
+                "    var counts: map[str, int] = {{\"ada\", 1}, {\"lin\", 2}}\n",
+                "    loop(flag) {\n",
+                "        break\n",
+                "    }\n",
+                "    when(flag) {\n",
+                "        case(true) { return current.audit.marker.code }\n",
+                "        * { return counts[\"lin\"] }\n",
+                "    }\n",
+                "}\n",
+            ),
+        )
+        .expect("Should write combined lowering repro fixture");
+        fixture
+    }
+
+    fn write_parameter_scope_lowering_fixture(root: &Path) -> PathBuf {
+        let fixture = root.join("main.fol");
+        std::fs::write(
+            &fixture,
+            concat!(
+                "fun[] choose(flag: bol): int = {\n",
+                "    when(flag) {\n",
+                "        case(true) { 1 }\n",
+                "        * { 0 }\n",
+                "    }\n",
+                "}\n",
+                "fun[] echo(flag: bol): bol = {\n",
+                "    return flag\n",
+                "}\n",
+                "fun[] main(flag: bol): int = {\n",
+                "    when(echo(flag)) {\n",
+                "        case(true) { return choose(flag) }\n",
+                "        * { return 0 }\n",
+                "    }\n",
+                "}\n",
+            ),
+        )
+        .expect("Should write parameter-scope lowering fixture");
+        fixture
+    }
+
+    fn write_container_lowering_fixture(root: &Path) -> PathBuf {
+        let fixture = root.join("main.fol");
+        std::fs::write(
+            &fixture,
+            concat!(
+                "fun[] main(): int = {\n",
+                "    var names: seq[str] = {\"Ada\", \"Lin\"}\n",
+                "    var counts: map[str, int] = {{\"ada\", 1}, {\"lin\", 2}}\n",
+                "    return counts[\"lin\"]\n",
+                "}\n",
+            ),
+        )
+        .expect("Should write container lowering fixture");
+        fixture
+    }
+
+    fn write_early_return_when_fixture(root: &Path) -> PathBuf {
+        let fixture = root.join("main.fol");
+        std::fs::write(
+            &fixture,
+            concat!(
+                "fun[] main(flag: bol): int = {\n",
+                "    when(flag) {\n",
+                "        case(true) { return 7 }\n",
+                "        * { return 3 }\n",
+                "    }\n",
+                "}\n",
+            ),
+        )
+        .expect("Should write early-return when lowering fixture");
+        fixture
     }
 
     #[test]
@@ -680,61 +799,7 @@ mod integration_tests {
 
         let temp_root = unique_temp_root("cli_lowering_repro_boundary");
         fs::create_dir_all(&temp_root).expect("Should create temp lowering repro fixture dir");
-        let fixture = temp_root.join("main.fol");
-        fs::write(
-            &fixture,
-            concat!(
-                "var enabled: bol = true\n",
-                "var default_name: str = \"Ada\"\n",
-                "var low_count: int = 1\n",
-                "var high_count: int = 7\n",
-                "typ NameTag: rec = {\n",
-                "    label: str;\n",
-                "    code: int\n",
-                "}\n",
-                "typ Audit: rec = {\n",
-                "    active: bol;\n",
-                "    marker: NameTag\n",
-                "}\n",
-                "typ User: rec = {\n",
-                "    name: str;\n",
-                "    count: int;\n",
-                "    audit: Audit\n",
-                "}\n",
-                "fun[] build_tag(): NameTag = {\n",
-                "    return { label = \"stable\", code = high_count }\n",
-                "}\n",
-                "fun[] build_user(flag: bol): User = {\n",
-                "    return {\n",
-                "        name = default_name,\n",
-                "        count = high_count,\n",
-                "        audit = {\n",
-                "            active = flag,\n",
-                "            marker = build_tag(),\n",
-                "        },\n",
-                "    }\n",
-                "}\n",
-                "fun[] choose_count(flag: bol): int = {\n",
-                "    when(flag) {\n",
-                "        case(true) { high_count }\n",
-                "        * { low_count }\n",
-                "    }\n",
-                "}\n",
-                "fun[] main(flag: bol): int = {\n",
-                "    var current: User = build_user(flag)\n",
-                "    var names: seq[str] = {\"Ada\", \"Lin\"}\n",
-                "    var counts: map[str, int] = {{\"ada\", 1}, {\"lin\", 2}}\n",
-                "    loop(flag) {\n",
-                "        break\n",
-                "    }\n",
-                "    when(flag) {\n",
-                "        case(true) { return current.audit.marker.code }\n",
-                "        * { return counts[\"lin\"] }\n",
-                "    }\n",
-                "}\n",
-            ),
-        )
-        .expect("Should write combined lowering repro fixture");
+        let fixture = write_combined_lowering_repro_fixture(&temp_root);
 
         let output = run_fol(&[fixture
             .to_str()
@@ -755,6 +820,43 @@ mod integration_tests {
             stdout,
             stderr,
         );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_cli_dump_lowered_combined_repro_stays_stable_and_inspectable() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_lowering_repro_dump");
+        fs::create_dir_all(&temp_root).expect("Should create temp lowering dump fixture dir");
+        write_combined_lowering_repro_fixture(&temp_root);
+
+        let output = run_fol(&[
+            "--dump-lowered",
+            temp_root
+                .to_str()
+                .expect("CLI lowering dump fixture path should be utf-8"),
+        ]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        assert!(
+            output.status.success(),
+            "CLI should dump lowered output for the repaired combined repro, got status {:?} and output:\n{}",
+            output.status.code(),
+            stdout,
+        );
+        assert!(stdout.contains("workspace entry="));
+        assert!(stdout.contains("package"));
+        assert!(stdout.contains("type-decl User"));
+        assert!(stdout.contains("routine r1 build_user"));
+        assert!(stdout.contains("routine r3 main"));
+        assert!(stdout.contains("params [l0]"));
+        assert!(stdout.contains("ConstructLinear { kind: Sequence"));
+        assert!(stdout.contains("ConstructMap"));
+        assert!(stdout.contains("FieldAccess { base:"));
+        assert!(stdout.contains("IndexAccess { container:"));
+        assert!(stdout.contains("entry-candidates"));
 
         fs::remove_dir_all(&temp_root).ok();
     }
