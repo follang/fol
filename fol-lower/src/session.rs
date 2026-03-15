@@ -1,5 +1,5 @@
 use crate::{
-    decls,
+    decls, exprs,
     ids::{LoweredPackageId, LoweredTypeId},
     types::{LoweredBuiltinType, LoweredRoutineType, LoweredType, LoweredTypeTable},
     LoweredPackage, LoweredSourceMap, LoweredSourceMapEntry, LoweredSourceSymbol,
@@ -86,6 +86,15 @@ impl LoweringSession {
             decls::lower_global_declarations(package, &mut lowered, &mut next_global_index)?;
             decls::lower_routine_declarations(package, &mut lowered, &mut next_routine_index)?;
             packages.insert(package.identity.clone(), lowered);
+        }
+
+        let decl_index = exprs::WorkspaceDeclIndex::from_packages(&packages);
+
+        for package in self.typed.packages() {
+            let Some(lowered) = packages.get_mut(&package.identity) else {
+                continue;
+            };
+            exprs::lower_routine_bodies(package, &decl_index, lowered)?;
         }
 
         let source_map = build_workspace_source_map(&self.typed, &packages);

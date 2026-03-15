@@ -104,6 +104,7 @@ pub struct LoweredRoutine {
     pub blocks: IdTable<LoweredBlockId, LoweredBlock>,
     pub instructions: IdTable<LoweredInstrId, LoweredInstr>,
     pub entry_block: LoweredBlockId,
+    pub body_result: Option<LoweredLocalId>,
 }
 
 impl LoweredRoutine {
@@ -121,6 +122,7 @@ impl LoweredRoutine {
             blocks: IdTable::new(),
             instructions: IdTable::new(),
             entry_block,
+            body_result: None,
         }
     }
 }

@@ -653,7 +653,7 @@ fn routine_name(node: &AstNode) -> Option<&str> {
     }
 }
 
-fn find_local_symbol_id(
+pub(crate) fn find_local_symbol_id(
     typed_program: &fol_typecheck::TypedProgram,
     source_unit_id: SourceUnitId,
     kind: SymbolKind,
