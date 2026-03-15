@@ -151,6 +151,36 @@ pub fn render_entry_definition(
     ))
 }
 
+pub fn render_entry_trait_impl(
+    package_identity: &PackageIdentity,
+    type_decl: &LoweredTypeDecl,
+) -> BackendResult<String> {
+    let LoweredTypeDeclKind::Entry { variants } = &type_decl.kind else {
+        return Err(BackendError::new(
+            BackendErrorKind::InvalidInput,
+            format!("type declaration '{}' is not an entry", type_decl.name),
+        ));
+    };
+
+    let type_name = mangle_type_name(package_identity, type_decl.runtime_type, &type_decl.name);
+    let match_arms = variants
+        .iter()
+        .map(|variant| render_entry_trait_match_arm(variant))
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    Ok(format!(
+        "impl rt::FolEntry for {type_name} {{\n    fn fol_entry_name(&self) -> &'static str {{\n        \"{}\"\n    }}\n\n    fn fol_entry_variant_name(&self) -> &'static str {{\n        match self {{\n{}\n        }}\n    }}\n\n    fn fol_entry_fields(&self) -> Vec<rt::FolNamedValue> {{\n        match self {{\n{}\n        }}\n    }}\n}}\n\nimpl rt::FolEchoFormat for {type_name} {{\n    fn fol_echo_format(&self) -> String {{\n        rt::render_entry(self)\n    }}\n}}\n",
+        type_decl.name,
+        match_arms,
+        variants
+            .iter()
+            .map(|variant| render_entry_field_match_arm(variant))
+            .collect::<Vec<_>>()
+            .join("\n")
+    ))
+}
+
 fn render_entry_variant(
     variant: &LoweredVariantLayout,
     type_table: &LoweredTypeTable,
@@ -163,6 +193,23 @@ fn render_entry_variant(
         ),
         None => format!("    {},", variant.name),
     })
+}
+
+fn render_entry_trait_match_arm(variant: &LoweredVariantLayout) -> String {
+    match variant.payload_type {
+        Some(_) => format!("            Self::{}(..) => \"{}\",", variant.name, variant.name),
+        None => format!("            Self::{} => \"{}\",", variant.name, variant.name),
+    }
+}
+
+fn render_entry_field_match_arm(variant: &LoweredVariantLayout) -> String {
+    match variant.payload_type {
+        Some(_) => format!(
+            "            Self::{}(payload) => vec![rt::FolNamedValue::new(\"payload\", payload.to_string())],",
+            variant.name
+        ),
+        None => format!("            Self::{} => Vec::new(),", variant.name),
+    }
 }
 
 fn render_builtin_type(builtin: LoweredBuiltinType) -> &'static str {
@@ -179,8 +226,8 @@ fn render_builtin_type(builtin: LoweredBuiltinType) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::{
-        render_entry_definition, render_record_definition, render_record_trait_impl,
-        render_rust_type,
+        render_entry_definition, render_entry_trait_impl, render_record_definition,
+        render_record_trait_impl, render_rust_type,
     };
     use crate::testing::package_identity;
     use fol_lower::{
@@ -374,5 +421,54 @@ mod tests {
         assert!(rendered.contains("Ok(rt::FolInt),"));
         assert!(rendered.contains("Err(rt::FolStr),"));
         assert!(rendered.contains("Empty,"));
+    }
+
+    #[test]
+    fn entry_trait_impl_rendering_emits_runtime_fol_entry_contract() {
+        let mut table = LoweredTypeTable::new();
+        let int_id = table.intern_builtin(LoweredBuiltinType::Int);
+        let str_id = table.intern_builtin(LoweredBuiltinType::Str);
+        let entry_id = table.intern(LoweredType::Entry {
+            variants: std::collections::BTreeMap::from([
+                ("Empty".to_string(), None),
+                ("Ok".to_string(), Some(int_id)),
+                ("Err".to_string(), Some(str_id)),
+            ]),
+        });
+        let decl = LoweredTypeDecl {
+            symbol_id: SymbolId(11),
+            source_unit_id: SourceUnitId(0),
+            name: "Status".to_string(),
+            runtime_type: entry_id,
+            kind: LoweredTypeDeclKind::Entry {
+                variants: vec![
+                    LoweredVariantLayout {
+                        name: "Ok".to_string(),
+                        payload_type: Some(int_id),
+                    },
+                    LoweredVariantLayout {
+                        name: "Err".to_string(),
+                        payload_type: Some(str_id),
+                    },
+                    LoweredVariantLayout {
+                        name: "Empty".to_string(),
+                        payload_type: None,
+                    },
+                ],
+            },
+        };
+        let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
+
+        let rendered = render_entry_trait_impl(&package_identity, &decl)
+            .expect("entry trait impl should render");
+
+        assert!(rendered.contains("impl rt::FolEntry for ty__pkg__entry__app__t"));
+        assert!(rendered.contains("fn fol_entry_name(&self) -> &'static str"));
+        assert!(rendered.contains("\"Status\""));
+        assert!(rendered.contains("Self::Ok(..) => \"Ok\""));
+        assert!(rendered.contains("Self::Err(payload) => vec![rt::FolNamedValue::new(\"payload\", payload.to_string())]"));
+        assert!(rendered.contains("Self::Empty => Vec::new()"));
+        assert!(rendered.contains("impl rt::FolEchoFormat for ty__pkg__entry__app__t"));
+        assert!(rendered.contains("rt::render_entry(self)"));
     }
 }
