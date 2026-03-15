@@ -934,7 +934,7 @@ not full long-term compiler completion.
 #### 4.4 done
 - emit namespace module shells
 
-#### 4.5
+#### 4.5 done
 - add snapshot tests for generated crate skeleton shape
 
 ## 40. Phase 5: Type Emission

@@ -1,6 +1,6 @@
 use crate::{
     mangle_package_module_name, plan_generated_crate_layout, plan_namespace_layouts,
-    plan_package_layouts, BackendSession, EmittedRustFile,
+    plan_package_layouts, BackendArtifact, BackendSession, EmittedRustFile,
 };
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -108,6 +108,21 @@ pub fn emit_namespace_module_shells(session: &BackendSession) -> Vec<EmittedRust
         .collect()
 }
 
+pub fn emit_generated_crate_skeleton(session: &BackendSession) -> BackendArtifact {
+    let layout = plan_generated_crate_layout(session);
+    let mut files = Vec::new();
+    files.push(emit_cargo_toml(session));
+    files.push(emit_main_rs(session));
+    files.extend(emit_package_module_shells(session));
+    files.extend(emit_namespace_module_shells(session));
+    files.sort_by(|left, right| left.path.cmp(&right.path));
+
+    BackendArtifact::RustSourceCrate {
+        root: layout.crate_dir_name,
+        files,
+    }
+}
+
 fn runtime_dependency_path() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
@@ -118,9 +133,10 @@ fn runtime_dependency_path() -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::{
-        emit_cargo_toml, emit_main_rs, emit_namespace_module_shells, emit_package_module_shells,
+        emit_cargo_toml, emit_generated_crate_skeleton, emit_main_rs,
+        emit_namespace_module_shells, emit_package_module_shells,
     };
-    use crate::{testing::sample_lowered_workspace, BackendSession};
+    use crate::{testing::sample_lowered_workspace, BackendArtifact, BackendSession};
 
     #[test]
     fn cargo_toml_emission_keeps_runtime_dependency_and_generated_crate_identity() {
@@ -187,5 +203,33 @@ mod tests {
         assert!(emitted[1].contents.contains("NAMESPACE_NAME: &str = \"app::math\""));
         assert_eq!(emitted[3].path, "src/packages/pkg__local__shared/util.rs");
         assert!(emitted[3].contents.contains("NAMESPACE_NAME: &str = \"shared::util\""));
+    }
+
+    #[test]
+    fn generated_crate_skeleton_snapshot_stays_stable_for_foundation_backend_shape() {
+        let session = BackendSession::new(sample_lowered_workspace());
+
+        let artifact = emit_generated_crate_skeleton(&session);
+
+        let BackendArtifact::RustSourceCrate { root, files } = artifact else {
+            panic!("expected RustSourceCrate artifact");
+        };
+
+        let snapshot = files
+            .iter()
+            .map(|file| format!("== {} ==\n{}", file.path, file.contents))
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        assert!(root.starts_with("fol-build-app-"));
+        assert_eq!(files.len(), 8);
+        assert!(snapshot.contains("== Cargo.toml =="));
+        assert!(snapshot.contains("== src/main.rs =="));
+        assert!(snapshot.contains("== src/packages/mod.rs =="));
+        assert!(snapshot.contains("== src/packages/pkg__entry__app/mod.rs =="));
+        assert!(snapshot.contains("== src/packages/pkg__local__shared/root.rs =="));
+        assert!(snapshot.contains("use fol_runtime::prelude as rt;"));
+        assert!(snapshot.contains("pub mod pkg__entry__app;"));
+        assert!(snapshot.contains("NAMESPACE_NAME: &str = \"shared::util\""));
     }
 }
