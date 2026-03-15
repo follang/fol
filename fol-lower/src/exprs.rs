@@ -4179,6 +4179,78 @@ mod tests {
     }
 
     #[test]
+    fn shell_payload_lifting_lowers_to_explicit_runtime_wrappers() {
+        let fixture = std::env::temp_dir().join(format!(
+            "fol_lower_shell_lifts_{}.fol",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system clock should be monotonic enough for tmp names")
+                .as_nanos()
+        ));
+        std::fs::write(
+            &fixture,
+            "ali MaybeText: opt[str]\nali Failure: err[str]\nfun[] echo(value: MaybeText): MaybeText = { return value }\nfun[] direct(): MaybeText = { return \"return\" }\nfun[] main(): MaybeText = {\n    var local: MaybeText = \"bind\"\n    return echo(\"call\")\n}\nfun[] fail(): int: Failure = { report \"broken\" }\n",
+        )
+        .expect("should write lowering shell lift fixture");
+
+        let mut stream = FileStream::from_file(fixture.to_str().expect("utf8 temp path"))
+            .expect("Should open lowering fixture");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let syntax = parser
+            .parse_package(&mut lexer)
+            .expect("Lowering fixture should parse");
+        let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+        let typed = Typechecker::new()
+            .check_resolved_workspace(resolved)
+            .expect("Lowering fixture should typecheck");
+        let lowered = crate::LoweringSession::new(typed)
+            .lower_workspace()
+            .expect("shell lifting lowering should succeed");
+
+        let direct = lowered
+            .entry_package()
+            .routine_decls
+            .values()
+            .find(|routine| routine.name == "direct")
+            .expect("direct routine should exist");
+        let main = lowered
+            .entry_package()
+            .routine_decls
+            .values()
+            .find(|routine| routine.name == "main")
+            .expect("main routine should exist");
+        let fail = lowered
+            .entry_package()
+            .routine_decls
+            .values()
+            .find(|routine| routine.name == "fail")
+            .expect("fail routine should exist");
+
+        assert!(
+            direct.instructions.iter().any(|instr| matches!(
+                instr.kind,
+                LoweredInstrKind::ConstructOptional { value: Some(_), .. }
+            )),
+            "return payload lifting should lower to an explicit optional constructor"
+        );
+        assert!(
+            main.instructions.iter().filter(|instr| matches!(
+                instr.kind,
+                LoweredInstrKind::ConstructOptional { value: Some(_), .. }
+            )).count() >= 2,
+            "binding and call payload lifting should each lower to explicit optional constructors"
+        );
+        assert!(
+            fail.instructions.iter().any(|instr| matches!(
+                instr.kind,
+                LoweredInstrKind::ConstructError { value: Some(_), .. }
+            )),
+            "report payload lifting should lower to an explicit error constructor"
+        );
+    }
+
+    #[test]
     fn unsupported_lowering_surfaces_report_explicit_boundary_messages() {
         let nil_error = lower_fixture_error(
             "fun[] main(): int = {\n    return nil;\n}\n",
