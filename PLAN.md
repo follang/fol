@@ -770,7 +770,7 @@ The implementation should land in many small slices.
 #### 2.2 done
 - add `FolError<T>` / bare error-shell representation for `err[T]`
 
-#### 2.3
+#### 2.3 done
 - add shell unwrap helpers for optional and error shells
 
 #### 2.4

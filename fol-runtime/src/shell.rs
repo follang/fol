@@ -1,5 +1,7 @@
 //! Shell value helpers for optional and error-like runtime wrappers.
 
+use crate::error::{RuntimeError, RuntimeErrorKind};
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum FolOption<T> {
     Some(T),
@@ -83,13 +85,45 @@ impl<T> From<FolError<T>> for T {
     }
 }
 
+pub fn unwrap_optional_shell<T>(value: FolOption<T>) -> Result<T, RuntimeError> {
+    match value {
+        FolOption::Some(inner) => Ok(inner),
+        FolOption::Nil => Err(RuntimeError::new(
+            RuntimeErrorKind::InvalidInput,
+            "attempted to unwrap nil optional shell",
+        )),
+    }
+}
+
+pub fn unwrap_optional_shell_ref<T>(value: &FolOption<T>) -> Result<&T, RuntimeError> {
+    match value {
+        FolOption::Some(inner) => Ok(inner),
+        FolOption::Nil => Err(RuntimeError::new(
+            RuntimeErrorKind::InvalidInput,
+            "attempted to unwrap nil optional shell",
+        )),
+    }
+}
+
+pub fn unwrap_error_shell<T>(value: FolError<T>) -> T {
+    value.into_inner()
+}
+
+pub fn unwrap_error_shell_ref<T>(value: &FolError<T>) -> &T {
+    value.as_ref()
+}
+
 pub fn module_name() -> &'static str {
     "shell"
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{FolError, FolOption};
+    use super::{
+        unwrap_error_shell, unwrap_error_shell_ref, unwrap_optional_shell,
+        unwrap_optional_shell_ref, FolError, FolOption,
+    };
+    use crate::error::RuntimeErrorKind;
 
     #[test]
     fn fol_option_freezes_some_nil_shape_and_queries() {
@@ -121,5 +155,21 @@ mod tests {
         assert_eq!(error.as_ref(), &"broken");
         assert_eq!(FolError::from("broken"), error);
         assert_eq!(<&str>::from(error), "broken");
+    }
+
+    #[test]
+    fn shell_unwrap_helpers_cover_optional_and_error_shells() {
+        let some = FolOption::some(7);
+        let nil = FolOption::<i64>::nil();
+        let error = FolError::new("broken");
+
+        assert_eq!(unwrap_optional_shell(some), Ok(7));
+        assert_eq!(unwrap_optional_shell_ref(&FolOption::some(9)), Ok(&9));
+        assert_eq!(unwrap_error_shell(error.clone()), "broken");
+        assert_eq!(unwrap_error_shell_ref(&error), &"broken");
+
+        let failure = unwrap_optional_shell(nil).expect_err("nil unwrap should fail");
+        assert_eq!(failure.kind(), RuntimeErrorKind::InvalidInput);
+        assert_eq!(failure.message(), "attempted to unwrap nil optional shell");
     }
 }
