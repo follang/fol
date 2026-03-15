@@ -957,7 +957,7 @@ not full long-term compiler completion.
 #### 5.6 done
 - emit `FolEntry` implementations for backend-authored entry types where needed
 
-#### 5.7
+#### 5.7 done
 - add snapshot tests for emitted type shapes
 
 ## 41. Phase 6: Global And Routine Signature Emission

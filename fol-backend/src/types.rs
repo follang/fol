@@ -471,4 +471,87 @@ mod tests {
         assert!(rendered.contains("impl rt::FolEchoFormat for ty__pkg__entry__app__t"));
         assert!(rendered.contains("rt::render_entry(self)"));
     }
+
+    #[test]
+    fn combined_type_emission_snapshot_stays_stable_for_current_v1_shapes() {
+        let mut table = LoweredTypeTable::new();
+        let bool_id = table.intern_builtin(LoweredBuiltinType::Bool);
+        let int_id = table.intern_builtin(LoweredBuiltinType::Int);
+        let str_id = table.intern_builtin(LoweredBuiltinType::Str);
+        let record_id = table.intern(LoweredType::Record {
+            fields: std::collections::BTreeMap::from([
+                ("active".to_string(), bool_id),
+                ("name".to_string(), str_id),
+            ]),
+        });
+        let entry_id = table.intern(LoweredType::Entry {
+            variants: std::collections::BTreeMap::from([
+                ("Empty".to_string(), None),
+                ("Ok".to_string(), Some(int_id)),
+                ("Err".to_string(), Some(str_id)),
+            ]),
+        });
+        let record_decl = LoweredTypeDecl {
+            symbol_id: SymbolId(10),
+            source_unit_id: SourceUnitId(0),
+            name: "User".to_string(),
+            runtime_type: record_id,
+            kind: LoweredTypeDeclKind::Record {
+                fields: vec![
+                    LoweredFieldLayout {
+                        name: "name".to_string(),
+                        type_id: str_id,
+                    },
+                    LoweredFieldLayout {
+                        name: "active".to_string(),
+                        type_id: bool_id,
+                    },
+                ],
+            },
+        };
+        let entry_decl = LoweredTypeDecl {
+            symbol_id: SymbolId(11),
+            source_unit_id: SourceUnitId(0),
+            name: "Status".to_string(),
+            runtime_type: entry_id,
+            kind: LoweredTypeDeclKind::Entry {
+                variants: vec![
+                    LoweredVariantLayout {
+                        name: "Ok".to_string(),
+                        payload_type: Some(int_id),
+                    },
+                    LoweredVariantLayout {
+                        name: "Err".to_string(),
+                        payload_type: Some(str_id),
+                    },
+                    LoweredVariantLayout {
+                        name: "Empty".to_string(),
+                        payload_type: None,
+                    },
+                ],
+            },
+        };
+        let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
+
+        let snapshot = [
+            render_record_definition(&package_identity, &record_decl, &table)
+                .expect("record definition should render"),
+            render_record_trait_impl(&package_identity, &record_decl)
+                .expect("record trait impl should render"),
+            render_entry_definition(&package_identity, &entry_decl, &table)
+                .expect("entry definition should render"),
+            render_entry_trait_impl(&package_identity, &entry_decl)
+                .expect("entry trait impl should render"),
+        ]
+        .join("\n");
+
+        assert!(snapshot.contains("pub struct ty__pkg__entry__app__t"));
+        assert!(snapshot.contains("pub enum ty__pkg__entry__app__t"));
+        assert!(snapshot.contains("pub name: rt::FolStr,"));
+        assert!(snapshot.contains("Ok(rt::FolInt),"));
+        assert!(snapshot.contains("impl rt::FolRecord"));
+        assert!(snapshot.contains("impl rt::FolEntry"));
+        assert!(snapshot.contains("rt::render_record(self)"));
+        assert!(snapshot.contains("rt::render_entry(self)"));
+    }
 }
