@@ -902,7 +902,7 @@ not full long-term compiler completion.
 
 ## 38. Phase 3: Name Mangling And Layout
 
-#### 3.1
+#### 3.1 done
 - add stable name-mangling helpers for types, globals, routines, locals, and modules
 
 #### 3.2
