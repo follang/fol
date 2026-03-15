@@ -18,6 +18,8 @@ FOL now has a real compiler pipeline:
 - `fol-parser`
 - `fol-package`
 - `fol-resolver`
+- `fol-typecheck`
+- `fol-lower`
 - `fol-diagnostics`
 
 That means errors are no longer just loose strings printed from one place.
@@ -66,6 +68,8 @@ Typical examples:
 - a parser error at the token that made a declaration invalid
 - a package-loading error at the control file or package root that failed
 - a resolver error at the unresolved identifier or ambiguous reference
+- a typecheck error at the expression or declaration whose types do not match
+- a lowering error at the typed surface that has no current `V1` lowering rule
 
 ## Related locations
 
@@ -228,6 +232,8 @@ At head, the main producers that lower into the shared diagnostics layer are:
 - parser
 - package loading
 - resolver
+- type checking
+- lowering
 
 That means diagnostics are already strong across:
 
@@ -237,9 +243,16 @@ That means diagnostics are already strong across:
 - unresolved names
 - duplicate names
 - ambiguous references
+- type mismatches and unsupported semantic surfaces inside `V1`
+- unsupported lowered `V1` surfaces that still stop before any backend exists
 
-Later phases, especially type checking, will add more semantic diagnostics on
-top of the same reporting infrastructure.
+This is the important boundary for the current compiler stage:
+
+- the compiler can now parse, resolve, type-check, and lower the supported `V1`
+  subset
+- diagnostics already cover failures from each of those stages
+- the project still does not promise a finished backend, linker, or runtime in
+  this chapter
 
 ## Stable codes
 
