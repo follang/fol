@@ -49,6 +49,46 @@ impl LoweredRecoverableAbi {
             error_slot: "error".to_string(),
         }
     }
+
+    pub fn success_runtime_meaning(&self) -> String {
+        match self {
+            Self::TaggedResultObject {
+                success_tag,
+                success_slot,
+                ..
+            } => format!(
+                "success => tag='{success_tag}' and the recoverable payload lives in slot '{success_slot}'"
+            ),
+        }
+    }
+
+    pub fn failure_runtime_meaning(&self) -> String {
+        match self {
+            Self::TaggedResultObject {
+                error_tag,
+                error_slot,
+                ..
+            } => format!(
+                "failure => tag='{error_tag}' and the reported payload lives in slot '{error_slot}'"
+            ),
+        }
+    }
+
+    pub fn propagation_runtime_meaning(&self) -> String {
+        match self {
+            Self::TaggedResultObject {
+                error_tag,
+                error_slot,
+                ..
+            } => format!(
+                "propagation => forward tag='{error_tag}' and slot '{error_slot}' into the caller result object"
+            ),
+        }
+    }
+
+    pub fn panic_runtime_meaning(&self) -> &'static str {
+        "panic => abort control flow without constructing a recoverable result object"
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -313,6 +353,14 @@ mod tests {
                 && success_slot == "value"
                 && error_slot == "error"
         ));
+        assert_eq!(
+            workspace.recoverable_abi().success_runtime_meaning(),
+            "success => tag='ok' and the recoverable payload lives in slot 'value'"
+        );
+        assert_eq!(
+            workspace.recoverable_abi().failure_runtime_meaning(),
+            "failure => tag='err' and the reported payload lives in slot 'error'"
+        );
     }
 
     #[test]

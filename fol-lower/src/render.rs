@@ -27,6 +27,26 @@ pub fn render_lowered_workspace(workspace: &LoweredWorkspace) -> String {
                 success_slot,
                 error_slot
             );
+            let _ = writeln!(
+                output,
+                "recoverable-abi semantics {}",
+                workspace.recoverable_abi().success_runtime_meaning()
+            );
+            let _ = writeln!(
+                output,
+                "recoverable-abi semantics {}",
+                workspace.recoverable_abi().failure_runtime_meaning()
+            );
+            let _ = writeln!(
+                output,
+                "recoverable-abi semantics {}",
+                workspace.recoverable_abi().propagation_runtime_meaning()
+            );
+            let _ = writeln!(
+                output,
+                "recoverable-abi semantics {}",
+                workspace.recoverable_abi().panic_runtime_meaning()
+            );
         }
     }
     for type_index in 0..workspace.type_table().len() {
@@ -183,6 +203,10 @@ mod tests {
         assert_eq!(first, second);
         assert!(first.contains("workspace entry=parser"));
         assert!(first.contains("recoverable-abi kind=tagged-result-object"));
+        assert!(first.contains("recoverable-abi semantics success =>"));
+        assert!(first.contains("recoverable-abi semantics failure =>"));
+        assert!(first.contains("recoverable-abi semantics propagation =>"));
+        assert!(first.contains("recoverable-abi semantics panic =>"));
         assert!(first.contains("package parser"));
         assert!(first.contains("routine"));
         assert!(first.contains("block b0"));

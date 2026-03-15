@@ -372,11 +372,16 @@ or deliberately rejected.
     routines, imported `loc` calls, and control-flow-heavy call paths
   - the chosen representation stays stable through `when`, `loop`, and direct
     `return` propagation surfaces
-- `3.3` `pending` Document the runtime meaning of:
+- `3.3` `done` Document the runtime meaning of:
   - success
   - failure
   - propagated failure
   - forced failure via `panic`
+  Current state:
+  - lowered recoverable ABI metadata now exposes explicit runtime semantics for
+    success, failure, propagation, and panic
+  - deterministic lowered dumps print those semantics alongside the chosen ABI
+    shape for backend-facing inspection
 
 ### Phase 4. V1 User-Facing Handling Paths
 
