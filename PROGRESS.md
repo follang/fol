@@ -58,6 +58,7 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `fol-resolver`: `5066`
 - `fol-typecheck`: `6037`
 - `fol-intrinsics`: `1847`
+- `fol-runtime`: `2201`
 - `fol-diagnostics`: `1236`
 - `fol-lower`: `11189`
 - Root CLI and root-local source: `795`
@@ -80,6 +81,7 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `fol-typecheck`: implemented for the full current `V1` semantic boundary and wired into the CLI
 - `fol-lower`: implemented for the full current lowered `V1` IR boundary and wired into the CLI
 - `fol-intrinsics`: implemented as the shared compiler-owned intrinsic registry for the current `V1` subset
+- `fol-runtime`: implemented as the shared current `V1` runtime/support contract for the first backend
 - `fol-diagnostics`: implemented, structured, and wired into the CLI
 - Root CLI: implemented as parse-and-package-prepare-and-resolve-and-typecheck-and-lower driver
 - Stream + lexer + parser: stable and consumed by package loading and resolver
@@ -87,6 +89,7 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - Whole-program name resolution: implemented for the current contract
 - Whole-program type checking: implemented for the full current `V1` boundary
 - Whole-program lowering: implemented for the full current `V1` lowered IR boundary
+- Runtime support boundary: implemented for the full current `V1` support contract
 - Immediate active phase: move to the first real backend stage after runtime
 - Ownership and borrowing enforcement: missing
 - Standard or protocol conformance analysis: missing
@@ -438,6 +441,66 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - Lowering verification now rejects impossible intrinsic instruction shapes,
   such as runtime hooks lowered as pure intrinsic calls or helper-style
   instructions that fail to produce required results.
+
+### 5.11 Runtime Milestone
+
+- `fol-runtime` now exists as a workspace crate and is explicitly separate from
+  front-end phases and from the future backend crate.
+- The runtime contract is now frozen for the current `V1` compiler boundary so
+  the first backend has one support target instead of inventing runtime
+  semantics ad hoc in emitted code.
+- The crate now exposes a stable public surface through:
+- `abi`
+- `aggregate`
+- `builtins`
+- `containers`
+- `entry`
+- `error`
+- `prelude`
+- `shell`
+- `strings`
+- `value`
+- Scalar/runtime foundation is explicit:
+- canonical `FolInt`, `FolFloat`, `FolBool`, `FolChar`, and `FolNever` policy
+- `FolStr` as the current runtime string wrapper
+- recoverable-result support through `FolRecover<T, E>`
+- optional and error shell support through `FolOption<T>` and `FolError<T>`
+- Recoverable-runtime behavior is real and test-backed:
+- `FolRecover::ok(...)` and `FolRecover::err(...)`
+- `check_recoverable(...)` and success/failure inspection helpers
+- explicit distinction between recoverable routine results and shell values
+- top-level outcome conversion through `outcome_from_recoverable(...)`
+- shell unwrap helpers that stay separate from routine-recoverable semantics
+- Container-runtime behavior is real and test-backed:
+- `FolArray`
+- `FolVec<T>`
+- `FolSeq<T>`
+- `FolSet<T>`
+- `FolMap<K, V>`
+- deterministic constructors for all current container families
+- explicit indexing helpers for arrays, vectors, sequences, and maps
+- stable `len(...)` support across strings and runtime-backed container families
+- deterministic rendering/order guarantees for runtime-backed sets and maps
+- Aggregate/runtime-facing behavior is explicit:
+- backend-authored records can implement `FolRecord`
+- backend-authored entries can implement `FolEntry`
+- aggregate render helpers now define the stable `.echo(...)`-visible shape for
+  those generated values
+- runtime doctests/examples now show backend authorship expectations directly
+- Builtin/runtime hook behavior is explicit:
+- `.len(...)` is runtime-backed instead of backend-reimplemented policy
+- `.echo(...)` is runtime-backed and preserves the tapped value
+- runtime echo formatting now covers scalars, strings, containers, shells, and
+  nested combinations
+- `panic(...)` and top-level failure printing now have explicit runtime-facing
+  outcome expectations
+- `fol-runtime` crate docs now document:
+- how builtins map to native Rust or runtime helpers
+- which lowered instructions require runtime support
+- generated crate/import expectations for the first Rust backend
+- the backend integration order the future backend should follow
+- Repo and book docs now acknowledge the runtime contract rather than describing
+  runtime semantics as missing.
 
 ## 6. Current Front-End State By Layer
 
