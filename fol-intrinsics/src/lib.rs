@@ -163,6 +163,19 @@ mod tests {
     }
 
     #[test]
+    fn boolean_family_registry_entries_stay_stable() {
+        let not = intrinsic_by_canonical_name("not").expect("not should exist");
+
+        assert_eq!(not.id, IntrinsicId::new(6));
+        assert_eq!(not.category, IntrinsicCategory::Boolean);
+        assert_eq!(not.surface, IntrinsicSurface::DotRootCall);
+        assert_eq!(not.availability, IntrinsicAvailability::V1);
+        assert_eq!(not.status, IntrinsicStatus::Implemented);
+        assert_eq!(not.arity, IntrinsicArity::Exactly(1));
+        assert_eq!(not.lowering_mode, IntrinsicLoweringMode::GeneralIr);
+    }
+
+    #[test]
     fn diagnostics_helpers_render_intrinsic_specific_guidance() {
         let eq = intrinsic_by_canonical_name("eq").expect("eq should exist");
         let de_alloc = intrinsic_by_canonical_name("de_alloc").expect("de_alloc should exist");
