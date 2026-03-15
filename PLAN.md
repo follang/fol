@@ -535,7 +535,7 @@ This plan is complete only when all of the following are true:
 - `5.5` `pending` Lower loop forms into explicit header/body/exit blocks.
 - `5.6` `pending` Lower loop exits such as `break` into explicit control-flow edges.
 - `5.7` `done` Add control-flow graph verifier checks for block termination and reachability basics.
-- `5.8` `pending` Add control-flow fixture tests with exact lowered block-shape assertions.
+- `5.8` `done` Add control-flow fixture tests with exact lowered block-shape assertions.
 
 ### Phase 6. Aggregate, Container, And Shell Lowering
 

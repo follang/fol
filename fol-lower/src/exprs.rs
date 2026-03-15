@@ -2437,4 +2437,129 @@ mod tests {
             "value-producing when branches should jump into a shared join block"
         );
     }
+
+    #[test]
+    fn when_statement_lowering_keeps_a_three_block_shape_for_single_case_fallthrough() {
+        let fixture = std::env::temp_dir().join(format!(
+            "fol_lower_when_stmt_shape_{}.fol",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system clock should be monotonic enough for tmp names")
+                .as_nanos()
+        ));
+        std::fs::write(
+            &fixture,
+            "fun[] main(flag: bol): int = {\n    when(flag) {\n        case(true) { 1 }\n    }\n    return 2\n}",
+        )
+        .expect("should write lowering when shape fixture");
+
+        let mut stream = FileStream::from_file(fixture.to_str().expect("utf8 temp path"))
+            .expect("Should open lowering fixture");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let syntax = parser
+            .parse_package(&mut lexer)
+            .expect("Lowering fixture should parse");
+        let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+        let typed = Typechecker::new()
+            .check_resolved_workspace(resolved)
+            .expect("Lowering fixture should typecheck");
+        let lowered = crate::LoweringSession::new(typed)
+            .lower_workspace()
+            .expect("statement-style when lowering should succeed");
+
+        let routine = lowered
+            .entry_package()
+            .routine_decls
+            .values()
+            .find(|routine| routine.name == "main")
+            .expect("main routine should exist");
+
+        assert_eq!(routine.blocks.len(), 3);
+        assert_eq!(
+            routine.blocks.get(crate::LoweredBlockId(0)).and_then(|block| block.terminator.clone()),
+            Some(LoweredTerminator::Branch {
+                condition: crate::LoweredLocalId(2),
+                then_block: crate::LoweredBlockId(1),
+                else_block: crate::LoweredBlockId(2),
+            })
+        );
+        assert_eq!(
+            routine.blocks.get(crate::LoweredBlockId(1)).and_then(|block| block.terminator.clone()),
+            Some(LoweredTerminator::Jump {
+                target: crate::LoweredBlockId(2),
+            })
+        );
+        assert_eq!(
+            routine.blocks.get(crate::LoweredBlockId(2)).and_then(|block| block.terminator.clone()),
+            Some(LoweredTerminator::Return {
+                value: Some(crate::LoweredLocalId(4)),
+            })
+        );
+    }
+
+    #[test]
+    fn when_expression_lowering_keeps_branch_default_and_join_block_shape() {
+        let fixture = std::env::temp_dir().join(format!(
+            "fol_lower_when_expr_shape_{}.fol",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system clock should be monotonic enough for tmp names")
+                .as_nanos()
+        ));
+        std::fs::write(
+            &fixture,
+            "var yes: int = 1\nvar no: int = 2\nfun[] main(flag: bol): int = {\n    when(flag) {\n        case(true) { yes }\n        * { no }\n    }\n}",
+        )
+        .expect("should write lowering when-expression shape fixture");
+
+        let mut stream = FileStream::from_file(fixture.to_str().expect("utf8 temp path"))
+            .expect("Should open lowering fixture");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let syntax = parser
+            .parse_package(&mut lexer)
+            .expect("Lowering fixture should parse");
+        let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+        let typed = Typechecker::new()
+            .check_resolved_workspace(resolved)
+            .expect("Lowering fixture should typecheck");
+        let lowered = crate::LoweringSession::new(typed)
+            .lower_workspace()
+            .expect("value-producing when lowering should succeed");
+
+        let routine = lowered
+            .entry_package()
+            .routine_decls
+            .values()
+            .find(|routine| routine.name == "main")
+            .expect("main routine should exist");
+
+        assert_eq!(routine.blocks.len(), 4);
+        assert_eq!(
+            routine.blocks.get(crate::LoweredBlockId(0)).and_then(|block| block.terminator.clone()),
+            Some(LoweredTerminator::Branch {
+                condition: crate::LoweredLocalId(2),
+                then_block: crate::LoweredBlockId(2),
+                else_block: crate::LoweredBlockId(3),
+            })
+        );
+        assert_eq!(
+            routine.blocks.get(crate::LoweredBlockId(2)).and_then(|block| block.terminator.clone()),
+            Some(LoweredTerminator::Jump {
+                target: crate::LoweredBlockId(1),
+            })
+        );
+        assert_eq!(
+            routine.blocks.get(crate::LoweredBlockId(3)).and_then(|block| block.terminator.clone()),
+            Some(LoweredTerminator::Jump {
+                target: crate::LoweredBlockId(1),
+            })
+        );
+        assert_eq!(
+            routine.blocks.get(crate::LoweredBlockId(1)).and_then(|block| block.terminator.clone()),
+            None
+        );
+        assert_eq!(routine.body_result, Some(crate::LoweredLocalId(3)));
+    }
 }
