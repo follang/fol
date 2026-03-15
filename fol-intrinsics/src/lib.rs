@@ -200,9 +200,13 @@ mod tests {
         assert_eq!(echo.surface, IntrinsicSurface::DotRootCall);
         assert_eq!(echo.availability, IntrinsicAvailability::V1);
         assert_eq!(echo.status, IntrinsicStatus::Implemented);
-        assert_eq!(echo.arity, IntrinsicArity::AtLeast(0));
+        assert_eq!(echo.arity, IntrinsicArity::Exactly(1));
         assert_eq!(echo.lowering_mode, IntrinsicLoweringMode::RuntimeHook);
         assert_eq!(intrinsic_by_alias("print").map(|entry| entry.name), Some("echo"));
+        assert_eq!(
+            echo.docs,
+            "emit a runtime-visible debug value and forward it unchanged"
+        );
     }
 
     #[test]

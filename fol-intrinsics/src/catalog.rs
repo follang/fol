@@ -108,9 +108,9 @@ const INTRINSICS: &[IntrinsicEntry] = &[
         IntrinsicSurface::DotRootCall,
         IntrinsicAvailability::V1,
         IntrinsicStatus::Implemented,
-        IntrinsicArity::AtLeast(0),
+        IntrinsicArity::Exactly(1),
         IntrinsicLoweringMode::RuntimeHook,
-        "emit a runtime-visible debug value",
+        "emit a runtime-visible debug value and forward it unchanged",
     ),
     IntrinsicEntry::new(
         IntrinsicId::new(9),
