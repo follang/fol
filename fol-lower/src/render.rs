@@ -142,17 +142,17 @@ pub fn render_lowered_workspace(workspace: &LoweredWorkspace) -> String {
                     if let Some(instr) = routine.instructions.get(*instr_id) {
                         let _ = writeln!(
                             output,
-                            "      i{} result={} {:?}",
+                            "      i{} result={} {}",
                             instr.id.0,
                             instr
                                 .result
                                 .map(|local| format!("l{}", local.0))
                                 .unwrap_or_else(|| "_".to_string()),
-                            instr.kind
+                            render_instr_kind(&instr.kind)
                         );
                     }
                 }
-                let _ = writeln!(output, "      term {:?}", block.terminator);
+                let _ = writeln!(output, "      term {}", render_terminator(block.terminator.as_ref()));
             }
         }
     }
@@ -171,6 +171,79 @@ pub fn render_lowered_workspace(workspace: &LoweredWorkspace) -> String {
     output
 }
 
+fn render_instr_kind(kind: &crate::LoweredInstrKind) -> String {
+    match kind {
+        crate::LoweredInstrKind::IntrinsicCall { intrinsic, args } => {
+            let name = fol_intrinsics::intrinsic_by_id(*intrinsic)
+                .map(|entry| entry.name)
+                .unwrap_or("<missing>");
+            let role = fol_intrinsics::backend_role_for_intrinsic(*intrinsic)
+                .map(|role| role.as_str())
+                .unwrap_or("unclassified");
+            format!(
+                "IntrinsicCall intrinsic=.{} role={} args={}",
+                name,
+                role,
+                render_local_list(args)
+            )
+        }
+        crate::LoweredInstrKind::RuntimeHook { intrinsic, args } => {
+            let name = fol_intrinsics::intrinsic_by_id(*intrinsic)
+                .map(|entry| entry.name)
+                .unwrap_or("<missing>");
+            let role = fol_intrinsics::backend_role_for_intrinsic(*intrinsic)
+                .map(|role| role.as_str())
+                .unwrap_or("unclassified");
+            format!(
+                "RuntimeHook intrinsic=.{} role={} args={}",
+                name,
+                role,
+                render_local_list(args)
+            )
+        }
+        crate::LoweredInstrKind::LengthOf { operand } => {
+            format!(
+                "LengthOf intrinsic=.len role={} operand=l{}",
+                fol_intrinsics::IntrinsicBackendRole::TargetHelper.as_str(),
+                operand.0
+            )
+        }
+        crate::LoweredInstrKind::CheckRecoverable { operand } => {
+            format!(
+                "CheckRecoverable intrinsic=check role={} operand=l{}",
+                fol_intrinsics::IntrinsicBackendRole::TargetHelper.as_str(),
+                operand.0
+            )
+        }
+        _ => format!("{kind:?}"),
+    }
+}
+
+fn render_terminator(terminator: Option<&crate::LoweredTerminator>) -> String {
+    match terminator {
+        Some(crate::LoweredTerminator::Panic { value }) => format!(
+            "Panic intrinsic=panic role={} value={}",
+            fol_intrinsics::IntrinsicBackendRole::ControlEffect.as_str(),
+            value
+                .map(|local| format!("l{}", local.0))
+                .unwrap_or_else(|| "_".to_string())
+        ),
+        Some(other) => format!("{other:?}"),
+        None => "None".to_string(),
+    }
+}
+
+fn render_local_list(locals: &[crate::LoweredLocalId]) -> String {
+    format!(
+        "[{}]",
+        locals
+            .iter()
+            .map(|local| format!("l{}", local.0))
+            .collect::<Vec<_>>()
+            .join(", ")
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::render_lowered_workspace;
@@ -179,6 +252,7 @@ mod tests {
     use fol_resolver::resolve_workspace;
     use fol_stream::FileStream;
     use fol_typecheck::Typechecker;
+    use std::time::{SystemTime, UNIX_EPOCH};
 
     #[test]
     fn lowered_workspace_snapshot_is_stable_and_human_readable() {
@@ -210,5 +284,48 @@ mod tests {
         assert!(first.contains("package parser"));
         assert!(first.contains("routine"));
         assert!(first.contains("block b0"));
+    }
+
+    #[test]
+    fn rendered_workspace_makes_intrinsic_names_and_roles_explicit() {
+        let fixture = std::env::temp_dir().join(format!(
+            "fol_lower_render_intrinsics_{}.fol",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("system clock should advance for temp names")
+                .as_nanos()
+        ));
+        std::fs::write(
+            &fixture,
+            concat!(
+                "fun[] main(flag: bol, items: seq[int]): bol = {\n",
+                "    .echo(.len(items))\n",
+                "    return .eq(flag, .not(false))\n",
+                "}\n",
+            ),
+        )
+        .expect("should write intrinsic render fixture");
+
+        let mut stream = FileStream::from_file(fixture.to_str().expect("utf8 temp path"))
+            .expect("Should open intrinsic render fixture");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let syntax = parser
+            .parse_package(&mut lexer)
+            .expect("intrinsic render fixture should parse");
+        let resolved = resolve_workspace(syntax).expect("intrinsic render fixture should resolve");
+        let typed = Typechecker::new()
+            .check_resolved_workspace(resolved)
+            .expect("intrinsic render fixture should typecheck");
+        let lowered = Lowerer::new()
+            .lower_typed_workspace(typed)
+            .expect("intrinsic render fixture should lower");
+
+        let rendered = render_lowered_workspace(&lowered);
+
+        assert!(rendered.contains("IntrinsicCall intrinsic=.eq role=pure-op"));
+        assert!(rendered.contains("IntrinsicCall intrinsic=.not role=pure-op"));
+        assert!(rendered.contains("LengthOf intrinsic=.len role=target-helper"));
+        assert!(rendered.contains("RuntimeHook intrinsic=.echo role=runtime-hook"));
     }
 }

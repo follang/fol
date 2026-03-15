@@ -1245,7 +1245,7 @@ Track these in the registry, but do not implement them in the first batch:
   - control effect
   - runtime hook
   - target helper
-- `12.2` `pending` Add deterministic lowered rendering for intrinsic selections
+- `12.2` `done` Add deterministic lowered rendering for intrinsic selections
   so backend bring-up can inspect them.
 - `12.3` `pending` Add lowering verifier checks for impossible intrinsic/result
   combinations.
