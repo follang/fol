@@ -862,6 +862,84 @@ mod integration_tests {
     }
 
     #[test]
+    fn test_cli_lowering_parameter_scope_regression_now_succeeds() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_lowering_parameter_scope");
+        fs::create_dir_all(&temp_root).expect("Should create temp parameter regression fixture dir");
+        let fixture = write_parameter_scope_lowering_fixture(&temp_root);
+
+        let output = run_fol(&[fixture
+            .to_str()
+            .expect("CLI parameter regression fixture path should be utf-8")]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        assert!(
+            output.status.success(),
+            "CLI should compile the repaired parameter-scope lowering repro, got status {:?} and output:\n{}\n{}",
+            output.status.code(),
+            stdout,
+            stderr,
+        );
+        assert!(stdout.contains("Compilation successful"));
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_cli_lowering_container_regression_now_succeeds() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_lowering_container_regression");
+        fs::create_dir_all(&temp_root).expect("Should create temp container regression fixture dir");
+        let fixture = write_container_lowering_fixture(&temp_root);
+
+        let output = run_fol(&[fixture
+            .to_str()
+            .expect("CLI container regression fixture path should be utf-8")]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        assert!(
+            output.status.success(),
+            "CLI should compile the repaired container lowering repro, got status {:?} and output:\n{}\n{}",
+            output.status.code(),
+            stdout,
+            stderr,
+        );
+        assert!(stdout.contains("Compilation successful"));
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_cli_lowering_early_return_when_regression_now_succeeds() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_lowering_early_return_when");
+        fs::create_dir_all(&temp_root).expect("Should create temp early-return regression fixture dir");
+        let fixture = write_early_return_when_fixture(&temp_root);
+
+        let output = run_fol(&[fixture
+            .to_str()
+            .expect("CLI early-return regression fixture path should be utf-8")]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        assert!(
+            output.status.success(),
+            "CLI should compile the repaired early-return when repro, got status {:?} and output:\n{}\n{}",
+            output.status.code(),
+            stdout,
+            stderr,
+        );
+        assert!(stdout.contains("Compilation successful"));
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
     fn test_cli_json_lowering_failures_keep_structured_fields() {
         use std::fs;
 
