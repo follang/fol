@@ -840,7 +840,7 @@ The implementation should land in many small slices.
 #### 5.3 done
 - provide formatter/debug hooks backend-generated record/entry types can use
 
-#### 5.4
+#### 5.4 done
 - add crate-level examples proving how backend-generated structs/enums should
   integrate with runtime traits
 

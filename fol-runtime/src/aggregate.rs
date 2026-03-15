@@ -1,4 +1,40 @@
 //! Runtime trait contracts for backend-generated aggregate types.
+//!
+//! Backend-generated Rust code is expected to:
+//!
+//! 1. define native `struct`/`enum` shapes for lowered records and entries
+//! 2. implement [`FolRecord`] or [`FolEntry`] on those generated types
+//! 3. forward display/echo hooks through [`render_record`] or [`render_entry`]
+//!
+//! Minimal pattern:
+//!
+//! ```ignore
+//! use fol_runtime::prelude::*;
+//!
+//! struct Point {
+//!     x: FolInt,
+//!     y: FolInt,
+//! }
+//!
+//! impl FolRecord for Point {
+//!     fn fol_record_name(&self) -> &'static str {
+//!         "Point"
+//!     }
+//!
+//!     fn fol_record_fields(&self) -> Vec<FolNamedValue> {
+//!         vec![
+//!             FolNamedValue::new("x", self.x.to_string()),
+//!             FolNamedValue::new("y", self.y.to_string()),
+//!         ]
+//!     }
+//! }
+//!
+//! impl FolEchoFormat for Point {
+//!     fn fol_echo_format(&self) -> String {
+//!         render_record(self)
+//!     }
+//! }
+//! ```
 
 use crate::builtins::FolEchoFormat;
 
@@ -196,5 +232,69 @@ mod tests {
 
         assert_eq!(render_echo(&point), "Point { x: 1, y: 2 }");
         assert_eq!(render_echo(&ok), "Status.Ok { count: 9 }");
+    }
+
+    #[test]
+    fn prelude_example_shapes_show_backend_authorship_pattern() {
+        use crate::prelude::{
+            render_entry, render_record, FolEchoFormat, FolEntry, FolInt, FolNamedValue,
+            FolRecord,
+        };
+
+        struct ExamplePoint {
+            x: FolInt,
+            y: FolInt,
+        }
+
+        impl FolRecord for ExamplePoint {
+            fn fol_record_name(&self) -> &'static str {
+                "Point"
+            }
+
+            fn fol_record_fields(&self) -> Vec<FolNamedValue> {
+                vec![
+                    FolNamedValue::new("x", self.x.to_string()),
+                    FolNamedValue::new("y", self.y.to_string()),
+                ]
+            }
+        }
+
+        impl FolEchoFormat for ExamplePoint {
+            fn fol_echo_format(&self) -> String {
+                render_record(self)
+            }
+        }
+
+        enum ExampleStatus {
+            Ok { count: FolInt },
+        }
+
+        impl FolEntry for ExampleStatus {
+            fn fol_entry_name(&self) -> &'static str {
+                "Status"
+            }
+
+            fn fol_entry_variant_name(&self) -> &'static str {
+                "Ok"
+            }
+
+            fn fol_entry_fields(&self) -> Vec<FolNamedValue> {
+                match self {
+                    Self::Ok { count } => vec![FolNamedValue::new("count", count.to_string())],
+                }
+            }
+        }
+
+        impl FolEchoFormat for ExampleStatus {
+            fn fol_echo_format(&self) -> String {
+                render_entry(self)
+            }
+        }
+
+        let point = ExamplePoint { x: 4, y: 9 };
+        let status = ExampleStatus::Ok { count: 2 };
+
+        assert_eq!(point.fol_echo_format(), "Point { x: 4, y: 9 }");
+        assert_eq!(status.fol_echo_format(), "Status.Ok { count: 2 }");
     }
 }
