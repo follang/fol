@@ -443,6 +443,18 @@ fn backend_public_api_shell_smoke_compiles() {
 }
 
 #[test]
+fn backend_error_surface_smoke_compiles() {
+    let error = fol_backend::BackendError::new(
+        fol_backend::BackendErrorKind::BuildFailure,
+        "rust build failed",
+    );
+
+    assert_eq!(error.kind(), fol_backend::BackendErrorKind::BuildFailure);
+    assert_eq!(error.message(), "rust build failed");
+    assert_eq!(error.to_string(), "BackendBuildFailure: rust build failed");
+}
+
+#[test]
 fn intrinsics_public_model_smoke_compiles() {
     assert_eq!(fol_intrinsics::IntrinsicId::new(1).index(), 1);
     assert_eq!(

@@ -871,7 +871,7 @@ not full long-term compiler completion.
 #### 1.2 done
 - add public API shell for backend entrypoints
 
-#### 1.3
+#### 1.3 done
 - add structured backend error types
 
 #### 1.4
