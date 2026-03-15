@@ -2371,6 +2371,100 @@ fn intrinsic_ordered_comparison_typing_rejects_non_ordered_pairs() {
 }
 
 #[test]
+fn intrinsic_comparison_typing_covers_full_v1_scalar_matrix() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "fun[] eq_ints(): bol = {\n\
+             return .eq(1, 1);\n\
+         }\n\
+         fun[] eq_floats(): bol = {\n\
+             return .eq(1.0, 1.0);\n\
+         }\n\
+         fun[] eq_bools(): bol = {\n\
+             return .eq(true, false);\n\
+         }\n\
+         fun[] eq_chars(): bol = {\n\
+             return .eq('a', 'z');\n\
+         }\n\
+         fun[] eq_text(): bol = {\n\
+             return .eq(\"Ada\", \"Lin\");\n\
+         }\n\
+         fun[] lt_ints(): bol = {\n\
+             return .lt(1, 2);\n\
+         }\n\
+         fun[] lt_floats(): bol = {\n\
+             return .lt(1.0, 2.0);\n\
+         }\n\
+         fun[] lt_chars(): bol = {\n\
+             return .lt('a', 'z');\n\
+         }\n\
+         fun[] lt_text(): bol = {\n\
+             return .lt(\"Ada\", \"Lin\");\n\
+         }\n",
+    )]);
+
+    for name in [
+        "eq_ints",
+        "eq_floats",
+        "eq_bools",
+        "eq_chars",
+        "eq_text",
+        "lt_ints",
+        "lt_floats",
+        "lt_chars",
+        "lt_text",
+    ] {
+        let syntax_id = find_named_routine_syntax_id(&typed, name);
+        assert_eq!(
+            typed
+                .typed_node(syntax_id)
+                .and_then(|node| node.inferred_type)
+                .and_then(|type_id| typed.type_table().get(type_id)),
+            Some(&CheckedType::Builtin(BuiltinType::Bool)),
+            "Expected {name} to resolve to bol across the supported V1 scalar matrix",
+        );
+    }
+}
+
+#[test]
+fn intrinsic_comparison_typing_rejects_non_scalar_and_cross_family_pairs() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] bad_container(): bol = {\n\
+             return .eq({1, 2}, {1, 2});\n\
+         }\n\
+         fun[] bad_ordered_bool(): bol = {\n\
+             return .lt(true, false);\n\
+         }\n\
+         fun[] bad_mixed_eq(): bol = {\n\
+             return .eq(1, 1.0);\n\
+         }\n\
+         fun[] bad_mixed_lt(): bol = {\n\
+             return .lt('a', 1);\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error
+                    .message()
+                    .contains(".eq(...) expects two comparable scalar operands")
+        }),
+        "Expected non-scalar equality-family intrinsic diagnostic, got: {errors:?}"
+    );
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error
+                    .message()
+                    .contains(".lt(...) expects two ordered scalar operands")
+        }),
+        "Expected ordered-family intrinsic diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
 fn coercion_policy_rejects_implicit_int_float_cross_family_conversions() {
     let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",
