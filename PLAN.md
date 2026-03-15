@@ -888,7 +888,7 @@ The implementation should land in many small slices.
 #### 8.3 done
 - document name/import expectations for generated crates
 
-#### 8.4
+#### 8.4 done
 - add a backend-integration guide inside crate docs
 
 ### Phase 9: Repo Docs Sync

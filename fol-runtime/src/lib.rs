@@ -135,6 +135,45 @@
 //! - `fol-runtime` remains the single support dependency for current `V1`
 //!   semantics; generated crates should not split the runtime contract across
 //!   multiple ad hoc support crates
+//!
+//! # Backend Integration Guide
+//!
+//! A first Rust backend should integrate with `fol-runtime` in this order:
+//!
+//! 1. Lower a full workspace through `fol-lower` and treat that lowered
+//!    workspace as the only backend input.
+//! 2. Create one generated Rust crate for that lowered workspace.
+//! 3. Add `fol-runtime` as a dependency and import `fol_runtime::prelude as rt`
+//!    in each emitted module.
+//! 4. Emit backend-authored Rust structs and enums for lowered records and
+//!    entries, then implement [`aggregate::FolRecord`] or [`entry::FolEntry`]
+//!    where runtime formatting needs to stay stable.
+//! 5. Map lowered container, shell, and recoverable shapes onto the public
+//!    runtime types:
+//!    - [`containers::FolVec`]
+//!    - [`containers::FolSeq`]
+//!    - [`containers::FolSet`]
+//!    - [`containers::FolMap`]
+//!    - [`shell::FolOption`]
+//!    - [`shell::FolError`]
+//!    - [`abi::FolRecover`]
+//! 6. Lower builtin/runtime-sensitive operations through the prelude helpers
+//!    instead of inlining policy:
+//!    - `rt::len(...)`
+//!    - `rt::echo(...)`
+//!    - `rt::check_recoverable(...)`
+//!    - `rt::outcome_from_recoverable(...)`
+//! 7. Keep pure scalar comparison and boolean negation native in the emitted
+//!    Rust where possible.
+//! 8. Lower top-level entry routines so recoverable outcomes become
+//!    [`entry::FolProcessOutcome`] values with the documented exit-code policy.
+//! 9. Only after emitted Rust typechecks against `fol-runtime` should the
+//!    backend invoke `cargo build` or `rustc`.
+//!
+//! Current `V1` backends should treat `fol-runtime` as stable support code, not
+//! as an optimizer target. If a future backend wants to inline or replace a
+//! runtime helper, it should first preserve the same public behavior and only
+//! then optimize behind that contract.
 
 pub mod abi;
 pub mod aggregate;
