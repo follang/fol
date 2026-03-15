@@ -1195,7 +1195,7 @@ Track these in the registry, but do not implement them in the first batch:
   - `.min`
   - `.max`
   - `.clamp`
-- `8.2` `pending` Decide which of those are real current-`V1` intrinsics versus
+- `8.2` `done` Decide which of those are real current-`V1` intrinsics versus
   “registry only for now”.
 - `8.3` `pending` If any are accepted now, wire them through typecheck and lower
   with exact diagnostics and lowering forms.
