@@ -7,6 +7,7 @@ pub mod decls;
 pub mod exprs;
 pub mod ids;
 pub mod model;
+pub mod render;
 pub mod session;
 pub mod types;
 mod verify;
@@ -28,6 +29,7 @@ pub use model::{
     LoweredSourceMapEntry, LoweredSourceSymbol, LoweredSourceUnit, LoweredSymbolOwnership, LoweredTypeDecl,
     LoweredTypeDeclKind, LoweredFieldLayout, LoweredVariantLayout, LoweredWorkspace,
 };
+pub use render::render_lowered_workspace;
 pub use session::LoweringSession;
 pub use types::{
     LoweredBuiltinType, LoweredRoutineType, LoweredType, LoweredTypeTable,

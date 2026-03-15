@@ -10,7 +10,7 @@ mod compiler_diagnostics;
 
 use clap::{Arg, Command};
 use fol_diagnostics::{DiagnosticLocation, DiagnosticReport, OutputFormat};
-use fol_lower::Lowerer;
+use fol_lower::{render_lowered_workspace, LoweredWorkspace, Lowerer};
 use fol_package::{PackageConfig, PackageSession};
 use fol_parser::ast::AstParser;
 use fol_stream::FileStream;
@@ -47,6 +47,12 @@ fn main() {
                 .value_name("DIR")
                 .help("Explicit installed package-store root for pkg imports"),
         )
+        .arg(
+            Arg::new("dump-lowered")
+                .long("dump-lowered")
+                .help("Print a deterministic lowered-workspace snapshot after a successful compile")
+                .action(clap::ArgAction::SetTrue),
+        )
         .get_matches();
 
     let file_path = matches
@@ -59,6 +65,7 @@ fn main() {
         std_root: matches.get_one::<String>("std-root").cloned(),
         package_store_root: matches.get_one::<String>("package-store-root").cloned(),
     };
+    let dump_lowered = matches.get_flag("dump-lowered");
     let output_format = if json_output {
         OutputFormat::Json
     } else {
@@ -75,7 +82,10 @@ fn main() {
 
     // Try to compile the file
     match compile_file(file_path, &resolver_config, &mut diagnostics) {
-        Ok(_) => {
+        Ok(lowered) => {
+            if dump_lowered && !json_output && !diagnostics.has_errors() {
+                println!("{}", render_lowered_workspace(&lowered));
+            }
             if !json_output && !diagnostics.has_errors() {
                 println!("✓ Compilation successful!");
             }
@@ -101,7 +111,7 @@ fn compile_file(
     file_path: &str,
     resolver_config: &fol_resolver::ResolverConfig,
     diagnostics: &mut DiagnosticReport,
-) -> Result<(), ()> {
+) -> Result<LoweredWorkspace, ()> {
     // Check if file exists
     let path = Path::new(file_path);
     if !path.exists() {
@@ -154,9 +164,9 @@ fn compile_file(
             ) {
                 Ok(resolved) => match Typechecker::new().check_resolved_workspace(resolved) {
                     Ok(typed) => match Lowerer::new().lower_typed_workspace(typed) {
-                        Ok(_) => {
+                        Ok(lowered) => {
                             if !diagnostics.has_errors() {
-                                return Ok(());
+                                return Ok(lowered);
                             }
                         }
                         Err(lowering_errors) => {
@@ -189,7 +199,7 @@ fn compile_file(
         }
     }
 
-    Ok(())
+    Err(())
 }
 
 fn report_input_error(
