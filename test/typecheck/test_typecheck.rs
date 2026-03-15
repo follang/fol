@@ -1276,6 +1276,79 @@ fn pipe_or_typing_rejects_incompatible_fallback_values() {
 }
 
 #[test]
+fn recoverable_calls_do_not_implicitly_convert_into_err_shell_bindings() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] load(): int / str = {\n\
+             report \"bad\";\n\
+             return 1;\n\
+         }\n\
+         fun[] main(): err[int] / str = {\n\
+             var captured: err[int] = load();\n\
+             return captured;\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::Unsupported
+                && error.message().contains("cannot implicitly convert a routine result with '/ ErrorType' into an err[...] shell in V1")
+                && error.message().contains("initializer for 'captured'")
+        }),
+        "Expected the err-shell binding boundary diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
+fn recoverable_calls_do_not_implicitly_convert_into_err_shell_returns() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] load(): int / str = {\n\
+             report \"bad\";\n\
+             return 1;\n\
+         }\n\
+         fun[] main(): err[int] / str = {\n\
+             return load();\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::Unsupported
+                && error.message().contains("cannot implicitly convert a routine result with '/ ErrorType' into an err[...] shell in V1")
+                && error.message().contains("return cannot implicitly convert")
+        }),
+        "Expected the err-shell return boundary diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
+fn recoverable_calls_do_not_implicitly_convert_into_err_shell_arguments() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] load(): int / str = {\n\
+             report \"bad\";\n\
+             return 1;\n\
+         }\n\
+         fun[] consume(value: err[int]): int = {\n\
+             return 1;\n\
+         }\n\
+         fun[] main(): int / str = {\n\
+             return consume(load());\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::Unsupported
+                && error.message().contains("cannot implicitly convert a routine result with '/ ErrorType' into an err[...] shell in V1")
+                && error.message().contains("call to 'consume'")
+        }),
+        "Expected the err-shell call-argument boundary diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
 fn when_result_typing_accepts_matching_branch_values() {
     let typed = typecheck_fixture_folder(&[(
         "main.fol",

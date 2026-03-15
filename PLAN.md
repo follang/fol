@@ -425,10 +425,15 @@ or deliberately rejected.
   - `check(...)` and `||` now reject `err[...]` shell operands with explicit
     diagnostics explaining that they operate on routine call results with
     `/ ErrorType`, not shell values
-- `5.2` `pending` Decide whether explicit conversion between:
+- `5.2` `done` Decide whether explicit conversion between:
   - routine error call results
   - `err[...]` shell values
   belongs in `V1` or later.
+  Current state:
+  - `V1` does not permit implicit conversion from routine call results with
+    `/ ErrorType` into `err[...]` shell values
+  - binding, return, call-argument, and record-field contexts now reject that
+    conversion explicitly with guidance toward propagation, `check(...)`, or `||`
 - `5.3` `pending` Lock `V1` postfix unwrap behavior so it stays limited to shell
   values unless a deliberate new call-unwrap surface is introduced.
 

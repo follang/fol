@@ -914,6 +914,13 @@ fn type_binding_initializer(
 
     match (declared_type, initializer_expr) {
         (Some(expected), Some(actual_expr)) => {
+            reject_recoverable_error_shell_conversion(
+                typed,
+                expected,
+                &actual_expr,
+                value.and_then(|node| node_origin(resolved, node)),
+                format!("initializer for '{name}'"),
+            )?;
             let actual_expr = plain_value_expr(
                 typed,
                 context,
@@ -1393,6 +1400,13 @@ fn type_record_init(
                     .map_or(error.clone(), |origin| error.with_fallback_origin(origin))
             })?
             ;
+        reject_recoverable_error_shell_conversion(
+            typed,
+            field_type,
+            &actual_expr,
+            field_origin.clone(),
+            format!("record field '{}'", field.name),
+        )?;
         let actual_expr = plain_value_expr(
             typed,
             context,
@@ -1660,6 +1674,13 @@ fn type_return(
             node_origin(resolved, value)
                 .map_or(error.clone(), |origin| error.with_fallback_origin(origin))
         })?;
+    reject_recoverable_error_shell_conversion(
+        typed,
+        expected,
+        &actual,
+        node_origin(resolved, value),
+        "return",
+    )?;
     let actual = plain_value_expr(
         typed,
         context,
@@ -2150,6 +2171,13 @@ fn check_call_arguments(
                     .or_else(|| node_origin(resolved, arg))
                     .map_or(error.clone(), |origin| error.with_fallback_origin(origin))
             })?;
+        reject_recoverable_error_shell_conversion(
+            typed,
+            *expected,
+            &actual_expr,
+            origin.clone().or_else(|| node_origin(resolved, arg)),
+            format!("call to '{callee}'"),
+        )?;
         let actual_expr = plain_value_expr(
             typed,
             context,
@@ -2325,6 +2353,27 @@ fn is_error_shell_type(
         typed.type_table().get(apparent),
         Some(CheckedType::Error { .. })
     ))
+}
+
+fn reject_recoverable_error_shell_conversion(
+    typed: &TypedProgram,
+    expected_type: CheckedTypeId,
+    actual_expr: &TypedExpr,
+    origin: Option<SyntaxOrigin>,
+    surface: impl Into<String>,
+) -> Result<(), TypecheckError> {
+    if actual_expr.recoverable_effect.is_none() || !is_error_shell_type(typed, expected_type)? {
+        return Ok(());
+    }
+
+    let message = format!(
+        "{} cannot implicitly convert a routine result with '/ ErrorType' into an err[...] shell in V1; use propagation, check(...), or '||' instead",
+        surface.into()
+    );
+    Err(match origin {
+        Some(origin) => TypecheckError::with_origin(TypecheckErrorKind::Unsupported, message, origin),
+        None => TypecheckError::new(TypecheckErrorKind::Unsupported, message),
+    })
 }
 
 fn unwrap_shell_result_type(
