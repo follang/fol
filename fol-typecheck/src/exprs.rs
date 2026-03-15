@@ -600,19 +600,13 @@ fn type_binary_op(
 ) -> Result<TypedExpr, TypecheckError> {
     match op {
         BinaryOperator::As => {
-            return Err(unsupported_binary_surface(
-                resolved,
-                left,
-                right,
-                "explicit 'as' casts are not part of the V1 typecheck milestone",
+            return Err(unsupported_conversion_intrinsic(
+                resolved, left, right, "as",
             ));
         }
         BinaryOperator::Cast => {
-            return Err(unsupported_binary_surface(
-                resolved,
-                left,
-                right,
-                "explicit 'cast' operators are not part of the V1 typecheck milestone",
+            return Err(unsupported_conversion_intrinsic(
+                resolved, left, right, "cast",
             ));
         }
         BinaryOperator::Pipe | BinaryOperator::PipeOr
@@ -3500,6 +3494,19 @@ fn unsupported_binary_surface(
     } else {
         TypecheckError::new(TypecheckErrorKind::Unsupported, message)
     }
+}
+
+fn unsupported_conversion_intrinsic(
+    resolved: &ResolvedProgram,
+    left: &AstNode,
+    right: &AstNode,
+    name: &str,
+) -> TypecheckError {
+    let message = match select_intrinsic(IntrinsicSurface::OperatorAlias, name) {
+        Ok(entry) => fol_intrinsics::unsupported_intrinsic_message(entry),
+        Err(_) => format!("unsupported conversion operator '{name}'"),
+    };
+    unsupported_binary_surface(resolved, left, right, message)
 }
 
 fn unsupported_node_surface(

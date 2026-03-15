@@ -14,7 +14,7 @@ fn render_intrinsic_spelling(entry: &IntrinsicEntry) -> String {
         IntrinsicSurface::DotRootCall => format!(".{}(...)", entry.name),
         IntrinsicSurface::KeywordCall => format!("{}(...)", entry.name),
         IntrinsicSurface::Postfix => format!("...{} ", entry.name),
-        IntrinsicSurface::OperatorAlias => entry.name.to_string(),
+        IntrinsicSurface::OperatorAlias => format!("operator '{}'", entry.name),
     }
 }
 

@@ -1208,7 +1208,7 @@ Track these in the registry, but do not implement them in the first batch:
 - `9.2` `done` Decide whether casts are:
   - a sub-milestone inside current `V1`, or
   - explicit unsupported until a later conversion plan
-- `9.3` `pending` If still deferred, route all cast surfaces through the
+- `9.3` `done` If still deferred, route all cast surfaces through the
   intrinsic registry and emit one stable diagnostic family.
 - `9.4` `pending` Add tests proving cast diagnostics mention intrinsic intent,
   not generic operator failure.
