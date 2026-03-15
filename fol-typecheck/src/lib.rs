@@ -15,8 +15,8 @@ pub mod types;
 pub use builtins::BuiltinTypeIds;
 pub use errors::{TypecheckError, TypecheckErrorKind};
 pub use model::{
-    TypedExportMount, TypedNode, TypedPackage, TypedProgram, TypedReference, TypedSourceUnit, TypedSymbol,
-    TypedWorkspace,
+    RecoverableCallEffect, TypedExportMount, TypedNode, TypedPackage, TypedProgram, TypedReference,
+    TypedSourceUnit, TypedSymbol, TypedWorkspace,
 };
 pub use types::{
     BuiltinType, CheckedType, CheckedTypeId, DeclaredTypeKind, RoutineType, TypeTable,

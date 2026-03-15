@@ -261,8 +261,11 @@ or deliberately rejected.
 
 ### Phase 1. Typecheck Error-Call Model
 
-- `1.1` `pending` Introduce a typecheck-owned representation for errorful routine
+- `1.1` `done` Introduce a typecheck-owned representation for errorful routine
   call results so they are no longer treated as plain values too early.
+  Current state:
+  - typed references and inferred bindings can retain a recoverable error effect
+  - expression typing now carries that effect internally instead of flattening it immediately
 - `1.2` `pending` Make ordinary use of an errorful call illegal unless the
   surrounding context is one of the approved `V1` consumers.
 - `1.3` `pending` Implement propagation typing:

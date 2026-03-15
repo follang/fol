@@ -1021,6 +1021,65 @@ fn routine_error_typing_rejects_missing_report_values() {
 }
 
 #[test]
+fn routine_error_calls_keep_recoverable_effects_on_call_references() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "fun[] load(): int / str = {\n\
+             report \"bad\";\n\
+             return 1;\n\
+         }\n\
+         fun[] main(): int / str = {\n\
+             return load();\n\
+         }\n",
+    )]);
+
+    let reference = find_typed_reference(&typed, "load", ReferenceKind::FunctionCall);
+
+    assert_eq!(
+        reference
+            .resolved_type
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+    assert_eq!(
+        reference
+            .recoverable_effect
+            .and_then(|effect| typed.type_table().get(effect.error_type)),
+        Some(&CheckedType::Builtin(BuiltinType::Str))
+    );
+}
+
+#[test]
+fn inferred_bindings_can_keep_recoverable_call_effects() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "fun[] load(): int / str = {\n\
+             report \"bad\";\n\
+             return 1;\n\
+         }\n\
+         fun[] main(): int / str = {\n\
+             var current = load();\n\
+             return 0;\n\
+         }\n",
+    )]);
+
+    let (_current_id, current) = find_typed_symbol(&typed, "current", SymbolKind::ValueBinding);
+
+    assert_eq!(
+        current
+            .declared_type
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+    assert_eq!(
+        current
+            .recoverable_effect
+            .and_then(|effect| typed.type_table().get(effect.error_type)),
+        Some(&CheckedType::Builtin(BuiltinType::Str))
+    );
+}
+
+#[test]
 fn when_result_typing_accepts_matching_branch_values() {
     let typed = typecheck_fixture_folder(&[(
         "main.fol",
