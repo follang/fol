@@ -48,7 +48,7 @@ Floating-point numbers are represented according to the IEEE-754 standard. The `
 pro[] main: int = {
     var aVar: flt = 2.;                         // float 64 bit
     var bVar: flt[64] = .3;                     // float 64 bit
-    .assert(.sizeof(aVar) == .sizeof(bVar))     // this will true
+    .echo(.eq(aVar, bVar))                      // compare values with the V1 intrinsic surface
 
     var bVar: flt[32] = .54;                    // float 32 bit
 }
@@ -62,15 +62,17 @@ chr[utf8,utf16,utf32]
 ```
 def testChars: tst["some testing on chars"] = {
     var bytes = "hello";
-    .assert(.typeof(bytes) == *var [5:0]u8);
-    .assert(bytes.len == 5);
-    .assert(bytes[1] == "e");
-    .assert(bytes[5] == 0);
-    .assert("e" == "\x65");
-    .assert("\u{1f4a9}" == 128169);
-    .assert("💯" == 128175);
-    .assert(.mem.eql(u8, "hello", "h\x65llo"));
+    .echo(.len(bytes));
+    .echo(bytes[1]);
+    .echo(.eq("e", "\x65"));
 }
+
+Current `V1` intrinsic note:
+
+- `.eq(...)` is implemented for scalar equality
+- `.len(...)` is implemented for strings and supported containers
+- older helper surfaces such as `.assert(...)`, `.typeof(...)`, and related
+  compile-time queries are not part of the current implemented intrinsic subset
 ```
 ### Boolean type
 The boolean type is named `bol` in Fol and can be one of the two pre-defined values `true` and `false`. 

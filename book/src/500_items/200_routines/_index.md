@@ -186,6 +186,14 @@ fun[] read(path: str): int / str = {
 ```
 and are handled at the call site with propagation, `check(...)`, or `||`
 rather than shell unwrap.
+
+Current intrinsic note:
+
+- `.echo(...)` is a dot-root diagnostic intrinsic
+- `check(...)` is a keyword intrinsic for recoverable-call inspection
+- `panic(...)` is a keyword intrinsic for immediate abort
+- `as` and `cast` are registry-owned but still deferred in current `V1`
+
 The final expression in the function will be used as return value. For this to be used, the return type of the function needs to be defined (so the function cnat be in the short form)). ver this can be used only in one statement body.
 ```
 pro main(): int = {

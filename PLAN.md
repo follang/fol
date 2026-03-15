@@ -1254,7 +1254,7 @@ Track these in the registry, but do not implement them in the first batch:
 
 - `13.1` `done` Rewrite [`book/src/300_meta/100_buildin.md`](./book/src/300_meta/100_buildin.md)
   into an “intrinsics” page with the actual current subset.
-- `13.2` `pending` Sync the relevant type/sugar/routine pages to the registry
+- `13.2` `done` Sync the relevant type/sugar/routine pages to the registry
   contract.
 - `13.3` `pending` Update [`README.md`](./README.md) and [`PROGRESS.md`](./PROGRESS.md)
   to describe `fol-intrinsics` as shared compiler infrastructure.
