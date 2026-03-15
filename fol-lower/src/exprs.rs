@@ -2928,6 +2928,44 @@ mod tests {
             .expect("lowering should emit at least one error")
     }
 
+    fn lower_folder_fixture_error(files: &[(&str, &str)]) -> crate::LoweringError {
+        let root = std::env::temp_dir().join(format!(
+            "fol_lower_negative_folder_{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system clock should be monotonic enough for tmp names")
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&root).expect("should create lowering folder fixture root");
+        for (path, source) in files {
+            let full_path = root.join(path);
+            if let Some(parent) = full_path.parent() {
+                std::fs::create_dir_all(parent)
+                    .expect("should create lowering folder fixture parent directories");
+            }
+            std::fs::write(&full_path, source).expect("should write lowering folder fixture");
+        }
+
+        let app_root = root.join("app");
+        let mut stream = FileStream::from_folder(app_root.to_str().expect("utf8 temp path"))
+            .expect("Should open lowering folder fixture");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let syntax = parser
+            .parse_package(&mut lexer)
+            .expect("Lowering folder fixture should parse");
+        let resolved = resolve_workspace(syntax).expect("Lowering folder fixture should resolve");
+        let typed = Typechecker::new()
+            .check_resolved_workspace(resolved)
+            .expect("Lowering folder fixture should typecheck");
+        crate::LoweringSession::new(typed)
+            .lower_workspace()
+            .expect_err("folder fixture should fail during lowering")
+            .into_iter()
+            .next()
+            .expect("lowering should emit at least one error")
+    }
+
     #[test]
     fn literal_lowering_emits_constant_instructions_into_the_current_block() {
         let mut types = LoweredTypeTable::new();
@@ -2970,6 +3008,46 @@ mod tests {
         assert_eq!(
             routine.instructions.get(crate::LoweredInstrId(2)).map(|instr| &instr.kind),
             Some(&LoweredInstrKind::Const(LoweredOperand::Str("ok".to_string())))
+        );
+    }
+
+    #[test]
+    fn lowering_repro_reports_parameter_symbol_losses_in_control_flow_heavy_bodies() {
+        let error = lower_folder_fixture_error(&[
+            (
+                "shared/lib.fol",
+                concat!(
+                    "typ[exp] User: rec = {\n",
+                    "    count: int;\n",
+                    "}\n",
+                    "fun[exp] fallback(): int = {\n",
+                    "    return 2;\n",
+                    "}\n",
+                    "fun[exp] (User)read(): int = {\n",
+                    "    return 7;\n",
+                    "}\n",
+                ),
+            ),
+            (
+                "app/main.fol",
+                concat!(
+                    "use shared: loc = {\"../shared\"};\n",
+                    "fun[] decide(flag: bol, user: User): int = {\n",
+                    "    when(flag) {\n",
+                    "        case(true) { user.read() }\n",
+                    "        * { fallback() }\n",
+                    "    }\n",
+                    "}\n",
+                ),
+            ),
+        ]);
+
+        assert_eq!(error.kind(), LoweringErrorKind::InvalidInput);
+        assert!(
+            error
+                .message()
+                .contains("value symbol 'flag' does not map to a lowered local or global definition"),
+            "expected the current parameter-lowering repro to stay explicit, got: {error:?}"
         );
     }
 
