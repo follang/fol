@@ -2552,6 +2552,52 @@ fn intrinsic_query_typing_rejects_non_query_receiver_families() {
 }
 
 #[test]
+fn intrinsic_query_typing_distinguishes_implemented_and_deferred_families() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "fun[] count(items: seq[int]): int = {\n\
+             return .len(items);\n\
+         }\n",
+    )]);
+    let count_syntax_id = find_named_routine_syntax_id(&typed, "count");
+    assert_eq!(
+        typed
+            .typed_node(count_syntax_id)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Int)),
+        "Expected .len(...) to remain the implemented V1 query intrinsic",
+    );
+
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] capacity(items: seq[int]): int = {\n\
+             return .cap(items);\n\
+         }\n\
+         fun[] low_bound(items: seq[int]): int = {\n\
+             return .low(items);\n\
+         }\n\
+         fun[] minimum(left: int, right: int): int = {\n\
+             return .min(left, right);\n\
+         }\n",
+    )]);
+
+    for expected in [
+        ".cap(...) is not implemented in the current V1 compiler milestone",
+        ".low(...) is not implemented in the current V1 compiler milestone",
+        ".min(...) is not implemented in the current V1 compiler milestone",
+    ] {
+        assert!(
+            errors.iter().any(|error| {
+                error.kind() == TypecheckErrorKind::Unsupported
+                    && error.message().contains(expected)
+            }),
+            "Expected deferred intrinsic diagnostic containing '{expected}', got: {errors:?}"
+        );
+    }
+}
+
+#[test]
 fn intrinsic_diagnostic_typing_accepts_echo_as_a_value_preserving_tap() {
     let typed = typecheck_fixture_folder(&[(
         "main.fol",

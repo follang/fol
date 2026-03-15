@@ -1199,7 +1199,7 @@ Track these in the registry, but do not implement them in the first batch:
   “registry only for now”.
 - `8.3` `pending` If any are accepted now, wire them through typecheck and lower
   with exact diagnostics and lowering forms.
-- `8.4` `pending` Add tests proving accepted and deferred query intrinsics are
+- `8.4` `done` Add tests proving accepted and deferred query intrinsics are
   both classified explicitly.
 
 ### Phase 9. Cast / Conversion Preparation
