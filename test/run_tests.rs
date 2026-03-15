@@ -1133,6 +1133,89 @@ mod integration_tests {
     }
 
     #[test]
+    fn test_cli_recoverable_abi_stays_stable_across_workspace_call_paths() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_error_abi_workspace");
+        let app_root = temp_root.join("app");
+        let shared_root = temp_root.join("shared");
+        fs::create_dir_all(&app_root).expect("Should create app root");
+        fs::create_dir_all(&shared_root).expect("Should create shared root");
+        fs::write(
+            shared_root.join("lib.fol"),
+            concat!(
+                "fun[exp] remote(flag: bol): int / str = {\n",
+                "    when(flag) {\n",
+                "        case(true) { report \"shared-bad\" }\n",
+                "        * { return 7 }\n",
+                "    }\n",
+                "}\n",
+            ),
+        )
+        .expect("Should write shared recoverable fixture");
+        fs::write(
+            app_root.join("00_leaf.fol"),
+            concat!(
+                "fun[] leaf(flag: bol): int / str = {\n",
+                "    when(flag) {\n",
+                "        case(true) { report \"leaf-bad\" }\n",
+                "        * { return 5 }\n",
+                "    }\n",
+                "}\n",
+            ),
+        )
+        .expect("Should write local recoverable fixture");
+        fs::write(
+            app_root.join("05_mid.fol"),
+            concat!(
+                "use shared: loc = {\"../shared\"};\n",
+                "fun[] mid(flag: bol): int / str = {\n",
+                "    loop(flag) {\n",
+                "        break\n",
+                "    }\n",
+                "    when(flag) {\n",
+                "        case(true) { return remote(flag) }\n",
+                "        * { return leaf(flag) }\n",
+                "    }\n",
+                "}\n",
+            ),
+        )
+        .expect("Should write middle recoverable fixture");
+        fs::write(
+            app_root.join("10_main.fol"),
+            concat!(
+                "fun[] main(flag: bol): int / str = {\n",
+                "    when(flag) {\n",
+                "        case(true) { return mid(flag) }\n",
+                "        * { return leaf(flag) }\n",
+                "    }\n",
+                "}\n",
+            ),
+        )
+        .expect("Should write entry recoverable fixture");
+
+        let output = run_fol(&[
+            "--dump-lowered",
+            app_root
+                .to_str()
+                .expect("app root should be valid utf-8 for dump-lowered"),
+        ]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        assert!(
+            output.status.success(),
+            "recoverable ABI workspace fixture should compile, got:\n{stdout}"
+        );
+        assert!(stdout.contains("recoverable-abi kind=tagged-result-object"));
+        assert!(stdout.contains("package app"));
+        assert!(stdout.contains("package shared"));
+        assert!(stdout.contains("CheckRecoverable"));
+        assert!(stdout.contains("ExtractRecoverableError"));
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
     fn test_cli_json_lowering_failures_keep_structured_fields() {
         use std::fs;
 

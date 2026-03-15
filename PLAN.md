@@ -362,11 +362,16 @@ or deliberately rejected.
   - lowered workspaces now carry an explicit `TaggedResultObject` recoverable ABI
   - the frozen `V1` contract uses a boolean tag plus `value` and `error` slots
   - lowered rendering exposes that ABI directly for backend-facing inspection
-- `3.2` `pending` Ensure the chosen representation works for:
+- `3.2` `done` Ensure the chosen representation works for:
   - same-package calls
   - imported `loc/std/pkg` calls
   - nested routine calls
   - calls inside `when` / loops / returns
+  Current state:
+  - CLI lowering fixtures now lock the recoverable ABI line across same-package
+    routines, imported `loc` calls, and control-flow-heavy call paths
+  - the chosen representation stays stable through `when`, `loop`, and direct
+    `return` propagation surfaces
 - `3.3` `pending` Document the runtime meaning of:
   - success
   - failure
