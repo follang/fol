@@ -4,6 +4,7 @@ use crate::{
     LoweredGlobalId, LoweredPackage, LoweredRoutine, LoweredRoutineId, LoweredWorkspace,
     LoweringError, LoweringErrorKind,
 };
+use fol_intrinsics::{select_intrinsic, IntrinsicEntry, IntrinsicSurface};
 use fol_parser::ast::{AstNode, CallSurface, ContainerType, Literal, LoopCondition};
 use fol_resolver::{
     MountedSymbolProvenance, PackageIdentity, ResolvedSymbol, ScopeId, SourceUnitId, SymbolId,
@@ -695,6 +696,36 @@ fn lower_body_node(
             };
             cursor.terminate_current_block(crate::LoweredTerminator::Report { value: lowered })?;
             Ok(None)
+        }
+        AstNode::FunctionCall { syntax_id, name, args, .. } => {
+            if let Ok(entry) = select_intrinsic(IntrinsicSurface::KeywordCall, name) {
+                lower_keyword_intrinsic_statement(
+                    typed_package,
+                    type_table,
+                    checked_type_map,
+                    current_identity,
+                    decl_index,
+                    cursor,
+                    source_unit_id,
+                    scope_id,
+                    entry,
+                    *syntax_id,
+                    args,
+                )
+            } else {
+                lower_expression(
+                    typed_package,
+                    type_table,
+                    checked_type_map,
+                    current_identity,
+                    decl_index,
+                    cursor,
+                    source_unit_id,
+                    scope_id,
+                    node,
+                )
+                .map(Some)
+            }
         }
         AstNode::When {
             expr,
@@ -2037,6 +2068,131 @@ fn lower_check_call(
     })
 }
 
+fn lower_keyword_intrinsic_expression(
+    typed_package: &fol_typecheck::TypedPackage,
+    type_table: &crate::LoweredTypeTable,
+    checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
+    current_identity: &PackageIdentity,
+    decl_index: &WorkspaceDeclIndex,
+    cursor: &mut RoutineCursor<'_>,
+    source_unit_id: SourceUnitId,
+    scope_id: ScopeId,
+    entry: &IntrinsicEntry,
+    syntax_id: Option<fol_parser::ast::SyntaxNodeId>,
+    args: &[AstNode],
+) -> Result<LoweredValue, LoweringError> {
+    match entry.name {
+        "check" => lower_check_call(
+            typed_package,
+            type_table,
+            checked_type_map,
+            current_identity,
+            decl_index,
+            cursor,
+            source_unit_id,
+            scope_id,
+            syntax_id,
+            args,
+        ),
+        "panic" => Err(LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            "panic lowering requires a statement or control-flow context in V1",
+        )),
+        other => Err(LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            format!("unsupported keyword intrinsic expression '{other}(...)'"),
+        )),
+    }
+}
+
+fn lower_keyword_intrinsic_statement(
+    typed_package: &fol_typecheck::TypedPackage,
+    type_table: &crate::LoweredTypeTable,
+    checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
+    current_identity: &PackageIdentity,
+    decl_index: &WorkspaceDeclIndex,
+    cursor: &mut RoutineCursor<'_>,
+    source_unit_id: SourceUnitId,
+    scope_id: ScopeId,
+    entry: &IntrinsicEntry,
+    syntax_id: Option<fol_parser::ast::SyntaxNodeId>,
+    args: &[AstNode],
+) -> Result<Option<LoweredValue>, LoweringError> {
+    match entry.name {
+        "panic" => {
+            lower_keyword_panic_terminator(
+                typed_package,
+                type_table,
+                checked_type_map,
+                current_identity,
+                decl_index,
+                cursor,
+                source_unit_id,
+                scope_id,
+                args,
+            )?;
+            Ok(None)
+        }
+        "check" => lower_keyword_intrinsic_expression(
+            typed_package,
+            type_table,
+            checked_type_map,
+            current_identity,
+            decl_index,
+            cursor,
+            source_unit_id,
+            scope_id,
+            entry,
+            syntax_id,
+            args,
+        )
+        .map(Some),
+        other => Err(LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            format!("unsupported keyword intrinsic statement '{other}(...)'"),
+        )),
+    }
+}
+
+fn lower_keyword_panic_terminator(
+    typed_package: &fol_typecheck::TypedPackage,
+    type_table: &crate::LoweredTypeTable,
+    checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
+    current_identity: &PackageIdentity,
+    decl_index: &WorkspaceDeclIndex,
+    cursor: &mut RoutineCursor<'_>,
+    source_unit_id: SourceUnitId,
+    scope_id: ScopeId,
+    args: &[AstNode],
+) -> Result<(), LoweringError> {
+    let lowered = match args {
+        [value] => Some(
+            lower_expression_expected(
+                typed_package,
+                type_table,
+                checked_type_map,
+                current_identity,
+                decl_index,
+                cursor,
+                source_unit_id,
+                scope_id,
+                None,
+                value,
+            )?
+            .local_id,
+        ),
+        [] => None,
+        _ => {
+            return Err(LoweringError::with_kind(
+                LoweringErrorKind::InvalidInput,
+                format!("panic expects at most 1 value in lowered V1, got {}", args.len()),
+            ))
+        }
+    };
+    cursor.terminate_current_block(crate::LoweredTerminator::Panic { value: lowered })?;
+    Ok(())
+}
+
 fn lower_dot_intrinsic_call(
     typed_package: &fol_typecheck::TypedPackage,
     type_table: &crate::LoweredTypeTable,
@@ -2297,32 +2453,25 @@ fn lower_pipe_or_fallback(
             Ok(None)
         }
         AstNode::FunctionCall { name, args, .. } if name == "panic" => {
-            let lowered = match args.as_slice() {
-                [value] => Some(
-                    lower_expression_expected(
-                        typed_package,
-                        type_table,
-                        checked_type_map,
-                        current_identity,
-                        decl_index,
-                        cursor,
-                        source_unit_id,
-                        scope_id,
-                        None,
-                        value,
-                    )?
-                    .local_id,
-                ),
-                [] => None,
-                _ => {
-                    return Err(LoweringError::with_kind(
-                        LoweringErrorKind::InvalidInput,
-                        format!("panic expects at most 1 value in lowered V1, got {}", args.len()),
-                    ))
-                }
-            };
-            cursor.terminate_current_block(crate::LoweredTerminator::Panic { value: lowered })?;
-            Ok(None)
+            let entry = select_intrinsic(IntrinsicSurface::KeywordCall, "panic").map_err(|_| {
+                LoweringError::with_kind(
+                    LoweringErrorKind::InvalidInput,
+                    "panic should remain a keyword intrinsic in lowered V1",
+                )
+            })?;
+            lower_keyword_intrinsic_statement(
+                typed_package,
+                type_table,
+                checked_type_map,
+                current_identity,
+                decl_index,
+                cursor,
+                source_unit_id,
+                scope_id,
+                entry,
+                None,
+                args,
+            )
         }
         AstNode::Return { .. } => {
             let _ = lower_body_node(
@@ -2529,32 +2678,38 @@ fn lower_expression_observed(
             name,
             args,
         ),
-        AstNode::FunctionCall { syntax_id, name, args, .. } if name == "check" => lower_check_call(
-            typed_package,
-            type_table,
-            checked_type_map,
-            current_identity,
-            decl_index,
-            cursor,
-            source_unit_id,
-            scope_id,
-            *syntax_id,
-            args,
-        ),
-        AstNode::FunctionCall { syntax_id, name, args, .. } => lower_function_call(
-            typed_package,
-            type_table,
-            checked_type_map,
-            current_identity,
-            decl_index,
-            cursor,
-            source_unit_id,
-            scope_id,
-            *syntax_id,
-            fol_resolver::ReferenceKind::FunctionCall,
-            name,
-            args,
-        ),
+        AstNode::FunctionCall { syntax_id, name, args, .. } => {
+            if let Ok(entry) = select_intrinsic(IntrinsicSurface::KeywordCall, name) {
+                lower_keyword_intrinsic_expression(
+                    typed_package,
+                    type_table,
+                    checked_type_map,
+                    current_identity,
+                    decl_index,
+                    cursor,
+                    source_unit_id,
+                    scope_id,
+                    entry,
+                    *syntax_id,
+                    args,
+                )
+            } else {
+                lower_function_call(
+                    typed_package,
+                    type_table,
+                    checked_type_map,
+                    current_identity,
+                    decl_index,
+                    cursor,
+                    source_unit_id,
+                    scope_id,
+                    *syntax_id,
+                    fol_resolver::ReferenceKind::FunctionCall,
+                    name,
+                    args,
+                )
+            }
+        }
         AstNode::QualifiedFunctionCall { path, args } => lower_function_call(
             typed_package,
             type_table,
@@ -4966,6 +5121,29 @@ mod tests {
                 "}\n",
                 "fun[] main(flag: bol): int = {\n",
                 "    return load(flag) || panic \"fallback\"\n",
+                "}\n",
+            ),
+        );
+
+        let routine = lowered
+            .entry_package()
+            .routine_decls
+            .values()
+            .find(|routine| routine.name == "main")
+            .expect("main routine should exist");
+
+        assert!(routine.blocks.iter().any(|block| matches!(
+            block.terminator,
+            Some(LoweredTerminator::Panic { .. })
+        )));
+    }
+
+    #[test]
+    fn standalone_panic_lowering_uses_keyword_intrinsic_terminators() {
+        let lowered = lower_fixture_workspace(
+            concat!(
+                "fun[] main(): int = {\n",
+                "    panic \"boom\"\n",
                 "}\n",
             ),
         );

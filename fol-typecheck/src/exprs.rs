@@ -385,18 +385,6 @@ fn type_node_with_expectation(
         AstNode::FunctionCall {
             name,
             args,
-            syntax_id: _,
-            ..
-        } if name == "panic" => type_panic_call(typed, resolved, context, args),
-        AstNode::FunctionCall {
-            name,
-            args,
-            syntax_id,
-            ..
-        } if name == "check" => type_check_call(typed, resolved, context, args, *syntax_id),
-        AstNode::FunctionCall {
-            name,
-            args,
             syntax_id,
             ..
         } if name == "report" => type_report_call(typed, resolved, context, args, *syntax_id),
@@ -405,7 +393,20 @@ fn type_node_with_expectation(
             args,
             syntax_id,
             ..
-        } => type_function_call(typed, resolved, context, name, args, *syntax_id),
+        } => {
+            if let Ok(entry) = select_intrinsic(IntrinsicSurface::KeywordCall, name) {
+                type_keyword_intrinsic_call(
+                    typed,
+                    resolved,
+                    context,
+                    entry,
+                    args,
+                    *syntax_id,
+                )
+            } else {
+                type_function_call(typed, resolved, context, name, args, *syntax_id)
+            }
+        }
         AstNode::QualifiedFunctionCall { path, args } => {
             type_qualified_function_call(typed, resolved, context, path, args)
         }
@@ -1867,6 +1868,28 @@ fn type_panic_call(
     }
     let merged = merge_recoverable_effects(typed, None, "panic call", arg_effects)?;
     Ok(TypedExpr::value(typed.builtin_types().never).with_optional_effect(merged))
+}
+
+fn type_keyword_intrinsic_call(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    entry: &fol_intrinsics::IntrinsicEntry,
+    args: &[AstNode],
+    syntax_id: Option<SyntaxNodeId>,
+) -> Result<TypedExpr, TypecheckError> {
+    if let Some(syntax_id) = syntax_id {
+        typed.record_node_intrinsic(syntax_id, context.source_unit_id, entry.id)?;
+    }
+
+    match entry.name {
+        "panic" => type_panic_call(typed, resolved, context, args),
+        "check" => type_check_call(typed, resolved, context, args, syntax_id),
+        other => Err(TypecheckError::new(
+            TypecheckErrorKind::InvalidInput,
+            format!("unsupported keyword intrinsic dispatch '{other}(...)'"),
+        )),
+    }
 }
 
 fn type_check_call(
