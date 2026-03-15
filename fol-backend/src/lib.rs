@@ -1,6 +1,7 @@
 //! Backend foundations for turning lowered `V1` FOL workspaces into runnable artifacts.
 
 mod config;
+mod emit;
 mod error;
 mod identity;
 mod layout;
@@ -28,6 +29,7 @@ pub fn crate_name() -> &'static str {
 }
 
 pub use config::{BackendConfig, BackendMode, BackendTarget};
+pub use emit::emit_cargo_toml;
 pub use error::{BackendError, BackendErrorKind};
 pub use identity::{stable_workspace_hash, BackendWorkspaceIdentity};
 pub use layout::{
@@ -66,6 +68,7 @@ mod tests {
             files: vec![EmittedRustFile {
                 path: "src/main.rs".to_string(),
                 module_name: "main".to_string(),
+                contents: "fn main() {}".to_string(),
             }],
         };
         let error = BackendError::new(BackendErrorKind::Unsupported, "not implemented yet");

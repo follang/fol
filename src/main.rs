@@ -472,6 +472,7 @@ fn backend_artifact_surface_smoke_compiles() {
         files: vec![fol_backend::EmittedRustFile {
             path: "src/main.rs".to_string(),
             module_name: "main".to_string(),
+            contents: "fn main() {}".to_string(),
         }],
     };
 

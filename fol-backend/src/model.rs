@@ -2,6 +2,7 @@
 pub struct EmittedRustFile {
     pub path: String,
     pub module_name: String,
+    pub contents: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

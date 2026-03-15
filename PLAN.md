@@ -922,7 +922,7 @@ not full long-term compiler completion.
 
 ## 39. Phase 4: Rust Crate Skeleton Emission
 
-#### 4.1
+#### 4.1 done
 - emit `Cargo.toml` with path dependency on `fol-runtime`
 
 #### 4.2
