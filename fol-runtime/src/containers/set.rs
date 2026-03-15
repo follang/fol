@@ -9,6 +9,10 @@ impl<T: Ord> FolSet<T> {
         Self(values)
     }
 
+    pub fn from_items(values: Vec<T>) -> Self {
+        Self(values.into_iter().collect())
+    }
+
     pub fn as_set(&self) -> &BTreeSet<T> {
         &self.0
     }
@@ -59,6 +63,16 @@ mod tests {
         );
         assert_eq!(
             BTreeSet::from(values).into_iter().collect::<Vec<_>>(),
+            vec![1, 2, 3]
+        );
+    }
+
+    #[test]
+    fn fol_set_deterministic_constructor_sorts_and_dedupes() {
+        let values = FolSet::from_items(vec![3, 1, 2, 2]);
+
+        assert_eq!(
+            values.as_set().iter().copied().collect::<Vec<_>>(),
             vec![1, 2, 3]
         );
     }

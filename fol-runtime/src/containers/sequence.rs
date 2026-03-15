@@ -7,6 +7,10 @@ impl<T> FolSeq<T> {
         Self(values)
     }
 
+    pub fn from_items(values: Vec<T>) -> Self {
+        Self(values)
+    }
+
     pub fn as_slice(&self) -> &[T] {
         self.0.as_slice()
     }
@@ -48,5 +52,12 @@ mod tests {
         assert_eq!(values.len(), 3);
         assert!(!values.is_empty());
         assert_eq!(Vec::from(values), vec![1, 2, 3]);
+    }
+
+    #[test]
+    fn fol_seq_deterministic_constructor_keeps_input_order() {
+        let values = FolSeq::from_items(vec![3, 1, 2]);
+
+        assert_eq!(values.as_slice(), &[3, 1, 2]);
     }
 }

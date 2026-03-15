@@ -797,7 +797,7 @@ The implementation should land in many small slices.
 #### 3.5 done
 - add `FolMap<K, V>`
 
-#### 3.6
+#### 3.6 done
 - add deterministic constructors from element vectors/pairs
 
 #### 3.7

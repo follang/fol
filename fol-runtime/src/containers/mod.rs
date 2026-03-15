@@ -64,4 +64,17 @@ mod tests {
 
         assert_eq!(values.len(), 2);
     }
+
+    #[test]
+    fn deterministic_container_constructors_are_available_from_public_types() {
+        let vec = FolVec::from_items(vec![1, 2]);
+        let seq = FolSeq::from_items(vec![1, 2]);
+        let set = FolSet::from_items(vec![2, 1, 2]);
+        let map = FolMap::from_pairs(vec![("lin", 2), ("ada", 1)]);
+
+        assert_eq!(vec.as_slice(), &[1, 2]);
+        assert_eq!(seq.as_slice(), &[1, 2]);
+        assert_eq!(set.len(), 2);
+        assert_eq!(map.len(), 2);
+    }
 }

@@ -9,6 +9,10 @@ impl<K: Ord, V> FolMap<K, V> {
         Self(values)
     }
 
+    pub fn from_pairs(values: Vec<(K, V)>) -> Self {
+        Self(values.into_iter().collect())
+    }
+
     pub fn as_map(&self) -> &BTreeMap<K, V> {
         &self.0
     }
@@ -59,5 +63,16 @@ mod tests {
             vec!["ada", "lin"]
         );
         assert_eq!(BTreeMap::from(values).get("lin"), Some(&2));
+    }
+
+    #[test]
+    fn fol_map_deterministic_constructor_orders_keys_and_keeps_last_value() {
+        let values = FolMap::from_pairs(vec![("lin", 2), ("ada", 1), ("lin", 4)]);
+
+        assert_eq!(
+            values.as_map().keys().copied().collect::<Vec<_>>(),
+            vec!["ada", "lin"]
+        );
+        assert_eq!(values.get(&"lin"), Some(&4));
     }
 }
