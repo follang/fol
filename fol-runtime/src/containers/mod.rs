@@ -1,7 +1,9 @@
 //! Runtime container families used by executable FOL V1 programs.
 
 mod vector;
+mod sequence;
 
+pub use sequence::FolSeq;
 pub use vector::FolVec;
 
 /// Fixed-size array strategy for FOL `arr[...]`.
@@ -16,7 +18,7 @@ pub fn module_name() -> &'static str {
 
 #[cfg(test)]
 mod tests {
-    use super::{FolArray, FolVec};
+    use super::{FolArray, FolSeq, FolVec};
 
     #[test]
     fn fol_array_keeps_native_fixed_size_behavior() {
@@ -31,6 +33,13 @@ mod tests {
     #[test]
     fn vector_module_exports_runtime_vector_type() {
         let values = FolVec::new(vec![1, 2, 3]);
+
+        assert_eq!(values.len(), 3);
+    }
+
+    #[test]
+    fn sequence_module_exports_runtime_sequence_type() {
+        let values = FolSeq::new(vec![1, 2, 3]);
 
         assert_eq!(values.len(), 3);
     }

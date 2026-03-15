@@ -788,7 +788,7 @@ The implementation should land in many small slices.
 #### 3.2 done
 - add `FolVec<T>`
 
-#### 3.3
+#### 3.3 done
 - add `FolSeq<T>`
 
 #### 3.4
