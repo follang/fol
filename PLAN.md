@@ -450,9 +450,13 @@ or deliberately rejected.
     contract instead of leaving them implied or parser-only
   - current observed validation totals are synced to the latest green run
   - the docs now call out the shell-vs-routine-result boundary explicitly
-- `6.2` `pending` Rewrite [`book/src/650_errors/200_recover.md`](./book/src/650_errors/200_recover.md)
+- `6.2` `done` Rewrite [`book/src/650_errors/200_recover.md`](./book/src/650_errors/200_recover.md)
   so it no longer describes parser-only behavior and instead explains the real
   current `V1` handling story.
+  Current state:
+  - the recoverable-error chapter now documents `/ ErrorType`, `report`,
+    propagation, `check(...)`, `expr || fallback`, and the shell-vs-routine
+    boundary as implemented `V1` behavior
 - `6.3` `pending` Sync [`book/src/700_sugar/200_pipes.md`](./book/src/700_sugar/200_pipes.md)
   with the actual implemented meaning of `check(...)` and `||`.
 - `6.4` `pending` Rewrite this file into a completion record only after the full
