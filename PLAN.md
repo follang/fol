@@ -743,7 +743,7 @@ The implementation should land in many small slices.
 
 ### Phase 1: Scalar And ABI Foundation
 
-#### 1.1
+#### 1.1 done
 - define scalar aliases/wrappers policy
 - freeze `int`, `flt`, `bol`, `chr`, `never` strategy
 
