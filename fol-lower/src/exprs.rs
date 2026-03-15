@@ -4141,6 +4141,91 @@ mod tests {
     }
 
     #[test]
+    fn parser_typecheck_and_lower_keep_same_canonical_intrinsic_identity() {
+        let fixture = std::env::temp_dir().join(format!(
+            "fol_lower_intrinsic_identity_{}.fol",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system clock should be monotonic enough for tmp names")
+                .as_nanos()
+        ));
+        std::fs::write(
+            &fixture,
+            concat!(
+                "fun[] main(): bol = {\n",
+                "    return .eq(1, 1)\n",
+                "}\n",
+            ),
+        )
+        .expect("should write lowering intrinsic identity fixture");
+
+        let mut stream = FileStream::from_file(fixture.to_str().expect("utf8 temp path"))
+            .expect("Should open lowering fixture");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let syntax = parser
+            .parse_package(&mut lexer)
+            .expect("identity fixture should parse");
+        let resolved = resolve_workspace(syntax.clone()).expect("identity fixture should resolve");
+        let typed = Typechecker::new()
+            .check_resolved_workspace(resolved)
+            .expect("identity fixture should typecheck");
+        let lowered = crate::LoweringSession::new(typed.clone())
+            .lower_workspace()
+            .expect("identity fixture should lower");
+
+        let call_syntax_id = syntax
+            .source_units
+            .first()
+            .and_then(|unit| unit.items.first())
+            .and_then(|item| match &item.node {
+                AstNode::FunDecl { body, .. } => body.first(),
+                _ => None,
+            })
+            .and_then(|node| match node {
+                AstNode::Return { value: Some(value) } => match value.as_ref() {
+                    AstNode::FunctionCall {
+                        syntax_id,
+                        surface,
+                        name,
+                        ..
+                    } if *surface == CallSurface::DotIntrinsic && name == "eq" => *syntax_id,
+                    _ => None,
+                },
+                _ => None,
+            })
+            .expect("parsed intrinsic call should be retained with a syntax id");
+        let canonical_intrinsic = fol_intrinsics::intrinsic_by_canonical_name("eq")
+            .expect("eq intrinsic should exist")
+            .id;
+
+        assert_eq!(
+            typed.entry_program()
+                .typed_node(call_syntax_id)
+                .and_then(|node| node.intrinsic_id),
+            Some(canonical_intrinsic),
+            "typecheck should record the canonical intrinsic id selected from parser surface calls",
+        );
+
+        let main_routine = lowered
+            .entry_package()
+            .routine_decls
+            .values()
+            .find(|routine| routine.name == "main")
+            .expect("lowered main routine should exist");
+        let lowered_intrinsic = main_routine.instructions.iter().find_map(|instr| match &instr.kind {
+            LoweredInstrKind::IntrinsicCall { intrinsic, .. } => Some(*intrinsic),
+            _ => None,
+        });
+
+        assert_eq!(
+            lowered_intrinsic,
+            Some(canonical_intrinsic),
+            "lowering should preserve the same canonical intrinsic id recorded by typecheck",
+        );
+    }
+
+    #[test]
     fn nil_literal_lowering_stays_deferred_to_shell_lowering() {
         let mut types = LoweredTypeTable::new();
         let int_type = types.intern_builtin(LoweredBuiltinType::Int);

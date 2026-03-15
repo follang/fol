@@ -1082,7 +1082,7 @@ Track these in the registry, but do not implement them in the first batch:
     (`.eq(...)`, `panic(...)`, etc.) instead of forcing each compiler stage to
     format its own variants
   - root smoke coverage and crate-local tests now lock those rendered messages
-- `2.5` `pending` Add tests proving parser/typecheck/lower all see the same
+- `2.5` `done` Add tests proving parser/typecheck/lower all see the same
   canonical intrinsic identity.
 
 ### Phase 3. Comparison Family
