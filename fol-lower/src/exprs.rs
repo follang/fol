@@ -1,10 +1,10 @@
 use crate::{
-    control::{LoweredInstr, LoweredInstrKind, LoweredLocal, LoweredOperand},
+    control::{LoweredInstr, LoweredInstrKind, LoweredLinearKind, LoweredLocal, LoweredOperand},
     ids::{LoweredBlockId, LoweredInstrId, LoweredLocalId, LoweredTypeId},
     LoweredGlobalId, LoweredPackage, LoweredRoutine, LoweredRoutineId, LoweredWorkspace,
     LoweringError, LoweringErrorKind,
 };
-use fol_parser::ast::{AstNode, Literal};
+use fol_parser::ast::{AstNode, ContainerType, Literal};
 use fol_resolver::{
     MountedSymbolProvenance, PackageIdentity, ResolvedSymbol, ScopeId, SourceUnitId, SymbolId,
     SymbolKind,
@@ -707,6 +707,263 @@ fn lower_record_initializer(
     })
 }
 
+fn lower_container_literal(
+    typed_package: &fol_typecheck::TypedPackage,
+    type_table: &crate::LoweredTypeTable,
+    checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
+    current_identity: &PackageIdentity,
+    decl_index: &WorkspaceDeclIndex,
+    cursor: &mut RoutineCursor<'_>,
+    source_unit_id: SourceUnitId,
+    scope_id: ScopeId,
+    container_type: ContainerType,
+    expected_type: Option<LoweredTypeId>,
+    elements: &[AstNode],
+) -> Result<LoweredValue, LoweringError> {
+    match container_type {
+        ContainerType::Array | ContainerType::Vector | ContainerType::Sequence => {
+            lower_linear_container_literal(
+                typed_package,
+                type_table,
+                checked_type_map,
+                current_identity,
+                decl_index,
+                cursor,
+                source_unit_id,
+                scope_id,
+                container_type,
+                expected_type,
+                elements,
+            )
+        }
+        ContainerType::Set | ContainerType::Map => Err(LoweringError::with_kind(
+            LoweringErrorKind::Unsupported,
+            "set and map literal lowering land in the next aggregate slice",
+        )),
+    }
+}
+
+fn lower_linear_container_literal(
+    typed_package: &fol_typecheck::TypedPackage,
+    type_table: &crate::LoweredTypeTable,
+    checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
+    current_identity: &PackageIdentity,
+    decl_index: &WorkspaceDeclIndex,
+    cursor: &mut RoutineCursor<'_>,
+    source_unit_id: SourceUnitId,
+    scope_id: ScopeId,
+    kind: ContainerType,
+    expected_type: Option<LoweredTypeId>,
+    elements: &[AstNode],
+) -> Result<LoweredValue, LoweringError> {
+    let element_nodes = container_elements(elements);
+    let mut lowered_elements = Vec::with_capacity(element_nodes.len());
+    let mut element_type = expected_linear_element_type(type_table, expected_type, kind.clone());
+
+    for element in element_nodes {
+        let lowered = lower_expression_expected(
+            typed_package,
+            type_table,
+            checked_type_map,
+            current_identity,
+            decl_index,
+            cursor,
+            source_unit_id,
+            scope_id,
+            element_type,
+            element,
+        )?;
+        element_type.get_or_insert(lowered.type_id);
+        lowered_elements.push(lowered.local_id);
+    }
+
+    let Some(type_id) = resolve_linear_container_type(
+        type_table,
+        kind.clone(),
+        expected_type,
+        element_type,
+        lowered_elements.len(),
+    ) else {
+        return Err(LoweringError::with_kind(
+            LoweringErrorKind::Unsupported,
+            "empty linear container literals require an expected container type in lowered V1",
+        ));
+    };
+
+    let result_local = cursor.allocate_local(type_id, None);
+    cursor.push_instr(
+        Some(result_local),
+        LoweredInstrKind::ConstructLinear {
+            kind: lowered_linear_kind(kind)?,
+            type_id,
+            elements: lowered_elements,
+        },
+    )?;
+    Ok(LoweredValue {
+        local_id: result_local,
+        type_id,
+    })
+}
+
+fn lower_set_literal(
+    typed_package: &fol_typecheck::TypedPackage,
+    type_table: &crate::LoweredTypeTable,
+    checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
+    current_identity: &PackageIdentity,
+    decl_index: &WorkspaceDeclIndex,
+    cursor: &mut RoutineCursor<'_>,
+    source_unit_id: SourceUnitId,
+    scope_id: ScopeId,
+    expected_type: Option<LoweredTypeId>,
+    elements: &[AstNode],
+) -> Result<LoweredValue, LoweringError> {
+    let element_nodes = container_elements(elements);
+    let expected_members = expected_set_member_types(type_table, expected_type);
+
+    if element_nodes.is_empty() {
+        let Some(type_id) = expected_type else {
+            return Err(LoweringError::with_kind(
+                LoweringErrorKind::Unsupported,
+                "empty set literals require an expected set type in lowered V1",
+            ));
+        };
+        let result_local = cursor.allocate_local(type_id, None);
+        cursor.push_instr(
+            Some(result_local),
+            LoweredInstrKind::ConstructSet {
+                type_id,
+                members: Vec::new(),
+            },
+        )?;
+        return Ok(LoweredValue {
+            local_id: result_local,
+            type_id,
+        });
+    }
+
+    let mut member_types = Vec::with_capacity(element_nodes.len());
+    let mut members = Vec::with_capacity(element_nodes.len());
+    for (index, element) in element_nodes.iter().enumerate() {
+        let expected_member = expected_members
+            .as_ref()
+            .and_then(|member_types| member_types.get(index))
+            .copied();
+        let lowered = lower_expression_expected(
+            typed_package,
+            type_table,
+            checked_type_map,
+            current_identity,
+            decl_index,
+            cursor,
+            source_unit_id,
+            scope_id,
+            expected_member,
+            element,
+        )?;
+        member_types.push(expected_member.unwrap_or(lowered.type_id));
+        members.push(lowered.local_id);
+    }
+
+    let type_id = expected_type.unwrap_or_else(|| find_set_type(type_table, &member_types));
+    let result_local = cursor.allocate_local(type_id, None);
+    cursor.push_instr(
+        Some(result_local),
+        LoweredInstrKind::ConstructSet { type_id, members },
+    )?;
+    Ok(LoweredValue {
+        local_id: result_local,
+        type_id,
+    })
+}
+
+fn lower_map_literal(
+    typed_package: &fol_typecheck::TypedPackage,
+    type_table: &crate::LoweredTypeTable,
+    checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
+    current_identity: &PackageIdentity,
+    decl_index: &WorkspaceDeclIndex,
+    cursor: &mut RoutineCursor<'_>,
+    source_unit_id: SourceUnitId,
+    scope_id: ScopeId,
+    expected_type: Option<LoweredTypeId>,
+    elements: &[AstNode],
+) -> Result<LoweredValue, LoweringError> {
+    let element_nodes = container_elements(elements);
+    let mut expected_key = expected_map_key_type(type_table, expected_type);
+    let mut expected_value = expected_map_value_type(type_table, expected_type);
+
+    if element_nodes.is_empty() {
+        let Some(type_id) = expected_type else {
+            return Err(LoweringError::with_kind(
+                LoweringErrorKind::Unsupported,
+                "empty map literals require an expected map type in lowered V1",
+            ));
+        };
+        let result_local = cursor.allocate_local(type_id, None);
+        cursor.push_instr(
+            Some(result_local),
+            LoweredInstrKind::ConstructMap {
+                type_id,
+                entries: Vec::new(),
+            },
+        )?;
+        return Ok(LoweredValue {
+            local_id: result_local,
+            type_id,
+        });
+    }
+
+    let mut entries = Vec::with_capacity(element_nodes.len());
+    for pair in element_nodes {
+        let (key, value) = map_literal_pair(pair)?;
+        let lowered_key = lower_expression_expected(
+            typed_package,
+            type_table,
+            checked_type_map,
+            current_identity,
+            decl_index,
+            cursor,
+            source_unit_id,
+            scope_id,
+            expected_key,
+            key,
+        )?;
+        expected_key.get_or_insert(lowered_key.type_id);
+
+        let lowered_value = lower_expression_expected(
+            typed_package,
+            type_table,
+            checked_type_map,
+            current_identity,
+            decl_index,
+            cursor,
+            source_unit_id,
+            scope_id,
+            expected_value,
+            value,
+        )?;
+        expected_value.get_or_insert(lowered_value.type_id);
+        entries.push((lowered_key.local_id, lowered_value.local_id));
+    }
+
+    let Some(type_id) = resolve_map_type(type_table, expected_type, expected_key, expected_value) else {
+        return Err(LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            "map literal could not determine a lowered key/value type",
+        ));
+    };
+
+    let result_local = cursor.allocate_local(type_id, None);
+    cursor.push_instr(
+        Some(result_local),
+        LoweredInstrKind::ConstructMap { type_id, entries },
+    )?;
+    Ok(LoweredValue {
+        local_id: result_local,
+        type_id,
+    })
+}
+
 fn lower_when_statement(
     typed_package: &fol_typecheck::TypedPackage,
     type_table: &crate::LoweredTypeTable,
@@ -1071,6 +1328,22 @@ fn lower_expression_expected(
                 fields,
             )
         }
+        AstNode::ContainerLiteral {
+            container_type,
+            elements,
+        } => lower_container_literal(
+            typed_package,
+            type_table,
+            checked_type_map,
+            current_identity,
+            decl_index,
+            cursor,
+            source_unit_id,
+            scope_id,
+            container_type.clone(),
+            expected_type,
+            elements,
+        ),
         AstNode::Assignment { target, value } => {
             let lowered_value = lower_expression(
                 typed_package,
@@ -1427,6 +1700,13 @@ fn describe_expression(node: &AstNode) -> String {
         AstNode::MethodCall { method, .. } => format!("method call '{method}'"),
         AstNode::FieldAccess { field, .. } => format!("field access '.{field}'"),
         AstNode::IndexAccess { .. } => "index access".to_string(),
+        AstNode::ContainerLiteral { container_type, .. } => match container_type {
+            ContainerType::Array => "array literal".to_string(),
+            ContainerType::Vector => "vector literal".to_string(),
+            ContainerType::Sequence => "sequence literal".to_string(),
+            ContainerType::Set => "set literal".to_string(),
+            ContainerType::Map => "map literal".to_string(),
+        },
         AstNode::Return { .. } => "return".to_string(),
         AstNode::When { .. } => "when".to_string(),
         AstNode::Loop { .. } => "loop".to_string(),
@@ -1743,6 +2023,214 @@ fn index_access_type(
             })
         }
         _ => None,
+    }
+}
+
+fn expected_linear_element_type(
+    type_table: &crate::LoweredTypeTable,
+    expected_type: Option<LoweredTypeId>,
+    kind: ContainerType,
+) -> Option<LoweredTypeId> {
+    match (expected_type.and_then(|type_id| type_table.get(type_id)), kind) {
+        (Some(crate::LoweredType::Array { element_type, .. }), ContainerType::Array)
+        | (Some(crate::LoweredType::Vector { element_type }), ContainerType::Vector)
+        | (Some(crate::LoweredType::Sequence { element_type }), ContainerType::Sequence) => {
+            Some(*element_type)
+        }
+        _ => None,
+    }
+}
+
+fn resolve_linear_container_type(
+    type_table: &crate::LoweredTypeTable,
+    kind: ContainerType,
+    expected_type: Option<LoweredTypeId>,
+    element_type: Option<LoweredTypeId>,
+    len: usize,
+) -> Option<LoweredTypeId> {
+    if let Some(type_id) = expected_type {
+        return match (type_table.get(type_id), kind) {
+            (Some(crate::LoweredType::Array { .. }), ContainerType::Array)
+            | (Some(crate::LoweredType::Vector { .. }), ContainerType::Vector)
+            | (Some(crate::LoweredType::Sequence { .. }), ContainerType::Sequence) => Some(type_id),
+            _ => None,
+        };
+    }
+
+    let element_type = element_type?;
+    Some(match kind {
+        ContainerType::Array => find_array_type(type_table, element_type, Some(len)),
+        ContainerType::Vector => find_vector_type(type_table, element_type),
+        ContainerType::Sequence => find_sequence_type(type_table, element_type),
+        ContainerType::Set | ContainerType::Map => return None,
+    })
+}
+
+fn expected_set_member_types(
+    type_table: &crate::LoweredTypeTable,
+    expected_type: Option<LoweredTypeId>,
+) -> Option<Vec<LoweredTypeId>> {
+    match expected_type.and_then(|type_id| type_table.get(type_id)) {
+        Some(crate::LoweredType::Set { member_types }) => Some(member_types.clone()),
+        _ => None,
+    }
+}
+
+fn expected_map_key_type(
+    type_table: &crate::LoweredTypeTable,
+    expected_type: Option<LoweredTypeId>,
+) -> Option<LoweredTypeId> {
+    match expected_type.and_then(|type_id| type_table.get(type_id)) {
+        Some(crate::LoweredType::Map { key_type, .. }) => Some(*key_type),
+        _ => None,
+    }
+}
+
+fn expected_map_value_type(
+    type_table: &crate::LoweredTypeTable,
+    expected_type: Option<LoweredTypeId>,
+) -> Option<LoweredTypeId> {
+    match expected_type.and_then(|type_id| type_table.get(type_id)) {
+        Some(crate::LoweredType::Map { value_type, .. }) => Some(*value_type),
+        _ => None,
+    }
+}
+
+fn resolve_map_type(
+    type_table: &crate::LoweredTypeTable,
+    expected_type: Option<LoweredTypeId>,
+    key_type: Option<LoweredTypeId>,
+    value_type: Option<LoweredTypeId>,
+) -> Option<LoweredTypeId> {
+    if let Some(type_id) = expected_type {
+        return matches!(type_table.get(type_id), Some(crate::LoweredType::Map { .. })).then_some(type_id);
+    }
+    Some(find_map_type(type_table, key_type?, value_type?))
+}
+
+fn lowered_linear_kind(kind: ContainerType) -> Result<LoweredLinearKind, LoweringError> {
+    match kind {
+        ContainerType::Array => Ok(LoweredLinearKind::Array),
+        ContainerType::Vector => Ok(LoweredLinearKind::Vector),
+        ContainerType::Sequence => Ok(LoweredLinearKind::Sequence),
+        ContainerType::Set | ContainerType::Map => Err(LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            "set/map container kinds do not lower through linear container instructions",
+        )),
+    }
+}
+
+fn find_array_type(
+    type_table: &crate::LoweredTypeTable,
+    element_type: LoweredTypeId,
+    size: Option<usize>,
+) -> LoweredTypeId {
+    (0..type_table.len())
+        .map(crate::LoweredTypeId)
+        .find(|type_id| {
+            matches!(
+                type_table.get(*type_id),
+                Some(crate::LoweredType::Array {
+                    element_type: actual_element,
+                    size: actual_size,
+                }) if *actual_element == element_type && *actual_size == size
+            )
+        })
+        .unwrap_or_else(|| panic!("lowered type table lost array shape for element {}", element_type.0))
+}
+
+fn find_vector_type(
+    type_table: &crate::LoweredTypeTable,
+    element_type: LoweredTypeId,
+) -> LoweredTypeId {
+    (0..type_table.len())
+        .map(crate::LoweredTypeId)
+        .find(|type_id| {
+            matches!(
+                type_table.get(*type_id),
+                Some(crate::LoweredType::Vector {
+                    element_type: actual_element,
+                }) if *actual_element == element_type
+            )
+        })
+        .unwrap_or_else(|| panic!("lowered type table lost vector shape for element {}", element_type.0))
+}
+
+fn find_sequence_type(
+    type_table: &crate::LoweredTypeTable,
+    element_type: LoweredTypeId,
+) -> LoweredTypeId {
+    (0..type_table.len())
+        .map(crate::LoweredTypeId)
+        .find(|type_id| {
+            matches!(
+                type_table.get(*type_id),
+                Some(crate::LoweredType::Sequence {
+                    element_type: actual_element,
+                }) if *actual_element == element_type
+            )
+        })
+        .unwrap_or_else(|| panic!("lowered type table lost sequence shape for element {}", element_type.0))
+}
+
+fn find_set_type(type_table: &crate::LoweredTypeTable, member_types: &[LoweredTypeId]) -> LoweredTypeId {
+    (0..type_table.len())
+        .map(crate::LoweredTypeId)
+        .find(|type_id| {
+            matches!(
+                type_table.get(*type_id),
+                Some(crate::LoweredType::Set {
+                    member_types: actual_members,
+                }) if actual_members == member_types
+            )
+        })
+        .unwrap_or_else(|| panic!("lowered type table lost set shape"))
+}
+
+fn find_map_type(
+    type_table: &crate::LoweredTypeTable,
+    key_type: LoweredTypeId,
+    value_type: LoweredTypeId,
+) -> LoweredTypeId {
+    (0..type_table.len())
+        .map(crate::LoweredTypeId)
+        .find(|type_id| {
+            matches!(
+                type_table.get(*type_id),
+                Some(crate::LoweredType::Map {
+                    key_type: actual_key,
+                    value_type: actual_value,
+                }) if *actual_key == key_type && *actual_value == value_type
+            )
+        })
+        .unwrap_or_else(|| panic!("lowered type table lost map shape"))
+}
+
+fn container_elements(elements: &[AstNode]) -> Vec<&AstNode> {
+    elements
+        .iter()
+        .filter(|element| !matches!(element, AstNode::Comment { .. }))
+        .collect()
+}
+
+fn map_literal_pair(pair: &AstNode) -> Result<(&AstNode, &AstNode), LoweringError> {
+    match pair {
+        AstNode::ContainerLiteral { elements, .. } => {
+            let pair_items = container_elements(elements);
+            if let [key, value] = pair_items.as_slice() {
+                Ok((*key, *value))
+            } else {
+                Err(LoweringError::with_kind(
+                    LoweringErrorKind::InvalidInput,
+                    "map literals require each element to be a two-value pair",
+                ))
+            }
+        }
+        AstNode::Commented { node, .. } => map_literal_pair(node),
+        _ => Err(LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            "map literals require each element to be a two-value pair",
+        )),
     }
 }
 
@@ -2778,5 +3266,59 @@ mod tests {
         assert_eq!(construct_types.len(), 2);
         assert_eq!(construct_types[0], construct_types[1]);
         assert_eq!(construct_types[0].1, 2);
+    }
+
+    #[test]
+    fn linear_container_lowering_constructs_array_vector_and_sequence_values() {
+        let fixture = std::env::temp_dir().join(format!(
+            "fol_lower_linear_container_{}.fol",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system clock should be monotonic enough for tmp names")
+                .as_nanos()
+        ));
+        std::fs::write(
+            &fixture,
+            "fun[] make_arr(): arr[int, 3] = { return {1, 2, 3} }\nfun[] make_vec(): vec[int] = { return {1, 2, 3} }\nfun[] make_seq(): seq[int] = { return {1, 2, 3} }\n",
+        )
+        .expect("should write lowering linear-container fixture");
+
+        let mut stream = FileStream::from_file(fixture.to_str().expect("utf8 temp path"))
+            .expect("Should open lowering fixture");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let syntax = parser
+            .parse_package(&mut lexer)
+            .expect("Lowering fixture should parse");
+        let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+        let typed = Typechecker::new()
+            .check_resolved_workspace(resolved)
+            .expect("Lowering fixture should typecheck");
+        let lowered = crate::LoweringSession::new(typed)
+            .lower_workspace()
+            .expect("linear container lowering should succeed");
+
+        for (routine_name, expected_kind, expected_len) in [
+            ("make_arr", crate::control::LoweredLinearKind::Array, 3usize),
+            ("make_vec", crate::control::LoweredLinearKind::Vector, 3usize),
+            ("make_seq", crate::control::LoweredLinearKind::Sequence, 3usize),
+        ] {
+            let routine = lowered
+                .entry_package()
+                .routine_decls
+                .values()
+                .find(|routine| routine.name == routine_name)
+                .expect("lowered routine should exist");
+            let construct = routine.instructions.iter().find_map(|instr| match &instr.kind {
+                LoweredInstrKind::ConstructLinear {
+                    kind,
+                    type_id: _,
+                    elements,
+                } => Some((*kind, elements.len())),
+                _ => None,
+            });
+
+            assert_eq!(construct, Some((expected_kind, expected_len)));
+        }
     }
 }

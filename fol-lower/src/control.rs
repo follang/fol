@@ -24,6 +24,13 @@ pub struct LoweredLocal {
     pub name: Option<String>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LoweredLinearKind {
+    Array,
+    Vector,
+    Sequence,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LoweredInstrKind {
     Const(LoweredOperand),
@@ -48,6 +55,19 @@ pub enum LoweredInstrKind {
     ConstructRecord {
         type_id: LoweredTypeId,
         fields: Vec<(String, LoweredLocalId)>,
+    },
+    ConstructLinear {
+        kind: LoweredLinearKind,
+        type_id: LoweredTypeId,
+        elements: Vec<LoweredLocalId>,
+    },
+    ConstructSet {
+        type_id: LoweredTypeId,
+        members: Vec<LoweredLocalId>,
+    },
+    ConstructMap {
+        type_id: LoweredTypeId,
+        entries: Vec<(LoweredLocalId, LoweredLocalId)>,
     },
     FieldAccess {
         base: LoweredLocalId,

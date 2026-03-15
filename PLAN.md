@@ -541,7 +541,7 @@ This plan is complete only when all of the following are true:
 
 - `6.1` `done` Lower record initialization into explicit constructor instructions.
 - `6.2` `pending` Lower entry construction into explicit tag/payload instructions.
-- `6.3` `pending` Lower array, vector, and sequence literals.
+- `6.3` `done` Lower array, vector, and sequence literals.
 - `6.4` `pending` Lower set and map literals.
 - `6.5` `pending` Lower `nil` into explicit optional/error shell constructors.
 - `6.6` `pending` Lower `unwrap` into explicit shell-unwrapping instructions with preserved source origins.
