@@ -942,7 +942,7 @@ not full long-term compiler completion.
 #### 5.1 done
 - emit builtin/native type mappings through backend-owned Rust type renderers
 
-#### 5.2
+#### 5.2 done
 - emit runtime-backed type mappings for `str`, containers, shells, and recoverable results
 
 #### 5.3
