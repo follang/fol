@@ -554,7 +554,7 @@ This plan is complete only when all of the following are true:
 - `7.1` `done` Lower package export metadata from prepared packages into backend-facing lowered export data.
 - `7.2` `done` Mark candidate entry routines for the later binary-producing stage.
 - `7.3` `done` Ensure imported packages lower exactly once even when mounted in multiple places.
-- `7.4` `pending` Add workspace tests proving `loc`, `std`, and `pkg` packages lower coherently.
+- `7.4` `done` Add workspace tests proving `loc`, `std`, and `pkg` packages lower coherently.
 
 ### Phase 8. Unsupported And Verifier Hardening
 

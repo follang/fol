@@ -667,4 +667,82 @@ mod tests {
             1
         );
     }
+
+    #[test]
+    fn lowering_session_keeps_loc_std_and_pkg_packages_in_one_workspace() {
+        use std::fs;
+        use std::time::{SystemTime, UNIX_EPOCH};
+
+        let stamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock should be monotonic enough for tmp path")
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!("fol_lower_all_package_kinds_{stamp}"));
+        let app_dir = root.join("app");
+        let shared_dir = root.join("shared");
+        let std_root = root.join("std");
+        let store_root = root.join("store");
+        let fmt_root = std_root.join("fmt");
+        let json_root = store_root.join("json");
+
+        fs::create_dir_all(&app_dir).expect("should create app dir");
+        fs::create_dir_all(&shared_dir).expect("should create shared dir");
+        fs::create_dir_all(&fmt_root).expect("should create std fmt dir");
+        fs::create_dir_all(json_root.join("src")).expect("should create pkg json dirs");
+
+        fs::write(
+            app_dir.join("main.fol"),
+            "use shared: loc = {\"../shared\"}\nuse fmt: std = {fmt}\nuse json: pkg = {json}\nfun[] main(): int = { return shared::answer }\n",
+        )
+        .expect("should write app entry");
+        fs::write(shared_dir.join("lib.fol"), "var[exp] answer: int = 1\n")
+            .expect("should write local import");
+        fs::write(fmt_root.join("lib.fol"), "var[exp] answer: int = 2\n")
+            .expect("should write std import");
+        fs::write(
+            json_root.join("package.yaml"),
+            "name: json\nversion: 1.0.0\n",
+        )
+        .expect("should write package metadata");
+        fs::write(json_root.join("build.fol"), "def root: loc = \"src\";\n")
+            .expect("should write package build definition");
+        fs::write(json_root.join("src/lib.fol"), "var[exp] answer: int = 3\n")
+            .expect("should write package source");
+
+        let mut stream = FileStream::from_folder(app_dir.to_str().expect("utf8 temp path"))
+            .expect("should open folder fixture");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let syntax = parser
+            .parse_package(&mut lexer)
+            .expect("Lowering folder fixture should parse");
+        let resolved = resolve_package_workspace_with_config(
+            syntax,
+            ResolverConfig {
+                std_root: Some(std_root.clone()),
+                package_store_root: Some(store_root.clone()),
+                package_cache_root: None,
+            },
+        )
+        .expect("Lowering folder fixture should resolve");
+        let typed = Typechecker::new()
+            .check_resolved_workspace(resolved)
+            .expect("Lowering folder fixture should typecheck");
+
+        let lowered = LoweringSession::new(typed)
+            .lower_workspace()
+            .expect("Lowering should keep all package kinds coherent");
+
+        assert_eq!(lowered.package_count(), 4);
+        for expected in ["app", "shared", "fmt", "json"] {
+            let package = lowered
+                .packages()
+                .find(|package| package.identity.display_name == expected)
+                .unwrap_or_else(|| panic!("{expected} package should be present"));
+            assert!(
+                !package.source_units.is_empty(),
+                "{expected} package should retain at least one lowered source unit"
+            );
+        }
+    }
 }
