@@ -430,3 +430,21 @@ fn compile_folder_entry_with_pkg_imports_succeeds_through_workspace_lowering() {
 fn intrinsics_crate_foundation_smoke_compiles() {
     assert_eq!(fol_intrinsics::crate_name(), "fol-intrinsics");
 }
+
+#[test]
+fn intrinsics_public_model_smoke_compiles() {
+    assert_eq!(fol_intrinsics::IntrinsicId::new(1).index(), 1);
+    assert_eq!(
+        fol_intrinsics::IntrinsicCategory::Comparison.as_str(),
+        "comparison"
+    );
+    assert_eq!(
+        fol_intrinsics::IntrinsicSurface::DotRootCall.as_str(),
+        "dot-root-call"
+    );
+    assert_eq!(fol_intrinsics::IntrinsicAvailability::V1.as_str(), "V1");
+    assert_eq!(
+        fol_intrinsics::IntrinsicStatus::Implemented.as_str(),
+        "implemented"
+    );
+}

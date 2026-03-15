@@ -995,12 +995,17 @@ Track these in the registry, but do not implement them in the first batch:
   - the root compiler crate depends on it so ordinary `make build` and
     `make test` compile the new crate immediately
   - root smoke coverage now proves the crate is wired into the active build
-- `1.2` `pending` Add public registry model:
+- `1.2` `done` Add public registry model:
   - `IntrinsicId`
   - `IntrinsicCategory`
   - `IntrinsicSurface`
   - `IntrinsicAvailability`
   - `IntrinsicStatus`
+  Current state:
+  - the crate now exposes typed identity, category, surface, availability, and
+    status enums instead of raw strings
+  - root smoke coverage and crate-local unit coverage both exercise the public
+    model API
 - `1.3` `pending` Add registry entry type with:
   - name
   - aliases
