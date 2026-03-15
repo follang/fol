@@ -1620,4 +1620,73 @@ mod tests {
             "container index access should lower into an explicit IndexAccess instruction"
         );
     }
+
+    #[test]
+    fn expression_lowering_keeps_local_and_imported_value_call_parity() {
+        use std::fs;
+        use std::time::{SystemTime, UNIX_EPOCH};
+
+        let stamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock should be monotonic enough for tmp path")
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!("fol_lower_expr_parity_{stamp}"));
+        let app_dir = root.join("app");
+        let shared_dir = root.join("shared");
+        fs::create_dir_all(&app_dir).expect("should create app dir");
+        fs::create_dir_all(&shared_dir).expect("should create shared dir");
+        fs::write(
+            app_dir.join("main.fol"),
+            "use shared: loc = {\"../shared\"}\nfun[] local_helper(): int = { 1 }\nfun[] main(): int = {\n    local_helper()\n    shared::twice(answer)\n}",
+        )
+        .expect("should write app entry");
+        fs::write(
+            shared_dir.join("lib.fol"),
+            "var[exp] answer: int = 7\nfun[exp] twice(value: int): int = { value }",
+        )
+        .expect("should write shared library");
+
+        let mut stream = FileStream::from_folder(app_dir.to_str().expect("utf8 temp path"))
+            .expect("should open folder fixture");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let syntax = parser
+            .parse_package(&mut lexer)
+            .expect("Lowering folder fixture should parse");
+        let resolved = resolve_workspace(syntax).expect("Lowering folder fixture should resolve");
+        let typed = Typechecker::new()
+            .check_resolved_workspace(resolved)
+            .expect("Lowering folder fixture should typecheck");
+        let lowered = crate::LoweringSession::new(typed)
+            .lower_workspace()
+            .expect("expression lowering parity should succeed");
+
+        let main_routine = lowered
+            .entry_package()
+            .routine_decls
+            .values()
+            .find(|routine| routine.name == "main")
+            .expect("main routine should exist");
+        let shared_package = lowered
+            .packages()
+            .find(|package| package.identity.display_name == "shared")
+            .expect("shared package should exist");
+
+        assert!(
+            main_routine
+                .instructions
+                .iter()
+                .any(|instr| matches!(instr.kind, LoweredInstrKind::LoadGlobal { global } if shared_package.global_decls.contains_key(&global))),
+            "entry routine should lower imported value references into foreign global loads"
+        );
+        assert!(
+            main_routine
+                .instructions
+                .iter()
+                .filter(|instr| matches!(instr.kind, LoweredInstrKind::Call { .. }))
+                .count()
+                >= 2,
+            "entry routine should keep both local and imported call sites as direct Call instructions"
+        );
+    }
 }

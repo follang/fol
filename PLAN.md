@@ -524,7 +524,7 @@ This plan is complete only when all of the following are true:
 - `4.6` `done` Lower method calls into routine calls with explicit receiver arguments.
 - `4.7` `done` Lower postfix field access into explicit extraction instructions.
 - `4.8` `done` Lower indexing/subscript forms that are already part of typed `V1`.
-- `4.9` `pending` Add expression-lowering parity tests across local and imported packages.
+- `4.9` `done` Add expression-lowering parity tests across local and imported packages.
 
 ### Phase 5. Control-Flow Lowering
 
