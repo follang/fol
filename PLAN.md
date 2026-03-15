@@ -989,7 +989,12 @@ Track these in the registry, but do not implement them in the first batch:
 
 ### Phase 1. Crate Foundation
 
-- `1.1` `pending` Add new workspace crate `fol-intrinsics`.
+- `1.1` `done` Add new workspace crate `fol-intrinsics`.
+  Current state:
+  - `fol-intrinsics` now exists as a workspace member with a minimal public API
+  - the root compiler crate depends on it so ordinary `make build` and
+    `make test` compile the new crate immediately
+  - root smoke coverage now proves the crate is wired into the active build
 - `1.2` `pending` Add public registry model:
   - `IntrinsicId`
   - `IntrinsicCategory`

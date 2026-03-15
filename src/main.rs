@@ -10,6 +10,7 @@ mod compiler_diagnostics;
 
 use clap::{Arg, Command};
 use fol_diagnostics::{DiagnosticLocation, DiagnosticReport, OutputFormat};
+use fol_intrinsics as _;
 use fol_lower::{render_lowered_workspace, LoweredWorkspace, Lowerer};
 use fol_package::{PackageConfig, PackageSession};
 use fol_parser::ast::AstParser;
@@ -423,4 +424,9 @@ fn compile_folder_entry_with_pkg_imports_succeeds_through_workspace_lowering() {
     );
 
     fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn intrinsics_crate_foundation_smoke_compiles() {
+    assert_eq!(fol_intrinsics::crate_name(), "fol-intrinsics");
 }
