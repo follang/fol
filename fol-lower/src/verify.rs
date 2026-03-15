@@ -418,6 +418,21 @@ fn verify_instruction(
                 }
             }
         }
+        crate::LoweredInstrKind::IntrinsicCall { intrinsic, args } => {
+            if fol_intrinsics::intrinsic_by_id(*intrinsic).is_none() {
+                errors.push(LoweringError::with_kind(
+                    LoweringErrorKind::InvalidInput,
+                    format!(
+                        "lowered routine '{}' uses missing intrinsic {}",
+                        routine.name,
+                        intrinsic.index()
+                    ),
+                ));
+            }
+            for arg in args {
+                verify_local_reference(routine, instr.id.0, "intrinsic arg", *arg, errors);
+            }
+        }
         crate::LoweredInstrKind::ConstructRecord { type_id, fields } => {
             verify_type_reference(workspace, package, routine, instr.id.0, "record type", *type_id, errors);
             for (_, value) in fields {

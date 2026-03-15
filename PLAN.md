@@ -1131,7 +1131,7 @@ Track these in the registry, but do not implement them in the first batch:
   - exact integration coverage now locks successful `int`, `flt`, `chr`, and
     `str` comparisons plus representative rejected boolean and mixed-scalar
     pairs
-- `3.5` `pending` Lower comparison intrinsics through selected intrinsic forms.
+- `3.5` `done` Lower comparison intrinsics through selected intrinsic forms.
 - `3.6` `pending` Add exact tests for scalar success and representative rejected
   families.
 - `3.7` `pending` Add CLI integration coverage for intrinsic comparison calls.

@@ -4,7 +4,7 @@ use crate::{
     LoweredGlobalId, LoweredPackage, LoweredRoutine, LoweredRoutineId, LoweredWorkspace,
     LoweringError, LoweringErrorKind,
 };
-use fol_parser::ast::{AstNode, ContainerType, Literal, LoopCondition};
+use fol_parser::ast::{AstNode, CallSurface, ContainerType, Literal, LoopCondition};
 use fol_resolver::{
     MountedSymbolProvenance, PackageIdentity, ResolvedSymbol, ScopeId, SourceUnitId, SymbolId,
     SymbolKind,
@@ -2037,6 +2037,82 @@ fn lower_check_call(
     })
 }
 
+fn lower_dot_intrinsic_call(
+    typed_package: &fol_typecheck::TypedPackage,
+    type_table: &crate::LoweredTypeTable,
+    checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
+    current_identity: &PackageIdentity,
+    decl_index: &WorkspaceDeclIndex,
+    cursor: &mut RoutineCursor<'_>,
+    source_unit_id: SourceUnitId,
+    scope_id: ScopeId,
+    syntax_id: Option<fol_parser::ast::SyntaxNodeId>,
+    name: &str,
+    args: &[AstNode],
+) -> Result<LoweredValue, LoweringError> {
+    let syntax_id = syntax_id.ok_or_else(|| {
+        LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            format!("dot intrinsic '.{name}(...)' does not retain a syntax id"),
+        )
+    })?;
+    let typed_node = typed_package.program.typed_node(syntax_id).ok_or_else(|| {
+        LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            format!("dot intrinsic '.{name}(...)' does not retain typed node facts"),
+        )
+    })?;
+    let intrinsic_id = typed_node.intrinsic_id.ok_or_else(|| {
+        LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            format!("dot intrinsic '.{name}(...)' does not retain a selected intrinsic id"),
+        )
+    })?;
+    let checked_result = typed_node.inferred_type.ok_or_else(|| {
+        LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            format!("dot intrinsic '.{name}(...)' does not retain a checked result type"),
+        )
+    })?;
+    let result_type = checked_type_map.get(&checked_result).copied().ok_or_else(|| {
+        LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            format!("dot intrinsic '.{name}(...)' does not retain a lowered result type"),
+        )
+    })?;
+    let lowered_args = args
+        .iter()
+        .map(|arg| {
+            lower_expression(
+                typed_package,
+                type_table,
+                checked_type_map,
+                current_identity,
+                decl_index,
+                cursor,
+                source_unit_id,
+                scope_id,
+                arg,
+            )
+            .map(|value| value.local_id)
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let result_local = cursor.allocate_local(result_type, None);
+    cursor.push_instr(
+        Some(result_local),
+        LoweredInstrKind::IntrinsicCall {
+            intrinsic: intrinsic_id,
+            args: lowered_args,
+        },
+    )?;
+    Ok(LoweredValue {
+        local_id: result_local,
+        type_id: result_type,
+        recoverable_error_type: None,
+    })
+}
+
 fn lower_pipe_or_expression(
     typed_package: &fol_typecheck::TypedPackage,
     type_table: &crate::LoweredTypeTable,
@@ -2399,6 +2475,25 @@ fn lower_expression_observed(
                 lowered_value,
             )
         }
+        AstNode::FunctionCall {
+            surface: CallSurface::DotIntrinsic,
+            syntax_id,
+            name,
+            args,
+            ..
+        } => lower_dot_intrinsic_call(
+            typed_package,
+            type_table,
+            checked_type_map,
+            current_identity,
+            decl_index,
+            cursor,
+            source_unit_id,
+            scope_id,
+            *syntax_id,
+            name,
+            args,
+        ),
         AstNode::FunctionCall { syntax_id, name, args, .. } if name == "check" => lower_check_call(
             typed_package,
             type_table,
@@ -4007,6 +4102,42 @@ mod tests {
             routine.blocks.get(crate::LoweredBlockId(2)).and_then(|block| block.terminator.clone()),
             Some(LoweredTerminator::Return { value: Some(_) })
         ));
+    }
+
+    #[test]
+    fn comparison_intrinsic_lowering_emits_intrinsic_calls_with_canonical_ids() {
+        let lowered = lower_fixture_workspace(
+            concat!(
+                "fun[] eq_main(): bol = {\n",
+                "    return .eq(1, 1)\n",
+                "}\n",
+                "fun[] lt_main(): bol = {\n",
+                "    return .lt(1, 2)\n",
+                "}\n",
+            ),
+        );
+
+        let entry = lowered.entry_package();
+        for (routine_name, intrinsic_name) in [("eq_main", "eq"), ("lt_main", "lt")] {
+            let routine = entry
+                .routine_decls
+                .values()
+                .find(|routine| routine.name == routine_name)
+                .expect("comparison intrinsic lowering routine should exist");
+            let intrinsic_id = fol_intrinsics::intrinsic_by_canonical_name(intrinsic_name)
+                .expect("intrinsic should exist")
+                .id;
+            let lowered_call = routine.instructions.iter().find_map(|instr| match &instr.kind {
+                LoweredInstrKind::IntrinsicCall { intrinsic, args } => Some((*intrinsic, args.len())),
+                _ => None,
+            });
+
+            assert_eq!(
+                lowered_call,
+                Some((intrinsic_id, 2)),
+                "routine '{routine_name}' should lower through the canonical intrinsic id",
+            );
+        }
     }
 
     #[test]
