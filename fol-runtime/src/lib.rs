@@ -49,6 +49,61 @@
 //!
 //! The backend should not reimplement `.len` or `.echo` inline. Those are part
 //! of the runtime contract so later backends can share the same behavior.
+//!
+//! # Backend Mapping: Lowered Instructions
+//!
+//! The current lowered `V1` IR mixes instructions that can become plain Rust
+//! syntax with instructions that require stable `fol-runtime` support.
+//!
+//! Native-emission friendly instructions:
+//!
+//! - `Const`
+//! - `LoadLocal`
+//! - `StoreLocal`
+//! - `Call`
+//! - `IntrinsicCall` for scalar comparisons and boolean negation
+//! - `FieldAccess` for backend-authored record layouts
+//! - `Cast` once the backend implements the admitted `V1` cast policy
+//! - control terminators such as `Jump`, `Branch`, and `Return`
+//!
+//! Runtime-backed instructions or lowered surfaces:
+//!
+//! - `LengthOf`
+//!   - must call [`prelude::len`]
+//! - `RuntimeHook`
+//!   - currently `.echo(...)`, which must call [`prelude::echo`]
+//! - `CheckRecoverable`
+//!   - must inspect [`abi::FolRecover`] through [`prelude::check_recoverable`]
+//! - `UnwrapRecoverable`
+//!   - must unwrap the success lane of [`abi::FolRecover`]
+//! - `ExtractRecoverableError`
+//!   - must extract the error lane of [`abi::FolRecover`]
+//! - `ConstructLinear`
+//!   - sequence and vector lowering must map to [`containers::FolSeq`] and
+//!     [`containers::FolVec`]
+//! - `ConstructSet`
+//!   - must map to [`containers::FolSet`] to preserve deterministic ordering
+//! - `ConstructMap`
+//!   - must map to [`containers::FolMap`] to preserve deterministic ordering
+//! - `ConstructOptional`
+//!   - must map to [`shell::FolOption`]
+//! - `ConstructError`
+//!   - must map to [`shell::FolError`]
+//! - `IndexAccess`
+//!   - for runtime containers, must use the runtime indexing contract
+//! - `UnwrapShell`
+//!   - must follow the runtime shell boundary rather than routine-recoverable
+//!     semantics
+//! - `Report`
+//!   - must produce the error lane of [`abi::FolRecover`]
+//! - `Panic`
+//!   - must route through the backend's panic strategy while preserving the
+//!     runtime printable-message contract
+//!
+//! Backend-authored records and entries may compile into plain Rust structs and
+//! enums, but their public formatting behavior should still follow
+//! [`aggregate::FolRecord`], [`aggregate::render_record`], and
+//! [`entry::FolEntry`] so generated `.echo(...)` output stays stable.
 
 pub mod abi;
 pub mod aggregate;

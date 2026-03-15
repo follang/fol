@@ -882,7 +882,7 @@ The implementation should land in many small slices.
 - document exactly how the backend should map lowered builtins to runtime or
   native Rust forms
 
-#### 8.2
+#### 8.2 done
 - document exactly which lowered instructions require runtime support
 
 #### 8.3
