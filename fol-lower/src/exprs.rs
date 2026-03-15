@@ -4596,4 +4596,63 @@ mod tests {
                 .contains("entry construction lowering for variant 'OK' lands in the pending aggregate slice")
         );
     }
+
+    #[test]
+    fn audited_v1_lowering_boundaries_fail_with_explicit_messages() {
+        let cases = [
+            (
+                crate::UnsupportedLoweringSurface::UnaryOperators,
+                "fun[] main(): int = {\n    return -1;\n}\n",
+                "unary operator lowering for 'neg' lands in a later lowering slice",
+            ),
+            (
+                crate::UnsupportedLoweringSurface::BinaryOperators,
+                "fun[] main(): int = {\n    return 1 + 2;\n}\n",
+                "binary operator lowering for 'add' lands in a later lowering slice",
+            ),
+            (
+                crate::UnsupportedLoweringSurface::TypeMatchingWhenOf,
+                "fun classify(value: any): int = {\n    when(value) {\n        of(int) { return 1; }\n        { return 0; }\n    }\n}\n",
+                "type-matching when/of branches are not lowered in this slice yet",
+            ),
+            (
+                crate::UnsupportedLoweringSurface::IterationLoops,
+                "fun[] main(items: seq[int]): int = {\n    loop(item in items) {\n        break;\n    }\n    return 0;\n}\n",
+                "iteration loop lowering is not part of the current lowered V1 control-flow milestone",
+            ),
+            (
+                crate::UnsupportedLoweringSurface::ProcedureStyleFreeCalls,
+                "pro finish(): non = {\n    return;\n}\nfun[] main(): int = {\n    finish();\n    return 0;\n}\n",
+                "procedure-style calls without a value result are not lowered in this slice yet: 'finish'",
+            ),
+            (
+                crate::UnsupportedLoweringSurface::ProcedureStyleMethodCalls,
+                "typ Box: { value: int }\npro (Box)touch(): non = {\n    return;\n}\nfun[] main(box: Box): int = {\n    box.touch();\n    return box.value;\n}\n",
+                "procedure-style method calls without a value result are not lowered in this slice yet: 'touch'",
+            ),
+            (
+                crate::UnsupportedLoweringSurface::EntryVariantConstruction,
+                "typ Status: ent = {\n    var OK: int = 1;\n}\nfun[] main(): Status = {\n    return Status.OK;\n}\n",
+                "entry construction lowering for variant 'OK' lands in the pending aggregate slice",
+            ),
+        ];
+
+        assert_eq!(crate::v1_lowering_boundaries().len(), cases.len());
+
+        for (surface, source, expected_message) in cases {
+            let error = lower_fixture_error(source);
+            assert_eq!(
+                error.kind(),
+                LoweringErrorKind::Unsupported,
+                "expected unsupported lowering for boundary '{}'",
+                surface.label()
+            );
+            assert!(
+                error.message().contains(expected_message),
+                "expected lowering boundary '{}' to mention '{expected_message}', got: {:?}",
+                surface.label(),
+                error
+            );
+        }
+    }
 }
