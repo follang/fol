@@ -3,6 +3,7 @@ use crate::ids::{
     LoweredTypeId,
 };
 use fol_resolver::{SourceUnitId, SymbolId};
+use std::collections::BTreeMap;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LoweredOperand {
@@ -98,6 +99,7 @@ pub struct LoweredRoutine {
     pub signature: Option<LoweredTypeId>,
     pub receiver_type: Option<LoweredTypeId>,
     pub params: Vec<LoweredLocalId>,
+    pub local_symbols: BTreeMap<SymbolId, LoweredLocalId>,
     pub locals: IdTable<LoweredLocalId, LoweredLocal>,
     pub blocks: IdTable<LoweredBlockId, LoweredBlock>,
     pub instructions: IdTable<LoweredInstrId, LoweredInstr>,
@@ -114,6 +116,7 @@ impl LoweredRoutine {
             signature: None,
             receiver_type: None,
             params: Vec::new(),
+            local_symbols: BTreeMap::new(),
             locals: IdTable::new(),
             blocks: IdTable::new(),
             instructions: IdTable::new(),

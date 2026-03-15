@@ -581,6 +581,7 @@ fn lower_routine_decl(
         next_local_index += 1;
     }
 
+    let routine_scope_id = typed_symbol.scope_id;
     let checked_signature = typed_symbol.declared_type.ok_or_else(|| {
         LoweringError::with_kind(
             LoweringErrorKind::InvalidInput,
@@ -627,6 +628,15 @@ fn lower_routine_decl(
             type_id: Some(param_type),
             name: Some(param.name.clone()),
         });
+        if let Some(param_symbol_id) = find_symbol_in_exact_scope(
+            &typed_package.program,
+            source_unit_id,
+            routine_scope_id,
+            SymbolKind::Parameter,
+            &param.name,
+        ) {
+            routine.local_symbols.insert(param_symbol_id, local_id);
+        }
         routine.params.push(local_id);
         next_local_index += 1;
     }
@@ -655,6 +665,27 @@ fn find_local_symbol_id(
         .iter_with_ids()
         .find(|(_, symbol)| {
             symbol.source_unit == source_unit_id
+                && symbol.kind == kind
+                && symbol.name == name
+                && symbol.mounted_from.is_none()
+        })
+        .map(|(symbol_id, _)| symbol_id)
+}
+
+pub(crate) fn find_symbol_in_exact_scope(
+    typed_program: &fol_typecheck::TypedProgram,
+    source_unit_id: SourceUnitId,
+    scope_id: fol_resolver::ScopeId,
+    kind: SymbolKind,
+    name: &str,
+) -> Option<SymbolId> {
+    typed_program
+        .resolved()
+        .symbols
+        .iter_with_ids()
+        .find(|(_, symbol)| {
+            symbol.source_unit == source_unit_id
+                && symbol.scope == scope_id
                 && symbol.kind == kind
                 && symbol.name == name
                 && symbol.mounted_from.is_none()
