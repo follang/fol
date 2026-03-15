@@ -925,7 +925,7 @@ not full long-term compiler completion.
 #### 4.1 done
 - emit `Cargo.toml` with path dependency on `fol-runtime`
 
-#### 4.2
+#### 4.2 done
 - emit crate root shell (`main.rs` or equivalent)
 
 #### 4.3
