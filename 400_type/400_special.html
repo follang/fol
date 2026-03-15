@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-696213b3.js";
+            window.path_to_searchindex_js = "../searchindex-b29467ad.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-114bd97f.js"></script>
@@ -202,6 +202,15 @@
 <p>In the current <code>V1</code> compiler milestone, <code>nil</code> is accepted only when type
 checking already knows it is flowing into an <code>opt[...]</code> or <code>err[...]</code> shell.
 Plain inference from <code>nil</code> alone is not supported.</p>
+<p>Current <code>V1</code> shell note:</p>
+<ul>
+<li><code>opt[...]</code> and <code>err[...]</code> are shell values.</li>
+<li>postfix unwrap <code>value!</code> applies to those shell values.</li>
+<li>routine calls declared with <code>ResultType / ErrorType</code> are not <code>err[...]</code>
+shells.</li>
+<li>use propagation, <code>check(...)</code>, or <code>expr || fallback</code> for those routine calls
+instead of <code>!</code>.</li>
+</ul>
 
                     </main>
 

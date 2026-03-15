@@ -35,7 +35,7 @@
             const path_to_root = "../../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../../searchindex-696213b3.js";
+            window.path_to_searchindex_js = "../../searchindex-b29467ad.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../../toc-114bd97f.js"></script>
@@ -188,8 +188,16 @@
     report "file not found";
 }
 </code></pre>
-<p>The first <code>:</code> declares the result type, and <code>/</code> declares the routine error type.
-{{% notice warn %}}</p>
+<p>The first <code>:</code> declares the result type, and <code>/</code> declares the routine error type.</p>
+<p>Current <code>V1</code> note:</p>
+<ul>
+<li>a function declared as <code>fun[] read(...): T / E</code> does not return an <code>err[E]</code>
+shell value</li>
+<li>it returns through a recoverable routine error path</li>
+<li>handle that path with propagation, <code>check(...)</code>, or <code>expr || fallback</code></li>
+<li>postfix <code>!</code> stays reserved for <code>opt[...]</code> and <code>err[...]</code> shell values
+{{% notice warn %}}</li>
+</ul>
 <p>Functions in FOL are lazy-initialized.</p>
 <p>{{% /notice %}}</p>
 <p>So it is an evaluation strategy which delays the evaluation of the function until its value is needed. You call a function passing it some arguments that were expensive to calculate and then the function don’t need all of them due to some other arguments.</p>

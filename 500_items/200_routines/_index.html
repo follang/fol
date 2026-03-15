@@ -35,7 +35,7 @@
             const path_to_root = "../../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../../searchindex-696213b3.js";
+            window.path_to_searchindex_js = "../../searchindex-b29467ad.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../../toc-114bd97f.js"></script>
@@ -296,15 +296,16 @@ pro main: int = {
 <pre><code>fun[] add(el1, el2: int[64]) = { result = el1 + el2 }
 </code></pre>
 <p>{{% notice info %}}</p>
-<p>Each function in FOL has two defined variables that are automatically returned at the end of the function.</p>
-<p>{{% /notice %}}</p>
-<p>Those variables are:</p>
+<p>Current <code>V1</code> routine summary:</p>
 <ul>
-<li>a variable called <code>result</code>, which is the one that is returned and is same type as return type</li>
-<li>an error variable (called <code>error</code>), that can be reported from the funciton</li>
+<li>routines declare a success type after <code>:</code></li>
+<li>routines may also declare a recoverable error type after <code>/</code></li>
+<li><code>report expr</code> exits through that declared error path</li>
+<li>routine call results declared with <code>/ ErrorType</code> are not <code>err[...]</code> shell
+values</li>
+<li>use propagation, <code>check(...)</code>, or <code>expr || fallback</code> for those calls</li>
+<li>keep postfix <code>!</code> for <code>opt[...]</code> and <code>err[...]</code> shell values</li>
 </ul>
-<p>{{% notice info %}}</p>
-<p>Internally, those are a set of two variables, <em>set[result: any, eror: err]</em>. The result is of type any, and the any type shoud be known at compile time.</p>
 <p>{{% /notice %}}</p>
 <p>The implicitly declared variable <code>result</code> is of the same type of the return type. For it top be implicitly declared, the return type of the function shoud be always declared, and not use the short form. The variable is initialized with zero value, and if not changed during the body implementation, the same value will return (so zero).</p>
 <pre><code>pro main(): int = {
@@ -312,13 +313,14 @@ pro main: int = {
     fun[] sub(el1, el2: int[64]) = { return el1 - el2 }                     // can't access the result variable, thus we use return
 }
 </code></pre>
-<p>In addition, another implicitly decpared variable <code>error</code> of ype <code>err</code> is declared too. We talk for errors in <a href="/docs/spec/060_errors">details here</a>, but here is a short example:</p>
-<pre><code>pro main(): int = {
-    fun[] add(el1, el2: int[64]): int[64] = { result = el1 + el2 }          // using the implicitly declared $result variable
-    check(add(5,6))                                                         // this will check if the error is nil
+<p>Recoverable error-aware routines use the current signature form:</p>
+<pre><code>fun[] read(path: str): int / str = {
+    report "missing path"
 }
 </code></pre>
-<p>The final expression in the function will be used as return value. For this to be used, the return type of the function needs to be defined (so the function cnat be in the short form)). ver this can be used only in one statement body.</p>
+<p>and are handled at the call site with propagation, <code>check(...)</code>, or <code>||</code>
+rather than shell unwrap.
+The final expression in the function will be used as return value. For this to be used, the return type of the function needs to be defined (so the function cnat be in the short form)). ver this can be used only in one statement body.</p>
 <pre><code>pro main(): int = {
     fun[] add(el1, el2: int[64]): int[64] = { el1 + el2 }                   // This is tha last statement, this will serve as return
     fun[] someting(el1,el2: int): int = {
@@ -331,21 +333,9 @@ pro main: int = {
     }
     fun[] add(el1, el2: int[64]) = { el1 + el2 }                            // this will throw an error, we can't use the short form of funciton in this way
 </code></pre>
-<p>Alternatively, the <code>return</code> and <code>report</code> statements can be used to return a value or error earlier from within the function, even from inside loops or other control flow mechanisms.
-<strong>The example below is just to show the <code>return</code> and <code>report</code> statements, there is a better way to handle errors as shown in <a href="/docs/spec/error">error section</a></strong></p>
-<pre><code>use file: std = {"fs/file"}
-
-pro main(): int = {
-    fun[] fileReader(path: str): str = {
-        var aFile = file.readfile(path)
-        if ( check(aFile) ) {
-            report "File could not be opened" + file                        // report will not break the program, but will return the error here, and the funciton will stop
-        } else {
-            return file | stringify(this) | return $                        // this will be executed only if file was oopened without error
-        }
-    }
-}
-</code></pre>
+<p>Alternatively, <code>return</code> and <code>report</code> can exit a routine early from within
+control flow. See the recoverable-error chapter for the full current <code>V1</code>
+contract and the shell-vs-routine distinction.</p>
 
                     </main>
 

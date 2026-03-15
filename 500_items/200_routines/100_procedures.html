@@ -35,7 +35,7 @@
             const path_to_root = "../../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../../searchindex-696213b3.js";
+            window.path_to_searchindex_js = "../../searchindex-b29467ad.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../../toc-114bd97f.js"></script>
@@ -190,6 +190,14 @@
 }
 </code></pre>
 <p>The first <code>:</code> declares the result type, and <code>/</code> declares the routine error type.</p>
+<p>Current <code>V1</code> note:</p>
+<ul>
+<li>a procedure declared as <code>pro[] write(...): T / E</code> does not produce an
+<code>err[E]</code> shell value that can be unwrapped with <code>!</code></li>
+<li>it produces a recoverable routine result with a success path and an error path</li>
+<li>use propagation, <code>check(...)</code>, or <code>expr || fallback</code> at the call site</li>
+<li>keep postfix <code>!</code> for <code>opt[...]</code> and <code>err[...]</code> shell values only</li>
+</ul>
 <h3 id="passing-values"><a class="header" href="#passing-values">Passing values</a></h3>
 <p>The semantics for passing a value to a procedure are similar to those for assigning a value to a variable. Passing a variable to a procedure will move or copy, just as assignment does. If the procedure is stack-based, it will automatically copy the value. If it is heap-based, it will move the value.</p>
 <pre><code>pro[] modifyValue(someStr: str) = {

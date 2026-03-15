@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-696213b3.js";
+            window.path_to_searchindex_js = "../searchindex-b29467ad.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-114bd97f.js"></script>
@@ -192,6 +192,8 @@ typechecking.</li>
 and yields <code>T</code>.</li>
 <li>Bare <code>err[]</code> does not currently support postfix unwrap because there is no
 payload value to recover.</li>
+<li>This <code>!</code> surface is shell-only. It does not unwrap routine call results
+declared with <code>ResultType / ErrorType</code>.</li>
 </ul>
 <p>At any rate, optional chaining takes this concept of optionals and applies it to method calls and fields. For instance, imagine we have some long chain of method calls:</p>
 <pre><code>important_char = commandline_input.split('-').get(5).charAt(7)
