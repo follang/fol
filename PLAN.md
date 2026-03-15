@@ -747,7 +747,7 @@ The implementation should land in many small slices.
 - define scalar aliases/wrappers policy
 - freeze `int`, `flt`, `bol`, `chr`, `never` strategy
 
-#### 1.2
+#### 1.2 done
 - add `FolStr`
 - implement literal conversion and equality/order/display behavior
 
