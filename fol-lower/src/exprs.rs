@@ -821,7 +821,7 @@ fn lower_nil_literal(
     let Some(type_id) = expected_type else {
         return Err(LoweringError::with_kind(
             LoweringErrorKind::Unsupported,
-            "nil lowering lands in the pending shell-lowering slice",
+            "nil lowering requires an expected opt[...] or err[...] runtime type in lowered V1",
         ));
     };
     let result_local = cursor.allocate_local(type_id, None);
@@ -4005,15 +4005,74 @@ mod tests {
     }
 
     #[test]
+    fn nil_lowering_constructs_optional_and_error_shell_values() {
+        let fixture = std::env::temp_dir().join(format!(
+            "fol_lower_nil_shells_{}.fol",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system clock should be monotonic enough for tmp names")
+                .as_nanos()
+        ));
+        std::fs::write(
+            &fixture,
+            "ali MaybeText: opt[str]\nali Failure: err[str]\nfun[] make(): MaybeText = { return nil }\nfun[] fail(): int: Failure = { report nil }\n",
+        )
+        .expect("should write lowering nil fixture");
+
+        let mut stream = FileStream::from_file(fixture.to_str().expect("utf8 temp path"))
+            .expect("Should open lowering fixture");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let syntax = parser
+            .parse_package(&mut lexer)
+            .expect("Lowering fixture should parse");
+        let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+        let typed = Typechecker::new()
+            .check_resolved_workspace(resolved)
+            .expect("Lowering fixture should typecheck");
+        let lowered = crate::LoweringSession::new(typed)
+            .lower_workspace()
+            .expect("nil lowering should succeed");
+
+        let make_routine = lowered
+            .entry_package()
+            .routine_decls
+            .values()
+            .find(|routine| routine.name == "make")
+            .expect("make routine should exist");
+        let fail_routine = lowered
+            .entry_package()
+            .routine_decls
+            .values()
+            .find(|routine| routine.name == "fail")
+            .expect("fail routine should exist");
+
+        assert!(
+            make_routine.instructions.iter().any(|instr| matches!(
+                instr.kind,
+                LoweredInstrKind::ConstructOptional { value: None, .. }
+            )),
+            "nil in an optional context should lower to an explicit empty optional constructor"
+        );
+        assert!(
+            fail_routine.instructions.iter().any(|instr| matches!(
+                instr.kind,
+                LoweredInstrKind::ConstructError { value: None, .. }
+            )),
+            "nil in a typed error context should lower to an explicit empty error constructor"
+        );
+    }
+
+    #[test]
     fn unsupported_lowering_surfaces_report_explicit_boundary_messages() {
         let nil_error = lower_fixture_error(
-            "ali MaybeText: opt[str]\nfun[] main(): MaybeText = {\n    return nil;\n}\n",
+            "fun[] main(): int = {\n    return nil;\n}\n",
         );
         assert_eq!(nil_error.kind(), LoweringErrorKind::Unsupported);
         assert!(
             nil_error
                 .message()
-                .contains("nil lowering lands in the pending shell-lowering slice")
+                .contains("nil lowering requires an expected opt[...] or err[...] runtime type in lowered V1")
         );
 
         let unwrap_error = lower_fixture_error(
