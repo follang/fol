@@ -31,7 +31,8 @@ pub use config::{BackendConfig, BackendMode, BackendTarget};
 pub use error::{BackendError, BackendErrorKind};
 pub use identity::{stable_workspace_hash, BackendWorkspaceIdentity};
 pub use layout::{
-    plan_namespace_layouts, plan_package_layouts, NamespaceLayoutPlan, PackageLayoutPlan,
+    plan_generated_crate_layout, plan_namespace_layouts, plan_package_layouts,
+    GeneratedCrateLayoutPlan, NamespaceLayoutPlan, PackageLayoutPlan,
 };
 pub use mangle::{
     mangle_global_name, mangle_local_name, mangle_package_module_name,

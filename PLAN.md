@@ -911,7 +911,7 @@ not full long-term compiler completion.
 #### 3.3 done
 - add namespace-to-module-file layout planning
 
-#### 3.4
+#### 3.4 done
 - add generated crate directory layout planner
 
 #### 3.5

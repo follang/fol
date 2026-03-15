@@ -18,6 +18,16 @@ pub struct NamespaceLayoutPlan {
     pub source_unit_ids: Vec<SourceUnitId>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GeneratedCrateLayoutPlan {
+    pub crate_dir_name: String,
+    pub cargo_toml_path: String,
+    pub src_dir: String,
+    pub main_rs_path: String,
+    pub package_mod_paths: Vec<String>,
+    pub namespace_file_paths: Vec<String>,
+}
+
 pub fn plan_package_layouts(session: &BackendSession) -> Vec<PackageLayoutPlan> {
     session
         .package_graph()
@@ -77,6 +87,35 @@ pub fn plan_namespace_layouts(session: &BackendSession) -> Vec<NamespaceLayoutPl
     planned
 }
 
+pub fn plan_generated_crate_layout(session: &BackendSession) -> GeneratedCrateLayoutPlan {
+    let package_layouts = plan_package_layouts(session);
+    let namespace_layouts = plan_namespace_layouts(session);
+
+    let package_mod_paths = package_layouts
+        .iter()
+        .map(|plan| format!("{}/mod.rs", plan.relative_dir))
+        .collect();
+    let namespace_file_paths = namespace_layouts
+        .iter()
+        .map(|plan| {
+            let package_dir = format!(
+                "src/packages/{}",
+                mangle_package_module_name(&plan.package_identity)
+            );
+            format!("{package_dir}/{}", plan.relative_file)
+        })
+        .collect();
+
+    GeneratedCrateLayoutPlan {
+        crate_dir_name: session.workspace_identity().crate_dir_name.clone(),
+        cargo_toml_path: "Cargo.toml".to_string(),
+        src_dir: "src".to_string(),
+        main_rs_path: "src/main.rs".to_string(),
+        package_mod_paths,
+        namespace_file_paths,
+    }
+}
+
 fn namespace_segments(package_identity: &PackageIdentity, namespace: &str) -> Vec<String> {
     let mut segments = namespace
         .split("::")
@@ -98,7 +137,7 @@ fn sanitize_segment(raw: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{plan_namespace_layouts, plan_package_layouts};
+    use super::{plan_generated_crate_layout, plan_namespace_layouts, plan_package_layouts};
     use crate::{testing::sample_lowered_workspace, BackendSession};
 
     #[test]
@@ -132,5 +171,33 @@ mod tests {
         assert_eq!(plans[3].full_namespace, "shared::util");
         assert_eq!(plans[3].module_name, "util");
         assert_eq!(plans[3].relative_file, "util.rs");
+    }
+
+    #[test]
+    fn generated_crate_layout_plan_anchors_package_and_namespace_paths() {
+        let session = BackendSession::new(sample_lowered_workspace());
+
+        let plan = plan_generated_crate_layout(&session);
+
+        assert!(plan.crate_dir_name.starts_with("fol-build-app-"));
+        assert_eq!(plan.cargo_toml_path, "Cargo.toml");
+        assert_eq!(plan.src_dir, "src");
+        assert_eq!(plan.main_rs_path, "src/main.rs");
+        assert_eq!(
+            plan.package_mod_paths,
+            vec![
+                "src/packages/pkg__entry__app/mod.rs",
+                "src/packages/pkg__local__shared/mod.rs",
+            ]
+        );
+        assert_eq!(
+            plan.namespace_file_paths,
+            vec![
+                "src/packages/pkg__entry__app/root.rs",
+                "src/packages/pkg__entry__app/math.rs",
+                "src/packages/pkg__local__shared/root.rs",
+                "src/packages/pkg__local__shared/util.rs",
+            ]
+        );
     }
 }
