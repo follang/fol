@@ -17,3 +17,7 @@ pub use crate::shell::{
 };
 pub use crate::strings::FolStr;
 pub use crate::value::{impossible, FolBool, FolChar, FolFloat, FolInt, FolNever};
+pub use crate::entry::{
+    failure_outcome_from_error, outcome_from_recoverable, printable_outcome_message,
+    FolProcessOutcome,
+};

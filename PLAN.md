@@ -849,7 +849,7 @@ The implementation should land in many small slices.
 #### 6.1 done
 - define how generated Rust `main` should interpret `FolRecover<T, E>`
 
-#### 6.2
+#### 6.2 done
 - add helper(s) for converting recoverable top-level failures into printable
   process outcomes
 
