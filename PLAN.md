@@ -573,7 +573,7 @@ This plan is complete only when all of the following are true:
 ### Phase 10. Documentation Closeout
 
 - `10.1` `done` Update `README.md` and `PROGRESS.md` to describe `fol-lower` as the next implemented compiler stage.
-- `10.2` `pending` Update `VERSIONS.md` references where the `V1` pipeline is described so it includes lowering on the road to a binary.
+- `10.2` `done` Update `VERSIONS.md` references where the `V1` pipeline is described so it includes lowering on the road to a binary.
 - `10.3` `pending` Update relevant book/compiler docs to explain the role of lowering without promising backend details too early.
 - `10.4` `pending` Rewrite this file into a completion record only after the lowering stage is truly implemented and test-backed.
 

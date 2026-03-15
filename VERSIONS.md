@@ -68,13 +68,29 @@ of trying to make the whole book real at once.
 
 ## What V1 means
 
-`V1` should be the first compiler release that can take ordinary FOL source and
-produce a binary for a useful, native, non-interop subset of the language.
+`V1` should be the first compiler release that can take ordinary FOL source,
+carry it through package loading, resolution, type checking, and lowering, and
+then produce a binary for a useful, native, non-interop subset of the language.
 
 The key idea is coherence.
 `V1` does not need every ambitious feature from the book.
 `V1` needs one subset that is strong enough to be real, teachable, testable,
-and buildable from source to binary.
+lowerable, and buildable from source to binary.
+
+At the current repository head, that already means more than front-end validity.
+The implemented `V1` compiler chain now reaches:
+
+- `fol-stream`
+- `fol-lexer`
+- `fol-parser`
+- `fol-package`
+- `fol-resolver`
+- `fol-typecheck`
+- `fol-lower`
+
+So the remaining `V1` gap is no longer semantic truth for the supported subset.
+That part exists. The remaining `V1` work is the first backend that can consume
+lowered IR and continue toward a binary.
 
 ### V1 is the core language
 
@@ -267,7 +283,7 @@ hard questions correctly:
 
 That is a deep semantic layer.
 It is absolutely worth doing, but it should not be mixed into the first
-type-checking milestone.
+type-checking and lowering milestone.
 
 So ownership and borrowing belong in `V3`.
 
