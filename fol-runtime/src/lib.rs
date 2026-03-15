@@ -75,4 +75,29 @@ mod tests {
         assert_eq!(error.kind(), RuntimeErrorKind::InvariantViolation);
         assert_eq!(error.message(), "runtime invariant failed");
     }
+
+    #[test]
+    fn public_recoverable_abi_freezes_success_path_through_prelude() {
+        let value = prelude::FolRecover::<prelude::FolInt, prelude::FolStr>::ok(7);
+
+        assert!(!prelude::check_recoverable(&value));
+        assert!(prelude::recoverable_succeeded(&value));
+        assert_eq!(value.value_ref(), Some(&7));
+        assert_eq!(Result::<prelude::FolInt, prelude::FolStr>::from(value), Ok(7));
+    }
+
+    #[test]
+    fn public_recoverable_abi_freezes_failure_path_through_prelude() {
+        let value = prelude::FolRecover::<prelude::FolInt, prelude::FolStr>::err(
+            prelude::FolStr::from("bad-input"),
+        );
+
+        assert!(prelude::check_recoverable(&value));
+        assert!(!prelude::recoverable_succeeded(&value));
+        assert_eq!(value.error_ref().map(|error| error.as_str()), Some("bad-input"));
+        assert_eq!(
+            Result::<prelude::FolInt, prelude::FolStr>::from(value),
+            Err(prelude::FolStr::from("bad-input"))
+        );
+    }
 }

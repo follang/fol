@@ -758,7 +758,7 @@ The implementation should land in many small slices.
 #### 1.4 done
 - add helper functions for `check(...)`-style error inspection
 
-#### 1.5
+#### 1.5 done
 - add top-level recoverable ABI tests
 - prove success/failure/inspection semantics
 
