@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-aaddf521.js";
+            window.path_to_searchindex_js = "../searchindex-a9d5fac1.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-fc1769c7.js"></script>
@@ -207,6 +207,14 @@ var varable: type = container[2]                                // accessing the
 deferred surfaces, not active <code>V1</code> intrinsics</li>
 </ul>
 <p>So the safe current query surface for containers is <code>.len(...)</code>.</p>
+<p>Current <code>V1</code> runtime note:</p>
+<ul>
+<li><code>arr[...]</code> remains the fixed-size container family</li>
+<li><code>vec[...]</code> and <code>seq[...]</code> are lowered onto dedicated runtime container types</li>
+<li><code>set[...]</code> and <code>map[...]</code> also use runtime-backed container types</li>
+<li>runtime-backed <code>set[...]</code> and <code>map[...]</code> preserve deterministic ordering for
+rendering and backend-visible behavior in the current compiler</li>
+</ul>
 <p>{{% notice tip %}}</p>
 <p>Dynamic arrays are a dynamically allocated (hence the name), thus if not allocated in heap but in stack, the size will be defined automatically in compile time and will be changed to static array.</p>
 <p>{{% /notice %}}</p>
@@ -291,7 +299,10 @@ aMap.add( {"IT",55} )
 aMap+[{"RU",24}]
 .echo(.len(aMap))           // prints: 4
 </code></pre>
-<p>The comparison operators <code>==</code> and <code>!=</code> must be fully defined for operands of the key type; thus the key type must not be a function, map, or sequence.</p>
+<p>In current <code>V1</code>, backend execution should treat <code>.len(...)</code> and runtime-visible
+container rendering as part of the <code>fol-runtime</code> contract rather than
+re-deriving container policy per backend.
+The comparison operators <code>==</code> and <code>!=</code> must be fully defined for operands of the key type; thus the key type must not be a function, map, or sequence.</p>
 <p>{{% notice tip %}}</p>
 <p>Maps are a growable containers too, thus if not allocated in heap but in stack, the size will be defined automatically in compile time and will be changet to static containers</p>
 <p>{{% /notice %}}</p>

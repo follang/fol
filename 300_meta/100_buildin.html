@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-aaddf521.js";
+            window.path_to_searchindex_js = "../searchindex-a9d5fac1.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-fc1769c7.js"></script>
@@ -219,6 +219,15 @@ compiler.</p>
 <h2 id="current-v1-implemented-intrinsics"><a class="header" href="#current-v1-implemented-intrinsics">Current <code>V1</code> implemented intrinsics</a></h2>
 <p>The current compiler implements this subset end to end through type checking and
 lowering.</p>
+<p>For current <code>V1</code>, backend execution of the implemented intrinsic set is
+expected to go through <code>fol-runtime</code> where policy matters. In practice that
+means:</p>
+<ul>
+<li><code>.len(...)</code> uses the runtime length helper</li>
+<li><code>.echo(...)</code> uses the runtime echo hook and formatting contract</li>
+<li><code>check(...)</code> uses the runtime recoverable-result inspection contract</li>
+<li>scalar comparisons and <code>.not(...)</code> may lower to native target operations</li>
+</ul>
 <h3 id="comparison"><a class="header" href="#comparison">Comparison</a></h3>
 <pre><code class="language-fol">.eq(left, right)
 .nq(left, right)
@@ -266,7 +275,7 @@ families, the compiler reports an intrinsic-specific type error.</p>
 <p>Current <code>V1</code> rule:</p>
 <ul>
 <li><code>.echo(...)</code> accepts exactly one argument</li>
-<li>it emits the value through the runtime-visible debug hook</li>
+<li>it emits the value through the <code>fol-runtime</code> debug hook</li>
 <li>it then forwards the same value unchanged</li>
 </ul>
 <p>So this is valid:</p>
@@ -371,6 +380,15 @@ fun[] unwrap_failure(value: Failure): str = {
 <p>The current compiler has one shared intrinsic registry crate:</p>
 <p><code>fol-intrinsics</code></p>
 <p>That registry is the source of truth for:</p>
+<ul>
+<li>canonical intrinsic names and aliases</li>
+<li>milestone availability (<code>V1</code> / <code>V2</code> / <code>V3</code>)</li>
+<li>type-checking selection rules</li>
+<li>lowering mode</li>
+<li>backend/runtime role classification</li>
+</ul>
+<p>The current runtime companion for implemented <code>V1</code> intrinsics is:</p>
+<p><code>fol-runtime</code></p>
 <ul>
 <li>intrinsic names</li>
 <li>aliases</li>

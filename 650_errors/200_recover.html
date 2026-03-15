@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-aaddf521.js";
+            window.path_to_searchindex_js = "../searchindex-a9d5fac1.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-fc1769c7.js"></script>
@@ -321,11 +321,22 @@ Use propagation, <code>check(...)</code>, or <code>||</code> with it.</p>
 <li><code>expr || fallback</code></li>
 <li>lowering of these surfaces into explicit recoverable-error IR</li>
 </ul>
+<p>For backend work, the important current <code>V1</code> runtime distinction is:</p>
+<ul>
+<li>routine recoverable results map to the <code>fol-runtime</code> recoverable ABI</li>
+<li>shell values such as <code>opt[...]</code> and <code>err[...]</code> map to separate shell runtime
+types</li>
+<li>those two categories are intentionally not merged</li>
+</ul>
+<p>So a future backend should treat a lowered recoverable routine result as the
+runtime recoverable object, not as an <code>err[...]</code> shell and not as a tuple-like
+user value.</p>
 <p>The current compiler does not yet claim:</p>
 <ul>
 <li>advanced Zig-style success/error capture syntax</li>
 <li>cleanup constructs like <code>errdefer</code></li>
-<li>full backend/native runtime ABI documentation in the book</li>
+<li>backend-specific calling conventions beyond the stable <code>fol-runtime</code>
+recoverable boundary</li>
 </ul>
 <p>Those belong to later milestones.</p>
 

@@ -35,7 +35,7 @@
             const path_to_root = "../../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../../searchindex-aaddf521.js";
+            window.path_to_searchindex_js = "../../searchindex-a9d5fac1.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../../toc-fc1769c7.js"></script>
@@ -211,6 +211,15 @@ var laptop: computer = { brand = "acme", memory = 16 }
 </code></pre>
 <p>The call <code>laptop.get_type()</code> is procedural sugar for calling the receiver
 routine with <code>laptop</code> as its first input.</p>
+<p>Current <code>V1</code> backend/runtime note:</p>
+<ul>
+<li>backends may emit records and entries as plain target-language structs/enums</li>
+<li>that does not change the language model: they are still data plus ordinary
+receiver-qualified routines</li>
+<li>when runtime-visible formatting is needed, generated backends should preserve
+the <code>fol-runtime</code> aggregate formatting contract instead of inventing a
+backend-specific display shape</li>
+</ul>
 <h3 id="entries"><a class="header" href="#entries">Entries</a></h3>
 <p>Is an a group of constants (identified with <code>ent</code>) consisting of a set of named values called elements.</p>
 <pre><code>typ color: ent = {

@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-aaddf521.js";
+            window.path_to_searchindex_js = "searchindex-a9d5fac1.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-fc1769c7.js"></script>
@@ -1350,6 +1350,15 @@ compiler.</p>
 <h2 id="current-v1-implemented-intrinsics"><a class="header" href="#current-v1-implemented-intrinsics">Current <code>V1</code> implemented intrinsics</a></h2>
 <p>The current compiler implements this subset end to end through type checking and
 lowering.</p>
+<p>For current <code>V1</code>, backend execution of the implemented intrinsic set is
+expected to go through <code>fol-runtime</code> where policy matters. In practice that
+means:</p>
+<ul>
+<li><code>.len(...)</code> uses the runtime length helper</li>
+<li><code>.echo(...)</code> uses the runtime echo hook and formatting contract</li>
+<li><code>check(...)</code> uses the runtime recoverable-result inspection contract</li>
+<li>scalar comparisons and <code>.not(...)</code> may lower to native target operations</li>
+</ul>
 <h3 id="comparison"><a class="header" href="#comparison">Comparison</a></h3>
 <pre><code class="language-fol">.eq(left, right)
 .nq(left, right)
@@ -1397,7 +1406,7 @@ families, the compiler reports an intrinsic-specific type error.</p>
 <p>Current <code>V1</code> rule:</p>
 <ul>
 <li><code>.echo(...)</code> accepts exactly one argument</li>
-<li>it emits the value through the runtime-visible debug hook</li>
+<li>it emits the value through the <code>fol-runtime</code> debug hook</li>
 <li>it then forwards the same value unchanged</li>
 </ul>
 <p>So this is valid:</p>
@@ -1502,6 +1511,15 @@ fun[] unwrap_failure(value: Failure): str = {
 <p>The current compiler has one shared intrinsic registry crate:</p>
 <p><code>fol-intrinsics</code></p>
 <p>That registry is the source of truth for:</p>
+<ul>
+<li>canonical intrinsic names and aliases</li>
+<li>milestone availability (<code>V1</code> / <code>V2</code> / <code>V3</code>)</li>
+<li>type-checking selection rules</li>
+<li>lowering mode</li>
+<li>backend/runtime role classification</li>
+</ul>
+<p>The current runtime companion for implemented <code>V1</code> intrinsics is:</p>
+<p><code>fol-runtime</code></p>
 <ul>
 <li>intrinsic names</li>
 <li>aliases</li>
@@ -1675,6 +1693,14 @@ var varable: type = container[2]                                // accessing the
 deferred surfaces, not active <code>V1</code> intrinsics</li>
 </ul>
 <p>So the safe current query surface for containers is <code>.len(...)</code>.</p>
+<p>Current <code>V1</code> runtime note:</p>
+<ul>
+<li><code>arr[...]</code> remains the fixed-size container family</li>
+<li><code>vec[...]</code> and <code>seq[...]</code> are lowered onto dedicated runtime container types</li>
+<li><code>set[...]</code> and <code>map[...]</code> also use runtime-backed container types</li>
+<li>runtime-backed <code>set[...]</code> and <code>map[...]</code> preserve deterministic ordering for
+rendering and backend-visible behavior in the current compiler</li>
+</ul>
 <p>{{% notice tip %}}</p>
 <p>Dynamic arrays are a dynamically allocated (hence the name), thus if not allocated in heap but in stack, the size will be defined automatically in compile time and will be changed to static array.</p>
 <p>{{% /notice %}}</p>
@@ -1759,7 +1785,10 @@ aMap.add( {"IT",55} )
 aMap+[{"RU",24}]
 .echo(.len(aMap))           // prints: 4
 </code></pre>
-<p>The comparison operators <code>==</code> and <code>!=</code> must be fully defined for operands of the key type; thus the key type must not be a function, map, or sequence.</p>
+<p>In current <code>V1</code>, backend execution should treat <code>.len(...)</code> and runtime-visible
+container rendering as part of the <code>fol-runtime</code> contract rather than
+re-deriving container policy per backend.
+The comparison operators <code>==</code> and <code>!=</code> must be fully defined for operands of the key type; thus the key type must not be a function, map, or sequence.</p>
 <p>{{% notice tip %}}</p>
 <p>Maps are a growable containers too, thus if not allocated in heap but in stack, the size will be defined automatically in compile time and will be changet to static containers</p>
 <p>{{% /notice %}}</p>
@@ -2784,6 +2813,15 @@ var laptop: computer = { brand = "acme", memory = 16 }
 </code></pre>
 <p>The call <code>laptop.get_type()</code> is procedural sugar for calling the receiver
 routine with <code>laptop</code> as its first input.</p>
+<p>Current <code>V1</code> backend/runtime note:</p>
+<ul>
+<li>backends may emit records and entries as plain target-language structs/enums</li>
+<li>that does not change the language model: they are still data plus ordinary
+receiver-qualified routines</li>
+<li>when runtime-visible formatting is needed, generated backends should preserve
+the <code>fol-runtime</code> aggregate formatting contract instead of inventing a
+backend-specific display shape</li>
+</ul>
 <h3 id="entries"><a class="header" href="#entries">Entries</a></h3>
 <p>Is an a group of constants (identified with <code>ent</code>) consisting of a set of named values called elements.</p>
 <pre><code>typ color: ent = {
@@ -3628,11 +3666,22 @@ Use propagation, <code>check(...)</code>, or <code>||</code> with it.</p>
 <li><code>expr || fallback</code></li>
 <li>lowering of these surfaces into explicit recoverable-error IR</li>
 </ul>
+<p>For backend work, the important current <code>V1</code> runtime distinction is:</p>
+<ul>
+<li>routine recoverable results map to the <code>fol-runtime</code> recoverable ABI</li>
+<li>shell values such as <code>opt[...]</code> and <code>err[...]</code> map to separate shell runtime
+types</li>
+<li>those two categories are intentionally not merged</li>
+</ul>
+<p>So a future backend should treat a lowered recoverable routine result as the
+runtime recoverable object, not as an <code>err[...]</code> shell and not as a tuple-like
+user value.</p>
 <p>The current compiler does not yet claim:</p>
 <ul>
 <li>advanced Zig-style success/error capture syntax</li>
 <li>cleanup constructs like <code>errdefer</code></li>
-<li>full backend/native runtime ABI documentation in the book</li>
+<li>backend-specific calling conventions beyond the stable <code>fol-runtime</code>
+recoverable boundary</li>
 </ul>
 <p>Those belong to later milestones.</p>
 <div style="break-before: page; page-break-before: always;"></div>
