@@ -42,3 +42,12 @@ nil
 In the current `V1` compiler milestone, `nil` is accepted only when type
 checking already knows it is flowing into an `opt[...]` or `err[...]` shell.
 Plain inference from `nil` alone is not supported.
+
+Current `V1` shell note:
+
+- `opt[...]` and `err[...]` are shell values.
+- postfix unwrap `value!` applies to those shell values.
+- routine calls declared with `ResultType / ErrorType` are not `err[...]`
+  shells.
+- use propagation, `check(...)`, or `expr || fallback` for those routine calls
+  instead of `!`.

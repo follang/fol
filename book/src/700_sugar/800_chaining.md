@@ -20,6 +20,8 @@ Current `V1` compiler note:
   and yields `T`.
 - Bare `err[]` does not currently support postfix unwrap because there is no
   payload value to recover.
+- This `!` surface is shell-only. It does not unwrap routine call results
+  declared with `ResultType / ErrorType`.
 
 At any rate, optional chaining takes this concept of optionals and applies it to method calls and fields. For instance, imagine we have some long chain of method calls:
 

@@ -19,6 +19,14 @@ fun[] read(path: str): str / io_err = {
 ```
 
 The first `:` declares the result type, and `/` declares the routine error type.
+
+Current `V1` note:
+
+- a function declared as `fun[] read(...): T / E` does not return an `err[E]`
+  shell value
+- it returns through a recoverable routine error path
+- handle that path with propagation, `check(...)`, or `expr || fallback`
+- postfix `!` stays reserved for `opt[...]` and `err[...]` shell values
 {{% notice warn %}}
 
 Functions in FOL are lazy-initialized. 

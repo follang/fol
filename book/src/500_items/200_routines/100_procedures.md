@@ -20,6 +20,14 @@ pro[] write(path: str): int / io_err = {
 
 The first `:` declares the result type, and `/` declares the routine error type.
 
+Current `V1` note:
+
+- a procedure declared as `pro[] write(...): T / E` does not produce an
+  `err[E]` shell value that can be unwrapped with `!`
+- it produces a recoverable routine result with a success path and an error path
+- use propagation, `check(...)`, or `expr || fallback` at the call site
+- keep postfix `!` for `opt[...]` and `err[...]` shell values only
+
 ### Passing values
 
 The semantics for passing a value to a procedure are similar to those for assigning a value to a variable. Passing a variable to a procedure will move or copy, just as assignment does. If the procedure is stack-based, it will automatically copy the value. If it is heap-based, it will move the value. 
