@@ -46,28 +46,29 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 
 ## 2. Snapshot Metrics
 
-- Workspace member crates: `9`
+- Workspace member crates: `10`
 - Root binary crate: `1`
-- Active Rust source lines scanned: `42782`
+- Active Rust source lines scanned: `48395`
 - Core compiler Rust lines scanned:
 - `fol-types`: `259`
 - `fol-stream`: `570`
 - `fol-lexer`: `2406`
 - `fol-parser`: `15983`
 - `fol-package`: `3040`
-- `fol-resolver`: `5056`
-- `fol-typecheck`: `4990`
+- `fol-resolver`: `5066`
+- `fol-typecheck`: `6037`
+- `fol-intrinsics`: `1847`
 - `fol-diagnostics`: `1236`
-- `fol-lower`: `8676`
-- Root CLI and root-local source: `566`
+- `fol-lower`: `11189`
+- Root CLI and root-local source: `795`
 - Active parser fixtures: `1283`
 - Active lexer tests: `85`
 - Active stream tests: `54`
 - Parser-focused Rust tests under `test/parser`: `1108`
 - Resolver-focused Rust tests under `test/resolver`: `100`
 - Typecheck-focused Rust tests under `test/typecheck`: `71`
-- Observed current unit test run: `8` unit tests, green
-- Observed current integration run: `1537` integration tests, green
+- Observed current unit test run: `18` unit tests, green
+- Observed current integration run: `1567` integration tests, green
 
 ## 3. Current Headline Status
 
@@ -78,6 +79,7 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `fol-resolver`: implemented for the current whole-program name-resolution contract
 - `fol-typecheck`: implemented for the full current `V1` semantic boundary and wired into the CLI
 - `fol-lower`: implemented for the full current lowered `V1` IR boundary and wired into the CLI
+- `fol-intrinsics`: implemented as the shared compiler-owned intrinsic registry for the current `V1` subset
 - `fol-diagnostics`: implemented, structured, and wired into the CLI
 - Root CLI: implemented as parse-and-package-prepare-and-resolve-and-typecheck-and-lower driver
 - Stream + lexer + parser: stable and consumed by package loading and resolver
@@ -96,8 +98,8 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `make build`: passed
 - `make test`: passed
 - Current observed totals:
-- `8` unit tests passed
-- `1537` integration tests passed
+- `18` unit tests passed
+- `1567` integration tests passed
 - Observed active failures: `0`
 
 ## 5. What Has Been Completed So Far
@@ -340,7 +342,7 @@ Authority rule for this file: code and active tests win over older docs, plans, 
   resolution, exact resolver-location propagation through JSON diagnostics, and
   non-null location guarantees for plain unresolved and ambiguous name cases.
 
-### 5.8 Typecheck Milestone
+### 5.9 Typecheck Milestone
 
 - `fol-typecheck` now exists as a workspace crate and is wired into the root CLI
   after resolver.
@@ -398,6 +400,44 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - routine call results with declared error types are not interchangeable with
   `err[...]` shell values
 - postfix `!` remains scoped to shell values rather than routine call results
+
+### 5.10 Intrinsics Milestone
+
+- `fol-intrinsics` now exists as a workspace crate and acts as shared compiler
+  infrastructure instead of another pipeline stage.
+- The registry now owns canonical intrinsic identity, aliases, surfaces,
+  categories, version availability, deferred-roadmap classification, lowering
+  mode, and backend-facing role classification.
+- Current implemented intrinsic subset is real end to end through typecheck and
+  lowering:
+- `.eq(...)`
+- `.nq(...)`
+- `.lt(...)`
+- `.gt(...)`
+- `.ge(...)`
+- `.le(...)`
+- `.not(...)`
+- `.len(...)`
+- `.echo(...)`
+- `check(...)`
+- `panic(...)`
+- `check` and `panic` are now registry-owned keyword intrinsics instead of
+  ad hoc typecheck/lowering special cases.
+- `as` and `cast` are now registry-owned operator-alias intrinsics and fail
+  with explicit `V1` milestone-boundary diagnostics instead of generic
+  unsupported messages.
+- Query expansion is explicit for current `V1`: `.len(...)` is implemented,
+  while `.cap(...)`, `.is_empty(...)`, `.low(...)`, and `.high(...)` stay
+  deferred.
+- The registry now carries deferred roadmap placeholders for arithmetic,
+  numeric-helper, bitwise, and overflow-mode families instead of leaving those
+  names undocumented or unclaimed.
+- Lowered rendering now prints canonical intrinsic names and backend roles
+  explicitly so backend bring-up can inspect `.eq`, `.not`, `.len`, `.echo`,
+  and keyword surfaces without reverse-engineering raw enum dumps.
+- Lowering verification now rejects impossible intrinsic instruction shapes,
+  such as runtime hooks lowered as pure intrinsic calls or helper-style
+  instructions that fail to produce required results.
 
 ## 6. Current Front-End State By Layer
 

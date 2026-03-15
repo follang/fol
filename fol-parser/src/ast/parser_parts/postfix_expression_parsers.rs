@@ -31,6 +31,7 @@ impl AstParser {
                     node = self.attach_leading_comments(match node {
                         AstNode::Identifier { name, syntax_id } => AstNode::FunctionCall {
                             syntax_id,
+                            surface: crate::ast::CallSurface::Plain,
                             name,
                             args,
                         },

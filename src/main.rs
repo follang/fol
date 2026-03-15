@@ -10,6 +10,7 @@ mod compiler_diagnostics;
 
 use clap::{Arg, Command};
 use fol_diagnostics::{DiagnosticLocation, DiagnosticReport, OutputFormat};
+use fol_intrinsics as _;
 use fol_lower::{render_lowered_workspace, LoweredWorkspace, Lowerer};
 use fol_package::{PackageConfig, PackageSession};
 use fol_parser::ast::AstParser;
@@ -423,4 +424,232 @@ fn compile_folder_entry_with_pkg_imports_succeeds_through_workspace_lowering() {
     );
 
     fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn intrinsics_crate_foundation_smoke_compiles() {
+    assert_eq!(fol_intrinsics::crate_name(), "fol-intrinsics");
+}
+
+#[test]
+fn intrinsics_public_model_smoke_compiles() {
+    assert_eq!(fol_intrinsics::IntrinsicId::new(1).index(), 1);
+    assert_eq!(
+        fol_intrinsics::IntrinsicCategory::Comparison.as_str(),
+        "comparison"
+    );
+    assert_eq!(
+        fol_intrinsics::IntrinsicSurface::DotRootCall.as_str(),
+        "dot-root-call"
+    );
+    assert_eq!(fol_intrinsics::IntrinsicAvailability::V1.as_str(), "V1");
+    assert_eq!(
+        fol_intrinsics::IntrinsicStatus::Implemented.as_str(),
+        "implemented"
+    );
+}
+
+#[test]
+fn intrinsics_entry_model_smoke_compiles() {
+    let entry = fol_intrinsics::IntrinsicEntry::new(
+        fol_intrinsics::IntrinsicId::new(0),
+        "eq",
+        &["equal"],
+        fol_intrinsics::IntrinsicCategory::Comparison,
+        fol_intrinsics::IntrinsicSurface::DotRootCall,
+        fol_intrinsics::IntrinsicAvailability::V1,
+        fol_intrinsics::IntrinsicStatus::Implemented,
+        fol_intrinsics::IntrinsicArity::Exactly(2),
+        fol_intrinsics::IntrinsicLoweringMode::GeneralIr,
+        "compare two values for equality",
+    );
+
+    assert_eq!(entry.name, "eq");
+    assert_eq!(entry.aliases, &["equal"]);
+    assert_eq!(entry.doc_summary, "compare two values for equality");
+}
+
+#[test]
+fn intrinsics_canonical_registry_smoke_compiles() {
+    let registry = fol_intrinsics::intrinsic_registry();
+    assert!(registry.len() >= 8);
+    assert!(registry.iter().any(|entry| entry.name == "eq"));
+    assert!(registry.iter().any(|entry| entry.name == "de_alloc"));
+    assert!(registry.iter().any(|entry| entry.name == "check"));
+}
+
+#[test]
+fn intrinsics_lookup_api_smoke_compiles() {
+    let eq = fol_intrinsics::intrinsic_by_canonical_name("eq").expect("eq should exist");
+    let alias = fol_intrinsics::intrinsic_by_alias("ne").expect("alias should exist");
+    let dot_calls = fol_intrinsics::intrinsics_for_surface(
+        fol_intrinsics::IntrinsicSurface::DotRootCall,
+    );
+
+    assert_eq!(eq.name, "eq");
+    assert_eq!(alias.name, "nq");
+    assert!(dot_calls.iter().any(|entry| entry.name == "echo"));
+}
+
+#[test]
+fn intrinsics_registry_validation_smoke_compiles() {
+    assert!(fol_intrinsics::validate_intrinsic_registry(
+        fol_intrinsics::intrinsic_registry()
+    )
+    .is_ok());
+
+    let duplicate_names = [
+        fol_intrinsics::IntrinsicEntry::new(
+            fol_intrinsics::IntrinsicId::new(0),
+            "eq",
+            &[],
+            fol_intrinsics::IntrinsicCategory::Comparison,
+            fol_intrinsics::IntrinsicSurface::DotRootCall,
+            fol_intrinsics::IntrinsicAvailability::V1,
+            fol_intrinsics::IntrinsicStatus::Implemented,
+            fol_intrinsics::IntrinsicArity::Exactly(2),
+            fol_intrinsics::IntrinsicLoweringMode::GeneralIr,
+            "compare values",
+        ),
+        fol_intrinsics::IntrinsicEntry::new(
+            fol_intrinsics::IntrinsicId::new(1),
+            "eq",
+            &[],
+            fol_intrinsics::IntrinsicCategory::Comparison,
+            fol_intrinsics::IntrinsicSurface::DotRootCall,
+            fol_intrinsics::IntrinsicAvailability::V1,
+            fol_intrinsics::IntrinsicStatus::Implemented,
+            fol_intrinsics::IntrinsicArity::Exactly(2),
+            fol_intrinsics::IntrinsicLoweringMode::GeneralIr,
+            "compare values again",
+        ),
+    ];
+    assert!(matches!(
+        fol_intrinsics::validate_intrinsic_registry(&duplicate_names),
+        Err(fol_intrinsics::RegistryValidationError {
+            kind: fol_intrinsics::RegistryValidationErrorKind::DuplicateCanonicalName,
+            ..
+        })
+    ));
+
+    let duplicate_alias = [
+        fol_intrinsics::IntrinsicEntry::new(
+            fol_intrinsics::IntrinsicId::new(0),
+            "eq",
+            &["cmp"],
+            fol_intrinsics::IntrinsicCategory::Comparison,
+            fol_intrinsics::IntrinsicSurface::DotRootCall,
+            fol_intrinsics::IntrinsicAvailability::V1,
+            fol_intrinsics::IntrinsicStatus::Implemented,
+            fol_intrinsics::IntrinsicArity::Exactly(2),
+            fol_intrinsics::IntrinsicLoweringMode::GeneralIr,
+            "compare values",
+        ),
+        fol_intrinsics::IntrinsicEntry::new(
+            fol_intrinsics::IntrinsicId::new(1),
+            "gt",
+            &["cmp"],
+            fol_intrinsics::IntrinsicCategory::Comparison,
+            fol_intrinsics::IntrinsicSurface::DotRootCall,
+            fol_intrinsics::IntrinsicAvailability::V1,
+            fol_intrinsics::IntrinsicStatus::Implemented,
+            fol_intrinsics::IntrinsicArity::Exactly(2),
+            fol_intrinsics::IntrinsicLoweringMode::GeneralIr,
+            "compare values again",
+        ),
+    ];
+    assert!(matches!(
+        fol_intrinsics::validate_intrinsic_registry(&duplicate_alias),
+        Err(fol_intrinsics::RegistryValidationError {
+            kind: fol_intrinsics::RegistryValidationErrorKind::DuplicateAlias,
+            offending_alias: "cmp",
+            ..
+        })
+    ));
+}
+
+#[test]
+fn intrinsics_selection_api_smoke_compiles() {
+    let eq = fol_intrinsics::select_intrinsic(
+        fol_intrinsics::IntrinsicSurface::DotRootCall,
+        "eq",
+    )
+    .expect("eq should select");
+    let wrong_surface = fol_intrinsics::select_intrinsic(
+        fol_intrinsics::IntrinsicSurface::DotRootCall,
+        "panic",
+    )
+    .expect_err("panic should stay keyword-only");
+
+    assert_eq!(eq.name, "eq");
+    assert_eq!(
+        wrong_surface.kind,
+        fol_intrinsics::IntrinsicSelectionErrorKind::WrongSurface
+    );
+}
+
+#[test]
+fn intrinsics_lowering_lookup_api_smoke_compiles() {
+    let eq = fol_intrinsics::intrinsic_by_canonical_name("eq").expect("eq should exist");
+    let runtime_hooks =
+        fol_intrinsics::intrinsics_for_lowering_mode(fol_intrinsics::IntrinsicLoweringMode::RuntimeHook);
+
+    assert_eq!(
+        fol_intrinsics::lowering_mode_for_intrinsic(eq.id),
+        Some(fol_intrinsics::IntrinsicLoweringMode::GeneralIr)
+    );
+    assert_eq!(
+        fol_intrinsics::intrinsic_by_id(eq.id).map(|entry| entry.name),
+        Some("eq")
+    );
+    assert!(runtime_hooks.iter().any(|entry| entry.name == "echo"));
+}
+
+#[test]
+fn intrinsics_diagnostic_helpers_smoke_compiles() {
+    let eq = fol_intrinsics::intrinsic_by_canonical_name("eq").expect("eq should exist");
+    let deferred =
+        fol_intrinsics::intrinsic_by_canonical_name("de_alloc").expect("de_alloc should exist");
+
+    assert_eq!(
+        fol_intrinsics::wrong_arity_message(eq, 1),
+        ".eq(...) expects exactly 2 argument(s) but got 1"
+    );
+    assert_eq!(
+        fol_intrinsics::wrong_version_message(
+            deferred,
+            fol_intrinsics::IntrinsicAvailability::V1
+        ),
+        ".de_alloc(...) belongs to V3 but the current compiler milestone is V1"
+    );
+}
+
+#[test]
+fn intrinsics_comparison_registry_smoke_compiles() {
+    let expected = [("eq", 0usize), ("nq", 1), ("lt", 2), ("gt", 3), ("ge", 4), ("le", 5)];
+
+    for (name, id) in expected {
+        let entry =
+            fol_intrinsics::intrinsic_by_canonical_name(name).expect("comparison entry should exist");
+        assert_eq!(entry.id.index(), id);
+        assert_eq!(entry.category, fol_intrinsics::IntrinsicCategory::Comparison);
+        assert_eq!(entry.surface, fol_intrinsics::IntrinsicSurface::DotRootCall);
+    }
+
+    assert_eq!(
+        fol_intrinsics::intrinsic_by_alias("ne").map(|entry| entry.name),
+        Some("nq")
+    );
+
+    let eq = fol_intrinsics::intrinsic_by_canonical_name("eq").expect("eq should exist");
+    let lt = fol_intrinsics::intrinsic_by_canonical_name("lt").expect("lt should exist");
+
+    assert_eq!(
+        fol_intrinsics::comparison_operand_contract(eq),
+        Some(fol_intrinsics::ComparisonOperandContract::EqualityScalar)
+    );
+    assert_eq!(
+        fol_intrinsics::comparison_operand_contract(lt),
+        Some(fol_intrinsics::ComparisonOperandContract::OrderedScalar)
+    );
 }

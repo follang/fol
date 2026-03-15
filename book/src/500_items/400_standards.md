@@ -1,5 +1,14 @@
 # Standards
 
+This chapter describes `V2` contract/conformance design rather than current
+`V1` compiler behavior.
+
+Current milestone note:
+
+- standards are not part of the implemented `V1` typechecker
+- blueprints and extensions are not part of the implemented `V1` typechecker
+- examples here are semantic design examples for a later milestone
+
 ## Satndard
 
 A standard is an established norm or requirement for a repeatable technical task. It is usually a formal declaration that establishes uniform technical criteria, methods, processes, and practices. 
@@ -13,9 +22,11 @@ S, what is a to be considered a standard:
 - A standard definition is formally established terminology.
 
 
-In FOL, standards are named collection of method signatures and are created by using `std` keyword:
+In FOL, standards are named collections of receiver-qualified routine
+signatures and/or required data, created with `std`. They are not class
+hierarchies. They are procedural/data contracts:
 ```
-typ geometry = {
+std geometry: pro = {
     fun area(): flt[64];
     fun perim(): flt[64];
 };
@@ -62,12 +73,15 @@ std rect(geo): rec[] = {                                             // this typ
 }
 
 ```
-Now we can make `rect` records or classes, we have to respect the contract. If we don't implement the `geo` methods, when we instantiate a new object of type `rect` it will throw an error.
+Now we can make `rect` records, but we have to respect the contract. If we
+don't implement the required receiver-qualified routines, the compiler should
+reject uses that require that contract.
 ```
 var aRectangle: rect = { width = 5, heigh = 6 }                      // this throws an error, we haven't fullfill the ocntract
 ```
 
-To do so, we need first to create the default `rect` methods from `geo` standard, then instantiate a new object:
+To do so, we need first to create the required `rect` receiver-qualified
+routines, then instantiate a record value:
 
 ```
 fun (rect)area(): flt[64] = { result = self.width + self.heigh }
@@ -76,7 +90,8 @@ fun (rect)perim(): flt[64] = { result = 2 * self.width + 2 * self.heigh }
 var aRectangle: rect = { width = 5, heigh = 6 }                     // this from here on will work
 ```
 
-The benifit of standard is that, we can create a routine that as parameter takes a standard, thus all objects with the standard can use afterwards that routine:
+The benefit of standards is that a routine parameter may require a standard
+contract, and then any type that satisfies that contract may be used there:
 
 ```
 std geo: pro = {
@@ -103,7 +118,7 @@ typ square: rec[] = {                                               // this type
 
 pro measure( shape: geo) { .echo(shape.area() + "m2") }        // a siple method to print the standard's area
 
-// instantiate two objects
+// instantiate two record values
 var aRectangle: rect = { width = 5, heigh = 6 }                      // creating a new rectangle
 var aCircle: circle = { radius = 5 }                                 // creating a new rectangle
 var aSquare: square = { heigh = 6 }                                  // creating a new square
@@ -111,7 +126,7 @@ var aSquare: square = { heigh = 6 }                                  // creating
 
 // to call the measure function that rpints the surface
 measure(aRectangle)                                                  // this prints: 30m2
-measure(aSquare)                                                     // this throws error, square cant use measure method
+measure(aSquare)                                                     // this throws error, square does not satisfy the contract
 measure(aCircle)                                                     // this prints: 78m2
 
 ```

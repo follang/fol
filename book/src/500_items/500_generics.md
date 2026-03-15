@@ -1,5 +1,14 @@
 # Generics
 
+This chapter describes later generic-language design rather than current `V1`
+compiler behavior.
+
+Current milestone note:
+
+- generic routines are not part of the implemented `V1` typechecker
+- generic types are not part of the implemented `V1` typechecker
+- examples here should be read as future `V2` design
+
 ## Types
 ### Generic functions - lifting
 

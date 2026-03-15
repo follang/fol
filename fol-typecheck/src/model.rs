@@ -1,4 +1,5 @@
 use crate::{BuiltinTypeIds, CheckedTypeId, TypeTable};
+use fol_intrinsics::IntrinsicId;
 use fol_parser::ast::SyntaxNodeId;
 use fol_resolver::{PackageIdentity, ReferenceKind, ScopeId, SourceUnitId, SymbolId, SymbolKind};
 use std::collections::BTreeMap;
@@ -41,6 +42,7 @@ pub struct TypedNode {
     pub source_unit_id: SourceUnitId,
     pub inferred_type: Option<CheckedTypeId>,
     pub recoverable_effect: Option<RecoverableCallEffect>,
+    pub intrinsic_id: Option<IntrinsicId>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -186,6 +188,7 @@ impl TypedProgram {
                             source_unit_id: unit.source_unit_id,
                             inferred_type: None,
                             recoverable_effect: None,
+                            intrinsic_id: None,
                         },
                     )
                 })
@@ -283,6 +286,7 @@ impl TypedProgram {
                 source_unit_id,
                 inferred_type: None,
                 recoverable_effect: None,
+                intrinsic_id: None,
             })
             .inferred_type = Some(type_id);
         Ok(())
@@ -301,8 +305,28 @@ impl TypedProgram {
                 source_unit_id,
                 inferred_type: None,
                 recoverable_effect: None,
+                intrinsic_id: None,
             })
             .recoverable_effect = Some(effect);
+        Ok(())
+    }
+
+    pub(crate) fn record_node_intrinsic(
+        &mut self,
+        syntax_id: SyntaxNodeId,
+        source_unit_id: SourceUnitId,
+        intrinsic_id: IntrinsicId,
+    ) -> Result<(), crate::TypecheckError> {
+        self.nodes
+            .entry(syntax_id)
+            .or_insert(TypedNode {
+                syntax_id,
+                source_unit_id,
+                inferred_type: None,
+                recoverable_effect: None,
+                intrinsic_id: None,
+            })
+            .intrinsic_id = Some(intrinsic_id);
         Ok(())
     }
 

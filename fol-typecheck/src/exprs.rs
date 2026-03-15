@@ -2,9 +2,15 @@ use crate::{
     decls, CheckedType, CheckedTypeId, RecoverableCallEffect, RoutineType, TypecheckError,
     TypecheckErrorKind, TypecheckResult, TypedProgram,
 };
+use fol_intrinsics::{
+    boolean_operand_contract, comparison_operand_contract, select_intrinsic, wrong_arity_message,
+    wrong_type_family_message, query_operand_contract, BooleanOperandContract,
+    ComparisonOperandContract, IntrinsicSelectionErrorKind, IntrinsicSurface,
+    QueryOperandContract,
+};
 use fol_parser::ast::{
-    AstNode, BinaryOperator, ContainerType, Literal, LoopCondition, QualifiedPath, SyntaxNodeId,
-    SyntaxOrigin, UnaryOperator, WhenCase,
+    AstNode, BinaryOperator, CallSurface, ContainerType, Literal, LoopCondition, QualifiedPath,
+    SyntaxNodeId, SyntaxOrigin, UnaryOperator, WhenCase,
 };
 use fol_resolver::{
     ReferenceId, ReferenceKind, ResolvedProgram, ScopeId, SourceUnitId, SymbolId, SymbolKind,
@@ -362,25 +368,45 @@ fn type_node_with_expectation(
             Ok(TypedExpr::value(expected))
         }
         AstNode::FunctionCall {
+            surface: CallSurface::DotIntrinsic,
             name,
             args,
-            syntax_id: _,
-        } if name == "panic" => type_panic_call(typed, resolved, context, args),
+            syntax_id,
+            ..
+        } => type_dot_intrinsic_call(
+            typed,
+            resolved,
+            context,
+            name,
+            args,
+            *syntax_id,
+            expected_type,
+        ),
         AstNode::FunctionCall {
             name,
             args,
             syntax_id,
-        } if name == "check" => type_check_call(typed, resolved, context, args, *syntax_id),
-        AstNode::FunctionCall {
-            name,
-            args,
-            syntax_id,
+            ..
         } if name == "report" => type_report_call(typed, resolved, context, args, *syntax_id),
         AstNode::FunctionCall {
             name,
             args,
             syntax_id,
-        } => type_function_call(typed, resolved, context, name, args, *syntax_id),
+            ..
+        } => {
+            if let Ok(entry) = select_intrinsic(IntrinsicSurface::KeywordCall, name) {
+                type_keyword_intrinsic_call(
+                    typed,
+                    resolved,
+                    context,
+                    entry,
+                    args,
+                    *syntax_id,
+                )
+            } else {
+                type_function_call(typed, resolved, context, name, args, *syntax_id)
+            }
+        }
         AstNode::QualifiedFunctionCall { path, args } => {
             type_qualified_function_call(typed, resolved, context, path, args)
         }
@@ -575,19 +601,13 @@ fn type_binary_op(
 ) -> Result<TypedExpr, TypecheckError> {
     match op {
         BinaryOperator::As => {
-            return Err(unsupported_binary_surface(
-                resolved,
-                left,
-                right,
-                "explicit 'as' casts are not part of the V1 typecheck milestone",
+            return Err(unsupported_conversion_intrinsic(
+                resolved, left, right, "as",
             ));
         }
         BinaryOperator::Cast => {
-            return Err(unsupported_binary_surface(
-                resolved,
-                left,
-                right,
-                "explicit 'cast' operators are not part of the V1 typecheck milestone",
+            return Err(unsupported_conversion_intrinsic(
+                resolved, left, right, "cast",
             ));
         }
         BinaryOperator::Pipe | BinaryOperator::PipeOr
@@ -1246,6 +1266,334 @@ fn type_function_call(
     Ok(TypedExpr::maybe_value(return_type).with_optional_effect(call_effect))
 }
 
+fn type_dot_intrinsic_call(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    name: &str,
+    args: &[AstNode],
+    syntax_id: Option<SyntaxNodeId>,
+    expected_type: Option<CheckedTypeId>,
+) -> Result<TypedExpr, TypecheckError> {
+    let Some(syntax_id) = syntax_id else {
+        return Err(TypecheckError::new(
+            TypecheckErrorKind::InvalidInput,
+            format!("dot intrinsic '.{name}(...)' does not retain a syntax id"),
+        ));
+    };
+    let origin = origin_for(resolved, syntax_id);
+    let entry = select_intrinsic(IntrinsicSurface::DotRootCall, name).map_err(|error| {
+        let message = match error.kind {
+            IntrinsicSelectionErrorKind::UnknownName => {
+                fol_intrinsics::unknown_intrinsic_message(error.surface, name)
+            }
+            IntrinsicSelectionErrorKind::WrongSurface => format!(
+                "'.{name}(...)' is reserved for a different intrinsic surface"
+            ),
+        };
+        match origin.clone() {
+            Some(origin) => TypecheckError::with_origin(TypecheckErrorKind::InvalidInput, message, origin),
+            None => TypecheckError::new(TypecheckErrorKind::InvalidInput, message),
+        }
+    })?;
+
+    let typed_expr = match comparison_operand_contract(entry) {
+        Some(ComparisonOperandContract::EqualityScalar) => {
+            type_comparison_intrinsic(typed, resolved, context, entry, args, syntax_id)?
+        }
+        Some(ComparisonOperandContract::OrderedScalar) => {
+            type_comparison_intrinsic(typed, resolved, context, entry, args, syntax_id)?
+        }
+        None => match boolean_operand_contract(entry) {
+            Some(BooleanOperandContract::BoolScalar) => {
+                type_boolean_intrinsic(typed, resolved, context, entry, args, syntax_id)?
+            }
+            None => match query_operand_contract(entry) {
+                Some(QueryOperandContract::LengthQueryable) => {
+                    type_query_intrinsic(typed, resolved, context, entry, args, syntax_id)?
+                }
+                None if entry.name == "echo" => type_echo_intrinsic(
+                    typed,
+                    resolved,
+                    context,
+                    entry,
+                    args,
+                    syntax_id,
+                    expected_type,
+                )?,
+                None => {
+                    let message = if entry.availability != fol_intrinsics::IntrinsicAvailability::V1
+                    {
+                        fol_intrinsics::wrong_version_message(
+                            entry,
+                            fol_intrinsics::IntrinsicAvailability::V1,
+                        )
+                    } else {
+                        fol_intrinsics::unsupported_intrinsic_message(entry)
+                    };
+                    return Err(match origin {
+                        Some(origin) => TypecheckError::with_origin(
+                            TypecheckErrorKind::Unsupported,
+                            message,
+                            origin,
+                        ),
+                        None => TypecheckError::new(TypecheckErrorKind::Unsupported, message),
+                    })
+                }
+            },
+        }
+    };
+
+    typed.record_node_intrinsic(syntax_id, context.source_unit_id, entry.id)?;
+    Ok(typed_expr)
+}
+
+fn type_comparison_intrinsic(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    entry: &fol_intrinsics::IntrinsicEntry,
+    args: &[AstNode],
+    syntax_id: SyntaxNodeId,
+) -> Result<TypedExpr, TypecheckError> {
+    let origin = origin_for(resolved, syntax_id);
+    if args.len() != 2 {
+        return Err(match origin {
+            Some(origin) => TypecheckError::with_origin(
+                TypecheckErrorKind::InvalidInput,
+                wrong_arity_message(entry, args.len()),
+                origin,
+            ),
+            None => TypecheckError::new(
+                TypecheckErrorKind::InvalidInput,
+                wrong_arity_message(entry, args.len()),
+            ),
+        });
+    }
+
+    let left_raw = type_node(typed, resolved, context, &args[0])?;
+    let left_expr = plain_value_expr(
+        typed,
+        context,
+        left_raw,
+        node_origin(resolved, &args[0]),
+        "plain use of an errorful expression",
+    )?;
+    let right_raw = type_node(typed, resolved, context, &args[1])?;
+    let right_expr = plain_value_expr(
+        typed,
+        context,
+        right_raw,
+        node_origin(resolved, &args[1]),
+        "plain use of an errorful expression",
+    )?;
+
+    let left_type =
+        left_expr.required_value("left intrinsic operand does not have a type")?;
+    let right_type =
+        right_expr.required_value("right intrinsic operand does not have a type")?;
+    let left_apparent = apparent_type_id(typed, left_type)?;
+    let right_apparent = apparent_type_id(typed, right_type)?;
+    let merged_effect = merge_recoverable_effects(
+        typed,
+        node_origin(resolved, &args[0]).or_else(|| node_origin(resolved, &args[1])),
+        "intrinsic comparison",
+        [left_expr.recoverable_effect, right_expr.recoverable_effect],
+    )?;
+
+    let valid = left_apparent == right_apparent
+        && match comparison_operand_contract(entry) {
+            Some(ComparisonOperandContract::EqualityScalar) => {
+                is_equality_type(typed, left_apparent)
+            }
+            Some(ComparisonOperandContract::OrderedScalar) => {
+                is_ordered_type(typed, left_apparent)
+            }
+            None => false,
+        };
+    if !valid {
+        let actual = format!(
+            "'{}' and '{}'",
+            describe_type(typed, left_type),
+            describe_type(typed, right_type)
+        );
+        let message = wrong_type_family_message(
+            entry,
+            comparison_operand_contract(entry)
+                .expect("comparison intrinsics should retain an operand contract")
+                .expected_operands(),
+            &actual,
+        );
+        return Err(match origin {
+            Some(origin) => {
+                TypecheckError::with_origin(TypecheckErrorKind::InvalidInput, message, origin)
+            }
+            None => TypecheckError::new(TypecheckErrorKind::InvalidInput, message),
+        });
+    }
+
+    typed.record_node_type(syntax_id, context.source_unit_id, typed.builtin_types().bool_)?;
+    Ok(TypedExpr::value(typed.builtin_types().bool_).with_optional_effect(merged_effect))
+}
+
+fn type_boolean_intrinsic(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    entry: &fol_intrinsics::IntrinsicEntry,
+    args: &[AstNode],
+    syntax_id: SyntaxNodeId,
+) -> Result<TypedExpr, TypecheckError> {
+    let origin = origin_for(resolved, syntax_id);
+    if args.len() != 1 {
+        return Err(match origin {
+            Some(origin) => TypecheckError::with_origin(
+                TypecheckErrorKind::InvalidInput,
+                wrong_arity_message(entry, args.len()),
+                origin,
+            ),
+            None => TypecheckError::new(
+                TypecheckErrorKind::InvalidInput,
+                wrong_arity_message(entry, args.len()),
+            ),
+        });
+    }
+
+    let operand_raw = type_node(typed, resolved, context, &args[0])?;
+    let operand_expr = plain_value_expr(
+        typed,
+        context,
+        operand_raw,
+        node_origin(resolved, &args[0]),
+        "plain use of an errorful intrinsic operand",
+    )?;
+    let operand_type = operand_expr.required_value("intrinsic operand does not have a type")?;
+    let operand_apparent = apparent_type_id(typed, operand_type)?;
+
+    if !matches!(
+        typed.type_table().get(operand_apparent),
+        Some(CheckedType::Builtin(crate::BuiltinType::Bool))
+    ) {
+        let actual = format!("'{}'", describe_type(typed, operand_type));
+        let message = wrong_type_family_message(
+            entry,
+            BooleanOperandContract::BoolScalar.expected_operands(),
+            &actual,
+        );
+        return Err(match origin {
+            Some(origin) => {
+                TypecheckError::with_origin(TypecheckErrorKind::InvalidInput, message, origin)
+            }
+            None => TypecheckError::new(TypecheckErrorKind::InvalidInput, message),
+        });
+    }
+
+    typed.record_node_type(syntax_id, context.source_unit_id, typed.builtin_types().bool_)?;
+    Ok(TypedExpr::value(typed.builtin_types().bool_)
+        .with_optional_effect(operand_expr.recoverable_effect))
+}
+
+fn type_query_intrinsic(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    entry: &fol_intrinsics::IntrinsicEntry,
+    args: &[AstNode],
+    syntax_id: SyntaxNodeId,
+) -> Result<TypedExpr, TypecheckError> {
+    let origin = origin_for(resolved, syntax_id);
+    if args.len() != 1 {
+        return Err(match origin {
+            Some(origin) => TypecheckError::with_origin(
+                TypecheckErrorKind::InvalidInput,
+                wrong_arity_message(entry, args.len()),
+                origin,
+            ),
+            None => TypecheckError::new(
+                TypecheckErrorKind::InvalidInput,
+                wrong_arity_message(entry, args.len()),
+            ),
+        });
+    }
+
+    let operand_raw = type_node(typed, resolved, context, &args[0])?;
+    let operand_expr = plain_value_expr(
+        typed,
+        context,
+        operand_raw,
+        node_origin(resolved, &args[0]),
+        "plain use of an errorful intrinsic operand",
+    )?;
+    let operand_type = operand_expr.required_value("intrinsic operand does not have a type")?;
+    let operand_apparent = apparent_type_id(typed, operand_type)?;
+
+    let valid = matches!(
+        typed.type_table().get(operand_apparent),
+        Some(CheckedType::Builtin(crate::BuiltinType::Str))
+            | Some(CheckedType::Array { .. })
+            | Some(CheckedType::Vector { .. })
+            | Some(CheckedType::Sequence { .. })
+            | Some(CheckedType::Set { .. })
+            | Some(CheckedType::Map { .. })
+    );
+    if !valid {
+        let actual = format!("'{}'", describe_type(typed, operand_type));
+        let message = wrong_type_family_message(
+            entry,
+            QueryOperandContract::LengthQueryable.expected_operands(),
+            &actual,
+        );
+        return Err(match origin {
+            Some(origin) => {
+                TypecheckError::with_origin(TypecheckErrorKind::InvalidInput, message, origin)
+            }
+            None => TypecheckError::new(TypecheckErrorKind::InvalidInput, message),
+        });
+    }
+
+    typed.record_node_type(syntax_id, context.source_unit_id, typed.builtin_types().int)?;
+    Ok(TypedExpr::value(typed.builtin_types().int)
+        .with_optional_effect(operand_expr.recoverable_effect))
+}
+
+fn type_echo_intrinsic(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    entry: &fol_intrinsics::IntrinsicEntry,
+    args: &[AstNode],
+    syntax_id: SyntaxNodeId,
+    _expected_type: Option<CheckedTypeId>,
+) -> Result<TypedExpr, TypecheckError> {
+    let origin = origin_for(resolved, syntax_id);
+    if args.len() != 1 {
+        return Err(match origin {
+            Some(origin) => TypecheckError::with_origin(
+                TypecheckErrorKind::InvalidInput,
+                wrong_arity_message(entry, args.len()),
+                origin,
+            ),
+            None => TypecheckError::new(
+                TypecheckErrorKind::InvalidInput,
+                wrong_arity_message(entry, args.len()),
+            ),
+        });
+    }
+
+    let operand_raw = type_node(typed, resolved, context, &args[0])?;
+    let operand_expr = plain_value_expr(
+        typed,
+        context,
+        operand_raw,
+        node_origin(resolved, &args[0]),
+        "plain use of an errorful intrinsic operand",
+    )?;
+    let operand_type = operand_expr.required_value("intrinsic operand does not have a type")?;
+
+    typed.record_node_type(syntax_id, context.source_unit_id, operand_type)?;
+    Ok(TypedExpr::value(operand_type).with_optional_effect(operand_expr.recoverable_effect))
+}
+
 fn type_report_call(
     typed: &mut TypedProgram,
     resolved: &ResolvedProgram,
@@ -1522,26 +1870,47 @@ fn type_panic_call(
     Ok(TypedExpr::value(typed.builtin_types().never).with_optional_effect(merged))
 }
 
+fn type_keyword_intrinsic_call(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    entry: &fol_intrinsics::IntrinsicEntry,
+    args: &[AstNode],
+    syntax_id: Option<SyntaxNodeId>,
+) -> Result<TypedExpr, TypecheckError> {
+    if let Some(syntax_id) = syntax_id {
+        typed.record_node_intrinsic(syntax_id, context.source_unit_id, entry.id)?;
+    }
+
+    match entry.name {
+        "panic" => type_panic_call(typed, resolved, context, args),
+        "check" => type_check_call(typed, resolved, context, entry, args, syntax_id),
+        other => Err(TypecheckError::new(
+            TypecheckErrorKind::InvalidInput,
+            format!("unsupported keyword intrinsic dispatch '{other}(...)'"),
+        )),
+    }
+}
+
 fn type_check_call(
     typed: &mut TypedProgram,
     resolved: &ResolvedProgram,
     context: TypeContext,
+    entry: &fol_intrinsics::IntrinsicEntry,
     args: &[AstNode],
     syntax_id: Option<SyntaxNodeId>,
 ) -> Result<TypedExpr, TypecheckError> {
     let origin = syntax_id.and_then(|id| origin_for(resolved, id));
     if args.len() != 1 {
         return Err(origin.clone().map_or_else(
-            || {
-                TypecheckError::new(
-                    TypecheckErrorKind::InvalidInput,
-                    format!("check expects exactly 1 value in V1 but got {}", args.len()),
-                )
-            },
+            || TypecheckError::new(
+                TypecheckErrorKind::InvalidInput,
+                wrong_arity_message(entry, args.len()),
+            ),
             |origin| {
                 TypecheckError::with_origin(
                     TypecheckErrorKind::InvalidInput,
-                    format!("check expects exactly 1 value in V1 but got {}", args.len()),
+                    wrong_arity_message(entry, args.len()),
                     origin,
                 )
             },
@@ -3147,6 +3516,19 @@ fn unsupported_binary_surface(
     } else {
         TypecheckError::new(TypecheckErrorKind::Unsupported, message)
     }
+}
+
+fn unsupported_conversion_intrinsic(
+    resolved: &ResolvedProgram,
+    left: &AstNode,
+    right: &AstNode,
+    name: &str,
+) -> TypecheckError {
+    let message = match select_intrinsic(IntrinsicSurface::OperatorAlias, name) {
+        Ok(entry) => fol_intrinsics::unsupported_intrinsic_message(entry),
+        Err(_) => format!("unsupported conversion operator '{name}'"),
+    };
+    unsupported_binary_surface(resolved, left, right, message)
 }
 
 fn unsupported_node_surface(

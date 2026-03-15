@@ -2,6 +2,7 @@ use crate::ids::{
     IdTable, LoweredBlockId, LoweredGlobalId, LoweredInstrId, LoweredLocalId, LoweredRoutineId,
     LoweredTypeId,
 };
+use fol_intrinsics::IntrinsicId;
 use fol_resolver::{SourceUnitId, SymbolId};
 use std::collections::BTreeMap;
 
@@ -62,6 +63,17 @@ pub enum LoweredInstrKind {
         callee: LoweredRoutineId,
         args: Vec<LoweredLocalId>,
         error_type: Option<LoweredTypeId>,
+    },
+    IntrinsicCall {
+        intrinsic: IntrinsicId,
+        args: Vec<LoweredLocalId>,
+    },
+    RuntimeHook {
+        intrinsic: IntrinsicId,
+        args: Vec<LoweredLocalId>,
+    },
+    LengthOf {
+        operand: LoweredLocalId,
     },
     ConstructRecord {
         type_id: LoweredTypeId,

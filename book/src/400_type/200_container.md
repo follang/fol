@@ -39,7 +39,14 @@ pro[] main: int = {
 ### Dynamic arrays
 
 Dynamic are similar to arrays but of dynamic length which may change during runtime (like strings). A dynamic array `s` is always indexed by integers from `0` to `.len(s)-1` and its bounds are checked.
-The lower bound of an array or sequence may be received by the built-in `.low()`, the higher bound by `.high()`. The length may be received by `.len()`.
+
+Current `V1` intrinsic note:
+
+- `.len(...)` is implemented
+- `.low(...)`, `.high(...)`, `.cap(...)`, and `.is_empty(...)` are registry-owned
+  deferred surfaces, not active `V1` intrinsics
+
+So the safe current query surface for containers is `.len(...)`.
 
 {{% notice tip %}}
 
@@ -141,7 +148,7 @@ pro[] main: int = {
     .echo(element)                                            // prints: 45
 }
 ```
-The number of map elements is called its length. For a map `aMap`, it can be discovered using the built-in function `.len` and may change during execution To add a new element, we use `name+[element]` or `add`function:
+The number of map elements is called its length. For a map `aMap`, it can be discovered using the intrinsic `.len(...)` and may change during execution. To add a new element, we use `name+[element]` or `add`function:
 
 ```
 .echo(.len(aMap))           // prints: 3

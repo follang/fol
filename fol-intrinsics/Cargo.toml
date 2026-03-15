@@ -1,0 +1,11 @@
+[package]
+name = "fol-intrinsics"
+version = "0.1.0"
+edition = "2021"
+description = "Shared intrinsic registry for the FOL compiler"
+
+[lib]
+name = "fol_intrinsics"
+path = "src/lib.rs"
+
+[dependencies]

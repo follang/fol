@@ -1195,6 +1195,26 @@ fn check_typing_rejects_plain_values() {
 }
 
 #[test]
+fn check_typing_rejects_wrong_arity_through_keyword_intrinsic_diagnostics() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] main(): bol = {\n\
+             return check();\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error
+                    .message()
+                    .contains("check(...) expects exactly 1 argument(s) but got 0")
+        }),
+        "Expected registry-backed check arity diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
 fn check_typing_rejects_err_shell_values_explicitly() {
     let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",
@@ -2250,6 +2270,532 @@ fn operator_typing_rejects_invalid_scalar_pairs_and_pointer_operators() {
 }
 
 #[test]
+fn intrinsic_comparison_typing_accepts_v1_equality_pairs() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "fun[] same_number(): bol = {\n\
+             return .eq(1, 1);\n\
+         }\n\
+         fun[] different_flag(flag: bol): bol = {\n\
+             return .nq(flag, false);\n\
+         }\n\
+         fun[] same_text(): bol = {\n\
+             return .eq(\"Ada\", \"Ada\");\n\
+         }\n",
+    )]);
+
+    for name in ["same_number", "different_flag", "same_text"] {
+        let syntax_id = find_named_routine_syntax_id(&typed, name);
+        assert_eq!(
+            typed
+                .typed_node(syntax_id)
+                .and_then(|node| node.inferred_type)
+                .and_then(|type_id| typed.type_table().get(type_id)),
+            Some(&CheckedType::Builtin(BuiltinType::Bool)),
+            "Expected {name} to lower to bool"
+        );
+    }
+}
+
+#[test]
+fn intrinsic_comparison_typing_rejects_wrong_arity_and_mixed_scalar_pairs() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] bad_arity(): bol = {\n\
+             return .eq(1);\n\
+         }\n\
+         fun[] bad_pair(): bol = {\n\
+             return .eq(1, \"Ada\");\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error.message().contains(".eq(...) expects exactly 2 argument(s) but got 1")
+        }),
+        "Expected wrong-arity intrinsic diagnostic, got: {errors:?}"
+    );
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error
+                    .message()
+                    .contains(".eq(...) expects two comparable scalar operands")
+        }),
+        "Expected wrong-type-family intrinsic diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
+fn intrinsic_ordered_comparison_typing_accepts_v1_ordered_pairs() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "fun[] ints(): bol = {\n\
+             return .lt(1, 2);\n\
+         }\n\
+         fun[] text(): bol = {\n\
+             return .ge(\"Ada\", \"Ada\");\n\
+         }\n\
+         fun[] chars(): bol = {\n\
+             return .le('a', 'z');\n\
+         }\n\
+         fun[] floats(): bol = {\n\
+             return .gt(3.5, 1.0);\n\
+         }\n",
+    )]);
+
+    for name in ["ints", "text", "chars", "floats"] {
+        let syntax_id = find_named_routine_syntax_id(&typed, name);
+        assert_eq!(
+            typed
+                .typed_node(syntax_id)
+                .and_then(|node| node.inferred_type)
+                .and_then(|type_id| typed.type_table().get(type_id)),
+            Some(&CheckedType::Builtin(BuiltinType::Bool)),
+            "Expected {name} to lower to bool"
+        );
+    }
+}
+
+#[test]
+fn intrinsic_ordered_comparison_typing_rejects_non_ordered_pairs() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] bad_bool(): bol = {\n\
+             return .lt(true, false);\n\
+         }\n\
+         fun[] bad_mixed(): bol = {\n\
+             return .gt(1, 1.0);\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error
+                    .message()
+                    .contains(".lt(...) expects two ordered scalar operands")
+        }),
+        "Expected ordered-family intrinsic diagnostic, got: {errors:?}"
+    );
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error
+                    .message()
+                    .contains(".gt(...) expects two ordered scalar operands")
+        }),
+        "Expected mixed ordered-family intrinsic diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
+fn intrinsic_boolean_typing_accepts_not_for_bool_values() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "fun[] flip(flag: bol): bol = {\n\
+             return .not(flag);\n\
+         }\n\
+         fun[] literal(): bol = {\n\
+             return .not(false);\n\
+         }\n",
+    )]);
+
+    for name in ["flip", "literal"] {
+        let syntax_id = find_named_routine_syntax_id(&typed, name);
+        assert_eq!(
+            typed
+                .typed_node(syntax_id)
+                .and_then(|node| node.inferred_type)
+                .and_then(|type_id| typed.type_table().get(type_id)),
+            Some(&CheckedType::Builtin(BuiltinType::Bool)),
+            "Expected {name} to lower to bol through .not(...)",
+        );
+    }
+}
+
+#[test]
+fn intrinsic_boolean_typing_rejects_wrong_arity_and_non_boolean_operands() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] bad_arity(): bol = {\n\
+             return .not();\n\
+         }\n\
+         fun[] bad_type(): bol = {\n\
+             return .not(1);\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error.message().contains(".not(...) expects exactly 1 argument(s) but got 0")
+        }),
+        "Expected wrong-arity .not diagnostic, got: {errors:?}"
+    );
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error
+                    .message()
+                    .contains(".not(...) expects one boolean operand but got 'Builtin(Int)'")
+        }),
+        "Expected non-boolean .not diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
+fn intrinsic_query_typing_accepts_len_for_v1_length_queries() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "fun[] text_len(): int = {\n\
+             return .len(\"Ada\");\n\
+         }\n\
+         fun[] seq_len(items: seq[int]): int = {\n\
+             return .len(items);\n\
+         }\n",
+    )]);
+
+    for name in ["text_len", "seq_len"] {
+        let syntax_id = find_named_routine_syntax_id(&typed, name);
+        assert_eq!(
+            typed
+                .typed_node(syntax_id)
+                .and_then(|node| node.inferred_type)
+                .and_then(|type_id| typed.type_table().get(type_id)),
+            Some(&CheckedType::Builtin(BuiltinType::Int)),
+            "Expected {name} to lower to int through .len(...)",
+        );
+    }
+}
+
+#[test]
+fn intrinsic_query_typing_rejects_wrong_arity_and_non_length_operands() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] bad_arity(items: seq[int]): int = {\n\
+             return .len(items, items);\n\
+         }\n\
+         fun[] bad_type(): int = {\n\
+             return .len(1);\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error.message().contains(".len(...) expects exactly 1 argument(s) but got 2")
+        }),
+        "Expected wrong-arity .len diagnostic, got: {errors:?}"
+    );
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error.message().contains(
+                    ".len(...) expects one string, array, vector, sequence, set, or map operand",
+                )
+                && error.message().contains("'Builtin(Int)'")
+        }),
+        "Expected non-length .len diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
+fn intrinsic_query_typing_covers_full_v1_length_family_matrix() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "typ Flagged: rec = {\n\
+             name: str;\n\
+         }\n\
+         fun[] text_len(): int = {\n\
+             return .len(\"Ada\");\n\
+         }\n\
+         fun[] arr_len(items: arr[int, 3]): int = {\n\
+             return .len(items);\n\
+         }\n\
+         fun[] vec_len(items: vec[int]): int = {\n\
+             return .len(items);\n\
+         }\n\
+         fun[] seq_len(items: seq[int]): int = {\n\
+             return .len(items);\n\
+         }\n\
+         fun[] set_len(items: set[int, str]): int = {\n\
+             return .len(items);\n\
+         }\n\
+         fun[] map_len(items: map[str, int]): int = {\n\
+             return .len(items);\n\
+         }\n",
+    )]);
+
+    for name in ["text_len", "arr_len", "vec_len", "seq_len", "set_len", "map_len"] {
+        let syntax_id = find_named_routine_syntax_id(&typed, name);
+        assert_eq!(
+            typed
+                .typed_node(syntax_id)
+                .and_then(|node| node.inferred_type)
+                .and_then(|type_id| typed.type_table().get(type_id)),
+            Some(&CheckedType::Builtin(BuiltinType::Int)),
+            "Expected {name} to lower to int through .len(...)",
+        );
+    }
+}
+
+#[test]
+fn intrinsic_query_typing_rejects_non_query_receiver_families() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "typ Flagged: rec = {\n\
+             name: str;\n\
+         }\n\
+         fun[] bad_record(value: Flagged): int = {\n\
+             return .len(value);\n\
+         }\n\
+         fun[] bad_optional(value: opt[str]): int = {\n\
+             return .len(value);\n\
+         }\n",
+    )]);
+
+    assert_eq!(
+        errors
+            .iter()
+            .filter(|error| {
+                error.kind() == TypecheckErrorKind::InvalidInput
+                    && error.message().contains(
+                        ".len(...) expects one string, array, vector, sequence, set, or map operand",
+                    )
+            })
+            .count(),
+        2,
+        "Expected rejected .len diagnostics for record and optional receivers, got: {errors:?}"
+    );
+}
+
+#[test]
+fn intrinsic_query_typing_distinguishes_implemented_and_deferred_families() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "fun[] count(items: seq[int]): int = {\n\
+             return .len(items);\n\
+         }\n",
+    )]);
+    let count_syntax_id = find_named_routine_syntax_id(&typed, "count");
+    assert_eq!(
+        typed
+            .typed_node(count_syntax_id)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Int)),
+        "Expected .len(...) to remain the implemented V1 query intrinsic",
+    );
+
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] capacity(items: seq[int]): int = {\n\
+             return .cap(items);\n\
+         }\n\
+         fun[] low_bound(items: seq[int]): int = {\n\
+             return .low(items);\n\
+         }\n\
+         fun[] minimum(left: int, right: int): int = {\n\
+             return .min(left, right);\n\
+         }\n",
+    )]);
+
+    for expected in [
+        ".cap(...) is not implemented in the current V1 compiler milestone",
+        ".low(...) is not implemented in the current V1 compiler milestone",
+        ".min(...) is not implemented in the current V1 compiler milestone",
+    ] {
+        assert!(
+            errors.iter().any(|error| {
+                error.kind() == TypecheckErrorKind::Unsupported
+                    && error.message().contains(expected)
+            }),
+            "Expected deferred intrinsic diagnostic containing '{expected}', got: {errors:?}"
+        );
+    }
+}
+
+#[test]
+fn intrinsic_diagnostic_typing_accepts_echo_as_a_value_preserving_tap() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "fun[] log_flag(flag: bol): bol = {\n\
+             return .echo(flag);\n\
+         }\n\
+         fun[] log_count(items: seq[int]): int = {\n\
+             return .echo(.len(items));\n\
+         }\n",
+    )]);
+
+    for (name, expected) in [
+        ("log_flag", CheckedType::Builtin(BuiltinType::Bool)),
+        ("log_count", CheckedType::Builtin(BuiltinType::Int)),
+    ] {
+        let syntax_id = find_named_routine_syntax_id(&typed, name);
+        assert_eq!(
+            typed
+                .typed_node(syntax_id)
+                .and_then(|node| node.inferred_type)
+                .and_then(|type_id| typed.type_table().get(type_id)),
+            Some(&expected),
+            "Expected {name} to preserve its operand type through .echo(...)",
+        );
+    }
+}
+
+#[test]
+fn intrinsic_diagnostic_typing_rejects_wrong_arity_for_echo() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] bad_arity(): int = {\n\
+             return .echo();\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error.message().contains(".echo(...) expects exactly 1 argument(s) but got 0")
+        }),
+        "Expected wrong-arity .echo diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
+fn intrinsic_v3_boundary_typing_reports_explicit_milestone_guidance() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] free_value(value: int): int = {\n\
+             return .de_alloc(value);\n\
+         }\n\
+         fun[] hand_back(value: int): int = {\n\
+             return .give_back(value);\n\
+         }\n\
+         fun[] take_address(value: int): int = {\n\
+             return .address_of(value);\n\
+         }\n\
+         fun[] read_pointer(value: int): int = {\n\
+             return .pointer_value(value);\n\
+         }\n\
+         fun[] borrow_value(value: int): int = {\n\
+             return .borrow_from(value);\n\
+         }\n",
+    )]);
+
+    for intrinsic in [
+        ".de_alloc(...) belongs to V3 but the current compiler milestone is V1",
+        ".give_back(...) belongs to V3 but the current compiler milestone is V1",
+        ".address_of(...) belongs to V3 but the current compiler milestone is V1",
+        ".pointer_value(...) belongs to V3 but the current compiler milestone is V1",
+        ".borrow_from(...) belongs to V3 but the current compiler milestone is V1",
+    ] {
+        assert!(
+            errors.iter().any(|error| {
+                error.kind() == TypecheckErrorKind::Unsupported
+                    && error.message().contains(intrinsic)
+            }),
+            "Expected explicit V3 intrinsic boundary diagnostic containing '{intrinsic}', got: {errors:?}"
+        );
+    }
+}
+
+#[test]
+fn intrinsic_comparison_typing_covers_full_v1_scalar_matrix() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "fun[] eq_ints(): bol = {\n\
+             return .eq(1, 1);\n\
+         }\n\
+         fun[] eq_floats(): bol = {\n\
+             return .eq(1.0, 1.0);\n\
+         }\n\
+         fun[] eq_bools(): bol = {\n\
+             return .eq(true, false);\n\
+         }\n\
+         fun[] eq_chars(): bol = {\n\
+             return .eq('a', 'z');\n\
+         }\n\
+         fun[] eq_text(): bol = {\n\
+             return .eq(\"Ada\", \"Lin\");\n\
+         }\n\
+         fun[] lt_ints(): bol = {\n\
+             return .lt(1, 2);\n\
+         }\n\
+         fun[] lt_floats(): bol = {\n\
+             return .lt(1.0, 2.0);\n\
+         }\n\
+         fun[] lt_chars(): bol = {\n\
+             return .lt('a', 'z');\n\
+         }\n\
+         fun[] lt_text(): bol = {\n\
+             return .lt(\"Ada\", \"Lin\");\n\
+         }\n",
+    )]);
+
+    for name in [
+        "eq_ints",
+        "eq_floats",
+        "eq_bools",
+        "eq_chars",
+        "eq_text",
+        "lt_ints",
+        "lt_floats",
+        "lt_chars",
+        "lt_text",
+    ] {
+        let syntax_id = find_named_routine_syntax_id(&typed, name);
+        assert_eq!(
+            typed
+                .typed_node(syntax_id)
+                .and_then(|node| node.inferred_type)
+                .and_then(|type_id| typed.type_table().get(type_id)),
+            Some(&CheckedType::Builtin(BuiltinType::Bool)),
+            "Expected {name} to resolve to bol across the supported V1 scalar matrix",
+        );
+    }
+}
+
+#[test]
+fn intrinsic_comparison_typing_rejects_non_scalar_and_cross_family_pairs() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] bad_container(): bol = {\n\
+             return .eq({1, 2}, {1, 2});\n\
+         }\n\
+         fun[] bad_ordered_bool(): bol = {\n\
+             return .lt(true, false);\n\
+         }\n\
+         fun[] bad_mixed_eq(): bol = {\n\
+             return .eq(1, 1.0);\n\
+         }\n\
+         fun[] bad_mixed_lt(): bol = {\n\
+             return .lt('a', 1);\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error
+                    .message()
+                    .contains(".eq(...) expects two comparable scalar operands")
+        }),
+        "Expected non-scalar equality-family intrinsic diagnostic, got: {errors:?}"
+    );
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error
+                    .message()
+                    .contains(".lt(...) expects two ordered scalar operands")
+        }),
+        "Expected ordered-family intrinsic diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
 fn coercion_policy_rejects_implicit_int_float_cross_family_conversions() {
     let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",
@@ -2322,7 +2868,7 @@ fn cast_policy_rejects_as_and_cast_surfaces_in_v1() {
             error.kind() == TypecheckErrorKind::Unsupported
                 && error
                     .message()
-                    .contains("explicit 'as' casts are not part of the V1 typecheck milestone")
+                    .contains("operator 'as' is not implemented in the current V1 compiler milestone")
                 && error.diagnostic_location().is_some()
         }),
         "Expected an unsupported 'as' cast diagnostic, got: {errors:?}"
@@ -2332,7 +2878,7 @@ fn cast_policy_rejects_as_and_cast_surfaces_in_v1() {
             error.kind() == TypecheckErrorKind::Unsupported
                 && error
                     .message()
-                    .contains("explicit 'cast' operators are not part of the V1 typecheck milestone")
+                    .contains("operator 'cast' is not implemented in the current V1 compiler milestone")
                 && error.diagnostic_location().is_some()
         }),
         "Expected an unsupported 'cast' diagnostic, got: {errors:?}"

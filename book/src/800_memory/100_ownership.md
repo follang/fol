@@ -1,5 +1,16 @@
 # Ownership
 
+This chapter describes the planned systems-language ownership model.
+
+Current milestone note:
+
+- ownership is not part of the current `V1` compiler contract
+- borrowing is not part of the current `V1` compiler contract
+- these semantics belong to the later `V3` systems milestone
+
+So the syntax and examples here should be read as future design, not as current
+compiler behavior.
+
 Much like [C++]() and [Rust](), in Fol every variable declared, by default is created in stack unless explicitly specified othervise. Using option `[new]` or `[@]` in a variable, it allocates memory in the heap. The size of the allocation is defined by the type. Internally this creates a pointer to heap address, and dereferences it to the type you are having. Usually those behind the scene pointers here are unique pointers. This means that when the scope ends, the memory that the pointer used is freed.
 ```
 var[new] intOnHeap: int[64];
@@ -9,7 +20,7 @@ var[new] intOnHeap: int[64];
 
 [As discussed before](/docs/spec/040_variables/#assignments), declaring a new variable is like this:
 ```
-var[pub] aVar: int[32] = 64
+var[exp] aVar: int[32] = 64
 ```
 {{% notice warn %}}
 

@@ -1,5 +1,17 @@
 # Pointers
 
+This chapter is future systems-language design.
+
+Current milestone note:
+
+- pointer semantics are not part of the implemented `V1` compiler contract
+- pointer-specific intrinsics such as `.pointer_value(...)`,
+  `.address_of(...)`, and `.borrow_from(...)` are deferred
+- the material here belongs to the later `V3` systems milestone
+
+So the examples in this chapter should be read as planned language direction,
+not as currently supported `V1` code.
+
 The only way to access the same memory with different variable is by using pointers. In example below, we create a pointer, and when we want to dereference it to modify the content of the address that the pointer is pointing to, we use `*ptrname` or `.pointer_value(ptrname)`.
 ```
 @var aContainer: arr[int, 5];                                    //allocating memory on the heap

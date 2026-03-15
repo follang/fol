@@ -2,6 +2,23 @@
 
 A method is a routine associated with a receiver type. In FOL, methods can be declared as either `fun` or `pro` and called with dot syntax (`value.method(...)`).
 
+Methods in FOL are procedural, not object-oriented. A method call is just sugar
+for calling a routine whose first explicit input is the receiver value. In
+other words:
+
+```fol
+tool.parse_msg(10)
+```
+
+should be read as the procedural call:
+
+```fol
+parse_msg(tool, 10)
+```
+
+There is no separate object-method runtime model implied by the syntax. `typ`
+declares data. Receiver-qualified routines are still routines.
+
 Current parser-supported receiver declaration syntax is:
 
 ```fol
@@ -15,6 +32,9 @@ pro (parser)update(code: int): int = {
 ```
 
 The receiver type appears in parentheses right after `fun` or `pro`, followed by the method name.
+
+That receiver clause does not move the routine "inside" the type. It only says
+which type may be used in dot-call form for that routine.
 
 Current parser-supported receiver syntax is intentionally broader than a named-only rule.
 At parse time, receiver positions accept named, qualified, builtin-scalar, and
@@ -41,6 +61,9 @@ Method calls use standard dot syntax:
 var tool: parser = parser.new()
 var msg: str = tool.parse_msg(10)
 ```
+
+This is equivalent in meaning to passing `tool` as the first routine argument.
+The dot form is only the call-site spelling.
 
 Custom error routines also support reporting method call results when receiver-qualified signatures are available:
 

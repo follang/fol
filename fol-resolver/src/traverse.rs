@@ -12,7 +12,7 @@ use crate::{
     SymbolId,
 };
 use fol_parser::ast::{
-    AstNode, FolType, Generic, InquiryTarget, LoopCondition, ParsedDeclVisibility,
+    AstNode, CallSurface, FolType, Generic, InquiryTarget, LoopCondition, ParsedDeclVisibility,
     ParsedTopLevel, QualifiedPath, TypeDefinition, WhenCase,
 };
 
@@ -319,9 +319,19 @@ fn traverse_node(
             traverse_node(session, program, source_unit_id, scope_id, operand, false, routine_context)?;
         }
         AstNode::FunctionCall {
+            surface: CallSurface::DotIntrinsic,
+            args,
+            ..
+        } => {
+            for arg in args {
+                traverse_node(session, program, source_unit_id, scope_id, arg, false, routine_context)?;
+            }
+        }
+        AstNode::FunctionCall {
             name,
             args,
             syntax_id,
+            ..
         } => {
             if !is_builtin_diagnostic_call(name) {
                 record_function_call_reference(

@@ -52,6 +52,9 @@ Instead, the implemented recoverable-call surfaces are:
 - `check(expr)`
 - `expr || fallback`
 
+`check` and `panic` are compiler intrinsics in the current `V1` compiler. They
+are not imported library functions.
+
 ## `check(expr)`
 
 `check(expr)` asks whether a recoverable routine call failed.
