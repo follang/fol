@@ -17,7 +17,8 @@ pub use ids::{
     LoweredRoutineId, LoweredTypeId,
 };
 pub use model::{
-    LoweredPackage, LoweredSourceMap, LoweredSourceMapEntry, LoweredSourceSymbol, LoweredWorkspace,
+    LoweredPackage, LoweredSourceMap, LoweredSourceMapEntry, LoweredSourceSymbol,
+    LoweredSourceUnit, LoweredSymbolOwnership, LoweredWorkspace,
 };
 pub use session::LoweringSession;
 pub use types::{
@@ -85,13 +86,11 @@ mod tests {
             .check_resolved_workspace(resolved)
             .expect("Lowering fixture should typecheck");
 
-        let error = Lowerer::new()
+        let lowered = Lowerer::new()
             .lower_typed_workspace(typed)
-            .expect_err("Lowering shell should currently stop at an explicit stub");
+            .expect("Lowering shell should accept typed workspaces");
 
-        assert_eq!(error.len(), 1);
-        assert_eq!(error[0].kind(), LoweringErrorKind::Unsupported);
-        assert_eq!(error[0].message(), "lowering session is not implemented yet");
+        assert_eq!(lowered.package_count(), 1);
     }
 
     #[test]

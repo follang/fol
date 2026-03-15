@@ -498,8 +498,8 @@ This plan is complete only when all of the following are true:
 ### Phase 2. Typed Workspace Translation
 
 - `2.1` `done` Create lowering session state over `TypedWorkspace`.
-- `2.2` `pending` Translate package identities, source units, and symbol ownership into lowering tables.
-- `2.3` `pending` Translate typecheck package-local type IDs into lowering-owned type IDs.
+- `2.2` `done` Translate package identities, source units, and symbol ownership into lowering tables.
+- `2.3` `done` Translate typecheck package-local type IDs into lowering-owned type IDs.
 - `2.4` `pending` Preserve mounted imported symbol provenance so imported definitions lower in their owning package.
 - `2.5` `pending` Preserve syntax origins and build lowering source maps across the whole workspace.
 - `2.6` `pending` Keep single-program lowering as an explicit compatibility shim over workspace lowering.
