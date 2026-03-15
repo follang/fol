@@ -958,9 +958,13 @@ Track these in the registry, but do not implement them in the first batch:
   - likely `core/std`, not intrinsic`: mutation-heavy container helpers,
     text-processing helpers, regex-heavy helpers, serialization, filesystem,
     and network-like convenience APIs
-- `0.3` `pending` Freeze the naming decision:
+- `0.3` `done` Freeze the naming decision:
   - crate name is `fol-intrinsics`
   - docs stop using “build-in” as the authoritative compiler term
+  Current state:
+  - the compiler architecture term is now `intrinsics`
+  - the old book page is kept only as a migration target to be rewritten later
+  - future code, docs, and diagnostics should prefer `intrinsic` terminology
 - `0.4` `pending` Freeze the first implemented families:
   - comparison
   - `.not()`
