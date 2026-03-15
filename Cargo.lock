@@ -153,6 +153,8 @@ name = "fol-backend"
 version = "0.1.0"
 dependencies = [
  "fol-lower",
+ "fol-parser",
+ "fol-resolver",
  "fol-runtime",
 ]
 
