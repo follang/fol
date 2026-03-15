@@ -3258,6 +3258,72 @@ mod tests {
     }
 
     #[test]
+    fn lowering_repro_keeps_exact_typed_container_instruction_shapes() {
+        let lowered = lower_fixture_workspace(
+            concat!(
+                "fun[] seq_return(): seq[str] = {\n",
+                "    return {\"Ada\", \"Lin\"}\n",
+                "}\n",
+                "fun[] map_return(): map[str, int] = {\n",
+                "    return {{\"US\", 45}, {\"DE\", 82}}\n",
+                "}\n",
+            ),
+        );
+
+        let seq_routine = lowered
+            .entry_package()
+            .routine_decls
+            .values()
+            .find(|routine| routine.name == "seq_return")
+            .expect("sequence return routine should exist");
+        assert_eq!(seq_routine.instructions.len(), 3);
+        assert!(matches!(
+            seq_routine.instructions.get(crate::LoweredInstrId(0)).map(|instr| &instr.kind),
+            Some(LoweredInstrKind::Const(LoweredOperand::Str(value))) if value == "Ada"
+        ));
+        assert!(matches!(
+            seq_routine.instructions.get(crate::LoweredInstrId(1)).map(|instr| &instr.kind),
+            Some(LoweredInstrKind::Const(LoweredOperand::Str(value))) if value == "Lin"
+        ));
+        assert!(matches!(
+            seq_routine.instructions.get(crate::LoweredInstrId(2)).map(|instr| &instr.kind),
+            Some(LoweredInstrKind::ConstructLinear {
+                kind: crate::control::LoweredLinearKind::Sequence,
+                elements,
+                ..
+            }) if elements.len() == 2
+        ));
+
+        let map_routine = lowered
+            .entry_package()
+            .routine_decls
+            .values()
+            .find(|routine| routine.name == "map_return")
+            .expect("map return routine should exist");
+        assert_eq!(map_routine.instructions.len(), 5);
+        assert!(matches!(
+            map_routine.instructions.get(crate::LoweredInstrId(0)).map(|instr| &instr.kind),
+            Some(LoweredInstrKind::Const(LoweredOperand::Str(value))) if value == "US"
+        ));
+        assert!(matches!(
+            map_routine.instructions.get(crate::LoweredInstrId(1)).map(|instr| &instr.kind),
+            Some(LoweredInstrKind::Const(LoweredOperand::Int(45)))
+        ));
+        assert!(matches!(
+            map_routine.instructions.get(crate::LoweredInstrId(2)).map(|instr| &instr.kind),
+            Some(LoweredInstrKind::Const(LoweredOperand::Str(value))) if value == "DE"
+        ));
+        assert!(matches!(
+            map_routine.instructions.get(crate::LoweredInstrId(3)).map(|instr| &instr.kind),
+            Some(LoweredInstrKind::Const(LoweredOperand::Int(82)))
+        ));
+        assert!(matches!(
+            map_routine.instructions.get(crate::LoweredInstrId(4)).map(|instr| &instr.kind),
+            Some(LoweredInstrKind::ConstructMap { entries, .. }) if entries.len() == 2
+        ));
+    }
+
+    #[test]
     fn lowering_repro_lowers_early_return_when_branches_as_statement_control_flow() {
         let lowered = lower_fixture_workspace(
             concat!(
