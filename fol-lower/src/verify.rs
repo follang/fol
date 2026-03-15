@@ -428,6 +428,28 @@ fn verify_instruction(
                         intrinsic.index()
                     ),
                 ));
+            } else if fol_intrinsics::backend_role_for_intrinsic(*intrinsic)
+                != Some(fol_intrinsics::IntrinsicBackendRole::PureOp)
+            {
+                let intrinsic_name = fol_intrinsics::intrinsic_by_id(*intrinsic)
+                    .map(|entry| entry.name)
+                    .unwrap_or("<missing>");
+                errors.push(LoweringError::with_kind(
+                    LoweringErrorKind::InvalidInput,
+                    format!(
+                        "lowered routine '{}' instruction {} uses intrinsic '.{}' as an IntrinsicCall even though it is not a pure-op intrinsic",
+                        routine.name, instr.id.0, intrinsic_name
+                    ),
+                ));
+            }
+            if instr.result.is_none() {
+                errors.push(LoweringError::with_kind(
+                    LoweringErrorKind::InvalidInput,
+                    format!(
+                        "lowered routine '{}' intrinsic instruction {} must write a result local",
+                        routine.name, instr.id.0
+                    ),
+                ));
             }
             for arg in args {
                 verify_local_reference(routine, instr.id.0, "intrinsic arg", *arg, errors);
@@ -443,12 +465,43 @@ fn verify_instruction(
                         intrinsic.index()
                     ),
                 ));
+            } else if fol_intrinsics::backend_role_for_intrinsic(*intrinsic)
+                != Some(fol_intrinsics::IntrinsicBackendRole::RuntimeHook)
+            {
+                let intrinsic_name = fol_intrinsics::intrinsic_by_id(*intrinsic)
+                    .map(|entry| entry.name)
+                    .unwrap_or("<missing>");
+                errors.push(LoweringError::with_kind(
+                    LoweringErrorKind::InvalidInput,
+                    format!(
+                        "lowered routine '{}' instruction {} uses intrinsic '.{}' as a RuntimeHook even though it is not a runtime-hook intrinsic",
+                        routine.name, instr.id.0, intrinsic_name
+                    ),
+                ));
+            }
+            if let Some(result) = instr.result {
+                errors.push(LoweringError::with_kind(
+                    LoweringErrorKind::InvalidInput,
+                    format!(
+                        "lowered routine '{}' runtime hook instruction {} must not write result local {}",
+                        routine.name, instr.id.0, result.0
+                    ),
+                ));
             }
             for arg in args {
                 verify_local_reference(routine, instr.id.0, "runtime hook arg", *arg, errors);
             }
         }
         crate::LoweredInstrKind::LengthOf { operand } => {
+            if instr.result.is_none() {
+                errors.push(LoweringError::with_kind(
+                    LoweringErrorKind::InvalidInput,
+                    format!(
+                        "lowered routine '{}' length helper instruction {} must write a result local",
+                        routine.name, instr.id.0
+                    ),
+                ));
+            }
             verify_local_reference(routine, instr.id.0, "length operand", *operand, errors);
         }
         crate::LoweredInstrKind::ConstructRecord { type_id, fields } => {
@@ -751,6 +804,136 @@ mod tests {
             error
                 .message()
                 .contains("recorded mounted symbol 7 with conflicting owning package")
+        }));
+    }
+
+    #[test]
+    fn verifier_rejects_intrinsic_calls_using_non_pure_intrinsics() {
+        let identity = identity("app");
+        let mut type_table = LoweredTypeTable::new();
+        let bool_type = type_table.intern_builtin(LoweredBuiltinType::Bool);
+        let recoverable_abi = LoweredRecoverableAbi::v1(bool_type);
+        let mut routine = LoweredRoutine::new(LoweredRoutineId(0), "main", LoweredBlockId(0));
+        routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(0),
+            type_id: Some(bool_type),
+            recoverable_error_type: None,
+            name: Some("flag".to_string()),
+        });
+        routine.instructions.push(LoweredInstr {
+            id: LoweredInstrId(0),
+            result: Some(LoweredLocalId(0)),
+            kind: LoweredInstrKind::IntrinsicCall {
+                intrinsic: fol_intrinsics::intrinsic_by_canonical_name("echo")
+                    .expect("echo should exist")
+                    .id,
+                args: vec![LoweredLocalId(0)],
+            },
+        });
+        routine.blocks.push(LoweredBlock {
+            id: LoweredBlockId(0),
+            instructions: vec![LoweredInstrId(0)],
+            terminator: Some(LoweredTerminator::Return {
+                value: Some(LoweredLocalId(0)),
+            }),
+        });
+
+        let mut package = LoweredPackage::new(LoweredPackageId(0), identity.clone());
+        package.routine_decls.insert(LoweredRoutineId(0), routine);
+        let workspace = LoweredWorkspace::new(
+            identity.clone(),
+            BTreeMap::from([(identity, package)]),
+            Vec::new(),
+            type_table,
+            LoweredSourceMap::new(),
+            recoverable_abi,
+        );
+
+        let errors = verify_workspace(&workspace)
+            .expect_err("verifier should reject runtime hooks lowered as intrinsic calls");
+
+        assert!(errors.iter().any(|error| {
+            error
+                .message()
+                .contains("uses intrinsic '.echo' as an IntrinsicCall")
+        }));
+    }
+
+    #[test]
+    fn verifier_rejects_runtime_hooks_with_results_and_helper_without_results() {
+        let identity = identity("app");
+        let mut type_table = LoweredTypeTable::new();
+        let bool_type = type_table.intern_builtin(LoweredBuiltinType::Bool);
+        let int_type = type_table.intern_builtin(LoweredBuiltinType::Int);
+        let seq_type = type_table.intern_sequence(bool_type);
+        let recoverable_abi = LoweredRecoverableAbi::v1(bool_type);
+        let mut routine = LoweredRoutine::new(LoweredRoutineId(0), "main", LoweredBlockId(0));
+        routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(0),
+            type_id: Some(bool_type),
+            recoverable_error_type: None,
+            name: Some("flag".to_string()),
+        });
+        routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(1),
+            type_id: Some(seq_type),
+            recoverable_error_type: None,
+            name: Some("items".to_string()),
+        });
+        routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(2),
+            type_id: Some(int_type),
+            recoverable_error_type: None,
+            name: Some("count".to_string()),
+        });
+        routine.instructions.push(LoweredInstr {
+            id: LoweredInstrId(0),
+            result: Some(LoweredLocalId(2)),
+            kind: LoweredInstrKind::RuntimeHook {
+                intrinsic: fol_intrinsics::intrinsic_by_canonical_name("echo")
+                    .expect("echo should exist")
+                    .id,
+                args: vec![LoweredLocalId(0)],
+            },
+        });
+        routine.instructions.push(LoweredInstr {
+            id: LoweredInstrId(1),
+            result: None,
+            kind: LoweredInstrKind::LengthOf {
+                operand: LoweredLocalId(1),
+            },
+        });
+        routine.blocks.push(LoweredBlock {
+            id: LoweredBlockId(0),
+            instructions: vec![LoweredInstrId(0), LoweredInstrId(1)],
+            terminator: Some(LoweredTerminator::Return {
+                value: Some(LoweredLocalId(0)),
+            }),
+        });
+
+        let mut package = LoweredPackage::new(LoweredPackageId(0), identity.clone());
+        package.routine_decls.insert(LoweredRoutineId(0), routine);
+        let workspace = LoweredWorkspace::new(
+            identity.clone(),
+            BTreeMap::from([(identity, package)]),
+            Vec::new(),
+            type_table,
+            LoweredSourceMap::new(),
+            recoverable_abi,
+        );
+
+        let errors = verify_workspace(&workspace)
+            .expect_err("verifier should reject impossible runtime-hook and helper result shapes");
+
+        assert!(errors.iter().any(|error| {
+            error
+                .message()
+                .contains("runtime hook instruction 0 must not write result local 2")
+        }));
+        assert!(errors.iter().any(|error| {
+            error
+                .message()
+                .contains("length helper instruction 1 must write a result local")
         }));
     }
 }

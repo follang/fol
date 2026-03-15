@@ -1247,7 +1247,7 @@ Track these in the registry, but do not implement them in the first batch:
   - target helper
 - `12.2` `done` Add deterministic lowered rendering for intrinsic selections
   so backend bring-up can inspect them.
-- `12.3` `pending` Add lowering verifier checks for impossible intrinsic/result
+- `12.3` `done` Add lowering verifier checks for impossible intrinsic/result
   combinations.
 
 ### Phase 13. Docs Closeout
