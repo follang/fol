@@ -2,6 +2,7 @@
 
 mod config;
 mod error;
+mod identity;
 mod model;
 mod session;
 
@@ -25,6 +26,7 @@ pub fn crate_name() -> &'static str {
 
 pub use config::{BackendConfig, BackendMode, BackendTarget};
 pub use error::{BackendError, BackendErrorKind};
+pub use identity::{stable_workspace_hash, BackendWorkspaceIdentity};
 pub use model::{BackendArtifact, EmittedRustFile};
 pub use session::BackendSession;
 

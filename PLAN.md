@@ -891,7 +891,7 @@ not full long-term compiler completion.
 #### 2.2 done
 - retain entry package identity, package graph, and entry candidates inside backend session state
 
-#### 2.3
+#### 2.3 done
 - add stable workspace hashing / output-directory identity
 
 #### 2.4

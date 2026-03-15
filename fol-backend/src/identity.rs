@@ -1,0 +1,73 @@
+use fol_lower::{render_lowered_workspace, LoweredWorkspace};
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BackendWorkspaceIdentity {
+    pub hash: String,
+    pub crate_dir_name: String,
+}
+
+impl BackendWorkspaceIdentity {
+    pub fn for_workspace(workspace: &LoweredWorkspace) -> Self {
+        let hash = stable_workspace_hash(workspace);
+        let crate_dir_name = format!(
+            "fol-build-{}-{}",
+            sanitize_component(&workspace.entry_identity().display_name),
+            &hash[..12]
+        );
+        Self {
+            hash,
+            crate_dir_name,
+        }
+    }
+}
+
+pub fn stable_workspace_hash(workspace: &LoweredWorkspace) -> String {
+    let rendered = render_lowered_workspace(workspace);
+    format!("{:016x}", fnv1a64(rendered.as_bytes()))
+}
+
+fn sanitize_component(raw: &str) -> String {
+    let mut output = String::new();
+    for ch in raw.chars() {
+        if ch.is_ascii_alphanumeric() {
+            output.push(ch.to_ascii_lowercase());
+        } else {
+            output.push('_');
+        }
+    }
+    while output.contains("__") {
+        output = output.replace("__", "_");
+    }
+    output.trim_matches('_').to_string()
+}
+
+fn fnv1a64(bytes: &[u8]) -> u64 {
+    const OFFSET: u64 = 0xcbf29ce484222325;
+    const PRIME: u64 = 0x00000100000001b3;
+    let mut hash = OFFSET;
+    for byte in bytes {
+        hash ^= u64::from(*byte);
+        hash = hash.wrapping_mul(PRIME);
+    }
+    hash
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{stable_workspace_hash, BackendWorkspaceIdentity};
+    use crate::testing::sample_lowered_workspace;
+
+    #[test]
+    fn backend_workspace_identity_is_deterministic_for_same_input() {
+        let workspace = sample_lowered_workspace();
+
+        let first = stable_workspace_hash(&workspace);
+        let second = stable_workspace_hash(&workspace);
+        let identity = BackendWorkspaceIdentity::for_workspace(&workspace);
+
+        assert_eq!(first, second);
+        assert_eq!(identity.hash, first);
+        assert!(identity.crate_dir_name.starts_with("fol-build-app-"));
+        assert_eq!(identity.crate_dir_name.len(), "fol-build-app-".len() + 12);
+    }
+}

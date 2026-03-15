@@ -1,3 +1,4 @@
+use crate::identity::BackendWorkspaceIdentity;
 use fol_lower::{LoweredEntryCandidate, LoweredWorkspace};
 use fol_resolver::PackageIdentity;
 
@@ -8,6 +9,7 @@ pub struct BackendSession {
     entry_identity: PackageIdentity,
     package_graph: Vec<PackageIdentity>,
     entry_candidates: Vec<LoweredEntryCandidate>,
+    workspace_identity: BackendWorkspaceIdentity,
 }
 
 impl BackendSession {
@@ -18,11 +20,13 @@ impl BackendSession {
             .map(|package| package.identity.clone())
             .collect();
         let entry_candidates = workspace.entry_candidates().to_vec();
+        let workspace_identity = BackendWorkspaceIdentity::for_workspace(&workspace);
         Self {
             workspace,
             entry_identity,
             package_graph,
             entry_candidates,
+            workspace_identity,
         }
     }
 
@@ -40,6 +44,10 @@ impl BackendSession {
 
     pub fn entry_candidates(&self) -> &[LoweredEntryCandidate] {
         &self.entry_candidates
+    }
+
+    pub fn workspace_identity(&self) -> &BackendWorkspaceIdentity {
+        &self.workspace_identity
     }
 
     pub fn into_workspace(self) -> LoweredWorkspace {
@@ -66,6 +74,7 @@ mod tests {
         assert_eq!(session.entry_identity().display_name, expected_entry);
         assert_eq!(session.package_graph().len(), expected_packages);
         assert_eq!(session.entry_candidates(), expected_candidates.as_slice());
+        assert!(session.workspace_identity().crate_dir_name.starts_with("fol-build-app-"));
         assert_eq!(session.into_workspace().package_count(), workspace.package_count());
     }
 }
