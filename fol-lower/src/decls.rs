@@ -647,15 +647,22 @@ fn lower_routine_decl(
             type_id: Some(param_type),
             name: Some(param.name.clone()),
         });
-        if let Some(param_symbol_id) = find_symbol_in_scope_or_descendants(
+        let Some(param_symbol_id) = find_symbol_in_scope_or_descendants(
             &typed_package.program,
             source_unit_id,
             routine_scope_id,
             SymbolKind::Parameter,
             &param.name,
-        ) {
-            routine.local_symbols.insert(param_symbol_id, local_id);
-        }
+        ) else {
+            return Err(LoweringError::with_kind(
+                LoweringErrorKind::InvalidInput,
+                format!(
+                    "routine parameter '{}' does not map to a resolved symbol in its lowered scope",
+                    param.name
+                ),
+            ));
+        };
+        routine.local_symbols.insert(param_symbol_id, local_id);
         routine.params.push(local_id);
         next_local_index += 1;
     }
@@ -767,13 +774,14 @@ fn scope_distance_from(
 mod tests {
     use super::{
         lower_alias_declarations, lower_entry_declarations, lower_global_declarations,
-        lower_record_declarations, lower_routine_declarations, lower_routine_signatures,
+        lower_record_declarations, lower_routine_decl, lower_routine_declarations,
+        lower_routine_signatures,
     };
     use crate::{
         types::LoweredType, LoweredBuiltinType, LoweredFieldLayout, LoweredPackage,
         LoweredTypeDeclKind, LoweredVariantLayout,
     };
-    use fol_parser::ast::AstParser;
+    use fol_parser::ast::{AstNode, AstParser, FolType, Parameter};
     use fol_resolver::resolve_workspace;
     use fol_stream::FileStream;
     use fol_typecheck::Typechecker;
@@ -1174,6 +1182,89 @@ mod tests {
                 .map(|local_id| routine.locals.get(*local_id).and_then(|local| local.name.clone()))
                 .collect::<Vec<_>>(),
             vec![Some("left".to_string()), Some("right".to_string())]
+        );
+    }
+
+    #[test]
+    fn declaration_lowering_reports_missing_parameter_symbol_matches_explicitly() {
+        let fixture = std::env::temp_dir().join(format!(
+            "fol_lower_missing_param_{}.fol",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system clock should be monotonic enough for tmp names")
+                .as_nanos()
+        ));
+        std::fs::write(&fixture, "fun[] add(left: int): int = { return left }")
+            .expect("should write lowering routine fixture");
+
+        let mut stream = FileStream::from_file(fixture.to_str().expect("utf8 temp path"))
+            .expect("Should open lowering fixture");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let syntax = parser
+            .parse_package(&mut lexer)
+            .expect("Lowering fixture should parse");
+        let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+        let typed = Typechecker::new()
+            .check_resolved_workspace(resolved)
+            .expect("Lowering fixture should typecheck");
+        let lowered_workspace = crate::LoweringSession::new(typed.clone())
+            .lower_workspace()
+            .expect("workspace lowering should succeed");
+        let typed_package = typed.entry_package();
+        let mut lowered_package =
+            LoweredPackage::new(crate::LoweredPackageId(0), typed_package.identity.clone());
+        lowered_package.checked_type_map = lowered_workspace.entry_package().checked_type_map.clone();
+        lower_routine_signatures(typed_package, &mut lowered_package)
+            .expect("routine signatures should lower cleanly");
+
+        let source_unit = typed_package
+            .program
+            .resolved()
+            .syntax()
+            .source_units
+            .first()
+            .expect("fixture source unit should exist");
+        let AstNode::FunDecl {
+            name,
+            syntax_id,
+            ..
+        } = &source_unit.items[0].node
+        else {
+            panic!("fixture should retain one function declaration");
+        };
+        let symbol_id = super::find_local_symbol_id(
+            &typed_package.program,
+            fol_resolver::SourceUnitId(0),
+            fol_resolver::SymbolKind::Routine,
+            name,
+        )
+        .expect("routine symbol should exist");
+        let mut next_routine_index = 0;
+        let error = lower_routine_decl(
+            typed_package,
+            &lowered_package,
+            symbol_id,
+            fol_resolver::SourceUnitId(0),
+            name,
+            *syntax_id,
+            &[Parameter {
+                name: "missing".to_string(),
+                param_type: FolType::Simple("int".to_string()),
+                is_borrowable: false,
+                is_mutex: false,
+                default: None,
+            }],
+            &mut next_routine_index,
+        )
+        .expect_err("mismatched parameter names should stay explicit");
+
+        assert_eq!(error.kind(), crate::LoweringErrorKind::InvalidInput);
+        assert!(
+            error
+                .message()
+                .contains("routine parameter 'missing' does not map to a resolved symbol in its lowered scope"),
+            "missing parameter matches should report the lowered-scope guard explicitly, got: {error:?}",
         );
     }
 

@@ -117,7 +117,7 @@ Each fix must land with:
 
 - `1.1` `done` Audit lowered symbol lookup for routine parameters, local bindings, and imported mounted symbols to find where current lookup still misses valid lowered locals.
 - `1.2` `done` Fix the lowering path so ordinary routine parameters always map to lowered locals anywhere current `V1` typing can reference them.
-- `1.3` `pending` Add negative guards so true missing-symbol situations still report explicit lowering errors instead of silently aliasing the wrong symbol.
+- `1.3` `done` Add negative guards so true missing-symbol situations still report explicit lowering errors instead of silently aliasing the wrong symbol.
 
 ### Phase 2. Container Literal Hardening
 
