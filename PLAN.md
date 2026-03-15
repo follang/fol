@@ -931,7 +931,7 @@ not full long-term compiler completion.
 #### 4.3 done
 - emit top-level package module shells
 
-#### 4.4
+#### 4.4 done
 - emit namespace module shells
 
 #### 4.5

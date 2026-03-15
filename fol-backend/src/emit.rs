@@ -84,6 +84,30 @@ pub fn emit_package_module_shells(session: &BackendSession) -> Vec<EmittedRustFi
     files
 }
 
+pub fn emit_namespace_module_shells(session: &BackendSession) -> Vec<EmittedRustFile> {
+    plan_namespace_layouts(session)
+        .into_iter()
+        .map(|namespace_plan| EmittedRustFile {
+            path: format!(
+                "src/packages/{}/{}",
+                mangle_package_module_name(&namespace_plan.package_identity),
+                namespace_plan.relative_file
+            ),
+            module_name: namespace_plan.module_name.clone(),
+            contents: format!(
+                "use fol_runtime::prelude as rt;\n\npub(crate) const NAMESPACE_NAME: &str = \"{}\";\npub(crate) const SOURCE_UNIT_IDS: &[usize] = &[{}];\n\npub(crate) fn namespace_runtime_marker() -> &'static str {{\n    let _ = rt::crate_name();\n    NAMESPACE_NAME\n}}\n",
+                namespace_plan.full_namespace,
+                namespace_plan
+                    .source_unit_ids
+                    .iter()
+                    .map(|source_unit_id| source_unit_id.0.to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+        })
+        .collect()
+}
+
 fn runtime_dependency_path() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
@@ -93,7 +117,9 @@ fn runtime_dependency_path() -> PathBuf {
 
 #[cfg(test)]
 mod tests {
-    use super::{emit_cargo_toml, emit_main_rs, emit_package_module_shells};
+    use super::{
+        emit_cargo_toml, emit_main_rs, emit_namespace_module_shells, emit_package_module_shells,
+    };
     use crate::{testing::sample_lowered_workspace, BackendSession};
 
     #[test]
@@ -144,5 +170,22 @@ mod tests {
         assert_eq!(emitted[2].path, "src/packages/pkg__local__shared/mod.rs");
         assert!(emitted[2].contents.contains("pub mod root;"));
         assert!(emitted[2].contents.contains("pub mod util;"));
+    }
+
+    #[test]
+    fn namespace_module_shell_emission_keeps_runtime_imports_and_namespace_markers() {
+        let session = BackendSession::new(sample_lowered_workspace());
+
+        let emitted = emit_namespace_module_shells(&session);
+
+        assert_eq!(emitted.len(), 4);
+        assert_eq!(emitted[0].path, "src/packages/pkg__entry__app/root.rs");
+        assert!(emitted[0].contents.contains("use fol_runtime::prelude as rt;"));
+        assert!(emitted[0].contents.contains("NAMESPACE_NAME: &str = \"app\""));
+        assert!(emitted[0].contents.contains("SOURCE_UNIT_IDS: &[usize] = &[0]"));
+        assert_eq!(emitted[1].path, "src/packages/pkg__entry__app/math.rs");
+        assert!(emitted[1].contents.contains("NAMESPACE_NAME: &str = \"app::math\""));
+        assert_eq!(emitted[3].path, "src/packages/pkg__local__shared/util.rs");
+        assert!(emitted[3].contents.contains("NAMESPACE_NAME: &str = \"shared::util\""));
     }
 }
