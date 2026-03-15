@@ -508,6 +508,54 @@ fn lower_expression(
             &path.joined(),
             args,
         ),
+        AstNode::MethodCall { object, method, args } => {
+            let receiver = lower_expression(
+                typed_package,
+                checked_type_map,
+                current_identity,
+                decl_index,
+                cursor,
+                source_unit_id,
+                object,
+            )?;
+            let (callee, result_type) = resolve_method_target(
+                typed_package,
+                checked_type_map,
+                current_identity,
+                decl_index,
+                method,
+                receiver.type_id,
+            )?;
+            let mut lowered_args = vec![receiver.local_id];
+            lowered_args.extend(
+                args.iter()
+                    .map(|arg| {
+                        lower_expression(
+                            typed_package,
+                            checked_type_map,
+                            current_identity,
+                            decl_index,
+                            cursor,
+                            source_unit_id,
+                            arg,
+                        )
+                        .map(|value| value.local_id)
+                    })
+                    .collect::<Result<Vec<_>, _>>()?,
+            );
+            let result_local = cursor.allocate_local(result_type, None);
+            cursor.push_instr(
+                Some(result_local),
+                LoweredInstrKind::Call {
+                    callee,
+                    args: lowered_args,
+                },
+            )?;
+            Ok(LoweredValue {
+                local_id: result_local,
+                type_id: result_type,
+            })
+        }
         AstNode::Identifier { syntax_id, name } => {
             let syntax_id = syntax_id.ok_or_else(|| {
                 LoweringError::with_kind(
@@ -838,6 +886,73 @@ fn resolve_reference_type_id(
         .find(|reference| reference.syntax_id == Some(syntax_id) && reference.kind == kind)?;
     let checked_type = reference_type_id(typed_package, reference.id)?;
     checked_type_map.get(&checked_type).copied()
+}
+
+fn resolve_method_target(
+    typed_package: &fol_typecheck::TypedPackage,
+    checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
+    current_identity: &PackageIdentity,
+    decl_index: &WorkspaceDeclIndex,
+    method: &str,
+    receiver_type: LoweredTypeId,
+) -> Result<(LoweredRoutineId, LoweredTypeId), LoweringError> {
+    let mut matches = Vec::new();
+
+    for (symbol_id, symbol) in typed_package.program.resolved().symbols.iter_with_ids() {
+        if symbol.kind != SymbolKind::Routine || symbol.name != method {
+            continue;
+        }
+        let Some(typed_symbol) = typed_package.program.typed_symbol(symbol_id) else {
+            continue;
+        };
+        let Some(receiver_checked_type) = typed_symbol.receiver_type else {
+            continue;
+        };
+        let Some(lowered_receiver_type) = checked_type_map.get(&receiver_checked_type).copied() else {
+            continue;
+        };
+        if lowered_receiver_type != receiver_type {
+            continue;
+        }
+
+        let (owning_identity, owning_symbol_id) =
+            canonical_symbol_key(current_identity, symbol.mounted_from.as_ref(), symbol_id);
+        let Some(routine_id) = decl_index.routine_id_for_symbol(&owning_identity, owning_symbol_id) else {
+            continue;
+        };
+        let Some(signature_checked_type) = typed_symbol.declared_type else {
+            continue;
+        };
+        let Some(fol_typecheck::CheckedType::Routine(signature)) =
+            typed_package.program.type_table().get(signature_checked_type)
+        else {
+            continue;
+        };
+        let Some(return_type) = signature
+            .return_type
+            .and_then(|return_type| checked_type_map.get(&return_type).copied())
+        else {
+            return Err(LoweringError::with_kind(
+                LoweringErrorKind::Unsupported,
+                format!(
+                    "procedure-style method calls without a value result are not lowered in this slice yet: '{method}'"
+                ),
+            ));
+        };
+        matches.push((routine_id, return_type));
+    }
+
+    match matches.len() {
+        1 => Ok(matches.remove(0)),
+        0 => Err(LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            format!("method '{method}' is not available for the lowered receiver type"),
+        )),
+        _ => Err(LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            format!("method '{method}' is ambiguous for the lowered receiver type"),
+        )),
+    }
 }
 
 #[cfg(test)]
@@ -1232,5 +1347,53 @@ mod tests {
             .collect::<Vec<_>>();
 
         assert_eq!(call_instrs.len(), 2);
+    }
+
+    #[test]
+    fn method_call_lowering_rewrites_receivers_into_direct_call_arguments() {
+        let fixture = std::env::temp_dir().join(format!(
+            "fol_lower_method_exprs_{}.fol",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system clock should be monotonic enough for tmp names")
+                .as_nanos()
+        ));
+        std::fs::write(
+            &fixture,
+            "fun (int)double(): int = { 2 }\nfun[] main(): int = {\n    var value: int = 1\n    value.double()\n}",
+        )
+        .expect("should write lowering method fixture");
+
+        let mut stream = FileStream::from_file(fixture.to_str().expect("utf8 temp path"))
+            .expect("Should open lowering fixture");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let syntax = parser
+            .parse_package(&mut lexer)
+            .expect("Lowering fixture should parse");
+        let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+        let typed = Typechecker::new()
+            .check_resolved_workspace(resolved)
+            .expect("Lowering fixture should typecheck");
+        let lowered = crate::LoweringSession::new(typed)
+            .lower_workspace()
+            .expect("method call lowering should succeed");
+
+        let routine = lowered
+            .entry_package()
+            .routine_decls
+            .values()
+            .find(|routine| routine.name == "main")
+            .expect("main routine should exist");
+        let call = routine
+            .instructions
+            .iter()
+            .find_map(|instr| match &instr.kind {
+                LoweredInstrKind::Call { callee, args } => Some((*callee, args.clone())),
+                _ => None,
+            })
+            .expect("method body should contain a lowered call");
+
+        assert_eq!(call.1.len(), 1);
     }
 }
