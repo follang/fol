@@ -1181,7 +1181,7 @@ Track these in the registry, but do not implement them in the first batch:
   - `.give_back`
   - `.address_of`
   - `.pointer_value`
-- `7.3` `pending` Add exact tests proving those fail as intentional `V3`
+- `7.3` `done` Add exact tests proving those fail as intentional `V3`
   boundaries instead of falling through to unknown-name or generic unsupported
   errors.
 

@@ -1093,6 +1093,65 @@ mod integration_tests {
     }
 
     #[test]
+    fn test_cli_json_v3_intrinsic_boundaries_keep_structured_fields() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_json_intrinsic_v3_boundaries");
+        fs::create_dir_all(&temp_root)
+            .expect("Should create temp intrinsic V3 boundary fixture");
+        let fixture = temp_root.join("main.fol");
+        fs::write(
+            &fixture,
+            concat!(
+                "fun[] main(value: int): int = {\n",
+                "    return .de_alloc(value)\n",
+                "}\n",
+            ),
+        )
+        .expect("Should write intrinsic V3 boundary fixture");
+
+        let output = run_fol(&[
+            "--json",
+            fixture
+                .to_str()
+                .expect("Temporary intrinsic V3 boundary fixture path should be valid UTF-8"),
+        ]);
+
+        assert!(
+            !output.status.success(),
+            "CLI should fail for V3-only intrinsic calls during the V1 milestone",
+        );
+
+        let json = parse_cli_json(&output);
+        let diagnostics = json["diagnostics"]
+            .as_array()
+            .expect("CLI JSON output should expose diagnostics");
+        let v3_error = diagnostics.iter().find(|diagnostic| {
+            diagnostic["message"]
+                .as_str()
+                .map(|message| {
+                    message.contains(
+                        ".de_alloc(...) belongs to V3 but the current compiler milestone is V1",
+                    )
+                })
+                .unwrap_or(false)
+        });
+
+        assert!(
+            v3_error.is_some(),
+            "Expected explicit V3 intrinsic boundary diagnostic in CLI JSON output, got: {json}"
+        );
+        assert!(
+            v3_error
+                .and_then(|diagnostic| diagnostic["location"].as_object())
+                .is_some(),
+            "Expected V3 intrinsic boundary diagnostic to keep a structured location, got: {json}"
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
     fn test_cli_folder_compile_succeeds_with_package_parser() {
         use std::fs;
 
