@@ -2308,6 +2308,69 @@ fn intrinsic_comparison_typing_rejects_wrong_arity_and_mixed_scalar_pairs() {
 }
 
 #[test]
+fn intrinsic_ordered_comparison_typing_accepts_v1_ordered_pairs() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "fun[] ints(): bol = {\n\
+             return .lt(1, 2);\n\
+         }\n\
+         fun[] text(): bol = {\n\
+             return .ge(\"Ada\", \"Ada\");\n\
+         }\n\
+         fun[] chars(): bol = {\n\
+             return .le('a', 'z');\n\
+         }\n\
+         fun[] floats(): bol = {\n\
+             return .gt(3.5, 1.0);\n\
+         }\n",
+    )]);
+
+    for name in ["ints", "text", "chars", "floats"] {
+        let syntax_id = find_named_routine_syntax_id(&typed, name);
+        assert_eq!(
+            typed
+                .typed_node(syntax_id)
+                .and_then(|node| node.inferred_type)
+                .and_then(|type_id| typed.type_table().get(type_id)),
+            Some(&CheckedType::Builtin(BuiltinType::Bool)),
+            "Expected {name} to lower to bool"
+        );
+    }
+}
+
+#[test]
+fn intrinsic_ordered_comparison_typing_rejects_non_ordered_pairs() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] bad_bool(): bol = {\n\
+             return .lt(true, false);\n\
+         }\n\
+         fun[] bad_mixed(): bol = {\n\
+             return .gt(1, 1.0);\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error
+                    .message()
+                    .contains(".lt(...) expects two ordered scalar operands")
+        }),
+        "Expected ordered-family intrinsic diagnostic, got: {errors:?}"
+    );
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error
+                    .message()
+                    .contains(".gt(...) expects two ordered scalar operands")
+        }),
+        "Expected mixed ordered-family intrinsic diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
 fn coercion_policy_rejects_implicit_int_float_cross_family_conversions() {
     let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",

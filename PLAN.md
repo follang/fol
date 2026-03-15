@@ -1121,8 +1121,16 @@ Track these in the registry, but do not implement them in the first batch:
     registry helpers instead of ad hoc string formatting
   - exact integration coverage now locks accepted equality pairs plus
     representative rejection cases
-- `3.4` `pending` Typecheck `.lt/.gt/.ge/.le` through the registry instead of
+- `3.4` `done` Typecheck `.lt/.gt/.ge/.le` through the registry instead of
   string branches.
+  Current state:
+  - ordered comparison intrinsics now reuse the same registry-selected path as
+    equality intrinsics
+  - `.lt/.gt/.ge/.le` now enforce the frozen ordered-scalar contract in
+    typecheck
+  - exact integration coverage now locks successful `int`, `flt`, `chr`, and
+    `str` comparisons plus representative rejected boolean and mixed-scalar
+    pairs
 - `3.5` `pending` Lower comparison intrinsics through selected intrinsic forms.
 - `3.6` `pending` Add exact tests for scalar success and representative rejected
   families.

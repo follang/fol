@@ -1293,24 +1293,10 @@ fn type_dot_intrinsic_call(
 
     let typed_expr = match comparison_operand_contract(entry) {
         Some(ComparisonOperandContract::EqualityScalar) => {
-            type_comparison_intrinsic(typed, resolved, context, entry, args, syntax_id, true)?
+            type_comparison_intrinsic(typed, resolved, context, entry, args, syntax_id)?
         }
         Some(ComparisonOperandContract::OrderedScalar) => {
-            return Err(match origin {
-                Some(origin) => TypecheckError::with_origin(
-                    TypecheckErrorKind::Unsupported,
-                    format!(
-                        "ordered comparison intrinsic '.{name}(...)' is not part of the current slice yet"
-                    ),
-                    origin,
-                ),
-                None => TypecheckError::new(
-                    TypecheckErrorKind::Unsupported,
-                    format!(
-                        "ordered comparison intrinsic '.{name}(...)' is not part of the current slice yet"
-                    ),
-                ),
-            })
+            type_comparison_intrinsic(typed, resolved, context, entry, args, syntax_id)?
         }
         None => {
             return Err(match origin {
@@ -1338,7 +1324,6 @@ fn type_comparison_intrinsic(
     entry: &fol_intrinsics::IntrinsicEntry,
     args: &[AstNode],
     syntax_id: SyntaxNodeId,
-    allow_equality_only: bool,
 ) -> Result<TypedExpr, TypecheckError> {
     let origin = origin_for(resolved, syntax_id);
     if args.len() != 2 {
@@ -1386,10 +1371,14 @@ fn type_comparison_intrinsic(
     )?;
 
     let valid = left_apparent == right_apparent
-        && if allow_equality_only {
-            is_equality_type(typed, left_apparent)
-        } else {
-            is_ordered_type(typed, left_apparent)
+        && match comparison_operand_contract(entry) {
+            Some(ComparisonOperandContract::EqualityScalar) => {
+                is_equality_type(typed, left_apparent)
+            }
+            Some(ComparisonOperandContract::OrderedScalar) => {
+                is_ordered_type(typed, left_apparent)
+            }
+            None => false,
         };
     if !valid {
         let actual = format!(
