@@ -210,6 +210,29 @@ mod tests {
     }
 
     #[test]
+    fn deferred_memory_and_pointer_registry_entries_stay_stable() {
+        let expected = [
+            ("de_alloc", IntrinsicId::new(16), IntrinsicCategory::Memory),
+            ("give_back", IntrinsicId::new(17), IntrinsicCategory::Memory),
+            ("address_of", IntrinsicId::new(18), IntrinsicCategory::Pointer),
+            ("pointer_value", IntrinsicId::new(19), IntrinsicCategory::Pointer),
+            ("borrow_from", IntrinsicId::new(20), IntrinsicCategory::Pointer),
+        ];
+
+        for (name, id, category) in expected {
+            let entry = intrinsic_by_canonical_name(name)
+                .unwrap_or_else(|| panic!("deferred intrinsic '{name}' should exist"));
+            assert_eq!(entry.id, id);
+            assert_eq!(entry.category, category);
+            assert_eq!(entry.surface, IntrinsicSurface::DotRootCall);
+            assert_eq!(entry.availability, IntrinsicAvailability::V3);
+            assert_eq!(entry.status, IntrinsicStatus::Unsupported);
+            assert_eq!(entry.arity, IntrinsicArity::Exactly(1));
+            assert_eq!(entry.lowering_mode, IntrinsicLoweringMode::Reject);
+        }
+    }
+
+    #[test]
     fn diagnostics_helpers_render_intrinsic_specific_guidance() {
         let eq = intrinsic_by_canonical_name("eq").expect("eq should exist");
         let de_alloc = intrinsic_by_canonical_name("de_alloc").expect("de_alloc should exist");

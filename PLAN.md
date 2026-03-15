@@ -1174,7 +1174,7 @@ Track these in the registry, but do not implement them in the first batch:
 
 ### Phase 7. Unsupported Intrinsic Inventory
 
-- `7.1` `pending` Add explicit registry entries for deferred ownership/pointer
+- `7.1` `done` Add explicit registry entries for deferred ownership/pointer
   intrinsics.
 - `7.2` `pending` Add explicit version-aware diagnostics for:
   - `.de_alloc`
