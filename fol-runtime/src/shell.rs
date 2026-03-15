@@ -89,12 +89,6 @@ impl<T> From<T> for FolError<T> {
     }
 }
 
-impl<T> From<FolError<T>> for T {
-    fn from(value: FolError<T>) -> Self {
-        value.into_inner()
-    }
-}
-
 impl<T: fmt::Display> fmt::Display for FolError<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "err({})", self.0)
@@ -170,7 +164,7 @@ mod tests {
 
         assert_eq!(error.as_ref(), &"broken");
         assert_eq!(FolError::from("broken"), error);
-        assert_eq!(<&str>::from(error), "broken");
+        assert_eq!(error.into_inner(), "broken");
     }
 
     #[test]

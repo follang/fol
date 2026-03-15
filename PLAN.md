@@ -865,7 +865,7 @@ not full long-term compiler completion.
 
 ## 36. Phase 1: Crate Foundation
 
-#### 1.1
+#### 1.1 done
 - create `fol-backend` as a workspace crate
 
 #### 1.2

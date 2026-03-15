@@ -11,6 +11,7 @@ members = [
     "fol-lower",
     "fol-intrinsics",
     "fol-runtime",
+    "fol-backend",
 ]
 
 [package]
@@ -34,6 +35,7 @@ fol-resolver = { path = "fol-resolver" }
 fol-typecheck = { path = "fol-typecheck" }
 fol-lower = { path = "fol-lower" }
 fol-intrinsics = { path = "fol-intrinsics" }
+fol-backend = { path = "fol-backend" }
 regex = "1"
 colored = "1"
 dyn-clone = "1"

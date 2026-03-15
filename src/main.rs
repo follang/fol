@@ -432,6 +432,11 @@ fn intrinsics_crate_foundation_smoke_compiles() {
 }
 
 #[test]
+fn backend_crate_foundation_smoke_compiles() {
+    assert_eq!(fol_backend::crate_name(), "fol-backend");
+}
+
+#[test]
 fn intrinsics_public_model_smoke_compiles() {
     assert_eq!(fol_intrinsics::IntrinsicId::new(1).index(), 1);
     assert_eq!(
