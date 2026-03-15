@@ -2552,6 +2552,52 @@ fn intrinsic_query_typing_rejects_non_query_receiver_families() {
 }
 
 #[test]
+fn intrinsic_diagnostic_typing_accepts_echo_as_a_value_preserving_tap() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "fun[] log_flag(flag: bol): bol = {\n\
+             return .echo(flag);\n\
+         }\n\
+         fun[] log_count(items: seq[int]): int = {\n\
+             return .echo(.len(items));\n\
+         }\n",
+    )]);
+
+    for (name, expected) in [
+        ("log_flag", CheckedType::Builtin(BuiltinType::Bool)),
+        ("log_count", CheckedType::Builtin(BuiltinType::Int)),
+    ] {
+        let syntax_id = find_named_routine_syntax_id(&typed, name);
+        assert_eq!(
+            typed
+                .typed_node(syntax_id)
+                .and_then(|node| node.inferred_type)
+                .and_then(|type_id| typed.type_table().get(type_id)),
+            Some(&expected),
+            "Expected {name} to preserve its operand type through .echo(...)",
+        );
+    }
+}
+
+#[test]
+fn intrinsic_diagnostic_typing_rejects_wrong_arity_for_echo() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] bad_arity(): int = {\n\
+             return .echo();\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error.message().contains(".echo(...) expects exactly 1 argument(s) but got 0")
+        }),
+        "Expected wrong-arity .echo diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
 fn intrinsic_comparison_typing_covers_full_v1_scalar_matrix() {
     let typed = typecheck_fixture_folder(&[(
         "main.fol",

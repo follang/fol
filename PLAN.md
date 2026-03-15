@@ -1167,7 +1167,7 @@ Track these in the registry, but do not implement them in the first batch:
 - `6.2` `done` Freeze `V1` `.echo` semantics:
   - whether it is statement-only or expression-capable
   - whether it is effectful and yields `never` or another fixed shape
-- `6.3` `pending` Typecheck `.echo(...)` through the registry.
+- `6.3` `done` Typecheck `.echo(...)` through the registry.
 - `6.4` `pending` Lower `.echo(...)` to one explicit backend-facing intrinsic
   form or runtime hook.
 - `6.5` `pending` Add CLI coverage for `.echo(...)` in lowered output.
