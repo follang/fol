@@ -975,12 +975,17 @@ Track these in the registry, but do not implement them in the first batch:
     length + echo
   - `panic(...)` and `check(...)` are intentionally left for a later alignment
     slice so dot and keyword surfaces can share one registry contract cleanly
-- `0.5` `pending` Freeze the first explicit unsupported families:
+- `0.5` `done` Freeze the first explicit unsupported families:
   - ownership
   - pointers
   - deallocation
   - address/pointer helpers
   - C-ABI-adjacent surfaces
+  Current state:
+  - ownership/lifetime helpers, pointer helpers, and native/ABI helpers are
+    registry-owned later surfaces, not current `V1` work
+  - the first implementation round should give them stable names plus explicit
+    unsupported diagnostics instead of accidental fallback behavior
 
 ### Phase 1. Crate Foundation
 
