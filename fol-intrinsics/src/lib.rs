@@ -192,6 +192,20 @@ mod tests {
     }
 
     #[test]
+    fn diagnostic_family_registry_entries_stay_stable() {
+        let echo = intrinsic_by_canonical_name("echo").expect("echo should exist");
+
+        assert_eq!(echo.id, IntrinsicId::new(8));
+        assert_eq!(echo.category, IntrinsicCategory::Diagnostic);
+        assert_eq!(echo.surface, IntrinsicSurface::DotRootCall);
+        assert_eq!(echo.availability, IntrinsicAvailability::V1);
+        assert_eq!(echo.status, IntrinsicStatus::Implemented);
+        assert_eq!(echo.arity, IntrinsicArity::AtLeast(0));
+        assert_eq!(echo.lowering_mode, IntrinsicLoweringMode::RuntimeHook);
+        assert_eq!(intrinsic_by_alias("print").map(|entry| entry.name), Some("echo"));
+    }
+
+    #[test]
     fn diagnostics_helpers_render_intrinsic_specific_guidance() {
         let eq = intrinsic_by_canonical_name("eq").expect("eq should exist");
         let de_alloc = intrinsic_by_canonical_name("de_alloc").expect("de_alloc should exist");

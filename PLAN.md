@@ -1163,7 +1163,7 @@ Track these in the registry, but do not implement them in the first batch:
 
 ### Phase 6. Echo Family
 
-- `6.1` `pending` Add `.echo` registry entry.
+- `6.1` `done` Add `.echo` registry entry.
 - `6.2` `pending` Freeze `V1` `.echo` semantics:
   - whether it is statement-only or expression-capable
   - whether it is effectful and yields `never` or another fixed shape
