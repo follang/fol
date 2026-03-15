@@ -1215,7 +1215,7 @@ Track these in the registry, but do not implement them in the first batch:
 
 ### Phase 10. Existing Keyword Intrinsic Alignment
 
-- `10.1` `pending` Decide whether `panic(...)` and `check(...)` are represented in
+- `10.1` `done` Decide whether `panic(...)` and `check(...)` are represented in
   the same registry despite different syntax families.
 - `10.2` `pending` If yes, add them as keyword-surface intrinsic entries.
 - `10.3` `pending` Move their typecheck/lower ownership onto the registry model.

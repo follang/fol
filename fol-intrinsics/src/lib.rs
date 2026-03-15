@@ -308,6 +308,21 @@ mod tests {
     }
 
     #[test]
+    fn keyword_intrinsics_are_selected_from_the_same_registry_model() {
+        let panic_entry = select_intrinsic(IntrinsicSurface::KeywordCall, "panic")
+            .expect("panic should select on the keyword surface");
+        let check_entry = select_intrinsic(IntrinsicSurface::KeywordCall, "check")
+            .expect("check should select on the keyword surface");
+
+        assert_eq!(panic_entry.name, "panic");
+        assert_eq!(check_entry.name, "check");
+        assert_eq!(panic_entry.surface, IntrinsicSurface::KeywordCall);
+        assert_eq!(check_entry.surface, IntrinsicSurface::KeywordCall);
+        assert!(select_intrinsic(IntrinsicSurface::DotRootCall, "panic").is_err());
+        assert!(select_intrinsic(IntrinsicSurface::DotRootCall, "check").is_err());
+    }
+
+    #[test]
     fn diagnostics_helpers_render_intrinsic_specific_guidance() {
         let eq = intrinsic_by_canonical_name("eq").expect("eq should exist");
         let de_alloc = intrinsic_by_canonical_name("de_alloc").expect("de_alloc should exist");
