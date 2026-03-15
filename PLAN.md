@@ -781,7 +781,7 @@ The implementation should land in many small slices.
 
 ### Phase 3: Container Foundation
 
-#### 3.1
+#### 3.1 done
 - freeze runtime strategy for arrays
 - document/direct-test native array support where used
 
