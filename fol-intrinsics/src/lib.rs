@@ -345,6 +345,51 @@ mod tests {
     }
 
     #[test]
+    fn arithmetic_bitwise_and_overflow_roadmap_entries_stay_registered() {
+        let expected = [
+            ("add", IntrinsicId::new(26), IntrinsicCategory::Arithmetic, IntrinsicArity::Exactly(2)),
+            ("abs", IntrinsicId::new(30), IntrinsicCategory::Arithmetic, IntrinsicArity::Exactly(1)),
+            ("sqrt", IntrinsicId::new(36), IntrinsicCategory::Arithmetic, IntrinsicArity::Exactly(1)),
+            (
+                "bit_and",
+                IntrinsicId::new(37),
+                IntrinsicCategory::Bitwise,
+                IntrinsicArity::Exactly(2),
+            ),
+            (
+                "pop_count",
+                IntrinsicId::new(44),
+                IntrinsicCategory::Bitwise,
+                IntrinsicArity::Exactly(1),
+            ),
+            (
+                "checked_add",
+                IntrinsicId::new(49),
+                IntrinsicCategory::Arithmetic,
+                IntrinsicArity::Exactly(2),
+            ),
+            (
+                "overflowing_sub",
+                IntrinsicId::new(56),
+                IntrinsicCategory::Arithmetic,
+                IntrinsicArity::Exactly(2),
+            ),
+        ];
+
+        for (name, id, category, arity) in expected {
+            let entry = intrinsic_by_canonical_name(name)
+                .unwrap_or_else(|| panic!("roadmap intrinsic '{name}' should exist"));
+            assert_eq!(entry.id, id);
+            assert_eq!(entry.category, category);
+            assert_eq!(entry.surface, IntrinsicSurface::DotRootCall);
+            assert_eq!(entry.availability, IntrinsicAvailability::V1);
+            assert_eq!(entry.status, IntrinsicStatus::Unsupported);
+            assert_eq!(entry.arity, arity);
+            assert_eq!(entry.lowering_mode, IntrinsicLoweringMode::Deferred);
+        }
+    }
+
+    #[test]
     fn diagnostics_helpers_render_intrinsic_specific_guidance() {
         let eq = intrinsic_by_canonical_name("eq").expect("eq should exist");
         let de_alloc = intrinsic_by_canonical_name("de_alloc").expect("de_alloc should exist");

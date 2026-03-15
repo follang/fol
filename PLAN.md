@@ -1224,7 +1224,7 @@ Track these in the registry, but do not implement them in the first batch:
 
 ### Phase 11. Arithmetic, Bitwise, And Overflow Roadmap Entries
 
-- `11.1` `pending` Add registry entries and status classifications for:
+- `11.1` `done` Add registry entries and status classifications for:
   - arithmetic helper family
   - numeric helper family
   - bitwise family
