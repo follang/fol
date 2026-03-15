@@ -857,7 +857,7 @@ not full long-term compiler completion.
 #### 0.3 done
 - freeze the rule that the backend consumes `LoweredWorkspace`, not AST, resolver, or typed-workspace inputs
 
-#### 0.4
+#### 0.4 done
 - freeze the rule that the first backend generates one Rust crate per lowered workspace, not one giant Rust file
 
 #### 0.5
