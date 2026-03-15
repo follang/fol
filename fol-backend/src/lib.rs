@@ -9,6 +9,7 @@ mod mangle;
 mod model;
 mod session;
 mod trace;
+mod types;
 
 #[cfg(test)]
 mod testing;
@@ -49,6 +50,7 @@ pub use trace::{
     BackendEmittedSourceMap, BackendEmittedSourceMapEntry, BackendTrace, BackendTraceKind,
     BackendTraceRecord,
 };
+pub use types::render_rust_type;
 
 pub type BackendResult<T> = Result<T, BackendError>;
 

@@ -939,7 +939,7 @@ not full long-term compiler completion.
 
 ## 40. Phase 5: Type Emission
 
-#### 5.1
+#### 5.1 done
 - emit builtin/native type mappings through backend-owned Rust type renderers
 
 #### 5.2
