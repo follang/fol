@@ -2966,6 +2966,41 @@ mod tests {
             .expect("lowering should emit at least one error")
     }
 
+    fn lower_fixture_panic_message(source: &str) -> String {
+        let fixture = std::env::temp_dir().join(format!(
+            "fol_lower_panic_{}.fol",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system clock should be monotonic enough for tmp names")
+                .as_nanos()
+        ));
+        std::fs::write(&fixture, source).expect("should write lowering panic fixture");
+
+        let panic = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let mut stream = FileStream::from_file(fixture.to_str().expect("utf8 temp path"))
+                .expect("Should open lowering fixture");
+            let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+            let mut parser = AstParser::new();
+            let syntax = parser
+                .parse_package(&mut lexer)
+                .expect("Lowering fixture should parse");
+            let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+            let typed = Typechecker::new()
+                .check_resolved_workspace(resolved)
+                .expect("Lowering fixture should typecheck");
+            let _ = crate::LoweringSession::new(typed).lower_workspace();
+        }))
+        .expect_err("fixture should currently panic during lowering");
+
+        if let Some(message) = panic.downcast_ref::<String>() {
+            message.clone()
+        } else if let Some(message) = panic.downcast_ref::<&str>() {
+            (*message).to_string()
+        } else {
+            "non-string panic payload".to_string()
+        }
+    }
+
     #[test]
     fn literal_lowering_emits_constant_instructions_into_the_current_block() {
         let mut types = LoweredTypeTable::new();
@@ -3048,6 +3083,25 @@ mod tests {
                 .message()
                 .contains("value symbol 'flag' does not map to a lowered local or global definition"),
             "expected the current parameter-lowering repro to stay explicit, got: {error:?}"
+        );
+    }
+
+    #[test]
+    fn lowering_repro_keeps_non_empty_seq_and_map_literal_panics_visible() {
+        let seq_panic = lower_fixture_panic_message(
+            "fun[] seq_case(): seq[str] = {\n    var names: seq[str] = {\"Ada\", \"Lin\"}\n    return names\n}\n",
+        );
+        assert!(
+            seq_panic.contains("lowered type table lost array shape"),
+            "expected the current sequence-lowering repro to keep the exact panic visible, got: {seq_panic}"
+        );
+
+        let map_panic = lower_fixture_panic_message(
+            "fun[] map_case(): map[str, int] = {\n    var counts: map[str, int] = {{\"ada\", 1}, {\"lin\", 2}}\n    return counts\n}\n",
+        );
+        assert!(
+            map_panic.contains("lowered type table lost array shape"),
+            "expected the current map-lowering repro to keep the exact panic visible, got: {map_panic}"
         );
     }
 
