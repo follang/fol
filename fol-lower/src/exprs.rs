@@ -75,6 +75,7 @@ pub(crate) struct RoutineCursor<'a> {
     block_id: LoweredBlockId,
     next_local_index: usize,
     next_instr_index: usize,
+    next_block_index: usize,
 }
 
 impl<'a> RoutineCursor<'a> {
@@ -82,9 +83,80 @@ impl<'a> RoutineCursor<'a> {
         Self {
             next_local_index: routine.locals.len(),
             next_instr_index: routine.instructions.len(),
+            next_block_index: routine.blocks.len(),
             routine,
             block_id,
         }
+    }
+
+    pub(crate) fn current_block_id(&self) -> LoweredBlockId {
+        self.block_id
+    }
+
+    pub(crate) fn switch_block(&mut self, block_id: LoweredBlockId) -> Result<(), LoweringError> {
+        if self.routine.blocks.get(block_id).is_none() {
+            return Err(LoweringError::with_kind(
+                LoweringErrorKind::InvalidInput,
+                format!(
+                    "lowered routine '{}' lost block {}",
+                    self.routine.name, block_id.0
+                ),
+            ));
+        }
+        self.block_id = block_id;
+        Ok(())
+    }
+
+    pub(crate) fn create_block(&mut self) -> LoweredBlockId {
+        let block_id = self.routine.blocks.push(crate::LoweredBlock {
+            id: LoweredBlockId(self.next_block_index),
+            instructions: Vec::new(),
+            terminator: None,
+        });
+        self.next_block_index += 1;
+        block_id
+    }
+
+    pub(crate) fn current_block_terminated(&self) -> Result<bool, LoweringError> {
+        self.routine
+            .blocks
+            .get(self.block_id)
+            .map(|block| block.is_terminated())
+            .ok_or_else(|| {
+                LoweringError::with_kind(
+                    LoweringErrorKind::InvalidInput,
+                    format!(
+                        "lowered routine '{}' lost block {}",
+                        self.routine.name, self.block_id.0
+                    ),
+                )
+            })
+    }
+
+    pub(crate) fn terminate_current_block(
+        &mut self,
+        terminator: crate::LoweredTerminator,
+    ) -> Result<(), LoweringError> {
+        let Some(block) = self.routine.blocks.get_mut(self.block_id) else {
+            return Err(LoweringError::with_kind(
+                LoweringErrorKind::InvalidInput,
+                format!(
+                    "lowered routine '{}' lost block {}",
+                    self.routine.name, self.block_id.0
+                ),
+            ));
+        };
+        if block.terminator.is_some() {
+            return Err(LoweringError::with_kind(
+                LoweringErrorKind::InvalidInput,
+                format!(
+                    "lowered routine '{}' attempted to terminate block {} twice",
+                    self.routine.name, self.block_id.0
+                ),
+            ));
+        }
+        block.terminator = Some(terminator);
+        Ok(())
     }
 
     pub(crate) fn allocate_local(
@@ -106,6 +178,15 @@ impl<'a> RoutineCursor<'a> {
         result: Option<LoweredLocalId>,
         kind: LoweredInstrKind,
     ) -> Result<LoweredInstrId, LoweringError> {
+        if self.current_block_terminated()? {
+            return Err(LoweringError::with_kind(
+                LoweringErrorKind::InvalidInput,
+                format!(
+                    "lowered routine '{}' attempted to append instructions after block {} terminated",
+                    self.routine.name, self.block_id.0
+                ),
+            ));
+        }
         let instr_id = self.routine.instructions.push(LoweredInstr {
             id: LoweredInstrId(self.next_instr_index),
             result,
@@ -312,6 +393,9 @@ fn lower_body_nodes(
         )? {
             cursor.routine.body_result = Some(value.local_id);
         }
+        if cursor.current_block_terminated()? {
+            break;
+        }
     }
 
     Ok(())
@@ -368,18 +452,26 @@ fn lower_body_node(
             value.as_deref(),
         ),
         AstNode::Return { value } => match value.as_deref() {
-            Some(value) => lower_expression(
-                typed_package,
-                type_table,
-                checked_type_map,
-                current_identity,
-                decl_index,
-                cursor,
-                source_unit_id,
-                value,
-            )
-            .map(Some),
-            None => Ok(None),
+            Some(value) => {
+                let lowered = lower_expression(
+                    typed_package,
+                    type_table,
+                    checked_type_map,
+                    current_identity,
+                    decl_index,
+                    cursor,
+                    source_unit_id,
+                    value,
+                )?;
+                cursor.terminate_current_block(crate::LoweredTerminator::Return {
+                    value: Some(lowered.local_id),
+                })?;
+                Ok(None)
+            }
+            None => {
+                cursor.terminate_current_block(crate::LoweredTerminator::Return { value: None })?;
+                Ok(None)
+            }
         },
         _ => lower_expression(
             typed_package,
@@ -1093,7 +1185,7 @@ mod tests {
     use crate::{
         types::{LoweredBuiltinType, LoweredTypeTable},
         LoweredBlock, LoweredGlobal, LoweredInstrKind, LoweredOperand, LoweredPackage,
-        LoweredRoutine, LoweredWorkspace, LoweringErrorKind,
+        LoweredRoutine, LoweredTerminator, LoweredWorkspace, LoweringErrorKind,
     };
     use fol_parser::ast::AstParser;
     use fol_parser::ast::Literal;
@@ -1687,6 +1779,64 @@ mod tests {
                 .count()
                 >= 2,
             "entry routine should keep both local and imported call sites as direct Call instructions"
+        );
+    }
+
+    #[test]
+    fn return_lowering_emits_explicit_return_terminators_and_skips_trailing_body_nodes() {
+        let fixture = std::env::temp_dir().join(format!(
+            "fol_lower_return_exprs_{}.fol",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system clock should be monotonic enough for tmp names")
+                .as_nanos()
+        ));
+        std::fs::write(
+            &fixture,
+            "fun[] main(): int = {\n    return 1\n    2\n}",
+        )
+        .expect("should write lowering return fixture");
+
+        let mut stream = FileStream::from_file(fixture.to_str().expect("utf8 temp path"))
+            .expect("Should open lowering fixture");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let syntax = parser
+            .parse_package(&mut lexer)
+            .expect("Lowering fixture should parse");
+        let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+        let typed = Typechecker::new()
+            .check_resolved_workspace(resolved)
+            .expect("Lowering fixture should typecheck");
+        let lowered = crate::LoweringSession::new(typed)
+            .lower_workspace()
+            .expect("return lowering should succeed");
+
+        let routine = lowered
+            .entry_package()
+            .routine_decls
+            .values()
+            .find(|routine| routine.name == "main")
+            .expect("main routine should exist");
+        let entry_block = routine
+            .blocks
+            .get(routine.entry_block)
+            .expect("entry block should exist");
+
+        assert_eq!(entry_block.instructions.len(), 1);
+        assert_eq!(
+            entry_block.terminator,
+            Some(LoweredTerminator::Return {
+                value: Some(crate::LoweredLocalId(0)),
+            })
+        );
+        assert_eq!(
+            routine.instructions.get(crate::LoweredInstrId(0)).map(|instr| &instr.kind),
+            Some(&LoweredInstrKind::Const(LoweredOperand::Int(1)))
+        );
+        assert!(
+            routine.body_result.is_none(),
+            "early returns should not leave a trailing body_result behind"
         );
     }
 }
