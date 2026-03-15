@@ -2,6 +2,7 @@
 
 pub use crate::{crate_name, CRATE_NAME};
 pub use crate::abi::{check_recoverable, recoverable_succeeded, FolRecover};
+pub use crate::builtins::FolLength;
 pub use crate::containers::{
     index_array, index_seq, index_vec, lookup_map, FolArray, FolMap, FolSeq, FolSet, FolVec,
 };

@@ -803,7 +803,7 @@ The implementation should land in many small slices.
 #### 3.7 done
 - add indexing helpers where needed
 
-#### 3.8
+#### 3.8 done
 - add length helpers for all supported current `V1` families
 
 #### 3.9
