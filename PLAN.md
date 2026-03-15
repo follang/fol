@@ -508,7 +508,7 @@ This plan is complete only when all of the following are true:
 
 - `3.1` `done` Lower builtin scalar types and routine signature types into lowering-owned type data.
 - `3.2` `done` Lower aliases by erasing them to underlying runtime shapes while preserving debug metadata.
-- `3.3` `pending` Lower record type declarations into explicit field layouts.
+- `3.3` `done` Lower record type declarations into explicit field layouts.
 - `3.4` `pending` Lower entry type declarations into explicit tag/payload layouts.
 - `3.5` `pending` Lower globals and top-level bindings into lowered storage declarations.
 - `3.6` `pending` Lower routine and procedure declarations into lowered routine shells with parameters and result contracts.

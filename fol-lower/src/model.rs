@@ -22,8 +22,15 @@ pub struct LoweredSourceMapEntry {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LoweredFieldLayout {
+    pub name: String,
+    pub type_id: LoweredTypeId,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LoweredTypeDeclKind {
     Alias { target_type: LoweredTypeId },
+    Record { fields: Vec<LoweredFieldLayout> },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

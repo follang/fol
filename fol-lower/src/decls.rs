@@ -1,9 +1,10 @@
 use crate::{
-    LoweredPackage, LoweredTypeDecl, LoweredTypeDeclKind, LoweringError, LoweringErrorKind,
-    LoweringResult,
+    LoweredFieldLayout, LoweredPackage, LoweredTypeDecl, LoweredTypeDeclKind, LoweringError,
+    LoweringErrorKind, LoweringResult,
 };
-use fol_parser::ast::AstNode;
+use fol_parser::ast::{AstNode, TypeDefinition};
 use fol_resolver::{SourceUnitId, SymbolId, SymbolKind};
+use fol_typecheck::CheckedType;
 
 pub fn lower_routine_signatures(
     typed_package: &fol_typecheck::TypedPackage,
@@ -94,6 +95,57 @@ pub fn lower_alias_declarations(
     }
 }
 
+pub fn lower_record_declarations(
+    typed_package: &fol_typecheck::TypedPackage,
+    lowered_package: &mut LoweredPackage,
+) -> LoweringResult<()> {
+    let mut errors = Vec::new();
+
+    for (source_unit_index, source_unit) in typed_package.program.resolved().syntax().source_units.iter().enumerate() {
+        let source_unit_id = SourceUnitId(source_unit_index);
+        for item in &source_unit.items {
+            let AstNode::TypeDecl {
+                name,
+                type_def: TypeDefinition::Record { .. },
+                ..
+            } = &item.node
+            else {
+                continue;
+            };
+
+            match find_local_symbol_id(
+                &typed_package.program,
+                source_unit_id,
+                SymbolKind::Type,
+                name,
+            ) {
+                Some(symbol_id) => match lower_record_decl(
+                    typed_package,
+                    lowered_package,
+                    symbol_id,
+                    source_unit_id,
+                    name,
+                ) {
+                    Ok(type_decl) => {
+                        lowered_package.type_decls.insert(symbol_id, type_decl);
+                    }
+                    Err(error) => errors.push(error),
+                },
+                None => errors.push(LoweringError::with_kind(
+                    LoweringErrorKind::InvalidInput,
+                    format!("record type '{name}' does not retain a resolved symbol"),
+                )),
+            }
+        }
+    }
+
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
+    }
+}
+
 fn lower_symbol_signature(
     typed_package: &fol_typecheck::TypedPackage,
     lowered_package: &LoweredPackage,
@@ -123,6 +175,78 @@ fn lower_symbol_signature(
                 ),
             )
         })
+}
+
+fn lower_record_decl(
+    typed_package: &fol_typecheck::TypedPackage,
+    lowered_package: &LoweredPackage,
+    symbol_id: SymbolId,
+    source_unit_id: SourceUnitId,
+    name: &str,
+) -> Result<LoweredTypeDecl, LoweringError> {
+    let checked_type = typed_package
+        .program
+        .typed_symbol(symbol_id)
+        .and_then(|typed_symbol| typed_symbol.declared_type)
+        .ok_or_else(|| {
+            LoweringError::with_kind(
+                LoweringErrorKind::InvalidInput,
+                format!("record symbol {} does not retain a typed runtime shape", symbol_id.0),
+            )
+        })?;
+    let runtime_type = lowered_package
+        .checked_type_map
+        .get(&checked_type)
+        .copied()
+        .ok_or_else(|| {
+            LoweringError::with_kind(
+                LoweringErrorKind::InvalidInput,
+                format!("record symbol {} does not map to a lowered runtime type", symbol_id.0),
+            )
+        })?;
+    let CheckedType::Record { fields } = typed_package
+        .program
+        .type_table()
+        .get(checked_type)
+        .cloned()
+        .ok_or_else(|| {
+            LoweringError::with_kind(
+                LoweringErrorKind::InvalidInput,
+                format!("record symbol {} lost its typed runtime definition", symbol_id.0),
+            )
+        })?
+    else {
+        return Err(LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            format!("record symbol {} no longer lowers to a record shape", symbol_id.0),
+        ));
+    };
+    let mut lowered_fields = Vec::new();
+    for (field_name, field_type) in fields {
+        let lowered_field_type = lowered_package.checked_type_map.get(&field_type).copied().ok_or_else(|| {
+            LoweringError::with_kind(
+                LoweringErrorKind::InvalidInput,
+                format!(
+                    "record field '{field_name}' on symbol {} does not map to a lowered type",
+                    symbol_id.0
+                ),
+            )
+        })?;
+        lowered_fields.push(LoweredFieldLayout {
+            name: field_name,
+            type_id: lowered_field_type,
+        });
+    }
+
+    Ok(LoweredTypeDecl {
+        symbol_id,
+        source_unit_id,
+        name: name.to_string(),
+        runtime_type,
+        kind: LoweredTypeDeclKind::Record {
+            fields: lowered_fields,
+        },
+    })
 }
 
 fn routine_name(node: &AstNode) -> Option<&str> {
@@ -155,8 +279,8 @@ fn find_local_symbol_id(
 
 #[cfg(test)]
 mod tests {
-    use super::{lower_alias_declarations, lower_routine_signatures};
-    use crate::{types::LoweredType, LoweredBuiltinType, LoweredPackage, LoweredTypeDeclKind};
+    use super::{lower_alias_declarations, lower_record_declarations, lower_routine_signatures};
+    use crate::{types::LoweredType, LoweredBuiltinType, LoweredFieldLayout, LoweredPackage, LoweredTypeDeclKind};
     use fol_parser::ast::AstParser;
     use fol_resolver::resolve_workspace;
     use fol_stream::FileStream;
@@ -278,6 +402,86 @@ mod tests {
             LoweredTypeDeclKind::Alias {
                 target_type: alias_decl.runtime_type
             }
+        );
+    }
+
+    #[test]
+    fn declaration_lowering_records_explicit_record_field_layouts() {
+        let fixture = std::env::temp_dir().join(format!(
+            "fol_lower_record_decl_{}.fol",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system clock should be monotonic enough for tmp names")
+                .as_nanos()
+        ));
+        std::fs::write(
+            &fixture,
+            "typ Point: { x: int, y: str }\nfun[] main(): int = { return 0 }",
+        )
+        .expect("should write lowering record fixture");
+
+        let mut stream = FileStream::from_file(fixture.to_str().expect("utf8 temp path"))
+            .expect("Should open lowering fixture");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let syntax = parser
+            .parse_package(&mut lexer)
+            .expect("Lowering fixture should parse");
+        let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+        let typed = Typechecker::new()
+            .check_resolved_workspace(resolved)
+            .expect("Lowering fixture should typecheck");
+        let lowered_workspace = crate::LoweringSession::new(typed.clone())
+            .lower_workspace()
+            .expect("workspace lowering should succeed");
+        let typed_package = typed.entry_package();
+        let mut lowered_package =
+            LoweredPackage::new(crate::LoweredPackageId(0), typed_package.identity.clone());
+        lowered_package.checked_type_map = lowered_workspace.entry_package().checked_type_map.clone();
+
+        lower_record_declarations(typed_package, &mut lowered_package)
+            .expect("record declarations should lower cleanly");
+
+        let record_decl = lowered_package
+            .type_decls
+            .values()
+            .next()
+            .expect("record declaration should be recorded");
+
+        assert_eq!(record_decl.name, "Point");
+        assert_eq!(
+            record_decl.kind,
+            LoweredTypeDeclKind::Record {
+                fields: vec![
+                    LoweredFieldLayout {
+                        name: "x".to_string(),
+                        type_id: lowered_workspace
+                            .entry_package()
+                            .checked_type_map[&fol_typecheck::CheckedTypeId(0)],
+                    },
+                    LoweredFieldLayout {
+                        name: "y".to_string(),
+                        type_id: lowered_workspace
+                            .entry_package()
+                            .checked_type_map[&fol_typecheck::CheckedTypeId(4)],
+                    },
+                ],
+            }
+        );
+        assert_eq!(
+            lowered_workspace.type_table().get(record_decl.runtime_type),
+            Some(&LoweredType::Record {
+                fields: std::collections::BTreeMap::from([
+                    (
+                        "x".to_string(),
+                        lowered_workspace.entry_package().checked_type_map[&fol_typecheck::CheckedTypeId(0)],
+                    ),
+                    (
+                        "y".to_string(),
+                        lowered_workspace.entry_package().checked_type_map[&fol_typecheck::CheckedTypeId(4)],
+                    ),
+                ]),
+            })
         );
     }
 }

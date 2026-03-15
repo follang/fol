@@ -79,6 +79,7 @@ impl LoweringSession {
                 .collect::<Result<BTreeMap<_, _>, _>>()?;
             decls::lower_routine_signatures(package, &mut lowered)?;
             decls::lower_alias_declarations(package, &mut lowered)?;
+            decls::lower_record_declarations(package, &mut lowered)?;
             packages.insert(package.identity.clone(), lowered);
         }
 
