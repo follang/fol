@@ -255,10 +255,25 @@ pub fn lower_routine_declarations(
     for (source_unit_index, source_unit) in typed_package.program.resolved().syntax().source_units.iter().enumerate() {
         let source_unit_id = SourceUnitId(source_unit_index);
         for item in &source_unit.items {
-            let (name, params) = match &item.node {
-                AstNode::FunDecl { name, params, .. }
-                | AstNode::ProDecl { name, params, .. }
-                | AstNode::LogDecl { name, params, .. } => (name.as_str(), params.as_slice()),
+            let (name, syntax_id, params) = match &item.node {
+                AstNode::FunDecl {
+                    name,
+                    syntax_id,
+                    params,
+                    ..
+                }
+                | AstNode::ProDecl {
+                    name,
+                    syntax_id,
+                    params,
+                    ..
+                }
+                | AstNode::LogDecl {
+                    name,
+                    syntax_id,
+                    params,
+                    ..
+                } => (name.as_str(), *syntax_id, params.as_slice()),
                 _ => continue,
             };
 
@@ -274,6 +289,7 @@ pub fn lower_routine_declarations(
                     symbol_id,
                     source_unit_id,
                     name,
+                    syntax_id,
                     params,
                     next_routine_index,
                 ) {
@@ -528,6 +544,7 @@ fn lower_routine_decl(
     symbol_id: SymbolId,
     source_unit_id: SourceUnitId,
     name: &str,
+    syntax_id: Option<fol_parser::ast::SyntaxNodeId>,
     params: &[fol_parser::ast::Parameter],
     next_routine_index: &mut usize,
 ) -> Result<LoweredRoutine, LoweringError> {
@@ -581,7 +598,9 @@ fn lower_routine_decl(
         next_local_index += 1;
     }
 
-    let routine_scope_id = typed_symbol.scope_id;
+    let routine_scope_id = syntax_id
+        .and_then(|syntax_id| typed_package.program.resolved().scope_for_syntax(syntax_id))
+        .unwrap_or(typed_symbol.scope_id);
     let checked_signature = typed_symbol.declared_type.ok_or_else(|| {
         LoweringError::with_kind(
             LoweringErrorKind::InvalidInput,

@@ -1429,7 +1429,7 @@ fn lower_when_statement(
         expr,
     )?;
 
-    let after_block = cursor.create_block();
+    let mut after_block = None;
     let mut has_fallthrough = false;
 
     for (index, case) in cases.iter().enumerate() {
@@ -1449,7 +1449,7 @@ fn lower_when_statement(
         let else_block = if index + 1 < cases.len() || default.is_some() {
             cursor.create_block()
         } else {
-            after_block
+            ensure_after_block(cursor, &mut after_block)
         };
         cursor.terminate_current_block(crate::LoweredTerminator::Branch {
             condition: lowered_condition.local_id,
@@ -1470,11 +1470,12 @@ fn lower_when_statement(
             body,
         )?;
         if !cursor.current_block_terminated()? {
+            let after_block = ensure_after_block(cursor, &mut after_block);
             cursor.terminate_current_block(crate::LoweredTerminator::Jump { target: after_block })?;
             has_fallthrough = true;
         }
 
-        if else_block != after_block {
+        if Some(else_block) != after_block {
             cursor.switch_block(else_block)?;
         }
     }
@@ -1490,11 +1491,11 @@ fn lower_when_statement(
             source_unit_id,
             scope_id,
             default,
-            after_block,
+            &mut after_block,
         )?;
     }
 
-    if has_fallthrough {
+    if let Some(after_block) = after_block.filter(|_| has_fallthrough) {
         cursor.switch_block(after_block)?;
     }
 
@@ -1581,7 +1582,7 @@ fn lower_default_when_body(
     source_unit_id: SourceUnitId,
     scope_id: ScopeId,
     default: &[AstNode],
-    after_block: LoweredBlockId,
+    after_block: &mut Option<LoweredBlockId>,
 ) -> Result<bool, LoweringError> {
     let _ = lower_body_sequence(
         typed_package,
@@ -1595,10 +1596,18 @@ fn lower_default_when_body(
         default,
     )?;
     if !cursor.current_block_terminated()? {
+        let after_block = ensure_after_block(cursor, after_block);
         cursor.terminate_current_block(crate::LoweredTerminator::Jump { target: after_block })?;
         return Ok(true);
     }
     Ok(false)
+}
+
+fn ensure_after_block(
+    cursor: &mut RoutineCursor<'_>,
+    after_block: &mut Option<LoweredBlockId>,
+) -> LoweredBlockId {
+    *after_block.get_or_insert_with(|| cursor.create_block())
 }
 
 fn lower_when_expression(
@@ -3021,6 +3030,41 @@ mod tests {
             .expect("lowering should emit at least one error")
     }
 
+    fn lower_folder_fixture_workspace(files: &[(&str, &str)]) -> crate::LoweredWorkspace {
+        let root = std::env::temp_dir().join(format!(
+            "fol_lower_success_folder_{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system clock should be monotonic enough for tmp names")
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&root).expect("should create lowering folder fixture root");
+        for (path, source) in files {
+            let full_path = root.join(path);
+            if let Some(parent) = full_path.parent() {
+                std::fs::create_dir_all(parent)
+                    .expect("should create lowering folder fixture parent directories");
+            }
+            std::fs::write(&full_path, source).expect("should write lowering folder fixture");
+        }
+
+        let app_root = root.join("app");
+        let mut stream = FileStream::from_folder(app_root.to_str().expect("utf8 temp path"))
+            .expect("Should open lowering folder fixture");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let syntax = parser
+            .parse_package(&mut lexer)
+            .expect("Lowering folder fixture should parse");
+        let resolved = resolve_workspace(syntax).expect("Lowering folder fixture should resolve");
+        let typed = Typechecker::new()
+            .check_resolved_workspace(resolved)
+            .expect("Lowering folder fixture should typecheck");
+        crate::LoweringSession::new(typed)
+            .lower_workspace()
+            .expect("folder fixture should lower successfully")
+    }
+
     fn lower_fixture_panic_message(source: &str) -> String {
         let fixture = std::env::temp_dir().join(format!(
             "fol_lower_panic_{}.fol",
@@ -3128,8 +3172,8 @@ mod tests {
     }
 
     #[test]
-    fn lowering_repro_reports_parameter_symbol_losses_in_control_flow_heavy_bodies() {
-        let error = lower_folder_fixture_error(&[
+    fn lowering_repro_keeps_same_name_parameters_distinct_per_routine_scope() {
+        let lowered = lower_folder_fixture_workspace(&[
             (
                 "shared/lib.fol",
                 concat!(
@@ -3157,14 +3201,23 @@ mod tests {
                 ),
             ),
         ]);
-
-        assert_eq!(error.kind(), LoweringErrorKind::InvalidInput);
-        assert!(
-            error
-                .message()
-                .contains("value symbol 'flag' does not map to a lowered local or global definition"),
-            "expected the current parameter-lowering repro to stay explicit, got: {error:?}"
-        );
+        let entry_package = lowered.entry_package();
+        for routine_name in ["build_user", "choose_count", "main"] {
+            let routine = entry_package
+                .routine_decls
+                .values()
+                .find(|routine| routine.name == routine_name)
+                .expect("routine shell should exist");
+            let param_names = routine
+                .params
+                .iter()
+                .filter_map(|local_id| routine.locals.get(*local_id).and_then(|local| local.name.clone()))
+                .collect::<Vec<_>>();
+            assert!(
+                param_names.iter().any(|name| name == "flag"),
+                "routine '{routine_name}' should keep its own lowered flag parameter",
+            );
+        }
     }
 
     #[test]

@@ -675,7 +675,7 @@ mod integration_tests {
     }
 
     #[test]
-    fn test_cli_repro_program_still_fails_on_current_lowering_boundary() {
+    fn test_cli_lowering_repro_program_now_succeeds_end_to_end() {
         use std::fs;
 
         let temp_root = unique_temp_root("cli_lowering_repro_boundary");
@@ -743,17 +743,15 @@ mod integration_tests {
         let stderr = String::from_utf8_lossy(&output.stderr);
 
         assert!(
-            !output.status.success(),
-            "CLI should still fail on the combined lowering repro until the hardening pass lands, got status {:?} and output:\n{}\n{}",
+            output.status.success(),
+            "CLI should compile the combined lowering repro now, got status {:?} and output:\n{}\n{}",
             output.status.code(),
             stdout,
             stderr,
         );
         assert!(
-            stderr.contains("lowered type table lost array shape")
-                || stdout.contains("value-producing when did not retain a lowered join value")
-                || stdout.contains("does not map to a lowered local or global definition"),
-            "Combined repro should stay pinned to one of the known lowering regressions, got stdout:\n{}\n\nstderr:\n{}",
+            stdout.contains("Compilation successful"),
+            "Combined repro should compile cleanly through lowering, got stdout:\n{}\n\nstderr:\n{}",
             stdout,
             stderr,
         );

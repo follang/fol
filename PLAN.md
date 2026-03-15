@@ -115,8 +115,8 @@ Each fix must land with:
 
 ### Phase 1. Value Symbol Hardening
 
-- `1.1` `pending` Audit lowered symbol lookup for routine parameters, local bindings, and imported mounted symbols to find where current lookup still misses valid lowered locals.
-- `1.2` `pending` Fix the lowering path so ordinary routine parameters always map to lowered locals anywhere current `V1` typing can reference them.
+- `1.1` `done` Audit lowered symbol lookup for routine parameters, local bindings, and imported mounted symbols to find where current lookup still misses valid lowered locals.
+- `1.2` `done` Fix the lowering path so ordinary routine parameters always map to lowered locals anywhere current `V1` typing can reference them.
 - `1.3` `pending` Add negative guards so true missing-symbol situations still report explicit lowering errors instead of silently aliasing the wrong symbol.
 
 ### Phase 2. Container Literal Hardening
@@ -134,7 +134,7 @@ Each fix must land with:
 
 ### Phase 4. End-To-End Proof
 
-- `4.1` `pending` Add CLI success coverage for a real multi-surface `V1` program that includes records, routine parameters, non-empty containers, loops, and value-producing `when`.
+- `4.1` `done` Add CLI success coverage for a real multi-surface `V1` program that includes records, routine parameters, non-empty containers, loops, and value-producing `when`.
 - `4.2` `pending` Add `--dump-lowered` snapshot coverage for that same real `V1` program so the lowered shape is inspectable and stable.
 - `4.3` `pending` Re-run the earlier failing sample families and lock them as regression tests.
 
