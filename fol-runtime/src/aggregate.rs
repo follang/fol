@@ -29,18 +29,32 @@ pub trait FolRecord {
     fn fol_record_fields(&self) -> Vec<FolNamedValue>;
 }
 
+pub trait FolEntry {
+    fn fol_entry_name(&self) -> &'static str;
+
+    fn fol_entry_variant_name(&self) -> &'static str;
+
+    fn fol_entry_fields(&self) -> Vec<FolNamedValue>;
+}
+
 pub fn module_name() -> &'static str {
     "aggregate"
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{FolNamedValue, FolRecord};
+    use super::{FolEntry, FolNamedValue, FolRecord};
 
     #[derive(Debug, Clone, PartialEq, Eq)]
     struct DemoPoint {
         x: i64,
         y: i64,
+    }
+
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    enum DemoStatus {
+        Ok { count: i64 },
+        Err { label: &'static str },
     }
 
     impl FolRecord for DemoPoint {
@@ -67,5 +81,42 @@ mod tests {
         assert_eq!(fields[0].rendered_value(), "3");
         assert_eq!(fields[1].name(), "y");
         assert_eq!(fields[1].rendered_value(), "7");
+    }
+
+    impl FolEntry for DemoStatus {
+        fn fol_entry_name(&self) -> &'static str {
+            "Status"
+        }
+
+        fn fol_entry_variant_name(&self) -> &'static str {
+            match self {
+                Self::Ok { .. } => "Ok",
+                Self::Err { .. } => "Err",
+            }
+        }
+
+        fn fol_entry_fields(&self) -> Vec<FolNamedValue> {
+            match self {
+                Self::Ok { count } => vec![FolNamedValue::new("count", count.to_string())],
+                Self::Err { label } => vec![FolNamedValue::new("label", label.to_string())],
+            }
+        }
+    }
+
+    #[test]
+    fn entry_trait_contract_preserves_variant_name_and_payload_shape() {
+        let ok = DemoStatus::Ok { count: 7 };
+        let err = DemoStatus::Err { label: "bad-input" };
+
+        let ok_fields = ok.fol_entry_fields();
+        let err_fields = err.fol_entry_fields();
+
+        assert_eq!(ok.fol_entry_name(), "Status");
+        assert_eq!(ok.fol_entry_variant_name(), "Ok");
+        assert_eq!(ok_fields, vec![FolNamedValue::new("count", "7")]);
+
+        assert_eq!(err.fol_entry_name(), "Status");
+        assert_eq!(err.fol_entry_variant_name(), "Err");
+        assert_eq!(err_fields, vec![FolNamedValue::new("label", "bad-input")]);
     }
 }

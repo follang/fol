@@ -834,7 +834,7 @@ The implementation should land in many small slices.
 #### 5.1 done
 - define a runtime trait contract for generated record types
 
-#### 5.2
+#### 5.2 done
 - define a runtime trait contract for generated entry types
 
 #### 5.3
