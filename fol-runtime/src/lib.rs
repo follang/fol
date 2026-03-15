@@ -104,6 +104,37 @@
 //! enums, but their public formatting behavior should still follow
 //! [`aggregate::FolRecord`], [`aggregate::render_record`], and
 //! [`entry::FolEntry`] so generated `.echo(...)` output stays stable.
+//!
+//! # Backend Mapping: Generated Crate Names And Imports
+//!
+//! The first backend should generate one temporary Rust crate per lowered FOL
+//! workspace.
+//!
+//! Import expectations for that generated crate:
+//!
+//! - declare a dependency on the package named `fol-runtime`
+//! - import runtime items through `fol_runtime`, matching Rust's crate-name
+//!   hyphen-to-underscore rule
+//! - prefer one stable prelude alias per emitted module, such as
+//!   `use fol_runtime::prelude as rt;`
+//! - use fully qualified imports for less-common runtime modules when needed,
+//!   for example:
+//!   - `fol_runtime::containers::FolSeq`
+//!   - `fol_runtime::shell::FolOption`
+//!   - `fol_runtime::abi::FolRecover`
+//!
+//! Generated Rust should not guess alternate runtime package names and should
+//! not inline shadow copies of runtime types into emitted modules.
+//!
+//! Namespace/layout expectations:
+//!
+//! - group emitted Rust by lowered package and namespace, not by original `.fol`
+//!   file count
+//! - backend-generated local helper names may be mangled, but runtime imports
+//!   should stay readable and stable
+//! - `fol-runtime` remains the single support dependency for current `V1`
+//!   semantics; generated crates should not split the runtime contract across
+//!   multiple ad hoc support crates
 
 pub mod abi;
 pub mod aggregate;

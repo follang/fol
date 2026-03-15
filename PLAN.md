@@ -885,7 +885,7 @@ The implementation should land in many small slices.
 #### 8.2 done
 - document exactly which lowered instructions require runtime support
 
-#### 8.3
+#### 8.3 done
 - document name/import expectations for generated crates
 
 #### 8.4
