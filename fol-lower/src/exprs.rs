@@ -378,27 +378,55 @@ fn lower_body_nodes(
 ) -> Result<(), LoweringError> {
     let entry_block = routine.entry_block;
     let mut cursor = RoutineCursor::new(routine, entry_block);
+    cursor.routine.body_result = lower_body_sequence(
+        typed_package,
+        type_table,
+        checked_type_map,
+        &current_identity,
+        decl_index,
+        &mut cursor,
+        source_unit_id,
+        scope_id,
+        nodes,
+    )?
+    .map(|value| value.local_id);
+
+    Ok(())
+}
+
+fn lower_body_sequence(
+    typed_package: &fol_typecheck::TypedPackage,
+    type_table: &crate::LoweredTypeTable,
+    checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
+    current_identity: &PackageIdentity,
+    decl_index: &WorkspaceDeclIndex,
+    cursor: &mut RoutineCursor<'_>,
+    source_unit_id: SourceUnitId,
+    scope_id: ScopeId,
+    nodes: &[AstNode],
+) -> Result<Option<LoweredValue>, LoweringError> {
+    let mut final_value = None;
 
     for node in nodes {
         if let Some(value) = lower_body_node(
             typed_package,
             type_table,
             checked_type_map,
-            &current_identity,
+            current_identity,
             decl_index,
-            &mut cursor,
+            cursor,
             source_unit_id,
             scope_id,
             node,
         )? {
-            cursor.routine.body_result = Some(value.local_id);
+            final_value = Some(value);
         }
         if cursor.current_block_terminated()? {
             break;
         }
     }
 
-    Ok(())
+    Ok(final_value)
 }
 
 fn lower_body_node(
@@ -499,6 +527,26 @@ fn lower_body_node(
             cursor.terminate_current_block(crate::LoweredTerminator::Report { value: lowered })?;
             Ok(None)
         }
+        AstNode::When {
+            expr,
+            cases,
+            default,
+        } => {
+            lower_when_statement(
+                typed_package,
+                type_table,
+                checked_type_map,
+                current_identity,
+                decl_index,
+                cursor,
+                source_unit_id,
+                scope_id,
+                expr,
+                cases,
+                default.as_deref(),
+            )?;
+            Ok(None)
+        }
         _ => lower_expression(
             typed_package,
             type_table,
@@ -573,6 +621,161 @@ fn lower_local_binding(
         Ok(Some(LoweredValue { local_id, type_id }))
     } else {
         Ok(Some(LoweredValue { local_id, type_id }))
+    }
+}
+
+fn lower_when_statement(
+    typed_package: &fol_typecheck::TypedPackage,
+    type_table: &crate::LoweredTypeTable,
+    checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
+    current_identity: &PackageIdentity,
+    decl_index: &WorkspaceDeclIndex,
+    cursor: &mut RoutineCursor<'_>,
+    source_unit_id: SourceUnitId,
+    scope_id: ScopeId,
+    expr: &AstNode,
+    cases: &[fol_parser::ast::WhenCase],
+    default: Option<&[AstNode]>,
+) -> Result<(), LoweringError> {
+    let _ = lower_expression(
+        typed_package,
+        type_table,
+        checked_type_map,
+        current_identity,
+        decl_index,
+        cursor,
+        source_unit_id,
+        expr,
+    )?;
+
+    let after_block = cursor.create_block();
+    let mut has_fallthrough = false;
+
+    for (index, case) in cases.iter().enumerate() {
+        let (condition, body) = when_case_condition_and_body(case)?;
+        let lowered_condition = lower_expression(
+            typed_package,
+            type_table,
+            checked_type_map,
+            current_identity,
+            decl_index,
+            cursor,
+            source_unit_id,
+            condition,
+        )?;
+        let body_block = cursor.create_block();
+        let else_block = if index + 1 < cases.len() || default.is_some() {
+            cursor.create_block()
+        } else {
+            after_block
+        };
+        cursor.terminate_current_block(crate::LoweredTerminator::Branch {
+            condition: lowered_condition.local_id,
+            then_block: body_block,
+            else_block,
+        })?;
+
+        cursor.switch_block(body_block)?;
+        let _ = lower_body_sequence(
+            typed_package,
+            type_table,
+            checked_type_map,
+            current_identity,
+            decl_index,
+            cursor,
+            source_unit_id,
+            scope_id,
+            body,
+        )?;
+        if !cursor.current_block_terminated()? {
+            cursor.terminate_current_block(crate::LoweredTerminator::Jump { target: after_block })?;
+        }
+
+        if else_block != after_block {
+            cursor.switch_block(else_block)?;
+            has_fallthrough = true;
+        } else {
+            has_fallthrough = false;
+        }
+    }
+
+    if let Some(default) = default {
+        lower_default_when_body(
+            typed_package,
+            type_table,
+            checked_type_map,
+            current_identity,
+            decl_index,
+            cursor,
+            source_unit_id,
+            scope_id,
+            default,
+            after_block,
+        )?;
+        has_fallthrough = true;
+    }
+
+    if !cases.is_empty() || default.is_some() || has_fallthrough {
+        cursor.switch_block(after_block)?;
+    }
+
+    Ok(())
+}
+
+fn lower_default_when_body(
+    typed_package: &fol_typecheck::TypedPackage,
+    type_table: &crate::LoweredTypeTable,
+    checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
+    current_identity: &PackageIdentity,
+    decl_index: &WorkspaceDeclIndex,
+    cursor: &mut RoutineCursor<'_>,
+    source_unit_id: SourceUnitId,
+    scope_id: ScopeId,
+    default: &[AstNode],
+    after_block: LoweredBlockId,
+) -> Result<(), LoweringError> {
+    let _ = lower_body_sequence(
+        typed_package,
+        type_table,
+        checked_type_map,
+        current_identity,
+        decl_index,
+        cursor,
+        source_unit_id,
+        scope_id,
+        default,
+    )?;
+    if !cursor.current_block_terminated()? {
+        cursor.terminate_current_block(crate::LoweredTerminator::Jump { target: after_block })?;
+    }
+    Ok(())
+}
+
+fn when_case_condition_and_body(
+    case: &fol_parser::ast::WhenCase,
+) -> Result<(&AstNode, &[AstNode]), LoweringError> {
+    match case {
+        fol_parser::ast::WhenCase::Case { condition, body }
+        | fol_parser::ast::WhenCase::Is {
+            value: condition,
+            body,
+        }
+        | fol_parser::ast::WhenCase::In {
+            range: condition,
+            body,
+        }
+        | fol_parser::ast::WhenCase::Has {
+            member: condition,
+            body,
+        }
+        | fol_parser::ast::WhenCase::On {
+            channel: condition,
+            body,
+        } => Ok((condition, body.as_slice())),
+        fol_parser::ast::WhenCase::Of { .. } => Err(LoweringError::with_kind(
+            LoweringErrorKind::Unsupported,
+            "type-matching when/of branches are not lowered in this slice yet",
+        )),
     }
 }
 
@@ -1923,6 +2126,66 @@ mod tests {
         assert!(
             routine.body_result.is_none(),
             "early reports should not leave a trailing body_result behind"
+        );
+    }
+
+    #[test]
+    fn when_statement_lowering_emits_branch_blocks_and_falls_through_afterward() {
+        let fixture = std::env::temp_dir().join(format!(
+            "fol_lower_when_stmt_{}.fol",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system clock should be monotonic enough for tmp names")
+                .as_nanos()
+        ));
+        std::fs::write(
+            &fixture,
+            "fun[] main(flag: bol): int = {\n    when(flag) {\n        case(true) { 1 }\n    }\n    return 2\n}",
+        )
+        .expect("should write lowering when fixture");
+
+        let mut stream = FileStream::from_file(fixture.to_str().expect("utf8 temp path"))
+            .expect("Should open lowering fixture");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let syntax = parser
+            .parse_package(&mut lexer)
+            .expect("Lowering fixture should parse");
+        let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+        let typed = Typechecker::new()
+            .check_resolved_workspace(resolved)
+            .expect("Lowering fixture should typecheck");
+        let lowered = crate::LoweringSession::new(typed)
+            .lower_workspace()
+            .expect("statement-style when lowering should succeed");
+
+        let routine = lowered
+            .entry_package()
+            .routine_decls
+            .values()
+            .find(|routine| routine.name == "main")
+            .expect("main routine should exist");
+
+        assert!(
+            routine
+                .blocks
+                .iter()
+                .any(|block| matches!(block.terminator, Some(LoweredTerminator::Branch { .. }))),
+            "statement-style when should lower into an explicit branch terminator"
+        );
+        assert!(
+            routine
+                .blocks
+                .iter()
+                .any(|block| matches!(block.terminator, Some(LoweredTerminator::Jump { .. }))),
+            "when bodies should jump into a shared continuation block"
+        );
+        assert!(
+            routine
+                .blocks
+                .iter()
+                .any(|block| matches!(block.terminator, Some(LoweredTerminator::Return { .. }))),
+            "control should fall through after the when into the trailing return"
         );
     }
 }

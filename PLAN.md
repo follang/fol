@@ -530,7 +530,7 @@ This plan is complete only when all of the following are true:
 
 - `5.1` `done` Lower `return` into explicit return terminators.
 - `5.2` `done` Lower `report` into explicit report terminators.
-- `5.3` `pending` Lower `when` as statement-style control flow.
+- `5.3` `done` Lower `when` as statement-style control flow.
 - `5.4` `pending` Lower value-producing `when` into branch blocks plus explicit join temporary.
 - `5.5` `pending` Lower loop forms into explicit header/body/exit blocks.
 - `5.6` `pending` Lower loop exits such as `break` into explicit control-flow edges.
