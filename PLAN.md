@@ -8,7 +8,7 @@ between type checking and backend work.
 
 The active compiler already has:
 
-- routine signatures with `ResultType : ErrorType`
+- routine signatures with `ResultType / ErrorType`
 - `report expr`
 - typed `opt[...]` / `err[...]` shells
 - postfix unwrap `value!` for shell values
@@ -82,7 +82,7 @@ FOL should borrow the **semantic split**, not blindly copy Zig syntax.
 
 For `V1`, the recommended approach is:
 
-- keep FOL’s existing declared routine form `: ResultType : ErrorType`
+- keep FOL’s existing declared routine form `: ResultType / ErrorType`
 - keep `report`
 - keep shell unwrap `!`
 - complete the existing book-facing `check(...)` and `||` handling surfaces
@@ -238,13 +238,18 @@ or deliberately rejected.
 
 ### Phase 0. Contract Freeze
 
-- `0.1` `pending` Audit every current parser/typecheck/lower surface that mentions:
+- `0.1` `done` Audit every current parser/typecheck/lower surface that mentions:
   - `report`
   - `panic`
   - `check`
   - `err[...]`
   - `opt[...]`
   - `||`
+  Audit result:
+  - parser already preserves `/` error signatures and `check(...)` syntax
+  - typecheck already enforces `report` and `panic`
+  - lowering already preserves routine `error_type` and emits `Report`
+  - `check(...)` and `||` still need real semantic ownership
 - `0.2` `pending` Freeze the `V1` contract for errorful routine calls:
   - what counts as propagation
   - what counts as handled recovery
