@@ -433,6 +433,21 @@ fn verify_instruction(
                 verify_local_reference(routine, instr.id.0, "intrinsic arg", *arg, errors);
             }
         }
+        crate::LoweredInstrKind::RuntimeHook { intrinsic, args } => {
+            if fol_intrinsics::intrinsic_by_id(*intrinsic).is_none() {
+                errors.push(LoweringError::with_kind(
+                    LoweringErrorKind::InvalidInput,
+                    format!(
+                        "lowered routine '{}' uses missing runtime hook intrinsic {}",
+                        routine.name,
+                        intrinsic.index()
+                    ),
+                ));
+            }
+            for arg in args {
+                verify_local_reference(routine, instr.id.0, "runtime hook arg", *arg, errors);
+            }
+        }
         crate::LoweredInstrKind::LengthOf { operand } => {
             verify_local_reference(routine, instr.id.0, "length operand", *operand, errors);
         }

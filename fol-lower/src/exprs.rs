@@ -2094,11 +2094,9 @@ fn lower_dot_intrinsic_call(
                 scope_id,
                 arg,
             )
-            .map(|value| value.local_id)
         })
         .collect::<Result<Vec<_>, _>>()?;
 
-    let result_local = cursor.allocate_local(result_type, None);
     let kind = match fol_intrinsics::lowering_mode_for_intrinsic(intrinsic_id) {
         Some(fol_intrinsics::IntrinsicLoweringMode::DedicatedIr) if name == "len" => {
             let [operand] = lowered_args.as_slice() else {
@@ -2107,13 +2105,41 @@ fn lower_dot_intrinsic_call(
                     format!("dot intrinsic '.{name}(...)' expected exactly 1 lowered operand"),
                 ));
             };
-            LoweredInstrKind::LengthOf { operand: *operand }
+            let result_local = cursor.allocate_local(result_type, None);
+            cursor.push_instr(
+                Some(result_local),
+                LoweredInstrKind::LengthOf {
+                    operand: operand.local_id,
+                },
+            )?;
+            return Ok(LoweredValue {
+                local_id: result_local,
+                type_id: result_type,
+                recoverable_error_type: None,
+            });
+        }
+        Some(fol_intrinsics::IntrinsicLoweringMode::RuntimeHook) if name == "echo" => {
+            let [operand] = lowered_args.as_slice() else {
+                return Err(LoweringError::with_kind(
+                    LoweringErrorKind::InvalidInput,
+                    format!("dot intrinsic '.{name}(...)' expected exactly 1 lowered operand"),
+                ));
+            };
+            cursor.push_instr(
+                None,
+                LoweredInstrKind::RuntimeHook {
+                    intrinsic: intrinsic_id,
+                    args: vec![operand.local_id],
+                },
+            )?;
+            return Ok(*operand);
         }
         _ => LoweredInstrKind::IntrinsicCall {
             intrinsic: intrinsic_id,
-            args: lowered_args,
+            args: lowered_args.iter().map(|value| value.local_id).collect(),
         },
     };
+    let result_local = cursor.allocate_local(result_type, None);
     cursor.push_instr(Some(result_local), kind)?;
     Ok(LoweredValue {
         local_id: result_local,
@@ -4206,6 +4232,41 @@ mod tests {
             Some(routine.params[0]),
             "length intrinsic lowering should use the dedicated LengthOf instruction",
         );
+    }
+
+    #[test]
+    fn diagnostic_intrinsic_lowering_emits_runtime_hooks_and_forwards_values() {
+        let lowered = lower_fixture_workspace(
+            concat!(
+                "fun[] main(flag: bol): bol = {\n",
+                "    return .echo(flag)\n",
+                "}\n",
+            ),
+        );
+
+        let routine = lowered
+            .entry_package()
+            .routine_decls
+            .values()
+            .find(|routine| routine.name == "main")
+            .expect("diagnostic intrinsic lowering routine should exist");
+        let intrinsic_id = fol_intrinsics::intrinsic_by_canonical_name("echo")
+            .expect("echo intrinsic should exist")
+            .id;
+        let lowered_hook = routine.instructions.iter().find_map(|instr| match &instr.kind {
+            LoweredInstrKind::RuntimeHook { intrinsic, args } => Some((*intrinsic, args.clone())),
+            _ => None,
+        });
+
+        assert_eq!(
+            lowered_hook,
+            Some((intrinsic_id, vec![routine.params[0]])),
+            "diagnostic intrinsic lowering should emit a runtime hook using the canonical '.echo' intrinsic id",
+        );
+        assert!(matches!(
+            routine.blocks.get(routine.entry_block).and_then(|block| block.terminator.clone()),
+            Some(LoweredTerminator::Return { value: Some(value) }) if value == routine.params[0]
+        ));
     }
 
     #[test]

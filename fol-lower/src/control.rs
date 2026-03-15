@@ -68,6 +68,10 @@ pub enum LoweredInstrKind {
         intrinsic: IntrinsicId,
         args: Vec<LoweredLocalId>,
     },
+    RuntimeHook {
+        intrinsic: IntrinsicId,
+        args: Vec<LoweredLocalId>,
+    },
     LengthOf {
         operand: LoweredLocalId,
     },
