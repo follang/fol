@@ -854,7 +854,7 @@ not full long-term compiler completion.
 #### 0.2 done
 - freeze first-backend direction as Rust emission under the generic `fol-backend` crate boundary
 
-#### 0.3
+#### 0.3 done
 - freeze the rule that the backend consumes `LoweredWorkspace`, not AST, resolver, or typed-workspace inputs
 
 #### 0.4
