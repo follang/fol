@@ -767,7 +767,7 @@ The implementation should land in many small slices.
 #### 2.1 done
 - add `FolOption<T>` or runtime alias/wrapper policy for `opt[T]`
 
-#### 2.2
+#### 2.2 done
 - add `FolError<T>` / bare error-shell representation for `err[T]`
 
 #### 2.3

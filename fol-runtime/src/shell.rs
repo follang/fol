@@ -53,13 +53,43 @@ impl<T> From<FolOption<T>> for Option<T> {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[repr(transparent)]
+pub struct FolError<T>(T);
+
+impl<T> FolError<T> {
+    pub fn new(value: T) -> Self {
+        Self(value)
+    }
+
+    pub fn as_ref(&self) -> &T {
+        &self.0
+    }
+
+    pub fn into_inner(self) -> T {
+        self.0
+    }
+}
+
+impl<T> From<T> for FolError<T> {
+    fn from(value: T) -> Self {
+        Self::new(value)
+    }
+}
+
+impl<T> From<FolError<T>> for T {
+    fn from(value: FolError<T>) -> Self {
+        value.into_inner()
+    }
+}
+
 pub fn module_name() -> &'static str {
     "shell"
 }
 
 #[cfg(test)]
 mod tests {
-    use super::FolOption;
+    use super::{FolError, FolOption};
 
     #[test]
     fn fol_option_freezes_some_nil_shape_and_queries() {
@@ -82,5 +112,14 @@ mod tests {
 
         assert_eq!(Option::from(some), Some("Ada"));
         assert_eq!(Option::from(nil), None);
+    }
+
+    #[test]
+    fn fol_error_freezes_bare_error_shell_representation() {
+        let error = FolError::new("broken");
+
+        assert_eq!(error.as_ref(), &"broken");
+        assert_eq!(FolError::from("broken"), error);
+        assert_eq!(<&str>::from(error), "broken");
     }
 }
