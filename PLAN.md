@@ -873,7 +873,7 @@ The implementation should land in many small slices.
 #### 7.4 done
 - add deterministic behavior tests for map/set ordering policy
 
-#### 7.5
+#### 7.5 done
 - add runtime doctests/examples for backend authorship
 
 ### Phase 8: Backend-facing Documentation

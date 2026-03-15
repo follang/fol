@@ -8,7 +8,7 @@
 //!
 //! Minimal pattern:
 //!
-//! ```ignore
+//! ```no_run
 //! use fol_runtime::prelude::*;
 //!
 //! struct Point {
@@ -34,6 +34,9 @@
 //!         render_record(self)
 //!     }
 //! }
+//!
+//! let point = Point { x: 3, y: 7 };
+//! assert_eq!(point.fol_echo_format(), "Point { x: 3, y: 7 }");
 //! ```
 
 use crate::builtins::FolEchoFormat;

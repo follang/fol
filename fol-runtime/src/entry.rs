@@ -1,4 +1,20 @@
 //! Entrypoint-facing helpers for generated programs.
+//!
+//! Minimal backend-facing pattern:
+//!
+//! ```no_run
+//! use fol_runtime::prelude::*;
+//!
+//! let success = outcome_from_recoverable(FolRecover::<FolInt, FolStr>::ok(7));
+//! let failure =
+//!     outcome_from_recoverable(FolRecover::<FolInt, FolStr>::err(FolStr::from("broken")));
+//!
+//! assert_eq!(success.exit_code(), FOL_EXIT_SUCCESS);
+//! assert_eq!(printable_outcome_message(&success), None);
+//!
+//! assert_eq!(failure.exit_code(), FOL_EXIT_FAILURE);
+//! assert_eq!(printable_outcome_message(&failure), Some("broken"));
+//! ```
 
 use crate::{abi::FolRecover, builtins::FolEchoFormat};
 
