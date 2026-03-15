@@ -1097,7 +1097,9 @@ fn lower_container_literal(
     expected_type: Option<LoweredTypeId>,
     elements: &[AstNode],
 ) -> Result<LoweredValue, LoweringError> {
-    match container_type {
+    let container_kind =
+        expected_linear_container_kind(type_table, expected_type).unwrap_or(container_type);
+    match container_kind {
         ContainerType::Array | ContainerType::Vector | ContainerType::Sequence => {
             lower_linear_container_literal(
                 typed_package,
@@ -1108,7 +1110,7 @@ fn lower_container_literal(
                 cursor,
                 source_unit_id,
                 scope_id,
-                container_type,
+                container_kind,
                 expected_type,
                 elements,
             )
@@ -2683,6 +2685,18 @@ fn expected_linear_element_type(
     }
 }
 
+fn expected_linear_container_kind(
+    type_table: &crate::LoweredTypeTable,
+    expected_type: Option<LoweredTypeId>,
+) -> Option<ContainerType> {
+    match expected_type.and_then(|type_id| type_table.get(type_id)) {
+        Some(crate::LoweredType::Array { .. }) => Some(ContainerType::Array),
+        Some(crate::LoweredType::Vector { .. }) => Some(ContainerType::Vector),
+        Some(crate::LoweredType::Sequence { .. }) => Some(ContainerType::Sequence),
+        _ => None,
+    }
+}
+
 fn resolve_linear_container_type(
     type_table: &crate::LoweredTypeTable,
     kind: ContainerType,
@@ -3001,6 +3015,32 @@ mod tests {
         }
     }
 
+    fn lower_fixture_workspace(source: &str) -> crate::LoweredWorkspace {
+        let fixture = std::env::temp_dir().join(format!(
+            "fol_lower_success_{}.fol",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system clock should be monotonic enough for tmp names")
+                .as_nanos()
+        ));
+        std::fs::write(&fixture, source).expect("should write lowering success fixture");
+
+        let mut stream = FileStream::from_file(fixture.to_str().expect("utf8 temp path"))
+            .expect("Should open lowering fixture");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let syntax = parser
+            .parse_package(&mut lexer)
+            .expect("Lowering fixture should parse");
+        let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+        let typed = Typechecker::new()
+            .check_resolved_workspace(resolved)
+            .expect("Lowering fixture should typecheck");
+        crate::LoweringSession::new(typed)
+            .lower_workspace()
+            .expect("fixture should lower successfully")
+    }
+
     #[test]
     fn literal_lowering_emits_constant_instructions_into_the_current_block() {
         let mut types = LoweredTypeTable::new();
@@ -3087,15 +3127,49 @@ mod tests {
     }
 
     #[test]
-    fn lowering_repro_keeps_non_empty_seq_and_map_literal_panics_visible() {
-        let seq_panic = lower_fixture_panic_message(
-            "fun[] seq_case(): seq[str] = {\n    var names: seq[str] = {\"Ada\", \"Lin\"}\n    return names\n}\n",
-        );
-        assert!(
-            seq_panic.contains("lowered type table lost array shape"),
-            "expected the current sequence-lowering repro to keep the exact panic visible, got: {seq_panic}"
+    fn lowering_repro_lowers_non_empty_seq_literals_in_typed_v1_contexts() {
+        let lowered = lower_fixture_workspace(
+            concat!(
+                "fun[] take(values: seq[str]): seq[str] = {\n",
+                "    return values\n",
+                "}\n",
+                "fun[] from_binding(): seq[str] = {\n",
+                "    var names: seq[str] = {\"Ada\", \"Lin\"}\n",
+                "    return names\n",
+                "}\n",
+                "fun[] from_return(): seq[str] = {\n",
+                "    return {\"Ada\", \"Lin\"}\n",
+                "}\n",
+                "fun[] from_arg(): seq[str] = {\n",
+                "    return take({\"Ada\", \"Lin\"})\n",
+                "}\n",
+            ),
         );
 
+        for routine_name in ["from_binding", "from_return", "from_arg"] {
+            let routine = lowered
+                .entry_package()
+                .routine_decls
+                .values()
+                .find(|routine| routine.name == routine_name)
+                .expect("sequence lowering routine should exist");
+            let construct = routine.instructions.iter().find_map(|instr| match &instr.kind {
+                LoweredInstrKind::ConstructLinear { kind, elements, .. } => {
+                    Some((*kind, elements.len()))
+                }
+                _ => None,
+            });
+
+            assert_eq!(
+                construct,
+                Some((crate::control::LoweredLinearKind::Sequence, 2)),
+                "typed sequence literals should lower as sequence instructions in {routine_name}",
+            );
+        }
+    }
+
+    #[test]
+    fn lowering_repro_keeps_non_empty_map_literal_panics_visible() {
         let map_panic = lower_fixture_panic_message(
             "fun[] map_case(): map[str, int] = {\n    var counts: map[str, int] = {{\"ada\", 1}, {\"lin\", 2}}\n    return counts\n}\n",
         );

@@ -121,8 +121,8 @@ Each fix must land with:
 
 ### Phase 2. Container Literal Hardening
 
-- `2.1` `pending` Trace why typed non-empty `seq` / `map` literals currently fall into the “empty linear container” lowering error.
-- `2.2` `pending` Fix linear-container lowering so typed `arr` / `vec` / `seq` literals lower correctly in binding, return, and call-argument contexts.
+- `2.1` `done` Trace why typed non-empty `seq` / `map` literals currently fall into the “empty linear container” lowering error.
+- `2.2` `done` Fix linear-container lowering so typed `arr` / `vec` / `seq` literals lower correctly in binding, return, and call-argument contexts.
 - `2.3` `pending` Fix `set` / `map` lowering so typed key/value aggregates lower correctly in binding, return, and index-lookup contexts.
 - `2.4` `pending` Add exact lowering-shape assertions for the repaired container instructions instead of only checking that the CLI succeeds.
 
