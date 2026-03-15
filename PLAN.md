@@ -516,7 +516,7 @@ This plan is complete only when all of the following are true:
 
 ### Phase 4. Core Expression Lowering
 
-- `4.1` `pending` Lower literals into constant or constructor instructions.
+- `4.1` `done` Lower literals into constant or constructor instructions.
 - `4.2` `pending` Lower resolved identifiers into explicit local/global loads.
 - `4.3` `pending` Lower initializer and body expressions into explicit destination slots.
 - `4.4` `pending` Lower assignments into explicit store instructions.

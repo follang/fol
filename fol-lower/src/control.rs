@@ -9,6 +9,7 @@ pub enum LoweredOperand {
     Local(LoweredLocalId),
     Global(LoweredGlobalId),
     Int(i64),
+    Float(u64),
     Bool(bool),
     Char(char),
     Str(String),
