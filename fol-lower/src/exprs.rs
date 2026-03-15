@@ -4143,6 +4143,7 @@ mod tests {
                 source_unit_id: SourceUnitId(0),
                 name: "answer".to_string(),
                 type_id: crate::LoweredTypeId(0),
+                recoverable_error_type: None,
                 mutable: false,
             },
         );
@@ -4157,6 +4158,10 @@ mod tests {
             .symbol_id = Some(fol_resolver::SymbolId(2));
         let mut packages = BTreeMap::new();
         packages.insert(identity.clone(), package);
+        let mut type_table = crate::LoweredTypeTable::new();
+        let recoverable_abi = crate::LoweredRecoverableAbi::v1(
+            type_table.intern_builtin(crate::LoweredBuiltinType::Bool),
+        );
         let workspace = LoweredWorkspace::new(
             identity.clone(),
             packages,
@@ -4165,8 +4170,9 @@ mod tests {
                 routine_id: crate::LoweredRoutineId(0),
                 name: "main".to_string(),
             }],
-            crate::LoweredTypeTable::new(),
+            type_table,
             crate::LoweredSourceMap::new(),
+            recoverable_abi,
         );
 
         let index = WorkspaceDeclIndex::build(&workspace);

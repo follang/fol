@@ -29,6 +29,29 @@ pub struct LoweredEntryCandidate {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub enum LoweredRecoverableAbi {
+    TaggedResultObject {
+        tag_type: LoweredTypeId,
+        success_tag: String,
+        error_tag: String,
+        success_slot: String,
+        error_slot: String,
+    },
+}
+
+impl LoweredRecoverableAbi {
+    pub fn v1(tag_type: LoweredTypeId) -> Self {
+        Self::TaggedResultObject {
+            tag_type,
+            success_tag: "ok".to_string(),
+            error_tag: "err".to_string(),
+            success_slot: "value".to_string(),
+            error_slot: "error".to_string(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LoweredExportMount {
     pub source_namespace: String,
     pub mounted_namespace_suffix: Option<String>,
@@ -156,6 +179,7 @@ pub struct LoweredWorkspace {
     entry_candidates: Vec<LoweredEntryCandidate>,
     type_table: LoweredTypeTable,
     source_map: LoweredSourceMap,
+    recoverable_abi: LoweredRecoverableAbi,
 }
 
 impl LoweredWorkspace {
@@ -165,6 +189,7 @@ impl LoweredWorkspace {
         entry_candidates: Vec<LoweredEntryCandidate>,
         type_table: LoweredTypeTable,
         source_map: LoweredSourceMap,
+        recoverable_abi: LoweredRecoverableAbi,
     ) -> Self {
         Self {
             entry_identity,
@@ -172,6 +197,7 @@ impl LoweredWorkspace {
             entry_candidates,
             type_table,
             source_map,
+            recoverable_abi,
         }
     }
 
@@ -208,13 +234,20 @@ impl LoweredWorkspace {
     pub fn source_map(&self) -> &LoweredSourceMap {
         &self.source_map
     }
+
+    pub fn recoverable_abi(&self) -> &LoweredRecoverableAbi {
+        &self.recoverable_abi
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{LoweredEntryCandidate, LoweredPackage, LoweredSourceMap, LoweredSourceUnit, LoweredWorkspace};
+    use super::{
+        LoweredEntryCandidate, LoweredPackage, LoweredRecoverableAbi, LoweredSourceMap,
+        LoweredSourceUnit, LoweredWorkspace,
+    };
     use crate::ids::{LoweredPackageId, LoweredRoutineId};
-    use crate::types::LoweredTypeTable;
+    use crate::types::{LoweredBuiltinType, LoweredTypeTable};
     use fol_resolver::{PackageIdentity, PackageSourceKind, SourceUnitId};
     use std::collections::BTreeMap;
 
@@ -245,6 +278,10 @@ mod tests {
             LoweredPackage::new(LoweredPackageId(1), shared_identity),
         );
 
+        let mut type_table = LoweredTypeTable::new();
+        let recoverable_abi = LoweredRecoverableAbi::v1(
+            type_table.intern_builtin(LoweredBuiltinType::Bool),
+        );
         let workspace = LoweredWorkspace::new(
             entry_identity.clone(),
             packages,
@@ -253,8 +290,9 @@ mod tests {
                 routine_id: LoweredRoutineId(0),
                 name: "main".to_string(),
             }],
-            LoweredTypeTable::new(),
+            type_table,
             LoweredSourceMap::default(),
+            recoverable_abi,
         );
 
         assert_eq!(workspace.entry_identity(), &entry_identity);
@@ -262,7 +300,19 @@ mod tests {
         assert_eq!(workspace.package_count(), 2);
         assert_eq!(workspace.entry_package().source_units.len(), 1);
         assert_eq!(workspace.entry_candidates().len(), 1);
-        assert!(workspace.type_table().is_empty());
+        assert!(matches!(
+            workspace.recoverable_abi(),
+            LoweredRecoverableAbi::TaggedResultObject {
+                success_tag,
+                error_tag,
+                success_slot,
+                error_slot,
+                ..
+            } if success_tag == "ok"
+                && error_tag == "err"
+                && success_slot == "value"
+                && error_slot == "error"
+        ));
     }
 
     #[test]

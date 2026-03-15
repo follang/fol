@@ -564,8 +564,11 @@ mod tests {
     use crate::{
         control::{LoweredBlock, LoweredInstr, LoweredInstrKind, LoweredLocal, LoweredRoutine, LoweredTerminator},
         ids::{LoweredBlockId, LoweredInstrId, LoweredLocalId, LoweredPackageId, LoweredRoutineId, LoweredTypeId},
-        model::{LoweredPackage, LoweredSourceMap, LoweredSymbolOwnership, LoweredWorkspace},
-        types::LoweredTypeTable,
+        model::{
+            LoweredPackage, LoweredRecoverableAbi, LoweredSourceMap, LoweredSymbolOwnership,
+            LoweredWorkspace,
+        },
+        types::{LoweredBuiltinType, LoweredTypeTable},
     };
     use fol_resolver::{MountedSymbolProvenance, PackageIdentity, PackageSourceKind, SourceUnitId, SymbolId};
     use std::collections::BTreeMap;
@@ -576,6 +579,20 @@ mod tests {
             canonical_root: format!("/workspace/{name}"),
             display_name: name.to_string(),
         }
+    }
+
+    fn empty_workspace(identity: PackageIdentity, package: LoweredPackage) -> LoweredWorkspace {
+        let mut type_table = LoweredTypeTable::new();
+        let recoverable_abi =
+            LoweredRecoverableAbi::v1(type_table.intern_builtin(LoweredBuiltinType::Bool));
+        LoweredWorkspace::new(
+            identity.clone(),
+            BTreeMap::from([(identity, package)]),
+            Vec::new(),
+            type_table,
+            LoweredSourceMap::new(),
+            recoverable_abi,
+        )
     }
 
     #[test]
@@ -593,13 +610,7 @@ mod tests {
         package
             .routine_decls
             .insert(LoweredRoutineId(0), routine);
-        let workspace = LoweredWorkspace::new(
-            identity.clone(),
-            BTreeMap::from([(identity, package)]),
-            Vec::new(),
-            LoweredTypeTable::new(),
-            LoweredSourceMap::new(),
-        );
+        let workspace = empty_workspace(identity, package);
 
         let errors = verify_workspace(&workspace).expect_err("verifier should reject missing jump targets");
 
@@ -624,13 +635,7 @@ mod tests {
         package
             .routine_decls
             .insert(LoweredRoutineId(0), routine);
-        let workspace = LoweredWorkspace::new(
-            identity.clone(),
-            BTreeMap::from([(identity, package)]),
-            Vec::new(),
-            LoweredTypeTable::new(),
-            LoweredSourceMap::new(),
-        );
+        let workspace = empty_workspace(identity, package);
 
         let errors = verify_workspace(&workspace).expect_err("verifier should reject unreachable blocks");
 
@@ -644,6 +649,7 @@ mod tests {
         routine.locals.push(LoweredLocal {
             id: LoweredLocalId(0),
             type_id: Some(LoweredTypeId(9)),
+            recoverable_error_type: None,
             name: Some("bad".to_string()),
         });
         routine.instructions.push(LoweredInstr {
@@ -665,13 +671,7 @@ mod tests {
         package
             .routine_decls
             .insert(LoweredRoutineId(0), routine);
-        let workspace = LoweredWorkspace::new(
-            identity.clone(),
-            BTreeMap::from([(identity, package)]),
-            Vec::new(),
-            LoweredTypeTable::new(),
-            LoweredSourceMap::new(),
-        );
+        let workspace = empty_workspace(identity, package);
 
         let errors = verify_workspace(&workspace)
             .expect_err("verifier should reject missing locals and missing lowered type ids");
@@ -709,13 +709,7 @@ mod tests {
         package
             .routine_decls
             .insert(LoweredRoutineId(0), routine);
-        let workspace = LoweredWorkspace::new(
-            identity.clone(),
-            BTreeMap::from([(identity, package)]),
-            Vec::new(),
-            LoweredTypeTable::new(),
-            LoweredSourceMap::new(),
-        );
+        let workspace = empty_workspace(identity, package);
 
         let errors = verify_workspace(&workspace)
             .expect_err("verifier should reject conflicting mounted symbol ownership");

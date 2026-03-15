@@ -354,10 +354,14 @@ or deliberately rejected.
 
 ### Phase 3. Backend Calling Convention Contract
 
-- `3.1` `pending` Freeze the first backend-facing ABI for error-aware routines:
+- `3.1` `done` Freeze the first backend-facing ABI for error-aware routines:
   - one return slot plus one error slot
   - tagged success/error result object
   - or another concrete representation
+  Current state:
+  - lowered workspaces now carry an explicit `TaggedResultObject` recoverable ABI
+  - the frozen `V1` contract uses a boolean tag plus `value` and `error` slots
+  - lowered rendering exposes that ABI directly for backend-facing inspection
 - `3.2` `pending` Ensure the chosen representation works for:
   - same-package calls
   - imported `loc/std/pkg` calls
