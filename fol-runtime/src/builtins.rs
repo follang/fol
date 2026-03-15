@@ -2,6 +2,7 @@
 
 use crate::{
     containers::{FolArray, FolMap, FolSeq, FolSet, FolVec},
+    shell::{FolError, FolOption},
     strings::FolStr,
     value::FolInt,
 };
@@ -103,6 +104,21 @@ impl<K: FolEchoFormat + Ord, V: FolEchoFormat> FolEchoFormat for FolMap<K, V> {
     }
 }
 
+impl<T: FolEchoFormat> FolEchoFormat for FolOption<T> {
+    fn fol_echo_format(&self) -> String {
+        match self {
+            FolOption::Some(value) => format!("some({})", render_echo(value)),
+            FolOption::Nil => "nil".to_string(),
+        }
+    }
+}
+
+impl<T: FolEchoFormat> FolEchoFormat for FolError<T> {
+    fn fol_echo_format(&self) -> String {
+        format!("err({})", render_echo(self.as_ref()))
+    }
+}
+
 impl FolLength for FolStr {
     fn fol_length(&self) -> FolInt {
         self.len() as FolInt
@@ -148,6 +164,7 @@ mod tests {
     use super::{echo, render_echo, FolEchoFormat, FolLength};
     use crate::{
         containers::{FolArray, FolMap, FolSeq, FolSet, FolVec},
+        shell::{FolError, FolOption},
         strings::FolStr,
     };
     use std::collections::{BTreeMap, BTreeSet};
@@ -211,5 +228,16 @@ mod tests {
         assert_eq!(render_echo(&sequence), "seq[1, 2, 3]");
         assert_eq!(render_echo(&set), "set{1, 2, 3}");
         assert_eq!(render_echo(&map), "map{ada: 1, lin: 2}");
+    }
+
+    #[test]
+    fn runtime_echo_formats_current_v1_shell_families() {
+        let some = FolOption::some(FolStr::from("Ada"));
+        let nil = FolOption::<FolStr>::nil();
+        let error = FolError::new(FolStr::from("broken"));
+
+        assert_eq!(render_echo(&some), "some(Ada)");
+        assert_eq!(render_echo(&nil), "nil");
+        assert_eq!(render_echo(&error), "err(broken)");
     }
 }

@@ -820,7 +820,7 @@ The implementation should land in many small slices.
 #### 4.3 done
 - implement `echo(...)` for containers
 
-#### 4.4
+#### 4.4 done
 - implement `echo(...)` for shell values
 
 #### 4.5
