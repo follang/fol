@@ -1,4 +1,4 @@
-fun report_inferred_ok(path: str): str : str = {
+fun report_inferred_ok(path: str): str / str = {
     var err_msg = "missing";
     report err_msg;
 }

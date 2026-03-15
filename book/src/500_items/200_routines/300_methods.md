@@ -49,7 +49,7 @@ fun (parser)parse_err(code: int): str = {
     return "bad-input";
 }
 
-fun run(tool: parser, code: int): int : str = {
+fun run(tool: parser, code: int): int / str = {
     report tool.parse_err(code)
     return 0
 }

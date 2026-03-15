@@ -49,5 +49,5 @@ fun one(two: int): int = { <expression> }
 ~pro[obj] one(two: int): int = { <expression> }
 /* ~pro[obj] `$`(): str = { <expression> } *1/ */
 ~pro[] one(gon: gen[]; two: int): int = { <expression> }
-fun[] add1(adder: rut[(x: int): int]; gol: int): int = { <expression> }
-fun[] add2(adder: rut[(x: int[one]): int[two]]): int = { <expression> }
+fun[] add1(adder: rut[(x: int): int]; gol / int): int = { <expression> }
+fun[] add2(adder: rut[(x: int[one]): int[two]]) / int = { <expression> }

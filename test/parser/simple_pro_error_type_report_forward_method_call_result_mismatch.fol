@@ -1,4 +1,4 @@
-pro caller_forward_method_bad(tool: parser, code: int): int : str = {
+pro caller_forward_method_bad(tool: parser, code: int): int / str = {
     report tool.parse_num(code);
     return 0;
 }

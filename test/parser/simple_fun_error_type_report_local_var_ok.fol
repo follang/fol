@@ -1,4 +1,4 @@
-fun report_local_ok(path: str): str : str = {
+fun report_local_ok(path: str): str / str = {
     var err_msg: str = "missing";
     report err_msg;
 }

@@ -1,6 +1,6 @@
 typ Parser: rec = { }
 
-pro caller_forward_quoted_method_overload_ok(tool: Parser, a: int, b: int): int : str = {
+pro caller_forward_quoted_method_overload_ok(tool: Parser, a: int, b: int): int / str = {
     report tool."$make_err"(a, b);
     return 0;
 }

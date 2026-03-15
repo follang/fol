@@ -4096,7 +4096,7 @@ mod tests {
         ));
         std::fs::write(
             &fixture,
-            "fun[] main(flag: bol): int : bol = {\n    report flag\n    return 1\n}",
+            "fun[] main(flag: bol): int / bol = {\n    report flag\n    return 1\n}",
         )
         .expect("should write lowering report fixture");
 
@@ -4755,7 +4755,7 @@ mod tests {
         ));
         std::fs::write(
             &fixture,
-            "ali MaybeText: opt[str]\nali Failure: err[str]\nfun[] make(): MaybeText = { return nil }\nfun[] fail(): int: Failure = { report nil }\n",
+            "ali MaybeText: opt[str]\nali Failure: err[str]\nfun[] make(): MaybeText = { return nil }\nfun[] fail(): int / Failure = { report nil }\n",
         )
         .expect("should write lowering nil fixture");
 
@@ -4867,12 +4867,12 @@ mod tests {
         fs::create_dir_all(&shared_dir).expect("should create shared dir");
         fs::write(
             shared_dir.join("lib.fol"),
-            "ali RemoteText: opt[str]\nali RemoteFailure: err[str]\nfun[exp] imported_wrap(): RemoteText = { return \"shared\" }\nfun[exp] imported_fail(): int: RemoteFailure = { report \"shared\" }\n",
+            "ali RemoteText: opt[str]\nali RemoteFailure: err[str]\nfun[exp] imported_wrap(): RemoteText = { return \"shared\" }\nfun[exp] imported_fail(): int / RemoteFailure = { report \"shared\" }\n",
         )
         .expect("should write shared package");
         fs::write(
             app_dir.join("main.fol"),
-            "use shared: loc = {\"../shared\"}\nali LocalText: opt[str]\nali LocalFailure: err[str]\nfun[] local_wrap(): LocalText = { return \"local\" }\nfun[] local_fail(): int: LocalFailure = { report \"local\" }\nfun[] imported_wrap_main(): shared::RemoteText = { return \"entry\" }\nfun[] imported_fail_main(): int: shared::RemoteFailure = { report \"entry\" }\n",
+            "use shared: loc = {\"../shared\"}\nali LocalText: opt[str]\nali LocalFailure: err[str]\nfun[] local_wrap(): LocalText = { return \"local\" }\nfun[] local_fail(): int / LocalFailure = { report \"local\" }\nfun[] imported_wrap_main(): shared::RemoteText = { return \"entry\" }\nfun[] imported_fail_main(): int / shared::RemoteFailure = { report \"entry\" }\n",
         )
         .expect("should write app package");
 
@@ -4929,7 +4929,7 @@ mod tests {
         ));
         std::fs::write(
             &fixture,
-            "ali MaybeText: opt[str]\nali Failure: err[str]\nfun[] echo(value: MaybeText): MaybeText = { return value }\nfun[] direct(): MaybeText = { return \"return\" }\nfun[] main(): MaybeText = {\n    var local: MaybeText = \"bind\"\n    return echo(\"call\")\n}\nfun[] fail(): int: Failure = { report \"broken\" }\n",
+            "ali MaybeText: opt[str]\nali Failure: err[str]\nfun[] echo(value: MaybeText): MaybeText = { return value }\nfun[] direct(): MaybeText = { return \"return\" }\nfun[] main(): MaybeText = {\n    var local: MaybeText = \"bind\"\n    return echo(\"call\")\n}\nfun[] fail(): int / Failure = { report \"broken\" }\n",
         )
         .expect("should write lowering shell lift fixture");
 

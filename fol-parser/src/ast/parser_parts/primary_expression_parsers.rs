@@ -481,6 +481,13 @@ impl AstParser {
                     {
                         continue;
                     }
+                    KEYWORD::Symbol(SYMBOL::Root) | KEYWORD::Operator(OPERATOR::Divide)
+                        if type_round_depth == 0
+                            && type_square_depth == 0
+                            && type_curly_depth == 0 =>
+                    {
+                        continue;
+                    }
                     _ => continue,
                 }
             }
@@ -501,7 +508,7 @@ impl AstParser {
             }
         }
 
-        false
+        params_closed && in_type_clause
     }
 
     pub(super) fn parse_primary_expression(
@@ -870,14 +877,7 @@ impl AstParser {
                 self.skip_ignorable(tokens);
                 return_type = Some(self.parse_type_reference_tokens(tokens)?);
 
-                self.skip_ignorable(tokens);
-                if let Ok(err_sep) = tokens.curr(false) {
-                    if matches!(err_sep.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
-                        let _ = tokens.bump();
-                        self.skip_ignorable(tokens);
-                        error_type = Some(self.parse_type_reference_tokens(tokens)?);
-                    }
-                }
+                error_type = self.parse_optional_error_type_after_return_type(tokens)?;
             }
         }
 
@@ -967,14 +967,7 @@ impl AstParser {
                 self.skip_ignorable(tokens);
                 return_type = Some(self.parse_type_reference_tokens(tokens)?);
 
-                self.skip_ignorable(tokens);
-                if let Ok(token) = tokens.curr(false) {
-                    if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
-                        let _ = tokens.bump();
-                        self.skip_ignorable(tokens);
-                        error_type = Some(self.parse_type_reference_tokens(tokens)?);
-                    }
-                }
+                error_type = self.parse_optional_error_type_after_return_type(tokens)?;
             }
         }
 

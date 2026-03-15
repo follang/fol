@@ -1,4 +1,4 @@
-pro caller_forward_quoted_overload_mismatch(a: int, b: int): int : str = {
+pro caller_forward_quoted_overload_mismatch(a: int, b: int): int / str = {
     report "$make_err"(a, b);
     return 0;
 }

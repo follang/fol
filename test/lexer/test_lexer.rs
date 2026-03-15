@@ -1703,7 +1703,13 @@ mod lexer_tests {
             .iter()
             .filter(|(k, _)| matches!(k, KEYWORD::Symbol(SYMBOL::Colon)))
             .count();
-        assert_eq!(colon_count, 2, "Should tokenize both ':' separators");
+        assert_eq!(colon_count, 1, "Should tokenize the return-type ':' separator");
+        assert!(
+            significant
+                .iter()
+                .any(|(k, _)| matches!(k, KEYWORD::Symbol(SYMBOL::Root))),
+            "Should tokenize '/' as the error-type separator"
+        );
 
         assert!(
             significant

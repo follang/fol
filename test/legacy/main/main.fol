@@ -62,7 +62,7 @@ fun makeOption(): OP[int] = {
 }
 
 //function genercs
-pro[][T: gen] max(a: T, b: rut[(a: int): T]): T = {
+pro[][T: gen] max(a: T, b: rut[(a: int): T]) / T = {
     return a | a > b | b
 }
 

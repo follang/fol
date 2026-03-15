@@ -1,4 +1,4 @@
-pro caller_unknown(code: int): int : str = {
+pro caller_unknown(code: int): int / str = {
     report missing_err_source(code);
     return 0;
 }

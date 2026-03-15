@@ -1,4 +1,4 @@
-fun caller_forward_quoted_overload_ok(a: int, b: int): int : str = {
+fun caller_forward_quoted_overload_ok(a: int, b: int): int / str = {
     report "$make_err"(a, b);
     return 0;
 }

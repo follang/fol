@@ -172,14 +172,7 @@ impl AstParser {
                 self.skip_ignorable(tokens);
                 return_type = Some(self.parse_type_reference_tokens(tokens)?);
 
-                self.skip_ignorable(tokens);
-                if let Ok(token) = tokens.curr(false) {
-                    if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
-                        let _ = tokens.bump();
-                        self.skip_ignorable(tokens);
-                        error_type = Some(self.parse_type_reference_tokens(tokens)?);
-                    }
-                }
+                error_type = self.parse_optional_error_type_after_return_type(tokens)?;
             }
         }
 

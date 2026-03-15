@@ -10,15 +10,15 @@ Procedures are most common type of routines in Fol. When a procedure is "called"
 
 Procedures have side-effects, it can modifies some state variable value(s) outside its local environment, that is to say has an observable effect besides returning a value (the main effect) to the invoker of the operation. State data updated "outside" of the operation may be maintained "inside" a stateful object or a wider stateful system within which the operation is performed.
 
-Procedures can also declare a custom recoverable error type with a second `:` in the signature:
+Procedures can also declare a custom recoverable error type with `/` after the result type:
 
 ```
-pro[] write(path: str): int : io_err = {
+pro[] write(path: str): int / io_err = {
     report "permission denied";
 }
 ```
 
-The first `:` declares result type, the second `:` declares the routine error type.
+The first `:` declares the result type, and `/` declares the routine error type.
 
 ### Passing values
 

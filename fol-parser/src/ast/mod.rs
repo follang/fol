@@ -363,7 +363,7 @@ pub enum AstNode {
         args: Vec<AstNode>,
     },
 
-    /// Anonymous function expression: fun (...) : T = { ... }
+    /// Anonymous function expression: fun (...) : T / E = { ... }
     AnonymousFun {
         options: Vec<FunOption>,
         captures: Vec<String>,
@@ -374,7 +374,7 @@ pub enum AstNode {
         inquiries: Vec<AstNode>,
     },
 
-    /// Anonymous procedure expression: pro (...) : T = { ... }
+    /// Anonymous procedure expression: pro (...) : T / E = { ... }
     AnonymousPro {
         options: Vec<FunOption>,
         captures: Vec<String>,
@@ -385,7 +385,7 @@ pub enum AstNode {
         inquiries: Vec<AstNode>,
     },
 
-    /// Anonymous logical expression: log (...) : bol = { ... }
+    /// Anonymous logical expression: log (...) : bol / E = { ... }
     AnonymousLog {
         options: Vec<FunOption>,
         captures: Vec<String>,

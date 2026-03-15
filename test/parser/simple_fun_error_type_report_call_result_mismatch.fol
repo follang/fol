@@ -2,7 +2,7 @@ fun make_num(code: int): int = {
     return code;
 }
 
-fun caller_bad(code: int): int : bol = {
+fun caller_bad(code: int): int / bol = {
     report make_num(code);
     return 0;
 }

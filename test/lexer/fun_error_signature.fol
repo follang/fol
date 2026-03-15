@@ -1,1 +1,1 @@
-fun foo(...): T : E = { }
+fun foo(...): T / E = { }

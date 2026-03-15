@@ -1,4 +1,4 @@
-pro caller_forward_keyword_ok(): int : str = {
+pro caller_forward_keyword_ok(): int / str = {
     report get();
     return 0;
 }

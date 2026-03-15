@@ -945,7 +945,7 @@ fn routine_return_typing_rejects_missing_return_values_for_typed_routines() {
 fn routine_error_typing_accepts_matching_report_values() {
     let typed = typecheck_fixture_folder(&[(
         "main.fol",
-        "fun[] demo(): int : str = {\n\
+        "fun[] demo(): int / str = {\n\
              report \"bad\";\n\
              return 1;\n\
          }\n",
@@ -965,7 +965,7 @@ fn routine_error_typing_accepts_matching_report_values() {
 fn routine_error_typing_rejects_report_value_mismatches() {
     let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",
-        "fun[] demo(): int : str = {\n\
+        "fun[] demo(): int / str = {\n\
              report 1;\n\
              return 1;\n\
          }\n",
@@ -1005,7 +1005,7 @@ fn routine_error_typing_requires_declared_error_types() {
 fn routine_error_typing_rejects_missing_report_values() {
     let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",
-        "fun[] demo(): int : str = {\n\
+        "fun[] demo(): int / str = {\n\
              report;\n\
              return 1;\n\
          }\n",
@@ -1154,7 +1154,7 @@ fn control_never_typing_allows_panic_and_skips_unreachable_tails() {
 fn control_never_typing_treats_report_branches_as_early_exits() {
     let typed = typecheck_fixture_folder(&[(
         "main.fol",
-        "fun[] demo(flag: bol): int : str = {\n\
+        "fun[] demo(flag: bol): int / str = {\n\
              when(flag) {\n\
                  case(true) { report \"bad\"; }\n\
                  * { 1 }\n\
@@ -1760,7 +1760,7 @@ fn shell_typing_accepts_optional_and_error_payload_lifting() {
          fun[] maybe(): MaybeText = {\n\
              return \"ready\";\n\
          }\n\
-         fun[] fail(): int: Failure = {\n\
+         fun[] fail(): int / Failure = {\n\
              report \"broken\";\n\
          }\n",
     )]);
@@ -1938,7 +1938,7 @@ fn coercion_policy_rejects_implicit_int_float_cross_family_conversions() {
          fun[] bad_return(): int = {\n\
              return 1.5;\n\
          }\n\
-         fun[] bad_report(): int : int = {\n\
+         fun[] bad_report(): int / int = {\n\
              report 1.5;\n\
          }\n",
     )]);

@@ -1,5 +1,5 @@
 fun outer(): any = {
-    return (): int: Failure {
+    return (): int / Failure {
         return value;
     };
 }

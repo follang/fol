@@ -1,4 +1,4 @@
-pro report_expr_ok(a: int, b: int): int : num = {
+pro report_expr_ok(a: int, b: int): int / num = {
     report a + b;
     return 0;
 }

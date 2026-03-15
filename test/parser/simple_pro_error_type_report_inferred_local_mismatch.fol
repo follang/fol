@@ -1,4 +1,4 @@
-pro report_local_bad(a: int, b: int): int : bol = {
+pro report_local_bad(a: int, b: int): int / bol = {
     var err_code = a + b;
     report err_code;
     return 0;

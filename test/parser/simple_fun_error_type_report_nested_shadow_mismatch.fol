@@ -1,4 +1,4 @@
-fun nested_shadow_bad(flag: int): str : int = {
+fun nested_shadow_bad(flag: int): str / int = {
     var err: int = 0;
 
     when(flag) {

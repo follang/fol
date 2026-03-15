@@ -1,4 +1,4 @@
-fun caller_forward_single_quoted_ok(): int : str = {
+fun caller_forward_single_quoted_ok(): int / str = {
     report '$make_err'();
     return 0;
 }

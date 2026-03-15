@@ -1,6 +1,6 @@
 typ Parser: rec = { }
 
-fun caller_forward_quoted_method_ok(tool: Parser): int : str = {
+fun caller_forward_quoted_method_ok(tool: Parser): int / str = {
     report tool."$make_err"();
     return 0;
 }

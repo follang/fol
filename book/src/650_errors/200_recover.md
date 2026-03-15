@@ -5,7 +5,7 @@
 To declare routine-local custom error type, use function/procedure signature form:
 
 ```
-fun/pro name(args): ResultType : ErrorType = { ... }
+fun/pro name(args): ResultType / ErrorType = { ... }
 ```
 
 `report expr` should produce a value compatible with `ErrorType`.
@@ -15,7 +15,7 @@ The parser keeps `report` as a syntax form and leaves compatibility checks,
 forward declaration checks, and error propagation rules to later semantic work.
 
 ```fol
-fun load(path: str): int : str = {
+fun load(path: str): int / str = {
     report make_err(path)
     return 0
 }
@@ -28,7 +28,7 @@ fun make_err(path: str): str = {
 The same rule applies to receiver methods:
 
 ```fol
-fun run(tool: parser, code: int): int : str = {
+fun run(tool: parser, code: int): int / str = {
     report tool.parse_err(code)
     return 0
 }
@@ -43,7 +43,7 @@ type, that is a later semantic error rather than a parser error in the current
 front end.
 
 ```fol
-fun load_bad(path: str): int : str = {
+fun load_bad(path: str): int / str = {
     report make_code(path)
     return 0
 }

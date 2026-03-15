@@ -1,4 +1,4 @@
-fun nested_inferred_bad(flag: int): str : bol = {
+fun nested_inferred_bad(flag: int): str / bol = {
     when(flag) {
         case(1) {
             var err_msg = "missing";
