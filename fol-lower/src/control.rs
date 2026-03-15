@@ -45,6 +45,10 @@ pub enum LoweredInstrKind {
         callee: LoweredRoutineId,
         args: Vec<LoweredLocalId>,
     },
+    ConstructRecord {
+        type_id: LoweredTypeId,
+        fields: Vec<(String, LoweredLocalId)>,
+    },
     FieldAccess {
         base: LoweredLocalId,
         field: String,

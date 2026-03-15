@@ -21,6 +21,7 @@ pub(crate) struct LoweredValue {
 pub(crate) struct WorkspaceDeclIndex {
     globals: BTreeMap<(PackageIdentity, SymbolId), LoweredGlobalId>,
     routines: BTreeMap<(PackageIdentity, SymbolId), LoweredRoutineId>,
+    routine_params: BTreeMap<LoweredRoutineId, Vec<LoweredTypeId>>,
 }
 
 impl WorkspaceDeclIndex {
@@ -50,6 +51,12 @@ impl WorkspaceDeclIndex {
                 self.routines
                     .insert((package.identity.clone(), symbol_id), routine.id);
             }
+            let params = routine
+                .params
+                .iter()
+                .filter_map(|param| routine.locals.get(*param).and_then(|local| local.type_id))
+                .collect::<Vec<_>>();
+            self.routine_params.insert(routine.id, params);
         }
     }
 
@@ -67,6 +74,10 @@ impl WorkspaceDeclIndex {
         symbol_id: SymbolId,
     ) -> Option<LoweredRoutineId> {
         self.routines.get(&(identity.clone(), symbol_id)).copied()
+    }
+
+    pub(crate) fn routine_param_types(&self, routine_id: LoweredRoutineId) -> Option<&[LoweredTypeId]> {
+        self.routine_params.get(&routine_id).map(Vec::as_slice)
     }
 }
 
@@ -481,7 +492,7 @@ fn lower_body_node(
         ),
         AstNode::Return { value } => match value.as_deref() {
             Some(value) => {
-                let lowered = lower_expression(
+                let lowered = lower_expression_expected(
                     typed_package,
                     type_table,
                     checked_type_map,
@@ -490,6 +501,7 @@ fn lower_body_node(
                     cursor,
                     source_unit_id,
                     scope_id,
+                    routine_return_type(cursor, type_table),
                     value,
                 )?;
                 cursor.terminate_current_block(crate::LoweredTerminator::Return {
@@ -505,7 +517,7 @@ fn lower_body_node(
         AstNode::FunctionCall { name, args, .. } if name == "report" => {
             let lowered = match args.as_slice() {
                 [value] => Some(
-                    lower_expression(
+                    lower_expression_expected(
                         typed_package,
                         type_table,
                         checked_type_map,
@@ -514,6 +526,7 @@ fn lower_body_node(
                         cursor,
                         source_unit_id,
                         scope_id,
+                        routine_error_type(cursor, type_table),
                         value,
                     )?
                     .local_id,
@@ -604,7 +617,7 @@ fn lower_local_binding(
     cursor.routine.local_symbols.insert(symbol_id, local_id);
 
     if let Some(value) = value {
-        let lowered_value = lower_expression(
+        let lowered_value = lower_expression_expected(
             typed_package,
             type_table,
             checked_type_map,
@@ -613,6 +626,7 @@ fn lower_local_binding(
             cursor,
             source_unit_id,
             scope_id,
+            Some(type_id),
             value,
         )?;
         cursor.push_instr(
@@ -626,6 +640,71 @@ fn lower_local_binding(
     } else {
         Ok(Some(LoweredValue { local_id, type_id }))
     }
+}
+
+fn lower_record_initializer(
+    typed_package: &fol_typecheck::TypedPackage,
+    type_table: &crate::LoweredTypeTable,
+    checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
+    current_identity: &PackageIdentity,
+    decl_index: &WorkspaceDeclIndex,
+    cursor: &mut RoutineCursor<'_>,
+    source_unit_id: SourceUnitId,
+    scope_id: ScopeId,
+    expected_type: Option<LoweredTypeId>,
+    fields: &[fol_parser::ast::RecordInitField],
+) -> Result<LoweredValue, LoweringError> {
+    let Some(type_id) = expected_type else {
+        return Err(LoweringError::with_kind(
+            LoweringErrorKind::Unsupported,
+            "record initializer lowering requires an expected record type in V1",
+        ));
+    };
+    let Some(crate::LoweredType::Record { fields: expected_fields }) = type_table.get(type_id) else {
+        return Err(LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            "record initializer does not map to a lowered record runtime type",
+        ));
+    };
+
+    let mut lowered_fields = Vec::with_capacity(fields.len());
+    for field in fields {
+        let Some(field_type) = expected_fields.get(&field.name).copied() else {
+            return Err(LoweringError::with_kind(
+                LoweringErrorKind::InvalidInput,
+                format!(
+                    "record initializer field '{}' does not map to a lowered record layout",
+                    field.name
+                ),
+            ));
+        };
+        let lowered_value = lower_expression_expected(
+            typed_package,
+            type_table,
+            checked_type_map,
+            current_identity,
+            decl_index,
+            cursor,
+            source_unit_id,
+            scope_id,
+            Some(field_type),
+            &field.value,
+        )?;
+        lowered_fields.push((field.name.clone(), lowered_value.local_id));
+    }
+
+    let result_local = cursor.allocate_local(type_id, None);
+    cursor.push_instr(
+        Some(result_local),
+        LoweredInstrKind::ConstructRecord {
+            type_id,
+            fields: lowered_fields,
+        },
+    )?;
+    Ok(LoweredValue {
+        local_id: result_local,
+        type_id,
+    })
 }
 
 fn lower_when_statement(
@@ -942,6 +1021,32 @@ fn lower_expression(
     scope_id: ScopeId,
     node: &AstNode,
 ) -> Result<LoweredValue, LoweringError> {
+    lower_expression_expected(
+        typed_package,
+        type_table,
+        checked_type_map,
+        current_identity,
+        decl_index,
+        cursor,
+        source_unit_id,
+        scope_id,
+        None,
+        node,
+    )
+}
+
+fn lower_expression_expected(
+    typed_package: &fol_typecheck::TypedPackage,
+    type_table: &crate::LoweredTypeTable,
+    checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
+    current_identity: &PackageIdentity,
+    decl_index: &WorkspaceDeclIndex,
+    cursor: &mut RoutineCursor<'_>,
+    source_unit_id: SourceUnitId,
+    scope_id: ScopeId,
+    expected_type: Option<LoweredTypeId>,
+    node: &AstNode,
+) -> Result<LoweredValue, LoweringError> {
     match node {
         AstNode::Literal(literal) => {
             let type_id = literal_type_id(typed_package, checked_type_map, literal).ok_or_else(|| {
@@ -951,6 +1056,20 @@ fn lower_expression(
                 )
             })?;
             cursor.lower_literal(literal, type_id)
+        }
+        AstNode::RecordInit { fields, .. } => {
+            lower_record_initializer(
+                typed_package,
+                type_table,
+                checked_type_map,
+                current_identity,
+                decl_index,
+                cursor,
+                source_unit_id,
+                scope_id,
+                expected_type,
+                fields,
+            )
         }
         AstNode::Assignment { target, value } => {
             let lowered_value = lower_expression(
@@ -1022,10 +1141,21 @@ fn lower_expression(
                 receiver.type_id,
             )?;
             let mut lowered_args = vec![receiver.local_id];
+            let param_types = decl_index
+                .routine_param_types(callee)
+                .ok_or_else(|| {
+                    LoweringError::with_kind(
+                        LoweringErrorKind::InvalidInput,
+                        format!("method '{method}' does not retain lowered parameter types"),
+                    )
+                })?
+                .to_vec();
             lowered_args.extend(
                 args.iter()
-                    .map(|arg| {
-                        lower_expression(
+                    .enumerate()
+                    .map(|(index, arg)| {
+                        let expected = param_types.get(index + 1).copied();
+                        lower_expression_expected(
                             typed_package,
                             type_table,
                             checked_type_map,
@@ -1034,6 +1164,7 @@ fn lower_expression(
                             cursor,
                             source_unit_id,
                             scope_id,
+                            expected,
                             arg,
                         )
                         .map(|value| value.local_id)
@@ -1402,6 +1533,28 @@ fn resolve_reference_symbol<'a>(
         })
 }
 
+fn routine_return_type(
+    cursor: &RoutineCursor<'_>,
+    type_table: &crate::LoweredTypeTable,
+) -> Option<LoweredTypeId> {
+    let signature_id = cursor.routine.signature?;
+    match type_table.get(signature_id) {
+        Some(crate::LoweredType::Routine(signature)) => signature.return_type,
+        _ => None,
+    }
+}
+
+fn routine_error_type(
+    cursor: &RoutineCursor<'_>,
+    type_table: &crate::LoweredTypeTable,
+) -> Option<LoweredTypeId> {
+    let signature_id = cursor.routine.signature?;
+    match type_table.get(signature_id) {
+        Some(crate::LoweredType::Routine(signature)) => signature.error_type,
+        _ => None,
+    }
+}
+
 fn lower_function_call(
     typed_package: &fol_typecheck::TypedPackage,
     type_table: &crate::LoweredTypeTable,
@@ -1433,10 +1586,21 @@ fn lower_function_call(
             ),
         ));
     };
+    let param_types = decl_index
+        .routine_param_types(callee)
+        .ok_or_else(|| {
+            LoweringError::with_kind(
+                LoweringErrorKind::InvalidInput,
+                format!("call target '{display_name}' does not retain lowered parameter types"),
+            )
+        })?
+        .to_vec();
     let lowered_args = args
         .iter()
-        .map(|arg| {
-            lower_expression(
+        .enumerate()
+        .map(|(index, arg)| {
+            let expected = param_types.get(index).copied();
+            lower_expression_expected(
                 typed_package,
                 type_table,
                 checked_type_map,
@@ -1445,6 +1609,7 @@ fn lower_function_call(
                 cursor,
                 source_unit_id,
                 scope_id,
+                expected,
                 arg,
             )
             .map(|value| value.local_id)
@@ -2561,5 +2726,57 @@ mod tests {
             None
         );
         assert_eq!(routine.body_result, Some(crate::LoweredLocalId(3)));
+    }
+
+    #[test]
+    fn record_initializer_lowering_constructs_records_in_binding_and_call_contexts() {
+        let fixture = std::env::temp_dir().join(format!(
+            "fol_lower_record_init_{}.fol",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system clock should be monotonic enough for tmp names")
+                .as_nanos()
+        ));
+        std::fs::write(
+            &fixture,
+            "typ User: { name: str, count: int }\nfun[] echo(user: User): User = { return user }\nfun[] main(): User = {\n    var current: User = { name = \"ok\", count = 1 }\n    return echo({ name = \"next\", count = 2 })\n}",
+        )
+        .expect("should write lowering record fixture");
+
+        let mut stream = FileStream::from_file(fixture.to_str().expect("utf8 temp path"))
+            .expect("Should open lowering fixture");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let syntax = parser
+            .parse_package(&mut lexer)
+            .expect("Lowering fixture should parse");
+        let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+        let typed = Typechecker::new()
+            .check_resolved_workspace(resolved)
+            .expect("Lowering fixture should typecheck");
+        let lowered = crate::LoweringSession::new(typed)
+            .lower_workspace()
+            .expect("record initializer lowering should succeed");
+
+        let routine = lowered
+            .entry_package()
+            .routine_decls
+            .values()
+            .find(|routine| routine.name == "main")
+            .expect("main routine should exist");
+        let construct_types = routine
+            .instructions
+            .iter()
+            .filter_map(|instr| match &instr.kind {
+                LoweredInstrKind::ConstructRecord { type_id, fields } => {
+                    Some((*type_id, fields.len()))
+                }
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+
+        assert_eq!(construct_types.len(), 2);
+        assert_eq!(construct_types[0], construct_types[1]);
+        assert_eq!(construct_types[0].1, 2);
     }
 }

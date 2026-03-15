@@ -539,7 +539,7 @@ This plan is complete only when all of the following are true:
 
 ### Phase 6. Aggregate, Container, And Shell Lowering
 
-- `6.1` `pending` Lower record initialization into explicit constructor instructions.
+- `6.1` `done` Lower record initialization into explicit constructor instructions.
 - `6.2` `pending` Lower entry construction into explicit tag/payload instructions.
 - `6.3` `pending` Lower array, vector, and sequence literals.
 - `6.4` `pending` Lower set and map literals.
