@@ -29,6 +29,7 @@ impl LoweringSession {
         let mut packages = BTreeMap::new();
         let mut type_table = LoweredTypeTable::new();
         let mut lowered_type_cache = BTreeMap::new();
+        let mut next_global_index = 0;
 
         for (index, package) in self.typed.packages().enumerate() {
             let mut lowered = LoweredPackage::new(LoweredPackageId(index), package.identity.clone());
@@ -81,6 +82,7 @@ impl LoweringSession {
             decls::lower_alias_declarations(package, &mut lowered)?;
             decls::lower_record_declarations(package, &mut lowered)?;
             decls::lower_entry_declarations(package, &mut lowered)?;
+            decls::lower_global_declarations(package, &mut lowered, &mut next_global_index)?;
             packages.insert(package.identity.clone(), lowered);
         }
 

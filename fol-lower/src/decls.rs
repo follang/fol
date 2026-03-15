@@ -1,6 +1,6 @@
 use crate::{
-    LoweredFieldLayout, LoweredPackage, LoweredTypeDecl, LoweredTypeDeclKind,
-    LoweredVariantLayout, LoweringError, LoweringErrorKind, LoweringResult,
+    LoweredFieldLayout, LoweredGlobal, LoweredPackage, LoweredTypeDecl,
+    LoweredTypeDeclKind, LoweredVariantLayout, LoweringError, LoweringErrorKind, LoweringResult,
 };
 use fol_parser::ast::{AstNode, TypeDefinition};
 use fol_resolver::{SourceUnitId, SymbolId, SymbolKind};
@@ -197,6 +197,53 @@ pub fn lower_entry_declarations(
     }
 }
 
+pub fn lower_global_declarations(
+    typed_package: &fol_typecheck::TypedPackage,
+    lowered_package: &mut LoweredPackage,
+    next_global_index: &mut usize,
+) -> LoweringResult<()> {
+    let mut errors = Vec::new();
+
+    for (source_unit_index, source_unit) in typed_package.program.resolved().syntax().source_units.iter().enumerate() {
+        let source_unit_id = SourceUnitId(source_unit_index);
+        for item in &source_unit.items {
+            let (name, kind, mutable) = match &item.node {
+                AstNode::VarDecl { name, .. } => (name.as_str(), SymbolKind::ValueBinding, true),
+                AstNode::LabDecl { name, .. } => (name.as_str(), SymbolKind::LabelBinding, false),
+                _ => continue,
+            };
+
+            match find_local_symbol_id(&typed_package.program, source_unit_id, kind, name) {
+                Some(symbol_id) => match lower_global_decl(
+                    typed_package,
+                    lowered_package,
+                    symbol_id,
+                    source_unit_id,
+                    name,
+                    mutable,
+                    next_global_index,
+                ) {
+                    Ok(global) => {
+                        lowered_package.globals.push(global.id);
+                        lowered_package.global_decls.insert(global.id, global);
+                    }
+                    Err(error) => errors.push(error),
+                },
+                None => errors.push(LoweringError::with_kind(
+                    LoweringErrorKind::InvalidInput,
+                    format!("top-level binding '{name}' does not retain a resolved symbol"),
+                )),
+            }
+        }
+    }
+
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
+    }
+}
+
 fn lower_symbol_signature(
     typed_package: &fol_typecheck::TypedPackage,
     lowered_package: &LoweredPackage,
@@ -380,6 +427,47 @@ fn lower_entry_decl(
     })
 }
 
+fn lower_global_decl(
+    typed_package: &fol_typecheck::TypedPackage,
+    lowered_package: &LoweredPackage,
+    symbol_id: SymbolId,
+    source_unit_id: SourceUnitId,
+    name: &str,
+    mutable: bool,
+    next_global_index: &mut usize,
+) -> Result<LoweredGlobal, LoweringError> {
+    let checked_type = typed_package
+        .program
+        .typed_symbol(symbol_id)
+        .and_then(|typed_symbol| typed_symbol.declared_type)
+        .ok_or_else(|| {
+            LoweringError::with_kind(
+                LoweringErrorKind::InvalidInput,
+                format!("global symbol {} does not retain a checked type", symbol_id.0),
+            )
+        })?;
+    let type_id = lowered_package
+        .checked_type_map
+        .get(&checked_type)
+        .copied()
+        .ok_or_else(|| {
+            LoweringError::with_kind(
+                LoweringErrorKind::InvalidInput,
+                format!("global symbol {} does not map to a lowered type", symbol_id.0),
+            )
+        })?;
+    let global = LoweredGlobal {
+        id: crate::LoweredGlobalId(*next_global_index),
+        symbol_id,
+        source_unit_id,
+        name: name.to_string(),
+        type_id,
+        mutable,
+    };
+    *next_global_index += 1;
+    Ok(global)
+}
+
 fn routine_name(node: &AstNode) -> Option<&str> {
     match node {
         AstNode::FunDecl { name, .. }
@@ -411,8 +499,8 @@ fn find_local_symbol_id(
 #[cfg(test)]
 mod tests {
     use super::{
-        lower_alias_declarations, lower_entry_declarations, lower_record_declarations,
-        lower_routine_signatures,
+        lower_alias_declarations, lower_entry_declarations, lower_global_declarations,
+        lower_record_declarations, lower_routine_signatures,
     };
     use crate::{
         types::LoweredType, LoweredBuiltinType, LoweredFieldLayout, LoweredPackage,
@@ -706,6 +794,61 @@ mod tests {
                     ),
                 ]),
             })
+        );
+    }
+
+    #[test]
+    fn declaration_lowering_records_top_level_globals_with_storage_types() {
+        let fixture = std::env::temp_dir().join(format!(
+            "fol_lower_globals_{}.fol",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system clock should be monotonic enough for tmp names")
+                .as_nanos()
+        ));
+        std::fs::write(&fixture, "var count: int = 1\nlab label: str = \"ok\"")
+            .expect("should write lowering global fixture");
+
+        let mut stream = FileStream::from_file(fixture.to_str().expect("utf8 temp path"))
+            .expect("Should open lowering fixture");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let syntax = parser
+            .parse_package(&mut lexer)
+            .expect("Lowering fixture should parse");
+        let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+        let typed = Typechecker::new()
+            .check_resolved_workspace(resolved)
+            .expect("Lowering fixture should typecheck");
+        let lowered_workspace = crate::LoweringSession::new(typed.clone())
+            .lower_workspace()
+            .expect("workspace lowering should succeed");
+        let typed_package = typed.entry_package();
+        let mut lowered_package =
+            LoweredPackage::new(crate::LoweredPackageId(0), typed_package.identity.clone());
+        lowered_package.checked_type_map = lowered_workspace.entry_package().checked_type_map.clone();
+        let mut next_global_index = 0;
+
+        lower_global_declarations(typed_package, &mut lowered_package, &mut next_global_index)
+            .expect("top-level globals should lower cleanly");
+
+        assert_eq!(lowered_package.globals.len(), 2);
+        let globals = lowered_package
+            .globals
+            .iter()
+            .map(|id| lowered_package.global_decls.get(id).expect("global id should resolve"))
+            .collect::<Vec<_>>();
+        assert_eq!(globals[0].name, "count");
+        assert!(globals[0].mutable);
+        assert_eq!(
+            lowered_workspace.type_table().get(globals[0].type_id),
+            Some(&LoweredType::Builtin(LoweredBuiltinType::Int))
+        );
+        assert_eq!(globals[1].name, "label");
+        assert!(!globals[1].mutable);
+        assert_eq!(
+            lowered_workspace.type_table().get(globals[1].type_id),
+            Some(&LoweredType::Builtin(LoweredBuiltinType::Str))
         );
     }
 }

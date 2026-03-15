@@ -20,9 +20,9 @@ pub use ids::{
     LoweredRoutineId, LoweredTypeId,
 };
 pub use model::{
-    LoweredPackage, LoweredSourceMap, LoweredSourceMapEntry, LoweredSourceSymbol,
-    LoweredSourceUnit, LoweredSymbolOwnership, LoweredTypeDecl, LoweredTypeDeclKind,
-    LoweredFieldLayout, LoweredVariantLayout, LoweredWorkspace,
+    LoweredGlobal, LoweredPackage, LoweredSourceMap, LoweredSourceMapEntry,
+    LoweredSourceSymbol, LoweredSourceUnit, LoweredSymbolOwnership, LoweredTypeDecl,
+    LoweredTypeDeclKind, LoweredFieldLayout, LoweredVariantLayout, LoweredWorkspace,
 };
 pub use session::LoweringSession;
 pub use types::{

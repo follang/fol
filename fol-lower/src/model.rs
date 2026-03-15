@@ -50,6 +50,16 @@ pub struct LoweredTypeDecl {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LoweredGlobal {
+    pub id: LoweredGlobalId,
+    pub symbol_id: SymbolId,
+    pub source_unit_id: SourceUnitId,
+    pub name: String,
+    pub type_id: LoweredTypeId,
+    pub mutable: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LoweredSourceUnit {
     pub source_unit_id: SourceUnitId,
     pub path: String,
@@ -101,6 +111,7 @@ pub struct LoweredPackage {
     pub checked_type_map: BTreeMap<CheckedTypeId, LoweredTypeId>,
     pub routine_signatures: BTreeMap<SymbolId, LoweredTypeId>,
     pub type_decls: BTreeMap<SymbolId, LoweredTypeDecl>,
+    pub global_decls: BTreeMap<LoweredGlobalId, LoweredGlobal>,
 }
 
 impl LoweredPackage {
@@ -117,6 +128,7 @@ impl LoweredPackage {
             checked_type_map: BTreeMap::new(),
             routine_signatures: BTreeMap::new(),
             type_decls: BTreeMap::new(),
+            global_decls: BTreeMap::new(),
         }
     }
 }
