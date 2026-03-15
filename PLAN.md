@@ -917,7 +917,7 @@ not full long-term compiler completion.
 #### 3.5 done
 - add tests locking deterministic name mangling
 
-#### 3.6
+#### 3.6 done
 - add tests locking package/namespace layout planning
 
 ## 39. Phase 4: Rust Crate Skeleton Emission

@@ -138,7 +138,7 @@ fn sanitize_segment(raw: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::{plan_generated_crate_layout, plan_namespace_layouts, plan_package_layouts};
-    use crate::{testing::sample_lowered_workspace, BackendSession};
+    use crate::{testing::{distinct_namespaces, sample_lowered_workspace}, BackendSession};
 
     #[test]
     fn package_layout_plans_follow_package_graph_order() {
@@ -199,5 +199,39 @@ mod tests {
                 "src/packages/pkg__local__shared/util.rs",
             ]
         );
+    }
+
+    #[test]
+    fn layout_planning_covers_all_known_packages_and_namespaces_without_duplicates() {
+        let workspace = sample_lowered_workspace();
+        let expected_namespaces = distinct_namespaces(&workspace);
+        let session = BackendSession::new(workspace);
+
+        let package_plans = plan_package_layouts(&session);
+        let namespace_plans = plan_namespace_layouts(&session);
+        let crate_plan = plan_generated_crate_layout(&session);
+
+        let planned_namespaces = namespace_plans
+            .iter()
+            .map(|plan| plan.full_namespace.clone())
+            .collect::<std::collections::BTreeSet<_>>();
+        let planned_package_dirs = package_plans
+            .iter()
+            .map(|plan| plan.relative_dir.clone())
+            .collect::<std::collections::BTreeSet<_>>();
+        let namespace_files = crate_plan
+            .namespace_file_paths
+            .iter()
+            .cloned()
+            .collect::<std::collections::BTreeSet<_>>();
+
+        assert_eq!(package_plans.len(), session.package_graph().len());
+        assert_eq!(planned_package_dirs.len(), package_plans.len());
+        assert_eq!(planned_namespaces, expected_namespaces);
+        assert_eq!(namespace_files.len(), namespace_plans.len());
+        assert!(namespace_files.contains("src/packages/pkg__entry__app/root.rs"));
+        assert!(namespace_files.contains("src/packages/pkg__entry__app/math.rs"));
+        assert!(namespace_files.contains("src/packages/pkg__local__shared/root.rs"));
+        assert!(namespace_files.contains("src/packages/pkg__local__shared/util.rs"));
     }
 }
