@@ -14,6 +14,13 @@ pub trait FolEchoFormat {
     fn fol_echo_format(&self) -> String;
 }
 
+fn join_echo<I>(items: I) -> String
+where
+    I: IntoIterator<Item = String>,
+{
+    items.into_iter().collect::<Vec<_>>().join(", ")
+}
+
 pub fn render_echo<T: FolEchoFormat + ?Sized>(value: &T) -> String {
     value.fol_echo_format()
 }
@@ -50,6 +57,49 @@ impl FolEchoFormat for char {
 impl FolEchoFormat for FolStr {
     fn fol_echo_format(&self) -> String {
         self.to_string()
+    }
+}
+
+impl<T: FolEchoFormat, const N: usize> FolEchoFormat for FolArray<T, N> {
+    fn fol_echo_format(&self) -> String {
+        format!("arr[{}]", join_echo(self.iter().map(render_echo)))
+    }
+}
+
+impl<T: FolEchoFormat> FolEchoFormat for FolVec<T> {
+    fn fol_echo_format(&self) -> String {
+        format!(
+            "vec[{}]",
+            join_echo(self.as_slice().iter().map(render_echo))
+        )
+    }
+}
+
+impl<T: FolEchoFormat> FolEchoFormat for FolSeq<T> {
+    fn fol_echo_format(&self) -> String {
+        format!(
+            "seq[{}]",
+            join_echo(self.as_slice().iter().map(render_echo))
+        )
+    }
+}
+
+impl<T: FolEchoFormat + Ord> FolEchoFormat for FolSet<T> {
+    fn fol_echo_format(&self) -> String {
+        format!("set{{{}}}", join_echo(self.as_set().iter().map(render_echo)))
+    }
+}
+
+impl<K: FolEchoFormat + Ord, V: FolEchoFormat> FolEchoFormat for FolMap<K, V> {
+    fn fol_echo_format(&self) -> String {
+        format!(
+            "map{{{}}}",
+            join_echo(
+                self.as_map()
+                    .iter()
+                    .map(|(key, value)| format!("{}: {}", render_echo(key), render_echo(value)))
+            )
+        )
     }
 }
 
@@ -146,5 +196,20 @@ mod tests {
         assert_eq!(render_echo(&'x'), "x");
         assert_eq!(render_echo(&text), "Ada");
         assert_eq!(echo(text.clone()), text);
+    }
+
+    #[test]
+    fn runtime_echo_formats_current_v1_container_families() {
+        let array: FolArray<i64, 3> = [1, 2, 3];
+        let vector = FolVec::from_items(vec![1, 2, 3]);
+        let sequence = FolSeq::from_items(vec![1, 2, 3]);
+        let set = FolSet::from_items(vec![3, 1, 2]);
+        let map = FolMap::from_pairs(vec![(FolStr::from("lin"), 2), (FolStr::from("ada"), 1)]);
+
+        assert_eq!(render_echo(&array), "arr[1, 2, 3]");
+        assert_eq!(render_echo(&vector), "vec[1, 2, 3]");
+        assert_eq!(render_echo(&sequence), "seq[1, 2, 3]");
+        assert_eq!(render_echo(&set), "set{1, 2, 3}");
+        assert_eq!(render_echo(&map), "map{ada: 1, lin: 2}");
     }
 }

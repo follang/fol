@@ -817,7 +817,7 @@ The implementation should land in many small slices.
 #### 4.2 done
 - implement `echo(...)` for builtin scalars and strings
 
-#### 4.3
+#### 4.3 done
 - implement `echo(...)` for containers
 
 #### 4.4
