@@ -801,6 +801,101 @@ mod integration_tests {
     }
 
     #[test]
+    fn test_cli_dump_lowered_succeeds_for_intrinsic_boolean_calls() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_dump_lowered_intrinsic_boolean");
+        fs::create_dir_all(&temp_root).expect("Should create temp intrinsic boolean fixture");
+        let fixture = temp_root.join("main.fol");
+        fs::write(
+            &fixture,
+            concat!(
+                "fun[] main(flag: bol): bol = {\n",
+                "    var inverted: bol = .not(flag)\n",
+                "    return .not(inverted)\n",
+                "}\n",
+            ),
+        )
+        .expect("Should write intrinsic boolean fixture");
+
+        let output = run_fol(&[
+            "--dump-lowered",
+            fixture
+                .to_str()
+                .expect("Temporary intrinsic boolean fixture path should be valid UTF-8"),
+        ]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        assert!(
+            output.status.success(),
+            "CLI should dump lowered output for intrinsic boolean calls, got status {:?} and output:\n{}",
+            output.status.code(),
+            stdout,
+        );
+        assert!(
+            stdout.matches("IntrinsicCall").count() >= 2,
+            "Lowered dump should retain explicit intrinsic calls for '.not', got:\n{}",
+            stdout,
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_cli_json_intrinsic_boolean_failures_keep_structured_fields() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_json_intrinsic_boolean_failures");
+        fs::create_dir_all(&temp_root).expect("Should create temp intrinsic boolean failure fixture");
+        let fixture = temp_root.join("main.fol");
+        fs::write(
+            &fixture,
+            concat!(
+                "fun[] main(): bol = {\n",
+                "    return .not(1)\n",
+                "}\n",
+            ),
+        )
+        .expect("Should write intrinsic boolean failure fixture");
+
+        let output = run_fol(&[
+            "--json",
+            fixture
+                .to_str()
+                .expect("Temporary intrinsic boolean failure fixture path should be valid UTF-8"),
+        ]);
+
+        assert!(
+            !output.status.success(),
+            "CLI should fail for invalid intrinsic boolean calls",
+        );
+
+        let json = parse_cli_json(&output);
+        let diagnostics = json["diagnostics"]
+            .as_array()
+            .expect("CLI JSON output should expose diagnostics");
+        let boolean_error = diagnostics.iter().find(|diagnostic| {
+            diagnostic["message"]
+                .as_str()
+                .map(|message| message.contains(".not(...) expects one boolean operand"))
+                .unwrap_or(false)
+        });
+
+        assert!(
+            boolean_error.is_some(),
+            "Expected intrinsic boolean diagnostic in CLI JSON output, got: {json}"
+        );
+        assert!(
+            boolean_error
+                .and_then(|diagnostic| diagnostic["location"].as_object())
+                .is_some(),
+            "Expected intrinsic boolean diagnostic to keep a structured location, got: {json}"
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
     fn test_cli_folder_compile_succeeds_with_package_parser() {
         use std::fs;
 
