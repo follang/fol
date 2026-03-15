@@ -1256,7 +1256,7 @@ Track these in the registry, but do not implement them in the first batch:
   into an “intrinsics” page with the actual current subset.
 - `13.2` `done` Sync the relevant type/sugar/routine pages to the registry
   contract.
-- `13.3` `pending` Update [`README.md`](./README.md) and [`PROGRESS.md`](./PROGRESS.md)
+- `13.3` `done` Update [`README.md`](./README.md) and [`PROGRESS.md`](./PROGRESS.md)
   to describe `fol-intrinsics` as shared compiler infrastructure.
 - `13.4` `pending` Rewrite this file into a completion record only after at
   least one meaningful intrinsic family is real end to end.
