@@ -877,7 +877,7 @@ not full long-term compiler completion.
 #### 1.4 done
 - add backend config model
 
-#### 1.5
+#### 1.5 done
 - add artifact/result model
 
 #### 1.6

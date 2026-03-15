@@ -2,6 +2,7 @@
 
 mod config;
 mod error;
+mod model;
 
 pub const CRATE_NAME: &str = "fol-backend";
 
@@ -20,3 +21,6 @@ pub fn crate_name() -> &'static str {
 
 pub use config::{BackendConfig, BackendMode, BackendTarget};
 pub use error::{BackendError, BackendErrorKind};
+pub use model::{BackendArtifact, EmittedRustFile};
+
+pub type BackendResult<T> = Result<T, BackendError>;

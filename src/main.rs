@@ -466,6 +466,28 @@ fn backend_config_surface_smoke_compiles() {
 }
 
 #[test]
+fn backend_artifact_surface_smoke_compiles() {
+    let artifact = fol_backend::BackendArtifact::RustSourceCrate {
+        root: "target/fol-backend/demo".to_string(),
+        files: vec![fol_backend::EmittedRustFile {
+            path: "src/main.rs".to_string(),
+            module_name: "main".to_string(),
+        }],
+    };
+
+    match artifact {
+        fol_backend::BackendArtifact::RustSourceCrate { root, files } => {
+            assert_eq!(root, "target/fol-backend/demo");
+            assert_eq!(files.len(), 1);
+            assert_eq!(files[0].module_name, "main");
+        }
+        fol_backend::BackendArtifact::CompiledBinary { .. } => {
+            panic!("expected emitted rust crate artifact")
+        }
+    }
+}
+
+#[test]
 fn intrinsics_public_model_smoke_compiles() {
     assert_eq!(fol_intrinsics::IntrinsicId::new(1).index(), 1);
     assert_eq!(
