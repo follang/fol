@@ -9,6 +9,7 @@ use crate::{
     error::{RuntimeError, RuntimeErrorKind},
     value::FolInt,
 };
+use std::fmt::Display;
 
 pub use map::FolMap;
 pub use set::FolSet;
@@ -67,6 +68,50 @@ pub fn lookup_map<'a, K: Ord, V>(
         .ok_or_else(|| RuntimeError::new(RuntimeErrorKind::InvalidInput, "missing map key"))
 }
 
+fn join_rendered<I>(items: I) -> String
+where
+    I: IntoIterator<Item = String>,
+{
+    items.into_iter().collect::<Vec<_>>().join(", ")
+}
+
+pub fn render_array<T: Display, const N: usize>(values: &FolArray<T, N>) -> String {
+    format!("arr[{}]", join_rendered(values.iter().map(|value| value.to_string())))
+}
+
+pub fn render_vec<T: Display>(values: &FolVec<T>) -> String {
+    format!(
+        "vec[{}]",
+        join_rendered(values.as_slice().iter().map(|value| value.to_string()))
+    )
+}
+
+pub fn render_seq<T: Display>(values: &FolSeq<T>) -> String {
+    format!(
+        "seq[{}]",
+        join_rendered(values.as_slice().iter().map(|value| value.to_string()))
+    )
+}
+
+pub fn render_set<T: Display + Ord>(values: &FolSet<T>) -> String {
+    format!(
+        "set{{{}}}",
+        join_rendered(values.as_set().iter().map(|value| value.to_string()))
+    )
+}
+
+pub fn render_map<K: Display + Ord, V: Display>(values: &FolMap<K, V>) -> String {
+    format!(
+        "map{{{}}}",
+        join_rendered(
+            values
+                .as_map()
+                .iter()
+                .map(|(key, value)| format!("{key}: {value}"))
+        )
+    )
+}
+
 pub fn module_name() -> &'static str {
     "containers"
 }
@@ -74,7 +119,8 @@ pub fn module_name() -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::{
-        index_array, index_seq, index_vec, lookup_map, FolArray, FolMap, FolSeq, FolSet, FolVec,
+        index_array, index_seq, index_vec, lookup_map, render_array, render_map, render_seq,
+        render_set, render_vec, FolArray, FolMap, FolSeq, FolSet, FolVec,
     };
     use crate::error::RuntimeErrorKind;
 
@@ -147,5 +193,20 @@ mod tests {
         let failure = index_vec(&vector, -1).expect_err("negative index should fail");
         assert_eq!(failure.kind(), RuntimeErrorKind::InvalidInput);
         assert_eq!(failure.message(), "index out of bounds: the len is 3 but the index is -1");
+    }
+
+    #[test]
+    fn container_render_helpers_cover_all_current_v1_families() {
+        let array: FolArray<i64, 3> = [1, 2, 3];
+        let vector = FolVec::from_items(vec![1, 2, 3]);
+        let sequence = FolSeq::from_items(vec![1, 2, 3]);
+        let set = FolSet::from_items(vec![3, 1, 2]);
+        let map = FolMap::from_pairs(vec![("lin", 2), ("ada", 1)]);
+
+        assert_eq!(render_array(&array), "arr[1, 2, 3]");
+        assert_eq!(render_vec(&vector), "vec[1, 2, 3]");
+        assert_eq!(render_seq(&sequence), "seq[1, 2, 3]");
+        assert_eq!(render_set(&set), "set{1, 2, 3}");
+        assert_eq!(render_map(&map), "map{ada: 1, lin: 2}");
     }
 }

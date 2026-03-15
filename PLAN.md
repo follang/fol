@@ -806,7 +806,7 @@ The implementation should land in many small slices.
 #### 3.8 done
 - add length helpers for all supported current `V1` families
 
-#### 3.9
+#### 3.9 done
 - add formatting tests for all container families
 
 ### Phase 4: Runtime Hooks And Intrinsic Support
