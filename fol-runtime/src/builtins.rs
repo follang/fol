@@ -31,6 +31,10 @@ pub fn echo<T: FolEchoFormat>(value: T) -> T {
     value
 }
 
+pub fn len<T: FolLength + ?Sized>(value: &T) -> FolInt {
+    value.fol_length()
+}
+
 impl FolEchoFormat for i64 {
     fn fol_echo_format(&self) -> String {
         self.to_string()
@@ -161,7 +165,7 @@ pub fn module_name() -> &'static str {
 
 #[cfg(test)]
 mod tests {
-    use super::{echo, render_echo, FolEchoFormat, FolLength};
+    use super::{echo, len, render_echo, FolEchoFormat, FolLength};
     use crate::{
         containers::{FolArray, FolMap, FolSeq, FolSet, FolVec},
         shell::{FolError, FolOption},
@@ -263,5 +267,22 @@ mod tests {
             render_echo(&nested_map),
             "map{left: err(seq[1, 2, 3]), right: err(seq[4, 5])}"
         );
+    }
+
+    #[test]
+    fn runtime_len_helper_covers_current_v1_supported_families() {
+        let text = FolStr::from("Ada");
+        let array: FolArray<i64, 3> = [1, 2, 3];
+        let vector = FolVec::from_items(vec![1, 2]);
+        let sequence = FolSeq::from_items(vec![1, 2, 3, 4]);
+        let set = FolSet::from_items(vec![3, 1, 2]);
+        let map = FolMap::from_pairs(vec![(FolStr::from("ada"), 1), (FolStr::from("lin"), 2)]);
+
+        assert_eq!(len(&text), 3);
+        assert_eq!(len(&array), 3);
+        assert_eq!(len(&vector), 2);
+        assert_eq!(len(&sequence), 4);
+        assert_eq!(len(&set), 3);
+        assert_eq!(len(&map), 2);
     }
 }

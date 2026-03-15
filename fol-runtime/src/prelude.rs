@@ -2,7 +2,7 @@
 
 pub use crate::{crate_name, CRATE_NAME};
 pub use crate::abi::{check_recoverable, recoverable_succeeded, FolRecover};
-pub use crate::builtins::{echo, render_echo, FolEchoFormat, FolLength};
+pub use crate::builtins::{echo, len, render_echo, FolEchoFormat, FolLength};
 pub use crate::containers::{
     index_array, index_seq, index_vec, lookup_map, render_array, render_map, render_seq,
     render_set, render_vec, FolArray, FolMap, FolSeq, FolSet, FolVec,

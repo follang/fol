@@ -826,7 +826,7 @@ The implementation should land in many small slices.
 #### 4.5 done
 - add hook tests for nested values
 
-#### 4.6
+#### 4.6 done
 - freeze `.len(...)` helper contract against current accepted families
 
 ### Phase 5: Aggregate Support Contract
