@@ -1210,7 +1210,7 @@ Track these in the registry, but do not implement them in the first batch:
   - explicit unsupported until a later conversion plan
 - `9.3` `done` If still deferred, route all cast surfaces through the
   intrinsic registry and emit one stable diagnostic family.
-- `9.4` `pending` Add tests proving cast diagnostics mention intrinsic intent,
+- `9.4` `done` Add tests proving cast diagnostics mention intrinsic intent,
   not generic operator failure.
 
 ### Phase 10. Existing Keyword Intrinsic Alignment

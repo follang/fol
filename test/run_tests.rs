@@ -1152,6 +1152,72 @@ mod integration_tests {
     }
 
     #[test]
+    fn test_cli_json_cast_intrinsic_failures_keep_structured_fields() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_json_cast_intrinsic_failures");
+        fs::create_dir_all(&temp_root)
+            .expect("Should create temp cast intrinsic failure fixture");
+        let fixture = temp_root.join("main.fol");
+        fs::write(
+            &fixture,
+            concat!(
+                "var text: str = \"label\"\n",
+                "var target: int = 0\n",
+                "fun[] main(value: int): int = {\n",
+                "    return value as text\n",
+                "}\n",
+                "fun[] side(value: int): int = {\n",
+                "    return value cast target\n",
+                "}\n",
+            ),
+        )
+        .expect("Should write cast intrinsic failure fixture");
+
+        let output = run_fol(&[
+            "--json",
+            fixture
+                .to_str()
+                .expect("Temporary cast intrinsic fixture path should be valid UTF-8"),
+        ]);
+
+        assert!(
+            !output.status.success(),
+            "CLI should fail for deferred cast intrinsic surfaces during the V1 milestone",
+        );
+
+        let json = parse_cli_json(&output);
+        let diagnostics = json["diagnostics"]
+            .as_array()
+            .expect("CLI JSON output should expose diagnostics");
+
+        for expected in [
+            "operator 'as' is not implemented in the current V1 compiler milestone",
+            "operator 'cast' is not implemented in the current V1 compiler milestone",
+        ] {
+            let diagnostic = diagnostics.iter().find(|diagnostic| {
+                diagnostic["message"]
+                    .as_str()
+                    .map(|message| message.contains(expected))
+                    .unwrap_or(false)
+            });
+
+            assert!(
+                diagnostic.is_some(),
+                "Expected cast intrinsic diagnostic containing '{expected}', got: {json}"
+            );
+            assert!(
+                diagnostic
+                    .and_then(|diagnostic| diagnostic["location"].as_object())
+                    .is_some(),
+                "Expected cast intrinsic diagnostic '{expected}' to keep a structured location, got: {json}"
+            );
+        }
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
     fn test_cli_folder_compile_succeeds_with_package_parser() {
         use std::fs;
 
