@@ -1,5 +1,7 @@
 //! Recoverable ABI and entrypoint-facing runtime contracts.
 
+use crate::value::FolBool;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FolRecover<T, E> {
     Ok(T),
@@ -81,6 +83,18 @@ impl<T, E> From<FolRecover<T, E>> for Result<T, E> {
     }
 }
 
+/// Runtime helper for the `check(...)` intrinsic.
+///
+/// Returns `true` when the recoverable value represents a failure path.
+pub fn check_recoverable<T, E>(value: &FolRecover<T, E>) -> FolBool {
+    value.is_err()
+}
+
+/// Explicit success-side mirror of [`check_recoverable`].
+pub fn recoverable_succeeded<T, E>(value: &FolRecover<T, E>) -> FolBool {
+    value.is_ok()
+}
+
 pub fn module_name() -> &'static str {
     "abi"
 }
@@ -114,5 +128,16 @@ mod tests {
         assert_eq!(failure.as_ref(), FolRecover::Err(&"bad-input"));
         assert_eq!(Result::<i64, &str>::from(success), Ok(7));
         assert_eq!(Result::<i64, &str>::from(failure), Err("bad-input"));
+    }
+
+    #[test]
+    fn recoverable_inspection_helpers_freeze_check_polarity() {
+        let success = FolRecover::<i64, &str>::ok(7);
+        let failure = FolRecover::<i64, &str>::err("bad-input");
+
+        assert!(!super::check_recoverable(&success));
+        assert!(super::recoverable_succeeded(&success));
+        assert!(super::check_recoverable(&failure));
+        assert!(!super::recoverable_succeeded(&failure));
     }
 }

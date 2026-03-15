@@ -755,7 +755,7 @@ The implementation should land in many small slices.
 - add recoverable runtime type `FolRecover<T, E>`
 - freeze `Ok/Err` mapping and helpers
 
-#### 1.4
+#### 1.4 done
 - add helper functions for `check(...)`-style error inspection
 
 #### 1.5
