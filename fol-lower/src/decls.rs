@@ -1075,4 +1075,76 @@ mod tests {
             vec![Some("left".to_string()), Some("right".to_string())]
         );
     }
+
+    #[test]
+    fn declaration_lowering_keeps_local_and_imported_packages_separate() {
+        use std::fs;
+        use std::time::{SystemTime, UNIX_EPOCH};
+
+        let stamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock should be monotonic enough for tmp path")
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!("fol_lower_decl_parity_{stamp}"));
+        let app_dir = root.join("app");
+        let shared_dir = root.join("shared");
+        fs::create_dir_all(&app_dir).expect("should create app dir");
+        fs::create_dir_all(&shared_dir).expect("should create shared dir");
+        fs::write(
+            app_dir.join("main.fol"),
+            "use shared: loc = {\"../shared\"}\nfun[] main(): int = { return answer() }",
+        )
+        .expect("should write app entry");
+        fs::write(
+            shared_dir.join("lib.fol"),
+            "ali Counter: int\nvar[exp] base: Counter = 7\nfun[exp] answer(): Counter = { return base }",
+        )
+        .expect("should write shared library");
+
+        let mut stream = FileStream::from_folder(app_dir.to_str().expect("utf8 temp path"))
+            .expect("should open folder fixture");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let syntax = parser
+            .parse_package(&mut lexer)
+            .expect("Lowering folder fixture should parse");
+        let resolved = resolve_workspace(syntax).expect("Lowering folder fixture should resolve");
+        let typed = Typechecker::new()
+            .check_resolved_workspace(resolved)
+            .expect("Lowering folder fixture should typecheck");
+
+        let lowered = crate::LoweringSession::new(typed)
+            .lower_workspace()
+            .expect("declaration lowering should succeed across imported packages");
+
+        let app_package = lowered
+            .packages()
+            .find(|package| package.identity.display_name == "app")
+            .expect("entry package should exist");
+        let shared_package = lowered
+            .packages()
+            .find(|package| package.identity.display_name == "shared")
+            .expect("imported package should exist");
+
+        assert_eq!(app_package.global_decls.len(), 0);
+        assert_eq!(app_package.type_decls.len(), 0);
+        assert_eq!(app_package.routine_decls.len(), 1);
+        assert_eq!(shared_package.type_decls.len(), 1);
+        assert_eq!(shared_package.global_decls.len(), 1);
+        assert_eq!(shared_package.routine_decls.len(), 1);
+        assert!(
+            app_package
+                .symbol_ownership
+                .values()
+                .any(|ownership| ownership.mounted_from.is_some()),
+            "entry package should retain mounted imported symbol ownership"
+        );
+        assert!(
+            shared_package
+                .symbol_ownership
+                .values()
+                .all(|ownership| ownership.mounted_from.is_none()),
+            "owning package should not lower imported shells as local declarations"
+        );
+    }
 }
