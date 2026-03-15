@@ -35,7 +35,7 @@
             const path_to_root = "../../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../../searchindex-b39b9665.js";
+            window.path_to_searchindex_js = "../../searchindex-696213b3.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../../toc-114bd97f.js"></script>
@@ -184,12 +184,12 @@
 <li>Any data computed and RETURNED by the procedure is used in place of the procedure in the original line of code.</li>
 </ul>
 <p>Procedures have side-effects, it can modifies some state variable value(s) outside its local environment, that is to say has an observable effect besides returning a value (the main effect) to the invoker of the operation. State data updated “outside” of the operation may be maintained “inside” a stateful object or a wider stateful system within which the operation is performed.</p>
-<p>Procedures can also declare a custom recoverable error type with a second <code>:</code> in the signature:</p>
-<pre><code>pro[] write(path: str): int : io_err = {
+<p>Procedures can also declare a custom recoverable error type with <code>/</code> after the result type:</p>
+<pre><code>pro[] write(path: str): int / io_err = {
     report "permission denied";
 }
 </code></pre>
-<p>The first <code>:</code> declares result type, the second <code>:</code> declares the routine error type.</p>
+<p>The first <code>:</code> declares the result type, and <code>/</code> declares the routine error type.</p>
 <h3 id="passing-values"><a class="header" href="#passing-values">Passing values</a></h3>
 <p>The semantics for passing a value to a procedure are similar to those for assigning a value to a variable. Passing a variable to a procedure will move or copy, just as assignment does. If the procedure is stack-based, it will automatically copy the value. If it is heap-based, it will move the value.</p>
 <pre><code>pro[] modifyValue(someStr: str) = {

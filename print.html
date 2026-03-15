@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-b39b9665.js";
+            window.path_to_searchindex_js = "searchindex-696213b3.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-114bd97f.js"></script>
@@ -2047,12 +2047,12 @@ pro main(): int = {
 <li>Any data computed and RETURNED by the procedure is used in place of the procedure in the original line of code.</li>
 </ul>
 <p>Procedures have side-effects, it can modifies some state variable value(s) outside its local environment, that is to say has an observable effect besides returning a value (the main effect) to the invoker of the operation. State data updated “outside” of the operation may be maintained “inside” a stateful object or a wider stateful system within which the operation is performed.</p>
-<p>Procedures can also declare a custom recoverable error type with a second <code>:</code> in the signature:</p>
-<pre><code>pro[] write(path: str): int : io_err = {
+<p>Procedures can also declare a custom recoverable error type with <code>/</code> after the result type:</p>
+<pre><code>pro[] write(path: str): int / io_err = {
     report "permission denied";
 }
 </code></pre>
-<p>The first <code>:</code> declares result type, the second <code>:</code> declares the routine error type.</p>
+<p>The first <code>:</code> declares the result type, and <code>/</code> declares the routine error type.</p>
 <h3 id="passing-values"><a class="header" href="#passing-values">Passing values</a></h3>
 <p>The semantics for passing a value to a procedure are similar to those for assigning a value to a variable. Passing a variable to a procedure will move or copy, just as assignment does. If the procedure is stack-based, it will automatically copy the value. If it is heap-based, it will move the value.</p>
 <pre><code>pro[] modifyValue(someStr: str) = {
@@ -2177,12 +2177,12 @@ pro transferOwnership((aString: str)): str = {              // $aString comes in
 <p>Thus a pure function is a computational analogue of a mathematical function. Pure functions are declared with <code>fun[]</code></p>
 <pre><code>fun[] add(el1, el2: int[64]): int[64] = { result = el1 + el2 }
 </code></pre>
-<p>When a function has a custom recoverable error type, use a second <code>:</code> in the signature:</p>
-<pre><code>fun[] read(path: str): str : io_err = {
+<p>When a function has a custom recoverable error type, use <code>/</code> after the result type:</p>
+<pre><code>fun[] read(path: str): str / io_err = {
     report "file not found";
 }
 </code></pre>
-<p>The first <code>:</code> declares result type, the second <code>:</code> declares the routine error type.
+<p>The first <code>:</code> declares the result type, and <code>/</code> declares the routine error type.
 {{% notice warn %}}</p>
 <p>Functions in FOL are lazy-initialized.</p>
 <p>{{% /notice %}}</p>
@@ -2331,7 +2331,7 @@ var msg: str = tool.parse_msg(10)
     return "bad-input";
 }
 
-fun run(tool: parser, code: int): int : str = {
+fun run(tool: parser, code: int): int / str = {
     report tool.parse_err(code)
     return 0
 }
@@ -3195,9 +3195,9 @@ errors that can be propagated or handled, typically associated with <code>report
 </ul>
 <h2 id="current-compiler-diagnostics"><a class="header" href="#current-compiler-diagnostics">Current compiler diagnostics</a></h2>
 <p>The current compiler surface already guarantees a few reporting behaviors even
-before full semantic analysis is implemented:</p>
+before a backend exists:</p>
 <ul>
-<li>parser, package-loading, and resolver failures keep exact primary
+<li>parser, package-loading, resolver, typecheck, and lowering failures keep exact primary
 <code>file:line:column</code> locations</li>
 <li>human-readable diagnostics render source snippets and underline the primary span</li>
 <li>related sites such as duplicate declarations or ambiguity candidates can appear
@@ -3259,13 +3259,13 @@ routine 'main' panicked at 'NOT_AN_EVEN'
 <h1 id="recoverable-errors"><a class="header" href="#recoverable-errors">Recoverable errors</a></h1>
 <p><code>report</code> can be used to handle recoverable errors. As <a href="/docs/spec/functions#return">discussed here</a>, FOL uses two variables <code>result</code> nd <code>error</code> in return of each routine. As name implies, <code>result</code> represents the type of the value that will be returned in a success case, and <code>error</code> represents the type of the error <code>err[]</code> that will be returned in a failure case.</p>
 <p>To declare routine-local custom error type, use function/procedure signature form:</p>
-<pre><code>fun/pro name(args): ResultType : ErrorType = { ... }
+<pre><code>fun/pro name(args): ResultType / ErrorType = { ... }
 </code></pre>
 <p><code>report expr</code> should produce a value compatible with <code>ErrorType</code>.</p>
 <p>The current hardening-phase front end does not type-check <code>report</code> expressions.
 The parser keeps <code>report</code> as a syntax form and leaves compatibility checks,
 forward declaration checks, and error propagation rules to later semantic work.</p>
-<pre><code class="language-fol">fun load(path: str): int : str = {
+<pre><code class="language-fol">fun load(path: str): int / str = {
     report make_err(path)
     return 0
 }
@@ -3275,7 +3275,7 @@ fun make_err(path: str): str = {
 }
 </code></pre>
 <p>The same rule applies to receiver methods:</p>
-<pre><code class="language-fol">fun run(tool: parser, code: int): int : str = {
+<pre><code class="language-fol">fun run(tool: parser, code: int): int / str = {
     report tool.parse_err(code)
     return 0
 }
@@ -3287,7 +3287,7 @@ fun (parser)parse_err(code: int): str = {
 <p>If the forward-declared callee return type is incompatible with the routine error
 type, that is a later semantic error rather than a parser error in the current
 front end.</p>
-<pre><code class="language-fol">fun load_bad(path: str): int : str = {
+<pre><code class="language-fol">fun load_bad(path: str): int / str = {
     report make_code(path)
     return 0
 }
@@ -3343,6 +3343,8 @@ when it wants to surface important information</li>
 <li><code>fol-parser</code></li>
 <li><code>fol-package</code></li>
 <li><code>fol-resolver</code></li>
+<li><code>fol-typecheck</code></li>
+<li><code>fol-lower</code></li>
 <li><code>fol-diagnostics</code></li>
 </ul>
 <p>That means errors are no longer just loose strings printed from one place.
@@ -3385,6 +3387,8 @@ caused the failure.</p>
 <li>a parser error at the token that made a declaration invalid</li>
 <li>a package-loading error at the control file or package root that failed</li>
 <li>a resolver error at the unresolved identifier or ambiguous reference</li>
+<li>a typecheck error at the expression or declaration whose types do not match</li>
+<li>a lowering error at the typed surface that has no current <code>V1</code> lowering rule</li>
 </ul>
 <h2 id="related-locations"><a class="header" href="#related-locations">Related locations</a></h2>
 <p>Some compiler failures are not well described by one location alone.</p>
@@ -3522,6 +3526,8 @@ structured fields are first-class rather than reverse-engineered from text.</p>
 <li>parser</li>
 <li>package loading</li>
 <li>resolver</li>
+<li>type checking</li>
+<li>lowering</li>
 </ul>
 <p>That means diagnostics are already strong across:</p>
 <ul>
@@ -3531,9 +3537,17 @@ structured fields are first-class rather than reverse-engineered from text.</p>
 <li>unresolved names</li>
 <li>duplicate names</li>
 <li>ambiguous references</li>
+<li>type mismatches and unsupported semantic surfaces inside <code>V1</code></li>
+<li>unsupported lowered <code>V1</code> surfaces that still stop before any backend exists</li>
 </ul>
-<p>Later phases, especially type checking, will add more semantic diagnostics on
-top of the same reporting infrastructure.</p>
+<p>This is the important boundary for the current compiler stage:</p>
+<ul>
+<li>the compiler can now parse, resolve, type-check, and lower the supported <code>V1</code>
+subset</li>
+<li>diagnostics already cover failures from each of those stages</li>
+<li>the project still does not promise a finished backend, linker, or runtime in
+this chapter</li>
+</ul>
 <h2 id="stable-codes"><a class="header" href="#stable-codes">Stable codes</a></h2>
 <p>The current diagnostics model carries stable producer-owned codes.</p>
 <p>The important idea is not the exact prefix letters.

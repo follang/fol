@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-b39b9665.js";
+            window.path_to_searchindex_js = "../searchindex-696213b3.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-114bd97f.js"></script>
@@ -177,13 +177,13 @@
                         <h1 id="recoverable-errors"><a class="header" href="#recoverable-errors">Recoverable errors</a></h1>
 <p><code>report</code> can be used to handle recoverable errors. As <a href="/docs/spec/functions/#return">discussed here</a>, FOL uses two variables <code>result</code> nd <code>error</code> in return of each routine. As name implies, <code>result</code> represents the type of the value that will be returned in a success case, and <code>error</code> represents the type of the error <code>err[]</code> that will be returned in a failure case.</p>
 <p>To declare routine-local custom error type, use function/procedure signature form:</p>
-<pre><code>fun/pro name(args): ResultType : ErrorType = { ... }
+<pre><code>fun/pro name(args): ResultType / ErrorType = { ... }
 </code></pre>
 <p><code>report expr</code> should produce a value compatible with <code>ErrorType</code>.</p>
 <p>The current hardening-phase front end does not type-check <code>report</code> expressions.
 The parser keeps <code>report</code> as a syntax form and leaves compatibility checks,
 forward declaration checks, and error propagation rules to later semantic work.</p>
-<pre><code class="language-fol">fun load(path: str): int : str = {
+<pre><code class="language-fol">fun load(path: str): int / str = {
     report make_err(path)
     return 0
 }
@@ -193,7 +193,7 @@ fun make_err(path: str): str = {
 }
 </code></pre>
 <p>The same rule applies to receiver methods:</p>
-<pre><code class="language-fol">fun run(tool: parser, code: int): int : str = {
+<pre><code class="language-fol">fun run(tool: parser, code: int): int / str = {
     report tool.parse_err(code)
     return 0
 }
@@ -205,7 +205,7 @@ fun (parser)parse_err(code: int): str = {
 <p>If the forward-declared callee return type is incompatible with the routine error
 type, that is a later semantic error rather than a parser error in the current
 front end.</p>
-<pre><code class="language-fol">fun load_bad(path: str): int : str = {
+<pre><code class="language-fol">fun load_bad(path: str): int / str = {
     report make_code(path)
     return 0
 }

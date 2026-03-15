@@ -35,7 +35,7 @@
             const path_to_root = "../../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../../searchindex-b39b9665.js";
+            window.path_to_searchindex_js = "../../searchindex-696213b3.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../../toc-114bd97f.js"></script>
@@ -183,12 +183,12 @@
 <p>Thus a pure function is a computational analogue of a mathematical function. Pure functions are declared with <code>fun[]</code></p>
 <pre><code>fun[] add(el1, el2: int[64]): int[64] = { result = el1 + el2 }
 </code></pre>
-<p>When a function has a custom recoverable error type, use a second <code>:</code> in the signature:</p>
-<pre><code>fun[] read(path: str): str : io_err = {
+<p>When a function has a custom recoverable error type, use <code>/</code> after the result type:</p>
+<pre><code>fun[] read(path: str): str / io_err = {
     report "file not found";
 }
 </code></pre>
-<p>The first <code>:</code> declares result type, the second <code>:</code> declares the routine error type.
+<p>The first <code>:</code> declares the result type, and <code>/</code> declares the routine error type.
 {{% notice warn %}}</p>
 <p>Functions in FOL are lazy-initialized.</p>
 <p>{{% /notice %}}</p>

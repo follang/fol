@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-b39b9665.js";
+            window.path_to_searchindex_js = "../searchindex-696213b3.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-114bd97f.js"></script>
@@ -192,9 +192,9 @@ errors that can be propagated or handled, typically associated with <code>report
 </ul>
 <h2 id="current-compiler-diagnostics"><a class="header" href="#current-compiler-diagnostics">Current compiler diagnostics</a></h2>
 <p>The current compiler surface already guarantees a few reporting behaviors even
-before full semantic analysis is implemented:</p>
+before a backend exists:</p>
 <ul>
-<li>parser, package-loading, and resolver failures keep exact primary
+<li>parser, package-loading, resolver, typecheck, and lowering failures keep exact primary
 <code>file:line:column</code> locations</li>
 <li>human-readable diagnostics render source snippets and underline the primary span</li>
 <li>related sites such as duplicate declarations or ambiguity candidates can appear

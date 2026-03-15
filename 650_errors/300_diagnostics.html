@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-b39b9665.js";
+            window.path_to_searchindex_js = "../searchindex-696213b3.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-114bd97f.js"></script>
@@ -191,6 +191,8 @@ when it wants to surface important information</li>
 <li><code>fol-parser</code></li>
 <li><code>fol-package</code></li>
 <li><code>fol-resolver</code></li>
+<li><code>fol-typecheck</code></li>
+<li><code>fol-lower</code></li>
 <li><code>fol-diagnostics</code></li>
 </ul>
 <p>That means errors are no longer just loose strings printed from one place.
@@ -233,6 +235,8 @@ caused the failure.</p>
 <li>a parser error at the token that made a declaration invalid</li>
 <li>a package-loading error at the control file or package root that failed</li>
 <li>a resolver error at the unresolved identifier or ambiguous reference</li>
+<li>a typecheck error at the expression or declaration whose types do not match</li>
+<li>a lowering error at the typed surface that has no current <code>V1</code> lowering rule</li>
 </ul>
 <h2 id="related-locations"><a class="header" href="#related-locations">Related locations</a></h2>
 <p>Some compiler failures are not well described by one location alone.</p>
@@ -370,6 +374,8 @@ structured fields are first-class rather than reverse-engineered from text.</p>
 <li>parser</li>
 <li>package loading</li>
 <li>resolver</li>
+<li>type checking</li>
+<li>lowering</li>
 </ul>
 <p>That means diagnostics are already strong across:</p>
 <ul>
@@ -379,9 +385,17 @@ structured fields are first-class rather than reverse-engineered from text.</p>
 <li>unresolved names</li>
 <li>duplicate names</li>
 <li>ambiguous references</li>
+<li>type mismatches and unsupported semantic surfaces inside <code>V1</code></li>
+<li>unsupported lowered <code>V1</code> surfaces that still stop before any backend exists</li>
 </ul>
-<p>Later phases, especially type checking, will add more semantic diagnostics on
-top of the same reporting infrastructure.</p>
+<p>This is the important boundary for the current compiler stage:</p>
+<ul>
+<li>the compiler can now parse, resolve, type-check, and lower the supported <code>V1</code>
+subset</li>
+<li>diagnostics already cover failures from each of those stages</li>
+<li>the project still does not promise a finished backend, linker, or runtime in
+this chapter</li>
+</ul>
 <h2 id="stable-codes"><a class="header" href="#stable-codes">Stable codes</a></h2>
 <p>The current diagnostics model carries stable producer-owned codes.</p>
 <p>The important idea is not the exact prefix letters.
