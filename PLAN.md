@@ -1099,8 +1099,16 @@ Track these in the registry, but do not implement them in the first batch:
     arity, availability, surface, and lowering mode
   - root smoke coverage and crate-local tests now prove the comparison entries
     stay canonical and keep the `ne -> nq` alias stable
-- `3.2` `pending` Freeze accepted `V1` operand families for comparison
+- `3.2` `done` Freeze accepted `V1` operand families for comparison
   intrinsics.
+  Current state:
+  - `fol-intrinsics` now exposes a stable comparison operand contract:
+    - equality-style intrinsics accept two comparable scalar operands
+    - ordered-style intrinsics accept two ordered scalar operands
+  - the selection API now accepts parsed intrinsic names instead of requiring
+    compile-time string literals, so the compiler can select registry entries
+    directly from syntax
+  - root smoke coverage and crate-local tests now lock both contracts
 - `3.3` `pending` Typecheck `.eq/.nq` through the registry instead of string
   branches.
 - `3.4` `pending` Typecheck `.lt/.gt/.ge/.le` through the registry instead of

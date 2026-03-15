@@ -6,16 +6,16 @@ pub enum IntrinsicSelectionErrorKind {
     WrongSurface,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IntrinsicSelectionError {
     pub kind: IntrinsicSelectionErrorKind,
     pub surface: IntrinsicSurface,
-    pub name: &'static str,
+    pub name: String,
 }
 
 pub fn select_intrinsic(
     surface: IntrinsicSurface,
-    name: &'static str,
+    name: &str,
 ) -> Result<&'static IntrinsicEntry, IntrinsicSelectionError> {
     if let Some(entry) = reserved_intrinsic_for_surface(surface, name) {
         return Ok(entry);
@@ -34,13 +34,13 @@ pub fn select_intrinsic(
         return Err(IntrinsicSelectionError {
             kind: IntrinsicSelectionErrorKind::WrongSurface,
             surface,
-            name,
+            name: name.to_string(),
         });
     }
 
     Err(IntrinsicSelectionError {
         kind: IntrinsicSelectionErrorKind::UnknownName,
         surface,
-        name,
+        name: name.to_string(),
     })
 }

@@ -3,6 +3,7 @@
 mod model;
 mod catalog;
 mod diagnostics;
+mod families;
 mod registry;
 mod select;
 mod validate;
@@ -20,6 +21,7 @@ pub use diagnostics::{
     unknown_intrinsic_message, unsupported_intrinsic_message, wrong_arity_message,
     wrong_type_family_message, wrong_version_message,
 };
+pub use families::{comparison_operand_contract, ComparisonOperandContract};
 pub use registry::{IntrinsicArity, IntrinsicEntry, IntrinsicLoweringMode};
 pub use select::{select_intrinsic, IntrinsicSelectionError, IntrinsicSelectionErrorKind};
 pub use validate::{validate_intrinsic_registry, RegistryValidationError, RegistryValidationErrorKind};
@@ -184,6 +186,41 @@ mod tests {
         assert_eq!(
             unsupported_intrinsic_message(de_alloc),
             ".de_alloc(...) is not implemented in the current V3 compiler milestone"
+        );
+    }
+
+    #[test]
+    fn comparison_operand_contracts_stay_stable_for_v1_registry_entries() {
+        let eq = intrinsic_by_canonical_name("eq").expect("eq should exist");
+        let nq = intrinsic_by_canonical_name("nq").expect("nq should exist");
+        let lt = intrinsic_by_canonical_name("lt").expect("lt should exist");
+        let gt = intrinsic_by_canonical_name("gt").expect("gt should exist");
+        let len = intrinsic_by_canonical_name("len").expect("len should exist");
+
+        assert_eq!(
+            comparison_operand_contract(eq),
+            Some(ComparisonOperandContract::EqualityScalar)
+        );
+        assert_eq!(
+            comparison_operand_contract(nq),
+            Some(ComparisonOperandContract::EqualityScalar)
+        );
+        assert_eq!(
+            comparison_operand_contract(lt),
+            Some(ComparisonOperandContract::OrderedScalar)
+        );
+        assert_eq!(
+            comparison_operand_contract(gt),
+            Some(ComparisonOperandContract::OrderedScalar)
+        );
+        assert_eq!(comparison_operand_contract(len), None);
+        assert_eq!(
+            ComparisonOperandContract::EqualityScalar.expected_operands(),
+            "two comparable scalar operands"
+        );
+        assert_eq!(
+            ComparisonOperandContract::OrderedScalar.expected_operands(),
+            "two ordered scalar operands"
         );
     }
 

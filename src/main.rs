@@ -640,4 +640,16 @@ fn intrinsics_comparison_registry_smoke_compiles() {
         fol_intrinsics::intrinsic_by_alias("ne").map(|entry| entry.name),
         Some("nq")
     );
+
+    let eq = fol_intrinsics::intrinsic_by_canonical_name("eq").expect("eq should exist");
+    let lt = fol_intrinsics::intrinsic_by_canonical_name("lt").expect("lt should exist");
+
+    assert_eq!(
+        fol_intrinsics::comparison_operand_contract(eq),
+        Some(fol_intrinsics::ComparisonOperandContract::EqualityScalar)
+    );
+    assert_eq!(
+        fol_intrinsics::comparison_operand_contract(lt),
+        Some(fol_intrinsics::ComparisonOperandContract::OrderedScalar)
+    );
 }
