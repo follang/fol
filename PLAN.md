@@ -751,7 +751,7 @@ The implementation should land in many small slices.
 - add `FolStr`
 - implement literal conversion and equality/order/display behavior
 
-#### 1.3
+#### 1.3 done
 - add recoverable runtime type `FolRecover<T, E>`
 - freeze `Ok/Err` mapping and helpers
 
