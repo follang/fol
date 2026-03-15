@@ -848,7 +848,7 @@ not full long-term compiler completion.
 
 ## 35. Phase 0: Contract Freeze
 
-#### 0.1
+#### 0.1 done
 - replace the closed runtime record in `PLAN.md` with this backend plan
 
 #### 0.2
