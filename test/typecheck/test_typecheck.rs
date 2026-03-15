@@ -2396,6 +2396,36 @@ fn intrinsic_boolean_typing_accepts_not_for_bool_values() {
 }
 
 #[test]
+fn intrinsic_boolean_typing_rejects_wrong_arity_and_non_boolean_operands() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] bad_arity(): bol = {\n\
+             return .not();\n\
+         }\n\
+         fun[] bad_type(): bol = {\n\
+             return .not(1);\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error.message().contains(".not(...) expects exactly 1 argument(s) but got 0")
+        }),
+        "Expected wrong-arity .not diagnostic, got: {errors:?}"
+    );
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error
+                    .message()
+                    .contains(".not(...) expects one boolean operand but got 'Builtin(Int)'")
+        }),
+        "Expected non-boolean .not diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
 fn intrinsic_comparison_typing_covers_full_v1_scalar_matrix() {
     let typed = typecheck_fixture_folder(&[(
         "main.fol",
