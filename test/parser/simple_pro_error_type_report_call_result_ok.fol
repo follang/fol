@@ -2,7 +2,7 @@ pro make_err(code: int): str = {
     return "err";
 }
 
-pro caller_ok(code: int): int : str = {
+pro caller_ok(code: int): int / str = {
     report make_err(code);
     return 0;
 }

@@ -1,4 +1,4 @@
-pro caller_forward_keyword_overload_ok(a: int, b: int): int : str = {
+pro caller_forward_keyword_overload_ok(a: int, b: int): int / str = {
     report get(a, b);
     return 0;
 }

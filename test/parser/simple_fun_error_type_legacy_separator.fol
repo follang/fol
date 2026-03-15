@@ -1,0 +1,3 @@
+fun read_data(path: str): str : io_err = {
+    return path
+}

@@ -1,4 +1,4 @@
-fun caller_forward_overload_bad(a: int): int : str = {
+fun caller_forward_overload_bad(a: int): int / str = {
     report make_err(a);
     return 0;
 }

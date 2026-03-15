@@ -23,6 +23,7 @@ mod typecheck {
 #[cfg(test)]
 mod integration_tests {
     use serde_json::Value;
+    use std::path::{Path, PathBuf};
     use std::process::Command;
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -52,6 +53,124 @@ mod integration_tests {
             .find('{')
             .expect("CLI JSON output should contain a JSON object");
         serde_json::from_str(&stdout[json_start..]).expect("CLI JSON output should stay valid")
+    }
+
+    fn write_combined_lowering_repro_fixture(root: &Path) -> PathBuf {
+        let fixture = root.join("main.fol");
+        std::fs::write(
+            &fixture,
+            concat!(
+                "var enabled: bol = true\n",
+                "var default_name: str = \"Ada\"\n",
+                "var low_count: int = 1\n",
+                "var high_count: int = 7\n",
+                "typ NameTag: rec = {\n",
+                "    label: str;\n",
+                "    code: int\n",
+                "}\n",
+                "typ Audit: rec = {\n",
+                "    active: bol;\n",
+                "    marker: NameTag\n",
+                "}\n",
+                "typ User: rec = {\n",
+                "    name: str;\n",
+                "    count: int;\n",
+                "    audit: Audit\n",
+                "}\n",
+                "fun[] build_tag(): NameTag = {\n",
+                "    return { label = \"stable\", code = high_count }\n",
+                "}\n",
+                "fun[] build_user(flag: bol): User = {\n",
+                "    return {\n",
+                "        name = default_name,\n",
+                "        count = high_count,\n",
+                "        audit = {\n",
+                "            active = flag,\n",
+                "            marker = build_tag(),\n",
+                "        },\n",
+                "    }\n",
+                "}\n",
+                "fun[] choose_count(flag: bol): int = {\n",
+                "    when(flag) {\n",
+                "        case(true) { high_count }\n",
+                "        * { low_count }\n",
+                "    }\n",
+                "}\n",
+                "fun[] main(flag: bol): int = {\n",
+                "    var current: User = build_user(flag)\n",
+                "    var names: seq[str] = {\"Ada\", \"Lin\"}\n",
+                "    var counts: map[str, int] = {{\"ada\", 1}, {\"lin\", 2}}\n",
+                "    loop(flag) {\n",
+                "        break\n",
+                "    }\n",
+                "    when(flag) {\n",
+                "        case(true) { return current.audit.marker.code }\n",
+                "        * { return counts[\"lin\"] }\n",
+                "    }\n",
+                "}\n",
+            ),
+        )
+        .expect("Should write combined lowering repro fixture");
+        fixture
+    }
+
+    fn write_parameter_scope_lowering_fixture(root: &Path) -> PathBuf {
+        let fixture = root.join("main.fol");
+        std::fs::write(
+            &fixture,
+            concat!(
+                "fun[] choose(flag: bol): int = {\n",
+                "    when(flag) {\n",
+                "        case(true) { 1 }\n",
+                "        * { 0 }\n",
+                "    }\n",
+                "}\n",
+                "fun[] echo(flag: bol): bol = {\n",
+                "    return flag\n",
+                "}\n",
+                "fun[] main(flag: bol): int = {\n",
+                "    when(echo(flag)) {\n",
+                "        case(true) { return choose(flag) }\n",
+                "        * { return 0 }\n",
+                "    }\n",
+                "}\n",
+            ),
+        )
+        .expect("Should write parameter-scope lowering fixture");
+        fixture
+    }
+
+    fn write_container_lowering_fixture(root: &Path) -> PathBuf {
+        let fixture = root.join("main.fol");
+        std::fs::write(
+            &fixture,
+            concat!(
+                "fun[] main(): int = {\n",
+                "    var names: seq[str] = {\"Ada\", \"Lin\"}\n",
+                "    var counts: map[str, int] = {{\"ada\", 1}, {\"lin\", 2}}\n",
+                "    return counts[\"lin\"]\n",
+                "}\n",
+            ),
+        )
+        .expect("Should write container lowering fixture");
+        fixture
+    }
+
+    fn write_early_return_when_fixture(root: &Path) -> PathBuf {
+        let fixture = root.join("main.fol");
+        std::fs::write(
+            &fixture,
+            concat!(
+                "fun[] main(flag: bol): int = {\n",
+                "    when(flag) {\n",
+                "        case(true) { return 7 }\n",
+                "        * { return 3 }\n",
+                "    }\n",
+                "}\n",
+            ),
+        )
+        .expect("Should write early-return when lowering fixture");
+        fixture
     }
 
     #[test]
@@ -448,6 +567,144 @@ mod integration_tests {
     }
 
     #[test]
+    fn test_cli_dump_lowered_succeeds_for_loc_import_graphs() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_dump_lowered_loc");
+        let shared_root = temp_root.join("shared");
+        let app_root = temp_root.join("app");
+        fs::create_dir_all(&shared_root).expect("Should create the shared fixture directory");
+        fs::create_dir_all(&app_root).expect("Should create the app fixture directory");
+        fs::write(shared_root.join("lib.fol"), "var[exp] answer: int = 42;\n")
+            .expect("Should write the shared export fixture");
+        fs::write(
+            app_root.join("main.fol"),
+            "use shared: loc = {\"../shared\"};\nfun[] main(): int = {\n    return answer;\n}\n",
+        )
+        .expect("Should write the loc import fixture");
+
+        let output = run_fol(&[
+            "--dump-lowered",
+            app_root
+                .to_str()
+                .expect("Temporary app fixture path should be valid UTF-8"),
+        ]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        assert!(
+            output.status.success(),
+            "CLI should dump lowered output for loc-import graphs, got status {:?} and output:\n{}",
+            output.status.code(),
+            stdout,
+        );
+        assert!(stdout.contains("workspace entry=app"));
+        assert!(stdout.contains("package app"));
+        assert!(stdout.contains("package shared"));
+        assert!(stdout.contains("entry-candidates"));
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_cli_dump_lowered_succeeds_for_std_import_graphs() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_dump_lowered_std");
+        let std_root = temp_root.join("std");
+        let app_root = temp_root.join("app");
+        fs::create_dir_all(std_root.join("fmt"))
+            .expect("Should create the standard-library fixture directory");
+        fs::create_dir_all(&app_root)
+            .expect("Should create the importing package root fixture directory");
+        fs::write(std_root.join("fmt/value.fol"), "var[exp] answer: int = 42;\n")
+            .expect("Should write the standard-library export fixture");
+        fs::write(
+            app_root.join("main.fol"),
+            "use fmt: std = {fmt};\nfun[] main(): int = {\n    return answer;\n}\n",
+        )
+        .expect("Should write the std import fixture");
+
+        let output = run_fol(&[
+            "--dump-lowered",
+            "--std-root",
+            std_root
+                .to_str()
+                .expect("Temporary std-root fixture path should be valid UTF-8"),
+            app_root
+                .to_str()
+                .expect("Temporary app fixture path should be valid UTF-8"),
+        ]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        assert!(
+            output.status.success(),
+            "CLI should dump lowered output for std-import graphs, got status {:?} and output:\n{}",
+            output.status.code(),
+            stdout,
+        );
+        assert!(stdout.contains("workspace entry=app"));
+        assert!(stdout.contains("package app"));
+        assert!(stdout.contains("package fmt"));
+        assert!(stdout.contains("entry-candidates"));
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_cli_dump_lowered_succeeds_for_pkg_import_graphs() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_dump_lowered_pkg");
+        let store_root = temp_root.join("store");
+        let app_root = temp_root.join("app");
+        fs::create_dir_all(store_root.join("json"))
+            .expect("Should create the package-store fixture directory");
+        fs::create_dir_all(&app_root)
+            .expect("Should create the importing package root fixture directory");
+        fs::write(
+            store_root.join("json/package.yaml"),
+            "name: json\nversion: 1.0.0\n",
+        )
+        .expect("Should write the installed package metadata fixture");
+        fs::create_dir_all(store_root.join("json/src"))
+            .expect("Should create the installed package export root fixture");
+        fs::write(store_root.join("json/build.fol"), "def root: loc = \"src\";\n")
+            .expect("Should write the installed package build fixture");
+        fs::write(store_root.join("json/src/lib.fol"), "var[exp] answer: int = 42;\n")
+            .expect("Should write the installed package export fixture");
+        fs::write(
+            app_root.join("main.fol"),
+            "use json: pkg = {json};\nfun[] main(): int = {\n    return answer;\n}\n",
+        )
+        .expect("Should write the pkg import fixture");
+
+        let output = run_fol(&[
+            "--dump-lowered",
+            "--package-store-root",
+            store_root
+                .to_str()
+                .expect("Temporary package-store fixture path should be valid UTF-8"),
+            app_root
+                .to_str()
+                .expect("Temporary app fixture path should be valid UTF-8"),
+        ]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        assert!(
+            output.status.success(),
+            "CLI should dump lowered output for pkg-import graphs, got status {:?} and output:\n{}",
+            output.status.code(),
+            stdout,
+        );
+        assert!(stdout.contains("workspace entry=app"));
+        assert!(stdout.contains("package app"));
+        assert!(stdout.contains("package json"));
+        assert!(stdout.contains("entry-candidates"));
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
     fn test_cli_folder_compile_succeeds_with_package_parser() {
         use std::fs;
 
@@ -508,6 +765,223 @@ mod integration_tests {
 
         fs::remove_dir_all(&temp_root).ok();
     }
+
+    #[test]
+    fn test_cli_lowering_failures_surface_human_diagnostics() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_lowering_failure_human");
+        fs::create_dir_all(&temp_root).expect("Should create temp lowering failure fixture dir");
+        let fixture = temp_root.join("main.fol");
+        fs::write(&fixture, "fun[] main(): int = {\n    return 1 + 2;\n}\n")
+            .expect("Should write lowering failure fixture");
+
+        let output = run_fol(&[fixture
+            .to_str()
+            .expect("CLI lowering failure fixture path should be utf-8")]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        assert!(
+            !output.status.success(),
+            "CLI should fail lowering on unsupported lowered V1 surfaces, got status {:?} and output:\n{}",
+            output.status.code(),
+            stdout
+        );
+        assert!(stdout.contains("LoweringUnsupported"));
+        assert!(stdout.contains("binary operator lowering for 'add'"));
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_cli_lowering_repro_program_now_succeeds_end_to_end() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_lowering_repro_boundary");
+        fs::create_dir_all(&temp_root).expect("Should create temp lowering repro fixture dir");
+        let fixture = write_combined_lowering_repro_fixture(&temp_root);
+
+        let output = run_fol(&[fixture
+            .to_str()
+            .expect("CLI lowering repro fixture path should be utf-8")]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        assert!(
+            output.status.success(),
+            "CLI should compile the combined lowering repro now, got status {:?} and output:\n{}\n{}",
+            output.status.code(),
+            stdout,
+            stderr,
+        );
+        assert!(
+            stdout.contains("Compilation successful"),
+            "Combined repro should compile cleanly through lowering, got stdout:\n{}\n\nstderr:\n{}",
+            stdout,
+            stderr,
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_cli_dump_lowered_combined_repro_stays_stable_and_inspectable() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_lowering_repro_dump");
+        fs::create_dir_all(&temp_root).expect("Should create temp lowering dump fixture dir");
+        write_combined_lowering_repro_fixture(&temp_root);
+
+        let output = run_fol(&[
+            "--dump-lowered",
+            temp_root
+                .to_str()
+                .expect("CLI lowering dump fixture path should be utf-8"),
+        ]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        assert!(
+            output.status.success(),
+            "CLI should dump lowered output for the repaired combined repro, got status {:?} and output:\n{}",
+            output.status.code(),
+            stdout,
+        );
+        assert!(stdout.contains("workspace entry="));
+        assert!(stdout.contains("package"));
+        assert!(stdout.contains("type-decl User"));
+        assert!(stdout.contains("routine r1 build_user"));
+        assert!(stdout.contains("routine r3 main"));
+        assert!(stdout.contains("params [l0]"));
+        assert!(stdout.contains("ConstructLinear { kind: Sequence"));
+        assert!(stdout.contains("ConstructMap"));
+        assert!(stdout.contains("FieldAccess { base:"));
+        assert!(stdout.contains("IndexAccess { container:"));
+        assert!(stdout.contains("entry-candidates"));
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_cli_lowering_parameter_scope_regression_now_succeeds() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_lowering_parameter_scope");
+        fs::create_dir_all(&temp_root).expect("Should create temp parameter regression fixture dir");
+        let fixture = write_parameter_scope_lowering_fixture(&temp_root);
+
+        let output = run_fol(&[fixture
+            .to_str()
+            .expect("CLI parameter regression fixture path should be utf-8")]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        assert!(
+            output.status.success(),
+            "CLI should compile the repaired parameter-scope lowering repro, got status {:?} and output:\n{}\n{}",
+            output.status.code(),
+            stdout,
+            stderr,
+        );
+        assert!(stdout.contains("Compilation successful"));
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_cli_lowering_container_regression_now_succeeds() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_lowering_container_regression");
+        fs::create_dir_all(&temp_root).expect("Should create temp container regression fixture dir");
+        let fixture = write_container_lowering_fixture(&temp_root);
+
+        let output = run_fol(&[fixture
+            .to_str()
+            .expect("CLI container regression fixture path should be utf-8")]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        assert!(
+            output.status.success(),
+            "CLI should compile the repaired container lowering repro, got status {:?} and output:\n{}\n{}",
+            output.status.code(),
+            stdout,
+            stderr,
+        );
+        assert!(stdout.contains("Compilation successful"));
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_cli_lowering_early_return_when_regression_now_succeeds() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_lowering_early_return_when");
+        fs::create_dir_all(&temp_root).expect("Should create temp early-return regression fixture dir");
+        let fixture = write_early_return_when_fixture(&temp_root);
+
+        let output = run_fol(&[fixture
+            .to_str()
+            .expect("CLI early-return regression fixture path should be utf-8")]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        assert!(
+            output.status.success(),
+            "CLI should compile the repaired early-return when repro, got status {:?} and output:\n{}\n{}",
+            output.status.code(),
+            stdout,
+            stderr,
+        );
+        assert!(stdout.contains("Compilation successful"));
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_cli_json_lowering_failures_keep_structured_fields() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_lowering_failure_json");
+        fs::create_dir_all(&temp_root).expect("Should create temp lowering failure fixture dir");
+        let fixture = temp_root.join("main.fol");
+        fs::write(&fixture, "fun[] main(): int = {\n    return 1 + 2;\n}\n")
+            .expect("Should write lowering failure fixture");
+
+        let output = run_fol(&[
+            "--json",
+            fixture
+                .to_str()
+                .expect("CLI lowering failure fixture path should be utf-8"),
+        ]);
+        let payload = parse_cli_json(&output);
+
+        assert!(
+            !output.status.success(),
+            "CLI JSON lowering failures should still exit unsuccessfully"
+        );
+        assert_eq!(payload["error_count"], 1);
+        assert_eq!(payload["diagnostics"][0]["severity"], "Error");
+        assert_eq!(payload["diagnostics"][0]["code"], "L1001");
+        assert!(
+            payload["diagnostics"][0]["message"]
+                .as_str()
+                .expect("lowering failure message should stay textual")
+                .contains("binary operator lowering for 'add'"),
+            "Structured JSON lowering diagnostics should preserve the lowering failure message"
+        );
+        assert!(
+            payload["diagnostics"][0]["labels"]
+                .as_array()
+                .expect("labels should stay arrays")
+                .is_empty(),
+            "Current lowering failures should keep an empty related-label list when no origin is available"
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
 
     #[test]
     fn test_cli_folder_parse_errors_keep_json_locations_with_package_parser() {

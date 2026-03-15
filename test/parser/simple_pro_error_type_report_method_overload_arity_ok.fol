@@ -6,7 +6,7 @@ pro (parser)make_err(code: int, mode: int): str = {
     return "err";
 }
 
-pro caller_method_overload_ok(tool: parser, a: int, b: int): int : str = {
+pro caller_method_overload_ok(tool: parser, a: int, b: int): int / str = {
     report tool.make_err(a, b);
     return 0;
 }

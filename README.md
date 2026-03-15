@@ -22,19 +22,25 @@ FOL is a general-purpose, systems programming language designed for robustness, 
 <p align="center">  ** FOL IS AN ACTIVE COMPILER WORKSPACE **  </p>
 
 Current compiler status: `fol-stream`, `fol-lexer`, `fol-parser`,
-`fol-package`, `fol-resolver`, `fol-typecheck`, diagnostics, and the root CLI
-are implemented and actively tested. Package loading now flows through
-`fol-package`, which prepares directory and installed-package surfaces ahead of
-name resolution. The diagnostics hardening pass is complete for parser, package
-loading, resolver, type checking, and the CLI: diagnostics carry stable
-producer-owned codes, exact primary locations, related labels, notes, helps,
-and consistent human/JSON rendering. `fol-typecheck` now covers the full
-current `V1` declaration, expression, control-flow, aggregate, shell,
-conversion, and unsupported-surface boundary, including workspace-aware
-`loc` / `std` / `pkg` imports through the root CLI.
+`fol-package`, `fol-resolver`, `fol-typecheck`, `fol-lower`, diagnostics, and
+the root CLI are implemented and actively tested. Package loading now flows
+through `fol-package`, which prepares directory and installed-package surfaces
+ahead of name resolution. The diagnostics hardening pass is complete for
+parser, package loading, resolver, type checking, lowering, and the CLI:
+diagnostics carry stable producer-owned codes, exact primary locations, related
+labels, notes, helps, and consistent human/JSON rendering. `fol-typecheck` now
+covers the full current `V1` declaration, expression, control-flow, aggregate,
+shell, conversion, and unsupported-surface boundary, including workspace-aware
+`loc` / `std` / `pkg` imports through the root CLI. `fol-lower` now turns that
+typed `V1` workspace into a deterministic backend-facing IR with explicit
+package graphs, routines, blocks, exports, entry candidates, and debug
+snapshots via `--dump-lowered`. The repaired lowering boundary is now locked
+end to end for routine-parameter scoping, typed non-empty container literals,
+and all-exit `when` control flow, including one real multi-surface `V1` repro
+program exercised through the CLI.
 
-The next major compiler work should stay inside `V1`: later semantic and
-lowering stages that can carry a validated program toward a real binary.
+The next major compiler work should stay inside `V1`: choose the first real
+backend path that can consume lowered IR and continue toward binary production.
 
 Current import surface:
 - `loc` imports exact filesystem directories

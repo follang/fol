@@ -1,4 +1,4 @@
-pro caller_forward_keyword_mismatch(): int : str = {
+pro caller_forward_keyword_mismatch(): int / str = {
     report get();
     return 0;
 }

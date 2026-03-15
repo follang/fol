@@ -1,1 +1,1 @@
-typ Handler: {fun (value: "Input"): pkg::"Output"};
+typ Handler: {fun (value: "Input"): pkg::"Output"} ;

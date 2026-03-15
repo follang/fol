@@ -1,0 +1,20 @@
+[package]
+name = "fol-lower"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "fol_lower"
+path = "src/lib.rs"
+
+[dependencies]
+fol-diagnostics = { path = "../fol-diagnostics" }
+fol-parser = { path = "../fol-parser" }
+fol-resolver = { path = "../fol-resolver" }
+fol-typecheck = { path = "../fol-typecheck" }
+fol-types = { path = "../fol-types" }
+
+[dev-dependencies]
+fol-lexer = { path = "../fol-lexer" }
+fol-package = { path = "../fol-package" }
+fol-stream = { path = "../fol-stream" }

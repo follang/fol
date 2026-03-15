@@ -1,6 +1,6 @@
 typ Parser: rec = { }
 
-pro caller_forward_keyword_method_overload_mismatch(tool: Parser, a: int, b: int): int : str = {
+pro caller_forward_keyword_method_overload_mismatch(tool: Parser, a: int, b: int): int / str = {
     report tool.log(a, b);
     return 0;
 }

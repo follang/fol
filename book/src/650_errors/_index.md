@@ -17,9 +17,9 @@ The detailed chapters explain:
 ## Current compiler diagnostics
 
 The current compiler surface already guarantees a few reporting behaviors even
-before full semantic analysis is implemented:
+before a backend exists:
 
-- parser, package-loading, and resolver failures keep exact primary
+- parser, package-loading, resolver, typecheck, and lowering failures keep exact primary
   `file:line:column` locations
 - human-readable diagnostics render source snippets and underline the primary span
 - related sites such as duplicate declarations or ambiguity candidates can appear

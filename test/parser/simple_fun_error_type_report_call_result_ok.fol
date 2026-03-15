@@ -2,7 +2,7 @@ fun make_err(code: int): str = {
     return "err";
 }
 
-fun caller_ok(code: int): int : str = {
+fun caller_ok(code: int): int / str = {
     report make_err(code);
     return 0;
 }

@@ -1,4 +1,4 @@
-pro store(): int: str = {
+pro store(): int / str = {
     {
         let msg = "ok";
         report(msg);

@@ -10,6 +10,7 @@ mod compiler_diagnostics;
 
 use clap::{Arg, Command};
 use fol_diagnostics::{DiagnosticLocation, DiagnosticReport, OutputFormat};
+use fol_lower::{render_lowered_workspace, LoweredWorkspace, Lowerer};
 use fol_package::{PackageConfig, PackageSession};
 use fol_parser::ast::AstParser;
 use fol_stream::FileStream;
@@ -46,6 +47,12 @@ fn main() {
                 .value_name("DIR")
                 .help("Explicit installed package-store root for pkg imports"),
         )
+        .arg(
+            Arg::new("dump-lowered")
+                .long("dump-lowered")
+                .help("Print a deterministic lowered-workspace snapshot after a successful compile")
+                .action(clap::ArgAction::SetTrue),
+        )
         .get_matches();
 
     let file_path = matches
@@ -58,6 +65,7 @@ fn main() {
         std_root: matches.get_one::<String>("std-root").cloned(),
         package_store_root: matches.get_one::<String>("package-store-root").cloned(),
     };
+    let dump_lowered = matches.get_flag("dump-lowered");
     let output_format = if json_output {
         OutputFormat::Json
     } else {
@@ -74,7 +82,10 @@ fn main() {
 
     // Try to compile the file
     match compile_file(file_path, &resolver_config, &mut diagnostics) {
-        Ok(_) => {
+        Ok(lowered) => {
+            if dump_lowered && !json_output && !diagnostics.has_errors() {
+                println!("{}", render_lowered_workspace(&lowered));
+            }
             if !json_output && !diagnostics.has_errors() {
                 println!("✓ Compilation successful!");
             }
@@ -100,7 +111,7 @@ fn compile_file(
     file_path: &str,
     resolver_config: &fol_resolver::ResolverConfig,
     diagnostics: &mut DiagnosticReport,
-) -> Result<(), ()> {
+) -> Result<LoweredWorkspace, ()> {
     // Check if file exists
     let path = Path::new(file_path);
     if !path.exists() {
@@ -152,11 +163,19 @@ fn compile_file(
                 resolver_config.clone(),
             ) {
                 Ok(resolved) => match Typechecker::new().check_resolved_workspace(resolved) {
-                    Ok(_) => {
-                        if !diagnostics.has_errors() {
-                            return Ok(());
+                    Ok(typed) => match Lowerer::new().lower_typed_workspace(typed) {
+                        Ok(lowered) => {
+                            if !diagnostics.has_errors() {
+                                return Ok(lowered);
+                            }
                         }
-                    }
+                        Err(lowering_errors) => {
+                            for error in lowering_errors {
+                                compiler_diagnostics::add_compiler_glitch(diagnostics, &error);
+                            }
+                            return Err(());
+                        }
+                    },
                     Err(typecheck_errors) => {
                         for error in typecheck_errors {
                             compiler_diagnostics::add_compiler_glitch(diagnostics, &error);
@@ -180,7 +199,7 @@ fn compile_file(
         }
     }
 
-    Ok(())
+    Err(())
 }
 
 fn report_input_error(
@@ -235,7 +254,7 @@ fn compile_simple_file_succeeds_through_package_preparation_boundary() {
     assert!(result.is_ok(), "Simple files should compile through prepared entry packages");
     assert!(
         !diagnostics.has_errors(),
-        "Successful compilation through typechecking should not emit diagnostics",
+        "Successful compilation through lowering should not emit diagnostics",
     );
 }
 
@@ -285,7 +304,7 @@ fn unique_compile_fixture_dir(prefix: &str) -> std::path::PathBuf {
 }
 
 #[test]
-fn compile_folder_entry_with_loc_imports_succeeds_through_workspace_typechecking() {
+fn compile_folder_entry_with_loc_imports_succeeds_through_workspace_lowering() {
     use std::fs;
 
     let root = unique_compile_fixture_dir("loc_workspace");
@@ -308,17 +327,17 @@ fn compile_folder_entry_with_loc_imports_succeeds_through_workspace_typechecking
         &mut diagnostics,
     );
 
-    assert!(result.is_ok(), "folder entry packages should compile through loc imports");
+    assert!(result.is_ok(), "folder entry packages should compile through loc imports and lowering");
     assert!(
         !diagnostics.has_errors(),
-        "successful loc-import compilation should not emit diagnostics",
+        "successful loc-import lowering should not emit diagnostics",
     );
 
     fs::remove_dir_all(root).ok();
 }
 
 #[test]
-fn compile_folder_entry_with_std_imports_succeeds_through_workspace_typechecking() {
+fn compile_folder_entry_with_std_imports_succeeds_through_workspace_lowering() {
     use std::fs;
 
     let root = unique_compile_fixture_dir("std_workspace");
@@ -349,17 +368,17 @@ fn compile_folder_entry_with_std_imports_succeeds_through_workspace_typechecking
         &mut diagnostics,
     );
 
-    assert!(result.is_ok(), "folder entry packages should compile through std imports");
+    assert!(result.is_ok(), "folder entry packages should compile through std imports and lowering");
     assert!(
         !diagnostics.has_errors(),
-        "successful std-import compilation should not emit diagnostics",
+        "successful std-import lowering should not emit diagnostics",
     );
 
     fs::remove_dir_all(root).ok();
 }
 
 #[test]
-fn compile_folder_entry_with_pkg_imports_succeeds_through_workspace_typechecking() {
+fn compile_folder_entry_with_pkg_imports_succeeds_through_workspace_lowering() {
     use std::fs;
 
     let root = unique_compile_fixture_dir("pkg_workspace");
@@ -397,10 +416,10 @@ fn compile_folder_entry_with_pkg_imports_succeeds_through_workspace_typechecking
         &mut diagnostics,
     );
 
-    assert!(result.is_ok(), "folder entry packages should compile through pkg imports");
+    assert!(result.is_ok(), "folder entry packages should compile through pkg imports and lowering");
     assert!(
         !diagnostics.has_errors(),
-        "successful pkg-import compilation should not emit diagnostics",
+        "successful pkg-import lowering should not emit diagnostics",
     );
 
     fs::remove_dir_all(root).ok();

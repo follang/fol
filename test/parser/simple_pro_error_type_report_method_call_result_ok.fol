@@ -2,7 +2,7 @@ pro (parser)parse_msg(code: int): str = {
     return "ok";
 }
 
-pro caller_method_ok(tool: parser, code: int): int : str = {
+pro caller_method_ok(tool: parser, code: int): int / str = {
     report tool.parse_msg(code);
     return 0;
 }

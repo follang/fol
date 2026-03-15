@@ -1,4 +1,4 @@
-fun caller_forward_quoted_mismatch(): int : str = {
+fun caller_forward_quoted_mismatch(): int / str = {
     report "$make_err"();
     return 0;
 }

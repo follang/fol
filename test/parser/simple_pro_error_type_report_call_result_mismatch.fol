@@ -2,7 +2,7 @@ pro make_num(code: int): int = {
     return code;
 }
 
-pro caller_bad(code: int): int : bol = {
+pro caller_bad(code: int): int / bol = {
     report make_num(code);
     return 0;
 }

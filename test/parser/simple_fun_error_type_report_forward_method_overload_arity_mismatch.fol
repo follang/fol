@@ -1,4 +1,4 @@
-fun caller_forward_method_overload_bad(tool: parser, a: int): int : str = {
+fun caller_forward_method_overload_bad(tool: parser, a: int): int / str = {
     report tool.make_err(a);
     return 0;
 }

@@ -1,6 +1,6 @@
 # FOL Project Progress
 
-Last scan: 2026-03-14
+Last scan: 2026-03-15
 Scan basis: repository code, active tests, current docs, and a fresh `make build` + `make test`
 Authority rule for this file: code and active tests win over older docs, plans, and historical assumptions
 
@@ -24,6 +24,7 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `fol-package`
 - `fol-resolver`
 - `fol-typecheck`
+- `fol-lower`
 - `fol-diagnostics`
 - `src`
 - Scanned active tests under:
@@ -38,26 +39,27 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `VERSIONS.md`
 - relevant `book/src` pages for lexical rules, methods, literals, and recoverable errors
 - Rechecked the current implementation against the existing progress ledger and the
-  active V1 typecheck milestone record.
+  active V1 lowering milestone record.
 - Ran:
 - `make build`
 - `make test`
 
 ## 2. Snapshot Metrics
 
-- Workspace member crates: `8`
+- Workspace member crates: `9`
 - Root binary crate: `1`
-- Active Rust source lines scanned: `32648`
+- Active Rust source lines scanned: `42782`
 - Core compiler Rust lines scanned:
 - `fol-types`: `259`
 - `fol-stream`: `570`
 - `fol-lexer`: `2406`
-- `fol-parser`: `15857`
-- `fol-package`: `2779`
-- `fol-resolver`: `4542`
-- `fol-typecheck`: `3931`
-- `fol-diagnostics`: `1206`
-- Root CLI and root-local source: `397`
+- `fol-parser`: `15983`
+- `fol-package`: `3040`
+- `fol-resolver`: `5056`
+- `fol-typecheck`: `4990`
+- `fol-diagnostics`: `1236`
+- `fol-lower`: `8676`
+- Root CLI and root-local source: `566`
 - Active parser fixtures: `1283`
 - Active lexer tests: `85`
 - Active stream tests: `54`
@@ -65,7 +67,7 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - Resolver-focused Rust tests under `test/resolver`: `100`
 - Typecheck-focused Rust tests under `test/typecheck`: `67`
 - Observed current unit test run: `8` unit tests, green
-- Observed current integration run: `1503` integration tests, green
+- Observed current integration run: `1513` integration tests, green
 
 ## 3. Current Headline Status
 
@@ -75,13 +77,15 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `fol-package`: implemented as the package-loading and package-definition boundary before resolver
 - `fol-resolver`: implemented for the current whole-program name-resolution contract
 - `fol-typecheck`: implemented for the full current `V1` semantic boundary and wired into the CLI
+- `fol-lower`: implemented for the full current lowered `V1` IR boundary and wired into the CLI
 - `fol-diagnostics`: implemented, structured, and wired into the CLI
-- Root CLI: implemented as parse-and-package-prepare-and-resolve-and-typecheck driver
+- Root CLI: implemented as parse-and-package-prepare-and-resolve-and-typecheck-and-lower driver
 - Stream + lexer + parser: stable and consumed by package loading and resolver
 - Package loading and package preparation: implemented for `loc`, `std`, and installed `pkg`
 - Whole-program name resolution: implemented for the current contract
 - Whole-program type checking: implemented for the full current `V1` boundary
-- Immediate active phase: move to later `V1` compiler stages after typechecking
+- Whole-program lowering: implemented for the full current `V1` lowered IR boundary
+- Immediate active phase: move to the first real backend stage after lowering
 - Ownership and borrowing enforcement: missing
 - Standard or protocol conformance analysis: missing
 - Backend, interpreter, or code generation: missing
@@ -93,7 +97,7 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `make test`: passed
 - Current observed totals:
 - `8` unit tests passed
-- `1503` integration tests passed
+- `1508` integration tests passed
 - Observed active failures: `0`
 
 ## 5. What Has Been Completed So Far
@@ -258,6 +262,60 @@ Authority rule for this file: code and active tests win over older docs, plans, 
   native-artifact placeholder records.
 - `fol-package` owns package-session caching, cycle detection, shared dependency
   dedupe, and directory/store loading.
+
+### 5.8 Lowering Milestone
+
+- `fol-lower` now exists as a workspace crate and is wired into the root CLI.
+- `fol-lower` consumes `TypedWorkspace`, not parser or resolver output directly.
+- Lowering is workspace-aware instead of entry-package-only.
+- Lowering preserves package identity, mounted ownership, source units, export mounts,
+  and entry candidates in a backend-facing IR.
+- The lowered IR now has explicit package, type, global, routine, local, block,
+  instruction, and terminator IDs.
+- Builtin scalars, routine signatures, aliases, records, entries, globals, and routine
+  shells lower into lowering-owned runtime/type metadata.
+- Expression lowering now covers:
+- literals
+- local/global loads
+- explicit initializer/body destinations
+- assignments
+- plain and qualified calls
+- method calls after resolver/typecheck receiver selection
+- field access
+- index access
+- Control-flow lowering now covers:
+- `return`
+- `report`
+- statement-style `when`
+- value-style `when`
+- condition loops
+- `break`
+- Aggregate/container/shell lowering now covers:
+- record construction
+- entry construction
+- array/vector/sequence literals
+- set/map literals
+- `nil`
+- `unwrap`
+- shell lifts and shell explicit-lowering surfaces
+- Remaining non-`V1` or not-yet-lowered typed surfaces now fail with explicit lowering
+  diagnostics instead of vague fallback errors.
+- Lowered workspace verification now checks:
+- block termination
+- basic reachability shape
+- dangling lowered references
+- impossible mounted ownership
+- mismatched lowered ID references
+- The CLI can now emit deterministic lowered snapshots through `--dump-lowered`.
+- The repaired lowered `V1` boundary now has explicit end-to-end coverage for:
+- same-name routine parameter scoping across multiple lowered routines
+- typed non-empty `seq` / `arr` / `vec` / `set` / `map` literal families
+- statement `when` bodies whose branches all terminate without a real fallthrough edge
+- one real combined `V1` repro program that exercises records, parameters, containers,
+  loops, and early-return `when` control flow through both compile and dump paths
+- End-to-end CLI lowering success is now locked across `loc`, `std`, and `pkg` graphs.
+- End-to-end CLI lowering failure diagnostics are now locked in both human and JSON
+  output.
 - Entry packages are now prepared through `fol-package` before resolution instead
   of being handed directly from parser output into the resolver.
 - `loc` and `std` imports resolve as exact directories through `fol-package`.
@@ -474,25 +532,25 @@ items block the current post-resolver phase.
 - optimization
 
 These remain later-stage work. They are no longer reasons to keep the current
-`V1` stream/parser/package/resolver/typecheck milestone open.
+`V1` stream/parser/package/resolver/typecheck/lower milestone open.
 
 ## 10. Current Readiness Call
 
 ### 10.1 What Is Ready
 
 - The project has a real front-end pipeline:
-- `fol-stream -> fol-lexer -> fol-parser -> fol-package -> fol-resolver -> fol-typecheck`
+- `fol-stream -> fol-lexer -> fol-parser -> fol-package -> fol-resolver -> fol-typecheck -> fol-lower`
 - `fol-diagnostics` now sits alongside that pipeline as the shared reporting layer.
 - The pipeline is not toy-only anymore.
 - Stream, lexer, parser, package loading, resolver, diagnostics, and the current
-  full `V1` typechecker behavior are explicit enough to move to later `V1` compiler
-  stages without another deep stability pass first.
+  full `V1` typechecker and lowering behavior are explicit enough to move to the
+  first backend stage without another deep stability pass first.
 - Current validation is green and large enough to trust ordinary refactors much more than before.
 
 ### 10.2 What Is Not Implemented Yet
 
 - Full-language semantic analysis is still missing.
-- Later `V1` compiler stages after typechecking are still missing.
+- The first backend stage after lowering is still missing.
 - Runtime or backend behavior is still missing.
 
 ### 10.3 Bottom-Line Status
@@ -503,18 +561,19 @@ These remain later-stage work. They are no longer reasons to keep the current
 - Package loading: implemented and broad enough for the current `loc/std/pkg` contract
 - Resolver: implemented and broad enough for the current name-resolution milestone
 - Typechecker: implemented for the full current `V1` semantic boundary and enforced through the CLI
+- Lowerer: implemented for the full current lowered `V1` IR boundary and enforced through the CLI
 - Diagnostics: structured, stable, and contract-backed
-- Current compiler core: ready to move beyond the post-resolution semantic boundary and into later `V1` compiler stages
+- Current compiler core: ready to move beyond the lowered `V1` IR boundary and into backend selection and implementation
 
 ## 11. Next Recommended Focus
 
-- Treat the current `fol-typecheck` milestone as real compiler infrastructure,
+- Treat the current `fol-lower` milestone as real compiler infrastructure,
   not as a placeholder crate.
-- Keep the next work inside `V1`: later semantic and lowering stages that can
-  eventually carry a `V1` program toward a binary-producing pipeline.
-- Treat diagnostics as infrastructure-complete for parser/package/resolver/typecheck
-  and extend it only when later compiler stages need richer producer lowering.
-- Treat any remaining stream/lexer/parser/package/resolver/typecheck work as
+- Keep the next work inside `V1`: choose and implement the first backend that can
+  consume lowered IR and carry a `V1` program toward a binary-producing pipeline.
+- Treat diagnostics as infrastructure-complete for parser/package/resolver/typecheck/lower
+  and extend it only when backend stages need richer producer lowering.
+- Treat any remaining stream/lexer/parser/package/resolver/typecheck/lower work as
   opportunistic cleanup unless a real new bug appears.
 - Use [`PROGRESS.md`](./PROGRESS.md), [`VERSIONS.md`](./VERSIONS.md),
   [`PLAN.md`](./PLAN.md), and the test suite as the frozen reference point for

@@ -1,4 +1,4 @@
-fun caller_forward_bad(code: int): int : str = {
+fun caller_forward_bad(code: int): int / str = {
     report make_num(code);
     return 0;
 }

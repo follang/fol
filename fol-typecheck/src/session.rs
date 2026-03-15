@@ -1,6 +1,6 @@
 use crate::{
     decls, exprs, CheckedType, CheckedTypeId, TypecheckError, TypecheckErrorKind,
-    TypecheckResult, TypedPackage, TypedProgram, TypedWorkspace,
+    TypecheckResult, TypedExportMount, TypedPackage, TypedProgram, TypedWorkspace,
 };
 use fol_resolver::{MountedSymbolProvenance, PackageIdentity, SymbolId};
 use std::collections::{BTreeMap, BTreeSet};
@@ -119,7 +119,22 @@ impl TypecheckSession {
             } else if let Err(mut package_errors) = exprs::type_program(&mut typed) {
                 errors.append(&mut package_errors);
             } else {
-                typed_packages.insert(identity.clone(), TypedPackage::new(identity.clone(), typed));
+                typed_packages.insert(
+                    identity.clone(),
+                    TypedPackage::new(
+                        identity.clone(),
+                        package
+                            .prepared
+                            .exports
+                            .iter()
+                            .map(|mount| TypedExportMount {
+                                source_namespace: mount.source_namespace.clone(),
+                                mounted_namespace_suffix: mount.mounted_namespace_suffix.clone(),
+                            })
+                            .collect(),
+                        typed,
+                    ),
+                );
             }
         }
 

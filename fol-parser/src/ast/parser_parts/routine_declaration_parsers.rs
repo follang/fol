@@ -1,6 +1,29 @@
 use super::*;
 
 impl AstParser {
+    pub(super) fn parse_optional_error_type_after_return_type(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<Option<FolType>, Box<dyn Glitch>> {
+        self.skip_ignorable(tokens);
+        let Ok(separator) = tokens.curr(false) else {
+            return Ok(None);
+        };
+
+        match separator.key() {
+            KEYWORD::Symbol(SYMBOL::Root) | KEYWORD::Operator(OPERATOR::Divide) => {
+                let _ = tokens.bump();
+                self.skip_ignorable(tokens);
+                Ok(Some(self.parse_type_reference_tokens(tokens)?))
+            }
+            KEYWORD::Symbol(SYMBOL::Colon) => Err(Box::new(ParseError::from_token(
+                &separator,
+                "Expected '/' before routine error type".to_string(),
+            ))),
+            _ => Ok(None),
+        }
+    }
+
     pub(super) fn parse_fun_decl(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
@@ -44,16 +67,7 @@ impl AstParser {
             let _ = tokens.bump();
             self.skip_ignorable(tokens);
             let return_type = Some(self.parse_type_reference_tokens(tokens)?);
-            let mut error_type = None;
-
-            self.skip_ignorable(tokens);
-            if let Ok(err_sep) = tokens.curr(false) {
-                if matches!(err_sep.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
-                    let _ = tokens.bump();
-                    self.skip_ignorable(tokens);
-                    error_type = Some(self.parse_type_reference_tokens(tokens)?);
-                }
-            }
+            let error_type = self.parse_optional_error_type_after_return_type(tokens)?;
 
             self.skip_ignorable(tokens);
             let assign = tokens.curr(false)?;
@@ -125,14 +139,7 @@ impl AstParser {
                 self.skip_ignorable(tokens);
                 return_type = Some(self.parse_type_reference_tokens(tokens)?);
 
-                self.skip_ignorable(tokens);
-                if let Ok(err_sep) = tokens.curr(false) {
-                    if matches!(err_sep.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
-                        let _ = tokens.bump();
-                        self.skip_ignorable(tokens);
-                        error_type = Some(self.parse_type_reference_tokens(tokens)?);
-                    }
-                }
+                error_type = self.parse_optional_error_type_after_return_type(tokens)?;
             }
         }
 
@@ -215,16 +222,7 @@ impl AstParser {
             let _ = tokens.bump();
             self.skip_ignorable(tokens);
             let return_type = Some(self.parse_type_reference_tokens(tokens)?);
-            let mut error_type = None;
-
-            self.skip_ignorable(tokens);
-            if let Ok(err_sep) = tokens.curr(false) {
-                if matches!(err_sep.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
-                    let _ = tokens.bump();
-                    self.skip_ignorable(tokens);
-                    error_type = Some(self.parse_type_reference_tokens(tokens)?);
-                }
-            }
+            let error_type = self.parse_optional_error_type_after_return_type(tokens)?;
 
             self.skip_ignorable(tokens);
             let assign = tokens.curr(false)?;
@@ -296,14 +294,7 @@ impl AstParser {
                 self.skip_ignorable(tokens);
                 return_type = Some(self.parse_type_reference_tokens(tokens)?);
 
-                self.skip_ignorable(tokens);
-                if let Ok(err_sep) = tokens.curr(false) {
-                    if matches!(err_sep.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
-                        let _ = tokens.bump();
-                        self.skip_ignorable(tokens);
-                        error_type = Some(self.parse_type_reference_tokens(tokens)?);
-                    }
-                }
+                error_type = self.parse_optional_error_type_after_return_type(tokens)?;
             }
         }
 
@@ -386,16 +377,7 @@ impl AstParser {
             let _ = tokens.bump();
             self.skip_ignorable(tokens);
             let return_type = Some(self.parse_type_reference_tokens(tokens)?);
-            let mut error_type = None;
-
-            self.skip_ignorable(tokens);
-            if let Ok(err_sep) = tokens.curr(false) {
-                if matches!(err_sep.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
-                    let _ = tokens.bump();
-                    self.skip_ignorable(tokens);
-                    error_type = Some(self.parse_type_reference_tokens(tokens)?);
-                }
-            }
+            let error_type = self.parse_optional_error_type_after_return_type(tokens)?;
 
             self.skip_ignorable(tokens);
             let assign = tokens.curr(false)?;
@@ -467,14 +449,7 @@ impl AstParser {
                 self.skip_ignorable(tokens);
                 return_type = Some(self.parse_type_reference_tokens(tokens)?);
 
-                self.skip_ignorable(tokens);
-                if let Ok(err_sep) = tokens.curr(false) {
-                    if matches!(err_sep.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
-                        let _ = tokens.bump();
-                        self.skip_ignorable(tokens);
-                        error_type = Some(self.parse_type_reference_tokens(tokens)?);
-                    }
-                }
+                error_type = self.parse_optional_error_type_after_return_type(tokens)?;
             }
         }
 

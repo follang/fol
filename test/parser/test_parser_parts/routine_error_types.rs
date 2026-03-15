@@ -144,7 +144,7 @@ fn test_function_declaration_error_type_parsing() {
     );
     assert!(
         matches!(function_decl.2, Some(FolType::Named { name, .. }) if name == "io_err"),
-        "Function should parse error type in second ':' slot"
+        "Function should parse error type after '/'"
     );
 }
 
@@ -192,7 +192,7 @@ fn test_procedure_declaration_error_type_parsing() {
     );
     assert!(
         matches!(procedure_decl.2, Some(FolType::Named { name, .. }) if name == "io_err"),
-        "Procedure should parse error type in second ':' slot"
+        "Procedure should parse error type after '/'"
     );
 }
 
@@ -206,7 +206,7 @@ fn test_function_declaration_missing_error_type_reports_parse_error() {
     let mut parser = AstParser::new();
     let errors = parser
         .parse(&mut lexer)
-        .expect_err("Parser should fail when second ':' has no error type");
+        .expect_err("Parser should fail when '/' has no error type");
 
     let parse_error = errors
         .first()
@@ -216,12 +216,42 @@ fn test_function_declaration_missing_error_type_reports_parse_error() {
     let first_message = parse_error.to_string();
     assert!(
         first_message.contains("Expected type reference"),
-        "Missing error type after second ':' should report type reference error, got: {}",
+        "Missing error type after '/' should report type reference error, got: {}",
         first_message
     );
     assert_eq!(
         parse_error.line(),
         1,
         "Missing error type parse error should point to signature line"
+    );
+}
+
+#[test]
+fn test_function_declaration_legacy_error_separator_reports_parse_error() {
+    let mut file_stream =
+        FileStream::from_file("test/parser/simple_fun_error_type_legacy_separator.fol")
+            .expect("Should read legacy error separator function file");
+
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject ':' as the routine error separator");
+
+    let parse_error = errors
+        .first()
+        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        .expect("First parser error should be ParseError");
+
+    let first_message = parse_error.to_string();
+    assert!(
+        first_message.contains("Expected '/' before routine error type"),
+        "Legacy separator should report the new '/' guidance, got: {}",
+        first_message
+    );
+    assert_eq!(
+        parse_error.line(),
+        1,
+        "Legacy separator parse error should point to the signature line"
     );
 }
