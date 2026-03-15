@@ -2,7 +2,9 @@
 
 mod vector;
 mod sequence;
+mod set;
 
+pub use set::FolSet;
 pub use sequence::FolSeq;
 pub use vector::FolVec;
 
@@ -18,7 +20,7 @@ pub fn module_name() -> &'static str {
 
 #[cfg(test)]
 mod tests {
-    use super::{FolArray, FolSeq, FolVec};
+    use super::{FolArray, FolSeq, FolSet, FolVec};
 
     #[test]
     fn fol_array_keeps_native_fixed_size_behavior() {
@@ -40,6 +42,13 @@ mod tests {
     #[test]
     fn sequence_module_exports_runtime_sequence_type() {
         let values = FolSeq::new(vec![1, 2, 3]);
+
+        assert_eq!(values.len(), 3);
+    }
+
+    #[test]
+    fn set_module_exports_runtime_set_type() {
+        let values = FolSet::new(std::collections::BTreeSet::from([1, 2, 3]));
 
         assert_eq!(values.len(), 3);
     }
