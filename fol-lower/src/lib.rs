@@ -22,7 +22,7 @@ pub use ids::{
 pub use model::{
     LoweredPackage, LoweredSourceMap, LoweredSourceMapEntry, LoweredSourceSymbol,
     LoweredSourceUnit, LoweredSymbolOwnership, LoweredTypeDecl, LoweredTypeDeclKind,
-    LoweredFieldLayout, LoweredWorkspace,
+    LoweredFieldLayout, LoweredVariantLayout, LoweredWorkspace,
 };
 pub use session::LoweringSession;
 pub use types::{

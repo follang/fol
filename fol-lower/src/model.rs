@@ -28,9 +28,16 @@ pub struct LoweredFieldLayout {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LoweredVariantLayout {
+    pub name: String,
+    pub payload_type: Option<LoweredTypeId>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LoweredTypeDeclKind {
     Alias { target_type: LoweredTypeId },
     Record { fields: Vec<LoweredFieldLayout> },
+    Entry { variants: Vec<LoweredVariantLayout> },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

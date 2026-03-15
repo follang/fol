@@ -80,6 +80,7 @@ impl LoweringSession {
             decls::lower_routine_signatures(package, &mut lowered)?;
             decls::lower_alias_declarations(package, &mut lowered)?;
             decls::lower_record_declarations(package, &mut lowered)?;
+            decls::lower_entry_declarations(package, &mut lowered)?;
             packages.insert(package.identity.clone(), lowered);
         }
 
