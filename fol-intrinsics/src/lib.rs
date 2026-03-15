@@ -297,6 +297,17 @@ mod tests {
     }
 
     #[test]
+    fn conversion_intrinsics_stay_deferred_for_current_v1_scope() {
+        for name in ["cast", "as"] {
+            let entry = intrinsic_by_canonical_name(name)
+                .unwrap_or_else(|| panic!("conversion intrinsic '{name}' should exist"));
+            assert_eq!(entry.availability, IntrinsicAvailability::V1);
+            assert_eq!(entry.status, IntrinsicStatus::Unsupported);
+            assert_eq!(entry.lowering_mode, IntrinsicLoweringMode::Reject);
+        }
+    }
+
+    #[test]
     fn diagnostics_helpers_render_intrinsic_specific_guidance() {
         let eq = intrinsic_by_canonical_name("eq").expect("eq should exist");
         let de_alloc = intrinsic_by_canonical_name("de_alloc").expect("de_alloc should exist");

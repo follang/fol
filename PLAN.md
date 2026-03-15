@@ -1205,7 +1205,7 @@ Track these in the registry, but do not implement them in the first batch:
 ### Phase 9. Cast / Conversion Preparation
 
 - `9.1` `done` Add placeholder registry entries for `.cast` and `.as`.
-- `9.2` `pending` Decide whether casts are:
+- `9.2` `done` Decide whether casts are:
   - a sub-milestone inside current `V1`, or
   - explicit unsupported until a later conversion plan
 - `9.3` `pending` If still deferred, route all cast surfaces through the
