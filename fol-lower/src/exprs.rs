@@ -2099,13 +2099,22 @@ fn lower_dot_intrinsic_call(
         .collect::<Result<Vec<_>, _>>()?;
 
     let result_local = cursor.allocate_local(result_type, None);
-    cursor.push_instr(
-        Some(result_local),
-        LoweredInstrKind::IntrinsicCall {
+    let kind = match fol_intrinsics::lowering_mode_for_intrinsic(intrinsic_id) {
+        Some(fol_intrinsics::IntrinsicLoweringMode::DedicatedIr) if name == "len" => {
+            let [operand] = lowered_args.as_slice() else {
+                return Err(LoweringError::with_kind(
+                    LoweringErrorKind::InvalidInput,
+                    format!("dot intrinsic '.{name}(...)' expected exactly 1 lowered operand"),
+                ));
+            };
+            LoweredInstrKind::LengthOf { operand: *operand }
+        }
+        _ => LoweredInstrKind::IntrinsicCall {
             intrinsic: intrinsic_id,
             args: lowered_args,
         },
-    )?;
+    };
+    cursor.push_instr(Some(result_local), kind)?;
     Ok(LoweredValue {
         local_id: result_local,
         type_id: result_type,
@@ -4168,6 +4177,34 @@ mod tests {
             lowered_call,
             Some((intrinsic_id, 1)),
             "boolean intrinsic lowering should use the canonical '.not' intrinsic id",
+        );
+    }
+
+    #[test]
+    fn length_intrinsic_lowering_emits_dedicated_length_instructions() {
+        let lowered = lower_fixture_workspace(
+            concat!(
+                "fun[] main(items: seq[int]): int = {\n",
+                "    return .len(items)\n",
+                "}\n",
+            ),
+        );
+
+        let routine = lowered
+            .entry_package()
+            .routine_decls
+            .values()
+            .find(|routine| routine.name == "main")
+            .expect("length intrinsic lowering routine should exist");
+        let lowered_len = routine.instructions.iter().find_map(|instr| match &instr.kind {
+            LoweredInstrKind::LengthOf { operand } => Some(*operand),
+            _ => None,
+        });
+
+        assert_eq!(
+            lowered_len,
+            Some(routine.params[0]),
+            "length intrinsic lowering should use the dedicated LengthOf instruction",
         );
     }
 

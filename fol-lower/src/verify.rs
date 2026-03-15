@@ -433,6 +433,9 @@ fn verify_instruction(
                 verify_local_reference(routine, instr.id.0, "intrinsic arg", *arg, errors);
             }
         }
+        crate::LoweredInstrKind::LengthOf { operand } => {
+            verify_local_reference(routine, instr.id.0, "length operand", *operand, errors);
+        }
         crate::LoweredInstrKind::ConstructRecord { type_id, fields } => {
             verify_type_reference(workspace, package, routine, instr.id.0, "record type", *type_id, errors);
             for (_, value) in fields {

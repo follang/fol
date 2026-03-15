@@ -68,6 +68,9 @@ pub enum LoweredInstrKind {
         intrinsic: IntrinsicId,
         args: Vec<LoweredLocalId>,
     },
+    LengthOf {
+        operand: LoweredLocalId,
+    },
     ConstructRecord {
         type_id: LoweredTypeId,
         fields: Vec<(String, LoweredLocalId)>,
