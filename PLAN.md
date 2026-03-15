@@ -905,7 +905,7 @@ not full long-term compiler completion.
 #### 3.1 done
 - add stable name-mangling helpers for types, globals, routines, locals, and modules
 
-#### 3.2
+#### 3.2 done
 - add package-to-module layout planning
 
 #### 3.3
