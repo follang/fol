@@ -4064,6 +4064,54 @@ mod tests {
     }
 
     #[test]
+    fn unwrap_lowering_uses_explicit_shell_unwrap_instructions() {
+        let fixture = std::env::temp_dir().join(format!(
+            "fol_lower_unwrap_shells_{}.fol",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system clock should be monotonic enough for tmp names")
+                .as_nanos()
+        ));
+        std::fs::write(
+            &fixture,
+            "ali MaybeText: opt[str]\nali Failure: err[str]\nfun[] from_optional(value: MaybeText): str = { return value! }\nfun[] from_error(value: Failure): str = { return value! }\n",
+        )
+        .expect("should write lowering unwrap fixture");
+
+        let mut stream = FileStream::from_file(fixture.to_str().expect("utf8 temp path"))
+            .expect("Should open lowering fixture");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let syntax = parser
+            .parse_package(&mut lexer)
+            .expect("Lowering fixture should parse");
+        let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+        let typed = Typechecker::new()
+            .check_resolved_workspace(resolved)
+            .expect("Lowering fixture should typecheck");
+        let lowered = crate::LoweringSession::new(typed)
+            .lower_workspace()
+            .expect("unwrap lowering should succeed");
+
+        for routine_name in ["from_optional", "from_error"] {
+            let routine = lowered
+                .entry_package()
+                .routine_decls
+                .values()
+                .find(|routine| routine.name == routine_name)
+                .unwrap_or_else(|| panic!("{routine_name} routine should exist"));
+
+            assert!(
+                routine.instructions.iter().any(|instr| matches!(
+                    instr.kind,
+                    LoweredInstrKind::UnwrapShell { .. }
+                )),
+                "{routine_name} should lower postfix unwrap into an explicit shell-unwrapping instruction"
+            );
+        }
+    }
+
+    #[test]
     fn unsupported_lowering_surfaces_report_explicit_boundary_messages() {
         let nil_error = lower_fixture_error(
             "fun[] main(): int = {\n    return nil;\n}\n",
@@ -4073,16 +4121,6 @@ mod tests {
             nil_error
                 .message()
                 .contains("nil lowering requires an expected opt[...] or err[...] runtime type in lowered V1")
-        );
-
-        let unwrap_error = lower_fixture_error(
-            "ali MaybeText: opt[str]\nfun[] main(value: MaybeText): str = {\n    return value!;\n}\n",
-        );
-        assert_eq!(unwrap_error.kind(), LoweringErrorKind::Unsupported);
-        assert!(
-            unwrap_error
-                .message()
-                .contains("unary operator lowering for 'unwrap' lands in a later lowering slice")
         );
 
         let operator_error = lower_fixture_error(
