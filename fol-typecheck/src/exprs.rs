@@ -370,6 +370,11 @@ fn type_node_with_expectation(
             name,
             args,
             syntax_id,
+        } if name == "check" => type_check_call(typed, resolved, context, args, *syntax_id),
+        AstNode::FunctionCall {
+            name,
+            args,
+            syntax_id,
         } if name == "report" => type_report_call(typed, resolved, context, args, *syntax_id),
         AstNode::FunctionCall {
             name,
@@ -550,7 +555,12 @@ fn plain_value_expr(
     usage: impl Into<String>,
 ) -> Result<TypedExpr, TypecheckError> {
     if let Some(effect) = expr.recoverable_effect {
-        ensure_propagatable_effect(typed, context, effect, origin, usage)?;
+        match context.error_call_mode {
+            ErrorCallMode::Propagate => {
+                ensure_propagatable_effect(typed, context, effect, origin, usage)?;
+            }
+            ErrorCallMode::Observe => {}
+        }
     }
     Ok(expr)
 }
@@ -600,6 +610,7 @@ fn type_binary_op(
                 "await pipe stages are part of the V3 systems milestone, not the V1 typecheck milestone",
             ));
         }
+        BinaryOperator::PipeOr => return type_pipe_or(typed, resolved, context, left, right),
         _ => {}
     }
 
@@ -675,13 +686,91 @@ fn type_binary_op(
                 Err(invalid_binary_operator_error(typed, op, left_type, right_type))
             }
         }
-        BinaryOperator::PipeOr => Err(unsupported_binary_surface(
-            resolved,
-            left,
-            right,
-            "recoverable-error fallback typing via '||' is being hardened in the current milestone",
-        )),
         _ => Ok(TypedExpr::none()),
+    }
+}
+
+fn type_pipe_or(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    left: &AstNode,
+    right: &AstNode,
+) -> Result<TypedExpr, TypecheckError> {
+    let observed_left = type_node(typed, resolved, observe_context(context), left)?;
+    let Some(success_type) = observed_left.value_type else {
+        return Err(node_origin(resolved, left).map_or_else(
+            || {
+                TypecheckError::new(
+                    TypecheckErrorKind::InvalidInput,
+                    "left side of '||' must produce a value result in V1",
+                )
+            },
+            |origin| {
+                TypecheckError::with_origin(
+                    TypecheckErrorKind::InvalidInput,
+                    "left side of '||' must produce a value result in V1",
+                    origin,
+                )
+            },
+        ));
+    };
+    if observed_left.recoverable_effect.is_none() {
+        return Err(node_origin(resolved, left).map_or_else(
+            || {
+                TypecheckError::new(
+                    TypecheckErrorKind::InvalidInput,
+                    "'||' requires an errorful expression on the left in V1",
+                )
+            },
+            |origin| {
+                TypecheckError::with_origin(
+                    TypecheckErrorKind::InvalidInput,
+                    "'||' requires an errorful expression on the left in V1",
+                    origin,
+                )
+            },
+        ));
+    }
+
+    let fallback = type_node_with_expectation(typed, resolved, context, right, Some(success_type))?;
+    let fallback = plain_value_expr(
+        typed,
+        context,
+        fallback,
+        node_origin(resolved, right),
+        "recoverable-error fallback",
+    )?;
+
+    match fallback.value_type {
+        Some(actual) if actual == typed.builtin_types().never => {
+            Ok(TypedExpr::value(success_type).with_optional_effect(fallback.recoverable_effect))
+        }
+        Some(actual) => {
+            ensure_assignable(
+                typed,
+                success_type,
+                actual,
+                "recoverable-error fallback".to_string(),
+                node_origin(resolved, right),
+            )?;
+            Ok(TypedExpr::value(success_type).with_optional_effect(fallback.recoverable_effect))
+        }
+        None => Err(node_origin(resolved, right).map_or_else(
+            || {
+                TypecheckError::new(
+                    TypecheckErrorKind::InvalidInput,
+                    "right side of '||' must produce a value or early-exit in V1",
+                )
+            },
+            |origin| {
+                TypecheckError::with_origin(
+                    TypecheckErrorKind::InvalidInput,
+                    "right side of '||' must produce a value or early-exit in V1",
+                    origin,
+                )
+            },
+        )),
     }
 }
 
@@ -1406,6 +1495,57 @@ fn type_panic_call(
     }
     let merged = merge_recoverable_effects(typed, None, "panic call", arg_effects)?;
     Ok(TypedExpr::value(typed.builtin_types().never).with_optional_effect(merged))
+}
+
+fn type_check_call(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    args: &[AstNode],
+    syntax_id: Option<SyntaxNodeId>,
+) -> Result<TypedExpr, TypecheckError> {
+    let origin = syntax_id.and_then(|id| origin_for(resolved, id));
+    if args.len() != 1 {
+        return Err(origin.clone().map_or_else(
+            || {
+                TypecheckError::new(
+                    TypecheckErrorKind::InvalidInput,
+                    format!("check expects exactly 1 value in V1 but got {}", args.len()),
+                )
+            },
+            |origin| {
+                TypecheckError::with_origin(
+                    TypecheckErrorKind::InvalidInput,
+                    format!("check expects exactly 1 value in V1 but got {}", args.len()),
+                    origin,
+                )
+            },
+        ));
+    }
+
+    let observed = type_node(typed, resolved, observe_context(context), &args[0])?;
+    if observed.recoverable_effect.is_none() {
+        return Err(node_origin(resolved, &args[0]).map_or_else(
+            || {
+                TypecheckError::new(
+                    TypecheckErrorKind::InvalidInput,
+                    "check requires an errorful routine result in V1",
+                )
+            },
+            |origin| {
+                TypecheckError::with_origin(
+                    TypecheckErrorKind::InvalidInput,
+                    "check requires an errorful routine result in V1",
+                    origin,
+                )
+            },
+        ));
+    }
+
+    if let Some(syntax_id) = syntax_id {
+        typed.record_node_type(syntax_id, context.source_unit_id, typed.builtin_types().bool_)?;
+    }
+    Ok(TypedExpr::value(typed.builtin_types().bool_))
 }
 
 fn type_qualified_function_call(

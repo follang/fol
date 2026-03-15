@@ -1152,6 +1152,94 @@ fn propagation_typing_rejects_incompatible_error_types_in_plain_value_contexts()
 }
 
 #[test]
+fn check_typing_accepts_errorful_calls_and_returns_bool() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "fun[] load(): int / str = {\n\
+             report \"bad\";\n\
+             return 1;\n\
+         }\n\
+         fun[] main(): bol = {\n\
+             return check(load());\n\
+         }\n",
+    )]);
+
+    let syntax_id = find_named_routine_syntax_id(&typed, "main");
+    assert_eq!(
+        typed
+            .typed_node(syntax_id)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Bool))
+    );
+}
+
+#[test]
+fn check_typing_rejects_plain_values() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] main(): bol = {\n\
+             return check(1);\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error
+                    .message()
+                    .contains("check requires an errorful routine result in V1")
+        }),
+        "Expected an invalid check diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
+fn pipe_or_typing_accepts_default_value_fallbacks() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "fun[] load(): int / str = {\n\
+             report \"bad\";\n\
+             return 1;\n\
+         }\n\
+         fun[] main(): int = {\n\
+             return load() || 5;\n\
+         }\n",
+    )]);
+
+    let syntax_id = find_named_routine_syntax_id(&typed, "main");
+    assert_eq!(
+        typed
+            .typed_node(syntax_id)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+}
+
+#[test]
+fn pipe_or_typing_rejects_incompatible_fallback_values() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] load(): int / str = {\n\
+             report \"bad\";\n\
+             return 1;\n\
+         }\n\
+         fun[] main(): int = {\n\
+             return load() || \"fallback\";\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::IncompatibleType
+                && error.message().contains("recoverable-error fallback")
+        }),
+        "Expected an incompatible fallback diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
 fn when_result_typing_accepts_matching_branch_values() {
     let typed = typecheck_fixture_folder(&[(
         "main.fol",

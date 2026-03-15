@@ -250,14 +250,22 @@ or deliberately rejected.
   - typecheck already enforces `report` and `panic`
   - lowering already preserves routine `error_type` and emits `Report`
   - `check(...)` and `||` still need real semantic ownership
-- `0.2` `pending` Freeze the `V1` contract for errorful routine calls:
+- `0.2` `done` Freeze the `V1` contract for errorful routine calls:
   - what counts as propagation
   - what counts as handled recovery
   - where plain use is illegal
-- `0.3` `pending` Freeze the explicit `V1` boundary:
+  Current state:
+  - plain use propagates only in routines with compatible declared error types
+  - `check(expr)` and `expr || fallback` are the handled `V1` consumers for
+    observing or recovering from routine-call failures
+  - plain use outside those consumers is rejected explicitly
+- `0.3` `done` Freeze the explicit `V1` boundary:
   - `check(...)` and `||` are in
   - Zig-like `if |value| else |err|` capture syntax is out for now
   - `errdefer`-style cleanup is out for now
+  Current state:
+  - the implemented `V1` path now commits to `check(...)` and `||`
+  - no capture-syntax or cleanup expansion has been added to this milestone
 
 ### Phase 1. Typecheck Error-Call Model
 
@@ -283,17 +291,26 @@ or deliberately rejected.
   - routines with no declared error type reject propagation
   - incompatible propagated payloads fail with explicit `IncompatibleType`
     diagnostics
-- `1.4` `pending` Implement `check(expr)` typing over errorful routine results.
-- `1.5` `pending` Implement `expr || fallback` typing:
+- `1.4` `done` Implement `check(expr)` typing over errorful routine results.
+  Current state:
+  - `check(expr)` now observes an errorful expression and returns `bol`
+  - it rejects plain non-errorful values explicitly
+- `1.5` `done` Implement `expr || fallback` typing:
   - success branch type
   - fallback compatibility
   - `panic` / `report` / `return` fallback handling
-- `1.6` `pending` Lock exact diagnostics for:
+  Current state:
+  - `expr || fallback` now consumes the left-side recoverable call effect
+  - fallback values must match the left success type unless they early-exit
+  - `report` / `return` / `panic` style never-path fallbacks remain valid
+- `1.6` `done` Lock exact diagnostics for:
   - errorful call used as plain value
   - propagation in routines with no error type
   - incompatible propagated error payloads
   - invalid `check(...)`
   - invalid `||` fallback types
+  Current state:
+  - exact tests now cover each of those misuse classes
 
 ### Phase 2. Lowered IR Error Model
 
