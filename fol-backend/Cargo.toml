@@ -10,4 +10,6 @@ path = "src/lib.rs"
 
 [dependencies]
 fol-lower = { path = "../fol-lower" }
+fol-parser = { path = "../fol-parser" }
+fol-resolver = { path = "../fol-resolver" }
 fol-runtime = { path = "../fol-runtime" }

@@ -885,7 +885,7 @@ not full long-term compiler completion.
 
 ## 37. Phase 2: Session And Workspace Intake
 
-#### 2.1
+#### 2.1 done
 - add backend session over `LoweredWorkspace`
 
 #### 2.2

@@ -3,6 +3,10 @@
 mod config;
 mod error;
 mod model;
+mod session;
+
+#[cfg(test)]
+mod testing;
 
 pub const CRATE_NAME: &str = "fol-backend";
 
@@ -22,6 +26,7 @@ pub fn crate_name() -> &'static str {
 pub use config::{BackendConfig, BackendMode, BackendTarget};
 pub use error::{BackendError, BackendErrorKind};
 pub use model::{BackendArtifact, EmittedRustFile};
+pub use session::BackendSession;
 
 pub type BackendResult<T> = Result<T, BackendError>;
 
@@ -29,13 +34,15 @@ pub type BackendResult<T> = Result<T, BackendError>;
 mod tests {
     use super::{
         Backend, BackendArtifact, BackendConfig, BackendError, BackendErrorKind, BackendMode,
-        BackendResult, BackendTarget, EmittedRustFile,
+        BackendResult, BackendSession, BackendTarget, EmittedRustFile,
     };
+    use crate::testing::sample_lowered_workspace;
 
     #[test]
     fn backend_foundation_public_surface_is_constructible() {
         let backend = Backend::new();
         let config = BackendConfig::default();
+        let session = BackendSession::new(sample_lowered_workspace());
         let result: BackendResult<()> = Ok(());
         let artifact = BackendArtifact::RustSourceCrate {
             root: "target/fol-backend/demo".to_string(),
@@ -49,6 +56,7 @@ mod tests {
         assert_eq!(format!("{backend:?}"), "Backend");
         assert_eq!(config.target, BackendTarget::Rust);
         assert_eq!(config.mode, BackendMode::BuildArtifact);
+        assert_eq!(session.workspace().package_count(), 2);
         assert!(result.is_ok());
         assert!(matches!(artifact, BackendArtifact::RustSourceCrate { .. }));
         assert_eq!(error.to_string(), "BackendUnsupported: not implemented yet");
