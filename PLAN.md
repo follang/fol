@@ -1134,7 +1134,7 @@ Track these in the registry, but do not implement them in the first batch:
 - `3.5` `done` Lower comparison intrinsics through selected intrinsic forms.
 - `3.6` `done` Add exact tests for scalar success and representative rejected
   families.
-- `3.7` `pending` Add CLI integration coverage for intrinsic comparison calls.
+- `3.7` `done` Add CLI integration coverage for intrinsic comparison calls.
 
 ### Phase 4. Boolean Family
 

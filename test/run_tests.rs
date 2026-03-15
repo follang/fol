@@ -705,6 +705,102 @@ mod integration_tests {
     }
 
     #[test]
+    fn test_cli_dump_lowered_succeeds_for_intrinsic_comparison_calls() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_dump_lowered_intrinsic_comparisons");
+        fs::create_dir_all(&temp_root).expect("Should create temp intrinsic comparison fixture");
+        let fixture = temp_root.join("main.fol");
+        fs::write(
+            &fixture,
+            concat!(
+                "fun[] main(): bol = {\n",
+                "    var same: bol = .eq(1, 1)\n",
+                "    var ordered: bol = .lt(\"Ada\", \"Lin\")\n",
+                "    return .ge('z', 'a')\n",
+                "}\n",
+            ),
+        )
+        .expect("Should write intrinsic comparison fixture");
+
+        let output = run_fol(&[
+            "--dump-lowered",
+            fixture
+                .to_str()
+                .expect("Temporary intrinsic comparison fixture path should be valid UTF-8"),
+        ]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        assert!(
+            output.status.success(),
+            "CLI should dump lowered output for intrinsic comparison calls, got status {:?} and output:\n{}",
+            output.status.code(),
+            stdout,
+        );
+        assert!(
+            stdout.matches("IntrinsicCall").count() >= 3,
+            "Lowered dump should retain explicit intrinsic calls for comparison families, got:\n{}",
+            stdout,
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_cli_json_intrinsic_comparison_failures_keep_structured_fields() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_json_intrinsic_comparison_failures");
+        fs::create_dir_all(&temp_root).expect("Should create temp intrinsic comparison failure fixture");
+        let fixture = temp_root.join("main.fol");
+        fs::write(
+            &fixture,
+            concat!(
+                "fun[] main(): bol = {\n",
+                "    return .lt(true, false)\n",
+                "}\n",
+            ),
+        )
+        .expect("Should write intrinsic comparison failure fixture");
+
+        let output = run_fol(&[
+            "--json",
+            fixture
+                .to_str()
+                .expect("Temporary intrinsic comparison failure fixture path should be valid UTF-8"),
+        ]);
+
+        assert!(
+            !output.status.success(),
+            "CLI should fail for invalid intrinsic comparison calls",
+        );
+
+        let json = parse_cli_json(&output);
+        let diagnostics = json["diagnostics"]
+            .as_array()
+            .expect("CLI JSON output should expose diagnostics");
+        let ordered_error = diagnostics.iter().find(|diagnostic| {
+            diagnostic["message"]
+                .as_str()
+                .map(|message| message.contains(".lt(...) expects two ordered scalar operands"))
+                .unwrap_or(false)
+        });
+
+        assert!(
+            ordered_error.is_some(),
+            "Expected intrinsic comparison diagnostic in CLI JSON output, got: {json}"
+        );
+        assert!(
+            ordered_error
+                .and_then(|diagnostic| diagnostic["location"].as_object())
+                .is_some(),
+            "Expected intrinsic comparison diagnostic to keep a structured location, got: {json}"
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
     fn test_cli_folder_compile_succeeds_with_package_parser() {
         use std::fs;
 
