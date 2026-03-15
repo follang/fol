@@ -56,6 +56,11 @@ pub enum LoweredInstrKind {
         type_id: LoweredTypeId,
         fields: Vec<(String, LoweredLocalId)>,
     },
+    ConstructEntry {
+        type_id: LoweredTypeId,
+        variant: String,
+        payload: Option<LoweredLocalId>,
+    },
     ConstructLinear {
         kind: LoweredLinearKind,
         type_id: LoweredTypeId,
@@ -69,6 +74,14 @@ pub enum LoweredInstrKind {
         type_id: LoweredTypeId,
         entries: Vec<(LoweredLocalId, LoweredLocalId)>,
     },
+    ConstructOptional {
+        type_id: LoweredTypeId,
+        value: Option<LoweredLocalId>,
+    },
+    ConstructError {
+        type_id: LoweredTypeId,
+        value: Option<LoweredLocalId>,
+    },
     FieldAccess {
         base: LoweredLocalId,
         field: String,
@@ -80,6 +93,9 @@ pub enum LoweredInstrKind {
     Cast {
         operand: LoweredLocalId,
         target_type: LoweredTypeId,
+    },
+    UnwrapShell {
+        operand: LoweredLocalId,
     },
 }
 

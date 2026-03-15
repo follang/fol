@@ -17,18 +17,32 @@ pub(crate) struct LoweredValue {
     pub type_id: LoweredTypeId,
 }
 
+#[derive(Debug, Clone)]
+pub(crate) struct EntryVariantLowering {
+    pub type_id: LoweredTypeId,
+    pub payload_type: Option<LoweredTypeId>,
+    pub default: Option<AstNode>,
+}
+
 #[derive(Debug, Default)]
 pub(crate) struct WorkspaceDeclIndex {
     globals: BTreeMap<(PackageIdentity, SymbolId), LoweredGlobalId>,
     routines: BTreeMap<(PackageIdentity, SymbolId), LoweredRoutineId>,
     routine_params: BTreeMap<LoweredRoutineId, Vec<LoweredTypeId>>,
+    entry_variants: BTreeMap<(PackageIdentity, SymbolId, String), EntryVariantLowering>,
 }
 
 impl WorkspaceDeclIndex {
-    pub(crate) fn from_packages(packages: &BTreeMap<PackageIdentity, LoweredPackage>) -> Self {
+    pub(crate) fn from_workspace(
+        typed: &fol_typecheck::TypedWorkspace,
+        packages: &BTreeMap<PackageIdentity, LoweredPackage>,
+    ) -> Self {
         let mut index = Self::default();
-        for package in packages.values() {
-            index.extend_package(package);
+        for typed_package in typed.packages() {
+            let Some(lowered_package) = packages.get(&typed_package.identity) else {
+                continue;
+            };
+            index.extend_package(typed_package, lowered_package);
         }
         index
     }
@@ -36,12 +50,33 @@ impl WorkspaceDeclIndex {
     pub(crate) fn build(workspace: &LoweredWorkspace) -> Self {
         let mut index = Self::default();
         for package in workspace.packages() {
-            index.extend_package(package);
+            for global in package.global_decls.values() {
+                index
+                    .globals
+                    .insert((package.identity.clone(), global.symbol_id), global.id);
+            }
+            for routine in package.routine_decls.values() {
+                if let Some(symbol_id) = routine.symbol_id {
+                    index
+                        .routines
+                        .insert((package.identity.clone(), symbol_id), routine.id);
+                }
+                let params = routine
+                    .params
+                    .iter()
+                    .filter_map(|param| routine.locals.get(*param).and_then(|local| local.type_id))
+                    .collect::<Vec<_>>();
+                index.routine_params.insert(routine.id, params);
+            }
         }
         index
     }
 
-    pub(crate) fn extend_package(&mut self, package: &LoweredPackage) {
+    pub(crate) fn extend_package(
+        &mut self,
+        typed_package: &fol_typecheck::TypedPackage,
+        package: &LoweredPackage,
+    ) {
         for global in package.global_decls.values() {
             self.globals
                 .insert((package.identity.clone(), global.symbol_id), global.id);
@@ -58,6 +93,7 @@ impl WorkspaceDeclIndex {
                 .collect::<Vec<_>>();
             self.routine_params.insert(routine.id, params);
         }
+        self.extend_entry_variants(typed_package, package);
     }
 
     pub(crate) fn global_id_for_symbol(
@@ -78,6 +114,64 @@ impl WorkspaceDeclIndex {
 
     pub(crate) fn routine_param_types(&self, routine_id: LoweredRoutineId) -> Option<&[LoweredTypeId]> {
         self.routine_params.get(&routine_id).map(Vec::as_slice)
+    }
+
+    pub(crate) fn entry_variant(
+        &self,
+        identity: &PackageIdentity,
+        symbol_id: SymbolId,
+        variant: &str,
+    ) -> Option<&EntryVariantLowering> {
+        self.entry_variants
+            .get(&(identity.clone(), symbol_id, variant.to_string()))
+    }
+
+    fn extend_entry_variants(
+        &mut self,
+        typed_package: &fol_typecheck::TypedPackage,
+        package: &LoweredPackage,
+    ) {
+        for (source_unit_index, source_unit) in typed_package.program.resolved().syntax().source_units.iter().enumerate() {
+            let source_unit_id = SourceUnitId(source_unit_index);
+            for item in &source_unit.items {
+                let AstNode::TypeDecl {
+                    name,
+                    type_def: fol_parser::ast::TypeDefinition::Entry {
+                        variant_meta, ..
+                    },
+                    ..
+                } = &item.node else {
+                    continue;
+                };
+                let Some(symbol_id) = crate::decls::find_local_symbol_id(
+                    &typed_package.program,
+                    source_unit_id,
+                    SymbolKind::Type,
+                    name,
+                ) else {
+                    continue;
+                };
+                let Some(type_decl) = package.type_decls.get(&symbol_id) else {
+                    continue;
+                };
+                let crate::LoweredTypeDeclKind::Entry { variants } = &type_decl.kind else {
+                    continue;
+                };
+                for variant in variants {
+                    let default = variant_meta
+                        .get(&variant.name)
+                        .and_then(|meta| meta.default.clone());
+                    self.entry_variants.insert(
+                        (package.identity.clone(), symbol_id, variant.name.clone()),
+                        EntryVariantLowering {
+                            type_id: type_decl.runtime_type,
+                            payload_type: variant.payload_type,
+                            default,
+                        },
+                    );
+                }
+            }
+        }
     }
 }
 
@@ -719,6 +813,246 @@ fn lower_record_initializer(
     })
 }
 
+fn lower_nil_literal(
+    type_table: &crate::LoweredTypeTable,
+    cursor: &mut RoutineCursor<'_>,
+    expected_type: Option<LoweredTypeId>,
+) -> Result<LoweredValue, LoweringError> {
+    let Some(type_id) = expected_type else {
+        return Err(LoweringError::with_kind(
+            LoweringErrorKind::Unsupported,
+            "nil lowering lands in the pending shell-lowering slice",
+        ));
+    };
+    let result_local = cursor.allocate_local(type_id, None);
+    match type_table.get(type_id) {
+        Some(crate::LoweredType::Optional { .. }) => {
+            cursor.push_instr(
+                Some(result_local),
+                LoweredInstrKind::ConstructOptional {
+                    type_id,
+                    value: None,
+                },
+            )?;
+        }
+        Some(crate::LoweredType::Error { .. }) => {
+            cursor.push_instr(
+                Some(result_local),
+                LoweredInstrKind::ConstructError {
+                    type_id,
+                    value: None,
+                },
+            )?;
+        }
+        _ => {
+            return Err(LoweringError::with_kind(
+                LoweringErrorKind::Unsupported,
+                "nil lowering requires an expected opt[...] or err[...] runtime type in lowered V1",
+            ))
+        }
+    }
+    Ok(LoweredValue {
+        local_id: result_local,
+        type_id,
+    })
+}
+
+fn apply_expected_shell_wrap(
+    type_table: &crate::LoweredTypeTable,
+    cursor: &mut RoutineCursor<'_>,
+    expected_type: Option<LoweredTypeId>,
+    value: LoweredValue,
+) -> Result<LoweredValue, LoweringError> {
+    let Some(expected_type) = expected_type else {
+        return Ok(value);
+    };
+    if expected_type == value.type_id {
+        return Ok(value);
+    }
+    match type_table.get(expected_type) {
+        Some(crate::LoweredType::Optional { inner }) if *inner == value.type_id => {
+            let result_local = cursor.allocate_local(expected_type, None);
+            cursor.push_instr(
+                Some(result_local),
+                LoweredInstrKind::ConstructOptional {
+                    type_id: expected_type,
+                    value: Some(value.local_id),
+                },
+            )?;
+            Ok(LoweredValue {
+                local_id: result_local,
+                type_id: expected_type,
+            })
+        }
+        Some(crate::LoweredType::Error { inner: Some(inner) }) if *inner == value.type_id => {
+            let result_local = cursor.allocate_local(expected_type, None);
+            cursor.push_instr(
+                Some(result_local),
+                LoweredInstrKind::ConstructError {
+                    type_id: expected_type,
+                    value: Some(value.local_id),
+                },
+            )?;
+            Ok(LoweredValue {
+                local_id: result_local,
+                type_id: expected_type,
+            })
+        }
+        _ => Ok(value),
+    }
+}
+
+fn lower_unwrap_expression(
+    typed_package: &fol_typecheck::TypedPackage,
+    type_table: &crate::LoweredTypeTable,
+    checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
+    current_identity: &PackageIdentity,
+    decl_index: &WorkspaceDeclIndex,
+    cursor: &mut RoutineCursor<'_>,
+    source_unit_id: SourceUnitId,
+    scope_id: ScopeId,
+    operand: &AstNode,
+) -> Result<LoweredValue, LoweringError> {
+    let operand = lower_expression(
+        typed_package,
+        type_table,
+        checked_type_map,
+        current_identity,
+        decl_index,
+        cursor,
+        source_unit_id,
+        scope_id,
+        operand,
+    )?;
+    let inner_type = match type_table.get(operand.type_id) {
+        Some(crate::LoweredType::Optional { inner }) => Some(*inner),
+        Some(crate::LoweredType::Error { inner }) => *inner,
+        _ => None,
+    }
+    .ok_or_else(|| {
+        LoweringError::with_kind(
+            LoweringErrorKind::Unsupported,
+            "unwrap lowering requires an opt[...] or typed err[...] runtime operand in lowered V1",
+        )
+    })?;
+    let result_local = cursor.allocate_local(inner_type, None);
+    cursor.push_instr(
+        Some(result_local),
+        LoweredInstrKind::UnwrapShell {
+            operand: operand.local_id,
+        },
+    )?;
+    Ok(LoweredValue {
+        local_id: result_local,
+        type_id: inner_type,
+    })
+}
+
+fn lower_entry_variant_access(
+    typed_package: &fol_typecheck::TypedPackage,
+    type_table: &crate::LoweredTypeTable,
+    checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
+    current_identity: &PackageIdentity,
+    decl_index: &WorkspaceDeclIndex,
+    cursor: &mut RoutineCursor<'_>,
+    source_unit_id: SourceUnitId,
+    scope_id: ScopeId,
+    object: &AstNode,
+    field: &str,
+    expected_type: Option<LoweredTypeId>,
+) -> Result<Option<LoweredValue>, LoweringError> {
+    let Some((owning_identity, owning_symbol_id, variant)) =
+        resolve_entry_variant_target(
+            typed_package,
+            type_table,
+            current_identity,
+            object,
+            field,
+            checked_type_map,
+        )?
+    else {
+        return Ok(None);
+    };
+    let Some(entry_variant) = decl_index.entry_variant(&owning_identity, owning_symbol_id, &variant) else {
+        return Err(LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            format!("entry variant '{variant}' does not retain lowered variant metadata"),
+        ));
+    };
+
+    if expected_type == Some(entry_variant.type_id) {
+        let payload = match (&entry_variant.payload_type, &entry_variant.default) {
+            (Some(payload_type), Some(default)) => Some(
+                lower_expression_expected(
+                    typed_package,
+                    type_table,
+                    checked_type_map,
+                    current_identity,
+                    decl_index,
+                    cursor,
+                    source_unit_id,
+                    scope_id,
+                    Some(*payload_type),
+                    default,
+                )?
+                .local_id,
+            ),
+            (Some(_), None) => {
+                return Err(LoweringError::with_kind(
+                    LoweringErrorKind::Unsupported,
+                    format!(
+                        "entry construction for variant '{variant}' requires a lowered default payload expression"
+                    ),
+                ))
+            }
+            (None, _) => None,
+        };
+        let result_local = cursor.allocate_local(entry_variant.type_id, None);
+        cursor.push_instr(
+            Some(result_local),
+            LoweredInstrKind::ConstructEntry {
+                type_id: entry_variant.type_id,
+                variant,
+                payload,
+            },
+        )?;
+        return Ok(Some(LoweredValue {
+            local_id: result_local,
+            type_id: entry_variant.type_id,
+        }));
+    }
+
+    let Some(payload_type) = entry_variant.payload_type else {
+        return Err(LoweringError::with_kind(
+            LoweringErrorKind::Unsupported,
+            format!(
+                "entry variant access for '{variant}' requires a payload-bearing variant or an expected entry context"
+            ),
+        ));
+    };
+    let Some(default) = entry_variant.default.as_ref() else {
+        return Err(LoweringError::with_kind(
+            LoweringErrorKind::Unsupported,
+            format!(
+                "entry variant access for '{variant}' requires a lowered default payload expression"
+            ),
+        ));
+    };
+    let payload = lower_expression_expected(
+        typed_package,
+        type_table,
+        checked_type_map,
+        current_identity,
+        decl_index,
+        cursor,
+        source_unit_id,
+        scope_id,
+        Some(payload_type),
+        default,
+    )?;
+    Ok(Some(payload))
+}
+
 fn lower_container_literal(
     typed_package: &fol_typecheck::TypedPackage,
     type_table: &crate::LoweredTypeTable,
@@ -1336,11 +1670,8 @@ fn lower_expression_expected(
     expected_type: Option<LoweredTypeId>,
     node: &AstNode,
 ) -> Result<LoweredValue, LoweringError> {
-    match node {
-        AstNode::Literal(Literal::Nil) => Err(LoweringError::with_kind(
-            LoweringErrorKind::Unsupported,
-            "nil lowering lands in the pending shell-lowering slice",
-        )),
+    let lowered = match node {
+        AstNode::Literal(Literal::Nil) => lower_nil_literal(type_table, cursor, expected_type),
         AstNode::Literal(literal) => {
             let type_id = literal_type_id(typed_package, checked_type_map, literal).ok_or_else(|| {
                 LoweringError::with_kind(
@@ -1350,6 +1681,20 @@ fn lower_expression_expected(
             })?;
             cursor.lower_literal(literal, type_id)
         }
+        AstNode::UnaryOp {
+            op: fol_parser::ast::UnaryOperator::Unwrap,
+            operand,
+        } => lower_unwrap_expression(
+            typed_package,
+            type_table,
+            checked_type_map,
+            current_identity,
+            decl_index,
+            cursor,
+            source_unit_id,
+            scope_id,
+            operand,
+        ),
         AstNode::UnaryOp { op, .. } => Err(LoweringError::with_kind(
             LoweringErrorKind::Unsupported,
             format!(
@@ -1508,6 +1853,21 @@ fn lower_expression_expected(
             })
         }
         AstNode::FieldAccess { object, field } => {
+            if let Some(entry_value) = lower_entry_variant_access(
+                typed_package,
+                type_table,
+                checked_type_map,
+                current_identity,
+                decl_index,
+                cursor,
+                source_unit_id,
+                scope_id,
+                object,
+                field,
+                expected_type,
+            )? {
+                return apply_expected_shell_wrap(type_table, cursor, expected_type, entry_value);
+            }
             let base = lower_expression(
                 typed_package,
                 type_table,
@@ -1708,7 +2068,7 @@ fn lower_expression_expected(
             })?;
             cursor.lower_identifier_reference(current_identity, decl_index, resolved_symbol, result_type)
         }
-        AstNode::Commented { node, .. } => lower_expression(
+        AstNode::Commented { node, .. } => lower_expression_expected(
             typed_package,
             type_table,
             checked_type_map,
@@ -1717,6 +2077,7 @@ fn lower_expression_expected(
             cursor,
             source_unit_id,
             scope_id,
+            expected_type,
             node,
         ),
         other => Err(LoweringError::with_kind(
@@ -1726,7 +2087,8 @@ fn lower_expression_expected(
                 describe_expression(other)
             ),
         )),
-    }
+    }?;
+    apply_expected_shell_wrap(type_table, cursor, expected_type, lowered)
 }
 
 fn literal_type_id(
@@ -1812,6 +2174,85 @@ fn describe_binary_operator(op: &fol_parser::ast::BinaryOperator) -> &'static st
         fol_parser::ast::BinaryOperator::Pipe => "pipe",
         fol_parser::ast::BinaryOperator::PipeOr => "pipe_or",
     }
+}
+
+fn resolve_entry_variant_target(
+    typed_package: &fol_typecheck::TypedPackage,
+    type_table: &crate::LoweredTypeTable,
+    current_identity: &PackageIdentity,
+    object: &AstNode,
+    field: &str,
+    checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
+) -> Result<Option<(PackageIdentity, SymbolId, String)>, LoweringError> {
+    let (resolved_symbol, checked_type) = match object {
+        AstNode::Identifier { syntax_id, name } => (
+            resolve_reference_symbol(
+                typed_package,
+                *syntax_id,
+                fol_resolver::ReferenceKind::Identifier,
+                name,
+            )?,
+            resolve_reference_type_id(
+                typed_package,
+                checked_type_map,
+                *syntax_id,
+                fol_resolver::ReferenceKind::Identifier,
+            ),
+        ),
+        AstNode::QualifiedIdentifier { path } => (
+            resolve_reference_symbol(
+                typed_package,
+                path.syntax_id(),
+                fol_resolver::ReferenceKind::QualifiedIdentifier,
+                &path.joined(),
+            )?,
+            resolve_reference_type_id(
+                typed_package,
+                checked_type_map,
+                path.syntax_id(),
+                fol_resolver::ReferenceKind::QualifiedIdentifier,
+            ),
+        ),
+        AstNode::Commented { node, .. } => {
+            return resolve_entry_variant_target(
+                typed_package,
+                type_table,
+                current_identity,
+                node,
+                field,
+                checked_type_map,
+            );
+        }
+        _ => return Ok(None),
+    };
+
+    let Some(checked_type) = checked_type else {
+        return Ok(None);
+    };
+    let lowered_type = checked_type;
+    if !matches!(resolved_symbol.kind, SymbolKind::Type | SymbolKind::Alias) {
+        return Ok(None);
+    }
+    if !matches!(
+        type_table_entry_kind(type_table, lowered_type),
+        Some(())
+    ) {
+        return Ok(None);
+    }
+
+    let (owning_identity, owning_symbol_id) = canonical_symbol_key(
+        current_identity,
+        resolved_symbol.mounted_from.as_ref(),
+        resolved_symbol.id,
+    );
+    Ok(Some((owning_identity, owning_symbol_id, field.to_string())))
+}
+
+fn type_table_entry_kind(
+    type_table: &crate::LoweredTypeTable,
+    lowered_type: LoweredTypeId,
+) -> Option<()> {
+    matches!(type_table.get(lowered_type), Some(crate::LoweredType::Entry { .. })).then_some(())
 }
 
 fn lower_assignment_target(
@@ -3498,6 +3939,69 @@ mod tests {
 
         assert_eq!(set_instr, Some(2));
         assert_eq!(map_instr, Some(2));
+    }
+
+    #[test]
+    fn entry_variant_lowering_supports_payload_access_and_entry_construction() {
+        let fixture = std::env::temp_dir().join(format!(
+            "fol_lower_entry_variant_{}.fol",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system clock should be monotonic enough for tmp names")
+                .as_nanos()
+        ));
+        std::fs::write(
+            &fixture,
+            "typ Color: ent = {\n    var BLUE: str = \"#0037cd\";\n    var RED: str = \"#ff0000\";\n}\nfun[] payload(): str = {\n    return Color.BLUE;\n}\nfun[] typed(): Color = {\n    return Color.RED;\n}\n",
+        )
+        .expect("should write lowering entry fixture");
+
+        let mut stream = FileStream::from_file(fixture.to_str().expect("utf8 temp path"))
+            .expect("Should open lowering fixture");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let syntax = parser
+            .parse_package(&mut lexer)
+            .expect("Lowering fixture should parse");
+        let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+        let typed = Typechecker::new()
+            .check_resolved_workspace(resolved)
+            .expect("Lowering fixture should typecheck");
+        let lowered = crate::LoweringSession::new(typed)
+            .lower_workspace()
+            .expect("entry variant lowering should succeed");
+
+        let payload_routine = lowered
+            .entry_package()
+            .routine_decls
+            .values()
+            .find(|routine| routine.name == "payload")
+            .expect("payload routine should exist");
+        let typed_routine = lowered
+            .entry_package()
+            .routine_decls
+            .values()
+            .find(|routine| routine.name == "typed")
+            .expect("typed routine should exist");
+
+        assert!(
+            payload_routine.instructions.iter().any(|instr| matches!(
+                instr.kind,
+                LoweredInstrKind::Const(LoweredOperand::Str(_))
+            )),
+            "entry payload access should lower the default payload expression"
+        );
+        assert!(
+            typed_routine.instructions.iter().any(|instr| matches!(
+                &instr.kind,
+                LoweredInstrKind::ConstructEntry {
+                    variant,
+                    payload: Some(_),
+                    ..
+                } if variant == "RED"
+            )),
+            "typed entry construction should lower to an explicit ConstructEntry instruction"
+        );
     }
 
     #[test]

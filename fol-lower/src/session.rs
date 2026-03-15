@@ -88,7 +88,7 @@ impl LoweringSession {
             packages.insert(package.identity.clone(), lowered);
         }
 
-        let decl_index = exprs::WorkspaceDeclIndex::from_packages(&packages);
+        let decl_index = exprs::WorkspaceDeclIndex::from_workspace(&self.typed, &packages);
 
         for package in self.typed.packages() {
             let Some(lowered) = packages.get_mut(&package.identity) else {
