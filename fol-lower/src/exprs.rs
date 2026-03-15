@@ -736,10 +736,30 @@ fn lower_container_literal(
                 elements,
             )
         }
-        ContainerType::Set | ContainerType::Map => Err(LoweringError::with_kind(
-            LoweringErrorKind::Unsupported,
-            "set and map literal lowering land in the next aggregate slice",
-        )),
+        ContainerType::Set => lower_set_literal(
+            typed_package,
+            type_table,
+            checked_type_map,
+            current_identity,
+            decl_index,
+            cursor,
+            source_unit_id,
+            scope_id,
+            expected_type,
+            elements,
+        ),
+        ContainerType::Map => lower_map_literal(
+            typed_package,
+            type_table,
+            checked_type_map,
+            current_identity,
+            decl_index,
+            cursor,
+            source_unit_id,
+            scope_id,
+            expected_type,
+            elements,
+        ),
     }
 }
 
@@ -3320,5 +3340,54 @@ mod tests {
 
             assert_eq!(construct, Some((expected_kind, expected_len)));
         }
+    }
+
+    #[test]
+    fn set_and_map_lowering_construct_explicit_aggregate_instructions() {
+        let fixture = std::env::temp_dir().join(format!(
+            "fol_lower_set_map_{}.fol",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system clock should be monotonic enough for tmp names")
+                .as_nanos()
+        ));
+        std::fs::write(
+            &fixture,
+            "fun[] take_set(items: set[int, str]): str = { return items[1] }\nfun[] take_map(items: map[str, int]): int = { return items[\"US\"] }\nfun[] main(): int = {\n    var parts: set[int, str] = {1, \"two\"}\n    var counts: map[str, int] = {{\"US\", 45}, {\"DE\", 82}}\n    var current: str = take_set(parts)\n    return take_map(counts)\n}\n",
+        )
+        .expect("should write lowering set/map fixture");
+
+        let mut stream = FileStream::from_file(fixture.to_str().expect("utf8 temp path"))
+            .expect("Should open lowering fixture");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let syntax = parser
+            .parse_package(&mut lexer)
+            .expect("Lowering fixture should parse");
+        let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+        let typed = Typechecker::new()
+            .check_resolved_workspace(resolved)
+            .expect("Lowering fixture should typecheck");
+        let lowered = crate::LoweringSession::new(typed)
+            .lower_workspace()
+            .expect("set/map lowering should succeed");
+
+        let routine = lowered
+            .entry_package()
+            .routine_decls
+            .values()
+            .find(|routine| routine.name == "main")
+            .expect("main routine should exist");
+        let set_instr = routine.instructions.iter().find_map(|instr| match &instr.kind {
+            LoweredInstrKind::ConstructSet { members, .. } => Some(members.len()),
+            _ => None,
+        });
+        let map_instr = routine.instructions.iter().find_map(|instr| match &instr.kind {
+            LoweredInstrKind::ConstructMap { entries, .. } => Some(entries.len()),
+            _ => None,
+        });
+
+        assert_eq!(set_instr, Some(2));
+        assert_eq!(map_instr, Some(2));
     }
 }
