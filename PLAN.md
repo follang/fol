@@ -874,7 +874,7 @@ not full long-term compiler completion.
 #### 1.3 done
 - add structured backend error types
 
-#### 1.4
+#### 1.4 done
 - add backend config model
 
 #### 1.5

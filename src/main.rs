@@ -455,6 +455,17 @@ fn backend_error_surface_smoke_compiles() {
 }
 
 #[test]
+fn backend_config_surface_smoke_compiles() {
+    let config = fol_backend::BackendConfig::default();
+
+    assert_eq!(config.target, fol_backend::BackendTarget::Rust);
+    assert_eq!(config.target.as_str(), "rust");
+    assert_eq!(config.mode, fol_backend::BackendMode::BuildArtifact);
+    assert_eq!(config.mode.as_str(), "build-artifact");
+    assert!(!config.keep_build_dir);
+}
+
+#[test]
 fn intrinsics_public_model_smoke_compiles() {
     assert_eq!(fol_intrinsics::IntrinsicId::new(1).index(), 1);
     assert_eq!(
