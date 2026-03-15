@@ -3,7 +3,7 @@ use crate::{
     types::LoweredTypeTable,
 };
 use fol_parser::ast::SyntaxOrigin;
-use fol_resolver::{PackageIdentity, SourceUnitId, SymbolId};
+use fol_resolver::{MountedSymbolProvenance, PackageIdentity, SourceUnitId, SymbolId};
 use fol_typecheck::CheckedTypeId;
 use std::collections::BTreeMap;
 
@@ -34,6 +34,7 @@ pub struct LoweredSymbolOwnership {
     pub symbol_id: SymbolId,
     pub source_unit_id: SourceUnitId,
     pub owning_package: PackageIdentity,
+    pub mounted_from: Option<MountedSymbolProvenance>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]

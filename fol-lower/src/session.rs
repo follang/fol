@@ -47,12 +47,17 @@ impl LoweringSession {
                 .symbols
                 .iter_with_ids()
                 .map(|(symbol_id, symbol)| {
+                    let mounted_from = symbol.mounted_from.clone();
                     (
                         symbol_id,
                         LoweredSymbolOwnership {
                             symbol_id,
                             source_unit_id: symbol.source_unit,
-                            owning_package: package.identity.clone(),
+                            owning_package: mounted_from
+                                .as_ref()
+                                .map(|provenance| provenance.package_identity.clone())
+                                .unwrap_or_else(|| package.identity.clone()),
+                            mounted_from,
                         },
                     )
                 })
@@ -398,5 +403,21 @@ mod tests {
         assert!(lowered
             .packages()
             .any(|package| package.identity.display_name == "shared"));
+        let app_package = lowered.entry_package();
+        let imported_symbol = app_package
+            .symbol_ownership
+            .values()
+            .find(|ownership| ownership.mounted_from.is_some())
+            .expect("entry package should retain at least one mounted imported symbol");
+        assert_eq!(imported_symbol.owning_package.display_name, "shared");
+        assert_eq!(
+            imported_symbol
+                .mounted_from
+                .as_ref()
+                .expect("mounted symbol should keep foreign provenance")
+                .package_identity
+                .display_name,
+            "shared"
+        );
     }
 }
