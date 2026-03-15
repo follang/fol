@@ -265,3 +265,20 @@ pub const fn intrinsic_registry() -> &'static [IntrinsicEntry] {
 pub const fn all_intrinsics() -> &'static [IntrinsicEntry] {
     intrinsic_registry()
 }
+
+pub fn intrinsic_by_canonical_name(name: &str) -> Option<&'static IntrinsicEntry> {
+    intrinsic_registry().iter().find(|entry| entry.name == name)
+}
+
+pub fn intrinsic_by_alias(alias: &str) -> Option<&'static IntrinsicEntry> {
+    intrinsic_registry()
+        .iter()
+        .find(|entry| entry.aliases.contains(&alias))
+}
+
+pub fn intrinsics_for_surface(surface: IntrinsicSurface) -> Vec<&'static IntrinsicEntry> {
+    intrinsic_registry()
+        .iter()
+        .filter(|entry| entry.surface == surface)
+        .collect()
+}

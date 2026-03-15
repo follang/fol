@@ -7,7 +7,10 @@ mod registry;
 pub const CRATE_NAME: &str = "fol-intrinsics";
 
 pub use model::{IntrinsicAvailability, IntrinsicCategory, IntrinsicId, IntrinsicStatus, IntrinsicSurface};
-pub use catalog::{all_intrinsics, intrinsic_registry};
+pub use catalog::{
+    all_intrinsics, intrinsic_by_alias, intrinsic_by_canonical_name, intrinsic_registry,
+    intrinsics_for_surface,
+};
 pub use registry::{IntrinsicArity, IntrinsicEntry, IntrinsicLoweringMode};
 
 pub fn crate_name() -> &'static str {
@@ -63,5 +66,16 @@ mod tests {
         assert!(names.contains(&"echo"));
         assert!(names.contains(&"de_alloc"));
         assert!(names.contains(&"pointer_value"));
+    }
+
+    #[test]
+    fn lookup_apis_find_intrinsics_by_name_alias_and_surface() {
+        let eq = intrinsic_by_canonical_name("eq").expect("eq should exist");
+        let nq = intrinsic_by_alias("ne").expect("ne alias should exist");
+        let dot_calls = intrinsics_for_surface(IntrinsicSurface::DotRootCall);
+
+        assert_eq!(eq.name, "eq");
+        assert_eq!(nq.name, "nq");
+        assert!(dot_calls.iter().any(|entry| entry.name == "len"));
     }
 }

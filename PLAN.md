@@ -1025,10 +1025,15 @@ Track these in the registry, but do not implement them in the first batch:
     unsupported, and deferred entries from the frozen first-batch families
   - stable IDs now exist for comparison, boolean, query, diagnostic,
     recoverable, conversion, memory, and pointer entries
-- `1.5` `pending` Add lookup APIs:
+- `1.5` `done` Add lookup APIs:
   - by canonical name
   - by alias
   - by surface family
+  Current state:
+  - the registry now exposes canonical-name lookup, alias lookup, and
+    surface-family filtering helpers
+  - root smoke coverage now proves later compiler stages can ask the registry
+    for stable entries without open-coding slice scans
 - `1.6` `pending` Add unit tests for registry lookup, duplicate-name rejection,
   and alias stability.
 

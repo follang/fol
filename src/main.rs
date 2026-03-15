@@ -477,3 +477,16 @@ fn intrinsics_canonical_registry_smoke_compiles() {
     assert!(registry.iter().any(|entry| entry.name == "de_alloc"));
     assert!(registry.iter().any(|entry| entry.name == "check"));
 }
+
+#[test]
+fn intrinsics_lookup_api_smoke_compiles() {
+    let eq = fol_intrinsics::intrinsic_by_canonical_name("eq").expect("eq should exist");
+    let alias = fol_intrinsics::intrinsic_by_alias("ne").expect("alias should exist");
+    let dot_calls = fol_intrinsics::intrinsics_for_surface(
+        fol_intrinsics::IntrinsicSurface::DotRootCall,
+    );
+
+    assert_eq!(eq.name, "eq");
+    assert_eq!(alias.name, "nq");
+    assert!(dot_calls.iter().any(|entry| entry.name == "echo"));
+}
