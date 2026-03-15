@@ -2250,6 +2250,64 @@ fn operator_typing_rejects_invalid_scalar_pairs_and_pointer_operators() {
 }
 
 #[test]
+fn intrinsic_comparison_typing_accepts_v1_equality_pairs() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "fun[] same_number(): bol = {\n\
+             return .eq(1, 1);\n\
+         }\n\
+         fun[] different_flag(flag: bol): bol = {\n\
+             return .nq(flag, false);\n\
+         }\n\
+         fun[] same_text(): bol = {\n\
+             return .eq(\"Ada\", \"Ada\");\n\
+         }\n",
+    )]);
+
+    for name in ["same_number", "different_flag", "same_text"] {
+        let syntax_id = find_named_routine_syntax_id(&typed, name);
+        assert_eq!(
+            typed
+                .typed_node(syntax_id)
+                .and_then(|node| node.inferred_type)
+                .and_then(|type_id| typed.type_table().get(type_id)),
+            Some(&CheckedType::Builtin(BuiltinType::Bool)),
+            "Expected {name} to lower to bool"
+        );
+    }
+}
+
+#[test]
+fn intrinsic_comparison_typing_rejects_wrong_arity_and_mixed_scalar_pairs() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] bad_arity(): bol = {\n\
+             return .eq(1);\n\
+         }\n\
+         fun[] bad_pair(): bol = {\n\
+             return .eq(1, \"Ada\");\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error.message().contains(".eq(...) expects exactly 2 argument(s) but got 1")
+        }),
+        "Expected wrong-arity intrinsic diagnostic, got: {errors:?}"
+    );
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error
+                    .message()
+                    .contains(".eq(...) expects two comparable scalar operands")
+        }),
+        "Expected wrong-type-family intrinsic diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
 fn coercion_policy_rejects_implicit_int_float_cross_family_conversions() {
     let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",

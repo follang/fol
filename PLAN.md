@@ -1109,8 +1109,18 @@ Track these in the registry, but do not implement them in the first batch:
     compile-time string literals, so the compiler can select registry entries
     directly from syntax
   - root smoke coverage and crate-local tests now lock both contracts
-- `3.3` `pending` Typecheck `.eq/.nq` through the registry instead of string
+- `3.3` `done` Typecheck `.eq/.nq` through the registry instead of string
   branches.
+  Current state:
+  - resolver now skips name lookup for dot-root intrinsic calls so intrinsic
+    semantics are no longer forced through ordinary routine resolution
+  - typecheck now selects `.eq/.nq` from `fol-intrinsics`, records the selected
+    intrinsic id on the typed syntax node, and applies the frozen comparable
+    scalar contract
+  - wrong-arity and wrong-family diagnostics now come from the intrinsic
+    registry helpers instead of ad hoc string formatting
+  - exact integration coverage now locks accepted equality pairs plus
+    representative rejection cases
 - `3.4` `pending` Typecheck `.lt/.gt/.ge/.le` through the registry instead of
   string branches.
 - `3.5` `pending` Lower comparison intrinsics through selected intrinsic forms.
