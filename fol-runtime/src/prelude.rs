@@ -2,5 +2,6 @@
 
 pub use crate::{crate_name, CRATE_NAME};
 pub use crate::abi::{check_recoverable, recoverable_succeeded, FolRecover};
+pub use crate::shell::FolOption;
 pub use crate::strings::FolStr;
 pub use crate::value::{impossible, FolBool, FolChar, FolFloat, FolInt, FolNever};

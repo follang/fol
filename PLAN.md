@@ -764,7 +764,7 @@ The implementation should land in many small slices.
 
 ### Phase 2: Shell Types
 
-#### 2.1
+#### 2.1 done
 - add `FolOption<T>` or runtime alias/wrapper policy for `opt[T]`
 
 #### 2.2
