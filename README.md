@@ -37,7 +37,12 @@ package graphs, routines, blocks, exports, entry candidates, and debug
 snapshots via `--dump-lowered`. The repaired lowering boundary is now locked
 end to end for routine-parameter scoping, typed non-empty container literals,
 and all-exit `when` control flow, including one real multi-surface `V1` repro
-program exercised through the CLI.
+program exercised through the CLI. Recoverable errors are now part of that
+current `V1` contract too: routines declare error types with
+`ResultType / ErrorType`, `report expr` is typechecked and lowered, plain
+errorful calls propagate only through compatible routine contexts, `check(expr)`
+and `expr || fallback` are real handled-call surfaces, and `err[...]` shells
+remain distinct from routine call results with declared error types.
 
 The next major compiler work should stay inside `V1`: choose the first real
 backend path that can consume lowered IR and continue toward binary production.

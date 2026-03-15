@@ -443,8 +443,13 @@ or deliberately rejected.
 
 ### Phase 6. Docs And Book Sync
 
-- `6.1` `pending` Update [`README.md`](./README.md) and [`PROGRESS.md`](./PROGRESS.md)
+- `6.1` `done` Update [`README.md`](./README.md) and [`PROGRESS.md`](./PROGRESS.md)
   only after the error-call model is truly implemented.
+  Current state:
+  - repo status docs now describe recoverable errors as part of the current `V1`
+    contract instead of leaving them implied or parser-only
+  - current observed validation totals are synced to the latest green run
+  - the docs now call out the shell-vs-routine-result boundary explicitly
 - `6.2` `pending` Rewrite [`book/src/650_errors/200_recover.md`](./book/src/650_errors/200_recover.md)
   so it no longer describes parser-only behavior and instead explains the real
   current `V1` handling story.

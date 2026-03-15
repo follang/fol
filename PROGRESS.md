@@ -65,9 +65,9 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - Active stream tests: `54`
 - Parser-focused Rust tests under `test/parser`: `1108`
 - Resolver-focused Rust tests under `test/resolver`: `100`
-- Typecheck-focused Rust tests under `test/typecheck`: `67`
+- Typecheck-focused Rust tests under `test/typecheck`: `71`
 - Observed current unit test run: `8` unit tests, green
-- Observed current integration run: `1513` integration tests, green
+- Observed current integration run: `1537` integration tests, green
 
 ## 3. Current Headline Status
 
@@ -97,7 +97,7 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `make test`: passed
 - Current observed totals:
 - `8` unit tests passed
-- `1508` integration tests passed
+- `1537` integration tests passed
 - Observed active failures: `0`
 
 ## 5. What Has Been Completed So Far
@@ -391,6 +391,13 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - CLI integration coverage now includes successful imported-symbol compiles,
   imported typecheck failures, and exact JSON diagnostics for reopened surfaces.
 - The reopened `V1` blockers are closed for the current language boundary.
+- Recoverable routine errors are now fully part of the current `V1` contract:
+- routine signatures use `ResultType / ErrorType`
+- plain errorful calls propagate only through compatible routine contexts
+- `check(expr)` and `expr || fallback` are implemented handled-call surfaces
+- routine call results with declared error types are not interchangeable with
+  `err[...]` shell values
+- postfix `!` remains scoped to shell values rather than routine call results
 
 ## 6. Current Front-End State By Layer
 
