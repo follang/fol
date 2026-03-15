@@ -270,6 +270,24 @@ mod tests {
     }
 
     #[test]
+    fn runtime_echo_formats_nested_container_values_stably() {
+        let nested_seq = FolSeq::from_items(vec![
+            FolSeq::from_items(vec![1i64, 2]),
+            FolSeq::from_items(vec![3i64]),
+        ]);
+        let nested_map = FolMap::from_pairs(vec![
+            (FolStr::from("left"), FolSet::from_items(vec![3i64, 1, 2])),
+            (FolStr::from("right"), FolSet::from_items(vec![5i64, 4])),
+        ]);
+
+        assert_eq!(render_echo(&nested_seq), "seq[seq[1, 2], seq[3]]");
+        assert_eq!(
+            render_echo(&nested_map),
+            "map{left: set{1, 2, 3}, right: set{4, 5}}"
+        );
+    }
+
+    #[test]
     fn runtime_len_helper_covers_current_v1_supported_families() {
         let text = FolStr::from("Ada");
         let array: FolArray<i64, 3> = [1, 2, 3];
