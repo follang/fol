@@ -209,4 +209,29 @@ mod tests {
         assert_eq!(render_set(&set), "set{1, 2, 3}");
         assert_eq!(render_map(&map), "map{ada: 1, lin: 2}");
     }
+
+    #[test]
+    fn empty_container_invariants_stay_stable_across_v1_families() {
+        let array: FolArray<i64, 0> = [];
+        let vector = FolVec::<i64>::from_items(vec![]);
+        let sequence = FolSeq::<i64>::from_items(vec![]);
+        let set = FolSet::<i64>::from_items(vec![]);
+        let map = FolMap::<&str, i64>::from_pairs(vec![]);
+
+        assert_eq!(array.len(), 0);
+        assert!(vector.is_empty());
+        assert!(sequence.is_empty());
+        assert!(set.is_empty());
+        assert!(map.is_empty());
+
+        assert_eq!(render_array(&array), "arr[]");
+        assert_eq!(render_vec(&vector), "vec[]");
+        assert_eq!(render_seq(&sequence), "seq[]");
+        assert_eq!(render_set(&set), "set{}");
+        assert_eq!(render_map(&map), "map{}");
+
+        let failure = index_seq(&sequence, 0).expect_err("empty sequence access should fail");
+        assert_eq!(failure.kind(), RuntimeErrorKind::InvalidInput);
+        assert_eq!(failure.message(), "index out of bounds: the len is 0 but the index is 0");
+    }
 }

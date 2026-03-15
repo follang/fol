@@ -861,7 +861,7 @@ The implementation should land in many small slices.
 
 ### Phase 7: Runtime Verification And Hardening
 
-#### 7.1
+#### 7.1 done
 - add invariant tests for empty containers
 
 #### 7.2
