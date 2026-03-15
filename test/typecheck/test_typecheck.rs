@@ -2426,6 +2426,62 @@ fn intrinsic_boolean_typing_rejects_wrong_arity_and_non_boolean_operands() {
 }
 
 #[test]
+fn intrinsic_query_typing_accepts_len_for_v1_length_queries() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "fun[] text_len(): int = {\n\
+             return .len(\"Ada\");\n\
+         }\n\
+         fun[] seq_len(items: seq[int]): int = {\n\
+             return .len(items);\n\
+         }\n",
+    )]);
+
+    for name in ["text_len", "seq_len"] {
+        let syntax_id = find_named_routine_syntax_id(&typed, name);
+        assert_eq!(
+            typed
+                .typed_node(syntax_id)
+                .and_then(|node| node.inferred_type)
+                .and_then(|type_id| typed.type_table().get(type_id)),
+            Some(&CheckedType::Builtin(BuiltinType::Int)),
+            "Expected {name} to lower to int through .len(...)",
+        );
+    }
+}
+
+#[test]
+fn intrinsic_query_typing_rejects_wrong_arity_and_non_length_operands() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] bad_arity(items: seq[int]): int = {\n\
+             return .len(items, items);\n\
+         }\n\
+         fun[] bad_type(): int = {\n\
+             return .len(1);\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error.message().contains(".len(...) expects exactly 1 argument(s) but got 2")
+        }),
+        "Expected wrong-arity .len diagnostic, got: {errors:?}"
+    );
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error.message().contains(
+                    ".len(...) expects one string, array, vector, sequence, set, or map operand",
+                )
+                && error.message().contains("'Builtin(Int)'")
+        }),
+        "Expected non-length .len diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
 fn intrinsic_comparison_typing_covers_full_v1_scalar_matrix() {
     let typed = typecheck_fixture_folder(&[(
         "main.fol",

@@ -1155,7 +1155,7 @@ Track these in the registry, but do not implement them in the first batch:
   - sequences
   - sets
   - maps
-- `5.3` `pending` Typecheck `.len(...)` with exact family diagnostics.
+- `5.3` `done` Typecheck `.len(...)` with exact family diagnostics.
 - `5.4` `pending` Lower `.len(...)` to one explicit lowering form.
 - `5.5` `pending` Add exact tests for `.len` across supported and rejected
   families.
