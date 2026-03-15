@@ -1021,6 +1021,334 @@ fn routine_error_typing_rejects_missing_report_values() {
 }
 
 #[test]
+fn routine_error_calls_keep_recoverable_effects_on_call_references() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "fun[] load(): int / str = {\n\
+             report \"bad\";\n\
+             return 1;\n\
+         }\n\
+         fun[] main(): int / str = {\n\
+             return load();\n\
+         }\n",
+    )]);
+
+    let reference = find_typed_reference(&typed, "load", ReferenceKind::FunctionCall);
+
+    assert_eq!(
+        reference
+            .resolved_type
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+    assert_eq!(
+        reference
+            .recoverable_effect
+            .and_then(|effect| typed.type_table().get(effect.error_type)),
+        Some(&CheckedType::Builtin(BuiltinType::Str))
+    );
+}
+
+#[test]
+fn inferred_bindings_can_keep_recoverable_call_effects() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "fun[] load(): int / str = {\n\
+             report \"bad\";\n\
+             return 1;\n\
+         }\n\
+         fun[] main(): int / str = {\n\
+             var current = load();\n\
+             return 0;\n\
+         }\n",
+    )]);
+
+    let (_current_id, current) = find_typed_symbol(&typed, "current", SymbolKind::ValueBinding);
+
+    assert_eq!(
+        current
+            .declared_type
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+    assert_eq!(
+        current
+            .recoverable_effect
+            .and_then(|effect| typed.type_table().get(effect.error_type)),
+        Some(&CheckedType::Builtin(BuiltinType::Str))
+    );
+}
+
+#[test]
+fn plain_use_of_errorful_calls_requires_error_aware_routines() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] load(): int / str = {\n\
+             report \"bad\";\n\
+             return 1;\n\
+         }\n\
+         fun[] main(): int = {\n\
+             var total: int = load() + 1;\n\
+             return total;\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error
+                    .message()
+                    .contains("requires a surrounding routine with a declared error type in V1")
+        }),
+        "Expected a plain-use errorful-call diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
+fn propagation_typing_accepts_matching_error_types_in_plain_value_contexts() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "fun[] load(): int / str = {\n\
+             report \"bad\";\n\
+             return 1;\n\
+         }\n\
+         fun[] main(): int / str = {\n\
+             return load() + 1;\n\
+         }\n",
+    )]);
+
+    let syntax_id = find_named_routine_syntax_id(&typed, "main");
+    assert_eq!(
+        typed
+            .typed_node(syntax_id)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+}
+
+#[test]
+fn propagation_typing_rejects_incompatible_error_types_in_plain_value_contexts() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] load(): int / str = {\n\
+             report \"bad\";\n\
+             return 1;\n\
+         }\n\
+         fun[] main(): int / int = {\n\
+             return load() + 1;\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::IncompatibleType
+                && error
+                    .message()
+                    .contains("propagates 'Builtin(Str)' but the surrounding routine declares 'Builtin(Int)'")
+        }),
+        "Expected an incompatible propagated-error diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
+fn check_typing_accepts_errorful_calls_and_returns_bool() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "fun[] load(): int / str = {\n\
+             report \"bad\";\n\
+             return 1;\n\
+         }\n\
+         fun[] main(): bol = {\n\
+             return check(load());\n\
+         }\n",
+    )]);
+
+    let syntax_id = find_named_routine_syntax_id(&typed, "main");
+    assert_eq!(
+        typed
+            .typed_node(syntax_id)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Bool))
+    );
+}
+
+#[test]
+fn check_typing_rejects_plain_values() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] main(): bol = {\n\
+             return check(1);\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error
+                    .message()
+                    .contains("check requires an errorful routine result in V1")
+        }),
+        "Expected an invalid check diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
+fn check_typing_rejects_err_shell_values_explicitly() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "ali Failure: err[str]\nfun[] main(value: Failure): bol = {\n    return check(value);\n}\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error
+                    .message()
+                    .contains("check(...) inspects routine call results with '/ ErrorType', not err[...] shell values in V1")
+        }),
+        "Expected the err-shell check diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
+fn pipe_or_typing_accepts_default_value_fallbacks() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "fun[] load(): int / str = {\n\
+             report \"bad\";\n\
+             return 1;\n\
+         }\n\
+         fun[] main(): int = {\n\
+             return load() || 5;\n\
+         }\n",
+    )]);
+
+    let syntax_id = find_named_routine_syntax_id(&typed, "main");
+    assert_eq!(
+        typed
+            .typed_node(syntax_id)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+}
+
+#[test]
+fn pipe_or_typing_rejects_err_shell_values_explicitly() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "ali Failure: err[int]\nfun[] main(value: Failure): int = {\n    return value || 5;\n}\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error
+                    .message()
+                    .contains("'||' handles routine call results with '/ ErrorType', not err[...] shell values in V1")
+        }),
+        "Expected the err-shell pipe-or diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
+fn pipe_or_typing_rejects_incompatible_fallback_values() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] load(): int / str = {\n\
+             report \"bad\";\n\
+             return 1;\n\
+         }\n\
+         fun[] main(): int = {\n\
+             return load() || \"fallback\";\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::IncompatibleType
+                && error.message().contains("recoverable-error fallback")
+        }),
+        "Expected an incompatible fallback diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
+fn recoverable_calls_do_not_implicitly_convert_into_err_shell_bindings() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] load(): int / str = {\n\
+             report \"bad\";\n\
+             return 1;\n\
+         }\n\
+         fun[] main(): err[int] / str = {\n\
+             var captured: err[int] = load();\n\
+             return captured;\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::Unsupported
+                && error.message().contains("cannot implicitly convert a routine result with '/ ErrorType' into an err[...] shell in V1")
+                && error.message().contains("initializer for 'captured'")
+        }),
+        "Expected the err-shell binding boundary diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
+fn recoverable_calls_do_not_implicitly_convert_into_err_shell_returns() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] load(): int / str = {\n\
+             report \"bad\";\n\
+             return 1;\n\
+         }\n\
+         fun[] main(): err[int] / str = {\n\
+             return load();\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::Unsupported
+                && error.message().contains("cannot implicitly convert a routine result with '/ ErrorType' into an err[...] shell in V1")
+                && error.message().contains("return cannot implicitly convert")
+        }),
+        "Expected the err-shell return boundary diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
+fn recoverable_calls_do_not_implicitly_convert_into_err_shell_arguments() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] load(): int / str = {\n\
+             report \"bad\";\n\
+             return 1;\n\
+         }\n\
+         fun[] consume(value: err[int]): int = {\n\
+             return 1;\n\
+         }\n\
+         fun[] main(): int / str = {\n\
+             return consume(load());\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::Unsupported
+                && error.message().contains("cannot implicitly convert a routine result with '/ ErrorType' into an err[...] shell in V1")
+                && error.message().contains("call to 'consume'")
+        }),
+        "Expected the err-shell call-argument boundary diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
 fn when_result_typing_accepts_matching_branch_values() {
     let typed = typecheck_fixture_folder(&[(
         "main.fol",
@@ -3664,6 +3992,30 @@ fn shell_typing_accepts_postfix_unwrap_for_optional_and_typed_error_values() {
         "main.fol",
         "ali MaybeText: opt[str]\nali Failure: err[str]\nfun[] take_text(value: MaybeText): str = {\n    return value!;\n}\nfun[] take_error(value: Failure): str = {\n    return value!;\n}\n",
     )]);
+}
+
+#[test]
+fn shell_typing_rejects_postfix_unwrap_for_recoverable_routine_calls() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] load(): int / str = {\n\
+             report \"bad\";\n\
+             return 1;\n\
+         }\n\
+         fun[] main(): int / str = {\n\
+             return load()!;\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::Unsupported
+                && error
+                    .message()
+                    .contains("postfix '!' unwrap applies to opt[...] and err[...] shell values, not to routine call results with '/ ErrorType' in V1")
+        }),
+        "Expected the recoverable-call unwrap boundary diagnostic, got: {errors:?}"
+    );
 }
 
 #[test]

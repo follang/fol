@@ -1,360 +1,1159 @@
-# FOL V1 Error Handling Plan
+# FOL Intrinsics Plan
 
 Last updated: 2026-03-15
 
-This file defines the next compiler milestone: make recoverable errors a real
-`V1` feature through the full compiler chain instead of leaving them half-real
-between type checking and backend work.
+This file defines the next compiler-design milestone: create
+`fol-intrinsics`, the shared compiler-owned intrinsic registry that replaces the
+current scattered “build-in” handling and becomes the main extension point for
+language-owned operations such as:
 
-The active compiler already has:
+- `.eq()`
+- `.nq()`
+- `.not()`
+- `.lt()`
+- `.gt()`
+- `.ge()`
+- `.le()`
+- `.cast()`
+- `.as()`
+- `.len()`
+- `.echo()`
 
-- routine signatures with `ResultType : ErrorType`
-- `report expr`
-- typed `opt[...]` / `err[...]` shells
-- postfix unwrap `value!` for shell values
-- lowered routine signatures that preserve `error_type`
-- lowered `Report` terminators
+and later many more.
 
-But the current compiler still lacks one coherent story for **calling** an
-errorful routine and then deciding whether to:
+The goal is not to add every intrinsic at once. The goal is to build the
+infrastructure that makes adding intrinsics easy, centralized, testable, and
+safe across:
 
-- propagate the error
-- branch on the error
-- recover with a default
-- panic on failure
-- unwrap and continue
+- parser
+- typecheck
+- lowering
+- future backends
+- user-facing docs
 
-That gap must be closed before backend work, because backend calling convention
-and runtime behavior depend on it.
+## 0. Why This Exists
 
-## 0. Why This Plan Is Needed
+Right now, “builtins” are a mix of:
 
-Recoverable errors are already important in the book and in the implemented
-front-end surface.
+- book-only ideas
+- parser-recognized dot-root calls
+- keyword-style diagnostics like `panic`
+- ad hoc typecheck/lowering special cases
 
-Current repository truth:
+That is not a good long-term shape.
 
-- parser already preserves routine `error_type`
-- typechecker already enforces `report`
-- lowering already emits `Report`
-- shell syntax like `err[str]`, `err[]`, `opt[str]`, and postfix `!` already has
-  current `V1` typing and lowering support
+Intrinsics are not standard-library functions. They are compiler-owned language
+operations. They need one semantic owner.
 
-Current missing piece:
+Without that owner, every new intrinsic risks becoming:
 
-- call sites of routines with declared error types do not yet have a completed
-  `V1` semantic model
-- builtins like `check(...)` are still book-facing ideas, not a fully owned
-  semantic feature
-- the compiler does not yet define the backend-facing representation of
-  “successful result + possible error” for routine calls
+- parser special casing
+- typechecker branching
+- lowering branching
+- backend branching
+- stale docs
 
-That means `report` is partially real today, but **recoverable error handling as
-a user workflow is not complete yet**.
+all in different places.
 
-## 1. Local Source Basis For This Plan
+`fol-intrinsics` should become the one place where a new intrinsic is declared,
+categorized, version-gated, documented, and wired to semantic/lowering
+behavior.
 
-This plan is based on the current repository state and current book text:
+## 1. Current Repository Truth
 
-- [`book/src/650_errors/200_recover.md`](./book/src/650_errors/200_recover.md)
+This plan is based on a rescan of the current codebase and book.
+
+### 1.1 Book Truth
+
+Current builtin documentation lives mainly in:
+
+- [`book/src/300_meta/100_buildin.md`](./book/src/300_meta/100_buildin.md)
+- [`book/src/400_type/200_container.md`](./book/src/400_type/200_container.md)
+- [`book/src/400_type/400_special.md`](./book/src/400_type/400_special.md)
+- [`book/src/500_items/200_routines/_index.md`](./book/src/500_items/200_routines/_index.md)
 - [`book/src/700_sugar/200_pipes.md`](./book/src/700_sugar/200_pipes.md)
 - [`book/src/700_sugar/800_chaining.md`](./book/src/700_sugar/800_chaining.md)
-- [`book/src/500_items/200_routines/100_procedures.md`](./book/src/500_items/200_routines/100_procedures.md)
-- [`book/src/500_items/200_routines/200_functions.md`](./book/src/500_items/200_routines/200_functions.md)
-- [`fol-typecheck/src/exprs.rs`](./fol-typecheck/src/exprs.rs)
-- [`fol-lower/src/exprs.rs`](./fol-lower/src/exprs.rs)
-- [`VERSIONS.md`](./VERSIONS.md)
 
-## 2. Zig Reference And What To Borrow
+The book currently lists many dot-prefixed operations such as:
 
-Official Zig 0.15.2 error handling is worth studying because it separates the
-same core decisions FOL now has to settle:
+- `.echo()`
+- `.not()`
+- `.cast()`
+- `.as()`
+- `.eq()`
+- `.nq()`
+- `.gt()`
+- `.lt()`
+- `.ge()`
+- `.le()`
+- `.de_alloc()`
+- `.give_back()`
+- `.size_of()`
+- `.address_of()`
+- `.pointer_value()`
 
-- error unions carry either a success value or an error
-- `try` propagates failure
-- `catch` handles failure with a fallback or custom branch
-- `if (err_union) |value| { ... } else |err| { ... }` branches on success vs
-  error while capturing the chosen payload
-- `catch unreachable` or similar forms act like forceful unwraps
-- `errdefer` handles cleanup on failure paths
+and many older examples also use:
 
-FOL should borrow the **semantic split**, not blindly copy Zig syntax.
+- `.len()`
+- `.low()`
+- `.high()`
+- `.assert()`
+- `.typeof()`
+- `.range(...)`
+- `.regex(...)`
 
-For `V1`, the recommended approach is:
+### 1.2 Parser Truth
 
-- keep FOL’s existing declared routine form `: ResultType : ErrorType`
-- keep `report`
-- keep shell unwrap `!`
-- complete the existing book-facing `check(...)` and `||` handling surfaces
-- defer cleanup constructs like Zig `errdefer` to a later milestone
+The parser already has explicit syntax support for dot-root builtin call forms:
 
-## 3. Recommended V1 Error Contract
+- [`fol-parser/src/ast/parser_parts/expression_parsers.rs`](./fol-parser/src/ast/parser_parts/expression_parsers.rs)
+- [`fol-parser/src/ast/parser_parts/statement_parsers.rs`](./fol-parser/src/ast/parser_parts/statement_parsers.rs)
 
-### 3.1 Routine Declarations
-
-Keep the existing form:
-
-```fol
-fun[] read(path: str): str : io_err = { ... }
-```
-
-Meaning:
-
-- success path yields `str`
-- failure path yields `io_err`
-- `report expr` exits through the failure path
-
-### 3.2 Call-Site Semantics
-
-For `V1`, calls to routines with declared `error_type` must no longer be treated
-as ordinary plain values internally.
-
-Instead, they must carry a **recoverable call-result effect** until one of the
-supported consumers handles them.
-
-That effect does not need to be a user-spellable type in `V1`, but it does need
-to be explicit in:
-
-- typecheck
-- lowered IR
-- backend contract
-
-### 3.3 Supported V1 Consumers
-
-The plan should make these call-result consumers real:
-
-1. **Propagation**
-- keep the book rule that an unhandled errorful call propagates upward in an
-  error-aware routine context
-- if the surrounding routine cannot carry that error, typecheck must reject it
-
-2. **Explicit check**
-- make `check(expr)` a real builtin/intrinsic over errorful routine results
-- `check(expr)` returns `bol`
-- its contract is “does this routine result currently hold an error?”
-
-3. **Fallback / handler shorthand**
-- make `expr || fallback` a real error-handling surface
-- if `expr` succeeds, use the success value
-- if `expr` fails, evaluate `fallback`
-- `fallback` may:
-  - return a default success value
-  - `panic`
-  - `report`
-  - possibly branch further
-
-4. **Force unwrap**
-- settle a force-unwrap story for errorful routine results
-- recommended `V1` decision:
-  - keep postfix `!` only for shell values already typed as `opt[...]` or
-    `err[...]`
-  - do **not** silently extend `call!` to routine results until the result/error
-    effect model is explicit and stable
-- if a force-unwrap-on-call is wanted later, add it as a deliberate syntax
-  decision instead of smuggling it through current shell rules
-
-### 3.4 Branching Form
-
-For `V1`, do **not** invent a new Zig-like capture syntax unless the current book
-surfaces prove impossible to lower cleanly.
-
-Recommended `V1` branch story:
+So the language surface for:
 
 ```fol
-var file = open(path)
-if (check(file)) {
-    report "could not open"
-} else {
-    return file | stringify(this)
-}
+.eq(a, b)
+.len(items)
+.echo(value)
 ```
 
-This is not perfect ergonomically, but it stays within the current language
-surface and keeps the milestone bounded.
+already exists syntactically.
 
-Direct success/error capture syntax inspired by Zig can be reconsidered for a
-later milestone if the current surface becomes too awkward.
+### 1.3 Typecheck Truth
 
-## 4. Hard Definition Of Done
-
-This plan is complete only when all of the following are true:
-
-- routines with declared error types behave as real error-aware calls through the
-  full chain
-- `report` and ordinary returns coexist under one coherent call-result model
-- `check(expr)` is typechecked, lowered, and backend-owned
-- `expr || fallback` is typechecked, lowered, and backend-owned
-- unhandled errorful calls either:
-  - propagate in a valid error-aware routine context, or
-  - are rejected explicitly elsewhere
-- shell `err[...]` and routine error calls have a clear non-conflicting boundary
-- backend-facing lowered IR has one stable calling convention for recoverable
-  errors
-- CLI integration tests prove successful propagation, handled recovery, and
-  rejected misuse
-- book/docs no longer claim stale parser-only behavior
-
-## 5. Current Known Gaps
-
-### 5.1 Stale Documentation
-
-The recoverable-error chapter still says the parser does not type-check
-`report`, which is no longer true.
-
-### 5.2 `check(...)` Is Not Implemented As A Real Semantic Feature
-
-The book treats `check(...)` as a builtin way to inspect recoverable routine
-failures, but current typecheck/lower logic only gives special treatment to:
+Today, type checking has real semantic ownership only for a very small subset:
 
 - `panic`
 - `report`
+- `check(...)`
 
-### 5.3 Errorful Calls Do Not Yet Have A Stable Effect Model
+Current evidence:
 
-Current lowered calls are still plain `Call { ... }` instructions. The lowered
-IR retains routine `error_type`, but it does not yet define what a caller
-receives and how success/error branches are represented after the call.
+- [`fol-typecheck/src/exprs.rs`](./fol-typecheck/src/exprs.rs)
 
-### 5.4 Propagation Rules Are Not Yet End-To-End Real
+At the same time:
 
-The book talks about errors concatenating/propagating upward, but the backend
-contract for that does not exist yet.
+- explicit `as` casts are still rejected in `V1`
+- explicit `cast` operators are still rejected in `V1`
+- there is no general intrinsic registry for `.eq()`, `.not()`, `.lt()`, `.gt()`,
+  `.len()`, `.echo()`, and friends
 
-## 6. Execution Strategy
+### 1.4 Lowering Truth
 
-Do this in dependency order:
+Lowering knows about recoverable-call surfaces and some shell/runtime surfaces,
+but it does not have one general “intrinsic op registry”.
 
-1. settle the `V1` semantic contract
-2. model it explicitly in typecheck
-3. model it explicitly in lowered IR
-4. define backend-facing calling convention
-5. only then sync docs/book
+Current evidence:
 
-Do **not** start with syntax expansion.
-Do **not** add new sugar before the current book surfaces are either implemented
-or deliberately rejected.
+- [`fol-lower/src/exprs.rs`](./fol-lower/src/exprs.rs)
 
-## 7. Implementation Slices
+So the compiler is still missing the abstraction layer that says:
+
+“this source-level intrinsic is owned by the compiler, has this type contract,
+and lowers in this exact way.”
+
+### 1.5 External Reference Scan
+
+This plan also takes cues from a few official language references:
+
+- Zig 0.15.2 builtin functions:
+  - very broad compiler-owned surface for casts, overflow helpers, layout/type
+    introspection, memory helpers, and native interop
+  - <https://ziglang.org/documentation/0.15.2/#Builtin-Functions>
+- Go built-in functions:
+  - a deliberately small but high-value builtin set such as `len`, `cap`,
+    `make`, `append`, `copy`, `delete`, `clear`, `new`, `panic`, and `recover`
+  - <https://go.dev/ref/spec#Built-in_functions>
+- Rust primitive and `Result` APIs:
+  - show that many “nice to have” operations are better on primitives/core
+    types than as compiler intrinsics
+  - <https://doc.rust-lang.org/std/primitive.bool.html>
+  - <https://doc.rust-lang.org/std/primitive.str.html>
+  - <https://doc.rust-lang.org/std/primitive.slice.html>
+  - <https://doc.rust-lang.org/std/result/enum.Result.html>
+
+Design takeaway:
+
+- build a richer roadmap than the current tiny subset
+- but do not promote every convenient helper into compiler magic
+
+## 2. Core Design Decision
+
+Create a new shared crate:
+
+`fol-intrinsics`
+
+It is **not** another pipeline stage. It is shared semantic infrastructure used
+by multiple stages.
+
+The dependency shape should be:
+
+- parser may use it for surface recognition or reserved-name validation
+- typecheck must use it for semantic ownership
+- lower must use it for IR lowering decisions
+- future backend must use it for implementation mapping
+
+`fol-intrinsics` should become the compiler source of truth for:
+
+- intrinsic names
+- aliases
+- categories
+- version availability
+- arity rules
+- type rules
+- purity/effect flags
+- lowering strategy
+- backend/runtime expectations
+- documentation metadata
+
+## 3. Accessibility Goal
+
+This crate should be the easiest place in the compiler to extend.
+
+When adding a new intrinsic, the desired workflow should eventually be:
+
+1. add one registry entry
+2. add one or two semantic callbacks or lowering descriptors
+3. add tests
+4. update docs
+
+not:
+
+1. patch parser
+2. patch resolver
+3. patch typecheck
+4. patch lowering
+5. patch CLI
+6. hope all the names stay consistent
+
+The registry should therefore be:
+
+- declarative first
+- searchable
+- strongly typed
+- version-aware
+- testable in isolation
+
+## 4. V1 Boundary For Intrinsics
+
+This plan is for the current `V1` compiler boundary.
+
+That means `fol-intrinsics` should distinguish three kinds of intrinsic
+surfaces:
+
+### 4.1 V1 Intrinsics To Support For Real
+
+These should become real semantic intrinsics in the current compiler:
+
+- `.eq()`
+- `.nq()`
+- `.lt()`
+- `.gt()`
+- `.ge()`
+- `.le()`
+- `.not()`
+- `.len()`
+- `.echo()`
+- `check(...)`
+- `panic(...)`
+
+Possible `V1` cast surfaces if we deliberately accept them in this milestone:
+
+- `.cast()`
+- `.as()`
+
+but only if we define a clear `V1` conversion contract first.
+
+### 4.2 V1 Intrinsics To Keep As Explicitly Unsupported
+
+These may stay parsed but must fail with explicit diagnostics until their real
+semantic owner exists:
+
+- `.de_alloc()`
+- `.give_back()`
+- `.address_of()`
+- `.pointer_value()`
+- `.borrow_from()`
+- ownership-facing memory helpers
+- pointer helpers
+- C-ABI-facing helpers
+
+These are later than current `V1` because they depend on:
+
+- ownership/borrowing semantics
+- pointer semantics
+- backend/runtime ABI
+
+### 4.3 Book-Visible But Not Yet Real
+
+Some book surfaces may need to remain in one of these states for now:
+
+- parser-visible
+- typecheck-explicitly-unsupported
+- lowering-explicitly-unsupported
+
+That is acceptable, but only if diagnostics are direct and intentional.
+
+### 4.4 Large Roadmap, Narrow Semantics
+
+This plan should intentionally track a **large** candidate intrinsic set, but
+the compiler should stay strict about what really becomes intrinsic.
+
+Use this rule:
+
+- make it an intrinsic if it is:
+  - syntax-sensitive
+  - type-system-sensitive
+  - recoverable-effect-sensitive
+  - layout/backend-sensitive
+  - required across all backends
+- prefer `core` or `std` library APIs if it is:
+  - ordinary data manipulation
+  - collection algorithms
+  - string/text convenience
+  - serialization
+  - filesystem/network/process behavior
+
+That lets `fol-intrinsics` stay rich without turning the whole language into ad
+hoc compiler special cases.
+
+## 5. Intrinsic Families
+
+`fol-intrinsics` should group intrinsics into clear families.
+
+### 5.1 Comparison Intrinsics
+
+Examples:
+
+- `.eq(a, b)`
+- `.nq(a, b)`
+- `.lt(a, b)`
+- `.gt(a, b)`
+- `.ge(a, b)`
+- `.le(a, b)`
+
+Questions to settle:
+
+- what scalar types are allowed in `V1`
+- whether string equality is allowed in `V1`
+- whether shell equality is allowed in `V1`
+- whether records/containers are rejected in `V1`
+- whether these are just source-level spellings over already-supported typed
+  operator families, or distinct lowering ops
+
+Recommended `V1` direction:
+
+- treat these as intrinsic spellings over the same semantic comparison families
+  already accepted by operator typing
+- keep their result type `bol`
+- reject unsupported families explicitly
+
+### 5.2 Boolean / Logical Intrinsics
+
+Examples:
+
+- `.not(value)`
+
+Possible later additions:
+
+- `.and(a, b)`
+- `.or(a, b)`
+- `.xor(a, b)`
+
+Recommended `V1` direction:
+
+- support `.not(bol)` only
+- leave richer logical/fold surfaces later unless there is a strong need now
+
+### 5.3 Conversion Intrinsics
+
+Examples:
+
+- `.cast(value, Type)`
+- `.as(value, Type)`
+
+or whatever final source shape the language keeps
+
+This family is dangerous because it needs a coherent conversion policy.
+
+Recommended direction:
+
+- build the registry and diagnostics now
+- do not mark casts as real `V1` intrinsics until the conversion rules are
+  frozen
+- make the unsupported boundary explicit if casts stay deferred
+
+### 5.4 Diagnostic / Environment Intrinsics
+
+Examples:
+
+- `.echo(value)`
+- `.assert(cond)`
+
+Questions:
+
+- is `.echo` lowered as a dedicated IR op or as a runtime/builtin call stub
+- is `.assert` a real `V1` intrinsic or still book-only
+- are these backend-required or debug-only
+
+Recommended `V1` direction:
+
+- make `.echo` real early if it helps backend bring-up and demo programs
+- keep `.assert` pending unless its behavior is frozen
+
+### 5.5 Introspection / Size / Shape Intrinsics
+
+Examples:
+
+- `.len(value)`
+- `.low(value)`
+- `.high(value)`
+- `.size_of(value_or_type)`
+- `.typeof(value)`
+
+Recommended `V1` direction:
+
+- prioritize `.len()` because container examples already depend on it
+- keep `.size_of()` and `.typeof()` deferred until backend/runtime layout
+  policy is ready
+
+### 5.6 Memory / Ownership Intrinsics
+
+Examples:
+
+- `.de_alloc()`
+- `.give_back()`
+- `.address_of()`
+- `.pointer_value()`
+
+Recommended direction:
+
+- registry entries now
+- explicit `V3` diagnostics now
+- no fake `V1` semantics
+
+### 5.7 Arithmetic And Numeric Helper Intrinsics
+
+Candidate intrinsic spellings worth tracking:
+
+- `.add()`
+- `.sub()`
+- `.mul()`
+- `.div()`
+- `.rem()`
+- `.neg()`
+- `.abs()`
+- `.min()`
+- `.max()`
+- `.clamp()`
+- `.pow()`
+- `.sqrt()`
+- `.floor()`
+- `.ceil()`
+- `.round()`
+- `.trunc()`
+
+Important boundary:
+
+- ordinary arithmetic operators should remain the primary user surface
+- intrinsic spellings are still useful for templates/macros, uniform dispatch,
+  and backend-directed behavior
+
+Recommended priority:
+
+- near-term candidates: `.abs()`, `.min()`, `.max()`, `.clamp()`
+- later numeric-policy candidates: `.pow()`, `.sqrt()`, rounding family
+
+### 5.8 Overflow, Wrapping, And Checked Numeric Intrinsics
+
+Inspired strongly by Zig-style builtin control over numeric behavior, track:
+
+- `.checked_add()`
+- `.checked_sub()`
+- `.checked_mul()`
+- `.checked_div()`
+- `.checked_shl()`
+- `.checked_shr()`
+- `.wrapping_add()`
+- `.wrapping_sub()`
+- `.wrapping_mul()`
+- `.wrapping_shl()`
+- `.wrapping_shr()`
+- `.saturating_add()`
+- `.saturating_sub()`
+- `.saturating_mul()`
+- `.overflowing_add()`
+- `.overflowing_sub()`
+- `.overflowing_mul()`
+
+These are high-value because they are:
+
+- explicit
+- backend-relevant
+- hard to model cleanly as ordinary library helpers
+
+But they need a frozen result contract before implementation.
+
+### 5.9 Bitwise And Bit-Introspection Intrinsics
+
+Important systems-language candidates:
+
+- `.bit_and()`
+- `.bit_or()`
+- `.bit_xor()`
+- `.bit_not()`
+- `.shl()`
+- `.shr()`
+- `.rotl()`
+- `.rotr()`
+- `.pop_count()`
+- `.clz()`
+- `.ctz()`
+- `.byte_swap()`
+- `.bit_reverse()`
+- `.bit_width()`
+
+These map naturally to backend instructions and should be part of the roadmap
+even if they land after the first intrinsic batch.
+
+### 5.10 Shape, Capacity, And Container Query Intrinsics
+
+Candidate container/query surfaces:
+
+- `.len()`
+- `.cap()`
+- `.is_empty()`
+- `.low()`
+- `.high()`
+- `.contains()`
+
+Recommended split:
+
+- likely intrinsic: `.len()`, `.cap()`, maybe `.is_empty()`
+- likely `core/std`: richer query and mutation helpers unless the language
+  decides they are primitive
+
+### 5.11 Container Mutation And Construction Candidates
+
+Useful but likely **not** first-wave compiler intrinsics:
+
+- `.append()`
+- `.push()`
+- `.pop()`
+- `.insert()`
+- `.remove()`
+- `.delete()`
+- `.clear()`
+- `.copy()`
+- `.clone()`
+
+These are worth tracking, especially because Go treats some mutation-adjacent
+operations as builtins, but many of them may fit better in `core` collection
+APIs than in compiler intrinsics.
+
+### 5.12 Optional, Error, And Recoverable Helper Intrinsics
+
+Current and future candidates:
+
+- `check(...)`
+- `.is_nil()`
+- `.is_err()`
+- `.unwrap_or()`
+- `.unwrap_or_else()`
+- `.expect()`
+- `.ok_or()`
+- `.err_or()`
+- `.map_ok()`
+- `.map_err()`
+
+Important boundary:
+
+- `check(...)` is clearly intrinsic because it inspects recoverable routine call
+  results
+- many shell/result convenience helpers may be better as `core` APIs unless they
+  need compiler-owned semantics
+
+### 5.13 Introspection And Layout Intrinsics
+
+Track these as strong intrinsic candidates:
+
+- `.size_of()`
+- `.align_of()`
+- `.type_of()`
+- `.type_name()`
+- `.field_count()`
+- `.tag_name()`
+- `.discriminant()`
+- `.has_field()`
+- `.has_method()`
+
+These depend on compiler type knowledge and should eventually be owned by the
+intrinsic registry even if they are not `V1` day-one features.
+
+### 5.14 Allocation, Construction, And Lifetime Candidates
+
+Track explicitly:
+
+- `.new()`
+- `.make()`
+- `.zeroed()`
+- `.default()`
+- `.de_alloc()`
+- `.give_back()`
+- `.move()`
+- `.deep_copy()`
+
+These overlap with runtime, ownership, and allocation policy, so many should
+remain deferred or non-`V1`.
+
+### 5.15 Pointer And Address Intrinsics
+
+Track explicitly:
+
+- `.address_of()`
+- `.pointer_value()`
+- `.borrow_from()`
+- `.offset_of()`
+- `.field_ptr()`
+- `.ptr_cast()`
+- `.int_from_ptr()`
+- `.ptr_from_int()`
+
+These belong later, but they need reserved names and clear diagnostics.
+
+### 5.16 Text, Bytes, And Regex-Adjacent Candidates
+
+Candidates users will naturally want:
+
+- `.starts_with()`
+- `.ends_with()`
+- `.contains()`
+- `.split()`
+- `.trim()`
+- `.to_lower()`
+- `.to_upper()`
+- `.regex()`
+
+Most of these should probably stay in `core` or `std`, not in compiler
+intrinsics. They are still worth tracking so the docs and future design do not
+blur the boundary.
+
+### 5.17 Diagnostics, Debug, And Compiler-Control Intrinsics
+
+Track:
+
+- `.echo()`
+- `.assert()`
+- `.debug()`
+- `panic(...)`
+- `.unreachable()`
+- `.compile_error()`
+- `.compile_log()`
+- `.trace()`
+
+Some are runtime-facing, some compile-time-facing. The registry should be able
+to represent both even if only `.echo()` and `panic(...)` are implemented
+initially.
+
+### 5.18 FFI And Native Artifact Intrinsics
+
+Reserve room for future C-ABI and package/native integration surfaces:
+
+- `.c_import()`
+- `.header()`
+- `.extern_symbol()`
+- `.link_name()`
+- `.abi_cast()`
+- `.call_conv()`
+
+These are not immediate `V1` work, but the registry model should not block them.
+
+## 6. Surface Model
+
+The registry needs to model more than just a name string.
+
+Each intrinsic entry should eventually declare at least:
+
+- stable `IntrinsicId`
+- canonical name
+- optional aliases
+- source family
+  - dot-root call
+  - keyword call
+  - postfix surface
+  - operator-like alias
+- category
+- minimum compiler version milestone
+  - `V1`
+  - `V2`
+  - `V3`
+- current implementation status
+  - implemented
+  - unsupported
+  - reserved
+- purity/effect class
+- arity rule
+- overload family
+- accepted argument shapes
+- result shape
+- recoverable-effect behavior
+- lowering strategy
+- backend expectation
+- documentation summary
+- examples and non-examples
+- whether the surface should remain compiler-owned or eventually migrate to
+  `core`
+
+## 7. Lowering Strategy Model
+
+Not every intrinsic should lower the same way.
+
+The registry should support at least these lowering modes:
+
+- lower to an existing general IR op
+- lower to a dedicated intrinsic IR op
+- lower to a backend-runtime hook
+- lower to compile-time rejection
+- lower to “not yet supported”
+
+Examples:
+
+- `.eq()` may lower to an existing comparison op
+- `.not()` may lower to an existing boolean op
+- `.len()` may lower to a dedicated `LengthOf` IR op or a runtime field access
+- `.echo()` may lower to a backend runtime hook
+- `.de_alloc()` may lower to `Unsupported(V3Only)`
+
+## 8. Parser Integration Direction
+
+The parser already recognizes dot builtin syntax. The key parser work is not to
+grow more ad hoc branches.
+
+Recommended parser responsibilities:
+
+- keep parsing dot intrinsic syntax
+- preserve the intrinsic name exactly
+- optionally validate reserved builtin-root spelling through
+  `fol-intrinsics`
+- do not own type rules or semantics
+
+The parser should not become the owner of:
+
+- intrinsic arity semantics
+- intrinsic overload semantics
+- intrinsic version gating
+
+## 9. Resolver Integration Direction
+
+Resolver should stay mostly out of intrinsic semantics.
+
+Recommended responsibilities:
+
+- keep user-defined names and compiler-owned intrinsic names distinct
+- ensure intrinsic roots do not collide with normal package resolution
+- avoid pretending that `.eq` or `.echo` are imported symbols
+
+Resolver should not perform:
+
+- overload selection
+- signature typing
+- runtime mapping
+
+## 10. Typecheck Integration Direction
+
+Typecheck is where most intrinsic meaning should begin.
+
+For each intrinsic, typecheck should own:
+
+- arity validation
+- argument type validation
+- overload family selection
+- result type determination
+- recoverable-effect interaction
+- unsupported diagnostics
+
+Examples:
+
+- `.eq(int, int) -> bol`
+- `.eq(str, str) -> bol` if allowed
+- `.len(seq[T]) -> int`
+- `.not(bol) -> bol`
+- `.echo(T) -> never` or unit-like behavior depending on final policy
+
+Typecheck must also give better diagnostics than today:
+
+- exact intrinsic name
+- expected arity
+- accepted type families
+- version-gating guidance
+
+## 11. Lower Integration Direction
+
+Lowering should not rediscover intrinsic meaning from strings.
+
+It should consume typed intrinsic selections from typecheck.
+
+That means typecheck should hand lowering something like:
+
+- selected intrinsic ID
+- selected overload form
+- typed operands
+- result type
+
+Then lowering can emit:
+
+- intrinsic IR instruction
+- ordinary IR instruction
+- runtime call stub
+
+without re-deciding what `.eq` means.
+
+## 12. Future Backend Integration Direction
+
+The first backend should consume lowered intrinsic ops, not raw source spellings.
+
+The backend should be able to ask:
+
+- what is the selected intrinsic
+- what is the runtime contract
+- does this intrinsic require backend runtime support
+
+Examples:
+
+- `.eq()` may compile to direct target-language comparison
+- `.len()` may compile to field access or helper call
+- `.echo()` may compile to a runtime print hook
+
+This is another reason to build `fol-intrinsics` before backend implementation
+grows too large.
+
+## 13. Docs Direction
+
+The old “build-in” page should eventually be replaced or renamed to reflect:
+
+- the crate name `fol-intrinsics`
+- the real implemented subset
+- the V1/V2/V3 boundary
+
+Docs should distinguish clearly between:
+
+- compiler intrinsics
+- core library functions
+- standard library functions
+
+That distinction matters because intrinsics are not imported library symbols.
+
+## 14. Hard Definition Of Done
+
+This milestone is complete only when:
+
+- `fol-intrinsics` exists as a workspace crate
+- at least one real intrinsic family is registry-owned end to end
+- parser, typecheck, and lowering consume the registry instead of hard-coded
+  string branching for that family
+- unsupported intrinsic families fail with explicit version-aware diagnostics
+- docs no longer describe a giant undifferentiated “builtin” surface
+- adding a new intrinsic requires touching a small, predictable number of files
+
+## 15. Execution Strategy
+
+Do this in strict order:
+
+1. create the crate and registry model
+2. migrate the easiest real intrinsic family first
+3. add explicit unsupported entries for dangerous late-version intrinsics
+4. migrate additional `V1` families
+5. only then sync docs
+
+Do **not** try to implement every book-listed intrinsic in one pass.
+
+Also do **not** let the larger roadmap force every candidate family into early
+compiler magic. This plan is intentionally broader than the first
+implementation batch.
+
+## 16. Recommended First Real Families
+
+The first migration batch should be:
+
+1. comparison intrinsics
+2. `.not()`
+3. `.len()`
+4. `.echo()`
+
+These are the most useful because they:
+
+- are clearly compiler-owned
+- have obvious user value
+- avoid ownership/C-ABI complexity
+- help backend bring-up later
+
+`cast/as` should be its own later sub-milestone unless the conversion rules are
+frozen first.
+
+## 17. Recommended Near-Following Families
+
+After the first batch, the next most valuable families are:
+
+1. shape/query:
+   - `.cap()`
+   - `.is_empty()`
+2. assertion/debug:
+   - `.assert()`
+3. numeric helpers:
+   - `.abs()`
+   - `.min()`
+   - `.max()`
+   - `.clamp()`
+4. bit introspection:
+   - `.pop_count()`
+   - `.clz()`
+   - `.ctz()`
+   - `.byte_swap()`
+5. explicit unsupported but registry-owned:
+   - ownership helpers
+   - pointer helpers
+   - FFI/C-ABI helpers
+
+## 18. Explicit Non-Goals For The First Batch
+
+Track these in the registry, but do not implement them in the first batch:
+
+- ownership/lifetime helpers
+- pointer/address helpers
+- C-ABI helpers
+- generic text-processing helpers
+- container mutation helpers unless a later decision makes them truly primitive
+- advanced compile-time/meta intrinsics
+- full cast/conversion family before conversion rules are frozen
+
+## 19. Implementation Slices
 
 ### Phase 0. Contract Freeze
 
-- `0.1` `pending` Audit every current parser/typecheck/lower surface that mentions:
-  - `report`
-  - `panic`
-  - `check`
-  - `err[...]`
-  - `opt[...]`
-  - `||`
-- `0.2` `pending` Freeze the `V1` contract for errorful routine calls:
-  - what counts as propagation
-  - what counts as handled recovery
-  - where plain use is illegal
-- `0.3` `pending` Freeze the explicit `V1` boundary:
-  - `check(...)` and `||` are in
-  - Zig-like `if |value| else |err|` capture syntax is out for now
-  - `errdefer`-style cleanup is out for now
+- `0.1` `pending` Scan all current dot-builtin parser entry points and list the
+  exact syntactic builtin surfaces the parser accepts today.
+- `0.2` `pending` Scan all current book-listed builtin names and classify them as:
+  - `V1 implement now`
+  - `V1 explicit unsupported`
+  - `V2`
+  - `V3`
+- `0.3` `pending` Freeze the naming decision:
+  - crate name is `fol-intrinsics`
+  - docs stop using “build-in” as the authoritative compiler term
+- `0.4` `pending` Freeze the first implemented families:
+  - comparison
+  - `.not()`
+  - `.len()`
+  - `.echo()`
+- `0.5` `pending` Freeze the first explicit unsupported families:
+  - ownership
+  - pointers
+  - deallocation
+  - address/pointer helpers
+  - C-ABI-adjacent surfaces
 
-### Phase 1. Typecheck Error-Call Model
+### Phase 1. Crate Foundation
 
-- `1.1` `pending` Introduce a typecheck-owned representation for errorful routine
-  call results so they are no longer treated as plain values too early.
-- `1.2` `pending` Make ordinary use of an errorful call illegal unless the
-  surrounding context is one of the approved `V1` consumers.
-- `1.3` `pending` Implement propagation typing:
-  - allow it only in routines with compatible declared error types
-  - reject it in routines with no error type
-  - reject incompatible error payload propagation
-- `1.4` `pending` Implement `check(expr)` typing over errorful routine results.
-- `1.5` `pending` Implement `expr || fallback` typing:
-  - success branch type
-  - fallback compatibility
-  - `panic` / `report` / `return` fallback handling
-- `1.6` `pending` Lock exact diagnostics for:
-  - errorful call used as plain value
-  - propagation in routines with no error type
-  - incompatible propagated error payloads
-  - invalid `check(...)`
-  - invalid `||` fallback types
+- `1.1` `pending` Add new workspace crate `fol-intrinsics`.
+- `1.2` `pending` Add public registry model:
+  - `IntrinsicId`
+  - `IntrinsicCategory`
+  - `IntrinsicSurface`
+  - `IntrinsicAvailability`
+  - `IntrinsicStatus`
+- `1.3` `pending` Add registry entry type with:
+  - name
+  - aliases
+  - arity rule
+  - category
+  - version
+  - doc string
+  - lowering mode
+- `1.4` `pending` Add one canonical static registry table.
+- `1.5` `pending` Add lookup APIs:
+  - by canonical name
+  - by alias
+  - by surface family
+- `1.6` `pending` Add unit tests for registry lookup, duplicate-name rejection,
+  and alias stability.
 
-### Phase 2. Lowered IR Error Model
+### Phase 2. Compiler Boundary Wiring
 
-- `2.1` `pending` Extend lowered IR so errorful routine calls are represented
-  explicitly instead of looking identical to plain calls.
-- `2.2` `pending` Add lowered instructions or terminators for:
-  - checked call
-  - success/error branch after call
-  - handled fallback path
-  - upward propagation path
-- `2.3` `pending` Keep routine signatures carrying both return and error types in
-  a way the backend can consume directly.
-- `2.4` `pending` Extend the lowering verifier so impossible error-flow shapes are
-  rejected explicitly.
-- `2.5` `pending` Add exact lowered snapshot tests for:
-  - success call
-  - propagated call
-  - `check(...)` branch
-  - `||` default
-  - `|| report ...`
-  - `|| panic ...`
+- `2.1` `pending` Add parser-facing helper API for recognizing reserved
+  intrinsic-root names without forcing parser semantic ownership.
+- `2.2` `pending` Add typecheck-facing selection API so typecheck can resolve a
+  parsed builtin spelling to one registry entry.
+- `2.3` `pending` Add lowering-facing lowering-mode API.
+- `2.4` `pending` Add structured diagnostics helpers for:
+  - unknown intrinsic
+  - unsupported intrinsic
+  - wrong arity
+  - wrong type family
+  - wrong version milestone
+- `2.5` `pending` Add tests proving parser/typecheck/lower all see the same
+  canonical intrinsic identity.
 
-### Phase 3. Backend Calling Convention Contract
+### Phase 3. Comparison Family
 
-- `3.1` `pending` Freeze the first backend-facing ABI for error-aware routines:
-  - one return slot plus one error slot
-  - tagged success/error result object
-  - or another concrete representation
-- `3.2` `pending` Ensure the chosen representation works for:
-  - same-package calls
-  - imported `loc/std/pkg` calls
-  - nested routine calls
-  - calls inside `when` / loops / returns
-- `3.3` `pending` Document the runtime meaning of:
-  - success
-  - failure
-  - propagated failure
-  - forced failure via `panic`
+- `3.1` `pending` Add registry entries for:
+  - `.eq`
+  - `.nq`
+  - `.lt`
+  - `.gt`
+  - `.ge`
+  - `.le`
+- `3.2` `pending` Freeze accepted `V1` operand families for comparison
+  intrinsics.
+- `3.3` `pending` Typecheck `.eq/.nq` through the registry instead of string
+  branches.
+- `3.4` `pending` Typecheck `.lt/.gt/.ge/.le` through the registry instead of
+  string branches.
+- `3.5` `pending` Lower comparison intrinsics through selected intrinsic forms.
+- `3.6` `pending` Add exact tests for scalar success and representative rejected
+  families.
+- `3.7` `pending` Add CLI integration coverage for intrinsic comparison calls.
 
-### Phase 4. V1 User-Facing Handling Paths
+### Phase 4. Boolean Family
 
-- `4.1` `pending` Add end-to-end success tests for ordinary propagation through
-  multiple routines with matching error types.
-- `4.2` `pending` Add end-to-end success tests for `check(expr)` plus `if/else`
-  handling.
-- `4.3` `pending` Add end-to-end success tests for `expr || default_value`.
-- `4.4` `pending` Add end-to-end success tests for `expr || report ...`.
-- `4.5` `pending` Add end-to-end success tests for `expr || panic ...`.
-- `4.6` `pending` Add negative tests for:
-  - trying to assign an errorful call directly to a plain value in a routine that
-    cannot propagate
-  - using `check(...)` on a plain non-errorful value
-  - incompatible fallback value types
-  - incompatible propagated error types
+- `4.1` `pending` Add `.not` registry entry.
+- `4.2` `pending` Typecheck `.not(bol)` through the registry.
+- `4.3` `pending` Reject non-boolean `.not(...)` with explicit intrinsic
+  diagnostics.
+- `4.4` `pending` Lower `.not` through backend-neutral IR.
+- `4.5` `pending` Add parser/typecheck/lower/CLI coverage for `.not`.
 
-### Phase 5. Shell Alignment
+### Phase 5. Length Family
 
-- `5.1` `pending` Reconcile routine error calls with existing `err[...]` shell
-  values so users and compiler do not confuse them.
-- `5.2` `pending` Decide whether explicit conversion between:
-  - routine error call results
-  - `err[...]` shell values
-  belongs in `V1` or later.
-- `5.3` `pending` Lock `V1` postfix unwrap behavior so it stays limited to shell
-  values unless a deliberate new call-unwrap surface is introduced.
+- `5.1` `pending` Add `.len` registry entry.
+- `5.2` `pending` Freeze `V1` accepted receiver families for `.len`:
+  - strings
+  - arrays
+  - vectors
+  - sequences
+  - sets
+  - maps
+- `5.3` `pending` Typecheck `.len(...)` with exact family diagnostics.
+- `5.4` `pending` Lower `.len(...)` to one explicit lowering form.
+- `5.5` `pending` Add exact tests for `.len` across supported and rejected
+  families.
+- `5.6` `pending` Add CLI integration coverage for `.len`.
 
-### Phase 6. Docs And Book Sync
+### Phase 6. Echo Family
 
-- `6.1` `pending` Update [`README.md`](./README.md) and [`PROGRESS.md`](./PROGRESS.md)
-  only after the error-call model is truly implemented.
-- `6.2` `pending` Rewrite [`book/src/650_errors/200_recover.md`](./book/src/650_errors/200_recover.md)
-  so it no longer describes parser-only behavior and instead explains the real
-  current `V1` handling story.
-- `6.3` `pending` Sync [`book/src/700_sugar/200_pipes.md`](./book/src/700_sugar/200_pipes.md)
-  with the actual implemented meaning of `check(...)` and `||`.
-- `6.4` `pending` Rewrite this file into a completion record only after the full
-  `V1` error path is real through the compiler chain.
+- `6.1` `pending` Add `.echo` registry entry.
+- `6.2` `pending` Freeze `V1` `.echo` semantics:
+  - whether it is statement-only or expression-capable
+  - whether it is effectful and yields `never` or another fixed shape
+- `6.3` `pending` Typecheck `.echo(...)` through the registry.
+- `6.4` `pending` Lower `.echo(...)` to one explicit backend-facing intrinsic
+  form or runtime hook.
+- `6.5` `pending` Add CLI coverage for `.echo(...)` in lowered output.
 
-## 8. What Should Happen After This Plan
+### Phase 7. Unsupported Intrinsic Inventory
 
-Only after this plan is complete should the project treat recoverable errors as
-fully real `V1` behavior and proceed into backend implementation without a
-semantic hole in one of the most important language features.
+- `7.1` `pending` Add explicit registry entries for deferred ownership/pointer
+  intrinsics.
+- `7.2` `pending` Add explicit version-aware diagnostics for:
+  - `.de_alloc`
+  - `.give_back`
+  - `.address_of`
+  - `.pointer_value`
+- `7.3` `pending` Add exact tests proving those fail as intentional `V3`
+  boundaries instead of falling through to unknown-name or generic unsupported
+  errors.
+
+### Phase 8. Shape And Query Expansion
+
+- `8.1` `pending` Add placeholder and classification entries for:
+  - `.cap`
+  - `.is_empty`
+  - `.low`
+  - `.high`
+  - `.min`
+  - `.max`
+  - `.clamp`
+- `8.2` `pending` Decide which of those are real current-`V1` intrinsics versus
+  “registry only for now”.
+- `8.3` `pending` If any are accepted now, wire them through typecheck and lower
+  with exact diagnostics and lowering forms.
+- `8.4` `pending` Add tests proving accepted and deferred query intrinsics are
+  both classified explicitly.
+
+### Phase 9. Cast / Conversion Preparation
+
+- `9.1` `pending` Add placeholder registry entries for `.cast` and `.as`.
+- `9.2` `pending` Decide whether casts are:
+  - a sub-milestone inside current `V1`, or
+  - explicit unsupported until a later conversion plan
+- `9.3` `pending` If still deferred, route all cast surfaces through the
+  intrinsic registry and emit one stable diagnostic family.
+- `9.4` `pending` Add tests proving cast diagnostics mention intrinsic intent,
+  not generic operator failure.
+
+### Phase 10. Existing Keyword Intrinsic Alignment
+
+- `10.1` `pending` Decide whether `panic(...)` and `check(...)` are represented in
+  the same registry despite different syntax families.
+- `10.2` `pending` If yes, add them as keyword-surface intrinsic entries.
+- `10.3` `pending` Move their typecheck/lower ownership onto the registry model.
+- `10.4` `pending` Add regression tests proving keyword and dot intrinsics share
+  one diagnostics/code path where appropriate.
+
+### Phase 11. Arithmetic, Bitwise, And Overflow Roadmap Entries
+
+- `11.1` `pending` Add registry entries and status classifications for:
+  - arithmetic helper family
+  - numeric helper family
+  - bitwise family
+  - checked/wrapping/saturating/overflowing families
+- `11.2` `pending` Mark which of those are:
+  - likely `V1.x`
+  - `V2`
+  - `V3`
+  - `core/std`, not intrinsic
+- `11.3` `pending` Add unit tests proving the registry exposes these categories
+  consistently and without accidental duplicate names or aliases.
+
+### Phase 12. Backend-Readiness Surface
+
+- `12.1` `pending` Add backend-facing lowering metadata for each implemented
+  intrinsic:
+  - pure op
+  - control effect
+  - runtime hook
+  - target helper
+- `12.2` `pending` Add deterministic lowered rendering for intrinsic selections
+  so backend bring-up can inspect them.
+- `12.3` `pending` Add lowering verifier checks for impossible intrinsic/result
+  combinations.
+
+### Phase 13. Docs Closeout
+
+- `13.1` `pending` Rewrite [`book/src/300_meta/100_buildin.md`](./book/src/300_meta/100_buildin.md)
+  into an “intrinsics” page with the actual current subset.
+- `13.2` `pending` Sync the relevant type/sugar/routine pages to the registry
+  contract.
+- `13.3` `pending` Update [`README.md`](./README.md) and [`PROGRESS.md`](./PROGRESS.md)
+  to describe `fol-intrinsics` as shared compiler infrastructure.
+- `13.4` `pending` Rewrite this file into a completion record only after at
+  least one meaningful intrinsic family is real end to end.
+
+## 20. Immediate Recommendation
+
+Do **not** start with `.cast()` first.
+
+Start with:
+
+1. `fol-intrinsics` crate foundation
+2. comparison family
+3. `.not()`
+4. `.len()`
+5. `.echo()`
+
+That gives the compiler:
+
+- a real intrinsic registry
+- real value for users
+- better backend readiness
+- a clean path for future additions without turning intrinsics into another
+  compiler-wide patchwork

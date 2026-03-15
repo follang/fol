@@ -1,6 +1,6 @@
 use crate::{
-    decls, CheckedType, CheckedTypeId, RoutineType, TypecheckError, TypecheckErrorKind,
-    TypecheckResult, TypedProgram,
+    decls, CheckedType, CheckedTypeId, RecoverableCallEffect, RoutineType, TypecheckError,
+    TypecheckErrorKind, TypecheckResult, TypedProgram,
 };
 use fol_parser::ast::{
     AstNode, BinaryOperator, ContainerType, Literal, LoopCondition, QualifiedPath, SyntaxNodeId,
@@ -12,11 +12,66 @@ use fol_resolver::{
 use std::collections::{BTreeSet, VecDeque};
 
 #[derive(Debug, Clone, Copy)]
+enum ErrorCallMode {
+    Propagate,
+    Observe,
+}
+
+#[derive(Debug, Clone, Copy)]
 struct TypeContext {
     source_unit_id: SourceUnitId,
     scope_id: ScopeId,
     routine_return_type: Option<CheckedTypeId>,
     routine_error_type: Option<CheckedTypeId>,
+    error_call_mode: ErrorCallMode,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct TypedExpr {
+    value_type: Option<CheckedTypeId>,
+    recoverable_effect: Option<RecoverableCallEffect>,
+}
+
+impl TypedExpr {
+    fn none() -> Self {
+        Self {
+            value_type: None,
+            recoverable_effect: None,
+        }
+    }
+
+    fn value(value_type: CheckedTypeId) -> Self {
+        Self {
+            value_type: Some(value_type),
+            recoverable_effect: None,
+        }
+    }
+
+    fn maybe_value(value_type: Option<CheckedTypeId>) -> Self {
+        Self {
+            value_type,
+            recoverable_effect: None,
+        }
+    }
+
+    fn with_effect(mut self, error_type: CheckedTypeId) -> Self {
+        self.recoverable_effect = Some(RecoverableCallEffect { error_type });
+        self
+    }
+
+    fn with_optional_effect(mut self, effect: Option<RecoverableCallEffect>) -> Self {
+        self.recoverable_effect = effect;
+        self
+    }
+
+    fn is_never(self, typed: &TypedProgram) -> bool {
+        self.value_type == Some(typed.builtin_types().never)
+    }
+
+    fn required_value(self, message: impl Into<String>) -> Result<CheckedTypeId, TypecheckError> {
+        self.value_type
+            .ok_or_else(|| TypecheckError::new(TypecheckErrorKind::InvalidInput, message))
+    }
 }
 
 pub fn type_program(typed: &mut TypedProgram) -> TypecheckResult<()> {
@@ -53,6 +108,7 @@ pub fn type_program(typed: &mut TypedProgram) -> TypecheckResult<()> {
             scope_id,
             routine_return_type: None,
             routine_error_type: None,
+            error_call_mode: ErrorCallMode::Propagate,
         };
         for item in &source_unit.items {
             if let Err(error) = type_node(typed, &resolved, context, &item.node) {
@@ -73,7 +129,7 @@ fn type_node(
     resolved: &ResolvedProgram,
     context: TypeContext,
     node: &AstNode,
-) -> Result<Option<CheckedTypeId>, TypecheckError> {
+) -> Result<TypedExpr, TypecheckError> {
     type_node_with_expectation(typed, resolved, context, node, None)
 }
 
@@ -87,9 +143,9 @@ fn type_node_with_expectation(
     context: TypeContext,
     node: &AstNode,
     expected_type: Option<CheckedTypeId>,
-) -> Result<Option<CheckedTypeId>, TypecheckError> {
+) -> Result<TypedExpr, TypecheckError> {
     match node {
-        AstNode::Comment { .. } => Ok(None),
+        AstNode::Comment { .. } => Ok(TypedExpr::none()),
         AstNode::Commented { node, .. } => {
             type_node_with_expectation(typed, resolved, context, node, expected_type)
         }
@@ -118,7 +174,7 @@ fn type_node_with_expectation(
             value.as_deref(),
             binding_kind_for(node),
         ),
-        AstNode::Literal(literal) => Ok(Some(type_literal(
+        AstNode::Literal(literal) => Ok(TypedExpr::value(type_literal(
             typed,
             resolved,
             node,
@@ -210,10 +266,11 @@ fn type_node_with_expectation(
                 scope_id: routine_scope,
                 routine_return_type: expected_return_type,
                 routine_error_type: expected_error_type,
+                error_call_mode: ErrorCallMode::Propagate,
             };
             let body_type = type_body(typed, resolved, routine_context, body)?;
             let _ = type_body(typed, resolved, routine_context, inquiries)?;
-            if let (Some(expected), Some(actual)) = (expected_return_type, body_type) {
+            if let (Some(expected), Some(actual)) = (expected_return_type, body_type.value_type) {
                 ensure_assignable(
                     typed,
                     expected,
@@ -223,7 +280,7 @@ fn type_node_with_expectation(
                 )?;
             }
             if let (Some(syntax_id), Some(type_id)) =
-                (syntax_id, expected_return_type.or(body_type))
+                (syntax_id, expected_return_type.or(body_type.value_type))
             {
                 typed.record_node_type(*syntax_id, context.source_unit_id, type_id)?;
             }
@@ -272,10 +329,12 @@ fn type_node_with_expectation(
                 scope_id: context.scope_id,
                 routine_return_type: expected_return_type,
                 routine_error_type: expected_error_type,
+                error_call_mode: ErrorCallMode::Propagate,
             };
             let body_type = type_body(typed, resolved, routine_context, body)?;
             let _ = type_body(typed, resolved, routine_context, inquiries)?;
-            Ok(expected_return_type.or(body_type))
+            Ok(TypedExpr::maybe_value(expected_return_type.or(body_type.value_type))
+                .with_optional_effect(body_type.recoverable_effect))
         }
         AstNode::Block { statements } => type_body(typed, resolved, context, statements),
         AstNode::Program { declarations } => type_body(typed, resolved, context, declarations),
@@ -287,20 +346,12 @@ fn type_node_with_expectation(
         AstNode::Loop { condition, body } => type_loop(typed, resolved, context, condition, body),
         AstNode::Assignment { target, value } => {
             ensure_assignable_target(target)?;
-            let expected = type_node(typed, resolved, context, target)?.ok_or_else(|| {
-                TypecheckError::new(
-                    TypecheckErrorKind::InvalidInput,
-                    "assignment target does not have a type",
-                )
-            })?;
+            let expected = type_node(typed, resolved, context, target)?.required_value(
+                "assignment target does not have a type",
+            )?;
             let actual =
                 type_node_with_expectation(typed, resolved, context, value, Some(expected))?
-                    .ok_or_else(|| {
-                TypecheckError::new(
-                    TypecheckErrorKind::InvalidInput,
-                    "assignment value does not have a type",
-                )
-            })?;
+                    .required_value("assignment value does not have a type")?;
             ensure_assignable(
                 typed,
                 expected,
@@ -308,13 +359,18 @@ fn type_node_with_expectation(
                 "assignment".to_string(),
                 None,
             )?;
-            Ok(Some(expected))
+            Ok(TypedExpr::value(expected))
         }
         AstNode::FunctionCall {
             name,
             args,
             syntax_id: _,
         } if name == "panic" => type_panic_call(typed, resolved, context, args),
+        AstNode::FunctionCall {
+            name,
+            args,
+            syntax_id,
+        } if name == "check" => type_check_call(typed, resolved, context, args, *syntax_id),
         AstNode::FunctionCall {
             name,
             args,
@@ -375,7 +431,7 @@ fn type_node_with_expectation(
             "select/channel semantics are part of the V3 systems milestone, not the V1 typecheck milestone",
         )),
         AstNode::Return { value } => type_return(typed, resolved, context, value.as_deref()),
-        AstNode::Break => Ok(Some(typed.builtin_types().never)),
+        AstNode::Break => Ok(TypedExpr::value(typed.builtin_types().never)),
         AstNode::Yield { .. } => Err(TypecheckError::new(
             TypecheckErrorKind::Unsupported,
             "yeild typing is not part of the V1 typecheck milestone",
@@ -384,7 +440,7 @@ fn type_node_with_expectation(
             for child in node.children() {
                 let _ = type_node(typed, resolved, context, child)?;
             }
-            Ok(None)
+            Ok(TypedExpr::none())
         }
     }
 }
@@ -394,18 +450,119 @@ fn type_body(
     resolved: &ResolvedProgram,
     context: TypeContext,
     nodes: &[AstNode],
-) -> Result<Option<CheckedTypeId>, TypecheckError> {
-    let mut final_type = None;
+) -> Result<TypedExpr, TypecheckError> {
+    let mut final_expr = TypedExpr::none();
     for node in nodes {
-        let node_type = type_node(typed, resolved, context, node)?;
-        if let Some(node_type) = node_type {
-            final_type = Some(node_type);
-            if node_type == typed.builtin_types().never {
-                return Ok(final_type);
+        let node_expr = type_node(typed, resolved, context, node)?;
+        if node_expr.value_type.is_some() {
+            final_expr = node_expr;
+            if node_expr.is_never(typed) {
+                return Ok(final_expr);
             }
         }
     }
-    Ok(final_type)
+    Ok(final_expr)
+}
+
+fn observe_context(context: TypeContext) -> TypeContext {
+    TypeContext {
+        error_call_mode: ErrorCallMode::Observe,
+        ..context
+    }
+}
+
+fn typed_expr_value(
+    expr: TypedExpr,
+    message: impl Into<String>,
+) -> Result<CheckedTypeId, TypecheckError> {
+    expr.value_type
+        .ok_or_else(|| TypecheckError::new(TypecheckErrorKind::InvalidInput, message))
+}
+
+fn ensure_propagatable_effect(
+    typed: &TypedProgram,
+    context: TypeContext,
+    effect: RecoverableCallEffect,
+    origin: Option<SyntaxOrigin>,
+    usage: impl Into<String>,
+) -> Result<(), TypecheckError> {
+    let usage = usage.into();
+    let Some(routine_error_type) = context.routine_error_type else {
+        return Err(match origin {
+            Some(origin) => TypecheckError::with_origin(
+                TypecheckErrorKind::InvalidInput,
+                format!("{usage} requires a surrounding routine with a declared error type in V1"),
+                origin,
+            ),
+            None => TypecheckError::new(
+                TypecheckErrorKind::InvalidInput,
+                format!("{usage} requires a surrounding routine with a declared error type in V1"),
+            ),
+        });
+    };
+    if !is_v1_assignable(typed, routine_error_type, effect.error_type)? {
+        let message = format!(
+            "{usage} propagates '{}' but the surrounding routine declares '{}'",
+            describe_type(typed, effect.error_type),
+            describe_type(typed, routine_error_type),
+        );
+        return Err(match origin {
+            Some(origin) => {
+                TypecheckError::with_origin(TypecheckErrorKind::IncompatibleType, message, origin)
+            }
+            None => TypecheckError::new(TypecheckErrorKind::IncompatibleType, message),
+        });
+    }
+    Ok(())
+}
+
+fn merge_recoverable_effects(
+    typed: &TypedProgram,
+    origin: Option<SyntaxOrigin>,
+    usage: &str,
+    effects: impl IntoIterator<Item = Option<RecoverableCallEffect>>,
+) -> Result<Option<RecoverableCallEffect>, TypecheckError> {
+    let mut merged: Option<RecoverableCallEffect> = None;
+    for effect in effects.into_iter().flatten() {
+        match merged {
+            None => merged = Some(effect),
+            Some(existing) if existing.error_type == effect.error_type => {}
+            Some(existing) => {
+                let message = format!(
+                    "{usage} mixes incompatible recoverable error types '{}' and '{}'",
+                    describe_type(typed, existing.error_type),
+                    describe_type(typed, effect.error_type),
+                );
+                return Err(match origin.clone() {
+                    Some(origin) => TypecheckError::with_origin(
+                        TypecheckErrorKind::IncompatibleType,
+                        message,
+                        origin,
+                    ),
+                    None => TypecheckError::new(TypecheckErrorKind::IncompatibleType, message),
+                });
+            }
+        }
+    }
+    Ok(merged)
+}
+
+fn plain_value_expr(
+    typed: &TypedProgram,
+    context: TypeContext,
+    expr: TypedExpr,
+    origin: Option<SyntaxOrigin>,
+    usage: impl Into<String>,
+) -> Result<TypedExpr, TypecheckError> {
+    if let Some(effect) = expr.recoverable_effect {
+        match context.error_call_mode {
+            ErrorCallMode::Propagate => {
+                ensure_propagatable_effect(typed, context, effect, origin, usage)?;
+            }
+            ErrorCallMode::Observe => {}
+        }
+    }
+    Ok(expr)
 }
 
 fn type_binary_op(
@@ -415,7 +572,7 @@ fn type_binary_op(
     op: &BinaryOperator,
     left: &AstNode,
     right: &AstNode,
-) -> Result<Option<CheckedTypeId>, TypecheckError> {
+) -> Result<TypedExpr, TypecheckError> {
     match op {
         BinaryOperator::As => {
             return Err(unsupported_binary_surface(
@@ -453,32 +610,45 @@ fn type_binary_op(
                 "await pipe stages are part of the V3 systems milestone, not the V1 typecheck milestone",
             ));
         }
+        BinaryOperator::PipeOr => return type_pipe_or(typed, resolved, context, left, right),
         _ => {}
     }
 
-    let left_type = type_node(typed, resolved, context, left)?.ok_or_else(|| {
-        TypecheckError::new(
-            TypecheckErrorKind::InvalidInput,
-            "binary operator left operand does not have a type",
-        )
-    })?;
-    let right_type = type_node(typed, resolved, context, right)?.ok_or_else(|| {
-        TypecheckError::new(
-            TypecheckErrorKind::InvalidInput,
-            "binary operator right operand does not have a type",
-        )
-    })?;
+    let left_raw = type_node(typed, resolved, context, left)?;
+    let left_expr = plain_value_expr(
+        typed,
+        context,
+        left_raw,
+        node_origin(resolved, left),
+        "plain use of an errorful expression",
+    )?;
+    let right_raw = type_node(typed, resolved, context, right)?;
+    let right_expr = plain_value_expr(
+        typed,
+        context,
+        right_raw,
+        node_origin(resolved, right),
+        "plain use of an errorful expression",
+    )?;
+    let left_type = left_expr.required_value("binary operator left operand does not have a type")?;
+    let right_type = right_expr.required_value("binary operator right operand does not have a type")?;
     let left_apparent = apparent_type_id(typed, left_type)?;
     let right_apparent = apparent_type_id(typed, right_type)?;
+    let merged_effect = merge_recoverable_effects(
+        typed,
+        node_origin(resolved, left).or_else(|| node_origin(resolved, right)),
+        "binary expression",
+        [left_expr.recoverable_effect, right_expr.recoverable_effect],
+    )?;
 
     match op {
         BinaryOperator::Add => match (
             typed.type_table().get(left_apparent),
             typed.type_table().get(right_apparent),
         ) {
-            (Some(CheckedType::Builtin(crate::BuiltinType::Int)), Some(CheckedType::Builtin(crate::BuiltinType::Int))) => Ok(Some(typed.builtin_types().int)),
-            (Some(CheckedType::Builtin(crate::BuiltinType::Float)), Some(CheckedType::Builtin(crate::BuiltinType::Float))) => Ok(Some(typed.builtin_types().float)),
-            (Some(CheckedType::Builtin(crate::BuiltinType::Str)), Some(CheckedType::Builtin(crate::BuiltinType::Str))) => Ok(Some(typed.builtin_types().str_)),
+            (Some(CheckedType::Builtin(crate::BuiltinType::Int)), Some(CheckedType::Builtin(crate::BuiltinType::Int))) => Ok(TypedExpr::value(typed.builtin_types().int).with_optional_effect(merged_effect)),
+            (Some(CheckedType::Builtin(crate::BuiltinType::Float)), Some(CheckedType::Builtin(crate::BuiltinType::Float))) => Ok(TypedExpr::value(typed.builtin_types().float).with_optional_effect(merged_effect)),
+            (Some(CheckedType::Builtin(crate::BuiltinType::Str)), Some(CheckedType::Builtin(crate::BuiltinType::Str))) => Ok(TypedExpr::value(typed.builtin_types().str_).with_optional_effect(merged_effect)),
             _ => Err(invalid_binary_operator_error(typed, op, left_type, right_type)),
         },
         BinaryOperator::Sub
@@ -489,20 +659,20 @@ fn type_binary_op(
             typed.type_table().get(left_apparent),
             typed.type_table().get(right_apparent),
         ) {
-            (Some(CheckedType::Builtin(crate::BuiltinType::Int)), Some(CheckedType::Builtin(crate::BuiltinType::Int))) => Ok(Some(typed.builtin_types().int)),
-            (Some(CheckedType::Builtin(crate::BuiltinType::Float)), Some(CheckedType::Builtin(crate::BuiltinType::Float))) => Ok(Some(typed.builtin_types().float)),
+            (Some(CheckedType::Builtin(crate::BuiltinType::Int)), Some(CheckedType::Builtin(crate::BuiltinType::Int))) => Ok(TypedExpr::value(typed.builtin_types().int).with_optional_effect(merged_effect)),
+            (Some(CheckedType::Builtin(crate::BuiltinType::Float)), Some(CheckedType::Builtin(crate::BuiltinType::Float))) => Ok(TypedExpr::value(typed.builtin_types().float).with_optional_effect(merged_effect)),
             _ => Err(invalid_binary_operator_error(typed, op, left_type, right_type)),
         },
         BinaryOperator::Eq | BinaryOperator::Ne => {
             if left_apparent == right_apparent && is_equality_type(typed, left_apparent) {
-                Ok(Some(typed.builtin_types().bool_))
+                Ok(TypedExpr::value(typed.builtin_types().bool_).with_optional_effect(merged_effect))
             } else {
                 Err(invalid_binary_operator_error(typed, op, left_type, right_type))
             }
         }
         BinaryOperator::Lt | BinaryOperator::Le | BinaryOperator::Gt | BinaryOperator::Ge => {
             if left_apparent == right_apparent && is_ordered_type(typed, left_apparent) {
-                Ok(Some(typed.builtin_types().bool_))
+                Ok(TypedExpr::value(typed.builtin_types().bool_).with_optional_effect(merged_effect))
             } else {
                 Err(invalid_binary_operator_error(typed, op, left_type, right_type))
             }
@@ -511,12 +681,95 @@ fn type_binary_op(
             if left_apparent == typed.builtin_types().bool_
                 && right_apparent == typed.builtin_types().bool_
             {
-                Ok(Some(typed.builtin_types().bool_))
+                Ok(TypedExpr::value(typed.builtin_types().bool_).with_optional_effect(merged_effect))
             } else {
                 Err(invalid_binary_operator_error(typed, op, left_type, right_type))
             }
         }
-        _ => Ok(None),
+        _ => Ok(TypedExpr::none()),
+    }
+}
+
+fn type_pipe_or(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    left: &AstNode,
+    right: &AstNode,
+) -> Result<TypedExpr, TypecheckError> {
+    let observed_left = type_node(typed, resolved, observe_context(context), left)?;
+    let Some(success_type) = observed_left.value_type else {
+        return Err(node_origin(resolved, left).map_or_else(
+            || {
+                TypecheckError::new(
+                    TypecheckErrorKind::InvalidInput,
+                    "left side of '||' must produce a value result in V1",
+                )
+            },
+            |origin| {
+                TypecheckError::with_origin(
+                    TypecheckErrorKind::InvalidInput,
+                    "left side of '||' must produce a value result in V1",
+                    origin,
+                )
+            },
+        ));
+    };
+    if observed_left.recoverable_effect.is_none() {
+        let message = if observed_left
+            .value_type
+            .map(|type_id| is_error_shell_type(typed, type_id))
+            .transpose()?
+            .unwrap_or(false)
+        {
+            "'||' handles routine call results with '/ ErrorType', not err[...] shell values in V1"
+        } else {
+            "'||' requires an errorful expression on the left in V1"
+        };
+        return Err(node_origin(resolved, left).map_or_else(
+            || TypecheckError::new(TypecheckErrorKind::InvalidInput, message),
+            |origin| TypecheckError::with_origin(TypecheckErrorKind::InvalidInput, message, origin),
+        ));
+    }
+
+    let fallback = type_node_with_expectation(typed, resolved, context, right, Some(success_type))?;
+    let fallback = plain_value_expr(
+        typed,
+        context,
+        fallback,
+        node_origin(resolved, right),
+        "recoverable-error fallback",
+    )?;
+
+    match fallback.value_type {
+        Some(actual) if actual == typed.builtin_types().never => {
+            Ok(TypedExpr::value(success_type).with_optional_effect(fallback.recoverable_effect))
+        }
+        Some(actual) => {
+            ensure_assignable(
+                typed,
+                success_type,
+                actual,
+                "recoverable-error fallback".to_string(),
+                node_origin(resolved, right),
+            )?;
+            Ok(TypedExpr::value(success_type).with_optional_effect(fallback.recoverable_effect))
+        }
+        None => Err(node_origin(resolved, right).map_or_else(
+            || {
+                TypecheckError::new(
+                    TypecheckErrorKind::InvalidInput,
+                    "right side of '||' must produce a value or early-exit in V1",
+                )
+            },
+            |origin| {
+                TypecheckError::with_origin(
+                    TypecheckErrorKind::InvalidInput,
+                    "right side of '||' must produce a value or early-exit in V1",
+                    origin,
+                )
+            },
+        )),
     }
 }
 
@@ -527,28 +780,57 @@ fn type_unary_op(
     node: &AstNode,
     op: &UnaryOperator,
     operand: &AstNode,
-) -> Result<Option<CheckedTypeId>, TypecheckError> {
-    let operand_type = type_node(typed, resolved, context, operand)?.ok_or_else(|| {
-        TypecheckError::new(
-            TypecheckErrorKind::InvalidInput,
-            "unary operator operand does not have a type",
-        )
-    })?;
+) -> Result<TypedExpr, TypecheckError> {
+    if matches!(op, UnaryOperator::Unwrap) {
+        let operand_expr = type_node(typed, resolved, observe_context(context), operand)?;
+        if operand_expr.recoverable_effect.is_some() {
+            return Err(with_node_origin(
+                resolved,
+                node,
+                TypecheckErrorKind::Unsupported,
+                "postfix '!' unwrap applies to opt[...] and err[...] shell values, not to routine call results with '/ ErrorType' in V1",
+            ));
+        }
+        let operand_type = operand_expr.required_value("unary operator operand does not have a type")?;
+        return if let Some(inner) = unwrap_shell_result_type(typed, operand_type)? {
+            Ok(TypedExpr::value(inner))
+        } else {
+            Err(with_node_origin(
+                resolved,
+                node,
+                TypecheckErrorKind::InvalidInput,
+                "unwrap requires an opt[...] or err[...] shell with a value type in V1",
+            ))
+        };
+    }
+
+    let operand_raw = type_node(typed, resolved, context, operand)?;
+    let operand_expr = plain_value_expr(
+        typed,
+        context,
+        operand_raw,
+        node_origin(resolved, operand),
+        "plain use of an errorful expression",
+    )?;
+    let operand_type = operand_expr.required_value("unary operator operand does not have a type")?;
     let apparent = apparent_type_id(typed, operand_type)?;
 
     match op {
         UnaryOperator::Neg => match typed.type_table().get(apparent) {
             Some(CheckedType::Builtin(crate::BuiltinType::Int)) => {
-                Ok(Some(typed.builtin_types().int))
+                Ok(TypedExpr::value(typed.builtin_types().int)
+                    .with_optional_effect(operand_expr.recoverable_effect))
             }
             Some(CheckedType::Builtin(crate::BuiltinType::Float)) => {
-                Ok(Some(typed.builtin_types().float))
+                Ok(TypedExpr::value(typed.builtin_types().float)
+                    .with_optional_effect(operand_expr.recoverable_effect))
             }
             _ => Err(invalid_unary_operator_error(typed, op, operand_type)),
         },
         UnaryOperator::Not => {
             if apparent == typed.builtin_types().bool_ {
-                Ok(Some(typed.builtin_types().bool_))
+                Ok(TypedExpr::value(typed.builtin_types().bool_)
+                    .with_optional_effect(operand_expr.recoverable_effect))
             } else {
                 Err(invalid_unary_operator_error(typed, op, operand_type))
             }
@@ -557,18 +839,7 @@ fn type_unary_op(
             TypecheckErrorKind::Unsupported,
             "pointer operators are part of the V3 systems milestone, not the V1 typecheck milestone",
         )),
-        UnaryOperator::Unwrap => {
-            if let Some(inner) = unwrap_shell_result_type(typed, operand_type)? {
-                Ok(Some(inner))
-            } else {
-                Err(with_node_origin(
-                    resolved,
-                    node,
-                    TypecheckErrorKind::InvalidInput,
-                    "unwrap requires an opt[...] or err[...] shell with a value type in V1",
-                ))
-            }
-        }
+        UnaryOperator::Unwrap => unreachable!("unwrap is handled before plain unary typing"),
     }
 }
 
@@ -607,7 +878,7 @@ fn type_binding_initializer(
     name: &str,
     value: Option<&AstNode>,
     symbol_kind: SymbolKind,
-) -> Result<Option<CheckedTypeId>, TypecheckError> {
+) -> Result<TypedExpr, TypecheckError> {
     let binding_origin = find_symbol_in_scope_chain(
         resolved,
         context.source_unit_id,
@@ -625,7 +896,7 @@ fn type_binding_initializer(
         name,
         symbol_kind,
     ) else {
-        let initializer_type = value
+        let initializer_expr = value
             .map(|value| {
                 type_node_with_expectation(typed, resolved, context, value, None).map_err(
                     |error| {
@@ -634,14 +905,13 @@ fn type_binding_initializer(
                     },
                 )
             })
-            .transpose()?
-            .flatten();
-        return Ok(initializer_type);
+            .transpose()?;
+        return Ok(initializer_expr.unwrap_or_else(TypedExpr::none));
     };
     let declared_type = typed
         .typed_symbol(symbol_id)
         .and_then(|symbol| symbol.declared_type);
-    let initializer_type = value
+    let initializer_expr = value
         .map(|value| {
             type_node_with_expectation(typed, resolved, context, value, declared_type).map_err(
                 |error| {
@@ -652,11 +922,25 @@ fn type_binding_initializer(
                 },
             )
         })
-        .transpose()?
-        .flatten();
+        .transpose()?;
 
-    match (declared_type, initializer_type) {
-        (Some(expected), Some(actual)) => {
+    match (declared_type, initializer_expr) {
+        (Some(expected), Some(actual_expr)) => {
+            reject_recoverable_error_shell_conversion(
+                typed,
+                expected,
+                &actual_expr,
+                value.and_then(|node| node_origin(resolved, node)),
+                format!("initializer for '{name}'"),
+            )?;
+            let actual_expr = plain_value_expr(
+                typed,
+                context,
+                actual_expr,
+                value.and_then(|node| node_origin(resolved, node)),
+                format!("initializer for '{name}'"),
+            )?;
+            let actual = actual_expr.required_value(format!("initializer for '{name}' does not have a type"))?;
             ensure_assignable(
                 typed,
                 expected,
@@ -664,17 +948,19 @@ fn type_binding_initializer(
                 format!("initializer for '{name}'"),
                 value.and_then(|node| node_origin(resolved, node)),
             )?;
-            Ok(Some(expected))
+            Ok(TypedExpr::value(expected))
         }
-        (None, Some(inferred)) => {
+        (None, Some(inferred_expr)) => {
+            let inferred = inferred_expr.required_value(format!("initializer for '{name}' does not have a type"))?;
             let symbol = typed
                 .typed_symbol_mut(symbol_id)
                 .ok_or_else(|| internal_error("typed symbol table lost an inferred binding", None))?;
             symbol.declared_type = Some(inferred);
-            Ok(Some(inferred))
+            symbol.recoverable_effect = inferred_expr.recoverable_effect;
+            Ok(inferred_expr)
         }
-        (Some(expected), None) => Ok(Some(expected)),
-        (None, None) => Ok(None),
+        (Some(expected), None) => Ok(TypedExpr::value(expected)),
+        (None, None) => Ok(TypedExpr::none()),
     }
 }
 
@@ -685,8 +971,15 @@ fn type_when(
     expr: &AstNode,
     cases: &[WhenCase],
     default: Option<&[AstNode]>,
-) -> Result<Option<CheckedTypeId>, TypecheckError> {
-    let _ = type_node(typed, resolved, context, expr)?;
+) -> Result<TypedExpr, TypecheckError> {
+    let selector_raw = type_node(typed, resolved, context, expr)?;
+    let selector_expr = plain_value_expr(
+        typed,
+        context,
+        selector_raw,
+        node_origin(resolved, expr),
+        "when selector",
+    )?;
     let mut case_types = Vec::new();
 
     for case in cases {
@@ -708,7 +1001,14 @@ fn type_when(
                 channel: condition,
                 body,
             } => {
-                let _ = type_node(typed, resolved, context, condition)?;
+                let condition_raw = type_node(typed, resolved, context, condition)?;
+                let _ = plain_value_expr(
+                    typed,
+                    context,
+                    condition_raw,
+                    node_origin(resolved, condition),
+                    "when condition",
+                )?;
                 case_types.push(type_body(typed, resolved, context, body)?);
             }
             WhenCase::Of { type_match, body } => {
@@ -719,20 +1019,27 @@ fn type_when(
     }
 
     let Some(default) = default else {
-        return Ok(None);
+        return Ok(TypedExpr::none().with_optional_effect(selector_expr.recoverable_effect));
     };
-    let Some(expected) = type_body(typed, resolved, context, default)? else {
-        return Ok(None);
+    let default_expr = type_body(typed, resolved, context, default)?;
+    let Some(expected) = default_expr.value_type else {
+        return Ok(TypedExpr::none());
     };
 
-    for case_type in case_types {
-        let Some(actual) = case_type else {
-            return Ok(None);
+    for case_type in &case_types {
+        let Some(actual) = case_type.value_type else {
+            return Ok(TypedExpr::none());
         };
         ensure_assignable(typed, expected, actual, "when branch".to_string(), None)?;
     }
-
-    Ok(Some(expected))
+    let branch_effects = case_types
+        .iter()
+        .map(|case| case.recoverable_effect)
+        .chain(std::iter::once(default_expr.recoverable_effect))
+        .chain(std::iter::once(selector_expr.recoverable_effect))
+        .collect::<Vec<_>>();
+    let merged = merge_recoverable_effects(typed, node_origin(resolved, expr), "when expression", branch_effects)?;
+    Ok(TypedExpr::value(expected).with_optional_effect(merged))
 }
 
 fn type_container_literal(
@@ -742,7 +1049,7 @@ fn type_container_literal(
     container_type: ContainerType,
     elements: &[AstNode],
     expected_type: Option<CheckedTypeId>,
-) -> Result<Option<CheckedTypeId>, TypecheckError> {
+) -> Result<TypedExpr, TypecheckError> {
     let expected_container = expected_type
         .map(|expected| expected_container_shape(typed, expected))
         .transpose()?
@@ -753,29 +1060,29 @@ fn type_container_literal(
         .unwrap_or(container_type);
     match container_kind {
         ContainerType::Array | ContainerType::Vector | ContainerType::Sequence => {
-            type_linear_container_literal(
+            Ok(TypedExpr::maybe_value(type_linear_container_literal(
                 typed,
                 resolved,
                 context,
                 container_kind,
                 elements,
                 expected_container.as_ref(),
-            )
+            )?))
         }
-        ContainerType::Set => type_set_literal(
+        ContainerType::Set => Ok(TypedExpr::maybe_value(type_set_literal(
             typed,
             resolved,
             context,
             elements,
             expected_container.as_ref(),
-        ),
-        ContainerType::Map => type_map_literal(
+        )?)),
+        ContainerType::Map => Ok(TypedExpr::maybe_value(type_map_literal(
             typed,
             resolved,
             context,
             elements,
             expected_container.as_ref(),
-        ),
+        )?)),
     }
 }
 
@@ -785,15 +1092,18 @@ fn type_loop(
     context: TypeContext,
     condition: &LoopCondition,
     body: &[AstNode],
-) -> Result<Option<CheckedTypeId>, TypecheckError> {
+) -> Result<TypedExpr, TypecheckError> {
     match condition {
         LoopCondition::Condition(condition) => {
-            let condition_type = type_node(typed, resolved, context, condition)?.ok_or_else(|| {
-                TypecheckError::new(
-                    TypecheckErrorKind::InvalidInput,
-                    "loop condition does not have a type",
-                )
-            })?;
+            let condition_raw = type_node(typed, resolved, context, condition)?;
+            let condition_type = plain_value_expr(
+                typed,
+                context,
+                condition_raw,
+                node_origin(resolved, condition),
+                "loop condition",
+            )?
+            .required_value("loop condition does not have a type")?;
             ensure_assignable(
                 typed,
                 typed.builtin_types().bool_,
@@ -809,12 +1119,15 @@ fn type_loop(
             iterable,
             condition,
         } => {
-            let iterable_type = type_node(typed, resolved, context, iterable)?.ok_or_else(|| {
-                TypecheckError::new(
-                    TypecheckErrorKind::InvalidInput,
-                    "loop iterable does not have a type",
-                )
-            })?;
+            let iterable_raw = type_node(typed, resolved, context, iterable)?;
+            let iterable_type = plain_value_expr(
+                typed,
+                context,
+                iterable_raw,
+                node_origin(resolved, iterable),
+                "loop iterable",
+            )?
+            .required_value("loop iterable does not have a type")?;
             let item_type = iterable_element_type(typed, iterable_type)?;
             let binder_scope =
                 loop_binder_scope(resolved, context.source_unit_id, context.scope_id, var, condition, body)?;
@@ -852,15 +1165,18 @@ fn type_loop(
                 scope_id: binder_scope,
                 routine_return_type: context.routine_return_type,
                 routine_error_type: context.routine_error_type,
+                error_call_mode: context.error_call_mode,
             };
             if let Some(condition) = condition.as_deref() {
-                let condition_type =
-                    type_node(typed, resolved, loop_context, condition)?.ok_or_else(|| {
-                        TypecheckError::new(
-                            TypecheckErrorKind::InvalidInput,
-                            "loop guard does not have a type",
-                        )
-                    })?;
+                let guard_raw = type_node(typed, resolved, loop_context, condition)?;
+                let condition_type = plain_value_expr(
+                    typed,
+                    loop_context,
+                    guard_raw,
+                    node_origin(resolved, condition),
+                    "loop guard",
+                )?
+                .required_value("loop guard does not have a type")?;
                 ensure_assignable(
                     typed,
                     typed.builtin_types().bool_,
@@ -873,7 +1189,7 @@ fn type_loop(
         }
     }
 
-    Ok(None)
+    Ok(TypedExpr::none())
 }
 
 fn type_function_call(
@@ -883,7 +1199,7 @@ fn type_function_call(
     name: &str,
     args: &[AstNode],
     syntax_id: Option<SyntaxNodeId>,
-) -> Result<Option<CheckedTypeId>, TypecheckError> {
+) -> Result<TypedExpr, TypecheckError> {
     let syntax_id = syntax_id.ok_or_else(|| {
         TypecheckError::new(
             TypecheckErrorKind::InvalidInput,
@@ -893,17 +1209,41 @@ fn type_function_call(
     let reference_id =
         find_reference_by_syntax(resolved, syntax_id, ReferenceKind::FunctionCall, name)?;
     let signature = routine_signature_for_reference(typed, resolved, reference_id, origin_for(resolved, syntax_id))?;
-    check_call_arguments(typed, resolved, context, &signature, args, name, origin_for(resolved, syntax_id))?;
-    if let Some(return_type) = signature.return_type {
+    let arg_effect = check_call_arguments(
+        typed,
+        resolved,
+        context,
+        &signature,
+        args,
+        name,
+        origin_for(resolved, syntax_id),
+    )?;
+    let call_effect = merge_recoverable_effects(
+        typed,
+        origin_for(resolved, syntax_id),
+        "function call",
+        [
+            arg_effect,
+            signature.error_type.map(|error_type| RecoverableCallEffect { error_type }),
+        ],
+    )?;
+    let return_type = signature.return_type;
+    if let Some(return_type) = return_type {
         let typed_reference = typed
             .typed_reference_mut(reference_id)
             .ok_or_else(|| internal_error("typed call reference disappeared", None))?;
         typed_reference.resolved_type = Some(return_type);
+        typed_reference.recoverable_effect = call_effect;
         typed.record_node_type(syntax_id, context.source_unit_id, return_type)?;
-        Ok(Some(return_type))
-    } else {
-        Ok(None)
+        if let Some(effect) = call_effect {
+            typed.record_node_recoverable_effect(syntax_id, context.source_unit_id, effect)?;
+            typed.record_reference_recoverable_effect(reference_id, effect)?;
+        }
+    } else if let Some(effect) = call_effect {
+        typed.record_node_recoverable_effect(syntax_id, context.source_unit_id, effect)?;
+        typed.record_reference_recoverable_effect(reference_id, effect)?;
     }
+    Ok(TypedExpr::maybe_value(return_type).with_optional_effect(call_effect))
 }
 
 fn type_report_call(
@@ -912,7 +1252,7 @@ fn type_report_call(
     context: TypeContext,
     args: &[AstNode],
     syntax_id: Option<SyntaxNodeId>,
-) -> Result<Option<CheckedTypeId>, TypecheckError> {
+) -> Result<TypedExpr, TypecheckError> {
     let origin = syntax_id.and_then(|syntax_id| origin_for(resolved, syntax_id));
     let Some(expected) = context.routine_error_type else {
         return Err(TypecheckError::with_origin(
@@ -940,8 +1280,16 @@ fn type_report_call(
         ));
     }
 
-    let actual = type_node_with_expectation(typed, resolved, context, &args[0], Some(expected))?
-        .ok_or_else(|| {
+    let report_raw = type_node_with_expectation(typed, resolved, context, &args[0], Some(expected))?;
+    let actual = plain_value_expr(
+        typed,
+        context,
+        report_raw,
+        node_origin(resolved, &args[0]),
+        "report expression",
+    )?
+        .required_value("report expression does not have a type")
+        .map_err(|_| {
         TypecheckError::with_origin(
             TypecheckErrorKind::InvalidInput,
             "report expression does not have a type",
@@ -954,7 +1302,7 @@ fn type_report_call(
         )
     })?;
     ensure_assignable(typed, expected, actual, "report".to_string(), origin)?;
-    Ok(Some(typed.builtin_types().never))
+    Ok(TypedExpr::value(typed.builtin_types().never))
 }
 
 fn type_record_init(
@@ -963,7 +1311,7 @@ fn type_record_init(
     context: TypeContext,
     fields: &[fol_parser::ast::RecordInitField],
     expected_type: Option<CheckedTypeId>,
-) -> Result<Option<CheckedTypeId>, TypecheckError> {
+) -> Result<TypedExpr, TypecheckError> {
     let initializer_origin = fields
         .first()
         .and_then(|field| node_origin(resolved, &field.value));
@@ -1013,6 +1361,7 @@ fn type_record_init(
     };
     let expected_fields = expected_fields.clone();
     let mut seen = BTreeSet::new();
+    let mut field_effects = Vec::new();
 
     for field in fields {
         let field_origin = node_origin(resolved, &field.value);
@@ -1056,13 +1405,31 @@ fn type_record_init(
                 },
             ));
         }
-        let actual = type_node_with_expectation(typed, resolved, context, &field.value, Some(field_type))
+        let actual_expr = type_node_with_expectation(typed, resolved, context, &field.value, Some(field_type))
             .map_err(|error| {
                 field_origin
                     .clone()
                     .map_or(error.clone(), |origin| error.with_fallback_origin(origin))
             })?
-            .ok_or_else(|| {
+            ;
+        reject_recoverable_error_shell_conversion(
+            typed,
+            field_type,
+            &actual_expr,
+            field_origin.clone(),
+            format!("record field '{}'", field.name),
+        )?;
+        let actual_expr = plain_value_expr(
+            typed,
+            context,
+            actual_expr,
+            field_origin.clone(),
+            format!("record field '{}'", field.name),
+        )?;
+        field_effects.push(actual_expr.recoverable_effect);
+        let actual = actual_expr
+            .required_value(format!("record initializer field '{}' does not have a type", field.name))
+            .map_err(|_| {
                 field_origin.clone().map_or_else(
                     || {
                         TypecheckError::new(
@@ -1123,7 +1490,13 @@ fn type_record_init(
         ));
     }
 
-    Ok(Some(expected_type))
+    let merged = merge_recoverable_effects(
+        typed,
+        initializer_origin.clone(),
+        "record initializer",
+        field_effects,
+    )?;
+    Ok(TypedExpr::value(expected_type).with_optional_effect(merged))
 }
 
 fn type_panic_call(
@@ -1131,11 +1504,72 @@ fn type_panic_call(
     resolved: &ResolvedProgram,
     context: TypeContext,
     args: &[AstNode],
-) -> Result<Option<CheckedTypeId>, TypecheckError> {
+) -> Result<TypedExpr, TypecheckError> {
+    let mut arg_effects = Vec::new();
     for arg in args {
-        let _ = type_node(typed, resolved, context, arg)?;
+        let arg_raw = type_node(typed, resolved, context, arg)?;
+        let expr = plain_value_expr(
+            typed,
+            context,
+            arg_raw,
+            node_origin(resolved, arg),
+            "panic argument",
+        )?;
+        let _ = expr.value_type;
+        arg_effects.push(expr.recoverable_effect);
     }
-    Ok(Some(typed.builtin_types().never))
+    let merged = merge_recoverable_effects(typed, None, "panic call", arg_effects)?;
+    Ok(TypedExpr::value(typed.builtin_types().never).with_optional_effect(merged))
+}
+
+fn type_check_call(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    args: &[AstNode],
+    syntax_id: Option<SyntaxNodeId>,
+) -> Result<TypedExpr, TypecheckError> {
+    let origin = syntax_id.and_then(|id| origin_for(resolved, id));
+    if args.len() != 1 {
+        return Err(origin.clone().map_or_else(
+            || {
+                TypecheckError::new(
+                    TypecheckErrorKind::InvalidInput,
+                    format!("check expects exactly 1 value in V1 but got {}", args.len()),
+                )
+            },
+            |origin| {
+                TypecheckError::with_origin(
+                    TypecheckErrorKind::InvalidInput,
+                    format!("check expects exactly 1 value in V1 but got {}", args.len()),
+                    origin,
+                )
+            },
+        ));
+    }
+
+    let observed = type_node(typed, resolved, observe_context(context), &args[0])?;
+    if observed.recoverable_effect.is_none() {
+        let message = if observed
+            .value_type
+            .map(|type_id| is_error_shell_type(typed, type_id))
+            .transpose()?
+            .unwrap_or(false)
+        {
+            "check(...) inspects routine call results with '/ ErrorType', not err[...] shell values in V1"
+        } else {
+            "check requires an errorful routine result in V1"
+        };
+        return Err(node_origin(resolved, &args[0]).map_or_else(
+            || TypecheckError::new(TypecheckErrorKind::InvalidInput, message),
+            |origin| TypecheckError::with_origin(TypecheckErrorKind::InvalidInput, message, origin),
+        ));
+    }
+
+    if let Some(syntax_id) = syntax_id {
+        typed.record_node_type(syntax_id, context.source_unit_id, typed.builtin_types().bool_)?;
+    }
+    Ok(TypedExpr::value(typed.builtin_types().bool_))
 }
 
 fn type_qualified_function_call(
@@ -1144,7 +1578,7 @@ fn type_qualified_function_call(
     context: TypeContext,
     path: &QualifiedPath,
     args: &[AstNode],
-) -> Result<Option<CheckedTypeId>, TypecheckError> {
+) -> Result<TypedExpr, TypecheckError> {
     let syntax_id = path.syntax_id().ok_or_else(|| {
         TypecheckError::new(
             TypecheckErrorKind::InvalidInput,
@@ -1158,7 +1592,7 @@ fn type_qualified_function_call(
         &path.joined(),
     )?;
     let signature = routine_signature_for_reference(typed, resolved, reference_id, origin_for(resolved, syntax_id))?;
-    check_call_arguments(
+    let arg_effect = check_call_arguments(
         typed,
         resolved,
         context,
@@ -1167,16 +1601,28 @@ fn type_qualified_function_call(
         &path.joined(),
         origin_for(resolved, syntax_id),
     )?;
+    let call_effect = merge_recoverable_effects(
+        typed,
+        origin_for(resolved, syntax_id),
+        "qualified function call",
+        [
+            arg_effect,
+            signature.error_type.map(|error_type| RecoverableCallEffect { error_type }),
+        ],
+    )?;
     if let Some(return_type) = signature.return_type {
         let typed_reference = typed
             .typed_reference_mut(reference_id)
             .ok_or_else(|| internal_error("typed qualified call reference disappeared", None))?;
         typed_reference.resolved_type = Some(return_type);
+        typed_reference.recoverable_effect = call_effect;
         typed.record_node_type(syntax_id, context.source_unit_id, return_type)?;
-        Ok(Some(return_type))
-    } else {
-        Ok(None)
+        if let Some(effect) = call_effect {
+            typed.record_node_recoverable_effect(syntax_id, context.source_unit_id, effect)?;
+            typed.record_reference_recoverable_effect(reference_id, effect)?;
+        }
     }
+    Ok(TypedExpr::maybe_value(signature.return_type).with_optional_effect(call_effect))
 }
 
 fn type_method_call(
@@ -1187,17 +1633,30 @@ fn type_method_call(
     object: &AstNode,
     method: &str,
     args: &[AstNode],
-) -> Result<Option<CheckedTypeId>, TypecheckError> {
-    let object_type = type_node(typed, resolved, context, object)?.ok_or_else(|| {
-        TypecheckError::new(
-            TypecheckErrorKind::InvalidInput,
-            format!("method receiver for '{method}' does not have a type"),
-        )
-    })?;
+) -> Result<TypedExpr, TypecheckError> {
+    let receiver_raw = type_node(typed, resolved, context, object)?;
+    let receiver_expr = plain_value_expr(
+        typed,
+        context,
+        receiver_raw,
+        node_origin(resolved, object),
+        format!("method receiver for '{method}'"),
+    )?;
+    let object_type = receiver_expr.required_value(format!("method receiver for '{method}' does not have a type"))?;
     let origin = node_origin(resolved, node);
     let signature = routine_signature_for_method(typed, method, object_type, origin.clone())?;
-    check_call_arguments(typed, resolved, context, &signature, args, method, origin)?;
-    Ok(signature.return_type)
+    let arg_effect = check_call_arguments(typed, resolved, context, &signature, args, method, origin.clone())?;
+    let merged = merge_recoverable_effects(
+        typed,
+        origin,
+        "method call",
+        [
+            receiver_expr.recoverable_effect,
+            arg_effect,
+            signature.error_type.map(|error_type| RecoverableCallEffect { error_type }),
+        ],
+    )?;
+    Ok(TypedExpr::maybe_value(signature.return_type).with_optional_effect(merged))
 }
 
 fn type_return(
@@ -1205,14 +1664,14 @@ fn type_return(
     resolved: &ResolvedProgram,
     context: TypeContext,
     value: Option<&AstNode>,
-) -> Result<Option<CheckedTypeId>, TypecheckError> {
+) -> Result<TypedExpr, TypecheckError> {
     let Some(expected) = context.routine_return_type else {
         return match value {
             Some(_) => Err(TypecheckError::new(
                 TypecheckErrorKind::InvalidInput,
                 "return with a value requires a declared routine return type in V1",
             )),
-            None => Ok(None),
+            None => Ok(TypedExpr::none()),
         };
     };
 
@@ -1226,13 +1685,22 @@ fn type_return(
         .map_err(|error| {
             node_origin(resolved, value)
                 .map_or(error.clone(), |origin| error.with_fallback_origin(origin))
-        })?
-        .ok_or_else(|| {
-            TypecheckError::new(
-                TypecheckErrorKind::InvalidInput,
-                "return expression does not have a type",
-            )
         })?;
+    reject_recoverable_error_shell_conversion(
+        typed,
+        expected,
+        &actual,
+        node_origin(resolved, value),
+        "return",
+    )?;
+    let actual = plain_value_expr(
+        typed,
+        context,
+        actual,
+        node_origin(resolved, value),
+        "return expression",
+    )?
+    .required_value("return expression does not have a type")?;
     ensure_assignable(
         typed,
         expected,
@@ -1240,7 +1708,7 @@ fn type_return(
         "return".to_string(),
         node_origin(resolved, value),
     )?;
-    Ok(Some(typed.builtin_types().never))
+    Ok(TypedExpr::value(typed.builtin_types().never))
 }
 
 fn iterable_element_type(
@@ -1285,17 +1753,20 @@ fn type_field_access(
     object: &AstNode,
     field: &str,
     expected_type: Option<CheckedTypeId>,
-) -> Result<Option<CheckedTypeId>, TypecheckError> {
-    let object_type = type_node(typed, resolved, context, object)?.ok_or_else(|| {
-        TypecheckError::new(
-            TypecheckErrorKind::InvalidInput,
-            format!("field access '.{field}' does not have a typed receiver"),
-        )
-    })?;
+) -> Result<TypedExpr, TypecheckError> {
+    let object_raw = type_node(typed, resolved, context, object)?;
+    let object_expr = plain_value_expr(
+        typed,
+        context,
+        object_raw,
+        node_origin(resolved, object),
+        format!("field access '.{field}' receiver"),
+    )?;
+    let object_type = object_expr.required_value(format!("field access '.{field}' does not have a typed receiver"))?;
     let resolved_type = apparent_type_id(typed, object_type)?;
     match typed.type_table().get(resolved_type) {
         Some(CheckedType::Record { fields }) => {
-            fields.get(field).copied().map(Some).ok_or_else(|| {
+            fields.get(field).copied().map(|type_id| TypedExpr::value(type_id).with_optional_effect(object_expr.recoverable_effect)).ok_or_else(|| {
                 TypecheckError::new(
                     TypecheckErrorKind::InvalidInput,
                     format!("record receiver does not expose a field named '{field}'"),
@@ -1306,10 +1777,10 @@ fn type_field_access(
             if let Some(expected_type) = expected_type {
                 let expected_apparent = apparent_type_id(typed, expected_type)?;
                 if expected_apparent == resolved_type && variants.contains_key(field) {
-                    return Ok(Some(expected_type));
+                    return Ok(TypedExpr::value(expected_type).with_optional_effect(object_expr.recoverable_effect));
                 }
             }
-            variants.get(field).copied().flatten().map(Some).ok_or_else(|| {
+            variants.get(field).copied().flatten().map(|type_id| TypedExpr::value(type_id).with_optional_effect(object_expr.recoverable_effect)).ok_or_else(|| {
                 TypecheckError::new(
                     TypecheckErrorKind::InvalidInput,
                     format!("entry receiver does not expose a variant named '{field}'"),
@@ -1332,20 +1803,32 @@ fn type_index_access(
     context: TypeContext,
     container: &AstNode,
     index: &AstNode,
-) -> Result<Option<CheckedTypeId>, TypecheckError> {
-    let container_type = type_node(typed, resolved, context, container)?.ok_or_else(|| {
-        TypecheckError::new(
-            TypecheckErrorKind::InvalidInput,
-            "index access does not have a typed container",
-        )
-    })?;
-    let index_type = type_node(typed, resolved, context, index)?.ok_or_else(|| {
-        TypecheckError::new(
-            TypecheckErrorKind::InvalidInput,
-            "index access does not have a typed index expression",
-        )
-    })?;
+) -> Result<TypedExpr, TypecheckError> {
+    let container_raw = type_node(typed, resolved, context, container)?;
+    let container_expr = plain_value_expr(
+        typed,
+        context,
+        container_raw,
+        node_origin(resolved, container),
+        "index access receiver",
+    )?;
+    let index_raw = type_node(typed, resolved, context, index)?;
+    let index_expr = plain_value_expr(
+        typed,
+        context,
+        index_raw,
+        node_origin(resolved, index),
+        "index expression",
+    )?;
+    let container_type = container_expr.required_value("index access does not have a typed container")?;
+    let index_type = index_expr.required_value("index access does not have a typed index expression")?;
     let resolved_type = apparent_type_id(typed, container_type)?;
+    let merged_effect = merge_recoverable_effects(
+        typed,
+        node_origin(resolved, container).or_else(|| node_origin(resolved, index)),
+        "index access",
+        [container_expr.recoverable_effect, index_expr.recoverable_effect],
+    )?;
     match typed.type_table().get(resolved_type) {
         Some(CheckedType::Array { element_type, .. })
         | Some(CheckedType::Vector { element_type })
@@ -1357,7 +1840,7 @@ fn type_index_access(
                 "container index".to_string(),
                 None,
             )?;
-            Ok(Some(*element_type))
+            Ok(TypedExpr::value(*element_type).with_optional_effect(merged_effect))
         }
         Some(CheckedType::Map {
             key_type,
@@ -1370,7 +1853,7 @@ fn type_index_access(
                 "map key".to_string(),
                 None,
             )?;
-            Ok(Some(*value_type))
+            Ok(TypedExpr::value(*value_type).with_optional_effect(merged_effect))
         }
         Some(CheckedType::Set { member_types }) => {
             ensure_assignable(
@@ -1380,7 +1863,8 @@ fn type_index_access(
                 "set index".to_string(),
                 None,
             )?;
-            type_set_index_access(typed, member_types, index)
+            Ok(TypedExpr::maybe_value(type_set_index_access(typed, member_types, index)?)
+                .with_optional_effect(merged_effect))
         }
         _ => Err(TypecheckError::new(
             TypecheckErrorKind::InvalidInput,
@@ -1399,20 +1883,28 @@ fn type_slice_access(
     container: &AstNode,
     start: Option<&AstNode>,
     end: Option<&AstNode>,
-) -> Result<Option<CheckedTypeId>, TypecheckError> {
-    let container_type = type_node(typed, resolved, context, container)?.ok_or_else(|| {
-        TypecheckError::new(
-            TypecheckErrorKind::InvalidInput,
-            "slice access does not have a typed container",
-        )
-    })?;
+) -> Result<TypedExpr, TypecheckError> {
+    let container_raw = type_node(typed, resolved, context, container)?;
+    let container_expr = plain_value_expr(
+        typed,
+        context,
+        container_raw,
+        node_origin(resolved, container),
+        "slice receiver",
+    )?;
+    let container_type = container_expr.required_value("slice access does not have a typed container")?;
+    let mut bound_effects = vec![container_expr.recoverable_effect];
     for bound in [start, end].into_iter().flatten() {
-        let bound_type = type_node(typed, resolved, context, bound)?.ok_or_else(|| {
-            TypecheckError::new(
-                TypecheckErrorKind::InvalidInput,
-                "slice bound does not have a type",
-            )
-        })?;
+        let bound_raw = type_node(typed, resolved, context, bound)?;
+        let bound_expr = plain_value_expr(
+            typed,
+            context,
+            bound_raw,
+            node_origin(resolved, bound),
+            "slice bound",
+        )?;
+        let bound_type = bound_expr.required_value("slice bound does not have a type")?;
+        bound_effects.push(bound_expr.recoverable_effect);
         ensure_assignable(
             typed,
             typed.builtin_types().int,
@@ -1422,29 +1914,35 @@ fn type_slice_access(
         )?;
     }
     let resolved_type = apparent_type_id(typed, container_type)?;
+    let merged_effect = merge_recoverable_effects(
+        typed,
+        node_origin(resolved, container),
+        "slice access",
+        bound_effects,
+    )?;
     match typed.type_table().get(resolved_type) {
         Some(CheckedType::Array { element_type, .. }) => {
             let element_type = *element_type;
-            Ok(Some(typed.type_table_mut().intern(CheckedType::Array {
+            Ok(TypedExpr::value(typed.type_table_mut().intern(CheckedType::Array {
                 element_type,
                 size: None,
-            })))
+            })).with_optional_effect(merged_effect))
         }
         Some(CheckedType::Vector { element_type }) => {
             let element_type = *element_type;
-            Ok(Some(
+            Ok(TypedExpr::value(
                 typed
                     .type_table_mut()
                     .intern(CheckedType::Vector { element_type }),
-            ))
+            ).with_optional_effect(merged_effect))
         }
         Some(CheckedType::Sequence { element_type }) => {
             let element_type = *element_type;
-            Ok(Some(
+            Ok(TypedExpr::value(
                 typed
                     .type_table_mut()
                     .intern(CheckedType::Sequence { element_type }),
-            ))
+            ).with_optional_effect(merged_effect))
         }
         _ => Err(TypecheckError::new(
             TypecheckErrorKind::InvalidInput,
@@ -1462,7 +1960,7 @@ fn type_identifier_reference(
     context: TypeContext,
     name: &str,
     syntax_id: Option<SyntaxNodeId>,
-) -> Result<Option<CheckedTypeId>, TypecheckError> {
+) -> Result<TypedExpr, TypecheckError> {
     let syntax_id = syntax_id.ok_or_else(|| {
         TypecheckError::new(
             TypecheckErrorKind::InvalidInput,
@@ -1471,9 +1969,14 @@ fn type_identifier_reference(
     })?;
     let reference_id =
         find_reference_by_syntax(resolved, syntax_id, ReferenceKind::Identifier, name)?;
-    let type_id = type_for_reference(typed, resolved, reference_id, origin_for(resolved, syntax_id))?;
-    typed.record_node_type(syntax_id, context.source_unit_id, type_id)?;
-    Ok(Some(type_id))
+    let typed_expr = type_for_reference(typed, resolved, reference_id, origin_for(resolved, syntax_id))?;
+    if let Some(type_id) = typed_expr.value_type {
+        typed.record_node_type(syntax_id, context.source_unit_id, type_id)?;
+    }
+    if let Some(effect) = typed_expr.recoverable_effect {
+        typed.record_node_recoverable_effect(syntax_id, context.source_unit_id, effect)?;
+    }
+    Ok(typed_expr)
 }
 
 fn type_qualified_identifier_reference(
@@ -1481,7 +1984,7 @@ fn type_qualified_identifier_reference(
     resolved: &ResolvedProgram,
     context: TypeContext,
     path: &QualifiedPath,
-) -> Result<Option<CheckedTypeId>, TypecheckError> {
+) -> Result<TypedExpr, TypecheckError> {
     let syntax_id = path.syntax_id().ok_or_else(|| {
         TypecheckError::new(
             TypecheckErrorKind::InvalidInput,
@@ -1497,9 +2000,14 @@ fn type_qualified_identifier_reference(
         ReferenceKind::QualifiedIdentifier,
         &path.joined(),
     )?;
-    let type_id = type_for_reference(typed, resolved, reference_id, origin_for(resolved, syntax_id))?;
-    typed.record_node_type(syntax_id, context.source_unit_id, type_id)?;
-    Ok(Some(type_id))
+    let typed_expr = type_for_reference(typed, resolved, reference_id, origin_for(resolved, syntax_id))?;
+    if let Some(type_id) = typed_expr.value_type {
+        typed.record_node_type(syntax_id, context.source_unit_id, type_id)?;
+    }
+    if let Some(effect) = typed_expr.recoverable_effect {
+        typed.record_node_recoverable_effect(syntax_id, context.source_unit_id, effect)?;
+    }
+    Ok(typed_expr)
 }
 
 fn find_reference_by_syntax(
@@ -1648,7 +2156,7 @@ fn check_call_arguments(
     args: &[AstNode],
     callee: &str,
     origin: Option<SyntaxOrigin>,
-) -> Result<(), TypecheckError> {
+) -> Result<Option<RecoverableCallEffect>, TypecheckError> {
     if signature.params.len() != args.len() {
         return Err(TypecheckError::with_origin(
             TypecheckErrorKind::InvalidInput,
@@ -1666,20 +2174,31 @@ fn check_call_arguments(
         ));
     }
 
+    let mut arg_effects = Vec::new();
     for (expected, arg) in signature.params.iter().zip(args) {
-        let actual = type_node_with_expectation(typed, resolved, context, arg, Some(*expected))
+        let actual_expr = type_node_with_expectation(typed, resolved, context, arg, Some(*expected))
             .map_err(|error| {
                 origin
                     .clone()
                     .or_else(|| node_origin(resolved, arg))
                     .map_or(error.clone(), |origin| error.with_fallback_origin(origin))
-            })?
-            .ok_or_else(|| {
-                TypecheckError::new(
-                    TypecheckErrorKind::InvalidInput,
-                    format!("argument for '{callee}' does not have a type"),
-                )
             })?;
+        reject_recoverable_error_shell_conversion(
+            typed,
+            *expected,
+            &actual_expr,
+            origin.clone().or_else(|| node_origin(resolved, arg)),
+            format!("call to '{callee}'"),
+        )?;
+        let actual_expr = plain_value_expr(
+            typed,
+            context,
+            actual_expr,
+            origin.clone().or_else(|| node_origin(resolved, arg)),
+            format!("call to '{callee}'"),
+        )?;
+        let actual = actual_expr.required_value(format!("argument for '{callee}' does not have a type"))?;
+        arg_effects.push(actual_expr.recoverable_effect);
         ensure_assignable(
             typed,
             *expected,
@@ -1689,7 +2208,7 @@ fn check_call_arguments(
         )?;
     }
 
-    Ok(())
+    merge_recoverable_effects(typed, origin, "call arguments", arg_effects)
 }
 
 fn type_for_reference(
@@ -1697,7 +2216,7 @@ fn type_for_reference(
     resolved: &ResolvedProgram,
     reference_id: ReferenceId,
     origin: Option<SyntaxOrigin>,
-) -> Result<CheckedTypeId, TypecheckError> {
+) -> Result<TypedExpr, TypecheckError> {
     let symbol_id = resolved
         .reference(reference_id)
         .and_then(|reference| reference.resolved)
@@ -1714,6 +2233,9 @@ fn type_for_reference(
             )
         })?;
     let type_id = symbol_type(typed, resolved, symbol_id, origin.clone())?;
+    let symbol_effect = typed
+        .typed_symbol(symbol_id)
+        .and_then(|symbol| symbol.recoverable_effect);
     let typed_reference = typed.typed_reference_mut(reference_id).ok_or_else(|| {
         TypecheckError::with_origin(
             TypecheckErrorKind::Internal,
@@ -1727,7 +2249,8 @@ fn type_for_reference(
         )
     })?;
     typed_reference.resolved_type = Some(type_id);
-    Ok(type_id)
+    typed_reference.recoverable_effect = symbol_effect;
+    Ok(TypedExpr::value(type_id).with_optional_effect(symbol_effect))
 }
 
 fn symbol_type(
@@ -1830,6 +2353,38 @@ fn expected_nil_shell_type(
     Ok(match typed.type_table().get(expected_apparent) {
         Some(CheckedType::Optional { .. }) | Some(CheckedType::Error { .. }) => Some(expected_type),
         _ => None,
+    })
+}
+
+fn is_error_shell_type(
+    typed: &TypedProgram,
+    type_id: CheckedTypeId,
+) -> Result<bool, TypecheckError> {
+    let apparent = apparent_type_id(typed, type_id)?;
+    Ok(matches!(
+        typed.type_table().get(apparent),
+        Some(CheckedType::Error { .. })
+    ))
+}
+
+fn reject_recoverable_error_shell_conversion(
+    typed: &TypedProgram,
+    expected_type: CheckedTypeId,
+    actual_expr: &TypedExpr,
+    origin: Option<SyntaxOrigin>,
+    surface: impl Into<String>,
+) -> Result<(), TypecheckError> {
+    if actual_expr.recoverable_effect.is_none() || !is_error_shell_type(typed, expected_type)? {
+        return Ok(());
+    }
+
+    let message = format!(
+        "{} cannot implicitly convert a routine result with '/ ErrorType' into an err[...] shell in V1; use propagation, check(...), or '||' instead",
+        surface.into()
+    );
+    Err(match origin {
+        Some(origin) => TypecheckError::with_origin(TypecheckErrorKind::Unsupported, message, origin),
+        None => TypecheckError::new(TypecheckErrorKind::Unsupported, message),
     })
 }
 
@@ -2031,14 +2586,22 @@ fn type_linear_container_literal(
     }
 
     for element in element_nodes {
-        let actual = type_node_with_expectation(
+        let actual_raw = type_node_with_expectation(
             typed,
             resolved,
             context,
             element,
             inferred_element,
+        )?;
+        let actual = plain_value_expr(
+            typed,
+            context,
+            actual_raw,
+            node_origin(resolved, element),
+            "container element",
         )?
-        .ok_or_else(|| {
+        .required_value("container element does not have a type")
+        .map_err(|_| {
             TypecheckError::new(
                 TypecheckErrorKind::InvalidInput,
                 "container element does not have a type",
@@ -2118,13 +2681,21 @@ fn type_set_literal(
 
     for (index, element) in element_nodes.iter().enumerate() {
         let expected = expected_members.and_then(|members| members.get(index)).copied();
-        let actual = type_node_with_expectation(typed, resolved, context, element, expected)?
-            .ok_or_else(|| {
-                TypecheckError::new(
-                    TypecheckErrorKind::InvalidInput,
-                    "set member does not have a type",
-                )
-            })?;
+        let actual_raw = type_node_with_expectation(typed, resolved, context, element, expected)?;
+        let actual = plain_value_expr(
+            typed,
+            context,
+            actual_raw,
+            node_origin(resolved, element),
+            format!("set member {}", index),
+        )?
+        .required_value("set member does not have a type")
+        .map_err(|_| {
+            TypecheckError::new(
+                TypecheckErrorKind::InvalidInput,
+                "set member does not have a type",
+            )
+        })?;
         if let Some(expected) = expected {
             ensure_assignable(
                 typed,
@@ -2186,22 +2757,38 @@ fn type_map_literal(
 
     for pair in element_nodes {
         let (key, value) = map_literal_pair(pair)?;
-        let actual_key =
-            type_node_with_expectation(typed, resolved, context, key, inferred_key_type)?
-                .ok_or_else(|| {
-                    TypecheckError::new(
-                        TypecheckErrorKind::InvalidInput,
-                        "map key does not have a type",
-                    )
-                })?;
-        let actual_value =
-            type_node_with_expectation(typed, resolved, context, value, inferred_value_type)?
-                .ok_or_else(|| {
-                    TypecheckError::new(
-                        TypecheckErrorKind::InvalidInput,
-                        "map value does not have a type",
-                    )
-                })?;
+        let actual_key_raw =
+            type_node_with_expectation(typed, resolved, context, key, inferred_key_type)?;
+        let actual_key = plain_value_expr(
+            typed,
+            context,
+            actual_key_raw,
+            node_origin(resolved, key),
+            "map key",
+        )?
+        .required_value("map key does not have a type")
+        .map_err(|_| {
+            TypecheckError::new(
+                TypecheckErrorKind::InvalidInput,
+                "map key does not have a type",
+            )
+        })?;
+        let actual_value_raw =
+            type_node_with_expectation(typed, resolved, context, value, inferred_value_type)?;
+        let actual_value = plain_value_expr(
+            typed,
+            context,
+            actual_value_raw,
+            node_origin(resolved, value),
+            "map value",
+        )?
+        .required_value("map value does not have a type")
+        .map_err(|_| {
+            TypecheckError::new(
+                TypecheckErrorKind::InvalidInput,
+                "map value does not have a type",
+            )
+        })?;
         if let Some(expected_key) = inferred_key_type {
             ensure_assignable(
                 typed,

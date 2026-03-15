@@ -1,4 +1,4 @@
-use crate::{ids::LoweredTypeId, LoweredWorkspace};
+use crate::{ids::LoweredTypeId, LoweredRecoverableAbi, LoweredWorkspace};
 use std::fmt::Write;
 
 pub fn render_lowered_workspace(workspace: &LoweredWorkspace) -> String {
@@ -10,6 +10,45 @@ pub fn render_lowered_workspace(workspace: &LoweredWorkspace) -> String {
         workspace.package_count(),
         workspace.type_table().len()
     );
+    match workspace.recoverable_abi() {
+        LoweredRecoverableAbi::TaggedResultObject {
+            tag_type,
+            success_tag,
+            error_tag,
+            success_slot,
+            error_slot,
+        } => {
+            let _ = writeln!(
+                output,
+                "recoverable-abi kind=tagged-result-object tag=t{} success-tag={} error-tag={} success-slot={} error-slot={}",
+                tag_type.0,
+                success_tag,
+                error_tag,
+                success_slot,
+                error_slot
+            );
+            let _ = writeln!(
+                output,
+                "recoverable-abi semantics {}",
+                workspace.recoverable_abi().success_runtime_meaning()
+            );
+            let _ = writeln!(
+                output,
+                "recoverable-abi semantics {}",
+                workspace.recoverable_abi().failure_runtime_meaning()
+            );
+            let _ = writeln!(
+                output,
+                "recoverable-abi semantics {}",
+                workspace.recoverable_abi().propagation_runtime_meaning()
+            );
+            let _ = writeln!(
+                output,
+                "recoverable-abi semantics {}",
+                workspace.recoverable_abi().panic_runtime_meaning()
+            );
+        }
+    }
     for type_index in 0..workspace.type_table().len() {
         let type_id = LoweredTypeId(type_index);
         if let Some(ty) = workspace.type_table().get(type_id) {
@@ -163,6 +202,11 @@ mod tests {
 
         assert_eq!(first, second);
         assert!(first.contains("workspace entry=parser"));
+        assert!(first.contains("recoverable-abi kind=tagged-result-object"));
+        assert!(first.contains("recoverable-abi semantics success =>"));
+        assert!(first.contains("recoverable-abi semantics failure =>"));
+        assert!(first.contains("recoverable-abi semantics propagation =>"));
+        assert!(first.contains("recoverable-abi semantics panic =>"));
         assert!(first.contains("package parser"));
         assert!(first.contains("routine"));
         assert!(first.contains("block b0"));

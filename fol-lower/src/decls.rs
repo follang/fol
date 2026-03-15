@@ -532,6 +532,11 @@ fn lower_global_decl(
         source_unit_id,
         name: name.to_string(),
         type_id,
+        recoverable_error_type: typed_package
+            .program
+            .typed_symbol(symbol_id)
+            .and_then(|symbol| symbol.recoverable_effect)
+            .and_then(|effect| lowered_package.checked_type_map.get(&effect.error_type).copied()),
         mutable,
     };
     *next_global_index += 1;
@@ -592,6 +597,7 @@ fn lower_routine_decl(
         let local_id = routine.locals.push(LoweredLocal {
             id: crate::LoweredLocalId(next_local_index),
             type_id: Some(receiver_type),
+            recoverable_error_type: None,
             name: Some("self".to_string()),
         });
         routine.params.push(local_id);
@@ -645,6 +651,7 @@ fn lower_routine_decl(
         let local_id = routine.locals.push(LoweredLocal {
             id: crate::LoweredLocalId(next_local_index),
             type_id: Some(param_type),
+            recoverable_error_type: None,
             name: Some(param.name.clone()),
         });
         let Some(param_symbol_id) = find_symbol_in_scope_or_descendants(

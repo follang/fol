@@ -159,17 +159,15 @@ fun[] add(el1, el2: int[64]) = { result = el1 + el2 }
 ```
 {{% notice info %}}
 
-Each function in FOL has two defined variables that are automatically returned at the end of the function.
+Current `V1` routine summary:
 
-{{% /notice %}}
-
-Those variables are:
-- a variable called `result`, which is the one that is returned and is same type as return type
-- an error variable (called `error`), that can be reported from the funciton
-
-{{% notice info %}}
-
-Internally, those are a set of two variables, <em>set[result: any, eror: err]</em>. The result is of type any, and the any type shoud be known at compile time.
+- routines declare a success type after `:`
+- routines may also declare a recoverable error type after `/`
+- `report expr` exits through that declared error path
+- routine call results declared with `/ ErrorType` are not `err[...]` shell
+  values
+- use propagation, `check(...)`, or `expr || fallback` for those calls
+- keep postfix `!` for `opt[...]` and `err[...]` shell values
 
 {{% /notice %}}
 
@@ -180,13 +178,14 @@ pro main(): int = {
     fun[] sub(el1, el2: int[64]) = { return el1 - el2 }                     // can't access the result variable, thus we use return
 }
 ```
-In addition, another implicitly decpared variable `error` of ype `err` is declared too. We talk for errors in [details here](/docs/spec/060_errors), but here is a short example:
+Recoverable error-aware routines use the current signature form:
 ```
-pro main(): int = {
-    fun[] add(el1, el2: int[64]): int[64] = { result = el1 + el2 }          // using the implicitly declared $result variable
-    check(add(5,6))                                                         // this will check if the error is nil
+fun[] read(path: str): int / str = {
+    report "missing path"
 }
 ```
+and are handled at the call site with propagation, `check(...)`, or `||`
+rather than shell unwrap.
 The final expression in the function will be used as return value. For this to be used, the return type of the function needs to be defined (so the function cnat be in the short form)). ver this can be used only in one statement body.
 ```
 pro main(): int = {
@@ -201,19 +200,6 @@ pro main(): int = {
     }
     fun[] add(el1, el2: int[64]) = { el1 + el2 }                            // this will throw an error, we can't use the short form of funciton in this way
 ```
-Alternatively, the `return` and `report` statements can be used to return a value or error earlier from within the function, even from inside loops or other control flow mechanisms.
-**The example below is just to show the `return` and `report` statements, there is a better way to handle errors as shown in [error section](/docs/spec/error)**
-```
-use file: std = {"fs/file"}
-
-pro main(): int = {
-    fun[] fileReader(path: str): str = {
-        var aFile = file.readfile(path)
-        if ( check(aFile) ) {
-            report "File could not be opened" + file                        // report will not break the program, but will return the error here, and the funciton will stop
-        } else {
-            return file | stringify(this) | return $                        // this will be executed only if file was oopened without error
-        }
-    }
-}
-```
+Alternatively, `return` and `report` can exit a routine early from within
+control flow. See the recoverable-error chapter for the full current `V1`
+contract and the shell-vs-routine distinction.

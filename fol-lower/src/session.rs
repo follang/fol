@@ -2,9 +2,9 @@ use crate::{
     decls, exprs, verify,
     ids::{LoweredPackageId, LoweredTypeId},
     types::{LoweredBuiltinType, LoweredRoutineType, LoweredType, LoweredTypeTable},
-    LoweredEntryCandidate, LoweredExportMount, LoweredPackage, LoweredSourceMap,
-    LoweredSourceMapEntry, LoweredSourceSymbol, LoweredSourceUnit, LoweredSymbolOwnership,
-    LoweredWorkspace, LoweringError,
+    LoweredEntryCandidate, LoweredExportMount, LoweredPackage, LoweredRecoverableAbi,
+    LoweredSourceMap, LoweredSourceMapEntry, LoweredSourceSymbol, LoweredSourceUnit,
+    LoweredSymbolOwnership, LoweredWorkspace, LoweringError,
     LoweringErrorKind, LoweringResult,
 };
 use fol_resolver::PackageIdentity;
@@ -122,8 +122,16 @@ impl LoweringSession {
             })
             .collect::<Vec<_>>();
 
-        let workspace =
-            LoweredWorkspace::new(entry_identity, packages, entry_candidates, type_table, source_map);
+        let recoverable_abi =
+            LoweredRecoverableAbi::v1(type_table.intern_builtin(LoweredBuiltinType::Bool));
+        let workspace = LoweredWorkspace::new(
+            entry_identity,
+            packages,
+            entry_candidates,
+            type_table,
+            source_map,
+            recoverable_abi,
+        );
         verify::verify_workspace(&workspace)?;
         Ok(workspace)
     }

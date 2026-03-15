@@ -3,6 +3,11 @@ use fol_parser::ast::SyntaxNodeId;
 use fol_resolver::{PackageIdentity, ReferenceKind, ScopeId, SourceUnitId, SymbolId, SymbolKind};
 use std::collections::BTreeMap;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RecoverableCallEffect {
+    pub error_type: CheckedTypeId,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TypedExportMount {
     pub source_namespace: String,
@@ -27,6 +32,7 @@ pub struct TypedSymbol {
     pub source_unit_id: SourceUnitId,
     pub declared_type: Option<CheckedTypeId>,
     pub receiver_type: Option<CheckedTypeId>,
+    pub recoverable_effect: Option<RecoverableCallEffect>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -34,6 +40,7 @@ pub struct TypedNode {
     pub syntax_id: SyntaxNodeId,
     pub source_unit_id: SourceUnitId,
     pub inferred_type: Option<CheckedTypeId>,
+    pub recoverable_effect: Option<RecoverableCallEffect>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -42,6 +49,7 @@ pub struct TypedReference {
     pub kind: ReferenceKind,
     pub source_unit_id: SourceUnitId,
     pub resolved_type: Option<CheckedTypeId>,
+    pub recoverable_effect: Option<RecoverableCallEffect>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -162,6 +170,7 @@ impl TypedProgram {
                         source_unit_id: symbol.source_unit,
                         declared_type: None,
                         receiver_type: None,
+                        recoverable_effect: None,
                     },
                 )
             })
@@ -176,6 +185,7 @@ impl TypedProgram {
                             syntax_id,
                             source_unit_id: unit.source_unit_id,
                             inferred_type: None,
+                            recoverable_effect: None,
                         },
                     )
                 })
@@ -192,6 +202,7 @@ impl TypedProgram {
                         kind: reference.kind,
                         source_unit_id: reference.source_unit,
                         resolved_type: None,
+                        recoverable_effect: None,
                     },
                 )
             })
@@ -271,8 +282,51 @@ impl TypedProgram {
                 syntax_id,
                 source_unit_id,
                 inferred_type: None,
+                recoverable_effect: None,
             })
             .inferred_type = Some(type_id);
+        Ok(())
+    }
+
+    pub(crate) fn record_node_recoverable_effect(
+        &mut self,
+        syntax_id: SyntaxNodeId,
+        source_unit_id: SourceUnitId,
+        effect: RecoverableCallEffect,
+    ) -> Result<(), crate::TypecheckError> {
+        self.nodes
+            .entry(syntax_id)
+            .or_insert(TypedNode {
+                syntax_id,
+                source_unit_id,
+                inferred_type: None,
+                recoverable_effect: None,
+            })
+            .recoverable_effect = Some(effect);
+        Ok(())
+    }
+
+    pub(crate) fn record_symbol_recoverable_effect(
+        &mut self,
+        symbol_id: SymbolId,
+        effect: RecoverableCallEffect,
+    ) -> Result<(), crate::TypecheckError> {
+        let symbol = self
+            .typed_symbol_mut(symbol_id)
+            .ok_or_else(|| crate::TypecheckError::new(crate::TypecheckErrorKind::Internal, "typed symbol disappeared while recording a recoverable call effect"))?;
+        symbol.recoverable_effect = Some(effect);
+        Ok(())
+    }
+
+    pub(crate) fn record_reference_recoverable_effect(
+        &mut self,
+        reference_id: fol_resolver::ReferenceId,
+        effect: RecoverableCallEffect,
+    ) -> Result<(), crate::TypecheckError> {
+        let reference = self
+            .typed_reference_mut(reference_id)
+            .ok_or_else(|| crate::TypecheckError::new(crate::TypecheckErrorKind::Internal, "typed reference disappeared while recording a recoverable call effect"))?;
+        reference.recoverable_effect = Some(effect);
         Ok(())
     }
 
