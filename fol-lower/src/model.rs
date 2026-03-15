@@ -69,6 +69,7 @@ pub struct LoweredGlobal {
     pub source_unit_id: SourceUnitId,
     pub name: String,
     pub type_id: LoweredTypeId,
+    pub recoverable_error_type: Option<LoweredTypeId>,
     pub mutable: bool,
 }
 

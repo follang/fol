@@ -54,6 +54,17 @@ pub(crate) fn verify_workspace(workspace: &LoweredWorkspace) -> Result<(), Vec<L
                     ),
                 ));
             }
+            if let Some(error_type) = global.recoverable_error_type {
+                if workspace.type_table().get(error_type).is_none() {
+                    errors.push(LoweringError::with_kind(
+                        LoweringErrorKind::InvalidInput,
+                        format!(
+                            "lowered global '{}' references missing recoverable error type {}",
+                            global.name, error_type.0
+                        ),
+                    ));
+                }
+            }
         }
 
         for type_decl in package.type_decls.values() {
@@ -99,6 +110,17 @@ pub(crate) fn verify_workspace(workspace: &LoweredWorkspace) -> Result<(), Vec<L
                             format!(
                                 "lowered routine '{}' local {:?} references missing type {}",
                                 routine.name, local.name, type_id.0
+                            ),
+                        ));
+                    }
+                }
+                if let Some(error_type) = local.recoverable_error_type {
+                    if workspace.type_table().get(error_type).is_none() {
+                        errors.push(LoweringError::with_kind(
+                            LoweringErrorKind::InvalidInput,
+                            format!(
+                                "lowered routine '{}' local {:?} references missing recoverable error type {}",
+                                routine.name, local.name, error_type.0
                             ),
                         ));
                     }
@@ -248,6 +270,19 @@ pub(crate) fn verify_workspace(workspace: &LoweredWorkspace) -> Result<(), Vec<L
                             }
                         }
                     }
+                    Some(LoweredTerminator::Panic { value }) => {
+                        if let Some(local) = value {
+                            if routine.locals.get(*local).is_none() {
+                                errors.push(LoweringError::with_kind(
+                                    LoweringErrorKind::InvalidInput,
+                                    format!(
+                                        "lowered routine '{}' panic uses missing local {}",
+                                        routine.name, local.0
+                                    ),
+                                ));
+                            }
+                        }
+                    }
                     Some(LoweredTerminator::Unreachable) => {}
                     None => {}
                 }
@@ -317,7 +352,10 @@ fn verify_instruction(
             }
         }
         crate::LoweredInstrKind::LoadLocal { local }
-        | crate::LoweredInstrKind::UnwrapShell { operand: local } => {
+        | crate::LoweredInstrKind::UnwrapShell { operand: local }
+        | crate::LoweredInstrKind::CheckRecoverable { operand: local }
+        | crate::LoweredInstrKind::UnwrapRecoverable { operand: local }
+        | crate::LoweredInstrKind::ExtractRecoverableError { operand: local } => {
             verify_local_reference(routine, instr.id.0, "operand", *local, errors);
         }
         crate::LoweredInstrKind::StoreLocal { local, value } => {
@@ -363,6 +401,21 @@ fn verify_instruction(
                     *error_type,
                     errors,
                 );
+            }
+            if let Some(result) = instr.result {
+                let local_effect = routine
+                    .locals
+                    .get(result)
+                    .and_then(|local| local.recoverable_error_type);
+                if local_effect != *error_type {
+                    errors.push(LoweringError::with_kind(
+                        LoweringErrorKind::InvalidInput,
+                        format!(
+                            "lowered routine '{}' call instruction {} writes recoverable effect {:?} but local {} stores {:?}",
+                            routine.name, instr.id.0, error_type, result.0, local_effect
+                        ),
+                    ));
+                }
             }
         }
         crate::LoweredInstrKind::ConstructRecord { type_id, fields } => {
@@ -423,6 +476,27 @@ fn verify_instruction(
             verify_local_reference(routine, instr.id.0, "cast operand", *operand, errors);
             verify_type_reference(workspace, package, routine, instr.id.0, "cast type", *target_type, errors);
         }
+    }
+
+    match &instr.kind {
+        crate::LoweredInstrKind::CheckRecoverable { operand }
+        | crate::LoweredInstrKind::UnwrapRecoverable { operand }
+        | crate::LoweredInstrKind::ExtractRecoverableError { operand } => {
+            let operand_effect = routine
+                .locals
+                .get(*operand)
+                .and_then(|local| local.recoverable_error_type);
+            if operand_effect.is_none() {
+                errors.push(LoweringError::with_kind(
+                    LoweringErrorKind::InvalidInput,
+                    format!(
+                        "lowered routine '{}' instruction {} expects a recoverable operand local {}",
+                        routine.name, instr.id.0, operand.0
+                    ),
+                ));
+            }
+        }
+        _ => {}
     }
 }
 

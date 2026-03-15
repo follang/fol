@@ -940,6 +940,199 @@ mod integration_tests {
     }
 
     #[test]
+    fn test_cli_error_propagation_lowers_successfully_across_multiple_routines() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_error_propagation");
+        fs::create_dir_all(&temp_root).expect("Should create temp error propagation fixture dir");
+        let fixture = temp_root.join("main.fol");
+        fs::write(
+            &fixture,
+            concat!(
+                "fun[] leaf(flag: bol): int / str = {\n",
+                "    when(flag) {\n",
+                "        case(true) { report \"bad\" }\n",
+                "        * { return 7 }\n",
+                "    }\n",
+                "}\n",
+                "fun[] mid(flag: bol): int / str = {\n",
+                "    return leaf(flag)\n",
+                "}\n",
+                "fun[] main(flag: bol): int / str = {\n",
+                "    return mid(flag)\n",
+                "}\n",
+            ),
+        )
+        .expect("Should write error propagation fixture");
+
+        let output = run_fol(&[
+            "--dump-lowered",
+            fixture.to_str().expect("error propagation fixture path should be utf-8"),
+        ]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        assert!(output.status.success(), "error propagation fixture should compile, got:\n{stdout}");
+        assert!(stdout.contains("CheckRecoverable"));
+        assert!(stdout.contains("UnwrapRecoverable"));
+        assert!(stdout.contains("ExtractRecoverableError"));
+        assert!(stdout.contains("Report"));
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_cli_check_handling_lowers_without_error_propagation() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_error_check");
+        fs::create_dir_all(&temp_root).expect("Should create temp error check fixture dir");
+        let fixture = temp_root.join("main.fol");
+        fs::write(
+            &fixture,
+            concat!(
+                "fun[] load(flag: bol): int / str = {\n",
+                "    when(flag) {\n",
+                "        case(true) { report \"bad\" }\n",
+                "        * { return 7 }\n",
+                "    }\n",
+                "}\n",
+                "fun[] main(flag: bol): bol = {\n",
+                "    var attempt = load(flag)\n",
+                "    return check(attempt)\n",
+                "}\n",
+            ),
+        )
+        .expect("Should write error check fixture");
+
+        let output = run_fol(&[
+            "--dump-lowered",
+            fixture.to_str().expect("error check fixture path should be utf-8"),
+        ]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        assert!(output.status.success(), "error check fixture should compile, got:\n{stdout}");
+        assert!(stdout.contains("CheckRecoverable"));
+        assert!(!stdout.contains("ExtractRecoverableError"));
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_cli_pipe_or_default_lowers_successfully() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_error_pipe_or_default");
+        fs::create_dir_all(&temp_root).expect("Should create temp pipe-or default fixture dir");
+        let fixture = temp_root.join("main.fol");
+        fs::write(
+            &fixture,
+            concat!(
+                "fun[] load(flag: bol): int / str = {\n",
+                "    when(flag) {\n",
+                "        case(true) { report \"bad\" }\n",
+                "        * { return 7 }\n",
+                "    }\n",
+                "}\n",
+                "fun[] main(flag: bol): int = {\n",
+                "    return load(flag) || 5\n",
+                "}\n",
+            ),
+        )
+        .expect("Should write pipe-or default fixture");
+
+        let output = run_fol(&[
+            "--dump-lowered",
+            fixture
+                .to_str()
+                .expect("pipe-or default fixture path should be utf-8"),
+        ]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        assert!(output.status.success(), "pipe-or default fixture should compile, got:\n{stdout}");
+        assert!(stdout.contains("CheckRecoverable"));
+        assert!(stdout.contains("UnwrapRecoverable"));
+        assert!(stdout.contains("Const(Int(5))"));
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_cli_pipe_or_report_lowers_successfully() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_error_pipe_or_report");
+        fs::create_dir_all(&temp_root).expect("Should create temp pipe-or report fixture dir");
+        let fixture = temp_root.join("main.fol");
+        fs::write(
+            &fixture,
+            concat!(
+                "fun[] load(flag: bol): int / str = {\n",
+                "    when(flag) {\n",
+                "        case(true) { report \"bad\" }\n",
+                "        * { return 7 }\n",
+                "    }\n",
+                "}\n",
+                "fun[] main(flag: bol): int / str = {\n",
+                "    return load(flag) || report \"fallback\"\n",
+                "}\n",
+            ),
+        )
+        .expect("Should write pipe-or report fixture");
+
+        let output = run_fol(&[
+            "--dump-lowered",
+            fixture
+                .to_str()
+                .expect("pipe-or report fixture path should be utf-8"),
+        ]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        assert!(output.status.success(), "pipe-or report fixture should compile, got:\n{stdout}");
+        assert!(stdout.contains("CheckRecoverable"));
+        assert!(stdout.contains("Report"));
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_cli_pipe_or_panic_lowers_successfully() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_error_pipe_or_panic");
+        fs::create_dir_all(&temp_root).expect("Should create temp pipe-or panic fixture dir");
+        let fixture = temp_root.join("main.fol");
+        fs::write(
+            &fixture,
+            concat!(
+                "fun[] load(flag: bol): int / str = {\n",
+                "    when(flag) {\n",
+                "        case(true) { report \"bad\" }\n",
+                "        * { return 7 }\n",
+                "    }\n",
+                "}\n",
+                "fun[] main(flag: bol): int = {\n",
+                "    return load(flag) || panic \"fallback\"\n",
+                "}\n",
+            ),
+        )
+        .expect("Should write pipe-or panic fixture");
+
+        let output = run_fol(&[
+            "--dump-lowered",
+            fixture
+                .to_str()
+                .expect("pipe-or panic fixture path should be utf-8"),
+        ]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        assert!(output.status.success(), "pipe-or panic fixture should compile, got:\n{stdout}");
+        assert!(stdout.contains("CheckRecoverable"));
+        assert!(stdout.contains("Panic"));
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
     fn test_cli_json_lowering_failures_keep_structured_fields() {
         use std::fs;
 

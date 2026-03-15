@@ -15,6 +15,7 @@ use std::collections::BTreeMap;
 pub(crate) struct LoweredValue {
     pub local_id: LoweredLocalId,
     pub type_id: LoweredTypeId,
+    pub recoverable_error_type: Option<LoweredTypeId>,
 }
 
 #[derive(Debug, Clone)]
@@ -27,6 +28,7 @@ pub(crate) struct EntryVariantLowering {
 #[derive(Debug, Default)]
 pub(crate) struct WorkspaceDeclIndex {
     globals: BTreeMap<(PackageIdentity, SymbolId), LoweredGlobalId>,
+    global_effects: BTreeMap<(PackageIdentity, LoweredGlobalId), Option<LoweredTypeId>>,
     routines: BTreeMap<(PackageIdentity, SymbolId), LoweredRoutineId>,
     routine_params: BTreeMap<LoweredRoutineId, Vec<LoweredTypeId>>,
     entry_variants: BTreeMap<(PackageIdentity, SymbolId, String), EntryVariantLowering>,
@@ -54,6 +56,10 @@ impl WorkspaceDeclIndex {
                 index
                     .globals
                     .insert((package.identity.clone(), global.symbol_id), global.id);
+                index.global_effects.insert(
+                    (package.identity.clone(), global.id),
+                    global.recoverable_error_type,
+                );
             }
             for routine in package.routine_decls.values() {
                 if let Some(symbol_id) = routine.symbol_id {
@@ -80,6 +86,10 @@ impl WorkspaceDeclIndex {
         for global in package.global_decls.values() {
             self.globals
                 .insert((package.identity.clone(), global.symbol_id), global.id);
+            self.global_effects.insert(
+                (package.identity.clone(), global.id),
+                global.recoverable_error_type,
+            );
         }
         for routine in package.routine_decls.values() {
             if let Some(symbol_id) = routine.symbol_id {
@@ -110,6 +120,17 @@ impl WorkspaceDeclIndex {
         symbol_id: SymbolId,
     ) -> Option<LoweredRoutineId> {
         self.routines.get(&(identity.clone(), symbol_id)).copied()
+    }
+
+    pub(crate) fn global_recoverable_error_type(
+        &self,
+        identity: &PackageIdentity,
+        global_id: LoweredGlobalId,
+    ) -> Option<LoweredTypeId> {
+        self.global_effects
+            .get(&(identity.clone(), global_id))
+            .copied()
+            .flatten()
     }
 
     pub(crate) fn routine_param_types(&self, routine_id: LoweredRoutineId) -> Option<&[LoweredTypeId]> {
@@ -283,9 +304,19 @@ impl<'a> RoutineCursor<'a> {
         type_id: LoweredTypeId,
         name: Option<String>,
     ) -> LoweredLocalId {
+        self.allocate_local_with_effect(type_id, None, name)
+    }
+
+    pub(crate) fn allocate_local_with_effect(
+        &mut self,
+        type_id: LoweredTypeId,
+        recoverable_error_type: Option<LoweredTypeId>,
+        name: Option<String>,
+    ) -> LoweredLocalId {
         let local_id = self.routine.locals.push(LoweredLocal {
             id: LoweredLocalId(self.next_local_index),
             type_id: Some(type_id),
+            recoverable_error_type,
             name,
         });
         self.next_local_index += 1;
@@ -342,7 +373,11 @@ impl<'a> RoutineCursor<'a> {
         };
         let local_id = self.allocate_local(type_id, None);
         self.push_instr(Some(local_id), LoweredInstrKind::Const(operand))?;
-        Ok(LoweredValue { local_id, type_id })
+        Ok(LoweredValue {
+            local_id,
+            type_id,
+            recoverable_error_type: None,
+        })
     }
 
     pub(crate) fn lower_identifier_reference(
@@ -353,7 +388,13 @@ impl<'a> RoutineCursor<'a> {
         result_type: LoweredTypeId,
     ) -> Result<LoweredValue, LoweringError> {
         if let Some(local_id) = self.routine.local_symbols.get(&resolved_symbol.id).copied() {
-            let result_local = self.allocate_local(result_type, None);
+            let recoverable_error_type = self
+                .routine
+                .locals
+                .get(local_id)
+                .and_then(|local| local.recoverable_error_type);
+            let result_local =
+                self.allocate_local_with_effect(result_type, recoverable_error_type, None);
             self.push_instr(
                 Some(result_local),
                 LoweredInstrKind::LoadLocal { local: local_id },
@@ -361,6 +402,7 @@ impl<'a> RoutineCursor<'a> {
             return Ok(LoweredValue {
                 local_id: result_local,
                 type_id: result_type,
+                recoverable_error_type,
             });
         }
 
@@ -375,11 +417,15 @@ impl<'a> RoutineCursor<'a> {
                 ),
             ));
         };
-        let result_local = self.allocate_local(result_type, None);
+        let recoverable_error_type =
+            decl_index.global_recoverable_error_type(&owning_identity, global_id);
+        let result_local =
+            self.allocate_local_with_effect(result_type, recoverable_error_type, None);
         self.push_instr(Some(result_local), LoweredInstrKind::LoadGlobal { global: global_id })?;
         Ok(LoweredValue {
             local_id: result_local,
             type_id: result_type,
+            recoverable_error_type,
         })
     }
 }
@@ -750,22 +796,43 @@ fn lower_local_binding(
                 format!("binding '{name}' does not retain a lowered storage type"),
             )
         })?;
-    let local_id = cursor.allocate_local(type_id, Some(name.to_string()));
+    let recoverable_error_type = typed_package
+        .program
+        .typed_symbol(symbol_id)
+        .and_then(|symbol| symbol.recoverable_effect)
+        .and_then(|effect| checked_type_map.get(&effect.error_type).copied());
+    let local_id =
+        cursor.allocate_local_with_effect(type_id, recoverable_error_type, Some(name.to_string()));
     cursor.routine.local_symbols.insert(symbol_id, local_id);
 
     if let Some(value) = value {
-        let lowered_value = lower_expression_expected(
-            typed_package,
-            type_table,
-            checked_type_map,
-            current_identity,
-            decl_index,
-            cursor,
-            source_unit_id,
-            scope_id,
-            Some(type_id),
-            value,
-        )?;
+        let lowered_value = if recoverable_error_type.is_some() {
+            lower_expression_observed(
+                typed_package,
+                type_table,
+                checked_type_map,
+                current_identity,
+                decl_index,
+                cursor,
+                source_unit_id,
+                scope_id,
+                Some(type_id),
+                value,
+            )?
+        } else {
+            lower_expression_expected(
+                typed_package,
+                type_table,
+                checked_type_map,
+                current_identity,
+                decl_index,
+                cursor,
+                source_unit_id,
+                scope_id,
+                Some(type_id),
+                value,
+            )?
+        };
         cursor.push_instr(
             None,
             LoweredInstrKind::StoreLocal {
@@ -773,9 +840,17 @@ fn lower_local_binding(
                 value: lowered_value.local_id,
             },
         )?;
-        Ok(Some(LoweredValue { local_id, type_id }))
+        Ok(Some(LoweredValue {
+            local_id,
+            type_id,
+            recoverable_error_type,
+        }))
     } else {
-        Ok(Some(LoweredValue { local_id, type_id }))
+        Ok(Some(LoweredValue {
+            local_id,
+            type_id,
+            recoverable_error_type,
+        }))
     }
 }
 
@@ -841,6 +916,7 @@ fn lower_record_initializer(
     Ok(LoweredValue {
         local_id: result_local,
         type_id,
+        recoverable_error_type: None,
     })
 }
 
@@ -885,6 +961,7 @@ fn lower_nil_literal(
     Ok(LoweredValue {
         local_id: result_local,
         type_id,
+        recoverable_error_type: None,
     })
 }
 
@@ -913,6 +990,7 @@ fn apply_expected_shell_wrap(
             Ok(LoweredValue {
                 local_id: result_local,
                 type_id: expected_type,
+                recoverable_error_type: None,
             })
         }
         Some(crate::LoweredType::Error { inner: Some(inner) }) if *inner == value.type_id => {
@@ -927,6 +1005,7 @@ fn apply_expected_shell_wrap(
             Ok(LoweredValue {
                 local_id: result_local,
                 type_id: expected_type,
+                recoverable_error_type: None,
             })
         }
         _ => Ok(value),
@@ -976,6 +1055,7 @@ fn lower_unwrap_expression(
     Ok(LoweredValue {
         local_id: result_local,
         type_id: inner_type,
+        recoverable_error_type: None,
     })
 }
 
@@ -1050,6 +1130,7 @@ fn lower_entry_variant_access(
         return Ok(Some(LoweredValue {
             local_id: result_local,
             type_id: entry_variant.type_id,
+            recoverable_error_type: None,
         }));
     }
 
@@ -1200,6 +1281,7 @@ fn lower_linear_container_literal(
     Ok(LoweredValue {
         local_id: result_local,
         type_id,
+        recoverable_error_type: None,
     })
 }
 
@@ -1236,6 +1318,7 @@ fn lower_set_literal(
         return Ok(LoweredValue {
             local_id: result_local,
             type_id,
+            recoverable_error_type: None,
         });
     }
 
@@ -1271,6 +1354,7 @@ fn lower_set_literal(
     Ok(LoweredValue {
         local_id: result_local,
         type_id,
+        recoverable_error_type: None,
     })
 }
 
@@ -1308,6 +1392,7 @@ fn lower_map_literal(
         return Ok(LoweredValue {
             local_id: result_local,
             type_id,
+            recoverable_error_type: None,
         });
     }
 
@@ -1359,6 +1444,7 @@ fn lower_map_literal(
     Ok(LoweredValue {
         local_id: result_local,
         type_id,
+        recoverable_error_type: None,
     })
 }
 
@@ -1732,6 +1818,7 @@ fn lower_when_branch_value(
                 let value = LoweredValue {
                     local_id,
                     type_id: branch_value.type_id,
+                    recoverable_error_type: None,
                 };
                 *join_local = Some(value);
                 value
@@ -1809,7 +1896,392 @@ fn lower_expression(
     )
 }
 
+fn materialize_recoverable_value(
+    typed_package: &fol_typecheck::TypedPackage,
+    type_table: &crate::LoweredTypeTable,
+    checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
+    current_identity: &PackageIdentity,
+    decl_index: &WorkspaceDeclIndex,
+    cursor: &mut RoutineCursor<'_>,
+    source_unit_id: SourceUnitId,
+    scope_id: ScopeId,
+    lowered: LoweredValue,
+) -> Result<LoweredValue, LoweringError> {
+    let Some(error_type) = lowered.recoverable_error_type else {
+        return Ok(lowered);
+    };
+    let Some(routine_error_type) = routine_error_type(cursor, type_table) else {
+        return Err(LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            "recoverable value reached a plain lowering context outside an error-aware routine",
+        ));
+    };
+    if routine_error_type != error_type {
+        return Err(LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            format!(
+                "recoverable value with lowered error type {} cannot propagate through routine error type {}",
+                error_type.0, routine_error_type.0
+            ),
+        ));
+    }
+
+    let bool_type = checked_type_map
+        .get(&typed_package.program.builtin_types().bool_)
+        .copied()
+        .ok_or_else(|| {
+            LoweringError::with_kind(
+                LoweringErrorKind::InvalidInput,
+                "lowered workspace lost builtin bool while materializing a recoverable value",
+            )
+        })?;
+    let condition_local = cursor.allocate_local(bool_type, None);
+    cursor.push_instr(
+        Some(condition_local),
+        LoweredInstrKind::CheckRecoverable {
+            operand: lowered.local_id,
+        },
+    )?;
+
+    let error_block = cursor.create_block();
+    let success_block = cursor.create_block();
+    cursor.terminate_current_block(crate::LoweredTerminator::Branch {
+        condition: condition_local,
+        then_block: error_block,
+        else_block: success_block,
+    })?;
+
+    cursor.switch_block(error_block)?;
+    let error_local = cursor.allocate_local(error_type, None);
+    cursor.push_instr(
+        Some(error_local),
+        LoweredInstrKind::ExtractRecoverableError {
+            operand: lowered.local_id,
+        },
+    )?;
+    cursor.terminate_current_block(crate::LoweredTerminator::Report {
+        value: Some(error_local),
+    })?;
+
+    cursor.switch_block(success_block)?;
+    let success_local = cursor.allocate_local(lowered.type_id, None);
+    cursor.push_instr(
+        Some(success_local),
+        LoweredInstrKind::UnwrapRecoverable {
+            operand: lowered.local_id,
+        },
+    )?;
+    Ok(LoweredValue {
+        local_id: success_local,
+        type_id: lowered.type_id,
+        recoverable_error_type: None,
+    })
+}
+
+fn lower_check_call(
+    typed_package: &fol_typecheck::TypedPackage,
+    type_table: &crate::LoweredTypeTable,
+    checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
+    current_identity: &PackageIdentity,
+    decl_index: &WorkspaceDeclIndex,
+    cursor: &mut RoutineCursor<'_>,
+    source_unit_id: SourceUnitId,
+    scope_id: ScopeId,
+    _syntax_id: Option<fol_parser::ast::SyntaxNodeId>,
+    args: &[AstNode],
+) -> Result<LoweredValue, LoweringError> {
+    let [operand] = args else {
+        return Err(LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            format!("check expects exactly 1 value in lowered V1, got {}", args.len()),
+        ));
+    };
+    let observed = lower_expression_observed(
+        typed_package,
+        type_table,
+        checked_type_map,
+        current_identity,
+        decl_index,
+        cursor,
+        source_unit_id,
+        scope_id,
+        None,
+        operand,
+    )?;
+    if observed.recoverable_error_type.is_none() {
+        return Err(LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            "check lowering requires a recoverable routine result operand in V1",
+        ));
+    }
+    let bool_type = checked_type_map
+        .get(&typed_package.program.builtin_types().bool_)
+        .copied()
+        .ok_or_else(|| {
+            LoweringError::with_kind(
+                LoweringErrorKind::InvalidInput,
+                "lowered workspace lost builtin bool while lowering check(...)",
+            )
+        })?;
+    let result_local = cursor.allocate_local(bool_type, None);
+    cursor.push_instr(
+        Some(result_local),
+        LoweredInstrKind::CheckRecoverable {
+            operand: observed.local_id,
+        },
+    )?;
+    Ok(LoweredValue {
+        local_id: result_local,
+        type_id: bool_type,
+        recoverable_error_type: None,
+    })
+}
+
+fn lower_pipe_or_expression(
+    typed_package: &fol_typecheck::TypedPackage,
+    type_table: &crate::LoweredTypeTable,
+    checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
+    current_identity: &PackageIdentity,
+    decl_index: &WorkspaceDeclIndex,
+    cursor: &mut RoutineCursor<'_>,
+    source_unit_id: SourceUnitId,
+    scope_id: ScopeId,
+    left: &AstNode,
+    right: &AstNode,
+) -> Result<LoweredValue, LoweringError> {
+    let observed_left = lower_expression_observed(
+        typed_package,
+        type_table,
+        checked_type_map,
+        current_identity,
+        decl_index,
+        cursor,
+        source_unit_id,
+        scope_id,
+        None,
+        left,
+    )?;
+    if observed_left.recoverable_error_type.is_none() {
+        return Err(LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            "'||' lowering requires a recoverable expression on the left in V1",
+        ));
+    }
+    let bool_type = checked_type_map
+        .get(&typed_package.program.builtin_types().bool_)
+        .copied()
+        .ok_or_else(|| {
+            LoweringError::with_kind(
+                LoweringErrorKind::InvalidInput,
+                "lowered workspace lost builtin bool while lowering '||'",
+            )
+        })?;
+    let condition_local = cursor.allocate_local(bool_type, None);
+    cursor.push_instr(
+        Some(condition_local),
+        LoweredInstrKind::CheckRecoverable {
+            operand: observed_left.local_id,
+        },
+    )?;
+
+    let error_block = cursor.create_block();
+    let success_block = cursor.create_block();
+    let join_block = cursor.create_block();
+    let result_local = cursor.allocate_local(observed_left.type_id, None);
+
+    cursor.terminate_current_block(crate::LoweredTerminator::Branch {
+        condition: condition_local,
+        then_block: error_block,
+        else_block: success_block,
+    })?;
+
+    cursor.switch_block(success_block)?;
+    let success_value = cursor.allocate_local(observed_left.type_id, None);
+    cursor.push_instr(
+        Some(success_value),
+        LoweredInstrKind::UnwrapRecoverable {
+            operand: observed_left.local_id,
+        },
+    )?;
+    cursor.push_instr(
+        None,
+        LoweredInstrKind::StoreLocal {
+            local: result_local,
+            value: success_value,
+        },
+    )?;
+    cursor.terminate_current_block(crate::LoweredTerminator::Jump { target: join_block })?;
+
+    cursor.switch_block(error_block)?;
+    let fallback_value = lower_pipe_or_fallback(
+        typed_package,
+        type_table,
+        checked_type_map,
+        current_identity,
+        decl_index,
+        cursor,
+        source_unit_id,
+        scope_id,
+        observed_left.type_id,
+        right,
+    )?;
+    if let Some(fallback_value) = fallback_value {
+        cursor.push_instr(
+            None,
+            LoweredInstrKind::StoreLocal {
+                local: result_local,
+                value: fallback_value.local_id,
+            },
+        )?;
+        cursor.terminate_current_block(crate::LoweredTerminator::Jump { target: join_block })?;
+    }
+
+    cursor.switch_block(join_block)?;
+    Ok(LoweredValue {
+        local_id: result_local,
+        type_id: observed_left.type_id,
+        recoverable_error_type: None,
+    })
+}
+
+fn lower_pipe_or_fallback(
+    typed_package: &fol_typecheck::TypedPackage,
+    type_table: &crate::LoweredTypeTable,
+    checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
+    current_identity: &PackageIdentity,
+    decl_index: &WorkspaceDeclIndex,
+    cursor: &mut RoutineCursor<'_>,
+    source_unit_id: SourceUnitId,
+    scope_id: ScopeId,
+    expected_type: LoweredTypeId,
+    right: &AstNode,
+) -> Result<Option<LoweredValue>, LoweringError> {
+    match right {
+        AstNode::FunctionCall { name, args, .. } if name == "report" => {
+            let lowered = match args.as_slice() {
+                [value] => Some(
+                    lower_expression_expected(
+                        typed_package,
+                        type_table,
+                        checked_type_map,
+                        current_identity,
+                        decl_index,
+                        cursor,
+                        source_unit_id,
+                        scope_id,
+                        routine_error_type(cursor, type_table),
+                        value,
+                    )?
+                    .local_id,
+                ),
+                [] => None,
+                _ => {
+                    return Err(LoweringError::with_kind(
+                        LoweringErrorKind::InvalidInput,
+                        format!("report expects exactly 1 value in lowered V1 bodies, got {}", args.len()),
+                    ))
+                }
+            };
+            cursor.terminate_current_block(crate::LoweredTerminator::Report { value: lowered })?;
+            Ok(None)
+        }
+        AstNode::FunctionCall { name, args, .. } if name == "panic" => {
+            let lowered = match args.as_slice() {
+                [value] => Some(
+                    lower_expression_expected(
+                        typed_package,
+                        type_table,
+                        checked_type_map,
+                        current_identity,
+                        decl_index,
+                        cursor,
+                        source_unit_id,
+                        scope_id,
+                        None,
+                        value,
+                    )?
+                    .local_id,
+                ),
+                [] => None,
+                _ => {
+                    return Err(LoweringError::with_kind(
+                        LoweringErrorKind::InvalidInput,
+                        format!("panic expects at most 1 value in lowered V1, got {}", args.len()),
+                    ))
+                }
+            };
+            cursor.terminate_current_block(crate::LoweredTerminator::Panic { value: lowered })?;
+            Ok(None)
+        }
+        AstNode::Return { .. } => {
+            let _ = lower_body_node(
+                typed_package,
+                type_table,
+                checked_type_map,
+                current_identity,
+                decl_index,
+                cursor,
+                source_unit_id,
+                scope_id,
+                right,
+            )?;
+            Ok(None)
+        }
+        _ => lower_expression_expected(
+            typed_package,
+            type_table,
+            checked_type_map,
+            current_identity,
+            decl_index,
+            cursor,
+            source_unit_id,
+            scope_id,
+            Some(expected_type),
+            right,
+        )
+        .map(Some),
+    }
+}
+
 fn lower_expression_expected(
+    typed_package: &fol_typecheck::TypedPackage,
+    type_table: &crate::LoweredTypeTable,
+    checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
+    current_identity: &PackageIdentity,
+    decl_index: &WorkspaceDeclIndex,
+    cursor: &mut RoutineCursor<'_>,
+    source_unit_id: SourceUnitId,
+    scope_id: ScopeId,
+    expected_type: Option<LoweredTypeId>,
+    node: &AstNode,
+) -> Result<LoweredValue, LoweringError> {
+    let lowered = lower_expression_observed(
+        typed_package,
+        type_table,
+        checked_type_map,
+        current_identity,
+        decl_index,
+        cursor,
+        source_unit_id,
+        scope_id,
+        expected_type,
+        node,
+    )?;
+    let lowered = materialize_recoverable_value(
+        typed_package,
+        type_table,
+        checked_type_map,
+        current_identity,
+        decl_index,
+        cursor,
+        source_unit_id,
+        scope_id,
+        lowered,
+    )?;
+    apply_expected_shell_wrap(type_table, cursor, expected_type, lowered)
+}
+
+fn lower_expression_observed(
     typed_package: &fol_typecheck::TypedPackage,
     type_table: &crate::LoweredTypeTable,
     checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
@@ -1853,6 +2325,22 @@ fn lower_expression_expected(
                 describe_unary_operator(op)
             ),
         )),
+        AstNode::BinaryOp {
+            op: fol_parser::ast::BinaryOperator::PipeOr,
+            left,
+            right,
+        } => lower_pipe_or_expression(
+            typed_package,
+            type_table,
+            checked_type_map,
+            current_identity,
+            decl_index,
+            cursor,
+            source_unit_id,
+            scope_id,
+            left,
+            right,
+        ),
         AstNode::BinaryOp { op, .. } => Err(LoweringError::with_kind(
             LoweringErrorKind::Unsupported,
             format!(
@@ -1911,6 +2399,18 @@ fn lower_expression_expected(
                 lowered_value,
             )
         }
+        AstNode::FunctionCall { syntax_id, name, args } if name == "check" => lower_check_call(
+            typed_package,
+            type_table,
+            checked_type_map,
+            current_identity,
+            decl_index,
+            cursor,
+            source_unit_id,
+            scope_id,
+            *syntax_id,
+            args,
+        ),
         AstNode::FunctionCall { syntax_id, name, args } => lower_function_call(
             typed_package,
             type_table,
@@ -1990,7 +2490,7 @@ fn lower_expression_expected(
                     })
                     .collect::<Result<Vec<_>, _>>()?,
             );
-            let result_local = cursor.allocate_local(result_type, None);
+            let result_local = cursor.allocate_local_with_effect(result_type, error_type, None);
             cursor.push_instr(
                 Some(result_local),
                 LoweredInstrKind::Call {
@@ -2002,6 +2502,7 @@ fn lower_expression_expected(
             Ok(LoweredValue {
                 local_id: result_local,
                 type_id: result_type,
+                recoverable_error_type: error_type,
             })
         }
         AstNode::FieldAccess { object, field } => {
@@ -2061,6 +2562,7 @@ fn lower_expression_expected(
             Ok(LoweredValue {
                 local_id: result_local,
                 type_id: result_type,
+                recoverable_error_type: None,
             })
         }
         AstNode::IndexAccess { container, index } => {
@@ -2103,6 +2605,7 @@ fn lower_expression_expected(
             Ok(LoweredValue {
                 local_id: result_local,
                 type_id: result_type,
+                recoverable_error_type: None,
             })
         }
         AstNode::When {
@@ -2593,7 +3096,7 @@ fn lower_function_call(
         checked_type_map,
         resolved_symbol.id,
     );
-    let result_local = cursor.allocate_local(result_type, None);
+    let result_local = cursor.allocate_local_with_effect(result_type, call_error_type, None);
     cursor.push_instr(
         Some(result_local),
         LoweredInstrKind::Call {
@@ -2605,6 +3108,7 @@ fn lower_function_call(
     Ok(LoweredValue {
         local_id: result_local,
         type_id: result_type,
+        recoverable_error_type: call_error_type,
     })
 }
 
@@ -3938,6 +4442,194 @@ mod tests {
             }
             other => panic!("expected lowered routine signature, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn propagation_lowering_branches_and_reports_recoverable_calls() {
+        let lowered = lower_fixture_workspace(
+            concat!(
+                "fun[] load(flag: bol): int / str = {\n",
+                "    when(flag) {\n",
+                "        case(true) { report \"bad\" }\n",
+                "        * { return 7 }\n",
+                "    }\n",
+                "}\n",
+                "fun[] main(flag: bol): int / str = {\n",
+                "    return load(flag)\n",
+                "}\n",
+            ),
+        );
+
+        let routine = lowered
+            .entry_package()
+            .routine_decls
+            .values()
+            .find(|routine| routine.name == "main")
+            .expect("main routine should exist");
+
+        assert!(routine.instructions.iter().any(|instr| matches!(
+            instr.kind,
+            LoweredInstrKind::Call { error_type: Some(_), .. }
+        )));
+        assert!(routine.instructions.iter().any(|instr| matches!(
+            instr.kind,
+            LoweredInstrKind::CheckRecoverable { .. }
+        )));
+        assert!(routine.instructions.iter().any(|instr| matches!(
+            instr.kind,
+            LoweredInstrKind::UnwrapRecoverable { .. }
+        )));
+        assert!(routine.instructions.iter().any(|instr| matches!(
+            instr.kind,
+            LoweredInstrKind::ExtractRecoverableError { .. }
+        )));
+        assert!(routine.blocks.iter().any(|block| matches!(
+            block.terminator,
+            Some(LoweredTerminator::Branch { .. })
+        )));
+        assert!(routine.blocks.iter().any(|block| matches!(
+            block.terminator,
+            Some(LoweredTerminator::Report { .. })
+        )));
+    }
+
+    #[test]
+    fn check_lowering_observes_recoverable_bindings_without_propagation() {
+        let lowered = lower_fixture_workspace(
+            concat!(
+                "fun[] load(flag: bol): int / str = {\n",
+                "    when(flag) {\n",
+                "        case(true) { report \"bad\" }\n",
+                "        * { return 7 }\n",
+                "    }\n",
+                "}\n",
+                "fun[] main(flag: bol): bol = {\n",
+                "    var attempt = load(flag)\n",
+                "    return check(attempt)\n",
+                "}\n",
+            ),
+        );
+
+        let routine = lowered
+            .entry_package()
+            .routine_decls
+            .values()
+            .find(|routine| routine.name == "main")
+            .expect("main routine should exist");
+        let attempt_local = routine
+            .locals
+            .iter()
+            .find(|local| local.name.as_deref() == Some("attempt"))
+            .expect("attempt local should exist");
+
+        assert!(attempt_local.recoverable_error_type.is_some());
+        assert!(routine.instructions.iter().any(|instr| matches!(
+            instr.kind,
+            LoweredInstrKind::CheckRecoverable { .. }
+        )));
+        assert!(!routine.blocks.iter().any(|block| matches!(
+            block.terminator,
+            Some(LoweredTerminator::Report { .. })
+        )));
+    }
+
+    #[test]
+    fn pipe_or_default_lowering_branches_to_a_plain_fallback_value() {
+        let lowered = lower_fixture_workspace(
+            concat!(
+                "fun[] load(flag: bol): int / str = {\n",
+                "    when(flag) {\n",
+                "        case(true) { report \"bad\" }\n",
+                "        * { return 7 }\n",
+                "    }\n",
+                "}\n",
+                "fun[] main(flag: bol): int = {\n",
+                "    return load(flag) || 5\n",
+                "}\n",
+            ),
+        );
+
+        let routine = lowered
+            .entry_package()
+            .routine_decls
+            .values()
+            .find(|routine| routine.name == "main")
+            .expect("main routine should exist");
+
+        assert!(routine.instructions.iter().any(|instr| matches!(
+            instr.kind,
+            LoweredInstrKind::CheckRecoverable { .. }
+        )));
+        assert!(routine.instructions.iter().any(|instr| matches!(
+            instr.kind,
+            LoweredInstrKind::UnwrapRecoverable { .. }
+        )));
+        assert!(routine.instructions.iter().any(|instr| matches!(
+            instr.kind,
+            LoweredInstrKind::Const(LoweredOperand::Int(5))
+        )));
+        assert!(!routine.blocks.iter().any(|block| matches!(
+            block.terminator,
+            Some(LoweredTerminator::Report { .. } | LoweredTerminator::Panic { .. })
+        )));
+    }
+
+    #[test]
+    fn pipe_or_report_lowering_uses_error_branch_reports() {
+        let lowered = lower_fixture_workspace(
+            concat!(
+                "fun[] load(flag: bol): int / str = {\n",
+                "    when(flag) {\n",
+                "        case(true) { report \"bad\" }\n",
+                "        * { return 7 }\n",
+                "    }\n",
+                "}\n",
+                "fun[] main(flag: bol): int / str = {\n",
+                "    return load(flag) || report \"fallback\"\n",
+                "}\n",
+            ),
+        );
+
+        let routine = lowered
+            .entry_package()
+            .routine_decls
+            .values()
+            .find(|routine| routine.name == "main")
+            .expect("main routine should exist");
+
+        assert!(routine.blocks.iter().any(|block| matches!(
+            block.terminator,
+            Some(LoweredTerminator::Report { .. })
+        )));
+    }
+
+    #[test]
+    fn pipe_or_panic_lowering_uses_error_branch_panics() {
+        let lowered = lower_fixture_workspace(
+            concat!(
+                "fun[] load(flag: bol): int / str = {\n",
+                "    when(flag) {\n",
+                "        case(true) { report \"bad\" }\n",
+                "        * { return 7 }\n",
+                "    }\n",
+                "}\n",
+                "fun[] main(flag: bol): int = {\n",
+                "    return load(flag) || panic \"fallback\"\n",
+                "}\n",
+            ),
+        );
+
+        let routine = lowered
+            .entry_package()
+            .routine_decls
+            .values()
+            .find(|routine| routine.name == "main")
+            .expect("main routine should exist");
+
+        assert!(routine.blocks.iter().any(|block| matches!(
+            block.terminator,
+            Some(LoweredTerminator::Panic { .. })
+        )));
     }
 
     #[test]

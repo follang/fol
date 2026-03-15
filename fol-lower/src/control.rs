@@ -21,6 +21,7 @@ pub enum LoweredOperand {
 pub struct LoweredLocal {
     pub id: LoweredLocalId,
     pub type_id: Option<LoweredTypeId>,
+    pub recoverable_error_type: Option<LoweredTypeId>,
     pub name: Option<String>,
 }
 
@@ -39,6 +40,15 @@ pub enum LoweredInstrKind {
     },
     LoadLocal {
         local: LoweredLocalId,
+    },
+    CheckRecoverable {
+        operand: LoweredLocalId,
+    },
+    UnwrapRecoverable {
+        operand: LoweredLocalId,
+    },
+    ExtractRecoverableError {
+        operand: LoweredLocalId,
     },
     StoreLocal {
         local: LoweredLocalId,
@@ -123,6 +133,9 @@ pub enum LoweredTerminator {
     Report {
         value: Option<LoweredLocalId>,
     },
+    Panic {
+        value: Option<LoweredLocalId>,
+    },
     Unreachable,
 }
 
@@ -190,6 +203,7 @@ mod tests {
         let local_id = routine.locals.push(LoweredLocal {
             id: LoweredLocalId(0),
             type_id: None,
+            recoverable_error_type: None,
             name: Some("tmp".to_string()),
         });
 

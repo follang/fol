@@ -320,26 +320,37 @@ or deliberately rejected.
   - lowered `Call` instructions now retain an optional `error_type`
   - ordinary and errorful routine calls no longer collapse to one indistinguishable
     backend-facing shape
-- `2.2` `pending` Add lowered instructions or terminators for:
+- `2.2` `done` Add lowered instructions or terminators for:
   - checked call
   - success/error branch after call
   - handled fallback path
   - upward propagation path
+  Current state:
+  - lowered recoverable values now use explicit `CheckRecoverable`,
+    `UnwrapRecoverable`, and `ExtractRecoverableError` instructions
+  - propagation and `||` handling now lower through real control-flow branches
+    instead of pretending errorful calls are plain values
 - `2.3` `done` Keep routine signatures carrying both return and error types in
   a way the backend can consume directly.
   Current state:
   - lowered routine signatures still retain `return_type` plus `error_type`
   - lowered call instructions now mirror that error metadata at call sites so
     later backend work can consume both sides of the contract directly
-- `2.4` `pending` Extend the lowering verifier so impossible error-flow shapes are
+- `2.4` `done` Extend the lowering verifier so impossible error-flow shapes are
   rejected explicitly.
-- `2.5` `pending` Add exact lowered snapshot tests for:
+  Current state:
+  - verifier now checks recoverable-error metadata on locals/globals and validates
+    recoverable-only instructions plus `panic` terminators
+- `2.5` `done` Add exact lowered snapshot tests for:
   - success call
   - propagated call
   - `check(...)` branch
   - `||` default
   - `|| report ...`
   - `|| panic ...`
+  Current state:
+  - lowering tests now lock propagation, `check(...)`, default fallback,
+    `report` fallback, and `panic` fallback shapes directly
 
 ### Phase 3. Backend Calling Convention Contract
 
@@ -360,13 +371,28 @@ or deliberately rejected.
 
 ### Phase 4. V1 User-Facing Handling Paths
 
-- `4.1` `pending` Add end-to-end success tests for ordinary propagation through
+- `4.1` `done` Add end-to-end success tests for ordinary propagation through
   multiple routines with matching error types.
-- `4.2` `pending` Add end-to-end success tests for `check(expr)` plus `if/else`
+  Current state:
+  - CLI tests now compile multi-routine propagation fixtures and assert lowered
+    propagation control flow is present
+- `4.2` `done` Add end-to-end success tests for `check(expr)` plus `if/else`
   handling.
-- `4.3` `pending` Add end-to-end success tests for `expr || default_value`.
-- `4.4` `pending` Add end-to-end success tests for `expr || report ...`.
-- `4.5` `pending` Add end-to-end success tests for `expr || panic ...`.
+  Current state:
+  - CLI tests now compile handled `check(...)` fixtures and assert explicit
+    recoverable checks survive into lowered output
+- `4.3` `done` Add end-to-end success tests for `expr || default_value`.
+  Current state:
+  - CLI tests now compile default-value fallback fixtures and assert the lowered
+    default branch stays explicit
+- `4.4` `done` Add end-to-end success tests for `expr || report ...`.
+  Current state:
+  - CLI tests now compile report-fallback fixtures and assert the error branch
+    lowers to `Report`
+- `4.5` `done` Add end-to-end success tests for `expr || panic ...`.
+  Current state:
+  - CLI tests now compile panic-fallback fixtures and assert the error branch
+    lowers to `Panic`
 - `4.6` `done` Add negative tests for:
   - trying to assign an errorful call directly to a plain value in a routine that
     cannot propagate
