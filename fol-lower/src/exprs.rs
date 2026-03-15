@@ -727,7 +727,7 @@ fn lower_local_binding(
     kind: SymbolKind,
     value: Option<&AstNode>,
 ) -> Result<Option<LoweredValue>, LoweringError> {
-    let Some(symbol_id) = crate::decls::find_symbol_in_exact_scope(
+    let Some(symbol_id) = crate::decls::find_symbol_in_scope_or_descendants(
         &typed_package.program,
         source_unit_id,
         scope_id,
