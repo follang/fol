@@ -4,7 +4,7 @@ use crate::{
     LoweredGlobalId, LoweredPackage, LoweredRoutine, LoweredRoutineId, LoweredWorkspace,
     LoweringError, LoweringErrorKind,
 };
-use fol_parser::ast::{AstNode, ContainerType, Literal};
+use fol_parser::ast::{AstNode, ContainerType, Literal, LoopCondition};
 use fol_resolver::{
     MountedSymbolProvenance, PackageIdentity, ResolvedSymbol, ScopeId, SourceUnitId, SymbolId,
     SymbolKind,
@@ -656,13 +656,24 @@ fn lower_body_node(
             )?;
             Ok(None)
         }
-        AstNode::Loop { .. } => Err(LoweringError::with_kind(
-            LoweringErrorKind::Unsupported,
-            "loop lowering lands in the pending loop-control lowering slice",
-        )),
+        AstNode::Loop { condition, body } => {
+            lower_loop_statement(
+                typed_package,
+                type_table,
+                checked_type_map,
+                current_identity,
+                decl_index,
+                cursor,
+                source_unit_id,
+                scope_id,
+                condition,
+                body,
+            )?;
+            Ok(None)
+        }
         AstNode::Break => Err(LoweringError::with_kind(
             LoweringErrorKind::Unsupported,
-            "break lowering lands in the pending loop-exit lowering slice",
+            "break lowering lands in the next lowered V1 control-flow slice",
         )),
         AstNode::Yield { .. } => Err(LoweringError::with_kind(
             LoweringErrorKind::Unsupported,
@@ -1428,6 +1439,74 @@ fn lower_when_statement(
     }
 
     Ok(())
+}
+
+fn lower_loop_statement(
+    typed_package: &fol_typecheck::TypedPackage,
+    type_table: &crate::LoweredTypeTable,
+    checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
+    current_identity: &PackageIdentity,
+    decl_index: &WorkspaceDeclIndex,
+    cursor: &mut RoutineCursor<'_>,
+    source_unit_id: SourceUnitId,
+    scope_id: ScopeId,
+    condition: &LoopCondition,
+    body: &[AstNode],
+) -> Result<(), LoweringError> {
+    match condition {
+        LoopCondition::Condition(condition) => {
+            let header_block = cursor.create_block();
+            let body_block = cursor.create_block();
+            let exit_block = cursor.create_block();
+
+            cursor.terminate_current_block(crate::LoweredTerminator::Jump {
+                target: header_block,
+            })?;
+
+            cursor.switch_block(header_block)?;
+            let lowered_condition = lower_expression(
+                typed_package,
+                type_table,
+                checked_type_map,
+                current_identity,
+                decl_index,
+                cursor,
+                source_unit_id,
+                scope_id,
+                condition,
+            )?;
+            cursor.terminate_current_block(crate::LoweredTerminator::Branch {
+                condition: lowered_condition.local_id,
+                then_block: body_block,
+                else_block: exit_block,
+            })?;
+
+            cursor.switch_block(body_block)?;
+            let _ = lower_body_sequence(
+                typed_package,
+                type_table,
+                checked_type_map,
+                current_identity,
+                decl_index,
+                cursor,
+                source_unit_id,
+                scope_id,
+                body,
+            )?;
+            if !cursor.current_block_terminated()? {
+                cursor.terminate_current_block(crate::LoweredTerminator::Jump {
+                    target: header_block,
+                })?;
+            }
+
+            cursor.switch_block(exit_block)?;
+            Ok(())
+        }
+        LoopCondition::Iteration { .. } => Err(LoweringError::with_kind(
+            LoweringErrorKind::Unsupported,
+            "iteration loop lowering is not part of the current lowered V1 control-flow milestone",
+        )),
+    }
 }
 
 fn lower_default_when_body(
@@ -3792,6 +3871,70 @@ mod tests {
     }
 
     #[test]
+    fn loop_condition_lowering_keeps_header_body_and_exit_blocks() {
+        let fixture = std::env::temp_dir().join(format!(
+            "fol_lower_loop_shape_{}.fol",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system clock should be monotonic enough for tmp names")
+                .as_nanos()
+        ));
+        std::fs::write(
+            &fixture,
+            "fun[] main(flag: bol, limit: int): int = {\n    loop(flag) {\n        var current: int = limit\n    }\n    return limit\n}",
+        )
+        .expect("should write lowering loop shape fixture");
+
+        let mut stream = FileStream::from_file(fixture.to_str().expect("utf8 temp path"))
+            .expect("Should open lowering fixture");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let syntax = parser
+            .parse_package(&mut lexer)
+            .expect("Lowering fixture should parse");
+        let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+        let typed = Typechecker::new()
+            .check_resolved_workspace(resolved)
+            .expect("Lowering fixture should typecheck");
+        let lowered = crate::LoweringSession::new(typed)
+            .lower_workspace()
+            .expect("condition loop lowering should succeed");
+
+        let routine = lowered
+            .entry_package()
+            .routine_decls
+            .values()
+            .find(|routine| routine.name == "main")
+            .expect("main routine should exist");
+
+        assert_eq!(routine.blocks.len(), 4);
+        assert_eq!(
+            routine.blocks.get(crate::LoweredBlockId(0)).and_then(|block| block.terminator.clone()),
+            Some(LoweredTerminator::Jump {
+                target: crate::LoweredBlockId(1),
+            })
+        );
+        assert_eq!(
+            routine.blocks.get(crate::LoweredBlockId(1)).and_then(|block| block.terminator.clone()),
+            Some(LoweredTerminator::Branch {
+                condition: crate::LoweredLocalId(2),
+                then_block: crate::LoweredBlockId(2),
+                else_block: crate::LoweredBlockId(3),
+            })
+        );
+        assert_eq!(
+            routine.blocks.get(crate::LoweredBlockId(2)).and_then(|block| block.terminator.clone()),
+            Some(LoweredTerminator::Jump {
+                target: crate::LoweredBlockId(1),
+            })
+        );
+        assert!(matches!(
+            routine.blocks.get(crate::LoweredBlockId(3)).and_then(|block| block.terminator.clone()),
+            Some(LoweredTerminator::Return { .. })
+        ));
+    }
+
+    #[test]
     fn record_initializer_lowering_constructs_records_in_binding_and_call_contexts() {
         let fixture = std::env::temp_dir().join(format!(
             "fol_lower_record_init_{}.fol",
@@ -4348,13 +4491,13 @@ mod tests {
         );
 
         let loop_error = lower_fixture_error(
-            "fun[] main(limit: int): int = {\n    loop(limit > 0) {\n        break;\n    }\n    return limit;\n}\n",
+            "fun[] main(items: seq[int]): int = {\n    loop(item in items) {\n        break;\n    }\n    return 0;\n}\n",
         );
         assert_eq!(loop_error.kind(), LoweringErrorKind::Unsupported);
         assert!(
             loop_error
                 .message()
-                .contains("loop lowering lands in the pending loop-control lowering slice")
+                .contains("iteration loop lowering is not part of the current lowered V1 control-flow milestone")
         );
 
         let entry_error = lower_fixture_error(
