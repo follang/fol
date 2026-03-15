@@ -654,7 +654,7 @@ fn lower_body_node(
             expr,
             cases,
             default,
-        } if default.is_none() => {
+        } if default.is_none() || when_always_terminates(cases, default.as_deref()) => {
             lower_when_statement(
                 typed_package,
                 type_table,
@@ -666,7 +666,7 @@ fn lower_body_node(
                 scope_id,
                 expr,
                 cases,
-                None,
+                default.as_deref(),
             )?;
             Ok(None)
         }
@@ -1362,6 +1362,48 @@ fn lower_map_literal(
     })
 }
 
+fn when_case_body(case: &fol_parser::ast::WhenCase) -> &[AstNode] {
+    match case {
+        fol_parser::ast::WhenCase::Case { body, .. }
+        | fol_parser::ast::WhenCase::Is { body, .. }
+        | fol_parser::ast::WhenCase::In { body, .. }
+        | fol_parser::ast::WhenCase::Has { body, .. }
+        | fol_parser::ast::WhenCase::On { body, .. }
+        | fol_parser::ast::WhenCase::Of { body, .. } => body.as_slice(),
+    }
+}
+
+fn when_always_terminates(
+    cases: &[fol_parser::ast::WhenCase],
+    default: Option<&[AstNode]>,
+) -> bool {
+    let Some(default) = default else {
+        return false;
+    };
+    !cases.is_empty()
+        && cases.iter().all(|case| body_always_terminates(when_case_body(case)))
+        && body_always_terminates(default)
+}
+
+fn body_always_terminates(nodes: &[AstNode]) -> bool {
+    nodes.iter()
+        .rev()
+        .find(|node| !matches!(node, AstNode::Comment { .. }))
+        .is_some_and(node_always_terminates)
+}
+
+fn node_always_terminates(node: &AstNode) -> bool {
+    match node {
+        AstNode::Comment { .. } => false,
+        AstNode::Commented { node, .. } => node_always_terminates(node),
+        AstNode::Return { .. } => true,
+        AstNode::FunctionCall { name, .. } if name == "report" => true,
+        AstNode::Block { statements } => body_always_terminates(statements),
+        AstNode::When { cases, default, .. } => when_always_terminates(cases, default.as_deref()),
+        _ => false,
+    }
+}
+
 fn lower_when_statement(
     typed_package: &fol_typecheck::TypedPackage,
     type_table: &crate::LoweredTypeTable,
@@ -1429,18 +1471,16 @@ fn lower_when_statement(
         )?;
         if !cursor.current_block_terminated()? {
             cursor.terminate_current_block(crate::LoweredTerminator::Jump { target: after_block })?;
+            has_fallthrough = true;
         }
 
         if else_block != after_block {
             cursor.switch_block(else_block)?;
-            has_fallthrough = true;
-        } else {
-            has_fallthrough = false;
         }
     }
 
     if let Some(default) = default {
-        lower_default_when_body(
+        has_fallthrough |= lower_default_when_body(
             typed_package,
             type_table,
             checked_type_map,
@@ -1452,10 +1492,9 @@ fn lower_when_statement(
             default,
             after_block,
         )?;
-        has_fallthrough = true;
     }
 
-    if !cases.is_empty() || default.is_some() || has_fallthrough {
+    if has_fallthrough {
         cursor.switch_block(after_block)?;
     }
 
@@ -1543,7 +1582,7 @@ fn lower_default_when_body(
     scope_id: ScopeId,
     default: &[AstNode],
     after_block: LoweredBlockId,
-) -> Result<(), LoweringError> {
+) -> Result<bool, LoweringError> {
     let _ = lower_body_sequence(
         typed_package,
         type_table,
@@ -1557,8 +1596,9 @@ fn lower_default_when_body(
     )?;
     if !cursor.current_block_terminated()? {
         cursor.terminate_current_block(crate::LoweredTerminator::Jump { target: after_block })?;
+        return Ok(true);
     }
-    Ok(())
+    Ok(false)
 }
 
 fn lower_when_expression(
@@ -3218,8 +3258,8 @@ mod tests {
     }
 
     #[test]
-    fn lowering_repro_reports_early_return_when_join_failures_explicitly() {
-        let error = lower_fixture_error(
+    fn lowering_repro_lowers_early_return_when_branches_as_statement_control_flow() {
+        let lowered = lower_fixture_workspace(
             concat!(
                 "var enabled: bol = true\n",
                 "var default_name: str = \"Ada\"\n",
@@ -3269,13 +3309,22 @@ mod tests {
                 "}\n",
             ),
         );
+        let routine = lowered
+            .entry_package()
+            .routine_decls
+            .values()
+            .find(|routine| routine.name == "main")
+            .expect("main lowering routine should exist");
+        let return_blocks = routine
+            .blocks
+            .iter()
+            .filter(|block| matches!(block.terminator, Some(crate::LoweredTerminator::Return { .. })))
+            .count();
 
-        assert_eq!(error.kind(), LoweringErrorKind::InvalidInput);
-        assert!(
-            error
-                .message()
-                .contains("value-producing when did not retain a lowered join value"),
-            "expected the current early-return when repro to stay explicit, got: {error:?}"
+        assert_eq!(routine.body_result, None);
+        assert_eq!(
+            return_blocks, 2,
+            "early-return when lowering should preserve both branch returns without synthesizing a join value",
         );
     }
 

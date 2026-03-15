@@ -128,8 +128,8 @@ Each fix must land with:
 
 ### Phase 3. Value `when` Join Hardening
 
-- `3.1` `pending` Audit join-local allocation and branch-result wiring for value-producing `when`.
-- `3.2` `pending` Fix value-producing `when` so all successful typed branches retain one lowered join destination.
+- `3.1` `done` Audit join-local allocation and branch-result wiring for value-producing `when`.
+- `3.2` `done` Fix value-producing `when` so all successful typed branches retain one lowered join destination.
 - `3.3` `pending` Add exact lowered block/instruction assertions for the repaired value-producing `when` path.
 
 ### Phase 4. End-To-End Proof
