@@ -3395,6 +3395,38 @@ mod tests {
     }
 
     #[test]
+    fn lowering_repro_keeps_exact_cfg_shape_for_early_return_when_branches() {
+        let lowered = lower_fixture_workspace(
+            "fun[] main(flag: bol): int = {\n    when(flag) {\n        case(true) { return 1 }\n        * { return 2 }\n    }\n}\n",
+        );
+        let routine = lowered
+            .entry_package()
+            .routine_decls
+            .values()
+            .find(|routine| routine.name == "main")
+            .expect("main lowering routine should exist");
+
+        assert_eq!(routine.blocks.len(), 3);
+        assert_eq!(routine.body_result, None);
+        assert!(matches!(
+            routine.blocks.get(crate::LoweredBlockId(0)).and_then(|block| block.terminator.clone()),
+            Some(LoweredTerminator::Branch {
+                then_block: crate::LoweredBlockId(1),
+                else_block: crate::LoweredBlockId(2),
+                ..
+            })
+        ));
+        assert!(matches!(
+            routine.blocks.get(crate::LoweredBlockId(1)).and_then(|block| block.terminator.clone()),
+            Some(LoweredTerminator::Return { value: Some(_) })
+        ));
+        assert!(matches!(
+            routine.blocks.get(crate::LoweredBlockId(2)).and_then(|block| block.terminator.clone()),
+            Some(LoweredTerminator::Return { value: Some(_) })
+        ));
+    }
+
+    #[test]
     fn nil_literal_lowering_stays_deferred_to_shell_lowering() {
         let mut types = LoweredTypeTable::new();
         let int_type = types.intern_builtin(LoweredBuiltinType::Int);
