@@ -1,6 +1,7 @@
 use crate::{
-    LoweredFieldLayout, LoweredGlobal, LoweredPackage, LoweredTypeDecl,
-    LoweredTypeDeclKind, LoweredVariantLayout, LoweringError, LoweringErrorKind, LoweringResult,
+    LoweredBlock, LoweredFieldLayout, LoweredGlobal, LoweredLocal, LoweredPackage,
+    LoweredRoutine, LoweredTypeDecl, LoweredTypeDeclKind, LoweredVariantLayout, LoweringError,
+    LoweringErrorKind, LoweringResult,
 };
 use fol_parser::ast::{AstNode, TypeDefinition};
 use fol_resolver::{SourceUnitId, SymbolId, SymbolKind};
@@ -244,6 +245,59 @@ pub fn lower_global_declarations(
     }
 }
 
+pub fn lower_routine_declarations(
+    typed_package: &fol_typecheck::TypedPackage,
+    lowered_package: &mut LoweredPackage,
+    next_routine_index: &mut usize,
+) -> LoweringResult<()> {
+    let mut errors = Vec::new();
+
+    for (source_unit_index, source_unit) in typed_package.program.resolved().syntax().source_units.iter().enumerate() {
+        let source_unit_id = SourceUnitId(source_unit_index);
+        for item in &source_unit.items {
+            let (name, params) = match &item.node {
+                AstNode::FunDecl { name, params, .. }
+                | AstNode::ProDecl { name, params, .. }
+                | AstNode::LogDecl { name, params, .. } => (name.as_str(), params.as_slice()),
+                _ => continue,
+            };
+
+            match find_local_symbol_id(
+                &typed_package.program,
+                source_unit_id,
+                SymbolKind::Routine,
+                name,
+            ) {
+                Some(symbol_id) => match lower_routine_decl(
+                    typed_package,
+                    lowered_package,
+                    symbol_id,
+                    source_unit_id,
+                    name,
+                    params,
+                    next_routine_index,
+                ) {
+                    Ok(routine) => {
+                        lowered_package.routines.push(routine.id);
+                        lowered_package.routine_decls.insert(routine.id, routine);
+                    }
+                    Err(error) => errors.push(error),
+                },
+                None => errors.push(LoweringError::with_kind(
+                    LoweringErrorKind::InvalidInput,
+                    format!("top-level routine '{name}' does not retain a resolved symbol"),
+                )),
+            }
+        }
+    }
+
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
+    }
+}
+
 fn lower_symbol_signature(
     typed_package: &fol_typecheck::TypedPackage,
     lowered_package: &LoweredPackage,
@@ -468,6 +522,118 @@ fn lower_global_decl(
     Ok(global)
 }
 
+fn lower_routine_decl(
+    typed_package: &fol_typecheck::TypedPackage,
+    lowered_package: &LoweredPackage,
+    symbol_id: SymbolId,
+    source_unit_id: SourceUnitId,
+    name: &str,
+    params: &[fol_parser::ast::Parameter],
+    next_routine_index: &mut usize,
+) -> Result<LoweredRoutine, LoweringError> {
+    let signature = lowered_package
+        .routine_signatures
+        .get(&symbol_id)
+        .copied()
+        .ok_or_else(|| {
+            LoweringError::with_kind(
+                LoweringErrorKind::InvalidInput,
+                format!("routine symbol {} does not retain a lowered signature", symbol_id.0),
+            )
+        })?;
+    let typed_symbol = typed_package
+        .program
+        .typed_symbol(symbol_id)
+        .ok_or_else(|| {
+            LoweringError::with_kind(
+                LoweringErrorKind::InvalidInput,
+                format!("routine symbol {} disappeared from typed facts", symbol_id.0),
+            )
+        })?;
+
+    let mut routine = LoweredRoutine::new(
+        crate::LoweredRoutineId(*next_routine_index),
+        name,
+        crate::LoweredBlockId(0),
+    );
+    *next_routine_index += 1;
+    routine.symbol_id = Some(symbol_id);
+    routine.source_unit_id = Some(source_unit_id);
+    routine.signature = Some(signature);
+    routine.receiver_type = typed_symbol
+        .receiver_type
+        .and_then(|receiver_type| lowered_package.checked_type_map.get(&receiver_type).copied());
+    let entry_block = routine.blocks.push(LoweredBlock {
+        id: crate::LoweredBlockId(0),
+        instructions: Vec::new(),
+        terminator: None,
+    });
+    routine.entry_block = entry_block;
+
+    let mut next_local_index = 0;
+    if let Some(receiver_type) = routine.receiver_type {
+        let local_id = routine.locals.push(LoweredLocal {
+            id: crate::LoweredLocalId(next_local_index),
+            type_id: Some(receiver_type),
+            name: Some("self".to_string()),
+        });
+        routine.params.push(local_id);
+        next_local_index += 1;
+    }
+
+    let checked_signature = typed_symbol.declared_type.ok_or_else(|| {
+        LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            format!("routine symbol {} does not retain a checked signature", symbol_id.0),
+        )
+    })?;
+    let checked_param_types = match typed_package
+        .program
+        .type_table()
+        .get(checked_signature)
+        .cloned()
+        .ok_or_else(|| {
+            LoweringError::with_kind(
+                LoweringErrorKind::InvalidInput,
+                format!("routine symbol {} lost its checked signature shape", symbol_id.0),
+            )
+        })? {
+        CheckedType::Routine(signature) => signature.params,
+        _ => {
+            return Err(LoweringError::with_kind(
+                LoweringErrorKind::InvalidInput,
+                format!("routine symbol {} no longer lowers to a routine shape", symbol_id.0),
+            ))
+        }
+    };
+
+    for (param, checked_param_type) in params.iter().zip(checked_param_types.into_iter()) {
+        let param_type = lowered_package
+            .checked_type_map
+            .get(&checked_param_type)
+            .copied()
+            .ok_or_else(|| {
+                LoweringError::with_kind(
+                    LoweringErrorKind::InvalidInput,
+                    format!(
+                        "routine parameter '{}' on symbol {} does not map to a lowered type",
+                        param.name,
+                        symbol_id.0
+                    ),
+                )
+            })?;
+        let local_id = routine.locals.push(LoweredLocal {
+            id: crate::LoweredLocalId(next_local_index),
+            type_id: Some(param_type),
+            name: Some(param.name.clone()),
+        });
+        routine.params.push(local_id);
+        next_local_index += 1;
+    }
+
+    Ok(routine)
+}
+
 fn routine_name(node: &AstNode) -> Option<&str> {
     match node {
         AstNode::FunDecl { name, .. }
@@ -500,7 +666,7 @@ fn find_local_symbol_id(
 mod tests {
     use super::{
         lower_alias_declarations, lower_entry_declarations, lower_global_declarations,
-        lower_record_declarations, lower_routine_signatures,
+        lower_record_declarations, lower_routine_declarations, lower_routine_signatures,
     };
     use crate::{
         types::LoweredType, LoweredBuiltinType, LoweredFieldLayout, LoweredPackage,
@@ -849,6 +1015,64 @@ mod tests {
         assert_eq!(
             lowered_workspace.type_table().get(globals[1].type_id),
             Some(&LoweredType::Builtin(LoweredBuiltinType::Str))
+        );
+    }
+
+    #[test]
+    fn declaration_lowering_records_routine_shells_with_parameter_locals() {
+        let fixture = std::env::temp_dir().join(format!(
+            "fol_lower_routines_{}.fol",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system clock should be monotonic enough for tmp names")
+                .as_nanos()
+        ));
+        std::fs::write(
+            &fixture,
+            "fun[] add(left: int, right: int): int = { return left }",
+        )
+        .expect("should write lowering routine fixture");
+
+        let mut stream = FileStream::from_file(fixture.to_str().expect("utf8 temp path"))
+            .expect("Should open lowering fixture");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let syntax = parser
+            .parse_package(&mut lexer)
+            .expect("Lowering fixture should parse");
+        let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+        let typed = Typechecker::new()
+            .check_resolved_workspace(resolved)
+            .expect("Lowering fixture should typecheck");
+        let lowered_workspace = crate::LoweringSession::new(typed.clone())
+            .lower_workspace()
+            .expect("workspace lowering should succeed");
+        let typed_package = typed.entry_package();
+        let mut lowered_package =
+            LoweredPackage::new(crate::LoweredPackageId(0), typed_package.identity.clone());
+        lowered_package.checked_type_map = lowered_workspace.entry_package().checked_type_map.clone();
+        lower_routine_signatures(typed_package, &mut lowered_package)
+            .expect("routine signatures should lower cleanly");
+        let mut next_routine_index = 0;
+
+        lower_routine_declarations(typed_package, &mut lowered_package, &mut next_routine_index)
+            .expect("top-level routines should lower cleanly");
+
+        assert_eq!(lowered_package.routines.len(), 1);
+        let routine = lowered_package
+            .routine_decls
+            .get(&lowered_package.routines[0])
+            .expect("routine id should resolve");
+        assert_eq!(routine.name, "add");
+        assert_eq!(routine.params.len(), 2);
+        assert_eq!(routine.entry_block, crate::LoweredBlockId(0));
+        assert_eq!(
+            routine
+                .params
+                .iter()
+                .map(|local_id| routine.locals.get(*local_id).and_then(|local| local.name.clone()))
+                .collect::<Vec<_>>(),
+            vec![Some("left".to_string()), Some("right".to_string())]
         );
     }
 }

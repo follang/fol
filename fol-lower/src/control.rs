@@ -2,6 +2,7 @@ use crate::ids::{
     IdTable, LoweredBlockId, LoweredGlobalId, LoweredInstrId, LoweredLocalId, LoweredRoutineId,
     LoweredTypeId,
 };
+use fol_resolver::{SourceUnitId, SymbolId};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LoweredOperand {
@@ -91,7 +92,10 @@ impl LoweredBlock {
 pub struct LoweredRoutine {
     pub id: LoweredRoutineId,
     pub name: String,
+    pub symbol_id: Option<SymbolId>,
+    pub source_unit_id: Option<SourceUnitId>,
     pub signature: Option<LoweredTypeId>,
+    pub receiver_type: Option<LoweredTypeId>,
     pub params: Vec<LoweredLocalId>,
     pub locals: IdTable<LoweredLocalId, LoweredLocal>,
     pub blocks: IdTable<LoweredBlockId, LoweredBlock>,
@@ -104,7 +108,10 @@ impl LoweredRoutine {
         Self {
             id,
             name: name.into(),
+            symbol_id: None,
+            source_unit_id: None,
             signature: None,
+            receiver_type: None,
             params: Vec::new(),
             locals: IdTable::new(),
             blocks: IdTable::new(),

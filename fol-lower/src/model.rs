@@ -112,6 +112,7 @@ pub struct LoweredPackage {
     pub routine_signatures: BTreeMap<SymbolId, LoweredTypeId>,
     pub type_decls: BTreeMap<SymbolId, LoweredTypeDecl>,
     pub global_decls: BTreeMap<LoweredGlobalId, LoweredGlobal>,
+    pub routine_decls: BTreeMap<LoweredRoutineId, crate::LoweredRoutine>,
 }
 
 impl LoweredPackage {
@@ -129,6 +130,7 @@ impl LoweredPackage {
             routine_signatures: BTreeMap::new(),
             type_decls: BTreeMap::new(),
             global_decls: BTreeMap::new(),
+            routine_decls: BTreeMap::new(),
         }
     }
 }

@@ -511,7 +511,7 @@ This plan is complete only when all of the following are true:
 - `3.3` `done` Lower record type declarations into explicit field layouts.
 - `3.4` `done` Lower entry type declarations into explicit tag/payload layouts.
 - `3.5` `done` Lower globals and top-level bindings into lowered storage declarations.
-- `3.6` `pending` Lower routine and procedure declarations into lowered routine shells with parameters and result contracts.
+- `3.6` `done` Lower routine and procedure declarations into lowered routine shells with parameters and result contracts.
 - `3.7` `pending` Add declaration-level tests across local and imported packages.
 
 ### Phase 4. Core Expression Lowering
