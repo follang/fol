@@ -280,6 +280,23 @@ mod tests {
     }
 
     #[test]
+    fn conversion_operator_registry_entries_stay_stable() {
+        let expected = [("cast", IntrinsicId::new(9)), ("as", IntrinsicId::new(10))];
+
+        for (name, id) in expected {
+            let entry = intrinsic_by_canonical_name(name)
+                .unwrap_or_else(|| panic!("conversion intrinsic '{name}' should exist"));
+            assert_eq!(entry.id, id);
+            assert_eq!(entry.category, IntrinsicCategory::Conversion);
+            assert_eq!(entry.surface, IntrinsicSurface::OperatorAlias);
+            assert_eq!(entry.availability, IntrinsicAvailability::V1);
+            assert_eq!(entry.status, IntrinsicStatus::Unsupported);
+            assert_eq!(entry.arity, IntrinsicArity::Exactly(2));
+            assert_eq!(entry.lowering_mode, IntrinsicLoweringMode::Reject);
+        }
+    }
+
+    #[test]
     fn diagnostics_helpers_render_intrinsic_specific_guidance() {
         let eq = intrinsic_by_canonical_name("eq").expect("eq should exist");
         let de_alloc = intrinsic_by_canonical_name("de_alloc").expect("de_alloc should exist");
