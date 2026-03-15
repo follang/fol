@@ -434,8 +434,12 @@ or deliberately rejected.
     `/ ErrorType` into `err[...]` shell values
   - binding, return, call-argument, and record-field contexts now reject that
     conversion explicitly with guidance toward propagation, `check(...)`, or `||`
-- `5.3` `pending` Lock `V1` postfix unwrap behavior so it stays limited to shell
+- `5.3` `done` Lock `V1` postfix unwrap behavior so it stays limited to shell
   values unless a deliberate new call-unwrap surface is introduced.
+  Current state:
+  - postfix `!` now rejects recoverable routine call results explicitly
+  - `V1` keeps `!` limited to plain `opt[...]` and `err[...]` shell values
+    unless a future milestone deliberately introduces call-result unwrap syntax
 
 ### Phase 6. Docs And Book Sync
 

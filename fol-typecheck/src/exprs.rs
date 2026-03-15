@@ -781,6 +781,29 @@ fn type_unary_op(
     op: &UnaryOperator,
     operand: &AstNode,
 ) -> Result<TypedExpr, TypecheckError> {
+    if matches!(op, UnaryOperator::Unwrap) {
+        let operand_expr = type_node(typed, resolved, observe_context(context), operand)?;
+        if operand_expr.recoverable_effect.is_some() {
+            return Err(with_node_origin(
+                resolved,
+                node,
+                TypecheckErrorKind::Unsupported,
+                "postfix '!' unwrap applies to opt[...] and err[...] shell values, not to routine call results with '/ ErrorType' in V1",
+            ));
+        }
+        let operand_type = operand_expr.required_value("unary operator operand does not have a type")?;
+        return if let Some(inner) = unwrap_shell_result_type(typed, operand_type)? {
+            Ok(TypedExpr::value(inner))
+        } else {
+            Err(with_node_origin(
+                resolved,
+                node,
+                TypecheckErrorKind::InvalidInput,
+                "unwrap requires an opt[...] or err[...] shell with a value type in V1",
+            ))
+        };
+    }
+
     let operand_raw = type_node(typed, resolved, context, operand)?;
     let operand_expr = plain_value_expr(
         typed,
@@ -816,18 +839,7 @@ fn type_unary_op(
             TypecheckErrorKind::Unsupported,
             "pointer operators are part of the V3 systems milestone, not the V1 typecheck milestone",
         )),
-        UnaryOperator::Unwrap => {
-            if let Some(inner) = unwrap_shell_result_type(typed, operand_type)? {
-                Ok(TypedExpr::value(inner).with_optional_effect(operand_expr.recoverable_effect))
-            } else {
-                Err(with_node_origin(
-                    resolved,
-                    node,
-                    TypecheckErrorKind::InvalidInput,
-                    "unwrap requires an opt[...] or err[...] shell with a value type in V1",
-                ))
-            }
-        }
+        UnaryOperator::Unwrap => unreachable!("unwrap is handled before plain unary typing"),
     }
 }
 

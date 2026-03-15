@@ -3995,6 +3995,30 @@ fn shell_typing_accepts_postfix_unwrap_for_optional_and_typed_error_values() {
 }
 
 #[test]
+fn shell_typing_rejects_postfix_unwrap_for_recoverable_routine_calls() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] load(): int / str = {\n\
+             report \"bad\";\n\
+             return 1;\n\
+         }\n\
+         fun[] main(): int / str = {\n\
+             return load()!;\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::Unsupported
+                && error
+                    .message()
+                    .contains("postfix '!' unwrap applies to opt[...] and err[...] shell values, not to routine call results with '/ ErrorType' in V1")
+        }),
+        "Expected the recoverable-call unwrap boundary diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
 fn shell_typing_rejects_postfix_unwrap_for_bare_error_shells() {
     let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",
