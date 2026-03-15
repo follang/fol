@@ -675,6 +675,93 @@ mod integration_tests {
     }
 
     #[test]
+    fn test_cli_repro_program_still_fails_on_current_lowering_boundary() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_lowering_repro_boundary");
+        fs::create_dir_all(&temp_root).expect("Should create temp lowering repro fixture dir");
+        let fixture = temp_root.join("main.fol");
+        fs::write(
+            &fixture,
+            concat!(
+                "var enabled: bol = true\n",
+                "var default_name: str = \"Ada\"\n",
+                "var low_count: int = 1\n",
+                "var high_count: int = 7\n",
+                "typ NameTag: rec = {\n",
+                "    label: str;\n",
+                "    code: int\n",
+                "}\n",
+                "typ Audit: rec = {\n",
+                "    active: bol;\n",
+                "    marker: NameTag\n",
+                "}\n",
+                "typ User: rec = {\n",
+                "    name: str;\n",
+                "    count: int;\n",
+                "    audit: Audit\n",
+                "}\n",
+                "fun[] build_tag(): NameTag = {\n",
+                "    return { label = \"stable\", code = high_count }\n",
+                "}\n",
+                "fun[] build_user(flag: bol): User = {\n",
+                "    return {\n",
+                "        name = default_name,\n",
+                "        count = high_count,\n",
+                "        audit = {\n",
+                "            active = flag,\n",
+                "            marker = build_tag(),\n",
+                "        },\n",
+                "    }\n",
+                "}\n",
+                "fun[] choose_count(flag: bol): int = {\n",
+                "    when(flag) {\n",
+                "        case(true) { high_count }\n",
+                "        * { low_count }\n",
+                "    }\n",
+                "}\n",
+                "fun[] main(flag: bol): int = {\n",
+                "    var current: User = build_user(flag)\n",
+                "    var names: seq[str] = {\"Ada\", \"Lin\"}\n",
+                "    var counts: map[str, int] = {{\"ada\", 1}, {\"lin\", 2}}\n",
+                "    loop(flag) {\n",
+                "        break\n",
+                "    }\n",
+                "    when(flag) {\n",
+                "        case(true) { return current.audit.marker.code }\n",
+                "        * { return counts[\"lin\"] }\n",
+                "    }\n",
+                "}\n",
+            ),
+        )
+        .expect("Should write combined lowering repro fixture");
+
+        let output = run_fol(&[fixture
+            .to_str()
+            .expect("CLI lowering repro fixture path should be utf-8")]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        assert!(
+            !output.status.success(),
+            "CLI should still fail on the combined lowering repro until the hardening pass lands, got status {:?} and output:\n{}\n{}",
+            output.status.code(),
+            stdout,
+            stderr,
+        );
+        assert!(
+            stderr.contains("lowered type table lost array shape")
+                || stdout.contains("value-producing when did not retain a lowered join value")
+                || stdout.contains("does not map to a lowered local or global definition"),
+            "Combined repro should stay pinned to one of the known lowering regressions, got stdout:\n{}\n\nstderr:\n{}",
+            stdout,
+            stderr,
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
     fn test_cli_json_lowering_failures_keep_structured_fields() {
         use std::fs;
 
