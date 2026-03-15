@@ -1142,7 +1142,7 @@ Track these in the registry, but do not implement them in the first batch:
 - `4.2` `done` Typecheck `.not(bol)` through the registry.
 - `4.3` `done` Reject non-boolean `.not(...)` with explicit intrinsic
   diagnostics.
-- `4.4` `pending` Lower `.not` through backend-neutral IR.
+- `4.4` `done` Lower `.not` through backend-neutral IR.
 - `4.5` `pending` Add parser/typecheck/lower/CLI coverage for `.not`.
 
 ### Phase 5. Length Family

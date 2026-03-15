@@ -4141,6 +4141,37 @@ mod tests {
     }
 
     #[test]
+    fn boolean_intrinsic_lowering_emits_intrinsic_calls_with_canonical_ids() {
+        let lowered = lower_fixture_workspace(
+            concat!(
+                "fun[] main(flag: bol): bol = {\n",
+                "    return .not(flag)\n",
+                "}\n",
+            ),
+        );
+
+        let routine = lowered
+            .entry_package()
+            .routine_decls
+            .values()
+            .find(|routine| routine.name == "main")
+            .expect("boolean intrinsic lowering routine should exist");
+        let intrinsic_id = fol_intrinsics::intrinsic_by_canonical_name("not")
+            .expect("not intrinsic should exist")
+            .id;
+        let lowered_call = routine.instructions.iter().find_map(|instr| match &instr.kind {
+            LoweredInstrKind::IntrinsicCall { intrinsic, args } => Some((*intrinsic, args.len())),
+            _ => None,
+        });
+
+        assert_eq!(
+            lowered_call,
+            Some((intrinsic_id, 1)),
+            "boolean intrinsic lowering should use the canonical '.not' intrinsic id",
+        );
+    }
+
+    #[test]
     fn parser_typecheck_and_lower_keep_same_canonical_intrinsic_identity() {
         let fixture = std::env::temp_dir().join(format!(
             "fol_lower_intrinsic_identity_{}.fol",
