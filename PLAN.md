@@ -559,7 +559,7 @@ This plan is complete only when all of the following are true:
 ### Phase 8. Unsupported And Verifier Hardening
 
 - `8.1` `pending` Audit the current typed `V1` surface and list any remaining typed forms without a lowering rule.
-- `8.2` `pending` Convert user-triggerable fallback paths from `Internal`/`InvalidInput` into explicit lowering diagnostics.
+- `8.2` `done` Convert user-triggerable fallback paths from `Internal`/`InvalidInput` into explicit lowering diagnostics.
 - `8.3` `pending` Add verifier checks for dangling lowered references, mismatched type IDs, and impossible mounted-symbol ownership.
 - `8.4` `pending` Add negative tests for every intentionally unsupported lowering surface.
 

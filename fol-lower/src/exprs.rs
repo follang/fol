@@ -562,6 +562,18 @@ fn lower_body_node(
             )?;
             Ok(None)
         }
+        AstNode::Loop { .. } => Err(LoweringError::with_kind(
+            LoweringErrorKind::Unsupported,
+            "loop lowering lands in the pending loop-control lowering slice",
+        )),
+        AstNode::Break => Err(LoweringError::with_kind(
+            LoweringErrorKind::Unsupported,
+            "break lowering lands in the pending loop-exit lowering slice",
+        )),
+        AstNode::Yield { .. } => Err(LoweringError::with_kind(
+            LoweringErrorKind::Unsupported,
+            "yield lowering is not part of the current V1 lowering milestone",
+        )),
         _ => lower_expression(
             typed_package,
             type_table,
@@ -1325,6 +1337,10 @@ fn lower_expression_expected(
     node: &AstNode,
 ) -> Result<LoweredValue, LoweringError> {
     match node {
+        AstNode::Literal(Literal::Nil) => Err(LoweringError::with_kind(
+            LoweringErrorKind::Unsupported,
+            "nil lowering lands in the pending shell-lowering slice",
+        )),
         AstNode::Literal(literal) => {
             let type_id = literal_type_id(typed_package, checked_type_map, literal).ok_or_else(|| {
                 LoweringError::with_kind(
@@ -1334,6 +1350,20 @@ fn lower_expression_expected(
             })?;
             cursor.lower_literal(literal, type_id)
         }
+        AstNode::UnaryOp { op, .. } => Err(LoweringError::with_kind(
+            LoweringErrorKind::Unsupported,
+            format!(
+                "unary operator lowering for '{}' lands in a later lowering slice",
+                describe_unary_operator(op)
+            ),
+        )),
+        AstNode::BinaryOp { op, .. } => Err(LoweringError::with_kind(
+            LoweringErrorKind::Unsupported,
+            format!(
+                "binary operator lowering for '{}' lands in a later lowering slice",
+                describe_binary_operator(op)
+            ),
+        )),
         AstNode::RecordInit { fields, .. } => {
             lower_record_initializer(
                 typed_package,
@@ -1489,6 +1519,19 @@ fn lower_expression_expected(
                 scope_id,
                 object,
             )?;
+            if let Some(expected_type) = expected_type {
+                if base.type_id == expected_type
+                    && matches!(type_table.get(base.type_id), Some(crate::LoweredType::Entry { variants }) if variants.contains_key(field))
+                {
+                    return Err(LoweringError::with_kind(
+                        LoweringErrorKind::Unsupported,
+                        format!(
+                            "entry construction lowering for variant '{}' lands in the pending aggregate slice",
+                            field
+                        ),
+                    ));
+                }
+            }
             let Some(result_type) = field_access_type(type_table, base.type_id, field) else {
                 return Err(LoweringError::with_kind(
                     LoweringErrorKind::InvalidInput,
@@ -1731,6 +1774,43 @@ fn describe_expression(node: &AstNode) -> String {
         AstNode::When { .. } => "when".to_string(),
         AstNode::Loop { .. } => "loop".to_string(),
         _ => "expression".to_string(),
+    }
+}
+
+fn describe_unary_operator(op: &fol_parser::ast::UnaryOperator) -> &'static str {
+    match op {
+        fol_parser::ast::UnaryOperator::Neg => "neg",
+        fol_parser::ast::UnaryOperator::Not => "not",
+        fol_parser::ast::UnaryOperator::Ref => "ref",
+        fol_parser::ast::UnaryOperator::Deref => "deref",
+        fol_parser::ast::UnaryOperator::Unwrap => "unwrap",
+    }
+}
+
+fn describe_binary_operator(op: &fol_parser::ast::BinaryOperator) -> &'static str {
+    match op {
+        fol_parser::ast::BinaryOperator::Add => "add",
+        fol_parser::ast::BinaryOperator::Sub => "sub",
+        fol_parser::ast::BinaryOperator::Mul => "mul",
+        fol_parser::ast::BinaryOperator::Div => "div",
+        fol_parser::ast::BinaryOperator::Mod => "mod",
+        fol_parser::ast::BinaryOperator::Pow => "pow",
+        fol_parser::ast::BinaryOperator::Eq => "eq",
+        fol_parser::ast::BinaryOperator::Ne => "ne",
+        fol_parser::ast::BinaryOperator::Lt => "lt",
+        fol_parser::ast::BinaryOperator::Le => "le",
+        fol_parser::ast::BinaryOperator::Gt => "gt",
+        fol_parser::ast::BinaryOperator::Ge => "ge",
+        fol_parser::ast::BinaryOperator::And => "and",
+        fol_parser::ast::BinaryOperator::Or => "or",
+        fol_parser::ast::BinaryOperator::Xor => "xor",
+        fol_parser::ast::BinaryOperator::In => "in",
+        fol_parser::ast::BinaryOperator::Has => "has",
+        fol_parser::ast::BinaryOperator::Is => "is",
+        fol_parser::ast::BinaryOperator::As => "as",
+        fol_parser::ast::BinaryOperator::Cast => "cast",
+        fol_parser::ast::BinaryOperator::Pipe => "pipe",
+        fol_parser::ast::BinaryOperator::PipeOr => "pipe_or",
     }
 }
 
@@ -2276,6 +2356,35 @@ mod tests {
     use fol_stream::FileStream;
     use fol_typecheck::Typechecker;
     use std::collections::BTreeMap;
+
+    fn lower_fixture_error(source: &str) -> crate::LoweringError {
+        let fixture = std::env::temp_dir().join(format!(
+            "fol_lower_negative_{}.fol",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system clock should be monotonic enough for tmp names")
+                .as_nanos()
+        ));
+        std::fs::write(&fixture, source).expect("should write lowering negative fixture");
+
+        let mut stream = FileStream::from_file(fixture.to_str().expect("utf8 temp path"))
+            .expect("Should open lowering fixture");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let syntax = parser
+            .parse_package(&mut lexer)
+            .expect("Lowering fixture should parse");
+        let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+        let typed = Typechecker::new()
+            .check_resolved_workspace(resolved)
+            .expect("Lowering fixture should typecheck");
+        crate::LoweringSession::new(typed)
+            .lower_workspace()
+            .expect_err("fixture should fail during lowering")
+            .into_iter()
+            .next()
+            .expect("lowering should emit at least one error")
+    }
 
     #[test]
     fn literal_lowering_emits_constant_instructions_into_the_current_block() {
@@ -3389,5 +3498,58 @@ mod tests {
 
         assert_eq!(set_instr, Some(2));
         assert_eq!(map_instr, Some(2));
+    }
+
+    #[test]
+    fn unsupported_lowering_surfaces_report_explicit_boundary_messages() {
+        let nil_error = lower_fixture_error(
+            "ali MaybeText: opt[str]\nfun[] main(): MaybeText = {\n    return nil;\n}\n",
+        );
+        assert_eq!(nil_error.kind(), LoweringErrorKind::Unsupported);
+        assert!(
+            nil_error
+                .message()
+                .contains("nil lowering lands in the pending shell-lowering slice")
+        );
+
+        let unwrap_error = lower_fixture_error(
+            "ali MaybeText: opt[str]\nfun[] main(value: MaybeText): str = {\n    return value!;\n}\n",
+        );
+        assert_eq!(unwrap_error.kind(), LoweringErrorKind::Unsupported);
+        assert!(
+            unwrap_error
+                .message()
+                .contains("unary operator lowering for 'unwrap' lands in a later lowering slice")
+        );
+
+        let operator_error = lower_fixture_error(
+            "fun[] main(): int = {\n    return 1 + 2;\n}\n",
+        );
+        assert_eq!(operator_error.kind(), LoweringErrorKind::Unsupported);
+        assert!(
+            operator_error
+                .message()
+                .contains("binary operator lowering for 'add' lands in a later lowering slice")
+        );
+
+        let loop_error = lower_fixture_error(
+            "fun[] main(limit: int): int = {\n    loop(limit > 0) {\n        break;\n    }\n    return limit;\n}\n",
+        );
+        assert_eq!(loop_error.kind(), LoweringErrorKind::Unsupported);
+        assert!(
+            loop_error
+                .message()
+                .contains("loop lowering lands in the pending loop-control lowering slice")
+        );
+
+        let entry_error = lower_fixture_error(
+            "typ Status: ent = {\n    var OK: int = 1;\n}\nfun[] main(): Status = {\n    return Status.OK;\n}\n",
+        );
+        assert_eq!(entry_error.kind(), LoweringErrorKind::Unsupported);
+        assert!(
+            entry_error
+                .message()
+                .contains("entry construction lowering for variant 'OK' lands in the pending aggregate slice")
+        );
     }
 }
