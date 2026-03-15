@@ -893,7 +893,7 @@ The implementation should land in many small slices.
 
 ### Phase 9: Repo Docs Sync
 
-#### 9.1
+#### 9.1 done
 - update `README.md`
 - update `PROGRESS.md`
 - record `fol-runtime` as the next implemented support layer
