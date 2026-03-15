@@ -1157,7 +1157,7 @@ Track these in the registry, but do not implement them in the first batch:
   - maps
 - `5.3` `done` Typecheck `.len(...)` with exact family diagnostics.
 - `5.4` `done` Lower `.len(...)` to one explicit lowering form.
-- `5.5` `pending` Add exact tests for `.len` across supported and rejected
+- `5.5` `done` Add exact tests for `.len` across supported and rejected
   families.
 - `5.6` `pending` Add CLI integration coverage for `.len`.
 

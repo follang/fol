@@ -2482,6 +2482,76 @@ fn intrinsic_query_typing_rejects_wrong_arity_and_non_length_operands() {
 }
 
 #[test]
+fn intrinsic_query_typing_covers_full_v1_length_family_matrix() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "typ Flagged: rec = {\n\
+             name: str;\n\
+         }\n\
+         fun[] text_len(): int = {\n\
+             return .len(\"Ada\");\n\
+         }\n\
+         fun[] arr_len(items: arr[int, 3]): int = {\n\
+             return .len(items);\n\
+         }\n\
+         fun[] vec_len(items: vec[int]): int = {\n\
+             return .len(items);\n\
+         }\n\
+         fun[] seq_len(items: seq[int]): int = {\n\
+             return .len(items);\n\
+         }\n\
+         fun[] set_len(items: set[int, str]): int = {\n\
+             return .len(items);\n\
+         }\n\
+         fun[] map_len(items: map[str, int]): int = {\n\
+             return .len(items);\n\
+         }\n",
+    )]);
+
+    for name in ["text_len", "arr_len", "vec_len", "seq_len", "set_len", "map_len"] {
+        let syntax_id = find_named_routine_syntax_id(&typed, name);
+        assert_eq!(
+            typed
+                .typed_node(syntax_id)
+                .and_then(|node| node.inferred_type)
+                .and_then(|type_id| typed.type_table().get(type_id)),
+            Some(&CheckedType::Builtin(BuiltinType::Int)),
+            "Expected {name} to lower to int through .len(...)",
+        );
+    }
+}
+
+#[test]
+fn intrinsic_query_typing_rejects_non_query_receiver_families() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "typ Flagged: rec = {\n\
+             name: str;\n\
+         }\n\
+         fun[] bad_record(value: Flagged): int = {\n\
+             return .len(value);\n\
+         }\n\
+         fun[] bad_optional(value: opt[str]): int = {\n\
+             return .len(value);\n\
+         }\n",
+    )]);
+
+    assert_eq!(
+        errors
+            .iter()
+            .filter(|error| {
+                error.kind() == TypecheckErrorKind::InvalidInput
+                    && error.message().contains(
+                        ".len(...) expects one string, array, vector, sequence, set, or map operand",
+                    )
+            })
+            .count(),
+        2,
+        "Expected rejected .len diagnostics for record and optional receivers, got: {errors:?}"
+    );
+}
+
+#[test]
 fn intrinsic_comparison_typing_covers_full_v1_scalar_matrix() {
     let typed = typecheck_fixture_folder(&[(
         "main.fol",
