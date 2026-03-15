@@ -888,7 +888,7 @@ not full long-term compiler completion.
 #### 2.1 done
 - add backend session over `LoweredWorkspace`
 
-#### 2.2
+#### 2.2 done
 - retain entry package identity, package graph, and entry candidates inside backend session state
 
 #### 2.3
