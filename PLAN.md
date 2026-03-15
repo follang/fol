@@ -914,7 +914,7 @@ not full long-term compiler completion.
 #### 3.4 done
 - add generated crate directory layout planner
 
-#### 3.5
+#### 3.5 done
 - add tests locking deterministic name mangling
 
 #### 3.6

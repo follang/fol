@@ -140,4 +140,22 @@ mod tests {
             "l__pkg__entry__my_app__r5__l2__flag"
         );
     }
+
+    #[test]
+    fn backend_name_mangling_is_deterministic_and_source_kind_sensitive() {
+        let entry_identity = package_identity("shared", PackageSourceKind::Entry, "/workspace/app");
+        let local_identity =
+            package_identity("shared", PackageSourceKind::Local, "/workspace/shared");
+
+        let entry_module = mangle_package_module_name(&entry_identity);
+        let local_module = mangle_package_module_name(&local_identity);
+
+        assert_eq!(entry_module, mangle_package_module_name(&entry_identity));
+        assert_ne!(entry_module, local_module);
+        assert_eq!(sanitize_backend_ident("99-bottles"), "_99_bottles");
+        assert_eq!(
+            mangle_local_name(&entry_identity, LoweredRoutineId(0), LoweredLocalId(1), None),
+            "l__pkg__entry__shared__r0__l1__tmp"
+        );
+    }
 }
