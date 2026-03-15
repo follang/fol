@@ -733,7 +733,7 @@ The implementation should land in many small slices.
 - add public crate shell and top-level module layout
 - define the first prelude surface
 
-#### 0.3
+#### 0.3 done
 - add runtime error type(s) for invariant violations inside the runtime crate
 - add test helpers
 
