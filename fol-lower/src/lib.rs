@@ -22,7 +22,7 @@ pub use ids::{
     LoweredRoutineId, LoweredTypeId,
 };
 pub use model::{
-    LoweredGlobal, LoweredPackage, LoweredSourceMap, LoweredSourceMapEntry,
+    LoweredExportMount, LoweredGlobal, LoweredPackage, LoweredSourceMap, LoweredSourceMapEntry,
     LoweredSourceSymbol, LoweredSourceUnit, LoweredSymbolOwnership, LoweredTypeDecl,
     LoweredTypeDeclKind, LoweredFieldLayout, LoweredVariantLayout, LoweredWorkspace,
 };

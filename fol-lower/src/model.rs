@@ -22,6 +22,12 @@ pub struct LoweredSourceMapEntry {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LoweredExportMount {
+    pub source_namespace: String,
+    pub mounted_namespace_suffix: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LoweredFieldLayout {
     pub name: String,
     pub type_id: LoweredTypeId,
@@ -105,7 +111,7 @@ pub struct LoweredPackage {
     pub globals: Vec<LoweredGlobalId>,
     pub routines: Vec<LoweredRoutineId>,
     pub types: Vec<LoweredTypeId>,
-    pub exported_symbols: Vec<String>,
+    pub exports: Vec<LoweredExportMount>,
     pub source_units: Vec<LoweredSourceUnit>,
     pub symbol_ownership: BTreeMap<SymbolId, LoweredSymbolOwnership>,
     pub checked_type_map: BTreeMap<CheckedTypeId, LoweredTypeId>,
@@ -123,7 +129,7 @@ impl LoweredPackage {
             globals: Vec::new(),
             routines: Vec::new(),
             types: Vec::new(),
-            exported_symbols: Vec::new(),
+            exports: Vec::new(),
             source_units: Vec::new(),
             symbol_ownership: BTreeMap::new(),
             checked_type_map: BTreeMap::new(),

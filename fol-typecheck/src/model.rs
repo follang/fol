@@ -4,6 +4,12 @@ use fol_resolver::{PackageIdentity, ReferenceKind, ScopeId, SourceUnitId, Symbol
 use std::collections::BTreeMap;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TypedExportMount {
+    pub source_namespace: String,
+    pub mounted_namespace_suffix: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TypedSourceUnit {
     pub source_unit_id: SourceUnitId,
     pub path: String,
@@ -53,12 +59,21 @@ pub struct TypedProgram {
 #[derive(Debug, Clone, PartialEq)]
 pub struct TypedPackage {
     pub identity: PackageIdentity,
+    pub export_mounts: Vec<TypedExportMount>,
     pub program: TypedProgram,
 }
 
 impl TypedPackage {
-    pub fn new(identity: PackageIdentity, program: TypedProgram) -> Self {
-        Self { identity, program }
+    pub fn new(
+        identity: PackageIdentity,
+        export_mounts: Vec<TypedExportMount>,
+        program: TypedProgram,
+    ) -> Self {
+        Self {
+            identity,
+            export_mounts,
+            program,
+        }
     }
 }
 
@@ -73,7 +88,7 @@ impl TypedWorkspace {
         let mut packages = BTreeMap::new();
         packages.insert(
             entry_identity.clone(),
-            TypedPackage::new(entry_identity.clone(), entry_program),
+            TypedPackage::new(entry_identity.clone(), Vec::new(), entry_program),
         );
         Self {
             entry_identity,

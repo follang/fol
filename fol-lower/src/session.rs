@@ -2,7 +2,7 @@ use crate::{
     decls, exprs, verify,
     ids::{LoweredPackageId, LoweredTypeId},
     types::{LoweredBuiltinType, LoweredRoutineType, LoweredType, LoweredTypeTable},
-    LoweredPackage, LoweredSourceMap, LoweredSourceMapEntry, LoweredSourceSymbol,
+    LoweredExportMount, LoweredPackage, LoweredSourceMap, LoweredSourceMapEntry, LoweredSourceSymbol,
     LoweredSourceUnit, LoweredSymbolOwnership, LoweredWorkspace, LoweringError,
     LoweringErrorKind, LoweringResult,
 };
@@ -34,6 +34,14 @@ impl LoweringSession {
 
         for (index, package) in self.typed.packages().enumerate() {
             let mut lowered = LoweredPackage::new(LoweredPackageId(index), package.identity.clone());
+            lowered.exports = package
+                .export_mounts
+                .iter()
+                .map(|mount| LoweredExportMount {
+                    source_namespace: mount.source_namespace.clone(),
+                    mounted_namespace_suffix: mount.mounted_namespace_suffix.clone(),
+                })
+                .collect();
             lowered.source_units = package
                 .program
                 .source_units()
@@ -346,7 +354,7 @@ mod tests {
     use super::LoweringSession;
     use crate::types::{LoweredBuiltinType, LoweredType};
     use fol_parser::ast::AstParser;
-    use fol_resolver::resolve_workspace;
+    use fol_resolver::{resolve_package_workspace_with_config, resolve_workspace, ResolverConfig};
     use fol_stream::FileStream;
     use fol_typecheck::Typechecker;
 
@@ -472,5 +480,78 @@ mod tests {
                 .display_name,
             "shared"
         );
+    }
+
+    #[test]
+    fn lowering_session_retains_prepared_package_export_mounts() {
+        use std::fs;
+        use std::time::{SystemTime, UNIX_EPOCH};
+
+        let stamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock should be monotonic enough for tmp path")
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!("fol_lower_pkg_exports_{stamp}"));
+        let app_dir = root.join("app");
+        let store_root = root.join("store");
+        let json_root = store_root.join("json");
+        fs::create_dir_all(app_dir.clone()).expect("should create app dir");
+        fs::create_dir_all(json_root.join("src/fmt")).expect("should create package source dirs");
+        fs::write(
+            app_dir.join("main.fol"),
+            "use json: pkg = {json}\nfun[] main(): int = { return answer }\n",
+        )
+        .expect("should write app entry");
+        fs::write(
+            json_root.join("package.yaml"),
+            "name: json\nversion: 1.0.0\n",
+        )
+        .expect("should write package metadata");
+        fs::write(
+            json_root.join("build.fol"),
+            "def root: loc = \"src\";\ndef fmt: loc = \"src/fmt\";\n",
+        )
+        .expect("should write package build definition");
+        fs::write(json_root.join("src/lib.fol"), "var[exp] answer: int = 42\n")
+            .expect("should write exported root source");
+        fs::write(json_root.join("src/fmt/render.fol"), "var[exp] label: str = \"fmt\"\n")
+            .expect("should write exported fmt source");
+
+        let mut stream = FileStream::from_folder(app_dir.to_str().expect("utf8 temp path"))
+            .expect("should open folder fixture");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let syntax = parser
+            .parse_package(&mut lexer)
+            .expect("Lowering folder fixture should parse");
+        let resolved = resolve_package_workspace_with_config(
+            syntax,
+            ResolverConfig {
+                std_root: None,
+                package_store_root: Some(store_root.clone()),
+                package_cache_root: None,
+            },
+        )
+        .expect("Lowering folder fixture should resolve");
+        let typed = Typechecker::new()
+            .check_resolved_workspace(resolved)
+            .expect("Lowering folder fixture should typecheck");
+
+        let lowered = LoweringSession::new(typed)
+            .lower_workspace()
+            .expect("Lowering should retain pkg export mounts");
+
+        let json_package = lowered
+            .packages()
+            .find(|package| package.identity.display_name == "json")
+            .expect("lowered workspace should retain the pkg package");
+        assert_eq!(json_package.exports.len(), 2);
+        assert!(json_package.exports.iter().any(|mount| {
+            mount.source_namespace == "json::src" && mount.mounted_namespace_suffix.is_none()
+        }));
+        assert!(json_package.exports.iter().any(|mount| {
+            mount.source_namespace == "json::src::fmt"
+                && mount.mounted_namespace_suffix.as_deref() == Some("fmt")
+        }));
     }
 }
