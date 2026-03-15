@@ -71,6 +71,7 @@ pub struct LoweredPackage {
     pub source_units: Vec<LoweredSourceUnit>,
     pub symbol_ownership: BTreeMap<SymbolId, LoweredSymbolOwnership>,
     pub checked_type_map: BTreeMap<CheckedTypeId, LoweredTypeId>,
+    pub routine_signatures: BTreeMap<SymbolId, LoweredTypeId>,
 }
 
 impl LoweredPackage {
@@ -85,6 +86,7 @@ impl LoweredPackage {
             source_units: Vec::new(),
             symbol_ownership: BTreeMap::new(),
             checked_type_map: BTreeMap::new(),
+            routine_signatures: BTreeMap::new(),
         }
     }
 }

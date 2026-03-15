@@ -1,4 +1,5 @@
 use crate::{
+    decls,
     ids::{LoweredPackageId, LoweredTypeId},
     types::{LoweredBuiltinType, LoweredRoutineType, LoweredType, LoweredTypeTable},
     LoweredPackage, LoweredSourceMap, LoweredSourceMapEntry, LoweredSourceSymbol,
@@ -76,6 +77,7 @@ impl LoweringSession {
                     .map(|lowered_type_id| (checked_type_id, lowered_type_id))
                 })
                 .collect::<Result<BTreeMap<_, _>, _>>()?;
+            decls::lower_routine_signatures(package, &mut lowered)?;
             packages.insert(package.identity.clone(), lowered);
         }
 

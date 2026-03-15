@@ -2,6 +2,7 @@
 
 mod errors;
 pub mod control;
+pub mod decls;
 pub mod ids;
 pub mod model;
 pub mod session;
