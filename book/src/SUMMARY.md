@@ -19,7 +19,7 @@
     - [Ranges](./200_expressions/300_exp/300_ranges.md)
     - [Access](./200_expressions/300_exp/400_access.md)
 - [Metaprogramming](./300_meta/_index.md)
-  - [Built-Ins](./300_meta/100_buildin.md)
+  - [Intrinsics](./300_meta/100_buildin.md)
   - [Macros](./300_meta/200_macros.md)
   - [Alternatives](./300_meta/300_alternatives.md)
   - [Defaults](./300_meta/400_defaults.md)

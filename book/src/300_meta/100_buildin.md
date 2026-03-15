@@ -1,33 +1,278 @@
-# Build-in
+# Intrinsics
 
-Fol has many build-in functions and macros offered by compiler, and you access them by . (with space/newline/bracket before):
+Intrinsics are compiler-owned language operations.
 
+They are not ordinary library functions, and they are not imported through
+`use`.
+
+FOL currently keeps three layers separate:
+
+- intrinsics:
+  compiler-owned operations such as `.eq(...)`, `.len(...)`, `check(...)`, and
+  `panic(...)`
+- `core`:
+  ordinary foundational library code that should work across targets
+- `std`:
+  broader library code such as filesystem, networking, serialization, and other
+  richer services
+
+If an operation can live as an ordinary library API, that is usually the better
+home for it. Intrinsics are reserved for surfaces the compiler must understand
+directly.
+
+## Surfaces
+
+The current compiler recognizes three intrinsic surfaces.
+
+## Dot-root calls
+
+These are written with a leading dot:
+
+```fol
+.eq(a, b)
+.not(flag)
+.len(items)
+.echo(value)
 ```
-var contPoint: ptr[int] = 10;			// make a pointer and asign the memory to value of 10
-.print(.pointer_value(contPoint));		// print the dereferenced value of pointer
+
+Dot-root intrinsics are the main current intrinsic family.
+
+## Keyword calls
+
+These look like language keywords rather than dot calls:
+
+```fol
+check(read_code(path))
+panic("unreachable state")
 ```
 
-{{% placeholder %}}
+The current `V1` compiler treats `check` and `panic` as intrinsics too, even
+though they are not written with `.`.
 
-`.echo()`               - print on screen 
-`.not()`                - negate
-`.cast()`               - type casting
-`.as()`                 - type casting
+## Operator aliases
 
-`.eq()`                 - check for equality
-`.nq()`                 - check for inequality
-`.gt()`                 - greater than
-`.lt()`                 - less than
-`.ge()`                 - greater or equal
-`.le()`                  - less or equal
+Some future intrinsic surfaces are written like operators:
 
-`.de_alloc()`           - drop variable from scope
-`.give_back()`          - return ownership
+```fol
+value as target_type
+value cast target_type
+```
 
-`.size_of()`            - variable type size
-`.addres_of()`          - pointer address
-`.pointer_value()`      - value of the pointer
+These are registry-owned now, but they are not implemented in the current `V1`
+compiler.
 
+## Current `V1` implemented intrinsics
 
-{{% /placeholder %}}
+The current compiler implements this subset end to end through type checking and
+lowering.
 
+### Comparison
+
+```fol
+.eq(left, right)
+.nq(left, right)
+.lt(left, right)
+.gt(left, right)
+.ge(left, right)
+.le(left, right)
+```
+
+Current `V1` rule:
+
+- `.eq(...)` and `.nq(...)` work on comparable scalar pairs
+- `.lt(...)`, `.gt(...)`, `.ge(...)`, and `.le(...)` work on ordered scalar
+  pairs
+
+If you call them with the wrong number of arguments or with unsupported type
+families, the compiler reports an intrinsic-specific type error.
+
+### Boolean
+
+```fol
+.not(flag)
+```
+
+Current `V1` rule:
+
+- `.not(...)` accepts exactly one `bol`
+
+### Query
+
+```fol
+.len(items)
+```
+
+Current `V1` rule:
+
+- `.len(...)` accepts exactly one operand
+- the operand must currently be one of:
+  - `str`
+  - `arr[...]`
+  - `vec[...]`
+  - `seq[...]`
+  - `set[...]`
+  - `map[...]`
+
+In the current compiler, `.len(...)` is the only implemented query intrinsic.
+
+### Diagnostic
+
+```fol
+.echo(value)
+```
+
+Current `V1` rule:
+
+- `.echo(...)` accepts exactly one argument
+- it emits the value through the runtime-visible debug hook
+- it then forwards the same value unchanged
+
+So this is valid:
+
+```fol
+fun[] main(flag: bol): bol = {
+    return .echo(flag)
+}
+```
+
+### Recoverable and control intrinsics
+
+```fol
+check(read_code(path))
+panic("fatal")
+```
+
+Current `V1` rule:
+
+- `check(expr)` asks whether a recoverable routine call failed and returns `bol`
+- `panic(...)` aborts control flow immediately
+
+These are described in more detail in the recoverable-error chapter.
+
+## Current `V1` deferred intrinsics
+
+The registry already reserves more names than the compiler implements.
+
+That does **not** mean they work today.
+
+### Reserved but deferred for likely `V1.x`
+
+- `as`
+- `cast`
+- `assert`
+- `.cap(...)`
+- `.is_empty(...)`
+- `.low(...)`
+- `.high(...)`
+
+These are recognized as registry-owned language surfaces, but the current
+compiler rejects them with explicit milestone-boundary diagnostics.
+
+### Reserved for later `V2`
+
+- bitwise helpers such as `.bit_and(...)`, `.bit_or(...)`, `.shl(...)`,
+  `.shr(...)`, `.rotl(...)`, `.rotr(...)`, `.pop_count(...)`, `.clz(...)`,
+  `.ctz(...)`, `.byte_swap(...)`, `.bit_reverse(...)`
+- overflow-mode helpers such as `.checked_add(...)`, `.wrapping_add(...)`,
+  `.saturating_add(...)`, `.overflowing_add(...)`, and their subtraction forms
+
+These are intentionally reserved now so the language can grow without
+accidental user-space name collisions, but they are not part of the current
+`V1` compiler.
+
+### Reserved for later `V3`
+
+- `.de_alloc(...)`
+- `.give_back(...)`
+- `.address_of(...)`
+- `.pointer_value(...)`
+- `.borrow_from(...)`
+
+These depend on later ownership, pointer, and low-level systems semantics.
+
+## Library-preferred surfaces
+
+Some names are kept in the registry roadmap only as placeholders while the
+language decides whether they should really stay compiler-owned.
+
+Current examples:
+
+- `.add(...)`
+- `.sub(...)`
+- `.mul(...)`
+- `.div(...)`
+- `.abs(...)`
+- `.min(...)`
+- `.max(...)`
+- `.clamp(...)`
+- `.floor(...)`
+- `.ceil(...)`
+- `.round(...)`
+- `.trunc(...)`
+- `.pow(...)`
+- `.sqrt(...)`
+
+The current direction is that many of these may fit better in `core` or `std`
+instead of becoming permanent compiler intrinsics.
+
+## Intrinsics are not shell operations
+
+Do not confuse intrinsics with shell syntax such as `nil` and postfix unwrap
+`!`.
+
+For example:
+
+```fol
+ali MaybeText: opt[str]
+ali Failure: err[str]
+
+fun[] unwrap_optional(value: MaybeText): str = {
+    return value!
+}
+
+fun[] unwrap_failure(value: Failure): str = {
+    return value!
+}
+```
+
+That `!` surface is part of shell typing, not the intrinsic registry.
+
+Likewise, recoverable routine calls such as:
+
+```fol
+fun[] read_code(path: str): int / str = { ... }
+```
+
+are handled with:
+
+- propagation
+- `check(expr)`
+- `expr || fallback`
+
+not with shell unwrap.
+
+## Current compiler truth
+
+The current compiler has one shared intrinsic registry crate:
+
+`fol-intrinsics`
+
+That registry is the source of truth for:
+
+- intrinsic names
+- aliases
+- categories
+- current milestone availability
+- deferred-roadmap classification
+- lowering mode
+- backend-facing role
+
+So the short rule is:
+
+- parser recognizes intrinsic syntax
+- `fol-intrinsics` owns intrinsic identity
+- type checking validates intrinsic calls
+- lowering maps them to explicit IR shapes
+
+This page should describe only the subset that is actually implemented, plus
+clearly marked deferred surfaces.
