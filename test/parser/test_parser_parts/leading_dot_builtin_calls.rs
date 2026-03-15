@@ -71,6 +71,48 @@ fn test_leading_dot_builtin_call_expression() {
 }
 
 #[test]
+fn test_leading_dot_not_builtin_call_expression() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_fun_dot_not_expr.fol")
+        .expect("Should read leading-dot not builtin expression fixture");
+    let mut tokens = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+
+    let ast = parser
+        .parse(&mut tokens)
+        .expect("Parser should accept leading-dot not builtin calls in expression position");
+
+    let has_dot_expr = match ast {
+        AstNode::Program { declarations } => declarations.iter().any(|node| {
+            matches!(
+                node,
+                AstNode::FunDecl { body, .. }
+                    if body.iter().any(|stmt| matches!(
+                        stmt,
+                        AstNode::VarDecl {
+                            name,
+                            value: Some(value),
+                            ..
+                        } if name == "inverted"
+                            && matches!(
+                                value.as_ref(),
+                                AstNode::FunctionCall { surface, name, args, .. }
+                                    if name == "not"
+                                        && *surface == CallSurface::DotIntrinsic
+                                        && matches!(args.as_slice(), [AstNode::Identifier { name, .. }] if name == "flag")
+                            )
+                    ))
+            )
+        }),
+        _ => false,
+    };
+
+    assert!(
+        has_dot_expr,
+        "Expected leading-dot not builtin expression to lower as FunctionCall"
+    );
+}
+
+#[test]
 fn test_leading_dot_builtin_calls_in_inquiry_bodies() {
     let mut file_stream =
         FileStream::from_file("test/parser/simple_fun_dot_builtin_inquiry.fol")

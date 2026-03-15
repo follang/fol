@@ -21,7 +21,10 @@ pub use diagnostics::{
     unknown_intrinsic_message, unsupported_intrinsic_message, wrong_arity_message,
     wrong_type_family_message, wrong_version_message,
 };
-pub use families::{comparison_operand_contract, ComparisonOperandContract};
+pub use families::{
+    boolean_operand_contract, comparison_operand_contract, BooleanOperandContract,
+    ComparisonOperandContract,
+};
 pub use registry::{IntrinsicArity, IntrinsicEntry, IntrinsicLoweringMode};
 pub use select::{select_intrinsic, IntrinsicSelectionError, IntrinsicSelectionErrorKind};
 pub use validate::{validate_intrinsic_registry, RegistryValidationError, RegistryValidationErrorKind};
@@ -234,6 +237,22 @@ mod tests {
         assert_eq!(
             ComparisonOperandContract::OrderedScalar.expected_operands(),
             "two ordered scalar operands"
+        );
+    }
+
+    #[test]
+    fn boolean_operand_contracts_stay_stable_for_v1_registry_entries() {
+        let not = intrinsic_by_canonical_name("not").expect("not should exist");
+        let len = intrinsic_by_canonical_name("len").expect("len should exist");
+
+        assert_eq!(
+            boolean_operand_contract(not),
+            Some(BooleanOperandContract::BoolScalar)
+        );
+        assert_eq!(boolean_operand_contract(len), None);
+        assert_eq!(
+            BooleanOperandContract::BoolScalar.expected_operands(),
+            "one boolean operand"
         );
     }
 

@@ -128,6 +128,7 @@ impl AstParser {
                     | KEYWORD::Keyword(BUILDIN::Go)
                     | KEYWORD::Keyword(BUILDIN::Get)
                     | KEYWORD::Keyword(BUILDIN::Let)
+                    | KEYWORD::Keyword(BUILDIN::Not)
                     | KEYWORD::Keyword(BUILDIN::Check)
                     | KEYWORD::Keyword(BUILDIN::Panic)
                     | KEYWORD::Keyword(BUILDIN::Report)

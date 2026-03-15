@@ -2371,6 +2371,31 @@ fn intrinsic_ordered_comparison_typing_rejects_non_ordered_pairs() {
 }
 
 #[test]
+fn intrinsic_boolean_typing_accepts_not_for_bool_values() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "fun[] flip(flag: bol): bol = {\n\
+             return .not(flag);\n\
+         }\n\
+         fun[] literal(): bol = {\n\
+             return .not(false);\n\
+         }\n",
+    )]);
+
+    for name in ["flip", "literal"] {
+        let syntax_id = find_named_routine_syntax_id(&typed, name);
+        assert_eq!(
+            typed
+                .typed_node(syntax_id)
+                .and_then(|node| node.inferred_type)
+                .and_then(|type_id| typed.type_table().get(type_id)),
+            Some(&CheckedType::Builtin(BuiltinType::Bool)),
+            "Expected {name} to lower to bol through .not(...)",
+        );
+    }
+}
+
+#[test]
 fn intrinsic_comparison_typing_covers_full_v1_scalar_matrix() {
     let typed = typecheck_fixture_folder(&[(
         "main.fol",

@@ -1139,7 +1139,7 @@ Track these in the registry, but do not implement them in the first batch:
 ### Phase 4. Boolean Family
 
 - `4.1` `done` Add `.not` registry entry.
-- `4.2` `pending` Typecheck `.not(bol)` through the registry.
+- `4.2` `done` Typecheck `.not(bol)` through the registry.
 - `4.3` `pending` Reject non-boolean `.not(...)` with explicit intrinsic
   diagnostics.
 - `4.4` `pending` Lower `.not` through backend-neutral IR.
