@@ -94,7 +94,7 @@ impl LoweringSession {
             let Some(lowered) = packages.get_mut(&package.identity) else {
                 continue;
             };
-            exprs::lower_routine_bodies(package, &decl_index, lowered)?;
+            exprs::lower_routine_bodies(package, &type_table, &decl_index, lowered)?;
         }
 
         let source_map = build_workspace_source_map(&self.typed, &packages);

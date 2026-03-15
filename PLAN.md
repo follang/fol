@@ -522,7 +522,7 @@ This plan is complete only when all of the following are true:
 - `4.4` `done` Lower assignments into explicit store instructions.
 - `4.5` `done` Lower plain and qualified calls into direct callee calls.
 - `4.6` `done` Lower method calls into routine calls with explicit receiver arguments.
-- `4.7` `pending` Lower postfix field access into explicit extraction instructions.
+- `4.7` `done` Lower postfix field access into explicit extraction instructions.
 - `4.8` `pending` Lower indexing/subscript forms that are already part of typed `V1`.
 - `4.9` `pending` Add expression-lowering parity tests across local and imported packages.
 

@@ -201,6 +201,7 @@ pub(crate) fn canonical_symbol_key(
 
 pub(crate) fn lower_routine_bodies(
     typed_package: &fol_typecheck::TypedPackage,
+    type_table: &crate::LoweredTypeTable,
     decl_index: &WorkspaceDeclIndex,
     lowered_package: &mut LoweredPackage,
 ) -> Result<(), Vec<LoweringError>> {
@@ -262,6 +263,7 @@ pub(crate) fn lower_routine_bodies(
             };
             if let Err(error) = lower_body_nodes(
                 typed_package,
+                type_table,
                 &lowered_package.checked_type_map,
                 lowered_package.identity.clone(),
                 decl_index,
@@ -284,6 +286,7 @@ pub(crate) fn lower_routine_bodies(
 
 fn lower_body_nodes(
     typed_package: &fol_typecheck::TypedPackage,
+    type_table: &crate::LoweredTypeTable,
     checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
     current_identity: PackageIdentity,
     decl_index: &WorkspaceDeclIndex,
@@ -298,6 +301,7 @@ fn lower_body_nodes(
     for node in nodes {
         if let Some(value) = lower_body_node(
             typed_package,
+            type_table,
             checked_type_map,
             &current_identity,
             decl_index,
@@ -315,6 +319,7 @@ fn lower_body_nodes(
 
 fn lower_body_node(
     typed_package: &fol_typecheck::TypedPackage,
+    type_table: &crate::LoweredTypeTable,
     checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
     current_identity: &PackageIdentity,
     decl_index: &WorkspaceDeclIndex,
@@ -327,6 +332,7 @@ fn lower_body_node(
         AstNode::Comment { .. } => Ok(None),
         AstNode::Commented { node, .. } => lower_body_node(
             typed_package,
+            type_table,
             checked_type_map,
             current_identity,
             decl_index,
@@ -337,6 +343,7 @@ fn lower_body_node(
         ),
         AstNode::VarDecl { name, value, .. } => lower_local_binding(
             typed_package,
+            type_table,
             checked_type_map,
             current_identity,
             decl_index,
@@ -349,6 +356,7 @@ fn lower_body_node(
         ),
         AstNode::LabDecl { name, value, .. } => lower_local_binding(
             typed_package,
+            type_table,
             checked_type_map,
             current_identity,
             decl_index,
@@ -362,6 +370,7 @@ fn lower_body_node(
         AstNode::Return { value } => match value.as_deref() {
             Some(value) => lower_expression(
                 typed_package,
+                type_table,
                 checked_type_map,
                 current_identity,
                 decl_index,
@@ -374,6 +383,7 @@ fn lower_body_node(
         },
         _ => lower_expression(
             typed_package,
+            type_table,
             checked_type_map,
             current_identity,
             decl_index,
@@ -387,6 +397,7 @@ fn lower_body_node(
 
 fn lower_local_binding(
     typed_package: &fol_typecheck::TypedPackage,
+    type_table: &crate::LoweredTypeTable,
     checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
     current_identity: &PackageIdentity,
     decl_index: &WorkspaceDeclIndex,
@@ -426,6 +437,7 @@ fn lower_local_binding(
     if let Some(value) = value {
         let lowered_value = lower_expression(
             typed_package,
+            type_table,
             checked_type_map,
             current_identity,
             decl_index,
@@ -448,6 +460,7 @@ fn lower_local_binding(
 
 fn lower_expression(
     typed_package: &fol_typecheck::TypedPackage,
+    type_table: &crate::LoweredTypeTable,
     checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
     current_identity: &PackageIdentity,
     decl_index: &WorkspaceDeclIndex,
@@ -468,6 +481,7 @@ fn lower_expression(
         AstNode::Assignment { target, value } => {
             let lowered_value = lower_expression(
                 typed_package,
+                type_table,
                 checked_type_map,
                 current_identity,
                 decl_index,
@@ -486,6 +500,7 @@ fn lower_expression(
         }
         AstNode::FunctionCall { syntax_id, name, args } => lower_function_call(
             typed_package,
+            type_table,
             checked_type_map,
             current_identity,
             decl_index,
@@ -498,6 +513,7 @@ fn lower_expression(
         ),
         AstNode::QualifiedFunctionCall { path, args } => lower_function_call(
             typed_package,
+            type_table,
             checked_type_map,
             current_identity,
             decl_index,
@@ -511,6 +527,7 @@ fn lower_expression(
         AstNode::MethodCall { object, method, args } => {
             let receiver = lower_expression(
                 typed_package,
+                type_table,
                 checked_type_map,
                 current_identity,
                 decl_index,
@@ -532,6 +549,7 @@ fn lower_expression(
                     .map(|arg| {
                         lower_expression(
                             typed_package,
+                            type_table,
                             checked_type_map,
                             current_identity,
                             decl_index,
@@ -549,6 +567,36 @@ fn lower_expression(
                 LoweredInstrKind::Call {
                     callee,
                     args: lowered_args,
+                },
+            )?;
+            Ok(LoweredValue {
+                local_id: result_local,
+                type_id: result_type,
+            })
+        }
+        AstNode::FieldAccess { object, field } => {
+            let base = lower_expression(
+                typed_package,
+                type_table,
+                checked_type_map,
+                current_identity,
+                decl_index,
+                cursor,
+                source_unit_id,
+                object,
+            )?;
+            let Some(result_type) = field_access_type(type_table, base.type_id, field) else {
+                return Err(LoweringError::with_kind(
+                    LoweringErrorKind::InvalidInput,
+                    format!("field access '.{field}' does not map to a lowered record field"),
+                ));
+            };
+            let result_local = cursor.allocate_local(result_type, None);
+            cursor.push_instr(
+                Some(result_local),
+                LoweredInstrKind::FieldAccess {
+                    base: base.local_id,
+                    field: field.clone(),
                 },
             )?;
             Ok(LoweredValue {
@@ -656,6 +704,7 @@ fn lower_expression(
         }
         AstNode::Commented { node, .. } => lower_expression(
             typed_package,
+            type_table,
             checked_type_map,
             current_identity,
             decl_index,
@@ -815,6 +864,7 @@ fn resolve_reference_symbol<'a>(
 
 fn lower_function_call(
     typed_package: &fol_typecheck::TypedPackage,
+    type_table: &crate::LoweredTypeTable,
     checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
     current_identity: &PackageIdentity,
     decl_index: &WorkspaceDeclIndex,
@@ -847,6 +897,7 @@ fn lower_function_call(
         .map(|arg| {
             lower_expression(
                 typed_package,
+                type_table,
                 checked_type_map,
                 current_identity,
                 decl_index,
@@ -952,6 +1003,18 @@ fn resolve_method_target(
             LoweringErrorKind::InvalidInput,
             format!("method '{method}' is ambiguous for the lowered receiver type"),
         )),
+    }
+}
+
+fn field_access_type(
+    type_table: &crate::LoweredTypeTable,
+    object_type: LoweredTypeId,
+    field: &str,
+) -> Option<LoweredTypeId> {
+    match type_table.get(object_type) {
+        Some(crate::LoweredType::Record { fields }) => fields.get(field).copied(),
+        Some(crate::LoweredType::Entry { variants }) => variants.get(field).copied().flatten(),
+        _ => None,
     }
 }
 
@@ -1395,5 +1458,51 @@ mod tests {
             .expect("method body should contain a lowered call");
 
         assert_eq!(call.1.len(), 1);
+    }
+
+    #[test]
+    fn field_access_lowering_emits_explicit_extraction_instructions() {
+        let fixture = std::env::temp_dir().join(format!(
+            "fol_lower_field_exprs_{}.fol",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system clock should be monotonic enough for tmp names")
+                .as_nanos()
+        ));
+        std::fs::write(
+            &fixture,
+            "typ Point: { x: int, y: int }\nfun[] main(point: Point): int = {\n    point.x\n}",
+        )
+        .expect("should write lowering field fixture");
+
+        let mut stream = FileStream::from_file(fixture.to_str().expect("utf8 temp path"))
+            .expect("Should open lowering fixture");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let syntax = parser
+            .parse_package(&mut lexer)
+            .expect("Lowering fixture should parse");
+        let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+        let typed = Typechecker::new()
+            .check_resolved_workspace(resolved)
+            .expect("Lowering fixture should typecheck");
+        let lowered = crate::LoweringSession::new(typed)
+            .lower_workspace()
+            .expect("field access lowering should succeed");
+
+        let routine = lowered
+            .entry_package()
+            .routine_decls
+            .values()
+            .find(|routine| routine.name == "main")
+            .expect("main routine should exist");
+
+        assert!(
+            routine
+                .instructions
+                .iter()
+                .any(|instr| matches!(instr.kind, LoweredInstrKind::FieldAccess { .. })),
+            "record field access should lower into an explicit FieldAccess instruction"
+        );
     }
 }
