@@ -1,0 +1,11 @@
+[package]
+name = "fol-runtime"
+version = "0.1.0"
+edition = "2021"
+description = "Runtime support crate for executable FOL V1 programs"
+
+[lib]
+name = "fol_runtime"
+path = "src/lib.rs"
+
+[dependencies]

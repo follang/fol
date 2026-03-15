@@ -23,9 +23,10 @@ FOL is a general-purpose, systems programming language designed for robustness, 
 
 Current compiler status: `fol-stream`, `fol-lexer`, `fol-parser`,
 `fol-package`, `fol-resolver`, `fol-typecheck`, `fol-lower`,
-`fol-intrinsics`, diagnostics, and the root CLI are implemented and actively
-tested. Package loading now flows through `fol-package`, which prepares
-directory and installed-package surfaces ahead of name resolution.
+`fol-intrinsics`, `fol-runtime`, diagnostics, and the root CLI are
+implemented and actively tested. Package loading now flows through
+`fol-package`, which prepares directory and installed-package surfaces ahead of
+name resolution.
 `fol-intrinsics` is now the shared compiler-owned intrinsic registry for the
 current `V1` subset, including `.eq(...)`, `.nq(...)`, `.lt(...)`, `.gt(...)`,
 `.ge(...)`, `.le(...)`, `.not(...)`, `.len(...)`, `.echo(...)`, `check(...)`,
@@ -47,10 +48,15 @@ exercised through the CLI. Recoverable errors are now part of that current
 `report expr` is typechecked and lowered, plain errorful calls propagate only
 through compatible routine contexts, `check(expr)` and `expr || fallback` are
 real handled-call surfaces, and `err[...]` shells remain distinct from routine
-call results with declared error types.
+call results with declared error types. `fol-runtime` now provides the current
+`V1` support layer for strings, containers, shells, recoverable results,
+aggregate formatting hooks, `.len(...)`, `.echo(...)`, and top-level
+recoverable process outcomes so the first backend can target a stable runtime
+contract instead of inventing one ad hoc.
 
-The next major compiler work should stay inside `V1`: choose the first real
-backend path that can consume lowered IR and continue toward binary production.
+The next major compiler work should stay inside `V1`: implement the first real
+backend against `fol-lower` + `fol-runtime` and continue toward binary
+production.
 
 Current import surface:
 - `loc` imports exact filesystem directories

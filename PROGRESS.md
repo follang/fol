@@ -87,11 +87,11 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - Whole-program name resolution: implemented for the current contract
 - Whole-program type checking: implemented for the full current `V1` boundary
 - Whole-program lowering: implemented for the full current `V1` lowered IR boundary
-- Immediate active phase: move to the first real backend stage after lowering
+- Immediate active phase: move to the first real backend stage after runtime
 - Ownership and borrowing enforcement: missing
 - Standard or protocol conformance analysis: missing
 - Backend, interpreter, or code generation: missing
-- Runtime semantics: missing
+- Runtime semantics: implemented for the current `V1` support boundary
 
 ## 4. Validation Baseline
 
@@ -588,6 +588,8 @@ These remain later-stage work. They are no longer reasons to keep the current
 - The project has a real front-end pipeline:
 - `fol-stream -> fol-lexer -> fol-parser -> fol-package -> fol-resolver -> fol-typecheck -> fol-lower`
 - `fol-diagnostics` now sits alongside that pipeline as the shared reporting layer.
+- `fol-runtime` now sits beside lowering as the support layer the first backend
+  should target for current `V1` execution semantics.
 - The pipeline is not toy-only anymore.
 - Stream, lexer, parser, package loading, resolver, diagnostics, and the current
   full `V1` typechecker and lowering behavior are explicit enough to move to the
@@ -598,7 +600,7 @@ These remain later-stage work. They are no longer reasons to keep the current
 
 - Full-language semantic analysis is still missing.
 - The first backend stage after lowering is still missing.
-- Runtime or backend behavior is still missing.
+- Backend code generation and artifact production are still missing.
 
 ### 10.3 Bottom-Line Status
 
@@ -609,15 +611,19 @@ These remain later-stage work. They are no longer reasons to keep the current
 - Resolver: implemented and broad enough for the current name-resolution milestone
 - Typechecker: implemented for the full current `V1` semantic boundary and enforced through the CLI
 - Lowerer: implemented for the full current lowered `V1` IR boundary and enforced through the CLI
+- Runtime: implemented for the full current `V1` support boundary expected by the first backend
 - Diagnostics: structured, stable, and contract-backed
-- Current compiler core: ready to move beyond the lowered `V1` IR boundary and into backend selection and implementation
+- Current compiler core: ready to move beyond the lowered `V1` IR boundary and into backend implementation
 
 ## 11. Next Recommended Focus
 
 - Treat the current `fol-lower` milestone as real compiler infrastructure,
   not as a placeholder crate.
+- Treat `fol-runtime` as the frozen `V1` support contract for strings,
+  containers, shells, recoverable results, and runtime-visible builtin hooks.
 - Keep the next work inside `V1`: choose and implement the first backend that can
-  consume lowered IR and carry a `V1` program toward a binary-producing pipeline.
+  consume lowered IR plus `fol-runtime` and carry a `V1` program toward a
+  binary-producing pipeline.
 - Treat diagnostics as infrastructure-complete for parser/package/resolver/typecheck/lower
   and extend it only when backend stages need richer producer lowering.
 - Treat any remaining stream/lexer/parser/package/resolver/typecheck/lower work as

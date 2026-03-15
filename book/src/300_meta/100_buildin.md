@@ -66,6 +66,15 @@ compiler.
 The current compiler implements this subset end to end through type checking and
 lowering.
 
+For current `V1`, backend execution of the implemented intrinsic set is
+expected to go through `fol-runtime` where policy matters. In practice that
+means:
+
+- `.len(...)` uses the runtime length helper
+- `.echo(...)` uses the runtime echo hook and formatting contract
+- `check(...)` uses the runtime recoverable-result inspection contract
+- scalar comparisons and `.not(...)` may lower to native target operations
+
 ### Comparison
 
 ```fol
@@ -124,7 +133,7 @@ In the current compiler, `.len(...)` is the only implemented query intrinsic.
 Current `V1` rule:
 
 - `.echo(...)` accepts exactly one argument
-- it emits the value through the runtime-visible debug hook
+- it emits the value through the `fol-runtime` debug hook
 - it then forwards the same value unchanged
 
 So this is valid:
@@ -258,6 +267,16 @@ The current compiler has one shared intrinsic registry crate:
 `fol-intrinsics`
 
 That registry is the source of truth for:
+
+- canonical intrinsic names and aliases
+- milestone availability (`V1` / `V2` / `V3`)
+- type-checking selection rules
+- lowering mode
+- backend/runtime role classification
+
+The current runtime companion for implemented `V1` intrinsics is:
+
+`fol-runtime`
 
 - intrinsic names
 - aliases
