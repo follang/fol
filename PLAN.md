@@ -1034,8 +1034,13 @@ Track these in the registry, but do not implement them in the first batch:
     surface-family filtering helpers
   - root smoke coverage now proves later compiler stages can ask the registry
     for stable entries without open-coding slice scans
-- `1.6` `pending` Add unit tests for registry lookup, duplicate-name rejection,
+- `1.6` `done` Add unit tests for registry lookup, duplicate-name rejection,
   and alias stability.
+  Current state:
+  - the crate now validates canonical-name uniqueness, alias uniqueness, and
+    alias-vs-canonical collisions
+  - root smoke coverage now proves the canonical registry passes validation and
+    malformed registries fail with stable validation kinds
 
 ### Phase 2. Compiler Boundary Wiring
 

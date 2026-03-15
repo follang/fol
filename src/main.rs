@@ -490,3 +490,80 @@ fn intrinsics_lookup_api_smoke_compiles() {
     assert_eq!(alias.name, "nq");
     assert!(dot_calls.iter().any(|entry| entry.name == "echo"));
 }
+
+#[test]
+fn intrinsics_registry_validation_smoke_compiles() {
+    assert!(fol_intrinsics::validate_intrinsic_registry(
+        fol_intrinsics::intrinsic_registry()
+    )
+    .is_ok());
+
+    let duplicate_names = [
+        fol_intrinsics::IntrinsicEntry::new(
+            fol_intrinsics::IntrinsicId::new(0),
+            "eq",
+            &[],
+            fol_intrinsics::IntrinsicCategory::Comparison,
+            fol_intrinsics::IntrinsicSurface::DotRootCall,
+            fol_intrinsics::IntrinsicAvailability::V1,
+            fol_intrinsics::IntrinsicStatus::Implemented,
+            fol_intrinsics::IntrinsicArity::Exactly(2),
+            fol_intrinsics::IntrinsicLoweringMode::GeneralIr,
+            "compare values",
+        ),
+        fol_intrinsics::IntrinsicEntry::new(
+            fol_intrinsics::IntrinsicId::new(1),
+            "eq",
+            &[],
+            fol_intrinsics::IntrinsicCategory::Comparison,
+            fol_intrinsics::IntrinsicSurface::DotRootCall,
+            fol_intrinsics::IntrinsicAvailability::V1,
+            fol_intrinsics::IntrinsicStatus::Implemented,
+            fol_intrinsics::IntrinsicArity::Exactly(2),
+            fol_intrinsics::IntrinsicLoweringMode::GeneralIr,
+            "compare values again",
+        ),
+    ];
+    assert!(matches!(
+        fol_intrinsics::validate_intrinsic_registry(&duplicate_names),
+        Err(fol_intrinsics::RegistryValidationError {
+            kind: fol_intrinsics::RegistryValidationErrorKind::DuplicateCanonicalName,
+            ..
+        })
+    ));
+
+    let duplicate_alias = [
+        fol_intrinsics::IntrinsicEntry::new(
+            fol_intrinsics::IntrinsicId::new(0),
+            "eq",
+            &["cmp"],
+            fol_intrinsics::IntrinsicCategory::Comparison,
+            fol_intrinsics::IntrinsicSurface::DotRootCall,
+            fol_intrinsics::IntrinsicAvailability::V1,
+            fol_intrinsics::IntrinsicStatus::Implemented,
+            fol_intrinsics::IntrinsicArity::Exactly(2),
+            fol_intrinsics::IntrinsicLoweringMode::GeneralIr,
+            "compare values",
+        ),
+        fol_intrinsics::IntrinsicEntry::new(
+            fol_intrinsics::IntrinsicId::new(1),
+            "gt",
+            &["cmp"],
+            fol_intrinsics::IntrinsicCategory::Comparison,
+            fol_intrinsics::IntrinsicSurface::DotRootCall,
+            fol_intrinsics::IntrinsicAvailability::V1,
+            fol_intrinsics::IntrinsicStatus::Implemented,
+            fol_intrinsics::IntrinsicArity::Exactly(2),
+            fol_intrinsics::IntrinsicLoweringMode::GeneralIr,
+            "compare values again",
+        ),
+    ];
+    assert!(matches!(
+        fol_intrinsics::validate_intrinsic_registry(&duplicate_alias),
+        Err(fol_intrinsics::RegistryValidationError {
+            kind: fol_intrinsics::RegistryValidationErrorKind::DuplicateAlias,
+            offending_alias: "cmp",
+            ..
+        })
+    ));
+}

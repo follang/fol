@@ -3,6 +3,7 @@
 mod model;
 mod catalog;
 mod registry;
+mod validate;
 
 pub const CRATE_NAME: &str = "fol-intrinsics";
 
@@ -12,6 +13,7 @@ pub use catalog::{
     intrinsics_for_surface,
 };
 pub use registry::{IntrinsicArity, IntrinsicEntry, IntrinsicLoweringMode};
+pub use validate::{validate_intrinsic_registry, RegistryValidationError, RegistryValidationErrorKind};
 
 pub fn crate_name() -> &'static str {
     CRATE_NAME
@@ -77,5 +79,10 @@ mod tests {
         assert_eq!(eq.name, "eq");
         assert_eq!(nq.name, "nq");
         assert!(dot_calls.iter().any(|entry| entry.name == "len"));
+    }
+
+    #[test]
+    fn registry_validation_accepts_the_canonical_registry() {
+        assert!(validate_intrinsic_registry(intrinsic_registry()).is_ok());
     }
 }
