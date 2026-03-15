@@ -962,7 +962,7 @@ not full long-term compiler completion.
 
 ## 41. Phase 6: Global And Routine Signature Emission
 
-#### 6.1
+#### 6.1 done
 - emit global declarations for straightforward current `V1` cases
 
 #### 6.2

@@ -8,6 +8,7 @@ mod layout;
 mod mangle;
 mod model;
 mod session;
+mod signatures;
 mod trace;
 mod types;
 
@@ -46,6 +47,7 @@ pub use mangle::{
 };
 pub use model::{BackendArtifact, EmittedRustFile};
 pub use session::BackendSession;
+pub use signatures::render_global_declaration;
 pub use trace::{
     BackendEmittedSourceMap, BackendEmittedSourceMapEntry, BackendTrace, BackendTraceKind,
     BackendTraceRecord,
