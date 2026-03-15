@@ -179,6 +179,19 @@ mod tests {
     }
 
     #[test]
+    fn length_family_registry_entries_stay_stable() {
+        let len = intrinsic_by_canonical_name("len").expect("len should exist");
+
+        assert_eq!(len.id, IntrinsicId::new(7));
+        assert_eq!(len.category, IntrinsicCategory::Query);
+        assert_eq!(len.surface, IntrinsicSurface::DotRootCall);
+        assert_eq!(len.availability, IntrinsicAvailability::V1);
+        assert_eq!(len.status, IntrinsicStatus::Implemented);
+        assert_eq!(len.arity, IntrinsicArity::Exactly(1));
+        assert_eq!(len.lowering_mode, IntrinsicLoweringMode::DedicatedIr);
+    }
+
+    #[test]
     fn diagnostics_helpers_render_intrinsic_specific_guidance() {
         let eq = intrinsic_by_canonical_name("eq").expect("eq should exist");
         let de_alloc = intrinsic_by_canonical_name("de_alloc").expect("de_alloc should exist");
