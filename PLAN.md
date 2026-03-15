@@ -851,7 +851,7 @@ not full long-term compiler completion.
 #### 0.1 done
 - replace the closed runtime record in `PLAN.md` with this backend plan
 
-#### 0.2
+#### 0.2 done
 - freeze first-backend direction as Rust emission under the generic `fol-backend` crate boundary
 
 #### 0.3
