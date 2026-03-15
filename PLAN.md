@@ -880,7 +880,7 @@ not full long-term compiler completion.
 #### 1.5 done
 - add artifact/result model
 
-#### 1.6
+#### 1.6 done
 - add smoke tests for crate foundation and public API
 
 ## 37. Phase 2: Session And Workspace Intake

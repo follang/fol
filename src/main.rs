@@ -488,6 +488,22 @@ fn backend_artifact_surface_smoke_compiles() {
 }
 
 #[test]
+fn backend_foundation_surface_smoke_compiles() {
+    let backend = fol_backend::Backend::new();
+    let config = fol_backend::BackendConfig::default();
+    let result: fol_backend::BackendResult<()> = Ok(());
+    let error = fol_backend::BackendError::new(
+        fol_backend::BackendErrorKind::Unsupported,
+        "not implemented yet",
+    );
+
+    assert_eq!(format!("{backend:?}"), "Backend");
+    assert_eq!(config.target, fol_backend::BackendTarget::Rust);
+    assert!(result.is_ok());
+    assert_eq!(error.to_string(), "BackendUnsupported: not implemented yet");
+}
+
+#[test]
 fn intrinsics_public_model_smoke_compiles() {
     assert_eq!(fol_intrinsics::IntrinsicId::new(1).index(), 1);
     assert_eq!(
