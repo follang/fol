@@ -1197,8 +1197,8 @@ Track these in the registry, but do not implement them in the first batch:
   - `.clamp`
 - `8.2` `done` Decide which of those are real current-`V1` intrinsics versus
   “registry only for now”.
-- `8.3` `pending` If any are accepted now, wire them through typecheck and lower
-  with exact diagnostics and lowering forms.
+- `8.3` `done` No additional query intrinsics are accepted in current `V1`
+  beyond `.len`, so no new typecheck/lower wiring is added in this phase.
 - `8.4` `done` Add tests proving accepted and deferred query intrinsics are
   both classified explicitly.
 
