@@ -737,7 +737,7 @@ The implementation should land in many small slices.
 - add runtime error type(s) for invariant violations inside the runtime crate
 - add test helpers
 
-#### 0.4
+#### 0.4 done
 - document the runtime/backend boundary in crate docs
 - freeze current `V1` scope in tests/doc comments
 

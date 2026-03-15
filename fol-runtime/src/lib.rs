@@ -1,4 +1,29 @@
-//! Runtime support foundations for executable FOL V1 programs.
+//! Runtime support foundations for executable FOL `V1` programs.
+//!
+//! `fol-runtime` is the support crate that future generated programs will link
+//! against. It is not a front-end phase and it is not the backend itself.
+//!
+//! The intended compiler split is:
+//!
+//! - `fol-runtime` owns runtime data/layout/helper semantics
+//! - `fol-backend` will later own code generation
+//!
+//! Current `V1` runtime scope:
+//!
+//! - builtin scalar support
+//! - runtime strings
+//! - runtime containers
+//! - optional/error shells
+//! - recoverable routine results
+//! - backend-facing runtime hooks such as `.echo(...)`
+//!
+//! Explicitly out of scope for this milestone:
+//!
+//! - ownership / borrowing / pointers
+//! - standards / generics
+//! - concurrency runtime
+//! - C ABI
+//! - `core` / `std`
 
 pub mod abi;
 pub mod builtins;
