@@ -965,11 +965,16 @@ Track these in the registry, but do not implement them in the first batch:
   - the compiler architecture term is now `intrinsics`
   - the old book page is kept only as a migration target to be rewritten later
   - future code, docs, and diagnostics should prefer `intrinsic` terminology
-- `0.4` `pending` Freeze the first implemented families:
+- `0.4` `done` Freeze the first implemented families:
   - comparison
   - `.not()`
   - `.len()`
   - `.echo()`
+  Current state:
+  - the first real implementation batch is comparison + boolean negation +
+    length + echo
+  - `panic(...)` and `check(...)` are intentionally left for a later alignment
+    slice so dot and keyword surfaces can share one registry contract cleanly
 - `0.5` `pending` Freeze the first explicit unsupported families:
   - ownership
   - pointers
