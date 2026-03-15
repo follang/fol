@@ -5,6 +5,7 @@ mod error;
 mod identity;
 mod model;
 mod session;
+mod trace;
 
 #[cfg(test)]
 mod testing;
@@ -29,6 +30,10 @@ pub use error::{BackendError, BackendErrorKind};
 pub use identity::{stable_workspace_hash, BackendWorkspaceIdentity};
 pub use model::{BackendArtifact, EmittedRustFile};
 pub use session::BackendSession;
+pub use trace::{
+    BackendEmittedSourceMap, BackendEmittedSourceMapEntry, BackendTrace, BackendTraceKind,
+    BackendTraceRecord,
+};
 
 pub type BackendResult<T> = Result<T, BackendError>;
 

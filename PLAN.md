@@ -894,7 +894,7 @@ not full long-term compiler completion.
 #### 2.3 done
 - add stable workspace hashing / output-directory identity
 
-#### 2.4
+#### 2.4 done
 - add initial emitted source map / trace model for backend outputs
 
 #### 2.5

@@ -1,4 +1,7 @@
-use crate::identity::BackendWorkspaceIdentity;
+use crate::{
+    identity::BackendWorkspaceIdentity,
+    trace::{BackendEmittedSourceMap, BackendTrace},
+};
 use fol_lower::{LoweredEntryCandidate, LoweredWorkspace};
 use fol_resolver::PackageIdentity;
 
@@ -10,6 +13,8 @@ pub struct BackendSession {
     package_graph: Vec<PackageIdentity>,
     entry_candidates: Vec<LoweredEntryCandidate>,
     workspace_identity: BackendWorkspaceIdentity,
+    source_map: BackendEmittedSourceMap,
+    trace: BackendTrace,
 }
 
 impl BackendSession {
@@ -27,6 +32,8 @@ impl BackendSession {
             package_graph,
             entry_candidates,
             workspace_identity,
+            source_map: BackendEmittedSourceMap::new(),
+            trace: BackendTrace::new(),
         }
     }
 
@@ -48,6 +55,22 @@ impl BackendSession {
 
     pub fn workspace_identity(&self) -> &BackendWorkspaceIdentity {
         &self.workspace_identity
+    }
+
+    pub fn source_map(&self) -> &BackendEmittedSourceMap {
+        &self.source_map
+    }
+
+    pub fn source_map_mut(&mut self) -> &mut BackendEmittedSourceMap {
+        &mut self.source_map
+    }
+
+    pub fn trace(&self) -> &BackendTrace {
+        &self.trace
+    }
+
+    pub fn trace_mut(&mut self) -> &mut BackendTrace {
+        &mut self.trace
     }
 
     pub fn into_workspace(self) -> LoweredWorkspace {
@@ -75,6 +98,8 @@ mod tests {
         assert_eq!(session.package_graph().len(), expected_packages);
         assert_eq!(session.entry_candidates(), expected_candidates.as_slice());
         assert!(session.workspace_identity().crate_dir_name.starts_with("fol-build-app-"));
+        assert!(session.source_map().is_empty());
+        assert!(session.trace().is_empty());
         assert_eq!(session.into_workspace().package_count(), workspace.package_count());
     }
 }
