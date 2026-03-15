@@ -729,7 +729,7 @@ The implementation should land in many small slices.
 - wire it into root workspace manifests
 - add crate smoke test
 
-#### 0.2
+#### 0.2 done
 - add public crate shell and top-level module layout
 - define the first prelude surface
 
