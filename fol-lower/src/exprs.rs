@@ -489,6 +489,7 @@ fn lower_body_node(
                     decl_index,
                     cursor,
                     source_unit_id,
+                    scope_id,
                     value,
                 )?;
                 cursor.terminate_current_block(crate::LoweredTerminator::Return {
@@ -512,6 +513,7 @@ fn lower_body_node(
                         decl_index,
                         cursor,
                         source_unit_id,
+                        scope_id,
                         value,
                     )?
                     .local_id,
@@ -531,7 +533,7 @@ fn lower_body_node(
             expr,
             cases,
             default,
-        } => {
+        } if default.is_none() => {
             lower_when_statement(
                 typed_package,
                 type_table,
@@ -543,7 +545,7 @@ fn lower_body_node(
                 scope_id,
                 expr,
                 cases,
-                default.as_deref(),
+                None,
             )?;
             Ok(None)
         }
@@ -555,6 +557,7 @@ fn lower_body_node(
             decl_index,
             cursor,
             source_unit_id,
+            scope_id,
             node,
         )
         .map(Some),
@@ -609,6 +612,7 @@ fn lower_local_binding(
             decl_index,
             cursor,
             source_unit_id,
+            scope_id,
             value,
         )?;
         cursor.push_instr(
@@ -645,6 +649,7 @@ fn lower_when_statement(
         decl_index,
         cursor,
         source_unit_id,
+        scope_id,
         expr,
     )?;
 
@@ -661,6 +666,7 @@ fn lower_when_statement(
             decl_index,
             cursor,
             source_unit_id,
+            scope_id,
             condition,
         )?;
         let body_block = cursor.create_block();
@@ -751,6 +757,152 @@ fn lower_default_when_body(
     Ok(())
 }
 
+fn lower_when_expression(
+    typed_package: &fol_typecheck::TypedPackage,
+    type_table: &crate::LoweredTypeTable,
+    checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
+    current_identity: &PackageIdentity,
+    decl_index: &WorkspaceDeclIndex,
+    cursor: &mut RoutineCursor<'_>,
+    source_unit_id: SourceUnitId,
+    scope_id: ScopeId,
+    expr: &AstNode,
+    cases: &[fol_parser::ast::WhenCase],
+    default: Option<&[AstNode]>,
+) -> Result<LoweredValue, LoweringError> {
+    let Some(default) = default else {
+        return Err(LoweringError::with_kind(
+            LoweringErrorKind::Unsupported,
+            "value-producing when expressions require a default branch in lowered V1",
+        ));
+    };
+
+    let _ = lower_expression(
+        typed_package,
+        type_table,
+        checked_type_map,
+        current_identity,
+        decl_index,
+        cursor,
+        source_unit_id,
+        scope_id,
+        expr,
+    )?;
+
+    let join_block = cursor.create_block();
+    let mut join_local = None;
+
+    for (index, case) in cases.iter().enumerate() {
+        let (condition, body) = when_case_condition_and_body(case)?;
+        let lowered_condition = lower_expression(
+            typed_package,
+            type_table,
+            checked_type_map,
+            current_identity,
+            decl_index,
+            cursor,
+            source_unit_id,
+            scope_id,
+            condition,
+        )?;
+        let body_block = cursor.create_block();
+        let else_block = if index + 1 < cases.len() || !default.is_empty() {
+            cursor.create_block()
+        } else {
+            join_block
+        };
+        cursor.terminate_current_block(crate::LoweredTerminator::Branch {
+            condition: lowered_condition.local_id,
+            then_block: body_block,
+            else_block,
+        })?;
+
+        cursor.switch_block(body_block)?;
+        let branch_value = lower_body_sequence(
+            typed_package,
+            type_table,
+            checked_type_map,
+            current_identity,
+            decl_index,
+            cursor,
+            source_unit_id,
+            scope_id,
+            body,
+        )?;
+        lower_when_branch_value(cursor, &mut join_local, branch_value, join_block)?;
+
+        if else_block != join_block {
+            cursor.switch_block(else_block)?;
+        }
+    }
+
+    let default_value = lower_body_sequence(
+        typed_package,
+        type_table,
+        checked_type_map,
+        current_identity,
+        decl_index,
+        cursor,
+        source_unit_id,
+        scope_id,
+        default,
+    )?;
+    lower_when_branch_value(cursor, &mut join_local, default_value, join_block)?;
+
+    cursor.switch_block(join_block)?;
+    join_local.ok_or_else(|| {
+        LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            "value-producing when did not retain a lowered join value",
+        )
+    })
+}
+
+fn lower_when_branch_value(
+    cursor: &mut RoutineCursor<'_>,
+    join_local: &mut Option<LoweredValue>,
+    branch_value: Option<LoweredValue>,
+    join_block: LoweredBlockId,
+) -> Result<(), LoweringError> {
+    match branch_value {
+        Some(branch_value) => {
+            let destination = if let Some(existing) = join_local {
+                if existing.type_id != branch_value.type_id {
+                    return Err(LoweringError::with_kind(
+                        LoweringErrorKind::InvalidInput,
+                        "value-producing when branches do not agree on one lowered join type",
+                    ));
+                }
+                *existing
+            } else {
+                let local_id = cursor.allocate_local(branch_value.type_id, None);
+                let value = LoweredValue {
+                    local_id,
+                    type_id: branch_value.type_id,
+                };
+                *join_local = Some(value);
+                value
+            };
+            cursor.push_instr(
+                None,
+                LoweredInstrKind::StoreLocal {
+                    local: destination.local_id,
+                    value: branch_value.local_id,
+                },
+            )?;
+            if !cursor.current_block_terminated()? {
+                cursor.terminate_current_block(crate::LoweredTerminator::Jump { target: join_block })?;
+            }
+            Ok(())
+        }
+        None if cursor.current_block_terminated()? => Ok(()),
+        None => Err(LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            "value-producing when branches must yield a value or terminate early",
+        )),
+    }
+}
+
 fn when_case_condition_and_body(
     case: &fol_parser::ast::WhenCase,
 ) -> Result<(&AstNode, &[AstNode]), LoweringError> {
@@ -787,6 +939,7 @@ fn lower_expression(
     decl_index: &WorkspaceDeclIndex,
     cursor: &mut RoutineCursor<'_>,
     source_unit_id: SourceUnitId,
+    scope_id: ScopeId,
     node: &AstNode,
 ) -> Result<LoweredValue, LoweringError> {
     match node {
@@ -808,6 +961,7 @@ fn lower_expression(
                 decl_index,
                 cursor,
                 source_unit_id,
+                scope_id,
                 value,
             )?;
             lower_assignment_target(
@@ -827,6 +981,7 @@ fn lower_expression(
             decl_index,
             cursor,
             source_unit_id,
+            scope_id,
             *syntax_id,
             fol_resolver::ReferenceKind::FunctionCall,
             name,
@@ -840,6 +995,7 @@ fn lower_expression(
             decl_index,
             cursor,
             source_unit_id,
+            scope_id,
             path.syntax_id(),
             fol_resolver::ReferenceKind::QualifiedFunctionCall,
             &path.joined(),
@@ -854,6 +1010,7 @@ fn lower_expression(
                 decl_index,
                 cursor,
                 source_unit_id,
+                scope_id,
                 object,
             )?;
             let (callee, result_type) = resolve_method_target(
@@ -876,6 +1033,7 @@ fn lower_expression(
                             decl_index,
                             cursor,
                             source_unit_id,
+                            scope_id,
                             arg,
                         )
                         .map(|value| value.local_id)
@@ -904,6 +1062,7 @@ fn lower_expression(
                 decl_index,
                 cursor,
                 source_unit_id,
+                scope_id,
                 object,
             )?;
             let Some(result_type) = field_access_type(type_table, base.type_id, field) else {
@@ -934,6 +1093,7 @@ fn lower_expression(
                 decl_index,
                 cursor,
                 source_unit_id,
+                scope_id,
                 container,
             )?;
             let lowered_index = lower_expression(
@@ -944,6 +1104,7 @@ fn lower_expression(
                 decl_index,
                 cursor,
                 source_unit_id,
+                scope_id,
                 index,
             )?;
             let Some(result_type) = index_access_type(type_table, lowered_container.type_id, index) else {
@@ -965,6 +1126,23 @@ fn lower_expression(
                 type_id: result_type,
             })
         }
+        AstNode::When {
+            expr,
+            cases,
+            default,
+        } => lower_when_expression(
+            typed_package,
+            type_table,
+            checked_type_map,
+            current_identity,
+            decl_index,
+            cursor,
+            source_unit_id,
+            scope_id,
+            expr,
+            cases,
+            default.as_deref(),
+        ),
         AstNode::Identifier { syntax_id, name } => {
             let syntax_id = syntax_id.ok_or_else(|| {
                 LoweringError::with_kind(
@@ -1071,6 +1249,7 @@ fn lower_expression(
             decl_index,
             cursor,
             source_unit_id,
+            scope_id,
             node,
         ),
         other => Err(LoweringError::with_kind(
@@ -1231,6 +1410,7 @@ fn lower_function_call(
     decl_index: &WorkspaceDeclIndex,
     cursor: &mut RoutineCursor<'_>,
     source_unit_id: SourceUnitId,
+    scope_id: ScopeId,
     syntax_id: Option<fol_parser::ast::SyntaxNodeId>,
     kind: fol_resolver::ReferenceKind,
     display_name: &str,
@@ -1264,6 +1444,7 @@ fn lower_function_call(
                 decl_index,
                 cursor,
                 source_unit_id,
+                scope_id,
                 arg,
             )
             .map(|value| value.local_id)
@@ -2186,6 +2367,74 @@ mod tests {
                 .iter()
                 .any(|block| matches!(block.terminator, Some(LoweredTerminator::Return { .. }))),
             "control should fall through after the when into the trailing return"
+        );
+    }
+
+    #[test]
+    fn when_expression_lowering_stores_branch_values_into_one_join_local() {
+        let fixture = std::env::temp_dir().join(format!(
+            "fol_lower_when_expr_{}.fol",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system clock should be monotonic enough for tmp names")
+                .as_nanos()
+        ));
+        std::fs::write(
+            &fixture,
+            "var yes: int = 1\nvar no: int = 2\nfun[] main(flag: bol): int = {\n    when(flag) {\n        case(true) { yes }\n        * { no }\n    }\n}",
+        )
+        .expect("should write lowering when-expression fixture");
+
+        let mut stream = FileStream::from_file(fixture.to_str().expect("utf8 temp path"))
+            .expect("Should open lowering fixture");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let syntax = parser
+            .parse_package(&mut lexer)
+            .expect("Lowering fixture should parse");
+        let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+        let typed = Typechecker::new()
+            .check_resolved_workspace(resolved)
+            .expect("Lowering fixture should typecheck");
+        let lowered = crate::LoweringSession::new(typed)
+            .lower_workspace()
+            .expect("value-producing when lowering should succeed");
+
+        let routine = lowered
+            .entry_package()
+            .routine_decls
+            .values()
+            .find(|routine| routine.name == "main")
+            .expect("main routine should exist");
+
+        let mut stored_join_locals = routine
+            .instructions
+            .iter()
+            .filter_map(|instr| match instr.kind {
+                LoweredInstrKind::StoreLocal { local, .. } => Some(local),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        stored_join_locals.sort_by_key(|local| local.0);
+        stored_join_locals.dedup_by_key(|local| local.0);
+
+        assert_eq!(stored_join_locals.len(), 1);
+        assert_eq!(routine.body_result, Some(stored_join_locals[0]));
+        assert!(
+            routine
+                .blocks
+                .iter()
+                .any(|block| matches!(block.terminator, Some(LoweredTerminator::Branch { .. }))),
+            "value-producing when should branch explicitly"
+        );
+        assert!(
+            routine
+                .blocks
+                .iter()
+                .filter(|block| matches!(block.terminator, Some(LoweredTerminator::Jump { .. })))
+                .count()
+                >= 2,
+            "value-producing when branches should jump into a shared join block"
         );
     }
 }
