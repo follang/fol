@@ -1,8 +1,9 @@
 use crate::{
     ids::{LoweredPackageId, LoweredTypeId},
     types::{LoweredBuiltinType, LoweredRoutineType, LoweredType, LoweredTypeTable},
-    LoweredPackage, LoweredSourceMap, LoweredSourceUnit, LoweredSymbolOwnership,
-    LoweredWorkspace, LoweringError, LoweringErrorKind, LoweringResult,
+    LoweredPackage, LoweredSourceMap, LoweredSourceMapEntry, LoweredSourceSymbol,
+    LoweredSourceUnit, LoweredSymbolOwnership, LoweredWorkspace, LoweringError,
+    LoweringErrorKind, LoweringResult,
 };
 use fol_resolver::PackageIdentity;
 use fol_typecheck::{BuiltinType, CheckedType, CheckedTypeId};
@@ -78,13 +79,36 @@ impl LoweringSession {
             packages.insert(package.identity.clone(), lowered);
         }
 
-        Ok(LoweredWorkspace::new(
-            entry_identity,
-            packages,
-            type_table,
-            LoweredSourceMap::default(),
-        ))
+        let source_map = build_workspace_source_map(&self.typed, &packages);
+
+        Ok(LoweredWorkspace::new(entry_identity, packages, type_table, source_map))
     }
+}
+
+fn build_workspace_source_map(
+    typed: &fol_typecheck::TypedWorkspace,
+    packages: &BTreeMap<PackageIdentity, LoweredPackage>,
+) -> LoweredSourceMap {
+    let mut source_map = LoweredSourceMap::new();
+
+    for typed_package in typed.packages() {
+        let Some(lowered_package) = packages.get(&typed_package.identity) else {
+            continue;
+        };
+
+        for source_unit in typed_package.program.source_units() {
+            for syntax_id in &source_unit.top_level_nodes {
+                if let Some(origin) = typed_package.program.resolved().syntax_index().origin(*syntax_id) {
+                    source_map.push(LoweredSourceMapEntry {
+                        symbol: LoweredSourceSymbol::Package(lowered_package.id),
+                        origin: origin.clone(),
+                    });
+                }
+            }
+        }
+    }
+
+    source_map
 }
 
 fn translate_checked_type(
@@ -349,6 +373,7 @@ mod tests {
         assert_eq!(entry.source_units.len(), 1);
         assert!(!entry.symbol_ownership.is_empty());
         assert!(!entry.checked_type_map.is_empty());
+        assert!(!lowered.source_map().is_empty());
         assert_eq!(
             lowered
                 .type_table()
@@ -403,6 +428,14 @@ mod tests {
         assert!(lowered
             .packages()
             .any(|package| package.identity.display_name == "shared"));
+        let lowered_files = lowered
+            .source_map()
+            .entries()
+            .iter()
+            .filter_map(|entry| entry.origin.file.clone())
+            .collect::<Vec<_>>();
+        assert!(lowered_files.iter().any(|path| path.ends_with("app/main.fol")));
+        assert!(lowered_files.iter().any(|path| path.ends_with("shared/lib.fol")));
         let app_package = lowered.entry_package();
         let imported_symbol = app_package
             .symbol_ownership
