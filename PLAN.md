@@ -814,7 +814,7 @@ The implementation should land in many small slices.
 #### 4.1 done
 - add runtime-facing formatting trait(s) for `.echo(...)`
 
-#### 4.2
+#### 4.2 done
 - implement `echo(...)` for builtin scalars and strings
 
 #### 4.3

@@ -23,6 +23,36 @@ pub fn echo<T: FolEchoFormat>(value: T) -> T {
     value
 }
 
+impl FolEchoFormat for i64 {
+    fn fol_echo_format(&self) -> String {
+        self.to_string()
+    }
+}
+
+impl FolEchoFormat for f64 {
+    fn fol_echo_format(&self) -> String {
+        self.to_string()
+    }
+}
+
+impl FolEchoFormat for bool {
+    fn fol_echo_format(&self) -> String {
+        self.to_string()
+    }
+}
+
+impl FolEchoFormat for char {
+    fn fol_echo_format(&self) -> String {
+        self.to_string()
+    }
+}
+
+impl FolEchoFormat for FolStr {
+    fn fol_echo_format(&self) -> String {
+        self.to_string()
+    }
+}
+
 impl FolLength for FolStr {
     fn fol_length(&self) -> FolInt {
         self.len() as FolInt
@@ -104,5 +134,17 @@ mod tests {
 
         assert_eq!(render_echo(&value), "demo(trace)");
         assert_eq!(echo(value.clone()), value);
+    }
+
+    #[test]
+    fn runtime_echo_formats_builtin_scalars_and_strings() {
+        let text = FolStr::from("Ada");
+
+        assert_eq!(render_echo(&7i64), "7");
+        assert_eq!(render_echo(&3.5f64), "3.5");
+        assert_eq!(render_echo(&true), "true");
+        assert_eq!(render_echo(&'x'), "x");
+        assert_eq!(render_echo(&text), "Ada");
+        assert_eq!(echo(text.clone()), text);
     }
 }
