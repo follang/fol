@@ -110,7 +110,7 @@ Each fix must land with:
 
 - `0.1` `done` Add focused lowering-library repro tests for routine-parameter symbol lowering through control-flow-heavy bodies.
 - `0.2` `done` Add focused lowering-library repro tests for non-empty `seq` and `map` literal lowering in typed `V1` contexts.
-- `0.3` `pending` Add focused lowering-library repro tests for value-producing `when` lowering with explicit join values.
+- `0.3` `done` Add focused lowering-library repro tests for value-producing `when` lowering with explicit join values.
 - `0.4` `pending` Add one end-to-end CLI repro fixture that combines ordinary globals, records, routine parameters, containers, loops, and value-producing `when`.
 
 ### Phase 1. Value Symbol Hardening

@@ -3106,6 +3106,68 @@ mod tests {
     }
 
     #[test]
+    fn lowering_repro_reports_early_return_when_join_failures_explicitly() {
+        let error = lower_fixture_error(
+            concat!(
+                "var enabled: bol = true\n",
+                "var default_name: str = \"Ada\"\n",
+                "var low_count: int = 1\n",
+                "var high_count: int = 7\n",
+                "typ NameTag: rec = {\n",
+                "    label: str;\n",
+                "    code: int\n",
+                "}\n",
+                "typ Audit: rec = {\n",
+                "    active: bol;\n",
+                "    marker: NameTag\n",
+                "}\n",
+                "typ User: rec = {\n",
+                "    name: str;\n",
+                "    count: int;\n",
+                "    audit: Audit\n",
+                "}\n",
+                "fun[] build_tag(): NameTag = {\n",
+                "    return { label = \"stable\", code = high_count }\n",
+                "}\n",
+                "fun[] build_user(): User = {\n",
+                "    return {\n",
+                "        name = default_name,\n",
+                "        count = high_count,\n",
+                "        audit = {\n",
+                "            active = enabled,\n",
+                "            marker = build_tag(),\n",
+                "        },\n",
+                "    }\n",
+                "}\n",
+                "fun[] choose_count(): int = {\n",
+                "    when(enabled) {\n",
+                "        case(true) { high_count }\n",
+                "        * { low_count }\n",
+                "    }\n",
+                "}\n",
+                "fun[] main(): int = {\n",
+                "    var current: User = build_user()\n",
+                "    loop(enabled) {\n",
+                "        break\n",
+                "    }\n",
+                "    when(enabled) {\n",
+                "        case(true) { return current.audit.marker.code }\n",
+                "        * { return choose_count() }\n",
+                "    }\n",
+                "}\n",
+            ),
+        );
+
+        assert_eq!(error.kind(), LoweringErrorKind::InvalidInput);
+        assert!(
+            error
+                .message()
+                .contains("value-producing when did not retain a lowered join value"),
+            "expected the current early-return when repro to stay explicit, got: {error:?}"
+        );
+    }
+
+    #[test]
     fn nil_literal_lowering_stays_deferred_to_shell_lowering() {
         let mut types = LoweredTypeTable::new();
         let int_type = types.intern_builtin(LoweredBuiltinType::Int);
