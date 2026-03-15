@@ -930,8 +930,18 @@ Track these in the registry, but do not implement them in the first batch:
 
 ### Phase 0. Contract Freeze
 
-- `0.1` `pending` Scan all current dot-builtin parser entry points and list the
+- `0.1` `done` Scan all current dot-builtin parser entry points and list the
   exact syntactic builtin surfaces the parser accepts today.
+  Current state:
+  - parser dot-root builtin detection lives in
+    [`fol-parser/src/ast/parser_parts/expression_parsers.rs`](./fol-parser/src/ast/parser_parts/expression_parsers.rs)
+  - dot-root builtin calls currently parse as ordinary `FunctionCall { name,
+    args }` nodes rather than a dedicated intrinsic AST node
+  - keyword-style builtin statements currently parse through
+    [`fol-parser/src/ast/parser_parts/statement_parsers.rs`](./fol-parser/src/ast/parser_parts/statement_parsers.rs)
+    for `panic`, `report`, `check`, and `assert`
+  - parser ownership is intentionally syntactic only; arity and semantic meaning
+    are not frozen there
 - `0.2` `pending` Scan all current book-listed builtin names and classify them as:
   - `V1 implement now`
   - `V1 explicit unsupported`
