@@ -135,6 +135,32 @@ mod tests {
     }
 
     #[test]
+    fn comparison_family_registry_entries_stay_stable() {
+        let expected = [
+            ("eq", IntrinsicId::new(0)),
+            ("nq", IntrinsicId::new(1)),
+            ("lt", IntrinsicId::new(2)),
+            ("gt", IntrinsicId::new(3)),
+            ("ge", IntrinsicId::new(4)),
+            ("le", IntrinsicId::new(5)),
+        ];
+
+        for (name, id) in expected {
+            let entry = intrinsic_by_canonical_name(name)
+                .unwrap_or_else(|| panic!("comparison intrinsic '{name}' should exist"));
+            assert_eq!(entry.id, id);
+            assert_eq!(entry.category, IntrinsicCategory::Comparison);
+            assert_eq!(entry.surface, IntrinsicSurface::DotRootCall);
+            assert_eq!(entry.availability, IntrinsicAvailability::V1);
+            assert_eq!(entry.status, IntrinsicStatus::Implemented);
+            assert_eq!(entry.arity, IntrinsicArity::Exactly(2));
+            assert_eq!(entry.lowering_mode, IntrinsicLoweringMode::GeneralIr);
+        }
+
+        assert_eq!(intrinsic_by_alias("ne").map(|entry| entry.name), Some("nq"));
+    }
+
+    #[test]
     fn diagnostics_helpers_render_intrinsic_specific_guidance() {
         let eq = intrinsic_by_canonical_name("eq").expect("eq should exist");
         let de_alloc = intrinsic_by_canonical_name("de_alloc").expect("de_alloc should exist");

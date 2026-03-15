@@ -1087,13 +1087,18 @@ Track these in the registry, but do not implement them in the first batch:
 
 ### Phase 3. Comparison Family
 
-- `3.1` `pending` Add registry entries for:
+- `3.1` `done` Add registry entries for:
   - `.eq`
   - `.nq`
   - `.lt`
   - `.gt`
   - `.ge`
   - `.le`
+  Current state:
+  - the canonical registry now locks the full comparison family with stable ids,
+    arity, availability, surface, and lowering mode
+  - root smoke coverage and crate-local tests now prove the comparison entries
+    stay canonical and keep the `ne -> nq` alias stable
 - `3.2` `pending` Freeze accepted `V1` operand families for comparison
   intrinsics.
 - `3.3` `pending` Typecheck `.eq/.nq` through the registry instead of string

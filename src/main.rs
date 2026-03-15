@@ -623,3 +623,21 @@ fn intrinsics_diagnostic_helpers_smoke_compiles() {
         ".de_alloc(...) belongs to V3 but the current compiler milestone is V1"
     );
 }
+
+#[test]
+fn intrinsics_comparison_registry_smoke_compiles() {
+    let expected = [("eq", 0usize), ("nq", 1), ("lt", 2), ("gt", 3), ("ge", 4), ("le", 5)];
+
+    for (name, id) in expected {
+        let entry =
+            fol_intrinsics::intrinsic_by_canonical_name(name).expect("comparison entry should exist");
+        assert_eq!(entry.id.index(), id);
+        assert_eq!(entry.category, fol_intrinsics::IntrinsicCategory::Comparison);
+        assert_eq!(entry.surface, fol_intrinsics::IntrinsicSurface::DotRootCall);
+    }
+
+    assert_eq!(
+        fol_intrinsics::intrinsic_by_alias("ne").map(|entry| entry.name),
+        Some("nq")
+    );
+}
