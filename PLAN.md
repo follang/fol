@@ -1053,8 +1053,14 @@ Track these in the registry, but do not implement them in the first batch:
     `Plain`, `DotIntrinsic`, and `KeywordIntrinsic`
   - leading-dot intrinsic calls no longer collapse indistinguishably into plain
     routine calls at the AST boundary
-- `2.2` `pending` Add typecheck-facing selection API so typecheck can resolve a
+- `2.2` `done` Add typecheck-facing selection API so typecheck can resolve a
   parsed builtin spelling to one registry entry.
+  Current state:
+  - `fol-intrinsics` now exposes `select_intrinsic(...)`
+  - the selection API distinguishes:
+    - unknown intrinsic names
+    - names that exist but are used on the wrong surface family
+  - root smoke coverage and crate-local tests now lock the selection contract
 - `2.3` `pending` Add lowering-facing lowering-mode API.
 - `2.4` `pending` Add structured diagnostics helpers for:
   - unknown intrinsic

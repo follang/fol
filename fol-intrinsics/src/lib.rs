@@ -3,6 +3,7 @@
 mod model;
 mod catalog;
 mod registry;
+mod select;
 mod validate;
 
 pub const CRATE_NAME: &str = "fol-intrinsics";
@@ -13,6 +14,7 @@ pub use catalog::{
     intrinsics_for_surface, is_reserved_intrinsic_name_for_surface, reserved_intrinsic_for_surface,
 };
 pub use registry::{IntrinsicArity, IntrinsicEntry, IntrinsicLoweringMode};
+pub use select::{select_intrinsic, IntrinsicSelectionError, IntrinsicSelectionErrorKind};
 pub use validate::{validate_intrinsic_registry, RegistryValidationError, RegistryValidationErrorKind};
 
 pub fn crate_name() -> &'static str {
@@ -95,6 +97,21 @@ mod tests {
             IntrinsicSurface::DotRootCall,
             "user_helper"
         ));
+    }
+
+    #[test]
+    fn selection_api_distinguishes_unknown_names_from_surface_mismatches() {
+        let eq = select_intrinsic(IntrinsicSurface::DotRootCall, "eq")
+            .expect("eq should select on the dot-root surface");
+        let wrong_surface = select_intrinsic(IntrinsicSurface::DotRootCall, "panic")
+            .expect_err("panic should be keyword-only");
+        let unknown = select_intrinsic(IntrinsicSurface::DotRootCall, "user_helper")
+            .expect_err("unknown helpers should stay unknown");
+
+        assert_eq!(eq.name, "eq");
+        assert_eq!(wrong_surface.kind, IntrinsicSelectionErrorKind::WrongSurface);
+        assert_eq!(wrong_surface.name, "panic");
+        assert_eq!(unknown.kind, IntrinsicSelectionErrorKind::UnknownName);
     }
 
     #[test]

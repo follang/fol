@@ -567,3 +567,23 @@ fn intrinsics_registry_validation_smoke_compiles() {
         })
     ));
 }
+
+#[test]
+fn intrinsics_selection_api_smoke_compiles() {
+    let eq = fol_intrinsics::select_intrinsic(
+        fol_intrinsics::IntrinsicSurface::DotRootCall,
+        "eq",
+    )
+    .expect("eq should select");
+    let wrong_surface = fol_intrinsics::select_intrinsic(
+        fol_intrinsics::IntrinsicSurface::DotRootCall,
+        "panic",
+    )
+    .expect_err("panic should stay keyword-only");
+
+    assert_eq!(eq.name, "eq");
+    assert_eq!(
+        wrong_surface.kind,
+        fol_intrinsics::IntrinsicSelectionErrorKind::WrongSurface
+    );
+}
