@@ -2,6 +2,7 @@
 
 mod model;
 mod catalog;
+mod diagnostics;
 mod registry;
 mod select;
 mod validate;
@@ -14,6 +15,10 @@ pub use catalog::{
     intrinsic_registry, intrinsics_for_lowering_mode, intrinsics_for_surface,
     is_reserved_intrinsic_name_for_surface, lowering_mode_for_intrinsic,
     reserved_intrinsic_for_surface,
+};
+pub use diagnostics::{
+    unknown_intrinsic_message, unsupported_intrinsic_message, wrong_arity_message,
+    wrong_type_family_message, wrong_version_message,
 };
 pub use registry::{IntrinsicArity, IntrinsicEntry, IntrinsicLoweringMode};
 pub use select::{select_intrinsic, IntrinsicSelectionError, IntrinsicSelectionErrorKind};
@@ -127,6 +132,33 @@ mod tests {
         );
         assert_eq!(intrinsic_by_id(eq.id).map(|entry| entry.name), Some("eq"));
         assert!(runtime_hooks.iter().any(|entry| entry.name == "echo"));
+    }
+
+    #[test]
+    fn diagnostics_helpers_render_intrinsic_specific_guidance() {
+        let eq = intrinsic_by_canonical_name("eq").expect("eq should exist");
+        let de_alloc = intrinsic_by_canonical_name("de_alloc").expect("de_alloc should exist");
+
+        assert_eq!(
+            unknown_intrinsic_message(IntrinsicSurface::DotRootCall, "mystery"),
+            "unknown dot-root intrinsic '.mystery(...)'"
+        );
+        assert_eq!(
+            wrong_arity_message(eq, 1),
+            ".eq(...) expects exactly 2 argument(s) but got 1"
+        );
+        assert_eq!(
+            wrong_type_family_message(eq, "two comparable scalar operands", "'str' and 'seq[str]'"),
+            ".eq(...) expects two comparable scalar operands but got 'str' and 'seq[str]'"
+        );
+        assert_eq!(
+            wrong_version_message(de_alloc, IntrinsicAvailability::V1),
+            ".de_alloc(...) belongs to V3 but the current compiler milestone is V1"
+        );
+        assert_eq!(
+            unsupported_intrinsic_message(de_alloc),
+            ".de_alloc(...) is not implemented in the current V3 compiler milestone"
+        );
     }
 
     #[test]

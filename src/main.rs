@@ -604,3 +604,22 @@ fn intrinsics_lowering_lookup_api_smoke_compiles() {
     );
     assert!(runtime_hooks.iter().any(|entry| entry.name == "echo"));
 }
+
+#[test]
+fn intrinsics_diagnostic_helpers_smoke_compiles() {
+    let eq = fol_intrinsics::intrinsic_by_canonical_name("eq").expect("eq should exist");
+    let deferred =
+        fol_intrinsics::intrinsic_by_canonical_name("de_alloc").expect("de_alloc should exist");
+
+    assert_eq!(
+        fol_intrinsics::wrong_arity_message(eq, 1),
+        ".eq(...) expects exactly 2 argument(s) but got 1"
+    );
+    assert_eq!(
+        fol_intrinsics::wrong_version_message(
+            deferred,
+            fol_intrinsics::IntrinsicAvailability::V1
+        ),
+        ".de_alloc(...) belongs to V3 but the current compiler milestone is V1"
+    );
+}

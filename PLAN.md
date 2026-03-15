@@ -1068,12 +1068,20 @@ Track these in the registry, but do not implement them in the first batch:
     intrinsic id and by lowering-mode family
   - root smoke coverage and crate-local tests now prove `echo` stays a runtime
     hook while comparison intrinsics stay in the general-IR family
-- `2.4` `pending` Add structured diagnostics helpers for:
+- `2.4` `done` Add structured diagnostics helpers for:
   - unknown intrinsic
   - unsupported intrinsic
   - wrong arity
   - wrong type family
   - wrong version milestone
+  Current state:
+  - `fol-intrinsics` now exposes stable, intrinsic-aware message helpers for
+    unknown names, wrong surface family, wrong arity, wrong type family, wrong
+    version milestone, and unsupported-yet entries
+  - the helper messages now render the intrinsic spelling itself
+    (`.eq(...)`, `panic(...)`, etc.) instead of forcing each compiler stage to
+    format its own variants
+  - root smoke coverage and crate-local tests now lock those rendered messages
 - `2.5` `pending` Add tests proving parser/typecheck/lower all see the same
   canonical intrinsic identity.
 
