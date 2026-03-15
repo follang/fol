@@ -773,7 +773,7 @@ The implementation should land in many small slices.
 #### 2.3 done
 - add shell unwrap helpers for optional and error shells
 
-#### 2.4
+#### 2.4 done
 - add shell formatting coverage
 
 #### 2.5

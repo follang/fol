@@ -1,6 +1,7 @@
 //! Shell value helpers for optional and error-like runtime wrappers.
 
 use crate::error::{RuntimeError, RuntimeErrorKind};
+use std::fmt;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum FolOption<T> {
@@ -55,6 +56,15 @@ impl<T> From<FolOption<T>> for Option<T> {
     }
 }
 
+impl<T: fmt::Display> fmt::Display for FolOption<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Some(value) => write!(f, "some({value})"),
+            Self::Nil => f.write_str("nil"),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
 pub struct FolError<T>(T);
@@ -82,6 +92,12 @@ impl<T> From<T> for FolError<T> {
 impl<T> From<FolError<T>> for T {
     fn from(value: FolError<T>) -> Self {
         value.into_inner()
+    }
+}
+
+impl<T: fmt::Display> fmt::Display for FolError<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "err({})", self.0)
     }
 }
 
@@ -171,5 +187,18 @@ mod tests {
         let failure = unwrap_optional_shell(nil).expect_err("nil unwrap should fail");
         assert_eq!(failure.kind(), RuntimeErrorKind::InvalidInput);
         assert_eq!(failure.message(), "attempted to unwrap nil optional shell");
+    }
+
+    #[test]
+    fn shell_display_formats_are_stable_for_echo_and_debugging() {
+        let some = FolOption::some("Ada");
+        let nil = FolOption::<&str>::nil();
+        let error = FolError::new("broken");
+
+        assert_eq!(format!("{some}"), "some(Ada)");
+        assert_eq!(format!("{nil}"), "nil");
+        assert_eq!(format!("{error}"), "err(broken)");
+        assert_eq!(format!("{some:?}"), "Some(\"Ada\")");
+        assert_eq!(format!("{error:?}"), "FolError(\"broken\")");
     }
 }
