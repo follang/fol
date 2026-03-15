@@ -473,6 +473,32 @@ fn lower_body_node(
                 Ok(None)
             }
         },
+        AstNode::FunctionCall { name, args, .. } if name == "report" => {
+            let lowered = match args.as_slice() {
+                [value] => Some(
+                    lower_expression(
+                        typed_package,
+                        type_table,
+                        checked_type_map,
+                        current_identity,
+                        decl_index,
+                        cursor,
+                        source_unit_id,
+                        value,
+                    )?
+                    .local_id,
+                ),
+                [] => None,
+                _ => {
+                    return Err(LoweringError::with_kind(
+                        LoweringErrorKind::InvalidInput,
+                        format!("report expects exactly 1 value in lowered V1 bodies, got {}", args.len()),
+                    ))
+                }
+            };
+            cursor.terminate_current_block(crate::LoweredTerminator::Report { value: lowered })?;
+            Ok(None)
+        }
         _ => lower_expression(
             typed_package,
             type_table,
@@ -1837,6 +1863,66 @@ mod tests {
         assert!(
             routine.body_result.is_none(),
             "early returns should not leave a trailing body_result behind"
+        );
+    }
+
+    #[test]
+    fn report_lowering_emits_explicit_report_terminators_and_skips_trailing_body_nodes() {
+        let fixture = std::env::temp_dir().join(format!(
+            "fol_lower_report_exprs_{}.fol",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system clock should be monotonic enough for tmp names")
+                .as_nanos()
+        ));
+        std::fs::write(
+            &fixture,
+            "fun[] main(flag: bol): int : bol = {\n    report flag\n    return 1\n}",
+        )
+        .expect("should write lowering report fixture");
+
+        let mut stream = FileStream::from_file(fixture.to_str().expect("utf8 temp path"))
+            .expect("Should open lowering fixture");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let syntax = parser
+            .parse_package(&mut lexer)
+            .expect("Lowering fixture should parse");
+        let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+        let typed = Typechecker::new()
+            .check_resolved_workspace(resolved)
+            .expect("Lowering fixture should typecheck");
+        let lowered = crate::LoweringSession::new(typed)
+            .lower_workspace()
+            .expect("report lowering should succeed");
+
+        let routine = lowered
+            .entry_package()
+            .routine_decls
+            .values()
+            .find(|routine| routine.name == "main")
+            .expect("main routine should exist");
+        let entry_block = routine
+            .blocks
+            .get(routine.entry_block)
+            .expect("entry block should exist");
+
+        assert_eq!(entry_block.instructions.len(), 1);
+        assert_eq!(
+            routine.instructions.get(crate::LoweredInstrId(0)).map(|instr| &instr.kind),
+            Some(&LoweredInstrKind::LoadLocal {
+                local: routine.params[0],
+            })
+        );
+        assert_eq!(
+            entry_block.terminator,
+            Some(LoweredTerminator::Report {
+                value: Some(crate::LoweredLocalId(1)),
+            })
+        );
+        assert!(
+            routine.body_result.is_none(),
+            "early reports should not leave a trailing body_result behind"
         );
     }
 }
