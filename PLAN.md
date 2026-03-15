@@ -811,7 +811,7 @@ The implementation should land in many small slices.
 
 ### Phase 4: Runtime Hooks And Intrinsic Support
 
-#### 4.1
+#### 4.1 done
 - add runtime-facing formatting trait(s) for `.echo(...)`
 
 #### 4.2

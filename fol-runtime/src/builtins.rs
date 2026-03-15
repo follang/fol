@@ -10,6 +10,19 @@ pub trait FolLength {
     fn fol_length(&self) -> FolInt;
 }
 
+pub trait FolEchoFormat {
+    fn fol_echo_format(&self) -> String;
+}
+
+pub fn render_echo<T: FolEchoFormat + ?Sized>(value: &T) -> String {
+    value.fol_echo_format()
+}
+
+pub fn echo<T: FolEchoFormat>(value: T) -> T {
+    println!("{}", value.fol_echo_format());
+    value
+}
+
 impl FolLength for FolStr {
     fn fol_length(&self) -> FolInt {
         self.len() as FolInt
@@ -52,7 +65,7 @@ pub fn module_name() -> &'static str {
 
 #[cfg(test)]
 mod tests {
-    use super::FolLength;
+    use super::{echo, render_echo, FolEchoFormat, FolLength};
     use crate::{
         containers::{FolArray, FolMap, FolSeq, FolSet, FolVec},
         strings::FolStr,
@@ -74,5 +87,22 @@ mod tests {
         assert_eq!(sequence.fol_length(), 4);
         assert_eq!(set.fol_length(), 3);
         assert_eq!(map.fol_length(), 2);
+    }
+
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    struct DemoEcho(&'static str);
+
+    impl FolEchoFormat for DemoEcho {
+        fn fol_echo_format(&self) -> String {
+            format!("demo({})", self.0)
+        }
+    }
+
+    #[test]
+    fn runtime_echo_trait_and_helpers_freeze_backend_hook_boundary() {
+        let value = DemoEcho("trace");
+
+        assert_eq!(render_echo(&value), "demo(trace)");
+        assert_eq!(echo(value.clone()), value);
     }
 }
