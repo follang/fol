@@ -359,12 +359,15 @@ or deliberately rejected.
 - `4.3` `pending` Add end-to-end success tests for `expr || default_value`.
 - `4.4` `pending` Add end-to-end success tests for `expr || report ...`.
 - `4.5` `pending` Add end-to-end success tests for `expr || panic ...`.
-- `4.6` `pending` Add negative tests for:
+- `4.6` `done` Add negative tests for:
   - trying to assign an errorful call directly to a plain value in a routine that
     cannot propagate
   - using `check(...)` on a plain non-errorful value
   - incompatible fallback value types
   - incompatible propagated error types
+  Current state:
+  - typecheck unit tests and CLI integration tests now cover all four failure
+    classes with exact diagnostic assertions
 
 ### Phase 5. Shell Alignment
 

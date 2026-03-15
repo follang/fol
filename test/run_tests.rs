@@ -1802,6 +1802,94 @@ mod integration_tests {
     }
 
     #[test]
+    fn test_cli_typecheck_rejects_invalid_check_calls_full_chain() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_typecheck_invalid_check");
+        fs::create_dir_all(&temp_root).expect("Should create temp CLI invalid check fixture");
+        fs::write(
+            temp_root.join("main.fol"),
+            "fun[] main(): bol = {\n    return check(1);\n}\n",
+        )
+        .expect("Should write invalid check fixture");
+
+        let output = run_fol(&[temp_root
+            .to_str()
+            .expect("CLI invalid check fixture path should be utf-8")]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        assert!(
+            !output.status.success(),
+            "CLI should fail when check(...) is used on a plain value"
+        );
+        assert!(
+            stdout.contains("check requires an errorful routine result in V1"),
+            "CLI diagnostics should preserve the invalid check wording"
+        );
+        assert!(
+            stdout.contains("main.fol"),
+            "CLI diagnostics should preserve the failing source-unit path"
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_cli_json_typecheck_pipe_or_fallback_mismatches_keep_exact_locations() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_typecheck_pipe_or_json");
+        fs::create_dir_all(&temp_root).expect("Should create temp CLI pipe-or JSON fixture");
+        fs::write(
+            temp_root.join("main.fol"),
+            "fun[] load(): int / str = {\n\
+                 report \"bad\";\n\
+                 return 1;\n\
+             }\n\
+             fun[] main(): int = {\n\
+                 return load() || \"fallback\";\n\
+             }\n",
+        )
+        .expect("Should write pipe-or JSON fixture");
+
+        let output = run_fol(&[
+            "--json",
+            temp_root
+                .to_str()
+                .expect("CLI pipe-or JSON fixture path should be utf-8"),
+        ]);
+        let report = parse_cli_json(&output);
+        let diagnostics = report["diagnostics"]
+            .as_array()
+            .expect("CLI JSON diagnostics should stay array-shaped");
+        let first = diagnostics
+            .first()
+            .expect("CLI JSON diagnostics should include one typecheck error");
+
+        assert!(
+            !output.status.success(),
+            "CLI should fail in JSON mode when a pipe-or fallback is incompatible"
+        );
+        assert_eq!(first["code"], "T1003");
+        assert_eq!(first["location"]["line"], 6);
+        assert_eq!(first["location"]["column"], 8);
+        assert!(
+            first["message"]
+                .as_str()
+                .is_some_and(|message| message.contains("recoverable-error fallback")),
+            "CLI JSON diagnostics should preserve the fallback mismatch wording"
+        );
+        assert!(
+            first["location"]["file"]
+                .as_str()
+                .is_some_and(|file| file.ends_with("main.fol")),
+            "CLI JSON diagnostics should preserve the failing source-unit path"
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
     fn test_cli_json_typecheck_imported_binding_mismatches_keep_exact_locations() {
         use std::fs;
 
