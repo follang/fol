@@ -545,7 +545,7 @@ This plan is complete only when all of the following are true:
 - `6.4` `done` Lower set and map literals.
 - `6.5` `done` Lower `nil` into explicit optional/error shell constructors.
 - `6.6` `done` Lower `unwrap` into explicit shell-unwrapping instructions with preserved source origins.
-- `6.7` `pending` Lower shell apparent-type overrides into concrete lowered runtime operations.
+- `6.7` `done` Lower shell apparent-type overrides into concrete lowered runtime operations.
 - `6.8` `pending` Lower `V1` implicit coercions and shell wraps into explicit conversion instructions.
 - `6.9` `pending` Add aggregate/container/shell tests across both local and imported declarations.
 

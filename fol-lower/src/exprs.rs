@@ -4112,6 +4112,73 @@ mod tests {
     }
 
     #[test]
+    fn alias_shell_contexts_lower_to_concrete_runtime_shell_operations() {
+        use std::fs;
+        use std::time::{SystemTime, UNIX_EPOCH};
+
+        let stamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock should be monotonic enough for tmp path")
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!("fol_lower_shell_alias_{stamp}"));
+        let app_dir = root.join("app");
+        let shared_dir = root.join("shared");
+        fs::create_dir_all(&app_dir).expect("should create app dir");
+        fs::create_dir_all(&shared_dir).expect("should create shared dir");
+        fs::write(
+            shared_dir.join("lib.fol"),
+            "ali RemoteText: opt[str]\nali RemoteFailure: err[str]\nfun[exp] imported_wrap(): RemoteText = { return \"shared\" }\nfun[exp] imported_fail(): int: RemoteFailure = { report \"shared\" }\n",
+        )
+        .expect("should write shared package");
+        fs::write(
+            app_dir.join("main.fol"),
+            "use shared: loc = {\"../shared\"}\nali LocalText: opt[str]\nali LocalFailure: err[str]\nfun[] local_wrap(): LocalText = { return \"local\" }\nfun[] local_fail(): int: LocalFailure = { report \"local\" }\nfun[] imported_wrap_main(): shared::RemoteText = { return \"entry\" }\nfun[] imported_fail_main(): int: shared::RemoteFailure = { report \"entry\" }\n",
+        )
+        .expect("should write app package");
+
+        let mut stream =
+            FileStream::from_folder(app_dir.to_str().expect("utf8 temp path")).expect("Should open lowering fixture");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let syntax = parser
+            .parse_package(&mut lexer)
+            .expect("Lowering fixture should parse");
+        let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+        let typed = Typechecker::new()
+            .check_resolved_workspace(resolved)
+            .expect("Lowering fixture should typecheck");
+        let lowered = crate::LoweringSession::new(typed)
+            .lower_workspace()
+            .expect("shell alias lowering should succeed");
+
+        let app_package = lowered.entry_package();
+        for routine_name in [
+            "local_wrap",
+            "local_fail",
+            "imported_wrap_main",
+            "imported_fail_main",
+        ] {
+            let routine = app_package
+                .routine_decls
+                .values()
+                .find(|routine| routine.name == routine_name)
+                .unwrap_or_else(|| panic!("{routine_name} routine should exist"));
+
+            let has_shell_ctor = routine.instructions.iter().any(|instr| {
+                matches!(
+                    instr.kind,
+                    LoweredInstrKind::ConstructOptional { value: Some(_), .. }
+                        | LoweredInstrKind::ConstructError { value: Some(_), .. }
+                )
+            });
+            assert!(
+                has_shell_ctor,
+                "{routine_name} should lower alias-backed shell contexts into concrete runtime shell construction"
+            );
+        }
+    }
+
+    #[test]
     fn unsupported_lowering_surfaces_report_explicit_boundary_messages() {
         let nil_error = lower_fixture_error(
             "fun[] main(): int = {\n    return nil;\n}\n",
