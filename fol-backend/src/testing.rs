@@ -9,7 +9,15 @@ use fol_resolver::{PackageIdentity, PackageSourceKind, SourceUnitId, SymbolId};
 use std::collections::{BTreeMap, BTreeSet};
 
 pub(crate) fn sample_lowered_workspace() -> LoweredWorkspace {
-    let entry_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
+    sample_lowered_workspace_named("app")
+}
+
+pub(crate) fn sample_lowered_workspace_named(entry_name: &str) -> LoweredWorkspace {
+    let entry_identity = package_identity(
+        entry_name,
+        PackageSourceKind::Entry,
+        &format!("/workspace/{entry_name}"),
+    );
     let shared_identity =
         package_identity("shared", PackageSourceKind::Local, "/workspace/shared");
 
@@ -36,19 +44,19 @@ pub(crate) fn sample_lowered_workspace() -> LoweredWorkspace {
     entry_package.source_units = vec![
         LoweredSourceUnit {
             source_unit_id: SourceUnitId(0),
-            path: "app/main.fol".to_string(),
-            package: "app".to_string(),
-            namespace: "app".to_string(),
+            path: format!("{entry_name}/main.fol"),
+            package: entry_name.to_string(),
+            namespace: entry_name.to_string(),
         },
         LoweredSourceUnit {
             source_unit_id: SourceUnitId(1),
-            path: "app/math/add.fol".to_string(),
-            package: "app".to_string(),
-            namespace: "app::math".to_string(),
+            path: format!("{entry_name}/math/add.fol"),
+            package: entry_name.to_string(),
+            namespace: format!("{entry_name}::math"),
         },
     ];
     entry_package.exports = vec![LoweredExportMount {
-        source_namespace: "app".to_string(),
+        source_namespace: entry_name.to_string(),
         mounted_namespace_suffix: None,
     }];
     entry_package.types = vec![user_record_type];
@@ -156,7 +164,7 @@ pub(crate) fn sample_lowered_workspace() -> LoweredWorkspace {
 
     let mut source_map = LoweredSourceMap::new();
     source_map.push(source_map_entry(
-        "app/main.fol",
+        &format!("{entry_name}/main.fol"),
         1,
         1,
         3,

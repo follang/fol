@@ -897,7 +897,7 @@ not full long-term compiler completion.
 #### 2.4 done
 - add initial emitted source map / trace model for backend outputs
 
-#### 2.5
+#### 2.5 done
 - add tests for backend session identity and deterministic workspace hashing
 
 ## 38. Phase 3: Name Mangling And Layout

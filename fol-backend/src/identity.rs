@@ -55,7 +55,7 @@ fn fnv1a64(bytes: &[u8]) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::{stable_workspace_hash, BackendWorkspaceIdentity};
-    use crate::testing::sample_lowered_workspace;
+    use crate::testing::{sample_lowered_workspace, sample_lowered_workspace_named};
 
     #[test]
     fn backend_workspace_identity_is_deterministic_for_same_input() {
@@ -69,5 +69,17 @@ mod tests {
         assert_eq!(identity.hash, first);
         assert!(identity.crate_dir_name.starts_with("fol-build-app-"));
         assert_eq!(identity.crate_dir_name.len(), "fol-build-app-".len() + 12);
+    }
+
+    #[test]
+    fn backend_workspace_identity_changes_when_workspace_shape_changes() {
+        let first = sample_lowered_workspace();
+        let second = sample_lowered_workspace_named("demo");
+
+        assert_ne!(stable_workspace_hash(&first), stable_workspace_hash(&second));
+        assert_ne!(
+            BackendWorkspaceIdentity::for_workspace(&first).crate_dir_name,
+            BackendWorkspaceIdentity::for_workspace(&second).crate_dir_name
+        );
     }
 }

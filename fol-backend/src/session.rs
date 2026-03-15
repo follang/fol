@@ -102,4 +102,23 @@ mod tests {
         assert!(session.trace().is_empty());
         assert_eq!(session.into_workspace().package_count(), workspace.package_count());
     }
+
+    #[test]
+    fn backend_session_keeps_package_graph_and_hash_stable() {
+        let session = BackendSession::new(sample_lowered_workspace());
+
+        let package_names = session
+            .package_graph()
+            .iter()
+            .map(|identity| identity.display_name.as_str())
+            .collect::<Vec<_>>();
+
+        assert_eq!(package_names, vec!["app", "shared"]);
+        assert_eq!(
+            session.workspace_identity().hash,
+            BackendSession::new(sample_lowered_workspace())
+                .workspace_identity()
+                .hash
+        );
+    }
 }
