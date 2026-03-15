@@ -776,7 +776,7 @@ The implementation should land in many small slices.
 #### 2.4 done
 - add shell formatting coverage
 
-#### 2.5
+#### 2.5 done
 - add tests proving shell values stay distinct from recoverable routine results
 
 ### Phase 3: Container Foundation

@@ -100,4 +100,33 @@ mod tests {
             Err(prelude::FolStr::from("bad-input"))
         );
     }
+
+    #[test]
+    fn public_shell_values_stay_distinct_from_recoverable_results() {
+        let optional = prelude::FolOption::some(7);
+        let error_shell = prelude::FolError::new(prelude::FolStr::from("broken"));
+        let recoverable = prelude::FolRecover::<prelude::FolInt, prelude::FolStr>::err(
+            prelude::FolStr::from("broken"),
+        );
+
+        assert_eq!(
+            std::any::type_name::<prelude::FolOption<prelude::FolInt>>(),
+            "fol_runtime::shell::FolOption<i64>"
+        );
+        assert_eq!(
+            std::any::type_name::<prelude::FolError<prelude::FolStr>>(),
+            "fol_runtime::shell::FolError<fol_runtime::strings::FolStr>"
+        );
+        assert_eq!(
+            std::any::type_name::<prelude::FolRecover<prelude::FolInt, prelude::FolStr>>(),
+            "fol_runtime::abi::FolRecover<i64, fol_runtime::strings::FolStr>"
+        );
+
+        assert_eq!(prelude::unwrap_optional_shell(optional), Ok(7));
+        assert_eq!(
+            prelude::unwrap_error_shell(error_shell),
+            prelude::FolStr::from("broken")
+        );
+        assert!(prelude::check_recoverable(&recoverable));
+    }
 }
