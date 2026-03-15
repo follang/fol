@@ -5,6 +5,11 @@ mod sequence;
 mod set;
 mod map;
 
+use crate::{
+    error::{RuntimeError, RuntimeErrorKind},
+    value::FolInt,
+};
+
 pub use map::FolMap;
 pub use set::FolSet;
 pub use sequence::FolSeq;
@@ -16,13 +21,62 @@ pub use vector::FolVec;
 /// rely on stable fixed-size layout without an extra wrapper type.
 pub type FolArray<T, const N: usize> = [T; N];
 
+fn normalize_index(index: FolInt, len: usize) -> Result<usize, RuntimeError> {
+    if index < 0 {
+        return Err(RuntimeError::new(
+            RuntimeErrorKind::InvalidInput,
+            format!("index out of bounds: the len is {len} but the index is {index}"),
+        ));
+    }
+
+    let index = index as usize;
+    if index >= len {
+        return Err(RuntimeError::new(
+            RuntimeErrorKind::InvalidInput,
+            format!("index out of bounds: the len is {len} but the index is {index}"),
+        ));
+    }
+
+    Ok(index)
+}
+
+pub fn index_array<T, const N: usize>(
+    values: &FolArray<T, N>,
+    index: FolInt,
+) -> Result<&T, RuntimeError> {
+    let index = normalize_index(index, values.len())?;
+    Ok(&values[index])
+}
+
+pub fn index_vec<T>(values: &FolVec<T>, index: FolInt) -> Result<&T, RuntimeError> {
+    let index = normalize_index(index, values.len())?;
+    Ok(&values.as_slice()[index])
+}
+
+pub fn index_seq<T>(values: &FolSeq<T>, index: FolInt) -> Result<&T, RuntimeError> {
+    let index = normalize_index(index, values.len())?;
+    Ok(&values.as_slice()[index])
+}
+
+pub fn lookup_map<'a, K: Ord, V>(
+    values: &'a FolMap<K, V>,
+    key: &K,
+) -> Result<&'a V, RuntimeError> {
+    values
+        .get(key)
+        .ok_or_else(|| RuntimeError::new(RuntimeErrorKind::InvalidInput, "missing map key"))
+}
+
 pub fn module_name() -> &'static str {
     "containers"
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{FolArray, FolMap, FolSeq, FolSet, FolVec};
+    use super::{
+        index_array, index_seq, index_vec, lookup_map, FolArray, FolMap, FolSeq, FolSet, FolVec,
+    };
+    use crate::error::RuntimeErrorKind;
 
     #[test]
     fn fol_array_keeps_native_fixed_size_behavior() {
@@ -76,5 +130,22 @@ mod tests {
         assert_eq!(seq.as_slice(), &[1, 2]);
         assert_eq!(set.len(), 2);
         assert_eq!(map.len(), 2);
+    }
+
+    #[test]
+    fn runtime_index_helpers_cover_linear_and_map_families() {
+        let array: FolArray<i64, 3> = [10, 20, 30];
+        let vector = FolVec::from_items(vec![10, 20, 30]);
+        let sequence = FolSeq::from_items(vec![10, 20, 30]);
+        let map = FolMap::from_pairs(vec![("ada", 1), ("lin", 2)]);
+
+        assert_eq!(index_array(&array, 1), Ok(&20));
+        assert_eq!(index_vec(&vector, 2), Ok(&30));
+        assert_eq!(index_seq(&sequence, 0), Ok(&10));
+        assert_eq!(lookup_map(&map, &"lin"), Ok(&2));
+
+        let failure = index_vec(&vector, -1).expect_err("negative index should fail");
+        assert_eq!(failure.kind(), RuntimeErrorKind::InvalidInput);
+        assert_eq!(failure.message(), "index out of bounds: the len is 3 but the index is -1");
     }
 }

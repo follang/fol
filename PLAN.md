@@ -800,7 +800,7 @@ The implementation should land in many small slices.
 #### 3.6 done
 - add deterministic constructors from element vectors/pairs
 
-#### 3.7
+#### 3.7 done
 - add indexing helpers where needed
 
 #### 3.8
