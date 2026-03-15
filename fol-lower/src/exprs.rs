@@ -465,6 +465,25 @@ fn lower_expression(
             })?;
             cursor.lower_literal(literal, type_id)
         }
+        AstNode::Assignment { target, value } => {
+            let lowered_value = lower_expression(
+                typed_package,
+                checked_type_map,
+                current_identity,
+                decl_index,
+                cursor,
+                source_unit_id,
+                value,
+            )?;
+            lower_assignment_target(
+                typed_package,
+                current_identity,
+                decl_index,
+                cursor,
+                target,
+                lowered_value,
+            )
+        }
         AstNode::Identifier { syntax_id, name } => {
             let syntax_id = syntax_id.ok_or_else(|| {
                 LoweringError::with_kind(
@@ -621,6 +640,105 @@ fn describe_expression(node: &AstNode) -> String {
         AstNode::Loop { .. } => "loop".to_string(),
         _ => "expression".to_string(),
     }
+}
+
+fn lower_assignment_target(
+    typed_package: &fol_typecheck::TypedPackage,
+    current_identity: &PackageIdentity,
+    decl_index: &WorkspaceDeclIndex,
+    cursor: &mut RoutineCursor<'_>,
+    target: &AstNode,
+    lowered_value: LoweredValue,
+) -> Result<LoweredValue, LoweringError> {
+    let resolved_symbol = match target {
+        AstNode::Identifier { syntax_id, name } => resolve_reference_symbol(
+            typed_package,
+            *syntax_id,
+            fol_resolver::ReferenceKind::Identifier,
+            name,
+        )?,
+        AstNode::QualifiedIdentifier { path } => resolve_reference_symbol(
+            typed_package,
+            path.syntax_id(),
+            fol_resolver::ReferenceKind::QualifiedIdentifier,
+            &path.joined(),
+        )?,
+        _ => {
+            return Err(LoweringError::with_kind(
+                LoweringErrorKind::InvalidInput,
+                "assignment targets must lower from plain or qualified identifiers in V1",
+            ))
+        }
+    };
+
+    if let Some(local_id) = cursor.routine.local_symbols.get(&resolved_symbol.id).copied() {
+        cursor.push_instr(
+            None,
+            LoweredInstrKind::StoreLocal {
+                local: local_id,
+                value: lowered_value.local_id,
+            },
+        )?;
+        return Ok(lowered_value);
+    }
+
+    let (owning_identity, owning_symbol_id) =
+        canonical_symbol_key(current_identity, resolved_symbol.mounted_from.as_ref(), resolved_symbol.id);
+    let Some(global_id) = decl_index.global_id_for_symbol(&owning_identity, owning_symbol_id) else {
+        return Err(LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            format!(
+                "assignment target '{}' does not map to a lowered global definition",
+                resolved_symbol.name
+            ),
+        ));
+    };
+    cursor.push_instr(
+        None,
+        LoweredInstrKind::StoreGlobal {
+            global: global_id,
+            value: lowered_value.local_id,
+        },
+    )?;
+    Ok(lowered_value)
+}
+
+fn resolve_reference_symbol<'a>(
+    typed_package: &'a fol_typecheck::TypedPackage,
+    syntax_id: Option<fol_parser::ast::SyntaxNodeId>,
+    kind: fol_resolver::ReferenceKind,
+    display_name: &str,
+) -> Result<&'a fol_resolver::ResolvedSymbol, LoweringError> {
+    let syntax_id = syntax_id.ok_or_else(|| {
+        LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            format!("reference '{display_name}' does not retain a syntax id"),
+        )
+    })?;
+    let Some(reference) = typed_package.program.resolved().references.iter().find(|reference| {
+        reference.syntax_id == Some(syntax_id) && reference.kind == kind
+    }) else {
+        return Err(LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            format!("reference '{display_name}' is missing from resolver output"),
+        ));
+    };
+    let Some(symbol_id) = reference.resolved else {
+        return Err(LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            format!("reference '{display_name}' does not resolve to a lowered symbol"),
+        ));
+    };
+    typed_package
+        .program
+        .resolved()
+        .symbol(symbol_id)
+        .ok_or_else(|| {
+            LoweringError::with_kind(
+                LoweringErrorKind::InvalidInput,
+                format!("reference '{display_name}' lost its resolved symbol"),
+            )
+        })
 }
 
 #[cfg(test)]
@@ -911,5 +1029,58 @@ mod tests {
             "final body expression should lower into a local load"
         );
         assert!(routine.body_result.is_some());
+    }
+
+    #[test]
+    fn assignment_lowering_emits_local_and_global_store_instructions() {
+        let fixture = std::env::temp_dir().join(format!(
+            "fol_lower_assignment_exprs_{}.fol",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system clock should be monotonic enough for tmp names")
+                .as_nanos()
+        ));
+        std::fs::write(
+            &fixture,
+            "var count: int = 0\nfun[] main(): int = {\n    var value: int = 1\n    value = 2\n    count = value\n    value\n}",
+        )
+        .expect("should write lowering assignment fixture");
+
+        let mut stream = FileStream::from_file(fixture.to_str().expect("utf8 temp path"))
+            .expect("Should open lowering fixture");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let syntax = parser
+            .parse_package(&mut lexer)
+            .expect("Lowering fixture should parse");
+        let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+        let typed = Typechecker::new()
+            .check_resolved_workspace(resolved)
+            .expect("Lowering fixture should typecheck");
+        let lowered = crate::LoweringSession::new(typed)
+            .lower_workspace()
+            .expect("assignment lowering should succeed");
+
+        let routine = lowered
+            .entry_package()
+            .routine_decls
+            .values()
+            .next()
+            .expect("lowered routine should exist");
+
+        assert!(
+            routine
+                .instructions
+                .iter()
+                .any(|instr| matches!(instr.kind, LoweredInstrKind::StoreLocal { .. })),
+            "assignment to local bindings should lower into StoreLocal"
+        );
+        assert!(
+            routine
+                .instructions
+                .iter()
+                .any(|instr| matches!(instr.kind, LoweredInstrKind::StoreGlobal { .. })),
+            "assignment to globals should lower into StoreGlobal"
+        );
     }
 }

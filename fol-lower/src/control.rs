@@ -37,6 +37,10 @@ pub enum LoweredInstrKind {
         local: LoweredLocalId,
         value: LoweredLocalId,
     },
+    StoreGlobal {
+        global: LoweredGlobalId,
+        value: LoweredLocalId,
+    },
     Call {
         callee: LoweredRoutineId,
         args: Vec<LoweredLocalId>,

@@ -519,7 +519,7 @@ This plan is complete only when all of the following are true:
 - `4.1` `done` Lower literals into constant or constructor instructions.
 - `4.2` `done` Lower resolved identifiers into explicit local/global loads.
 - `4.3` `done` Lower initializer and body expressions into explicit destination slots.
-- `4.4` `pending` Lower assignments into explicit store instructions.
+- `4.4` `done` Lower assignments into explicit store instructions.
 - `4.5` `pending` Lower plain and qualified calls into direct callee calls.
 - `4.6` `pending` Lower method calls into routine calls with explicit receiver arguments.
 - `4.7` `pending` Lower postfix field access into explicit extraction instructions.
