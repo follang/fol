@@ -22,6 +22,20 @@ pub struct LoweredSourceMapEntry {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub enum LoweredTypeDeclKind {
+    Alias { target_type: LoweredTypeId },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LoweredTypeDecl {
+    pub symbol_id: SymbolId,
+    pub source_unit_id: SourceUnitId,
+    pub name: String,
+    pub runtime_type: LoweredTypeId,
+    pub kind: LoweredTypeDeclKind,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LoweredSourceUnit {
     pub source_unit_id: SourceUnitId,
     pub path: String,
@@ -72,6 +86,7 @@ pub struct LoweredPackage {
     pub symbol_ownership: BTreeMap<SymbolId, LoweredSymbolOwnership>,
     pub checked_type_map: BTreeMap<CheckedTypeId, LoweredTypeId>,
     pub routine_signatures: BTreeMap<SymbolId, LoweredTypeId>,
+    pub type_decls: BTreeMap<SymbolId, LoweredTypeDecl>,
 }
 
 impl LoweredPackage {
@@ -87,6 +102,7 @@ impl LoweredPackage {
             symbol_ownership: BTreeMap::new(),
             checked_type_map: BTreeMap::new(),
             routine_signatures: BTreeMap::new(),
+            type_decls: BTreeMap::new(),
         }
     }
 }

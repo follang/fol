@@ -21,7 +21,8 @@ pub use ids::{
 };
 pub use model::{
     LoweredPackage, LoweredSourceMap, LoweredSourceMapEntry, LoweredSourceSymbol,
-    LoweredSourceUnit, LoweredSymbolOwnership, LoweredWorkspace,
+    LoweredSourceUnit, LoweredSymbolOwnership, LoweredTypeDecl, LoweredTypeDeclKind,
+    LoweredWorkspace,
 };
 pub use session::LoweringSession;
 pub use types::{
