@@ -1,5 +1,6 @@
-use crate::{BackendError, BackendErrorKind, BackendResult};
-use fol_lower::{LoweredBuiltinType, LoweredType, LoweredTypeId, LoweredTypeTable};
+use crate::{mangle_type_name, BackendError, BackendErrorKind, BackendResult};
+use fol_lower::{LoweredBuiltinType, LoweredType, LoweredTypeDecl, LoweredTypeDeclKind, LoweredTypeId, LoweredTypeTable};
+use fol_resolver::PackageIdentity;
 
 pub fn render_rust_type(type_table: &LoweredTypeTable, type_id: LoweredTypeId) -> BackendResult<String> {
     let Some(ty) = type_table.get(type_id) else {
@@ -64,6 +65,34 @@ pub fn render_rust_type(type_table: &LoweredTypeTable, type_id: LoweredTypeId) -
     }
 }
 
+pub fn render_record_definition(
+    package_identity: &PackageIdentity,
+    type_decl: &LoweredTypeDecl,
+    type_table: &LoweredTypeTable,
+) -> BackendResult<String> {
+    let LoweredTypeDeclKind::Record { fields } = &type_decl.kind else {
+        return Err(BackendError::new(
+            BackendErrorKind::InvalidInput,
+            format!("type declaration '{}' is not a record", type_decl.name),
+        ));
+    };
+
+    let rendered_fields = fields
+        .iter()
+        .map(|field| {
+            let rendered_type = render_rust_type(type_table, field.type_id)?;
+            Ok(format!("    pub {}: {},", field.name, rendered_type))
+        })
+        .collect::<BackendResult<Vec<_>>>()?
+        .join("\n");
+
+    Ok(format!(
+        "#[derive(Debug, Clone, PartialEq, Eq)]\npub struct {} {{\n{}\n}}\n",
+        mangle_type_name(package_identity, type_decl.runtime_type, &type_decl.name),
+        rendered_fields
+    ))
+}
+
 fn render_builtin_type(builtin: LoweredBuiltinType) -> &'static str {
     match builtin {
         LoweredBuiltinType::Int => "rt::FolInt",
@@ -77,8 +106,13 @@ fn render_builtin_type(builtin: LoweredBuiltinType) -> &'static str {
 
 #[cfg(test)]
 mod tests {
-    use super::render_rust_type;
-    use fol_lower::{LoweredBuiltinType, LoweredType, LoweredTypeTable};
+    use super::{render_record_definition, render_rust_type};
+    use crate::testing::package_identity;
+    use fol_lower::{
+        LoweredBuiltinType, LoweredFieldLayout, LoweredType, LoweredTypeDecl,
+        LoweredTypeDeclKind, LoweredTypeTable,
+    };
+    use fol_resolver::{PackageSourceKind, SourceUnitId, SymbolId};
 
     #[test]
     fn builtin_scalar_type_rendering_uses_backend_owned_runtime_aliases() {
@@ -137,5 +171,45 @@ mod tests {
             render_rust_type(&table, error_id),
             Ok("rt::FolError<rt::FolStr>".to_string())
         );
+    }
+
+    #[test]
+    fn record_definition_rendering_emits_backend_authored_struct_shapes() {
+        let mut table = LoweredTypeTable::new();
+        let bool_id = table.intern_builtin(LoweredBuiltinType::Bool);
+        let str_id = table.intern_builtin(LoweredBuiltinType::Str);
+        let record_id = table.intern(LoweredType::Record {
+            fields: std::collections::BTreeMap::from([
+                ("active".to_string(), bool_id),
+                ("name".to_string(), str_id),
+            ]),
+        });
+        let decl = LoweredTypeDecl {
+            symbol_id: SymbolId(10),
+            source_unit_id: SourceUnitId(0),
+            name: "User".to_string(),
+            runtime_type: record_id,
+            kind: LoweredTypeDeclKind::Record {
+                fields: vec![
+                    LoweredFieldLayout {
+                        name: "name".to_string(),
+                        type_id: str_id,
+                    },
+                    LoweredFieldLayout {
+                        name: "active".to_string(),
+                        type_id: bool_id,
+                    },
+                ],
+            },
+        };
+        let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
+
+        let rendered = render_record_definition(&package_identity, &decl, &table)
+            .expect("record definition should render");
+
+        assert!(rendered.contains("#[derive(Debug, Clone, PartialEq, Eq)]"));
+        assert!(rendered.contains("pub struct ty__pkg__entry__app__t"));
+        assert!(rendered.contains("pub name: rt::FolStr,"));
+        assert!(rendered.contains("pub active: rt::FolBool,"));
     }
 }

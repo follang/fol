@@ -945,7 +945,7 @@ not full long-term compiler completion.
 #### 5.2 done
 - emit runtime-backed type mappings for `str`, containers, shells, and recoverable results
 
-#### 5.3
+#### 5.3 done
 - emit record struct definitions
 
 #### 5.4
