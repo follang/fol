@@ -457,8 +457,12 @@ or deliberately rejected.
   - the recoverable-error chapter now documents `/ ErrorType`, `report`,
     propagation, `check(...)`, `expr || fallback`, and the shell-vs-routine
     boundary as implemented `V1` behavior
-- `6.3` `pending` Sync [`book/src/700_sugar/200_pipes.md`](./book/src/700_sugar/200_pipes.md)
+- `6.3` `done` Sync [`book/src/700_sugar/200_pipes.md`](./book/src/700_sugar/200_pipes.md)
   with the actual implemented meaning of `check(...)` and `||`.
+  Current state:
+  - the pipes chapter now separates ordinary value piping from recoverable call
+    handling and documents `check(...)` plus `||` as the current `V1` recovery
+    surfaces
 - `6.4` `pending` Rewrite this file into a completion record only after the full
   `V1` error path is real through the compiler chain.
 

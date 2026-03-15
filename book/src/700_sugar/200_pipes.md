@@ -1,36 +1,130 @@
 # Pipes
 
-Piping is a process that connects the output of the expression to the left to the input of the expression of the right. You can think of it as a dedicated program that takes care of copying everything that one expressionm prints, and feeding it to the next expression. The idea is the same as `bash pipes`. For example, an routine output is piped to a conditional through pipe symbol `|` then the conditional takes the input and returns true or false. If returned false, then the second part of pipe is returned. To access the piped variable, `this` keyword is used:
+Pipes connect the value on the left to the expression on the right.
+
+The basic idea is still:
+
+```fol
+left | right
 ```
-pro[] main: int = {
-    fun addFunc(x, y: int): int = {
-        return x + y;
+
+where the right-hand side sees the left-hand side as `this`.
+
+## Ordinary value piping
+
+Use `|` when you want to continue transforming a normal value:
+
+```fol
+fun add(x: int, y: int): int = {
+    return x + y
+}
+
+fun main(): int = {
+    return add(4, 5) | when(this > 8) {
+        case(true) { 6 }
+        * { 0 }
     }
-    var aVar: int = addFunc(4, 5) | if(this > 8) | return 6;
 }
 ```
-However, when we assign an output of a function to a variable, we shoud expect that errors within funciton can happen. By default, everytime a function is called, and the function throws an error in will be reported up.
-```
-var aVar: int = addFunc(4, 5);                                  // if there are errors, and the call is in main function, the program will exit
-                                                                // because is the last concatinator of the 'report' error
+
+This is ordinary value flow. The pipe itself does not create a special error
+model.
+
+## Recoverable calls are separate from ordinary pipes
+
+Routines declared with `/ ErrorType` produce recoverable call results:
+
+```fol
+fun read_code(path: str): int / str = {
+    when(path == "") {
+        case(true) { report "missing path" }
+        * { return 7 }
+    }
+}
 ```
 
-However, when we use pipes, we pass the function values (result and the error) to the next expression, and then, it is the second expression's responsibility to deal with it. We use the built-in `check` that checks for error on the function:
-```
-var aVar: int = addFunc(4, 5) | check(this) | return 5;         // if there are errors, the error is passed to the next sepression with pipe
-                                                                // here, if there is errors, will be checked and the default value of 5 will return
+For these calls, the current `V1` compiler does **not** treat plain `|` as the
+main error-handling tool.
+
+Instead, the implemented recoverable-call surfaces are:
+
+- propagation through a compatible surrounding routine
+- `check(expr)`
+- `expr || fallback`
+
+## `check(expr)`
+
+`check(expr)` asks whether a recoverable routine call failed.
+
+It returns `bol`.
+
+```fol
+fun main(path: str): int / str = {
+    when(check(read_code(path))) {
+        case(true) { report "read failed" }
+        * { return 0 }
+    }
+}
 ```
 
-There is a shorter way to do this kind of error checking. For that we use double pipe `||`. For example, we assign the output of a function to a variable, but the function may fail, so we want a default variable:
-```
-var aVar: int = addFunc(4, 5) || return 5;
+This is the current `V1` inspection surface for recoverable calls.
+
+## `||` fallback
+
+Double-pipe is the current shorthand for recovery:
+
+```fol
+fun read_code(path: str): int / str = {
+    when(path == "") {
+        case(true) { report "missing path" }
+        * { return 7 }
+    }
+}
+
+fun with_default(path: str): int = {
+    return read_code(path) || 5
+}
 ```
 
-Or to handle the error ourselves. This simply says, if i get the error, then we can `panic` or `report` with custom message:
+Meaning:
+
+- if the call succeeds, use the success value
+- if the call fails, evaluate the right-hand side
+
+The fallback may be:
+
+- a default value
+- `report ...`
+- `panic ...`
+
+Examples:
+
+```fol
+fun recover(path: str): int = {
+    return read_code(path) || 5
+}
+
+fun re_report(path: str): int / str = {
+    return read_code(path) || report "read failed"
+}
+
+fun must_succeed(path: str): int = {
+    return read_code(path) || panic "read failed"
+}
 ```
-var aVar: int = addFunc(4, 5) || panic "something bad inside function has happened";
-```
 
-More on error handling can be [found here](/docs/spec/errors) 
+## What plain `|` does not mean in current V1
 
+The current compiler does not claim that plain `|` automatically forwards both
+the success value and the error to the next stage.
 
+That older description is too broad for the current implementation.
+
+For recoverable calls in `V1`, use:
+
+- propagation
+- `check(expr)`
+- `expr || fallback`
+
+and treat ordinary `|` as value piping rather than the main recoverable-error
+mechanism.
