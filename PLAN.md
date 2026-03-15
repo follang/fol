@@ -837,7 +837,7 @@ The implementation should land in many small slices.
 #### 5.2 done
 - define a runtime trait contract for generated entry types
 
-#### 5.3
+#### 5.3 done
 - provide formatter/debug hooks backend-generated record/entry types can use
 
 #### 5.4

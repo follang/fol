@@ -1,5 +1,7 @@
 //! Runtime trait contracts for backend-generated aggregate types.
 
+use crate::builtins::FolEchoFormat;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FolNamedValue {
     name: &'static str,
@@ -37,13 +39,52 @@ pub trait FolEntry {
     fn fol_entry_fields(&self) -> Vec<FolNamedValue>;
 }
 
+fn join_named_values(values: &[FolNamedValue]) -> String {
+    values
+        .iter()
+        .map(|value| format!("{}: {}", value.name(), value.rendered_value()))
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+pub fn render_record<T: FolRecord>(value: &T) -> String {
+    let fields = value.fol_record_fields();
+    format!("{} {{ {} }}", value.fol_record_name(), join_named_values(&fields))
+}
+
+pub fn render_record_debug<T: FolRecord>(value: &T) -> String {
+    render_record(value)
+}
+
+pub fn render_entry<T: FolEntry>(value: &T) -> String {
+    let fields = value.fol_entry_fields();
+    if fields.is_empty() {
+        format!("{}.{}", value.fol_entry_name(), value.fol_entry_variant_name())
+    } else {
+        format!(
+            "{}.{} {{ {} }}",
+            value.fol_entry_name(),
+            value.fol_entry_variant_name(),
+            join_named_values(&fields)
+        )
+    }
+}
+
+pub fn render_entry_debug<T: FolEntry>(value: &T) -> String {
+    render_entry(value)
+}
+
 pub fn module_name() -> &'static str {
     "aggregate"
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{FolEntry, FolNamedValue, FolRecord};
+    use super::{
+        render_entry, render_entry_debug, render_record, render_record_debug, FolEntry,
+        FolNamedValue, FolRecord,
+    };
+    use crate::builtins::render_echo;
 
     #[derive(Debug, Clone, PartialEq, Eq)]
     struct DemoPoint {
@@ -55,6 +96,7 @@ mod tests {
     enum DemoStatus {
         Ok { count: i64 },
         Err { label: &'static str },
+        Empty,
     }
 
     impl FolRecord for DemoPoint {
@@ -67,6 +109,12 @@ mod tests {
                 FolNamedValue::new("x", self.x.to_string()),
                 FolNamedValue::new("y", self.y.to_string()),
             ]
+        }
+    }
+
+    impl FolEchoFormat for DemoPoint {
+        fn fol_echo_format(&self) -> String {
+            render_record(self)
         }
     }
 
@@ -92,6 +140,7 @@ mod tests {
             match self {
                 Self::Ok { .. } => "Ok",
                 Self::Err { .. } => "Err",
+                Self::Empty => "Empty",
             }
         }
 
@@ -99,7 +148,14 @@ mod tests {
             match self {
                 Self::Ok { count } => vec![FolNamedValue::new("count", count.to_string())],
                 Self::Err { label } => vec![FolNamedValue::new("label", label.to_string())],
+                Self::Empty => Vec::new(),
             }
+        }
+    }
+
+    impl FolEchoFormat for DemoStatus {
+        fn fol_echo_format(&self) -> String {
+            render_entry(self)
         }
     }
 
@@ -118,5 +174,27 @@ mod tests {
         assert_eq!(err.fol_entry_name(), "Status");
         assert_eq!(err.fol_entry_variant_name(), "Err");
         assert_eq!(err_fields, vec![FolNamedValue::new("label", "bad-input")]);
+    }
+
+    #[test]
+    fn aggregate_render_helpers_freeze_record_and_entry_shapes() {
+        let point = DemoPoint { x: 3, y: 7 };
+        let ok = DemoStatus::Ok { count: 7 };
+        let empty = DemoStatus::Empty;
+
+        assert_eq!(render_record(&point), "Point { x: 3, y: 7 }");
+        assert_eq!(render_record_debug(&point), "Point { x: 3, y: 7 }");
+        assert_eq!(render_entry(&ok), "Status.Ok { count: 7 }");
+        assert_eq!(render_entry_debug(&ok), "Status.Ok { count: 7 }");
+        assert_eq!(render_entry(&empty), "Status.Empty");
+    }
+
+    #[test]
+    fn aggregate_traits_integrate_with_echo_formatting() {
+        let point = DemoPoint { x: 1, y: 2 };
+        let ok = DemoStatus::Ok { count: 9 };
+
+        assert_eq!(render_echo(&point), "Point { x: 1, y: 2 }");
+        assert_eq!(render_echo(&ok), "Status.Ok { count: 9 }");
     }
 }
