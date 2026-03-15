@@ -29,7 +29,7 @@ pub fn crate_name() -> &'static str {
 }
 
 pub use config::{BackendConfig, BackendMode, BackendTarget};
-pub use emit::{emit_cargo_toml, emit_main_rs};
+pub use emit::{emit_cargo_toml, emit_main_rs, emit_package_module_shells};
 pub use error::{BackendError, BackendErrorKind};
 pub use identity::{stable_workspace_hash, BackendWorkspaceIdentity};
 pub use layout::{

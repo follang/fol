@@ -928,7 +928,7 @@ not full long-term compiler completion.
 #### 4.2 done
 - emit crate root shell (`main.rs` or equivalent)
 
-#### 4.3
+#### 4.3 done
 - emit top-level package module shells
 
 #### 4.4
