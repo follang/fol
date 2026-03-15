@@ -948,7 +948,7 @@ not full long-term compiler completion.
 #### 5.3 done
 - emit record struct definitions
 
-#### 5.4
+#### 5.4 done
 - emit entry enum definitions
 
 #### 5.5

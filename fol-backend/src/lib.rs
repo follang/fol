@@ -50,7 +50,7 @@ pub use trace::{
     BackendEmittedSourceMap, BackendEmittedSourceMapEntry, BackendTrace, BackendTraceKind,
     BackendTraceRecord,
 };
-pub use types::render_rust_type;
+pub use types::{render_entry_definition, render_record_definition, render_rust_type};
 
 pub type BackendResult<T> = Result<T, BackendError>;
 
