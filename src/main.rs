@@ -437,6 +437,12 @@ fn backend_crate_foundation_smoke_compiles() {
 }
 
 #[test]
+fn backend_public_api_shell_smoke_compiles() {
+    let backend = fol_backend::Backend::new();
+    assert_eq!(format!("{backend:?}"), "Backend");
+}
+
+#[test]
 fn intrinsics_public_model_smoke_compiles() {
     assert_eq!(fol_intrinsics::IntrinsicId::new(1).index(), 1);
     assert_eq!(

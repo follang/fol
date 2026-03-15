@@ -868,7 +868,7 @@ not full long-term compiler completion.
 #### 1.1 done
 - create `fol-backend` as a workspace crate
 
-#### 1.2
+#### 1.2 done
 - add public API shell for backend entrypoints
 
 #### 1.3
