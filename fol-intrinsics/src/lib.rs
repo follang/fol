@@ -323,6 +323,28 @@ mod tests {
     }
 
     #[test]
+    fn keyword_intrinsic_registry_entries_stay_stable() {
+        let check = intrinsic_by_canonical_name("check").expect("check should exist");
+        let panic_entry = intrinsic_by_canonical_name("panic").expect("panic should exist");
+
+        assert_eq!(check.id, IntrinsicId::new(12));
+        assert_eq!(check.category, IntrinsicCategory::Recoverable);
+        assert_eq!(check.surface, IntrinsicSurface::KeywordCall);
+        assert_eq!(check.availability, IntrinsicAvailability::V1);
+        assert_eq!(check.status, IntrinsicStatus::Implemented);
+        assert_eq!(check.arity, IntrinsicArity::Exactly(1));
+        assert_eq!(check.lowering_mode, IntrinsicLoweringMode::DedicatedIr);
+
+        assert_eq!(panic_entry.id, IntrinsicId::new(13));
+        assert_eq!(panic_entry.category, IntrinsicCategory::Diagnostic);
+        assert_eq!(panic_entry.surface, IntrinsicSurface::KeywordCall);
+        assert_eq!(panic_entry.availability, IntrinsicAvailability::V1);
+        assert_eq!(panic_entry.status, IntrinsicStatus::Implemented);
+        assert_eq!(panic_entry.arity, IntrinsicArity::AtLeast(0));
+        assert_eq!(panic_entry.lowering_mode, IntrinsicLoweringMode::DedicatedIr);
+    }
+
+    #[test]
     fn diagnostics_helpers_render_intrinsic_specific_guidance() {
         let eq = intrinsic_by_canonical_name("eq").expect("eq should exist");
         let de_alloc = intrinsic_by_canonical_name("de_alloc").expect("de_alloc should exist");
