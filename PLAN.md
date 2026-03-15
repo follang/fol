@@ -860,7 +860,7 @@ not full long-term compiler completion.
 #### 0.4 done
 - freeze the rule that the first backend generates one Rust crate per lowered workspace, not one giant Rust file
 
-#### 0.5
+#### 0.5 done
 - freeze the rule that `fol-runtime` is the only support dependency for current `V1` execution semantics
 
 ## 36. Phase 1: Crate Foundation
