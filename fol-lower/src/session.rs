@@ -1,5 +1,5 @@
 use crate::{
-    decls, exprs,
+    decls, exprs, verify,
     ids::{LoweredPackageId, LoweredTypeId},
     types::{LoweredBuiltinType, LoweredRoutineType, LoweredType, LoweredTypeTable},
     LoweredPackage, LoweredSourceMap, LoweredSourceMapEntry, LoweredSourceSymbol,
@@ -99,7 +99,9 @@ impl LoweringSession {
 
         let source_map = build_workspace_source_map(&self.typed, &packages);
 
-        Ok(LoweredWorkspace::new(entry_identity, packages, type_table, source_map))
+        let workspace = LoweredWorkspace::new(entry_identity, packages, type_table, source_map);
+        verify::verify_workspace(&workspace)?;
+        Ok(workspace)
     }
 }
 

@@ -8,6 +8,7 @@ pub mod ids;
 pub mod model;
 pub mod session;
 pub mod types;
+mod verify;
 
 use fol_resolver::{PackageIdentity, PackageSourceKind};
 
