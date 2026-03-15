@@ -24,6 +24,31 @@
 //! - concurrency runtime
 //! - C ABI
 //! - `core` / `std`
+//!
+//! # Backend Mapping: Builtins
+//!
+//! The first backend should map lowered builtins using this rule:
+//!
+//! - prefer native Rust operators or expressions for pure scalar operations
+//! - use `fol-runtime` helpers for runtime-sensitive or policy-sensitive behavior
+//!
+//! Current `V1` expectation:
+//!
+//! - `.eq`, `.nq`, `.lt`, `.gt`, `.ge`, `.le`
+//!   - lower to native Rust comparisons on already-lowered scalar values
+//! - `.not`
+//!   - lower to native Rust boolean negation
+//! - `.len`
+//!   - lower through [`prelude::len`]
+//! - `.echo`
+//!   - lower through [`prelude::echo`]
+//! - `check`
+//!   - lower through [`prelude::check_recoverable`]
+//! - recoverable top-level result handling
+//!   - lower through [`prelude::outcome_from_recoverable`]
+//!
+//! The backend should not reimplement `.len` or `.echo` inline. Those are part
+//! of the runtime contract so later backends can share the same behavior.
 
 pub mod abi;
 pub mod aggregate;

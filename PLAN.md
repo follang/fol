@@ -878,7 +878,7 @@ The implementation should land in many small slices.
 
 ### Phase 8: Backend-facing Documentation
 
-#### 8.1
+#### 8.1 done
 - document exactly how the backend should map lowered builtins to runtime or
   native Rust forms
 
