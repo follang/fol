@@ -96,6 +96,36 @@ pub fn render_record_definition(
     ))
 }
 
+pub fn render_record_trait_impl(
+    package_identity: &PackageIdentity,
+    type_decl: &LoweredTypeDecl,
+) -> BackendResult<String> {
+    let LoweredTypeDeclKind::Record { fields } = &type_decl.kind else {
+        return Err(BackendError::new(
+            BackendErrorKind::InvalidInput,
+            format!("type declaration '{}' is not a record", type_decl.name),
+        ));
+    };
+
+    let type_name = mangle_type_name(package_identity, type_decl.runtime_type, &type_decl.name);
+    let rendered_fields = fields
+        .iter()
+        .map(|field| {
+            format!(
+                "            rt::FolNamedValue::new(\"{}\", self.{}.to_string()),",
+                field.name, field.name
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    Ok(format!(
+        "impl rt::FolRecord for {type_name} {{\n    fn fol_record_name(&self) -> &'static str {{\n        \"{}\"\n    }}\n\n    fn fol_record_fields(&self) -> Vec<rt::FolNamedValue> {{\n        vec![\n{}\n        ]\n    }}\n}}\n\nimpl rt::FolEchoFormat for {type_name} {{\n    fn fol_echo_format(&self) -> String {{\n        rt::render_record(self)\n    }}\n}}\n",
+        type_decl.name,
+        rendered_fields
+    ))
+}
+
 pub fn render_entry_definition(
     package_identity: &PackageIdentity,
     type_decl: &LoweredTypeDecl,
@@ -148,7 +178,10 @@ fn render_builtin_type(builtin: LoweredBuiltinType) -> &'static str {
 
 #[cfg(test)]
 mod tests {
-    use super::{render_entry_definition, render_record_definition, render_rust_type};
+    use super::{
+        render_entry_definition, render_record_definition, render_record_trait_impl,
+        render_rust_type,
+    };
     use crate::testing::package_identity;
     use fol_lower::{
         LoweredBuiltinType, LoweredFieldLayout, LoweredType, LoweredTypeDecl,
@@ -253,6 +286,48 @@ mod tests {
         assert!(rendered.contains("pub struct ty__pkg__entry__app__t"));
         assert!(rendered.contains("pub name: rt::FolStr,"));
         assert!(rendered.contains("pub active: rt::FolBool,"));
+    }
+
+    #[test]
+    fn record_trait_impl_rendering_emits_runtime_fol_record_contract() {
+        let mut table = LoweredTypeTable::new();
+        let bool_id = table.intern_builtin(LoweredBuiltinType::Bool);
+        let str_id = table.intern_builtin(LoweredBuiltinType::Str);
+        let record_id = table.intern(LoweredType::Record {
+            fields: std::collections::BTreeMap::from([
+                ("active".to_string(), bool_id),
+                ("name".to_string(), str_id),
+            ]),
+        });
+        let decl = LoweredTypeDecl {
+            symbol_id: SymbolId(10),
+            source_unit_id: SourceUnitId(0),
+            name: "User".to_string(),
+            runtime_type: record_id,
+            kind: LoweredTypeDeclKind::Record {
+                fields: vec![
+                    LoweredFieldLayout {
+                        name: "name".to_string(),
+                        type_id: str_id,
+                    },
+                    LoweredFieldLayout {
+                        name: "active".to_string(),
+                        type_id: bool_id,
+                    },
+                ],
+            },
+        };
+        let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
+
+        let rendered = render_record_trait_impl(&package_identity, &decl)
+            .expect("record trait impl should render");
+
+        assert!(rendered.contains("impl rt::FolRecord for ty__pkg__entry__app__t"));
+        assert!(rendered.contains("fn fol_record_name(&self) -> &'static str"));
+        assert!(rendered.contains("\"User\""));
+        assert!(rendered.contains("rt::FolNamedValue::new(\"name\", self.name.to_string())"));
+        assert!(rendered.contains("impl rt::FolEchoFormat for ty__pkg__entry__app__t"));
+        assert!(rendered.contains("rt::render_record(self)"));
     }
 
     #[test]

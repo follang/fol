@@ -951,7 +951,7 @@ not full long-term compiler completion.
 #### 5.4 done
 - emit entry enum definitions
 
-#### 5.5
+#### 5.5 done
 - emit `FolRecord` implementations for backend-authored record types where needed
 
 #### 5.6
