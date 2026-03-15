@@ -1195,6 +1195,26 @@ fn check_typing_rejects_plain_values() {
 }
 
 #[test]
+fn check_typing_rejects_wrong_arity_through_keyword_intrinsic_diagnostics() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] main(): bol = {\n\
+             return check();\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error
+                    .message()
+                    .contains("check(...) expects exactly 1 argument(s) but got 0")
+        }),
+        "Expected registry-backed check arity diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
 fn check_typing_rejects_err_shell_values_explicitly() {
     let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",

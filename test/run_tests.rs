@@ -2624,6 +2624,58 @@ mod integration_tests {
     }
 
     #[test]
+    fn test_cli_json_keyword_intrinsic_arity_failures_keep_structured_fields() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_json_keyword_intrinsic_arity");
+        fs::create_dir_all(&temp_root)
+            .expect("Should create temp CLI keyword intrinsic arity fixture");
+        fs::write(
+            temp_root.join("main.fol"),
+            "fun[] main(): bol = {\n    return check();\n}\n",
+        )
+        .expect("Should write invalid keyword intrinsic arity fixture");
+
+        let output = run_fol(&[
+            "--json",
+            temp_root
+                .to_str()
+                .expect("CLI keyword intrinsic arity fixture path should be utf-8"),
+        ]);
+
+        assert!(
+            !output.status.success(),
+            "CLI should fail for wrong-arity keyword intrinsic calls",
+        );
+
+        let json = parse_cli_json(&output);
+        let diagnostics = json["diagnostics"]
+            .as_array()
+            .expect("CLI JSON output should expose diagnostics");
+        let diagnostic = diagnostics.iter().find(|diagnostic| {
+            diagnostic["message"]
+                .as_str()
+                .map(|message| {
+                    message.contains("check(...) expects exactly 1 argument(s) but got 0")
+                })
+                .unwrap_or(false)
+        });
+
+        assert!(
+            diagnostic.is_some(),
+            "Expected keyword intrinsic arity diagnostic in CLI JSON output, got: {json}"
+        );
+        assert!(
+            diagnostic
+                .and_then(|diagnostic| diagnostic["location"].as_object())
+                .is_some(),
+            "Expected keyword intrinsic arity diagnostic to keep a structured location, got: {json}"
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
     fn test_cli_json_typecheck_pipe_or_fallback_mismatches_keep_exact_locations() {
         use std::fs;
 

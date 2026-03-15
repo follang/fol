@@ -1884,7 +1884,7 @@ fn type_keyword_intrinsic_call(
 
     match entry.name {
         "panic" => type_panic_call(typed, resolved, context, args),
-        "check" => type_check_call(typed, resolved, context, args, syntax_id),
+        "check" => type_check_call(typed, resolved, context, entry, args, syntax_id),
         other => Err(TypecheckError::new(
             TypecheckErrorKind::InvalidInput,
             format!("unsupported keyword intrinsic dispatch '{other}(...)'"),
@@ -1896,22 +1896,21 @@ fn type_check_call(
     typed: &mut TypedProgram,
     resolved: &ResolvedProgram,
     context: TypeContext,
+    entry: &fol_intrinsics::IntrinsicEntry,
     args: &[AstNode],
     syntax_id: Option<SyntaxNodeId>,
 ) -> Result<TypedExpr, TypecheckError> {
     let origin = syntax_id.and_then(|id| origin_for(resolved, id));
     if args.len() != 1 {
         return Err(origin.clone().map_or_else(
-            || {
-                TypecheckError::new(
-                    TypecheckErrorKind::InvalidInput,
-                    format!("check expects exactly 1 value in V1 but got {}", args.len()),
-                )
-            },
+            || TypecheckError::new(
+                TypecheckErrorKind::InvalidInput,
+                wrong_arity_message(entry, args.len()),
+            ),
             |origin| {
                 TypecheckError::with_origin(
                     TypecheckErrorKind::InvalidInput,
-                    format!("check expects exactly 1 value in V1 but got {}", args.len()),
+                    wrong_arity_message(entry, args.len()),
                     origin,
                 )
             },

@@ -1219,7 +1219,7 @@ Track these in the registry, but do not implement them in the first batch:
   the same registry despite different syntax families.
 - `10.2` `done` If yes, add them as keyword-surface intrinsic entries.
 - `10.3` `done` Move their typecheck/lower ownership onto the registry model.
-- `10.4` `pending` Add regression tests proving keyword and dot intrinsics share
+- `10.4` `done` Add regression tests proving keyword and dot intrinsics share
   one diagnostics/code path where appropriate.
 
 ### Phase 11. Arithmetic, Bitwise, And Overflow Roadmap Entries
