@@ -484,6 +484,30 @@ fn lower_expression(
                 lowered_value,
             )
         }
+        AstNode::FunctionCall { syntax_id, name, args } => lower_function_call(
+            typed_package,
+            checked_type_map,
+            current_identity,
+            decl_index,
+            cursor,
+            source_unit_id,
+            *syntax_id,
+            fol_resolver::ReferenceKind::FunctionCall,
+            name,
+            args,
+        ),
+        AstNode::QualifiedFunctionCall { path, args } => lower_function_call(
+            typed_package,
+            checked_type_map,
+            current_identity,
+            decl_index,
+            cursor,
+            source_unit_id,
+            path.syntax_id(),
+            fol_resolver::ReferenceKind::QualifiedFunctionCall,
+            &path.joined(),
+            args,
+        ),
         AstNode::Identifier { syntax_id, name } => {
             let syntax_id = syntax_id.ok_or_else(|| {
                 LoweringError::with_kind(
@@ -739,6 +763,81 @@ fn resolve_reference_symbol<'a>(
                 format!("reference '{display_name}' lost its resolved symbol"),
             )
         })
+}
+
+fn lower_function_call(
+    typed_package: &fol_typecheck::TypedPackage,
+    checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
+    current_identity: &PackageIdentity,
+    decl_index: &WorkspaceDeclIndex,
+    cursor: &mut RoutineCursor<'_>,
+    source_unit_id: SourceUnitId,
+    syntax_id: Option<fol_parser::ast::SyntaxNodeId>,
+    kind: fol_resolver::ReferenceKind,
+    display_name: &str,
+    args: &[AstNode],
+) -> Result<LoweredValue, LoweringError> {
+    let resolved_symbol = resolve_reference_symbol(typed_package, syntax_id, kind, display_name)?;
+    let (owning_identity, owning_symbol_id) =
+        canonical_symbol_key(current_identity, resolved_symbol.mounted_from.as_ref(), resolved_symbol.id);
+    let Some(callee) = decl_index.routine_id_for_symbol(&owning_identity, owning_symbol_id) else {
+        return Err(LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            format!("call target '{display_name}' does not map to a lowered routine definition"),
+        ));
+    };
+    let Some(result_type) = resolve_reference_type_id(typed_package, checked_type_map, syntax_id, kind) else {
+        return Err(LoweringError::with_kind(
+            LoweringErrorKind::Unsupported,
+            format!(
+                "procedure-style calls without a value result are not lowered in this slice yet: '{display_name}'"
+            ),
+        ));
+    };
+    let lowered_args = args
+        .iter()
+        .map(|arg| {
+            lower_expression(
+                typed_package,
+                checked_type_map,
+                current_identity,
+                decl_index,
+                cursor,
+                source_unit_id,
+                arg,
+            )
+            .map(|value| value.local_id)
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    let result_local = cursor.allocate_local(result_type, None);
+    cursor.push_instr(
+        Some(result_local),
+        LoweredInstrKind::Call {
+            callee,
+            args: lowered_args,
+        },
+    )?;
+    Ok(LoweredValue {
+        local_id: result_local,
+        type_id: result_type,
+    })
+}
+
+fn resolve_reference_type_id(
+    typed_package: &fol_typecheck::TypedPackage,
+    checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
+    syntax_id: Option<fol_parser::ast::SyntaxNodeId>,
+    kind: fol_resolver::ReferenceKind,
+) -> Option<LoweredTypeId> {
+    let syntax_id = syntax_id?;
+    let reference = typed_package
+        .program
+        .resolved()
+        .references
+        .iter()
+        .find(|reference| reference.syntax_id == Some(syntax_id) && reference.kind == kind)?;
+    let checked_type = reference_type_id(typed_package, reference.id)?;
+    checked_type_map.get(&checked_type).copied()
 }
 
 #[cfg(test)]
@@ -1082,5 +1181,56 @@ mod tests {
                 .any(|instr| matches!(instr.kind, LoweredInstrKind::StoreGlobal { .. })),
             "assignment to globals should lower into StoreGlobal"
         );
+    }
+
+    #[test]
+    fn call_lowering_emits_direct_callee_calls_for_plain_and_qualified_forms() {
+        use std::fs;
+        use std::time::{SystemTime, UNIX_EPOCH};
+
+        let stamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock should be monotonic enough for tmp path")
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!("fol_lower_call_exprs_{stamp}"));
+        let app_dir = root.join("app");
+        let math_dir = app_dir.join("math");
+        fs::create_dir_all(&math_dir).expect("should create nested namespace dir");
+        fs::write(
+            app_dir.join("main.fol"),
+            "fun[] helper(): int = { 1 }\nfun[] main(): int = {\n    helper()\n    math::triple()\n}",
+        )
+        .expect("should write entry file");
+        fs::write(math_dir.join("lib.fol"), "fun[exp] triple(): int = { 3 }\n")
+            .expect("should write nested namespace file");
+
+        let mut stream = FileStream::from_folder(app_dir.to_str().expect("utf8 temp path"))
+            .expect("Should open lowering fixture");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let syntax = parser
+            .parse_package(&mut lexer)
+            .expect("Lowering fixture should parse");
+        let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+        let typed = Typechecker::new()
+            .check_resolved_workspace(resolved)
+            .expect("Lowering fixture should typecheck");
+        let lowered = crate::LoweringSession::new(typed)
+            .lower_workspace()
+            .expect("call lowering should succeed");
+
+        let routine = lowered
+            .entry_package()
+            .routine_decls
+            .values()
+            .find(|routine| routine.name == "main")
+            .expect("main routine should exist");
+        let call_instrs = routine
+            .instructions
+            .iter()
+            .filter(|instr| matches!(instr.kind, LoweredInstrKind::Call { .. }))
+            .collect::<Vec<_>>();
+
+        assert_eq!(call_instrs.len(), 2);
     }
 }
