@@ -3023,6 +3023,11 @@ mod tests {
         let workspace = LoweredWorkspace::new(
             identity.clone(),
             packages,
+            vec![crate::LoweredEntryCandidate {
+                package_identity: identity.clone(),
+                routine_id: crate::LoweredRoutineId(0),
+                name: "main".to_string(),
+            }],
             crate::LoweredTypeTable::new(),
             crate::LoweredSourceMap::new(),
         );

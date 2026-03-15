@@ -22,8 +22,8 @@ pub use ids::{
     LoweredRoutineId, LoweredTypeId,
 };
 pub use model::{
-    LoweredExportMount, LoweredGlobal, LoweredPackage, LoweredSourceMap, LoweredSourceMapEntry,
-    LoweredSourceSymbol, LoweredSourceUnit, LoweredSymbolOwnership, LoweredTypeDecl,
+    LoweredEntryCandidate, LoweredExportMount, LoweredGlobal, LoweredPackage, LoweredSourceMap,
+    LoweredSourceMapEntry, LoweredSourceSymbol, LoweredSourceUnit, LoweredSymbolOwnership, LoweredTypeDecl,
     LoweredTypeDeclKind, LoweredFieldLayout, LoweredVariantLayout, LoweredWorkspace,
 };
 pub use session::LoweringSession;

@@ -2,8 +2,9 @@ use crate::{
     decls, exprs, verify,
     ids::{LoweredPackageId, LoweredTypeId},
     types::{LoweredBuiltinType, LoweredRoutineType, LoweredType, LoweredTypeTable},
-    LoweredExportMount, LoweredPackage, LoweredSourceMap, LoweredSourceMapEntry, LoweredSourceSymbol,
-    LoweredSourceUnit, LoweredSymbolOwnership, LoweredWorkspace, LoweringError,
+    LoweredEntryCandidate, LoweredExportMount, LoweredPackage, LoweredSourceMap,
+    LoweredSourceMapEntry, LoweredSourceSymbol, LoweredSourceUnit, LoweredSymbolOwnership,
+    LoweredWorkspace, LoweringError,
     LoweringErrorKind, LoweringResult,
 };
 use fol_resolver::PackageIdentity;
@@ -107,7 +108,22 @@ impl LoweringSession {
 
         let source_map = build_workspace_source_map(&self.typed, &packages);
 
-        let workspace = LoweredWorkspace::new(entry_identity, packages, type_table, source_map);
+        let entry_candidates = packages
+            .get(&entry_identity)
+            .into_iter()
+            .flat_map(|package| {
+                package.routine_decls.iter().filter_map(|(routine_id, routine)| {
+                    (routine.name == "main").then(|| LoweredEntryCandidate {
+                        package_identity: entry_identity.clone(),
+                        routine_id: *routine_id,
+                        name: routine.name.clone(),
+                    })
+                })
+            })
+            .collect::<Vec<_>>();
+
+        let workspace =
+            LoweredWorkspace::new(entry_identity, packages, entry_candidates, type_table, source_map);
         verify::verify_workspace(&workspace)?;
         Ok(workspace)
     }
@@ -553,5 +569,54 @@ mod tests {
             mount.source_namespace == "json::src::fmt"
                 && mount.mounted_namespace_suffix.as_deref() == Some("fmt")
         }));
+    }
+
+    #[test]
+    fn lowering_session_marks_entry_package_main_routines_as_entry_candidates() {
+        use std::fs;
+        use std::time::{SystemTime, UNIX_EPOCH};
+
+        let stamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock should be monotonic enough for tmp path")
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!("fol_lower_entry_candidates_{stamp}"));
+        let app_dir = root.join("app");
+        let shared_dir = root.join("shared");
+        fs::create_dir_all(&app_dir).expect("should create app dir");
+        fs::create_dir_all(&shared_dir).expect("should create shared dir");
+        fs::write(
+            app_dir.join("main.fol"),
+            "use shared: loc = {\"../shared\"}\nfun[] main(): int = { return helper() }\nfun[] helper(): int = { return 1 }\n",
+        )
+        .expect("should write app entry");
+        fs::write(
+            shared_dir.join("lib.fol"),
+            "fun[exp] main(): int = { return 7 }\nfun[exp] helper(): int = { return 0 }\n",
+        )
+        .expect("should write shared library");
+
+        let mut stream = FileStream::from_folder(app_dir.to_str().expect("utf8 temp path"))
+            .expect("should open folder fixture");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let syntax = parser
+            .parse_package(&mut lexer)
+            .expect("Lowering folder fixture should parse");
+        let resolved = resolve_workspace(syntax).expect("Lowering folder fixture should resolve");
+        let typed = Typechecker::new()
+            .check_resolved_workspace(resolved)
+            .expect("Lowering folder fixture should typecheck");
+
+        let lowered = LoweringSession::new(typed)
+            .lower_workspace()
+            .expect("Lowering should record entry candidates");
+
+        assert_eq!(lowered.entry_candidates().len(), 1);
+        assert_eq!(lowered.entry_candidates()[0].name, "main");
+        assert_eq!(
+            lowered.entry_candidates()[0].package_identity,
+            *lowered.entry_identity()
+        );
     }
 }

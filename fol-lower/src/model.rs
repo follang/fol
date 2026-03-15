@@ -22,6 +22,13 @@ pub struct LoweredSourceMapEntry {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LoweredEntryCandidate {
+    pub package_identity: PackageIdentity,
+    pub routine_id: LoweredRoutineId,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LoweredExportMount {
     pub source_namespace: String,
     pub mounted_namespace_suffix: Option<String>,
@@ -145,6 +152,7 @@ impl LoweredPackage {
 pub struct LoweredWorkspace {
     entry_identity: PackageIdentity,
     packages: BTreeMap<PackageIdentity, LoweredPackage>,
+    entry_candidates: Vec<LoweredEntryCandidate>,
     type_table: LoweredTypeTable,
     source_map: LoweredSourceMap,
 }
@@ -153,12 +161,14 @@ impl LoweredWorkspace {
     pub fn new(
         entry_identity: PackageIdentity,
         packages: BTreeMap<PackageIdentity, LoweredPackage>,
+        entry_candidates: Vec<LoweredEntryCandidate>,
         type_table: LoweredTypeTable,
         source_map: LoweredSourceMap,
     ) -> Self {
         Self {
             entry_identity,
             packages,
+            entry_candidates,
             type_table,
             source_map,
         }
@@ -186,6 +196,10 @@ impl LoweredWorkspace {
         self.packages.len()
     }
 
+    pub fn entry_candidates(&self) -> &[LoweredEntryCandidate] {
+        &self.entry_candidates
+    }
+
     pub fn type_table(&self) -> &LoweredTypeTable {
         &self.type_table
     }
@@ -197,8 +211,8 @@ impl LoweredWorkspace {
 
 #[cfg(test)]
 mod tests {
-    use super::{LoweredPackage, LoweredSourceMap, LoweredSourceUnit, LoweredWorkspace};
-    use crate::ids::LoweredPackageId;
+    use super::{LoweredEntryCandidate, LoweredPackage, LoweredSourceMap, LoweredSourceUnit, LoweredWorkspace};
+    use crate::ids::{LoweredPackageId, LoweredRoutineId};
     use crate::types::LoweredTypeTable;
     use fol_resolver::{PackageIdentity, PackageSourceKind, SourceUnitId};
     use std::collections::BTreeMap;
@@ -233,6 +247,11 @@ mod tests {
         let workspace = LoweredWorkspace::new(
             entry_identity.clone(),
             packages,
+            vec![LoweredEntryCandidate {
+                package_identity: entry_identity.clone(),
+                routine_id: LoweredRoutineId(0),
+                name: "main".to_string(),
+            }],
             LoweredTypeTable::new(),
             LoweredSourceMap::default(),
         );
@@ -241,6 +260,7 @@ mod tests {
         assert_eq!(workspace.entry_package().id, LoweredPackageId(0));
         assert_eq!(workspace.package_count(), 2);
         assert_eq!(workspace.entry_package().source_units.len(), 1);
+        assert_eq!(workspace.entry_candidates().len(), 1);
         assert!(workspace.type_table().is_empty());
     }
 

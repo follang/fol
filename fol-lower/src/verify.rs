@@ -166,6 +166,7 @@ mod tests {
         let workspace = LoweredWorkspace::new(
             identity.clone(),
             BTreeMap::from([(identity, package)]),
+            Vec::new(),
             LoweredTypeTable::new(),
             LoweredSourceMap::new(),
         );
@@ -196,6 +197,7 @@ mod tests {
         let workspace = LoweredWorkspace::new(
             identity.clone(),
             BTreeMap::from([(identity, package)]),
+            Vec::new(),
             LoweredTypeTable::new(),
             LoweredSourceMap::new(),
         );
