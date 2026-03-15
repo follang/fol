@@ -870,7 +870,7 @@ The implementation should land in many small slices.
 #### 7.3 done
 - add invariant tests for recoverable + shell interactions
 
-#### 7.4
+#### 7.4 done
 - add deterministic behavior tests for map/set ordering policy
 
 #### 7.5

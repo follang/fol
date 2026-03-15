@@ -234,4 +234,29 @@ mod tests {
         assert_eq!(failure.kind(), RuntimeErrorKind::InvalidInput);
         assert_eq!(failure.message(), "index out of bounds: the len is 0 but the index is 0");
     }
+
+    #[test]
+    fn ordered_set_and_map_families_keep_deterministic_behavior_independent_of_insertion_order() {
+        let left_set = FolSet::from_items(vec![3, 1, 2, 2]);
+        let right_set = FolSet::from_items(vec![2, 3, 1]);
+
+        let left_map = FolMap::from_pairs(vec![("lin", 2), ("ada", 1), ("lin", 4)]);
+        let right_map = FolMap::from_pairs(vec![("ada", 1), ("lin", 4)]);
+
+        assert_eq!(
+            left_set.as_set().iter().copied().collect::<Vec<_>>(),
+            vec![1, 2, 3]
+        );
+        assert_eq!(left_set.as_set(), right_set.as_set());
+        assert_eq!(render_set(&left_set), "set{1, 2, 3}");
+        assert_eq!(render_set(&left_set), render_set(&right_set));
+
+        assert_eq!(
+            left_map.as_map().iter().map(|(key, value)| (*key, *value)).collect::<Vec<_>>(),
+            vec![("ada", 1), ("lin", 4)]
+        );
+        assert_eq!(left_map.as_map(), right_map.as_map());
+        assert_eq!(render_map(&left_map), "map{ada: 1, lin: 4}");
+        assert_eq!(render_map(&left_map), render_map(&right_map));
+    }
 }
