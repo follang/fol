@@ -365,21 +365,25 @@ fn type_node_with_expectation(
             name,
             args,
             syntax_id: _,
+            ..
         } if name == "panic" => type_panic_call(typed, resolved, context, args),
         AstNode::FunctionCall {
             name,
             args,
             syntax_id,
+            ..
         } if name == "check" => type_check_call(typed, resolved, context, args, *syntax_id),
         AstNode::FunctionCall {
             name,
             args,
             syntax_id,
+            ..
         } if name == "report" => type_report_call(typed, resolved, context, args, *syntax_id),
         AstNode::FunctionCall {
             name,
             args,
             syntax_id,
+            ..
         } => type_function_call(typed, resolved, context, name, args, *syntax_id),
         AstNode::QualifiedFunctionCall { path, args } => {
             type_qualified_function_call(typed, resolved, context, path, args)

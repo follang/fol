@@ -282,3 +282,17 @@ pub fn intrinsics_for_surface(surface: IntrinsicSurface) -> Vec<&'static Intrins
         .filter(|entry| entry.surface == surface)
         .collect()
 }
+
+pub fn reserved_intrinsic_for_surface(
+    surface: IntrinsicSurface,
+    name: &str,
+) -> Option<&'static IntrinsicEntry> {
+    intrinsic_registry().iter().find(|entry| {
+        entry.surface == surface
+            && (entry.name == name || entry.aliases.iter().any(|alias| *alias == name))
+    })
+}
+
+pub fn is_reserved_intrinsic_name_for_surface(surface: IntrinsicSurface, name: &str) -> bool {
+    reserved_intrinsic_for_surface(surface, name).is_some()
+}

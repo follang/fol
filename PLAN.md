@@ -1044,8 +1044,15 @@ Track these in the registry, but do not implement them in the first batch:
 
 ### Phase 2. Compiler Boundary Wiring
 
-- `2.1` `pending` Add parser-facing helper API for recognizing reserved
+- `2.1` `done` Add parser-facing helper API for recognizing reserved
   intrinsic-root names without forcing parser semantic ownership.
+  Current state:
+  - `fol-intrinsics` now exposes `reserved_intrinsic_for_surface(...)` and
+    `is_reserved_intrinsic_name_for_surface(...)` for parser-facing lookups
+  - `fol-parser` now retains call-surface information on `FunctionCall` nodes:
+    `Plain`, `DotIntrinsic`, and `KeywordIntrinsic`
+  - leading-dot intrinsic calls no longer collapse indistinguishably into plain
+    routine calls at the AST boundary
 - `2.2` `pending` Add typecheck-facing selection API so typecheck can resolve a
   parsed builtin spelling to one registry entry.
 - `2.3` `pending` Add lowering-facing lowering-mode API.

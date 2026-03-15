@@ -1,5 +1,5 @@
 use super::*;
-use fol_parser::ast::WhenCase;
+use fol_parser::ast::{CallSurface, WhenCase};
 
 #[test]
 fn test_top_level_leading_dot_builtin_call_statement() {
@@ -18,8 +18,9 @@ fn test_top_level_leading_dot_builtin_call_statement() {
             AstNode::Program { declarations }
                 if declarations.iter().any(|node| matches!(
                     node,
-                    AstNode::FunctionCall { name, args, .. }
+                    AstNode::FunctionCall { surface, name, args, .. }
                         if name == "echo"
+                            && *surface == CallSurface::DotIntrinsic
                             && matches!(args.as_slice(), [AstNode::Literal(Literal::String(_))])
                 ))
         ),
@@ -52,8 +53,9 @@ fn test_leading_dot_builtin_call_expression() {
                         } if name == "size"
                             && matches!(
                                 value.as_ref(),
-                                AstNode::FunctionCall { name, args, .. }
+                                AstNode::FunctionCall { surface, name, args, .. }
                                     if name == "len"
+                                        && *surface == CallSurface::DotIntrinsic
                                         && matches!(args.as_slice(), [AstNode::Identifier { name, .. }] if name == "items")
                             )
                     ))
@@ -88,7 +90,7 @@ fn test_leading_dot_builtin_calls_in_inquiry_bodies() {
                     if inquiries.iter().any(|inquiry| matches!(
                         inquiry,
                         AstNode::Inquiry { body, .. }
-                            if matches!(body.as_slice(), [AstNode::FunctionCall { name, .. }] if name == "echo")
+                            if matches!(body.as_slice(), [AstNode::FunctionCall { surface, name, .. }] if name == "echo" && *surface == CallSurface::DotIntrinsic)
                     ))
             )
         }),
@@ -120,7 +122,7 @@ fn test_leading_dot_builtin_calls_in_flow_bodies() {
                     if body.iter().any(|stmt| matches!(
                         stmt,
                         AstNode::When { cases, .. }
-                            if matches!(cases.as_slice(), [WhenCase::Case { body, .. }] if matches!(body.as_slice(), [AstNode::FunctionCall { name, .. }] if name == "echo"))
+                            if matches!(cases.as_slice(), [WhenCase::Case { body, .. }] if matches!(body.as_slice(), [AstNode::FunctionCall { surface, name, .. }] if name == "echo" && *surface == CallSurface::DotIntrinsic))
                     ))
             )
         }),
@@ -156,7 +158,7 @@ fn test_leading_dot_builtin_calls_in_pipe_stages() {
                             if matches!(
                                 value.as_ref(),
                                 AstNode::BinaryOp { right, .. }
-                                    if matches!(right.as_ref(), AstNode::FunctionCall { name, .. } if name == "echo")
+                                    if matches!(right.as_ref(), AstNode::FunctionCall { surface, name, .. } if name == "echo" && *surface == CallSurface::DotIntrinsic)
                             )
                     ))
             )
@@ -167,5 +169,41 @@ fn test_leading_dot_builtin_calls_in_pipe_stages() {
     assert!(
         has_pipe_dot_call,
         "Expected pipe stage to preserve leading-dot builtin call"
+    );
+}
+
+#[test]
+fn test_ordinary_function_calls_remain_plain_surface_calls() {
+    let mut file_stream = FileStream::from_file("test/parser/simple_fun_call_expr.fol")
+        .expect("Should read ordinary function call fixture");
+    let mut tokens = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+
+    let ast = parser
+        .parse(&mut tokens)
+        .expect("Parser should accept ordinary function calls");
+
+    let has_plain_call = match ast {
+        AstNode::Program { declarations } => declarations.iter().any(|node| {
+            matches!(
+                node,
+                AstNode::FunDecl { body, .. }
+                    if body.iter().any(|stmt| matches!(
+                        stmt,
+                        AstNode::Assignment { value, .. }
+                            if matches!(
+                                value.as_ref(),
+                                AstNode::FunctionCall { surface, name, .. }
+                                    if name == "compute" && *surface == CallSurface::Plain
+                            )
+                    ))
+            )
+        }),
+        _ => false,
+    };
+
+    assert!(
+        has_plain_call,
+        "Expected ordinary function calls to retain the plain call surface"
     );
 }

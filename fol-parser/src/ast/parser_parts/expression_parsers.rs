@@ -63,6 +63,7 @@ impl AstParser {
 
         Ok(AstNode::FunctionCall {
             syntax_id: self.record_syntax_origin(&name_token),
+            surface: crate::ast::CallSurface::DotIntrinsic,
             name,
             args,
         })

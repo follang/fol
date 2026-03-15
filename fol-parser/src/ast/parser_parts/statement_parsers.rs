@@ -126,6 +126,7 @@ impl AstParser {
 
         Ok(AstNode::FunctionCall {
             syntax_id,
+            surface: crate::ast::CallSurface::KeywordIntrinsic,
             name,
             args,
         })
@@ -912,6 +913,7 @@ impl AstParser {
         } else {
             AstNode::FunctionCall {
                 syntax_id: path.syntax_id(),
+                surface: crate::ast::CallSurface::Plain,
                 name: path.joined(),
                 args,
             }

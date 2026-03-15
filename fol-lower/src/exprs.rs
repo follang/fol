@@ -2399,7 +2399,7 @@ fn lower_expression_observed(
                 lowered_value,
             )
         }
-        AstNode::FunctionCall { syntax_id, name, args } if name == "check" => lower_check_call(
+        AstNode::FunctionCall { syntax_id, name, args, .. } if name == "check" => lower_check_call(
             typed_package,
             type_table,
             checked_type_map,
@@ -2411,7 +2411,7 @@ fn lower_expression_observed(
             *syntax_id,
             args,
         ),
-        AstNode::FunctionCall { syntax_id, name, args } => lower_function_call(
+        AstNode::FunctionCall { syntax_id, name, args, .. } => lower_function_call(
             typed_package,
             type_table,
             checked_type_map,

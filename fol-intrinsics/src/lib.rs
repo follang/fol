@@ -10,7 +10,7 @@ pub const CRATE_NAME: &str = "fol-intrinsics";
 pub use model::{IntrinsicAvailability, IntrinsicCategory, IntrinsicId, IntrinsicStatus, IntrinsicSurface};
 pub use catalog::{
     all_intrinsics, intrinsic_by_alias, intrinsic_by_canonical_name, intrinsic_registry,
-    intrinsics_for_surface,
+    intrinsics_for_surface, is_reserved_intrinsic_name_for_surface, reserved_intrinsic_for_surface,
 };
 pub use registry::{IntrinsicArity, IntrinsicEntry, IntrinsicLoweringMode};
 pub use validate::{validate_intrinsic_registry, RegistryValidationError, RegistryValidationErrorKind};
@@ -79,6 +79,22 @@ mod tests {
         assert_eq!(eq.name, "eq");
         assert_eq!(nq.name, "nq");
         assert!(dot_calls.iter().any(|entry| entry.name == "len"));
+    }
+
+    #[test]
+    fn parser_facing_helpers_identify_reserved_names_by_surface() {
+        let len = reserved_intrinsic_for_surface(IntrinsicSurface::DotRootCall, "len")
+            .expect("len should be reserved for dot-root intrinsics");
+
+        assert_eq!(len.name, "len");
+        assert!(is_reserved_intrinsic_name_for_surface(
+            IntrinsicSurface::KeywordCall,
+            "panic"
+        ));
+        assert!(!is_reserved_intrinsic_name_for_surface(
+            IntrinsicSurface::DotRootCall,
+            "user_helper"
+        ));
     }
 
     #[test]

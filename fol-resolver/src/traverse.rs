@@ -322,6 +322,7 @@ fn traverse_node(
             name,
             args,
             syntax_id,
+            ..
         } => {
             if !is_builtin_diagnostic_call(name) {
                 record_function_call_reference(

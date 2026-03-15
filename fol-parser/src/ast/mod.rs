@@ -175,6 +175,13 @@ pub enum CommentKind {
     SlashBlock,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum CallSurface {
+    Plain,
+    DotIntrinsic,
+    KeywordIntrinsic,
+}
+
 /// Core AST node types for FOL language
 #[derive(Debug, Clone, PartialEq)]
 pub enum AstNode {
@@ -328,6 +335,7 @@ pub enum AstNode {
     /// Function call: function_name(args)
     FunctionCall {
         syntax_id: Option<SyntaxNodeId>,
+        surface: CallSurface,
         name: String,
         args: Vec<AstNode>,
     },
