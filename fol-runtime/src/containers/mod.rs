@@ -3,7 +3,9 @@
 mod vector;
 mod sequence;
 mod set;
+mod map;
 
+pub use map::FolMap;
 pub use set::FolSet;
 pub use sequence::FolSeq;
 pub use vector::FolVec;
@@ -20,7 +22,7 @@ pub fn module_name() -> &'static str {
 
 #[cfg(test)]
 mod tests {
-    use super::{FolArray, FolSeq, FolSet, FolVec};
+    use super::{FolArray, FolMap, FolSeq, FolSet, FolVec};
 
     #[test]
     fn fol_array_keeps_native_fixed_size_behavior() {
@@ -51,5 +53,15 @@ mod tests {
         let values = FolSet::new(std::collections::BTreeSet::from([1, 2, 3]));
 
         assert_eq!(values.len(), 3);
+    }
+
+    #[test]
+    fn map_module_exports_runtime_map_type() {
+        let values = FolMap::new(std::collections::BTreeMap::from([
+            ("ada", 1),
+            ("lin", 2),
+        ]));
+
+        assert_eq!(values.len(), 2);
     }
 }

@@ -794,7 +794,7 @@ The implementation should land in many small slices.
 #### 3.4 done
 - add `FolSet<T>`
 
-#### 3.5
+#### 3.5 done
 - add `FolMap<K, V>`
 
 #### 3.6
