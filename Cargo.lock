@@ -132,6 +132,7 @@ dependencies = [
  "colored",
  "dyn-clone",
  "fol-diagnostics",
+ "fol-intrinsics",
  "fol-lexer",
  "fol-lower",
  "fol-package",
@@ -155,6 +156,10 @@ dependencies = [
  "serde",
  "serde_json",
 ]
+
+[[package]]
+name = "fol-intrinsics"
+version = "0.1.0"
 
 [[package]]
 name = "fol-lexer"
