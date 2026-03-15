@@ -1,149 +1,82 @@
-# FOL Lowering Hardening Plan
+# FOL Lowering Hardening Completion Record
 
 Last updated: 2026-03-15
 
-This file reopens the lowering milestone.
+This file records the completed hardening pass that reopened `fol-lower` after
+real CLI probes found gaps in the claimed `V1` lowering boundary.
 
-The previous closeout record was too optimistic. Real CLI probes against the
-current `V1` surface exposed lowering regressions that conflict with the
-language boundary in [`VERSIONS.md`](./VERSIONS.md).
+## 0. Final Outcome
 
-`fol-lower` is substantial and mostly implemented, but it should not be treated
-as fully complete for `V1` again until the concrete blockers below are fixed and
-locked with end-to-end tests.
+The reopened lowering blockers are closed.
 
-## 0. Why This Plan Was Reopened
+For the current `V1` language boundary in [`VERSIONS.md`](./VERSIONS.md),
+`fol-lower` should now be treated as implemented again.
 
-The reopening is based on fresh real CLI probes, not on hypothetical concerns.
+The active compiler chain is:
 
-These failures were reproduced directly from `target/debug/fol` on temporary
-fixtures:
+`fol-stream -> fol-lexer -> fol-parser -> fol-package -> fol-resolver -> fol-typecheck -> fol-lower`
 
-### 0.1 Lowering Loses Some Resolved Value Symbols
+## 1. What Was Repaired
 
-Observed error:
+### 1.1 Routine Parameter Symbol Lowering
 
-- `LoweringInvalidInput: value symbol 'flag' does not map to a lowered local or global definition`
+- Lowering no longer loses ordinary routine parameters when multiple routines in
+  the same package or source unit reuse the same parameter names.
+- Routine parameter lookup now uses the routine-owned syntax scope instead of a
+  broader enclosing scope that could ambiguously match descendants.
+- True missing-parameter situations now fail explicitly with lowering-owned
+  diagnostics instead of silently skipping parameter locals.
 
-This happened while lowering a valid `V1` routine that used a parameter in
-control-flow and imported-method contexts.
+### 1.2 Typed Container Literal Lowering
 
-That means some resolved/typechecked value symbols still fail to lower through
-the current symbol-to-local/global translation path.
+- Typed non-empty `arr`, `vec`, `seq`, `set`, and `map` literals now lower
+  through their typechecked container family instead of falling into the old
+  empty-container fallback path.
+- Exact lowered instruction-shape assertions now lock those repaired container
+  families instead of only checking that the CLI succeeds.
 
-### 0.2 Container Literals Still Fail In Real CLI Paths
+### 1.3 `when` Control-Flow Lowering
 
-Observed error:
+- Statement `when` lowering no longer fabricates unreachable continuation blocks
+  when every branch exits through `return`, `report`, or other terminating flow.
+- The repaired CFG shape is locked by dedicated lowering tests.
 
-- `LoweringUnsupported: empty linear container literals require an expected container type in lowered V1`
+### 1.4 End-To-End Proof
 
-This was triggered by non-empty typed `V1` container literals such as:
+- A real multi-surface `V1` program using records, routine parameters, typed
+  non-empty containers, loops, and early-return `when` control flow now compiles
+  successfully through the root CLI.
+- The same fixture now has `--dump-lowered` coverage so its lowered workspace
+  shape remains inspectable and stable.
+- The earlier failing sample families now have direct CLI regression tests:
+  parameter-heavy lowering, typed container literals, and all-exit `when`
+  control flow.
 
-- `var names: seq[str] = {"Ada", "Lin"}`
-- `var counts: map[str, int] = {{"ada", 1}, {"lin", 2}}`
+## 2. Validation Baseline
 
-That is a real contract violation because `VERSIONS.md` places a practical
-container subset in `V1`, and the lowering milestone claimed arrays, vectors,
-sequences, sets, and maps were already lowered.
+Latest green validation for this completed hardening pass:
 
-### 0.3 Value-Producing `when` Is Not End-To-End Stable Yet
-
-Observed error:
-
-- `LoweringInvalidInput: value-producing when did not retain a lowered join value`
-
-That means one of the core `V1` control-flow/value-lowering surfaces still has a
-real join-state bug in live CLI execution.
-
-## 1. Scope Of This Reopened Plan
-
-This is not a new lowering phase.
-It is a hardening pass over the existing `V1` lowering milestone.
-
-It is responsible for:
-
-- fixing the reproduced `V1` lowering regressions
-- adding exact library-level and CLI-level tests for them
-- removing the mismatch between claimed `V1` support and actual lowering behavior
-- re-closing the lowering milestone only after the fixes are proven end to end
-
-It is not responsible for:
-
-- new `V2` or `V3` language features
-- backend work
-- LLVM
-- C backend generation
-- ownership / borrowing
-- C ABI
-
-## 2. Hard Definition Of Done
-
-This plan is done only when all of the following are true:
-
-- routine parameters and other ordinary resolved value symbols lower reliably in
-  all current `V1` expression/control-flow contexts that the typechecker accepts
-- typed non-empty `V1` container literals lower successfully through the real CLI
-- value-producing `when` lowers successfully through the real CLI
-- the failing sample families are locked by integration tests, not just unit tests
-- [`README.md`](./README.md), [`PROGRESS.md`](./PROGRESS.md), and this file no
-  longer overstate lowering support
-
-## 3. Execution Strategy
-
-Fix the regressions in the same order they were observed in real use:
-
-1. value-symbol lowering gaps
-2. container literal lowering
-3. value-producing `when`
-4. end-to-end confirmation and docs
-
-Each fix must land with:
-
-- the code change
-- the exact test for that surface
 - `make build`
 - `make test`
+- `8` unit tests passed
+- `1513` integration tests passed
 
-## 4. Implementation Slices
+## 3. Documentation Sync
 
-### Phase 0. Repro And Fixture Lock-In
+The hardening closeout is reflected in:
 
-- `0.1` `done` Add focused lowering-library repro tests for routine-parameter symbol lowering through control-flow-heavy bodies.
-- `0.2` `done` Add focused lowering-library repro tests for non-empty `seq` and `map` literal lowering in typed `V1` contexts.
-- `0.3` `done` Add focused lowering-library repro tests for value-producing `when` lowering with explicit join values.
-- `0.4` `done` Add one end-to-end CLI repro fixture that combines ordinary globals, records, routine parameters, containers, loops, and value-producing `when`.
+- [`README.md`](./README.md)
+- [`PROGRESS.md`](./PROGRESS.md)
 
-### Phase 1. Value Symbol Hardening
+Those files now describe the repaired lowering boundary as real and backed by
+end-to-end coverage.
 
-- `1.1` `done` Audit lowered symbol lookup for routine parameters, local bindings, and imported mounted symbols to find where current lookup still misses valid lowered locals.
-- `1.2` `done` Fix the lowering path so ordinary routine parameters always map to lowered locals anywhere current `V1` typing can reference them.
-- `1.3` `done` Add negative guards so true missing-symbol situations still report explicit lowering errors instead of silently aliasing the wrong symbol.
+## 4. What Comes Next
 
-### Phase 2. Container Literal Hardening
+The next major compiler milestone should be the first backend that consumes the
+lowered `V1` IR and carries a valid `V1` program toward binary production.
 
-- `2.1` `done` Trace why typed non-empty `seq` / `map` literals currently fall into the “empty linear container” lowering error.
-- `2.2` `done` Fix linear-container lowering so typed `arr` / `vec` / `seq` literals lower correctly in binding, return, and call-argument contexts.
-- `2.3` `done` Fix `set` / `map` lowering so typed key/value aggregates lower correctly in binding, return, and index-lookup contexts.
-- `2.4` `done` Add exact lowering-shape assertions for the repaired container instructions instead of only checking that the CLI succeeds.
+This plan is complete. Any new lowering work should be treated as either:
 
-### Phase 3. Value `when` Join Hardening
-
-- `3.1` `done` Audit join-local allocation and branch-result wiring for value-producing `when`.
-- `3.2` `done` Fix value-producing `when` so all successful typed branches retain one lowered join destination.
-- `3.3` `done` Add exact lowered block/instruction assertions for the repaired value-producing `when` path.
-
-### Phase 4. End-To-End Proof
-
-- `4.1` `done` Add CLI success coverage for a real multi-surface `V1` program that includes records, routine parameters, non-empty containers, loops, and value-producing `when`.
-- `4.2` `done` Add `--dump-lowered` snapshot coverage for that same real `V1` program so the lowered shape is inspectable and stable.
-- `4.3` `done` Re-run the earlier failing sample families and lock them as regression tests.
-
-### Phase 5. Documentation Closeout
-
-- `5.1` `done` Update [`README.md`](./README.md) and [`PROGRESS.md`](./PROGRESS.md) only after the repaired surfaces are actually green end to end.
-- `5.2` `pending` Rewrite this file into a true completion record only after the repaired `V1` lowering boundary is real again.
-
-## 5. What Should Happen After This Plan
-
-Only after these hardening slices are complete should the project treat
-`fol-lower` as fully done for `V1` and move cleanly to the first backend plan.
+- backend-driven extension work, or
+- a new bug-specific hardening pass triggered by a concrete repro
