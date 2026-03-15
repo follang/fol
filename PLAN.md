@@ -831,7 +831,7 @@ The implementation should land in many small slices.
 
 ### Phase 5: Aggregate Support Contract
 
-#### 5.1
+#### 5.1 done
 - define a runtime trait contract for generated record types
 
 #### 5.2

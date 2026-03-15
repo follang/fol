@@ -26,6 +26,7 @@
 //! - `core` / `std`
 
 pub mod abi;
+pub mod aggregate;
 pub mod builtins;
 pub mod containers;
 pub mod entry;
@@ -55,6 +56,7 @@ mod tests {
     #[test]
     fn public_runtime_module_shell_is_importable() {
         assert_eq!(abi::module_name(), "abi");
+        assert_eq!(aggregate::module_name(), "aggregate");
         assert_eq!(builtins::module_name(), "builtins");
         assert_eq!(containers::module_name(), "containers");
         assert_eq!(entry::module_name(), "entry");
