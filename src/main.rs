@@ -448,3 +448,23 @@ fn intrinsics_public_model_smoke_compiles() {
         "implemented"
     );
 }
+
+#[test]
+fn intrinsics_entry_model_smoke_compiles() {
+    let entry = fol_intrinsics::IntrinsicEntry::new(
+        fol_intrinsics::IntrinsicId::new(0),
+        "eq",
+        &["equal"],
+        fol_intrinsics::IntrinsicCategory::Comparison,
+        fol_intrinsics::IntrinsicSurface::DotRootCall,
+        fol_intrinsics::IntrinsicAvailability::V1,
+        fol_intrinsics::IntrinsicStatus::Implemented,
+        fol_intrinsics::IntrinsicArity::Exactly(2),
+        fol_intrinsics::IntrinsicLoweringMode::GeneralIr,
+        "compare two values for equality",
+    );
+
+    assert_eq!(entry.name, "eq");
+    assert_eq!(entry.aliases, &["equal"]);
+    assert_eq!(entry.doc_summary, "compare two values for equality");
+}

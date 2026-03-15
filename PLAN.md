@@ -1006,7 +1006,7 @@ Track these in the registry, but do not implement them in the first batch:
     status enums instead of raw strings
   - root smoke coverage and crate-local unit coverage both exercise the public
     model API
-- `1.3` `pending` Add registry entry type with:
+- `1.3` `done` Add registry entry type with:
   - name
   - aliases
   - arity rule
@@ -1014,6 +1014,11 @@ Track these in the registry, but do not implement them in the first batch:
   - version
   - doc string
   - lowering mode
+  Current state:
+  - the crate now exposes a typed `IntrinsicEntry` plus arity and lowering-mode
+    enums
+  - root smoke coverage now proves entries can be constructed without stringly
+    typed tuple glue
 - `1.4` `pending` Add one canonical static registry table.
 - `1.5` `pending` Add lookup APIs:
   - by canonical name
