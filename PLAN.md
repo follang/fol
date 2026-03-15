@@ -867,7 +867,7 @@ The implementation should land in many small slices.
 #### 7.2 done
 - add invariant tests for nested container formatting
 
-#### 7.3
+#### 7.3 done
 - add invariant tests for recoverable + shell interactions
 
 #### 7.4

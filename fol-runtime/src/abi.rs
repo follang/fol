@@ -102,6 +102,7 @@ pub fn module_name() -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::FolRecover;
+    use crate::{shell::{FolError, FolOption}, strings::FolStr};
 
     #[test]
     fn fol_recover_freezes_ok_err_mapping_and_helpers() {
@@ -139,5 +140,26 @@ mod tests {
         assert!(super::recoverable_succeeded(&success));
         assert!(super::check_recoverable(&failure));
         assert!(!super::recoverable_succeeded(&failure));
+    }
+
+    #[test]
+    fn recoverable_shell_interactions_keep_boundaries_explicit() {
+        let success_nil =
+            FolRecover::<FolOption<i64>, FolError<FolStr>>::ok(FolOption::nil());
+        let success_some =
+            FolRecover::<FolOption<i64>, FolError<FolStr>>::ok(FolOption::some(7));
+        let failure =
+            FolRecover::<FolOption<i64>, FolError<FolStr>>::err(FolError::new(FolStr::from("bad")));
+
+        assert!(!super::check_recoverable(&success_nil));
+        assert!(!super::check_recoverable(&success_some));
+        assert!(super::check_recoverable(&failure));
+
+        assert_eq!(success_nil.value_ref(), Some(&FolOption::nil()));
+        assert_eq!(success_some.value_ref(), Some(&FolOption::some(7)));
+        assert_eq!(
+            failure.error_ref().map(|error| error.as_ref().as_str()),
+            Some("bad")
+        );
     }
 }
