@@ -942,11 +942,22 @@ Track these in the registry, but do not implement them in the first batch:
     for `panic`, `report`, `check`, and `assert`
   - parser ownership is intentionally syntactic only; arity and semantic meaning
     are not frozen there
-- `0.2` `pending` Scan all current book-listed builtin names and classify them as:
+- `0.2` `done` Scan all current book-listed builtin names and classify them as:
   - `V1 implement now`
   - `V1 explicit unsupported`
   - `V2`
   - `V3`
+  Current state:
+  - `V1 implement now`: comparison family, `.not`, `.len`, `.echo`, `check`,
+    `panic`
+  - `V1 explicit unsupported`: `.cast`, `.as`, `.assert`, `.cap`, `.is_empty`
+    until their contracts are frozen
+  - `V3 explicit unsupported`: `.de_alloc`, `.give_back`, `.address_of`,
+    `.pointer_value`, `.borrow_from`, pointer/lifetime helpers, C-ABI-facing
+    helpers
+  - likely `core/std`, not intrinsic`: mutation-heavy container helpers,
+    text-processing helpers, regex-heavy helpers, serialization, filesystem,
+    and network-like convenience APIs
 - `0.3` `pending` Freeze the naming decision:
   - crate name is `fol-intrinsics`
   - docs stop using “build-in” as the authoritative compiler term
