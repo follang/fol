@@ -1097,8 +1097,7 @@ fn lower_container_literal(
     expected_type: Option<LoweredTypeId>,
     elements: &[AstNode],
 ) -> Result<LoweredValue, LoweringError> {
-    let container_kind =
-        expected_linear_container_kind(type_table, expected_type).unwrap_or(container_type);
+    let container_kind = expected_container_kind(type_table, expected_type).unwrap_or(container_type);
     match container_kind {
         ContainerType::Array | ContainerType::Vector | ContainerType::Sequence => {
             lower_linear_container_literal(
@@ -2685,7 +2684,7 @@ fn expected_linear_element_type(
     }
 }
 
-fn expected_linear_container_kind(
+fn expected_container_kind(
     type_table: &crate::LoweredTypeTable,
     expected_type: Option<LoweredTypeId>,
 ) -> Option<ContainerType> {
@@ -2693,6 +2692,8 @@ fn expected_linear_container_kind(
         Some(crate::LoweredType::Array { .. }) => Some(ContainerType::Array),
         Some(crate::LoweredType::Vector { .. }) => Some(ContainerType::Vector),
         Some(crate::LoweredType::Sequence { .. }) => Some(ContainerType::Sequence),
+        Some(crate::LoweredType::Set { .. }) => Some(ContainerType::Set),
+        Some(crate::LoweredType::Map { .. }) => Some(ContainerType::Map),
         _ => None,
     }
 }
@@ -3169,14 +3170,51 @@ mod tests {
     }
 
     #[test]
-    fn lowering_repro_keeps_non_empty_map_literal_panics_visible() {
-        let map_panic = lower_fixture_panic_message(
-            "fun[] map_case(): map[str, int] = {\n    var counts: map[str, int] = {{\"ada\", 1}, {\"lin\", 2}}\n    return counts\n}\n",
+    fn lowering_repro_lowers_non_empty_set_and_map_literals_in_typed_v1_contexts() {
+        let lowered = lower_fixture_workspace(
+            concat!(
+                "fun[] set_return(): set[int, str] = {\n",
+                "    return {1, \"two\"}\n",
+                "}\n",
+                "fun[] map_return(): map[str, int] = {\n",
+                "    return {{\"US\", 45}, {\"DE\", 82}}\n",
+                "}\n",
+                "fun[] from_set_index(): str = {\n",
+                "    var parts: set[int, str] = {1, \"two\"}\n",
+                "    return parts[1]\n",
+                "}\n",
+                "fun[] from_map_index(): int = {\n",
+                "    var counts: map[str, int] = {{\"US\", 45}, {\"DE\", 82}}\n",
+                "    return counts[\"DE\"]\n",
+                "}\n",
+            ),
         );
-        assert!(
-            map_panic.contains("lowered type table lost array shape"),
-            "expected the current map-lowering repro to keep the exact panic visible, got: {map_panic}"
-        );
+
+        let expected = [
+            ("set_return", "set", 2usize),
+            ("map_return", "map", 2usize),
+            ("from_set_index", "set", 2usize),
+            ("from_map_index", "map", 2usize),
+        ];
+        for (routine_name, aggregate_kind, expected_len) in expected {
+            let routine = lowered
+                .entry_package()
+                .routine_decls
+                .values()
+                .find(|routine| routine.name == routine_name)
+                .expect("aggregate lowering routine should exist");
+            let lowered_members = routine.instructions.iter().find_map(|instr| match (&instr.kind, aggregate_kind) {
+                (LoweredInstrKind::ConstructSet { members, .. }, "set") => Some(members.len()),
+                (LoweredInstrKind::ConstructMap { entries, .. }, "map") => Some(entries.len()),
+                _ => None,
+            });
+
+            assert_eq!(
+                lowered_members,
+                Some(expected_len),
+                "typed {aggregate_kind} literals should lower in {routine_name}",
+            );
+        }
     }
 
     #[test]
