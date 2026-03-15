@@ -448,6 +448,144 @@ mod integration_tests {
     }
 
     #[test]
+    fn test_cli_dump_lowered_succeeds_for_loc_import_graphs() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_dump_lowered_loc");
+        let shared_root = temp_root.join("shared");
+        let app_root = temp_root.join("app");
+        fs::create_dir_all(&shared_root).expect("Should create the shared fixture directory");
+        fs::create_dir_all(&app_root).expect("Should create the app fixture directory");
+        fs::write(shared_root.join("lib.fol"), "var[exp] answer: int = 42;\n")
+            .expect("Should write the shared export fixture");
+        fs::write(
+            app_root.join("main.fol"),
+            "use shared: loc = {\"../shared\"};\nfun[] main(): int = {\n    return answer;\n}\n",
+        )
+        .expect("Should write the loc import fixture");
+
+        let output = run_fol(&[
+            "--dump-lowered",
+            app_root
+                .to_str()
+                .expect("Temporary app fixture path should be valid UTF-8"),
+        ]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        assert!(
+            output.status.success(),
+            "CLI should dump lowered output for loc-import graphs, got status {:?} and output:\n{}",
+            output.status.code(),
+            stdout,
+        );
+        assert!(stdout.contains("workspace entry=app"));
+        assert!(stdout.contains("package app"));
+        assert!(stdout.contains("package shared"));
+        assert!(stdout.contains("entry-candidates"));
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_cli_dump_lowered_succeeds_for_std_import_graphs() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_dump_lowered_std");
+        let std_root = temp_root.join("std");
+        let app_root = temp_root.join("app");
+        fs::create_dir_all(std_root.join("fmt"))
+            .expect("Should create the standard-library fixture directory");
+        fs::create_dir_all(&app_root)
+            .expect("Should create the importing package root fixture directory");
+        fs::write(std_root.join("fmt/value.fol"), "var[exp] answer: int = 42;\n")
+            .expect("Should write the standard-library export fixture");
+        fs::write(
+            app_root.join("main.fol"),
+            "use fmt: std = {fmt};\nfun[] main(): int = {\n    return answer;\n}\n",
+        )
+        .expect("Should write the std import fixture");
+
+        let output = run_fol(&[
+            "--dump-lowered",
+            "--std-root",
+            std_root
+                .to_str()
+                .expect("Temporary std-root fixture path should be valid UTF-8"),
+            app_root
+                .to_str()
+                .expect("Temporary app fixture path should be valid UTF-8"),
+        ]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        assert!(
+            output.status.success(),
+            "CLI should dump lowered output for std-import graphs, got status {:?} and output:\n{}",
+            output.status.code(),
+            stdout,
+        );
+        assert!(stdout.contains("workspace entry=app"));
+        assert!(stdout.contains("package app"));
+        assert!(stdout.contains("package fmt"));
+        assert!(stdout.contains("entry-candidates"));
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_cli_dump_lowered_succeeds_for_pkg_import_graphs() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_dump_lowered_pkg");
+        let store_root = temp_root.join("store");
+        let app_root = temp_root.join("app");
+        fs::create_dir_all(store_root.join("json"))
+            .expect("Should create the package-store fixture directory");
+        fs::create_dir_all(&app_root)
+            .expect("Should create the importing package root fixture directory");
+        fs::write(
+            store_root.join("json/package.yaml"),
+            "name: json\nversion: 1.0.0\n",
+        )
+        .expect("Should write the installed package metadata fixture");
+        fs::create_dir_all(store_root.join("json/src"))
+            .expect("Should create the installed package export root fixture");
+        fs::write(store_root.join("json/build.fol"), "def root: loc = \"src\";\n")
+            .expect("Should write the installed package build fixture");
+        fs::write(store_root.join("json/src/lib.fol"), "var[exp] answer: int = 42;\n")
+            .expect("Should write the installed package export fixture");
+        fs::write(
+            app_root.join("main.fol"),
+            "use json: pkg = {json};\nfun[] main(): int = {\n    return answer;\n}\n",
+        )
+        .expect("Should write the pkg import fixture");
+
+        let output = run_fol(&[
+            "--dump-lowered",
+            "--package-store-root",
+            store_root
+                .to_str()
+                .expect("Temporary package-store fixture path should be valid UTF-8"),
+            app_root
+                .to_str()
+                .expect("Temporary app fixture path should be valid UTF-8"),
+        ]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        assert!(
+            output.status.success(),
+            "CLI should dump lowered output for pkg-import graphs, got status {:?} and output:\n{}",
+            output.status.code(),
+            stdout,
+        );
+        assert!(stdout.contains("workspace entry=app"));
+        assert!(stdout.contains("package app"));
+        assert!(stdout.contains("package json"));
+        assert!(stdout.contains("entry-candidates"));
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
     fn test_cli_folder_compile_succeeds_with_package_parser() {
         use std::fs;
 
@@ -508,6 +646,7 @@ mod integration_tests {
 
         fs::remove_dir_all(&temp_root).ok();
     }
+
 
     #[test]
     fn test_cli_folder_parse_errors_keep_json_locations_with_package_parser() {

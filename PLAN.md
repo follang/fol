@@ -567,7 +567,7 @@ This plan is complete only when all of the following are true:
 
 - `9.1` `done` Add root-CLI support for lowering a fully typechecked workspace.
 - `9.2` `done` Add debug/snapshot output for lowered IR so tests and humans can inspect it deterministically.
-- `9.3` `pending` Add end-to-end CLI tests for successful lowering across local, std, and pkg graphs.
+- `9.3` `done` Add end-to-end CLI tests for successful lowering across local, std, and pkg graphs.
 - `9.4` `pending` Add end-to-end CLI tests for lowering failures and structured JSON diagnostics.
 
 ### Phase 10. Documentation Closeout
