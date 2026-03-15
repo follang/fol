@@ -999,6 +999,100 @@ mod integration_tests {
     }
 
     #[test]
+    fn test_cli_dump_lowered_succeeds_for_intrinsic_echo_calls() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_dump_lowered_intrinsic_echo");
+        fs::create_dir_all(&temp_root).expect("Should create temp intrinsic echo fixture");
+        let fixture = temp_root.join("main.fol");
+        fs::write(
+            &fixture,
+            concat!(
+                "fun[] main(flag: bol): bol = {\n",
+                "    return .echo(flag)\n",
+                "}\n",
+            ),
+        )
+        .expect("Should write intrinsic echo fixture");
+
+        let output = run_fol(&[
+            "--dump-lowered",
+            fixture
+                .to_str()
+                .expect("Temporary intrinsic echo fixture path should be valid UTF-8"),
+        ]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        assert!(
+            output.status.success(),
+            "CLI should dump lowered output for intrinsic echo calls, got status {:?} and output:\n{}",
+            output.status.code(),
+            stdout,
+        );
+        assert!(
+            stdout.contains("RuntimeHook"),
+            "Lowered dump should retain explicit runtime-hook instructions for '.echo', got:\n{}",
+            stdout,
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_cli_json_intrinsic_echo_failures_keep_structured_fields() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_json_intrinsic_echo_failures");
+        fs::create_dir_all(&temp_root).expect("Should create temp intrinsic echo failure fixture");
+        let fixture = temp_root.join("main.fol");
+        fs::write(
+            &fixture,
+            concat!(
+                "fun[] main(): int = {\n",
+                "    return .echo()\n",
+                "}\n",
+            ),
+        )
+        .expect("Should write intrinsic echo failure fixture");
+
+        let output = run_fol(&[
+            "--json",
+            fixture
+                .to_str()
+                .expect("Temporary intrinsic echo failure fixture path should be valid UTF-8"),
+        ]);
+
+        assert!(
+            !output.status.success(),
+            "CLI should fail for invalid intrinsic echo calls",
+        );
+
+        let json = parse_cli_json(&output);
+        let diagnostics = json["diagnostics"]
+            .as_array()
+            .expect("CLI JSON output should expose diagnostics");
+        let echo_error = diagnostics.iter().find(|diagnostic| {
+            diagnostic["message"]
+                .as_str()
+                .map(|message| message.contains(".echo(...) expects exactly 1 argument(s) but got 0"))
+                .unwrap_or(false)
+        });
+
+        assert!(
+            echo_error.is_some(),
+            "Expected intrinsic echo diagnostic in CLI JSON output, got: {json}"
+        );
+        assert!(
+            echo_error
+                .and_then(|diagnostic| diagnostic["location"].as_object())
+                .is_some(),
+            "Expected intrinsic echo diagnostic to keep a structured location, got: {json}"
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
     fn test_cli_folder_compile_succeeds_with_package_parser() {
         use std::fs;
 

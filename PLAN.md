@@ -1170,7 +1170,7 @@ Track these in the registry, but do not implement them in the first batch:
 - `6.3` `done` Typecheck `.echo(...)` through the registry.
 - `6.4` `done` Lower `.echo(...)` to one explicit backend-facing intrinsic
   form or runtime hook.
-- `6.5` `pending` Add CLI coverage for `.echo(...)` in lowered output.
+- `6.5` `done` Add CLI coverage for `.echo(...)` in lowered output.
 
 ### Phase 7. Unsupported Intrinsic Inventory
 
