@@ -2,6 +2,9 @@
 
 use crate::{abi::FolRecover, builtins::FolEchoFormat};
 
+pub const FOL_EXIT_SUCCESS: i32 = 0;
+pub const FOL_EXIT_FAILURE: i32 = 1;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FolProcessOutcome {
     exit_code: i32,
@@ -14,11 +17,11 @@ impl FolProcessOutcome {
     }
 
     pub fn success() -> Self {
-        Self::new(0, None)
+        Self::new(FOL_EXIT_SUCCESS, None)
     }
 
     pub fn failure(message: impl Into<String>) -> Self {
-        Self::new(1, Some(message.into()))
+        Self::new(FOL_EXIT_FAILURE, Some(message.into()))
     }
 
     pub fn exit_code(&self) -> i32 {
@@ -30,7 +33,7 @@ impl FolProcessOutcome {
     }
 
     pub fn is_success(&self) -> bool {
-        self.exit_code == 0
+        self.exit_code == FOL_EXIT_SUCCESS
     }
 
     pub fn is_failure(&self) -> bool {
@@ -61,7 +64,7 @@ pub fn module_name() -> &'static str {
 mod tests {
     use super::{
         failure_outcome_from_error, outcome_from_recoverable, printable_outcome_message,
-        FolProcessOutcome,
+        FolProcessOutcome, FOL_EXIT_FAILURE, FOL_EXIT_SUCCESS,
     };
     use crate::{abi::FolRecover, strings::FolStr};
 
@@ -87,5 +90,16 @@ mod tests {
         assert_eq!(failure, FolProcessOutcome::failure("broken"));
         assert_eq!(printable_outcome_message(&failure), Some("broken"));
         assert_eq!(printable_outcome_message(&FolProcessOutcome::success()), None);
+    }
+
+    #[test]
+    fn exit_code_constants_freeze_minimal_v1_process_policy() {
+        assert_eq!(FOL_EXIT_SUCCESS, 0);
+        assert_eq!(FOL_EXIT_FAILURE, 1);
+        assert_eq!(FolProcessOutcome::success().exit_code(), FOL_EXIT_SUCCESS);
+        assert_eq!(
+            FolProcessOutcome::failure("broken").exit_code(),
+            FOL_EXIT_FAILURE
+        );
     }
 }

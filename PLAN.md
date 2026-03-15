@@ -853,7 +853,7 @@ The implementation should land in many small slices.
 - add helper(s) for converting recoverable top-level failures into printable
   process outcomes
 
-#### 6.3
+#### 6.3 done
 - define minimal exit-code contract for current `V1`
 
 #### 6.4
