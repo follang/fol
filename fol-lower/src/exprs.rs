@@ -4251,6 +4251,76 @@ mod tests {
     }
 
     #[test]
+    fn aggregate_container_and_shell_lowering_stays_aligned_across_local_and_imported_surfaces() {
+        use std::fs;
+        use std::time::{SystemTime, UNIX_EPOCH};
+
+        let stamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock should be monotonic enough for tmp path")
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!("fol_lower_parity_mix_{stamp}"));
+        let app_dir = root.join("app");
+        let shared_dir = root.join("shared");
+        fs::create_dir_all(&app_dir).expect("should create app dir");
+        fs::create_dir_all(&shared_dir).expect("should create shared dir");
+        fs::write(
+            shared_dir.join("lib.fol"),
+            "ali RemoteText: opt[str]\ntyp RemoteUser: { name: str, count: int }\nfun[exp] keep_remote(user: RemoteUser): RemoteUser = { return user }\n",
+        )
+        .expect("should write shared package");
+        fs::write(
+            app_dir.join("main.fol"),
+            "use shared: loc = {\"../shared\"}\nali LocalText: opt[str]\ntyp LocalUser: { name: str, count: int }\nfun[] main(): shared::RemoteUser = {\n    var local: LocalText = \"ok\"\n    var remote_label: shared::RemoteText = \"shared\"\n    var local_user: LocalUser = { name = \"local\", count = 1 }\n    var remote_user: shared::RemoteUser = { name = \"remote\", count = 2 }\n    var ids: seq[int] = {1, 2, 3}\n    return shared::keep_remote(remote_user)\n}\n",
+        )
+        .expect("should write app package");
+
+        let mut stream =
+            FileStream::from_folder(app_dir.to_str().expect("utf8 temp path")).expect("Should open lowering fixture");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let syntax = parser
+            .parse_package(&mut lexer)
+            .expect("Lowering fixture should parse");
+        let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+        let typed = Typechecker::new()
+            .check_resolved_workspace(resolved)
+            .expect("Lowering fixture should typecheck");
+        let lowered = crate::LoweringSession::new(typed)
+            .lower_workspace()
+            .expect("mixed parity lowering should succeed");
+
+        let main = lowered
+            .entry_package()
+            .routine_decls
+            .values()
+            .find(|routine| routine.name == "main")
+            .expect("main routine should exist");
+
+        assert!(
+            main.instructions.iter().filter(|instr| matches!(
+                instr.kind,
+                LoweredInstrKind::ConstructOptional { value: Some(_), .. }
+            )).count() >= 2,
+            "local and imported shell aliases should both lower to explicit shell constructors"
+        );
+        assert!(
+            main.instructions.iter().filter(|instr| matches!(
+                instr.kind,
+                LoweredInstrKind::ConstructRecord { .. }
+            )).count() >= 2,
+            "local and imported record contexts should both lower to explicit record constructors"
+        );
+        assert!(
+            main.instructions.iter().any(|instr| matches!(
+                instr.kind,
+                LoweredInstrKind::ConstructLinear { .. }
+            )),
+            "container literals should keep lowering alongside aggregate and shell surfaces"
+        );
+    }
+
+    #[test]
     fn unsupported_lowering_surfaces_report_explicit_boundary_messages() {
         let nil_error = lower_fixture_error(
             "fun[] main(): int = {\n    return nil;\n}\n",
