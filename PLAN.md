@@ -1061,7 +1061,13 @@ Track these in the registry, but do not implement them in the first batch:
     - unknown intrinsic names
     - names that exist but are used on the wrong surface family
   - root smoke coverage and crate-local tests now lock the selection contract
-- `2.3` `pending` Add lowering-facing lowering-mode API.
+- `2.3` `done` Add lowering-facing lowering-mode API.
+  Current state:
+  - `fol-intrinsics` now exposes lookup by `IntrinsicId`
+  - lowering-facing helpers now expose canonical lowering-mode queries by
+    intrinsic id and by lowering-mode family
+  - root smoke coverage and crate-local tests now prove `echo` stays a runtime
+    hook while comparison intrinsics stay in the general-IR family
 - `2.4` `pending` Add structured diagnostics helpers for:
   - unknown intrinsic
   - unsupported intrinsic

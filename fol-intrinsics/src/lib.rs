@@ -10,8 +10,10 @@ pub const CRATE_NAME: &str = "fol-intrinsics";
 
 pub use model::{IntrinsicAvailability, IntrinsicCategory, IntrinsicId, IntrinsicStatus, IntrinsicSurface};
 pub use catalog::{
-    all_intrinsics, intrinsic_by_alias, intrinsic_by_canonical_name, intrinsic_registry,
-    intrinsics_for_surface, is_reserved_intrinsic_name_for_surface, reserved_intrinsic_for_surface,
+    all_intrinsics, intrinsic_by_alias, intrinsic_by_canonical_name, intrinsic_by_id,
+    intrinsic_registry, intrinsics_for_lowering_mode, intrinsics_for_surface,
+    is_reserved_intrinsic_name_for_surface, lowering_mode_for_intrinsic,
+    reserved_intrinsic_for_surface,
 };
 pub use registry::{IntrinsicArity, IntrinsicEntry, IntrinsicLoweringMode};
 pub use select::{select_intrinsic, IntrinsicSelectionError, IntrinsicSelectionErrorKind};
@@ -112,6 +114,19 @@ mod tests {
         assert_eq!(wrong_surface.kind, IntrinsicSelectionErrorKind::WrongSurface);
         assert_eq!(wrong_surface.name, "panic");
         assert_eq!(unknown.kind, IntrinsicSelectionErrorKind::UnknownName);
+    }
+
+    #[test]
+    fn lowering_apis_track_modes_by_id_and_family() {
+        let eq = intrinsic_by_canonical_name("eq").expect("eq should exist");
+        let runtime_hooks = intrinsics_for_lowering_mode(IntrinsicLoweringMode::RuntimeHook);
+
+        assert_eq!(
+            lowering_mode_for_intrinsic(eq.id),
+            Some(IntrinsicLoweringMode::GeneralIr)
+        );
+        assert_eq!(intrinsic_by_id(eq.id).map(|entry| entry.name), Some("eq"));
+        assert!(runtime_hooks.iter().any(|entry| entry.name == "echo"));
     }
 
     #[test]

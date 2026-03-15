@@ -283,6 +283,10 @@ pub fn intrinsics_for_surface(surface: IntrinsicSurface) -> Vec<&'static Intrins
         .collect()
 }
 
+pub fn intrinsic_by_id(id: IntrinsicId) -> Option<&'static IntrinsicEntry> {
+    intrinsic_registry().iter().find(|entry| entry.id == id)
+}
+
 pub fn reserved_intrinsic_for_surface(
     surface: IntrinsicSurface,
     name: &str,
@@ -295,4 +299,17 @@ pub fn reserved_intrinsic_for_surface(
 
 pub fn is_reserved_intrinsic_name_for_surface(surface: IntrinsicSurface, name: &str) -> bool {
     reserved_intrinsic_for_surface(surface, name).is_some()
+}
+
+pub fn lowering_mode_for_intrinsic(id: IntrinsicId) -> Option<IntrinsicLoweringMode> {
+    intrinsic_by_id(id).map(|entry| entry.lowering_mode)
+}
+
+pub fn intrinsics_for_lowering_mode(
+    lowering_mode: IntrinsicLoweringMode,
+) -> Vec<&'static IntrinsicEntry> {
+    intrinsic_registry()
+        .iter()
+        .filter(|entry| entry.lowering_mode == lowering_mode)
+        .collect()
 }

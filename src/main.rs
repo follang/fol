@@ -587,3 +587,20 @@ fn intrinsics_selection_api_smoke_compiles() {
         fol_intrinsics::IntrinsicSelectionErrorKind::WrongSurface
     );
 }
+
+#[test]
+fn intrinsics_lowering_lookup_api_smoke_compiles() {
+    let eq = fol_intrinsics::intrinsic_by_canonical_name("eq").expect("eq should exist");
+    let runtime_hooks =
+        fol_intrinsics::intrinsics_for_lowering_mode(fol_intrinsics::IntrinsicLoweringMode::RuntimeHook);
+
+    assert_eq!(
+        fol_intrinsics::lowering_mode_for_intrinsic(eq.id),
+        Some(fol_intrinsics::IntrinsicLoweringMode::GeneralIr)
+    );
+    assert_eq!(
+        fol_intrinsics::intrinsic_by_id(eq.id).map(|entry| entry.name),
+        Some("eq")
+    );
+    assert!(runtime_hooks.iter().any(|entry| entry.name == "echo"));
+}
