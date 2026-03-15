@@ -88,17 +88,15 @@ Read [Notation And Conventions](./000_overview/100_conventions.md) before using 
 ```fol
 use log: std = {"fmt/log"};
 
-def argo: mod[] = {
-    con[hidden] prefix: str = "arith";
+var[hid] prefix: str = "arith";
 
-    pro[export] main(): int = {
-        log.warn("Last warning!");
-        .echo(add(3, 5));
-        return 0;
-    }
+fun[] main(): int = {
+    .echo(prefix);
+    .echo(add(3, 5));
+    return 0;
+}
 
-    fun add(a, b: int): int = {
-        return a + b;
-    }
+fun[exp] add(a, b: int): int = {
+    return a + b;
 }
 ```

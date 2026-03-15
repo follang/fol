@@ -123,14 +123,17 @@ Note that all of the **type keywords** are of three characters long. It is recom
 ## OK (option keywords)
 
 ```
-OK_PUB              `pub`
 OK_EXP              `exp`
+OK_HID              `hid`
 ```
+
+Older draft material sometimes used `pub`. The current compiler/book contract
+uses `exp` for exported visibility and `hid` for file-local visibility.
 
 
 ```
 OPTION KEYWORDS - OK:
-`((OK_PUB|OK_EXP|...),?)*`
+`((OK_EXP|OK_HID|...),?)*`
 ```
 
 ## Assigning

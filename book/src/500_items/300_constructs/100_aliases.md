@@ -15,7 +15,7 @@ typ[ali] I5: arr[int, 5];
 So now the in the code, instead of writing `arr[int, 5]` we could use `I5`:
 
 ```
-~var[pub] fiveIntigers: I5 = { 0, 1, 2, 3, 4, 5 }
+~var[exp] fiveIntigers: I5 = { 0, 1, 2, 3, 4, 5 }
 ```
 Another example is creating a `rgb` type that can have numbers only form 0 to 255:
 ```
@@ -25,11 +25,13 @@ typ[ali] rgbSet: set[rgb, rgb, rgb];                       // then we create a t
 
 Alias declaration are created because they can simplify using them multiple times,
 their identifier (their name) may be expressive in other contexts, and-most
-importantly-so that you can define (attach) methods to a named type surface. Anonymous
-types still need a named alias or extension surface first, while built-in or foreign
-types can be extended explicitly through `typ[ext]`.
+importantly-so that you can define receiver-qualified routines on a named type
+surface. Anonymous types still need a named alias or extension surface first,
+while built-in or foreign types can be extended explicitly through `typ[ext]`.
 
-Attaching methods is of outmost importance, because even though instead of attaching methods you could just as easily create and use functions that accept the "original" type as parameter, only types with methods can implement standards `std[]` that list/enforce those methods, and you can't attach methods to certain types unless you create a new type derived from them.
+Attaching methods does not make a type into an object. It simply gives a
+routine a receiver-qualified dot-call spelling. You could still think of the
+operation procedurally as a routine that takes the value as its first input.
 
 
 ## Extending

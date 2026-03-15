@@ -13,7 +13,7 @@ A struct definition creates a new, distinct type and are few of them in FOL:
 
 A record is an aggregate of data elements in which the individual elements are identified by names and types and accessed through offsets from the beginning of the structure. There is frequently a need in programs to model a collection of data in which the individual elements are not of the same type or size. For example, information about a college student might include name, student number, grade point average, and so forth. A data type for such a collection might use a character string for the name, an integer for the student number, a  floating- point for the grade point average, and so forth. Records are designed for this kind of need.
 
-It may appear that records and heterogeneous [set](/docs/spec/types/#sets) are the same, but that is not the case. The elements of a heterogeneous `set[]` are all references to data objects that reside in scattered locations, often on the heap. The elements of a record are of potentially different sizes and reside in adjacent memory locations. Records are normally used as encapsulation structures, rather than data structures. 
+It may appear that records and heterogeneous [set](/docs/spec/types/#sets) are the same, but that is not the case. The elements of a heterogeneous `set[]` are all references to data values that may reside in scattered locations. The elements of a record are of potentially different sizes and reside in adjacent memory locations. Records are primarily data layouts.
 ```
 typ user: rec = {
     var username: str;
@@ -23,19 +23,29 @@ typ user: rec = {
 };
 ```
 
-#### Records as classes
-Calsses are the way that FOL can apply OOP paradigm. They basically are a glorified record. Instead of methods to be used fom outside the body, they have the method declaration within the body. For example, creating an class `computer` and its methods within the body:
-```
-~typ[pub] computer: rec = {
-    var[pub] brand: str;
-    var[pub] memory: int[16];
+#### Records are data, not classes
 
-    +fun getType(): str = { brand + .to_string(memory) };
-};
+`typ ...: rec = { ... }` declares a data type. FOL does not treat records as
+classes with hidden object state or class-owned method bodies. If a record has
+operations associated with it, those operations are still declared as ordinary
+receiver-qualified routines outside the record body.
 
-var laptop: computer = { member1 = value, member2 = value };
-.echo(laptop.getType());
+```fol
+typ computer: rec = {
+    brand: str;
+    memory: int
+}
+
+fun (computer)get_type(): str = {
+    return self.brand
+}
+
+var laptop: computer = { brand = "acme", memory = 16 }
+.echo(laptop.get_type())
 ```
+
+The call `laptop.get_type()` is procedural sugar for calling the receiver
+routine with `laptop` as its first input.
 
 
 
@@ -166,12 +176,17 @@ var mint: rgb = { 153, 255, 187 }
 ```
 ## Methods
 
-A record may have methods associated with it. It does not inherit any methods bound to the given type, but the method set of an standard type remains unchanged.To create a method for a record, it needs to be declared as the reciever of that method, in FOL's. Making a getter fucntion:
+A record may have receiver-qualified routines associated with it. This does not
+turn the record into an object-oriented type. It only means a routine may use
+dot-call syntax when its first input is a value of that record type. To create
+such a routine for a record, declare the receiver type on the routine itself:
 ```
 fun (recieverRecord)someFunction(): str = { self.somestring; };
 ```
 
-After declaring the record receiver, we then we have access to the record with the keyword `self`. A receiver is essentially just a type that can directly call the method. 
+After declaring the record receiver, the routine body may refer to that input
+through `self`. A receiver is simply the explicit first input that enables
+dot-call syntax.
 ```
 typ user: rec = {
     var username: str;
@@ -183,12 +198,15 @@ typ user: rec = {
 fun (user)getName(): str = { result = self.username; };
 ```
 
-Methods have some benefits over regular routines. In the same package routines with the same name are not allowed but the same is not true for a method. One can have multiple methods with the same name given that the receivers they have are different. 
+Receiver-qualified routines have one main ergonomic benefit over plain routine
+calls: they let the call site read `value.method(...)`. In the same package,
+multiple routines may still share the same method name if the receiver types
+are different.
 
-Then each instantiation of the record can access the method. Receivers allow us to write method calls in an OOP manner. That means whenever an object of some type is created that type can call the method from itself.
+Each record value can therefore use the dot form, but the underlying model
+remains procedural.
 ```
 var[mut] user1: user = { email = "someone@example.com", username = "someusername123", active = true, sign_in_count = 1 }
 
 .echo(user1.getName());
 ```
-

@@ -2,17 +2,14 @@
 
 Here are some of the ways that variables can be defined:
 ```
-var[pub,mut] somename: num[i32] = 98;
-var[pub,exp] snotherone: str = "this is a string"
-var[~] yetanother = 192.56
-var[+] shortlet = true
-var anarray: arr[str,3] = { "one", "two", "three" }
-var asequence : seq[num[i8]] = { 20, 25, 45, 68, 73,98 }
-var multiholder: set[num, str] = { 12, "word" }
-var anothermulti: set[str, seq[num[f32]]] = { "string", {5.5, 4.3, 7, .5, 3.2} }
-var shortvar = anothermulti[1][3]
-var anymulti: any = {5, 10, "string", {'a',"word",{{0, "val"},{1, "nal"}}}, false}
-var getSomeVal = anymulti[3][2][0][0] | < 15 | shortvar
+var[mut] counter: int = 98
+var[exp] label: str = "this is a string"
+var[~] ratio = 192.56
++var short_flag = true
+var names: arr[str, 3] = { "one", "two", "three" }
+var scores: seq[int] = { 20, 25, 45, 68, 73, 98 }
+var pair: set[int, str] = { 12, "word" }
+var picked = names[1]
 ```
 
 ## Assignments
@@ -23,7 +20,7 @@ declaration[options] name: type[options] = { implementation; };
 ```
 then declaring a new variable is like this:
 ```
-var[pub] aVar: int[32] = 64
+var[exp] aVar: int = 64
 ```
 
 however, the short version can be used too, and the compiler figures out at compute time the type:
@@ -31,15 +28,18 @@ however, the short version can be used too, and the compiler figures out at comp
 var shortVar = 24;                      // compiler gives this value of `int[arch]`
 ```
 
-When new variable is created, and uses an old variable to assign, the value is cloned, not referenced:	
+When new variable is created, and uses an old variable to assign, the resulting
+binding is a new value binding rather than an alias to the old name:
 ```
 pro[] main: int = {
     var aVar: int = 55;
     var newVar: int = aVar;
-    .assert(&aVar == &newVar)           // this will return false
+    return newVar;
 }
 ```
-Two variables can not have the same memory location, unless we either borrow, or use pointers.
+Ownership, borrowing, and pointer-level aliasing are later systems-language
+work and are described in the memory chapters as future milestones rather than
+as part of the current `V1` compiler contract.
 
 Variables can be assigned to an output of a function:
 ```
@@ -81,7 +81,7 @@ More on borrowing you can find [here](/docs/spec/pointers/#borrowing)
 As with all other blocks, `var` have their options: `var[opt]`:
 
 Options can be of two types: 
-  - flags eg. `var[mut]` 
+  - flags eg. `var[mut]`
   - values eg. `var[pri=2]`
 
 Flag options can have symbol aliases eg. `var[mut]` is the somename as `var[~]`.
@@ -94,24 +94,26 @@ Flag options can have symbol aliases eg. `var[mut]` is the somename as `var[~]`.
 |  sta   | ! |   flag    | making a variable a static                        |               |
 |  rac   | ? |   flag    | making a variable reactive                        |               |
 ----------------------------------------------------------------------------------------------
-|  exp   | + |   flag    | making a global variable pubic                    | visibility    |
+|  exp   | + |   flag    | making a global variable exported                 | visibility    |
 |  nor   |   |   flag    | making a global variable normal (default)         |               |
-|  hid   | - |   flag    | making a global variable hidden                   |               |
+|  hid   | - |   flag    | making a global variable file-local               |               |
 ```
 
 ### Alternatives
 There is a shorter way for variables using alternatives, for example, instead of using `var[+]`, a leaner `+var` can be used instead.
 ```
-def shko: mod[] = {
-    +var aVar: int = 55;
-    pro[] main: int { .echo(aVar) }
++var aVar: int = 55
+fun[] main(): int = {
+    .echo(aVar)
+    return aVar
 }
 ```
 However, when we use two option in varable, only one can use the alternative form, so instead of using `var[mut,exp]`, this can be used `+var[mut]` or `+var[~]`, or vice varsa `~var[exp]` or `~var[+]`:
 ```
-def shko: mod[] = {
-    +var[mut] aVar: int = 55;
-    pro[] main: int { .echo(aVar) }
++var[mut] aVar: int = 55
+fun[] main(): int = {
+    .echo(aVar)
+    return aVar
 }
 ```
 ## Types
@@ -134,6 +136,10 @@ pro[] main: int = {
 }
 ```
 ### Reactive types
+Current milestone note: reactive variables are part of a later milestone, not
+the current `V1` compiler contract. The syntax may appear in design examples,
+but present-day `V1` typechecking rejects reactive semantics explicitly.
+
 Reactive types is a types that flows and propagates changes. 
 
 For example, in an normal variable setting, `var a = b + c` would mean that `a` is being assigned the result of `b + c` in the instant the expression is evaluated, and later, the values of `b` and `c` can be changed with no effect on the value of `a`. On the other hand, declared as reactive, the value of `a` is automatically updated whenever the values of `b` or `c` change, without the program having to re-execute the statement `a = b + c` to determine the presently assigned value of `a`.
@@ -147,6 +153,9 @@ pro[] main: int = {
 }
 ```
 ### Static types
+Current milestone note: static variables are also part of later systems/runtime
+work. The current `V1` compiler keeps them outside the implemented subset.
+
 Is a variable which allows a value to be retained from one call of the function to another, meaning that its lifetime declaration. and can be used as `var[sta]` or `var[!]`. This variable is special, because if it is initialized, it is placed in the [data segment](https://en.wikipedia.org/wiki/Data_segment) (aka: initialized data) of the program memory. If the variable is not set, it is places in [.bss segmant](https://en.wikipedia.org/wiki/.bss) (aka: uninitialized data)
 ```
 pro[] main: int = {
@@ -177,37 +186,33 @@ So the visibility model is:
 
 In order for a variable to be accessed by the importer, it needs the `exp` flag option, so `var[exp]`, or `var[+]`.
 
-*module **shko**, file1.fol*
+*package **shko**, file1.fol*
 ```
-def shko: mod[] = {
-    fun[+] add(a, b: int) = { return a + b }
-    fun sub(a, b: int) = { return a - b }
-}
+fun[exp] add(a, b: int): int = { return a + b }
+fun sub(a, b: int): int = { return a - b }
 ```
-*module **vij**, file1.fol*
+*package **vij**, file1.fol*
 ```
 use shko: loc = {"../folder/shko"}
 
-def vij: mod[] = {
-    pro[] main: int { 
-        .echo(add( 5, 4 ))              // this works perfectly fine, we use a public/exported function
-        .echo(sub( 5, 4 ))              // this throws an error, we are trying use a function that is not visible to other libraries
-    }
+fun[] main(): int = {
+    .echo(add(5, 4))                    // this works, `add` is exported
+    .echo(sub(5, 4))                    // this fails, `sub` is not exported
+    return add(5, 4)
 }
 ```
 There is even the opposite option too. If we want a function or variable to be used only inside its own file, even though the package is shared, then we use the `hid` option flag: `var[hid]` or `var[-]`.
 
 *file1.fol*
 ```
-def shko: mod[] = {
-    var[-] aVar: str = "yo, sup!"
-}
+var[-] aVar: str = "yo, sup!"
 ```
 
 *file2.fol*
 ```
-def shko: mod[] = {
-    pro[] main: int { .echo(aVar) }       // this will thro an error (cos $aVar is declared private/hidden)
+fun[] main(): int = {
+    .echo(aVar)                           // this throws, `aVar` is hidden to its own file
+    return 0
 }
 ```
 ## Multiple

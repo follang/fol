@@ -9,10 +9,31 @@ There are four access expresions:
 
 ## Subprogram access
 
-In most programming languages, it is called "method-call expresion". A method call consists of an expression (the receiver) followed by a single dot `.`, an expression path segment, and a parenthesized expression-list:
+One access form is the receiver-style routine call, often called a
+"method-call expression" in other languages. In FOL this is still procedural
+syntax: the receiver value is the first routine input, and dot-call form is
+just sugar at the call site.
+
+A method call consists of an expression (the receiver) followed by a single dot
+`.`, an expression path segment, and a parenthesized expression-list:
 ```
 "3.14".cast(float).pow(2);                  // casting a numbered string to float, then rising it to power of 2
 ```
+
+Read:
+
+```fol
+value.method(arg1, arg2)
+```
+
+as the procedural idea:
+
+```fol
+method(value, arg1, arg2)
+```
+
+The syntax does not introduce classes or object-owned method dispatch by
+itself.
 
 
 ## Namespaces access
@@ -174,7 +195,8 @@ There are two types of fields that can be accesed within constructs:
 
 ### Methods
 
-Methods are accesed the same way like routine member access.
+Methods are accessed with the same dot form as routine member access, but they
+remain receiver-qualified routines rather than object-owned behavior.
 ```
 user1.getName()
 ```

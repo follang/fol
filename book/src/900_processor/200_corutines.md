@@ -1,5 +1,13 @@
 # Coroutines
 
+This chapter is future concurrency/runtime design.
+
+Current milestone note:
+
+- coroutine, channel, and mutex semantics are not part of the implemented `V1`
+  compiler
+- this material belongs to the later `V3` systems milestone
+
 A coroutine is a task given form the main thread, similar to a routine, that can be in concurrent execution with other tasks of the same program though other routines.  A **worker** takes the task and runs it, concurrently. Each task in a program can be assigned to one or multiple workers. 
 
 Three characteristics of coroutine distinguish them from normal routines:
@@ -75,4 +83,3 @@ pro main(): int = {
     for(m in meshPath) { [>]loadMesh(m, meshes) };
 }
 ```
-

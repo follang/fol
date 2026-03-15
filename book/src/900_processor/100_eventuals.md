@@ -1,5 +1,12 @@
 # Eventuals
 
+This chapter is future concurrency/runtime design.
+
+Current milestone note:
+
+- async/eventual semantics are not part of the implemented `V1` compiler
+- this material belongs to the later `V3` systems milestone
+
 Eventuals describe an object that acts as a proxy for a result that is initially unknown, usually because the computation of its value is not yet complete. 
 
 ## Async/Await
