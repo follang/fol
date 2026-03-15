@@ -896,6 +896,109 @@ mod integration_tests {
     }
 
     #[test]
+    fn test_cli_dump_lowered_succeeds_for_intrinsic_length_calls() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_dump_lowered_intrinsic_length");
+        fs::create_dir_all(&temp_root).expect("Should create temp intrinsic length fixture");
+        let fixture = temp_root.join("main.fol");
+        fs::write(
+            &fixture,
+            concat!(
+                "fun[] main(items: seq[int]): int = {\n",
+                "    var text: int = .len(\"Ada\")\n",
+                "    var count: int = .len(items)\n",
+                "    return count\n",
+                "}\n",
+            ),
+        )
+        .expect("Should write intrinsic length fixture");
+
+        let output = run_fol(&[
+            "--dump-lowered",
+            fixture
+                .to_str()
+                .expect("Temporary intrinsic length fixture path should be valid UTF-8"),
+        ]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        assert!(
+            output.status.success(),
+            "CLI should dump lowered output for intrinsic length calls, got status {:?} and output:\n{}",
+            output.status.code(),
+            stdout,
+        );
+        assert!(
+            stdout.matches("LengthOf").count() >= 2,
+            "Lowered dump should retain dedicated LengthOf instructions for '.len', got:\n{}",
+            stdout,
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_cli_json_intrinsic_length_failures_keep_structured_fields() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_json_intrinsic_length_failures");
+        fs::create_dir_all(&temp_root).expect("Should create temp intrinsic length failure fixture");
+        let fixture = temp_root.join("main.fol");
+        fs::write(
+            &fixture,
+            concat!(
+                "typ Flagged: rec = {\n",
+                "    name: str;\n",
+                "}\n",
+                "fun[] main(value: Flagged): int = {\n",
+                "    return .len(value)\n",
+                "}\n",
+            ),
+        )
+        .expect("Should write intrinsic length failure fixture");
+
+        let output = run_fol(&[
+            "--json",
+            fixture
+                .to_str()
+                .expect("Temporary intrinsic length failure fixture path should be valid UTF-8"),
+        ]);
+
+        assert!(
+            !output.status.success(),
+            "CLI should fail for invalid intrinsic length calls",
+        );
+
+        let json = parse_cli_json(&output);
+        let diagnostics = json["diagnostics"]
+            .as_array()
+            .expect("CLI JSON output should expose diagnostics");
+        let length_error = diagnostics.iter().find(|diagnostic| {
+            diagnostic["message"]
+                .as_str()
+                .map(|message| {
+                    message.contains(
+                        ".len(...) expects one string, array, vector, sequence, set, or map operand",
+                    )
+                })
+                .unwrap_or(false)
+        });
+
+        assert!(
+            length_error.is_some(),
+            "Expected intrinsic length diagnostic in CLI JSON output, got: {json}"
+        );
+        assert!(
+            length_error
+                .and_then(|diagnostic| diagnostic["location"].as_object())
+                .is_some(),
+            "Expected intrinsic length diagnostic to keep a structured location, got: {json}"
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
     fn test_cli_folder_compile_succeeds_with_package_parser() {
         use std::fs;
 

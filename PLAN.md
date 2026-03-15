@@ -1159,7 +1159,7 @@ Track these in the registry, but do not implement them in the first batch:
 - `5.4` `done` Lower `.len(...)` to one explicit lowering form.
 - `5.5` `done` Add exact tests for `.len` across supported and rejected
   families.
-- `5.6` `pending` Add CLI integration coverage for `.len`.
+- `5.6` `done` Add CLI integration coverage for `.len`.
 
 ### Phase 6. Echo Family
 
