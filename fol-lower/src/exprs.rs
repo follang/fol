@@ -181,6 +181,7 @@ pub(crate) struct RoutineCursor<'a> {
     next_local_index: usize,
     next_instr_index: usize,
     next_block_index: usize,
+    loop_exit_blocks: Vec<LoweredBlockId>,
 }
 
 impl<'a> RoutineCursor<'a> {
@@ -191,6 +192,7 @@ impl<'a> RoutineCursor<'a> {
             next_block_index: routine.blocks.len(),
             routine,
             block_id,
+            loop_exit_blocks: Vec::new(),
         }
     }
 
@@ -220,6 +222,18 @@ impl<'a> RoutineCursor<'a> {
         });
         self.next_block_index += 1;
         block_id
+    }
+
+    pub(crate) fn push_loop_exit(&mut self, block_id: LoweredBlockId) {
+        self.loop_exit_blocks.push(block_id);
+    }
+
+    pub(crate) fn pop_loop_exit(&mut self) -> Option<LoweredBlockId> {
+        self.loop_exit_blocks.pop()
+    }
+
+    pub(crate) fn current_loop_exit(&self) -> Option<LoweredBlockId> {
+        self.loop_exit_blocks.last().copied()
     }
 
     pub(crate) fn current_block_terminated(&self) -> Result<bool, LoweringError> {
@@ -671,10 +685,16 @@ fn lower_body_node(
             )?;
             Ok(None)
         }
-        AstNode::Break => Err(LoweringError::with_kind(
-            LoweringErrorKind::Unsupported,
-            "break lowering lands in the next lowered V1 control-flow slice",
-        )),
+        AstNode::Break => {
+            let Some(exit_block) = cursor.current_loop_exit() else {
+                return Err(LoweringError::with_kind(
+                    LoweringErrorKind::InvalidInput,
+                    "break lowering requires an active loop exit block",
+                ));
+            };
+            cursor.terminate_current_block(crate::LoweredTerminator::Jump { target: exit_block })?;
+            Ok(None)
+        }
         AstNode::Yield { .. } => Err(LoweringError::with_kind(
             LoweringErrorKind::Unsupported,
             "yield lowering is not part of the current V1 lowering milestone",
@@ -1482,6 +1502,7 @@ fn lower_loop_statement(
             })?;
 
             cursor.switch_block(body_block)?;
+            cursor.push_loop_exit(exit_block);
             let _ = lower_body_sequence(
                 typed_package,
                 type_table,
@@ -1493,6 +1514,7 @@ fn lower_loop_statement(
                 scope_id,
                 body,
             )?;
+            cursor.pop_loop_exit();
             if !cursor.current_block_terminated()? {
                 cursor.terminate_current_block(crate::LoweredTerminator::Jump {
                     target: header_block,
@@ -3926,6 +3948,70 @@ mod tests {
             routine.blocks.get(crate::LoweredBlockId(2)).and_then(|block| block.terminator.clone()),
             Some(LoweredTerminator::Jump {
                 target: crate::LoweredBlockId(1),
+            })
+        );
+        assert!(matches!(
+            routine.blocks.get(crate::LoweredBlockId(3)).and_then(|block| block.terminator.clone()),
+            Some(LoweredTerminator::Return { .. })
+        ));
+    }
+
+    #[test]
+    fn break_lowering_jumps_directly_to_the_loop_exit_block() {
+        let fixture = std::env::temp_dir().join(format!(
+            "fol_lower_break_shape_{}.fol",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system clock should be monotonic enough for tmp names")
+                .as_nanos()
+        ));
+        std::fs::write(
+            &fixture,
+            "fun[] main(flag: bol, limit: int): int = {\n    loop(flag) {\n        break\n    }\n    return limit\n}",
+        )
+        .expect("should write lowering break shape fixture");
+
+        let mut stream = FileStream::from_file(fixture.to_str().expect("utf8 temp path"))
+            .expect("Should open lowering fixture");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let syntax = parser
+            .parse_package(&mut lexer)
+            .expect("Lowering fixture should parse");
+        let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+        let typed = Typechecker::new()
+            .check_resolved_workspace(resolved)
+            .expect("Lowering fixture should typecheck");
+        let lowered = crate::LoweringSession::new(typed)
+            .lower_workspace()
+            .expect("break lowering should succeed");
+
+        let routine = lowered
+            .entry_package()
+            .routine_decls
+            .values()
+            .find(|routine| routine.name == "main")
+            .expect("main routine should exist");
+
+        assert_eq!(routine.blocks.len(), 4);
+        assert_eq!(
+            routine.blocks.get(crate::LoweredBlockId(0)).and_then(|block| block.terminator.clone()),
+            Some(LoweredTerminator::Jump {
+                target: crate::LoweredBlockId(1),
+            })
+        );
+        assert_eq!(
+            routine.blocks.get(crate::LoweredBlockId(1)).and_then(|block| block.terminator.clone()),
+            Some(LoweredTerminator::Branch {
+                condition: crate::LoweredLocalId(2),
+                then_block: crate::LoweredBlockId(2),
+                else_block: crate::LoweredBlockId(3),
+            })
+        );
+        assert_eq!(
+            routine.blocks.get(crate::LoweredBlockId(2)).and_then(|block| block.terminator.clone()),
+            Some(LoweredTerminator::Jump {
+                target: crate::LoweredBlockId(3),
             })
         );
         assert!(matches!(

@@ -533,7 +533,7 @@ This plan is complete only when all of the following are true:
 - `5.3` `done` Lower `when` as statement-style control flow.
 - `5.4` `done` Lower value-producing `when` into branch blocks plus explicit join temporary.
 - `5.5` `done` Lower loop forms into explicit header/body/exit blocks.
-- `5.6` `pending` Lower loop exits such as `break` into explicit control-flow edges.
+- `5.6` `done` Lower loop exits such as `break` into explicit control-flow edges.
 - `5.7` `done` Add control-flow graph verifier checks for block termination and reachability basics.
 - `5.8` `done` Add control-flow fixture tests with exact lowered block-shape assertions.
 
