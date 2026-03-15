@@ -240,4 +240,28 @@ mod tests {
         assert_eq!(render_echo(&nil), "nil");
         assert_eq!(render_echo(&error), "err(broken)");
     }
+
+    #[test]
+    fn runtime_echo_formats_nested_v1_values_stably() {
+        let nested_seq = FolSeq::from_items(vec![
+            FolOption::some(FolStr::from("Ada")),
+            FolOption::nil(),
+        ]);
+        let nested_map = FolMap::from_pairs(vec![
+            (
+                FolStr::from("left"),
+                FolError::new(FolSeq::from_items(vec![1i64, 2, 3])),
+            ),
+            (
+                FolStr::from("right"),
+                FolError::new(FolSeq::from_items(vec![4i64, 5])),
+            ),
+        ]);
+
+        assert_eq!(render_echo(&nested_seq), "seq[some(Ada), nil]");
+        assert_eq!(
+            render_echo(&nested_map),
+            "map{left: err(seq[1, 2, 3]), right: err(seq[4, 5])}"
+        );
+    }
 }

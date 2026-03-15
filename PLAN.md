@@ -823,7 +823,7 @@ The implementation should land in many small slices.
 #### 4.4 done
 - implement `echo(...)` for shell values
 
-#### 4.5
+#### 4.5 done
 - add hook tests for nested values
 
 #### 4.6
