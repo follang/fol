@@ -1148,7 +1148,7 @@ Track these in the registry, but do not implement them in the first batch:
 ### Phase 5. Length Family
 
 - `5.1` `done` Add `.len` registry entry.
-- `5.2` `pending` Freeze `V1` accepted receiver families for `.len`:
+- `5.2` `done` Freeze `V1` accepted receiver families for `.len`:
   - strings
   - arrays
   - vectors

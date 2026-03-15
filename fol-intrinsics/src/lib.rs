@@ -23,7 +23,7 @@ pub use diagnostics::{
 };
 pub use families::{
     boolean_operand_contract, comparison_operand_contract, BooleanOperandContract,
-    ComparisonOperandContract,
+    ComparisonOperandContract, QueryOperandContract, query_operand_contract,
 };
 pub use registry::{IntrinsicArity, IntrinsicEntry, IntrinsicLoweringMode};
 pub use select::{select_intrinsic, IntrinsicSelectionError, IntrinsicSelectionErrorKind};
@@ -266,6 +266,22 @@ mod tests {
         assert_eq!(
             BooleanOperandContract::BoolScalar.expected_operands(),
             "one boolean operand"
+        );
+    }
+
+    #[test]
+    fn query_operand_contracts_stay_stable_for_v1_registry_entries() {
+        let len = intrinsic_by_canonical_name("len").expect("len should exist");
+        let eq = intrinsic_by_canonical_name("eq").expect("eq should exist");
+
+        assert_eq!(
+            query_operand_contract(len),
+            Some(QueryOperandContract::LengthQueryable)
+        );
+        assert_eq!(query_operand_contract(eq), None);
+        assert_eq!(
+            QueryOperandContract::LengthQueryable.expected_operands(),
+            "one string, array, vector, sequence, set, or map operand"
         );
     }
 
