@@ -908,7 +908,7 @@ not full long-term compiler completion.
 #### 3.2 done
 - add package-to-module layout planning
 
-#### 3.3
+#### 3.3 done
 - add namespace-to-module-file layout planning
 
 #### 3.4
