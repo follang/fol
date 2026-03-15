@@ -1239,7 +1239,7 @@ Track these in the registry, but do not implement them in the first batch:
 
 ### Phase 12. Backend-Readiness Surface
 
-- `12.1` `pending` Add backend-facing lowering metadata for each implemented
+- `12.1` `done` Add backend-facing lowering metadata for each implemented
   intrinsic:
   - pure op
   - control effect

@@ -1,6 +1,7 @@
 use crate::{
-    IntrinsicArity, IntrinsicAvailability, IntrinsicCategory, IntrinsicEntry, IntrinsicId,
-    IntrinsicLoweringMode, IntrinsicRoadmap, IntrinsicStatus, IntrinsicSurface,
+    IntrinsicArity, IntrinsicAvailability, IntrinsicBackendRole, IntrinsicCategory,
+    IntrinsicEntry, IntrinsicId, IntrinsicLoweringMode, IntrinsicRoadmap, IntrinsicStatus,
+    IntrinsicSurface,
 };
 
 const INTRINSICS: &[IntrinsicEntry] = &[
@@ -752,6 +753,25 @@ pub fn intrinsics_for_roadmap(roadmap: IntrinsicRoadmap) -> Vec<&'static Intrins
     intrinsic_registry()
         .iter()
         .filter(|entry| roadmap_for_intrinsic(entry.id) == Some(roadmap))
+        .collect()
+}
+
+pub fn backend_role_for_intrinsic(id: IntrinsicId) -> Option<IntrinsicBackendRole> {
+    intrinsic_by_id(id).and_then(|entry| match entry.id.index() {
+        0..=6 => Some(IntrinsicBackendRole::PureOp),
+        7 | 12 => Some(IntrinsicBackendRole::TargetHelper),
+        8 => Some(IntrinsicBackendRole::RuntimeHook),
+        13 => Some(IntrinsicBackendRole::ControlEffect),
+        _ => None,
+    })
+}
+
+pub fn implemented_intrinsics_for_backend_role(
+    role: IntrinsicBackendRole,
+) -> Vec<&'static IntrinsicEntry> {
+    intrinsic_registry()
+        .iter()
+        .filter(|entry| backend_role_for_intrinsic(entry.id) == Some(role))
         .collect()
 }
 

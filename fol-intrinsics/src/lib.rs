@@ -11,14 +11,14 @@ mod validate;
 pub const CRATE_NAME: &str = "fol-intrinsics";
 
 pub use model::{
-    IntrinsicAvailability, IntrinsicCategory, IntrinsicId, IntrinsicRoadmap, IntrinsicStatus,
-    IntrinsicSurface,
+    IntrinsicAvailability, IntrinsicBackendRole, IntrinsicCategory, IntrinsicId,
+    IntrinsicRoadmap, IntrinsicStatus, IntrinsicSurface,
 };
 pub use catalog::{
-    all_intrinsics, intrinsic_by_alias, intrinsic_by_canonical_name, intrinsic_by_id,
-    intrinsic_registry, intrinsics_for_lowering_mode, intrinsics_for_roadmap,
-    intrinsics_for_surface, is_reserved_intrinsic_name_for_surface,
-    lowering_mode_for_intrinsic, roadmap_for_intrinsic,
+    all_intrinsics, backend_role_for_intrinsic, implemented_intrinsics_for_backend_role,
+    intrinsic_by_alias, intrinsic_by_canonical_name, intrinsic_by_id, intrinsic_registry,
+    intrinsics_for_lowering_mode, intrinsics_for_roadmap, intrinsics_for_surface,
+    is_reserved_intrinsic_name_for_surface, lowering_mode_for_intrinsic, roadmap_for_intrinsic,
     reserved_intrinsic_for_surface,
 };
 pub use diagnostics::{
@@ -53,6 +53,7 @@ mod tests {
         assert_eq!(IntrinsicSurface::DotRootCall.as_str(), "dot-root-call");
         assert_eq!(IntrinsicAvailability::V1.as_str(), "V1");
         assert_eq!(IntrinsicRoadmap::CurrentV1.as_str(), "current-v1");
+        assert_eq!(IntrinsicBackendRole::PureOp.as_str(), "pure-op");
         assert_eq!(IntrinsicStatus::Implemented.as_str(), "implemented");
     }
 
@@ -459,6 +460,36 @@ mod tests {
 
         assert_eq!(canonical_names.len(), intrinsic_registry().len());
         assert!(validate_intrinsic_registry(intrinsic_registry()).is_ok());
+    }
+
+    #[test]
+    fn implemented_intrinsics_expose_backend_roles_explicitly() {
+        let eq = intrinsic_by_canonical_name("eq").expect("eq should exist");
+        let len = intrinsic_by_canonical_name("len").expect("len should exist");
+        let echo = intrinsic_by_canonical_name("echo").expect("echo should exist");
+        let panic_entry = intrinsic_by_canonical_name("panic").expect("panic should exist");
+        let cast = intrinsic_by_canonical_name("cast").expect("cast should exist");
+
+        assert_eq!(backend_role_for_intrinsic(eq.id), Some(IntrinsicBackendRole::PureOp));
+        assert_eq!(
+            backend_role_for_intrinsic(len.id),
+            Some(IntrinsicBackendRole::TargetHelper)
+        );
+        assert_eq!(
+            backend_role_for_intrinsic(echo.id),
+            Some(IntrinsicBackendRole::RuntimeHook)
+        );
+        assert_eq!(
+            backend_role_for_intrinsic(panic_entry.id),
+            Some(IntrinsicBackendRole::ControlEffect)
+        );
+        assert_eq!(backend_role_for_intrinsic(cast.id), None);
+        assert!(implemented_intrinsics_for_backend_role(IntrinsicBackendRole::PureOp)
+            .iter()
+            .any(|entry| entry.name == "eq"));
+        assert!(implemented_intrinsics_for_backend_role(IntrinsicBackendRole::RuntimeHook)
+            .iter()
+            .any(|entry| entry.name == "echo"));
     }
 
     #[test]

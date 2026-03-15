@@ -104,6 +104,25 @@ impl IntrinsicRoadmap {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum IntrinsicBackendRole {
+    PureOp,
+    ControlEffect,
+    RuntimeHook,
+    TargetHelper,
+}
+
+impl IntrinsicBackendRole {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::PureOp => "pure-op",
+            Self::ControlEffect => "control-effect",
+            Self::RuntimeHook => "runtime-hook",
+            Self::TargetHelper => "target-helper",
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum IntrinsicStatus {
     Implemented,
     Unsupported,
