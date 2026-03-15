@@ -49,6 +49,10 @@ pub enum LoweredInstrKind {
         base: LoweredLocalId,
         field: String,
     },
+    IndexAccess {
+        container: LoweredLocalId,
+        index: LoweredLocalId,
+    },
     Cast {
         operand: LoweredLocalId,
         target_type: LoweredTypeId,

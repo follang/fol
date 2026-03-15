@@ -604,6 +604,46 @@ fn lower_expression(
                 type_id: result_type,
             })
         }
+        AstNode::IndexAccess { container, index } => {
+            let lowered_container = lower_expression(
+                typed_package,
+                type_table,
+                checked_type_map,
+                current_identity,
+                decl_index,
+                cursor,
+                source_unit_id,
+                container,
+            )?;
+            let lowered_index = lower_expression(
+                typed_package,
+                type_table,
+                checked_type_map,
+                current_identity,
+                decl_index,
+                cursor,
+                source_unit_id,
+                index,
+            )?;
+            let Some(result_type) = index_access_type(type_table, lowered_container.type_id, index) else {
+                return Err(LoweringError::with_kind(
+                    LoweringErrorKind::InvalidInput,
+                    "index access does not map to a lowered container element type",
+                ));
+            };
+            let result_local = cursor.allocate_local(result_type, None);
+            cursor.push_instr(
+                Some(result_local),
+                LoweredInstrKind::IndexAccess {
+                    container: lowered_container.local_id,
+                    index: lowered_index.local_id,
+                },
+            )?;
+            Ok(LoweredValue {
+                local_id: result_local,
+                type_id: result_type,
+            })
+        }
         AstNode::Identifier { syntax_id, name } => {
             let syntax_id = syntax_id.ok_or_else(|| {
                 LoweringError::with_kind(
@@ -1014,6 +1054,35 @@ fn field_access_type(
     match type_table.get(object_type) {
         Some(crate::LoweredType::Record { fields }) => fields.get(field).copied(),
         Some(crate::LoweredType::Entry { variants }) => variants.get(field).copied().flatten(),
+        _ => None,
+    }
+}
+
+fn index_access_type(
+    type_table: &crate::LoweredTypeTable,
+    container_type: LoweredTypeId,
+    index: &AstNode,
+) -> Option<LoweredTypeId> {
+    match type_table.get(container_type) {
+        Some(crate::LoweredType::Array { element_type, .. })
+        | Some(crate::LoweredType::Vector { element_type })
+        | Some(crate::LoweredType::Sequence { element_type }) => Some(*element_type),
+        Some(crate::LoweredType::Map { value_type, .. }) => Some(*value_type),
+        Some(crate::LoweredType::Set { member_types }) => {
+            let index_value = literal_index_value(index)?;
+            member_types.get(index_value).copied().or_else(|| {
+                let first = member_types.first().copied()?;
+                member_types.iter().all(|member| *member == first).then_some(first)
+            })
+        }
+        _ => None,
+    }
+}
+
+fn literal_index_value(node: &AstNode) -> Option<usize> {
+    match node {
+        AstNode::Literal(Literal::Integer(value)) => usize::try_from(*value).ok(),
+        AstNode::Commented { node, .. } => literal_index_value(node),
         _ => None,
     }
 }
@@ -1503,6 +1572,52 @@ mod tests {
                 .iter()
                 .any(|instr| matches!(instr.kind, LoweredInstrKind::FieldAccess { .. })),
             "record field access should lower into an explicit FieldAccess instruction"
+        );
+    }
+
+    #[test]
+    fn index_access_lowering_emits_explicit_container_access_instructions() {
+        let fixture = std::env::temp_dir().join(format!(
+            "fol_lower_index_exprs_{}.fol",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system clock should be monotonic enough for tmp names")
+                .as_nanos()
+        ));
+        std::fs::write(
+            &fixture,
+            "fun[] head(values: vec[int]): int = {\n    values[0]\n}",
+        )
+        .expect("should write lowering index fixture");
+
+        let mut stream = FileStream::from_file(fixture.to_str().expect("utf8 temp path"))
+            .expect("Should open lowering fixture");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let syntax = parser
+            .parse_package(&mut lexer)
+            .expect("Lowering fixture should parse");
+        let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+        let typed = Typechecker::new()
+            .check_resolved_workspace(resolved)
+            .expect("Lowering fixture should typecheck");
+        let lowered = crate::LoweringSession::new(typed)
+            .lower_workspace()
+            .expect("index access lowering should succeed");
+
+        let routine = lowered
+            .entry_package()
+            .routine_decls
+            .values()
+            .find(|routine| routine.name == "head")
+            .expect("head routine should exist");
+
+        assert!(
+            routine
+                .instructions
+                .iter()
+                .any(|instr| matches!(instr.kind, LoweredInstrKind::IndexAccess { .. })),
+            "container index access should lower into an explicit IndexAccess instruction"
         );
     }
 }
