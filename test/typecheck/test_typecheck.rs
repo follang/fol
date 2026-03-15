@@ -1080,6 +1080,78 @@ fn inferred_bindings_can_keep_recoverable_call_effects() {
 }
 
 #[test]
+fn plain_use_of_errorful_calls_requires_error_aware_routines() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] load(): int / str = {\n\
+             report \"bad\";\n\
+             return 1;\n\
+         }\n\
+         fun[] main(): int = {\n\
+             var total: int = load() + 1;\n\
+             return total;\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error
+                    .message()
+                    .contains("requires a surrounding routine with a declared error type in V1")
+        }),
+        "Expected a plain-use errorful-call diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
+fn propagation_typing_accepts_matching_error_types_in_plain_value_contexts() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "fun[] load(): int / str = {\n\
+             report \"bad\";\n\
+             return 1;\n\
+         }\n\
+         fun[] main(): int / str = {\n\
+             return load() + 1;\n\
+         }\n",
+    )]);
+
+    let syntax_id = find_named_routine_syntax_id(&typed, "main");
+    assert_eq!(
+        typed
+            .typed_node(syntax_id)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+}
+
+#[test]
+fn propagation_typing_rejects_incompatible_error_types_in_plain_value_contexts() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] load(): int / str = {\n\
+             report \"bad\";\n\
+             return 1;\n\
+         }\n\
+         fun[] main(): int / int = {\n\
+             return load() + 1;\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::IncompatibleType
+                && error
+                    .message()
+                    .contains("propagates 'Builtin(Str)' but the surrounding routine declares 'Builtin(Int)'")
+        }),
+        "Expected an incompatible propagated-error diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
 fn when_result_typing_accepts_matching_branch_values() {
     let typed = typecheck_fixture_folder(&[(
         "main.fol",

@@ -266,12 +266,23 @@ or deliberately rejected.
   Current state:
   - typed references and inferred bindings can retain a recoverable error effect
   - expression typing now carries that effect internally instead of flattening it immediately
-- `1.2` `pending` Make ordinary use of an errorful call illegal unless the
+- `1.2` `done` Make ordinary use of an errorful call illegal unless the
   surrounding context is one of the approved `V1` consumers.
-- `1.3` `pending` Implement propagation typing:
+  Current state:
+  - plain value contexts now reject errorful expressions unless they are consumed
+    by an approved `V1` handler path
+  - exact tests lock plain assignment and arithmetic misuse in routines that
+    cannot propagate
+- `1.3` `done` Implement propagation typing:
   - allow it only in routines with compatible declared error types
   - reject it in routines with no error type
   - reject incompatible error payload propagation
+  Current state:
+  - matching routine error types can now carry plain-value propagation through
+    expression typing
+  - routines with no declared error type reject propagation
+  - incompatible propagated payloads fail with explicit `IncompatibleType`
+    diagnostics
 - `1.4` `pending` Implement `check(expr)` typing over errorful routine results.
 - `1.5` `pending` Implement `expr || fallback` typing:
   - success branch type
