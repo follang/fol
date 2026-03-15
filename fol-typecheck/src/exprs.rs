@@ -1327,16 +1327,22 @@ fn type_dot_intrinsic_call(
                     expected_type,
                 )?,
                 None => {
+                    let message = if entry.availability != fol_intrinsics::IntrinsicAvailability::V1
+                    {
+                        fol_intrinsics::wrong_version_message(
+                            entry,
+                            fol_intrinsics::IntrinsicAvailability::V1,
+                        )
+                    } else {
+                        fol_intrinsics::unsupported_intrinsic_message(entry)
+                    };
                     return Err(match origin {
                         Some(origin) => TypecheckError::with_origin(
                             TypecheckErrorKind::Unsupported,
-                            fol_intrinsics::unsupported_intrinsic_message(entry),
+                            message,
                             origin,
                         ),
-                        None => TypecheckError::new(
-                            TypecheckErrorKind::Unsupported,
-                            fol_intrinsics::unsupported_intrinsic_message(entry),
-                        ),
+                        None => TypecheckError::new(TypecheckErrorKind::Unsupported, message),
                     })
                 }
             },

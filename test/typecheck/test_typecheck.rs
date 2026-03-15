@@ -2598,6 +2598,44 @@ fn intrinsic_diagnostic_typing_rejects_wrong_arity_for_echo() {
 }
 
 #[test]
+fn intrinsic_v3_boundary_typing_reports_explicit_milestone_guidance() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] free_value(value: int): int = {\n\
+             return .de_alloc(value);\n\
+         }\n\
+         fun[] hand_back(value: int): int = {\n\
+             return .give_back(value);\n\
+         }\n\
+         fun[] take_address(value: int): int = {\n\
+             return .address_of(value);\n\
+         }\n\
+         fun[] read_pointer(value: int): int = {\n\
+             return .pointer_value(value);\n\
+         }\n\
+         fun[] borrow_value(value: int): int = {\n\
+             return .borrow_from(value);\n\
+         }\n",
+    )]);
+
+    for intrinsic in [
+        ".de_alloc(...) belongs to V3 but the current compiler milestone is V1",
+        ".give_back(...) belongs to V3 but the current compiler milestone is V1",
+        ".address_of(...) belongs to V3 but the current compiler milestone is V1",
+        ".pointer_value(...) belongs to V3 but the current compiler milestone is V1",
+        ".borrow_from(...) belongs to V3 but the current compiler milestone is V1",
+    ] {
+        assert!(
+            errors.iter().any(|error| {
+                error.kind() == TypecheckErrorKind::Unsupported
+                    && error.message().contains(intrinsic)
+            }),
+            "Expected explicit V3 intrinsic boundary diagnostic containing '{intrinsic}', got: {errors:?}"
+        );
+    }
+}
+
+#[test]
 fn intrinsic_comparison_typing_covers_full_v1_scalar_matrix() {
     let typed = typecheck_fixture_folder(&[(
         "main.fol",

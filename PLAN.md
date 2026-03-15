@@ -1176,7 +1176,7 @@ Track these in the registry, but do not implement them in the first batch:
 
 - `7.1` `done` Add explicit registry entries for deferred ownership/pointer
   intrinsics.
-- `7.2` `pending` Add explicit version-aware diagnostics for:
+- `7.2` `done` Add explicit version-aware diagnostics for:
   - `.de_alloc`
   - `.give_back`
   - `.address_of`
