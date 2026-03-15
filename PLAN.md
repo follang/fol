@@ -846,7 +846,7 @@ The implementation should land in many small slices.
 
 ### Phase 6: Entry And Top-level Execution Contract
 
-#### 6.1
+#### 6.1 done
 - define how generated Rust `main` should interpret `FolRecover<T, E>`
 
 #### 6.2
