@@ -1187,7 +1187,7 @@ Track these in the registry, but do not implement them in the first batch:
 
 ### Phase 8. Shape And Query Expansion
 
-- `8.1` `pending` Add placeholder and classification entries for:
+- `8.1` `done` Add placeholder and classification entries for:
   - `.cap`
   - `.is_empty`
   - `.low`

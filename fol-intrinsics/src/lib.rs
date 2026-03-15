@@ -233,6 +233,34 @@ mod tests {
     }
 
     #[test]
+    fn deferred_query_and_arithmetic_registry_entries_stay_stable() {
+        let expected = [
+            ("low", IntrinsicId::new(21), IntrinsicCategory::Query, IntrinsicArity::Exactly(1)),
+            ("high", IntrinsicId::new(22), IntrinsicCategory::Query, IntrinsicArity::Exactly(1)),
+            ("min", IntrinsicId::new(23), IntrinsicCategory::Arithmetic, IntrinsicArity::Exactly(2)),
+            ("max", IntrinsicId::new(24), IntrinsicCategory::Arithmetic, IntrinsicArity::Exactly(2)),
+            (
+                "clamp",
+                IntrinsicId::new(25),
+                IntrinsicCategory::Arithmetic,
+                IntrinsicArity::Exactly(3),
+            ),
+        ];
+
+        for (name, id, category, arity) in expected {
+            let entry = intrinsic_by_canonical_name(name)
+                .unwrap_or_else(|| panic!("deferred intrinsic '{name}' should exist"));
+            assert_eq!(entry.id, id);
+            assert_eq!(entry.category, category);
+            assert_eq!(entry.surface, IntrinsicSurface::DotRootCall);
+            assert_eq!(entry.availability, IntrinsicAvailability::V1);
+            assert_eq!(entry.status, IntrinsicStatus::Unsupported);
+            assert_eq!(entry.arity, arity);
+            assert_eq!(entry.lowering_mode, IntrinsicLoweringMode::Deferred);
+        }
+    }
+
+    #[test]
     fn diagnostics_helpers_render_intrinsic_specific_guidance() {
         let eq = intrinsic_by_canonical_name("eq").expect("eq should exist");
         let de_alloc = intrinsic_by_canonical_name("de_alloc").expect("de_alloc should exist");
