@@ -48,6 +48,14 @@ Current `V1` intrinsic note:
 
 So the safe current query surface for containers is `.len(...)`.
 
+Current `V1` runtime note:
+
+- `arr[...]` remains the fixed-size container family
+- `vec[...]` and `seq[...]` are lowered onto dedicated runtime container types
+- `set[...]` and `map[...]` also use runtime-backed container types
+- runtime-backed `set[...]` and `map[...]` preserve deterministic ordering for
+  rendering and backend-visible behavior in the current compiler
+
 {{% notice tip %}}
 
 Dynamic arrays are a dynamically allocated (hence the name), thus if not allocated in heap but in stack, the size will be defined automatically in compile time and will be changed to static array.
@@ -156,6 +164,10 @@ aMap.add( {"IT",55} )
 aMap+[{"RU",24}]
 .echo(.len(aMap))           // prints: 4
 ```
+
+In current `V1`, backend execution should treat `.len(...)` and runtime-visible
+container rendering as part of the `fol-runtime` contract rather than
+re-deriving container policy per backend.
 The comparison operators `==` and `!=` must be fully defined for operands of the key type; thus the key type must not be a function, map, or sequence.
 
 {{% notice tip %}}

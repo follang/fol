@@ -186,10 +186,22 @@ The current compiler supports:
 - `expr || fallback`
 - lowering of these surfaces into explicit recoverable-error IR
 
+For backend work, the important current `V1` runtime distinction is:
+
+- routine recoverable results map to the `fol-runtime` recoverable ABI
+- shell values such as `opt[...]` and `err[...]` map to separate shell runtime
+  types
+- those two categories are intentionally not merged
+
+So a future backend should treat a lowered recoverable routine result as the
+runtime recoverable object, not as an `err[...]` shell and not as a tuple-like
+user value.
+
 The current compiler does not yet claim:
 
 - advanced Zig-style success/error capture syntax
 - cleanup constructs like `errdefer`
-- full backend/native runtime ABI documentation in the book
+- backend-specific calling conventions beyond the stable `fol-runtime`
+  recoverable boundary
 
 Those belong to later milestones.

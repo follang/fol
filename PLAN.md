@@ -898,7 +898,7 @@ The implementation should land in many small slices.
 - update `PROGRESS.md`
 - record `fol-runtime` as the next implemented support layer
 
-#### 9.2
+#### 9.2 done
 - update the book where runtime/builtin/container/error wording must acknowledge
   the new runtime contract
 

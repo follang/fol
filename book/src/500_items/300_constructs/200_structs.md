@@ -47,6 +47,15 @@ var laptop: computer = { brand = "acme", memory = 16 }
 The call `laptop.get_type()` is procedural sugar for calling the receiver
 routine with `laptop` as its first input.
 
+Current `V1` backend/runtime note:
+
+- backends may emit records and entries as plain target-language structs/enums
+- that does not change the language model: they are still data plus ordinary
+  receiver-qualified routines
+- when runtime-visible formatting is needed, generated backends should preserve
+  the `fol-runtime` aggregate formatting contract instead of inventing a
+  backend-specific display shape
+
 
 
 ### Entries
