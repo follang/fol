@@ -1,11 +1,13 @@
 //! Shared intrinsic registry foundations for the FOL compiler.
 
 mod model;
+mod catalog;
 mod registry;
 
 pub const CRATE_NAME: &str = "fol-intrinsics";
 
 pub use model::{IntrinsicAvailability, IntrinsicCategory, IntrinsicId, IntrinsicStatus, IntrinsicSurface};
+pub use catalog::{all_intrinsics, intrinsic_registry};
 pub use registry::{IntrinsicArity, IntrinsicEntry, IntrinsicLoweringMode};
 
 pub fn crate_name() -> &'static str {
@@ -49,5 +51,17 @@ mod tests {
         assert_eq!(ENTRY.aliases, &["equal"]);
         assert_eq!(ENTRY.arity, IntrinsicArity::Exactly(2));
         assert_eq!(ENTRY.lowering_mode, IntrinsicLoweringMode::GeneralIr);
+    }
+
+    #[test]
+    fn canonical_registry_contains_expected_first_batch_and_deferred_entries() {
+        let names: Vec<_> = intrinsic_registry().iter().map(|entry| entry.name).collect();
+
+        assert!(names.contains(&"eq"));
+        assert!(names.contains(&"not"));
+        assert!(names.contains(&"len"));
+        assert!(names.contains(&"echo"));
+        assert!(names.contains(&"de_alloc"));
+        assert!(names.contains(&"pointer_value"));
     }
 }

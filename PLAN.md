@@ -1019,7 +1019,12 @@ Track these in the registry, but do not implement them in the first batch:
     enums
   - root smoke coverage now proves entries can be constructed without stringly
     typed tuple glue
-- `1.4` `pending` Add one canonical static registry table.
+- `1.4` `done` Add one canonical static registry table.
+  Current state:
+  - the crate now exposes one canonical static registry with implemented,
+    unsupported, and deferred entries from the frozen first-batch families
+  - stable IDs now exist for comparison, boolean, query, diagnostic,
+    recoverable, conversion, memory, and pointer entries
 - `1.5` `pending` Add lookup APIs:
   - by canonical name
   - by alias

@@ -468,3 +468,12 @@ fn intrinsics_entry_model_smoke_compiles() {
     assert_eq!(entry.aliases, &["equal"]);
     assert_eq!(entry.doc_summary, "compare two values for equality");
 }
+
+#[test]
+fn intrinsics_canonical_registry_smoke_compiles() {
+    let registry = fol_intrinsics::intrinsic_registry();
+    assert!(registry.len() >= 8);
+    assert!(registry.iter().any(|entry| entry.name == "eq"));
+    assert!(registry.iter().any(|entry| entry.name == "de_alloc"));
+    assert!(registry.iter().any(|entry| entry.name == "check"));
+}
