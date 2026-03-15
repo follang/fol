@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-b29467ad.js";
+            window.path_to_searchindex_js = "../searchindex-aaddf521.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-114bd97f.js"></script>
+        <script src="../toc-fc1769c7.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -175,13 +175,22 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="ownership"><a class="header" href="#ownership">Ownership</a></h1>
+<p>This chapter describes the planned systems-language ownership model.</p>
+<p>Current milestone note:</p>
+<ul>
+<li>ownership is not part of the current <code>V1</code> compiler contract</li>
+<li>borrowing is not part of the current <code>V1</code> compiler contract</li>
+<li>these semantics belong to the later <code>V3</code> systems milestone</li>
+</ul>
+<p>So the syntax and examples here should be read as future design, not as current
+compiler behavior.</p>
 <p>Much like <a href="">C++</a> and <a href="">Rust</a>, in Fol every variable declared, by default is created in stack unless explicitly specified othervise. Using option <code>[new]</code> or <code>[@]</code> in a variable, it allocates memory in the heap. The size of the allocation is defined by the type. Internally this creates a pointer to heap address, and dereferences it to the type you are having. Usually those behind the scene pointers here are unique pointers. This means that when the scope ends, the memory that the pointer used is freed.</p>
 <pre><code>var[new] intOnHeap: int[64];
 @var intOnHeap: int[64];
 </code></pre>
 <h2 id="assignments"><a class="header" href="#assignments">Assignments</a></h2>
 <p><a href="/docs/spec/040_variables/#assignments">As discussed before</a>, declaring a new variable is like this:</p>
-<pre><code>var[pub] aVar: int[32] = 64
+<pre><code>var[exp] aVar: int[32] = 64
 </code></pre>
 <p>{{% notice warn %}}</p>
 <p>However, when new variable is created and uses an old variable as value, the value is always cloned for “stack” declared values, but moved for “heap” declared values.</p>

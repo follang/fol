@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-b29467ad.js";
+            window.path_to_searchindex_js = "../searchindex-aaddf521.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-114bd97f.js"></script>
+        <script src="../toc-fc1769c7.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -175,6 +175,16 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="pointers"><a class="header" href="#pointers">Pointers</a></h1>
+<p>This chapter is future systems-language design.</p>
+<p>Current milestone note:</p>
+<ul>
+<li>pointer semantics are not part of the implemented <code>V1</code> compiler contract</li>
+<li>pointer-specific intrinsics such as <code>.pointer_value(...)</code>,
+<code>.address_of(...)</code>, and <code>.borrow_from(...)</code> are deferred</li>
+<li>the material here belongs to the later <code>V3</code> systems milestone</li>
+</ul>
+<p>So the examples in this chapter should be read as planned language direction,
+not as currently supported <code>V1</code> code.</p>
 <p>The only way to access the same memory with different variable is by using pointers. In example below, we create a pointer, and when we want to dereference it to modify the content of the address that the pointer is pointing to, we use <code>*ptrname</code> or <code>.pointer_value(ptrname)</code>.</p>
 <pre><code>@var aContainer: arr[int, 5];                                    //allocating memory on the heap
 var contPoint: ptr[] = aContainer;

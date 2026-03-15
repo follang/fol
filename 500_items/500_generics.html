@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-b29467ad.js";
+            window.path_to_searchindex_js = "../searchindex-aaddf521.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-114bd97f.js"></script>
+        <script src="../toc-fc1769c7.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -175,6 +175,14 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="generics"><a class="header" href="#generics">Generics</a></h1>
+<p>This chapter describes later generic-language design rather than current <code>V1</code>
+compiler behavior.</p>
+<p>Current milestone note:</p>
+<ul>
+<li>generic routines are not part of the implemented <code>V1</code> typechecker</li>
+<li>generic types are not part of the implemented <code>V1</code> typechecker</li>
+<li>examples here should be read as future <code>V2</code> design</li>
+</ul>
 <h2 id="types"><a class="header" href="#types">Types</a></h2>
 <h3 id="generic-functions---lifting"><a class="header" href="#generic-functions---lifting">Generic functions - lifting</a></h3>
 <p>The generic programming process focuses on finding commonality among similar implementations of the same algorithm, then providing suitable abstractions so that a single, generic algorithm can cover many concrete implementations. This process, called lifting, is repeated until the generic algorithm has reached a suitable level of abstraction, where it provides maximal reusability while still yielding efficient, concrete implementations. The abstractions themselves are expressed as requirements on the parameters to the generic algorithm.</p>

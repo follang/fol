@@ -35,10 +35,10 @@
             const path_to_root = "../../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../../searchindex-b29467ad.js";
+            window.path_to_searchindex_js = "../../searchindex-aaddf521.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../../toc-114bd97f.js"></script>
+        <script src="../../toc-fc1769c7.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -176,6 +176,16 @@
                     <main>
                         <h1 id="methods"><a class="header" href="#methods">Methods</a></h1>
 <p>A method is a routine associated with a receiver type. In FOL, methods can be declared as either <code>fun</code> or <code>pro</code> and called with dot syntax (<code>value.method(...)</code>).</p>
+<p>Methods in FOL are procedural, not object-oriented. A method call is just sugar
+for calling a routine whose first explicit input is the receiver value. In
+other words:</p>
+<pre><code class="language-fol">tool.parse_msg(10)
+</code></pre>
+<p>should be read as the procedural call:</p>
+<pre><code class="language-fol">parse_msg(tool, 10)
+</code></pre>
+<p>There is no separate object-method runtime model implied by the syntax. <code>typ</code>
+declares data. Receiver-qualified routines are still routines.</p>
 <p>Current parser-supported receiver declaration syntax is:</p>
 <pre><code class="language-fol">fun (parser)parse_msg(code: int): str = {
     return "ok";
@@ -186,6 +196,8 @@ pro (parser)update(code: int): int = {
 }
 </code></pre>
 <p>The receiver type appears in parentheses right after <code>fun</code> or <code>pro</code>, followed by the method name.</p>
+<p>That receiver clause does not move the routine “inside” the type. It only says
+which type may be used in dot-call form for that routine.</p>
 <p>Current parser-supported receiver syntax is intentionally broader than a named-only rule.
 At parse time, receiver positions accept named, qualified, builtin-scalar, and
 bracketed/composite type references. This keeps extension-style examples such as
@@ -203,6 +215,8 @@ builtin forms such as <code>any</code>, <code>none</code>, and <code>non</code>.
 <pre><code class="language-fol">var tool: parser = parser.new()
 var msg: str = tool.parse_msg(10)
 </code></pre>
+<p>This is equivalent in meaning to passing <code>tool</code> as the first routine argument.
+The dot form is only the call-site spelling.</p>
 <p>Custom error routines also support reporting method call results when receiver-qualified signatures are available:</p>
 <pre><code class="language-fol">fun (parser)parse_err(code: int): str = {
     return "bad-input";

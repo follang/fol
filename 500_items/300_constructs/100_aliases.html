@@ -35,10 +35,10 @@
             const path_to_root = "../../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../../searchindex-b29467ad.js";
+            window.path_to_searchindex_js = "../../searchindex-aaddf521.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../../toc-114bd97f.js"></script>
+        <script src="../../toc-fc1769c7.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -185,7 +185,7 @@
 <pre><code>typ[ali] I5: arr[int, 5];
 </code></pre>
 <p>So now the in the code, instead of writing <code>arr[int, 5]</code> we could use <code>I5</code>:</p>
-<pre><code>~var[pub] fiveIntigers: I5 = { 0, 1, 2, 3, 4, 5 }
+<pre><code>~var[exp] fiveIntigers: I5 = { 0, 1, 2, 3, 4, 5 }
 </code></pre>
 <p>Another example is creating a <code>rgb</code> type that can have numbers only form 0 to 255:</p>
 <pre><code>typ[ali] rgb: int[8][.range(255)] ;                        // we create a type that holds only number from 0 to 255
@@ -193,10 +193,12 @@ typ[ali] rgbSet: set[rgb, rgb, rgb];                       // then we create a t
 </code></pre>
 <p>Alias declaration are created because they can simplify using them multiple times,
 their identifier (their name) may be expressive in other contexts, and-most
-importantly-so that you can define (attach) methods to a named type surface. Anonymous
-types still need a named alias or extension surface first, while built-in or foreign
-types can be extended explicitly through <code>typ[ext]</code>.</p>
-<p>Attaching methods is of outmost importance, because even though instead of attaching methods you could just as easily create and use functions that accept the “original” type as parameter, only types with methods can implement standards <code>std[]</code> that list/enforce those methods, and you can’t attach methods to certain types unless you create a new type derived from them.</p>
+importantly-so that you can define receiver-qualified routines on a named type
+surface. Anonymous types still need a named alias or extension surface first,
+while built-in or foreign types can be extended explicitly through <code>typ[ext]</code>.</p>
+<p>Attaching methods does not make a type into an object. It simply gives a
+routine a receiver-qualified dot-call spelling. You could still think of the
+operation procedurally as a routine that takes the value as its first input.</p>
 <h2 id="extending"><a class="header" href="#extending">Extending</a></h2>
 <p>Extensions add new functionality to an existing constructs. This includes the ability to extend types for which you do not have access to the original source code (known as retroactive modeling).</p>
 <pre><code>typ[ext] type: type;

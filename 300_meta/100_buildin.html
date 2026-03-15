@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Built-Ins - FOL Language Specification</title>
+        <title>Intrinsics - FOL Language Specification</title>
 
 
         <!-- Custom HTML head -->
@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-b29467ad.js";
+            window.path_to_searchindex_js = "../searchindex-aaddf521.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-114bd97f.js"></script>
+        <script src="../toc-fc1769c7.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -174,28 +174,221 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="build-in"><a class="header" href="#build-in">Build-in</a></h1>
-<p>Fol has many build-in functions and macros offered by compiler, and you access them by . (with space/newline/bracket before):</p>
-<pre><code>var contPoint: ptr[int] = 10;			// make a pointer and asign the memory to value of 10
-.print(.pointer_value(contPoint));		// print the dereferenced value of pointer
+                        <h1 id="intrinsics"><a class="header" href="#intrinsics">Intrinsics</a></h1>
+<p>Intrinsics are compiler-owned language operations.</p>
+<p>They are not ordinary library functions, and they are not imported through
+<code>use</code>.</p>
+<p>FOL currently keeps three layers separate:</p>
+<ul>
+<li>intrinsics:
+compiler-owned operations such as <code>.eq(...)</code>, <code>.len(...)</code>, <code>check(...)</code>, and
+<code>panic(...)</code></li>
+<li><code>core</code>:
+ordinary foundational library code that should work across targets</li>
+<li><code>std</code>:
+broader library code such as filesystem, networking, serialization, and other
+richer services</li>
+</ul>
+<p>If an operation can live as an ordinary library API, that is usually the better
+home for it. Intrinsics are reserved for surfaces the compiler must understand
+directly.</p>
+<h2 id="surfaces"><a class="header" href="#surfaces">Surfaces</a></h2>
+<p>The current compiler recognizes three intrinsic surfaces.</p>
+<h2 id="dot-root-calls"><a class="header" href="#dot-root-calls">Dot-root calls</a></h2>
+<p>These are written with a leading dot:</p>
+<pre><code class="language-fol">.eq(a, b)
+.not(flag)
+.len(items)
+.echo(value)
 </code></pre>
-<p>{{% placeholder %}}</p>
-<p><code>.echo()</code>               - print on screen
-<code>.not()</code>                - negate
-<code>.cast()</code>               - type casting
-<code>.as()</code>                 - type casting</p>
-<p><code>.eq()</code>                 - check for equality
-<code>.nq()</code>                 - check for inequality
-<code>.gt()</code>                 - greater than
-<code>.lt()</code>                 - less than
-<code>.ge()</code>                 - greater or equal
-<code>.le()</code>                  - less or equal</p>
-<p><code>.de_alloc()</code>           - drop variable from scope
-<code>.give_back()</code>          - return ownership</p>
-<p><code>.size_of()</code>            - variable type size
-<code>.addres_of()</code>          - pointer address
-<code>.pointer_value()</code>      - value of the pointer</p>
-<p>{{% /placeholder %}}</p>
+<p>Dot-root intrinsics are the main current intrinsic family.</p>
+<h2 id="keyword-calls"><a class="header" href="#keyword-calls">Keyword calls</a></h2>
+<p>These look like language keywords rather than dot calls:</p>
+<pre><code class="language-fol">check(read_code(path))
+panic("unreachable state")
+</code></pre>
+<p>The current <code>V1</code> compiler treats <code>check</code> and <code>panic</code> as intrinsics too, even
+though they are not written with <code>.</code>.</p>
+<h2 id="operator-aliases"><a class="header" href="#operator-aliases">Operator aliases</a></h2>
+<p>Some future intrinsic surfaces are written like operators:</p>
+<pre><code class="language-fol">value as target_type
+value cast target_type
+</code></pre>
+<p>These are registry-owned now, but they are not implemented in the current <code>V1</code>
+compiler.</p>
+<h2 id="current-v1-implemented-intrinsics"><a class="header" href="#current-v1-implemented-intrinsics">Current <code>V1</code> implemented intrinsics</a></h2>
+<p>The current compiler implements this subset end to end through type checking and
+lowering.</p>
+<h3 id="comparison"><a class="header" href="#comparison">Comparison</a></h3>
+<pre><code class="language-fol">.eq(left, right)
+.nq(left, right)
+.lt(left, right)
+.gt(left, right)
+.ge(left, right)
+.le(left, right)
+</code></pre>
+<p>Current <code>V1</code> rule:</p>
+<ul>
+<li><code>.eq(...)</code> and <code>.nq(...)</code> work on comparable scalar pairs</li>
+<li><code>.lt(...)</code>, <code>.gt(...)</code>, <code>.ge(...)</code>, and <code>.le(...)</code> work on ordered scalar
+pairs</li>
+</ul>
+<p>If you call them with the wrong number of arguments or with unsupported type
+families, the compiler reports an intrinsic-specific type error.</p>
+<h3 id="boolean"><a class="header" href="#boolean">Boolean</a></h3>
+<pre><code class="language-fol">.not(flag)
+</code></pre>
+<p>Current <code>V1</code> rule:</p>
+<ul>
+<li><code>.not(...)</code> accepts exactly one <code>bol</code></li>
+</ul>
+<h3 id="query"><a class="header" href="#query">Query</a></h3>
+<pre><code class="language-fol">.len(items)
+</code></pre>
+<p>Current <code>V1</code> rule:</p>
+<ul>
+<li><code>.len(...)</code> accepts exactly one operand</li>
+<li>the operand must currently be one of:
+<ul>
+<li><code>str</code></li>
+<li><code>arr[...]</code></li>
+<li><code>vec[...]</code></li>
+<li><code>seq[...]</code></li>
+<li><code>set[...]</code></li>
+<li><code>map[...]</code></li>
+</ul>
+</li>
+</ul>
+<p>In the current compiler, <code>.len(...)</code> is the only implemented query intrinsic.</p>
+<h3 id="diagnostic"><a class="header" href="#diagnostic">Diagnostic</a></h3>
+<pre><code class="language-fol">.echo(value)
+</code></pre>
+<p>Current <code>V1</code> rule:</p>
+<ul>
+<li><code>.echo(...)</code> accepts exactly one argument</li>
+<li>it emits the value through the runtime-visible debug hook</li>
+<li>it then forwards the same value unchanged</li>
+</ul>
+<p>So this is valid:</p>
+<pre><code class="language-fol">fun[] main(flag: bol): bol = {
+    return .echo(flag)
+}
+</code></pre>
+<h3 id="recoverable-and-control-intrinsics"><a class="header" href="#recoverable-and-control-intrinsics">Recoverable and control intrinsics</a></h3>
+<pre><code class="language-fol">check(read_code(path))
+panic("fatal")
+</code></pre>
+<p>Current <code>V1</code> rule:</p>
+<ul>
+<li><code>check(expr)</code> asks whether a recoverable routine call failed and returns <code>bol</code></li>
+<li><code>panic(...)</code> aborts control flow immediately</li>
+</ul>
+<p>These are described in more detail in the recoverable-error chapter.</p>
+<h2 id="current-v1-deferred-intrinsics"><a class="header" href="#current-v1-deferred-intrinsics">Current <code>V1</code> deferred intrinsics</a></h2>
+<p>The registry already reserves more names than the compiler implements.</p>
+<p>That does <strong>not</strong> mean they work today.</p>
+<h3 id="reserved-but-deferred-for-likely-v1x"><a class="header" href="#reserved-but-deferred-for-likely-v1x">Reserved but deferred for likely <code>V1.x</code></a></h3>
+<ul>
+<li><code>as</code></li>
+<li><code>cast</code></li>
+<li><code>assert</code></li>
+<li><code>.cap(...)</code></li>
+<li><code>.is_empty(...)</code></li>
+<li><code>.low(...)</code></li>
+<li><code>.high(...)</code></li>
+</ul>
+<p>These are recognized as registry-owned language surfaces, but the current
+compiler rejects them with explicit milestone-boundary diagnostics.</p>
+<h3 id="reserved-for-later-v2"><a class="header" href="#reserved-for-later-v2">Reserved for later <code>V2</code></a></h3>
+<ul>
+<li>bitwise helpers such as <code>.bit_and(...)</code>, <code>.bit_or(...)</code>, <code>.shl(...)</code>,
+<code>.shr(...)</code>, <code>.rotl(...)</code>, <code>.rotr(...)</code>, <code>.pop_count(...)</code>, <code>.clz(...)</code>,
+<code>.ctz(...)</code>, <code>.byte_swap(...)</code>, <code>.bit_reverse(...)</code></li>
+<li>overflow-mode helpers such as <code>.checked_add(...)</code>, <code>.wrapping_add(...)</code>,
+<code>.saturating_add(...)</code>, <code>.overflowing_add(...)</code>, and their subtraction forms</li>
+</ul>
+<p>These are intentionally reserved now so the language can grow without
+accidental user-space name collisions, but they are not part of the current
+<code>V1</code> compiler.</p>
+<h3 id="reserved-for-later-v3"><a class="header" href="#reserved-for-later-v3">Reserved for later <code>V3</code></a></h3>
+<ul>
+<li><code>.de_alloc(...)</code></li>
+<li><code>.give_back(...)</code></li>
+<li><code>.address_of(...)</code></li>
+<li><code>.pointer_value(...)</code></li>
+<li><code>.borrow_from(...)</code></li>
+</ul>
+<p>These depend on later ownership, pointer, and low-level systems semantics.</p>
+<h2 id="library-preferred-surfaces"><a class="header" href="#library-preferred-surfaces">Library-preferred surfaces</a></h2>
+<p>Some names are kept in the registry roadmap only as placeholders while the
+language decides whether they should really stay compiler-owned.</p>
+<p>Current examples:</p>
+<ul>
+<li><code>.add(...)</code></li>
+<li><code>.sub(...)</code></li>
+<li><code>.mul(...)</code></li>
+<li><code>.div(...)</code></li>
+<li><code>.abs(...)</code></li>
+<li><code>.min(...)</code></li>
+<li><code>.max(...)</code></li>
+<li><code>.clamp(...)</code></li>
+<li><code>.floor(...)</code></li>
+<li><code>.ceil(...)</code></li>
+<li><code>.round(...)</code></li>
+<li><code>.trunc(...)</code></li>
+<li><code>.pow(...)</code></li>
+<li><code>.sqrt(...)</code></li>
+</ul>
+<p>The current direction is that many of these may fit better in <code>core</code> or <code>std</code>
+instead of becoming permanent compiler intrinsics.</p>
+<h2 id="intrinsics-are-not-shell-operations"><a class="header" href="#intrinsics-are-not-shell-operations">Intrinsics are not shell operations</a></h2>
+<p>Do not confuse intrinsics with shell syntax such as <code>nil</code> and postfix unwrap
+<code>!</code>.</p>
+<p>For example:</p>
+<pre><code class="language-fol">ali MaybeText: opt[str]
+ali Failure: err[str]
+
+fun[] unwrap_optional(value: MaybeText): str = {
+    return value!
+}
+
+fun[] unwrap_failure(value: Failure): str = {
+    return value!
+}
+</code></pre>
+<p>That <code>!</code> surface is part of shell typing, not the intrinsic registry.</p>
+<p>Likewise, recoverable routine calls such as:</p>
+<pre><code class="language-fol">fun[] read_code(path: str): int / str = { ... }
+</code></pre>
+<p>are handled with:</p>
+<ul>
+<li>propagation</li>
+<li><code>check(expr)</code></li>
+<li><code>expr || fallback</code></li>
+</ul>
+<p>not with shell unwrap.</p>
+<h2 id="current-compiler-truth"><a class="header" href="#current-compiler-truth">Current compiler truth</a></h2>
+<p>The current compiler has one shared intrinsic registry crate:</p>
+<p><code>fol-intrinsics</code></p>
+<p>That registry is the source of truth for:</p>
+<ul>
+<li>intrinsic names</li>
+<li>aliases</li>
+<li>categories</li>
+<li>current milestone availability</li>
+<li>deferred-roadmap classification</li>
+<li>lowering mode</li>
+<li>backend-facing role</li>
+</ul>
+<p>So the short rule is:</p>
+<ul>
+<li>parser recognizes intrinsic syntax</li>
+<li><code>fol-intrinsics</code> owns intrinsic identity</li>
+<li>type checking validates intrinsic calls</li>
+<li>lowering maps them to explicit IR shapes</li>
+</ul>
+<p>This page should describe only the subset that is actually implemented, plus
+clearly marked deferred surfaces.</p>
 
                     </main>
 

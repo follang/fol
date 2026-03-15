@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-b29467ad.js";
+            window.path_to_searchindex_js = "../searchindex-aaddf521.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-114bd97f.js"></script>
+        <script src="../toc-fc1769c7.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -272,11 +272,13 @@ TK_BLK             `blk`
 </code></pre>
 <p>Note that all of the <strong>type keywords</strong> are of three characters long. It is recomanded that new identifiers not to be of the same number of characters, as one day in the future that same identifier can be used s a keyword in FOL compiler.</p>
 <h2 id="ok-option-keywords"><a class="header" href="#ok-option-keywords">OK (option keywords)</a></h2>
-<pre><code>OK_PUB              `pub`
-OK_EXP              `exp`
+<pre><code>OK_EXP              `exp`
+OK_HID              `hid`
 </code></pre>
+<p>Older draft material sometimes used <code>pub</code>. The current compiler/book contract
+uses <code>exp</code> for exported visibility and <code>hid</code> for file-local visibility.</p>
 <pre><code>OPTION KEYWORDS - OK:
-`((OK_PUB|OK_EXP|...),?)*`
+`((OK_EXP|OK_HID|...),?)*`
 </code></pre>
 <h2 id="assigning"><a class="header" href="#assigning">Assigning</a></h2>
 <pre><code>`(`*WS*`)*(\W)?(`*AK*`)(\[(`*OK*`)?\])?`

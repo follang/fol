@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-b29467ad.js";
+            window.path_to_searchindex_js = "../searchindex-aaddf521.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-114bd97f.js"></script>
+        <script src="../toc-fc1769c7.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -199,8 +199,14 @@ var varable: type = container[2]                                // accessing the
 }
 </code></pre>
 <h3 id="dynamic-arrays"><a class="header" href="#dynamic-arrays">Dynamic arrays</a></h3>
-<p>Dynamic are similar to arrays but of dynamic length which may change during runtime (like strings). A dynamic array <code>s</code> is always indexed by integers from <code>0</code> to <code>.len(s)-1</code> and its bounds are checked.
-The lower bound of an array or sequence may be received by the built-in <code>.low()</code>, the higher bound by <code>.high()</code>. The length may be received by <code>.len()</code>.</p>
+<p>Dynamic are similar to arrays but of dynamic length which may change during runtime (like strings). A dynamic array <code>s</code> is always indexed by integers from <code>0</code> to <code>.len(s)-1</code> and its bounds are checked.</p>
+<p>Current <code>V1</code> intrinsic note:</p>
+<ul>
+<li><code>.len(...)</code> is implemented</li>
+<li><code>.low(...)</code>, <code>.high(...)</code>, <code>.cap(...)</code>, and <code>.is_empty(...)</code> are registry-owned
+deferred surfaces, not active <code>V1</code> intrinsics</li>
+</ul>
+<p>So the safe current query surface for containers is <code>.len(...)</code>.</p>
 <p>{{% notice tip %}}</p>
 <p>Dynamic arrays are a dynamically allocated (hence the name), thus if not allocated in heap but in stack, the size will be defined automatically in compile time and will be changed to static array.</p>
 <p>{{% /notice %}}</p>
@@ -279,7 +285,7 @@ mat[sizex,sizey,sizez]
     .echo(element)                                            // prints: 45
 }
 </code></pre>
-<p>The number of map elements is called its length. For a map <code>aMap</code>, it can be discovered using the built-in function <code>.len</code> and may change during execution To add a new element, we use <code>name+[element]</code> or <code>add</code>function:</p>
+<p>The number of map elements is called its length. For a map <code>aMap</code>, it can be discovered using the intrinsic <code>.len(...)</code> and may change during execution. To add a new element, we use <code>name+[element]</code> or <code>add</code>function:</p>
 <pre><code>.echo(.len(aMap))           // prints: 3
 aMap.add( {"IT",55} )
 aMap+[{"RU",24}]

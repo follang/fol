@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-b29467ad.js";
+            window.path_to_searchindex_js = "../searchindex-aaddf521.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-114bd97f.js"></script>
+        <script src="../toc-fc1769c7.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -175,6 +175,13 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="coroutines"><a class="header" href="#coroutines">Coroutines</a></h1>
+<p>This chapter is future concurrency/runtime design.</p>
+<p>Current milestone note:</p>
+<ul>
+<li>coroutine, channel, and mutex semantics are not part of the implemented <code>V1</code>
+compiler</li>
+<li>this material belongs to the later <code>V3</code> systems milestone</li>
+</ul>
 <p>A coroutine is a task given form the main thread, similar to a routine, that can be in concurrent execution with other tasks of the same program though other routines.  A <strong>worker</strong> takes the task and runs it, concurrently. Each task in a program can be assigned to one or multiple workers.</p>
 <p>Three characteristics of coroutine distinguish them from normal routines:</p>
 <ul>

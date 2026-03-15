@@ -35,10 +35,10 @@
             const path_to_root = "../../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../../searchindex-b29467ad.js";
+            window.path_to_searchindex_js = "../../searchindex-aaddf521.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../../toc-114bd97f.js"></script>
+        <script src="../../toc-fc1769c7.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -184,6 +184,16 @@
 <li>Any data computed and RETURNED by the procedure is used in place of the procedure in the original line of code.</li>
 </ul>
 <p>Procedures have side-effects, it can modifies some state variable value(s) outside its local environment, that is to say has an observable effect besides returning a value (the main effect) to the invoker of the operation. State data updated “outside” of the operation may be maintained “inside” a stateful object or a wider stateful system within which the operation is performed.</p>
+<p>Current milestone note:</p>
+<ul>
+<li>ordinary procedure declarations are part of <code>V1</code></li>
+<li>recoverable procedure errors (<code>Result / Error</code>) are part of <code>V1</code></li>
+<li>ownership-, borrowing-, and heap-move-specific calling conventions are later
+systems-language work</li>
+</ul>
+<p>So this chapter describes the routine surface that exists now, while any
+pointer/borrowing examples should be read as future design rather than current
+compiler behavior.</p>
 <p>Procedures can also declare a custom recoverable error type with <code>/</code> after the result type:</p>
 <pre><code>pro[] write(path: str): int / io_err = {
     report "permission denied";
@@ -199,119 +209,40 @@
 <li>keep postfix <code>!</code> for <code>opt[...]</code> and <code>err[...]</code> shell values only</li>
 </ul>
 <h3 id="passing-values"><a class="header" href="#passing-values">Passing values</a></h3>
-<p>The semantics for passing a value to a procedure are similar to those for assigning a value to a variable. Passing a variable to a procedure will move or copy, just as assignment does. If the procedure is stack-based, it will automatically copy the value. If it is heap-based, it will move the value.</p>
-<pre><code>pro[] modifyValue(someStr: str) = {
-    someStr = someStr + " world!"
+<p>In the current <code>V1</code> compiler, procedure parameters are ordinary typed inputs.
+You pass values to them exactly as you would pass values to any other routine.</p>
+<p>The more ambitious ownership- and borrowing-specific parameter rules described
+in older drafts are not part of the current <code>V1</code> procedure contract yet.</p>
+<p>Simple example:</p>
+<pre><code>pro[] write_line(text: str): non = {
+    .echo(text)
 }
 
-pro[] main: int =  {
-                                        //case1
-    var[mut] aString: str = "hello";                        // a string varibale $aString is declared (in stack as default)
-    modifyValue(aString);                                   // the value is passed to a procedure, since $aVar is in stack, the value is copied
-    .echo(aString)                                          // this prints: "hello", 
-                                                            // value is not changed and still exists here, because was copied
-
-                                        //case2
-    @var[mut] aString: str = "hello";                       // a string varibale $bString is declared (in stack with '@')
-    modifyValue(bString);                                   // the value is passed to a procedure, since $aVar is in heap, the value is moved
-    .echo(bString)                                          // this throws ERROR, 
-                                                            // value does not exists anymore since it moved and ownership wasn't return
+pro[] main(): int = {
+    var message: str = "hello"
+    write_line(message)
+    return 0
 }
 </code></pre>
-<p>As you can see from above, in both cases, the <code>.echo(varable)</code> does not reach the desired procedure, to print <code>hello world!</code>. In first case is not changed (because is coped), in second case is changed but never returned. To fix the second case, we can just use the <code>.give_back()</code> procedure to return the ownership:</p>
-<pre><code>pro[] modifyValue(someStr: str) = {
-    someStr = someStr + " world!"
-    .give_back(someStr)                                     // this returns the ownership (if there is an owner, if not just ignores it)
-}
-
-pro[] main: int =  {
-                                        //case1
-    var[mut] aString: str = "hello";                        // a string varibale $aString is declared (in stack as default)
-    modifyValue(aString);                                   // the value is passed to a procedure, since $aVar is in stack, the value is copied
-    .echo(aString)                                          // this still prints: "hello", 
-                                                            // value is not changed and still exists here, because was copied
-
-                                        //case2
-    @var[mut] aString: str = "hello";                       // a string varibale $bString is declared (in stack with '@')
-    modifyValue(bString);                                   // the value is passed to a procedure, since $aVar is in heap, the value is moved
-    .echo(aString)                                          // this now prints: "hello world!", 
-                                                            // value now exists since the ownership is return
-}
-</code></pre>
-<h3 id="lend-parameters"><a class="header" href="#lend-parameters">Lend parameters</a></h3>
-<p>But now, we were able to change just the variable that is defined in heap (case two), by moving back the ownership. In case one, since the value is copied, the owner of newly copied value is the procedure itself. So the <code>.give_back()</code> is ignored. To fix this, we use <a href="/docs/spec/050_pointers/#borrowing">borrowing</a> to lend a value to the procedure</p>
-<pre><code>pro[] modifyValue(SOMESTR: str) = {                         // we use allcaps `SOMESTR` to mark it as borrowable
-    somestr = someStr + " world!"                           // when we refer, we can both refer with ALLCAPS or lowecaps
-}
-
-pro[] main: int =  {
-                                        //case1
-    var[mut] aString: str = "hello";                        // a string varibale $aString is declared (in stack as default)
-    modifyValue(aString);                                   // the value is lended to the procedure
-    .echo(aString)                                          // this now prints: "hello world!", 
-
-                                        //case2
-    @var[mut] aString: str = "hello";                       // a string varibale $bString is declared (in heap with '@')
-    modifyValue(aString);                                   // the value is lended to the procedure
-    .echo(aString)                                          // this now prints: "hello world!", 
-}
-</code></pre>
-<p>{{% notice warn %}}</p>
-<p>So to make a procedure borrow a varibale it uses all caps name <code>A_VAR</code>.
-Remember that two variables are the same if have same characters (does not matter the caps)</p>
-<p>{{% /notice %}}</p>
-<pre><code>pro[] borrowingProcedure(aVar: str; BVAR: bol; cVar, DVAR: int)
-</code></pre>
-<p>To call this procedure, the borrowed parameters always shoud be a variable name and not a direct value:</p>
-<pre><code>var aBool, anInt = true, 5
-borrowingProcedure("get", true, 4, 5)                        // this will throw an error, cos it expects borrowable not direct value
-borrowingProcedure("get", aBool, 4, anInt)                   // this is the proper way
-
-</code></pre>
-<p>When the value is passed as borrowable in procedure, by default it gives premission to change, so the same as <code>var[mut, bor]</code> as <a href="/docs/spec/050_pointers/#borrowing">disscussed here</a>.</p>
-<h3 id="return-ownership"><a class="header" href="#return-ownership">Return ownership</a></h3>
-<p>Return values can be though as return of ownership too. The ownership of a variable follows the same pattern every time: assigning a value to another variable moves or copies it.</p>
-<pre><code>pro main(): int = {
-    var s1 = givesOwnership();                              // the variable $s1 is given the ownership of the procedure's $givesOwnership return
-    .echo(s1)                                               // prints "hi"
-    var s2 = returnACopy();                                 // the variable $s2 is given the ownership of the procedure's $returnACopy return
-    .echo(s2)                                               // prints: "there"
-}
-pro givesOwnership(): str = {                               // This procedure will move its return value into the procedure that calls it
-    @var someString = "hi";                                 // $someString comes into scope
-    return someString                                       // $someString is returned and MOVES out to the calling procedure
-}
-pro returnACopy(): int = {                                  // This procedure will move its return value into the procedure that calls it
-    var anotherString = "there"                             // $anotherString comes into scope
-    return anotherString                                    // $anotherString is returned and COPIES out to the calling procedure
-}
-</code></pre>
-<p>When a variable that includes data on the heap goes out of scope, the value will be cleaned up automatically by <code>.de_alloc()</code> unless the data has been moved to be owned by another variable, in this case we give the ownership to return value. If the procedure with the retun value is not assigned to a variable, the memory will be freed again.</p>
-<p>We can even do a transfer of ownership by using this logic:</p>
-<pre><code>pro main(): int = {
-    @var s2 = "hi";                                         // $s2 comes into scope (allocatd in the heap)
-    var s3 = transferOwnership(s2);                         // $s2 is moved into $transferOwnership procedure, which also gives its return ownership to $s3
-    .echo(s3)                                               // prints: "hi"
-    .echo(s2)                                               // this throws an error, $s2 is not the owner of anything anymore
-}
-
-pro transferOwnership(aString: str): str = {                // $aString comes into scope
-    return aString                                          // $aString is returned and moves out to the calling procedure
-}
-</code></pre>
-<p>This does not work with borrowing though. When a variable is lended to a procedure, it has permissions to change, but not lend to someone else. The only thing it can do is make a <code>.deep_copy()</code> of it:</p>
-<pre><code>pro main(): int = {
-    @var s2 = "hi";                                         // $s2 comes into scope (allocatd in the heap)
-    var s3 = transferOwnership(s2);                         // $s2 is moved into $transferOwnership procedure, which also gives its return ownership to $s3
-    .echo(s3)                                               // prints: "hi"
-    .echo(s2)                                               // prints: "hi" too
-}
-
-pro transferOwnership((aString: str)): str = {              // $aString comes into scope which is borrowed
-    return aString                                          // $aString is borrowed, thus cant be lended to someone else
-                                                            // thus, the return is a deep_copy() of $aString
-}
-</code></pre>
+<h3 id="ownership-and-borrowing"><a class="header" href="#ownership-and-borrowing">Ownership and borrowing</a></h3>
+<p>Ownership-, borrowing-, and pointer-specific procedure semantics are part of the
+later <code>V3</code> systems milestone, not the current <code>V1</code> compiler surface.</p>
+<p>Older drafts used several experimental spellings for those ideas, including:</p>
+<ul>
+<li>all-caps borrowable parameter names</li>
+<li><code>.give_back(...)</code></li>
+<li>double-parenthesis routine parameters</li>
+</ul>
+<p>Those forms should be read as future design notes, not as current language
+guarantees.</p>
+<p>The current authoritative split is:</p>
+<ul>
+<li>ordinary procedures and functions are part of <code>V1</code></li>
+<li>recoverable routine errors are part of <code>V1</code></li>
+<li>ownership/borrowing calling conventions are part of <code>V3</code></li>
+</ul>
+<p>See the memory chapters and <a href="../../../VERSIONS.html">VERSIONS.md</a> for the version
+boundary.</p>
 
                     </main>
 

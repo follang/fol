@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-b29467ad.js";
+            window.path_to_searchindex_js = "../searchindex-aaddf521.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-114bd97f.js"></script>
+        <script src="../toc-fc1769c7.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -215,7 +215,7 @@ arch	|   arch   |
 <pre><code>pro[] main: int = {
     var aVar: flt = 2.;                         // float 64 bit
     var bVar: flt[64] = .3;                     // float 64 bit
-    .assert(.sizeof(aVar) == .sizeof(bVar))     // this will true
+    .echo(.eq(aVar, bVar))                      // compare values with the V1 intrinsic surface
 
     var bVar: flt[32] = .54;                    // float 32 bit
 }
@@ -226,15 +226,17 @@ arch	|   arch   |
 </code></pre>
 <pre><code>def testChars: tst["some testing on chars"] = {
     var bytes = "hello";
-    .assert(.typeof(bytes) == *var [5:0]u8);
-    .assert(bytes.len == 5);
-    .assert(bytes[1] == "e");
-    .assert(bytes[5] == 0);
-    .assert("e" == "\x65");
-    .assert("\u{1f4a9}" == 128169);
-    .assert("💯" == 128175);
-    .assert(.mem.eql(u8, "hello", "h\x65llo"));
+    .echo(.len(bytes));
+    .echo(bytes[1]);
+    .echo(.eq("e", "\x65"));
 }
+
+Current `V1` intrinsic note:
+
+- `.eq(...)` is implemented for scalar equality
+- `.len(...)` is implemented for strings and supported containers
+- older helper surfaces such as `.assert(...)`, `.typeof(...)`, and related
+  compile-time queries are not part of the current implemented intrinsic subset
 </code></pre>
 <h3 id="boolean-type"><a class="header" href="#boolean-type">Boolean type</a></h3>
 <p>The boolean type is named <code>bol</code> in Fol and can be one of the two pre-defined values <code>true</code> and <code>false</code>.</p>

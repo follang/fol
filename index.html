@@ -35,10 +35,10 @@
             const path_to_root = "";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-b29467ad.js";
+            window.path_to_searchindex_js = "searchindex-aaddf521.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-114bd97f.js"></script>
+        <script src="toc-fc1769c7.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -247,18 +247,16 @@ each (binder in iterable) { ... }
 <h2 id="example"><a class="header" href="#example">Example</a></h2>
 <pre><code class="language-fol">use log: std = {"fmt/log"};
 
-def argo: mod[] = {
-    con[hidden] prefix: str = "arith";
+var[hid] prefix: str = "arith";
 
-    pro[export] main(): int = {
-        log.warn("Last warning!");
-        .echo(add(3, 5));
-        return 0;
-    }
+fun[] main(): int = {
+    .echo(prefix);
+    .echo(add(3, 5));
+    return 0;
+}
 
-    fun add(a, b: int): int = {
-        return a + b;
-    }
+fun[exp] add(a, b: int): int = {
+    return a + b;
 }
 </code></pre>
 

@@ -35,10 +35,10 @@
             const path_to_root = "../../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../../searchindex-b29467ad.js";
+            window.path_to_searchindex_js = "../../searchindex-aaddf521.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../../toc-114bd97f.js"></script>
+        <script src="../../toc-fc1769c7.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -319,8 +319,15 @@ values</li>
 }
 </code></pre>
 <p>and are handled at the call site with propagation, <code>check(...)</code>, or <code>||</code>
-rather than shell unwrap.
-The final expression in the function will be used as return value. For this to be used, the return type of the function needs to be defined (so the function cnat be in the short form)). ver this can be used only in one statement body.</p>
+rather than shell unwrap.</p>
+<p>Current intrinsic note:</p>
+<ul>
+<li><code>.echo(...)</code> is a dot-root diagnostic intrinsic</li>
+<li><code>check(...)</code> is a keyword intrinsic for recoverable-call inspection</li>
+<li><code>panic(...)</code> is a keyword intrinsic for immediate abort</li>
+<li><code>as</code> and <code>cast</code> are registry-owned but still deferred in current <code>V1</code></li>
+</ul>
+<p>The final expression in the function will be used as return value. For this to be used, the return type of the function needs to be defined (so the function cnat be in the short form)). ver this can be used only in one statement body.</p>
 <pre><code>pro main(): int = {
     fun[] add(el1, el2: int[64]): int[64] = { el1 + el2 }                   // This is tha last statement, this will serve as return
     fun[] someting(el1,el2: int): int = {

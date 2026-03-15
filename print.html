@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-b29467ad.js";
+            window.path_to_searchindex_js = "searchindex-aaddf521.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-114bd97f.js"></script>
+        <script src="toc-fc1769c7.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -248,18 +248,16 @@ each (binder in iterable) { ... }
 <h2 id="example"><a class="header" href="#example">Example</a></h2>
 <pre><code class="language-fol">use log: std = {"fmt/log"};
 
-def argo: mod[] = {
-    con[hidden] prefix: str = "arith";
+var[hid] prefix: str = "arith";
 
-    pro[export] main(): int = {
-        log.warn("Last warning!");
-        .echo(add(3, 5));
-        return 0;
-    }
+fun[] main(): int = {
+    .echo(prefix);
+    .echo(add(3, 5));
+    return 0;
+}
 
-    fun add(a, b: int): int = {
-        return a + b;
-    }
+fun[exp] add(a, b: int): int = {
+    return a + b;
 }
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
@@ -490,11 +488,13 @@ TK_BLK             `blk`
 </code></pre>
 <p>Note that all of the <strong>type keywords</strong> are of three characters long. It is recomanded that new identifiers not to be of the same number of characters, as one day in the future that same identifier can be used s a keyword in FOL compiler.</p>
 <h2 id="ok-option-keywords"><a class="header" href="#ok-option-keywords">OK (option keywords)</a></h2>
-<pre><code>OK_PUB              `pub`
-OK_EXP              `exp`
+<pre><code>OK_EXP              `exp`
+OK_HID              `hid`
 </code></pre>
+<p>Older draft material sometimes used <code>pub</code>. The current compiler/book contract
+uses <code>exp</code> for exported visibility and <code>hid</code> for file-local visibility.</p>
 <pre><code>OPTION KEYWORDS - OK:
-`((OK_PUB|OK_EXP|...),?)*`
+`((OK_EXP|OK_HID|...),?)*`
 </code></pre>
 <h2 id="assigning"><a class="header" href="#assigning">Assigning</a></h2>
 <pre><code>`(`*WS*`)*(\W)?(`*AK*`)(\[(`*OK*`)?\])?`
@@ -1118,9 +1118,22 @@ return [Rect]{pos = {min.x, min.y}, size = {max.x - max.y, max.y - max.y}}
 <li>field member access</li>
 </ul>
 <h2 id="subprogram-access"><a class="header" href="#subprogram-access">Subprogram access</a></h2>
-<p>In most programming languages, it is called “method-call expresion”. A method call consists of an expression (the receiver) followed by a single dot <code>.</code>, an expression path segment, and a parenthesized expression-list:</p>
+<p>One access form is the receiver-style routine call, often called a
+“method-call expression” in other languages. In FOL this is still procedural
+syntax: the receiver value is the first routine input, and dot-call form is
+just sugar at the call site.</p>
+<p>A method call consists of an expression (the receiver) followed by a single dot
+<code>.</code>, an expression path segment, and a parenthesized expression-list:</p>
 <pre><code>"3.14".cast(float).pow(2);                  // casting a numbered string to float, then rising it to power of 2
 </code></pre>
+<p>Read:</p>
+<pre><code class="language-fol">value.method(arg1, arg2)
+</code></pre>
+<p>as the procedural idea:</p>
+<pre><code class="language-fol">method(value, arg1, arg2)
+</code></pre>
+<p>The syntax does not introduce classes or object-owned method dispatch by
+itself.</p>
 <h2 id="namespaces-access"><a class="header" href="#namespaces-access">Namespaces access</a></h2>
 <p>Accesing namespaces is done through double colon operator <code>::</code>:</p>
 <pre><code>use log: std = {"fmt/log"};                 // using the log namespace of fmt
@@ -1263,7 +1276,8 @@ fun (user)getName(): str = { result = self.username; };
 <li>data</li>
 </ul>
 <h3 id="methods"><a class="header" href="#methods">Methods</a></h3>
-<p>Methods are accesed the same way like routine member access.</p>
+<p>Methods are accessed with the same dot form as routine member access, but they
+remain receiver-qualified routines rather than object-owned behavior.</p>
 <pre><code>user1.getName()
 </code></pre>
 <h3 id="data"><a class="header" href="#data">Data</a></h3>
@@ -1291,28 +1305,221 @@ fun (user)getName(): str = { result = self.username; };
 </ul>
 <p>These features are powerful but high-risk for readability. They should be used to remove repetitive structure, not to obscure ordinary program logic.</p>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="build-in"><a class="header" href="#build-in">Build-in</a></h1>
-<p>Fol has many build-in functions and macros offered by compiler, and you access them by . (with space/newline/bracket before):</p>
-<pre><code>var contPoint: ptr[int] = 10;			// make a pointer and asign the memory to value of 10
-.print(.pointer_value(contPoint));		// print the dereferenced value of pointer
+<h1 id="intrinsics"><a class="header" href="#intrinsics">Intrinsics</a></h1>
+<p>Intrinsics are compiler-owned language operations.</p>
+<p>They are not ordinary library functions, and they are not imported through
+<code>use</code>.</p>
+<p>FOL currently keeps three layers separate:</p>
+<ul>
+<li>intrinsics:
+compiler-owned operations such as <code>.eq(...)</code>, <code>.len(...)</code>, <code>check(...)</code>, and
+<code>panic(...)</code></li>
+<li><code>core</code>:
+ordinary foundational library code that should work across targets</li>
+<li><code>std</code>:
+broader library code such as filesystem, networking, serialization, and other
+richer services</li>
+</ul>
+<p>If an operation can live as an ordinary library API, that is usually the better
+home for it. Intrinsics are reserved for surfaces the compiler must understand
+directly.</p>
+<h2 id="surfaces"><a class="header" href="#surfaces">Surfaces</a></h2>
+<p>The current compiler recognizes three intrinsic surfaces.</p>
+<h2 id="dot-root-calls"><a class="header" href="#dot-root-calls">Dot-root calls</a></h2>
+<p>These are written with a leading dot:</p>
+<pre><code class="language-fol">.eq(a, b)
+.not(flag)
+.len(items)
+.echo(value)
 </code></pre>
-<p>{{% placeholder %}}</p>
-<p><code>.echo()</code>               - print on screen
-<code>.not()</code>                - negate
-<code>.cast()</code>               - type casting
-<code>.as()</code>                 - type casting</p>
-<p><code>.eq()</code>                 - check for equality
-<code>.nq()</code>                 - check for inequality
-<code>.gt()</code>                 - greater than
-<code>.lt()</code>                 - less than
-<code>.ge()</code>                 - greater or equal
-<code>.le()</code>                  - less or equal</p>
-<p><code>.de_alloc()</code>           - drop variable from scope
-<code>.give_back()</code>          - return ownership</p>
-<p><code>.size_of()</code>            - variable type size
-<code>.addres_of()</code>          - pointer address
-<code>.pointer_value()</code>      - value of the pointer</p>
-<p>{{% /placeholder %}}</p>
+<p>Dot-root intrinsics are the main current intrinsic family.</p>
+<h2 id="keyword-calls"><a class="header" href="#keyword-calls">Keyword calls</a></h2>
+<p>These look like language keywords rather than dot calls:</p>
+<pre><code class="language-fol">check(read_code(path))
+panic("unreachable state")
+</code></pre>
+<p>The current <code>V1</code> compiler treats <code>check</code> and <code>panic</code> as intrinsics too, even
+though they are not written with <code>.</code>.</p>
+<h2 id="operator-aliases"><a class="header" href="#operator-aliases">Operator aliases</a></h2>
+<p>Some future intrinsic surfaces are written like operators:</p>
+<pre><code class="language-fol">value as target_type
+value cast target_type
+</code></pre>
+<p>These are registry-owned now, but they are not implemented in the current <code>V1</code>
+compiler.</p>
+<h2 id="current-v1-implemented-intrinsics"><a class="header" href="#current-v1-implemented-intrinsics">Current <code>V1</code> implemented intrinsics</a></h2>
+<p>The current compiler implements this subset end to end through type checking and
+lowering.</p>
+<h3 id="comparison"><a class="header" href="#comparison">Comparison</a></h3>
+<pre><code class="language-fol">.eq(left, right)
+.nq(left, right)
+.lt(left, right)
+.gt(left, right)
+.ge(left, right)
+.le(left, right)
+</code></pre>
+<p>Current <code>V1</code> rule:</p>
+<ul>
+<li><code>.eq(...)</code> and <code>.nq(...)</code> work on comparable scalar pairs</li>
+<li><code>.lt(...)</code>, <code>.gt(...)</code>, <code>.ge(...)</code>, and <code>.le(...)</code> work on ordered scalar
+pairs</li>
+</ul>
+<p>If you call them with the wrong number of arguments or with unsupported type
+families, the compiler reports an intrinsic-specific type error.</p>
+<h3 id="boolean"><a class="header" href="#boolean">Boolean</a></h3>
+<pre><code class="language-fol">.not(flag)
+</code></pre>
+<p>Current <code>V1</code> rule:</p>
+<ul>
+<li><code>.not(...)</code> accepts exactly one <code>bol</code></li>
+</ul>
+<h3 id="query"><a class="header" href="#query">Query</a></h3>
+<pre><code class="language-fol">.len(items)
+</code></pre>
+<p>Current <code>V1</code> rule:</p>
+<ul>
+<li><code>.len(...)</code> accepts exactly one operand</li>
+<li>the operand must currently be one of:
+<ul>
+<li><code>str</code></li>
+<li><code>arr[...]</code></li>
+<li><code>vec[...]</code></li>
+<li><code>seq[...]</code></li>
+<li><code>set[...]</code></li>
+<li><code>map[...]</code></li>
+</ul>
+</li>
+</ul>
+<p>In the current compiler, <code>.len(...)</code> is the only implemented query intrinsic.</p>
+<h3 id="diagnostic"><a class="header" href="#diagnostic">Diagnostic</a></h3>
+<pre><code class="language-fol">.echo(value)
+</code></pre>
+<p>Current <code>V1</code> rule:</p>
+<ul>
+<li><code>.echo(...)</code> accepts exactly one argument</li>
+<li>it emits the value through the runtime-visible debug hook</li>
+<li>it then forwards the same value unchanged</li>
+</ul>
+<p>So this is valid:</p>
+<pre><code class="language-fol">fun[] main(flag: bol): bol = {
+    return .echo(flag)
+}
+</code></pre>
+<h3 id="recoverable-and-control-intrinsics"><a class="header" href="#recoverable-and-control-intrinsics">Recoverable and control intrinsics</a></h3>
+<pre><code class="language-fol">check(read_code(path))
+panic("fatal")
+</code></pre>
+<p>Current <code>V1</code> rule:</p>
+<ul>
+<li><code>check(expr)</code> asks whether a recoverable routine call failed and returns <code>bol</code></li>
+<li><code>panic(...)</code> aborts control flow immediately</li>
+</ul>
+<p>These are described in more detail in the recoverable-error chapter.</p>
+<h2 id="current-v1-deferred-intrinsics"><a class="header" href="#current-v1-deferred-intrinsics">Current <code>V1</code> deferred intrinsics</a></h2>
+<p>The registry already reserves more names than the compiler implements.</p>
+<p>That does <strong>not</strong> mean they work today.</p>
+<h3 id="reserved-but-deferred-for-likely-v1x"><a class="header" href="#reserved-but-deferred-for-likely-v1x">Reserved but deferred for likely <code>V1.x</code></a></h3>
+<ul>
+<li><code>as</code></li>
+<li><code>cast</code></li>
+<li><code>assert</code></li>
+<li><code>.cap(...)</code></li>
+<li><code>.is_empty(...)</code></li>
+<li><code>.low(...)</code></li>
+<li><code>.high(...)</code></li>
+</ul>
+<p>These are recognized as registry-owned language surfaces, but the current
+compiler rejects them with explicit milestone-boundary diagnostics.</p>
+<h3 id="reserved-for-later-v2"><a class="header" href="#reserved-for-later-v2">Reserved for later <code>V2</code></a></h3>
+<ul>
+<li>bitwise helpers such as <code>.bit_and(...)</code>, <code>.bit_or(...)</code>, <code>.shl(...)</code>,
+<code>.shr(...)</code>, <code>.rotl(...)</code>, <code>.rotr(...)</code>, <code>.pop_count(...)</code>, <code>.clz(...)</code>,
+<code>.ctz(...)</code>, <code>.byte_swap(...)</code>, <code>.bit_reverse(...)</code></li>
+<li>overflow-mode helpers such as <code>.checked_add(...)</code>, <code>.wrapping_add(...)</code>,
+<code>.saturating_add(...)</code>, <code>.overflowing_add(...)</code>, and their subtraction forms</li>
+</ul>
+<p>These are intentionally reserved now so the language can grow without
+accidental user-space name collisions, but they are not part of the current
+<code>V1</code> compiler.</p>
+<h3 id="reserved-for-later-v3"><a class="header" href="#reserved-for-later-v3">Reserved for later <code>V3</code></a></h3>
+<ul>
+<li><code>.de_alloc(...)</code></li>
+<li><code>.give_back(...)</code></li>
+<li><code>.address_of(...)</code></li>
+<li><code>.pointer_value(...)</code></li>
+<li><code>.borrow_from(...)</code></li>
+</ul>
+<p>These depend on later ownership, pointer, and low-level systems semantics.</p>
+<h2 id="library-preferred-surfaces"><a class="header" href="#library-preferred-surfaces">Library-preferred surfaces</a></h2>
+<p>Some names are kept in the registry roadmap only as placeholders while the
+language decides whether they should really stay compiler-owned.</p>
+<p>Current examples:</p>
+<ul>
+<li><code>.add(...)</code></li>
+<li><code>.sub(...)</code></li>
+<li><code>.mul(...)</code></li>
+<li><code>.div(...)</code></li>
+<li><code>.abs(...)</code></li>
+<li><code>.min(...)</code></li>
+<li><code>.max(...)</code></li>
+<li><code>.clamp(...)</code></li>
+<li><code>.floor(...)</code></li>
+<li><code>.ceil(...)</code></li>
+<li><code>.round(...)</code></li>
+<li><code>.trunc(...)</code></li>
+<li><code>.pow(...)</code></li>
+<li><code>.sqrt(...)</code></li>
+</ul>
+<p>The current direction is that many of these may fit better in <code>core</code> or <code>std</code>
+instead of becoming permanent compiler intrinsics.</p>
+<h2 id="intrinsics-are-not-shell-operations"><a class="header" href="#intrinsics-are-not-shell-operations">Intrinsics are not shell operations</a></h2>
+<p>Do not confuse intrinsics with shell syntax such as <code>nil</code> and postfix unwrap
+<code>!</code>.</p>
+<p>For example:</p>
+<pre><code class="language-fol">ali MaybeText: opt[str]
+ali Failure: err[str]
+
+fun[] unwrap_optional(value: MaybeText): str = {
+    return value!
+}
+
+fun[] unwrap_failure(value: Failure): str = {
+    return value!
+}
+</code></pre>
+<p>That <code>!</code> surface is part of shell typing, not the intrinsic registry.</p>
+<p>Likewise, recoverable routine calls such as:</p>
+<pre><code class="language-fol">fun[] read_code(path: str): int / str = { ... }
+</code></pre>
+<p>are handled with:</p>
+<ul>
+<li>propagation</li>
+<li><code>check(expr)</code></li>
+<li><code>expr || fallback</code></li>
+</ul>
+<p>not with shell unwrap.</p>
+<h2 id="current-compiler-truth"><a class="header" href="#current-compiler-truth">Current compiler truth</a></h2>
+<p>The current compiler has one shared intrinsic registry crate:</p>
+<p><code>fol-intrinsics</code></p>
+<p>That registry is the source of truth for:</p>
+<ul>
+<li>intrinsic names</li>
+<li>aliases</li>
+<li>categories</li>
+<li>current milestone availability</li>
+<li>deferred-roadmap classification</li>
+<li>lowering mode</li>
+<li>backend-facing role</li>
+</ul>
+<p>So the short rule is:</p>
+<ul>
+<li>parser recognizes intrinsic syntax</li>
+<li><code>fol-intrinsics</code> owns intrinsic identity</li>
+<li>type checking validates intrinsic calls</li>
+<li>lowering maps them to explicit IR shapes</li>
+</ul>
+<p>This page should describe only the subset that is actually implemented, plus
+clearly marked deferred surfaces.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="macros"><a class="header" href="#macros">Macros</a></h1>
 <p>Are a very complicated system, and yet can be used as simply as in-place replacement. A lot of build-in macros exist in the language to make the code more easy to type. Below are some system defined macros.</p>
@@ -1407,7 +1614,7 @@ arch	|   arch   |
 <pre><code>pro[] main: int = {
     var aVar: flt = 2.;                         // float 64 bit
     var bVar: flt[64] = .3;                     // float 64 bit
-    .assert(.sizeof(aVar) == .sizeof(bVar))     // this will true
+    .echo(.eq(aVar, bVar))                      // compare values with the V1 intrinsic surface
 
     var bVar: flt[32] = .54;                    // float 32 bit
 }
@@ -1418,15 +1625,17 @@ arch	|   arch   |
 </code></pre>
 <pre><code>def testChars: tst["some testing on chars"] = {
     var bytes = "hello";
-    .assert(.typeof(bytes) == *var [5:0]u8);
-    .assert(bytes.len == 5);
-    .assert(bytes[1] == "e");
-    .assert(bytes[5] == 0);
-    .assert("e" == "\x65");
-    .assert("\u{1f4a9}" == 128169);
-    .assert("💯" == 128175);
-    .assert(.mem.eql(u8, "hello", "h\x65llo"));
+    .echo(.len(bytes));
+    .echo(bytes[1]);
+    .echo(.eq("e", "\x65"));
 }
+
+Current `V1` intrinsic note:
+
+- `.eq(...)` is implemented for scalar equality
+- `.len(...)` is implemented for strings and supported containers
+- older helper surfaces such as `.assert(...)`, `.typeof(...)`, and related
+  compile-time queries are not part of the current implemented intrinsic subset
 </code></pre>
 <h3 id="boolean-type"><a class="header" href="#boolean-type">Boolean type</a></h3>
 <p>The boolean type is named <code>bol</code> in Fol and can be one of the two pre-defined values <code>true</code> and <code>false</code>.</p>
@@ -1458,8 +1667,14 @@ var varable: type = container[2]                                // accessing the
 }
 </code></pre>
 <h3 id="dynamic-arrays"><a class="header" href="#dynamic-arrays">Dynamic arrays</a></h3>
-<p>Dynamic are similar to arrays but of dynamic length which may change during runtime (like strings). A dynamic array <code>s</code> is always indexed by integers from <code>0</code> to <code>.len(s)-1</code> and its bounds are checked.
-The lower bound of an array or sequence may be received by the built-in <code>.low()</code>, the higher bound by <code>.high()</code>. The length may be received by <code>.len()</code>.</p>
+<p>Dynamic are similar to arrays but of dynamic length which may change during runtime (like strings). A dynamic array <code>s</code> is always indexed by integers from <code>0</code> to <code>.len(s)-1</code> and its bounds are checked.</p>
+<p>Current <code>V1</code> intrinsic note:</p>
+<ul>
+<li><code>.len(...)</code> is implemented</li>
+<li><code>.low(...)</code>, <code>.high(...)</code>, <code>.cap(...)</code>, and <code>.is_empty(...)</code> are registry-owned
+deferred surfaces, not active <code>V1</code> intrinsics</li>
+</ul>
+<p>So the safe current query surface for containers is <code>.len(...)</code>.</p>
 <p>{{% notice tip %}}</p>
 <p>Dynamic arrays are a dynamically allocated (hence the name), thus if not allocated in heap but in stack, the size will be defined automatically in compile time and will be changed to static array.</p>
 <p>{{% /notice %}}</p>
@@ -1538,7 +1753,7 @@ mat[sizex,sizey,sizez]
     .echo(element)                                            // prints: 45
 }
 </code></pre>
-<p>The number of map elements is called its length. For a map <code>aMap</code>, it can be discovered using the built-in function <code>.len</code> and may change during execution To add a new element, we use <code>name+[element]</code> or <code>add</code>function:</p>
+<p>The number of map elements is called its length. For a map <code>aMap</code>, it can be discovered using the intrinsic <code>.len(...)</code> and may change during execution. To add a new element, we use <code>name+[element]</code> or <code>add</code>function:</p>
 <pre><code>.echo(.len(aMap))           // prints: 3
 aMap.add( {"IT",55} )
 aMap+[{"RU",24}]
@@ -1659,36 +1874,36 @@ instead of <code>!</code>.</li>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="variables"><a class="header" href="#variables">Variables</a></h1>
 <p>Here are some of the ways that variables can be defined:</p>
-<pre><code>var[pub,mut] somename: num[i32] = 98;
-var[pub,exp] snotherone: str = "this is a string"
-var[~] yetanother = 192.56
-var[+] shortlet = true
-var anarray: arr[str,3] = { "one", "two", "three" }
-var asequence : seq[num[i8]] = { 20, 25, 45, 68, 73,98 }
-var multiholder: set[num, str] = { 12, "word" }
-var anothermulti: set[str, seq[num[f32]]] = { "string", {5.5, 4.3, 7, .5, 3.2} }
-var shortvar = anothermulti[1][3]
-var anymulti: any = {5, 10, "string", {'a',"word",{{0, "val"},{1, "nal"}}}, false}
-var getSomeVal = anymulti[3][2][0][0] | &lt; 15 | shortvar
+<pre><code>var[mut] counter: int = 98
+var[exp] label: str = "this is a string"
+var[~] ratio = 192.56
++var short_flag = true
+var names: arr[str, 3] = { "one", "two", "three" }
+var scores: seq[int] = { 20, 25, 45, 68, 73, 98 }
+var pair: set[int, str] = { 12, "word" }
+var picked = names[1]
 </code></pre>
 <h2 id="assignments"><a class="header" href="#assignments">Assignments</a></h2>
 <p>Following the general rule of <strong>FOL</strong>:</p>
 <pre><code>declaration[options] name: type[options] = { implementation; };
 </code></pre>
 <p>then declaring a new variable is like this:</p>
-<pre><code>var[pub] aVar: int[32] = 64
+<pre><code>var[exp] aVar: int = 64
 </code></pre>
 <p>however, the short version can be used too, and the compiler figures out at compute time the type:</p>
 <pre><code>var shortVar = 24;                      // compiler gives this value of `int[arch]`
 </code></pre>
-<p>When new variable is created, and uses an old variable to assign, the value is cloned, not referenced:</p>
+<p>When new variable is created, and uses an old variable to assign, the resulting
+binding is a new value binding rather than an alias to the old name:</p>
 <pre><code>pro[] main: int = {
     var aVar: int = 55;
     var newVar: int = aVar;
-    .assert(&amp;aVar == &amp;newVar)           // this will return false
+    return newVar;
 }
 </code></pre>
-<p>Two variables can not have the same memory location, unless we either borrow, or use pointers.</p>
+<p>Ownership, borrowing, and pointer-level aliasing are later systems-language
+work and are described in the memory chapters as future milestones rather than
+as part of the current <code>V1</code> compiler contract.</p>
 <p>Variables can be assigned to an output of a function:</p>
 <pre><code>pro[] main: int = {
     fun addFunc(x, y: int): int = {
@@ -1734,21 +1949,23 @@ var getSomeVal = anymulti[3][2][0][0] | &lt; 15 | shortvar
 |  sta   | ! |   flag    | making a variable a static                        |               |
 |  rac   | ? |   flag    | making a variable reactive                        |               |
 ----------------------------------------------------------------------------------------------
-|  exp   | + |   flag    | making a global variable pubic                    | visibility    |
+|  exp   | + |   flag    | making a global variable exported                 | visibility    |
 |  nor   |   |   flag    | making a global variable normal (default)         |               |
-|  hid   | - |   flag    | making a global variable hidden                   |               |
+|  hid   | - |   flag    | making a global variable file-local               |               |
 </code></pre>
 <h3 id="alternatives-1"><a class="header" href="#alternatives-1">Alternatives</a></h3>
 <p>There is a shorter way for variables using alternatives, for example, instead of using <code>var[+]</code>, a leaner <code>+var</code> can be used instead.</p>
-<pre><code>def shko: mod[] = {
-    +var aVar: int = 55;
-    pro[] main: int { .echo(aVar) }
+<pre><code>+var aVar: int = 55
+fun[] main(): int = {
+    .echo(aVar)
+    return aVar
 }
 </code></pre>
 <p>However, when we use two option in varable, only one can use the alternative form, so instead of using <code>var[mut,exp]</code>, this can be used <code>+var[mut]</code> or <code>+var[~]</code>, or vice varsa <code>~var[exp]</code> or <code>~var[+]</code>:</p>
-<pre><code>def shko: mod[] = {
-    +var[mut] aVar: int = 55;
-    pro[] main: int { .echo(aVar) }
+<pre><code>+var[mut] aVar: int = 55
+fun[] main(): int = {
+    .echo(aVar)
+    return aVar
 }
 </code></pre>
 <h2 id="types"><a class="header" href="#types">Types</a></h2>
@@ -1768,6 +1985,9 @@ var getSomeVal = anymulti[3][2][0][0] | &lt; 15 | shortvar
 }
 </code></pre>
 <h3 id="reactive-types"><a class="header" href="#reactive-types">Reactive types</a></h3>
+<p>Current milestone note: reactive variables are part of a later milestone, not
+the current <code>V1</code> compiler contract. The syntax may appear in design examples,
+but present-day <code>V1</code> typechecking rejects reactive semantics explicitly.</p>
 <p>Reactive types is a types that flows and propagates changes.</p>
 <p>For example, in an normal variable setting, <code>var a = b + c</code> would mean that <code>a</code> is being assigned the result of <code>b + c</code> in the instant the expression is evaluated, and later, the values of <code>b</code> and <code>c</code> can be changed with no effect on the value of <code>a</code>. On the other hand, declared as reactive, the value of <code>a</code> is automatically updated whenever the values of <code>b</code> or <code>c</code> change, without the program having to re-execute the statement <code>a = b + c</code> to determine the presently assigned value of <code>a</code>.</p>
 <pre><code>pro[] main: int = {
@@ -1779,6 +1999,8 @@ var getSomeVal = anymulti[3][2][0][0] | &lt; 15 | shortvar
 }
 </code></pre>
 <h3 id="static-types"><a class="header" href="#static-types">Static types</a></h3>
+<p>Current milestone note: static variables are also part of later systems/runtime
+work. The current <code>V1</code> compiler keeps them outside the implemented subset.</p>
 <p>Is a variable which allows a value to be retained from one call of the function to another, meaning that its lifetime declaration. and can be used as <code>var[sta]</code> or <code>var[!]</code>. This variable is special, because if it is initialized, it is placed in the <a href="https://en.wikipedia.org/wiki/Data_segment">data segment</a> (aka: initialized data) of the program memory. If the variable is not set, it is places in <a href="https://en.wikipedia.org/wiki/.bss">.bss segmant</a> (aka: uninitialized data)</p>
 <pre><code>pro[] main: int = {
     {
@@ -1804,31 +2026,27 @@ var getSomeVal = anymulti[3][2][0][0] | &lt; 15 | shortvar
 <li>file-only with <code>hid</code></li>
 </ul>
 <p>In order for a variable to be accessed by the importer, it needs the <code>exp</code> flag option, so <code>var[exp]</code>, or <code>var[+]</code>.</p>
-<p><em>module <strong>shko</strong>, file1.fol</em></p>
-<pre><code>def shko: mod[] = {
-    fun[+] add(a, b: int) = { return a + b }
-    fun sub(a, b: int) = { return a - b }
-}
+<p><em>package <strong>shko</strong>, file1.fol</em></p>
+<pre><code>fun[exp] add(a, b: int): int = { return a + b }
+fun sub(a, b: int): int = { return a - b }
 </code></pre>
-<p><em>module <strong>vij</strong>, file1.fol</em></p>
+<p><em>package <strong>vij</strong>, file1.fol</em></p>
 <pre><code>use shko: loc = {"../folder/shko"}
 
-def vij: mod[] = {
-    pro[] main: int { 
-        .echo(add( 5, 4 ))              // this works perfectly fine, we use a public/exported function
-        .echo(sub( 5, 4 ))              // this throws an error, we are trying use a function that is not visible to other libraries
-    }
+fun[] main(): int = {
+    .echo(add(5, 4))                    // this works, `add` is exported
+    .echo(sub(5, 4))                    // this fails, `sub` is not exported
+    return add(5, 4)
 }
 </code></pre>
 <p>There is even the opposite option too. If we want a function or variable to be used only inside its own file, even though the package is shared, then we use the <code>hid</code> option flag: <code>var[hid]</code> or <code>var[-]</code>.</p>
 <p><em>file1.fol</em></p>
-<pre><code>def shko: mod[] = {
-    var[-] aVar: str = "yo, sup!"
-}
+<pre><code>var[-] aVar: str = "yo, sup!"
 </code></pre>
 <p><em>file2.fol</em></p>
-<pre><code>def shko: mod[] = {
-    pro[] main: int { .echo(aVar) }       // this will thro an error (cos $aVar is declared private/hidden)
+<pre><code>fun[] main(): int = {
+    .echo(aVar)                           // this throws, `aVar` is hidden to its own file
+    return 0
 }
 </code></pre>
 <h2 id="multiple"><a class="header" href="#multiple">Multiple</a></h2>
@@ -2018,8 +2236,15 @@ values</li>
 }
 </code></pre>
 <p>and are handled at the call site with propagation, <code>check(...)</code>, or <code>||</code>
-rather than shell unwrap.
-The final expression in the function will be used as return value. For this to be used, the return type of the function needs to be defined (so the function cnat be in the short form)). ver this can be used only in one statement body.</p>
+rather than shell unwrap.</p>
+<p>Current intrinsic note:</p>
+<ul>
+<li><code>.echo(...)</code> is a dot-root diagnostic intrinsic</li>
+<li><code>check(...)</code> is a keyword intrinsic for recoverable-call inspection</li>
+<li><code>panic(...)</code> is a keyword intrinsic for immediate abort</li>
+<li><code>as</code> and <code>cast</code> are registry-owned but still deferred in current <code>V1</code></li>
+</ul>
+<p>The final expression in the function will be used as return value. For this to be used, the return type of the function needs to be defined (so the function cnat be in the short form)). ver this can be used only in one statement body.</p>
 <pre><code>pro main(): int = {
     fun[] add(el1, el2: int[64]): int[64] = { el1 + el2 }                   // This is tha last statement, this will serve as return
     fun[] someting(el1,el2: int): int = {
@@ -2046,6 +2271,16 @@ contract and the shell-vs-routine distinction.</p>
 <li>Any data computed and RETURNED by the procedure is used in place of the procedure in the original line of code.</li>
 </ul>
 <p>Procedures have side-effects, it can modifies some state variable value(s) outside its local environment, that is to say has an observable effect besides returning a value (the main effect) to the invoker of the operation. State data updated “outside” of the operation may be maintained “inside” a stateful object or a wider stateful system within which the operation is performed.</p>
+<p>Current milestone note:</p>
+<ul>
+<li>ordinary procedure declarations are part of <code>V1</code></li>
+<li>recoverable procedure errors (<code>Result / Error</code>) are part of <code>V1</code></li>
+<li>ownership-, borrowing-, and heap-move-specific calling conventions are later
+systems-language work</li>
+</ul>
+<p>So this chapter describes the routine surface that exists now, while any
+pointer/borrowing examples should be read as future design rather than current
+compiler behavior.</p>
 <p>Procedures can also declare a custom recoverable error type with <code>/</code> after the result type:</p>
 <pre><code>pro[] write(path: str): int / io_err = {
     report "permission denied";
@@ -2061,119 +2296,40 @@ contract and the shell-vs-routine distinction.</p>
 <li>keep postfix <code>!</code> for <code>opt[...]</code> and <code>err[...]</code> shell values only</li>
 </ul>
 <h3 id="passing-values"><a class="header" href="#passing-values">Passing values</a></h3>
-<p>The semantics for passing a value to a procedure are similar to those for assigning a value to a variable. Passing a variable to a procedure will move or copy, just as assignment does. If the procedure is stack-based, it will automatically copy the value. If it is heap-based, it will move the value.</p>
-<pre><code>pro[] modifyValue(someStr: str) = {
-    someStr = someStr + " world!"
+<p>In the current <code>V1</code> compiler, procedure parameters are ordinary typed inputs.
+You pass values to them exactly as you would pass values to any other routine.</p>
+<p>The more ambitious ownership- and borrowing-specific parameter rules described
+in older drafts are not part of the current <code>V1</code> procedure contract yet.</p>
+<p>Simple example:</p>
+<pre><code>pro[] write_line(text: str): non = {
+    .echo(text)
 }
 
-pro[] main: int =  {
-                                        //case1
-    var[mut] aString: str = "hello";                        // a string varibale $aString is declared (in stack as default)
-    modifyValue(aString);                                   // the value is passed to a procedure, since $aVar is in stack, the value is copied
-    .echo(aString)                                          // this prints: "hello", 
-                                                            // value is not changed and still exists here, because was copied
-
-                                        //case2
-    @var[mut] aString: str = "hello";                       // a string varibale $bString is declared (in stack with '@')
-    modifyValue(bString);                                   // the value is passed to a procedure, since $aVar is in heap, the value is moved
-    .echo(bString)                                          // this throws ERROR, 
-                                                            // value does not exists anymore since it moved and ownership wasn't return
+pro[] main(): int = {
+    var message: str = "hello"
+    write_line(message)
+    return 0
 }
 </code></pre>
-<p>As you can see from above, in both cases, the <code>.echo(varable)</code> does not reach the desired procedure, to print <code>hello world!</code>. In first case is not changed (because is coped), in second case is changed but never returned. To fix the second case, we can just use the <code>.give_back()</code> procedure to return the ownership:</p>
-<pre><code>pro[] modifyValue(someStr: str) = {
-    someStr = someStr + " world!"
-    .give_back(someStr)                                     // this returns the ownership (if there is an owner, if not just ignores it)
-}
-
-pro[] main: int =  {
-                                        //case1
-    var[mut] aString: str = "hello";                        // a string varibale $aString is declared (in stack as default)
-    modifyValue(aString);                                   // the value is passed to a procedure, since $aVar is in stack, the value is copied
-    .echo(aString)                                          // this still prints: "hello", 
-                                                            // value is not changed and still exists here, because was copied
-
-                                        //case2
-    @var[mut] aString: str = "hello";                       // a string varibale $bString is declared (in stack with '@')
-    modifyValue(bString);                                   // the value is passed to a procedure, since $aVar is in heap, the value is moved
-    .echo(aString)                                          // this now prints: "hello world!", 
-                                                            // value now exists since the ownership is return
-}
-</code></pre>
-<h3 id="lend-parameters"><a class="header" href="#lend-parameters">Lend parameters</a></h3>
-<p>But now, we were able to change just the variable that is defined in heap (case two), by moving back the ownership. In case one, since the value is copied, the owner of newly copied value is the procedure itself. So the <code>.give_back()</code> is ignored. To fix this, we use <a href="/docs/spec/050_pointers#borrowing">borrowing</a> to lend a value to the procedure</p>
-<pre><code>pro[] modifyValue(SOMESTR: str) = {                         // we use allcaps `SOMESTR` to mark it as borrowable
-    somestr = someStr + " world!"                           // when we refer, we can both refer with ALLCAPS or lowecaps
-}
-
-pro[] main: int =  {
-                                        //case1
-    var[mut] aString: str = "hello";                        // a string varibale $aString is declared (in stack as default)
-    modifyValue(aString);                                   // the value is lended to the procedure
-    .echo(aString)                                          // this now prints: "hello world!", 
-
-                                        //case2
-    @var[mut] aString: str = "hello";                       // a string varibale $bString is declared (in heap with '@')
-    modifyValue(aString);                                   // the value is lended to the procedure
-    .echo(aString)                                          // this now prints: "hello world!", 
-}
-</code></pre>
-<p>{{% notice warn %}}</p>
-<p>So to make a procedure borrow a varibale it uses all caps name <code>A_VAR</code>.
-Remember that two variables are the same if have same characters (does not matter the caps)</p>
-<p>{{% /notice %}}</p>
-<pre><code>pro[] borrowingProcedure(aVar: str; BVAR: bol; cVar, DVAR: int)
-</code></pre>
-<p>To call this procedure, the borrowed parameters always shoud be a variable name and not a direct value:</p>
-<pre><code>var aBool, anInt = true, 5
-borrowingProcedure("get", true, 4, 5)                        // this will throw an error, cos it expects borrowable not direct value
-borrowingProcedure("get", aBool, 4, anInt)                   // this is the proper way
-
-</code></pre>
-<p>When the value is passed as borrowable in procedure, by default it gives premission to change, so the same as <code>var[mut, bor]</code> as <a href="/docs/spec/050_pointers#borrowing">disscussed here</a>.</p>
-<h3 id="return-ownership"><a class="header" href="#return-ownership">Return ownership</a></h3>
-<p>Return values can be though as return of ownership too. The ownership of a variable follows the same pattern every time: assigning a value to another variable moves or copies it.</p>
-<pre><code>pro main(): int = {
-    var s1 = givesOwnership();                              // the variable $s1 is given the ownership of the procedure's $givesOwnership return
-    .echo(s1)                                               // prints "hi"
-    var s2 = returnACopy();                                 // the variable $s2 is given the ownership of the procedure's $returnACopy return
-    .echo(s2)                                               // prints: "there"
-}
-pro givesOwnership(): str = {                               // This procedure will move its return value into the procedure that calls it
-    @var someString = "hi";                                 // $someString comes into scope
-    return someString                                       // $someString is returned and MOVES out to the calling procedure
-}
-pro returnACopy(): int = {                                  // This procedure will move its return value into the procedure that calls it
-    var anotherString = "there"                             // $anotherString comes into scope
-    return anotherString                                    // $anotherString is returned and COPIES out to the calling procedure
-}
-</code></pre>
-<p>When a variable that includes data on the heap goes out of scope, the value will be cleaned up automatically by <code>.de_alloc()</code> unless the data has been moved to be owned by another variable, in this case we give the ownership to return value. If the procedure with the retun value is not assigned to a variable, the memory will be freed again.</p>
-<p>We can even do a transfer of ownership by using this logic:</p>
-<pre><code>pro main(): int = {
-    @var s2 = "hi";                                         // $s2 comes into scope (allocatd in the heap)
-    var s3 = transferOwnership(s2);                         // $s2 is moved into $transferOwnership procedure, which also gives its return ownership to $s3
-    .echo(s3)                                               // prints: "hi"
-    .echo(s2)                                               // this throws an error, $s2 is not the owner of anything anymore
-}
-
-pro transferOwnership(aString: str): str = {                // $aString comes into scope
-    return aString                                          // $aString is returned and moves out to the calling procedure
-}
-</code></pre>
-<p>This does not work with borrowing though. When a variable is lended to a procedure, it has permissions to change, but not lend to someone else. The only thing it can do is make a <code>.deep_copy()</code> of it:</p>
-<pre><code>pro main(): int = {
-    @var s2 = "hi";                                         // $s2 comes into scope (allocatd in the heap)
-    var s3 = transferOwnership(s2);                         // $s2 is moved into $transferOwnership procedure, which also gives its return ownership to $s3
-    .echo(s3)                                               // prints: "hi"
-    .echo(s2)                                               // prints: "hi" too
-}
-
-pro transferOwnership((aString: str)): str = {              // $aString comes into scope which is borrowed
-    return aString                                          // $aString is borrowed, thus cant be lended to someone else
-                                                            // thus, the return is a deep_copy() of $aString
-}
-</code></pre>
+<h3 id="ownership-and-borrowing"><a class="header" href="#ownership-and-borrowing">Ownership and borrowing</a></h3>
+<p>Ownership-, borrowing-, and pointer-specific procedure semantics are part of the
+later <code>V3</code> systems milestone, not the current <code>V1</code> compiler surface.</p>
+<p>Older drafts used several experimental spellings for those ideas, including:</p>
+<ul>
+<li>all-caps borrowable parameter names</li>
+<li><code>.give_back(...)</code></li>
+<li>double-parenthesis routine parameters</li>
+</ul>
+<p>Those forms should be read as future design notes, not as current language
+guarantees.</p>
+<p>The current authoritative split is:</p>
+<ul>
+<li>ordinary procedures and functions are part of <code>V1</code></li>
+<li>recoverable routine errors are part of <code>V1</code></li>
+<li>ownership/borrowing calling conventions are part of <code>V3</code></li>
+</ul>
+<p>See the memory chapters and <a href="../VERSIONS.html">VERSIONS.md</a> for the version
+boundary.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="functions"><a class="header" href="#functions">Functions</a></h1>
 <p>Functions compared to procedure are pure. A pure function is a function that has the following properties:</p>
@@ -2314,6 +2470,16 @@ fun[] add2(): {fun (x: int): int} = {
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="methods-1"><a class="header" href="#methods-1">Methods</a></h1>
 <p>A method is a routine associated with a receiver type. In FOL, methods can be declared as either <code>fun</code> or <code>pro</code> and called with dot syntax (<code>value.method(...)</code>).</p>
+<p>Methods in FOL are procedural, not object-oriented. A method call is just sugar
+for calling a routine whose first explicit input is the receiver value. In
+other words:</p>
+<pre><code class="language-fol">tool.parse_msg(10)
+</code></pre>
+<p>should be read as the procedural call:</p>
+<pre><code class="language-fol">parse_msg(tool, 10)
+</code></pre>
+<p>There is no separate object-method runtime model implied by the syntax. <code>typ</code>
+declares data. Receiver-qualified routines are still routines.</p>
 <p>Current parser-supported receiver declaration syntax is:</p>
 <pre><code class="language-fol">fun (parser)parse_msg(code: int): str = {
     return "ok";
@@ -2324,6 +2490,8 @@ pro (parser)update(code: int): int = {
 }
 </code></pre>
 <p>The receiver type appears in parentheses right after <code>fun</code> or <code>pro</code>, followed by the method name.</p>
+<p>That receiver clause does not move the routine “inside” the type. It only says
+which type may be used in dot-call form for that routine.</p>
 <p>Current parser-supported receiver syntax is intentionally broader than a named-only rule.
 At parse time, receiver positions accept named, qualified, builtin-scalar, and
 bracketed/composite type references. This keeps extension-style examples such as
@@ -2341,6 +2509,8 @@ builtin forms such as <code>any</code>, <code>none</code>, and <code>non</code>.
 <pre><code class="language-fol">var tool: parser = parser.new()
 var msg: str = tool.parse_msg(10)
 </code></pre>
+<p>This is equivalent in meaning to passing <code>tool</code> as the first routine argument.
+The dot form is only the call-site spelling.</p>
 <p>Custom error routines also support reporting method call results when receiver-qualified signatures are available:</p>
 <pre><code class="language-fol">fun (parser)parse_err(code: int): str = {
     return "bad-input";
@@ -2393,7 +2563,7 @@ fun run(tool: parser, code: int): int / str = {
                               {"bob","tom"} };
 var dances axi[str] = { "albert", "alice", "carl" };
 </code></pre>
-<h3 id="boolean"><a class="header" href="#boolean">Boolean</a></h3>
+<h3 id="boolean-1"><a class="header" href="#boolean-1">Boolean</a></h3>
 <p>Here we return a boolean <code>bol</code>. This rule check if a parent can dance:</p>
 <pre><code>log can_parent_dance(a: str): bol = {
     parent:[a,_] and dances:[a]
@@ -2530,7 +2700,7 @@ log instructor(class: str): vec[str] = {
 <pre><code>typ[ali] I5: arr[int, 5];
 </code></pre>
 <p>So now the in the code, instead of writing <code>arr[int, 5]</code> we could use <code>I5</code>:</p>
-<pre><code>~var[pub] fiveIntigers: I5 = { 0, 1, 2, 3, 4, 5 }
+<pre><code>~var[exp] fiveIntigers: I5 = { 0, 1, 2, 3, 4, 5 }
 </code></pre>
 <p>Another example is creating a <code>rgb</code> type that can have numbers only form 0 to 255:</p>
 <pre><code>typ[ali] rgb: int[8][.range(255)] ;                        // we create a type that holds only number from 0 to 255
@@ -2538,10 +2708,12 @@ typ[ali] rgbSet: set[rgb, rgb, rgb];                       // then we create a t
 </code></pre>
 <p>Alias declaration are created because they can simplify using them multiple times,
 their identifier (their name) may be expressive in other contexts, and-most
-importantly-so that you can define (attach) methods to a named type surface. Anonymous
-types still need a named alias or extension surface first, while built-in or foreign
-types can be extended explicitly through <code>typ[ext]</code>.</p>
-<p>Attaching methods is of outmost importance, because even though instead of attaching methods you could just as easily create and use functions that accept the “original” type as parameter, only types with methods can implement standards <code>std[]</code> that list/enforce those methods, and you can’t attach methods to certain types unless you create a new type derived from them.</p>
+importantly-so that you can define receiver-qualified routines on a named type
+surface. Anonymous types still need a named alias or extension surface first,
+while built-in or foreign types can be extended explicitly through <code>typ[ext]</code>.</p>
+<p>Attaching methods does not make a type into an object. It simply gives a
+routine a receiver-qualified dot-call spelling. You could still think of the
+operation procedurally as a routine that takes the value as its first input.</p>
 <h2 id="extending"><a class="header" href="#extending">Extending</a></h2>
 <p>Extensions add new functionality to an existing constructs. This includes the ability to extend types for which you do not have access to the original source code (known as retroactive modeling).</p>
 <pre><code>typ[ext] type: type;
@@ -2585,7 +2757,7 @@ pro main(): int = {
 <h2 id="definition"><a class="header" href="#definition">Definition</a></h2>
 <h3 id="records"><a class="header" href="#records">Records</a></h3>
 <p>A record is an aggregate of data elements in which the individual elements are identified by names and types and accessed through offsets from the beginning of the structure. There is frequently a need in programs to model a collection of data in which the individual elements are not of the same type or size. For example, information about a college student might include name, student number, grade point average, and so forth. A data type for such a collection might use a character string for the name, an integer for the student number, a  floating- point for the grade point average, and so forth. Records are designed for this kind of need.</p>
-<p>It may appear that records and heterogeneous <a href="/docs/spec/types#sets">set</a> are the same, but that is not the case. The elements of a heterogeneous <code>set[]</code> are all references to data objects that reside in scattered locations, often on the heap. The elements of a record are of potentially different sizes and reside in adjacent memory locations. Records are normally used as encapsulation structures, rather than data structures.</p>
+<p>It may appear that records and heterogeneous <a href="/docs/spec/types#sets">set</a> are the same, but that is not the case. The elements of a heterogeneous <code>set[]</code> are all references to data values that may reside in scattered locations. The elements of a record are of potentially different sizes and reside in adjacent memory locations. Records are primarily data layouts.</p>
 <pre><code>typ user: rec = {
     var username: str;
     var email: str;
@@ -2593,18 +2765,25 @@ pro main(): int = {
     var active: bol;
 };
 </code></pre>
-<h4 id="records-as-classes"><a class="header" href="#records-as-classes">Records as classes</a></h4>
-<p>Calsses are the way that FOL can apply OOP paradigm. They basically are a glorified record. Instead of methods to be used fom outside the body, they have the method declaration within the body. For example, creating an class <code>computer</code> and its methods within the body:</p>
-<pre><code>~typ[pub] computer: rec = {
-    var[pub] brand: str;
-    var[pub] memory: int[16];
+<h4 id="records-are-data-not-classes"><a class="header" href="#records-are-data-not-classes">Records are data, not classes</a></h4>
+<p><code>typ ...: rec = { ... }</code> declares a data type. FOL does not treat records as
+classes with hidden object state or class-owned method bodies. If a record has
+operations associated with it, those operations are still declared as ordinary
+receiver-qualified routines outside the record body.</p>
+<pre><code class="language-fol">typ computer: rec = {
+    brand: str;
+    memory: int
+}
 
-    +fun getType(): str = { brand + .to_string(memory) };
-};
+fun (computer)get_type(): str = {
+    return self.brand
+}
 
-var laptop: computer = { member1 = value, member2 = value };
-.echo(laptop.getType());
+var laptop: computer = { brand = "acme", memory = 16 }
+.echo(laptop.get_type())
 </code></pre>
+<p>The call <code>laptop.get_type()</code> is procedural sugar for calling the receiver
+routine with <code>laptop</code> as its first input.</p>
 <h3 id="entries"><a class="header" href="#entries">Entries</a></h3>
 <p>Is an a group of constants (identified with <code>ent</code>) consisting of a set of named values called elements.</p>
 <pre><code>typ color: ent = {
@@ -2703,10 +2882,15 @@ var mint: rgb = { 153, 255, 187 }
 var mint: rgb = { 153, 255, 187 }
 </code></pre>
 <h2 id="methods-2"><a class="header" href="#methods-2">Methods</a></h2>
-<p>A record may have methods associated with it. It does not inherit any methods bound to the given type, but the method set of an standard type remains unchanged.To create a method for a record, it needs to be declared as the reciever of that method, in FOL’s. Making a getter fucntion:</p>
+<p>A record may have receiver-qualified routines associated with it. This does not
+turn the record into an object-oriented type. It only means a routine may use
+dot-call syntax when its first input is a value of that record type. To create
+such a routine for a record, declare the receiver type on the routine itself:</p>
 <pre><code>fun (recieverRecord)someFunction(): str = { self.somestring; };
 </code></pre>
-<p>After declaring the record receiver, we then we have access to the record with the keyword <code>self</code>. A receiver is essentially just a type that can directly call the method.</p>
+<p>After declaring the record receiver, the routine body may refer to that input
+through <code>self</code>. A receiver is simply the explicit first input that enables
+dot-call syntax.</p>
 <pre><code>typ user: rec = {
     var username: str;
     var email: str;
@@ -2716,14 +2900,26 @@ var mint: rgb = { 153, 255, 187 }
 
 fun (user)getName(): str = { result = self.username; };
 </code></pre>
-<p>Methods have some benefits over regular routines. In the same package routines with the same name are not allowed but the same is not true for a method. One can have multiple methods with the same name given that the receivers they have are different.</p>
-<p>Then each instantiation of the record can access the method. Receivers allow us to write method calls in an OOP manner. That means whenever an object of some type is created that type can call the method from itself.</p>
+<p>Receiver-qualified routines have one main ergonomic benefit over plain routine
+calls: they let the call site read <code>value.method(...)</code>. In the same package,
+multiple routines may still share the same method name if the receiver types
+are different.</p>
+<p>Each record value can therefore use the dot form, but the underlying model
+remains procedural.</p>
 <pre><code>var[mut] user1: user = { email = "someone@example.com", username = "someusername123", active = true, sign_in_count = 1 }
 
 .echo(user1.getName());
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="standards"><a class="header" href="#standards">Standards</a></h1>
+<p>This chapter describes <code>V2</code> contract/conformance design rather than current
+<code>V1</code> compiler behavior.</p>
+<p>Current milestone note:</p>
+<ul>
+<li>standards are not part of the implemented <code>V1</code> typechecker</li>
+<li>blueprints and extensions are not part of the implemented <code>V1</code> typechecker</li>
+<li>examples here are semantic design examples for a later milestone</li>
+</ul>
 <h2 id="satndard"><a class="header" href="#satndard">Satndard</a></h2>
 <p>A standard is an established norm or requirement for a repeatable technical task. It is usually a formal declaration that establishes uniform technical criteria, methods, processes, and practices.</p>
 <p>S, what is a to be considered a standard:</p>
@@ -2734,8 +2930,10 @@ fun (user)getName(): str = { result = self.username; };
 <li>A standard guide is general information or options that do not require a specific course of action.</li>
 <li>A standard definition is formally established terminology.</li>
 </ul>
-<p>In FOL, standards are named collection of method signatures and are created by using <code>std</code> keyword:</p>
-<pre><code>typ geometry = {
+<p>In FOL, standards are named collections of receiver-qualified routine
+signatures and/or required data, created with <code>std</code>. They are not class
+hierarchies. They are procedural/data contracts:</p>
+<pre><code>std geometry: pro = {
     fun area(): flt[64];
     fun perim(): flt[64];
 };
@@ -2778,16 +2976,20 @@ std rect(geo): rec[] = {                                             // this typ
 }
 
 </code></pre>
-<p>Now we can make <code>rect</code> records or classes, we have to respect the contract. If we don’t implement the <code>geo</code> methods, when we instantiate a new object of type <code>rect</code> it will throw an error.</p>
+<p>Now we can make <code>rect</code> records, but we have to respect the contract. If we
+don’t implement the required receiver-qualified routines, the compiler should
+reject uses that require that contract.</p>
 <pre><code>var aRectangle: rect = { width = 5, heigh = 6 }                      // this throws an error, we haven't fullfill the ocntract
 </code></pre>
-<p>To do so, we need first to create the default <code>rect</code> methods from <code>geo</code> standard, then instantiate a new object:</p>
+<p>To do so, we need first to create the required <code>rect</code> receiver-qualified
+routines, then instantiate a record value:</p>
 <pre><code>fun (rect)area(): flt[64] = { result = self.width + self.heigh }
 fun (rect)perim(): flt[64] = { result = 2 * self.width + 2 * self.heigh }
 
 var aRectangle: rect = { width = 5, heigh = 6 }                     // this from here on will work
 </code></pre>
-<p>The benifit of standard is that, we can create a routine that as parameter takes a standard, thus all objects with the standard can use afterwards that routine:</p>
+<p>The benefit of standards is that a routine parameter may require a standard
+contract, and then any type that satisfies that contract may be used there:</p>
 <pre><code>std geo: pro = {
     fun area(): flt[64];
     fun perim(): flt[64];
@@ -2812,7 +3014,7 @@ typ square: rec[] = {                                               // this type
 
 pro measure( shape: geo) { .echo(shape.area() + "m2") }        // a siple method to print the standard's area
 
-// instantiate two objects
+// instantiate two record values
 var aRectangle: rect = { width = 5, heigh = 6 }                      // creating a new rectangle
 var aCircle: circle = { radius = 5 }                                 // creating a new rectangle
 var aSquare: square = { heigh = 6 }                                  // creating a new square
@@ -2820,12 +3022,20 @@ var aSquare: square = { heigh = 6 }                                  // creating
 
 // to call the measure function that rpints the surface
 measure(aRectangle)                                                  // this prints: 30m2
-measure(aSquare)                                                     // this throws error, square cant use measure method
+measure(aSquare)                                                     // this throws error, square does not satisfy the contract
 measure(aCircle)                                                     // this prints: 78m2
 
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="generics-1"><a class="header" href="#generics-1">Generics</a></h1>
+<p>This chapter describes later generic-language design rather than current <code>V1</code>
+compiler behavior.</p>
+<p>Current milestone note:</p>
+<ul>
+<li>generic routines are not part of the implemented <code>V1</code> typechecker</li>
+<li>generic types are not part of the implemented <code>V1</code> typechecker</li>
+<li>examples here should be read as future <code>V2</code> design</li>
+</ul>
 <h2 id="types-2"><a class="header" href="#types-2">Types</a></h2>
 <h3 id="generic-functions---lifting"><a class="header" href="#generic-functions---lifting">Generic functions - lifting</a></h3>
 <p>The generic programming process focuses on finding commonality among similar implementations of the same algorithm, then providing suitable abstractions so that a single, generic algorithm can cover many concrete implementations. This process, called lifting, is repeated until the generic algorithm has reached a suitable level of abstraction, where it provides maximal reusability while still yielding efficient, concrete implementations. The abstractions themselves are expressed as requirements on the parameters to the generic algorithm.</p>
@@ -3781,6 +3991,8 @@ main error-handling tool.</p>
 <li><code>check(expr)</code></li>
 <li><code>expr || fallback</code></li>
 </ul>
+<p><code>check</code> and <code>panic</code> are compiler intrinsics in the current <code>V1</code> compiler. They
+are not imported library functions.</p>
 <h2 id="checkexpr"><a class="header" href="#checkexpr"><code>check(expr)</code></a></h2>
 <p><code>check(expr)</code> asks whether a recoverable routine call failed.</p>
 <p>It returns <code>bol</code>.</p>
@@ -4102,13 +4314,22 @@ instead of guessing semantics.</p>
 <p>The detailed chapters should be treated as the normative source. This index only frames the area.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="ownership"><a class="header" href="#ownership">Ownership</a></h1>
+<p>This chapter describes the planned systems-language ownership model.</p>
+<p>Current milestone note:</p>
+<ul>
+<li>ownership is not part of the current <code>V1</code> compiler contract</li>
+<li>borrowing is not part of the current <code>V1</code> compiler contract</li>
+<li>these semantics belong to the later <code>V3</code> systems milestone</li>
+</ul>
+<p>So the syntax and examples here should be read as future design, not as current
+compiler behavior.</p>
 <p>Much like <a href="#ownership">C++</a> and <a href="#ownership">Rust</a>, in Fol every variable declared, by default is created in stack unless explicitly specified othervise. Using option <code>[new]</code> or <code>[@]</code> in a variable, it allocates memory in the heap. The size of the allocation is defined by the type. Internally this creates a pointer to heap address, and dereferences it to the type you are having. Usually those behind the scene pointers here are unique pointers. This means that when the scope ends, the memory that the pointer used is freed.</p>
 <pre><code>var[new] intOnHeap: int[64];
 @var intOnHeap: int[64];
 </code></pre>
 <h2 id="assignments-1"><a class="header" href="#assignments-1">Assignments</a></h2>
 <p><a href="/docs/spec/040_variables#assignments">As discussed before</a>, declaring a new variable is like this:</p>
-<pre><code>var[pub] aVar: int[32] = 64
+<pre><code>var[exp] aVar: int[32] = 64
 </code></pre>
 <p>{{% notice warn %}}</p>
 <p>However, when new variable is created and uses an old variable as value, the value is always cloned for “stack” declared values, but moved for “heap” declared values.</p>
@@ -4169,6 +4390,16 @@ instead of guessing semantics.</p>
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="pointers"><a class="header" href="#pointers">Pointers</a></h1>
+<p>This chapter is future systems-language design.</p>
+<p>Current milestone note:</p>
+<ul>
+<li>pointer semantics are not part of the implemented <code>V1</code> compiler contract</li>
+<li>pointer-specific intrinsics such as <code>.pointer_value(...)</code>,
+<code>.address_of(...)</code>, and <code>.borrow_from(...)</code> are deferred</li>
+<li>the material here belongs to the later <code>V3</code> systems milestone</li>
+</ul>
+<p>So the examples in this chapter should be read as planned language direction,
+not as currently supported <code>V1</code> code.</p>
 <p>The only way to access the same memory with different variable is by using pointers. In example below, we create a pointer, and when we want to dereference it to modify the content of the address that the pointer is pointing to, we use <code>*ptrname</code> or <code>.pointer_value(ptrname)</code>.</p>
 <pre><code>@var aContainer: arr[int, 5];                                    //allocating memory on the heap
 var contPoint: ptr[] = aContainer;
@@ -4230,6 +4461,12 @@ var pointerPoint: ptr[raw] = &amp;contPoint;
 <p>Together they define the language-level model for deferred work, coordination, and concurrent execution structure.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="eventuals"><a class="header" href="#eventuals">Eventuals</a></h1>
+<p>This chapter is future concurrency/runtime design.</p>
+<p>Current milestone note:</p>
+<ul>
+<li>async/eventual semantics are not part of the implemented <code>V1</code> compiler</li>
+<li>this material belongs to the later <code>V3</code> systems milestone</li>
+</ul>
 <p>Eventuals describe an object that acts as a proxy for a result that is initially unknown, usually because the computation of its value is not yet complete.</p>
 <h2 id="asyncawait"><a class="header" href="#asyncawait">Async/Await</a></h2>
 <p>Async methods are intended to be non-blocking operations. An await expression in an async routine doesn’t block the current thread while the awaited task is running. Instead, the expression signs up the rest of the routine as a continuation and returns control to the caller of the async routine and it means “Once this is done, execute this function”. It’s basically a “when done” hook for your code, and what is happening here is an async routine, when executed, returns a coroutine which can then be awaited. This is done usually in one thread, but can be done in multiple threads too, but thread invocations are invisible to the programmer in this case.</p>
@@ -4245,6 +4482,13 @@ fun doItFast(): str = {
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="coroutines"><a class="header" href="#coroutines">Coroutines</a></h1>
+<p>This chapter is future concurrency/runtime design.</p>
+<p>Current milestone note:</p>
+<ul>
+<li>coroutine, channel, and mutex semantics are not part of the implemented <code>V1</code>
+compiler</li>
+<li>this material belongs to the later <code>V3</code> systems milestone</li>
+</ul>
 <p>A coroutine is a task given form the main thread, similar to a routine, that can be in concurrent execution with other tasks of the same program though other routines.  A <strong>worker</strong> takes the task and runs it, concurrently. Each task in a program can be assigned to one or multiple workers.</p>
 <p>Three characteristics of coroutine distinguish them from normal routines:</p>
 <ul>

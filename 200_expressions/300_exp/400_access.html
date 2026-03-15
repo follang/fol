@@ -35,10 +35,10 @@
             const path_to_root = "../../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../../searchindex-b29467ad.js";
+            window.path_to_searchindex_js = "../../searchindex-aaddf521.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../../toc-114bd97f.js"></script>
+        <script src="../../toc-fc1769c7.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -183,9 +183,22 @@
 <li>field member access</li>
 </ul>
 <h2 id="subprogram-access"><a class="header" href="#subprogram-access">Subprogram access</a></h2>
-<p>In most programming languages, it is called “method-call expresion”. A method call consists of an expression (the receiver) followed by a single dot <code>.</code>, an expression path segment, and a parenthesized expression-list:</p>
+<p>One access form is the receiver-style routine call, often called a
+“method-call expression” in other languages. In FOL this is still procedural
+syntax: the receiver value is the first routine input, and dot-call form is
+just sugar at the call site.</p>
+<p>A method call consists of an expression (the receiver) followed by a single dot
+<code>.</code>, an expression path segment, and a parenthesized expression-list:</p>
 <pre><code>"3.14".cast(float).pow(2);                  // casting a numbered string to float, then rising it to power of 2
 </code></pre>
+<p>Read:</p>
+<pre><code class="language-fol">value.method(arg1, arg2)
+</code></pre>
+<p>as the procedural idea:</p>
+<pre><code class="language-fol">method(value, arg1, arg2)
+</code></pre>
+<p>The syntax does not introduce classes or object-owned method dispatch by
+itself.</p>
 <h2 id="namespaces-access"><a class="header" href="#namespaces-access">Namespaces access</a></h2>
 <p>Accesing namespaces is done through double colon operator <code>::</code>:</p>
 <pre><code>use log: std = {"fmt/log"};                 // using the log namespace of fmt
@@ -328,7 +341,8 @@ fun (user)getName(): str = { result = self.username; };
 <li>data</li>
 </ul>
 <h3 id="methods"><a class="header" href="#methods">Methods</a></h3>
-<p>Methods are accesed the same way like routine member access.</p>
+<p>Methods are accessed with the same dot form as routine member access, but they
+remain receiver-qualified routines rather than object-owned behavior.</p>
 <pre><code>user1.getName()
 </code></pre>
 <h3 id="data"><a class="header" href="#data">Data</a></h3>
