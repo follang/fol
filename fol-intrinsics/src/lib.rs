@@ -416,6 +416,52 @@ mod tests {
     }
 
     #[test]
+    fn roadmap_buckets_partition_registry_without_duplicate_spellings() {
+        use std::collections::BTreeSet;
+
+        let mut canonical_names = BTreeSet::new();
+        let mut aliases = BTreeSet::new();
+
+        for roadmap in [
+            IntrinsicRoadmap::CurrentV1,
+            IntrinsicRoadmap::LikelyV1x,
+            IntrinsicRoadmap::V2,
+            IntrinsicRoadmap::V3,
+            IntrinsicRoadmap::CoreStdInstead,
+        ] {
+            let entries = intrinsics_for_roadmap(roadmap);
+            assert!(
+                !entries.is_empty(),
+                "roadmap bucket '{}' should expose at least one intrinsic",
+                roadmap.as_str()
+            );
+            for entry in entries {
+                assert_eq!(
+                    roadmap_for_intrinsic(entry.id),
+                    Some(roadmap),
+                    "intrinsic '{}' should stay in its selected roadmap bucket",
+                    entry.name
+                );
+                assert!(
+                    canonical_names.insert(entry.name),
+                    "intrinsic '{}' should appear in only one roadmap bucket",
+                    entry.name
+                );
+                for alias in entry.aliases {
+                    assert!(
+                        aliases.insert(*alias),
+                        "intrinsic alias '{}' should stay unique across roadmap buckets",
+                        alias
+                    );
+                }
+            }
+        }
+
+        assert_eq!(canonical_names.len(), intrinsic_registry().len());
+        assert!(validate_intrinsic_registry(intrinsic_registry()).is_ok());
+    }
+
+    #[test]
     fn diagnostics_helpers_render_intrinsic_specific_guidance() {
         let eq = intrinsic_by_canonical_name("eq").expect("eq should exist");
         let de_alloc = intrinsic_by_canonical_name("de_alloc").expect("de_alloc should exist");

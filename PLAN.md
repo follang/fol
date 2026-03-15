@@ -1234,7 +1234,7 @@ Track these in the registry, but do not implement them in the first batch:
   - `V2`
   - `V3`
   - `core/std`, not intrinsic
-- `11.3` `pending` Add unit tests proving the registry exposes these categories
+- `11.3` `done` Add unit tests proving the registry exposes these categories
   consistently and without accidental duplicate names or aliases.
 
 ### Phase 12. Backend-Readiness Surface
