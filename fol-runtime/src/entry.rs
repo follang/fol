@@ -102,4 +102,19 @@ mod tests {
             FOL_EXIT_FAILURE
         );
     }
+
+    #[test]
+    fn top_level_success_and_failure_messages_stay_backend_ready() {
+        let success = outcome_from_recoverable(FolRecover::<i64, FolStr>::ok(9));
+        let failure =
+            outcome_from_recoverable(FolRecover::<i64, FolStr>::err(FolStr::from("fatal")));
+
+        assert!(success.is_success());
+        assert_eq!(success.exit_code(), FOL_EXIT_SUCCESS);
+        assert_eq!(printable_outcome_message(&success), None);
+
+        assert!(failure.is_failure());
+        assert_eq!(failure.exit_code(), FOL_EXIT_FAILURE);
+        assert_eq!(printable_outcome_message(&failure), Some("fatal"));
+    }
 }

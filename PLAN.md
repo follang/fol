@@ -856,7 +856,7 @@ The implementation should land in many small slices.
 #### 6.3 done
 - define minimal exit-code contract for current `V1`
 
-#### 6.4
+#### 6.4 done
 - add tests for top-level success/failure formatting behavior
 
 ### Phase 7: Runtime Verification And Hardening
