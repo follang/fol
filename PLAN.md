@@ -724,7 +724,7 @@ The implementation should land in many small slices.
 
 ### Phase 0: Scope And Crate Foundation
 
-#### 0.1
+#### 0.1 done
 - add new workspace crate `fol-runtime`
 - wire it into root workspace manifests
 - add crate smoke test
