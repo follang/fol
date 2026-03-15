@@ -785,7 +785,7 @@ The implementation should land in many small slices.
 - freeze runtime strategy for arrays
 - document/direct-test native array support where used
 
-#### 3.2
+#### 3.2 done
 - add `FolVec<T>`
 
 #### 3.3
