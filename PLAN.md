@@ -140,7 +140,7 @@ Each fix must land with:
 
 ### Phase 5. Documentation Closeout
 
-- `5.1` `pending` Update [`README.md`](./README.md) and [`PROGRESS.md`](./PROGRESS.md) only after the repaired surfaces are actually green end to end.
+- `5.1` `done` Update [`README.md`](./README.md) and [`PROGRESS.md`](./PROGRESS.md) only after the repaired surfaces are actually green end to end.
 - `5.2` `pending` Rewrite this file into a true completion record only after the repaired `V1` lowering boundary is real again.
 
 ## 5. What Should Happen After This Plan

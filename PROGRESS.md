@@ -67,7 +67,7 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - Resolver-focused Rust tests under `test/resolver`: `100`
 - Typecheck-focused Rust tests under `test/typecheck`: `67`
 - Observed current unit test run: `8` unit tests, green
-- Observed current integration run: `1508` integration tests, green
+- Observed current integration run: `1513` integration tests, green
 
 ## 3. Current Headline Status
 
@@ -307,6 +307,12 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - impossible mounted ownership
 - mismatched lowered ID references
 - The CLI can now emit deterministic lowered snapshots through `--dump-lowered`.
+- The repaired lowered `V1` boundary now has explicit end-to-end coverage for:
+- same-name routine parameter scoping across multiple lowered routines
+- typed non-empty `seq` / `arr` / `vec` / `set` / `map` literal families
+- statement `when` bodies whose branches all terminate without a real fallthrough edge
+- one real combined `V1` repro program that exercises records, parameters, containers,
+  loops, and early-return `when` control flow through both compile and dump paths
 - End-to-end CLI lowering success is now locked across `loc`, `std`, and `pkg` graphs.
 - End-to-end CLI lowering failure diagnostics are now locked in both human and JSON
   output.

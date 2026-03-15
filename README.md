@@ -34,7 +34,10 @@ shell, conversion, and unsupported-surface boundary, including workspace-aware
 `loc` / `std` / `pkg` imports through the root CLI. `fol-lower` now turns that
 typed `V1` workspace into a deterministic backend-facing IR with explicit
 package graphs, routines, blocks, exports, entry candidates, and debug
-snapshots via `--dump-lowered`.
+snapshots via `--dump-lowered`. The repaired lowering boundary is now locked
+end to end for routine-parameter scoping, typed non-empty container literals,
+and all-exit `when` control flow, including one real multi-surface `V1` repro
+program exercised through the CLI.
 
 The next major compiler work should stay inside `V1`: choose the first real
 backend path that can consume lowered IR and continue toward binary production.
