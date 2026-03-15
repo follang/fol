@@ -83,6 +83,27 @@ impl IntrinsicAvailability {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum IntrinsicRoadmap {
+    CurrentV1,
+    LikelyV1x,
+    V2,
+    V3,
+    CoreStdInstead,
+}
+
+impl IntrinsicRoadmap {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::CurrentV1 => "current-v1",
+            Self::LikelyV1x => "likely-v1.x",
+            Self::V2 => "v2",
+            Self::V3 => "v3",
+            Self::CoreStdInstead => "core/std",
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum IntrinsicStatus {
     Implemented,
     Unsupported,

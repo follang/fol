@@ -1229,7 +1229,7 @@ Track these in the registry, but do not implement them in the first batch:
   - numeric helper family
   - bitwise family
   - checked/wrapping/saturating/overflowing families
-- `11.2` `pending` Mark which of those are:
+- `11.2` `done` Mark which of those are:
   - likely `V1.x`
   - `V2`
   - `V3`

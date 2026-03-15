@@ -10,11 +10,15 @@ mod validate;
 
 pub const CRATE_NAME: &str = "fol-intrinsics";
 
-pub use model::{IntrinsicAvailability, IntrinsicCategory, IntrinsicId, IntrinsicStatus, IntrinsicSurface};
+pub use model::{
+    IntrinsicAvailability, IntrinsicCategory, IntrinsicId, IntrinsicRoadmap, IntrinsicStatus,
+    IntrinsicSurface,
+};
 pub use catalog::{
     all_intrinsics, intrinsic_by_alias, intrinsic_by_canonical_name, intrinsic_by_id,
-    intrinsic_registry, intrinsics_for_lowering_mode, intrinsics_for_surface,
-    is_reserved_intrinsic_name_for_surface, lowering_mode_for_intrinsic,
+    intrinsic_registry, intrinsics_for_lowering_mode, intrinsics_for_roadmap,
+    intrinsics_for_surface, is_reserved_intrinsic_name_for_surface,
+    lowering_mode_for_intrinsic, roadmap_for_intrinsic,
     reserved_intrinsic_for_surface,
 };
 pub use diagnostics::{
@@ -48,6 +52,7 @@ mod tests {
         assert_eq!(IntrinsicCategory::Comparison.as_str(), "comparison");
         assert_eq!(IntrinsicSurface::DotRootCall.as_str(), "dot-root-call");
         assert_eq!(IntrinsicAvailability::V1.as_str(), "V1");
+        assert_eq!(IntrinsicRoadmap::CurrentV1.as_str(), "current-v1");
         assert_eq!(IntrinsicStatus::Implemented.as_str(), "implemented");
     }
 
@@ -387,6 +392,27 @@ mod tests {
             assert_eq!(entry.arity, arity);
             assert_eq!(entry.lowering_mode, IntrinsicLoweringMode::Deferred);
         }
+    }
+
+    #[test]
+    fn roadmap_lookup_keeps_representative_intrinsics_explicit() {
+        let len = intrinsic_by_canonical_name("len").expect("len should exist");
+        let cast = intrinsic_by_canonical_name("cast").expect("cast should exist");
+        let add = intrinsic_by_canonical_name("add").expect("add should exist");
+        let bit_and = intrinsic_by_canonical_name("bit_and").expect("bit_and should exist");
+        let de_alloc = intrinsic_by_canonical_name("de_alloc").expect("de_alloc should exist");
+
+        assert_eq!(roadmap_for_intrinsic(len.id), Some(IntrinsicRoadmap::CurrentV1));
+        assert_eq!(roadmap_for_intrinsic(cast.id), Some(IntrinsicRoadmap::LikelyV1x));
+        assert_eq!(
+            roadmap_for_intrinsic(add.id),
+            Some(IntrinsicRoadmap::CoreStdInstead)
+        );
+        assert_eq!(roadmap_for_intrinsic(bit_and.id), Some(IntrinsicRoadmap::V2));
+        assert_eq!(roadmap_for_intrinsic(de_alloc.id), Some(IntrinsicRoadmap::V3));
+        assert!(intrinsics_for_roadmap(IntrinsicRoadmap::CurrentV1)
+            .iter()
+            .any(|entry| entry.name == "echo"));
     }
 
     #[test]

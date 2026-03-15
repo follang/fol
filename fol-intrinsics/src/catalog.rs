@@ -1,6 +1,6 @@
 use crate::{
     IntrinsicArity, IntrinsicAvailability, IntrinsicCategory, IntrinsicEntry, IntrinsicId,
-    IntrinsicLoweringMode, IntrinsicStatus, IntrinsicSurface,
+    IntrinsicLoweringMode, IntrinsicRoadmap, IntrinsicStatus, IntrinsicSurface,
 };
 
 const INTRINSICS: &[IntrinsicEntry] = &[
@@ -735,6 +735,24 @@ pub fn is_reserved_intrinsic_name_for_surface(surface: IntrinsicSurface, name: &
 
 pub fn lowering_mode_for_intrinsic(id: IntrinsicId) -> Option<IntrinsicLoweringMode> {
     intrinsic_by_id(id).map(|entry| entry.lowering_mode)
+}
+
+pub fn roadmap_for_intrinsic(id: IntrinsicId) -> Option<IntrinsicRoadmap> {
+    intrinsic_by_id(id).map(|entry| match entry.id.index() {
+        0..=8 | 12 | 13 => IntrinsicRoadmap::CurrentV1,
+        9 | 10 | 11 | 14 | 15 | 21 | 22 => IntrinsicRoadmap::LikelyV1x,
+        16..=20 => IntrinsicRoadmap::V3,
+        23..=36 => IntrinsicRoadmap::CoreStdInstead,
+        37..=56 => IntrinsicRoadmap::V2,
+        _ => IntrinsicRoadmap::V2,
+    })
+}
+
+pub fn intrinsics_for_roadmap(roadmap: IntrinsicRoadmap) -> Vec<&'static IntrinsicEntry> {
+    intrinsic_registry()
+        .iter()
+        .filter(|entry| roadmap_for_intrinsic(entry.id) == Some(roadmap))
+        .collect()
 }
 
 pub fn intrinsics_for_lowering_mode(
