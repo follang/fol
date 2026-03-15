@@ -419,8 +419,12 @@ or deliberately rejected.
 
 ### Phase 5. Shell Alignment
 
-- `5.1` `pending` Reconcile routine error calls with existing `err[...]` shell
+- `5.1` `done` Reconcile routine error calls with existing `err[...]` shell
   values so users and compiler do not confuse them.
+  Current state:
+  - `check(...)` and `||` now reject `err[...]` shell operands with explicit
+    diagnostics explaining that they operate on routine call results with
+    `/ ErrorType`, not shell values
 - `5.2` `pending` Decide whether explicit conversion between:
   - routine error call results
   - `err[...]` shell values

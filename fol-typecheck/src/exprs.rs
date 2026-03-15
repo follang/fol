@@ -716,20 +716,19 @@ fn type_pipe_or(
         ));
     };
     if observed_left.recoverable_effect.is_none() {
+        let message = if observed_left
+            .value_type
+            .map(|type_id| is_error_shell_type(typed, type_id))
+            .transpose()?
+            .unwrap_or(false)
+        {
+            "'||' handles routine call results with '/ ErrorType', not err[...] shell values in V1"
+        } else {
+            "'||' requires an errorful expression on the left in V1"
+        };
         return Err(node_origin(resolved, left).map_or_else(
-            || {
-                TypecheckError::new(
-                    TypecheckErrorKind::InvalidInput,
-                    "'||' requires an errorful expression on the left in V1",
-                )
-            },
-            |origin| {
-                TypecheckError::with_origin(
-                    TypecheckErrorKind::InvalidInput,
-                    "'||' requires an errorful expression on the left in V1",
-                    origin,
-                )
-            },
+            || TypecheckError::new(TypecheckErrorKind::InvalidInput, message),
+            |origin| TypecheckError::with_origin(TypecheckErrorKind::InvalidInput, message, origin),
         ));
     }
 
@@ -1525,20 +1524,19 @@ fn type_check_call(
 
     let observed = type_node(typed, resolved, observe_context(context), &args[0])?;
     if observed.recoverable_effect.is_none() {
+        let message = if observed
+            .value_type
+            .map(|type_id| is_error_shell_type(typed, type_id))
+            .transpose()?
+            .unwrap_or(false)
+        {
+            "check(...) inspects routine call results with '/ ErrorType', not err[...] shell values in V1"
+        } else {
+            "check requires an errorful routine result in V1"
+        };
         return Err(node_origin(resolved, &args[0]).map_or_else(
-            || {
-                TypecheckError::new(
-                    TypecheckErrorKind::InvalidInput,
-                    "check requires an errorful routine result in V1",
-                )
-            },
-            |origin| {
-                TypecheckError::with_origin(
-                    TypecheckErrorKind::InvalidInput,
-                    "check requires an errorful routine result in V1",
-                    origin,
-                )
-            },
+            || TypecheckError::new(TypecheckErrorKind::InvalidInput, message),
+            |origin| TypecheckError::with_origin(TypecheckErrorKind::InvalidInput, message, origin),
         ));
     }
 
@@ -2316,6 +2314,17 @@ fn expected_nil_shell_type(
         Some(CheckedType::Optional { .. }) | Some(CheckedType::Error { .. }) => Some(expected_type),
         _ => None,
     })
+}
+
+fn is_error_shell_type(
+    typed: &TypedProgram,
+    type_id: CheckedTypeId,
+) -> Result<bool, TypecheckError> {
+    let apparent = apparent_type_id(typed, type_id)?;
+    Ok(matches!(
+        typed.type_table().get(apparent),
+        Some(CheckedType::Error { .. })
+    ))
 }
 
 fn unwrap_shell_result_type(

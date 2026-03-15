@@ -1195,6 +1195,24 @@ fn check_typing_rejects_plain_values() {
 }
 
 #[test]
+fn check_typing_rejects_err_shell_values_explicitly() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "ali Failure: err[str]\nfun[] main(value: Failure): bol = {\n    return check(value);\n}\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error
+                    .message()
+                    .contains("check(...) inspects routine call results with '/ ErrorType', not err[...] shell values in V1")
+        }),
+        "Expected the err-shell check diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
 fn pipe_or_typing_accepts_default_value_fallbacks() {
     let typed = typecheck_fixture_folder(&[(
         "main.fol",
@@ -1214,6 +1232,24 @@ fn pipe_or_typing_accepts_default_value_fallbacks() {
             .and_then(|node| node.inferred_type)
             .and_then(|type_id| typed.type_table().get(type_id)),
         Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+}
+
+#[test]
+fn pipe_or_typing_rejects_err_shell_values_explicitly() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "ali Failure: err[int]\nfun[] main(value: Failure): int = {\n    return value || 5;\n}\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error
+                    .message()
+                    .contains("'||' handles routine call results with '/ ErrorType', not err[...] shell values in V1")
+        }),
+        "Expected the err-shell pipe-or diagnostic, got: {errors:?}"
     );
 }
 
