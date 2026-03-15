@@ -336,7 +336,11 @@ fn verify_instruction(
             }
             verify_local_reference(routine, instr.id.0, "store value", *value, errors);
         }
-        crate::LoweredInstrKind::Call { callee, args } => {
+        crate::LoweredInstrKind::Call {
+            callee,
+            args,
+            error_type,
+        } => {
             if !valid_routine_ids.contains(callee) {
                 errors.push(LoweringError::with_kind(
                     LoweringErrorKind::InvalidInput,
@@ -348,6 +352,17 @@ fn verify_instruction(
             }
             for arg in args {
                 verify_local_reference(routine, instr.id.0, "call arg", *arg, errors);
+            }
+            if let Some(error_type) = error_type {
+                verify_type_reference(
+                    workspace,
+                    package,
+                    routine,
+                    instr.id.0,
+                    "call error type",
+                    *error_type,
+                    errors,
+                );
             }
         }
         crate::LoweredInstrKind::ConstructRecord { type_id, fields } => {

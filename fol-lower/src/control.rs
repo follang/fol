@@ -51,6 +51,7 @@ pub enum LoweredInstrKind {
     Call {
         callee: LoweredRoutineId,
         args: Vec<LoweredLocalId>,
+        error_type: Option<LoweredTypeId>,
     },
     ConstructRecord {
         type_id: LoweredTypeId,

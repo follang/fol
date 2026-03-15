@@ -314,15 +314,23 @@ or deliberately rejected.
 
 ### Phase 2. Lowered IR Error Model
 
-- `2.1` `pending` Extend lowered IR so errorful routine calls are represented
+- `2.1` `done` Extend lowered IR so errorful routine calls are represented
   explicitly instead of looking identical to plain calls.
+  Current state:
+  - lowered `Call` instructions now retain an optional `error_type`
+  - ordinary and errorful routine calls no longer collapse to one indistinguishable
+    backend-facing shape
 - `2.2` `pending` Add lowered instructions or terminators for:
   - checked call
   - success/error branch after call
   - handled fallback path
   - upward propagation path
-- `2.3` `pending` Keep routine signatures carrying both return and error types in
+- `2.3` `done` Keep routine signatures carrying both return and error types in
   a way the backend can consume directly.
+  Current state:
+  - lowered routine signatures still retain `return_type` plus `error_type`
+  - lowered call instructions now mirror that error metadata at call sites so
+    later backend work can consume both sides of the contract directly
 - `2.4` `pending` Extend the lowering verifier so impossible error-flow shapes are
   rejected explicitly.
 - `2.5` `pending` Add exact lowered snapshot tests for:

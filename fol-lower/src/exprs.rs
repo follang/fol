@@ -1951,7 +1951,7 @@ fn lower_expression_expected(
                 scope_id,
                 object,
             )?;
-            let (callee, result_type) = resolve_method_target(
+            let (callee, result_type, error_type) = resolve_method_target(
                 typed_package,
                 checked_type_map,
                 current_identity,
@@ -1996,6 +1996,7 @@ fn lower_expression_expected(
                 LoweredInstrKind::Call {
                     callee,
                     args: lowered_args,
+                    error_type,
                 },
             )?;
             Ok(LoweredValue {
@@ -2587,12 +2588,18 @@ fn lower_function_call(
             .map(|value| value.local_id)
         })
         .collect::<Result<Vec<_>, _>>()?;
+    let call_error_type = lowered_symbol_error_type(
+        typed_package,
+        checked_type_map,
+        resolved_symbol.id,
+    );
     let result_local = cursor.allocate_local(result_type, None);
     cursor.push_instr(
         Some(result_local),
         LoweredInstrKind::Call {
             callee,
             args: lowered_args,
+            error_type: call_error_type,
         },
     )?;
     Ok(LoweredValue {
@@ -2618,6 +2625,22 @@ fn resolve_reference_type_id(
     checked_type_map.get(&checked_type).copied()
 }
 
+fn lowered_symbol_error_type(
+    typed_package: &fol_typecheck::TypedPackage,
+    checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
+    symbol_id: SymbolId,
+) -> Option<LoweredTypeId> {
+    let declared_type = typed_package.program.typed_symbol(symbol_id)?.declared_type?;
+    let fol_typecheck::CheckedType::Routine(signature) =
+        typed_package.program.type_table().get(declared_type)?
+    else {
+        return None;
+    };
+    signature
+        .error_type
+        .and_then(|error_type| checked_type_map.get(&error_type).copied())
+}
+
 fn resolve_method_target(
     typed_package: &fol_typecheck::TypedPackage,
     checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
@@ -2625,7 +2648,7 @@ fn resolve_method_target(
     decl_index: &WorkspaceDeclIndex,
     method: &str,
     receiver_type: LoweredTypeId,
-) -> Result<(LoweredRoutineId, LoweredTypeId), LoweringError> {
+) -> Result<(LoweredRoutineId, LoweredTypeId, Option<LoweredTypeId>), LoweringError> {
     let mut matches = Vec::new();
 
     for (symbol_id, symbol) in typed_package.program.resolved().symbols.iter_with_ids() {
@@ -2669,7 +2692,10 @@ fn resolve_method_target(
                 ),
             ));
         };
-        matches.push((routine_id, return_type));
+        let error_type = signature
+            .error_type
+            .and_then(|error_type| checked_type_map.get(&error_type).copied());
+        matches.push((routine_id, return_type, error_type));
     }
 
     match matches.len() {
@@ -3858,12 +3884,60 @@ mod tests {
             .instructions
             .iter()
             .find_map(|instr| match &instr.kind {
-                LoweredInstrKind::Call { callee, args } => Some((*callee, args.clone())),
+                LoweredInstrKind::Call { callee, args, .. } => Some((*callee, args.clone())),
                 _ => None,
             })
             .expect("method body should contain a lowered call");
 
         assert_eq!(call.1.len(), 1);
+    }
+
+    #[test]
+    fn errorful_call_lowering_retains_explicit_error_type_metadata() {
+        let lowered = lower_fixture_workspace(
+            "fun[] load(): int / str = {\n\
+                 report \"bad\";\n\
+                 return 1;\n\
+             }\n\
+             fun[] main(): int / str = {\n\
+                 return load();\n\
+             }\n",
+        );
+
+        let routine = lowered
+            .entry_package()
+            .routine_decls
+            .values()
+            .find(|routine| routine.name == "main")
+            .expect("main routine should exist");
+        let call_error_type = routine
+            .instructions
+            .iter()
+            .find_map(|instr| match &instr.kind {
+                LoweredInstrKind::Call { error_type, .. } => *error_type,
+                _ => None,
+            })
+            .expect("errorful call should retain an explicit lowered error type");
+
+        assert_eq!(
+            lowered.type_table().get(call_error_type),
+            Some(&crate::LoweredType::Builtin(crate::LoweredBuiltinType::Str))
+        );
+        let signature = routine
+            .signature
+            .and_then(|signature| lowered.type_table().get(signature))
+            .expect("main routine should retain a lowered signature");
+        match signature {
+            crate::LoweredType::Routine(signature) => {
+                assert_eq!(
+                    signature
+                        .error_type
+                        .and_then(|error_type| lowered.type_table().get(error_type)),
+                    Some(&crate::LoweredType::Builtin(crate::LoweredBuiltinType::Str))
+                );
+            }
+            other => panic!("expected lowered routine signature, got {other:?}"),
+        }
     }
 
     #[test]
