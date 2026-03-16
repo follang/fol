@@ -574,6 +574,19 @@ fn frontend_package_root_surface_smoke_compiles() {
 }
 
 #[test]
+fn frontend_upward_discovery_surface_smoke_compiles() {
+    let root = std::env::temp_dir().join(format!("fol_frontend_smoke_{}", std::process::id()));
+    let nested = root.join("pkg").join("src");
+    std::fs::create_dir_all(&nested).unwrap();
+    std::fs::write(root.join("pkg").join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
+
+    let discovered = fol_frontend::discover_root_upward(&nested).unwrap();
+    assert!(matches!(discovered, fol_frontend::DiscoveredRoot::Package(_)));
+
+    std::fs::remove_dir_all(root).ok();
+}
+
+#[test]
 fn frontend_output_helper_surface_smoke_compiles() {
     let output = fol_frontend::FrontendOutput::new(fol_frontend::FrontendOutputConfig::default());
 
