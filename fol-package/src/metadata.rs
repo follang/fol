@@ -3,7 +3,7 @@ use fol_parser::ast::SyntaxOrigin;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PackageDependencySourceKind {
     Local,
     PackageStore,

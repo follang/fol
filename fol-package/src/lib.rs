@@ -15,6 +15,7 @@ pub mod errors;
 pub mod git;
 pub mod identity;
 pub mod locator;
+pub mod lockfile;
 pub mod metadata;
 pub mod model;
 pub mod paths;
@@ -31,6 +32,9 @@ pub use identity::{PackageIdentity, PackageSourceKind};
 pub use locator::{
     parse_package_locator, PackageGitLocator, PackageGitSelector, PackageGitTransport,
     PackageLocator, PackageLocatorKind,
+};
+pub use lockfile::{
+    parse_package_lockfile, render_package_lockfile, PackageLockEntry, PackageLockfile,
 };
 pub use metadata::{
     parse_package_metadata, PackageDependencyDecl, PackageDependencySourceKind, PackageMetadata,
