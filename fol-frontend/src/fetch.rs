@@ -390,6 +390,7 @@ fn load_existing_lockfile(workspace: &FrontendWorkspace) -> FrontendResult<fol_p
 fn lock_mismatch_error(message: impl Into<String>) -> FrontendError {
     FrontendError::new(crate::FrontendErrorKind::InvalidInput, message.into())
         .with_note("run `fol fetch` or `fol update` to refresh fol.lock")
+        .with_note("use `fol fetch --locked` only when package.yaml and fol.lock are intentionally in sync")
 }
 
 fn with_fetch_guidance(mut error: FrontendError, config: &FrontendConfig) -> FrontendError {
