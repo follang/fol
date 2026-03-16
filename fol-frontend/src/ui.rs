@@ -236,4 +236,34 @@ mod tests {
         assert!(!never.should_use_color(true));
         assert!(!json.should_use_color(true));
     }
+
+    #[test]
+    fn output_compatibility_matrix_stays_stable_across_modes() {
+        let result = FrontendCommandResult::new("check", "ok").with_artifact(
+            FrontendArtifactSummary::new(FrontendArtifactKind::WorkspaceRoot, "root", None),
+        );
+
+        let human = FrontendOutput::new(FrontendOutputConfig::default())
+            .render_command_summary(&result)
+            .unwrap();
+        let plain = FrontendOutput::new(FrontendOutputConfig {
+            mode: OutputMode::Plain,
+            ..FrontendOutputConfig::default()
+        })
+        .render_command_summary(&result)
+        .unwrap();
+        let json = FrontendOutput::new(FrontendOutputConfig {
+            mode: OutputMode::Json,
+            ..FrontendOutputConfig::default()
+        })
+        .render_command_summary(&result)
+        .unwrap();
+
+        assert_eq!(human, "== check ==\nSummary: ok\nworkspace-root: root");
+        assert_eq!(plain, "command: check\nsummary: ok\nworkspace-root: root");
+        assert_eq!(
+            json,
+            "{\n  \"artifacts\": [\n    {\n      \"kind\": \"workspace-root\",\n      \"label\": \"root\",\n      \"path\": null\n    }\n  ],\n  \"command\": \"check\",\n  \"summary\": \"ok\"\n}"
+        );
+    }
 }
