@@ -208,6 +208,53 @@ pub fn test_package(
     test_package_with_config(workspace, &FrontendConfig::default(), package_name)
 }
 
+pub fn emit_rust_with_config(
+    workspace: &FrontendWorkspace,
+    config: &FrontendConfig,
+) -> FrontendResult<FrontendCommandResult> {
+    let output_root = workspace.build_root.join("emit").join("rust");
+    let mut result = FrontendCommandResult::new("emit rust", "emitted 0 Rust crate(s)");
+    let mut emitted = 0usize;
+
+    for member in &workspace.members {
+        let lowered = compile_member_workspace(workspace, config, &member.root)?;
+        let backend_session = fol_backend::BackendSession::new(lowered);
+        let artifact = fol_backend::emit_backend_artifact(
+            &backend_session,
+            &fol_backend::BackendConfig {
+                mode: fol_backend::BackendMode::EmitSource,
+                keep_build_dir: true,
+                ..backend_config(config)
+            },
+            &output_root,
+        )
+        .map_err(|error| FrontendError::new(FrontendErrorKind::CommandFailed, error.to_string()))?;
+        let fol_backend::BackendArtifact::RustSourceCrate { root, .. } = artifact else {
+            return Err(FrontendError::new(
+                FrontendErrorKind::Internal,
+                "emit rust expected a backend source artifact",
+            ));
+        };
+        emitted += 1;
+        result.artifacts.push(FrontendArtifactSummary::new(
+            FrontendArtifactKind::EmittedRust,
+            member
+                .root
+                .file_name()
+                .and_then(|name| name.to_str())
+                .unwrap_or("package"),
+            Some(std::path::PathBuf::from(root)),
+        ));
+    }
+
+    result.summary = format!("emitted {emitted} Rust crate(s)");
+    Ok(result)
+}
+
+pub fn emit_rust(workspace: &FrontendWorkspace) -> FrontendResult<FrontendCommandResult> {
+    emit_rust_with_config(workspace, &FrontendConfig::default())
+}
+
 pub fn compile_member_workspace(
     workspace: &FrontendWorkspace,
     config: &FrontendConfig,
@@ -362,7 +409,7 @@ fn lower_lowering_errors(errors: Vec<fol_lower::LoweringError>) -> FrontendError
 #[cfg(test)]
 mod tests {
     use super::{
-        build_workspace, build_workspace_for_profile_with_config, check_workspace,
+        build_workspace, build_workspace_for_profile_with_config, check_workspace, emit_rust,
         profile_build_root, run_workspace, run_workspace_with_args_and_config, test_package,
         test_workspace,
     };
@@ -630,6 +677,35 @@ mod tests {
         assert_eq!(result.command, "test");
         assert_eq!(result.summary, "tested 1 workspace package(s)");
         assert_eq!(result.artifacts.len(), 1);
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn emit_rust_materializes_generated_crates_for_workspace_members() {
+        let root = std::env::temp_dir().join(format!("fol_frontend_emit_rust_{}", std::process::id()));
+        let app = root.join("app");
+        let src = app.join("src");
+        fs::create_dir_all(&src).unwrap();
+        fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
+        fs::write(app.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
+        fs::write(src.join("main.fol"), "fun[] main(): int = {\n    return 0\n}\n").unwrap();
+
+        let workspace = FrontendWorkspace {
+            root: WorkspaceRoot::new(root.clone()),
+            members: vec![PackageRoot::new(app)],
+            std_root_override: None,
+            package_store_root_override: None,
+            build_root: root.join(".fol/build"),
+            cache_root: root.join(".fol/cache"),
+        };
+
+        let result = emit_rust(&workspace).unwrap();
+
+        assert_eq!(result.command, "emit rust");
+        assert_eq!(result.summary, "emitted 1 Rust crate(s)");
+        assert_eq!(result.artifacts[0].kind, FrontendArtifactKind::EmittedRust);
+        assert!(result.artifacts[0].path.as_ref().unwrap().is_dir());
 
         fs::remove_dir_all(root).ok();
     }
