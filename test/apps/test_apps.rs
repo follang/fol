@@ -651,3 +651,21 @@ fn intrinsics_not_len_echo_fixture_compiles_and_runs() {
     assert_exit_code(&run_output, 0);
     assert_output_contains(&run_output, "2");
 }
+
+#[test]
+fn intrinsics_panic_check_fixture_compiles_and_runs() {
+    let fixture = fixture_root("intrinsics_panic_check");
+
+    let compile_output = compile_app_keep_build_dir_expect_success(&fixture);
+    assert_artifact_paths_exist(&compile_output);
+
+    let binary = built_binary_path(&compile_output);
+
+    let panic_output = Command::new(&binary)
+        .output()
+        .expect("should run panicking intrinsic fixture");
+    assert!(
+        !panic_output.status.success(),
+        "panic fixture should fail\nstdout=\n{}\nstderr=\n{}",
+        String::from_utf8_lossy(&panic_output.stdout),
+        String::from_utf8_lossy(&panic_output.stderr)
