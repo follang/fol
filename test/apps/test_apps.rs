@@ -16,6 +16,10 @@ fn unique_temp_root(label: &str) -> PathBuf {
     ))
 }
 
+fn fixture_root(name: &str) -> PathBuf {
+    Path::new("test/apps/fixtures").join(name)
+}
+
 fn run_fol(args: &[&str]) -> std::process::Output {
     Command::new(env!("CARGO_BIN_EXE_fol"))
         .args(args)
@@ -309,4 +313,15 @@ fn app_harness_assertion_helpers_cover_artifacts_and_status() {
     assert_output_contains(&failure_output, "ResolverUnresolvedName");
 
     fs::remove_dir_all(&temp_root).ok();
+}
+
+#[test]
+fn scalar_entry_fixture_compiles_and_runs() {
+    let fixture = fixture_root("scalar_entry");
+
+    let compile_output = compile_app_keep_build_dir_expect_success(&fixture);
+    assert_artifact_paths_exist(&compile_output);
+
+    let run_output = compile_and_run_app(&fixture);
+    assert_exit_code(&run_output, 0);
 }
