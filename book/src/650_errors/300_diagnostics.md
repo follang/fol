@@ -20,6 +20,8 @@ FOL now has a real compiler pipeline:
 - `fol-resolver`
 - `fol-typecheck`
 - `fol-lower`
+- `fol-runtime`
+- `fol-backend`
 - `fol-diagnostics`
 
 That means errors are no longer just loose strings printed from one place.
@@ -244,14 +246,18 @@ That means diagnostics are already strong across:
 - duplicate names
 - ambiguous references
 - type mismatches and unsupported semantic surfaces inside `V1`
-- unsupported lowered `V1` surfaces that still stop before any backend exists
+- unsupported lowered `V1` surfaces before target emission
+- backend emission and build failures when lowered `V1` workspaces cannot become
+  runnable artifacts
 
 This is the important boundary for the current compiler stage:
 
 - the compiler can now parse, resolve, type-check, and lower the supported `V1`
   subset
-- diagnostics already cover failures from each of those stages
-- the project still does not promise a finished backend, linker, or runtime in
+- diagnostics already cover failures from each of those stages plus backend
+  emission/build failures
+- the project now does promise a finished first backend for the current `V1`
+  subset, while later targets, optimizations, and C ABI work remain outside
   this chapter
 
 ## Stable codes

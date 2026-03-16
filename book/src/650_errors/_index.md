@@ -16,8 +16,8 @@ The detailed chapters explain:
 
 ## Current compiler diagnostics
 
-The current compiler surface already guarantees a few reporting behaviors even
-before a backend exists:
+The current compiler surface already guarantees a few reporting behaviors across
+the active parser/package/resolver/typecheck/lower/backend chain:
 
 - parser, package-loading, resolver, typecheck, and lowering failures keep exact primary
   `file:line:column` locations
