@@ -115,6 +115,11 @@ pub fn render_core_instruction(
                 )),
             }
         }
+        LoweredInstrKind::CheckRecoverable { operand } => {
+            let result = rendered_result_local(package_identity, routine, instruction)?;
+            let operand = render_local_name(package_identity, routine, *operand)?;
+            Ok(format!("let {result} = rt::check_recoverable(&{operand});"))
+        }
         other => Err(BackendError::new(
             BackendErrorKind::Unsupported,
             format!("core instruction emission is not implemented yet for {other:?}"),
@@ -565,6 +570,39 @@ mod tests {
         assert_eq!(
             rendered,
             "let l__pkg__entry__app__r8__l1__shown = rt::echo(l__pkg__entry__app__r8__l0__value);"
+        );
+    }
+
+    #[test]
+    fn runtime_shaped_instruction_rendering_emits_check_recoverable_via_runtime_helper() {
+        let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
+        let mut table = LoweredTypeTable::new();
+        let bool_id = table.intern_builtin(LoweredBuiltinType::Bool);
+        let mut routine = LoweredRoutine::new(LoweredRoutineId(9), "main", LoweredBlockId(0));
+        let source = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(0),
+            type_id: None,
+            recoverable_error_type: None,
+            name: Some("value".to_string()),
+        });
+        let result = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(1),
+            type_id: Some(bool_id),
+            recoverable_error_type: None,
+            name: Some("failed".to_string()),
+        });
+        let instruction = LoweredInstr {
+            id: LoweredInstrId(22),
+            result: Some(result),
+            kind: LoweredInstrKind::CheckRecoverable { operand: source },
+        };
+
+        let rendered =
+            render_core_instruction(&package_identity, &routine, &instruction).expect("check");
+
+        assert_eq!(
+            rendered,
+            "let l__pkg__entry__app__r9__l1__failed = rt::check_recoverable(&l__pkg__entry__app__r9__l0__value);"
         );
     }
 }
