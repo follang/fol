@@ -42,6 +42,7 @@ pub fn parse_package_metadata(path: &Path) -> Result<PackageMetadata, PackageErr
     let mut fields: BTreeMap<String, (String, SyntaxOrigin)> = BTreeMap::new();
     let supported_fields = BTreeSet::from(["name", "version", "kind", "description", "license"]);
     let mut dependencies = Vec::new();
+    let mut dependency_aliases = BTreeMap::<String, SyntaxOrigin>::new();
     for (index, line) in raw.lines().enumerate() {
         let line_no = index + 1;
         let trimmed = line.trim();
@@ -77,6 +78,18 @@ pub fn parse_package_metadata(path: &Path) -> Result<PackageMetadata, PackageErr
                 column: 1,
                 length: key.len(),
             };
+            if let Some(first_origin) = dependency_aliases.insert(alias.to_string(), origin.clone()) {
+                return Err(PackageError::with_origin(
+                    PackageErrorKind::InvalidInput,
+                    format!(
+                        "package dependency alias '{}' in '{}' may only be declared once",
+                        alias,
+                        path.display()
+                    ),
+                    origin,
+                )
+                .with_related_origin(first_origin, "first package dependency alias declaration"));
+            }
             dependencies.push(parse_dependency_decl(path, alias, &value, origin)?);
             continue;
         }
@@ -581,6 +594,38 @@ mod tests {
             metadata.dependencies[2].target,
             "https://github.com/bresilla/logtiny.git"
         );
+
+        fs::remove_dir_all(&temp_root)
+            .expect("Temporary metadata fixture root should be removable after the test");
+    }
+
+    #[test]
+    fn yaml_metadata_parser_rejects_duplicate_dependency_aliases() {
+        let temp_root = unique_temp_root("duplicate_dep_alias");
+        fs::create_dir_all(&temp_root).expect("Should create temporary metadata fixture root");
+        let metadata_path = temp_root.join("package.yaml");
+        fs::write(
+            &metadata_path,
+            concat!(
+                "name: app\n",
+                "version: 0.1.0\n",
+                "dep.core: pkg:core\n",
+                "dep.core: git:https://github.com/bresilla/logtiny.git\n",
+            ),
+        )
+        .expect("Should write the duplicate dependency alias fixture");
+
+        let error = parse_package_metadata(&metadata_path)
+            .expect_err("duplicate dependency aliases should be rejected");
+
+        assert!(
+            error
+                .to_string()
+                .contains("package dependency alias 'core'"),
+            "duplicate dependency aliases should mention the duplicated alias",
+        );
+        let diagnostic = error.to_diagnostic();
+        assert_eq!(diagnostic.labels.len(), 2);
 
         fs::remove_dir_all(&temp_root)
             .expect("Temporary metadata fixture root should be removable after the test");
