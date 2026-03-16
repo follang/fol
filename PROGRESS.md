@@ -1,6 +1,6 @@
 # FOL Project Progress
 
-Last scan: 2026-03-15
+Last scan: 2026-03-16
 Scan basis: repository code, active tests, current docs, and a fresh `make build` + `make test`
 Authority rule for this file: code and active tests win over older docs, plans, and historical assumptions
 
@@ -25,7 +25,10 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `fol-resolver`
 - `fol-typecheck`
 - `fol-lower`
+- `fol-intrinsics`
+- `fol-runtime`
 - `fol-diagnostics`
+- `fol-backend`
 - `src`
 - Scanned active tests under:
 - `test/stream`
@@ -46,9 +49,9 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 
 ## 2. Snapshot Metrics
 
-- Workspace member crates: `10`
+- Workspace member crates: `11`
 - Root binary crate: `1`
-- Active Rust source lines scanned: `48395`
+- Active Rust source lines scanned: `54246`
 - Core compiler Rust lines scanned:
 - `fol-types`: `259`
 - `fol-stream`: `570`
@@ -61,6 +64,7 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `fol-runtime`: `2201`
 - `fol-diagnostics`: `1236`
 - `fol-lower`: `11189`
+- `fol-backend`: `5851`
 - Root CLI and root-local source: `795`
 - Active parser fixtures: `1283`
 - Active lexer tests: `85`
@@ -68,8 +72,8 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - Parser-focused Rust tests under `test/parser`: `1108`
 - Resolver-focused Rust tests under `test/resolver`: `100`
 - Typecheck-focused Rust tests under `test/typecheck`: `71`
-- Observed current unit test run: `18` unit tests, green
-- Observed current integration run: `1567` integration tests, green
+- Observed current unit test run: `24` unit tests, green
+- Observed current integration run: `1570` integration tests, green
 
 ## 3. Current Headline Status
 
@@ -82,18 +86,20 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `fol-lower`: implemented for the full current lowered `V1` IR boundary and wired into the CLI
 - `fol-intrinsics`: implemented as the shared compiler-owned intrinsic registry for the current `V1` subset
 - `fol-runtime`: implemented as the shared current `V1` runtime/support contract for the first backend
+- `fol-backend`: implemented as the first runnable `V1` backend, emitting Rust crates and buildable binaries
 - `fol-diagnostics`: implemented, structured, and wired into the CLI
-- Root CLI: implemented as parse-and-package-prepare-and-resolve-and-typecheck-and-lower driver
+- Root CLI: implemented as parse-and-package-prepare-and-resolve-and-typecheck-and-lower-and-backend driver
 - Stream + lexer + parser: stable and consumed by package loading and resolver
 - Package loading and package preparation: implemented for `loc`, `std`, and installed `pkg`
 - Whole-program name resolution: implemented for the current contract
 - Whole-program type checking: implemented for the full current `V1` boundary
 - Whole-program lowering: implemented for the full current `V1` lowered IR boundary
 - Runtime support boundary: implemented for the full current `V1` support contract
-- Immediate active phase: move to the first real backend stage after runtime
+- First backend stage: implemented for current `V1`
 - Ownership and borrowing enforcement: missing
 - Standard or protocol conformance analysis: missing
-- Backend, interpreter, or code generation: missing
+- Interpreter: missing
+- Additional backends beyond the first Rust-emission backend: missing
 - Runtime semantics: implemented for the current `V1` support boundary
 
 ## 4. Validation Baseline
@@ -101,8 +107,8 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `make build`: passed
 - `make test`: passed
 - Current observed totals:
-- `18` unit tests passed
-- `1567` integration tests passed
+- `24` unit tests passed
+- `1570` integration tests passed
 - Observed active failures: `0`
 
 ## 5. What Has Been Completed So Far
@@ -502,6 +508,72 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - Repo and book docs now acknowledge the runtime contract rather than describing
   runtime semantics as missing.
 
+### 5.12 Backend Milestone
+
+- `fol-backend` now exists as a workspace crate and is explicitly separate from
+  front-end phases and from `fol-runtime`.
+- The backend boundary is now real for current `V1`:
+- input is `LoweredWorkspace`
+- target is generated Rust
+- support library is `fol-runtime`
+- output is either an emitted Rust crate or a compiled binary artifact
+- The crate now exposes a stable public surface through:
+- `config`
+- `control`
+- `emit`
+- `error`
+- `identity`
+- `instructions`
+- `layout`
+- `mangle`
+- `model`
+- `session`
+- `signatures`
+- `trace`
+- `types`
+- Backend orchestration is explicit and test-backed:
+- `BackendSession` owns workspace identity and target planning
+- `BackendConfig` controls build-vs-emit mode and build-dir retention
+- `BackendArtifact` reports either source-crate or compiled-binary outputs
+- generated crate roots are deterministic and keyed by backend workspace identity
+- package and namespace layout planning is deterministic and drift-tested
+- Rust-emission behavior is explicit and test-backed:
+- generated output is one Rust crate per lowered workspace, not one giant file
+- emitted output includes `Cargo.toml`, `src/main.rs`, `src/packages/mod.rs`,
+  per-package modules, and per-namespace module files
+- symbol mangling is stable for packages, globals, routines, locals, and types
+- lowered builtin types and runtime-backed types render through one backend-owned
+  Rust type layer
+- backend-authored records and entries emit as Rust structs and enums
+- Instruction and control-flow emission are explicit and test-backed:
+- plain calls, field access, container indexing, and current scalar intrinsics emit
+- runtime-backed `.len(...)`, `.echo(...)`, shell construction/unwrap, and
+  recoverable helpers emit through `fol-runtime`
+- `Jump`, `Branch`, `Return`, `Report`, `Panic`, and `Unreachable` emit through
+  one control-flow layer
+- record/entry construction, containers, recoverable locals, and top-level
+  process outcome conversion are all exercised through the executable backend
+- Build and CLI behavior are explicit and test-backed:
+- backend can write generated crates to disk and build them with Cargo
+- backend surfaces build failures as structured backend diagnostics
+- CLI now runs backend emission/build after lowering when an entry routine exists
+- `--emit-rust` and `--keep-build-dir` are real user-facing backend controls
+- executable end-to-end coverage now exists for:
+- scalar programs
+- records and entries
+- containers plus `.len(...)`
+- `.echo(...)`
+- recoverable success/failure propagation
+- `check(...)`
+- `expr || fallback`
+- mixed `loc`, `std`, and installed `pkg` package graphs
+- backend traceability is now explicit:
+- lowered source symbols can map back to emitted Rust module paths
+- backend trace records retain package identity and emitted output context
+- Repo status has now crossed the first runnable backend boundary. The current
+  missing work is no longer “have any backend at all,” but rather future
+  backend expansion, optimization, language growth, and later-version semantics.
+
 ## 6. Current Front-End State By Layer
 
 ### 6.1 fol-stream
@@ -636,34 +708,35 @@ items block the current post-resolver phase.
 
 - `V2` language semantics such as standards, protocols, blueprints, extensions, and generics
 - `V3` systems semantics such as ownership, borrowing, eventuals, coroutines, channels, pointers, and C ABI
-- runtime behavior
-- interpreter or backend
-- code generation
+- interpreter
+- additional backends beyond the current Rust-emission backend
 - optimization
 
 These remain later-stage work. They are no longer reasons to keep the current
-`V1` stream/parser/package/resolver/typecheck/lower milestone open.
+`V1` compiler milestone open.
 
 ## 10. Current Readiness Call
 
 ### 10.1 What Is Ready
 
 - The project has a real front-end pipeline:
-- `fol-stream -> fol-lexer -> fol-parser -> fol-package -> fol-resolver -> fol-typecheck -> fol-lower`
+- `fol-stream -> fol-lexer -> fol-parser -> fol-package -> fol-resolver -> fol-typecheck -> fol-lower -> fol-runtime -> fol-backend`
 - `fol-diagnostics` now sits alongside that pipeline as the shared reporting layer.
-- `fol-runtime` now sits beside lowering as the support layer the first backend
-  should target for current `V1` execution semantics.
+- `fol-runtime` now sits beside lowering as the current `V1` support layer used
+  by the backend.
+- `fol-backend` now turns lowered workspaces into emitted Rust crates and
+  runnable binaries for the current `V1` subset.
 - The pipeline is not toy-only anymore.
 - Stream, lexer, parser, package loading, resolver, diagnostics, and the current
-  full `V1` typechecker and lowering behavior are explicit enough to move to the
-  first backend stage without another deep stability pass first.
+  full `V1` typechecker/lowering/runtime/backend behavior are explicit enough to
+  move beyond the first-backend milestone without another deep stability pass first.
 - Current validation is green and large enough to trust ordinary refactors much more than before.
 
 ### 10.2 What Is Not Implemented Yet
 
 - Full-language semantic analysis is still missing.
-- The first backend stage after lowering is still missing.
-- Backend code generation and artifact production are still missing.
+- Non-Rust backends are still missing.
+- Optimization and target-specific backend maturity work are still missing.
 
 ### 10.3 Bottom-Line Status
 
@@ -675,22 +748,22 @@ These remain later-stage work. They are no longer reasons to keep the current
 - Typechecker: implemented for the full current `V1` semantic boundary and enforced through the CLI
 - Lowerer: implemented for the full current lowered `V1` IR boundary and enforced through the CLI
 - Runtime: implemented for the full current `V1` support boundary expected by the first backend
+- Backend: implemented for the full current first `V1` artifact-production boundary and enforced through the CLI
 - Diagnostics: structured, stable, and contract-backed
-- Current compiler core: ready to move beyond the lowered `V1` IR boundary and into backend implementation
+- Current compiler core: now crosses the first runnable `V1` backend boundary
 
 ## 11. Next Recommended Focus
 
-- Treat the current `fol-lower` milestone as real compiler infrastructure,
-  not as a placeholder crate.
-- Treat `fol-runtime` as the frozen `V1` support contract for strings,
-  containers, shells, recoverable results, and runtime-visible builtin hooks.
-- Keep the next work inside `V1`: choose and implement the first backend that can
-  consume lowered IR plus `fol-runtime` and carry a `V1` program toward a
-  binary-producing pipeline.
-- Treat diagnostics as infrastructure-complete for parser/package/resolver/typecheck/lower
-  and extend it only when backend stages need richer producer lowering.
-- Treat any remaining stream/lexer/parser/package/resolver/typecheck/lower work as
-  opportunistic cleanup unless a real new bug appears.
+- Treat the current `fol-lower`, `fol-runtime`, and `fol-backend` milestones as
+  real compiler infrastructure, not placeholder crates.
+- Treat the current Rust-emission backend path as the frozen executable `V1`
+  baseline and harden it before adding another target.
+- Extend diagnostics only when backend/runtime growth or later language stages
+  need richer producer lowering.
+- Treat remaining stream/lexer/parser/package/resolver/typecheck/lower/runtime/backend
+  work as opportunistic cleanup unless a real new bug appears.
+- Use the now-runnable backend path to guide the next major decisions around
+  `core`, `std`, future backends, and later-version language features.
 - Use [`PROGRESS.md`](./PROGRESS.md), [`VERSIONS.md`](./VERSIONS.md),
   [`PLAN.md`](./PLAN.md), and the test suite as the frozen reference point for
   the next stage.

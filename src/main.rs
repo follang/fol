@@ -9,6 +9,7 @@
 mod compiler_diagnostics;
 
 use clap::{Arg, Command};
+use fol_backend::{emit_backend_artifact, summarize_emitted_artifact, BackendConfig, BackendMode, BackendSession};
 use fol_diagnostics::{DiagnosticLocation, DiagnosticReport, OutputFormat};
 use fol_intrinsics as _;
 use fol_lower::{render_lowered_workspace, LoweredWorkspace, Lowerer};
@@ -54,6 +55,18 @@ fn main() {
                 .help("Print a deterministic lowered-workspace snapshot after a successful compile")
                 .action(clap::ArgAction::SetTrue),
         )
+        .arg(
+            Arg::new("emit-rust")
+                .long("emit-rust")
+                .help("Emit the generated Rust backend crate and stop before building it")
+                .action(clap::ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("keep-build-dir")
+                .long("keep-build-dir")
+                .help("Keep the generated backend crate directory after emission/build")
+                .action(clap::ArgAction::SetTrue),
+        )
         .get_matches();
 
     let file_path = matches
@@ -67,6 +80,15 @@ fn main() {
         package_store_root: matches.get_one::<String>("package-store-root").cloned(),
     };
     let dump_lowered = matches.get_flag("dump-lowered");
+    let backend_config = BackendConfig {
+        mode: if matches.get_flag("emit-rust") {
+            BackendMode::EmitSource
+        } else {
+            BackendMode::BuildArtifact
+        },
+        keep_build_dir: matches.get_flag("keep-build-dir"),
+        ..BackendConfig::default()
+    };
     let output_format = if json_output {
         OutputFormat::Json
     } else {
@@ -87,8 +109,30 @@ fn main() {
             if dump_lowered && !json_output && !diagnostics.has_errors() {
                 println!("{}", render_lowered_workspace(&lowered));
             }
-            if !json_output && !diagnostics.has_errors() {
-                println!("✓ Compilation successful!");
+            if !diagnostics.has_errors() {
+                if lowered.entry_candidates().is_empty() {
+                    if !json_output {
+                        println!("✓ Compilation successful!");
+                    }
+                } else {
+                    let backend_session = BackendSession::new(lowered);
+                    let output_root = std::env::current_dir()
+                        .map(|cwd| cwd.join("target"))
+                        .unwrap_or_else(|_| std::path::PathBuf::from("target"));
+                    match emit_backend_artifact(&backend_session, &backend_config, &output_root) {
+                        Ok(artifact) => {
+                            if !json_output {
+                                println!("{}", summarize_emitted_artifact(&artifact));
+                                println!("✓ Compilation successful!");
+                            }
+                        }
+                        Err(error) => {
+                            diagnostics.add_error(&fol_types::BasicError {
+                                message: error.to_string(),
+                            }, None);
+                        }
+                    }
+                }
             }
         }
         Err(_) => {
@@ -429,6 +473,79 @@ fn compile_folder_entry_with_pkg_imports_succeeds_through_workspace_lowering() {
 #[test]
 fn intrinsics_crate_foundation_smoke_compiles() {
     assert_eq!(fol_intrinsics::crate_name(), "fol-intrinsics");
+}
+
+#[test]
+fn backend_crate_foundation_smoke_compiles() {
+    assert_eq!(fol_backend::crate_name(), "fol-backend");
+}
+
+#[test]
+fn backend_public_api_shell_smoke_compiles() {
+    let backend = fol_backend::Backend::new();
+    assert_eq!(format!("{backend:?}"), "Backend");
+}
+
+#[test]
+fn backend_error_surface_smoke_compiles() {
+    let error = fol_backend::BackendError::new(
+        fol_backend::BackendErrorKind::BuildFailure,
+        "rust build failed",
+    );
+
+    assert_eq!(error.kind(), fol_backend::BackendErrorKind::BuildFailure);
+    assert_eq!(error.message(), "rust build failed");
+    assert_eq!(error.to_string(), "BackendBuildFailure: rust build failed");
+}
+
+#[test]
+fn backend_config_surface_smoke_compiles() {
+    let config = fol_backend::BackendConfig::default();
+
+    assert_eq!(config.target, fol_backend::BackendTarget::Rust);
+    assert_eq!(config.target.as_str(), "rust");
+    assert_eq!(config.mode, fol_backend::BackendMode::BuildArtifact);
+    assert_eq!(config.mode.as_str(), "build-artifact");
+    assert!(!config.keep_build_dir);
+}
+
+#[test]
+fn backend_artifact_surface_smoke_compiles() {
+    let artifact = fol_backend::BackendArtifact::RustSourceCrate {
+        root: "target/fol-backend/demo".to_string(),
+        files: vec![fol_backend::EmittedRustFile {
+            path: "src/main.rs".to_string(),
+            module_name: "main".to_string(),
+            contents: "fn main() {}".to_string(),
+        }],
+    };
+
+    match artifact {
+        fol_backend::BackendArtifact::RustSourceCrate { root, files } => {
+            assert_eq!(root, "target/fol-backend/demo");
+            assert_eq!(files.len(), 1);
+            assert_eq!(files[0].module_name, "main");
+        }
+        fol_backend::BackendArtifact::CompiledBinary { .. } => {
+            panic!("expected emitted rust crate artifact")
+        }
+    }
+}
+
+#[test]
+fn backend_foundation_surface_smoke_compiles() {
+    let backend = fol_backend::Backend::new();
+    let config = fol_backend::BackendConfig::default();
+    let result: fol_backend::BackendResult<()> = Ok(());
+    let error = fol_backend::BackendError::new(
+        fol_backend::BackendErrorKind::Unsupported,
+        "not implemented yet",
+    );
+
+    assert_eq!(format!("{backend:?}"), "Backend");
+    assert_eq!(config.target, fol_backend::BackendTarget::Rust);
+    assert!(result.is_ok());
+    assert_eq!(error.to_string(), "BackendUnsupported: not implemented yet");
 }
 
 #[test]

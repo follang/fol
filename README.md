@@ -23,8 +23,8 @@ FOL is a general-purpose, systems programming language designed for robustness, 
 
 Current compiler status: `fol-stream`, `fol-lexer`, `fol-parser`,
 `fol-package`, `fol-resolver`, `fol-typecheck`, `fol-lower`,
-`fol-intrinsics`, `fol-runtime`, diagnostics, and the root CLI are
-implemented and actively tested. Package loading now flows through
+`fol-intrinsics`, `fol-runtime`, `fol-backend`, diagnostics, and the root CLI
+are implemented and actively tested. Package loading now flows through
 `fol-package`, which prepares directory and installed-package surfaces ahead of
 name resolution.
 `fol-intrinsics` is now the shared compiler-owned intrinsic registry for the
@@ -51,12 +51,19 @@ real handled-call surfaces, and `err[...]` shells remain distinct from routine
 call results with declared error types. `fol-runtime` now provides the current
 `V1` support layer for strings, containers, shells, recoverable results,
 aggregate formatting hooks, `.len(...)`, `.echo(...)`, and top-level
-recoverable process outcomes so the first backend can target a stable runtime
-contract instead of inventing one ad hoc.
+recoverable process outcomes. `fol-backend` now consumes lowered workspaces,
+emits deterministic Rust crates against that runtime contract, supports
+`--emit-rust` and generated-artifact retention, and can build runnable `V1`
+binaries through Cargo. Current end-to-end backend coverage includes
+declaration-only inputs, scalar entry programs, records and entries,
+containers plus `.len(...)`, `.echo(...)`, recoverable propagation,
+`check(...)`, `expr || fallback`, and executable package graphs spanning
+`loc`, `std`, and installed `pkg` imports.
 
-The next major compiler work should stay inside `V1`: implement the first real
-backend against `fol-lower` + `fol-runtime` and continue toward binary
-production.
+The next major compiler work no longer sits at the first backend boundary.
+That milestone is now real. Follow-on work should build on top of it:
+hardening, future backends, `core` / `std`, and later-version language
+features.
 
 Current import surface:
 - `loc` imports exact filesystem directories

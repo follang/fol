@@ -330,18 +330,6 @@ impl TypedProgram {
         Ok(())
     }
 
-    pub(crate) fn record_symbol_recoverable_effect(
-        &mut self,
-        symbol_id: SymbolId,
-        effect: RecoverableCallEffect,
-    ) -> Result<(), crate::TypecheckError> {
-        let symbol = self
-            .typed_symbol_mut(symbol_id)
-            .ok_or_else(|| crate::TypecheckError::new(crate::TypecheckErrorKind::Internal, "typed symbol disappeared while recording a recoverable call effect"))?;
-        symbol.recoverable_effect = Some(effect);
-        Ok(())
-    }
-
     pub(crate) fn record_reference_recoverable_effect(
         &mut self,
         reference_id: fol_resolver::ReferenceId,

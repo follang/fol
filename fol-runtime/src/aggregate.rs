@@ -39,8 +39,6 @@
 //! assert_eq!(point.fol_echo_format(), "Point { x: 3, y: 7 }");
 //! ```
 
-use crate::builtins::FolEchoFormat;
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FolNamedValue {
     name: &'static str,

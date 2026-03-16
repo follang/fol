@@ -131,6 +131,7 @@ dependencies = [
  "clap",
  "colored",
  "dyn-clone",
+ "fol-backend",
  "fol-diagnostics",
  "fol-intrinsics",
  "fol-lexer",
@@ -145,6 +146,17 @@ dependencies = [
  "regex",
  "serde_json",
  "terminal_size",
+]
+
+[[package]]
+name = "fol-backend"
+version = "0.1.0"
+dependencies = [
+ "fol-intrinsics",
+ "fol-lower",
+ "fol-parser",
+ "fol-resolver",
+ "fol-runtime",
 ]
 
 [[package]]

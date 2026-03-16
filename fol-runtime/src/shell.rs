@@ -9,6 +9,12 @@ pub enum FolOption<T> {
     Nil,
 }
 
+impl<T> Default for FolOption<T> {
+    fn default() -> Self {
+        Self::Nil
+    }
+}
+
 impl<T> FolOption<T> {
     pub fn some(value: T) -> Self {
         Self::Some(value)
@@ -69,6 +75,12 @@ impl<T: fmt::Display> fmt::Display for FolOption<T> {
 #[repr(transparent)]
 pub struct FolError<T>(T);
 
+impl<T: Default> Default for FolError<T> {
+    fn default() -> Self {
+        Self(T::default())
+    }
+}
+
 impl<T> FolError<T> {
     pub fn new(value: T) -> Self {
         Self(value)
@@ -86,12 +98,6 @@ impl<T> FolError<T> {
 impl<T> From<T> for FolError<T> {
     fn from(value: T) -> Self {
         Self::new(value)
-    }
-}
-
-impl<T> From<FolError<T>> for T {
-    fn from(value: FolError<T>) -> Self {
-        value.into_inner()
     }
 }
 
@@ -170,7 +176,7 @@ mod tests {
 
         assert_eq!(error.as_ref(), &"broken");
         assert_eq!(FolError::from("broken"), error);
-        assert_eq!(<&str>::from(error), "broken");
+        assert_eq!(error.into_inner(), "broken");
     }
 
     #[test]
