@@ -57,7 +57,7 @@ mod tests {
     use super::PreparedPackage;
     use crate::{
         BuildDependency, BuildExport, PackageBuildDefinition, PackageConfig, PackageIdentity,
-        PackageLocator, PackageLocatorKind, PackageMetadata, PackageNativeArtifact,
+        PackageLocator, PackageMetadata, PackageNativeArtifact,
         PackageNativeArtifactKind, PackageSourceKind, PreparedExportMount,
     };
     use fol_parser::ast::{AstParser, ParsedPackage};
@@ -122,11 +122,7 @@ mod tests {
             PackageBuildDefinition {
                 dependencies: vec![BuildDependency {
                     alias: "core".to_string(),
-                    locator: PackageLocator {
-                        kind: PackageLocatorKind::InstalledStore,
-                        raw: "core".to_string(),
-                        path_segments: vec!["core".to_string()],
-                    },
+                    locator: PackageLocator::installed_store("core", vec!["core".to_string()]),
                 }],
                 exports: vec![BuildExport {
                     alias: "root".to_string(),

@@ -317,19 +317,17 @@ mod tests {
                 dependencies: vec![
                     BuildDependency {
                         alias: "core".to_string(),
-                        locator: PackageLocator {
-                            kind: PackageLocatorKind::InstalledStore,
-                            raw: "core".to_string(),
-                            path_segments: vec!["core".to_string()],
-                        },
+                        locator: PackageLocator::installed_store(
+                            "core",
+                            vec!["core".to_string()],
+                        ),
                     },
                     BuildDependency {
                         alias: "tools".to_string(),
-                        locator: PackageLocator {
-                            kind: PackageLocatorKind::InstalledStore,
-                            raw: "org/tools".to_string(),
-                            path_segments: vec!["org".to_string(), "tools".to_string()],
-                        },
+                        locator: PackageLocator::installed_store(
+                            "org/tools",
+                            vec!["org".to_string(), "tools".to_string()],
+                        ),
                     },
                 ],
                 exports: Vec::new(),
@@ -576,11 +574,7 @@ mod tests {
             PackageBuildDefinition {
                 dependencies: vec![BuildDependency {
                     alias: "core".to_string(),
-                    locator: PackageLocator {
-                        kind: PackageLocatorKind::InstalledStore,
-                        raw: "core".to_string(),
-                        path_segments: vec!["core".to_string()],
-                    },
+                    locator: PackageLocator::installed_store("core", vec!["core".to_string()]),
                 }],
                 exports: vec![BuildExport {
                     alias: "root".to_string(),

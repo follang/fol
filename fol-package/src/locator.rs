@@ -3,6 +3,28 @@ use crate::{PackageError, PackageErrorKind};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum PackageLocatorKind {
     InstalledStore,
+    Git,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum PackageGitTransport {
+    Https,
+    Ssh,
+    Git,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
+pub struct PackageGitSelector {
+    pub branch: Option<String>,
+    pub tag: Option<String>,
+    pub rev: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct PackageGitLocator {
+    pub transport: PackageGitTransport,
+    pub repository: String,
+    pub selector: PackageGitSelector,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -10,6 +32,36 @@ pub struct PackageLocator {
     pub kind: PackageLocatorKind,
     pub raw: String,
     pub path_segments: Vec<String>,
+    pub git: Option<PackageGitLocator>,
+}
+
+impl PackageLocator {
+    pub fn installed_store(raw: impl Into<String>, path_segments: Vec<String>) -> Self {
+        Self {
+            kind: PackageLocatorKind::InstalledStore,
+            raw: raw.into(),
+            path_segments,
+            git: None,
+        }
+    }
+
+    pub fn git(
+        raw: impl Into<String>,
+        transport: PackageGitTransport,
+        repository: impl Into<String>,
+        selector: PackageGitSelector,
+    ) -> Self {
+        Self {
+            kind: PackageLocatorKind::Git,
+            raw: raw.into(),
+            path_segments: Vec::new(),
+            git: Some(PackageGitLocator {
+                transport,
+                repository: repository.into(),
+                selector,
+            }),
+        }
+    }
 }
 
 pub fn parse_package_locator(raw: &str) -> Result<PackageLocator, PackageError> {
@@ -34,11 +86,10 @@ pub fn parse_package_locator(raw: &str) -> Result<PackageLocator, PackageError> 
         ));
     }
 
-    Ok(PackageLocator {
-        kind: PackageLocatorKind::InstalledStore,
-        raw: trimmed.to_string(),
-        path_segments: parts.into_iter().map(str::to_string).collect(),
-    })
+    Ok(PackageLocator::installed_store(
+        trimmed.to_string(),
+        parts.into_iter().map(str::to_string).collect(),
+    ))
 }
 
 fn looks_like_future_git_locator(raw: &str) -> bool {
@@ -50,7 +101,10 @@ fn looks_like_future_git_locator(raw: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_package_locator, PackageLocator, PackageLocatorKind};
+    use super::{
+        parse_package_locator, PackageGitSelector, PackageGitTransport, PackageLocator,
+        PackageLocatorKind,
+    };
 
     #[test]
     fn package_locator_parses_installed_store_paths() {
@@ -59,11 +113,10 @@ mod tests {
 
         assert_eq!(
             locator,
-            PackageLocator {
-                kind: PackageLocatorKind::InstalledStore,
-                raw: "org/tools".to_string(),
-                path_segments: vec!["org".to_string(), "tools".to_string()],
-            }
+            PackageLocator::installed_store(
+                "org/tools",
+                vec!["org".to_string(), "tools".to_string()]
+            )
         );
     }
 
@@ -92,6 +145,34 @@ mod tests {
                 .to_string()
                 .contains("future git or remote locator"),
             "Remote locators should fail with an explicit future-support diagnostic",
+        );
+    }
+
+    #[test]
+    fn package_locator_can_represent_git_locators_without_store_segments() {
+        let locator = PackageLocator::git(
+            "https://github.com/follang/json.git",
+            PackageGitTransport::Https,
+            "https://github.com/follang/json.git",
+            PackageGitSelector {
+                branch: Some("main".to_string()),
+                tag: None,
+                rev: None,
+            },
+        );
+
+        assert_eq!(locator.kind, PackageLocatorKind::Git);
+        assert!(locator.path_segments.is_empty());
+        assert_eq!(
+            locator.git.as_ref().map(|git| git.transport),
+            Some(PackageGitTransport::Https)
+        );
+        assert_eq!(
+            locator
+                .git
+                .as_ref()
+                .and_then(|git| git.selector.branch.as_deref()),
+            Some("main")
         );
     }
 }
