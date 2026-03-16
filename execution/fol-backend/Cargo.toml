@@ -9,8 +9,8 @@ name = "fol_backend"
 path = "src/lib.rs"
 
 [dependencies]
-fol-intrinsics = { path = "../fol-intrinsics" }
-fol-lower = { path = "../fol-lower" }
-fol-parser = { path = "../fol-parser" }
-fol-resolver = { path = "../fol-resolver" }
+fol-intrinsics = { path = "../../compiler/fol-intrinsics" }
+fol-lower = { path = "../../compiler/fol-lower" }
+fol-parser = { path = "../../compiler/fol-parser" }
+fol-resolver = { path = "../../compiler/fol-resolver" }
 fol-runtime = { path = "../fol-runtime" }
