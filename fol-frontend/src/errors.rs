@@ -4,6 +4,7 @@ use std::fmt;
 pub enum FrontendErrorKind {
     InvalidInput,
     WorkspaceNotFound,
+    PackageFailed,
     CommandFailed,
     Internal,
 }
@@ -13,6 +14,7 @@ impl FrontendErrorKind {
         match self {
             Self::InvalidInput => "FrontendInvalidInput",
             Self::WorkspaceNotFound => "FrontendWorkspaceNotFound",
+            Self::PackageFailed => "FrontendPackageFailed",
             Self::CommandFailed => "FrontendCommandFailed",
             Self::Internal => "FrontendInternal",
         }
@@ -58,6 +60,12 @@ impl From<std::io::Error> for FrontendError {
     }
 }
 
+impl From<fol_package::PackageError> for FrontendError {
+    fn from(error: fol_package::PackageError) -> Self {
+        Self::new(FrontendErrorKind::PackageFailed, error.to_string())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{FrontendError, FrontendErrorKind};
@@ -72,5 +80,17 @@ mod tests {
             error.to_string(),
             "FrontendWorkspaceNotFound: missing root"
         );
+    }
+
+    #[test]
+    fn package_errors_lower_into_frontend_package_failed_kind() {
+        let package_error = fol_package::PackageError::new(
+            fol_package::PackageErrorKind::InvalidInput,
+            "bad package",
+        );
+        let error = FrontendError::from(package_error);
+
+        assert_eq!(error.kind(), FrontendErrorKind::PackageFailed);
+        assert!(error.to_string().starts_with("FrontendPackageFailed:"));
     }
 }

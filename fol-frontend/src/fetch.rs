@@ -1,6 +1,6 @@
 use crate::{
     FrontendArtifactKind, FrontendArtifactSummary, FrontendCommandResult, FrontendError,
-    FrontendErrorKind, FrontendResult, FrontendWorkspace, FrontendConfig,
+    FrontendResult, FrontendWorkspace, FrontendConfig,
 };
 use std::path::PathBuf;
 
@@ -47,12 +47,10 @@ pub fn prepare_workspace_packages(
         .members
         .iter()
         .map(|member| {
-            let metadata = fol_package::parse_package_metadata(&member.manifest_file).map_err(|error| {
-                FrontendError::new(FrontendErrorKind::CommandFailed, error.to_string())
-            })?;
+            let metadata = fol_package::parse_package_metadata(&member.manifest_file)
+                .map_err(FrontendError::from)?;
             let build_path = member.root.join("build.fol");
-            fol_package::parse_package_build(&build_path)
-                .map_err(|error| FrontendError::new(FrontendErrorKind::CommandFailed, error.to_string()))?;
+            fol_package::parse_package_build(&build_path).map_err(FrontendError::from)?;
 
             Ok(FrontendPreparedPackage {
                 root: member.root.clone(),
@@ -163,7 +161,7 @@ mod tests {
 
         let error = prepare_workspace_packages(&workspace).unwrap_err();
 
-        assert_eq!(error.kind(), crate::FrontendErrorKind::CommandFailed);
+        assert_eq!(error.kind(), crate::FrontendErrorKind::PackageFailed);
         assert!(error.message().contains("build file"));
 
         fs::remove_dir_all(root).ok();
