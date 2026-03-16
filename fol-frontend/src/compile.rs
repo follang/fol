@@ -247,7 +247,7 @@ pub fn emit_rust_with_config(
         ));
     }
 
-    result.summary = format!("emitted {emitted} Rust crate(s)");
+    result.summary = format!("emitted {emitted} Rust crate(s) into {}", output_root.display());
     Ok(result)
 }
 
@@ -296,7 +296,10 @@ pub fn emit_lowered_with_config(
         ));
     }
 
-    result.summary = format!("emitted {emitted} lowered snapshot(s)");
+    result.summary = format!(
+        "emitted {emitted} lowered snapshot(s) into {}",
+        output_root.display()
+    );
     Ok(result)
 }
 
@@ -752,7 +755,10 @@ mod tests {
         let result = emit_rust(&workspace).unwrap();
 
         assert_eq!(result.command, "emit rust");
-        assert_eq!(result.summary, "emitted 1 Rust crate(s)");
+        assert_eq!(
+            result.summary,
+            format!("emitted 1 Rust crate(s) into {}", workspace.build_root.join("emit").join("rust").display())
+        );
         assert_eq!(result.artifacts[0].kind, FrontendArtifactKind::EmittedRust);
         assert!(result.artifacts[0].path.as_ref().unwrap().is_dir());
 
@@ -782,7 +788,13 @@ mod tests {
         let result = emit_lowered(&workspace).unwrap();
 
         assert_eq!(result.command, "emit lowered");
-        assert_eq!(result.summary, "emitted 1 lowered snapshot(s)");
+        assert_eq!(
+            result.summary,
+            format!(
+                "emitted 1 lowered snapshot(s) into {}",
+                workspace.build_root.join("emit").join("lowered").display()
+            )
+        );
         assert_eq!(result.artifacts[0].kind, FrontendArtifactKind::LoweredSnapshot);
         assert!(result.artifacts[0].path.as_ref().unwrap().is_file());
 
