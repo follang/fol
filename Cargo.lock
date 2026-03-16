@@ -175,7 +175,14 @@ name = "fol-frontend"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "fol-backend",
+ "fol-lexer",
+ "fol-lower",
  "fol-package",
+ "fol-parser",
+ "fol-resolver",
+ "fol-stream",
+ "fol-typecheck",
  "serde_json",
 ]
 
