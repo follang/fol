@@ -639,3 +639,15 @@ fn intrinsics_comparison_fixture_compiles_and_runs() {
     let run_output = compile_and_run_app(&fixture);
     assert_exit_code(&run_output, 0);
 }
+
+#[test]
+fn intrinsics_not_len_echo_fixture_compiles_and_runs() {
+    let fixture = fixture_root("intrinsics_not_len_echo");
+
+    let compile_output = compile_app_keep_build_dir_expect_success(&fixture);
+    assert_artifact_paths_exist(&compile_output);
+
+    let run_output = compile_and_run_app(&fixture);
+    assert_exit_code(&run_output, 0);
+    assert_output_contains(&run_output, "2");
+}
