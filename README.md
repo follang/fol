@@ -60,10 +60,10 @@ containers plus `.len(...)`, `.echo(...)`, recoverable propagation,
 `check(...)`, `expr || fallback`, and executable package graphs spanning
 `loc`, `std`, and installed `pkg` imports. `fol-frontend` now provides the
 user-facing workflow layer on top of that compiler stack: derive-based command
-parsing, workspace/package discovery, `init/new/fetch/check/build/run/test/
-emit/clean/completion`, human/plain/json output, explicit artifact-root
-reporting, and the migration path from the old root compiler driver toward one
-canonical `fol` tool.
+parsing, workspace/package discovery, `init/new/fetch/update/check/build/run/
+test/emit/clean/completion`, `work info/list/deps/status`, human/plain/json
+output, explicit artifact-root reporting, git-backed dependency fetching with
+`fol.lock`, and one canonical `fol` tool.
 
 The next major compiler work no longer sits at the first backend boundary.
 That milestone is now real. Follow-on work should build on top of it:
@@ -74,8 +74,8 @@ Current import surface:
 - `loc` imports exact filesystem directories
 - `std` imports exact directories under an explicit `--std-root`
 - `pkg` imports installed package roots under an explicit `--package-store-root`
-- no explicit cache/store-management CLI flag is exposed yet; that is deferred until
-  locator/fetch work needs a user-facing cache contract
+- no broad cache/store-policy CLI exists yet beyond `fetch`, `update`, and `clean`;
+  richer package-manager policy can be added later if the workflow needs it
 - `loc` rejects directory targets that already define `build.fol`; formal package
   roots belong to `pkg`
 - `pkg` roots require both `package.yaml` and `build.fol`

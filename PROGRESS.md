@@ -74,7 +74,7 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - Resolver-focused Rust tests under `test/resolver`: `100`
 - Typecheck-focused Rust tests under `test/typecheck`: `71`
 - Observed current unit test run: `46` unit tests, green
-- Observed current integration run: `1616` integration tests, green
+- Observed current integration run: `1620` integration tests, green
 
 ## 3. Current Headline Status
 
@@ -90,7 +90,7 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `fol-backend`: implemented as the first runnable `V1` backend, emitting Rust crates and buildable binaries
 - `fol-frontend`: implemented as the user-facing workflow/tooling layer above the compiler and backend
 - `fol-diagnostics`: implemented, structured, and wired into the CLI
-- Root CLI: implemented as a migration shim between legacy direct compilation and `fol-frontend` workflows
+- Root CLI: implemented as a thin entry shim into the frontend-owned `fol` workflow
 - Stream + lexer + parser: stable and consumed by package loading and resolver
 - Package loading and package preparation: implemented for `loc`, `std`, and installed `pkg`
 - Whole-program name resolution: implemented for the current contract
@@ -110,7 +110,7 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `make test`: passed
 - Current observed totals:
 - `46` unit tests passed
-- `1616` integration tests passed
+- `1620` integration tests passed
 - Observed active failures: `0`
 
 ## 5. What Has Been Completed So Far
@@ -597,7 +597,10 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `new`
 - `work info`
 - `work list`
+- `work deps`
+- `work status`
 - `fetch`
+- `update`
 - `check`
 - `build`
 - `run`
@@ -617,16 +620,21 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - upward root discovery and explicit path selection
 - workspace-config-over-env precedence for owned roots
 - env and flag precedence for output/color/profile selection
+- git cache roots, materialized package stores, and safe cleanup boundaries
+- git dependency lockfiles with `--locked`, `--offline`, and `--refresh`
+- update workflows with revision-change reporting and pinned-revision repair
 - explicit build-root, emit-root, package-root, and binary artifact reporting
-- migration-safe routing between workflow commands and legacy direct compiler flags
+- frontend-owned direct compile routing for file/folder targets
 - Frontend integration coverage now includes:
 - happy-path package/workspace walkthroughs
 - clean/build/run/test/emit command execution through the public API
+- temp git repo fetch/update/locked/offline coverage
+- public root-binary git fetch coverage, including a verified ignored GitHub fixture for `bresilla/logtiny`
 - completion generation and `_complete` dispatch
-- root-binary migration boundaries
+- root-binary workflow boundaries
 - frontend diagnostic rendering across human/plain/json
 - At the repo level, `fol` is no longer only a compiler binary with stage flags.
-  It is now also the first real workflow tool for current `V1`.
+  It is now the first complete workflow tool for the current `V1` compiler stack.
 
 ## 6. Current Front-End State By Layer
 

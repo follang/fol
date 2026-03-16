@@ -44,7 +44,10 @@ The current command surface is:
 - `fol new`
 - `fol work info`
 - `fol work list`
+- `fol work deps`
+- `fol work status`
 - `fol fetch`
+- `fol update`
 - `fol check`
 - `fol build`
 - `fol run`
@@ -224,14 +227,17 @@ It already covers:
 - project and workspace scaffolding
 - root discovery
 - package preparation through `fol-package`
+- git-backed dependency fetching and materialization
+- `fol.lock` writing, locked fetches, offline warm-cache fetches, and update flows
+- workspace dependency/status reporting
 - full `V1` build/run/test orchestration
 - emitted Rust and lowered IR output
 - shell completions
-- migration-safe CLI routing
+- safe cleanup of build/cache/git/package-store roots
+- frontend-owned direct compile routing
 
 Future work is still expected around:
 
-- remote dependency fetching
-- richer package-store management
-- lockfile/version workflows
+- richer package-store policy beyond the first git/store workflow
+- lockfile/version solving beyond the current pinned git contract
 - additional backend targets
