@@ -190,12 +190,13 @@ fn parse_git_scheme_locator(raw: &str) -> Result<PackageLocator, PackageError> {
     if repository.is_empty()
         || !(repository.starts_with("https://")
             || repository.starts_with("http://")
-            || repository.starts_with("ssh://"))
+            || repository.starts_with("ssh://")
+            || repository.starts_with("file://"))
     {
         return Err(PackageError::new(
             PackageErrorKind::InvalidInput,
             format!(
-                "git package locator '{}' must follow 'git+https://...' or 'git+ssh://...' form",
+                "git package locator '{}' must follow 'git+https://...', 'git+ssh://...', or 'git+file://...' form",
                 raw
             ),
         ));
@@ -454,6 +455,29 @@ mod tests {
         assert_eq!(
             locator.git.as_ref().map(|git| git.repository.as_str()),
             Some("https://github.com/follang/json.git")
+        );
+    }
+
+    #[test]
+    fn package_locator_parses_git_file_scheme_locators() {
+        let locator = parse_package_locator("git+file:///tmp/logtiny?branch=main")
+            .expect("git+file locators should parse");
+
+        assert_eq!(locator.kind, PackageLocatorKind::Git);
+        assert_eq!(
+            locator.git.as_ref().map(|git| git.transport),
+            Some(PackageGitTransport::Git)
+        );
+        assert_eq!(
+            locator.git.as_ref().map(|git| git.repository.as_str()),
+            Some("file:///tmp/logtiny")
+        );
+        assert_eq!(
+            locator
+                .git
+                .as_ref()
+                .and_then(|git| git.selector.branch.as_deref()),
+            Some("main")
         );
     }
 
