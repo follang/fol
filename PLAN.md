@@ -1031,7 +1031,7 @@ not full long-term compiler completion.
 #### 9.2
 - emit entry construction
 
-#### 9.3
+#### 9.3 done
 - emit arrays
 
 #### 9.4

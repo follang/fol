@@ -1142,4 +1142,52 @@ mod tests {
             )
         );
     }
+
+    #[test]
+    fn aggregate_and_container_rendering_emits_native_array_literals() {
+        let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
+        let mut table = LoweredTypeTable::new();
+        let int_id = table.intern_builtin(LoweredBuiltinType::Int);
+        let array_id = table.intern(fol_lower::LoweredType::Array {
+            element_type: int_id,
+            size: Some(2),
+        });
+        let mut routine = LoweredRoutine::new(LoweredRoutineId(16), "main", LoweredBlockId(0));
+        let a = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(0),
+            type_id: Some(int_id),
+            recoverable_error_type: None,
+            name: Some("a".to_string()),
+        });
+        let b = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(1),
+            type_id: Some(int_id),
+            recoverable_error_type: None,
+            name: Some("b".to_string()),
+        });
+        let result = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(2),
+            type_id: Some(array_id),
+            recoverable_error_type: None,
+            name: Some("arr".to_string()),
+        });
+        let instruction = LoweredInstr {
+            id: LoweredInstrId(40),
+            result: Some(result),
+            kind: LoweredInstrKind::ConstructLinear {
+                kind: LoweredLinearKind::Array,
+                type_id: array_id,
+                elements: vec![a, b],
+            },
+        };
+
+        let rendered =
+            render_core_instruction(&package_identity, &table, &routine, &instruction)
+                .expect("array");
+
+        assert_eq!(
+            rendered,
+            "let l__pkg__entry__app__r16__l2__arr = [l__pkg__entry__app__r16__l0__a.clone(), l__pkg__entry__app__r16__l1__b.clone()];"
+        );
+    }
 }
