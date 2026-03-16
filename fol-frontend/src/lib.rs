@@ -28,7 +28,7 @@ pub use scaffold::{
     new_project_with_mode, package_target_kind, PackageTargetKind,
 };
 pub use ui::FrontendOutput;
-pub use work::work_info;
+pub use work::{work_info, work_list};
 pub use workspace::{
     enumerate_member_packages, load_workspace_config, FrontendWorkspace, FrontendWorkspaceConfig,
 };

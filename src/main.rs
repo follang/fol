@@ -589,6 +589,22 @@ fn frontend_work_info_surface_smoke_compiles() {
 }
 
 #[test]
+fn frontend_work_list_surface_smoke_compiles() {
+    let workspace = fol_frontend::FrontendWorkspace {
+        root: fol_frontend::WorkspaceRoot::new(std::path::PathBuf::from("/tmp/demo")),
+        members: vec![fol_frontend::PackageRoot::new(std::path::PathBuf::from("/tmp/demo/app"))],
+        std_root_override: None,
+        package_store_root_override: None,
+        build_root: std::path::PathBuf::from("/tmp/demo/.fol/build"),
+        cache_root: std::path::PathBuf::from("/tmp/demo/.fol/cache"),
+    };
+    let result = fol_frontend::work_list(&workspace);
+
+    assert_eq!(result.command, "work list");
+    assert!(result.summary.contains("/tmp/demo/app"));
+}
+
+#[test]
 fn frontend_package_root_surface_smoke_compiles() {
     let root = fol_frontend::PackageRoot::new(std::path::PathBuf::from("/tmp/demo"));
 
