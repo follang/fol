@@ -57,13 +57,43 @@ pub fn emit_main_rs(session: &BackendSession) -> BackendResult<EmittedRustFile> 
 pub fn emit_package_module_shells(session: &BackendSession) -> Vec<EmittedRustFile> {
     let package_plans = plan_package_layouts(session);
     let namespace_plans = plan_namespace_layouts(session);
-    let mut namespace_modules_by_package: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    let mut direct_modules_by_path: BTreeMap<String, Vec<String>> = BTreeMap::new();
 
-    for namespace_plan in namespace_plans {
-        namespace_modules_by_package
-            .entry(mangle_package_module_name(&namespace_plan.package_identity))
+    for namespace_plan in &namespace_plans {
+        let package_module = mangle_package_module_name(&namespace_plan.package_identity);
+        let relative_parts = namespace_plan
+            .relative_file
+            .split('/')
+            .map(str::to_string)
+            .collect::<Vec<_>>();
+        if relative_parts.is_empty() {
+            continue;
+        }
+        let root_child = module_name_from_relative_part(&relative_parts[0]);
+        direct_modules_by_path
+            .entry(format!("src/packages/{package_module}/mod.rs"))
             .or_default()
-            .push(namespace_plan.module_name);
+            .push(root_child);
+
+        if relative_parts.len() <= 1 {
+            continue;
+        }
+
+        for index in 0..(relative_parts.len() - 1) {
+            let parent_dir = if index == 0 {
+                format!("src/packages/{package_module}/{}", relative_parts[0])
+            } else {
+                format!(
+                    "src/packages/{package_module}/{}",
+                    relative_parts[..=index].join("/")
+                )
+            };
+            let child = module_name_from_relative_part(&relative_parts[index + 1]);
+            direct_modules_by_path
+                .entry(format!("{parent_dir}/mod.rs"))
+                .or_default()
+                .push(child);
+        }
     }
 
     let mut files = vec![EmittedRustFile {
@@ -78,8 +108,8 @@ pub fn emit_package_module_shells(session: &BackendSession) -> Vec<EmittedRustFi
     }];
 
     for package_plan in package_plans {
-        let mut namespace_modules = namespace_modules_by_package
-            .remove(&package_plan.module_name)
+        let mut namespace_modules = direct_modules_by_path
+            .remove(&format!("{}/mod.rs", package_plan.relative_dir))
             .unwrap_or_default();
         namespace_modules.sort();
         namespace_modules.dedup();
@@ -95,6 +125,25 @@ pub fn emit_package_module_shells(session: &BackendSession) -> Vec<EmittedRustFi
                 + "\n",
         });
     }
+
+    let mut nested_mod_paths = direct_modules_by_path.into_iter().collect::<Vec<_>>();
+    nested_mod_paths.sort_by(|left, right| left.0.cmp(&right.0));
+    for (path, mut module_names) in nested_mod_paths {
+        module_names.sort();
+        module_names.dedup();
+        files.push(EmittedRustFile {
+            module_name: "mod".to_string(),
+            path,
+            contents: module_names
+                .iter()
+                .map(|module_name| format!("pub mod {module_name};"))
+                .collect::<Vec<_>>()
+                .join("\n")
+                + "\n",
+        });
+    }
+
+    files.sort_by(|left, right| left.path.cmp(&right.path));
 
     files
 }
@@ -129,6 +178,13 @@ pub fn emit_namespace_module_shells(session: &BackendSession) -> Vec<EmittedRust
             }
         })
         .collect()
+}
+
+fn module_name_from_relative_part(relative_part: &str) -> String {
+    relative_part
+        .strip_suffix(".rs")
+        .map(str::to_string)
+        .unwrap_or_else(|| relative_part.to_string())
 }
 
 pub fn emit_generated_crate_skeleton(session: &BackendSession) -> BackendResult<BackendArtifact> {
@@ -815,6 +871,38 @@ mod tests {
         assert!(summary.contains("Cargo.toml"));
         assert!(summary.contains("src/main.rs"));
         assert!(summary.contains("src/packages/pkg__entry__app/root.rs"));
+    }
+
+    #[test]
+    fn package_module_shell_emission_adds_nested_mod_files_for_deep_namespaces() {
+        let fixture_root = temp_root("deep_namespace_layout");
+        let app_root = fixture_root.join("app");
+        fs::create_dir_all(app_root.join("api/tools/math")).expect("nested namespace root");
+        fs::write(
+            app_root.join("main.fol"),
+            "fun[] main(): int = {\n    return api::tools::math::leaf()\n}\n",
+        )
+        .expect("app source");
+        fs::write(
+            app_root.join("api/tools/math/leaf.fol"),
+            "fun[] leaf(): int = {\n    return 7\n}\n",
+        )
+        .expect("nested source");
+
+        let lowered = lowered_workspace_from_entry_path(&app_root);
+        let session = BackendSession::new(lowered);
+        let emitted = emit_package_module_shells(&session);
+
+        assert!(emitted
+            .iter()
+            .any(|file| file.path.ends_with("pkg__entry__app/api/mod.rs")
+                && file.contents.contains("pub mod tools;")));
+        assert!(emitted
+            .iter()
+            .any(|file| file.path.ends_with("pkg__entry__app/api/tools/mod.rs")
+                && file.contents.contains("pub mod math;")));
+
+        let _ = fs::remove_dir_all(&fixture_root);
     }
 
     #[test]
