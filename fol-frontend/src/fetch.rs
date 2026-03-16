@@ -68,12 +68,30 @@ pub fn prepare_workspace_packages(
     })
 }
 
-pub fn fetch_workspace(workspace: &FrontendWorkspace) -> FrontendResult<FrontendCommandResult> {
+pub fn fetch_workspace_with_config(
+    workspace: &FrontendWorkspace,
+    config: &FrontendConfig,
+) -> FrontendResult<FrontendCommandResult> {
     let preparation = prepare_workspace_packages(workspace)?;
+    let package_store_root = select_package_store_root(config, workspace);
     let mut result = FrontendCommandResult::new(
         "fetch",
-        format!("prepared {} workspace package(s)", preparation.packages.len()),
+        format!(
+            "prepared {} workspace package(s) into {}",
+            preparation.packages.len(),
+            package_store_root.display()
+        ),
     );
+    result.artifacts.push(FrontendArtifactSummary::new(
+        FrontendArtifactKind::PackageRoot,
+        "package-store-root",
+        Some(package_store_root),
+    ));
+    result.artifacts.push(FrontendArtifactSummary::new(
+        FrontendArtifactKind::PackageRoot,
+        "package-cache-root",
+        Some(workspace.cache_root.clone()),
+    ));
     for package in preparation.packages {
         result.artifacts.push(FrontendArtifactSummary::new(
             FrontendArtifactKind::PackageRoot,
@@ -84,9 +102,16 @@ pub fn fetch_workspace(workspace: &FrontendWorkspace) -> FrontendResult<Frontend
     Ok(result)
 }
 
+pub fn fetch_workspace(workspace: &FrontendWorkspace) -> FrontendResult<FrontendCommandResult> {
+    fetch_workspace_with_config(workspace, &FrontendConfig::default())
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{fetch_workspace, prepare_workspace_packages, select_package_store_root};
+    use super::{
+        fetch_workspace, fetch_workspace_with_config, prepare_workspace_packages,
+        select_package_store_root,
+    };
     use crate::{FrontendConfig, FrontendWorkspace, PackageRoot, WorkspaceRoot};
     use std::{fs, path::PathBuf};
 
@@ -164,9 +189,9 @@ mod tests {
         let result = fetch_workspace(&workspace).unwrap();
 
         assert_eq!(result.command, "fetch");
-        assert_eq!(result.summary, "prepared 1 workspace package(s)");
-        assert_eq!(result.artifacts.len(), 1);
-        assert_eq!(result.artifacts[0].path, Some(app));
+        assert!(result.summary.contains("prepared 1 workspace package(s) into"));
+        assert_eq!(result.artifacts.len(), 3);
+        assert_eq!(result.artifacts[2].path, Some(app));
 
         fs::remove_dir_all(root).ok();
     }
@@ -204,5 +229,35 @@ mod tests {
             ),
             PathBuf::from("/tmp/demo/.fol/pkg")
         );
+    }
+
+    #[test]
+    fn fetch_summary_prefers_configured_store_root_in_reported_artifacts() {
+        let root = std::env::temp_dir().join(format!("fol_frontend_fetch_summary_{}", std::process::id()));
+        let app = root.join("app");
+        fs::create_dir_all(&app).unwrap();
+        fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
+        fs::write(app.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
+
+        let workspace = FrontendWorkspace {
+            root: WorkspaceRoot::new(root.clone()),
+            members: vec![PackageRoot::new(app.clone())],
+            std_root_override: None,
+            package_store_root_override: Some(root.join(".fol/ws-pkg")),
+            build_root: root.join(".fol/build"),
+            cache_root: root.join(".fol/cache"),
+        };
+        let config = FrontendConfig {
+            package_store_root_override: Some(root.join(".fol/config-pkg")),
+            ..FrontendConfig::default()
+        };
+
+        let result = fetch_workspace_with_config(&workspace, &config).unwrap();
+
+        assert_eq!(result.artifacts[0].path, Some(root.join(".fol/config-pkg")));
+        assert_eq!(result.artifacts[1].path, Some(root.join(".fol/cache")));
+        assert_eq!(result.artifacts[2].path, Some(app));
+
+        fs::remove_dir_all(root).ok();
     }
 }
