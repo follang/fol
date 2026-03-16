@@ -8,6 +8,7 @@ Phase 0 status:
 - [x] 0.2 Freeze `fol-frontend` as a crate, not root-main sprawl
 - [x] 0.3 Freeze `clap` derive requirement
 - [x] 0.4 Freeze `roc` UX patterns to reuse conceptually
+- [x] 0.5 Freeze Zig-style workflow targets for `init/build/run/test/fetch`
 
 This plan defines the next major milestone after the completed `V1` compiler
 pipeline:
@@ -60,6 +61,10 @@ That means:
 - printing useful diagnostics and progress
 
 It should feel closer to `zig` than to a thin compiler driver.
+
+For the first frontend milestone, `init`, `new`, `fetch`, `check`, `build`,
+`run`, `test`, `emit`, `clean`, and `completion` are the canonical workflow
+targets. New ad hoc top-level commands should not bypass that shape.
 
 ## 1. Design Direction
 
