@@ -332,23 +332,16 @@ pub fn compile_member_workspace(
     config: &FrontendConfig,
     package_root: &Path,
 ) -> FrontendResult<fol_lower::LoweredWorkspace> {
-    let package_root_str = package_root.to_string_lossy().to_string();
-    let mut file_stream = fol_stream::FileStream::from_folder(&package_root_str)
-        .map_err(|error| FrontendError::new(FrontendErrorKind::CommandFailed, error.to_string()))?;
-    let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut file_stream);
-    let mut parser = fol_parser::ast::AstParser::new();
-    let syntax = parser
-        .parse_package(&mut lexer)
-        .map_err(|errors| {
-            FrontendError::new(
-                FrontendErrorKind::CommandFailed,
-                errors
-                    .into_iter()
-                    .map(|error| error.to_string())
-                    .collect::<Vec<_>>()
-                    .join("\n"),
-            )
-        })?;
+    let display_name = package_root
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("package");
+    let syntax = fol_package::parse_directory_package_syntax(
+        package_root,
+        display_name,
+        fol_package::PackageSourceKind::Package,
+    )
+    .map_err(FrontendError::from)?;
     let prepared = fol_package::PackageSession::with_config(fol_package::PackageConfig::default())
         .prepare_entry_package(syntax)
         .map_err(FrontendError::from)?;
