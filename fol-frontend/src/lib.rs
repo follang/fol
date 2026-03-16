@@ -4,10 +4,12 @@
 //! above `fol-package` and the compiler pipeline.
 
 mod config;
+mod cli;
 mod errors;
 mod output;
 mod result;
 
+pub use cli::FrontendCli;
 pub use config::FrontendConfig;
 pub use errors::{FrontendError, FrontendErrorKind, FrontendResult};
 pub use output::{ColorPolicy, FrontendOutputConfig, OutputMode};

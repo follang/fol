@@ -546,6 +546,13 @@ fn frontend_result_surface_smoke_compiles() {
 }
 
 #[test]
+fn frontend_root_parser_surface_smoke_compiles() {
+    let cli = fol_frontend::FrontendCli::parse_from(["fol"]);
+
+    assert_eq!(cli, fol_frontend::FrontendCli);
+}
+
+#[test]
 fn backend_public_api_shell_smoke_compiles() {
     let backend = fol_backend::Backend::new();
     assert_eq!(format!("{backend:?}"), "Backend");
