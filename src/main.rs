@@ -572,6 +572,7 @@ fn frontend_workspace_model_surface_smoke_compiles() {
     ));
 
     assert_eq!(workspace.root.root, std::path::PathBuf::from("/tmp/demo"));
+    assert!(workspace.members.is_empty());
 }
 
 #[test]
