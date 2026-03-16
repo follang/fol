@@ -965,7 +965,7 @@ not full long-term compiler completion.
 #### 6.1 done
 - emit global declarations for straightforward current `V1` cases
 
-#### 6.2
+#### 6.2 done
 - emit routine signatures including receiver-qualified routines
 
 #### 6.3

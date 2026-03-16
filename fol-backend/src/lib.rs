@@ -47,7 +47,7 @@ pub use mangle::{
 };
 pub use model::{BackendArtifact, EmittedRustFile};
 pub use session::BackendSession;
-pub use signatures::render_global_declaration;
+pub use signatures::{render_global_declaration, render_routine_signature};
 pub use trace::{
     BackendEmittedSourceMap, BackendEmittedSourceMapEntry, BackendTrace, BackendTraceKind,
     BackendTraceRecord,
