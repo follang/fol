@@ -624,6 +624,23 @@ fn frontend_root_parser_surface_smoke_compiles() {
 }
 
 #[test]
+fn root_binary_prefers_frontend_for_workflow_commands_and_aliases() {
+    assert!(should_use_frontend(&["fol".into(), "build".into()]));
+    assert!(should_use_frontend(&["fol".into(), "run".into()]));
+    assert!(should_use_frontend(&["fol".into(), "workspace".into()]));
+    assert!(should_use_frontend(&["fol".into(), "sync".into()]));
+    assert!(should_use_frontend(&["fol".into(), "--output".into(), "json".into(), "build".into()]));
+}
+
+#[test]
+fn root_binary_keeps_legacy_compiler_mode_for_direct_compile_inputs() {
+    assert!(!should_use_frontend(&["fol".into()]));
+    assert!(!should_use_frontend(&["fol".into(), "examples/full_v1_showcase/app".into()]));
+    assert!(!should_use_frontend(&["fol".into(), "--json".into(), "test/main/main.fol".into()]));
+    assert!(!should_use_frontend(&["fol".into(), "--emit-rust".into(), "test/main/main.fol".into()]));
+}
+
+#[test]
 fn frontend_workspace_root_surface_smoke_compiles() {
     let root = fol_frontend::WorkspaceRoot::new(std::path::PathBuf::from("/tmp/demo"));
 
