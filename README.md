@@ -23,10 +23,10 @@ FOL is a general-purpose, systems programming language designed for robustness, 
 
 Current compiler status: `fol-stream`, `fol-lexer`, `fol-parser`,
 `fol-package`, `fol-resolver`, `fol-typecheck`, `fol-lower`,
-`fol-intrinsics`, `fol-runtime`, `fol-backend`, diagnostics, and the root CLI
-are implemented and actively tested. Package loading now flows through
-`fol-package`, which prepares directory and installed-package surfaces ahead of
-name resolution.
+`fol-intrinsics`, `fol-runtime`, `fol-backend`, `fol-frontend`, diagnostics,
+and the root CLI are implemented and actively tested. Package loading now
+flows through `fol-package`, which prepares directory and installed-package
+surfaces ahead of name resolution.
 `fol-intrinsics` is now the shared compiler-owned intrinsic registry for the
 current `V1` subset, including `.eq(...)`, `.nq(...)`, `.lt(...)`, `.gt(...)`,
 `.ge(...)`, `.le(...)`, `.not(...)`, `.len(...)`, `.echo(...)`, `check(...)`,
@@ -58,7 +58,12 @@ binaries through Cargo. Current end-to-end backend coverage includes
 declaration-only inputs, scalar entry programs, records and entries,
 containers plus `.len(...)`, `.echo(...)`, recoverable propagation,
 `check(...)`, `expr || fallback`, and executable package graphs spanning
-`loc`, `std`, and installed `pkg` imports.
+`loc`, `std`, and installed `pkg` imports. `fol-frontend` now provides the
+user-facing workflow layer on top of that compiler stack: derive-based command
+parsing, workspace/package discovery, `init/new/fetch/check/build/run/test/
+emit/clean/completion`, human/plain/json output, explicit artifact-root
+reporting, and the migration path from the old root compiler driver toward one
+canonical `fol` tool.
 
 The next major compiler work no longer sits at the first backend boundary.
 That milestone is now real. Follow-on work should build on top of it:
