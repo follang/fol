@@ -617,3 +617,14 @@ fn container_map_set_fixture_compiles_and_runs() {
     let run_output = compile_and_run_app(&fixture);
     assert_exit_code(&run_output, 0);
 }
+
+#[test]
+fn container_cross_package_fixture_compiles_and_runs() {
+    let fixture = fixture_root("container_cross_package").join("app");
+
+    let compile_output = compile_app_keep_build_dir_expect_success(&fixture);
+    assert_artifact_paths_exist(&compile_output);
+
+    let run_output = compile_and_run_app(&fixture);
+    assert_exit_code(&run_output, 0);
+}
