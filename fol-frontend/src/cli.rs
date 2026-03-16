@@ -50,6 +50,9 @@ pub struct UnitCommand;
 pub struct InitCommand {
     #[arg(long)]
     pub workspace: bool,
+
+    #[arg(long)]
+    pub bin: bool,
 }
 
 #[derive(Debug, Clone, Args, PartialEq, Eq)]
@@ -58,6 +61,9 @@ pub struct NewCommand {
 
     #[arg(long)]
     pub workspace: bool,
+
+    #[arg(long)]
+    pub bin: bool,
 }
 
 #[derive(Debug, Clone, Parser, PartialEq, Eq)]
@@ -221,13 +227,33 @@ mod tests {
 
         assert_eq!(
             init.command,
-            Some(FrontendCommand::Init(InitCommand { workspace: true }))
+            Some(FrontendCommand::Init(InitCommand { workspace: true, bin: false }))
         );
         assert_eq!(
             new.command,
             Some(FrontendCommand::New(NewCommand {
                 name: "demo".to_string(),
                 workspace: true,
+                bin: false,
+            }))
+        );
+    }
+
+    #[test]
+    fn bin_flags_parse_for_init_and_new_commands() {
+        let init = FrontendCli::parse_from(["fol", "init", "--bin"]);
+        let new = FrontendCli::parse_from(["fol", "new", "demo", "--bin"]);
+
+        assert_eq!(
+            init.command,
+            Some(FrontendCommand::Init(InitCommand { workspace: false, bin: true }))
+        );
+        assert_eq!(
+            new.command,
+            Some(FrontendCommand::New(NewCommand {
+                name: "demo".to_string(),
+                workspace: false,
+                bin: true,
             }))
         );
     }

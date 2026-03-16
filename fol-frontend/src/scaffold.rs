@@ -5,9 +5,24 @@ use crate::{
 use std::fs;
 use std::path::Path;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PackageTargetKind {
+    Bin,
+}
+
 pub fn init_current_dir(root: &Path) -> FrontendResult<FrontendCommandResult> {
+    init_package_root(root, PackageTargetKind::Bin)
+}
+
+pub fn init_package_root(
+    root: &Path,
+    target: PackageTargetKind,
+) -> FrontendResult<FrontendCommandResult> {
     fs::create_dir_all(root.join("src"))?;
-    fs::write(root.join("src/main.fol"), "")?;
+    let source_file = match target {
+        PackageTargetKind::Bin => "main.fol",
+    };
+    fs::write(root.join("src").join(source_file), "")?;
     fs::write(root.join("package.yaml"), "")?;
     fs::write(root.join("build.fol"), "")?;
 
@@ -60,7 +75,10 @@ pub fn new_project_with_mode(
 
 #[cfg(test)]
 mod tests {
-    use super::{init_current_dir, init_root, init_workspace_root, new_project, new_project_with_mode};
+    use super::{
+        init_current_dir, init_package_root, init_root, init_workspace_root, new_project,
+        new_project_with_mode, PackageTargetKind,
+    };
     use crate::FrontendArtifactKind;
     use std::{fs, path::PathBuf};
 
@@ -87,6 +105,18 @@ mod tests {
         assert!(root.join("src/main.fol").is_file());
         assert!(root.join("package.yaml").is_file());
         assert!(root.join("build.fol").is_file());
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn bin_target_scaffolding_uses_main_entry_file() {
+        let root = std::env::temp_dir().join(format!("fol_frontend_bin_target_{}", std::process::id()));
+        fs::create_dir_all(&root).unwrap();
+
+        init_package_root(&root, PackageTargetKind::Bin).unwrap();
+
+        assert!(root.join("src/main.fol").is_file());
 
         fs::remove_dir_all(root).ok();
     }
