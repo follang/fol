@@ -10,6 +10,7 @@ pub struct FrontendConfig {
     pub package_store_root_override: Option<PathBuf>,
     pub build_root_override: Option<PathBuf>,
     pub cache_root_override: Option<PathBuf>,
+    pub git_cache_root_override: Option<PathBuf>,
     pub keep_build_dir: bool,
 }
 
@@ -23,6 +24,7 @@ impl Default for FrontendConfig {
             package_store_root_override: None,
             build_root_override: None,
             cache_root_override: None,
+            git_cache_root_override: None,
             keep_build_dir: false,
         }
     }
@@ -46,6 +48,7 @@ impl FrontendConfig {
             std::env::var_os("FOL_PACKAGE_STORE_ROOT").map(PathBuf::from);
         config.build_root_override = std::env::var_os("FOL_BUILD_ROOT").map(PathBuf::from);
         config.cache_root_override = std::env::var_os("FOL_CACHE_ROOT").map(PathBuf::from);
+        config.git_cache_root_override = std::env::var_os("FOL_GIT_CACHE_ROOT").map(PathBuf::from);
         config.keep_build_dir = std::env::var_os("FOL_KEEP_BUILD_DIR")
             .map(|value| value == "1" || value.eq_ignore_ascii_case("true"))
             .unwrap_or(false);
@@ -68,6 +71,7 @@ mod tests {
         assert!(config.package_store_root_override.is_none());
         assert!(config.build_root_override.is_none());
         assert!(config.cache_root_override.is_none());
+        assert!(config.git_cache_root_override.is_none());
         assert!(!config.keep_build_dir);
     }
 
@@ -78,6 +82,7 @@ mod tests {
             std::env::set_var("FOL_PACKAGE_STORE_ROOT", "/tmp/pkg");
             std::env::set_var("FOL_BUILD_ROOT", "/tmp/build");
             std::env::set_var("FOL_CACHE_ROOT", "/tmp/cache");
+            std::env::set_var("FOL_GIT_CACHE_ROOT", "/tmp/git-cache");
             std::env::set_var("FOL_KEEP_BUILD_DIR", "true");
             std::env::set_var("FOL_OUTPUT", "json");
             std::env::set_var("FOL_PROFILE", "release");
@@ -94,6 +99,10 @@ mod tests {
         );
         assert_eq!(config.build_root_override, Some(std::path::PathBuf::from("/tmp/build")));
         assert_eq!(config.cache_root_override, Some(std::path::PathBuf::from("/tmp/cache")));
+        assert_eq!(
+            config.git_cache_root_override,
+            Some(std::path::PathBuf::from("/tmp/git-cache"))
+        );
         assert!(config.keep_build_dir);
 
         unsafe {
@@ -101,6 +110,7 @@ mod tests {
             std::env::remove_var("FOL_PACKAGE_STORE_ROOT");
             std::env::remove_var("FOL_BUILD_ROOT");
             std::env::remove_var("FOL_CACHE_ROOT");
+            std::env::remove_var("FOL_GIT_CACHE_ROOT");
             std::env::remove_var("FOL_KEEP_BUILD_DIR");
             std::env::remove_var("FOL_OUTPUT");
             std::env::remove_var("FOL_PROFILE");

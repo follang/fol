@@ -64,6 +64,7 @@ mod tests {
             package_store_root_override: None,
             build_root: PathBuf::from("/tmp/demo/.fol/build"),
             cache_root: PathBuf::from("/tmp/demo/.fol/cache"),
+            git_cache_root: PathBuf::from("/tmp/demo/.fol/cache/git"),
         };
         let result = work_list(&workspace);
 

@@ -242,6 +242,7 @@ fn package_config_from_resolver(config: &ResolverConfig) -> fol_package::Package
         std_root: config.std_root.clone(),
         package_store_root: config.package_store_root.clone(),
         package_cache_root: None,
+        package_git_cache_root: None,
     }
 }
 

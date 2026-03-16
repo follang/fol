@@ -41,6 +41,7 @@ pub fn prepare_workspace_packages(
             .as_ref()
             .map(|path| path.to_string_lossy().to_string()),
         package_cache_root: Some(workspace.cache_root.to_string_lossy().to_string()),
+        package_git_cache_root: Some(workspace.git_cache_root.to_string_lossy().to_string()),
     };
 
     let packages = workspace
@@ -128,6 +129,7 @@ mod tests {
             package_store_root_override: Some(root.join(".fol/pkg")),
             build_root: root.join(".fol/build"),
             cache_root: root.join(".fol/cache"),
+            git_cache_root: root.join(".fol/cache/git"),
         };
 
         let preparation = prepare_workspace_packages(&workspace).unwrap();
@@ -157,6 +159,7 @@ mod tests {
             package_store_root_override: None,
             build_root: root.join(".fol/build"),
             cache_root: root.join(".fol/cache"),
+            git_cache_root: root.join(".fol/cache/git"),
         };
 
         let error = prepare_workspace_packages(&workspace).unwrap_err();
@@ -182,6 +185,7 @@ mod tests {
             package_store_root_override: None,
             build_root: root.join(".fol/build"),
             cache_root: root.join(".fol/cache"),
+            git_cache_root: root.join(".fol/cache/git"),
         };
 
         let result = fetch_workspace(&workspace).unwrap();
@@ -203,6 +207,7 @@ mod tests {
             package_store_root_override: Some(PathBuf::from("/tmp/demo/ws-pkg")),
             build_root: PathBuf::from("/tmp/demo/.fol/build"),
             cache_root: PathBuf::from("/tmp/demo/.fol/cache"),
+            git_cache_root: PathBuf::from("/tmp/demo/.fol/cache/git"),
         };
         let config = FrontendConfig {
             package_store_root_override: Some(PathBuf::from("/tmp/demo/config-pkg")),
@@ -222,6 +227,7 @@ mod tests {
                 &FrontendConfig::default(),
                 &FrontendWorkspace {
                     package_store_root_override: None,
+                    git_cache_root: PathBuf::from("/tmp/demo/.fol/cache/git"),
                     ..workspace
                 }
             ),
@@ -244,6 +250,7 @@ mod tests {
             package_store_root_override: Some(root.join(".fol/ws-pkg")),
             build_root: root.join(".fol/build"),
             cache_root: root.join(".fol/cache"),
+            git_cache_root: root.join(".fol/cache/git"),
         };
         let config = FrontendConfig {
             package_store_root_override: Some(root.join(".fol/config-pkg")),

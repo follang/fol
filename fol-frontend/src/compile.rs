@@ -401,6 +401,7 @@ fn test_workspace_selected_with_config(
             package_store_root_override: workspace.package_store_root_override.clone(),
             build_root: workspace.build_root.clone(),
             cache_root: workspace.cache_root.clone(),
+            git_cache_root: workspace.git_cache_root.clone(),
         };
         let member_result = run_workspace_with_config(&member_workspace, config)?;
         result.artifacts.extend(member_result.artifacts);
@@ -498,6 +499,7 @@ mod tests {
             package_store_root_override: None,
             build_root: root.join(".fol/build"),
             cache_root: root.join(".fol/cache"),
+            git_cache_root: root.join(".fol/cache/git"),
         };
 
         let result = check_workspace(&workspace).unwrap();
@@ -526,6 +528,7 @@ mod tests {
             package_store_root_override: None,
             build_root: root.join(".fol/build"),
             cache_root: root.join(".fol/cache"),
+            git_cache_root: root.join(".fol/cache/git"),
         };
 
         let result = build_workspace(&workspace).unwrap();
@@ -574,6 +577,7 @@ mod tests {
             package_store_root_override: None,
             build_root: root.join(".fol/build"),
             cache_root: root.join(".fol/cache"),
+            git_cache_root: root.join(".fol/cache/git"),
         };
 
         let result = build_workspace_for_profile_with_config(
@@ -606,6 +610,7 @@ mod tests {
             package_store_root_override: None,
             build_root: root.join(".fol/build"),
             cache_root: root.join(".fol/cache"),
+            git_cache_root: root.join(".fol/cache/git"),
         };
 
         let result = run_workspace(&workspace).unwrap();
@@ -639,6 +644,7 @@ mod tests {
             package_store_root_override: None,
             build_root: root.join(".fol/build"),
             cache_root: root.join(".fol/cache"),
+            git_cache_root: root.join(".fol/cache/git"),
         };
 
         let result = run_workspace_with_args_and_config(
@@ -672,6 +678,7 @@ mod tests {
             package_store_root_override: None,
             build_root: root.join(".fol/build"),
             cache_root: root.join(".fol/cache"),
+            git_cache_root: root.join(".fol/cache/git"),
         };
         let config = crate::FrontendConfig {
             keep_build_dir: true,
@@ -703,6 +710,7 @@ mod tests {
             package_store_root_override: None,
             build_root: root.join(".fol/build"),
             cache_root: root.join(".fol/cache"),
+            git_cache_root: root.join(".fol/cache/git"),
         };
 
         let result = test_workspace(&workspace).unwrap();
@@ -735,6 +743,7 @@ mod tests {
             package_store_root_override: None,
             build_root: root.join(".fol/build"),
             cache_root: root.join(".fol/cache"),
+            git_cache_root: root.join(".fol/cache/git"),
         };
 
         let result = test_package(&workspace, "lib").unwrap();
@@ -763,6 +772,7 @@ mod tests {
             package_store_root_override: None,
             build_root: root.join(".fol/build"),
             cache_root: root.join(".fol/cache"),
+            git_cache_root: root.join(".fol/cache/git"),
         };
 
         let result = emit_rust(&workspace).unwrap();
@@ -796,6 +806,7 @@ mod tests {
             package_store_root_override: None,
             build_root: root.join(".fol/build"),
             cache_root: root.join(".fol/cache"),
+            git_cache_root: root.join(".fol/cache/git"),
         };
 
         let result = emit_lowered(&workspace).unwrap();

@@ -415,6 +415,7 @@ fn compile_file(
                 std_root: resolver_config.std_root.clone(),
                 package_store_root: resolver_config.package_store_root.clone(),
                 package_cache_root: None,
+                package_git_cache_root: None,
             });
             let prepared = match package_session.prepare_entry_package(package) {
                 Ok(prepared) => prepared,

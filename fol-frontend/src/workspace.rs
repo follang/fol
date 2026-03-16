@@ -11,6 +11,7 @@ pub struct FrontendWorkspaceConfig {
     pub package_store_root_override: Option<PathBuf>,
     pub build_root_override: Option<PathBuf>,
     pub cache_root_override: Option<PathBuf>,
+    pub git_cache_root_override: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -21,6 +22,7 @@ pub struct FrontendWorkspace {
     pub package_store_root_override: Option<PathBuf>,
     pub build_root: PathBuf,
     pub cache_root: PathBuf,
+    pub git_cache_root: PathBuf,
 }
 
 impl FrontendWorkspace {
@@ -32,6 +34,7 @@ impl FrontendWorkspace {
             package_store_root_override: None,
             build_root: PathBuf::from("/tmp/demo/.fol/build"),
             cache_root: PathBuf::from("/tmp/demo/.fol/cache"),
+            git_cache_root: PathBuf::from("/tmp/demo/.fol/cache/git"),
         }
     }
 
@@ -40,6 +43,7 @@ impl FrontendWorkspace {
             members: enumerate_member_packages(&root, member_paths)?,
             build_root: default_build_root(&root.root),
             cache_root: default_cache_root(&root.root),
+            git_cache_root: default_git_cache_root(&root.root),
             root,
             std_root_override: None,
             package_store_root_override: None,
@@ -67,6 +71,11 @@ impl FrontendWorkspace {
                 .as_ref()
                 .map(|path| absolute_member_root(&root.root, path))
                 .unwrap_or_else(|| default_cache_root(&root.root)),
+            git_cache_root: config
+                .git_cache_root_override
+                .as_ref()
+                .map(|path| absolute_member_root(&root.root, path))
+                .unwrap_or_else(|| default_git_cache_root(&root.root)),
             root,
         })
     }
@@ -77,6 +86,7 @@ impl FrontendWorkspace {
             format!("members={}", self.members.len()),
             format!("build_root={}", self.build_root.display()),
             format!("cache_root={}", self.cache_root.display()),
+            format!("git_cache_root={}", self.git_cache_root.display()),
         ];
 
         if let Some(std_root) = &self.std_root_override {
@@ -114,6 +124,11 @@ pub fn load_frontend_workspace(
                     workspace.cache_root = cache_root.clone();
                 }
             }
+            if workspace.git_cache_root == default_git_cache_root(&root.root) {
+                if let Some(git_cache_root) = &config.git_cache_root_override {
+                    workspace.git_cache_root = git_cache_root.clone();
+                }
+            }
             Ok(workspace)
         }
         DiscoveredRoot::Package(root) => Ok(FrontendWorkspace {
@@ -129,6 +144,10 @@ pub fn load_frontend_workspace(
                 .cache_root_override
                 .clone()
                 .unwrap_or_else(|| default_cache_root(&root.root)),
+            git_cache_root: config
+                .git_cache_root_override
+                .clone()
+                .unwrap_or_else(|| default_git_cache_root(&root.root)),
         }),
     }
 }
@@ -226,6 +245,9 @@ pub fn load_workspace_config(workspace_root: &WorkspaceRoot) -> FrontendResult<F
             }
             "build_root" => config.build_root_override = Some(PathBuf::from(strip_quotes(value))),
             "cache_root" => config.cache_root_override = Some(PathBuf::from(strip_quotes(value))),
+            "git_cache_root" => {
+                config.git_cache_root_override = Some(PathBuf::from(strip_quotes(value)))
+            }
             _ => {
                 return Err(FrontendError::new(
                     FrontendErrorKind::InvalidInput,
@@ -256,6 +278,10 @@ fn default_build_root(workspace_root: &Path) -> PathBuf {
 
 fn default_cache_root(workspace_root: &Path) -> PathBuf {
     workspace_root.join(".fol").join("cache")
+}
+
+fn default_git_cache_root(workspace_root: &Path) -> PathBuf {
+    default_cache_root(workspace_root).join("git")
 }
 
 fn strip_quotes(raw: &str) -> &str {
@@ -293,6 +319,7 @@ mod tests {
         assert!(workspace.package_store_root_override.is_none());
         assert_eq!(workspace.build_root, PathBuf::from("/tmp/demo/.fol/build"));
         assert_eq!(workspace.cache_root, PathBuf::from("/tmp/demo/.fol/cache"));
+        assert_eq!(workspace.git_cache_root, PathBuf::from("/tmp/demo/.fol/cache/git"));
     }
 
     #[test]
@@ -400,6 +427,7 @@ mod tests {
         );
         assert_eq!(workspace.build_root, root.join(".fol/build"));
         assert_eq!(workspace.cache_root, root.join(".fol/cache"));
+        assert_eq!(workspace.git_cache_root, root.join(".fol/cache/git"));
 
         fs::remove_dir_all(root).ok();
     }
@@ -439,6 +467,7 @@ mod tests {
 
         assert_eq!(config.build_root_override, Some(PathBuf::from(".artifacts/build")));
         assert_eq!(config.cache_root_override, Some(PathBuf::from(".artifacts/cache")));
+        assert_eq!(config.git_cache_root_override, None);
 
         fs::remove_dir_all(root).ok();
     }
@@ -456,6 +485,7 @@ mod tests {
                 members: vec![PathBuf::from("app")],
                 build_root_override: Some(PathBuf::from(".artifacts/build")),
                 cache_root_override: Some(PathBuf::from(".artifacts/cache")),
+                git_cache_root_override: Some(PathBuf::from(".artifacts/git-cache")),
                 ..FrontendWorkspaceConfig::default()
             },
         )
@@ -463,6 +493,7 @@ mod tests {
 
         assert_eq!(workspace.build_root, root.join(".artifacts/build"));
         assert_eq!(workspace.cache_root, root.join(".artifacts/cache"));
+        assert_eq!(workspace.git_cache_root, root.join(".artifacts/git-cache"));
 
         fs::remove_dir_all(root).ok();
     }
@@ -478,6 +509,7 @@ mod tests {
                 "members=0".to_string(),
                 "build_root=/tmp/demo/.fol/build".to_string(),
                 "cache_root=/tmp/demo/.fol/cache".to_string(),
+                "git_cache_root=/tmp/demo/.fol/cache/git".to_string(),
             ]
         );
     }
@@ -491,6 +523,7 @@ mod tests {
             package_store_root_override: Some(PathBuf::from("/tmp/demo/.fol/pkg")),
             build_root: PathBuf::from("/tmp/demo/.fol/build"),
             cache_root: PathBuf::from("/tmp/demo/.fol/cache"),
+            git_cache_root: PathBuf::from("/tmp/demo/.fol/cache/git"),
         };
 
         let lines = workspace.info_summary_lines();
@@ -506,7 +539,7 @@ mod tests {
         fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
         fs::write(
             root.join("fol.work.yaml"),
-            "members:\n  - app\nstd_root: std\npackage_store_root: .fol/pkg\nbuild_root: .ws/build\ncache_root: .ws/cache\n",
+            "members:\n  - app\nstd_root: std\npackage_store_root: .fol/pkg\nbuild_root: .ws/build\ncache_root: .ws/cache\ngit_cache_root: .ws/git-cache\n",
         )
         .unwrap();
 
@@ -517,6 +550,7 @@ mod tests {
                 package_store_root_override: Some(root.join("env-pkg")),
                 build_root_override: Some(root.join("env-build")),
                 cache_root_override: Some(root.join("env-cache")),
+                git_cache_root_override: Some(root.join("env-git-cache")),
                 ..FrontendConfig::default()
             },
         )
@@ -526,6 +560,7 @@ mod tests {
         assert_eq!(workspace.package_store_root_override, Some(root.join(".fol/pkg")));
         assert_eq!(workspace.build_root, root.join(".ws/build"));
         assert_eq!(workspace.cache_root, root.join(".ws/cache"));
+        assert_eq!(workspace.git_cache_root, root.join(".ws/git-cache"));
 
         fs::remove_dir_all(root).ok();
     }
@@ -543,6 +578,7 @@ mod tests {
                 package_store_root_override: Some(root.join(".fol/pkg")),
                 build_root_override: Some(root.join(".artifacts/build")),
                 cache_root_override: Some(root.join(".artifacts/cache")),
+                git_cache_root_override: Some(root.join(".artifacts/git-cache")),
                 ..FrontendConfig::default()
             },
         )
@@ -553,6 +589,7 @@ mod tests {
         assert_eq!(workspace.package_store_root_override, Some(root.join(".fol/pkg")));
         assert_eq!(workspace.build_root, root.join(".artifacts/build"));
         assert_eq!(workspace.cache_root, root.join(".artifacts/cache"));
+        assert_eq!(workspace.git_cache_root, root.join(".artifacts/git-cache"));
 
         fs::remove_dir_all(root).ok();
     }

@@ -591,6 +591,7 @@ mod tests {
             std_root: Some("/tmp/fol_std".to_string()),
             package_store_root: Some("/tmp/fol_pkg".to_string()),
             package_cache_root: Some("/tmp/fol_cache".to_string()),
+            package_git_cache_root: Some("/tmp/fol_git_cache".to_string()),
         });
 
         assert_eq!(session.config().std_root.as_deref(), Some("/tmp/fol_std"));
@@ -601,6 +602,10 @@ mod tests {
         assert_eq!(
             session.config().package_cache_root.as_deref(),
             Some("/tmp/fol_cache")
+        );
+        assert_eq!(
+            session.config().package_git_cache_root.as_deref(),
+            Some("/tmp/fol_git_cache")
         );
         assert_eq!(session.cached_package_count(), 0);
         assert_eq!(session.loading_depth(), 0);
@@ -826,6 +831,7 @@ mod tests {
             ),
             package_store_root: None,
             package_cache_root: None,
+            package_git_cache_root: None,
         });
 
         let loaded = session
