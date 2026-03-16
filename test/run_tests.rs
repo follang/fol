@@ -47,6 +47,7 @@ mod integration_tests {
     fn run_fol(args: &[&str]) -> std::process::Output {
         Command::new(env!("CARGO_BIN_EXE_fol"))
             .args(args)
+            .current_dir(env!("CARGO_MANIFEST_DIR"))
             .output()
             .expect("Should run fol CLI")
     }
@@ -62,6 +63,7 @@ mod integration_tests {
     fn run_fol_with_env(args: &[&str], envs: &[(&str, &str)]) -> std::process::Output {
         let mut command = Command::new(env!("CARGO_BIN_EXE_fol"));
         command.args(args);
+        command.current_dir(env!("CARGO_MANIFEST_DIR"));
         for (key, value) in envs {
             command.env(key, value);
         }

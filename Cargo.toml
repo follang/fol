@@ -23,7 +23,7 @@ edition = "2021"
 
 [[bin]]
 name = "fol"
-path = "src/main.rs"
+path = "lang/tooling/fol-frontend/src/main.rs"
 
 [dependencies]
 fol-types = { path = "lang/compiler/fol-types" }

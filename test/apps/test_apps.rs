@@ -23,6 +23,7 @@ fn fixture_root(name: &str) -> PathBuf {
 fn run_fol(args: &[&str]) -> std::process::Output {
     Command::new(env!("CARGO_BIN_EXE_fol"))
         .args(args)
+        .current_dir(env!("CARGO_MANIFEST_DIR"))
         .output()
         .expect("should run fol CLI")
 }
@@ -224,9 +225,10 @@ fn app_fixture_tree_exists() {
 
 #[test]
 fn full_v1_showcase_example_compiles_and_runs() {
-    let entry = Path::new("examples/full_v1_showcase/app");
+    let entry = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("test/apps/showcases/full_v1_showcase/app");
 
-    let compile_output = compile_app_keep_build_dir_expect_success(entry);
+    let compile_output = compile_app_keep_build_dir_expect_success(&entry);
     assert_artifact_paths_exist(&compile_output);
 
     let run_output = Command::new(built_binary_path(&compile_output))
