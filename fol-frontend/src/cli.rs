@@ -2,16 +2,24 @@ use clap::{Args, Parser, Subcommand};
 
 #[derive(Debug, Clone, Subcommand, PartialEq, Eq)]
 pub enum FrontendCommand {
+    #[command(visible_aliases = ["i"])]
     Init(UnitCommand),
+    #[command(visible_aliases = ["n"])]
     New(UnitCommand),
+    #[command(visible_aliases = ["w", "ws", "workspace"])]
     Work(UnitCommand),
     Fetch(UnitCommand),
+    #[command(visible_aliases = ["b", "make"])]
     Build(UnitCommand),
+    #[command(visible_aliases = ["r"])]
     Run(UnitCommand),
+    #[command(visible_aliases = ["t"])]
     Test(UnitCommand),
+    #[command(visible_aliases = ["c", "verify"])]
     Check(UnitCommand),
     Emit(UnitCommand),
     Clean(UnitCommand),
+    #[command(visible_aliases = ["completions", "comp"])]
     Completion(UnitCommand),
     #[command(hide = true, name = "_complete")]
     Complete(UnitCommand),
@@ -58,5 +66,16 @@ mod tests {
         let cli = FrontendCli::parse_from(["fol", "build"]);
 
         assert_eq!(cli.command, Some(FrontendCommand::Build(UnitCommand)));
+    }
+
+    #[test]
+    fn visible_aliases_parse_to_the_same_root_commands() {
+        let build = FrontendCli::parse_from(["fol", "b"]);
+        let check = FrontendCli::parse_from(["fol", "verify"]);
+        let work = FrontendCli::parse_from(["fol", "workspace"]);
+
+        assert_eq!(build.command, Some(FrontendCommand::Build(UnitCommand)));
+        assert_eq!(check.command, Some(FrontendCommand::Check(UnitCommand)));
+        assert_eq!(work.command, Some(FrontendCommand::Work(UnitCommand)));
     }
 }
