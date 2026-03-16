@@ -32,7 +32,8 @@ pub use compile::{
     test_package, test_package_with_config, test_workspace_with_config,
 };
 pub use completion::{
-    completion_command, generate_completion_script, internal_complete_command, CompletionShell,
+    completion_command, generate_bash_completion_script, generate_completion_script,
+    internal_complete_command, CompletionShell,
 };
 pub use errors::{FrontendError, FrontendErrorKind, FrontendResult};
 pub use fetch::{

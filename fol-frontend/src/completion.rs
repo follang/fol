@@ -46,6 +46,10 @@ pub fn completion_command(shell: CompletionShell) -> FrontendResult<FrontendComm
     ))
 }
 
+pub fn generate_bash_completion_script() -> FrontendResult<String> {
+    generate_completion_script(CompletionShell::Bash)
+}
+
 pub fn internal_complete_command() -> FrontendResult<FrontendCommandResult> {
     Ok(FrontendCommandResult::new(
         "_complete",
@@ -55,7 +59,10 @@ pub fn internal_complete_command() -> FrontendResult<FrontendCommandResult> {
 
 #[cfg(test)]
 mod tests {
-    use super::{completion_command, internal_complete_command, CompletionShell};
+    use super::{
+        completion_command, generate_bash_completion_script, internal_complete_command,
+        CompletionShell,
+    };
 
     #[test]
     fn completion_command_shell_reports_requested_shell() {
@@ -70,5 +77,13 @@ mod tests {
         let result = internal_complete_command().unwrap();
 
         assert_eq!(result.command, "_complete");
+    }
+
+    #[test]
+    fn bash_completion_script_contains_bash_completion_shape() {
+        let script = generate_bash_completion_script().unwrap();
+
+        assert!(script.contains("_fol()"));
+        assert!(script.contains("complete -F"));
     }
 }
