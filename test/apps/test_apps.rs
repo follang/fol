@@ -27,6 +27,13 @@ fn compile_app(entry: &Path) -> std::process::Output {
     run_fol(&[entry.to_str().expect("fixture path should be valid utf-8")])
 }
 
+fn compile_app_keep_build_dir(entry: &Path) -> std::process::Output {
+    run_fol(&[
+        "--keep-build-dir",
+        entry.to_str().expect("fixture path should be valid utf-8"),
+    ])
+}
+
 fn compile_app_with_roots(
     entry: &Path,
     std_root: Option<&Path>,
@@ -73,6 +80,17 @@ fn compile_app_expect_success(entry: &Path) -> std::process::Output {
     output
 }
 
+fn compile_app_keep_build_dir_expect_success(entry: &Path) -> std::process::Output {
+    let output = compile_app_keep_build_dir(entry);
+    assert!(
+        output.status.success(),
+        "expected kept-build-dir app compile success\nstdout=\n{}\nstderr=\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    output
+}
+
 fn compile_app_expect_failure(entry: &Path) -> std::process::Output {
     let output = compile_app(entry);
     assert!(
@@ -110,12 +128,62 @@ fn built_binary_path(output: &std::process::Output) -> PathBuf {
     PathBuf::from(binary)
 }
 
+fn emitted_crate_root(output: &std::process::Output) -> PathBuf {
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let marker = "crate_root=";
+    let root = stdout
+        .lines()
+        .find_map(|line| line.split(marker).nth(1))
+        .and_then(|tail| tail.split(" binary=").next())
+        .expect("compile success should report a crate root")
+        .trim();
+    PathBuf::from(root)
+}
+
 fn compile_and_run_app(entry: &Path) -> std::process::Output {
     let compile_output = compile_app_expect_success(entry);
     let binary = built_binary_path(&compile_output);
     Command::new(&binary)
         .output()
         .expect("should run compiled app binary")
+}
+
+fn assert_output_contains(output: &std::process::Output, needle: &str) {
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stdout.contains(needle) || stderr.contains(needle),
+        "expected output to contain '{}'\nstdout=\n{}\nstderr=\n{}",
+        needle,
+        stdout,
+        stderr
+    );
+}
+
+fn assert_exit_code(output: &std::process::Output, expected: i32) {
+    assert_eq!(
+        output.status.code(),
+        Some(expected),
+        "expected exit code {}\nstdout=\n{}\nstderr=\n{}",
+        expected,
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+fn assert_artifact_paths_exist(output: &std::process::Output) {
+    let root = emitted_crate_root(output);
+    let binary = built_binary_path(output);
+    assert!(
+        root.exists(),
+        "reported crate root should exist at '{}'",
+        root.display()
+    );
+    assert!(
+        binary.exists(),
+        "reported binary should exist at '{}'",
+        binary.display()
+    );
 }
 
 #[test]
@@ -208,6 +276,37 @@ fn app_harness_root_helpers_support_std_and_pkg_layouts() {
         .expect("pkg source");
 
     compile_app_with_roots_expect_success(&app_root, Some(&std_root), Some(&pkg_root));
+
+    fs::remove_dir_all(&temp_root).ok();
+}
+
+#[test]
+fn app_harness_assertion_helpers_cover_artifacts_and_status() {
+    let temp_root = unique_temp_root("assertions");
+    let ok_root = temp_root.join("ok");
+    let bad_root = temp_root.join("bad");
+
+    fs::create_dir_all(&ok_root).expect("ok root");
+    fs::create_dir_all(&bad_root).expect("bad root");
+    fs::write(
+        ok_root.join("main.fol"),
+        "fun[] main(): int = {\n    return 0\n}\n",
+    )
+    .expect("ok source");
+    fs::write(
+        bad_root.join("main.fol"),
+        "fun[] main(): int = {\n    return unknown_name\n}\n",
+    )
+    .expect("bad source");
+
+    let compile_output = compile_app_keep_build_dir_expect_success(&ok_root);
+    assert_artifact_paths_exist(&compile_output);
+
+    let run_output = compile_and_run_app(&ok_root);
+    assert_exit_code(&run_output, 0);
+
+    let failure_output = compile_app_expect_failure(&bad_root);
+    assert_output_contains(&failure_output, "ResolverUnresolvedName");
 
     fs::remove_dir_all(&temp_root).ok();
 }
