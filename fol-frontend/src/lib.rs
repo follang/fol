@@ -12,7 +12,7 @@ mod result;
 mod scaffold;
 mod ui;
 
-pub use cli::{FrontendCli, FrontendCommand, InitCommand, UnitCommand};
+pub use cli::{FrontendCli, FrontendCommand, InitCommand, NewCommand, UnitCommand};
 pub use config::FrontendConfig;
 pub use errors::{FrontendError, FrontendErrorKind, FrontendResult};
 pub use discovery::{
@@ -21,7 +21,7 @@ pub use discovery::{
 };
 pub use output::{ColorPolicy, FrontendOutputConfig, OutputMode};
 pub use result::{FrontendArtifactKind, FrontendArtifactSummary, FrontendCommandResult};
-pub use scaffold::{init_current_dir, init_workspace_root};
+pub use scaffold::{init_current_dir, init_workspace_root, new_project};
 pub use ui::FrontendOutput;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]

@@ -33,9 +33,18 @@ pub fn init_workspace_root(root: &Path) -> FrontendResult<FrontendCommandResult>
     ))
 }
 
+pub fn new_project(parent: &Path, name: &str) -> FrontendResult<FrontendCommandResult> {
+    let root = parent.join(name);
+    init_current_dir(&root).map(|result| FrontendCommandResult {
+        command: "new".to_string(),
+        summary: format!("created project '{}'", name),
+        artifacts: result.artifacts,
+    })
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{init_current_dir, init_workspace_root};
+    use super::{init_current_dir, init_workspace_root, new_project};
     use crate::FrontendArtifactKind;
     use std::{fs, path::PathBuf};
 
@@ -77,5 +86,20 @@ mod tests {
         assert!(root.join("fol.work.yaml").is_file());
 
         fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn new_project_creates_named_directory_and_package_scaffold() {
+        let parent = std::env::temp_dir().join(format!("fol_frontend_new_parent_{}", std::process::id()));
+        fs::create_dir_all(&parent).unwrap();
+
+        let result = new_project(&parent, "demo").unwrap();
+        let root = parent.join("demo");
+
+        assert_eq!(result.command, "new");
+        assert!(root.join("src").is_dir());
+        assert!(root.join("package.yaml").is_file());
+
+        fs::remove_dir_all(parent).ok();
     }
 }

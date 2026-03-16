@@ -23,7 +23,7 @@ pub enum FrontendCommand {
     #[command(visible_aliases = ["i"])]
     Init(InitCommand),
     #[command(visible_aliases = ["n"])]
-    New(UnitCommand),
+    New(NewCommand),
     #[command(visible_aliases = ["w", "ws", "workspace"])]
     Work(UnitCommand),
     Fetch(UnitCommand),
@@ -48,6 +48,11 @@ pub struct UnitCommand;
 
 #[derive(Debug, Clone, Args, PartialEq, Eq, Default)]
 pub struct InitCommand;
+
+#[derive(Debug, Clone, Args, PartialEq, Eq)]
+pub struct NewCommand {
+    pub name: String,
+}
 
 #[derive(Debug, Clone, Parser, PartialEq, Eq)]
 #[command(

@@ -630,6 +630,18 @@ fn frontend_workspace_init_surface_smoke_compiles() {
 }
 
 #[test]
+fn frontend_new_project_surface_smoke_compiles() {
+    let parent = std::env::temp_dir().join(format!("fol_frontend_new_smoke_{}", std::process::id()));
+    std::fs::create_dir_all(&parent).unwrap();
+
+    let result = fol_frontend::new_project(&parent, "demo").unwrap();
+    assert_eq!(result.command, "new");
+    assert_eq!(result.summary, "created project 'demo'");
+
+    std::fs::remove_dir_all(parent).ok();
+}
+
+#[test]
 fn frontend_output_helper_surface_smoke_compiles() {
     let output = fol_frontend::FrontendOutput::new(fol_frontend::FrontendOutputConfig::default());
 
