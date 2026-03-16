@@ -1,0 +1,6 @@
+use shared: loc = {"../shared"};
+
+fun[] main(): int = {
+    var current: User = make_user()
+    return current.score
+}

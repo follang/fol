@@ -1,0 +1,7 @@
+typ[exp] User: rec = {
+    score: int
+}
+
+fun[exp] make_user(): User = {
+    return { score = 7 }
+}
