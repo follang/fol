@@ -558,6 +558,14 @@ fn frontend_root_parser_surface_smoke_compiles() {
 }
 
 #[test]
+fn frontend_output_helper_surface_smoke_compiles() {
+    let output = fol_frontend::FrontendOutput::new(fol_frontend::FrontendOutputConfig::default());
+
+    assert_eq!(output.config().mode, fol_frontend::OutputMode::Human);
+    assert!(!output.is_machine_readable());
+}
+
+#[test]
 fn backend_public_api_shell_smoke_compiles() {
     let backend = fol_backend::Backend::new();
     assert_eq!(format!("{backend:?}"), "Backend");

@@ -8,12 +8,14 @@ mod cli;
 mod errors;
 mod output;
 mod result;
+mod ui;
 
 pub use cli::{FrontendCli, FrontendCommand, UnitCommand};
 pub use config::FrontendConfig;
 pub use errors::{FrontendError, FrontendErrorKind, FrontendResult};
 pub use output::{ColorPolicy, FrontendOutputConfig, OutputMode};
 pub use result::{FrontendArtifactKind, FrontendArtifactSummary, FrontendCommandResult};
+pub use ui::FrontendOutput;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct Frontend;
