@@ -30,7 +30,7 @@ pub fn git_store_path(root: &Path, locator: &PackageLocator, revision: &str) -> 
         path.push(segment);
     }
     path.push(repo.trim_end_matches(".git"));
-    path.push(format!("rev-{}", sanitize_revision_segment(revision)));
+    path.push(format!("rev_{}", sanitize_revision_segment(revision)));
     path
 }
 
@@ -40,7 +40,7 @@ fn sanitize_revision_segment(revision: &str) -> String {
         .chars()
         .map(|ch| match ch {
             'a'..='z' | 'A'..='Z' | '0'..='9' => ch,
-            _ => '-',
+            _ => '_',
         })
         .collect()
 }
@@ -73,7 +73,7 @@ mod tests {
         assert_eq!(locator.kind, PackageLocatorKind::Git);
         assert_eq!(
             git_store_path(&root, &locator, "abc123def456"),
-            PathBuf::from("/tmp/demo/.fol/pkg/git/github.com/bresilla/logtiny/rev-abc123def456")
+            PathBuf::from("/tmp/demo/.fol/pkg/git/github.com/bresilla/logtiny/rev_abc123def456")
         );
     }
 
@@ -85,7 +85,7 @@ mod tests {
 
         assert_eq!(
             git_store_path(&root, &locator, "refs/tags/v1.0.0"),
-            PathBuf::from("/tmp/demo/.fol/pkg/git/github.com/bresilla/logtiny/rev-refs-tags-v1-0-0")
+            PathBuf::from("/tmp/demo/.fol/pkg/git/github.com/bresilla/logtiny/rev_refs_tags_v1_0_0")
         );
     }
 }

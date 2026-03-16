@@ -220,7 +220,7 @@ mod tests {
             source_kind: PackageDependencySourceKind::Git,
             locator: "https://github.com/bresilla/logtiny.git".to_string(),
             selected_revision: "abc123def456".to_string(),
-            materialized_root: ".fol/pkg/git/github.com/bresilla/logtiny/rev-abc123def456"
+            materialized_root: ".fol/pkg/git/github.com/bresilla/logtiny/rev_abc123def456"
                 .to_string(),
         }])
     }
@@ -231,7 +231,7 @@ mod tests {
 
         assert_eq!(
             rendered,
-            "version: 1\n- alias: logtiny\n  source: git\n  locator: https://github.com/bresilla/logtiny.git\n  revision: abc123def456\n  root: .fol/pkg/git/github.com/bresilla/logtiny/rev-abc123def456\n"
+            "version: 1\n- alias: logtiny\n  source: git\n  locator: https://github.com/bresilla/logtiny.git\n  revision: abc123def456\n  root: .fol/pkg/git/github.com/bresilla/logtiny/rev_abc123def456\n"
         );
     }
 

@@ -310,7 +310,7 @@ mod tests {
         );
         assert_eq!(
             materialization.store_root,
-            PathBuf::from("/tmp/demo/.fol/pkg/git/github.com/bresilla/logtiny/rev-abc123")
+            PathBuf::from("/tmp/demo/.fol/pkg/git/github.com/bresilla/logtiny/rev_abc123")
         );
         assert_eq!(materialization.selected_revision, "abc123");
     }

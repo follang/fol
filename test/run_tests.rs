@@ -51,6 +51,14 @@ mod integration_tests {
             .expect("Should run fol CLI")
     }
 
+    fn run_fol_in_dir(dir: &Path, args: &[&str]) -> std::process::Output {
+        Command::new(env!("CARGO_BIN_EXE_fol"))
+            .args(args)
+            .current_dir(dir)
+            .output()
+            .expect("Should run fol CLI in directory")
+    }
+
     fn run_fol_with_env(args: &[&str], envs: &[(&str, &str)]) -> std::process::Output {
         let mut command = Command::new(env!("CARGO_BIN_EXE_fol"));
         command.args(args);
@@ -198,6 +206,34 @@ mod integration_tests {
         )
         .expect("Should write backend scalar fixture");
         fixture
+    }
+
+    fn create_git_package_repo(root: &Path, name: &str, version: &str) {
+        std::fs::create_dir_all(root.join("src")).expect("Should create git package source dir");
+        std::fs::write(
+            root.join("package.yaml"),
+            format!("name: {name}\nversion: {version}\n"),
+        )
+        .expect("Should write git package metadata");
+        std::fs::write(root.join("build.fol"), "def root: loc = \"src\"\n")
+            .expect("Should write git package build");
+        std::fs::write(root.join("src/lib.fol"), "var[exp] level: int = 1\n")
+            .expect("Should write git package source");
+
+        for args in [
+            vec!["init"],
+            vec!["config", "user.name", "FOL"],
+            vec!["config", "user.email", "fol@example.com"],
+            vec!["add", "."],
+            vec!["commit", "-m", "init"],
+        ] {
+            let status = Command::new("git")
+                .args(&args)
+                .current_dir(root)
+                .status()
+                .expect("Should run git command for fixture repo");
+            assert!(status.success(), "git {:?} should succeed", args);
+        }
     }
 
     #[test]
@@ -3253,6 +3289,51 @@ mod integration_tests {
             stdout.contains("BackendBuildFailure"),
             "Backend failure diagnostics should preserve backend error identity, got:\n{}",
             stdout
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_frontend_fetch_materializes_git_dependencies_and_writes_lockfile() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("frontend_fetch_git");
+        let app_root = temp_root.join("app");
+        let remote_root = temp_root.join("logtiny-remote");
+        create_git_package_repo(&remote_root, "logtiny", "0.1.0");
+        fs::create_dir_all(app_root.join("src")).expect("Should create app source dir");
+        fs::write(
+            app_root.join("package.yaml"),
+            format!(
+                "name: app\nversion: 0.1.0\ndep.logtiny: git:git+file://{}\n",
+                remote_root.display()
+            ),
+        )
+        .expect("Should write app manifest");
+        fs::write(app_root.join("build.fol"), "def root: loc = \"src\"\n")
+            .expect("Should write app build");
+        fs::write(app_root.join("src/main.fol"), "var[exp] answer: int = 1\n")
+            .expect("Should write app source");
+
+        let output = run_fol_in_dir(&app_root, &["fetch"]);
+
+        assert!(
+            output.status.success(),
+            "frontend fetch should succeed: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+
+        let lockfile = app_root.join("fol.lock");
+        assert!(lockfile.is_file(), "fetch should write a fol.lock file");
+        let lock_text = fs::read_to_string(&lockfile).expect("Should read generated lockfile");
+        assert!(lock_text.contains("alias: logtiny"));
+        assert!(lock_text.contains("source: git"));
+        assert!(lock_text.contains("revision: "));
+        assert!(
+            String::from_utf8_lossy(&output.stdout).contains("prepared 1 workspace package"),
+            "fetch output should keep the successful fetch summary"
         );
 
         fs::remove_dir_all(&temp_root).ok();
