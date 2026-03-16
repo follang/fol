@@ -3,6 +3,20 @@ use fol_parser::ast::SyntaxOrigin;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PackageDependencySourceKind {
+    Local,
+    PackageStore,
+    Git,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PackageDependencyDecl {
+    pub alias: String,
+    pub source_kind: PackageDependencySourceKind,
+    pub target: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PackageMetadata {
     pub name: String,
@@ -10,6 +24,7 @@ pub struct PackageMetadata {
     pub kind: Option<String>,
     pub description: Option<String>,
     pub license: Option<String>,
+    pub dependencies: Vec<PackageDependencyDecl>,
 }
 
 pub fn parse_package_metadata(path: &Path) -> Result<PackageMetadata, PackageError> {
@@ -26,6 +41,7 @@ pub fn parse_package_metadata(path: &Path) -> Result<PackageMetadata, PackageErr
 
     let mut fields: BTreeMap<String, (String, SyntaxOrigin)> = BTreeMap::new();
     let supported_fields = BTreeSet::from(["name", "version", "kind", "description", "license"]);
+    let mut dependencies = Vec::new();
     for (index, line) in raw.lines().enumerate() {
         let line_no = index + 1;
         let trimmed = line.trim();
@@ -51,6 +67,18 @@ pub fn parse_package_metadata(path: &Path) -> Result<PackageMetadata, PackageErr
                 line.len().max(1),
                 "package metadata keys may not be empty",
             ));
+        }
+        if let Some(alias) = key.strip_prefix("dep.") {
+            let value_offset = line.find(':').unwrap_or(0) + 2;
+            let value = parse_yaml_scalar(raw_value.trim(), path, line_no, value_offset)?;
+            let origin = SyntaxOrigin {
+                file: Some(path.to_string_lossy().to_string()),
+                line: line_no,
+                column: 1,
+                length: key.len(),
+            };
+            dependencies.push(parse_dependency_decl(path, alias, &value, origin)?);
+            continue;
         }
         if !supported_fields.contains(key) {
             return Err(metadata_line_error(
@@ -136,6 +164,71 @@ pub fn parse_package_metadata(path: &Path) -> Result<PackageMetadata, PackageErr
             "license",
             fields.remove("license").map(|(value, _)| value),
         )?,
+        dependencies,
+    })
+}
+
+fn parse_dependency_decl(
+    path: &Path,
+    alias: &str,
+    value: &str,
+    origin: SyntaxOrigin,
+) -> Result<PackageDependencyDecl, PackageError> {
+    if !is_valid_package_name(alias) {
+        return Err(PackageError::with_origin(
+            PackageErrorKind::InvalidInput,
+            format!(
+                "package metadata '{}' has invalid dependency alias '{}'; dependency aliases must follow namespace identifier rules",
+                path.display(),
+                alias
+            ),
+            origin,
+        ));
+    }
+    let Some((source_raw, target_raw)) = value.split_once(':') else {
+        return Err(PackageError::with_origin(
+            PackageErrorKind::InvalidInput,
+            format!(
+                "package dependency '{}' in '{}' must use 'source:target' form",
+                alias,
+                path.display()
+            ),
+            origin,
+        ));
+    };
+    let source_kind = match source_raw.trim() {
+        "loc" => PackageDependencySourceKind::Local,
+        "pkg" => PackageDependencySourceKind::PackageStore,
+        "git" => PackageDependencySourceKind::Git,
+        other => {
+            return Err(PackageError::with_origin(
+                PackageErrorKind::InvalidInput,
+                format!(
+                    "package dependency '{}' in '{}' uses unsupported source '{}'; expected loc, pkg, or git",
+                    alias,
+                    path.display(),
+                    other
+                ),
+                origin,
+            ))
+        }
+    };
+    let target = target_raw.trim();
+    if target.is_empty() {
+        return Err(PackageError::with_origin(
+            PackageErrorKind::InvalidInput,
+            format!(
+                "package dependency '{}' in '{}' has an empty target",
+                alias,
+                path.display()
+            ),
+            origin,
+        ));
+    }
+    Ok(PackageDependencyDecl {
+        alias: alias.to_string(),
+        source_kind,
+        target: target.to_string(),
     })
 }
 
@@ -258,7 +351,10 @@ fn is_valid_package_name(package_name: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_package_metadata, PackageMetadata};
+    use super::{
+        parse_package_metadata, PackageDependencyDecl, PackageDependencySourceKind,
+        PackageMetadata,
+    };
     use fol_diagnostics::ToDiagnostic;
     use std::fs;
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -304,6 +400,7 @@ mod tests {
                 kind: Some("lib".to_string()),
                 description: Some("JSON tooling".to_string()),
                 license: Some("MIT".to_string()),
+                dependencies: Vec::new(),
             }
         );
 
@@ -407,6 +504,45 @@ mod tests {
             .expect("Malformed metadata errors should keep exact line origins");
         assert_eq!(origin.line, 1);
         assert_eq!(origin.column, 1);
+
+        fs::remove_dir_all(&temp_root)
+            .expect("Temporary metadata fixture root should be removable after the test");
+    }
+
+    #[test]
+    fn yaml_metadata_parser_extracts_dependency_entries() {
+        let temp_root = unique_temp_root("deps");
+        fs::create_dir_all(&temp_root).expect("Should create temporary metadata fixture root");
+        let metadata_path = temp_root.join("package.yaml");
+        fs::write(
+            &metadata_path,
+            concat!(
+                "name: app\n",
+                "version: 0.1.0\n",
+                "dep.core: pkg:core/tools\n",
+                "dep.logtiny: git:https://github.com/bresilla/logtiny.git\n",
+            ),
+        )
+        .expect("Should write the dependency metadata fixture");
+
+        let metadata =
+            parse_package_metadata(&metadata_path).expect("dependency metadata should parse");
+
+        assert_eq!(
+            metadata.dependencies,
+            vec![
+                PackageDependencyDecl {
+                    alias: "core".to_string(),
+                    source_kind: PackageDependencySourceKind::PackageStore,
+                    target: "core/tools".to_string(),
+                },
+                PackageDependencyDecl {
+                    alias: "logtiny".to_string(),
+                    source_kind: PackageDependencySourceKind::Git,
+                    target: "https://github.com/bresilla/logtiny.git".to_string(),
+                },
+            ]
+        );
 
         fs::remove_dir_all(&temp_root)
             .expect("Temporary metadata fixture root should be removable after the test");

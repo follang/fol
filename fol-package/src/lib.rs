@@ -29,7 +29,9 @@ pub use locator::{
     parse_package_locator, PackageGitLocator, PackageGitSelector, PackageGitTransport,
     PackageLocator, PackageLocatorKind,
 };
-pub use metadata::{parse_package_metadata, PackageMetadata};
+pub use metadata::{
+    parse_package_metadata, PackageDependencyDecl, PackageDependencySourceKind, PackageMetadata,
+};
 pub use model::{PreparedExportMount, PreparedPackage};
 pub use session::{
     canonical_directory_root, infer_package_root, parse_directory_package_syntax,

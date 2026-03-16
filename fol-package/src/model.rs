@@ -56,8 +56,8 @@ impl PreparedPackage {
 mod tests {
     use super::PreparedPackage;
     use crate::{
-        BuildDependency, BuildExport, PackageBuildDefinition, PackageConfig, PackageIdentity,
-        PackageLocator, PackageMetadata, PackageNativeArtifact,
+        BuildDependency, BuildExport, PackageBuildDefinition, PackageConfig, PackageDependencyDecl,
+        PackageDependencySourceKind, PackageIdentity, PackageLocator, PackageMetadata, PackageNativeArtifact,
         PackageNativeArtifactKind, PackageSourceKind, PreparedExportMount,
     };
     use fol_parser::ast::{AstParser, ParsedPackage};
@@ -118,6 +118,11 @@ mod tests {
                 kind: Some("lib".to_string()),
                 description: None,
                 license: None,
+                dependencies: vec![PackageDependencyDecl {
+                    alias: "core".to_string(),
+                    source_kind: PackageDependencySourceKind::PackageStore,
+                    target: "core".to_string(),
+                }],
             },
             PackageBuildDefinition {
                 dependencies: vec![BuildDependency {
