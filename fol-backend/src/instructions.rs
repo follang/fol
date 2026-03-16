@@ -134,6 +134,17 @@ pub fn render_core_instruction(
                 "let {result} = {operand}.clone().into_error().expect(\"recoverable error\");"
             ))
         }
+        LoweredInstrKind::ConstructOptional { value, .. } => {
+            let result = rendered_result_local(package_identity, routine, instruction)?;
+            let expression = match value {
+                Some(value) => {
+                    let value = render_local_name(package_identity, routine, *value)?;
+                    format!("rt::FolOption::some({value}.clone())")
+                }
+                None => "rt::FolOption::nil()".to_string(),
+            };
+            Ok(format!("let {result} = {expression};"))
+        }
         other => Err(BackendError::new(
             BackendErrorKind::Unsupported,
             format!("core instruction emission is not implemented yet for {other:?}"),
@@ -681,6 +692,63 @@ mod tests {
         assert_eq!(
             rendered,
             "let l__pkg__entry__app__r11__l1__error = l__pkg__entry__app__r11__l0__value.clone().into_error().expect(\"recoverable error\");"
+        );
+    }
+
+    #[test]
+    fn runtime_shaped_instruction_rendering_emits_optional_shell_construction() {
+        let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
+        let mut table = LoweredTypeTable::new();
+        let int_id = table.intern_builtin(LoweredBuiltinType::Int);
+        let optional_id = table.intern(fol_lower::LoweredType::Optional { inner: int_id });
+        let mut routine = LoweredRoutine::new(LoweredRoutineId(12), "main", LoweredBlockId(0));
+        let payload = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(0),
+            type_id: Some(int_id),
+            recoverable_error_type: None,
+            name: Some("value".to_string()),
+        });
+        let some_result = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(1),
+            type_id: Some(optional_id),
+            recoverable_error_type: None,
+            name: Some("maybe".to_string()),
+        });
+        let nil_result = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(2),
+            type_id: Some(optional_id),
+            recoverable_error_type: None,
+            name: Some("empty".to_string()),
+        });
+        let some_instr = LoweredInstr {
+            id: LoweredInstrId(25),
+            result: Some(some_result),
+            kind: LoweredInstrKind::ConstructOptional {
+                type_id: optional_id,
+                value: Some(payload),
+            },
+        };
+        let nil_instr = LoweredInstr {
+            id: LoweredInstrId(26),
+            result: Some(nil_result),
+            kind: LoweredInstrKind::ConstructOptional {
+                type_id: optional_id,
+                value: None,
+            },
+        };
+
+        let some_rendered =
+            render_core_instruction(&package_identity, &routine, &some_instr).expect("some");
+        let nil_rendered =
+            render_core_instruction(&package_identity, &routine, &nil_instr).expect("nil");
+
+        assert_eq!(
+            some_rendered,
+            "let l__pkg__entry__app__r12__l1__maybe = rt::FolOption::some(l__pkg__entry__app__r12__l0__value.clone());"
+        );
+        assert_eq!(
+            nil_rendered,
+            "let l__pkg__entry__app__r12__l2__empty = rt::FolOption::nil();"
         );
     }
 }

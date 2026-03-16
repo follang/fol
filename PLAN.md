@@ -1011,7 +1011,7 @@ not full long-term compiler completion.
 #### 8.5 done
 - emit `ExtractRecoverableError`
 
-#### 8.6
+#### 8.6 done
 - emit `ConstructOptional`
 
 #### 8.7
