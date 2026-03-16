@@ -37,7 +37,7 @@ pub fn init_package_root(
         starter_source_template(target),
     )?;
     fs::write(root.join("package.yaml"), starter_package_manifest(root))?;
-    fs::write(root.join("build.fol"), "")?;
+    fs::write(root.join("build.fol"), starter_build_file())?;
 
     Ok(FrontendCommandResult::new("init", "initialized current directory").with_artifact(
         FrontendArtifactSummary::new(
@@ -124,6 +124,10 @@ fn starter_package_name(root: &Path) -> String {
     }
 }
 
+fn starter_build_file() -> &'static str {
+    "def root: loc = \"src\"\n"
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
@@ -159,6 +163,10 @@ mod tests {
         assert_eq!(
             fs::read_to_string(root.join("package.yaml")).unwrap(),
             "name: fol_frontend_init_pkg_".to_string() + &std::process::id().to_string() + "\nversion: 0.1.0\n"
+        );
+        assert_eq!(
+            fs::read_to_string(root.join("build.fol")).unwrap(),
+            "def root: loc = \"src\"\n"
         );
 
         fs::remove_dir_all(root).ok();
@@ -223,6 +231,10 @@ mod tests {
         assert_eq!(
             fs::read_to_string(root.join("package.yaml")).unwrap(),
             "name: demo\nversion: 0.1.0\n"
+        );
+        assert_eq!(
+            fs::read_to_string(root.join("build.fol")).unwrap(),
+            "def root: loc = \"src\"\n"
         );
 
         fs::remove_dir_all(parent).ok();
