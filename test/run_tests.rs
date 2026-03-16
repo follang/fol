@@ -236,6 +236,34 @@ mod integration_tests {
         }
     }
 
+    fn create_app_with_git_dependency(app_root: &Path, remote_root: &Path) {
+        std::fs::create_dir_all(app_root.join("src")).expect("Should create app source dir");
+        std::fs::write(
+            app_root.join("package.yaml"),
+            format!(
+                "name: {}\nversion: 0.1.0\ndep.logtiny: git:git+file://{}\n",
+                app_root
+                    .file_name()
+                    .and_then(|name| name.to_str())
+                    .unwrap_or("app"),
+                remote_root.display()
+            ),
+        )
+        .expect("Should write app manifest");
+        std::fs::write(app_root.join("build.fol"), "def root: loc = \"src\"\n")
+            .expect("Should write app build");
+        std::fs::write(app_root.join("src/main.fol"), "fun[] main(): int = {\n    return 0\n}\n")
+            .expect("Should write app source");
+    }
+
+    fn read_lock_revision(lockfile: &Path) -> String {
+        let parsed = fol_package::parse_package_lockfile(
+            &std::fs::read_to_string(lockfile).expect("Should read lockfile"),
+        )
+        .expect("Lockfile should parse");
+        parsed.entries[0].selected_revision.clone()
+    }
+
     #[test]
     fn test_stream_to_lexer_integration() {
         use fol_lexer::lexer::stage3::Elements;
@@ -3302,19 +3330,7 @@ mod integration_tests {
         let app_root = temp_root.join("app");
         let remote_root = temp_root.join("logtiny-remote");
         create_git_package_repo(&remote_root, "logtiny", "0.1.0");
-        fs::create_dir_all(app_root.join("src")).expect("Should create app source dir");
-        fs::write(
-            app_root.join("package.yaml"),
-            format!(
-                "name: app\nversion: 0.1.0\ndep.logtiny: git:git+file://{}\n",
-                remote_root.display()
-            ),
-        )
-        .expect("Should write app manifest");
-        fs::write(app_root.join("build.fol"), "def root: loc = \"src\"\n")
-            .expect("Should write app build");
-        fs::write(app_root.join("src/main.fol"), "var[exp] answer: int = 1\n")
-            .expect("Should write app source");
+        create_app_with_git_dependency(&app_root, &remote_root);
 
         let output = run_fol_in_dir(&app_root, &["fetch"]);
 
@@ -3337,5 +3353,105 @@ mod integration_tests {
         );
 
         fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_frontend_fetch_supports_workspace_members_with_shared_git_dependencies() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("frontend_fetch_workspace_git");
+        let app_root = temp_root.join("app");
+        let tool_root = temp_root.join("tool");
+        let remote_root = temp_root.join("logtiny-remote");
+        create_git_package_repo(&remote_root, "logtiny", "0.1.0");
+        create_app_with_git_dependency(&app_root, &remote_root);
+        create_app_with_git_dependency(&tool_root, &remote_root);
+        fs::write(temp_root.join("fol.work.yaml"), "members:\n  - app\n  - tool\n")
+            .expect("Should write workspace config");
+
+        let output = run_fol_in_dir(&temp_root, &["fetch"]);
+
+        assert!(
+            output.status.success(),
+            "workspace fetch should succeed: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+
+        let lockfile = temp_root.join("fol.lock");
+        let lock_text = fs::read_to_string(&lockfile).expect("Should read generated lockfile");
+        assert!(lockfile.is_file(), "workspace fetch should write a workspace fol.lock file");
+        assert!(lock_text.contains("alias: logtiny"));
+        assert!(
+            String::from_utf8_lossy(&output.stdout).contains("prepared 2 workspace package"),
+            "workspace fetch output should report both members"
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_frontend_locked_fetch_keeps_pinned_revision_after_remote_changes() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("frontend_fetch_locked_pin");
+        let app_root = temp_root.join("app");
+        let remote_root = temp_root.join("logtiny-remote");
+        create_git_package_repo(&remote_root, "logtiny", "0.1.0");
+        create_app_with_git_dependency(&app_root, &remote_root);
+
+        let initial = run_fol_in_dir(&app_root, &["fetch"]);
+        assert!(initial.status.success(), "initial fetch should succeed");
+        let lockfile = app_root.join("fol.lock");
+        let pinned_before = read_lock_revision(&lockfile);
+
+        fs::write(remote_root.join("src/lib.fol"), "var[exp] level: int = 2\n")
+            .expect("Should update remote source");
+        for args in [vec!["add", "."], vec!["commit", "-m", "bump"]] {
+            let status = Command::new("git")
+                .args(&args)
+                .current_dir(&remote_root)
+                .status()
+                .expect("Should run git command for remote update");
+            assert!(status.success(), "git {:?} should succeed", args);
+        }
+
+        let locked = run_fol_in_dir(&app_root, &["fetch", "--locked"]);
+        assert!(
+            locked.status.success(),
+            "locked fetch should succeed after remote changes: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&locked.stdout),
+            String::from_utf8_lossy(&locked.stderr)
+        );
+        let pinned_after = read_lock_revision(&lockfile);
+        assert_eq!(pinned_before, pinned_after, "locked fetch should keep the pinned revision");
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_frontend_offline_fetch_uses_a_warm_cache_from_the_public_cli() {
+        let temp_root = unique_temp_root("frontend_fetch_offline_warm");
+        let app_root = temp_root.join("app");
+        let remote_root = temp_root.join("logtiny-remote");
+        create_git_package_repo(&remote_root, "logtiny", "0.1.0");
+        create_app_with_git_dependency(&app_root, &remote_root);
+
+        let initial = run_fol_in_dir(&app_root, &["fetch"]);
+        assert!(initial.status.success(), "initial fetch should succeed");
+
+        let offline = run_fol_in_dir(&app_root, &["fetch", "--offline"]);
+        assert!(
+            offline.status.success(),
+            "offline fetch should succeed with a warm cache: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&offline.stdout),
+            String::from_utf8_lossy(&offline.stderr)
+        );
+        assert!(
+            app_root.join("fol.lock").is_file(),
+            "offline fetch should keep the lockfile in place"
+        );
+
+        std::fs::remove_dir_all(&temp_root).ok();
     }
 }
