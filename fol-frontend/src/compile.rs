@@ -34,6 +34,57 @@ pub fn check_workspace(workspace: &FrontendWorkspace) -> FrontendResult<Frontend
     check_workspace_with_config(workspace, &FrontendConfig::default())
 }
 
+pub fn build_workspace_with_config(
+    workspace: &FrontendWorkspace,
+    config: &FrontendConfig,
+) -> FrontendResult<FrontendCommandResult> {
+    let mut result = FrontendCommandResult::new("build", "built 0 workspace package(s)");
+    let output_root = workspace.build_root.clone();
+
+    for member in &workspace.members {
+        let lowered = compile_member_workspace(workspace, config, &member.root)?;
+        if lowered.entry_candidates().is_empty() {
+            continue;
+        }
+        let backend_session = fol_backend::BackendSession::new(lowered);
+        let artifact = fol_backend::emit_backend_artifact(
+            &backend_session,
+            &fol_backend::BackendConfig::default(),
+            &output_root,
+        )
+        .map_err(|error| FrontendError::new(FrontendErrorKind::CommandFailed, error.to_string()))?;
+        let fol_backend::BackendArtifact::CompiledBinary { binary_path, .. } = artifact else {
+            return Err(FrontendError::new(
+                FrontendErrorKind::CommandFailed,
+                "build command expected a compiled backend artifact",
+            ));
+        };
+        result.artifacts.push(FrontendArtifactSummary::new(
+            FrontendArtifactKind::Binary,
+            member
+                .root
+                .file_name()
+                .and_then(|name| name.to_str())
+                .unwrap_or("package"),
+            Some(std::path::PathBuf::from(binary_path)),
+        ));
+    }
+
+    if result.artifacts.is_empty() {
+        return Err(FrontendError::new(
+            FrontendErrorKind::InvalidInput,
+            "build command did not find any runnable workspace packages",
+        ));
+    }
+
+    result.summary = format!("built {} workspace package(s)", result.artifacts.len());
+    Ok(result)
+}
+
+pub fn build_workspace(workspace: &FrontendWorkspace) -> FrontendResult<FrontendCommandResult> {
+    build_workspace_with_config(workspace, &FrontendConfig::default())
+}
+
 pub fn compile_member_workspace(
     workspace: &FrontendWorkspace,
     config: &FrontendConfig,
@@ -126,7 +177,7 @@ fn lower_lowering_errors(errors: Vec<fol_lower::LoweringError>) -> FrontendError
 
 #[cfg(test)]
 mod tests {
-    use super::check_workspace;
+    use super::{build_workspace, check_workspace};
     use crate::{FrontendWorkspace, PackageRoot, WorkspaceRoot};
     use std::{fs, path::PathBuf};
 
@@ -154,6 +205,39 @@ mod tests {
         assert_eq!(result.command, "check");
         assert_eq!(result.summary, "checked 1 workspace package(s)");
         assert_eq!(result.artifacts[0].path, Some(app));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn build_workspace_runs_the_backend_for_runnable_members() {
+        let root = std::env::temp_dir().join(format!("fol_frontend_build_{}", std::process::id()));
+        let app = root.join("app");
+        let src = app.join("src");
+        fs::create_dir_all(&src).unwrap();
+        fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
+        fs::write(app.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
+        fs::write(src.join("main.fol"), "fun[] main(): int = {\n    return 0\n}\n").unwrap();
+
+        let workspace = FrontendWorkspace {
+            root: WorkspaceRoot::new(root.clone()),
+            members: vec![PackageRoot::new(app)],
+            std_root_override: None,
+            package_store_root_override: None,
+            build_root: root.join(".fol/build"),
+            cache_root: root.join(".fol/cache"),
+        };
+
+        let result = build_workspace(&workspace).unwrap();
+
+        assert_eq!(result.command, "build");
+        assert_eq!(result.summary, "built 1 workspace package(s)");
+        assert_eq!(result.artifacts.len(), 1);
+        assert!(result.artifacts[0]
+            .path
+            .as_ref()
+            .expect("binary path")
+            .is_file());
 
         fs::remove_dir_all(root).ok();
     }

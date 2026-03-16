@@ -18,7 +18,10 @@ mod workspace;
 
 pub use cli::{FrontendCli, FrontendCommand, InitCommand, NewCommand, UnitCommand};
 pub use config::FrontendConfig;
-pub use compile::{check_workspace, check_workspace_with_config, compile_member_workspace};
+pub use compile::{
+    build_workspace, build_workspace_with_config, check_workspace, check_workspace_with_config,
+    compile_member_workspace,
+};
 pub use errors::{FrontendError, FrontendErrorKind, FrontendResult};
 pub use fetch::{
     fetch_workspace, prepare_workspace_packages, select_package_store_root, FrontendPackagePreparation,
