@@ -42,8 +42,12 @@ fn compile_app_with_roots(
     entry: &Path,
     std_root: Option<&Path>,
     package_store_root: Option<&Path>,
+    keep_build_dir: bool,
 ) -> std::process::Output {
     let mut args = Vec::new();
+    if keep_build_dir {
+        args.push("--keep-build-dir".to_string());
+    }
     if let Some(std_root) = std_root {
         args.push("--std-root".to_string());
         args.push(
@@ -111,10 +115,25 @@ fn compile_app_with_roots_expect_success(
     std_root: Option<&Path>,
     package_store_root: Option<&Path>,
 ) -> std::process::Output {
-    let output = compile_app_with_roots(entry, std_root, package_store_root);
+    let output = compile_app_with_roots(entry, std_root, package_store_root, false);
     assert!(
         output.status.success(),
         "expected rooted app compile success\nstdout=\n{}\nstderr=\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    output
+}
+
+fn compile_app_with_roots_keep_build_dir_expect_success(
+    entry: &Path,
+    std_root: Option<&Path>,
+    package_store_root: Option<&Path>,
+) -> std::process::Output {
+    let output = compile_app_with_roots(entry, std_root, package_store_root, true);
+    assert!(
+        output.status.success(),
+        "expected rooted kept-build-dir app compile success\nstdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
@@ -441,5 +460,22 @@ fn loc_recoverable_calls_fixture_compiles_and_runs() {
     assert_artifact_paths_exist(&compile_output);
 
     let run_output = compile_and_run_app(&fixture);
+    assert_exit_code(&run_output, 0);
+}
+
+#[test]
+fn std_basic_import_fixture_compiles_and_runs() {
+    let root = fixture_root("std_basic_import");
+    let app_root = root.join("app");
+    let std_root = root.join("std");
+
+    let compile_output =
+        compile_app_with_roots_keep_build_dir_expect_success(&app_root, Some(&std_root), None);
+    assert_artifact_paths_exist(&compile_output);
+
+    let binary = built_binary_path(&compile_output);
+    let run_output = Command::new(&binary)
+        .output()
+        .expect("should run compiled std fixture");
     assert_exit_code(&run_output, 0);
 }
