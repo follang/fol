@@ -369,3 +369,11 @@ fn same_folder_shared_scope_fixture_compiles_and_runs() {
     let run_output = compile_and_run_app(&fixture);
     assert_exit_code(&run_output, 0);
 }
+
+#[test]
+fn same_folder_hidden_visibility_fixture_fails_cleanly() {
+    let fixture = fixture_root("same_folder_hidden_visibility");
+    let output = compile_app_expect_failure(&fixture);
+
+    assert_output_contains(&output, "ResolverUnresolvedName");
+}
