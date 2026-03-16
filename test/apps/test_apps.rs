@@ -827,3 +827,38 @@ fn fail_loc_targets_formal_pkg_root_fixture_fails_cleanly() {
     assert_output_contains(&output, "build.fol");
     assert_output_contains(&output, "pkg");
 }
+
+#[test]
+fn fail_type_mismatch_real_app_fixture_fails_cleanly() {
+    let fixture = fixture_root("fail_type_mismatch_real_app");
+
+    let output = compile_app_expect_failure(&fixture);
+    assert_output_contains(&output, "TypecheckIncompatibleType");
+    assert_output_contains(&output, "record field 'score'");
+}
+
+#[test]
+fn fail_recoverable_plain_context_fixture_fails_cleanly() {
+    let fixture = fixture_root("fail_recoverable_plain_context");
+
+    let output = compile_app_expect_failure(&fixture);
+    assert_output_contains(&output, "declared error type");
+}
+
+#[test]
+fn fail_shell_unwrap_boundary_fixture_fails_cleanly() {
+    let fixture = fixture_root("fail_shell_unwrap_boundary");
+
+    let output = compile_app_expect_failure(&fixture);
+    assert_output_contains(&output, "postfix '!'");
+    assert_output_contains(&output, "/ ErrorType");
+}
+
+#[test]
+fn fail_deferred_intrinsic_fixture_fails_cleanly() {
+    let fixture = fixture_root("fail_deferred_intrinsic");
+
+    let output = compile_app_expect_failure(&fixture);
+    assert_output_contains(&output, "V1");
+    assert_output_contains(&output, ".cap");
+}
