@@ -32,7 +32,10 @@ pub fn init_package_root(
         PackageTargetKind::Bin => "main.fol",
         PackageTargetKind::Lib => "lib.fol",
     };
-    fs::write(root.join("src").join(source_file), "")?;
+    fs::write(
+        root.join("src").join(source_file),
+        starter_source_template(target),
+    )?;
     fs::write(root.join("package.yaml"), "")?;
     fs::write(root.join("build.fol"), "")?;
 
@@ -88,6 +91,13 @@ pub fn new_project_with_mode(
     })
 }
 
+fn starter_source_template(target: PackageTargetKind) -> &'static str {
+    match target {
+        PackageTargetKind::Bin => "fun[] main(): int = {\n    return 0\n}\n",
+        PackageTargetKind::Lib => "fun[exp] demo(): int = {\n    return 0\n}\n",
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
@@ -132,6 +142,10 @@ mod tests {
         init_package_root(&root, PackageTargetKind::Bin).unwrap();
 
         assert!(root.join("src/main.fol").is_file());
+        assert_eq!(
+            fs::read_to_string(root.join("src/main.fol")).unwrap(),
+            "fun[] main(): int = {\n    return 0\n}\n"
+        );
 
         fs::remove_dir_all(root).ok();
     }
@@ -144,6 +158,10 @@ mod tests {
         init_package_root(&root, PackageTargetKind::Lib).unwrap();
 
         assert!(root.join("src/lib.fol").is_file());
+        assert_eq!(
+            fs::read_to_string(root.join("src/lib.fol")).unwrap(),
+            "fun[exp] demo(): int = {\n    return 0\n}\n"
+        );
 
         fs::remove_dir_all(root).ok();
     }
