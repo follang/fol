@@ -1088,33 +1088,33 @@ not full long-term compiler completion.
 
 ## 47. Phase 12: Build Orchestration
 
-#### 12.1
+#### 12.1 done
 - add generated-crate writer
 
-#### 12.2
+#### 12.2 done
 - add build directory creation/cleanup policy
 
-#### 12.3
+#### 12.3 done
 - add Cargo invocation support
 
-#### 12.4
+#### 12.4 done
 - capture cargo failure diagnostics and surface them as backend diagnostics
 
-#### 12.5
+#### 12.5 done
 - add tests that generated crates compile successfully for current `V1` samples
 
 ## 48. Phase 13: Emit Mode And Debuggability
 
-#### 13.1
+#### 13.1 done
 - add “emit Rust only” backend mode
 
-#### 13.2
+#### 13.2 done
 - add “keep build dir” mode
 
-#### 13.3
+#### 13.3 done
 - add optional emitted manifest/source summary output
 
-#### 13.4
+#### 13.4 done
 - add snapshot tests for emitted full Rust crates
 
 ## 49. Phase 14: CLI Integration

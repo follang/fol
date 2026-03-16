@@ -1,9 +1,12 @@
 use crate::{
     mangle_package_module_name, plan_generated_crate_layout, plan_namespace_layouts,
-    plan_package_layouts, BackendArtifact, BackendSession, EmittedRustFile,
+    plan_package_layouts, BackendArtifact, BackendConfig, BackendError, BackendErrorKind,
+    BackendMode, BackendResult, BackendSession, EmittedRustFile,
 };
 use std::collections::BTreeMap;
+use std::fs;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 pub fn emit_cargo_toml(session: &BackendSession) -> EmittedRustFile {
     let layout = plan_generated_crate_layout(session);
@@ -123,6 +126,185 @@ pub fn emit_generated_crate_skeleton(session: &BackendSession) -> BackendArtifac
     }
 }
 
+pub fn write_generated_crate(output_root: &Path, artifact: &BackendArtifact) -> BackendResult<PathBuf> {
+    let BackendArtifact::RustSourceCrate { root, files } = artifact else {
+        return Err(BackendError::new(
+            BackendErrorKind::InvalidInput,
+            "write_generated_crate expects a RustSourceCrate artifact",
+        ));
+    };
+
+    let crate_root = output_root.join(root);
+    if crate_root.exists() {
+        fs::remove_dir_all(&crate_root).map_err(|error| {
+            BackendError::new(
+                BackendErrorKind::EmissionFailure,
+                format!("failed to clean generated crate root '{}': {error}", crate_root.display()),
+            )
+        })?;
+    }
+    fs::create_dir_all(&crate_root).map_err(|error| {
+        BackendError::new(
+            BackendErrorKind::EmissionFailure,
+            format!("failed to create generated crate root '{}': {error}", crate_root.display()),
+        )
+    })?;
+
+    for file in files {
+        let path = crate_root.join(&file.path);
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).map_err(|error| {
+                BackendError::new(
+                    BackendErrorKind::EmissionFailure,
+                    format!("failed to create generated module dir '{}': {error}", parent.display()),
+                )
+            })?;
+        }
+        fs::write(&path, &file.contents).map_err(|error| {
+            BackendError::new(
+                BackendErrorKind::EmissionFailure,
+                format!("failed to write generated file '{}': {error}", path.display()),
+            )
+        })?;
+    }
+
+    Ok(crate_root)
+}
+
+pub fn prepare_generated_build_dir(output_root: &Path) -> BackendResult<PathBuf> {
+    let build_root = output_root.join("fol-backend");
+    fs::create_dir_all(&build_root).map_err(|error| {
+        BackendError::new(
+            BackendErrorKind::EmissionFailure,
+            format!("failed to create backend build root '{}': {error}", build_root.display()),
+        )
+    })?;
+    Ok(build_root)
+}
+
+pub fn build_generated_crate(crate_root: &Path) -> BackendResult<PathBuf> {
+    let manifest_path = crate_root.join("Cargo.toml");
+    let output = Command::new("cargo")
+        .arg("build")
+        .arg("--manifest-path")
+        .arg(&manifest_path)
+        .arg("--release")
+        .output()
+        .map_err(|error| {
+            BackendError::new(
+                BackendErrorKind::BuildFailure,
+                format!("failed to launch cargo build for '{}': {error}", manifest_path.display()),
+            )
+        })?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        return Err(BackendError::new(
+            BackendErrorKind::BuildFailure,
+            format!(
+                "cargo build failed for '{}'\nstdout:\n{}\nstderr:\n{}",
+                manifest_path.display(),
+                stdout.trim(),
+                stderr.trim()
+            ),
+        ));
+    }
+
+    let package_name = crate_root
+        .file_name()
+        .and_then(|value| value.to_str())
+        .ok_or_else(|| {
+            BackendError::new(
+                BackendErrorKind::BuildFailure,
+                format!("generated crate root '{}' does not have a valid package name", crate_root.display()),
+            )
+        })?;
+    let binary_path = crate_root.join("target").join("release").join(package_name);
+    if !binary_path.exists() {
+        return Err(BackendError::new(
+            BackendErrorKind::BuildFailure,
+            format!("cargo build succeeded but '{}' is missing", binary_path.display()),
+        ));
+    }
+
+    Ok(binary_path)
+}
+
+pub fn emit_backend_artifact(
+    session: &BackendSession,
+    config: &BackendConfig,
+    output_root: &Path,
+) -> BackendResult<BackendArtifact> {
+    let build_root = prepare_generated_build_dir(output_root)?;
+    let source_artifact = emit_generated_crate_skeleton(session);
+    let crate_root = write_generated_crate(&build_root, &source_artifact)?;
+
+    if matches!(config.mode, BackendMode::EmitSource) {
+        return Ok(source_artifact);
+    }
+
+    let built_binary = build_generated_crate(&crate_root)?;
+    let final_binary_dir = output_root.join("bin");
+    fs::create_dir_all(&final_binary_dir).map_err(|error| {
+        BackendError::new(
+            BackendErrorKind::BuildFailure,
+            format!("failed to create backend binary dir '{}': {error}", final_binary_dir.display()),
+        )
+    })?;
+    let final_binary = final_binary_dir.join(
+        built_binary
+            .file_name()
+            .ok_or_else(|| {
+                BackendError::new(
+                    BackendErrorKind::BuildFailure,
+                    format!("built binary '{}' does not have a file name", built_binary.display()),
+                )
+            })?,
+    );
+    fs::copy(&built_binary, &final_binary).map_err(|error| {
+        BackendError::new(
+            BackendErrorKind::BuildFailure,
+            format!(
+                "failed to copy built binary '{}' to '{}': {error}",
+                built_binary.display(),
+                final_binary.display()
+            ),
+        )
+    })?;
+
+    if !config.keep_build_dir {
+        fs::remove_dir_all(&crate_root).map_err(|error| {
+            BackendError::new(
+                BackendErrorKind::BuildFailure,
+                format!("failed to remove generated crate dir '{}': {error}", crate_root.display()),
+            )
+        })?;
+    }
+
+    Ok(BackendArtifact::CompiledBinary {
+        crate_root: crate_root.display().to_string(),
+        binary_path: final_binary.display().to_string(),
+    })
+}
+
+pub fn summarize_emitted_artifact(artifact: &BackendArtifact) -> String {
+    match artifact {
+        BackendArtifact::RustSourceCrate { root, files } => format!(
+            "generated Rust crate root={root} files={}",
+            files
+                .iter()
+                .map(|file| file.path.as_str())
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+        BackendArtifact::CompiledBinary {
+            crate_root,
+            binary_path,
+        } => format!("compiled backend artifact crate_root={crate_root} binary={binary_path}"),
+    }
+}
+
 fn runtime_dependency_path() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
@@ -133,10 +315,22 @@ fn runtime_dependency_path() -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::{
-        emit_cargo_toml, emit_generated_crate_skeleton, emit_main_rs,
-        emit_namespace_module_shells, emit_package_module_shells,
+        build_generated_crate, emit_backend_artifact, emit_cargo_toml,
+        emit_generated_crate_skeleton, emit_main_rs, emit_namespace_module_shells,
+        emit_package_module_shells, prepare_generated_build_dir, summarize_emitted_artifact,
+        write_generated_crate,
     };
-    use crate::{testing::sample_lowered_workspace, BackendArtifact, BackendSession};
+    use crate::{testing::sample_lowered_workspace, BackendArtifact, BackendConfig, BackendMode, BackendSession};
+    use std::path::PathBuf;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn temp_root(label: &str) -> PathBuf {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock")
+            .as_nanos();
+        std::env::temp_dir().join(format!("fol_backend_{label}_{unique}"))
+    }
 
     #[test]
     fn cargo_toml_emission_keeps_runtime_dependency_and_generated_crate_identity() {
@@ -231,5 +425,138 @@ mod tests {
         assert!(snapshot.contains("use fol_runtime::prelude as rt;"));
         assert!(snapshot.contains("pub mod pkg__entry__app;"));
         assert!(snapshot.contains("NAMESPACE_NAME: &str = \"shared::util\""));
+    }
+
+    #[test]
+    fn generated_crate_writer_materializes_files_under_backend_build_root() {
+        let session = BackendSession::new(sample_lowered_workspace());
+        let artifact = emit_generated_crate_skeleton(&session);
+        let temp_root = temp_root("write");
+        let build_root = prepare_generated_build_dir(&temp_root).expect("build root");
+
+        let crate_root = write_generated_crate(&build_root, &artifact).expect("write crate");
+
+        assert!(crate_root.ends_with(session.workspace_identity().crate_dir_name.as_str()));
+        assert!(crate_root.join("Cargo.toml").exists());
+        assert!(crate_root.join("src/main.rs").exists());
+        assert!(crate_root.join("src/packages/mod.rs").exists());
+
+        let _ = fs::remove_dir_all(&temp_root);
+    }
+
+    #[test]
+    fn prepare_generated_build_dir_creates_the_expected_backend_root() {
+        let temp_root = temp_root("build_root");
+
+        let build_root = prepare_generated_build_dir(&temp_root).expect("prepare build root");
+
+        assert!(build_root.ends_with("fol-backend"));
+        assert!(build_root.exists());
+
+        let _ = fs::remove_dir_all(&temp_root);
+    }
+
+    #[test]
+    fn cargo_build_support_compiles_the_generated_crate_skeleton() {
+        let session = BackendSession::new(sample_lowered_workspace());
+        let artifact = emit_generated_crate_skeleton(&session);
+        let temp_root = temp_root("cargo_build");
+        let build_root = prepare_generated_build_dir(&temp_root).expect("build root");
+        let crate_root = write_generated_crate(&build_root, &artifact).expect("write crate");
+
+        let binary = build_generated_crate(&crate_root).expect("cargo build");
+
+        assert!(binary.exists());
+        assert!(binary.ends_with(session.workspace_identity().crate_dir_name.as_str()));
+
+        let _ = fs::remove_dir_all(&temp_root);
+    }
+
+    #[test]
+    fn cargo_failure_diagnostics_surface_missing_manifest_context() {
+        let temp_root = temp_root("cargo_fail");
+        fs::create_dir_all(&temp_root).expect("temp root");
+
+        let error = build_generated_crate(&temp_root).expect_err("missing manifest should fail");
+
+        assert_eq!(error.kind(), crate::BackendErrorKind::BuildFailure);
+        assert!(error.message().contains("Cargo.toml"));
+
+        let _ = fs::remove_dir_all(&temp_root);
+    }
+
+    #[test]
+    fn emit_backend_artifact_honors_emit_source_and_build_artifact_modes() {
+        let session = BackendSession::new(sample_lowered_workspace());
+        let temp_root = temp_root("modes");
+
+        let emitted = emit_backend_artifact(
+            &session,
+            &BackendConfig {
+                mode: BackendMode::EmitSource,
+                ..BackendConfig::default()
+            },
+            &temp_root,
+        )
+        .expect("emit source");
+        let built = emit_backend_artifact(
+            &session,
+            &BackendConfig {
+                mode: BackendMode::BuildArtifact,
+                keep_build_dir: true,
+                ..BackendConfig::default()
+            },
+            &temp_root,
+        )
+        .expect("build artifact");
+
+        assert!(matches!(emitted, BackendArtifact::RustSourceCrate { .. }));
+        assert!(matches!(built, BackendArtifact::CompiledBinary { .. }));
+
+        let _ = fs::remove_dir_all(&temp_root);
+    }
+
+    #[test]
+    fn emit_backend_artifact_respects_keep_build_dir_and_summary_output() {
+        let session = BackendSession::new(sample_lowered_workspace());
+        let temp_root = temp_root("keep");
+        let artifact = emit_backend_artifact(
+            &session,
+            &BackendConfig {
+                mode: BackendMode::BuildArtifact,
+                keep_build_dir: true,
+                ..BackendConfig::default()
+            },
+            &temp_root,
+        )
+        .expect("build artifact");
+
+        let summary = summarize_emitted_artifact(&artifact);
+        let BackendArtifact::CompiledBinary {
+            crate_root,
+            binary_path,
+        } = &artifact else {
+            panic!("expected compiled artifact");
+        };
+
+        assert!(Path::new(crate_root).exists());
+        assert!(Path::new(binary_path).exists());
+        assert!(summary.contains("compiled backend artifact"));
+        assert!(summary.contains("binary="));
+
+        let _ = fs::remove_dir_all(&temp_root);
+    }
+
+    #[test]
+    fn full_generated_crate_snapshot_stays_stable_after_backend_materialization() {
+        let session = BackendSession::new(sample_lowered_workspace());
+        let artifact = emit_generated_crate_skeleton(&session);
+
+        let summary = summarize_emitted_artifact(&artifact);
+
+        assert!(summary.contains("generated Rust crate root="));
+        assert!(summary.contains("Cargo.toml"));
+        assert!(summary.contains("src/main.rs"));
+        assert!(summary.contains("src/packages/pkg__entry__app/root.rs"));
     }
 }
