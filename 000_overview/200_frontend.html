@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-58c1de76.js";
+            window.path_to_searchindex_js = "../searchindex-263056d8.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-0ba44881.js"></script>
@@ -192,6 +192,7 @@ coherent user tool.</p>
 <ul>
 <li>derive-based <code>clap</code> command parsing</li>
 <li>command aliases and grouped help</li>
+<li>frontend-owned root help and version output</li>
 <li>workspace and package discovery</li>
 <li>package/workspace scaffolding</li>
 <li>package preparation over <code>fol-package</code></li>
@@ -222,6 +223,12 @@ coherent user tool.</p>
 <li><code>fol completion</code></li>
 <li>hidden <code>_complete</code></li>
 </ul>
+<p>The root help contract is:</p>
+<ul>
+<li><code>fol</code></li>
+<li><code>fol --help</code></li>
+</ul>
+<p>Both render the same frontend-owned help surface.</p>
 <p>Aliases are part of the tool contract too. Examples:</p>
 <ul>
 <li><code>fol build</code>, <code>fol b</code>, <code>fol make</code></li>
@@ -240,11 +247,19 @@ fol run -- --flag value
 </code></pre>
 <p>The goal is to make <code>fol</code> feel like the canonical language tool, not just a
 compiler executable with a growing list of flags.</p>
+<p>Direct compile is still supported too, but it is frontend-owned now:</p>
+<pre><code class="language-text">fol path/to/package
+fol build path/to/package
+fol check path/to/package
+fol run path/to/package -- --flag value
+fol emit rust path/to/package
+fol emit lowered path/to/package
+</code></pre>
 <h2 id="how-dispatch-works"><a class="header" href="#how-dispatch-works">How Dispatch Works</a></h2>
 <p>The frontend flow is:</p>
 <ol>
 <li>parse CLI arguments with <code>clap</code></li>
-<li>resolve output/color/profile policy</li>
+<li>resolve output/profile policy</li>
 <li>detect the target root</li>
 <li>load the frontend workspace model</li>
 <li>dispatch the selected command</li>
@@ -259,6 +274,14 @@ typecheck/lower without backend artifact production</li>
 <li><code>fol run</code> builds first, then executes the produced binary</li>
 <li><code>fol emit rust</code> keeps the backend in source-emission mode</li>
 <li><code>fol emit lowered</code> writes lowered IR snapshots instead of invoking the backend</li>
+</ul>
+<p>Compile-oriented flags belong to the commands that use them. For example:</p>
+<ul>
+<li><code>--std-root</code> and <code>--package-store-root</code> belong to compile/fetch flows</li>
+<li><code>--keep-build-dir</code> belongs to backend-producing flows such as <code>build</code>, <code>run</code>,
+and <code>emit rust</code></li>
+<li><code>dump lowered</code> is represented as <code>fol emit lowered</code>, not as a root flag in the
+public CLI</li>
 </ul>
 <h2 id="root-discovery"><a class="header" href="#root-discovery">Root Discovery</a></h2>
 <p>For workflow commands, the frontend discovers roots upward from the current
@@ -277,7 +300,6 @@ frontend-owned roots such as build and cache directories.</p>
 <p>The frontend currently supports environment and flag control for:</p>
 <ul>
 <li>output mode</li>
-<li>color policy</li>
 <li>profile</li>
 <li>std root</li>
 <li>package store root</li>
@@ -305,6 +327,7 @@ frontend-owned roots such as build and cache directories.</p>
 <p><code>json</code> is for machine-readable tooling and wrappers.</p>
 <p>The frontend also owns human highlighting behavior. Actions and paths can be
 highlighted in human mode, while plain mode stays stable and ANSI-free.</p>
+<p>Human mode is always colorized. There is no public color-policy switch.</p>
 <h2 id="build-artifacts"><a class="header" href="#build-artifacts">Build Artifacts</a></h2>
 <p>Frontend commands report explicit artifact roots.</p>
 <p>That includes:</p>
@@ -318,15 +341,18 @@ highlighted in human mode, while plain mode stays stable and ANSI-free.</p>
 </ul>
 <p>This keeps the frontend closer to a build tool than to a thin compiler shell.</p>
 <h2 id="relationship-to-the-root-binary"><a class="header" href="#relationship-to-the-root-binary">Relationship To The Root Binary</a></h2>
-<p>The repo still has a root <code>src/main.rs</code>, but it is now only a migration shim.</p>
-<p>The long-term direction is:</p>
+<p>The repo still has a root <code>src/main.rs</code>, but it is now just a thin entry shim
+into <code>fol-frontend</code>.</p>
+<p>The CLI behavior itself lives in <code>fol-frontend</code>.</p>
+<p>That includes:</p>
 <ul>
-<li>workflow commands route through <code>fol-frontend</code></li>
-<li>direct legacy compile flags remain temporarily supported where feasible</li>
-<li>more of the old root-main orchestration is pushed into <code>fol-frontend</code></li>
+<li>workflow commands</li>
+<li>direct compile dispatch</li>
+<li>root help</li>
+<li>output rendering</li>
+<li>frontend diagnostics</li>
 </ul>
-<p>So <code>fol-frontend</code> is the real home of the tool behavior, even while the root
-binary is still being trimmed down.</p>
+<p>So the root binary is no longer its own separate CLI implementation.</p>
 <h2 id="current-boundary"><a class="header" href="#current-boundary">Current Boundary</a></h2>
 <p>The current frontend milestone is about local workflows and the first backend.</p>
 <p>It already covers:</p>
