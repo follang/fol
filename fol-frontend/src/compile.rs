@@ -182,6 +182,17 @@ pub fn run_workspace(workspace: &FrontendWorkspace) -> FrontendResult<FrontendCo
     run_workspace_with_config(workspace, &FrontendConfig::default())
 }
 
+pub fn test_workspace_with_config(
+    workspace: &FrontendWorkspace,
+    config: &FrontendConfig,
+) -> FrontendResult<FrontendCommandResult> {
+    test_workspace_selected_with_config(workspace, config, None)
+}
+
+pub fn test_workspace(workspace: &FrontendWorkspace) -> FrontendResult<FrontendCommandResult> {
+    test_workspace_with_config(workspace, &FrontendConfig::default())
+}
+
 pub fn compile_member_workspace(
     workspace: &FrontendWorkspace,
     config: &FrontendConfig,
@@ -246,6 +257,60 @@ fn backend_config(config: &FrontendConfig) -> fol_backend::BackendConfig {
     }
 }
 
+fn test_workspace_selected_with_config(
+    workspace: &FrontendWorkspace,
+    config: &FrontendConfig,
+    selected_package: Option<&str>,
+) -> FrontendResult<FrontendCommandResult> {
+    let selected_members = selected_workspace_members(workspace, selected_package)?;
+    let mut result = FrontendCommandResult::new("test", "tested 0 workspace package(s)");
+    let mut tested_count = 0usize;
+
+    for member in selected_members {
+        let member_workspace = FrontendWorkspace {
+            root: workspace.root.clone(),
+            members: vec![member.clone()],
+            std_root_override: workspace.std_root_override.clone(),
+            package_store_root_override: workspace.package_store_root_override.clone(),
+            build_root: workspace.build_root.clone(),
+            cache_root: workspace.cache_root.clone(),
+        };
+        let member_result = run_workspace_with_config(&member_workspace, config)?;
+        result.artifacts.extend(member_result.artifacts);
+        tested_count += 1;
+    }
+
+    result.summary = format!("tested {tested_count} workspace package(s)");
+    Ok(result)
+}
+
+fn selected_workspace_members(
+    workspace: &FrontendWorkspace,
+    selected_package: Option<&str>,
+) -> FrontendResult<Vec<crate::PackageRoot>> {
+    match selected_package {
+        Some(selected_package) => workspace
+            .members
+            .iter()
+            .find(|member| {
+                member
+                    .root
+                    .file_name()
+                    .and_then(|name| name.to_str())
+                    == Some(selected_package)
+            })
+            .cloned()
+            .map(|member| vec![member])
+            .ok_or_else(|| {
+                FrontendError::new(
+                    FrontendErrorKind::InvalidInput,
+                    format!("workspace package '{selected_package}' was not found"),
+                )
+            }),
+        None => Ok(workspace.members.clone()),
+    }
+}
+
 fn lower_resolver_errors(errors: Vec<fol_resolver::ResolverError>) -> FrontendError {
     FrontendError::new(
         FrontendErrorKind::CommandFailed,
@@ -283,7 +348,7 @@ fn lower_lowering_errors(errors: Vec<fol_lower::LoweringError>) -> FrontendError
 mod tests {
     use super::{
         build_workspace, build_workspace_for_profile_with_config, check_workspace,
-        profile_build_root, run_workspace, run_workspace_with_args_and_config,
+        profile_build_root, run_workspace, run_workspace_with_args_and_config, test_workspace,
     };
     use crate::{FrontendProfile, FrontendWorkspace, PackageRoot, WorkspaceRoot};
     use std::{fs, path::PathBuf};
@@ -489,6 +554,34 @@ mod tests {
         let crate_root = result.artifacts[0].path.as_ref().unwrap();
 
         assert!(crate_root.exists());
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn test_workspace_runs_single_workspace_members() {
+        let root = std::env::temp_dir().join(format!("fol_frontend_test_{}", std::process::id()));
+        let app = root.join("app");
+        let src = app.join("src");
+        fs::create_dir_all(&src).unwrap();
+        fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
+        fs::write(app.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
+        fs::write(src.join("main.fol"), "fun[] main(): int = {\n    return 0\n}\n").unwrap();
+
+        let workspace = FrontendWorkspace {
+            root: WorkspaceRoot::new(root.clone()),
+            members: vec![PackageRoot::new(app)],
+            std_root_override: None,
+            package_store_root_override: None,
+            build_root: root.join(".fol/build"),
+            cache_root: root.join(".fol/cache"),
+        };
+
+        let result = test_workspace(&workspace).unwrap();
+
+        assert_eq!(result.command, "test");
+        assert_eq!(result.summary, "tested 1 workspace package(s)");
+        assert_eq!(result.artifacts.len(), 1);
 
         fs::remove_dir_all(root).ok();
     }
