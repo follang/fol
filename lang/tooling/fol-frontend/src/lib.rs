@@ -118,7 +118,7 @@ where
         .map(|arg| arg.into())
         .collect::<Vec<std::ffi::OsString>>();
 
-    if wants_help(&args) {
+    if wants_root_help(&args) {
         return match writeln!(stdout, "{}", FrontendCli::render_root_help()) {
             Ok(()) => 0,
             Err(error) => {
@@ -138,6 +138,24 @@ where
     }
 
     match FrontendCli::try_parse_from(args.clone()) {
+        Err(error) if error.kind() == clap::error::ErrorKind::DisplayHelp => {
+            match writeln!(stdout, "{error}") {
+                Ok(()) => 0,
+                Err(render_error) => {
+                    let _ = writeln!(stderr, "FrontendInternal: {render_error}");
+                    1
+                }
+            }
+        }
+        Err(error) if error.kind() == clap::error::ErrorKind::DisplayVersion => {
+            match writeln!(stdout, "{error}") {
+                Ok(()) => 0,
+                Err(render_error) => {
+                    let _ = writeln!(stderr, "FrontendInternal: {render_error}");
+                    1
+                }
+            }
+        }
         Err(error) => {
             let output = FrontendOutput::new(FrontendOutputConfig::default());
             let error = FrontendError::new(FrontendErrorKind::InvalidInput, error.to_string())
@@ -208,8 +226,8 @@ where
     }
 }
 
-fn wants_help(args: &[std::ffi::OsString]) -> bool {
-    args.iter().skip(1).any(|arg| arg == "-h" || arg == "--help")
+fn wants_root_help(args: &[std::ffi::OsString]) -> bool {
+    matches!(args.get(1), Some(arg) if arg == "-h" || arg == "--help") && args.len() == 2
 }
 
 fn wants_version(args: &[std::ffi::OsString]) -> bool {
@@ -614,5 +632,37 @@ mod tests {
         assert!(result.summary.contains("checked 1 workspace package(s)"));
 
         std::fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn root_help_stays_root_owned() {
+        let mut stdout = Vec::new();
+        let mut stderr = Vec::new();
+
+        let code = run_from_args_with_io(["fol", "--help"], &mut stdout, &mut stderr);
+        let rendered = String::from_utf8(stdout).expect("help output should be utf8");
+
+        assert_eq!(code, 0);
+        assert!(stderr.is_empty());
+        assert!(rendered.contains("User-facing frontend for the FOL toolchain"));
+        assert!(rendered.contains("Run `fol <command> --help` for command-specific usage."));
+        assert!(!rendered.contains("Workflow Commands:"));
+    }
+
+    #[test]
+    fn subcommand_help_is_not_swallowed_by_root_help() {
+        let mut stdout = Vec::new();
+        let mut stderr = Vec::new();
+
+        let code = run_from_args_with_io(["fol", "emit", "--help"], &mut stdout, &mut stderr);
+        let rendered = String::from_utf8(stdout).expect("help output should be utf8");
+
+        assert_eq!(code, 0);
+        assert!(stderr.is_empty());
+        assert!(rendered.contains("Usage: fol emit"));
+        assert!(rendered.contains("Commands:"));
+        assert!(rendered.contains("rust"));
+        assert!(rendered.contains("lowered"));
+        assert!(!rendered.contains("Run `fol <command> --help` for command-specific usage."));
     }
 }

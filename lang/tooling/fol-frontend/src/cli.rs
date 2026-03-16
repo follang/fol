@@ -2,26 +2,7 @@ use crate::OutputMode;
 use clap::{Args, CommandFactory, Parser, Subcommand};
 use clap::builder::styling::{AnsiColor, Effects, Styles};
 
-const AFTER_HELP: &str = "\
-Workflow Commands:
-  init, new, fetch, update, check, build, run, test, emit, clean
-
-Workspace Commands:
-  work
-
-Shell Commands:
-  completion
-
-Examples:
-  fol init --bin
-  fol new demo --lib
-  fol fetch
-  fol update
-  fol build --release
-  fol run
-  fol emit rust
-  fol completion bash
-";
+const AFTER_HELP: &str = "Run `fol <command> --help` for command-specific usage.";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
 pub enum FrontendProfile {
@@ -363,7 +344,7 @@ Arguments:
 Options:
 {options}
 
-        {after-help}",
+{after-help}",
         )
         .after_help(AFTER_HELP)
     }
@@ -393,6 +374,7 @@ Options:
             format!("  {:<12} [aliases: n, create]", command("new")),
             format!("  {:<12} [aliases: w, ws, workspace]", command("work")),
             format!("  {:<12} [aliases: f, sync]", command("fetch")),
+            format!("  {:<12} [aliases: u, upgrade]", command("update")),
             format!("  {:<12} [aliases: b, make]", command("build")),
             format!("  {:<12} [aliases: r]", command("run")),
             format!("  {:<12} [aliases: t]", command("test")),
@@ -412,24 +394,7 @@ Options:
             format!("  {:<26} Print help", flag("-h, --help")),
             format!("  {:<26} Print version", flag("-V, --version")),
             String::new(),
-            heading("Workflow Commands:"),
-            "  init, new, fetch, update, check, build, run, test, emit, clean".to_string(),
-            String::new(),
-            heading("Workspace Commands:"),
-            "  work".to_string(),
-            String::new(),
-            heading("Shell Commands:"),
-            "  completion".to_string(),
-            String::new(),
-            heading("Examples:"),
-            "  fol init --bin".to_string(),
-            "  fol new demo --lib".to_string(),
-            "  fol fetch".to_string(),
-            "  fol update".to_string(),
-            "  fol build --release".to_string(),
-            "  fol run".to_string(),
-            "  fol emit rust".to_string(),
-            "  fol completion bash".to_string(),
+            "Run `fol <command> --help` for command-specific usage.".to_string(),
         ]
         .join("\n")
     }
@@ -445,10 +410,33 @@ mod tests {
         WorkCommand, WorkSubcommand,
     };
     use crate::OutputMode;
+    use std::sync::{Mutex, MutexGuard, OnceLock};
+
+    fn env_lock() -> MutexGuard<'static, ()> {
+        static ENV_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        ENV_LOCK
+            .get_or_init(|| Mutex::new(()))
+            .lock()
+            .expect("env test lock should not be poisoned")
+    }
+
+    fn parse_clean<const N: usize>(args: [&str; N]) -> FrontendCli {
+        let _guard = env_lock();
+        unsafe {
+            std::env::remove_var("FOL_OUTPUT");
+            std::env::remove_var("FOL_PROFILE");
+        }
+        FrontendCli::parse_from(args)
+    }
 
     #[test]
     fn derive_root_parser_accepts_empty_invocation() {
-        let cli = FrontendCli::parse_from(["fol"]);
+        let _guard = env_lock();
+        unsafe {
+            std::env::remove_var("FOL_OUTPUT");
+            std::env::remove_var("FOL_PROFILE");
+        }
+        let cli = parse_clean(["fol"]);
 
         assert_eq!(cli.output, OutputMode::Human);
         assert_eq!(cli.selected_profile(), FrontendProfile::Debug);
@@ -457,14 +445,14 @@ mod tests {
 
     #[test]
     fn root_command_families_parse_through_derive_tree() {
-        let cli = FrontendCli::parse_from(["fol", "build"]);
+        let cli = parse_clean(["fol", "build"]);
 
         assert_eq!(cli.command, Some(FrontendCommand::Build(BuildCommand::default())));
     }
 
     #[test]
     fn run_command_preserves_passthrough_args() {
-        let cli = FrontendCli::parse_from(["fol", "run", "--", "--flag", "value"]);
+        let cli = parse_clean(["fol", "run", "--", "--flag", "value"]);
 
         assert_eq!(
             cli.command,
@@ -480,8 +468,8 @@ mod tests {
 
     #[test]
     fn emit_subcommands_parse_through_derive_tree() {
-        let rust = FrontendCli::parse_from(["fol", "emit", "rust"]);
-        let lowered = FrontendCli::parse_from(["fol", "emit", "lowered"]);
+        let rust = parse_clean(["fol", "emit", "rust"]);
+        let lowered = parse_clean(["fol", "emit", "lowered"]);
 
         assert_eq!(
             rust.command,
@@ -499,7 +487,7 @@ mod tests {
 
     #[test]
     fn completion_command_parses_requested_shell() {
-        let cli = FrontendCli::parse_from(["fol", "completion", "bash"]);
+        let cli = parse_clean(["fol", "completion", "bash"]);
 
         assert_eq!(
             cli.command,
@@ -511,7 +499,7 @@ mod tests {
 
     #[test]
     fn internal_complete_command_parses_optional_current_token() {
-        let cli = FrontendCli::parse_from(["fol", "_complete", "emit", "ru"]);
+        let cli = parse_clean(["fol", "_complete", "emit", "ru"]);
 
         assert_eq!(
             cli.command,
@@ -523,13 +511,13 @@ mod tests {
 
     #[test]
     fn visible_aliases_parse_to_the_same_root_commands() {
-        let build = FrontendCli::parse_from(["fol", "b"]);
-        let check = FrontendCli::parse_from(["fol", "verify"]);
-        let work = FrontendCli::parse_from(["fol", "workspace", "info"]);
-        let fetch = FrontendCli::parse_from(["fol", "sync"]);
-        let update = FrontendCli::parse_from(["fol", "upgrade"]);
-        let emit = FrontendCli::parse_from(["fol", "gen", "rust"]);
-        let clean = FrontendCli::parse_from(["fol", "purge"]);
+        let build = parse_clean(["fol", "b"]);
+        let check = parse_clean(["fol", "verify"]);
+        let work = parse_clean(["fol", "workspace", "info"]);
+        let fetch = parse_clean(["fol", "sync"]);
+        let update = parse_clean(["fol", "upgrade"]);
+        let emit = parse_clean(["fol", "gen", "rust"]);
+        let clean = parse_clean(["fol", "purge"]);
 
         assert_eq!(build.command, Some(FrontendCommand::Build(BuildCommand::default())));
         assert_eq!(check.command, Some(FrontendCommand::Check(CheckCommand::default())));
@@ -553,7 +541,7 @@ mod tests {
 
     #[test]
     fn output_flag_parses_global_output_mode() {
-        let cli = FrontendCli::parse_from(["fol", "--output", "json", "build"]);
+        let cli = parse_clean(["fol", "--output", "json", "build"]);
 
         assert_eq!(cli.output, OutputMode::Json);
         assert_eq!(cli.command, Some(FrontendCommand::Build(BuildCommand::default())));
@@ -561,8 +549,8 @@ mod tests {
 
     #[test]
     fn profile_flags_normalize_to_frontend_profile_selection() {
-        let profile = FrontendCli::parse_from(["fol", "--profile", "release", "build"]);
-        let release = FrontendCli::parse_from(["fol", "--release", "build"]);
+        let profile = parse_clean(["fol", "--profile", "release", "build"]);
+        let release = parse_clean(["fol", "--release", "build"]);
 
         assert_eq!(profile.selected_profile(), FrontendProfile::Release);
         assert_eq!(release.selected_profile(), FrontendProfile::Release);
@@ -570,6 +558,7 @@ mod tests {
 
     #[test]
     fn cli_env_values_feed_output_and_profile_defaults() {
+        let _guard = env_lock();
         unsafe {
             std::env::set_var("FOL_OUTPUT", "plain");
             std::env::set_var("FOL_PROFILE", "release");
@@ -588,6 +577,7 @@ mod tests {
 
     #[test]
     fn explicit_flags_override_env_values() {
+        let _guard = env_lock();
         unsafe {
             std::env::set_var("FOL_OUTPUT", "plain");
             std::env::set_var("FOL_PROFILE", "release");
@@ -605,15 +595,14 @@ mod tests {
     }
 
     #[test]
-    fn help_output_groups_commands_by_workflow_sections() {
+    fn help_output_points_users_to_subcommand_help() {
         let help = FrontendCli::command().render_long_help().to_string();
 
-        assert!(help.contains("Workflow Commands:"));
-        assert!(help.contains("Workspace Commands:"));
-        assert!(help.contains("Shell Commands:"));
-        assert!(help.contains("Examples:"));
-        assert!(help.contains("fol build --release"));
-        assert!(help.contains("fol update"));
+        assert!(help.contains("Run `fol <command> --help` for command-specific usage."));
+        assert!(!help.contains("Workflow Commands:"));
+        assert!(!help.contains("Workspace Commands:"));
+        assert!(!help.contains("Shell Commands:"));
+        assert!(!help.contains("Examples:"));
     }
 
     #[test]
@@ -649,10 +638,10 @@ mod tests {
 
     #[test]
     fn work_subcommands_parse_for_info_and_list() {
-        let info = FrontendCli::parse_from(["fol", "work", "info"]);
-        let list = FrontendCli::parse_from(["fol", "work", "list"]);
-        let deps = FrontendCli::parse_from(["fol", "work", "deps"]);
-        let status = FrontendCli::parse_from(["fol", "work", "status"]);
+        let info = parse_clean(["fol", "work", "info"]);
+        let list = parse_clean(["fol", "work", "list"]);
+        let deps = parse_clean(["fol", "work", "deps"]);
+        let status = parse_clean(["fol", "work", "status"]);
 
         assert_eq!(
             info.command,
@@ -686,8 +675,8 @@ mod tests {
 
     #[test]
     fn workspace_flags_parse_for_init_and_new_commands() {
-        let init = FrontendCli::parse_from(["fol", "init", "--workspace"]);
-        let new = FrontendCli::parse_from(["fol", "new", "demo", "--workspace"]);
+        let init = parse_clean(["fol", "init", "--workspace"]);
+        let new = parse_clean(["fol", "new", "demo", "--workspace"]);
 
         assert_eq!(
             init.command,
@@ -706,8 +695,8 @@ mod tests {
 
     #[test]
     fn bin_flags_parse_for_init_and_new_commands() {
-        let init = FrontendCli::parse_from(["fol", "init", "--bin"]);
-        let new = FrontendCli::parse_from(["fol", "new", "demo", "--bin"]);
+        let init = parse_clean(["fol", "init", "--bin"]);
+        let new = parse_clean(["fol", "new", "demo", "--bin"]);
 
         assert_eq!(
             init.command,
@@ -726,8 +715,8 @@ mod tests {
 
     #[test]
     fn duplicate_lib_flags_parse_for_init_and_new_commands() {
-        let init = FrontendCli::parse_from(["fol", "init", "--lib"]);
-        let new = FrontendCli::parse_from(["fol", "new", "demo", "--lib"]);
+        let init = parse_clean(["fol", "init", "--lib"]);
+        let new = parse_clean(["fol", "new", "demo", "--lib"]);
 
         assert_eq!(
             init.command,
@@ -746,8 +735,8 @@ mod tests {
 
     #[test]
     fn lib_flags_parse_for_init_and_new_commands() {
-        let init = FrontendCli::parse_from(["fol", "init", "--lib"]);
-        let new = FrontendCli::parse_from(["fol", "new", "demo", "--lib"]);
+        let init = parse_clean(["fol", "init", "--lib"]);
+        let new = parse_clean(["fol", "new", "demo", "--lib"]);
 
         assert_eq!(
             init.command,
@@ -766,7 +755,7 @@ mod tests {
 
     #[test]
     fn build_command_owns_direct_compile_flags() {
-        let cli = FrontendCli::parse_from([
+        let cli = parse_clean([
             "fol",
             "build",
             "--std-root",
@@ -795,11 +784,11 @@ mod tests {
 
     #[test]
     fn fetch_and_locked_workflow_flags_parse_on_commands() {
-        let fetch = FrontendCli::parse_from(["fol", "fetch", "--locked", "--offline", "--refresh"]);
-        let build = FrontendCli::parse_from(["fol", "build", "--locked"]);
-        let run = FrontendCli::parse_from(["fol", "run", "--locked"]);
-        let test = FrontendCli::parse_from(["fol", "test", "--locked"]);
-        let check = FrontendCli::parse_from(["fol", "check", "--locked"]);
+        let fetch = parse_clean(["fol", "fetch", "--locked", "--offline", "--refresh"]);
+        let build = parse_clean(["fol", "build", "--locked"]);
+        let run = parse_clean(["fol", "run", "--locked"]);
+        let test = parse_clean(["fol", "test", "--locked"]);
+        let check = parse_clean(["fol", "check", "--locked"]);
 
         assert_eq!(
             fetch.command,
@@ -848,14 +837,14 @@ mod tests {
 
     #[test]
     fn emit_subcommands_own_their_specific_flags() {
-        let rust = FrontendCli::parse_from([
+        let rust = parse_clean([
             "fol",
             "emit",
             "rust",
             "--keep-build-dir",
             "demo",
         ]);
-        let lowered = FrontendCli::parse_from([
+        let lowered = parse_clean([
             "fol",
             "emit",
             "lowered",
