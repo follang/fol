@@ -493,31 +493,47 @@ layer for the executable `V1` surface.
 #### 8.2 done
 - add `fail_loc_targets_formal_pkg_root`
 
-#### 8.3
+#### 8.3 done
 - add `fail_type_mismatch_real_app`
 
-#### 8.4
+#### 8.4 done
 - add `fail_recoverable_plain_context`
 
-#### 8.5
+#### 8.5 done
 - add `fail_shell_unwrap_boundary`
 
-#### 8.6
+#### 8.6 done
 - add `fail_deferred_intrinsic`
 
 ### Phase 9: Gap Harvesting
 
-#### 9.1
+#### 9.1 done
 - after the first 20+ apps exist, run the full tree and record every real gap
 
-#### 9.2
+#### 9.2 done
 - convert any new failure into either:
   - a compiler fix
   - or a deliberate expected-failure fixture with explicit diagnostic checks
 
-#### 9.3
+#### 9.3 done
 - keep every found regression as a permanent fixture; do not throw away the
   discovered real-app repros
+
+Gap-harvest result:
+
+- full application tree is now checked in under `test/apps/fixtures`
+- the full tree runs green through `make test`
+- no new untracked executable `V1` gaps remained after:
+  - tightening mixed/container/alias expectations to current `V1`
+  - locking recoverable process-boundary behavior explicitly
+  - converting unsupported/invalid whole-app cases into expected-failure fixtures
+
+Current fixture contract:
+
+- runnable app fixtures cover the current executable `V1` surface
+- failing app fixtures cover the current explicit `V1` boundaries
+- any future whole-program regression should be added to this tree instead of
+  being left as an ad hoc repro
 
 ### Phase 10: Docs And Status Sync
 
