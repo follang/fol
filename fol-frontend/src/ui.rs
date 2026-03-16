@@ -30,12 +30,32 @@ impl FrontendOutput {
         }
     }
 
+    fn human_highlight_action(&self, action: &str) -> String {
+        if self.config.mode == OutputMode::Human && self.config.color == ColorPolicy::Always {
+            format!("\x1b[1;32m{action}\x1b[0m")
+        } else {
+            action.to_string()
+        }
+    }
+
+    fn human_highlight_path(&self, path: &str) -> String {
+        if self.config.mode == OutputMode::Human && self.config.color == ColorPolicy::Always {
+            format!("\x1b[36m{path}\x1b[0m")
+        } else {
+            path.to_string()
+        }
+    }
+
     pub fn render_human_header(&self, title: &str) -> String {
         format!("== {title} ==")
     }
 
     pub fn render_human_status(&self, action: &str, detail: &str) -> String {
-        format!("{action}: {detail}")
+        format!(
+            "{}: {}",
+            self.human_highlight_action(action),
+            self.human_highlight_path(detail)
+        )
     }
 
     pub fn render_plain_section(&self, title: &str) -> String {
@@ -145,6 +165,19 @@ mod tests {
             output.render_human_status("Built", "target/bin/demo"),
             "Built: target/bin/demo"
         );
+    }
+
+    #[test]
+    fn human_helpers_highlight_actions_and_paths_when_color_is_forced() {
+        let output = FrontendOutput::new(FrontendOutputConfig {
+            color: ColorPolicy::Always,
+            ..FrontendOutputConfig::default()
+        });
+
+        let rendered = output.render_human_status("Built", "target/bin/demo");
+
+        assert!(rendered.contains("\u{1b}[1;32mBuilt\u{1b}[0m"));
+        assert!(rendered.contains("\u{1b}[36mtarget/bin/demo\u{1b}[0m"));
     }
 
     #[test]
