@@ -630,4 +630,48 @@ mod tests {
         fs::remove_dir_all(&temp_root)
             .expect("Temporary metadata fixture root should be removable after the test");
     }
+
+    #[test]
+    fn yaml_metadata_parser_reports_invalid_dependency_forms_clearly() {
+        let cases = [
+            (
+                "dep.core: core/tools\n",
+                "must use 'source:target' form",
+            ),
+            (
+                "dep.core: svn:core/tools\n",
+                "uses unsupported source 'svn'",
+            ),
+            (
+                "dep.core: pkg:\n",
+                "has an empty target",
+            ),
+            (
+                "dep.9core: pkg:core/tools\n",
+                "has invalid dependency alias '9core'",
+            ),
+        ];
+
+        for (index, (dependency_line, message)) in cases.into_iter().enumerate() {
+            let temp_root = unique_temp_root(&format!("invalid_dep_{index}"));
+            fs::create_dir_all(&temp_root).expect("Should create temporary metadata fixture root");
+            let metadata_path = temp_root.join("package.yaml");
+            fs::write(
+                &metadata_path,
+                format!("name: app\nversion: 0.1.0\n{dependency_line}"),
+            )
+            .expect("Should write the invalid dependency metadata fixture");
+
+            let error = parse_package_metadata(&metadata_path)
+                .expect_err("invalid dependency forms should be rejected");
+
+            assert!(
+                error.to_string().contains(message),
+                "invalid dependency form should explain '{message}', got: {error}",
+            );
+
+            fs::remove_dir_all(&temp_root)
+                .expect("Temporary metadata fixture root should be removable after the test");
+        }
+    }
 }
