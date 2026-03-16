@@ -7,6 +7,7 @@ Phase 0 status:
 - [x] 0.1 Create `fol-frontend` plan reset commit
 - [x] 0.2 Freeze `fol-frontend` as a crate, not root-main sprawl
 - [x] 0.3 Freeze `clap` derive requirement
+- [x] 0.4 Freeze `roc` UX patterns to reuse conceptually
 
 This plan defines the next major milestone after the completed `V1` compiler
 pipeline:
@@ -91,6 +92,10 @@ The local `../../tools/roc` CLI is the immediate reference for:
 Unlike `roc`, this crate should use:
 
 - `clap` derive macros for command/arg definitions
+
+The reuse target is interaction shape, not source copying: aliases, grouped
+help, output helpers, completion plumbing, and color/plain/json behavior should
+feel comparable without cloning `roc` command semantics.
 
 Builder-style clap APIs may still appear in compatibility shims or completion
 internals, but the canonical command tree must be declared with derive types in
