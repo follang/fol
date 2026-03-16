@@ -24,7 +24,7 @@ pub use config::FrontendConfig;
 pub use compile::{
     build_workspace, build_workspace_for_profile_with_config, build_workspace_with_config,
     check_workspace, check_workspace_with_config, compile_member_workspace, emit_rust,
-    emit_rust_with_config, profile_build_root,
+    emit_lowered, emit_lowered_with_config, emit_rust_with_config, profile_build_root,
     run_workspace, run_workspace_with_args_and_config, run_workspace_with_config, test_workspace,
     test_package, test_package_with_config, test_workspace_with_config,
 };
