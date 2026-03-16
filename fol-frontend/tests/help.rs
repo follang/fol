@@ -1,4 +1,4 @@
-use fol_frontend::{ColorPolicy, FrontendCli, FrontendOutput, FrontendOutputConfig};
+use fol_frontend::{FrontendCli, FrontendOutput, FrontendOutputConfig};
 
 #[test]
 fn help_output_keeps_sections_examples_and_aliases_stable() {
@@ -30,10 +30,7 @@ fn help_output_keeps_grouped_sections_in_stable_order() {
 
 #[test]
 fn human_output_highlights_actions_and_paths_when_color_is_forced() {
-    let output = FrontendOutput::new(FrontendOutputConfig {
-        color: ColorPolicy::Always,
-        ..FrontendOutputConfig::default()
-    });
+    let output = FrontendOutput::new(FrontendOutputConfig::default());
 
     let rendered = output.render_human_status("Built", "target/demo/bin");
 

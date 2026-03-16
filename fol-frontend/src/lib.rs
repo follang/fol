@@ -20,9 +20,10 @@ mod work;
 mod workspace;
 
 pub use cli::{
-    CompleteCommand, CompletionCommand, CompletionShellArg, EmitCommand, EmitSubcommand,
+    BuildCommand, CheckCommand, CompleteCommand, CompletionCommand, CompletionShellArg,
+    EmitCommand, EmitLoweredCommand, EmitRustCommand, EmitSubcommand, FetchCommand,
     FrontendCli, FrontendCommand, FrontendProfile, InitCommand, NewCommand, RunCommand,
-    UnitCommand,
+    TestCommand, UnitCommand,
 };
 pub use clean::{clean_workspace, clean_workspace_with_config};
 pub use config::FrontendConfig;
@@ -38,7 +39,9 @@ pub use completion::{
     generate_fish_completion_script, generate_zsh_completion_script, internal_complete_command,
     internal_complete_command_with_tokens, internal_complete_matches, CompletionShell,
 };
-pub use direct::{run_direct_compile, run_direct_compile_with_io, DirectCompileConfig};
+pub use direct::{
+    run_direct_compile, run_direct_compile_with_io, DirectCompileConfig, DirectCompileMode,
+};
 pub use errors::{FrontendError, FrontendErrorKind, FrontendResult};
 pub use fetch::{
     fetch_workspace, fetch_workspace_with_config, prepare_workspace_packages,
@@ -48,7 +51,7 @@ pub use discovery::{
     discover_root_from_explicit_path, discover_root_upward, require_discovered_root,
     DiscoveredRoot, PackageRoot, WorkspaceRoot, PACKAGE_FILE_NAME, WORKSPACE_FILE_NAME,
 };
-pub use output::{ColorPolicy, FrontendOutputConfig, OutputMode};
+pub use output::{FrontendOutputConfig, OutputMode};
 pub use result::{FrontendArtifactKind, FrontendArtifactSummary, FrontendCommandResult};
 pub use scaffold::{
     init_current_dir, init_package_root, init_root, init_workspace_root, new_project,
@@ -148,12 +151,13 @@ where
             run_direct_compile_with_io(
                 &DirectCompileConfig {
                     input: cli.input.clone().unwrap_or_default(),
-                    json: cli.json,
                     std_root: cli.std_root.clone(),
                     package_store_root: cli.package_store_root.clone(),
-                    dump_lowered: cli.dump_lowered,
-                    emit_rust: cli.emit_rust,
-                    keep_build_dir: cli.keep_build_dir,
+                    mode: DirectCompileMode::Auto {
+                        dump_lowered: cli.dump_lowered,
+                        emit_rust: cli.emit_rust,
+                        keep_build_dir: cli.keep_build_dir,
+                    },
                 },
                 &config,
                 stdout,
@@ -242,9 +246,17 @@ fn frontend_config_from_cli(
     if let Some(working_directory) = working_directory {
         config.working_directory = working_directory;
     }
-    config.output.mode = cli.output;
-    config.output.color = cli.color;
+    config.output.mode = if cli.json { OutputMode::Json } else { cli.output };
     config.profile_override = Some(cli.selected_profile());
+    if let Some(std_root) = &cli.std_root {
+        config.std_root_override = Some(std_root.into());
+    }
+    if let Some(package_store_root) = &cli.package_store_root {
+        config.package_store_root_override = Some(package_store_root.into());
+    }
+    if cli.keep_build_dir {
+        config.keep_build_dir = true;
+    }
     config
 }
 
@@ -253,12 +265,13 @@ fn dispatch_cli(cli: &FrontendCli, config: &FrontendConfig) -> FrontendResult<Fr
         return run_direct_compile(
             &DirectCompileConfig {
                 input: input.clone(),
-                json: cli.json,
                 std_root: cli.std_root.clone(),
                 package_store_root: cli.package_store_root.clone(),
-                dump_lowered: cli.dump_lowered,
-                emit_rust: cli.emit_rust,
-                keep_build_dir: cli.keep_build_dir,
+                mode: DirectCompileMode::Auto {
+                    dump_lowered: cli.dump_lowered,
+                    emit_rust: cli.emit_rust,
+                    keep_build_dir: cli.keep_build_dir,
+                },
             },
             config,
         );
@@ -288,7 +301,7 @@ fn dispatch_cli(cli: &FrontendCli, config: &FrontendConfig) -> FrontendResult<Fr
             internal_complete_command_with_tokens(&command.tokens)
         }
         Some(command) => {
-            let discovered = require_discovered_root(&config.working_directory)?;
+            let discovered = discovered_root_for_command(command, &config.working_directory)?;
             let workspace = load_frontend_workspace(&discovered, config)?;
             dispatch_workspace_command(command, &workspace, config)
         }
@@ -305,20 +318,99 @@ fn dispatch_workspace_command(
             cli::WorkSubcommand::Info(_) => work_info(workspace),
             cli::WorkSubcommand::List(_) => work_list(workspace),
         }),
-        FrontendCommand::Fetch(_) => fetch_workspace_with_config(workspace, config),
-        FrontendCommand::Build(_) => build_workspace_for_profile_with_config(
-            workspace,
-            config,
-            config.profile_override.unwrap_or(FrontendProfile::Debug),
-        ),
-        FrontendCommand::Check(_) => check_workspace_with_config(workspace, config),
+        FrontendCommand::Fetch(command) => {
+            fetch_workspace_with_config(workspace, &config_for_roots(config, &command.roots))
+        }
+        FrontendCommand::Build(command) => {
+            if let Some(input) = &command.target.input {
+                return run_direct_compile(
+                    &DirectCompileConfig {
+                        input: input.clone(),
+                        std_root: command.roots.std_root.clone(),
+                        package_store_root: command.roots.package_store_root.clone(),
+                        mode: DirectCompileMode::Build {
+                            keep_build_dir: command.keep_build_dir,
+                        },
+                    },
+                    &config_for_roots_keep_build(config, &command.roots, command.keep_build_dir),
+                );
+            }
+            build_workspace_for_profile_with_config(
+                workspace,
+                &config_for_roots_keep_build(config, &command.roots, command.keep_build_dir),
+                config.profile_override.unwrap_or(FrontendProfile::Debug),
+            )
+        }
+        FrontendCommand::Check(command) => {
+            if let Some(input) = &command.target.input {
+                return run_direct_compile(
+                    &DirectCompileConfig {
+                        input: input.clone(),
+                        std_root: command.roots.std_root.clone(),
+                        package_store_root: command.roots.package_store_root.clone(),
+                        mode: DirectCompileMode::Check,
+                    },
+                    &config_for_roots(config, &command.roots),
+                );
+            }
+            check_workspace_with_config(workspace, &config_for_roots(config, &command.roots))
+        }
         FrontendCommand::Run(command) => {
-            run_workspace_with_args_and_config(workspace, config, &command.args)
+            if let Some(input) = &command.target.input {
+                return run_direct_compile(
+                    &DirectCompileConfig {
+                        input: input.clone(),
+                        std_root: command.roots.std_root.clone(),
+                        package_store_root: command.roots.package_store_root.clone(),
+                        mode: DirectCompileMode::Run {
+                            keep_build_dir: command.keep_build_dir,
+                            args: command.args.clone(),
+                        },
+                    },
+                    &config_for_roots_keep_build(config, &command.roots, command.keep_build_dir),
+                );
+            }
+            run_workspace_with_args_and_config(
+                workspace,
+                &config_for_roots_keep_build(config, &command.roots, command.keep_build_dir),
+                &command.args,
+            )
         }
         FrontendCommand::Test(_) => test_workspace_with_config(workspace, config),
         FrontendCommand::Emit(command) => match command.command {
-            EmitSubcommand::Rust(_) => emit_rust_with_config(workspace, config),
-            EmitSubcommand::Lowered(_) => emit_lowered_with_config(workspace, config),
+            EmitSubcommand::Rust(ref emit) => {
+                if let Some(input) = &emit.target.input {
+                    return run_direct_compile(
+                        &DirectCompileConfig {
+                            input: input.clone(),
+                            std_root: emit.roots.std_root.clone(),
+                            package_store_root: emit.roots.package_store_root.clone(),
+                            mode: DirectCompileMode::EmitRust {
+                                keep_build_dir: emit.keep_build_dir,
+                            },
+                        },
+                        &config_for_roots_keep_build(config, &emit.roots, emit.keep_build_dir),
+                    );
+                }
+                emit_rust_with_config(
+                    workspace,
+                    &config_for_roots_keep_build(config, &emit.roots, emit.keep_build_dir),
+                )
+            }
+            EmitSubcommand::Lowered(ref emit) => {
+                if let Some(input) = &emit.target.input {
+                    return run_direct_compile(
+                        &DirectCompileConfig {
+                            input: input.clone(),
+                            std_root: emit.roots.std_root.clone(),
+                            package_store_root: emit.roots.package_store_root.clone(),
+                            mode: DirectCompileMode::EmitLowered,
+                        },
+                        &config_for_roots(config, &emit.roots),
+                    );
+                }
+                emit_lowered_with_config(workspace, &config_for_roots(config, &emit.roots))
+            }
         },
         FrontendCommand::Clean(_) => clean_workspace_with_config(workspace, config),
         FrontendCommand::Completion(_)
@@ -328,6 +420,43 @@ fn dispatch_workspace_command(
             FrontendErrorKind::Internal,
             "unexpected command reached workspace dispatcher",
         )),
+    }
+}
+
+fn config_for_roots(base: &FrontendConfig, roots: &cli::CompileRootArgs) -> FrontendConfig {
+    let mut config = base.clone();
+    if let Some(std_root) = &roots.std_root {
+        config.std_root_override = Some(std_root.into());
+    }
+    if let Some(package_store_root) = &roots.package_store_root {
+        config.package_store_root_override = Some(package_store_root.into());
+    }
+    config
+}
+
+fn config_for_roots_keep_build(
+    base: &FrontendConfig,
+    roots: &cli::CompileRootArgs,
+    keep_build_dir: bool,
+) -> FrontendConfig {
+    let mut config = config_for_roots(base, roots);
+    config.keep_build_dir = keep_build_dir;
+    config
+}
+
+fn discovered_root_for_command(
+    command: &FrontendCommand,
+    working_directory: &std::path::Path,
+) -> FrontendResult<DiscoveredRoot> {
+    let explicit = match command {
+        FrontendCommand::Work(command) => command.path.as_deref(),
+        FrontendCommand::Test(command) => command.path.as_deref(),
+        _ => None,
+    };
+    if let Some(path) = explicit {
+        require_discovered_root(std::path::Path::new(path))
+    } else {
+        require_discovered_root(working_directory)
     }
 }
 

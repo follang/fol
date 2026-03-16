@@ -1,4 +1,4 @@
-use crate::{ColorPolicy, FrontendOutputConfig, FrontendProfile, OutputMode};
+use crate::{FrontendOutputConfig, FrontendProfile, OutputMode};
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -36,11 +36,6 @@ impl FrontendConfig {
             Some("json") => OutputMode::Json,
             _ => OutputMode::Human,
         };
-        config.output.color = match std::env::var("FOL_COLOR").ok().as_deref() {
-            Some("always") => ColorPolicy::Always,
-            Some("never") => ColorPolicy::Never,
-            _ => ColorPolicy::Auto,
-        };
         config.profile_override = match std::env::var("FOL_PROFILE").ok().as_deref() {
             Some("release") => Some(FrontendProfile::Release),
             Some("debug") => Some(FrontendProfile::Debug),
@@ -61,14 +56,13 @@ impl FrontendConfig {
 #[cfg(test)]
 mod tests {
     use super::FrontendConfig;
-    use crate::{ColorPolicy, FrontendProfile, OutputMode};
+    use crate::{FrontendProfile, OutputMode};
 
     #[test]
     fn frontend_config_defaults_to_current_working_defaults() {
         let config = FrontendConfig::default();
 
         assert_eq!(config.output.mode, OutputMode::Human);
-        assert_eq!(config.output.color, ColorPolicy::Auto);
         assert!(config.profile_override.is_none());
         assert!(config.std_root_override.is_none());
         assert!(config.package_store_root_override.is_none());
@@ -86,14 +80,12 @@ mod tests {
             std::env::set_var("FOL_CACHE_ROOT", "/tmp/cache");
             std::env::set_var("FOL_KEEP_BUILD_DIR", "true");
             std::env::set_var("FOL_OUTPUT", "json");
-            std::env::set_var("FOL_COLOR", "never");
             std::env::set_var("FOL_PROFILE", "release");
         }
 
         let config = FrontendConfig::from_env();
 
         assert_eq!(config.output.mode, OutputMode::Json);
-        assert_eq!(config.output.color, ColorPolicy::Never);
         assert_eq!(config.profile_override, Some(FrontendProfile::Release));
         assert_eq!(config.std_root_override, Some(std::path::PathBuf::from("/tmp/std")));
         assert_eq!(
@@ -111,7 +103,6 @@ mod tests {
             std::env::remove_var("FOL_CACHE_ROOT");
             std::env::remove_var("FOL_KEEP_BUILD_DIR");
             std::env::remove_var("FOL_OUTPUT");
-            std::env::remove_var("FOL_COLOR");
             std::env::remove_var("FOL_PROFILE");
         }
     }

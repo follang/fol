@@ -1,4 +1,4 @@
-use crate::{ColorPolicy, FrontendCommandResult, FrontendError, FrontendOutputConfig, OutputMode};
+use crate::{FrontendCommandResult, FrontendError, FrontendOutputConfig, OutputMode};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FrontendOutput {
@@ -18,20 +18,12 @@ impl FrontendOutput {
         matches!(self.config.mode, OutputMode::Json)
     }
 
-    pub fn should_use_color(&self, is_tty: bool) -> bool {
-        if !matches!(self.config.mode, OutputMode::Human) {
-            return false;
-        }
-
-        match self.config.color {
-            ColorPolicy::Always => true,
-            ColorPolicy::Never => false,
-            ColorPolicy::Auto => is_tty,
-        }
+    pub fn should_use_color(&self) -> bool {
+        matches!(self.config.mode, OutputMode::Human)
     }
 
     fn human_highlight_action(&self, action: &str) -> String {
-        if self.config.mode == OutputMode::Human && self.config.color == ColorPolicy::Always {
+        if self.config.mode == OutputMode::Human {
             format!("\x1b[1;32m{action}\x1b[0m")
         } else {
             action.to_string()
@@ -39,7 +31,7 @@ impl FrontendOutput {
     }
 
     fn human_highlight_path(&self, path: &str) -> String {
-        if self.config.mode == OutputMode::Human && self.config.color == ColorPolicy::Always {
+        if self.config.mode == OutputMode::Human {
             format!("\x1b[36m{path}\x1b[0m")
         } else {
             path.to_string()
@@ -166,8 +158,8 @@ impl FrontendOutput {
 mod tests {
     use super::FrontendOutput;
     use crate::{
-        ColorPolicy, FrontendArtifactKind, FrontendArtifactSummary, FrontendCommandResult,
-        FrontendError, FrontendErrorKind, FrontendOutputConfig, OutputMode,
+        FrontendArtifactKind, FrontendArtifactSummary, FrontendCommandResult, FrontendError,
+        FrontendErrorKind, FrontendOutputConfig, OutputMode,
     };
     use std::path::PathBuf;
 
@@ -177,8 +169,7 @@ mod tests {
 
         assert_eq!(output.config().mode, OutputMode::Human);
         assert!(!output.is_machine_readable());
-        assert!(output.should_use_color(true));
-        assert!(!output.should_use_color(false));
+        assert!(output.should_use_color());
     }
 
     #[test]
@@ -193,11 +184,8 @@ mod tests {
     }
 
     #[test]
-    fn human_helpers_highlight_actions_and_paths_when_color_is_forced() {
-        let output = FrontendOutput::new(FrontendOutputConfig {
-            color: ColorPolicy::Always,
-            ..FrontendOutputConfig::default()
-        });
+    fn human_helpers_highlight_actions_and_paths_when_color_is_enabled() {
+        let output = FrontendOutput::new(FrontendOutputConfig::default());
 
         let rendered = output.render_human_status("Built", "target/bin/demo");
 
@@ -306,23 +294,15 @@ mod tests {
     }
 
     #[test]
-    fn color_auto_detection_respects_mode_and_policy() {
-        let always = FrontendOutput::new(FrontendOutputConfig {
-            color: ColorPolicy::Always,
-            ..FrontendOutputConfig::default()
-        });
-        let never = FrontendOutput::new(FrontendOutputConfig {
-            color: ColorPolicy::Never,
-            ..FrontendOutputConfig::default()
-        });
+    fn color_rendering_only_applies_in_human_mode() {
+        let human = FrontendOutput::new(FrontendOutputConfig::default());
         let json = FrontendOutput::new(FrontendOutputConfig {
             mode: OutputMode::Json,
             ..FrontendOutputConfig::default()
         });
 
-        assert!(always.should_use_color(false));
-        assert!(!never.should_use_color(true));
-        assert!(!json.should_use_color(true));
+        assert!(human.should_use_color());
+        assert!(!json.should_use_color());
     }
 
     #[test]

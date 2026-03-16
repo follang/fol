@@ -1,4 +1,4 @@
-use crate::{ColorPolicy, OutputMode};
+use crate::OutputMode;
 use clap::{Args, CommandFactory, Parser, Subcommand};
 
 const AFTER_HELP: &str = "\
@@ -43,15 +43,15 @@ pub enum FrontendCommand {
     #[command(visible_aliases = ["w", "ws", "workspace"])]
     Work(WorkCommand),
     #[command(visible_aliases = ["f", "sync"])]
-    Fetch(UnitCommand),
+    Fetch(FetchCommand),
     #[command(visible_aliases = ["b", "make"])]
-    Build(UnitCommand),
+    Build(BuildCommand),
     #[command(visible_aliases = ["r"])]
     Run(RunCommand),
     #[command(visible_aliases = ["t"])]
-    Test(UnitCommand),
+    Test(TestCommand),
     #[command(visible_aliases = ["c", "verify"])]
-    Check(UnitCommand),
+    Check(CheckCommand),
     #[command(visible_aliases = ["e", "gen"])]
     Emit(EmitCommand),
     #[command(visible_aliases = ["cl", "purge"])]
@@ -66,13 +66,77 @@ pub enum FrontendCommand {
 pub struct UnitCommand;
 
 #[derive(Debug, Clone, Args, PartialEq, Eq, Default)]
+pub struct CompileRootArgs {
+    #[arg(long, value_name = "DIR", help = "Override the standard-library root")]
+    pub std_root: Option<String>,
+
+    #[arg(
+        long,
+        value_name = "DIR",
+        help = "Override the installed package-store root"
+    )]
+    pub package_store_root: Option<String>,
+}
+
+#[derive(Debug, Clone, Args, PartialEq, Eq, Default)]
+pub struct DirectTargetArg {
+    #[arg(value_name = "PATH")]
+    pub input: Option<String>,
+}
+
+#[derive(Debug, Clone, Args, PartialEq, Eq, Default)]
+pub struct FetchCommand {
+    #[command(flatten)]
+    pub roots: CompileRootArgs,
+}
+
+#[derive(Debug, Clone, Args, PartialEq, Eq, Default)]
+pub struct BuildCommand {
+    #[command(flatten)]
+    pub target: DirectTargetArg,
+
+    #[command(flatten)]
+    pub roots: CompileRootArgs,
+
+    #[arg(long, help = "Keep the generated backend crate directory")]
+    pub keep_build_dir: bool,
+}
+
+#[derive(Debug, Clone, Args, PartialEq, Eq, Default)]
 pub struct RunCommand {
+    #[command(flatten)]
+    pub target: DirectTargetArg,
+
+    #[command(flatten)]
+    pub roots: CompileRootArgs,
+
+    #[arg(long, help = "Keep the generated backend crate directory")]
+    pub keep_build_dir: bool,
+
     #[arg(last = true, trailing_var_arg = true)]
     pub args: Vec<String>,
 }
 
+#[derive(Debug, Clone, Args, PartialEq, Eq, Default)]
+pub struct TestCommand {
+    #[arg(long, value_name = "PATH", help = "Override the workspace or package root")]
+    pub path: Option<String>,
+}
+
+#[derive(Debug, Clone, Args, PartialEq, Eq, Default)]
+pub struct CheckCommand {
+    #[command(flatten)]
+    pub target: DirectTargetArg,
+
+    #[command(flatten)]
+    pub roots: CompileRootArgs,
+}
+
 #[derive(Debug, Clone, Args, PartialEq, Eq)]
 pub struct WorkCommand {
+    #[arg(long, value_name = "PATH", help = "Override the workspace or package root")]
+    pub path: Option<String>,
+
     #[command(subcommand)]
     pub command: WorkSubcommand,
 }
@@ -103,8 +167,29 @@ pub enum WorkSubcommand {
 
 #[derive(Debug, Clone, Subcommand, PartialEq, Eq)]
 pub enum EmitSubcommand {
-    Rust(UnitCommand),
-    Lowered(UnitCommand),
+    Rust(EmitRustCommand),
+    Lowered(EmitLoweredCommand),
+}
+
+#[derive(Debug, Clone, Args, PartialEq, Eq, Default)]
+pub struct EmitRustCommand {
+    #[command(flatten)]
+    pub target: DirectTargetArg,
+
+    #[command(flatten)]
+    pub roots: CompileRootArgs,
+
+    #[arg(long, help = "Keep the generated backend crate directory")]
+    pub keep_build_dir: bool,
+}
+
+#[derive(Debug, Clone, Args, PartialEq, Eq, Default)]
+pub struct EmitLoweredCommand {
+    #[command(flatten)]
+    pub target: DirectTargetArg,
+
+    #[command(flatten)]
+    pub roots: CompileRootArgs,
 }
 
 #[derive(Debug, Clone, Args, PartialEq, Eq, Default)]
@@ -143,7 +228,7 @@ pub struct NewCommand {
 pub struct FrontendCli {
     #[arg(
         value_name = "FILE_OR_FOLDER",
-        help = "Input FOL file or folder to compile directly"
+        help = "Input FOL file or folder to build directly"
     )]
     pub input: Option<String>,
 
@@ -157,23 +242,8 @@ pub struct FrontendCli {
     )]
     pub output: OutputMode,
 
-    #[arg(
-        long,
-        global = true,
-        action = clap::ArgAction::SetTrue,
-        help = "Render direct-compile diagnostics as JSON"
-    )]
+    #[arg(long, global = true, hide = true, action = clap::ArgAction::SetTrue)]
     pub json: bool,
-
-    #[arg(
-        long,
-        global = true,
-        env = "FOL_COLOR",
-        value_enum,
-        default_value_t = ColorPolicy::Auto,
-        help = "Select frontend color policy"
-    )]
-    pub color: ColorPolicy,
 
     #[arg(
         long,
@@ -200,41 +270,19 @@ pub struct FrontendCli {
     )]
     pub release: bool,
 
-    #[arg(
-        long,
-        global = true,
-        value_name = "DIR",
-        help = "Override the standard-library root"
-    )]
+    #[arg(long, global = true, hide = true, value_name = "DIR")]
     pub std_root: Option<String>,
 
-    #[arg(
-        long,
-        global = true,
-        value_name = "DIR",
-        help = "Override the installed package-store root"
-    )]
+    #[arg(long, global = true, hide = true, value_name = "DIR")]
     pub package_store_root: Option<String>,
 
-    #[arg(
-        long,
-        global = true,
-        help = "Print a deterministic lowered-workspace snapshot"
-    )]
+    #[arg(long, global = true, hide = true)]
     pub dump_lowered: bool,
 
-    #[arg(
-        long,
-        global = true,
-        help = "Emit the generated Rust backend crate and stop"
-    )]
+    #[arg(long, global = true, hide = true)]
     pub emit_rust: bool,
 
-    #[arg(
-        long,
-        global = true,
-        help = "Keep the generated backend crate directory"
-    )]
+    #[arg(long, global = true, hide = true)]
     pub keep_build_dir: bool,
 
     #[command(subcommand)]
@@ -289,18 +337,18 @@ Options:
 #[cfg(test)]
 mod tests {
     use super::{
-        CompletionCommand, CompletionShellArg, EmitCommand, EmitSubcommand, FrontendCli,
-        FrontendCommand, FrontendProfile, InitCommand, NewCommand, RunCommand, UnitCommand,
-        WorkCommand, WorkSubcommand, CompleteCommand,
+        BuildCommand, CheckCommand, CompleteCommand, CompletionCommand, CompletionShellArg,
+        DirectTargetArg, EmitCommand, EmitLoweredCommand, EmitRustCommand, EmitSubcommand,
+        FetchCommand, FrontendCli, FrontendCommand, FrontendProfile, InitCommand, NewCommand,
+        RunCommand, TestCommand, UnitCommand, WorkCommand, WorkSubcommand,
     };
-    use crate::{ColorPolicy, OutputMode};
+    use crate::OutputMode;
 
     #[test]
     fn derive_root_parser_accepts_empty_invocation() {
         let cli = FrontendCli::parse_from(["fol"]);
 
         assert_eq!(cli.output, OutputMode::Human);
-        assert_eq!(cli.color, ColorPolicy::Auto);
         assert_eq!(cli.selected_profile(), FrontendProfile::Debug);
         assert_eq!(cli.command, None);
     }
@@ -309,7 +357,7 @@ mod tests {
     fn root_command_families_parse_through_derive_tree() {
         let cli = FrontendCli::parse_from(["fol", "build"]);
 
-        assert_eq!(cli.command, Some(FrontendCommand::Build(UnitCommand)));
+        assert_eq!(cli.command, Some(FrontendCommand::Build(BuildCommand::default())));
     }
 
     #[test]
@@ -319,6 +367,9 @@ mod tests {
         assert_eq!(
             cli.command,
             Some(FrontendCommand::Run(RunCommand {
+                target: DirectTargetArg::default(),
+                roots: CompileRootArgs::default(),
+                keep_build_dir: false,
                 args: vec!["--flag".to_string(), "value".to_string()],
             }))
         );
@@ -332,13 +383,13 @@ mod tests {
         assert_eq!(
             rust.command,
             Some(FrontendCommand::Emit(EmitCommand {
-                command: EmitSubcommand::Rust(UnitCommand),
+                command: EmitSubcommand::Rust(EmitRustCommand::default()),
             }))
         );
         assert_eq!(
             lowered.command,
             Some(FrontendCommand::Emit(EmitCommand {
-                command: EmitSubcommand::Lowered(UnitCommand),
+                command: EmitSubcommand::Lowered(EmitLoweredCommand::default()),
             }))
         );
     }
@@ -376,19 +427,20 @@ mod tests {
         let emit = FrontendCli::parse_from(["fol", "gen", "rust"]);
         let clean = FrontendCli::parse_from(["fol", "purge"]);
 
-        assert_eq!(build.command, Some(FrontendCommand::Build(UnitCommand)));
-        assert_eq!(check.command, Some(FrontendCommand::Check(UnitCommand)));
-        assert_eq!(fetch.command, Some(FrontendCommand::Fetch(UnitCommand)));
+        assert_eq!(build.command, Some(FrontendCommand::Build(BuildCommand::default())));
+        assert_eq!(check.command, Some(FrontendCommand::Check(CheckCommand::default())));
+        assert_eq!(fetch.command, Some(FrontendCommand::Fetch(FetchCommand::default())));
         assert_eq!(
             emit.command,
             Some(FrontendCommand::Emit(EmitCommand {
-                command: EmitSubcommand::Rust(UnitCommand),
+                command: EmitSubcommand::Rust(EmitRustCommand::default()),
             }))
         );
         assert_eq!(clean.command, Some(FrontendCommand::Clean(UnitCommand)));
         assert_eq!(
             work.command,
             Some(FrontendCommand::Work(WorkCommand {
+                path: None,
                 command: WorkSubcommand::Info(UnitCommand),
             }))
         );
@@ -399,15 +451,7 @@ mod tests {
         let cli = FrontendCli::parse_from(["fol", "--output", "json", "build"]);
 
         assert_eq!(cli.output, OutputMode::Json);
-        assert_eq!(cli.command, Some(FrontendCommand::Build(UnitCommand)));
-    }
-
-    #[test]
-    fn color_flag_parses_global_color_policy() {
-        let cli = FrontendCli::parse_from(["fol", "--color", "never", "build"]);
-
-        assert_eq!(cli.color, ColorPolicy::Never);
-        assert_eq!(cli.command, Some(FrontendCommand::Build(UnitCommand)));
+        assert_eq!(cli.command, Some(FrontendCommand::Build(BuildCommand::default())));
     }
 
     #[test]
@@ -420,22 +464,19 @@ mod tests {
     }
 
     #[test]
-    fn cli_env_values_feed_output_color_and_profile_defaults() {
+    fn cli_env_values_feed_output_and_profile_defaults() {
         unsafe {
             std::env::set_var("FOL_OUTPUT", "plain");
-            std::env::set_var("FOL_COLOR", "never");
             std::env::set_var("FOL_PROFILE", "release");
         }
 
         let cli = FrontendCli::parse_from(["fol", "build"]);
 
         assert_eq!(cli.output, OutputMode::Plain);
-        assert_eq!(cli.color, ColorPolicy::Never);
         assert_eq!(cli.selected_profile(), FrontendProfile::Release);
 
         unsafe {
             std::env::remove_var("FOL_OUTPUT");
-            std::env::remove_var("FOL_COLOR");
             std::env::remove_var("FOL_PROFILE");
         }
     }
@@ -444,27 +485,16 @@ mod tests {
     fn explicit_flags_override_env_values() {
         unsafe {
             std::env::set_var("FOL_OUTPUT", "plain");
-            std::env::set_var("FOL_COLOR", "never");
             std::env::set_var("FOL_PROFILE", "release");
         }
 
-        let cli = FrontendCli::parse_from([
-            "fol",
-            "--output",
-            "json",
-            "--color",
-            "always",
-            "--debug",
-            "build",
-        ]);
+        let cli = FrontendCli::parse_from(["fol", "--output", "json", "--debug", "build"]);
 
         assert_eq!(cli.output, OutputMode::Json);
-        assert_eq!(cli.color, ColorPolicy::Always);
         assert_eq!(cli.selected_profile(), FrontendProfile::Debug);
 
         unsafe {
             std::env::remove_var("FOL_OUTPUT");
-            std::env::remove_var("FOL_COLOR");
             std::env::remove_var("FOL_PROFILE");
         }
     }
@@ -485,10 +515,12 @@ mod tests {
         let help = FrontendCli::command().render_long_help().to_string();
 
         assert!(help.contains("--output"));
-        assert!(help.contains("--color"));
         assert!(help.contains("--profile"));
         assert!(help.contains("--debug"));
         assert!(help.contains("--release"));
+        assert!(!help.contains("--dump-lowered"));
+        assert!(!help.contains("--emit-rust"));
+        assert!(!help.contains("--keep-build-dir"));
     }
 
     #[test]
@@ -514,12 +546,14 @@ mod tests {
         assert_eq!(
             info.command,
             Some(FrontendCommand::Work(WorkCommand {
+                path: None,
                 command: WorkSubcommand::Info(UnitCommand),
             }))
         );
         assert_eq!(
             list.command,
             Some(FrontendCommand::Work(WorkCommand {
+                path: None,
                 command: WorkSubcommand::List(UnitCommand),
             }))
         );
@@ -601,6 +635,80 @@ mod tests {
                 workspace: false,
                 bin: false,
                 lib: true,
+            }))
+        );
+    }
+
+    #[test]
+    fn build_command_owns_direct_compile_flags() {
+        let cli = FrontendCli::parse_from([
+            "fol",
+            "build",
+            "--std-root",
+            "/tmp/std",
+            "--package-store-root",
+            "/tmp/pkg",
+            "--keep-build-dir",
+            "demo",
+        ]);
+
+        assert_eq!(
+            cli.command,
+            Some(FrontendCommand::Build(BuildCommand {
+                target: DirectTargetArg {
+                    input: Some("demo".to_string()),
+                },
+                roots: CompileRootArgs {
+                    std_root: Some("/tmp/std".to_string()),
+                    package_store_root: Some("/tmp/pkg".to_string()),
+                },
+                keep_build_dir: true,
+            }))
+        );
+    }
+
+    #[test]
+    fn emit_subcommands_own_their_specific_flags() {
+        let rust = FrontendCli::parse_from([
+            "fol",
+            "emit",
+            "rust",
+            "--keep-build-dir",
+            "demo",
+        ]);
+        let lowered = FrontendCli::parse_from([
+            "fol",
+            "emit",
+            "lowered",
+            "--std-root",
+            "/tmp/std",
+            "demo",
+        ]);
+
+        assert_eq!(
+            rust.command,
+            Some(FrontendCommand::Emit(EmitCommand {
+                command: EmitSubcommand::Rust(EmitRustCommand {
+                    target: DirectTargetArg {
+                        input: Some("demo".to_string()),
+                    },
+                    roots: CompileRootArgs::default(),
+                    keep_build_dir: true,
+                }),
+            }))
+        );
+        assert_eq!(
+            lowered.command,
+            Some(FrontendCommand::Emit(EmitCommand {
+                command: EmitSubcommand::Lowered(EmitLoweredCommand {
+                    target: DirectTargetArg {
+                        input: Some("demo".to_string()),
+                    },
+                    roots: CompileRootArgs {
+                        std_root: Some("/tmp/std".to_string()),
+                        package_store_root: None,
+                    },
+                }),
             }))
         );
     }

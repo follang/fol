@@ -1,4 +1,4 @@
-use fol_frontend::{ColorPolicy, FrontendCli, FrontendProfile, OutputMode, run_command_from_args_in_dir};
+use fol_frontend::{FrontendCli, FrontendProfile, OutputMode, run_command_from_args_in_dir};
 
 struct EnvGuard {
     key: &'static str,
@@ -29,35 +29,31 @@ impl Drop for EnvGuard {
 }
 
 #[test]
-fn frontend_dispatch_uses_env_defaults_for_output_and_color() {
+fn frontend_dispatch_uses_env_defaults_for_output() {
     let _output = EnvGuard::set("FOL_OUTPUT", "plain");
-    let _color = EnvGuard::set("FOL_COLOR", "never");
     let _profile = EnvGuard::set("FOL_PROFILE", "release");
 
     let (output, _) =
         run_command_from_args_in_dir(["fol", "_complete"], std::env::temp_dir()).unwrap();
 
     assert_eq!(output.config().mode, OutputMode::Plain);
-    assert_eq!(output.config().color, ColorPolicy::Never);
 
     let cli = FrontendCli::parse_from(["fol", "build"]);
     assert_eq!(cli.selected_profile(), FrontendProfile::Release);
 }
 
 #[test]
-fn frontend_dispatch_flags_override_env_defaults_for_output_color_and_profile() {
+fn frontend_dispatch_flags_override_env_defaults_for_output_and_profile() {
     let _output = EnvGuard::set("FOL_OUTPUT", "plain");
-    let _color = EnvGuard::set("FOL_COLOR", "never");
     let _profile = EnvGuard::set("FOL_PROFILE", "release");
 
     let (output, _) = run_command_from_args_in_dir(
-        ["fol", "--output", "json", "--color", "always", "_complete"],
+        ["fol", "--output", "json", "_complete"],
         std::env::temp_dir(),
     )
     .unwrap();
 
     assert_eq!(output.config().mode, OutputMode::Json);
-    assert_eq!(output.config().color, ColorPolicy::Always);
 
     let cli = FrontendCli::parse_from(["fol", "--debug", "build"]);
     assert_eq!(cli.selected_profile(), FrontendProfile::Debug);
