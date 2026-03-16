@@ -3,6 +3,10 @@
 //! `fol-frontend` will become the canonical command-line/workspace entrypoint
 //! above `fol-package` and the compiler pipeline.
 
+mod errors;
+
+pub use errors::{FrontendError, FrontendErrorKind, FrontendResult};
+
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct Frontend;
 
@@ -11,7 +15,9 @@ impl Frontend {
         Self
     }
 
-    pub fn run(&self) {}
+    pub fn run(&self) -> FrontendResult<()> {
+        Ok(())
+    }
 }
 
 pub const CRATE_NAME: &str = "fol-frontend";
@@ -20,8 +26,8 @@ pub fn crate_name() -> &'static str {
     CRATE_NAME
 }
 
-pub fn run() {
-    Frontend::new().run();
+pub fn run() -> FrontendResult<()> {
+    Frontend::new().run()
 }
 
 #[cfg(test)]
@@ -36,7 +42,7 @@ mod tests {
     #[test]
     fn public_run_shell_is_callable() {
         let frontend = Frontend::new();
-        frontend.run();
-        run();
+        assert_eq!(frontend.run(), Ok(()));
+        assert_eq!(run(), Ok(()));
     }
 }

@@ -488,8 +488,23 @@ fn frontend_crate_foundation_smoke_compiles() {
 #[test]
 fn frontend_public_run_shell_smoke_compiles() {
     let frontend = fol_frontend::Frontend::new();
-    frontend.run();
-    fol_frontend::run();
+    assert_eq!(frontend.run(), Ok(()));
+    assert_eq!(fol_frontend::run(), Ok(()));
+}
+
+#[test]
+fn frontend_error_surface_smoke_compiles() {
+    let error = fol_frontend::FrontendError::new(
+        fol_frontend::FrontendErrorKind::CommandFailed,
+        "frontend shell failed",
+    );
+
+    assert_eq!(error.kind(), fol_frontend::FrontendErrorKind::CommandFailed);
+    assert_eq!(error.message(), "frontend shell failed");
+    assert_eq!(
+        error.to_string(),
+        "FrontendCommandFailed: frontend shell failed"
+    );
 }
 
 #[test]
