@@ -67,6 +67,24 @@ impl FrontendWorkspace {
             root,
         })
     }
+
+    pub fn info_summary_lines(&self) -> Vec<String> {
+        let mut lines = vec![
+            format!("root={}", self.root.root.display()),
+            format!("members={}", self.members.len()),
+            format!("build_root={}", self.build_root.display()),
+            format!("cache_root={}", self.cache_root.display()),
+        ];
+
+        if let Some(std_root) = &self.std_root_override {
+            lines.push(format!("std_root={}", std_root.display()));
+        }
+        if let Some(package_store_root) = &self.package_store_root_override {
+            lines.push(format!("package_store_root={}", package_store_root.display()));
+        }
+
+        lines
+    }
 }
 
 pub fn enumerate_member_packages(
@@ -398,5 +416,36 @@ mod tests {
         assert_eq!(workspace.cache_root, root.join(".artifacts/cache"));
 
         fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn workspace_info_summary_renders_stable_core_fields() {
+        let workspace = FrontendWorkspace::new(WorkspaceRoot::new(PathBuf::from("/tmp/demo")));
+
+        assert_eq!(
+            workspace.info_summary_lines(),
+            vec![
+                "root=/tmp/demo".to_string(),
+                "members=0".to_string(),
+                "build_root=/tmp/demo/.fol/build".to_string(),
+                "cache_root=/tmp/demo/.fol/cache".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn workspace_info_summary_includes_override_roots_when_present() {
+        let workspace = FrontendWorkspace {
+            root: WorkspaceRoot::new(PathBuf::from("/tmp/demo")),
+            members: Vec::new(),
+            std_root_override: Some(PathBuf::from("/tmp/demo/std")),
+            package_store_root_override: Some(PathBuf::from("/tmp/demo/.fol/pkg")),
+            build_root: PathBuf::from("/tmp/demo/.fol/build"),
+            cache_root: PathBuf::from("/tmp/demo/.fol/cache"),
+        };
+
+        let lines = workspace.info_summary_lines();
+        assert!(lines.contains(&"std_root=/tmp/demo/std".to_string()));
+        assert!(lines.contains(&"package_store_root=/tmp/demo/.fol/pkg".to_string()));
     }
 }
