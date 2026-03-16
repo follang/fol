@@ -309,4 +309,56 @@ mod tests {
         assert!(rendered.contains("todo!()"));
         assert_eq!(temp_id, LoweredLocalId(1));
     }
+
+    #[test]
+    fn combined_global_and_routine_signature_snapshot_stays_stable() {
+        let mut table = LoweredTypeTable::new();
+        let int_id = table.intern_builtin(LoweredBuiltinType::Int);
+        let bool_id = table.intern_builtin(LoweredBuiltinType::Bool);
+        let str_id = table.intern_builtin(LoweredBuiltinType::Str);
+        let signature_id = table.intern(LoweredType::Routine(LoweredRoutineType {
+            params: vec![bool_id],
+            return_type: Some(int_id),
+            error_type: Some(str_id),
+        }));
+        let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
+        let global = LoweredGlobal {
+            id: LoweredGlobalId(0),
+            symbol_id: SymbolId(20),
+            source_unit_id: SourceUnitId(0),
+            name: "answer".to_string(),
+            type_id: int_id,
+            recoverable_error_type: None,
+            mutable: false,
+        };
+        let mut routine = LoweredRoutine::new(LoweredRoutineId(4), "load", LoweredBlockId(0));
+        routine.signature = Some(signature_id);
+        let param_id = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(0),
+            type_id: Some(bool_id),
+            recoverable_error_type: None,
+            name: Some("flag".to_string()),
+        });
+        let local_id = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(1),
+            type_id: Some(int_id),
+            recoverable_error_type: None,
+            name: Some("value".to_string()),
+        });
+        routine.params.push(param_id);
+
+        let snapshot = [
+            render_global_declaration(&package_identity, &global, &table).expect("global"),
+            render_routine_signature(&package_identity, &routine, &table).expect("signature"),
+            render_routine_shell(&package_identity, &routine, &table).expect("shell"),
+        ]
+        .join("\n");
+
+        assert!(snapshot.contains("g__pkg__entry__app__g0__answer"));
+        assert!(snapshot.contains("r__pkg__entry__app__r4__load"));
+        assert!(snapshot.contains("rt::FolRecover<rt::FolInt, rt::FolStr>"));
+        assert!(snapshot.contains("l__pkg__entry__app__r4__l0__flag: rt::FolBool"));
+        assert!(snapshot.contains("let mut l__pkg__entry__app__r4__l1__value: rt::FolInt = todo!();"));
+        assert_eq!(local_id, LoweredLocalId(1));
+    }
 }

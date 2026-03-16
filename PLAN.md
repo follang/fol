@@ -974,7 +974,7 @@ not full long-term compiler completion.
 #### 6.4 done
 - emit local declarations and routine frame shells
 
-#### 6.5
+#### 6.5 done
 - add snapshot tests for globals and routine signatures
 
 ## 42. Phase 7: Core Instruction Emission
