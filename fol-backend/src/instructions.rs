@@ -1190,4 +1190,143 @@ mod tests {
             "let l__pkg__entry__app__r16__l2__arr = [l__pkg__entry__app__r16__l0__a.clone(), l__pkg__entry__app__r16__l1__b.clone()];"
         );
     }
+
+    #[test]
+    fn aggregate_and_container_rendering_emits_vector_and_sequence_runtime_constructors() {
+        let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
+        let mut table = LoweredTypeTable::new();
+        let int_id = table.intern_builtin(LoweredBuiltinType::Int);
+        let vec_id = table.intern(fol_lower::LoweredType::Vector { element_type: int_id });
+        let seq_id = table.intern(fol_lower::LoweredType::Sequence { element_type: int_id });
+        let mut routine = LoweredRoutine::new(LoweredRoutineId(17), "main", LoweredBlockId(0));
+        let a = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(0),
+            type_id: Some(int_id),
+            recoverable_error_type: None,
+            name: Some("a".to_string()),
+        });
+        let b = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(1),
+            type_id: Some(int_id),
+            recoverable_error_type: None,
+            name: Some("b".to_string()),
+        });
+        let vec_result = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(2),
+            type_id: Some(vec_id),
+            recoverable_error_type: None,
+            name: Some("vec".to_string()),
+        });
+        let seq_result = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(3),
+            type_id: Some(seq_id),
+            recoverable_error_type: None,
+            name: Some("seq".to_string()),
+        });
+        let vec_instr = LoweredInstr {
+            id: LoweredInstrId(41),
+            result: Some(vec_result),
+            kind: LoweredInstrKind::ConstructLinear {
+                kind: LoweredLinearKind::Vector,
+                type_id: vec_id,
+                elements: vec![a, b],
+            },
+        };
+        let seq_instr = LoweredInstr {
+            id: LoweredInstrId(42),
+            result: Some(seq_result),
+            kind: LoweredInstrKind::ConstructLinear {
+                kind: LoweredLinearKind::Sequence,
+                type_id: seq_id,
+                elements: vec![a, b],
+            },
+        };
+
+        let vec_rendered =
+            render_core_instruction(&package_identity, &table, &routine, &vec_instr)
+                .expect("vector");
+        let seq_rendered =
+            render_core_instruction(&package_identity, &table, &routine, &seq_instr)
+                .expect("sequence");
+
+        assert_eq!(
+            vec_rendered,
+            "let l__pkg__entry__app__r17__l2__vec = rt::FolVec::from_items(vec![l__pkg__entry__app__r17__l0__a.clone(), l__pkg__entry__app__r17__l1__b.clone()]);"
+        );
+        assert_eq!(
+            seq_rendered,
+            "let l__pkg__entry__app__r17__l3__seq = rt::FolSeq::from_items(vec![l__pkg__entry__app__r17__l0__a.clone(), l__pkg__entry__app__r17__l1__b.clone()]);"
+        );
+    }
+
+    #[test]
+    fn aggregate_and_container_rendering_emits_set_and_map_runtime_constructors() {
+        let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
+        let mut table = LoweredTypeTable::new();
+        let int_id = table.intern_builtin(LoweredBuiltinType::Int);
+        let set_id = table.intern(fol_lower::LoweredType::Set {
+            member_types: vec![int_id],
+        });
+        let map_id = table.intern(fol_lower::LoweredType::Map {
+            key_type: int_id,
+            value_type: int_id,
+        });
+        let mut routine = LoweredRoutine::new(LoweredRoutineId(18), "main", LoweredBlockId(0));
+        let a = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(0),
+            type_id: Some(int_id),
+            recoverable_error_type: None,
+            name: Some("a".to_string()),
+        });
+        let b = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(1),
+            type_id: Some(int_id),
+            recoverable_error_type: None,
+            name: Some("b".to_string()),
+        });
+        let set_result = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(2),
+            type_id: Some(set_id),
+            recoverable_error_type: None,
+            name: Some("set".to_string()),
+        });
+        let map_result = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(3),
+            type_id: Some(map_id),
+            recoverable_error_type: None,
+            name: Some("map".to_string()),
+        });
+        let set_instr = LoweredInstr {
+            id: LoweredInstrId(43),
+            result: Some(set_result),
+            kind: LoweredInstrKind::ConstructSet {
+                type_id: set_id,
+                members: vec![a, b],
+            },
+        };
+        let map_instr = LoweredInstr {
+            id: LoweredInstrId(44),
+            result: Some(map_result),
+            kind: LoweredInstrKind::ConstructMap {
+                type_id: map_id,
+                entries: vec![(a, b), (b, a)],
+            },
+        };
+
+        let set_rendered =
+            render_core_instruction(&package_identity, &table, &routine, &set_instr)
+                .expect("set");
+        let map_rendered =
+            render_core_instruction(&package_identity, &table, &routine, &map_instr)
+                .expect("map");
+
+        assert_eq!(
+            set_rendered,
+            "let l__pkg__entry__app__r18__l2__set = rt::FolSet::from_items(vec![l__pkg__entry__app__r18__l0__a.clone(), l__pkg__entry__app__r18__l1__b.clone()]);"
+        );
+        assert_eq!(
+            map_rendered,
+            "let l__pkg__entry__app__r18__l3__map = rt::FolMap::from_pairs(vec![(l__pkg__entry__app__r18__l0__a.clone(), l__pkg__entry__app__r18__l1__b.clone()), (l__pkg__entry__app__r18__l1__b.clone(), l__pkg__entry__app__r18__l0__a.clone())]);"
+        );
+    }
 }

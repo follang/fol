@@ -1034,10 +1034,10 @@ not full long-term compiler completion.
 #### 9.3 done
 - emit arrays
 
-#### 9.4
+#### 9.4 done
 - emit vectors and sequences
 
-#### 9.5
+#### 9.5 done
 - emit sets and maps
 
 #### 9.6
