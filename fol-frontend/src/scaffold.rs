@@ -11,6 +11,14 @@ pub enum PackageTargetKind {
     Lib,
 }
 
+pub fn package_target_kind(bin: bool, lib: bool) -> PackageTargetKind {
+    if lib && !bin {
+        PackageTargetKind::Lib
+    } else {
+        PackageTargetKind::Bin
+    }
+}
+
 pub fn init_current_dir(root: &Path) -> FrontendResult<FrontendCommandResult> {
     init_package_root(root, PackageTargetKind::Bin)
 }
@@ -50,25 +58,30 @@ pub fn init_workspace_root(root: &Path) -> FrontendResult<FrontendCommandResult>
     ))
 }
 
-pub fn init_root(root: &Path, workspace: bool) -> FrontendResult<FrontendCommandResult> {
+pub fn init_root(
+    root: &Path,
+    workspace: bool,
+    target: PackageTargetKind,
+) -> FrontendResult<FrontendCommandResult> {
     if workspace {
         init_workspace_root(root)
     } else {
-        init_current_dir(root)
+        init_package_root(root, target)
     }
 }
 
 pub fn new_project(parent: &Path, name: &str) -> FrontendResult<FrontendCommandResult> {
-    new_project_with_mode(parent, name, false)
+    new_project_with_mode(parent, name, false, PackageTargetKind::Bin)
 }
 
 pub fn new_project_with_mode(
     parent: &Path,
     name: &str,
     workspace: bool,
+    target: PackageTargetKind,
 ) -> FrontendResult<FrontendCommandResult> {
     let root = parent.join(name);
-    init_root(&root, workspace).map(|result| FrontendCommandResult {
+    init_root(&root, workspace, target).map(|result| FrontendCommandResult {
         command: "new".to_string(),
         summary: format!("created project '{}'", name),
         artifacts: result.artifacts,
@@ -79,7 +92,7 @@ pub fn new_project_with_mode(
 mod tests {
     use super::{
         init_current_dir, init_package_root, init_root, init_workspace_root, new_project,
-        new_project_with_mode, PackageTargetKind,
+        new_project_with_mode, package_target_kind, PackageTargetKind,
     };
     use crate::FrontendArtifactKind;
     use std::{fs, path::PathBuf};
@@ -170,13 +183,38 @@ mod tests {
         fs::create_dir_all(&init_root_dir).unwrap();
         fs::create_dir_all(&new_parent).unwrap();
 
-        let init_result = init_root(&init_root_dir, true).unwrap();
-        let new_result = new_project_with_mode(&new_parent, "demo", true).unwrap();
+        let init_result = init_root(&init_root_dir, true, PackageTargetKind::Bin).unwrap();
+        let new_result =
+            new_project_with_mode(&new_parent, "demo", true, PackageTargetKind::Bin).unwrap();
 
         assert_eq!(init_result.artifacts[0].kind, FrontendArtifactKind::WorkspaceRoot);
         assert_eq!(new_result.artifacts[0].kind, FrontendArtifactKind::WorkspaceRoot);
         assert!(init_root_dir.join("fol.work.yaml").is_file());
         assert!(new_parent.join("demo").join("fol.work.yaml").is_file());
+
+        fs::remove_dir_all(init_root_dir).ok();
+        fs::remove_dir_all(new_parent).ok();
+    }
+
+    #[test]
+    fn package_target_selection_prefers_library_when_requested() {
+        assert_eq!(package_target_kind(false, false), PackageTargetKind::Bin);
+        assert_eq!(package_target_kind(true, false), PackageTargetKind::Bin);
+        assert_eq!(package_target_kind(false, true), PackageTargetKind::Lib);
+    }
+
+    #[test]
+    fn package_mode_switches_init_and_new_into_library_roots() {
+        let init_root_dir = std::env::temp_dir().join(format!("fol_frontend_init_lib_{}", std::process::id()));
+        let new_parent = std::env::temp_dir().join(format!("fol_frontend_new_lib_{}", std::process::id()));
+        fs::create_dir_all(&init_root_dir).unwrap();
+        fs::create_dir_all(&new_parent).unwrap();
+
+        init_root(&init_root_dir, false, PackageTargetKind::Lib).unwrap();
+        new_project_with_mode(&new_parent, "demo", false, PackageTargetKind::Lib).unwrap();
+
+        assert!(init_root_dir.join("src/lib.fol").is_file());
+        assert!(new_parent.join("demo").join("src/lib.fol").is_file());
 
         fs::remove_dir_all(init_root_dir).ok();
         fs::remove_dir_all(new_parent).ok();

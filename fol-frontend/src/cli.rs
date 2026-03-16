@@ -285,4 +285,24 @@ mod tests {
             }))
         );
     }
+
+    #[test]
+    fn lib_flags_parse_for_init_and_new_commands() {
+        let init = FrontendCli::parse_from(["fol", "init", "--lib"]);
+        let new = FrontendCli::parse_from(["fol", "new", "demo", "--lib"]);
+
+        assert_eq!(
+            init.command,
+            Some(FrontendCommand::Init(InitCommand { workspace: false, bin: false, lib: true }))
+        );
+        assert_eq!(
+            new.command,
+            Some(FrontendCommand::New(NewCommand {
+                name: "demo".to_string(),
+                workspace: false,
+                bin: false,
+                lib: true,
+            }))
+        );
+    }
 }
