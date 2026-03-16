@@ -610,6 +610,15 @@ fn frontend_missing_root_diagnostic_surface_smoke_compiles() {
 }
 
 #[test]
+fn frontend_init_shell_surface_smoke_compiles() {
+    let root = std::path::PathBuf::from("/tmp/demo");
+    let result = fol_frontend::init_current_dir(&root).unwrap();
+
+    assert_eq!(result.command, "init");
+    assert_eq!(result.artifacts[0].kind, fol_frontend::FrontendArtifactKind::PackageRoot);
+}
+
+#[test]
 fn frontend_output_helper_surface_smoke_compiles() {
     let output = fol_frontend::FrontendOutput::new(fol_frontend::FrontendOutputConfig::default());
 

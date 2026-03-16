@@ -21,7 +21,7 @@ pub enum FrontendProfile {
 #[derive(Debug, Clone, Subcommand, PartialEq, Eq)]
 pub enum FrontendCommand {
     #[command(visible_aliases = ["i"])]
-    Init(UnitCommand),
+    Init(InitCommand),
     #[command(visible_aliases = ["n"])]
     New(UnitCommand),
     #[command(visible_aliases = ["w", "ws", "workspace"])]
@@ -45,6 +45,9 @@ pub enum FrontendCommand {
 
 #[derive(Debug, Clone, Args, PartialEq, Eq, Default)]
 pub struct UnitCommand;
+
+#[derive(Debug, Clone, Args, PartialEq, Eq, Default)]
+pub struct InitCommand;
 
 #[derive(Debug, Clone, Parser, PartialEq, Eq)]
 #[command(
