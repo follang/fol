@@ -14,7 +14,7 @@ mod ui;
 pub use cli::{FrontendCli, FrontendCommand, UnitCommand};
 pub use config::FrontendConfig;
 pub use errors::{FrontendError, FrontendErrorKind, FrontendResult};
-pub use discovery::{WorkspaceRoot, WORKSPACE_FILE_NAME};
+pub use discovery::{PackageRoot, WorkspaceRoot, PACKAGE_FILE_NAME, WORKSPACE_FILE_NAME};
 pub use output::{ColorPolicy, FrontendOutputConfig, OutputMode};
 pub use result::{FrontendArtifactKind, FrontendArtifactSummary, FrontendCommandResult};
 pub use ui::FrontendOutput;

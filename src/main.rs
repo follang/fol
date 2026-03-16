@@ -566,6 +566,14 @@ fn frontend_workspace_root_surface_smoke_compiles() {
 }
 
 #[test]
+fn frontend_package_root_surface_smoke_compiles() {
+    let root = fol_frontend::PackageRoot::new(std::path::PathBuf::from("/tmp/demo"));
+
+    assert_eq!(fol_frontend::PACKAGE_FILE_NAME, "package.yaml");
+    assert_eq!(root.manifest_file, std::path::PathBuf::from("/tmp/demo/package.yaml"));
+}
+
+#[test]
 fn frontend_output_helper_surface_smoke_compiles() {
     let output = fol_frontend::FrontendOutput::new(fol_frontend::FrontendOutputConfig::default());
 
