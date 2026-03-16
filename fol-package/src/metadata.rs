@@ -547,4 +547,42 @@ mod tests {
         fs::remove_dir_all(&temp_root)
             .expect("Temporary metadata fixture root should be removable after the test");
     }
+
+    #[test]
+    fn yaml_metadata_parser_supports_source_qualified_local_pkg_and_git_dependencies() {
+        let temp_root = unique_temp_root("deps_sources");
+        fs::create_dir_all(&temp_root).expect("Should create temporary metadata fixture root");
+        let metadata_path = temp_root.join("package.yaml");
+        fs::write(
+            &metadata_path,
+            concat!(
+                "name: app\n",
+                "version: 0.1.0\n",
+                "dep.shared: loc:../shared\n",
+                "dep.core: pkg:core/tools\n",
+                "dep.logtiny: git:https://github.com/bresilla/logtiny.git\n",
+            ),
+        )
+        .expect("Should write the source-qualified dependency metadata fixture");
+
+        let metadata = parse_package_metadata(&metadata_path)
+            .expect("source-qualified dependency metadata should parse");
+
+        assert_eq!(metadata.dependencies.len(), 3);
+        assert_eq!(metadata.dependencies[0].source_kind, PackageDependencySourceKind::Local);
+        assert_eq!(metadata.dependencies[0].target, "../shared");
+        assert_eq!(
+            metadata.dependencies[1].source_kind,
+            PackageDependencySourceKind::PackageStore
+        );
+        assert_eq!(metadata.dependencies[1].target, "core/tools");
+        assert_eq!(metadata.dependencies[2].source_kind, PackageDependencySourceKind::Git);
+        assert_eq!(
+            metadata.dependencies[2].target,
+            "https://github.com/bresilla/logtiny.git"
+        );
+
+        fs::remove_dir_all(&temp_root)
+            .expect("Temporary metadata fixture root should be removable after the test");
+    }
 }
