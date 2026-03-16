@@ -33,9 +33,25 @@ pub fn init_workspace_root(root: &Path) -> FrontendResult<FrontendCommandResult>
     ))
 }
 
+pub fn init_root(root: &Path, workspace: bool) -> FrontendResult<FrontendCommandResult> {
+    if workspace {
+        init_workspace_root(root)
+    } else {
+        init_current_dir(root)
+    }
+}
+
 pub fn new_project(parent: &Path, name: &str) -> FrontendResult<FrontendCommandResult> {
+    new_project_with_mode(parent, name, false)
+}
+
+pub fn new_project_with_mode(
+    parent: &Path,
+    name: &str,
+    workspace: bool,
+) -> FrontendResult<FrontendCommandResult> {
     let root = parent.join(name);
-    init_current_dir(&root).map(|result| FrontendCommandResult {
+    init_root(&root, workspace).map(|result| FrontendCommandResult {
         command: "new".to_string(),
         summary: format!("created project '{}'", name),
         artifacts: result.artifacts,
@@ -44,7 +60,7 @@ pub fn new_project(parent: &Path, name: &str) -> FrontendResult<FrontendCommandR
 
 #[cfg(test)]
 mod tests {
-    use super::{init_current_dir, init_workspace_root, new_project};
+    use super::{init_current_dir, init_root, init_workspace_root, new_project, new_project_with_mode};
     use crate::FrontendArtifactKind;
     use std::{fs, path::PathBuf};
 
@@ -101,5 +117,24 @@ mod tests {
         assert!(root.join("package.yaml").is_file());
 
         fs::remove_dir_all(parent).ok();
+    }
+
+    #[test]
+    fn workspace_mode_switches_init_and_new_into_workspace_roots() {
+        let init_root_dir = std::env::temp_dir().join(format!("fol_frontend_init_mode_{}", std::process::id()));
+        let new_parent = std::env::temp_dir().join(format!("fol_frontend_new_mode_{}", std::process::id()));
+        fs::create_dir_all(&init_root_dir).unwrap();
+        fs::create_dir_all(&new_parent).unwrap();
+
+        let init_result = init_root(&init_root_dir, true).unwrap();
+        let new_result = new_project_with_mode(&new_parent, "demo", true).unwrap();
+
+        assert_eq!(init_result.artifacts[0].kind, FrontendArtifactKind::WorkspaceRoot);
+        assert_eq!(new_result.artifacts[0].kind, FrontendArtifactKind::WorkspaceRoot);
+        assert!(init_root_dir.join("fol.work.yaml").is_file());
+        assert!(new_parent.join("demo").join("fol.work.yaml").is_file());
+
+        fs::remove_dir_all(init_root_dir).ok();
+        fs::remove_dir_all(new_parent).ok();
     }
 }

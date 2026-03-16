@@ -47,11 +47,17 @@ pub enum FrontendCommand {
 pub struct UnitCommand;
 
 #[derive(Debug, Clone, Args, PartialEq, Eq, Default)]
-pub struct InitCommand;
+pub struct InitCommand {
+    #[arg(long)]
+    pub workspace: bool,
+}
 
 #[derive(Debug, Clone, Args, PartialEq, Eq)]
 pub struct NewCommand {
     pub name: String,
+
+    #[arg(long)]
+    pub workspace: bool,
 }
 
 #[derive(Debug, Clone, Parser, PartialEq, Eq)]
@@ -120,7 +126,7 @@ Options:
 
 #[cfg(test)]
 mod tests {
-    use super::{FrontendCli, FrontendCommand, FrontendProfile, UnitCommand};
+    use super::{FrontendCli, FrontendCommand, FrontendProfile, InitCommand, NewCommand, UnitCommand};
     use crate::{ColorPolicy, OutputMode};
 
     #[test]
@@ -206,5 +212,23 @@ mod tests {
         assert!(help.contains("verify"));
         assert!(help.contains("completion"));
         assert!(help.contains("completions"));
+    }
+
+    #[test]
+    fn workspace_flags_parse_for_init_and_new_commands() {
+        let init = FrontendCli::parse_from(["fol", "init", "--workspace"]);
+        let new = FrontendCli::parse_from(["fol", "new", "demo", "--workspace"]);
+
+        assert_eq!(
+            init.command,
+            Some(FrontendCommand::Init(InitCommand { workspace: true }))
+        );
+        assert_eq!(
+            new.command,
+            Some(FrontendCommand::New(NewCommand {
+                name: "demo".to_string(),
+                workspace: true,
+            }))
+        );
     }
 }
