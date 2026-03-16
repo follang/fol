@@ -176,4 +176,27 @@ mod tests {
         assert!(help.contains("Workspace Commands:"));
         assert!(help.contains("Shell Commands:"));
     }
+
+    #[test]
+    fn help_output_keeps_global_mode_flags_visible() {
+        let help = FrontendCli::command().render_long_help().to_string();
+
+        assert!(help.contains("--output"));
+        assert!(help.contains("--color"));
+        assert!(help.contains("--profile"));
+        assert!(help.contains("--debug"));
+        assert!(help.contains("--release"));
+    }
+
+    #[test]
+    fn help_output_mentions_visible_aliases() {
+        let help = FrontendCli::command().render_long_help().to_string();
+
+        assert!(help.contains("build"));
+        assert!(help.contains("make"));
+        assert!(help.contains("check"));
+        assert!(help.contains("verify"));
+        assert!(help.contains("completion"));
+        assert!(help.contains("completions"));
+    }
 }
