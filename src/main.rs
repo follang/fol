@@ -20,6 +20,30 @@ use fol_typecheck::Typechecker;
 use std::path::Path;
 
 fn main() {
+    let raw_args = std::env::args_os().collect::<Vec<_>>();
+    if should_use_frontend(&raw_args) {
+        match fol_frontend::run_command_from_args(raw_args.clone()) {
+            Ok((output, result)) => {
+                match output.render_command_summary(&result) {
+                    Ok(rendered) => println!("{rendered}"),
+                    Err(error) => {
+                        eprintln!("FrontendInternal: {error}");
+                        std::process::exit(1);
+                    }
+                }
+            }
+            Err(error) => {
+                let output = fol_frontend::FrontendOutput::new(fol_frontend::FrontendOutputConfig::default());
+                match output.render_error(&error) {
+                    Ok(rendered) => eprintln!("{rendered}"),
+                    Err(render_error) => eprintln!("FrontendInternal: {render_error}"),
+                }
+                std::process::exit(1);
+            }
+        }
+        return;
+    }
+
     let matches = Command::new("fol")
         .version(env!("CARGO_PKG_VERSION"))
         .about("FOL Programming Language Compiler")
@@ -150,6 +174,49 @@ fn main() {
     if diagnostics.has_errors() {
         std::process::exit(1);
     }
+}
+
+fn should_use_frontend(args: &[std::ffi::OsString]) -> bool {
+    let Some(first) = args.get(1).and_then(|arg| arg.to_str()) else {
+        return false;
+    };
+
+    matches!(
+        first,
+        "init"
+            | "i"
+            | "bootstrap"
+            | "new"
+            | "n"
+            | "create"
+            | "work"
+            | "w"
+            | "ws"
+            | "workspace"
+            | "fetch"
+            | "f"
+            | "sync"
+            | "build"
+            | "b"
+            | "make"
+            | "run"
+            | "r"
+            | "test"
+            | "t"
+            | "check"
+            | "c"
+            | "verify"
+            | "emit"
+            | "e"
+            | "gen"
+            | "clean"
+            | "cl"
+            | "purge"
+            | "completion"
+            | "completions"
+            | "comp"
+            | "_complete"
+    ) || matches!(first, "--output" | "--color" | "--profile" | "--debug" | "--release")
 }
 
 fn compile_file(
@@ -487,9 +554,10 @@ fn frontend_crate_foundation_smoke_compiles() {
 
 #[test]
 fn frontend_public_run_shell_smoke_compiles() {
-    let frontend = fol_frontend::Frontend::new();
-    assert_eq!(frontend.run(), Ok(()));
-    assert_eq!(fol_frontend::run(), Ok(()));
+    let _frontend = fol_frontend::Frontend::new();
+    let _run_ptr: fn() -> fol_frontend::FrontendResult<()> = fol_frontend::run;
+    let (_, result) = fol_frontend::run_command_from_args(["fol", "_complete"]).unwrap();
+    assert_eq!(result.command, "_complete");
 }
 
 #[test]

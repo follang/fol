@@ -1,4 +1,7 @@
-use crate::{FrontendError, FrontendErrorKind, FrontendResult, PackageRoot, WorkspaceRoot};
+use crate::{
+    DiscoveredRoot, FrontendConfig, FrontendError, FrontendErrorKind, FrontendResult, PackageRoot,
+    WorkspaceRoot,
+};
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -84,6 +87,49 @@ impl FrontendWorkspace {
         }
 
         lines
+    }
+}
+
+pub fn load_frontend_workspace(
+    discovered: &DiscoveredRoot,
+    config: &FrontendConfig,
+) -> FrontendResult<FrontendWorkspace> {
+    match discovered {
+        DiscoveredRoot::Workspace(root) => {
+            let workspace_config = load_workspace_config(root)?;
+            let mut workspace = FrontendWorkspace::from_config(root.clone(), &workspace_config)?;
+            if workspace.std_root_override.is_none() {
+                workspace.std_root_override = config.std_root_override.clone();
+            }
+            if workspace.package_store_root_override.is_none() {
+                workspace.package_store_root_override = config.package_store_root_override.clone();
+            }
+            if workspace.build_root == default_build_root(&root.root) {
+                if let Some(build_root) = &config.build_root_override {
+                    workspace.build_root = build_root.clone();
+                }
+            }
+            if workspace.cache_root == default_cache_root(&root.root) {
+                if let Some(cache_root) = &config.cache_root_override {
+                    workspace.cache_root = cache_root.clone();
+                }
+            }
+            Ok(workspace)
+        }
+        DiscoveredRoot::Package(root) => Ok(FrontendWorkspace {
+            root: WorkspaceRoot::new(root.root.clone()),
+            members: vec![root.clone()],
+            std_root_override: config.std_root_override.clone(),
+            package_store_root_override: config.package_store_root_override.clone(),
+            build_root: config
+                .build_root_override
+                .clone()
+                .unwrap_or_else(|| default_build_root(&root.root)),
+            cache_root: config
+                .cache_root_override
+                .clone()
+                .unwrap_or_else(|| default_cache_root(&root.root)),
+        }),
     }
 }
 
@@ -226,8 +272,11 @@ fn strip_quotes(raw: &str) -> &str {
 
 #[cfg(test)]
 mod tests {
-    use super::{enumerate_member_packages, load_workspace_config, FrontendWorkspace, FrontendWorkspaceConfig};
-    use crate::WorkspaceRoot;
+    use super::{
+        enumerate_member_packages, load_frontend_workspace, load_workspace_config, FrontendWorkspace,
+        FrontendWorkspaceConfig,
+    };
+    use crate::{DiscoveredRoot, FrontendConfig, PackageRoot, WorkspaceRoot};
     use std::{fs, path::PathBuf};
 
     #[test]
@@ -447,5 +496,64 @@ mod tests {
         let lines = workspace.info_summary_lines();
         assert!(lines.contains(&"std_root=/tmp/demo/std".to_string()));
         assert!(lines.contains(&"package_store_root=/tmp/demo/.fol/pkg".to_string()));
+    }
+
+    #[test]
+    fn loading_workspace_prefers_workspace_config_roots_over_frontend_env_roots() {
+        let root = std::env::temp_dir().join(format!("fol_frontend_workspace_precedence_{}", std::process::id()));
+        let app = root.join("app");
+        fs::create_dir_all(&app).unwrap();
+        fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
+        fs::write(
+            root.join("fol.work.yaml"),
+            "members:\n  - app\nstd_root: std\npackage_store_root: .fol/pkg\nbuild_root: .ws/build\ncache_root: .ws/cache\n",
+        )
+        .unwrap();
+
+        let workspace = load_frontend_workspace(
+            &DiscoveredRoot::Workspace(WorkspaceRoot::new(root.clone())),
+            &FrontendConfig {
+                std_root_override: Some(root.join("env-std")),
+                package_store_root_override: Some(root.join("env-pkg")),
+                build_root_override: Some(root.join("env-build")),
+                cache_root_override: Some(root.join("env-cache")),
+                ..FrontendConfig::default()
+            },
+        )
+        .unwrap();
+
+        assert_eq!(workspace.std_root_override, Some(root.join("std")));
+        assert_eq!(workspace.package_store_root_override, Some(root.join(".fol/pkg")));
+        assert_eq!(workspace.build_root, root.join(".ws/build"));
+        assert_eq!(workspace.cache_root, root.join(".ws/cache"));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn loading_single_package_workspace_applies_frontend_root_overrides() {
+        let root = std::env::temp_dir().join(format!("fol_frontend_package_load_{}", std::process::id()));
+        fs::create_dir_all(&root).unwrap();
+        fs::write(root.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
+
+        let workspace = load_frontend_workspace(
+            &DiscoveredRoot::Package(PackageRoot::new(root.clone())),
+            &FrontendConfig {
+                std_root_override: Some(root.join("std")),
+                package_store_root_override: Some(root.join(".fol/pkg")),
+                build_root_override: Some(root.join(".artifacts/build")),
+                cache_root_override: Some(root.join(".artifacts/cache")),
+                ..FrontendConfig::default()
+            },
+        )
+        .unwrap();
+
+        assert_eq!(workspace.members.len(), 1);
+        assert_eq!(workspace.std_root_override, Some(root.join("std")));
+        assert_eq!(workspace.package_store_root_override, Some(root.join(".fol/pkg")));
+        assert_eq!(workspace.build_root, root.join(".artifacts/build"));
+        assert_eq!(workspace.cache_root, root.join(".artifacts/cache"));
+
+        fs::remove_dir_all(root).ok();
     }
 }

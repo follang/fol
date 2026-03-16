@@ -47,7 +47,7 @@ pub enum FrontendCommand {
     #[command(visible_aliases = ["b", "make"])]
     Build(UnitCommand),
     #[command(visible_aliases = ["r"])]
-    Run(UnitCommand),
+    Run(RunCommand),
     #[command(visible_aliases = ["t"])]
     Test(UnitCommand),
     #[command(visible_aliases = ["c", "verify"])]
@@ -64,6 +64,12 @@ pub enum FrontendCommand {
 
 #[derive(Debug, Clone, Args, PartialEq, Eq, Default)]
 pub struct UnitCommand;
+
+#[derive(Debug, Clone, Args, PartialEq, Eq, Default)]
+pub struct RunCommand {
+    #[arg(last = true, trailing_var_arg = true)]
+    pub args: Vec<String>,
+}
 
 #[derive(Debug, Clone, Args, PartialEq, Eq)]
 pub struct WorkCommand {
@@ -163,6 +169,14 @@ impl FrontendCli {
         <Self as Parser>::parse_from(args)
     }
 
+    pub fn try_parse_from<I, T>(args: I) -> Result<Self, clap::Error>
+    where
+        I: IntoIterator<Item = T>,
+        T: Into<std::ffi::OsString> + Clone,
+    {
+        <Self as Parser>::try_parse_from(args)
+    }
+
     pub fn command() -> clap::Command {
         <Self as CommandFactory>::command().help_template(
             "\
@@ -195,8 +209,8 @@ Options:
 mod tests {
     use super::{
         CompletionCommand, CompletionShellArg, EmitCommand, EmitSubcommand, FrontendCli,
-        FrontendCommand, FrontendProfile, InitCommand, NewCommand, UnitCommand, WorkCommand,
-        WorkSubcommand, CompleteCommand,
+        FrontendCommand, FrontendProfile, InitCommand, NewCommand, RunCommand, UnitCommand,
+        WorkCommand, WorkSubcommand, CompleteCommand,
     };
     use crate::{ColorPolicy, OutputMode};
 
@@ -215,6 +229,18 @@ mod tests {
         let cli = FrontendCli::parse_from(["fol", "build"]);
 
         assert_eq!(cli.command, Some(FrontendCommand::Build(UnitCommand)));
+    }
+
+    #[test]
+    fn run_command_preserves_passthrough_args() {
+        let cli = FrontendCli::parse_from(["fol", "run", "--", "--flag", "value"]);
+
+        assert_eq!(
+            cli.command,
+            Some(FrontendCommand::Run(RunCommand {
+                args: vec!["--flag".to_string(), "value".to_string()],
+            }))
+        );
     }
 
     #[test]

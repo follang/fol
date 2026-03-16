@@ -20,7 +20,8 @@ mod workspace;
 
 pub use cli::{
     CompleteCommand, CompletionCommand, CompletionShellArg, EmitCommand, EmitSubcommand,
-    FrontendCli, FrontendCommand, FrontendProfile, InitCommand, NewCommand, UnitCommand,
+    FrontendCli, FrontendCommand, FrontendProfile, InitCommand, NewCommand, RunCommand,
+    UnitCommand,
 };
 pub use clean::{clean_workspace, clean_workspace_with_config};
 pub use config::FrontendConfig;
@@ -38,8 +39,8 @@ pub use completion::{
 };
 pub use errors::{FrontendError, FrontendErrorKind, FrontendResult};
 pub use fetch::{
-    fetch_workspace, prepare_workspace_packages, select_package_store_root, FrontendPackagePreparation,
-    FrontendPreparedPackage,
+    fetch_workspace, fetch_workspace_with_config, prepare_workspace_packages,
+    select_package_store_root, FrontendPackagePreparation, FrontendPreparedPackage,
 };
 pub use discovery::{
     discover_root_from_explicit_path, discover_root_upward, require_discovered_root,
@@ -54,7 +55,8 @@ pub use scaffold::{
 pub use ui::FrontendOutput;
 pub use work::{work_info, work_list};
 pub use workspace::{
-    enumerate_member_packages, load_workspace_config, FrontendWorkspace, FrontendWorkspaceConfig,
+    enumerate_member_packages, load_frontend_workspace, load_workspace_config, FrontendWorkspace,
+    FrontendWorkspaceConfig,
 };
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -66,6 +68,14 @@ impl Frontend {
     }
 
     pub fn run(&self) -> FrontendResult<()> {
+        let args = std::env::args_os().collect::<Vec<_>>();
+        let (output, result) = run_command_from_args(args)?;
+        println!(
+            "{}",
+            output
+                .render_command_summary(&result)
+                .map_err(|error| FrontendError::new(FrontendErrorKind::Internal, error.to_string()))?
+        );
         Ok(())
     }
 }
@@ -80,6 +90,108 @@ pub fn run() -> FrontendResult<()> {
     Frontend::new().run()
 }
 
+pub fn run_command_from_args<I, T>(
+    args: I,
+) -> FrontendResult<(FrontendOutput, FrontendCommandResult)>
+where
+    I: IntoIterator<Item = T>,
+    T: Into<std::ffi::OsString> + Clone,
+{
+    let cli = FrontendCli::try_parse_from(args).map_err(|error| {
+        FrontendError::new(FrontendErrorKind::InvalidInput, error.to_string())
+            .with_note("run `fol --help` to inspect the available workflow commands")
+    })?;
+    let config = frontend_config_from_cli(&cli);
+    let output = FrontendOutput::new(config.output);
+    let result = dispatch_cli(&cli, &config)?;
+    Ok((output, result))
+}
+
+fn frontend_config_from_cli(cli: &FrontendCli) -> FrontendConfig {
+    let mut config = FrontendConfig::from_env();
+    config.output.mode = cli.output;
+    config.output.color = cli.color;
+    config.profile_override = Some(cli.selected_profile());
+    config.keep_build_dir = false;
+    config
+}
+
+fn dispatch_cli(cli: &FrontendCli, config: &FrontendConfig) -> FrontendResult<FrontendCommandResult> {
+    match cli.command.as_ref() {
+        None => Err(FrontendError::new(
+            FrontendErrorKind::InvalidInput,
+            "no frontend command was provided",
+        )
+        .with_note("run `fol --help` to inspect the frontend workflow")),
+        Some(FrontendCommand::Init(command)) => init_root(
+            &config.working_directory,
+            command.workspace,
+            package_target_kind(command.bin, command.lib),
+        ),
+        Some(FrontendCommand::New(command)) => new_project_with_mode(
+            &config.working_directory,
+            &command.name,
+            command.workspace,
+            package_target_kind(command.bin, command.lib),
+        ),
+        Some(FrontendCommand::Completion(command)) => {
+            completion_command(parse_completion_shell(command.shell))
+        }
+        Some(FrontendCommand::Complete(command)) => {
+            internal_complete_command_with_tokens(&command.tokens)
+        }
+        Some(command) => {
+            let discovered = require_discovered_root(&config.working_directory)?;
+            let workspace = load_frontend_workspace(&discovered, config)?;
+            dispatch_workspace_command(command, &workspace, config)
+        }
+    }
+}
+
+fn dispatch_workspace_command(
+    command: &FrontendCommand,
+    workspace: &FrontendWorkspace,
+    config: &FrontendConfig,
+) -> FrontendResult<FrontendCommandResult> {
+    match command {
+        FrontendCommand::Work(command) => Ok(match command.command {
+            cli::WorkSubcommand::Info(_) => work_info(workspace),
+            cli::WorkSubcommand::List(_) => work_list(workspace),
+        }),
+        FrontendCommand::Fetch(_) => fetch_workspace_with_config(workspace, config),
+        FrontendCommand::Build(_) => build_workspace_for_profile_with_config(
+            workspace,
+            config,
+            config.profile_override.unwrap_or(FrontendProfile::Debug),
+        ),
+        FrontendCommand::Check(_) => check_workspace_with_config(workspace, config),
+        FrontendCommand::Run(command) => {
+            run_workspace_with_args_and_config(workspace, config, &command.args)
+        }
+        FrontendCommand::Test(_) => test_workspace_with_config(workspace, config),
+        FrontendCommand::Emit(command) => match command.command {
+            EmitSubcommand::Rust(_) => emit_rust_with_config(workspace, config),
+            EmitSubcommand::Lowered(_) => emit_lowered_with_config(workspace, config),
+        },
+        FrontendCommand::Clean(_) => clean_workspace_with_config(workspace, config),
+        FrontendCommand::Completion(_)
+        | FrontendCommand::Complete(_)
+        | FrontendCommand::Init(_)
+        | FrontendCommand::New(_) => Err(FrontendError::new(
+            FrontendErrorKind::Internal,
+            "unexpected command reached workspace dispatcher",
+        )),
+    }
+}
+
+fn parse_completion_shell(shell: CompletionShellArg) -> CompletionShell {
+    match shell {
+        CompletionShellArg::Bash => CompletionShell::Bash,
+        CompletionShellArg::Zsh => CompletionShell::Zsh,
+        CompletionShellArg::Fish => CompletionShell::Fish,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -92,7 +204,27 @@ mod tests {
     #[test]
     fn public_run_shell_is_callable() {
         let frontend = Frontend::new();
-        assert_eq!(frontend.run(), Ok(()));
-        assert_eq!(run(), Ok(()));
+        let _ = frontend;
+        let _run_ptr: fn() -> FrontendResult<()> = run;
+    }
+
+    #[test]
+    fn run_command_from_args_dispatches_buildable_frontend_commands() {
+        let root = std::env::temp_dir().join(format!("fol_frontend_dispatch_{}", std::process::id()));
+        let src = root.join("src");
+        std::fs::create_dir_all(&src).unwrap();
+        std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
+        std::fs::write(root.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
+        std::fs::write(src.join("main.fol"), "fun[] main(): int = {\n    return 0\n}\n").unwrap();
+
+        let previous = std::env::current_dir().unwrap();
+        std::env::set_current_dir(&root).unwrap();
+        let (_, result) = run_command_from_args(["fol", "check"]).unwrap();
+        std::env::set_current_dir(previous).unwrap();
+
+        assert_eq!(result.command, "check");
+        assert!(result.summary.contains("checked 1 workspace package(s)"));
+
+        std::fs::remove_dir_all(root).ok();
     }
 }
