@@ -48,6 +48,11 @@ pub fn build_workspace_for_profile_with_config(
 ) -> FrontendResult<FrontendCommandResult> {
     let mut result = FrontendCommandResult::new("build", "built 0 workspace package(s)");
     let output_root = profile_build_root(workspace, profile);
+    result.artifacts.push(FrontendArtifactSummary::new(
+        FrontendArtifactKind::BuildRoot,
+        format!("{:?}", profile).to_lowercase(),
+        Some(output_root.clone()),
+    ));
 
     for member in &workspace.members {
         let lowered = compile_member_workspace(workspace, config, &member.root)?;
@@ -135,17 +140,22 @@ pub fn run_workspace_with_args_and_config(
     args: &[String],
 ) -> FrontendResult<FrontendCommandResult> {
     let built = build_workspace_with_config(workspace, config)?;
-    if built.artifacts.len() != 1 {
+    let binaries = built
+        .artifacts
+        .iter()
+        .filter(|artifact| artifact.kind == FrontendArtifactKind::Binary)
+        .collect::<Vec<_>>();
+    if binaries.len() != 1 {
         return Err(FrontendError::new(
             FrontendErrorKind::InvalidInput,
             format!(
                 "run command requires exactly one runnable workspace package, found {}",
-                built.artifacts.len()
+                binaries.len()
             ),
         ));
     }
 
-    let binary = built.artifacts[0]
+    let binary = binaries[0]
         .path
         .as_ref()
         .cloned()
@@ -215,6 +225,11 @@ pub fn emit_rust_with_config(
     let output_root = workspace.build_root.join("emit").join("rust");
     let mut result = FrontendCommandResult::new("emit rust", "emitted 0 Rust crate(s)");
     let mut emitted = 0usize;
+    result.artifacts.push(FrontendArtifactSummary::new(
+        FrontendArtifactKind::BuildRoot,
+        "emit-rust-root",
+        Some(output_root.clone()),
+    ));
 
     for member in &workspace.members {
         let lowered = compile_member_workspace(workspace, config, &member.root)?;
@@ -269,6 +284,11 @@ pub fn emit_lowered_with_config(
 
     let mut result = FrontendCommandResult::new("emit lowered", "emitted 0 lowered snapshot(s)");
     let mut emitted = 0usize;
+    result.artifacts.push(FrontendArtifactSummary::new(
+        FrontendArtifactKind::BuildRoot,
+        "emit-lowered-root",
+        Some(output_root.clone()),
+    ));
 
     for member in &workspace.members {
         let lowered = compile_member_workspace(workspace, config, &member.root)?;

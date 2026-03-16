@@ -4,6 +4,8 @@ use std::path::PathBuf;
 pub enum FrontendArtifactKind {
     WorkspaceRoot,
     PackageRoot,
+    BuildRoot,
+    CacheRoot,
     Binary,
     EmittedRust,
     LoweredSnapshot,
@@ -14,6 +16,8 @@ impl FrontendArtifactKind {
         match self {
             Self::WorkspaceRoot => "workspace-root",
             Self::PackageRoot => "package-root",
+            Self::BuildRoot => "build-root",
+            Self::CacheRoot => "cache-root",
             Self::Binary => "binary",
             Self::EmittedRust => "emitted-rust",
             Self::LoweredSnapshot => "lowered-snapshot",
