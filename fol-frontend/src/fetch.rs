@@ -34,6 +34,13 @@ struct FetchResolution {
     package_store_root: PathBuf,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct LockRevisionChange {
+    alias: String,
+    previous_revision: String,
+    next_revision: String,
+}
+
 pub fn select_package_store_root(
     config: &FrontendConfig,
     workspace: &FrontendWorkspace,
@@ -159,12 +166,23 @@ pub fn update_workspace_with_config(
     workspace: &FrontendWorkspace,
     config: &FrontendConfig,
 ) -> FrontendResult<FrontendCommandResult> {
+    let previous_lockfile = if lockfile_path(workspace).is_file() {
+        Some(load_existing_lockfile(workspace)?)
+    } else {
+        None
+    };
     let mut update_config = config.clone();
     update_config.refresh_fetch = true;
     update_config.locked_fetch = false;
     let mut result = fetch_workspace_with_config(workspace, &update_config)?;
     result.command = "update".to_string();
-    result.summary = result.summary.replacen("prepared", "updated", 1);
+    let revision_changes = if let Some(previous) = previous_lockfile.as_ref() {
+        let next = load_existing_lockfile(workspace)?;
+        diff_lockfile_revisions(previous, &next)?
+    } else {
+        Vec::new()
+    };
+    result.summary = render_update_summary(&result.summary, &revision_changes);
     Ok(result)
 }
 
@@ -347,6 +365,48 @@ fn load_existing_lockfile(workspace: &FrontendWorkspace) -> FrontendResult<fol_p
 fn lock_mismatch_error(message: impl Into<String>) -> FrontendError {
     FrontendError::new(crate::FrontendErrorKind::InvalidInput, message.into())
         .with_note("run `fol fetch` or `fol update` to refresh fol.lock")
+}
+
+fn diff_lockfile_revisions(
+    previous: &fol_package::PackageLockfile,
+    next: &fol_package::PackageLockfile,
+) -> FrontendResult<Vec<LockRevisionChange>> {
+    let mut changes = Vec::new();
+    for next_entry in &next.entries {
+        if let Some(previous_entry) = previous
+            .entries
+            .iter()
+            .find(|entry| entry.alias == next_entry.alias)
+        {
+            if previous_entry.selected_revision != next_entry.selected_revision {
+                changes.push(LockRevisionChange {
+                    alias: next_entry.alias.clone(),
+                    previous_revision: previous_entry.selected_revision.clone(),
+                    next_revision: next_entry.selected_revision.clone(),
+                });
+            }
+        }
+    }
+    Ok(changes)
+}
+
+fn render_update_summary(fetch_summary: &str, revision_changes: &[LockRevisionChange]) -> String {
+    let mut lines = vec![fetch_summary.replacen("prepared", "updated", 1)];
+    if revision_changes.is_empty() {
+        lines.push("pinned revisions unchanged".to_string());
+    } else {
+        lines.push(format!(
+            "revisions changed: {}",
+            revision_changes.len()
+        ));
+        for change in revision_changes {
+            lines.push(format!(
+                "{}: {} -> {}",
+                change.alias, change.previous_revision, change.next_revision
+            ));
+        }
+    }
+    lines.join("\n")
 }
 
 fn absolute_dependency_root(package_root: &Path, target: &str) -> PathBuf {

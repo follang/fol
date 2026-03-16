@@ -155,6 +155,8 @@ fn update_workspace_refreshes_git_dependencies_through_public_api() {
 
     assert_eq!(result.command, "update");
     assert_ne!(before, after);
+    assert!(result.summary.contains("revisions changed: 1"));
+    assert!(result.summary.contains("logtiny:"));
     fs::remove_dir_all(root).ok();
 }
 
