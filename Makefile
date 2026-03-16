@@ -43,6 +43,7 @@ rb: run-binary
 
 test:
 	@cargo test
+	@cargo test -- --ignored
 
 t: test
 
