@@ -240,9 +240,9 @@ fn split_repository_and_selector(raw: &str) -> Result<(String, PackageGitSelecto
             ));
         }
         match key.trim() {
-            "branch" => selector.branch = Some(value.trim().to_string()),
-            "tag" => selector.tag = Some(value.trim().to_string()),
-            "rev" => selector.rev = Some(value.trim().to_string()),
+            "branch" => set_selector_value(raw, &mut selector.branch, "branch", value.trim())?,
+            "tag" => set_selector_value(raw, &mut selector.tag, "tag", value.trim())?,
+            "rev" => set_selector_value(raw, &mut selector.rev, "rev", value.trim())?,
             other => {
                 return Err(PackageError::new(
                     PackageErrorKind::InvalidInput,
@@ -254,7 +254,38 @@ fn split_repository_and_selector(raw: &str) -> Result<(String, PackageGitSelecto
             }
         }
     }
+    let selector_count = usize::from(selector.branch.is_some())
+        + usize::from(selector.tag.is_some())
+        + usize::from(selector.rev.is_some());
+    if selector_count > 1 {
+        return Err(PackageError::new(
+            PackageErrorKind::InvalidInput,
+            format!(
+                "git package locator '{}' may specify only one of branch, tag, or rev",
+                raw
+            ),
+        ));
+    }
     Ok((repository.to_string(), selector))
+}
+
+fn set_selector_value(
+    raw: &str,
+    slot: &mut Option<String>,
+    key: &str,
+    value: &str,
+) -> Result<(), PackageError> {
+    if slot.is_some() {
+        return Err(PackageError::new(
+            PackageErrorKind::InvalidInput,
+            format!(
+                "git package locator '{}' may only specify '{}' once",
+                raw, key
+            ),
+        ));
+    }
+    *slot = Some(value.to_string());
+    Ok(())
 }
 
 fn looks_like_future_git_locator(raw: &str) -> bool {
@@ -490,6 +521,36 @@ mod tests {
         assert_eq!(
             git.normalized_git_identity().as_deref(),
             Some("github.com/follang/json")
+        );
+    }
+
+    #[test]
+    fn package_locator_rejects_conflicting_git_selectors() {
+        let error = parse_package_locator(
+            "https://github.com/follang/json.git?branch=main&tag=v0.1.0",
+        )
+        .expect_err("git locators should reject conflicting selectors");
+
+        assert_eq!(error.kind(), crate::PackageErrorKind::InvalidInput);
+        assert!(
+            error
+                .to_string()
+                .contains("may specify only one of branch, tag, or rev"),
+            "conflicting selectors should explain the allowed selector contract",
+        );
+    }
+
+    #[test]
+    fn package_locator_rejects_duplicate_git_selectors() {
+        let error = parse_package_locator(
+            "https://github.com/follang/json.git?branch=main&branch=stable",
+        )
+        .expect_err("git locators should reject duplicate selectors");
+
+        assert_eq!(error.kind(), crate::PackageErrorKind::InvalidInput);
+        assert!(
+            error.to_string().contains("may only specify 'branch' once"),
+            "duplicate selectors should explain the exact duplicated key",
         );
     }
 }
