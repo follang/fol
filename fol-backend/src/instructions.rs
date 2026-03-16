@@ -120,6 +120,13 @@ pub fn render_core_instruction(
             let operand = render_local_name(package_identity, routine, *operand)?;
             Ok(format!("let {result} = rt::check_recoverable(&{operand});"))
         }
+        LoweredInstrKind::UnwrapRecoverable { operand } => {
+            let result = rendered_result_local(package_identity, routine, instruction)?;
+            let operand = render_local_name(package_identity, routine, *operand)?;
+            Ok(format!(
+                "let {result} = {operand}.clone().into_value().expect(\"recoverable success\");"
+            ))
+        }
         other => Err(BackendError::new(
             BackendErrorKind::Unsupported,
             format!("core instruction emission is not implemented yet for {other:?}"),
@@ -603,6 +610,39 @@ mod tests {
         assert_eq!(
             rendered,
             "let l__pkg__entry__app__r9__l1__failed = rt::check_recoverable(&l__pkg__entry__app__r9__l0__value);"
+        );
+    }
+
+    #[test]
+    fn runtime_shaped_instruction_rendering_emits_unwrap_recoverable_success_lane() {
+        let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
+        let mut table = LoweredTypeTable::new();
+        let int_id = table.intern_builtin(LoweredBuiltinType::Int);
+        let mut routine = LoweredRoutine::new(LoweredRoutineId(10), "main", LoweredBlockId(0));
+        let source = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(0),
+            type_id: None,
+            recoverable_error_type: None,
+            name: Some("value".to_string()),
+        });
+        let result = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(1),
+            type_id: Some(int_id),
+            recoverable_error_type: None,
+            name: Some("unwrapped".to_string()),
+        });
+        let instruction = LoweredInstr {
+            id: LoweredInstrId(23),
+            result: Some(result),
+            kind: LoweredInstrKind::UnwrapRecoverable { operand: source },
+        };
+
+        let rendered =
+            render_core_instruction(&package_identity, &routine, &instruction).expect("unwrap");
+
+        assert_eq!(
+            rendered,
+            "let l__pkg__entry__app__r10__l1__unwrapped = l__pkg__entry__app__r10__l0__value.clone().into_value().expect(\"recoverable success\");"
         );
     }
 }

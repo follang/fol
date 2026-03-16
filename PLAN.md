@@ -1005,7 +1005,7 @@ not full long-term compiler completion.
 #### 8.3 done
 - emit `CheckRecoverable`
 
-#### 8.4
+#### 8.4 done
 - emit `UnwrapRecoverable`
 
 #### 8.5
