@@ -62,6 +62,16 @@ impl PackageLocator {
             }),
         }
     }
+
+    pub fn normalized_git_identity(&self) -> Option<String> {
+        self.git.as_ref().map(PackageGitLocator::normalized_identity)
+    }
+}
+
+impl PackageGitLocator {
+    pub fn normalized_identity(&self) -> String {
+        normalize_git_repository_identity(&self.repository)
+    }
 }
 
 pub fn parse_package_locator(raw: &str) -> Result<PackageLocator, PackageError> {
@@ -264,6 +274,32 @@ fn unsupported_remote_locator(raw: &str) -> PackageError {
     )
 }
 
+fn normalize_git_repository_identity(raw: &str) -> String {
+    let trimmed = raw.trim().trim_end_matches('/');
+    let normalized = if let Some(rest) = trimmed
+        .strip_prefix("https://")
+        .or_else(|| trimmed.strip_prefix("http://"))
+        .or_else(|| trimmed.strip_prefix("ssh://"))
+    {
+        rest.to_string()
+    } else if let Some(rest) = trimmed.strip_prefix("git@") {
+        rest.replace(':', "/")
+    } else {
+        trimmed.to_string()
+    };
+
+    let normalized = normalized
+        .trim_start_matches('/')
+        .trim_end_matches(".git")
+        .to_string();
+
+    if let Some((host, rest)) = normalized.split_once('/') {
+        format!("{}/{}", host.to_ascii_lowercase(), rest)
+    } else {
+        normalized.to_ascii_lowercase()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
@@ -431,6 +467,29 @@ mod tests {
                 .as_ref()
                 .and_then(|git| git.selector.rev.as_deref()),
             Some("0123456789abcdef")
+        );
+    }
+
+    #[test]
+    fn package_locator_normalizes_git_identity_across_transport_forms() {
+        let https = parse_package_locator("https://GitHub.com/follang/json.git")
+            .expect("https git locator should parse");
+        let ssh = parse_package_locator("git@github.com:follang/json.git")
+            .expect("ssh git locator should parse");
+        let git = parse_package_locator("git+ssh://git@github.com/follang/json.git")
+            .expect("git+ git locator should parse");
+
+        assert_eq!(
+            https.normalized_git_identity().as_deref(),
+            Some("github.com/follang/json")
+        );
+        assert_eq!(
+            ssh.normalized_git_identity().as_deref(),
+            Some("github.com/follang/json")
+        );
+        assert_eq!(
+            git.normalized_git_identity().as_deref(),
+            Some("github.com/follang/json")
         );
     }
 }
