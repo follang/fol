@@ -96,7 +96,8 @@ pub fn parse_package_locator(raw: &str) -> Result<PackageLocator, PackageError> 
 }
 
 fn parse_https_git_locator(raw: &str) -> Result<PackageLocator, PackageError> {
-    let without_scheme = raw
+    let (repository, selector) = split_repository_and_selector(raw)?;
+    let without_scheme = repository
         .split_once("://")
         .map(|(_, rest)| rest)
         .ok_or_else(|| unsupported_remote_locator(raw))?;
@@ -125,13 +126,14 @@ fn parse_https_git_locator(raw: &str) -> Result<PackageLocator, PackageError> {
     Ok(PackageLocator::git(
         raw.to_string(),
         PackageGitTransport::Https,
-        raw.to_string(),
-        PackageGitSelector::default(),
+        repository,
+        selector,
     ))
 }
 
 fn parse_ssh_git_locator(raw: &str) -> Result<PackageLocator, PackageError> {
-    let Some((user_host, repo_path)) = raw.split_once(':') else {
+    let (repository, selector) = split_repository_and_selector(raw)?;
+    let Some((user_host, repo_path)) = repository.split_once(':') else {
         return Err(PackageError::new(
             PackageErrorKind::InvalidInput,
             format!(
@@ -167,13 +169,14 @@ fn parse_ssh_git_locator(raw: &str) -> Result<PackageLocator, PackageError> {
     Ok(PackageLocator::git(
         raw.to_string(),
         PackageGitTransport::Ssh,
-        raw.to_string(),
-        PackageGitSelector::default(),
+        repository,
+        selector,
     ))
 }
 
 fn parse_git_scheme_locator(raw: &str) -> Result<PackageLocator, PackageError> {
-    let repository = raw.trim_start_matches("git+").trim();
+    let git_prefixed = raw.trim_start_matches("git+").trim();
+    let (repository, selector) = split_repository_and_selector(git_prefixed)?;
     if repository.is_empty()
         || !(repository.starts_with("https://")
             || repository.starts_with("http://")
@@ -191,9 +194,55 @@ fn parse_git_scheme_locator(raw: &str) -> Result<PackageLocator, PackageError> {
     Ok(PackageLocator::git(
         raw.to_string(),
         PackageGitTransport::Git,
-        repository.to_string(),
-        PackageGitSelector::default(),
+        repository,
+        selector,
     ))
+}
+
+fn split_repository_and_selector(raw: &str) -> Result<(String, PackageGitSelector), PackageError> {
+    let Some((repository, query)) = raw.split_once('?') else {
+        return Ok((raw.to_string(), PackageGitSelector::default()));
+    };
+    if repository.trim().is_empty() {
+        return Err(PackageError::new(
+            PackageErrorKind::InvalidInput,
+            format!("git package locator '{}' is missing a repository", raw),
+        ));
+    }
+    let mut selector = PackageGitSelector::default();
+    for part in query.split('&').map(str::trim).filter(|part| !part.is_empty()) {
+        let Some((key, value)) = part.split_once('=') else {
+            return Err(PackageError::new(
+                PackageErrorKind::InvalidInput,
+                format!(
+                    "git package locator '{}' has malformed selector '{}'; expected key=value",
+                    raw, part
+                ),
+            ));
+        };
+        if value.trim().is_empty() {
+            return Err(PackageError::new(
+                PackageErrorKind::InvalidInput,
+                format!(
+                    "git package locator '{}' has an empty selector value for '{}'",
+                    raw, key
+                ),
+            ));
+        }
+        match key.trim() {
+            "branch" => selector.branch = Some(value.trim().to_string()),
+            other => {
+                return Err(PackageError::new(
+                    PackageErrorKind::InvalidInput,
+                    format!(
+                        "git package locator '{}' uses unsupported selector '{}'",
+                        raw, other
+                    ),
+                ));
+            }
+        }
+    }
+    Ok((repository.to_string(), selector))
 }
 
 fn looks_like_future_git_locator(raw: &str) -> bool {
@@ -336,6 +385,20 @@ mod tests {
         assert_eq!(
             locator.git.as_ref().map(|git| git.repository.as_str()),
             Some("https://github.com/follang/json.git")
+        );
+    }
+
+    #[test]
+    fn package_locator_parses_branch_selectors() {
+        let locator = parse_package_locator("https://github.com/follang/json.git?branch=main")
+            .expect("branch selectors should parse");
+
+        assert_eq!(
+            locator
+                .git
+                .as_ref()
+                .and_then(|git| git.selector.branch.as_deref()),
+            Some("main")
         );
     }
 }
