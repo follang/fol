@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Control Flow - FOL Language Specification</title>
+        <title>Frontend Workflow - FOL Language Specification</title>
 
 
         <!-- Custom HTML head -->
@@ -12,33 +12,33 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff">
 
-        <link rel="icon" href="../../favicon-de23e50b.svg">
-        <link rel="shortcut icon" href="../../favicon-8114d1fc.png">
-        <link rel="stylesheet" href="../../css/variables-8adf115d.css">
-        <link rel="stylesheet" href="../../css/general-2459343d.css">
-        <link rel="stylesheet" href="../../css/chrome-ae938929.css">
-        <link rel="stylesheet" href="../../css/print-9e4910d8.css" media="print">
+        <link rel="icon" href="../favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="../favicon-8114d1fc.png">
+        <link rel="stylesheet" href="../css/variables-8adf115d.css">
+        <link rel="stylesheet" href="../css/general-2459343d.css">
+        <link rel="stylesheet" href="../css/chrome-ae938929.css">
+        <link rel="stylesheet" href="../css/print-9e4910d8.css" media="print">
 
         <!-- Fonts -->
-        <link rel="stylesheet" href="../../fonts/fonts-9644e21d.css">
+        <link rel="stylesheet" href="../fonts/fonts-9644e21d.css">
 
         <!-- Highlight.js Stylesheets -->
-        <link rel="stylesheet" id="mdbook-highlight-css" href="../../highlight-493f70e1.css">
-        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="../../tomorrow-night-4c0ae647.css">
-        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="../../ayu-highlight-3fdfc3ac.css">
+        <link rel="stylesheet" id="mdbook-highlight-css" href="../highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="../tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="../ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
-            const path_to_root = "../../";
+            const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../../searchindex-58c1de76.js";
+            window.path_to_searchindex_js = "../searchindex-58c1de76.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../../toc-0ba44881.js"></script>
+        <script src="../toc-0ba44881.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -105,7 +105,7 @@
             <!-- populated by js -->
             <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
             <noscript>
-                <iframe class="sidebar-iframe-outer" src="../../toc.html"></iframe>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
             </noscript>
             <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
                 <div class="sidebar-resize-indicator"></div>
@@ -140,7 +140,7 @@
                     <h1 class="menu-title">FOL Language Specification</h1>
 
                     <div class="right-buttons">
-                        <a href="../../print.html" title="Print this book" aria-label="Print this book">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
                             <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
                         </a>
 
@@ -174,101 +174,188 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="control"><a class="header" href="#control">Control</a></h1>
-<p>At least two linguistic mechanisms are necessary to make the computations in programs flexible and powerful: some means of selecting among alternative control flow paths (of statement execution) and some means of causing the repeated execution of statements or sequences of statements. Statements that provide these kinds of capabilities are called control statements. A control structure is a control statement and the collection of statements whose execution it controls. This set of statements is in turn generally structured as a block, which in addition to grouping, also defines a lexical scope.</p>
-<p>There are two types of control flow mechanisms:</p>
+                        <h1 id="frontend-workflow"><a class="header" href="#frontend-workflow">Frontend Workflow</a></h1>
+<p>FOL now has a dedicated frontend layer above the compiler pipeline.</p>
+<p>That layer is the <code>fol</code> tool itself.</p>
+<p>The frontend is implemented in the <code>fol-frontend</code> crate. It sits above:</p>
 <ul>
-<li>choice - <code>when</code></li>
-<li>loop - <code>loop</code></li>
+<li><code>fol-package</code></li>
+<li><code>fol-resolver</code></li>
+<li><code>fol-typecheck</code></li>
+<li><code>fol-lower</code></li>
+<li><code>fol-backend</code></li>
 </ul>
-<h2 id="choice-type"><a class="header" href="#choice-type">Choice type</a></h2>
-<pre><code>when(condition){ case(condition){} case(condition){} * {} };
-when(variable){ is (value){}; is (value){}; * {}; };
-when(variable){ in (iterator){}; in (iterator){}; * {}; };
-when(iterable){ has (member){}; has (member){}; * {}; };
-when(generic){ of (type){}; of (type){}; * {}; };
-when(type){ on (channel){}; on (channel){}; };
+<p>Its job is not to replace those crates. Its job is to orchestrate them into one
+coherent user tool.</p>
+<h2 id="what-the-frontend-owns"><a class="header" href="#what-the-frontend-owns">What The Frontend Owns</a></h2>
+<p>The frontend owns:</p>
+<ul>
+<li>derive-based <code>clap</code> command parsing</li>
+<li>command aliases and grouped help</li>
+<li>workspace and package discovery</li>
+<li>package/workspace scaffolding</li>
+<li>package preparation over <code>fol-package</code></li>
+<li>build/run/test orchestration</li>
+<li>emit workflows</li>
+<li>clean workflows</li>
+<li>shell completions</li>
+<li>human/plain/json output</li>
+<li>user-facing summaries and diagnostics</li>
+</ul>
+<p>So the frontend is the workflow shell.</p>
+<p>It is not another compiler stage.</p>
+<h2 id="command-surface"><a class="header" href="#command-surface">Command Surface</a></h2>
+<p>The current command surface is:</p>
+<ul>
+<li><code>fol init</code></li>
+<li><code>fol new</code></li>
+<li><code>fol work info</code></li>
+<li><code>fol work list</code></li>
+<li><code>fol fetch</code></li>
+<li><code>fol check</code></li>
+<li><code>fol build</code></li>
+<li><code>fol run</code></li>
+<li><code>fol test</code></li>
+<li><code>fol emit rust</code></li>
+<li><code>fol emit lowered</code></li>
+<li><code>fol clean</code></li>
+<li><code>fol completion</code></li>
+<li>hidden <code>_complete</code></li>
+</ul>
+<p>Aliases are part of the tool contract too. Examples:</p>
+<ul>
+<li><code>fol build</code>, <code>fol b</code>, <code>fol make</code></li>
+<li><code>fol fetch</code>, <code>fol f</code>, <code>fol sync</code></li>
+<li><code>fol clean</code>, <code>fol cl</code>, <code>fol purge</code></li>
+<li><code>fol check</code>, <code>fol c</code>, <code>fol verify</code></li>
+<li><code>fol work</code>, <code>fol w</code>, <code>fol ws</code>, <code>fol workspace</code></li>
+</ul>
+<h2 id="one-tool"><a class="header" href="#one-tool">One Tool</a></h2>
+<p>The intended workflow is entrypoint-first:</p>
+<pre><code class="language-text">fol init --bin
+fol fetch
+fol check
+fol build --release
+fol run -- --flag value
 </code></pre>
-<h3 id="condition"><a class="header" href="#condition">Condition</a></h3>
-<pre><code>when(true) {
-    case (x == 6){ // implementation }
-    case (y.set()){ // implementation } 
-    * { // default implementation }
-}
-</code></pre>
-<h3 id="valueation"><a class="header" href="#valueation">Valueation</a></h3>
-<pre><code>when(x) {
-    is (6){ // implementation }
-    is (&gt;7){ // implementation } 
-    * { // default implementation }
-}
-</code></pre>
-<h3 id="iteration"><a class="header" href="#iteration">Iteration</a></h3>
-<pre><code>when(2*x) {
-    in ({0..4}){ // implementation }
-    in ({ 5, 6, 7, 8, }){ // implementation } 
-    * { // default implementation }
-}
-</code></pre>
-<h3 id="contains"><a class="header" href="#contains">Contains</a></h3>
-<pre><code>when({4,5,6,7,8,9,0,2,3,1}) {
-    has (5){ // implementation }
-    has (10){ // implementation } 
-    * { // default implementation }
-}
-</code></pre>
-<h3 id="generics"><a class="header" href="#generics">Generics</a></h3>
-<pre><code>when(T) {
-    of (int){ // implementation }
-    of (str){ // implementation } 
-    * { // default implementation }
-}
-</code></pre>
-<h3 id="channel"><a class="header" href="#channel">Channel</a></h3>
-<pre><code>when(str) {
-    on (channel){ // implementation }
-    on (channel){ // implementation } 
-    * { // default implementation }
-}
-</code></pre>
-<h2 id="loop-type"><a class="header" href="#loop-type">Loop type</a></h2>
-<pre><code>loop(condition){};
-loop(iterable){};
-</code></pre>
-<h3 id="condition-1"><a class="header" href="#condition-1">Condition</a></h3>
-<pre><code>loop( x == 5 ){
-    // implementation
-};
-</code></pre>
-<h3 id="enumeration"><a class="header" href="#enumeration">Enumeration</a></h3>
-<pre><code>loop( x in {..100}){
-    // implementation
-}
-
-loop( x in {..100}) if ( x % 2 == 0 )){
-    // implementation
-}
-
-loop( x in {..100} if ( x in somearra ) and ( x in anotherarray )){
-    // implementation
-}
-
-</code></pre>
-<h3 id="iteration-1"><a class="header" href="#iteration-1">Iteration</a></h3>
-<pre><code>loop( x in array ){
-    // implementation
-}
-</code></pre>
+<p>The goal is to make <code>fol</code> feel like the canonical language tool, not just a
+compiler executable with a growing list of flags.</p>
+<h2 id="how-dispatch-works"><a class="header" href="#how-dispatch-works">How Dispatch Works</a></h2>
+<p>The frontend flow is:</p>
+<ol>
+<li>parse CLI arguments with <code>clap</code></li>
+<li>resolve output/color/profile policy</li>
+<li>detect the target root</li>
+<li>load the frontend workspace model</li>
+<li>dispatch the selected command</li>
+<li>call down into package/compiler/backend layers as needed</li>
+<li>render a frontend-owned command summary or frontend-owned error</li>
+</ol>
+<p>For example:</p>
+<ul>
+<li><code>fol check</code> loads the workspace and drives the compile pipeline through
+typecheck/lower without backend artifact production</li>
+<li><code>fol build</code> drives the full compiler and backend path</li>
+<li><code>fol run</code> builds first, then executes the produced binary</li>
+<li><code>fol emit rust</code> keeps the backend in source-emission mode</li>
+<li><code>fol emit lowered</code> writes lowered IR snapshots instead of invoking the backend</li>
+</ul>
+<h2 id="root-discovery"><a class="header" href="#root-discovery">Root Discovery</a></h2>
+<p>For workflow commands, the frontend discovers roots upward from the current
+directory or from an explicit path:</p>
+<ul>
+<li>package roots use <code>package.yaml</code></li>
+<li>workspace roots use <code>fol.work.yaml</code></li>
+</ul>
+<p>Package roots and workspace roots are different frontend concepts.</p>
+<p>A package root is one runnable/buildable package.</p>
+<p>A workspace root is a parent root that owns multiple member packages plus
+frontend-owned roots such as build and cache directories.</p>
+<p>If no root is found, frontend diagnostics explain how to bootstrap one with
+<code>fol init --bin</code> or <code>fol init --workspace</code>.</p>
+<h2 id="configuration-and-precedence"><a class="header" href="#configuration-and-precedence">Configuration And Precedence</a></h2>
+<p>The frontend currently supports environment and flag control for:</p>
+<ul>
+<li>output mode</li>
+<li>color policy</li>
+<li>profile</li>
+<li>std root</li>
+<li>package store root</li>
+<li>build root</li>
+<li>cache root</li>
+<li>keep-build-dir</li>
+</ul>
+<p>The intended precedence is:</p>
+<ol>
+<li>explicit CLI flags</li>
+<li>workspace-owned config where applicable</li>
+<li>frontend environment variables</li>
+<li>frontend defaults</li>
+</ol>
+<p>That precedence is test-backed.</p>
+<h2 id="output-modes"><a class="header" href="#output-modes">Output Modes</a></h2>
+<p>Frontend command summaries support:</p>
+<ul>
+<li><code>human</code></li>
+<li><code>plain</code></li>
+<li><code>json</code></li>
+</ul>
+<p><code>human</code> is for interactive usage.</p>
+<p><code>plain</code> is for scripts.</p>
+<p><code>json</code> is for machine-readable tooling and wrappers.</p>
+<p>The frontend also owns human highlighting behavior. Actions and paths can be
+highlighted in human mode, while plain mode stays stable and ANSI-free.</p>
+<h2 id="build-artifacts"><a class="header" href="#build-artifacts">Build Artifacts</a></h2>
+<p>Frontend commands report explicit artifact roots.</p>
+<p>That includes:</p>
+<ul>
+<li>workspace roots</li>
+<li>package roots</li>
+<li>build roots</li>
+<li>emitted Rust crate roots</li>
+<li>lowered snapshot roots</li>
+<li>final binary paths</li>
+</ul>
+<p>This keeps the frontend closer to a build tool than to a thin compiler shell.</p>
+<h2 id="relationship-to-the-root-binary"><a class="header" href="#relationship-to-the-root-binary">Relationship To The Root Binary</a></h2>
+<p>The repo still has a root <code>src/main.rs</code>, but it is now only a migration shim.</p>
+<p>The long-term direction is:</p>
+<ul>
+<li>workflow commands route through <code>fol-frontend</code></li>
+<li>direct legacy compile flags remain temporarily supported where feasible</li>
+<li>more of the old root-main orchestration is pushed into <code>fol-frontend</code></li>
+</ul>
+<p>So <code>fol-frontend</code> is the real home of the tool behavior, even while the root
+binary is still being trimmed down.</p>
+<h2 id="current-boundary"><a class="header" href="#current-boundary">Current Boundary</a></h2>
+<p>The current frontend milestone is about local workflows and the first backend.</p>
+<p>It already covers:</p>
+<ul>
+<li>project and workspace scaffolding</li>
+<li>root discovery</li>
+<li>package preparation through <code>fol-package</code></li>
+<li>full <code>V1</code> build/run/test orchestration</li>
+<li>emitted Rust and lowered IR output</li>
+<li>shell completions</li>
+<li>migration-safe CLI routing</li>
+</ul>
+<p>Future work is still expected around:</p>
+<ul>
+<li>remote dependency fetching</li>
+<li>richer package-store management</li>
+<li>lockfile/version workflows</li>
+<li>additional backend targets</li>
+</ul>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="../../200_expressions/200_sta/_index.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../000_overview/100_conventions.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="../../200_expressions/300_exp/_index.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../100_lexical/_index.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -278,11 +365,11 @@ loop( x in {..100} if ( x in somearra ) and ( x in anotherarray )){
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="../../200_expressions/200_sta/_index.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../000_overview/100_conventions.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="../../200_expressions/300_exp/_index.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../100_lexical/_index.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>
@@ -302,13 +389,13 @@ loop( x in {..100} if ( x in somearra ) and ( x in anotherarray )){
         </script>
 
 
-        <script src="../../elasticlunr-ef4e11c1.min.js"></script>
-        <script src="../../mark-09e88c2c.min.js"></script>
-        <script src="../../searcher-c2a407aa.js"></script>
+        <script src="../elasticlunr-ef4e11c1.min.js"></script>
+        <script src="../mark-09e88c2c.min.js"></script>
+        <script src="../searcher-c2a407aa.js"></script>
 
-        <script src="../../clipboard-1626706a.min.js"></script>
-        <script src="../../highlight-abc7f01d.js"></script>
-        <script src="../../book-a0b12cfe.js"></script>
+        <script src="../clipboard-1626706a.min.js"></script>
+        <script src="../highlight-abc7f01d.js"></script>
+        <script src="../book-a0b12cfe.js"></script>
 
         <!-- Custom JS scripts -->
 

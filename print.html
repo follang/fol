@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-9160f0da.js";
+            window.path_to_searchindex_js = "searchindex-58c1de76.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-fc1769c7.js"></script>
+        <script src="toc-0ba44881.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -245,6 +245,8 @@ each (binder in iterable) { ... }
 <li>concurrency</li>
 </ol>
 <p>Read <a href="#notation-and-conventions">Notation And Conventions</a> before using chapter examples as a normative reference.</p>
+<p>For the current user-facing tool workflow, read
+<a href="#frontend-workflow">Frontend Workflow</a>.</p>
 <h2 id="example"><a class="header" href="#example">Example</a></h2>
 <pre><code class="language-fol">use log: std = {"fmt/log"};
 
@@ -359,6 +361,179 @@ namespace/package surface addressed through <code>use</code>, <code>def</code>, 
 <li>prefer clarifying rewrites over removal</li>
 <li>keep the chapter tree stable where possible</li>
 <li>make chapter indexes explain scope before detail</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="frontend-workflow"><a class="header" href="#frontend-workflow">Frontend Workflow</a></h1>
+<p>FOL now has a dedicated frontend layer above the compiler pipeline.</p>
+<p>That layer is the <code>fol</code> tool itself.</p>
+<p>The frontend is implemented in the <code>fol-frontend</code> crate. It sits above:</p>
+<ul>
+<li><code>fol-package</code></li>
+<li><code>fol-resolver</code></li>
+<li><code>fol-typecheck</code></li>
+<li><code>fol-lower</code></li>
+<li><code>fol-backend</code></li>
+</ul>
+<p>Its job is not to replace those crates. Its job is to orchestrate them into one
+coherent user tool.</p>
+<h2 id="what-the-frontend-owns"><a class="header" href="#what-the-frontend-owns">What The Frontend Owns</a></h2>
+<p>The frontend owns:</p>
+<ul>
+<li>derive-based <code>clap</code> command parsing</li>
+<li>command aliases and grouped help</li>
+<li>workspace and package discovery</li>
+<li>package/workspace scaffolding</li>
+<li>package preparation over <code>fol-package</code></li>
+<li>build/run/test orchestration</li>
+<li>emit workflows</li>
+<li>clean workflows</li>
+<li>shell completions</li>
+<li>human/plain/json output</li>
+<li>user-facing summaries and diagnostics</li>
+</ul>
+<p>So the frontend is the workflow shell.</p>
+<p>It is not another compiler stage.</p>
+<h2 id="command-surface"><a class="header" href="#command-surface">Command Surface</a></h2>
+<p>The current command surface is:</p>
+<ul>
+<li><code>fol init</code></li>
+<li><code>fol new</code></li>
+<li><code>fol work info</code></li>
+<li><code>fol work list</code></li>
+<li><code>fol fetch</code></li>
+<li><code>fol check</code></li>
+<li><code>fol build</code></li>
+<li><code>fol run</code></li>
+<li><code>fol test</code></li>
+<li><code>fol emit rust</code></li>
+<li><code>fol emit lowered</code></li>
+<li><code>fol clean</code></li>
+<li><code>fol completion</code></li>
+<li>hidden <code>_complete</code></li>
+</ul>
+<p>Aliases are part of the tool contract too. Examples:</p>
+<ul>
+<li><code>fol build</code>, <code>fol b</code>, <code>fol make</code></li>
+<li><code>fol fetch</code>, <code>fol f</code>, <code>fol sync</code></li>
+<li><code>fol clean</code>, <code>fol cl</code>, <code>fol purge</code></li>
+<li><code>fol check</code>, <code>fol c</code>, <code>fol verify</code></li>
+<li><code>fol work</code>, <code>fol w</code>, <code>fol ws</code>, <code>fol workspace</code></li>
+</ul>
+<h2 id="one-tool"><a class="header" href="#one-tool">One Tool</a></h2>
+<p>The intended workflow is entrypoint-first:</p>
+<pre><code class="language-text">fol init --bin
+fol fetch
+fol check
+fol build --release
+fol run -- --flag value
+</code></pre>
+<p>The goal is to make <code>fol</code> feel like the canonical language tool, not just a
+compiler executable with a growing list of flags.</p>
+<h2 id="how-dispatch-works"><a class="header" href="#how-dispatch-works">How Dispatch Works</a></h2>
+<p>The frontend flow is:</p>
+<ol>
+<li>parse CLI arguments with <code>clap</code></li>
+<li>resolve output/color/profile policy</li>
+<li>detect the target root</li>
+<li>load the frontend workspace model</li>
+<li>dispatch the selected command</li>
+<li>call down into package/compiler/backend layers as needed</li>
+<li>render a frontend-owned command summary or frontend-owned error</li>
+</ol>
+<p>For example:</p>
+<ul>
+<li><code>fol check</code> loads the workspace and drives the compile pipeline through
+typecheck/lower without backend artifact production</li>
+<li><code>fol build</code> drives the full compiler and backend path</li>
+<li><code>fol run</code> builds first, then executes the produced binary</li>
+<li><code>fol emit rust</code> keeps the backend in source-emission mode</li>
+<li><code>fol emit lowered</code> writes lowered IR snapshots instead of invoking the backend</li>
+</ul>
+<h2 id="root-discovery"><a class="header" href="#root-discovery">Root Discovery</a></h2>
+<p>For workflow commands, the frontend discovers roots upward from the current
+directory or from an explicit path:</p>
+<ul>
+<li>package roots use <code>package.yaml</code></li>
+<li>workspace roots use <code>fol.work.yaml</code></li>
+</ul>
+<p>Package roots and workspace roots are different frontend concepts.</p>
+<p>A package root is one runnable/buildable package.</p>
+<p>A workspace root is a parent root that owns multiple member packages plus
+frontend-owned roots such as build and cache directories.</p>
+<p>If no root is found, frontend diagnostics explain how to bootstrap one with
+<code>fol init --bin</code> or <code>fol init --workspace</code>.</p>
+<h2 id="configuration-and-precedence"><a class="header" href="#configuration-and-precedence">Configuration And Precedence</a></h2>
+<p>The frontend currently supports environment and flag control for:</p>
+<ul>
+<li>output mode</li>
+<li>color policy</li>
+<li>profile</li>
+<li>std root</li>
+<li>package store root</li>
+<li>build root</li>
+<li>cache root</li>
+<li>keep-build-dir</li>
+</ul>
+<p>The intended precedence is:</p>
+<ol>
+<li>explicit CLI flags</li>
+<li>workspace-owned config where applicable</li>
+<li>frontend environment variables</li>
+<li>frontend defaults</li>
+</ol>
+<p>That precedence is test-backed.</p>
+<h2 id="output-modes"><a class="header" href="#output-modes">Output Modes</a></h2>
+<p>Frontend command summaries support:</p>
+<ul>
+<li><code>human</code></li>
+<li><code>plain</code></li>
+<li><code>json</code></li>
+</ul>
+<p><code>human</code> is for interactive usage.</p>
+<p><code>plain</code> is for scripts.</p>
+<p><code>json</code> is for machine-readable tooling and wrappers.</p>
+<p>The frontend also owns human highlighting behavior. Actions and paths can be
+highlighted in human mode, while plain mode stays stable and ANSI-free.</p>
+<h2 id="build-artifacts"><a class="header" href="#build-artifacts">Build Artifacts</a></h2>
+<p>Frontend commands report explicit artifact roots.</p>
+<p>That includes:</p>
+<ul>
+<li>workspace roots</li>
+<li>package roots</li>
+<li>build roots</li>
+<li>emitted Rust crate roots</li>
+<li>lowered snapshot roots</li>
+<li>final binary paths</li>
+</ul>
+<p>This keeps the frontend closer to a build tool than to a thin compiler shell.</p>
+<h2 id="relationship-to-the-root-binary"><a class="header" href="#relationship-to-the-root-binary">Relationship To The Root Binary</a></h2>
+<p>The repo still has a root <code>src/main.rs</code>, but it is now only a migration shim.</p>
+<p>The long-term direction is:</p>
+<ul>
+<li>workflow commands route through <code>fol-frontend</code></li>
+<li>direct legacy compile flags remain temporarily supported where feasible</li>
+<li>more of the old root-main orchestration is pushed into <code>fol-frontend</code></li>
+</ul>
+<p>So <code>fol-frontend</code> is the real home of the tool behavior, even while the root
+binary is still being trimmed down.</p>
+<h2 id="current-boundary"><a class="header" href="#current-boundary">Current Boundary</a></h2>
+<p>The current frontend milestone is about local workflows and the first backend.</p>
+<p>It already covers:</p>
+<ul>
+<li>project and workspace scaffolding</li>
+<li>root discovery</li>
+<li>package preparation through <code>fol-package</code></li>
+<li>full <code>V1</code> build/run/test orchestration</li>
+<li>emitted Rust and lowered IR output</li>
+<li>shell completions</li>
+<li>migration-safe CLI routing</li>
+</ul>
+<p>Future work is still expected around:</p>
+<ul>
+<li>remote dependency fetching</li>
+<li>richer package-store management</li>
+<li>lockfile/version workflows</li>
+<li>additional backend targets</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="lexical-structure"><a class="header" href="#lexical-structure">Lexical Structure</a></h1>
