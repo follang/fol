@@ -4,8 +4,10 @@
 //! above `fol-package` and the compiler pipeline.
 
 mod errors;
+mod output;
 
 pub use errors::{FrontendError, FrontendErrorKind, FrontendResult};
+pub use output::{ColorPolicy, FrontendOutputConfig, OutputMode};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct Frontend;

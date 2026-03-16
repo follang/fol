@@ -508,6 +508,16 @@ fn frontend_error_surface_smoke_compiles() {
 }
 
 #[test]
+fn frontend_output_surface_smoke_compiles() {
+    let config = fol_frontend::FrontendOutputConfig::default();
+
+    assert_eq!(config.mode, fol_frontend::OutputMode::Human);
+    assert_eq!(config.mode.as_str(), "human");
+    assert_eq!(config.color, fol_frontend::ColorPolicy::Auto);
+    assert_eq!(config.color.as_str(), "auto");
+}
+
+#[test]
 fn backend_public_api_shell_smoke_compiles() {
     let backend = fol_backend::Backend::new();
     assert_eq!(format!("{backend:?}"), "Backend");
