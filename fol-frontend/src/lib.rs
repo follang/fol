@@ -18,7 +18,10 @@ mod workspace;
 pub use cli::{FrontendCli, FrontendCommand, InitCommand, NewCommand, UnitCommand};
 pub use config::FrontendConfig;
 pub use errors::{FrontendError, FrontendErrorKind, FrontendResult};
-pub use fetch::{prepare_workspace_packages, FrontendPackagePreparation, FrontendPreparedPackage};
+pub use fetch::{
+    fetch_workspace, prepare_workspace_packages, FrontendPackagePreparation,
+    FrontendPreparedPackage,
+};
 pub use discovery::{
     discover_root_from_explicit_path, discover_root_upward, require_discovered_root,
     DiscoveredRoot, PackageRoot, WorkspaceRoot, PACKAGE_FILE_NAME, WORKSPACE_FILE_NAME,

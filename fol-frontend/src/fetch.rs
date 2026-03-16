@@ -1,4 +1,7 @@
-use crate::{FrontendError, FrontendErrorKind, FrontendResult, FrontendWorkspace};
+use crate::{
+    FrontendArtifactKind, FrontendArtifactSummary, FrontendCommandResult, FrontendError,
+    FrontendErrorKind, FrontendResult, FrontendWorkspace,
+};
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -54,9 +57,25 @@ pub fn prepare_workspace_packages(
     })
 }
 
+pub fn fetch_workspace(workspace: &FrontendWorkspace) -> FrontendResult<FrontendCommandResult> {
+    let preparation = prepare_workspace_packages(workspace)?;
+    let mut result = FrontendCommandResult::new(
+        "fetch",
+        format!("prepared {} workspace package(s)", preparation.packages.len()),
+    );
+    for package in preparation.packages {
+        result.artifacts.push(FrontendArtifactSummary::new(
+            FrontendArtifactKind::PackageRoot,
+            package.name,
+            Some(package.root),
+        ));
+    }
+    Ok(result)
+}
+
 #[cfg(test)]
 mod tests {
-    use super::prepare_workspace_packages;
+    use super::{fetch_workspace, prepare_workspace_packages};
     use crate::{FrontendWorkspace, PackageRoot, WorkspaceRoot};
     use std::{fs, path::PathBuf};
 
@@ -110,6 +129,33 @@ mod tests {
 
         assert_eq!(error.kind(), crate::FrontendErrorKind::CommandFailed);
         assert!(error.message().contains("build file"));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn fetch_workspace_returns_a_command_result_for_prepared_members() {
+        let root = std::env::temp_dir().join(format!("fol_frontend_fetch_{}", std::process::id()));
+        let app = root.join("app");
+        fs::create_dir_all(&app).unwrap();
+        fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
+        fs::write(app.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
+
+        let workspace = FrontendWorkspace {
+            root: WorkspaceRoot::new(root.clone()),
+            members: vec![PackageRoot::new(app.clone())],
+            std_root_override: None,
+            package_store_root_override: None,
+            build_root: root.join(".fol/build"),
+            cache_root: root.join(".fol/cache"),
+        };
+
+        let result = fetch_workspace(&workspace).unwrap();
+
+        assert_eq!(result.command, "fetch");
+        assert_eq!(result.summary, "prepared 1 workspace package(s)");
+        assert_eq!(result.artifacts.len(), 1);
+        assert_eq!(result.artifacts[0].path, Some(app));
 
         fs::remove_dir_all(root).ok();
     }
