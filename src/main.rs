@@ -587,6 +587,18 @@ fn frontend_upward_discovery_surface_smoke_compiles() {
 }
 
 #[test]
+fn frontend_explicit_path_discovery_surface_smoke_compiles() {
+    let root = std::env::temp_dir().join(format!("fol_frontend_explicit_{}", std::process::id()));
+    std::fs::create_dir_all(&root).unwrap();
+    std::fs::write(root.join("fol.work.yaml"), "members: []\n").unwrap();
+
+    let discovered = fol_frontend::discover_root_from_explicit_path(&root).unwrap();
+    assert!(matches!(discovered, fol_frontend::DiscoveredRoot::Workspace(_)));
+
+    std::fs::remove_dir_all(root).ok();
+}
+
+#[test]
 fn frontend_output_helper_surface_smoke_compiles() {
     let output = fol_frontend::FrontendOutput::new(fol_frontend::FrontendOutputConfig::default());
 

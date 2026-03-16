@@ -63,11 +63,15 @@ pub fn discover_root_upward(start: &std::path::Path) -> Option<DiscoveredRoot> {
     }
 }
 
+pub fn discover_root_from_explicit_path(path: &std::path::Path) -> Option<DiscoveredRoot> {
+    discover_root_upward(path)
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        discover_root_upward, DiscoveredRoot, PackageRoot, WorkspaceRoot, PACKAGE_FILE_NAME,
-        WORKSPACE_FILE_NAME,
+        discover_root_from_explicit_path, discover_root_upward, DiscoveredRoot, PackageRoot,
+        WorkspaceRoot, PACKAGE_FILE_NAME, WORKSPACE_FILE_NAME,
     };
     use std::{fs, path::PathBuf};
 
@@ -101,6 +105,22 @@ mod tests {
         let discovered = discover_root_upward(&nested).unwrap();
 
         assert_eq!(discovered, DiscoveredRoot::Package(PackageRoot::new(package_root.clone())));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn explicit_path_selection_reuses_root_discovery() {
+        let root = std::env::temp_dir().join(format!(
+            "fol_frontend_explicit_discovery_{}",
+            std::process::id()
+        ));
+        fs::create_dir_all(&root).unwrap();
+        fs::write(root.join("fol.work.yaml"), "members: []\n").unwrap();
+
+        let discovered = discover_root_from_explicit_path(&root).unwrap();
+
+        assert_eq!(discovered, DiscoveredRoot::Workspace(WorkspaceRoot::new(root.clone())));
 
         fs::remove_dir_all(root).ok();
     }
