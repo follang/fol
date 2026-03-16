@@ -117,21 +117,26 @@ where
         .map(|arg| arg.into())
         .collect::<Vec<std::ffi::OsString>>();
 
-    match FrontendCli::try_parse_from(args.clone()) {
-        Err(error)
-            if matches!(
-                error.kind(),
-                clap::error::ErrorKind::DisplayHelp | clap::error::ErrorKind::DisplayVersion
-            ) =>
-        {
-            match write!(stdout, "{error}") {
-                Ok(()) => 0,
-                Err(write_error) => {
-                    let _ = writeln!(stderr, "FrontendInternal: {write_error}");
-                    1
-                }
+    if wants_help(&args) {
+        return match writeln!(stdout, "{}", FrontendCli::render_root_help()) {
+            Ok(()) => 0,
+            Err(error) => {
+                let _ = writeln!(stderr, "FrontendInternal: {error}");
+                1
             }
-        }
+        };
+    }
+    if wants_version(&args) {
+        return match writeln!(stdout, "{}", env!("CARGO_PKG_VERSION")) {
+            Ok(()) => 0,
+            Err(error) => {
+                let _ = writeln!(stderr, "FrontendInternal: {error}");
+                1
+            }
+        };
+    }
+
+    match FrontendCli::try_parse_from(args.clone()) {
         Err(error) => {
             let output = FrontendOutput::new(FrontendOutputConfig::default());
             let error = FrontendError::new(FrontendErrorKind::InvalidInput, error.to_string())
@@ -164,8 +169,7 @@ where
             )
         }
         Ok(cli) if cli.command.is_none() && cli.input.is_none() => {
-            let help = FrontendCli::command().render_long_help().to_string();
-            match writeln!(stdout, "{help}") {
+            match writeln!(stdout, "{}", FrontendCli::render_root_help()) {
                 Ok(()) => 0,
                 Err(error) => {
                     let _ = writeln!(stderr, "FrontendInternal: {error}");
@@ -201,6 +205,14 @@ where
             }
         },
     }
+}
+
+fn wants_help(args: &[std::ffi::OsString]) -> bool {
+    args.iter().skip(1).any(|arg| arg == "-h" || arg == "--help")
+}
+
+fn wants_version(args: &[std::ffi::OsString]) -> bool {
+    args.iter().skip(1).any(|arg| arg == "-V" || arg == "--version")
 }
 
 pub fn run_command_from_args<I, T>(

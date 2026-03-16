@@ -1,5 +1,6 @@
 use crate::OutputMode;
 use clap::{Args, CommandFactory, Parser, Subcommand};
+use clap::builder::styling::{AnsiColor, Effects, Styles};
 
 const AFTER_HELP: &str = "\
 Workflow Commands:
@@ -307,13 +308,25 @@ impl FrontendCli {
     }
 
     pub fn command() -> clap::Command {
-        <Self as CommandFactory>::command().help_template(
+        <Self as CommandFactory>::command()
+        .color(clap::ColorChoice::Always)
+        .styles(
+            Styles::styled()
+                .header(AnsiColor::Cyan.on_default().effects(Effects::BOLD))
+                .usage(AnsiColor::Green.on_default().effects(Effects::BOLD))
+                .literal(AnsiColor::Yellow.on_default().effects(Effects::BOLD))
+                .placeholder(AnsiColor::Yellow.on_default())
+        )
+        .help_template(
             "\
 {about-section}
 Usage: {usage}
 
 Commands:
 {subcommands}
+
+Arguments:
+{positionals}
 
 Options:
 {options}
@@ -331,6 +344,61 @@ Options:
         } else {
             self.profile.unwrap_or(FrontendProfile::Debug)
         }
+    }
+
+    pub fn render_root_help() -> String {
+        let heading = |text: &str| format!("\x1b[1;36m{text}\x1b[0m");
+        let flag = |text: &str| format!("\x1b[1;33m{text}\x1b[0m");
+        let command = |text: &str| format!("\x1b[1;32m{text}\x1b[0m");
+
+        [
+            "User-facing frontend for the FOL toolchain".to_string(),
+            String::new(),
+            format!("{} {}", heading("Usage:"), "fol [OPTIONS] [FILE_OR_FOLDER] [COMMAND]"),
+            String::new(),
+            heading("Commands:"),
+            format!("  {:<12} [aliases: i, bootstrap]", command("init")),
+            format!("  {:<12} [aliases: n, create]", command("new")),
+            format!("  {:<12} [aliases: w, ws, workspace]", command("work")),
+            format!("  {:<12} [aliases: f, sync]", command("fetch")),
+            format!("  {:<12} [aliases: b, make]", command("build")),
+            format!("  {:<12} [aliases: r]", command("run")),
+            format!("  {:<12} [aliases: t]", command("test")),
+            format!("  {:<12} [aliases: c, verify]", command("check")),
+            format!("  {:<12} [aliases: e, gen]", command("emit")),
+            format!("  {:<12} [aliases: cl, purge]", command("clean")),
+            format!("  {:<12} [aliases: completions, comp]", command("completion")),
+            String::new(),
+            heading("Arguments:"),
+            format!("  {:<18} Input FOL file or folder to build directly", flag("[FILE_OR_FOLDER]")),
+            String::new(),
+            heading("Options:"),
+            format!("  {:<26} Select frontend output mode [env: FOL_OUTPUT=] [default: human] [possible values: human, plain, json]", flag("--output <OUTPUT>")),
+            format!("  {:<26} Select the build profile [env: FOL_PROFILE=] [possible values: debug, release]", flag("--profile <PROFILE>")),
+            format!("  {:<26} Force the debug profile", flag("--debug")),
+            format!("  {:<26} Force the release profile", flag("--release")),
+            format!("  {:<26} Print help", flag("-h, --help")),
+            format!("  {:<26} Print version", flag("-V, --version")),
+            String::new(),
+            heading("Workflow Commands:"),
+            "  init, new, fetch, check, build, run, test, emit, clean".to_string(),
+            String::new(),
+            heading("Workspace Commands:"),
+            "  work".to_string(),
+            String::new(),
+            heading("Shell Commands:"),
+            "  completion".to_string(),
+            String::new(),
+            heading("Examples:"),
+            "  fol init --bin".to_string(),
+            "  fol new demo --lib".to_string(),
+            "  fol fetch".to_string(),
+            "  fol build --release".to_string(),
+            "  fol run".to_string(),
+            "  fol emit rust".to_string(),
+            "  fol completion bash".to_string(),
+        ]
+        .join("\n")
     }
 }
 
@@ -521,6 +589,8 @@ mod tests {
         assert!(!help.contains("--dump-lowered"));
         assert!(!help.contains("--emit-rust"));
         assert!(!help.contains("--keep-build-dir"));
+        assert!(help.contains("Arguments:"));
+        assert!(help.contains("FILE_OR_FOLDER"));
     }
 
     #[test]
