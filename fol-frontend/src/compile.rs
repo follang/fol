@@ -193,6 +193,21 @@ pub fn test_workspace(workspace: &FrontendWorkspace) -> FrontendResult<FrontendC
     test_workspace_with_config(workspace, &FrontendConfig::default())
 }
 
+pub fn test_package_with_config(
+    workspace: &FrontendWorkspace,
+    config: &FrontendConfig,
+    package_name: &str,
+) -> FrontendResult<FrontendCommandResult> {
+    test_workspace_selected_with_config(workspace, config, Some(package_name))
+}
+
+pub fn test_package(
+    workspace: &FrontendWorkspace,
+    package_name: &str,
+) -> FrontendResult<FrontendCommandResult> {
+    test_package_with_config(workspace, &FrontendConfig::default(), package_name)
+}
+
 pub fn compile_member_workspace(
     workspace: &FrontendWorkspace,
     config: &FrontendConfig,
@@ -348,7 +363,8 @@ fn lower_lowering_errors(errors: Vec<fol_lower::LoweringError>) -> FrontendError
 mod tests {
     use super::{
         build_workspace, build_workspace_for_profile_with_config, check_workspace,
-        profile_build_root, run_workspace, run_workspace_with_args_and_config, test_workspace,
+        profile_build_root, run_workspace, run_workspace_with_args_and_config, test_package,
+        test_workspace,
     };
     use crate::{FrontendProfile, FrontendWorkspace, PackageRoot, WorkspaceRoot};
     use std::{fs, path::PathBuf};
@@ -578,6 +594,38 @@ mod tests {
         };
 
         let result = test_workspace(&workspace).unwrap();
+
+        assert_eq!(result.command, "test");
+        assert_eq!(result.summary, "tested 1 workspace package(s)");
+        assert_eq!(result.artifacts.len(), 1);
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn test_package_selects_a_single_named_workspace_member() {
+        let root =
+            std::env::temp_dir().join(format!("fol_frontend_test_package_{}", std::process::id()));
+        let app = root.join("app");
+        let lib = root.join("lib");
+        for package in [&app, &lib] {
+            let src = package.join("src");
+            fs::create_dir_all(&src).unwrap();
+            fs::write(package.join("package.yaml"), "name: pkg\nversion: 0.1.0\n").unwrap();
+            fs::write(package.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
+            fs::write(src.join("main.fol"), "fun[] main(): int = {\n    return 0\n}\n").unwrap();
+        }
+
+        let workspace = FrontendWorkspace {
+            root: WorkspaceRoot::new(root.clone()),
+            members: vec![PackageRoot::new(app), PackageRoot::new(lib)],
+            std_root_override: None,
+            package_store_root_override: None,
+            build_root: root.join(".fol/build"),
+            cache_root: root.join(".fol/cache"),
+        };
+
+        let result = test_package(&workspace, "lib").unwrap();
 
         assert_eq!(result.command, "test");
         assert_eq!(result.summary, "tested 1 workspace package(s)");
