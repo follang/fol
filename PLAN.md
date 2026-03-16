@@ -6,6 +6,7 @@ Phase 0 status:
 
 - [x] 0.1 Create `fol-frontend` plan reset commit
 - [x] 0.2 Freeze `fol-frontend` as a crate, not root-main sprawl
+- [x] 0.3 Freeze `clap` derive requirement
 
 This plan defines the next major milestone after the completed `V1` compiler
 pipeline:
@@ -90,6 +91,10 @@ The local `../../tools/roc` CLI is the immediate reference for:
 Unlike `roc`, this crate should use:
 
 - `clap` derive macros for command/arg definitions
+
+Builder-style clap APIs may still appear in compatibility shims or completion
+internals, but the canonical command tree must be declared with derive types in
+`fol-frontend`.
 
 ## 2. Boundary
 
