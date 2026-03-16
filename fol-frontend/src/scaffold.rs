@@ -8,6 +8,7 @@ use std::path::Path;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PackageTargetKind {
     Bin,
+    Lib,
 }
 
 pub fn init_current_dir(root: &Path) -> FrontendResult<FrontendCommandResult> {
@@ -21,6 +22,7 @@ pub fn init_package_root(
     fs::create_dir_all(root.join("src"))?;
     let source_file = match target {
         PackageTargetKind::Bin => "main.fol",
+        PackageTargetKind::Lib => "lib.fol",
     };
     fs::write(root.join("src").join(source_file), "")?;
     fs::write(root.join("package.yaml"), "")?;
@@ -117,6 +119,18 @@ mod tests {
         init_package_root(&root, PackageTargetKind::Bin).unwrap();
 
         assert!(root.join("src/main.fol").is_file());
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn lib_target_scaffolding_uses_library_entry_file() {
+        let root = std::env::temp_dir().join(format!("fol_frontend_lib_target_{}", std::process::id()));
+        fs::create_dir_all(&root).unwrap();
+
+        init_package_root(&root, PackageTargetKind::Lib).unwrap();
+
+        assert!(root.join("src/lib.fol").is_file());
 
         fs::remove_dir_all(root).ok();
     }

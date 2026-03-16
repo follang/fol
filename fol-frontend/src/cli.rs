@@ -51,8 +51,11 @@ pub struct InitCommand {
     #[arg(long)]
     pub workspace: bool,
 
-    #[arg(long)]
+    #[arg(long, conflicts_with = "lib")]
     pub bin: bool,
+
+    #[arg(long, conflicts_with = "bin")]
+    pub lib: bool,
 }
 
 #[derive(Debug, Clone, Args, PartialEq, Eq)]
@@ -62,8 +65,11 @@ pub struct NewCommand {
     #[arg(long)]
     pub workspace: bool,
 
-    #[arg(long)]
+    #[arg(long, conflicts_with = "lib")]
     pub bin: bool,
+
+    #[arg(long, conflicts_with = "bin")]
+    pub lib: bool,
 }
 
 #[derive(Debug, Clone, Parser, PartialEq, Eq)]
@@ -227,7 +233,7 @@ mod tests {
 
         assert_eq!(
             init.command,
-            Some(FrontendCommand::Init(InitCommand { workspace: true, bin: false }))
+            Some(FrontendCommand::Init(InitCommand { workspace: true, bin: false, lib: false }))
         );
         assert_eq!(
             new.command,
@@ -235,6 +241,7 @@ mod tests {
                 name: "demo".to_string(),
                 workspace: true,
                 bin: false,
+                lib: false,
             }))
         );
     }
@@ -246,7 +253,7 @@ mod tests {
 
         assert_eq!(
             init.command,
-            Some(FrontendCommand::Init(InitCommand { workspace: false, bin: true }))
+            Some(FrontendCommand::Init(InitCommand { workspace: false, bin: true, lib: false }))
         );
         assert_eq!(
             new.command,
@@ -254,6 +261,27 @@ mod tests {
                 name: "demo".to_string(),
                 workspace: false,
                 bin: true,
+                lib: false,
+            }))
+        );
+    }
+
+    #[test]
+    fn lib_flags_parse_for_init_and_new_commands() {
+        let init = FrontendCli::parse_from(["fol", "init", "--lib"]);
+        let new = FrontendCli::parse_from(["fol", "new", "demo", "--lib"]);
+
+        assert_eq!(
+            init.command,
+            Some(FrontendCommand::Init(InitCommand { workspace: false, bin: false, lib: true }))
+        );
+        assert_eq!(
+            new.command,
+            Some(FrontendCommand::New(NewCommand {
+                name: "demo".to_string(),
+                workspace: false,
+                bin: false,
+                lib: true,
             }))
         );
     }
