@@ -553,4 +553,43 @@ mod tests {
             "duplicate selectors should explain the exact duplicated key",
         );
     }
+
+    #[test]
+    fn package_locator_acceptance_matrix_stays_stable() {
+        let cases = [
+            (
+                "core/tools",
+                PackageLocatorKind::InstalledStore,
+                None,
+                None,
+            ),
+            (
+                "https://github.com/follang/json.git",
+                PackageLocatorKind::Git,
+                Some(PackageGitTransport::Https),
+                Some("github.com/follang/json"),
+            ),
+            (
+                "git@github.com:follang/json.git",
+                PackageLocatorKind::Git,
+                Some(PackageGitTransport::Ssh),
+                Some("github.com/follang/json"),
+            ),
+            (
+                "git+https://github.com/follang/json.git?rev=abc123",
+                PackageLocatorKind::Git,
+                Some(PackageGitTransport::Git),
+                Some("github.com/follang/json"),
+            ),
+        ];
+
+        for (raw, kind, transport, identity) in cases {
+            let locator =
+                parse_package_locator(raw).unwrap_or_else(|error| panic!("{raw}: {error}"));
+
+            assert_eq!(locator.kind, kind, "{raw}");
+            assert_eq!(locator.git.as_ref().map(|git| git.transport), transport, "{raw}");
+            assert_eq!(locator.normalized_git_identity().as_deref(), identity, "{raw}");
+        }
+    }
 }
