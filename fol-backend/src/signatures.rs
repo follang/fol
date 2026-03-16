@@ -32,15 +32,6 @@ pub fn render_routine_signature(
     type_table: &LoweredTypeTable,
 ) -> BackendResult<String> {
     let signature = routine_signature(type_table, routine.signature)?;
-    if signature.error_type.is_some() {
-        return Err(BackendError::new(
-            BackendErrorKind::Unsupported,
-            format!(
-                "recoverable Rust signatures are not implemented yet for routine '{}'",
-                routine.name
-            ),
-        ));
-    }
 
     let mut params = Vec::new();
     if let Some(receiver_type) = routine.receiver_type {
@@ -48,10 +39,7 @@ pub fn render_routine_signature(
     }
     params.extend(render_param_list(package_identity, routine, signature, type_table)?);
 
-    let return_type = match signature.return_type {
-        Some(return_type) => format!(" -> {}", render_rust_type(type_table, return_type)?),
-        None => String::new(),
-    };
+    let return_type = render_routine_return_type(signature, type_table)?;
 
     Ok(format!(
         "pub fn {}({}){}",
@@ -114,6 +102,25 @@ fn render_param_list(
             ))
         })
         .collect()
+}
+
+fn render_routine_return_type(
+    signature: &LoweredRoutineType,
+    type_table: &LoweredTypeTable,
+) -> BackendResult<String> {
+    let success_type = match signature.return_type {
+        Some(return_type) => render_rust_type(type_table, return_type)?,
+        None => "()".to_string(),
+    };
+    Ok(match signature.error_type {
+        Some(error_type) => format!(
+            " -> rt::FolRecover<{}, {}>",
+            success_type,
+            render_rust_type(type_table, error_type)?
+        ),
+        None if signature.return_type.is_some() => format!(" -> {success_type}"),
+        None => String::new(),
+    })
 }
 
 #[cfg(test)]
@@ -204,5 +211,26 @@ mod tests {
         assert!(plain_rendered.ends_with(" -> rt::FolInt"));
         assert!(method_rendered.contains("receiver: rt::FolInt"));
         assert!(method_rendered.contains("l__pkg__entry__app__r1__l0__flag: rt::FolBool"));
+    }
+
+    #[test]
+    fn routine_signature_rendering_wraps_recoverable_returns_in_runtime_abi() {
+        let mut table = LoweredTypeTable::new();
+        let int_id = table.intern_builtin(LoweredBuiltinType::Int);
+        let str_id = table.intern_builtin(LoweredBuiltinType::Str);
+        let signature_id = table.intern(LoweredType::Routine(LoweredRoutineType {
+            params: vec![],
+            return_type: Some(int_id),
+            error_type: Some(str_id),
+        }));
+        let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
+        let mut routine = LoweredRoutine::new(LoweredRoutineId(2), "load", LoweredBlockId(0));
+        routine.signature = Some(signature_id);
+
+        let rendered =
+            render_routine_signature(&package_identity, &routine, &table).expect("signature");
+
+        assert!(rendered.contains("pub fn r__pkg__entry__app__r2__load()"));
+        assert!(rendered.ends_with(" -> rt::FolRecover<rt::FolInt, rt::FolStr>"));
     }
 }

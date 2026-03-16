@@ -968,7 +968,7 @@ not full long-term compiler completion.
 #### 6.2 done
 - emit routine signatures including receiver-qualified routines
 
-#### 6.3
+#### 6.3 done
 - emit recoverable routine return types as `FolRecover<T, E>`
 
 #### 6.4
