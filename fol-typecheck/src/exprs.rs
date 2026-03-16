@@ -60,11 +60,6 @@ impl TypedExpr {
         }
     }
 
-    fn with_effect(mut self, error_type: CheckedTypeId) -> Self {
-        self.recoverable_effect = Some(RecoverableCallEffect { error_type });
-        self
-    }
-
     fn with_optional_effect(mut self, effect: Option<RecoverableCallEffect>) -> Self {
         self.recoverable_effect = effect;
         self
@@ -495,14 +490,6 @@ fn observe_context(context: TypeContext) -> TypeContext {
         error_call_mode: ErrorCallMode::Observe,
         ..context
     }
-}
-
-fn typed_expr_value(
-    expr: TypedExpr,
-    message: impl Into<String>,
-) -> Result<CheckedTypeId, TypecheckError> {
-    expr.value_type
-        .ok_or_else(|| TypecheckError::new(TypecheckErrorKind::InvalidInput, message))
 }
 
 fn ensure_propagatable_effect(

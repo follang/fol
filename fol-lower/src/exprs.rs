@@ -1,8 +1,8 @@
 use crate::{
     control::{LoweredInstr, LoweredInstrKind, LoweredLinearKind, LoweredLocal, LoweredOperand},
     ids::{LoweredBlockId, LoweredInstrId, LoweredLocalId, LoweredTypeId},
-    LoweredGlobalId, LoweredPackage, LoweredRoutine, LoweredRoutineId, LoweredWorkspace,
-    LoweringError, LoweringErrorKind,
+    LoweredGlobalId, LoweredPackage, LoweredRoutine, LoweredRoutineId, LoweringError,
+    LoweringErrorKind,
 };
 use fol_intrinsics::{select_intrinsic, IntrinsicEntry, IntrinsicSurface};
 use fol_parser::ast::{AstNode, CallSurface, ContainerType, Literal, LoopCondition};
@@ -50,6 +50,7 @@ impl WorkspaceDeclIndex {
         index
     }
 
+    #[cfg(test)]
     pub(crate) fn build(workspace: &LoweredWorkspace) -> Self {
         let mut index = Self::default();
         for package in workspace.packages() {
@@ -216,10 +217,6 @@ impl<'a> RoutineCursor<'a> {
             block_id,
             loop_exit_blocks: Vec::new(),
         }
-    }
-
-    pub(crate) fn current_block_id(&self) -> LoweredBlockId {
-        self.block_id
     }
 
     pub(crate) fn switch_block(&mut self, block_id: LoweredBlockId) -> Result<(), LoweringError> {
@@ -1931,11 +1928,11 @@ fn materialize_recoverable_value(
     typed_package: &fol_typecheck::TypedPackage,
     type_table: &crate::LoweredTypeTable,
     checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
-    current_identity: &PackageIdentity,
-    decl_index: &WorkspaceDeclIndex,
+    _current_identity: &PackageIdentity,
+    _decl_index: &WorkspaceDeclIndex,
     cursor: &mut RoutineCursor<'_>,
-    source_unit_id: SourceUnitId,
-    scope_id: ScopeId,
+    _source_unit_id: SourceUnitId,
+    _scope_id: ScopeId,
     lowered: LoweredValue,
 ) -> Result<LoweredValue, LoweringError> {
     let Some(error_type) = lowered.recoverable_error_type else {
