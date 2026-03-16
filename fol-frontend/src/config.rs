@@ -9,6 +9,7 @@ pub struct FrontendConfig {
     pub package_store_root_override: Option<PathBuf>,
     pub build_root_override: Option<PathBuf>,
     pub cache_root_override: Option<PathBuf>,
+    pub keep_build_dir: bool,
 }
 
 impl Default for FrontendConfig {
@@ -20,6 +21,7 @@ impl Default for FrontendConfig {
             package_store_root_override: None,
             build_root_override: None,
             cache_root_override: None,
+            keep_build_dir: false,
         }
     }
 }
@@ -32,6 +34,9 @@ impl FrontendConfig {
             std::env::var_os("FOL_PACKAGE_STORE_ROOT").map(PathBuf::from);
         config.build_root_override = std::env::var_os("FOL_BUILD_ROOT").map(PathBuf::from);
         config.cache_root_override = std::env::var_os("FOL_CACHE_ROOT").map(PathBuf::from);
+        config.keep_build_dir = std::env::var_os("FOL_KEEP_BUILD_DIR")
+            .map(|value| value == "1" || value.eq_ignore_ascii_case("true"))
+            .unwrap_or(false);
         config
     }
 }
@@ -51,6 +56,7 @@ mod tests {
         assert!(config.package_store_root_override.is_none());
         assert!(config.build_root_override.is_none());
         assert!(config.cache_root_override.is_none());
+        assert!(!config.keep_build_dir);
     }
 
     #[test]
@@ -60,6 +66,7 @@ mod tests {
             std::env::set_var("FOL_PACKAGE_STORE_ROOT", "/tmp/pkg");
             std::env::set_var("FOL_BUILD_ROOT", "/tmp/build");
             std::env::set_var("FOL_CACHE_ROOT", "/tmp/cache");
+            std::env::set_var("FOL_KEEP_BUILD_DIR", "true");
         }
 
         let config = FrontendConfig::from_env();
@@ -71,12 +78,14 @@ mod tests {
         );
         assert_eq!(config.build_root_override, Some(std::path::PathBuf::from("/tmp/build")));
         assert_eq!(config.cache_root_override, Some(std::path::PathBuf::from("/tmp/cache")));
+        assert!(config.keep_build_dir);
 
         unsafe {
             std::env::remove_var("FOL_STD_ROOT");
             std::env::remove_var("FOL_PACKAGE_STORE_ROOT");
             std::env::remove_var("FOL_BUILD_ROOT");
             std::env::remove_var("FOL_CACHE_ROOT");
+            std::env::remove_var("FOL_KEEP_BUILD_DIR");
         }
     }
 }

@@ -57,7 +57,7 @@ pub fn build_workspace_for_profile_with_config(
         let backend_session = fol_backend::BackendSession::new(lowered);
         let artifact = fol_backend::emit_backend_artifact(
             &backend_session,
-            &fol_backend::BackendConfig::default(),
+            &backend_config(config),
             &output_root,
         )
         .map_err(|error| FrontendError::new(FrontendErrorKind::CommandFailed, error.to_string()))?;
@@ -112,7 +112,10 @@ pub fn build_workspace(workspace: &FrontendWorkspace) -> FrontendResult<Frontend
     build_workspace_with_config(workspace, &FrontendConfig::default())
 }
 
-pub fn profile_build_root(workspace: &FrontendWorkspace, profile: FrontendProfile) -> std::path::PathBuf {
+pub fn profile_build_root(
+    workspace: &FrontendWorkspace,
+    profile: FrontendProfile,
+) -> std::path::PathBuf {
     workspace.build_root.join(match profile {
         FrontendProfile::Debug => "debug",
         FrontendProfile::Release => "release",
@@ -233,6 +236,13 @@ fn resolver_config(
             .clone()
             .or_else(|| workspace.package_store_root_override.clone())
             .map(|path| path.to_string_lossy().to_string()),
+    }
+}
+
+fn backend_config(config: &FrontendConfig) -> fol_backend::BackendConfig {
+    fol_backend::BackendConfig {
+        keep_build_dir: config.keep_build_dir,
+        ..fol_backend::BackendConfig::default()
     }
 }
 
@@ -447,6 +457,38 @@ mod tests {
 
         assert_eq!(result.command, "run");
         assert_eq!(result.artifacts.len(), 1);
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn build_workspace_keeps_generated_crate_dirs_when_requested() {
+        let root =
+            std::env::temp_dir().join(format!("fol_frontend_keep_build_dir_{}", std::process::id()));
+        let app = root.join("app");
+        let src = app.join("src");
+        fs::create_dir_all(&src).unwrap();
+        fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
+        fs::write(app.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
+        fs::write(src.join("main.fol"), "fun[] main(): int = {\n    return 0\n}\n").unwrap();
+
+        let workspace = FrontendWorkspace {
+            root: WorkspaceRoot::new(root.clone()),
+            members: vec![PackageRoot::new(app)],
+            std_root_override: None,
+            package_store_root_override: None,
+            build_root: root.join(".fol/build"),
+            cache_root: root.join(".fol/cache"),
+        };
+        let config = crate::FrontendConfig {
+            keep_build_dir: true,
+            ..crate::FrontendConfig::default()
+        };
+
+        let result = build_workspace_with_config(&workspace, &config).unwrap();
+        let crate_root = result.artifacts[0].path.as_ref().unwrap();
+
+        assert!(crate_root.exists());
 
         fs::remove_dir_all(root).ok();
     }
