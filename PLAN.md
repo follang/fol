@@ -425,38 +425,38 @@ layer for the executable `V1` surface.
 #### 4.4 done
 - add `pkg_transitive_import`
 
-#### 4.5
+#### 4.5 done
 - add `mixed_loc_std_pkg`
 
 ### Phase 5: Data Modeling Apps
 
-#### 5.1
+#### 5.1 done
 - add `record_flow`
 
-#### 5.2
+#### 5.2 done
 - add `entry_flow`
 
-#### 5.3
+#### 5.3 done
 - add `alias_flow`
 
-#### 5.4
+#### 5.4 done
 - add `method_flow`
 
 ### Phase 6: Containers And Intrinsics
 
-#### 6.1
+#### 6.1 done
 - add `container_linear`
 
-#### 6.2
+#### 6.2 done
 - add `container_map_set`
 
-#### 6.3
+#### 6.3 done
 - add `container_cross_package`
 
-#### 6.4
+#### 6.4 done
 - add `intrinsics_comparison`
 
-#### 6.5
+#### 6.5 done
 - add `intrinsics_not_len_echo`
 
 #### 6.6
