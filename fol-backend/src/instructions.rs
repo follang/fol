@@ -58,6 +58,11 @@ pub fn render_core_instruction(
                 None => Ok(format!("{callee_name}({rendered_args});")),
             }
         }
+        LoweredInstrKind::FieldAccess { base, field } => {
+            let result = rendered_result_local(package_identity, routine, instruction)?;
+            let base = render_local_name(package_identity, routine, *base)?;
+            Ok(format!("let {result} = {base}.{field}.clone();"))
+        }
         other => Err(BackendError::new(
             BackendErrorKind::Unsupported,
             format!("core instruction emission is not implemented yet for {other:?}"),
@@ -207,5 +212,41 @@ mod tests {
 
         assert!(rendered.contains("let l__pkg__entry__app__r3__l1__result = r__pkg__entry__app__r9__callee("));
         assert!(rendered.contains("l__pkg__entry__app__r3__l0__value"));
+    }
+
+    #[test]
+    fn core_instruction_rendering_emits_record_field_accesses_as_native_member_reads() {
+        let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
+        let mut table = LoweredTypeTable::new();
+        let int_id = table.intern_builtin(LoweredBuiltinType::Int);
+        let mut routine = LoweredRoutine::new(LoweredRoutineId(4), "main", LoweredBlockId(0));
+        let base_local = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(0),
+            type_id: Some(int_id),
+            recoverable_error_type: None,
+            name: Some("user".to_string()),
+        });
+        let result_local = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(1),
+            type_id: Some(int_id),
+            recoverable_error_type: None,
+            name: Some("age".to_string()),
+        });
+        let access = LoweredInstr {
+            id: LoweredInstrId(4),
+            result: Some(result_local),
+            kind: LoweredInstrKind::FieldAccess {
+                base: base_local,
+                field: "age".to_string(),
+            },
+        };
+
+        let rendered =
+            render_core_instruction(&package_identity, &routine, &access).expect("field access");
+
+        assert_eq!(
+            rendered,
+            "let l__pkg__entry__app__r4__l1__age = l__pkg__entry__app__r4__l0__user.age.clone();"
+        );
     }
 }

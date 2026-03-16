@@ -985,7 +985,7 @@ not full long-term compiler completion.
 #### 7.2 done
 - emit plain routine calls
 
-#### 7.3
+#### 7.3 done
 - emit field access
 
 #### 7.4
