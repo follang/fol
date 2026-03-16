@@ -5,6 +5,7 @@ Last updated: 2026-03-16
 Phase 0 status:
 
 - [x] 0.1 Create `fol-frontend` plan reset commit
+- [x] 0.2 Freeze `fol-frontend` as a crate, not root-main sprawl
 
 This plan defines the next major milestone after the completed `V1` compiler
 pipeline:
@@ -35,6 +36,10 @@ That shell should live in a new crate:
 
 This plan intentionally treats `fol-frontend` as a first-class crate, not just
 "make `src/main.rs` larger".
+
+The current root binary remains temporary migration surface only. New frontend
+logic must land in `fol-frontend`, with root `src/main.rs` reduced to a shim as
+Phase 17 progresses.
 
 ## 0. Goal
 
