@@ -982,7 +982,7 @@ not full long-term compiler completion.
 #### 7.1 done
 - emit `Const`, `LoadLocal`, `StoreLocal`, `LoadGlobal`, and `StoreGlobal`
 
-#### 7.2
+#### 7.2 done
 - emit plain routine calls
 
 #### 7.3

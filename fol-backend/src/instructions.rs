@@ -39,6 +39,25 @@ pub fn render_core_instruction(
                 mangle_global_name(package_identity, *global, "global")
             ))
         }
+        LoweredInstrKind::Call {
+            callee,
+            args,
+            error_type: None,
+        } => {
+            let rendered_args = args
+                .iter()
+                .map(|local_id| render_local_name(package_identity, routine, *local_id))
+                .collect::<BackendResult<Vec<_>>>()?
+                .join(", ");
+            let callee_name = mangle_routine_name(package_identity, *callee, "callee");
+            match instruction.result {
+                Some(_) => {
+                    let result = rendered_result_local(package_identity, routine, instruction)?;
+                    Ok(format!("let {result} = {callee_name}({rendered_args});"))
+                }
+                None => Ok(format!("{callee_name}({rendered_args});")),
+            }
+        }
         other => Err(BackendError::new(
             BackendErrorKind::Unsupported,
             format!("core instruction emission is not implemented yet for {other:?}"),
@@ -154,5 +173,39 @@ mod tests {
 
         let _ = SourceUnitId(0);
         let _ = SymbolId(0);
+    }
+
+    #[test]
+    fn core_instruction_rendering_emits_plain_routine_calls_for_non_recoverable_sites() {
+        let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
+        let mut table = LoweredTypeTable::new();
+        let int_id = table.intern_builtin(LoweredBuiltinType::Int);
+        let mut routine = LoweredRoutine::new(LoweredRoutineId(3), "main", LoweredBlockId(0));
+        let arg_local = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(0),
+            type_id: Some(int_id),
+            recoverable_error_type: None,
+            name: Some("value".to_string()),
+        });
+        let result_local = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(1),
+            type_id: Some(int_id),
+            recoverable_error_type: None,
+            name: Some("result".to_string()),
+        });
+        let call = LoweredInstr {
+            id: LoweredInstrId(3),
+            result: Some(result_local),
+            kind: LoweredInstrKind::Call {
+                callee: LoweredRoutineId(9),
+                args: vec![arg_local],
+                error_type: None,
+            },
+        };
+
+        let rendered = render_core_instruction(&package_identity, &routine, &call).expect("call");
+
+        assert!(rendered.contains("let l__pkg__entry__app__r3__l1__result = r__pkg__entry__app__r9__callee("));
+        assert!(rendered.contains("l__pkg__entry__app__r3__l0__value"));
     }
 }
