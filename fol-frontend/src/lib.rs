@@ -9,7 +9,7 @@ mod errors;
 mod output;
 mod result;
 
-pub use cli::FrontendCli;
+pub use cli::{FrontendCli, FrontendCommand, UnitCommand};
 pub use config::FrontendConfig;
 pub use errors::{FrontendError, FrontendErrorKind, FrontendResult};
 pub use output::{ColorPolicy, FrontendOutputConfig, OutputMode};

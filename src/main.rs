@@ -547,9 +547,14 @@ fn frontend_result_surface_smoke_compiles() {
 
 #[test]
 fn frontend_root_parser_surface_smoke_compiles() {
-    let cli = fol_frontend::FrontendCli::parse_from(["fol"]);
+    let cli = fol_frontend::FrontendCli::parse_from(["fol", "build"]);
 
-    assert_eq!(cli, fol_frontend::FrontendCli);
+    assert_eq!(
+        cli.command,
+        Some(fol_frontend::FrontendCommand::Build(
+            fol_frontend::UnitCommand
+        ))
+    );
 }
 
 #[test]
