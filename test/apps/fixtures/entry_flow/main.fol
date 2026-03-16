@@ -1,0 +1,13 @@
+typ Status: ent = {
+    var OK: int = 7;
+    var FAIL: int = 3
+}
+
+fun[] echo(status: Status): Status = {
+    return status
+}
+
+fun[] main(): int = {
+    var current: Status = echo(Status.FAIL)
+    return Status.OK
+}
