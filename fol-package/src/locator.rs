@@ -72,6 +72,9 @@ pub fn parse_package_locator(raw: &str) -> Result<PackageLocator, PackageError> 
     if trimmed.starts_with("git@") {
         return parse_ssh_git_locator(trimmed);
     }
+    if trimmed.starts_with("git+") {
+        return parse_git_scheme_locator(trimmed);
+    }
     if looks_like_future_git_locator(trimmed) {
         return Err(unsupported_remote_locator(raw));
     }
@@ -165,6 +168,30 @@ fn parse_ssh_git_locator(raw: &str) -> Result<PackageLocator, PackageError> {
         raw.to_string(),
         PackageGitTransport::Ssh,
         raw.to_string(),
+        PackageGitSelector::default(),
+    ))
+}
+
+fn parse_git_scheme_locator(raw: &str) -> Result<PackageLocator, PackageError> {
+    let repository = raw.trim_start_matches("git+").trim();
+    if repository.is_empty()
+        || !(repository.starts_with("https://")
+            || repository.starts_with("http://")
+            || repository.starts_with("ssh://"))
+    {
+        return Err(PackageError::new(
+            PackageErrorKind::InvalidInput,
+            format!(
+                "git package locator '{}' must follow 'git+https://...' or 'git+ssh://...' form",
+                raw
+            ),
+        ));
+    }
+
+    Ok(PackageLocator::git(
+        raw.to_string(),
+        PackageGitTransport::Git,
+        repository.to_string(),
         PackageGitSelector::default(),
     ))
 }
@@ -293,6 +320,22 @@ mod tests {
         assert_eq!(
             locator.git.as_ref().map(|git| git.repository.as_str()),
             Some("git@github.com:follang/json.git")
+        );
+    }
+
+    #[test]
+    fn package_locator_parses_git_scheme_locators() {
+        let locator = parse_package_locator("git+https://github.com/follang/json.git")
+            .expect("git+ locators should parse");
+
+        assert_eq!(locator.kind, PackageLocatorKind::Git);
+        assert_eq!(
+            locator.git.as_ref().map(|git| git.transport),
+            Some(PackageGitTransport::Git)
+        );
+        assert_eq!(
+            locator.git.as_ref().map(|git| git.repository.as_str()),
+            Some("https://github.com/follang/json.git")
         );
     }
 }
