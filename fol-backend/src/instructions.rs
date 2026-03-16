@@ -1329,4 +1329,272 @@ mod tests {
             "let l__pkg__entry__app__r18__l3__map = rt::FolMap::from_pairs(vec![(l__pkg__entry__app__r18__l0__a.clone(), l__pkg__entry__app__r18__l1__b.clone()), (l__pkg__entry__app__r18__l1__b.clone(), l__pkg__entry__app__r18__l0__a.clone())]);"
         );
     }
+
+    #[test]
+    fn aggregate_and_container_rendering_emits_runtime_index_helpers() {
+        let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
+        let mut table = LoweredTypeTable::new();
+        let int_id = table.intern_builtin(LoweredBuiltinType::Int);
+        let array_id = table.intern(fol_lower::LoweredType::Array {
+            element_type: int_id,
+            size: Some(2),
+        });
+        let vec_id = table.intern(fol_lower::LoweredType::Vector { element_type: int_id });
+        let seq_id = table.intern(fol_lower::LoweredType::Sequence { element_type: int_id });
+        let map_id = table.intern(fol_lower::LoweredType::Map {
+            key_type: int_id,
+            value_type: int_id,
+        });
+        let mut routine = LoweredRoutine::new(LoweredRoutineId(19), "main", LoweredBlockId(0));
+        let array = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(0),
+            type_id: Some(array_id),
+            recoverable_error_type: None,
+            name: Some("arr".to_string()),
+        });
+        let vector = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(1),
+            type_id: Some(vec_id),
+            recoverable_error_type: None,
+            name: Some("vec".to_string()),
+        });
+        let sequence = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(2),
+            type_id: Some(seq_id),
+            recoverable_error_type: None,
+            name: Some("seq".to_string()),
+        });
+        let map = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(3),
+            type_id: Some(map_id),
+            recoverable_error_type: None,
+            name: Some("map".to_string()),
+        });
+        let index = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(4),
+            type_id: Some(int_id),
+            recoverable_error_type: None,
+            name: Some("index".to_string()),
+        });
+        let arr_result = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(5),
+            type_id: Some(int_id),
+            recoverable_error_type: None,
+            name: Some("a".to_string()),
+        });
+        let vec_result = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(6),
+            type_id: Some(int_id),
+            recoverable_error_type: None,
+            name: Some("b".to_string()),
+        });
+        let seq_result = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(7),
+            type_id: Some(int_id),
+            recoverable_error_type: None,
+            name: Some("c".to_string()),
+        });
+        let map_result = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(8),
+            type_id: Some(int_id),
+            recoverable_error_type: None,
+            name: Some("d".to_string()),
+        });
+
+        let rendered = [
+            LoweredInstr {
+                id: LoweredInstrId(45),
+                result: Some(arr_result),
+                kind: LoweredInstrKind::IndexAccess {
+                    container: array,
+                    index,
+                },
+            },
+            LoweredInstr {
+                id: LoweredInstrId(46),
+                result: Some(vec_result),
+                kind: LoweredInstrKind::IndexAccess {
+                    container: vector,
+                    index,
+                },
+            },
+            LoweredInstr {
+                id: LoweredInstrId(47),
+                result: Some(seq_result),
+                kind: LoweredInstrKind::IndexAccess {
+                    container: sequence,
+                    index,
+                },
+            },
+            LoweredInstr {
+                id: LoweredInstrId(48),
+                result: Some(map_result),
+                kind: LoweredInstrKind::IndexAccess {
+                    container: map,
+                    index,
+                },
+            },
+        ]
+        .iter()
+        .map(|instruction| render_core_instruction(&package_identity, &table, &routine, instruction))
+        .collect::<Result<Vec<_>, _>>()
+        .expect("index renders");
+
+        assert_eq!(
+            rendered[0],
+            "let l__pkg__entry__app__r19__l5__a = rt::index_array(&l__pkg__entry__app__r19__l0__arr, l__pkg__entry__app__r19__l4__index.clone()).expect(\"array index\").clone();"
+        );
+        assert_eq!(
+            rendered[1],
+            "let l__pkg__entry__app__r19__l6__b = rt::index_vec(&l__pkg__entry__app__r19__l1__vec, l__pkg__entry__app__r19__l4__index.clone()).expect(\"vector index\").clone();"
+        );
+        assert_eq!(
+            rendered[2],
+            "let l__pkg__entry__app__r19__l7__c = rt::index_seq(&l__pkg__entry__app__r19__l2__seq, l__pkg__entry__app__r19__l4__index.clone()).expect(\"sequence index\").clone();"
+        );
+        assert_eq!(
+            rendered[3],
+            "let l__pkg__entry__app__r19__l8__d = rt::lookup_map(&l__pkg__entry__app__r19__l3__map, &l__pkg__entry__app__r19__l4__index).expect(\"map key\").clone();"
+        );
+    }
+
+    #[test]
+    fn aggregate_and_container_snapshot_stays_stable() {
+        let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
+        let mut table = LoweredTypeTable::new();
+        let int_id = table.intern_builtin(LoweredBuiltinType::Int);
+        let array_id = table.intern(fol_lower::LoweredType::Array {
+            element_type: int_id,
+            size: Some(2),
+        });
+        let vec_id = table.intern(fol_lower::LoweredType::Vector { element_type: int_id });
+        let seq_id = table.intern(fol_lower::LoweredType::Sequence { element_type: int_id });
+        let set_id = table.intern(fol_lower::LoweredType::Set {
+            member_types: vec![int_id],
+        });
+        let map_id = table.intern(fol_lower::LoweredType::Map {
+            key_type: int_id,
+            value_type: int_id,
+        });
+        let mut routine = LoweredRoutine::new(LoweredRoutineId(20), "main", LoweredBlockId(0));
+        let a = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(0),
+            type_id: Some(int_id),
+            recoverable_error_type: None,
+            name: Some("a".to_string()),
+        });
+        let b = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(1),
+            type_id: Some(int_id),
+            recoverable_error_type: None,
+            name: Some("b".to_string()),
+        });
+        let arr = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(2),
+            type_id: Some(array_id),
+            recoverable_error_type: None,
+            name: Some("arr".to_string()),
+        });
+        let vec = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(3),
+            type_id: Some(vec_id),
+            recoverable_error_type: None,
+            name: Some("vec".to_string()),
+        });
+        let seq = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(4),
+            type_id: Some(seq_id),
+            recoverable_error_type: None,
+            name: Some("seq".to_string()),
+        });
+        let set = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(5),
+            type_id: Some(set_id),
+            recoverable_error_type: None,
+            name: Some("set".to_string()),
+        });
+        let map = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(6),
+            type_id: Some(map_id),
+            recoverable_error_type: None,
+            name: Some("map".to_string()),
+        });
+        let out = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(7),
+            type_id: Some(int_id),
+            recoverable_error_type: None,
+            name: Some("out".to_string()),
+        });
+
+        let rendered = [
+            LoweredInstr {
+                id: LoweredInstrId(49),
+                result: Some(arr),
+                kind: LoweredInstrKind::ConstructLinear {
+                    kind: LoweredLinearKind::Array,
+                    type_id: array_id,
+                    elements: vec![a, b],
+                },
+            },
+            LoweredInstr {
+                id: LoweredInstrId(50),
+                result: Some(vec),
+                kind: LoweredInstrKind::ConstructLinear {
+                    kind: LoweredLinearKind::Vector,
+                    type_id: vec_id,
+                    elements: vec![a, b],
+                },
+            },
+            LoweredInstr {
+                id: LoweredInstrId(51),
+                result: Some(seq),
+                kind: LoweredInstrKind::ConstructLinear {
+                    kind: LoweredLinearKind::Sequence,
+                    type_id: seq_id,
+                    elements: vec![a, b],
+                },
+            },
+            LoweredInstr {
+                id: LoweredInstrId(52),
+                result: Some(set),
+                kind: LoweredInstrKind::ConstructSet {
+                    type_id: set_id,
+                    members: vec![a, b],
+                },
+            },
+            LoweredInstr {
+                id: LoweredInstrId(53),
+                result: Some(map),
+                kind: LoweredInstrKind::ConstructMap {
+                    type_id: map_id,
+                    entries: vec![(a, b)],
+                },
+            },
+            LoweredInstr {
+                id: LoweredInstrId(54),
+                result: Some(out),
+                kind: LoweredInstrKind::IndexAccess {
+                    container: vec,
+                    index: a,
+                },
+            },
+        ]
+        .iter()
+        .map(|instruction| render_core_instruction(&package_identity, &table, &routine, instruction))
+        .collect::<Result<Vec<_>, _>>()
+        .expect("container snapshot renders")
+        .join("\n");
+
+        assert_eq!(
+            rendered,
+            concat!(
+                "let l__pkg__entry__app__r20__l2__arr = [l__pkg__entry__app__r20__l0__a.clone(), l__pkg__entry__app__r20__l1__b.clone()];\n",
+                "let l__pkg__entry__app__r20__l3__vec = rt::FolVec::from_items(vec![l__pkg__entry__app__r20__l0__a.clone(), l__pkg__entry__app__r20__l1__b.clone()]);\n",
+                "let l__pkg__entry__app__r20__l4__seq = rt::FolSeq::from_items(vec![l__pkg__entry__app__r20__l0__a.clone(), l__pkg__entry__app__r20__l1__b.clone()]);\n",
+                "let l__pkg__entry__app__r20__l5__set = rt::FolSet::from_items(vec![l__pkg__entry__app__r20__l0__a.clone(), l__pkg__entry__app__r20__l1__b.clone()]);\n",
+                "let l__pkg__entry__app__r20__l6__map = rt::FolMap::from_pairs(vec![(l__pkg__entry__app__r20__l0__a.clone(), l__pkg__entry__app__r20__l1__b.clone())]);\n",
+                "let l__pkg__entry__app__r20__l7__out = rt::index_vec(&l__pkg__entry__app__r20__l3__vec, l__pkg__entry__app__r20__l0__a.clone()).expect(\"vector index\").clone();"
+            )
+        );
+    }
 }

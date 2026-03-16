@@ -1040,10 +1040,10 @@ not full long-term compiler completion.
 #### 9.5 done
 - emit sets and maps
 
-#### 9.6
+#### 9.6 done
 - emit runtime-backed indexing
 
-#### 9.7
+#### 9.7 done
 - add snapshot tests for aggregate/container emission
 
 ## 45. Phase 10: Control-Flow And Terminator Emission
