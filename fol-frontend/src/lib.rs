@@ -16,7 +16,10 @@ mod ui;
 mod work;
 mod workspace;
 
-pub use cli::{FrontendCli, FrontendCommand, FrontendProfile, InitCommand, NewCommand, UnitCommand};
+pub use cli::{
+    EmitCommand, EmitSubcommand, FrontendCli, FrontendCommand, FrontendProfile, InitCommand,
+    NewCommand, UnitCommand,
+};
 pub use config::FrontendConfig;
 pub use compile::{
     build_workspace, build_workspace_for_profile_with_config, build_workspace_with_config,

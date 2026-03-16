@@ -35,7 +35,7 @@ pub enum FrontendCommand {
     Test(UnitCommand),
     #[command(visible_aliases = ["c", "verify"])]
     Check(UnitCommand),
-    Emit(UnitCommand),
+    Emit(EmitCommand),
     Clean(UnitCommand),
     #[command(visible_aliases = ["completions", "comp"])]
     Completion(UnitCommand),
@@ -52,10 +52,22 @@ pub struct WorkCommand {
     pub command: WorkSubcommand,
 }
 
+#[derive(Debug, Clone, Args, PartialEq, Eq)]
+pub struct EmitCommand {
+    #[command(subcommand)]
+    pub command: EmitSubcommand,
+}
+
 #[derive(Debug, Clone, Subcommand, PartialEq, Eq)]
 pub enum WorkSubcommand {
     Info(UnitCommand),
     List(UnitCommand),
+}
+
+#[derive(Debug, Clone, Subcommand, PartialEq, Eq)]
+pub enum EmitSubcommand {
+    Rust(UnitCommand),
+    Lowered(UnitCommand),
 }
 
 #[derive(Debug, Clone, Args, PartialEq, Eq, Default)]
@@ -151,8 +163,8 @@ Options:
 #[cfg(test)]
 mod tests {
     use super::{
-        FrontendCli, FrontendCommand, FrontendProfile, InitCommand, NewCommand, UnitCommand,
-        WorkCommand, WorkSubcommand,
+        EmitCommand, EmitSubcommand, FrontendCli, FrontendCommand, FrontendProfile, InitCommand,
+        NewCommand, UnitCommand, WorkCommand, WorkSubcommand,
     };
     use crate::{ColorPolicy, OutputMode};
 
@@ -171,6 +183,25 @@ mod tests {
         let cli = FrontendCli::parse_from(["fol", "build"]);
 
         assert_eq!(cli.command, Some(FrontendCommand::Build(UnitCommand)));
+    }
+
+    #[test]
+    fn emit_subcommands_parse_through_derive_tree() {
+        let rust = FrontendCli::parse_from(["fol", "emit", "rust"]);
+        let lowered = FrontendCli::parse_from(["fol", "emit", "lowered"]);
+
+        assert_eq!(
+            rust.command,
+            Some(FrontendCommand::Emit(EmitCommand {
+                command: EmitSubcommand::Rust(UnitCommand),
+            }))
+        );
+        assert_eq!(
+            lowered.command,
+            Some(FrontendCommand::Emit(EmitCommand {
+                command: EmitSubcommand::Lowered(UnitCommand),
+            }))
+        );
     }
 
     #[test]
