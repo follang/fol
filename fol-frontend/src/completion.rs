@@ -54,6 +54,10 @@ pub fn generate_zsh_completion_script() -> FrontendResult<String> {
     generate_completion_script(CompletionShell::Zsh)
 }
 
+pub fn generate_fish_completion_script() -> FrontendResult<String> {
+    generate_completion_script(CompletionShell::Fish)
+}
+
 pub fn internal_complete_command() -> FrontendResult<FrontendCommandResult> {
     Ok(FrontendCommandResult::new(
         "_complete",
@@ -65,7 +69,7 @@ pub fn internal_complete_command() -> FrontendResult<FrontendCommandResult> {
 mod tests {
     use super::{
         completion_command, generate_bash_completion_script, internal_complete_command,
-        generate_zsh_completion_script, CompletionShell,
+        generate_fish_completion_script, generate_zsh_completion_script, CompletionShell,
     };
 
     #[test]
@@ -97,5 +101,13 @@ mod tests {
 
         assert!(script.contains("#compdef fol"));
         assert!(script.contains("_arguments"));
+    }
+
+    #[test]
+    fn fish_completion_script_contains_fish_completion_shape() {
+        let script = generate_fish_completion_script().unwrap();
+
+        assert!(script.contains("complete -c fol"));
+        assert!(script.contains("__fish_use_subcommand"));
     }
 }
