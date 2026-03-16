@@ -107,7 +107,7 @@ mod tests {
 
     #[test]
     fn lowering_smoke_accepts_typed_workspace_inputs() {
-        let fixture_path = concat!(env!("CARGO_MANIFEST_DIR"), "/../test/parser/simple_var.fol");
+        let fixture_path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../test/parser/simple_var.fol");
         let mut stream = FileStream::from_file(fixture_path).expect("Should open lowering fixture");
         let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
         let mut parser = AstParser::new();
@@ -128,7 +128,7 @@ mod tests {
 
     #[test]
     fn lowering_compatibility_shim_wraps_typed_programs_as_single_entry_workspaces() {
-        let fixture_path = concat!(env!("CARGO_MANIFEST_DIR"), "/../test/parser/simple_var.fol");
+        let fixture_path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../test/parser/simple_var.fol");
         let mut stream = FileStream::from_file(fixture_path).expect("Should open lowering fixture");
         let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
         let mut parser = AstParser::new();

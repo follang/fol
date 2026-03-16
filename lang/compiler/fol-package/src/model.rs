@@ -64,7 +64,7 @@ mod tests {
     use fol_stream::FileStream;
 
     fn parse_fixture_package() -> ParsedPackage {
-        let fixture_path = concat!(env!("CARGO_MANIFEST_DIR"), "/../test/parser/simple_var.fol");
+        let fixture_path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../test/parser/simple_var.fol");
         let mut stream = FileStream::from_file(fixture_path).expect("Should open package fixture");
         let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
         let mut parser = AstParser::new();

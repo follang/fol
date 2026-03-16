@@ -83,7 +83,7 @@ mod tests {
 
     #[test]
     fn typechecker_can_wrap_a_resolved_program_in_a_typed_shell() {
-        let fixture_path = concat!(env!("CARGO_MANIFEST_DIR"), "/../test/parser/simple_var.fol");
+        let fixture_path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../test/parser/simple_var.fol");
         let mut stream = FileStream::from_file(fixture_path).expect("Should open typecheck fixture");
         let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
         let mut parser = fol_parser::ast::AstParser::new();

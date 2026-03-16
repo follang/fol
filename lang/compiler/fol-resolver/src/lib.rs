@@ -200,7 +200,7 @@ mod tests {
 
     #[test]
     fn resolver_smoke_can_lower_a_parsed_package() {
-        let resolved = resolve_package(parse_package("../test/parser/simple_var.fol"))
+        let resolved = resolve_package(parse_package("../../../test/parser/simple_var.fol"))
             .expect("Resolver foundation should lower parsed packages");
 
         assert_eq!(resolved.package_name(), "parser");
@@ -212,7 +212,7 @@ mod tests {
     fn resolver_smoke_can_lower_a_prepared_package() {
         let session = PackageSession::new();
         let prepared = session
-            .prepare_entry_package(parse_package("../test/parser/simple_var.fol"))
+            .prepare_entry_package(parse_package("../../../test/parser/simple_var.fol"))
             .expect("Prepared-package smoke fixture should prepare");
 
         let resolved = resolve_prepared_package(prepared)
@@ -224,7 +224,7 @@ mod tests {
 
     #[test]
     fn resolver_smoke_can_lower_a_workspace_from_a_parsed_package() {
-        let workspace = resolve_package_workspace(parse_package("../test/parser/simple_var.fol"))
+        let workspace = resolve_package_workspace(parse_package("../../../test/parser/simple_var.fol"))
             .expect("Resolver workspace should lower parsed packages");
 
         assert_eq!(workspace.package_count(), 1);
@@ -236,7 +236,7 @@ mod tests {
     fn resolver_smoke_can_lower_a_workspace_from_a_prepared_package() {
         let session = PackageSession::new();
         let prepared = session
-            .prepare_entry_package(parse_package("../test/parser/simple_var.fol"))
+            .prepare_entry_package(parse_package("../../../test/parser/simple_var.fol"))
             .expect("Prepared-package smoke fixture should prepare");
 
         let workspace = resolve_prepared_workspace(prepared)

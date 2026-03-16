@@ -1,18 +1,18 @@
 [workspace]
 members = [
-    "compiler/fol-types",
-    "compiler/fol-stream",
-    "compiler/fol-lexer",
-    "compiler/fol-parser",
-    "compiler/fol-package",
-    "compiler/fol-diagnostics",
-    "compiler/fol-resolver",
-    "compiler/fol-typecheck",
-    "compiler/fol-lower",
-    "compiler/fol-intrinsics",
-    "execution/fol-runtime",
-    "execution/fol-backend",
-    "tooling/fol-frontend",
+    "lang/compiler/fol-types",
+    "lang/compiler/fol-stream",
+    "lang/compiler/fol-lexer",
+    "lang/compiler/fol-parser",
+    "lang/compiler/fol-package",
+    "lang/compiler/fol-diagnostics",
+    "lang/compiler/fol-resolver",
+    "lang/compiler/fol-typecheck",
+    "lang/compiler/fol-lower",
+    "lang/compiler/fol-intrinsics",
+    "lang/execution/fol-runtime",
+    "lang/execution/fol-backend",
+    "lang/tooling/fol-frontend",
 ]
 
 [package]
@@ -26,18 +26,18 @@ name = "fol"
 path = "src/main.rs"
 
 [dependencies]
-fol-types = { path = "compiler/fol-types" }
-fol-stream = { path = "compiler/fol-stream" }
-fol-lexer = { path = "compiler/fol-lexer" }
-fol-parser = { path = "compiler/fol-parser" }
-fol-package = { path = "compiler/fol-package" }
-fol-diagnostics = { path = "compiler/fol-diagnostics" }
-fol-resolver = { path = "compiler/fol-resolver" }
-fol-typecheck = { path = "compiler/fol-typecheck" }
-fol-lower = { path = "compiler/fol-lower" }
-fol-intrinsics = { path = "compiler/fol-intrinsics" }
-fol-frontend = { path = "tooling/fol-frontend" }
-fol-backend = { path = "execution/fol-backend" }
+fol-types = { path = "lang/compiler/fol-types" }
+fol-stream = { path = "lang/compiler/fol-stream" }
+fol-lexer = { path = "lang/compiler/fol-lexer" }
+fol-parser = { path = "lang/compiler/fol-parser" }
+fol-package = { path = "lang/compiler/fol-package" }
+fol-diagnostics = { path = "lang/compiler/fol-diagnostics" }
+fol-resolver = { path = "lang/compiler/fol-resolver" }
+fol-typecheck = { path = "lang/compiler/fol-typecheck" }
+fol-lower = { path = "lang/compiler/fol-lower" }
+fol-intrinsics = { path = "lang/compiler/fol-intrinsics" }
+fol-frontend = { path = "lang/tooling/fol-frontend" }
+fol-backend = { path = "lang/execution/fol-backend" }
 regex = "1"
 colored = "1"
 dyn-clone = "1"

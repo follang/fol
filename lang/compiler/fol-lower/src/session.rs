@@ -412,7 +412,7 @@ mod tests {
 
     #[test]
     fn lowering_session_keeps_typed_workspace_identity_and_size() {
-        let fixture_path = concat!(env!("CARGO_MANIFEST_DIR"), "/../test/parser/simple_var.fol");
+        let fixture_path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../test/parser/simple_var.fol");
         let mut stream = FileStream::from_file(fixture_path).expect("Should open lowering fixture");
         let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
         let mut parser = AstParser::new();
@@ -432,7 +432,7 @@ mod tests {
 
     #[test]
     fn lowering_session_translates_single_package_source_units_and_symbols() {
-        let fixture_path = concat!(env!("CARGO_MANIFEST_DIR"), "/../test/parser/simple_var.fol");
+        let fixture_path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../test/parser/simple_var.fol");
         let mut stream = FileStream::from_file(fixture_path).expect("Should open lowering fixture");
         let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
         let mut parser = AstParser::new();

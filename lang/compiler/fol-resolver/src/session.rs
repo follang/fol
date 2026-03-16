@@ -311,7 +311,7 @@ mod tests {
 
     #[test]
     fn inferred_package_root_uses_common_parent_of_parsed_source_units() {
-        let parsed = parse_package("../test/parser/source_units");
+        let parsed = parse_package("../../../test/parser/source_units");
         let inferred = infer_package_root(&parsed).expect("Should infer a common package root");
 
         assert!(
@@ -338,14 +338,14 @@ mod tests {
                     display_name: identity.display_name.clone(),
                 },
                 super::parse_package_from_directory(
-                    Path::new("../test/parser/source_units"),
+                    Path::new("../../../test/parser/source_units"),
                     "source_units",
                     PackageSourceKind::Local,
                 )
                 .expect("Fixture package should parse"),
             ),
             program: super::parse_package_from_directory(
-                Path::new("../test/parser/source_units"),
+                Path::new("../../../test/parser/source_units"),
                 "source_units",
                 PackageSourceKind::Local,
             )

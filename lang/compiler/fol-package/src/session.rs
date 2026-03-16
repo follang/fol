@@ -621,7 +621,7 @@ mod tests {
     use std::time::{SystemTime, UNIX_EPOCH};
 
     fn parse_fixture_package() -> ParsedPackage {
-        let fixture_path = concat!(env!("CARGO_MANIFEST_DIR"), "/../test/parser/simple_var.fol");
+        let fixture_path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../test/parser/simple_var.fol");
         let mut stream = FileStream::from_file(fixture_path).expect("Should open package fixture");
         let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
         let mut parser = AstParser::new();
@@ -729,7 +729,7 @@ mod tests {
     #[test]
     fn inferred_package_root_uses_common_parent_of_parsed_source_units() {
         let parsed = {
-            let fixture_path = concat!(env!("CARGO_MANIFEST_DIR"), "/../test/parser/source_units");
+            let fixture_path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../test/parser/source_units");
             let mut stream =
                 FileStream::from_folder(fixture_path).expect("Should open folder package fixture");
             let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
@@ -750,7 +750,7 @@ mod tests {
 
     #[test]
     fn canonical_directory_root_rejects_file_targets() {
-        let fixture_path = concat!(env!("CARGO_MANIFEST_DIR"), "/../test/parser/simple_var.fol");
+        let fixture_path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../test/parser/simple_var.fol");
 
         let error = canonical_directory_root(Path::new(fixture_path), PackageSourceKind::Local)
             .expect_err("Package directory loading should reject direct file targets");
