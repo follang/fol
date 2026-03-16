@@ -619,6 +619,17 @@ fn frontend_init_shell_surface_smoke_compiles() {
 }
 
 #[test]
+fn frontend_workspace_init_surface_smoke_compiles() {
+    let root = std::env::temp_dir().join(format!("fol_frontend_ws_smoke_{}", std::process::id()));
+    std::fs::create_dir_all(&root).unwrap();
+
+    let result = fol_frontend::init_workspace_root(&root).unwrap();
+    assert_eq!(result.artifacts[0].kind, fol_frontend::FrontendArtifactKind::WorkspaceRoot);
+
+    std::fs::remove_dir_all(root).ok();
+}
+
+#[test]
 fn frontend_output_helper_surface_smoke_compiles() {
     let output = fol_frontend::FrontendOutput::new(fol_frontend::FrontendOutputConfig::default());
 

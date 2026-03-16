@@ -1,4 +1,7 @@
-use crate::{FrontendArtifactKind, FrontendArtifactSummary, FrontendCommandResult, FrontendResult};
+use crate::{
+    FrontendArtifactKind, FrontendArtifactSummary, FrontendCommandResult, FrontendResult,
+    WORKSPACE_FILE_NAME,
+};
 use std::fs;
 use std::path::Path;
 
@@ -17,9 +20,22 @@ pub fn init_current_dir(root: &Path) -> FrontendResult<FrontendCommandResult> {
     ))
 }
 
+pub fn init_workspace_root(root: &Path) -> FrontendResult<FrontendCommandResult> {
+    std::fs::create_dir_all(root)?;
+    std::fs::write(root.join(WORKSPACE_FILE_NAME), "")?;
+
+    Ok(FrontendCommandResult::new("init", "initialized workspace root").with_artifact(
+        FrontendArtifactSummary::new(
+            FrontendArtifactKind::WorkspaceRoot,
+            "workspace-root",
+            Some(root.to_path_buf()),
+        ),
+    ))
+}
+
 #[cfg(test)]
 mod tests {
-    use super::init_current_dir;
+    use super::{init_current_dir, init_workspace_root};
     use crate::FrontendArtifactKind;
     use std::{fs, path::PathBuf};
 
@@ -46,6 +62,19 @@ mod tests {
         assert!(root.join("src/main.fol").is_file());
         assert!(root.join("package.yaml").is_file());
         assert!(root.join("build.fol").is_file());
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn workspace_init_creates_workspace_root_file() {
+        let root = std::env::temp_dir().join(format!("fol_frontend_init_ws_{}", std::process::id()));
+        fs::create_dir_all(&root).unwrap();
+
+        let result = init_workspace_root(&root).unwrap();
+
+        assert_eq!(result.artifacts[0].kind, FrontendArtifactKind::WorkspaceRoot);
+        assert!(root.join("fol.work.yaml").is_file());
 
         fs::remove_dir_all(root).ok();
     }

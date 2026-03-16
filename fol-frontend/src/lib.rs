@@ -21,7 +21,7 @@ pub use discovery::{
 };
 pub use output::{ColorPolicy, FrontendOutputConfig, OutputMode};
 pub use result::{FrontendArtifactKind, FrontendArtifactSummary, FrontendCommandResult};
-pub use scaffold::init_current_dir;
+pub use scaffold::{init_current_dir, init_workspace_root};
 pub use ui::FrontendOutput;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
