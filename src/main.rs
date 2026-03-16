@@ -518,6 +518,18 @@ fn frontend_output_surface_smoke_compiles() {
 }
 
 #[test]
+fn frontend_config_surface_smoke_compiles() {
+    let config = fol_frontend::FrontendConfig::default();
+
+    assert_eq!(config.output.mode, fol_frontend::OutputMode::Human);
+    assert_eq!(config.output.color, fol_frontend::ColorPolicy::Auto);
+    assert!(config.std_root_override.is_none());
+    assert!(config.package_store_root_override.is_none());
+    assert!(config.build_root_override.is_none());
+    assert!(config.cache_root_override.is_none());
+}
+
+#[test]
 fn backend_public_api_shell_smoke_compiles() {
     let backend = fol_backend::Backend::new();
     assert_eq!(format!("{backend:?}"), "Backend");

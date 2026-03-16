@@ -3,9 +3,11 @@
 //! `fol-frontend` will become the canonical command-line/workspace entrypoint
 //! above `fol-package` and the compiler pipeline.
 
+mod config;
 mod errors;
 mod output;
 
+pub use config::FrontendConfig;
 pub use errors::{FrontendError, FrontendErrorKind, FrontendResult};
 pub use output::{ColorPolicy, FrontendOutputConfig, OutputMode};
 
