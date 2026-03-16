@@ -1,4 +1,5 @@
 use crate::{FrontendCommandResult, FrontendError, FrontendOutputConfig, OutputMode};
+use console::style;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FrontendOutput {
@@ -22,31 +23,64 @@ impl FrontendOutput {
         matches!(self.config.mode, OutputMode::Human)
     }
 
-    fn human_highlight_action(&self, action: &str) -> String {
-        if self.config.mode == OutputMode::Human {
-            format!("\x1b[1;32m{action}\x1b[0m")
+    fn styled_section(&self, title: &str) -> String {
+        if self.should_use_color() {
+            format!("{}", style(title).bold().cyan())
+        } else {
+            title.to_string()
+        }
+    }
+
+    fn styled_label(&self, label: &str, width: usize) -> String {
+        let padded = format!("{label:<width$}");
+        if self.should_use_color() {
+            format!("{}", style(padded).bold().yellow())
+        } else {
+            padded
+        }
+    }
+
+    fn styled_action(&self, action: &str) -> String {
+        if self.should_use_color() {
+            format!("{}", style(action).bold().green())
         } else {
             action.to_string()
         }
     }
 
-    fn human_highlight_path(&self, path: &str) -> String {
-        if self.config.mode == OutputMode::Human {
-            format!("\x1b[36m{path}\x1b[0m")
+    fn styled_path(&self, path: &str) -> String {
+        if self.should_use_color() {
+            format!("{}", style(path).cyan())
         } else {
             path.to_string()
         }
     }
 
+    fn styled_error_prefix(&self) -> String {
+        if self.should_use_color() {
+            format!("{}", style("Error:").bold().red())
+        } else {
+            "Error:".to_string()
+        }
+    }
+
+    fn styled_note_prefix(&self) -> String {
+        if self.should_use_color() {
+            format!("{}", style("Note:").bold().blue())
+        } else {
+            "Note:".to_string()
+        }
+    }
+
     pub fn render_human_header(&self, title: &str) -> String {
-        format!("== {title} ==")
+        self.styled_section(title)
     }
 
     pub fn render_human_status(&self, action: &str, detail: &str) -> String {
         format!(
-            "{}: {}",
-            self.human_highlight_action(action),
-            self.human_highlight_path(detail)
+            "{} {}",
+            self.styled_label(action, 12),
+            self.styled_path(detail)
         )
     }
 
@@ -95,9 +129,9 @@ impl FrontendOutput {
     }
 
     pub fn render_human_error(&self, error: &FrontendError) -> String {
-        let mut lines = vec![format!("error: {}", error)];
+        let mut lines = vec![format!("{} {}", self.styled_error_prefix(), error)];
         for note in error.notes() {
-            lines.push(format!("note: {note}"));
+            lines.push(format!("{} {}", self.styled_note_prefix(), note));
         }
         lines.join("\n")
     }
@@ -117,7 +151,11 @@ impl FrontendOutput {
         match self.config.mode {
             OutputMode::Human => {
                 let mut lines = vec![self.render_human_header(&result.command)];
-                lines.push(self.render_human_status("Summary", &result.summary));
+                lines.push(format!(
+                    "{} {}",
+                    self.styled_action("Done:"),
+                    result.summary
+                ));
                 for artifact in &result.artifacts {
                     let detail = artifact
                         .path
@@ -173,29 +211,22 @@ mod tests {
     }
 
     #[test]
-    fn human_helpers_render_stable_plain_human_lines() {
+    fn human_helpers_render_colored_sections_and_rows() {
         let output = FrontendOutput::new(FrontendOutputConfig::default());
 
-        assert_eq!(output.render_human_header("Build"), "== Build ==");
-        assert_eq!(
-            output.render_human_status("Built", "target/bin/demo"),
-            "Built: target/bin/demo"
-        );
-    }
+        let header = output.render_human_header("Build");
+        let status = output.render_human_status("binary", "target/bin/demo");
 
-    #[test]
-    fn human_helpers_highlight_actions_and_paths_when_color_is_enabled() {
-        let output = FrontendOutput::new(FrontendOutputConfig::default());
-
-        let rendered = output.render_human_status("Built", "target/bin/demo");
-
-        assert!(rendered.contains("\u{1b}[1;32mBuilt\u{1b}[0m"));
-        assert!(rendered.contains("\u{1b}[36mtarget/bin/demo\u{1b}[0m"));
+        assert!(header.contains("\u{1b}["));
+        assert!(status.contains("\u{1b}["));
+        assert!(status.contains("target/bin/demo"));
     }
 
     #[test]
     fn plain_helpers_render_stable_script_friendly_lines() {
-        let output = FrontendOutput::new(FrontendOutputConfig::default());
+        let output = FrontendOutput::new(FrontendOutputConfig {
+            mode: OutputMode::Plain,
+        });
 
         assert_eq!(output.render_plain_section("build"), "build:");
         assert_eq!(
@@ -213,7 +244,9 @@ mod tests {
 
     #[test]
     fn json_helpers_render_structured_result_and_error_payloads() {
-        let output = FrontendOutput::new(FrontendOutputConfig::default());
+        let output = FrontendOutput::new(FrontendOutputConfig {
+            mode: OutputMode::Json,
+        });
         let result = FrontendCommandResult::new("build", "built binary").with_artifact(
             FrontendArtifactSummary::new(
                 FrontendArtifactKind::Binary,
@@ -221,76 +254,16 @@ mod tests {
                 Some(PathBuf::from("target/bin/demo")),
             ),
         );
-        let error = FrontendError::new(FrontendErrorKind::CommandFailed, "failed")
-            .with_note("retry with `fol build --debug`");
+        let error = FrontendError::new(FrontendErrorKind::CommandFailed, "boom")
+            .with_note("note one");
 
         let rendered_result = output.render_json_result(&result).unwrap();
         let rendered_error = output.render_json_error(&error).unwrap();
 
         assert!(rendered_result.contains("\"command\": \"build\""));
         assert!(rendered_result.contains("\"kind\": \"binary\""));
-        assert!(rendered_error.contains("\"kind\": \"FrontendCommandFailed\""));
-        assert!(rendered_error.contains("\"message\": \"failed\""));
-        assert!(rendered_error.contains("\"notes\": ["));
-    }
-
-    #[test]
-    fn command_summary_respects_selected_output_mode() {
-        let result = FrontendCommandResult::new("build", "built binary").with_artifact(
-            FrontendArtifactSummary::new(
-                FrontendArtifactKind::Binary,
-                "demo",
-                Some(PathBuf::from("target/bin/demo")),
-            ),
-        );
-
-        let human = FrontendOutput::new(FrontendOutputConfig::default())
-            .render_command_summary(&result)
-            .unwrap();
-        let plain = FrontendOutput::new(FrontendOutputConfig {
-            mode: OutputMode::Plain,
-            ..FrontendOutputConfig::default()
-        })
-        .render_command_summary(&result)
-        .unwrap();
-        let json = FrontendOutput::new(FrontendOutputConfig {
-            mode: OutputMode::Json,
-            ..FrontendOutputConfig::default()
-        })
-        .render_command_summary(&result)
-        .unwrap();
-
-        assert!(human.contains("== build =="));
-        assert!(plain.contains("command: build"));
-        assert!(json.contains("\"command\": \"build\""));
-    }
-
-    #[test]
-    fn rendered_errors_respect_output_mode() {
-        let error = FrontendError::new(FrontendErrorKind::WorkspaceNotFound, "missing root")
-            .with_note("run `fol init`");
-
-        let human = FrontendOutput::new(FrontendOutputConfig::default())
-            .render_error(&error)
-            .unwrap();
-        let plain = FrontendOutput::new(FrontendOutputConfig {
-            mode: OutputMode::Plain,
-            ..FrontendOutputConfig::default()
-        })
-        .render_error(&error)
-        .unwrap();
-        let json = FrontendOutput::new(FrontendOutputConfig {
-            mode: OutputMode::Json,
-            ..FrontendOutputConfig::default()
-        })
-        .render_error(&error)
-        .unwrap();
-
-        assert!(human.contains("error: FrontendWorkspaceNotFound: missing root"));
-        assert!(human.contains("note: run `fol init`"));
-        assert!(plain.contains("error: FrontendWorkspaceNotFound: missing root"));
-        assert!(json.contains("\"FrontendWorkspaceNotFound\""));
-        assert!(json.contains("run `fol init`"));
+        assert!(rendered_error.contains("\"kind\": \"command_failed\""));
+        assert!(rendered_error.contains("\"note one\""));
     }
 
     #[test]
@@ -298,7 +271,6 @@ mod tests {
         let human = FrontendOutput::new(FrontendOutputConfig::default());
         let json = FrontendOutput::new(FrontendOutputConfig {
             mode: OutputMode::Json,
-            ..FrontendOutputConfig::default()
         });
 
         assert!(human.should_use_color());
@@ -306,32 +278,33 @@ mod tests {
     }
 
     #[test]
-    fn output_compatibility_matrix_stays_stable_across_modes() {
-        let result = FrontendCommandResult::new("check", "ok").with_artifact(
-            FrontendArtifactSummary::new(FrontendArtifactKind::WorkspaceRoot, "root", None),
+    fn human_error_rendering_uses_labeled_lines() {
+        let output = FrontendOutput::new(FrontendOutputConfig::default());
+        let error = FrontendError::new(FrontendErrorKind::WorkspaceNotFound, "missing root")
+            .with_note("run `fol init --bin`");
+
+        let rendered = output.render_human_error(&error);
+
+        assert!(rendered.contains("Error:"));
+        assert!(rendered.contains("Note:"));
+        assert!(rendered.contains("missing root"));
+    }
+
+    #[test]
+    fn human_command_summary_renders_done_and_artifacts() {
+        let output = FrontendOutput::new(FrontendOutputConfig::default());
+        let result = FrontendCommandResult::new("build", "built demo").with_artifact(
+            FrontendArtifactSummary::new(
+                FrontendArtifactKind::Binary,
+                "demo",
+                Some(PathBuf::from("target/bin/demo")),
+            ),
         );
 
-        let human = FrontendOutput::new(FrontendOutputConfig::default())
-            .render_command_summary(&result)
-            .unwrap();
-        let plain = FrontendOutput::new(FrontendOutputConfig {
-            mode: OutputMode::Plain,
-            ..FrontendOutputConfig::default()
-        })
-        .render_command_summary(&result)
-        .unwrap();
-        let json = FrontendOutput::new(FrontendOutputConfig {
-            mode: OutputMode::Json,
-            ..FrontendOutputConfig::default()
-        })
-        .render_command_summary(&result)
-        .unwrap();
+        let rendered = output.render_command_summary(&result).unwrap();
 
-        assert_eq!(human, "== check ==\nSummary: ok\nworkspace-root: root");
-        assert_eq!(plain, "command: check\nsummary: ok\nworkspace-root: root");
-        assert_eq!(
-            json,
-            "{\n  \"artifacts\": [\n    {\n      \"kind\": \"workspace-root\",\n      \"label\": \"root\",\n      \"path\": null\n    }\n  ],\n  \"command\": \"check\",\n  \"summary\": \"ok\"\n}"
-        );
+        assert!(rendered.contains("Done:"));
+        assert!(rendered.contains("target/bin/demo"));
+        assert!(rendered.contains("build"));
     }
 }

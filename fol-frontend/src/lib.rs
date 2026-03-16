@@ -300,6 +300,68 @@ fn dispatch_cli(cli: &FrontendCli, config: &FrontendConfig) -> FrontendResult<Fr
         Some(FrontendCommand::Complete(command)) => {
             internal_complete_command_with_tokens(&command.tokens)
         }
+        Some(FrontendCommand::Build(command)) if command.target.input.is_some() => {
+            run_direct_compile(
+                &DirectCompileConfig {
+                    input: command.target.input.clone().unwrap_or_default(),
+                    std_root: command.roots.std_root.clone(),
+                    package_store_root: command.roots.package_store_root.clone(),
+                    mode: DirectCompileMode::Build {
+                        keep_build_dir: command.keep_build_dir,
+                    },
+                },
+                &config_for_roots_keep_build(config, &command.roots, command.keep_build_dir),
+            )
+        }
+        Some(FrontendCommand::Check(command)) if command.target.input.is_some() => {
+            run_direct_compile(
+                &DirectCompileConfig {
+                    input: command.target.input.clone().unwrap_or_default(),
+                    std_root: command.roots.std_root.clone(),
+                    package_store_root: command.roots.package_store_root.clone(),
+                    mode: DirectCompileMode::Check,
+                },
+                &config_for_roots(config, &command.roots),
+            )
+        }
+        Some(FrontendCommand::Run(command)) if command.target.input.is_some() => {
+            run_direct_compile(
+                &DirectCompileConfig {
+                    input: command.target.input.clone().unwrap_or_default(),
+                    std_root: command.roots.std_root.clone(),
+                    package_store_root: command.roots.package_store_root.clone(),
+                    mode: DirectCompileMode::Run {
+                        keep_build_dir: command.keep_build_dir,
+                        args: command.args.clone(),
+                    },
+                },
+                &config_for_roots_keep_build(config, &command.roots, command.keep_build_dir),
+            )
+        }
+        Some(FrontendCommand::Emit(command)) if emit_has_direct_target(command) => {
+            match &command.command {
+                EmitSubcommand::Rust(emit) => run_direct_compile(
+                    &DirectCompileConfig {
+                        input: emit.target.input.clone().unwrap_or_default(),
+                        std_root: emit.roots.std_root.clone(),
+                        package_store_root: emit.roots.package_store_root.clone(),
+                        mode: DirectCompileMode::EmitRust {
+                            keep_build_dir: emit.keep_build_dir,
+                        },
+                    },
+                    &config_for_roots_keep_build(config, &emit.roots, emit.keep_build_dir),
+                ),
+                EmitSubcommand::Lowered(emit) => run_direct_compile(
+                    &DirectCompileConfig {
+                        input: emit.target.input.clone().unwrap_or_default(),
+                        std_root: emit.roots.std_root.clone(),
+                        package_store_root: emit.roots.package_store_root.clone(),
+                        mode: DirectCompileMode::EmitLowered,
+                    },
+                    &config_for_roots(config, &emit.roots),
+                ),
+            }
+        }
         Some(command) => {
             let discovered = discovered_root_for_command(command, &config.working_directory)?;
             let workspace = load_frontend_workspace(&discovered, config)?;
@@ -420,6 +482,13 @@ fn dispatch_workspace_command(
             FrontendErrorKind::Internal,
             "unexpected command reached workspace dispatcher",
         )),
+    }
+}
+
+fn emit_has_direct_target(command: &EmitCommand) -> bool {
+    match &command.command {
+        EmitSubcommand::Rust(emit) => emit.target.input.is_some(),
+        EmitSubcommand::Lowered(emit) => emit.target.input.is_some(),
     }
 }
 
