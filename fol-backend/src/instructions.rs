@@ -89,6 +89,32 @@ pub fn render_core_instruction(
             let operand = render_local_name(package_identity, routine, *operand)?;
             Ok(format!("let {result} = rt::len(&{operand});"))
         }
+        LoweredInstrKind::RuntimeHook { intrinsic, args } => {
+            let entry = intrinsic_by_id(*intrinsic).ok_or_else(|| {
+                BackendError::new(
+                    BackendErrorKind::InvalidInput,
+                    format!("intrinsic id {:?} is not registered", intrinsic),
+                )
+            })?;
+            match (entry.name, args.as_slice()) {
+                ("echo", [value]) => {
+                    let value = render_local_name(package_identity, routine, *value)?;
+                    let rendered = format!("rt::echo({value})");
+                    match instruction.result {
+                        Some(_) => {
+                            let result =
+                                rendered_result_local(package_identity, routine, instruction)?;
+                            Ok(format!("let {result} = {rendered};"))
+                        }
+                        None => Ok(format!("{rendered};")),
+                    }
+                }
+                (other, _) => Err(BackendError::new(
+                    BackendErrorKind::Unsupported,
+                    format!("runtime hook emission is not implemented yet for '.{other}(...)'"),
+                )),
+            }
+        }
         other => Err(BackendError::new(
             BackendErrorKind::Unsupported,
             format!("core instruction emission is not implemented yet for {other:?}"),
@@ -503,6 +529,42 @@ mod tests {
         assert_eq!(
             rendered,
             "let l__pkg__entry__app__r7__l1__count = rt::len(&l__pkg__entry__app__r7__l0__items);"
+        );
+    }
+
+    #[test]
+    fn runtime_shaped_instruction_rendering_emits_echo_via_runtime_hook() {
+        let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
+        let mut table = LoweredTypeTable::new();
+        let int_id = table.intern_builtin(LoweredBuiltinType::Int);
+        let mut routine = LoweredRoutine::new(LoweredRoutineId(8), "main", LoweredBlockId(0));
+        let value = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(0),
+            type_id: Some(int_id),
+            recoverable_error_type: None,
+            name: Some("value".to_string()),
+        });
+        let result = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(1),
+            type_id: Some(int_id),
+            recoverable_error_type: None,
+            name: Some("shown".to_string()),
+        });
+        let instruction = LoweredInstr {
+            id: LoweredInstrId(21),
+            result: Some(result),
+            kind: LoweredInstrKind::RuntimeHook {
+                intrinsic: intrinsic_by_canonical_name("echo").expect("echo").id,
+                args: vec![value],
+            },
+        };
+
+        let rendered =
+            render_core_instruction(&package_identity, &routine, &instruction).expect("echo");
+
+        assert_eq!(
+            rendered,
+            "let l__pkg__entry__app__r8__l1__shown = rt::echo(l__pkg__entry__app__r8__l0__value);"
         );
     }
 }

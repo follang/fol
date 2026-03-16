@@ -999,7 +999,7 @@ not full long-term compiler completion.
 #### 8.1 done
 - emit runtime-backed `.len(...)`
 
-#### 8.2
+#### 8.2 done
 - emit runtime-backed `.echo(...)`
 
 #### 8.3
