@@ -101,18 +101,41 @@ where
         FrontendError::new(FrontendErrorKind::InvalidInput, error.to_string())
             .with_note("run `fol --help` to inspect the available workflow commands")
     })?;
-    let config = frontend_config_from_cli(&cli);
+    let config = frontend_config_from_cli(&cli, None);
     let output = FrontendOutput::new(config.output);
     let result = dispatch_cli(&cli, &config)?;
     Ok((output, result))
 }
 
-fn frontend_config_from_cli(cli: &FrontendCli) -> FrontendConfig {
+pub fn run_command_from_args_in_dir<I, T>(
+    args: I,
+    working_directory: impl Into<std::path::PathBuf>,
+) -> FrontendResult<(FrontendOutput, FrontendCommandResult)>
+where
+    I: IntoIterator<Item = T>,
+    T: Into<std::ffi::OsString> + Clone,
+{
+    let cli = FrontendCli::try_parse_from(args).map_err(|error| {
+        FrontendError::new(FrontendErrorKind::InvalidInput, error.to_string())
+            .with_note("run `fol --help` to inspect the available workflow commands")
+    })?;
+    let config = frontend_config_from_cli(&cli, Some(working_directory.into()));
+    let output = FrontendOutput::new(config.output);
+    let result = dispatch_cli(&cli, &config)?;
+    Ok((output, result))
+}
+
+fn frontend_config_from_cli(
+    cli: &FrontendCli,
+    working_directory: Option<std::path::PathBuf>,
+) -> FrontendConfig {
     let mut config = FrontendConfig::from_env();
+    if let Some(working_directory) = working_directory {
+        config.working_directory = working_directory;
+    }
     config.output.mode = cli.output;
     config.output.color = cli.color;
     config.profile_override = Some(cli.selected_profile());
-    config.keep_build_dir = false;
     config
 }
 
@@ -217,10 +240,7 @@ mod tests {
         std::fs::write(root.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
         std::fs::write(src.join("main.fol"), "fun[] main(): int = {\n    return 0\n}\n").unwrap();
 
-        let previous = std::env::current_dir().unwrap();
-        std::env::set_current_dir(&root).unwrap();
-        let (_, result) = run_command_from_args(["fol", "check"]).unwrap();
-        std::env::set_current_dir(previous).unwrap();
+        let (_, result) = run_command_from_args_in_dir(["fol", "check"], &root).unwrap();
 
         assert_eq!(result.command, "check");
         assert!(result.summary.contains("checked 1 workspace package(s)"));
