@@ -1,0 +1,14 @@
+fun[] load(flag: bol): int / str = {
+    when(flag) {
+        case(true) { report "bad-input" }
+        * { return 7 }
+    }
+}
+
+fun[] forward(flag: bol): int / str = {
+    return load(flag)
+}
+
+fun[] main(): int / str = {
+    return forward(true)
+}
