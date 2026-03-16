@@ -1,6 +1,6 @@
 use crate::{
     FrontendArtifactKind, FrontendArtifactSummary, FrontendCommandResult, FrontendConfig,
-    FrontendError, FrontendErrorKind, FrontendResult, FrontendWorkspace,
+    FrontendError, FrontendErrorKind, FrontendProfile, FrontendResult, FrontendWorkspace,
 };
 use std::path::Path;
 
@@ -38,8 +38,16 @@ pub fn build_workspace_with_config(
     workspace: &FrontendWorkspace,
     config: &FrontendConfig,
 ) -> FrontendResult<FrontendCommandResult> {
+    build_workspace_for_profile_with_config(workspace, config, FrontendProfile::Debug)
+}
+
+pub fn build_workspace_for_profile_with_config(
+    workspace: &FrontendWorkspace,
+    config: &FrontendConfig,
+    profile: FrontendProfile,
+) -> FrontendResult<FrontendCommandResult> {
     let mut result = FrontendCommandResult::new("build", "built 0 workspace package(s)");
-    let output_root = workspace.build_root.clone();
+    let output_root = profile_build_root(workspace, profile);
 
     for member in &workspace.members {
         let lowered = compile_member_workspace(workspace, config, &member.root)?;
@@ -83,6 +91,13 @@ pub fn build_workspace_with_config(
 
 pub fn build_workspace(workspace: &FrontendWorkspace) -> FrontendResult<FrontendCommandResult> {
     build_workspace_with_config(workspace, &FrontendConfig::default())
+}
+
+pub fn profile_build_root(workspace: &FrontendWorkspace, profile: FrontendProfile) -> std::path::PathBuf {
+    workspace.build_root.join(match profile {
+        FrontendProfile::Debug => "debug",
+        FrontendProfile::Release => "release",
+    })
 }
 
 pub fn run_workspace_with_config(
@@ -228,8 +243,8 @@ fn lower_lowering_errors(errors: Vec<fol_lower::LoweringError>) -> FrontendError
 
 #[cfg(test)]
 mod tests {
-    use super::{build_workspace, check_workspace, run_workspace};
-    use crate::{FrontendWorkspace, PackageRoot, WorkspaceRoot};
+    use super::{build_workspace, build_workspace_for_profile_with_config, check_workspace, profile_build_root, run_workspace};
+    use crate::{FrontendProfile, FrontendWorkspace, PackageRoot, WorkspaceRoot};
     use std::{fs, path::PathBuf};
 
     #[test]
@@ -289,6 +304,52 @@ mod tests {
             .as_ref()
             .expect("binary path")
             .is_file());
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn build_output_roots_are_profile_scoped() {
+        let workspace = FrontendWorkspace::new(WorkspaceRoot::new(PathBuf::from("/tmp/demo")));
+
+        assert_eq!(
+            profile_build_root(&workspace, FrontendProfile::Debug),
+            PathBuf::from("/tmp/demo/.fol/build/debug")
+        );
+        assert_eq!(
+            profile_build_root(&workspace, FrontendProfile::Release),
+            PathBuf::from("/tmp/demo/.fol/build/release")
+        );
+    }
+
+    #[test]
+    fn build_workspace_uses_profile_specific_output_roots() {
+        let root = std::env::temp_dir().join(format!("fol_frontend_build_profile_{}", std::process::id()));
+        let app = root.join("app");
+        let src = app.join("src");
+        fs::create_dir_all(&src).unwrap();
+        fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
+        fs::write(app.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
+        fs::write(src.join("main.fol"), "fun[] main(): int = {\n    return 0\n}\n").unwrap();
+
+        let workspace = FrontendWorkspace {
+            root: WorkspaceRoot::new(root.clone()),
+            members: vec![PackageRoot::new(app)],
+            std_root_override: None,
+            package_store_root_override: None,
+            build_root: root.join(".fol/build"),
+            cache_root: root.join(".fol/cache"),
+        };
+
+        let result = build_workspace_for_profile_with_config(
+            &workspace,
+            &crate::FrontendConfig::default(),
+            FrontendProfile::Release,
+        )
+        .unwrap();
+
+        let binary = result.artifacts[0].path.as_ref().expect("binary path");
+        assert!(binary.display().to_string().contains("/.fol/build/release/"));
 
         fs::remove_dir_all(root).ok();
     }
