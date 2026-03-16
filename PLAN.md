@@ -1057,16 +1057,16 @@ not full long-term compiler completion.
 #### 10.3 done
 - emit `Return`
 
-#### 10.4
+#### 10.4 done
 - emit `Report`
 
-#### 10.5
+#### 10.5 done
 - emit `Panic`
 
-#### 10.6
+#### 10.6 done
 - emit `Unreachable`
 
-#### 10.7
+#### 10.7 done
 - add snapshot tests for control-flow emission
 
 ## 46. Phase 11: Entry Wrapper And Process Outcome
