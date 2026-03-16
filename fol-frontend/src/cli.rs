@@ -141,8 +141,14 @@ pub struct NewCommand {
     disable_help_subcommand = true
 )]
 pub struct FrontendCli {
+    #[arg(value_name = "FILE_OR_FOLDER")]
+    pub input: Option<String>,
+
     #[arg(long, global = true, env = "FOL_OUTPUT", value_enum, default_value_t = OutputMode::Human)]
     pub output: OutputMode,
+
+    #[arg(long, global = true, action = clap::ArgAction::SetTrue)]
+    pub json: bool,
 
     #[arg(long, global = true, env = "FOL_COLOR", value_enum, default_value_t = ColorPolicy::Auto)]
     pub color: ColorPolicy,
@@ -155,6 +161,21 @@ pub struct FrontendCli {
 
     #[arg(long, global = true, conflicts_with_all = ["debug", "profile"])]
     pub release: bool,
+
+    #[arg(long, global = true, value_name = "DIR")]
+    pub std_root: Option<String>,
+
+    #[arg(long, global = true, value_name = "DIR")]
+    pub package_store_root: Option<String>,
+
+    #[arg(long, global = true)]
+    pub dump_lowered: bool,
+
+    #[arg(long, global = true)]
+    pub emit_rust: bool,
+
+    #[arg(long, global = true)]
+    pub keep_build_dir: bool,
 
     #[command(subcommand)]
     pub command: Option<FrontendCommand>,

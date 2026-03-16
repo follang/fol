@@ -8,6 +8,7 @@ mod cli;
 mod clean;
 mod compile;
 mod completion;
+mod direct;
 mod discovery;
 mod errors;
 mod fetch;
@@ -37,6 +38,7 @@ pub use completion::{
     generate_fish_completion_script, generate_zsh_completion_script, internal_complete_command,
     internal_complete_command_with_tokens, internal_complete_matches, CompletionShell,
 };
+pub use direct::{run_direct_compile, run_direct_compile_with_io, DirectCompileConfig};
 pub use errors::{FrontendError, FrontendErrorKind, FrontendResult};
 pub use fetch::{
     fetch_workspace, fetch_workspace_with_config, prepare_workspace_packages,
@@ -141,7 +143,23 @@ where
             }
             1
         }
-        Ok(cli) if cli.command.is_none() => {
+        Ok(cli) if cli.input.is_some() => {
+            let config = frontend_config_from_cli(&cli, None);
+            run_direct_compile_with_io(
+                &DirectCompileConfig {
+                    input: cli.input.clone().unwrap_or_default(),
+                    json: cli.json,
+                    std_root: cli.std_root.clone(),
+                    package_store_root: cli.package_store_root.clone(),
+                    dump_lowered: cli.dump_lowered,
+                    emit_rust: cli.emit_rust,
+                    keep_build_dir: cli.keep_build_dir,
+                },
+                &config,
+                stdout,
+            )
+        }
+        Ok(cli) if cli.command.is_none() && cli.input.is_none() => {
             let help = FrontendCli::command().render_long_help().to_string();
             match writeln!(stdout, "{help}") {
                 Ok(()) => 0,
@@ -231,6 +249,21 @@ fn frontend_config_from_cli(
 }
 
 fn dispatch_cli(cli: &FrontendCli, config: &FrontendConfig) -> FrontendResult<FrontendCommandResult> {
+    if let Some(input) = &cli.input {
+        return run_direct_compile(
+            &DirectCompileConfig {
+                input: input.clone(),
+                json: cli.json,
+                std_root: cli.std_root.clone(),
+                package_store_root: cli.package_store_root.clone(),
+                dump_lowered: cli.dump_lowered,
+                emit_rust: cli.emit_rust,
+                keep_build_dir: cli.keep_build_dir,
+            },
+            config,
+        );
+    }
+
     match cli.command.as_ref() {
         None => Err(FrontendError::new(
             FrontendErrorKind::InvalidInput,

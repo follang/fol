@@ -1,6 +1,7 @@
 use fol_frontend::{
-    build_workspace, check_workspace, emit_lowered, emit_rust, run_workspace, test_workspace,
-    FrontendArtifactKind, FrontendWorkspace, PackageRoot, WorkspaceRoot,
+    build_workspace, check_workspace, emit_lowered, emit_rust, run_command_from_args_in_dir,
+    run_workspace, test_workspace, FrontendArtifactKind, FrontendWorkspace, PackageRoot,
+    WorkspaceRoot,
 };
 use std::fs;
 use std::path::PathBuf;
@@ -148,6 +149,39 @@ fn emit_lowered_command_reports_snapshot_paths_through_public_api() {
         .as_ref()
         .expect("snapshot path should exist")
         .is_file());
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn direct_file_or_folder_compilation_is_frontend_owned() {
+    let root = temp_root("direct_compile");
+    let workspace = sample_workspace(&root);
+    let package_root = workspace.members[0].root.clone();
+
+    let (_, built) =
+        run_command_from_args_in_dir(["fol", package_root.to_string_lossy().as_ref()], &root)
+            .expect("direct package compile should succeed");
+    let (_, emitted) = run_command_from_args_in_dir(
+        [
+            "fol",
+            "--emit-rust",
+            package_root.to_string_lossy().as_ref(),
+        ],
+        &root,
+    )
+    .expect("direct emit rust should succeed");
+
+    assert_eq!(built.command, "compile");
+    assert!(built
+        .artifacts
+        .iter()
+        .any(|artifact| artifact.kind == FrontendArtifactKind::Binary));
+    assert_eq!(emitted.command, "compile");
+    assert!(emitted
+        .artifacts
+        .iter()
+        .any(|artifact| artifact.kind == FrontendArtifactKind::EmittedRust));
 
     fs::remove_dir_all(root).ok();
 }
