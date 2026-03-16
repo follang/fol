@@ -6,10 +6,12 @@
 mod config;
 mod errors;
 mod output;
+mod result;
 
 pub use config::FrontendConfig;
 pub use errors::{FrontendError, FrontendErrorKind, FrontendResult};
 pub use output::{ColorPolicy, FrontendOutputConfig, OutputMode};
+pub use result::{FrontendArtifactKind, FrontendArtifactSummary, FrontendCommandResult};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct Frontend;

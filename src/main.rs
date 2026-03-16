@@ -530,6 +530,22 @@ fn frontend_config_surface_smoke_compiles() {
 }
 
 #[test]
+fn frontend_result_surface_smoke_compiles() {
+    let result = fol_frontend::FrontendCommandResult::new("build", "built binary").with_artifact(
+        fol_frontend::FrontendArtifactSummary::new(
+            fol_frontend::FrontendArtifactKind::Binary,
+            "demo",
+            Some(std::path::PathBuf::from("target/bin/demo")),
+        ),
+    );
+
+    assert_eq!(result.command, "build");
+    assert_eq!(result.summary, "built binary");
+    assert_eq!(result.artifacts.len(), 1);
+    assert_eq!(result.artifacts[0].kind.as_str(), "binary");
+}
+
+#[test]
 fn backend_public_api_shell_smoke_compiles() {
     let backend = fol_backend::Backend::new();
     assert_eq!(format!("{backend:?}"), "Backend");
