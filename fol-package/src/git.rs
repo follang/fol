@@ -1,5 +1,6 @@
 use crate::{git_cache_path, git_store_path, PackageError, PackageErrorKind, PackageLocator};
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PackageGitMaterialization {
@@ -70,6 +71,145 @@ impl PackageGitSourceSession {
             selected_revision,
         ))
     }
+
+    pub fn sync_source_cache(&self, locator: &PackageLocator) -> Result<PathBuf, PackageError> {
+        if locator.git.is_none() {
+            return Err(PackageError::new(
+                PackageErrorKind::InvalidInput,
+                format!(
+                    "git source cache sync requires a git locator, but '{}' is not remote git",
+                    locator.raw
+                ),
+            ));
+        }
+
+        let cache_root = git_cache_path(&self.cache_base_root, locator);
+        if cache_root.is_dir() {
+            run_git(
+                Some(&cache_root),
+                &["fetch", "--all", "--tags", "--prune"],
+                locator,
+                "fetch from source cache",
+            )?;
+        } else {
+            if let Some(parent) = cache_root.parent() {
+                std::fs::create_dir_all(parent).map_err(|error| {
+                    wrap_git_failure(
+                        "create git cache parent directories",
+                        locator,
+                        error.to_string(),
+                    )
+                })?;
+            }
+            let repository = locator
+                .git
+                .as_ref()
+                .expect("git locator was checked above")
+                .repository
+                .clone();
+            run_git(
+                None,
+                &["clone", repository.as_str(), cache_root.to_string_lossy().as_ref()],
+                locator,
+                "clone into source cache",
+            )?;
+        }
+        Ok(cache_root)
+    }
+
+    pub fn resolve_revision(
+        &self,
+        locator: &PackageLocator,
+        cache_root: &Path,
+    ) -> Result<String, PackageError> {
+        let git = locator.git.as_ref().ok_or_else(|| {
+            PackageError::new(
+                PackageErrorKind::InvalidInput,
+                format!(
+                    "git revision resolution requires a git locator, but '{}' is not remote git",
+                    locator.raw
+                ),
+            )
+        })?;
+        let spec = if let Some(rev) = &git.selector.rev {
+            format!("{rev}^{{commit}}")
+        } else if let Some(tag) = &git.selector.tag {
+            format!("refs/tags/{tag}^{{commit}}")
+        } else if let Some(branch) = &git.selector.branch {
+            format!("refs/remotes/origin/{branch}^{{commit}}")
+        } else {
+            "HEAD^{commit}".to_string()
+        };
+        run_git_capture(
+            Some(cache_root),
+            &["rev-parse", spec.as_str()],
+            locator,
+            "resolve selected revision",
+        )
+        .map(|value| value.trim().to_string())
+    }
+
+    pub fn materialize_revision(
+        &self,
+        locator: &PackageLocator,
+        revision: &str,
+    ) -> Result<PackageGitMaterialization, PackageError> {
+        let cache_root = self.sync_source_cache(locator)?;
+        let selected_revision = if revision.trim().is_empty() {
+            self.resolve_revision(locator, &cache_root)?
+        } else {
+            revision.trim().to_string()
+        };
+        let materialization = PackageGitMaterialization::new(
+            &self.cache_base_root,
+            &self.store_base_root,
+            locator.clone(),
+            selected_revision.clone(),
+        );
+
+        if materialization.store_root.is_dir() {
+            return Ok(materialization);
+        }
+
+        if let Some(parent) = materialization.store_root.parent() {
+            std::fs::create_dir_all(parent).map_err(|error| {
+                wrap_git_failure(
+                    "create materialized package parent directories",
+                    locator,
+                    error.to_string(),
+                )
+            })?;
+        }
+
+        run_git(
+            None,
+            &[
+                "clone",
+                "--no-checkout",
+                cache_root.to_string_lossy().as_ref(),
+                materialization.store_root.to_string_lossy().as_ref(),
+            ],
+            locator,
+            "clone pinned materialization",
+        )?;
+        run_git(
+            Some(&materialization.store_root),
+            &["checkout", "--force", selected_revision.as_str()],
+            locator,
+            "check out pinned revision",
+        )?;
+
+        Ok(materialization)
+    }
+
+    pub fn materialize_selected_revision(
+        &self,
+        locator: &PackageLocator,
+    ) -> Result<PackageGitMaterialization, PackageError> {
+        let cache_root = self.sync_source_cache(locator)?;
+        let selected_revision = self.resolve_revision(locator, &cache_root)?;
+        self.materialize_revision(locator, &selected_revision)
+    }
 }
 
 pub fn wrap_git_failure(
@@ -87,11 +227,72 @@ pub fn wrap_git_failure(
     )
 }
 
+fn run_git(
+    cwd: Option<&Path>,
+    args: &[&str],
+    locator: &PackageLocator,
+    action: &str,
+) -> Result<(), PackageError> {
+    let mut command = Command::new("git");
+    command.args(args);
+    if let Some(cwd) = cwd {
+        command.current_dir(cwd);
+    }
+    let output = command
+        .output()
+        .map_err(|error| wrap_git_failure(action, locator, error.to_string()))?;
+    if output.status.success() {
+        return Ok(());
+    }
+    Err(wrap_git_failure(
+        action,
+        locator,
+        git_output_detail(&output.stderr, &output.stdout),
+    ))
+}
+
+fn run_git_capture(
+    cwd: Option<&Path>,
+    args: &[&str],
+    locator: &PackageLocator,
+    action: &str,
+) -> Result<String, PackageError> {
+    let mut command = Command::new("git");
+    command.args(args);
+    if let Some(cwd) = cwd {
+        command.current_dir(cwd);
+    }
+    let output = command
+        .output()
+        .map_err(|error| wrap_git_failure(action, locator, error.to_string()))?;
+    if !output.status.success() {
+        return Err(wrap_git_failure(
+            action,
+            locator,
+            git_output_detail(&output.stderr, &output.stdout),
+        ));
+    }
+    String::from_utf8(output.stdout).map_err(|error| wrap_git_failure(action, locator, error.to_string()))
+}
+
+fn git_output_detail(stderr: &[u8], stdout: &[u8]) -> String {
+    let stderr = String::from_utf8_lossy(stderr).trim().to_string();
+    if !stderr.is_empty() {
+        return stderr;
+    }
+    let stdout = String::from_utf8_lossy(stdout).trim().to_string();
+    if !stdout.is_empty() {
+        return stdout;
+    }
+    "git command failed without output".to_string()
+}
+
 #[cfg(test)]
 mod tests {
     use super::{wrap_git_failure, PackageGitSourceSession};
-    use crate::parse_package_locator;
-    use std::path::PathBuf;
+    use crate::{parse_package_locator, PackageGitSelector, PackageGitTransport, PackageLocator};
+    use std::path::{Path, PathBuf};
+    use std::process::Command;
 
     #[test]
     fn git_source_session_plans_separate_cache_and_store_roots() {
@@ -139,5 +340,71 @@ mod tests {
             .message()
             .contains("git dependency 'git@github.com:bresilla/logtiny.git' failed while trying to fetch"));
         assert!(error.message().contains("network timeout"));
+    }
+
+    #[test]
+    fn git_source_session_clones_fetches_and_materializes_selected_revisions() {
+        let temp_root = temp_root("materialize");
+        let remote = temp_root.join("remote");
+        create_package_repo(&remote, "0.1.0");
+
+        let session = PackageGitSourceSession::new(temp_root.join("cache"), temp_root.join("store"));
+        let locator = PackageLocator::git(
+            format!("git+file://{}", remote.display()),
+            PackageGitTransport::Git,
+            format!("file://{}", remote.display()),
+            PackageGitSelector::default(),
+        );
+
+        let materialization = session
+            .materialize_selected_revision(&locator)
+            .expect("materialization should succeed");
+
+        assert!(materialization.cache_root.is_dir());
+        assert!(materialization.store_root.is_dir());
+        assert!(materialization.store_root.join("package.yaml").is_file());
+        assert!(!materialization.selected_revision.trim().is_empty());
+
+        std::fs::remove_dir_all(temp_root).ok();
+    }
+
+    fn temp_root(label: &str) -> PathBuf {
+        std::env::temp_dir().join(format!(
+            "fol_package_git_{}_{}_{}",
+            label,
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("clock should be stable enough for temp dirs")
+                .as_nanos()
+        ))
+    }
+
+    fn create_package_repo(root: &Path, version: &str) {
+        std::fs::create_dir_all(root.join("src")).expect("package repo should be creatable");
+        std::fs::write(
+            root.join("package.yaml"),
+            format!("name: logtiny\nversion: {version}\n"),
+        )
+        .expect("package metadata should be writable");
+        std::fs::write(root.join("build.fol"), "def root: loc = \"src\"\n")
+            .expect("package build should be writable");
+        std::fs::write(root.join("src/lib.fol"), "var[exp] level: int = 1\n")
+            .expect("package source should be writable");
+
+        git(root, &["init"]);
+        git(root, &["config", "user.name", "FOL"]);
+        git(root, &["config", "user.email", "fol@example.com"]);
+        git(root, &["add", "."]);
+        git(root, &["commit", "-m", "init"]);
+    }
+
+    fn git(root: &Path, args: &[&str]) {
+        let status = Command::new("git")
+            .args(args)
+            .current_dir(root)
+            .status()
+            .expect("git command should run");
+        assert!(status.success(), "git {:?} should succeed", args);
     }
 }

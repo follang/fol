@@ -143,47 +143,27 @@ impl PackageSession {
             ));
         }
 
-        let metadata = crate::parse_package_metadata(metadata_path.as_path())?;
-        let build = crate::parse_package_build(build_path.as_path())?;
-        let identity = PackageIdentity {
-            source_kind: PackageSourceKind::Package,
-            canonical_root: canonical_root_str,
-            display_name: metadata.name.clone(),
-        };
-
-        self.begin_loading(&identity)?;
-
-        if let Some(cached) = self.cached_package(&identity).cloned() {
-            self.finish_loading();
-            return Ok(cached);
-        }
-
-        for dependency in &build.dependencies {
-            let path_segments = locator_use_path_segments(&dependency.locator);
-            self.load_package_from_store(store_root, &path_segments)?;
-        }
-
-        let prepared_result = parse_directory_package_syntax(
+        self.load_formal_package_root(
             canonical_root.as_path(),
-            &metadata.name,
+            canonical_root_str,
             PackageSourceKind::Package,
+            Some(store_root),
         )
-        .and_then(|syntax| {
-            let exports = compute_prepared_exports(&build, &syntax)?;
-            Ok(PreparedPackage::with_controls(
-                identity.clone(),
-                metadata,
-                build,
-                exports,
-                syntax,
-            ))
-        });
+    }
 
-        self.finish_loading();
-
-        let prepared = prepared_result?;
-        self.cache_package(prepared.clone());
-        Ok(prepared)
+    pub fn load_materialized_package(
+        &mut self,
+        package_root: &Path,
+    ) -> Result<PreparedPackage, PackageError> {
+        let canonical_root =
+            canonical_directory_root(package_root, PackageSourceKind::Package)?;
+        let canonical_root_str = canonical_root.to_string_lossy().to_string();
+        self.load_formal_package_root(
+            canonical_root.as_path(),
+            canonical_root_str,
+            PackageSourceKind::Package,
+            None,
+        )
     }
 
     #[cfg(test)]
@@ -237,6 +217,84 @@ impl PackageSession {
             PackageErrorKind::ImportCycle,
             format!("package import cycle detected while loading package roots: {cycle}"),
         )
+    }
+
+    fn load_formal_package_root(
+        &mut self,
+        canonical_root: &Path,
+        canonical_root_str: String,
+        source_kind: PackageSourceKind,
+        store_root: Option<&Path>,
+    ) -> Result<PreparedPackage, PackageError> {
+        if let Some(cached) = self.cached_package_by_root(source_kind, &canonical_root_str) {
+            return Ok(cached);
+        }
+        let metadata_path = canonical_root.join("package.yaml");
+        let build_path = canonical_root.join("build.fol");
+        if !metadata_path.is_file() {
+            return Err(PackageError::new(
+                PackageErrorKind::InvalidInput,
+                format!(
+                    "package pkg import target '{}' is missing required package metadata '{}'",
+                    canonical_root.display(),
+                    metadata_path.display()
+                ),
+            ));
+        }
+        if !build_path.is_file() {
+            return Err(PackageError::new(
+                PackageErrorKind::InvalidInput,
+                format!(
+                    "package pkg import target '{}' is missing required package build file '{}'",
+                    canonical_root.display(),
+                    build_path.display()
+                ),
+            ));
+        }
+
+        let metadata = crate::parse_package_metadata(metadata_path.as_path())?;
+        let build = crate::parse_package_build(build_path.as_path())?;
+        let identity = PackageIdentity {
+            source_kind,
+            canonical_root: canonical_root_str,
+            display_name: metadata.name.clone(),
+        };
+
+        self.begin_loading(&identity)?;
+
+        if let Some(cached) = self.cached_package(&identity).cloned() {
+            self.finish_loading();
+            return Ok(cached);
+        }
+
+        if let Some(store_root) = store_root {
+            for dependency in &build.dependencies {
+                let path_segments = locator_use_path_segments(&dependency.locator);
+                self.load_package_from_store(store_root, &path_segments)?;
+            }
+        }
+
+        let prepared_result = parse_directory_package_syntax(
+            canonical_root,
+            &metadata.name,
+            source_kind,
+        )
+        .and_then(|syntax| {
+            let exports = compute_prepared_exports(&build, &syntax)?;
+            Ok(PreparedPackage::with_controls(
+                identity.clone(),
+                metadata,
+                build,
+                exports,
+                syntax,
+            ))
+        });
+
+        self.finish_loading();
+
+        let prepared = prepared_result?;
+        self.cache_package(prepared.clone());
+        Ok(prepared)
     }
 }
 
