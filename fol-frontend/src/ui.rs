@@ -68,6 +68,41 @@ impl FrontendOutput {
             "message": error.message(),
         }))
     }
+
+    pub fn render_command_summary(
+        &self,
+        result: &FrontendCommandResult,
+    ) -> Result<String, serde_json::Error> {
+        match self.config.mode {
+            OutputMode::Human => {
+                let mut lines = vec![self.render_human_header(&result.command)];
+                lines.push(self.render_human_status("Summary", &result.summary));
+                for artifact in &result.artifacts {
+                    let detail = artifact
+                        .path
+                        .as_ref()
+                        .map(|path| path.to_string_lossy().to_string())
+                        .unwrap_or_else(|| artifact.label.clone());
+                    lines.push(self.render_human_status(artifact.kind.as_str(), &detail));
+                }
+                Ok(lines.join("\n"))
+            }
+            OutputMode::Plain => {
+                let mut lines = vec![self.render_plain_field("command", &result.command)];
+                lines.push(self.render_plain_field("summary", &result.summary));
+                for artifact in &result.artifacts {
+                    let detail = artifact
+                        .path
+                        .as_ref()
+                        .map(|path| path.to_string_lossy().to_string())
+                        .unwrap_or_else(|| artifact.label.clone());
+                    lines.push(self.render_plain_field(artifact.kind.as_str(), detail));
+                }
+                Ok(lines.join("\n"))
+            }
+            OutputMode::Json => self.render_json_result(result),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -135,5 +170,36 @@ mod tests {
         assert!(rendered_result.contains("\"kind\": \"binary\""));
         assert!(rendered_error.contains("\"kind\": \"FrontendCommandFailed\""));
         assert!(rendered_error.contains("\"message\": \"failed\""));
+    }
+
+    #[test]
+    fn command_summary_respects_selected_output_mode() {
+        let result = FrontendCommandResult::new("build", "built binary").with_artifact(
+            FrontendArtifactSummary::new(
+                FrontendArtifactKind::Binary,
+                "demo",
+                Some(PathBuf::from("target/bin/demo")),
+            ),
+        );
+
+        let human = FrontendOutput::new(FrontendOutputConfig::default())
+            .render_command_summary(&result)
+            .unwrap();
+        let plain = FrontendOutput::new(FrontendOutputConfig {
+            mode: OutputMode::Plain,
+            ..FrontendOutputConfig::default()
+        })
+        .render_command_summary(&result)
+        .unwrap();
+        let json = FrontendOutput::new(FrontendOutputConfig {
+            mode: OutputMode::Json,
+            ..FrontendOutputConfig::default()
+        })
+        .render_command_summary(&result)
+        .unwrap();
+
+        assert!(human.contains("== build =="));
+        assert!(plain.contains("command: build"));
+        assert!(json.contains("\"command\": \"build\""));
     }
 }

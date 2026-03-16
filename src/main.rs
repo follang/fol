@@ -575,6 +575,7 @@ fn frontend_output_helper_surface_smoke_compiles() {
     );
     let result = fol_frontend::FrontendCommandResult::new("build", "built binary");
     assert!(output.render_json_result(&result).is_ok());
+    assert!(output.render_command_summary(&result).is_ok());
 }
 
 #[test]
