@@ -20,6 +20,11 @@ use fol_typecheck::Typechecker;
 use std::path::Path;
 
 fn main() {
+    let raw_args = std::env::args_os().collect::<Vec<_>>();
+    if should_use_frontend(&raw_args) {
+        std::process::exit(fol_frontend::run_from_args(raw_args));
+    }
+
     let matches = Command::new("fol")
         .version(env!("CARGO_PKG_VERSION"))
         .about("FOL Programming Language Compiler")
@@ -150,6 +155,49 @@ fn main() {
     if diagnostics.has_errors() {
         std::process::exit(1);
     }
+}
+
+fn should_use_frontend(args: &[std::ffi::OsString]) -> bool {
+    let Some(first) = args.get(1).and_then(|arg| arg.to_str()) else {
+        return false;
+    };
+
+    matches!(
+        first,
+        "init"
+            | "i"
+            | "bootstrap"
+            | "new"
+            | "n"
+            | "create"
+            | "work"
+            | "w"
+            | "ws"
+            | "workspace"
+            | "fetch"
+            | "f"
+            | "sync"
+            | "build"
+            | "b"
+            | "make"
+            | "run"
+            | "r"
+            | "test"
+            | "t"
+            | "check"
+            | "c"
+            | "verify"
+            | "emit"
+            | "e"
+            | "gen"
+            | "clean"
+            | "cl"
+            | "purge"
+            | "completion"
+            | "completions"
+            | "comp"
+            | "_complete"
+    ) || matches!(first, "--output" | "--color" | "--profile" | "--debug" | "--release")
 }
 
 fn compile_file(
@@ -478,6 +526,258 @@ fn intrinsics_crate_foundation_smoke_compiles() {
 #[test]
 fn backend_crate_foundation_smoke_compiles() {
     assert_eq!(fol_backend::crate_name(), "fol-backend");
+}
+
+#[test]
+fn frontend_crate_foundation_smoke_compiles() {
+    assert_eq!(fol_frontend::crate_name(), "fol-frontend");
+}
+
+#[test]
+fn frontend_public_run_shell_smoke_compiles() {
+    let _frontend = fol_frontend::Frontend::new();
+    let _run_ptr: fn() -> fol_frontend::FrontendResult<()> = fol_frontend::run;
+    let (_, result) = fol_frontend::run_command_from_args(["fol", "_complete"]).unwrap();
+    assert_eq!(result.command, "_complete");
+}
+
+#[test]
+fn frontend_error_surface_smoke_compiles() {
+    let error = fol_frontend::FrontendError::new(
+        fol_frontend::FrontendErrorKind::CommandFailed,
+        "frontend shell failed",
+    );
+
+    assert_eq!(error.kind(), fol_frontend::FrontendErrorKind::CommandFailed);
+    assert_eq!(error.message(), "frontend shell failed");
+    assert_eq!(
+        error.to_string(),
+        "FrontendCommandFailed: frontend shell failed"
+    );
+}
+
+#[test]
+fn frontend_output_surface_smoke_compiles() {
+    let config = fol_frontend::FrontendOutputConfig::default();
+
+    assert_eq!(config.mode, fol_frontend::OutputMode::Human);
+    assert_eq!(config.mode.as_str(), "human");
+    assert_eq!(config.color, fol_frontend::ColorPolicy::Auto);
+    assert_eq!(config.color.as_str(), "auto");
+}
+
+#[test]
+fn frontend_config_surface_smoke_compiles() {
+    let config = fol_frontend::FrontendConfig::default();
+
+    assert_eq!(config.output.mode, fol_frontend::OutputMode::Human);
+    assert_eq!(config.output.color, fol_frontend::ColorPolicy::Auto);
+    assert!(config.std_root_override.is_none());
+    assert!(config.package_store_root_override.is_none());
+    assert!(config.build_root_override.is_none());
+    assert!(config.cache_root_override.is_none());
+}
+
+#[test]
+fn frontend_result_surface_smoke_compiles() {
+    let result = fol_frontend::FrontendCommandResult::new("build", "built binary").with_artifact(
+        fol_frontend::FrontendArtifactSummary::new(
+            fol_frontend::FrontendArtifactKind::Binary,
+            "demo",
+            Some(std::path::PathBuf::from("target/bin/demo")),
+        ),
+    );
+
+    assert_eq!(result.command, "build");
+    assert_eq!(result.summary, "built binary");
+    assert_eq!(result.artifacts.len(), 1);
+    assert_eq!(result.artifacts[0].kind.as_str(), "binary");
+}
+
+#[test]
+fn frontend_root_parser_surface_smoke_compiles() {
+    let cli = fol_frontend::FrontendCli::parse_from(["fol", "build"]);
+
+    assert_eq!(
+        cli.command,
+        Some(fol_frontend::FrontendCommand::Build(fol_frontend::UnitCommand))
+    );
+}
+
+#[test]
+fn root_binary_prefers_frontend_for_workflow_commands_and_aliases() {
+    assert!(should_use_frontend(&["fol".into(), "build".into()]));
+    assert!(should_use_frontend(&["fol".into(), "run".into()]));
+    assert!(should_use_frontend(&["fol".into(), "workspace".into()]));
+    assert!(should_use_frontend(&["fol".into(), "sync".into()]));
+    assert!(should_use_frontend(&["fol".into(), "--output".into(), "json".into(), "build".into()]));
+}
+
+#[test]
+fn root_binary_keeps_legacy_compiler_mode_for_direct_compile_inputs() {
+    assert!(!should_use_frontend(&["fol".into()]));
+    assert!(!should_use_frontend(&["fol".into(), "examples/full_v1_showcase/app".into()]));
+    assert!(!should_use_frontend(&["fol".into(), "--json".into(), "test/main/main.fol".into()]));
+    assert!(!should_use_frontend(&["fol".into(), "--emit-rust".into(), "test/main/main.fol".into()]));
+    assert!(!should_use_frontend(&["fol".into(), "--dump-lowered".into(), "test/main/main.fol".into()]));
+    assert!(!should_use_frontend(&["fol".into(), "--std-root".into(), "/tmp/std".into(), "test/main/main.fol".into()]));
+    assert!(!should_use_frontend(&["fol".into(), "--package-store-root".into(), "/tmp/pkg".into(), "test/main/main.fol".into()]));
+    assert!(!should_use_frontend(&["fol".into(), "--keep-build-dir".into(), "test/main/main.fol".into()]));
+}
+
+#[test]
+fn root_binary_preserves_frontend_global_flag_routing_for_workflow_commands() {
+    assert!(should_use_frontend(&["fol".into(), "--release".into(), "build".into()]));
+    assert!(should_use_frontend(&["fol".into(), "--debug".into(), "run".into()]));
+    assert!(should_use_frontend(&["fol".into(), "--color".into(), "always".into(), "test".into()]));
+    assert!(should_use_frontend(&["fol".into(), "--output".into(), "json".into(), "emit".into(), "rust".into()]));
+}
+
+#[test]
+fn frontend_workspace_root_surface_smoke_compiles() {
+    let root = fol_frontend::WorkspaceRoot::new(std::path::PathBuf::from("/tmp/demo"));
+
+    assert_eq!(fol_frontend::WORKSPACE_FILE_NAME, "fol.work.yaml");
+    assert_eq!(root.config_file, std::path::PathBuf::from("/tmp/demo/fol.work.yaml"));
+}
+
+#[test]
+fn frontend_workspace_model_surface_smoke_compiles() {
+    let workspace = fol_frontend::FrontendWorkspace::new(fol_frontend::WorkspaceRoot::new(
+        std::path::PathBuf::from("/tmp/demo"),
+    ));
+
+    assert_eq!(workspace.root.root, std::path::PathBuf::from("/tmp/demo"));
+    assert!(workspace.members.is_empty());
+    assert!(workspace.std_root_override.is_none());
+    assert!(workspace.package_store_root_override.is_none());
+    assert_eq!(workspace.build_root, std::path::PathBuf::from("/tmp/demo/.fol/build"));
+    assert_eq!(workspace.cache_root, std::path::PathBuf::from("/tmp/demo/.fol/cache"));
+}
+
+#[test]
+fn frontend_work_info_surface_smoke_compiles() {
+    let workspace = fol_frontend::FrontendWorkspace::new(fol_frontend::WorkspaceRoot::new(
+        std::path::PathBuf::from("/tmp/demo"),
+    ));
+    let result = fol_frontend::work_info(&workspace);
+
+    assert_eq!(result.command, "work info");
+    assert!(result.summary.contains("root=/tmp/demo"));
+}
+
+#[test]
+fn frontend_work_list_surface_smoke_compiles() {
+    let workspace = fol_frontend::FrontendWorkspace {
+        root: fol_frontend::WorkspaceRoot::new(std::path::PathBuf::from("/tmp/demo")),
+        members: vec![fol_frontend::PackageRoot::new(std::path::PathBuf::from("/tmp/demo/app"))],
+        std_root_override: None,
+        package_store_root_override: None,
+        build_root: std::path::PathBuf::from("/tmp/demo/.fol/build"),
+        cache_root: std::path::PathBuf::from("/tmp/demo/.fol/cache"),
+    };
+    let result = fol_frontend::work_list(&workspace);
+
+    assert_eq!(result.command, "work list");
+    assert!(result.summary.contains("/tmp/demo/app"));
+}
+
+#[test]
+fn frontend_package_root_surface_smoke_compiles() {
+    let root = fol_frontend::PackageRoot::new(std::path::PathBuf::from("/tmp/demo"));
+
+    assert_eq!(fol_frontend::PACKAGE_FILE_NAME, "package.yaml");
+    assert_eq!(root.manifest_file, std::path::PathBuf::from("/tmp/demo/package.yaml"));
+}
+
+#[test]
+fn frontend_upward_discovery_surface_smoke_compiles() {
+    let root = std::env::temp_dir().join(format!("fol_frontend_smoke_{}", std::process::id()));
+    let nested = root.join("pkg").join("src");
+    std::fs::create_dir_all(&nested).unwrap();
+    std::fs::write(root.join("pkg").join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
+
+    let discovered = fol_frontend::discover_root_upward(&nested).unwrap();
+    assert!(matches!(discovered, fol_frontend::DiscoveredRoot::Package(_)));
+
+    std::fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn frontend_explicit_path_discovery_surface_smoke_compiles() {
+    let root = std::env::temp_dir().join(format!("fol_frontend_explicit_{}", std::process::id()));
+    std::fs::create_dir_all(&root).unwrap();
+    std::fs::write(root.join("fol.work.yaml"), "members: []\n").unwrap();
+
+    let discovered = fol_frontend::discover_root_from_explicit_path(&root).unwrap();
+    assert!(matches!(discovered, fol_frontend::DiscoveredRoot::Workspace(_)));
+
+    std::fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn frontend_missing_root_diagnostic_surface_smoke_compiles() {
+    let root = std::env::temp_dir().join(format!("fol_frontend_missing_{}", std::process::id()));
+    std::fs::create_dir_all(&root).unwrap();
+
+    let error = fol_frontend::require_discovered_root(&root).unwrap_err();
+    assert_eq!(error.kind(), fol_frontend::FrontendErrorKind::WorkspaceNotFound);
+
+    std::fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn frontend_init_shell_surface_smoke_compiles() {
+    let root = std::path::PathBuf::from("/tmp/demo");
+    let result = fol_frontend::init_current_dir(&root).unwrap();
+
+    assert_eq!(result.command, "init");
+    assert_eq!(result.artifacts[0].kind, fol_frontend::FrontendArtifactKind::PackageRoot);
+}
+
+#[test]
+fn frontend_workspace_init_surface_smoke_compiles() {
+    let root = std::env::temp_dir().join(format!("fol_frontend_ws_smoke_{}", std::process::id()));
+    std::fs::create_dir_all(&root).unwrap();
+
+    let result = fol_frontend::init_workspace_root(&root).unwrap();
+    assert_eq!(result.artifacts[0].kind, fol_frontend::FrontendArtifactKind::WorkspaceRoot);
+
+    std::fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn frontend_new_project_surface_smoke_compiles() {
+    let parent = std::env::temp_dir().join(format!("fol_frontend_new_smoke_{}", std::process::id()));
+    std::fs::create_dir_all(&parent).unwrap();
+
+    let result = fol_frontend::new_project(&parent, "demo").unwrap();
+    assert_eq!(result.command, "new");
+    assert_eq!(result.summary, "created project 'demo'");
+
+    std::fs::remove_dir_all(parent).ok();
+}
+
+#[test]
+fn frontend_output_helper_surface_smoke_compiles() {
+    let output = fol_frontend::FrontendOutput::new(fol_frontend::FrontendOutputConfig::default());
+
+    assert_eq!(output.config().mode, fol_frontend::OutputMode::Human);
+    assert!(!output.is_machine_readable());
+    assert_eq!(output.render_human_header("Build"), "== Build ==");
+    assert_eq!(
+        output.render_human_status("Built", "target/bin/demo"),
+        "Built: target/bin/demo"
+    );
+    assert_eq!(output.render_plain_section("build"), "build:");
+    assert_eq!(
+        output.render_plain_field("artifact", "target/bin/demo"),
+        "artifact: target/bin/demo"
+    );
+    let result = fol_frontend::FrontendCommandResult::new("build", "built binary");
+    assert!(output.render_json_result(&result).is_ok());
+    assert!(output.render_command_summary(&result).is_ok());
+    assert!(output.should_use_color(true));
 }
 
 #[test]

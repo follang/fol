@@ -83,6 +83,9 @@ The book is organized from language foundation to higher-level facilities:
 
 Read [Notation And Conventions](./000_overview/100_conventions.md) before using chapter examples as a normative reference.
 
+For the current user-facing tool workflow, read
+[Frontend Workflow](./000_overview/200_frontend.md).
+
 ## Example
 
 ```fol

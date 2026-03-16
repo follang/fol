@@ -1,0 +1,22 @@
+[package]
+name = "fol-frontend"
+version = "0.1.0"
+edition = "2021"
+description = "User-facing frontend crate for the FOL toolchain"
+
+[lib]
+name = "fol_frontend"
+path = "src/lib.rs"
+
+[dependencies]
+clap = { version = "4.0", features = ["derive", "env"] }
+clap_complete = "=4.5.1"
+serde_json = "1"
+fol-package = { path = "../fol-package" }
+fol-stream = { path = "../fol-stream" }
+fol-lexer = { path = "../fol-lexer" }
+fol-parser = { path = "../fol-parser" }
+fol-resolver = { path = "../fol-resolver" }
+fol-typecheck = { path = "../fol-typecheck" }
+fol-lower = { path = "../fol-lower" }
+fol-backend = { path = "../fol-backend" }

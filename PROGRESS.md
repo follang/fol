@@ -29,6 +29,7 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `fol-runtime`
 - `fol-diagnostics`
 - `fol-backend`
+- `fol-frontend`
 - `src`
 - Scanned active tests under:
 - `test/stream`
@@ -49,7 +50,7 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 
 ## 2. Snapshot Metrics
 
-- Workspace member crates: `11`
+- Workspace member crates: `13`
 - Root binary crate: `1`
 - Active Rust source lines scanned: `54246`
 - Core compiler Rust lines scanned:
@@ -72,8 +73,8 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - Parser-focused Rust tests under `test/parser`: `1108`
 - Resolver-focused Rust tests under `test/resolver`: `100`
 - Typecheck-focused Rust tests under `test/typecheck`: `71`
-- Observed current unit test run: `24` unit tests, green
-- Observed current integration run: `1570` integration tests, green
+- Observed current unit test run: `46` unit tests, green
+- Observed current integration run: `1616` integration tests, green
 
 ## 3. Current Headline Status
 
@@ -87,8 +88,9 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `fol-intrinsics`: implemented as the shared compiler-owned intrinsic registry for the current `V1` subset
 - `fol-runtime`: implemented as the shared current `V1` runtime/support contract for the first backend
 - `fol-backend`: implemented as the first runnable `V1` backend, emitting Rust crates and buildable binaries
+- `fol-frontend`: implemented as the user-facing workflow/tooling layer above the compiler and backend
 - `fol-diagnostics`: implemented, structured, and wired into the CLI
-- Root CLI: implemented as parse-and-package-prepare-and-resolve-and-typecheck-and-lower-and-backend driver
+- Root CLI: implemented as a migration shim between legacy direct compilation and `fol-frontend` workflows
 - Stream + lexer + parser: stable and consumed by package loading and resolver
 - Package loading and package preparation: implemented for `loc`, `std`, and installed `pkg`
 - Whole-program name resolution: implemented for the current contract
@@ -107,8 +109,8 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `make build`: passed
 - `make test`: passed
 - Current observed totals:
-- `24` unit tests passed
-- `1570` integration tests passed
+- `46` unit tests passed
+- `1616` integration tests passed
 - Observed active failures: `0`
 
 ## 5. What Has Been Completed So Far
@@ -573,6 +575,58 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - Repo status has now crossed the first runnable backend boundary. The current
   missing work is no longer “have any backend at all,” but rather future
   backend expansion, optimization, language growth, and later-version semantics.
+
+### 5.13 Frontend Milestone
+
+- `fol-frontend` now exists as a workspace crate above `fol-package`, the
+  compiler pipeline, and the first backend.
+- The crate now owns the user-facing workflow shell for the current tool:
+- derive-based command parsing with `clap`
+- command aliases and grouped help
+- human, plain, and JSON output modes
+- color policy selection and auto-detection
+- workspace and package root discovery
+- environment/config loading for roots and output behavior
+- workspace-member enumeration and summaries
+- project/workspace scaffolding
+- package preparation/fetch orchestration over `fol-package`
+- build, run, test, and emit orchestration over the full compiler/backend path
+- clean and completion flows
+- The current command surface is real and test-backed:
+- `init`
+- `new`
+- `work info`
+- `work list`
+- `fetch`
+- `check`
+- `build`
+- `run`
+- `test`
+- `emit rust`
+- `emit lowered`
+- `clean`
+- `completion`
+- hidden `_complete`
+- Frontend UX hardening is now explicit and tested:
+- visible aliases such as `make`, `sync`, `purge`, `workspace`, and `verify`
+- grouped help sections and example blocks
+- human-mode action/path highlighting
+- stable plain-mode summaries for script use
+- structured JSON summaries and errors with guidance notes
+- Frontend workflow/state handling is now explicit and tested:
+- upward root discovery and explicit path selection
+- workspace-config-over-env precedence for owned roots
+- env and flag precedence for output/color/profile selection
+- explicit build-root, emit-root, package-root, and binary artifact reporting
+- migration-safe routing between workflow commands and legacy direct compiler flags
+- Frontend integration coverage now includes:
+- happy-path package/workspace walkthroughs
+- clean/build/run/test/emit command execution through the public API
+- completion generation and `_complete` dispatch
+- root-binary migration boundaries
+- frontend diagnostic rendering across human/plain/json
+- At the repo level, `fol` is no longer only a compiler binary with stage flags.
+  It is now also the first real workflow tool for current `V1`.
 
 ## 6. Current Front-End State By Layer
 
