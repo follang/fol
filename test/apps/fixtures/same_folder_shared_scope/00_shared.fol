@@ -1,0 +1,5 @@
+var default_count: int = 7
+
+fun[] shared_count(): int = {
+    return default_count
+}
