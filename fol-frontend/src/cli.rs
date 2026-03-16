@@ -27,12 +27,13 @@ pub enum CompletionShellArg {
 
 #[derive(Debug, Clone, Subcommand, PartialEq, Eq)]
 pub enum FrontendCommand {
-    #[command(visible_aliases = ["i"])]
+    #[command(visible_aliases = ["i", "bootstrap"])]
     Init(InitCommand),
-    #[command(visible_aliases = ["n"])]
+    #[command(visible_aliases = ["n", "create"])]
     New(NewCommand),
     #[command(visible_aliases = ["w", "ws", "workspace"])]
     Work(WorkCommand),
+    #[command(visible_aliases = ["f", "sync"])]
     Fetch(UnitCommand),
     #[command(visible_aliases = ["b", "make"])]
     Build(UnitCommand),
@@ -42,7 +43,9 @@ pub enum FrontendCommand {
     Test(UnitCommand),
     #[command(visible_aliases = ["c", "verify"])]
     Check(UnitCommand),
+    #[command(visible_aliases = ["e", "gen"])]
     Emit(EmitCommand),
+    #[command(visible_aliases = ["cl", "purge"])]
     Clean(UnitCommand),
     #[command(visible_aliases = ["completions", "comp"])]
     Completion(CompletionCommand),
@@ -253,9 +256,20 @@ mod tests {
         let build = FrontendCli::parse_from(["fol", "b"]);
         let check = FrontendCli::parse_from(["fol", "verify"]);
         let work = FrontendCli::parse_from(["fol", "workspace", "info"]);
+        let fetch = FrontendCli::parse_from(["fol", "sync"]);
+        let emit = FrontendCli::parse_from(["fol", "gen", "rust"]);
+        let clean = FrontendCli::parse_from(["fol", "purge"]);
 
         assert_eq!(build.command, Some(FrontendCommand::Build(UnitCommand)));
         assert_eq!(check.command, Some(FrontendCommand::Check(UnitCommand)));
+        assert_eq!(fetch.command, Some(FrontendCommand::Fetch(UnitCommand)));
+        assert_eq!(
+            emit.command,
+            Some(FrontendCommand::Emit(EmitCommand {
+                command: EmitSubcommand::Rust(UnitCommand),
+            }))
+        );
+        assert_eq!(clean.command, Some(FrontendCommand::Clean(UnitCommand)));
         assert_eq!(
             work.command,
             Some(FrontendCommand::Work(WorkCommand {
@@ -367,6 +381,9 @@ mod tests {
         assert!(help.contains("make"));
         assert!(help.contains("check"));
         assert!(help.contains("verify"));
+        assert!(help.contains("sync"));
+        assert!(help.contains("purge"));
+        assert!(help.contains("gen"));
         assert!(help.contains("completion"));
         assert!(help.contains("completions"));
     }
