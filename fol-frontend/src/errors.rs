@@ -52,6 +52,12 @@ impl std::error::Error for FrontendError {}
 
 pub type FrontendResult<T> = Result<T, FrontendError>;
 
+impl From<std::io::Error> for FrontendError {
+    fn from(error: std::io::Error) -> Self {
+        Self::new(FrontendErrorKind::CommandFailed, error.to_string())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{FrontendError, FrontendErrorKind};
