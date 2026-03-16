@@ -123,13 +123,13 @@ pub struct NewCommand {
     disable_help_subcommand = true
 )]
 pub struct FrontendCli {
-    #[arg(long, global = true, value_enum, default_value_t = OutputMode::Human)]
+    #[arg(long, global = true, env = "FOL_OUTPUT", value_enum, default_value_t = OutputMode::Human)]
     pub output: OutputMode,
 
-    #[arg(long, global = true, value_enum, default_value_t = ColorPolicy::Auto)]
+    #[arg(long, global = true, env = "FOL_COLOR", value_enum, default_value_t = ColorPolicy::Auto)]
     pub color: ColorPolicy,
 
-    #[arg(long, global = true, value_enum)]
+    #[arg(long, global = true, env = "FOL_PROFILE", value_enum)]
     pub profile: Option<FrontendProfile>,
 
     #[arg(long, global = true, conflicts_with_all = ["release", "profile"])]
@@ -287,6 +287,56 @@ mod tests {
 
         assert_eq!(profile.selected_profile(), FrontendProfile::Release);
         assert_eq!(release.selected_profile(), FrontendProfile::Release);
+    }
+
+    #[test]
+    fn cli_env_values_feed_output_color_and_profile_defaults() {
+        unsafe {
+            std::env::set_var("FOL_OUTPUT", "plain");
+            std::env::set_var("FOL_COLOR", "never");
+            std::env::set_var("FOL_PROFILE", "release");
+        }
+
+        let cli = FrontendCli::parse_from(["fol", "build"]);
+
+        assert_eq!(cli.output, OutputMode::Plain);
+        assert_eq!(cli.color, ColorPolicy::Never);
+        assert_eq!(cli.selected_profile(), FrontendProfile::Release);
+
+        unsafe {
+            std::env::remove_var("FOL_OUTPUT");
+            std::env::remove_var("FOL_COLOR");
+            std::env::remove_var("FOL_PROFILE");
+        }
+    }
+
+    #[test]
+    fn explicit_flags_override_env_values() {
+        unsafe {
+            std::env::set_var("FOL_OUTPUT", "plain");
+            std::env::set_var("FOL_COLOR", "never");
+            std::env::set_var("FOL_PROFILE", "release");
+        }
+
+        let cli = FrontendCli::parse_from([
+            "fol",
+            "--output",
+            "json",
+            "--color",
+            "always",
+            "--debug",
+            "build",
+        ]);
+
+        assert_eq!(cli.output, OutputMode::Json);
+        assert_eq!(cli.color, ColorPolicy::Always);
+        assert_eq!(cli.selected_profile(), FrontendProfile::Debug);
+
+        unsafe {
+            std::env::remove_var("FOL_OUTPUT");
+            std::env::remove_var("FOL_COLOR");
+            std::env::remove_var("FOL_PROFILE");
+        }
     }
 
     #[test]

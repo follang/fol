@@ -9,7 +9,7 @@ name = "fol_frontend"
 path = "src/lib.rs"
 
 [dependencies]
-clap = { version = "4.0", features = ["derive"] }
+clap = { version = "4.0", features = ["derive", "env"] }
 clap_complete = "=4.5.1"
 serde_json = "1"
 fol-package = { path = "../fol-package" }
