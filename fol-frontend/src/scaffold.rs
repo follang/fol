@@ -132,7 +132,7 @@ fn starter_build_file() -> &'static str {
 mod tests {
     use super::{
         init_current_dir, init_package_root, init_root, init_workspace_root, new_project,
-        new_project_with_mode, package_target_kind, PackageTargetKind,
+        new_project_with_mode, package_target_kind, starter_package_name, PackageTargetKind,
     };
     use crate::FrontendArtifactKind;
     use std::{fs, path::PathBuf};

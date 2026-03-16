@@ -33,6 +33,12 @@ pub struct PackageGitSourceSession {
     store_base_root: PathBuf,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct PackageGitFetchOptions {
+    pub offline: bool,
+    pub refresh: bool,
+}
+
 impl PackageGitSourceSession {
     pub fn new(cache_base_root: impl Into<PathBuf>, store_base_root: impl Into<PathBuf>) -> Self {
         Self {
@@ -72,7 +78,11 @@ impl PackageGitSourceSession {
         ))
     }
 
-    pub fn sync_source_cache(&self, locator: &PackageLocator) -> Result<PathBuf, PackageError> {
+    pub fn sync_source_cache_with_options(
+        &self,
+        locator: &PackageLocator,
+        options: PackageGitFetchOptions,
+    ) -> Result<PathBuf, PackageError> {
         if locator.git.is_none() {
             return Err(PackageError::new(
                 PackageErrorKind::InvalidInput,
@@ -85,13 +95,26 @@ impl PackageGitSourceSession {
 
         let cache_root = git_cache_path(&self.cache_base_root, locator);
         if cache_root.is_dir() {
-            run_git(
-                Some(&cache_root),
-                &["fetch", "--all", "--tags", "--prune"],
-                locator,
-                "fetch from source cache",
-            )?;
+            if !options.offline {
+                run_git(
+                    Some(&cache_root),
+                    &["fetch", "--all", "--tags", "--prune"],
+                    locator,
+                    if options.refresh {
+                        "refresh from source cache"
+                    } else {
+                        "fetch from source cache"
+                    },
+                )?;
+            }
         } else {
+            if options.offline {
+                return Err(wrap_git_failure(
+                    "read from offline git cache",
+                    locator,
+                    format!("cached source mirror '{}' does not exist", cache_root.display()),
+                ));
+            }
             if let Some(parent) = cache_root.parent() {
                 std::fs::create_dir_all(parent).map_err(|error| {
                     wrap_git_failure(
@@ -115,6 +138,10 @@ impl PackageGitSourceSession {
             )?;
         }
         Ok(cache_root)
+    }
+
+    pub fn sync_source_cache(&self, locator: &PackageLocator) -> Result<PathBuf, PackageError> {
+        self.sync_source_cache_with_options(locator, PackageGitFetchOptions::default())
     }
 
     pub fn resolve_revision(
@@ -154,7 +181,20 @@ impl PackageGitSourceSession {
         locator: &PackageLocator,
         revision: &str,
     ) -> Result<PackageGitMaterialization, PackageError> {
-        let cache_root = self.sync_source_cache(locator)?;
+        self.materialize_revision_with_options(
+            locator,
+            revision,
+            PackageGitFetchOptions::default(),
+        )
+    }
+
+    pub fn materialize_revision_with_options(
+        &self,
+        locator: &PackageLocator,
+        revision: &str,
+        options: PackageGitFetchOptions,
+    ) -> Result<PackageGitMaterialization, PackageError> {
+        let cache_root = self.sync_source_cache_with_options(locator, options)?;
         let selected_revision = if revision.trim().is_empty() {
             self.resolve_revision(locator, &cache_root)?
         } else {
@@ -206,9 +246,17 @@ impl PackageGitSourceSession {
         &self,
         locator: &PackageLocator,
     ) -> Result<PackageGitMaterialization, PackageError> {
-        let cache_root = self.sync_source_cache(locator)?;
+        self.materialize_selected_revision_with_options(locator, PackageGitFetchOptions::default())
+    }
+
+    pub fn materialize_selected_revision_with_options(
+        &self,
+        locator: &PackageLocator,
+        options: PackageGitFetchOptions,
+    ) -> Result<PackageGitMaterialization, PackageError> {
+        let cache_root = self.sync_source_cache_with_options(locator, options)?;
         let selected_revision = self.resolve_revision(locator, &cache_root)?;
-        self.materialize_revision(locator, &selected_revision)
+        self.materialize_revision_with_options(locator, &selected_revision, options)
     }
 }
 
@@ -289,7 +337,7 @@ fn git_output_detail(stderr: &[u8], stdout: &[u8]) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{wrap_git_failure, PackageGitSourceSession};
+    use super::{wrap_git_failure, PackageGitFetchOptions, PackageGitSourceSession};
     use crate::{parse_package_locator, PackageGitSelector, PackageGitTransport, PackageLocator};
     use std::path::{Path, PathBuf};
     use std::process::Command;
@@ -365,6 +413,34 @@ mod tests {
         assert!(materialization.store_root.join("package.yaml").is_file());
         assert!(!materialization.selected_revision.trim().is_empty());
 
+        std::fs::remove_dir_all(temp_root).ok();
+    }
+
+    #[test]
+    fn offline_git_source_session_requires_a_warm_cache() {
+        let temp_root = temp_root("offline");
+        let remote = temp_root.join("remote");
+        create_package_repo(&remote, "0.1.0");
+
+        let session = PackageGitSourceSession::new(temp_root.join("cache"), temp_root.join("store"));
+        let locator = PackageLocator::git(
+            format!("git+file://{}", remote.display()),
+            PackageGitTransport::Git,
+            format!("file://{}", remote.display()),
+            PackageGitSelector::default(),
+        );
+
+        let error = session
+            .materialize_selected_revision_with_options(
+                &locator,
+                PackageGitFetchOptions {
+                    offline: true,
+                    refresh: false,
+                },
+            )
+            .expect_err("offline materialization should require a warm cache");
+
+        assert!(error.message().contains("offline git cache"));
         std::fs::remove_dir_all(temp_root).ok();
     }
 

@@ -65,6 +65,7 @@ fn workspace_info_and_list_summaries_are_stable_through_public_api() {
         package_store_root_override: Some(PathBuf::from("/tmp/demo/.fol/pkg")),
         build_root: PathBuf::from("/tmp/demo/.fol/build"),
         cache_root: PathBuf::from("/tmp/demo/.fol/cache"),
+        git_cache_root: PathBuf::from("/tmp/demo/.fol/cache/git"),
     };
 
     let info = work_info(&workspace);
@@ -88,4 +89,5 @@ fn workspace_model_defaults_are_stable_without_loaded_config() {
     assert!(workspace.members.is_empty());
     assert_eq!(workspace.build_root, PathBuf::from("/tmp/demo/.fol/build"));
     assert_eq!(workspace.cache_root, PathBuf::from("/tmp/demo/.fol/cache"));
+    assert_eq!(workspace.git_cache_root, PathBuf::from("/tmp/demo/.fol/cache/git"));
 }

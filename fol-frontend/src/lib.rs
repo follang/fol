@@ -23,7 +23,7 @@ pub use cli::{
     BuildCommand, CheckCommand, CompleteCommand, CompletionCommand, CompletionShellArg,
     EmitCommand, EmitLoweredCommand, EmitRustCommand, EmitSubcommand, FetchCommand,
     FrontendCli, FrontendCommand, FrontendProfile, InitCommand, NewCommand, RunCommand,
-    TestCommand, UnitCommand,
+    TestCommand, UnitCommand, UpdateCommand,
 };
 pub use clean::{clean_workspace, clean_workspace_with_config};
 pub use config::FrontendConfig;
@@ -45,7 +45,8 @@ pub use direct::{
 pub use errors::{FrontendError, FrontendErrorKind, FrontendResult};
 pub use fetch::{
     fetch_workspace, fetch_workspace_with_config, prepare_workspace_packages,
-    select_package_store_root, FrontendPackagePreparation, FrontendPreparedPackage,
+    select_package_store_root, update_workspace, update_workspace_with_config,
+    FrontendPackagePreparation, FrontendPreparedPackage,
 };
 pub use discovery::{
     discover_root_from_explicit_path, discover_root_upward, require_discovered_root,
@@ -269,6 +270,29 @@ fn frontend_config_from_cli(
     if cli.keep_build_dir {
         config.keep_build_dir = true;
     }
+    match cli.command.as_ref() {
+        Some(FrontendCommand::Fetch(command)) => {
+            config.locked_fetch = command.locked;
+            config.offline_fetch = command.offline;
+            config.refresh_fetch = command.refresh;
+        }
+        Some(FrontendCommand::Update(_)) => {
+            config.refresh_fetch = true;
+        }
+        Some(FrontendCommand::Build(command)) => {
+            config.locked_fetch = command.locked;
+        }
+        Some(FrontendCommand::Run(command)) => {
+            config.locked_fetch = command.locked;
+        }
+        Some(FrontendCommand::Test(command)) => {
+            config.locked_fetch = command.locked;
+        }
+        Some(FrontendCommand::Check(command)) => {
+            config.locked_fetch = command.locked;
+        }
+        _ => {}
+    }
     config
 }
 
@@ -306,6 +330,11 @@ fn dispatch_cli(cli: &FrontendCli, config: &FrontendConfig) -> FrontendResult<Fr
             command.workspace,
             package_target_kind(command.bin, command.lib),
         ),
+        Some(FrontendCommand::Update(_)) => {
+            let discovered = require_discovered_root(&config.working_directory)?;
+            let workspace = load_frontend_workspace(&discovered, config)?;
+            update_workspace_with_config(&workspace, config)
+        }
         Some(FrontendCommand::Completion(command)) => {
             completion_command(parse_completion_shell(command.shell))
         }
@@ -394,6 +423,9 @@ fn dispatch_workspace_command(
         }),
         FrontendCommand::Fetch(command) => {
             fetch_workspace_with_config(workspace, &config_for_roots(config, &command.roots))
+        }
+        FrontendCommand::Update(command) => {
+            update_workspace_with_config(workspace, &config_for_roots(config, &command.roots))
         }
         FrontendCommand::Build(command) => {
             if let Some(input) = &command.target.input {
@@ -563,7 +595,6 @@ mod tests {
         let frontend = Frontend::new();
         let _ = frontend;
         let _run_ptr: fn() -> FrontendResult<()> = run;
-        let _run_args_ptr: fn([&str; 2]) -> i32 = run_from_args;
     }
 
     #[test]

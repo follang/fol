@@ -8,6 +8,9 @@ pub fn check_workspace_with_config(
     workspace: &FrontendWorkspace,
     config: &FrontendConfig,
 ) -> FrontendResult<FrontendCommandResult> {
+    if config.locked_fetch {
+        crate::fetch_workspace_with_config(workspace, config)?;
+    }
     for member in &workspace.members {
         compile_member_workspace(workspace, config, &member.root)?;
     }
@@ -46,6 +49,9 @@ pub fn build_workspace_for_profile_with_config(
     config: &FrontendConfig,
     profile: FrontendProfile,
 ) -> FrontendResult<FrontendCommandResult> {
+    if config.locked_fetch {
+        crate::fetch_workspace_with_config(workspace, config)?;
+    }
     let mut result = FrontendCommandResult::new("build", "built 0 workspace package(s)");
     let output_root = profile_build_root(workspace, profile);
     result.artifacts.push(FrontendArtifactSummary::new(
@@ -196,6 +202,9 @@ pub fn test_workspace_with_config(
     workspace: &FrontendWorkspace,
     config: &FrontendConfig,
 ) -> FrontendResult<FrontendCommandResult> {
+    if config.locked_fetch {
+        crate::fetch_workspace_with_config(workspace, config)?;
+    }
     test_workspace_selected_with_config(workspace, config, None)
 }
 
@@ -475,11 +484,13 @@ fn lower_lowering_errors(errors: Vec<fol_lower::LoweringError>) -> FrontendError
 #[cfg(test)]
 mod tests {
     use super::{
-        build_workspace, build_workspace_for_profile_with_config, check_workspace, emit_lowered,
-        emit_rust, profile_build_root, run_workspace, run_workspace_with_args_and_config,
-        test_package, test_workspace,
+        build_workspace, build_workspace_for_profile_with_config, build_workspace_with_config,
+        check_workspace, emit_lowered, emit_rust, profile_build_root, run_workspace,
+        run_workspace_with_args_and_config, test_package, test_workspace,
     };
-    use crate::{FrontendProfile, FrontendWorkspace, PackageRoot, WorkspaceRoot};
+    use crate::{
+        FrontendArtifactKind, FrontendProfile, FrontendWorkspace, PackageRoot, WorkspaceRoot,
+    };
     use std::{fs, path::PathBuf};
 
     #[test]

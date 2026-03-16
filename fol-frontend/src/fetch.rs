@@ -25,6 +25,15 @@ struct ResolvedDependencyPackage {
     version: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct FetchResolution {
+    preparation: FrontendPackagePreparation,
+    resolved_packages: Vec<ResolvedDependencyPackage>,
+    lockfile: fol_package::PackageLockfile,
+    lockfile_path: PathBuf,
+    package_store_root: PathBuf,
+}
+
 pub fn select_package_store_root(
     config: &FrontendConfig,
     workspace: &FrontendWorkspace,
@@ -87,6 +96,86 @@ pub fn fetch_workspace_with_config(
     workspace: &FrontendWorkspace,
     config: &FrontendConfig,
 ) -> FrontendResult<FrontendCommandResult> {
+    let resolution = resolve_workspace_fetch(workspace, config)?;
+    if !config.locked_fetch {
+        std::fs::write(
+            &resolution.lockfile_path,
+            fol_package::render_package_lockfile(&resolution.lockfile),
+        )
+        .map_err(|error| FrontendError::new(
+            crate::FrontendErrorKind::CommandFailed,
+            format!(
+                "failed to write lockfile '{}': {}",
+                resolution.lockfile_path.display(),
+                error
+            ),
+        ))?;
+    }
+
+    let mut result = FrontendCommandResult::new(
+        "fetch",
+        format!(
+            "prepared {} workspace package(s) and resolved {} package root(s) into {}",
+            resolution.preparation.packages.len(),
+            resolution.resolved_packages.len(),
+            resolution.package_store_root.display()
+        ),
+    );
+    result.artifacts.push(FrontendArtifactSummary::new(
+        FrontendArtifactKind::PackageRoot,
+        "package-store-root",
+        Some(resolution.package_store_root),
+    ));
+    result.artifacts.push(FrontendArtifactSummary::new(
+        FrontendArtifactKind::PackageRoot,
+        "package-cache-root",
+        Some(workspace.cache_root.clone()),
+    ));
+    result.artifacts.push(FrontendArtifactSummary::new(
+        FrontendArtifactKind::CacheRoot,
+        "git-cache-root",
+        Some(workspace.git_cache_root.clone()),
+    ));
+    result.artifacts.push(FrontendArtifactSummary::new(
+        FrontendArtifactKind::PackageRoot,
+        "lockfile",
+        Some(resolution.lockfile_path),
+    ));
+    for package in resolution.resolved_packages {
+        result.artifacts.push(FrontendArtifactSummary::new(
+            FrontendArtifactKind::PackageRoot,
+            package.name,
+            Some(package.root),
+        ));
+    }
+    Ok(result)
+}
+
+pub fn fetch_workspace(workspace: &FrontendWorkspace) -> FrontendResult<FrontendCommandResult> {
+    fetch_workspace_with_config(workspace, &FrontendConfig::default())
+}
+
+pub fn update_workspace_with_config(
+    workspace: &FrontendWorkspace,
+    config: &FrontendConfig,
+) -> FrontendResult<FrontendCommandResult> {
+    let mut update_config = config.clone();
+    update_config.refresh_fetch = true;
+    update_config.locked_fetch = false;
+    let mut result = fetch_workspace_with_config(workspace, &update_config)?;
+    result.command = "update".to_string();
+    result.summary = result.summary.replacen("prepared", "updated", 1);
+    Ok(result)
+}
+
+pub fn update_workspace(workspace: &FrontendWorkspace) -> FrontendResult<FrontendCommandResult> {
+    update_workspace_with_config(workspace, &FrontendConfig::default())
+}
+
+fn resolve_workspace_fetch(
+    workspace: &FrontendWorkspace,
+    config: &FrontendConfig,
+) -> FrontendResult<FetchResolution> {
     let preparation = prepare_workspace_packages(workspace)?;
     let package_store_root = select_package_store_root(config, workspace);
     let git_store_root = select_git_store_root(config, workspace);
@@ -104,6 +193,16 @@ pub fn fetch_workspace_with_config(
     let mut resolved_packages = Vec::new();
     let mut git_lock_entries = Vec::new();
     let mut seen_lock_keys = BTreeSet::new();
+    let existing_lockfile = if config.locked_fetch {
+        Some(load_existing_lockfile(workspace)?)
+    } else {
+        None
+    };
+    let mut seen_git_aliases = BTreeSet::new();
+    let fetch_options = fol_package::PackageGitFetchOptions {
+        offline: config.offline_fetch,
+        refresh: config.refresh_fetch,
+    };
 
     while let Some(root) = queued_roots.pop() {
         let canonical_root = std::fs::canonicalize(&root).unwrap_or(root.clone());
@@ -147,9 +246,34 @@ pub fn fetch_workspace_with_config(
                 fol_package::PackageDependencySourceKind::Git => {
                     let locator = fol_package::parse_package_locator(&dependency.target)
                         .map_err(FrontendError::from)?;
-                    let materialization = git_session
-                        .materialize_selected_revision(&locator)
-                        .map_err(FrontendError::from)?;
+                    let materialization = if let Some(lockfile) = &existing_lockfile {
+                        let entry = lockfile
+                            .entries
+                            .iter()
+                            .find(|entry| entry.alias == dependency.alias)
+                            .ok_or_else(|| lock_mismatch_error(format!(
+                                "missing git dependency '{}' in fol.lock",
+                                dependency.alias
+                            )))?;
+                        if entry.locator != locator.raw {
+                            return Err(lock_mismatch_error(format!(
+                                "git dependency '{}' points to '{}' in package.yaml but '{}' in fol.lock",
+                                dependency.alias, locator.raw, entry.locator
+                            )));
+                        }
+                        git_session
+                            .materialize_revision_with_options(
+                                &locator,
+                                &entry.selected_revision,
+                                fetch_options,
+                            )
+                            .map_err(FrontendError::from)?
+                    } else {
+                        git_session
+                            .materialize_selected_revision_with_options(&locator, fetch_options)
+                            .map_err(FrontendError::from)?
+                    };
+                    seen_git_aliases.insert(dependency.alias.clone());
                     let loaded = package_session
                         .load_materialized_package(&materialization.store_root)
                         .map_err(FrontendError::from)?;
@@ -178,55 +302,51 @@ pub fn fetch_workspace_with_config(
 
     git_lock_entries.sort_by(|left, right| left.alias.cmp(&right.alias));
     let lockfile = fol_package::PackageLockfile::new(git_lock_entries);
-    let lockfile_path = lockfile_path(workspace);
-    std::fs::write(&lockfile_path, fol_package::render_package_lockfile(&lockfile)).map_err(
-        |error| FrontendError::new(
-            crate::FrontendErrorKind::CommandFailed,
-            format!("failed to write lockfile '{}': {}", lockfile_path.display(), error),
-        ),
-    )?;
-
-    let mut result = FrontendCommandResult::new(
-        "fetch",
-        format!(
-            "prepared {} workspace package(s) and resolved {} package root(s) into {}",
-            preparation.packages.len(),
-            resolved_packages.len(),
-            package_store_root.display()
-        ),
-    );
-    result.artifacts.push(FrontendArtifactSummary::new(
-        FrontendArtifactKind::PackageRoot,
-        "package-store-root",
-        Some(package_store_root),
-    ));
-    result.artifacts.push(FrontendArtifactSummary::new(
-        FrontendArtifactKind::PackageRoot,
-        "package-cache-root",
-        Some(workspace.cache_root.clone()),
-    ));
-    result.artifacts.push(FrontendArtifactSummary::new(
-        FrontendArtifactKind::CacheRoot,
-        "git-cache-root",
-        Some(workspace.git_cache_root.clone()),
-    ));
-    result.artifacts.push(FrontendArtifactSummary::new(
-        FrontendArtifactKind::PackageRoot,
-        "lockfile",
-        Some(lockfile_path),
-    ));
-    for package in resolved_packages {
-        result.artifacts.push(FrontendArtifactSummary::new(
-            FrontendArtifactKind::PackageRoot,
-            package.name,
-            Some(package.root),
-        ));
+    if let Some(existing_lockfile) = &existing_lockfile {
+        let existing_aliases = existing_lockfile
+            .entries
+            .iter()
+            .map(|entry| entry.alias.as_str())
+            .collect::<BTreeSet<_>>();
+        let new_aliases = seen_git_aliases
+            .iter()
+            .map(|alias| alias.as_str())
+            .collect::<BTreeSet<_>>();
+        if existing_aliases != new_aliases {
+            return Err(lock_mismatch_error(
+                "package.yaml git dependencies do not match the aliases pinned in fol.lock",
+            ));
+        }
     }
-    Ok(result)
+
+    Ok(FetchResolution {
+        preparation,
+        resolved_packages,
+        lockfile,
+        lockfile_path: lockfile_path(workspace),
+        package_store_root,
+    })
 }
 
-pub fn fetch_workspace(workspace: &FrontendWorkspace) -> FrontendResult<FrontendCommandResult> {
-    fetch_workspace_with_config(workspace, &FrontendConfig::default())
+fn load_existing_lockfile(workspace: &FrontendWorkspace) -> FrontendResult<fol_package::PackageLockfile> {
+    let path = lockfile_path(workspace);
+    let raw = std::fs::read_to_string(&path).map_err(|error| {
+        FrontendError::new(
+            crate::FrontendErrorKind::InvalidInput,
+            format!(
+                "locked fetch requires an existing fol.lock at '{}': {}",
+                path.display(),
+                error
+            ),
+        )
+        .with_note("run `fol fetch` first to create fol.lock")
+    })?;
+    fol_package::parse_package_lockfile(&raw).map_err(FrontendError::from)
+}
+
+fn lock_mismatch_error(message: impl Into<String>) -> FrontendError {
+    FrontendError::new(crate::FrontendErrorKind::InvalidInput, message.into())
+        .with_note("run `fol fetch` or `fol update` to refresh fol.lock")
 }
 
 fn absolute_dependency_root(package_root: &Path, target: &str) -> PathBuf {
@@ -258,6 +378,18 @@ mod tests {
     };
     use crate::{FrontendConfig, FrontendWorkspace, PackageRoot, WorkspaceRoot};
     use std::{fs, path::{Path, PathBuf}, process::Command};
+
+    fn temp_root(label: &str) -> PathBuf {
+        std::env::temp_dir().join(format!(
+            "fol_frontend_fetch_{}_{}_{}",
+            label,
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system time should be after epoch")
+                .as_nanos()
+        ))
+    }
 
     #[test]
     fn package_preparation_reads_formal_workspace_members() {
@@ -452,7 +584,7 @@ mod tests {
         assert!(result.artifacts.iter().any(|artifact| {
             artifact.path
                 .as_ref()
-                .map(|path| path.to_string_lossy().contains("rev-"))
+                .map(|path| path.to_string_lossy().contains("rev_"))
                 .unwrap_or(false)
         }));
 

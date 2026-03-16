@@ -1,9 +1,10 @@
 use fol_frontend::{
-    fetch_workspace, fetch_workspace_with_config, prepare_workspace_packages, FrontendConfig,
-    FrontendWorkspace, PackageRoot, WorkspaceRoot,
+    fetch_workspace, fetch_workspace_with_config, update_workspace_with_config,
+    prepare_workspace_packages, FrontendConfig, FrontendWorkspace, PackageRoot, WorkspaceRoot,
 };
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::process::Command;
 
 fn temp_root(label: &str) -> PathBuf {
     std::env::temp_dir().join(format!(
@@ -36,6 +37,7 @@ fn fetch_round_trip_prepares_and_reports_local_workspace_packages() {
         package_store_root_override: Some(root.join(".fol/pkg")),
         build_root: root.join(".fol/build"),
         cache_root: root.join(".fol/cache"),
+        git_cache_root: root.join(".fol/cache/git"),
     };
 
     let preparation = prepare_workspace_packages(&workspace).expect("preparation should succeed");
@@ -65,6 +67,7 @@ fn fetch_round_trip_prefers_frontend_config_store_root_in_artifacts() {
         package_store_root_override: Some(root.join(".fol/ws-pkg")),
         build_root: root.join(".fol/build"),
         cache_root: root.join(".fol/cache"),
+        git_cache_root: root.join(".fol/cache/git"),
     };
     let config = FrontendConfig {
         package_store_root_override: Some(root.join(".fol/config-pkg")),
@@ -78,4 +81,133 @@ fn fetch_round_trip_prefers_frontend_config_store_root_in_artifacts() {
     assert_eq!(result.artifacts[2].path, Some(app));
 
     fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn fetch_locked_requires_existing_lockfile() {
+    let root = temp_root("locked_missing");
+    let app = root.join("app");
+    fs::create_dir_all(&app).expect("should create app package");
+    fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").expect("should write app manifest");
+    fs::write(app.join("build.fol"), "def root: loc = \"src\"\n").expect("should write app build");
+
+    let workspace = FrontendWorkspace {
+        root: WorkspaceRoot::new(root.clone()),
+        members: vec![PackageRoot::new(app)],
+        std_root_override: None,
+        package_store_root_override: Some(root.join(".fol/pkg")),
+        build_root: root.join(".fol/build"),
+        cache_root: root.join(".fol/cache"),
+        git_cache_root: root.join(".fol/cache/git"),
+    };
+    let config = FrontendConfig {
+        locked_fetch: true,
+        ..FrontendConfig::default()
+    };
+
+    let error = fetch_workspace_with_config(&workspace, &config).expect_err("locked fetch should require fol.lock");
+
+    assert!(error.message().contains("locked fetch requires an existing fol.lock"));
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn fetch_offline_uses_warm_git_cache() {
+    let root = temp_root("offline_warm");
+    let app = root.join("app");
+    let remote = root.join("remote-logtiny");
+    create_git_package_repo(&remote, "logtiny", "0.1.0");
+    create_app_with_git_dep(&app, &remote);
+
+    let workspace = git_dep_workspace(&root, &app);
+    fetch_workspace(&workspace).expect("initial fetch should warm the cache");
+
+    let config = FrontendConfig {
+        offline_fetch: true,
+        ..FrontendConfig::default()
+    };
+    let result = fetch_workspace_with_config(&workspace, &config).expect("offline fetch should use warm cache");
+
+    assert_eq!(result.command, "fetch");
+    assert!(root.join("fol.lock").is_file());
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn update_workspace_refreshes_git_dependencies_through_public_api() {
+    let root = temp_root("update");
+    let app = root.join("app");
+    let remote = root.join("remote-logtiny");
+    create_git_package_repo(&remote, "logtiny", "0.1.0");
+    create_app_with_git_dep(&app, &remote);
+    let workspace = git_dep_workspace(&root, &app);
+
+    fetch_workspace(&workspace).expect("initial fetch should succeed");
+    let before = fs::read_to_string(root.join("fol.lock")).expect("lockfile should exist");
+
+    fs::write(remote.join("src/lib.fol"), "var[exp] level: int = 2\n").expect("should update remote source");
+    git(&remote, &["add", "."]);
+    git(&remote, &["commit", "-m", "bump"]);
+
+    let result = update_workspace_with_config(&workspace, &FrontendConfig::default())
+        .expect("update should succeed");
+    let after = fs::read_to_string(root.join("fol.lock")).expect("lockfile should still exist");
+
+    assert_eq!(result.command, "update");
+    assert_ne!(before, after);
+    fs::remove_dir_all(root).ok();
+}
+
+fn git_dep_workspace(root: &Path, app: &Path) -> FrontendWorkspace {
+    FrontendWorkspace {
+        root: WorkspaceRoot::new(root.to_path_buf()),
+        members: vec![PackageRoot::new(app.to_path_buf())],
+        std_root_override: None,
+        package_store_root_override: Some(root.join(".fol/pkg")),
+        build_root: root.join(".fol/build"),
+        cache_root: root.join(".fol/cache"),
+        git_cache_root: root.join(".fol/cache/git"),
+    }
+}
+
+fn create_app_with_git_dep(app: &Path, remote: &Path) {
+    fs::create_dir_all(app.join("src")).expect("should create app package");
+    fs::write(
+        app.join("package.yaml"),
+        format!(
+            "name: app\nversion: 0.1.0\ndep.logtiny: git:git+file://{}\n",
+            remote.display()
+        ),
+    )
+    .expect("should write app manifest");
+    fs::write(app.join("build.fol"), "def root: loc = \"src\"\n").expect("should write app build");
+    fs::write(app.join("src/main.fol"), "fun[] main(): int = {\n    return 0\n}\n")
+        .expect("should write app source");
+}
+
+fn create_git_package_repo(root: &Path, name: &str, version: &str) {
+    fs::create_dir_all(root.join("src")).expect("package repo should be creatable");
+    fs::write(
+        root.join("package.yaml"),
+        format!("name: {name}\nversion: {version}\n"),
+    )
+    .expect("package metadata should be writable");
+    fs::write(root.join("build.fol"), "def root: loc = \"src\"\n")
+        .expect("package build should be writable");
+    fs::write(root.join("src/lib.fol"), "var[exp] level: int = 1\n")
+        .expect("package source should be writable");
+    git(root, &["init"]);
+    git(root, &["config", "user.name", "FOL"]);
+    git(root, &["config", "user.email", "fol@example.com"]);
+    git(root, &["add", "."]);
+    git(root, &["commit", "-m", "init"]);
+}
+
+fn git(root: &Path, args: &[&str]) {
+    let status = Command::new("git")
+        .args(args)
+        .current_dir(root)
+        .status()
+        .expect("git command should run");
+    assert!(status.success(), "git {:?} should succeed", args);
 }

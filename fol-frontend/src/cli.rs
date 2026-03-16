@@ -4,7 +4,7 @@ use clap::builder::styling::{AnsiColor, Effects, Styles};
 
 const AFTER_HELP: &str = "\
 Workflow Commands:
-  init, new, fetch, check, build, run, test, emit, clean
+  init, new, fetch, update, check, build, run, test, emit, clean
 
 Workspace Commands:
   work
@@ -16,6 +16,7 @@ Examples:
   fol init --bin
   fol new demo --lib
   fol fetch
+  fol update
   fol build --release
   fol run
   fol emit rust
@@ -45,6 +46,8 @@ pub enum FrontendCommand {
     Work(WorkCommand),
     #[command(visible_aliases = ["f", "sync"])]
     Fetch(FetchCommand),
+    #[command(visible_aliases = ["u", "upgrade"])]
+    Update(UpdateCommand),
     #[command(visible_aliases = ["b", "make"])]
     Build(BuildCommand),
     #[command(visible_aliases = ["r"])]
@@ -89,6 +92,21 @@ pub struct DirectTargetArg {
 pub struct FetchCommand {
     #[command(flatten)]
     pub roots: CompileRootArgs,
+
+    #[arg(long, help = "Require the existing fol.lock to match the manifest")]
+    pub locked: bool,
+
+    #[arg(long, help = "Use only already-cached git sources")]
+    pub offline: bool,
+
+    #[arg(long, help = "Force a fresh git fetch for remote dependencies")]
+    pub refresh: bool,
+}
+
+#[derive(Debug, Clone, Args, PartialEq, Eq, Default)]
+pub struct UpdateCommand {
+    #[command(flatten)]
+    pub roots: CompileRootArgs,
 }
 
 #[derive(Debug, Clone, Args, PartialEq, Eq, Default)]
@@ -98,6 +116,9 @@ pub struct BuildCommand {
 
     #[command(flatten)]
     pub roots: CompileRootArgs,
+
+    #[arg(long, help = "Require the existing fol.lock to match the manifest")]
+    pub locked: bool,
 
     #[arg(long, help = "Keep the generated backend crate directory")]
     pub keep_build_dir: bool,
@@ -111,6 +132,9 @@ pub struct RunCommand {
     #[command(flatten)]
     pub roots: CompileRootArgs,
 
+    #[arg(long, help = "Require the existing fol.lock to match the manifest")]
+    pub locked: bool,
+
     #[arg(long, help = "Keep the generated backend crate directory")]
     pub keep_build_dir: bool,
 
@@ -122,6 +146,9 @@ pub struct RunCommand {
 pub struct TestCommand {
     #[arg(long, value_name = "PATH", help = "Override the workspace or package root")]
     pub path: Option<String>,
+
+    #[arg(long, help = "Require the existing fol.lock to match the manifest")]
+    pub locked: bool,
 }
 
 #[derive(Debug, Clone, Args, PartialEq, Eq, Default)]
@@ -131,6 +158,9 @@ pub struct CheckCommand {
 
     #[command(flatten)]
     pub roots: CompileRootArgs,
+
+    #[arg(long, help = "Require the existing fol.lock to match the manifest")]
+    pub locked: bool,
 }
 
 #[derive(Debug, Clone, Args, PartialEq, Eq)]
@@ -381,7 +411,7 @@ Options:
             format!("  {:<26} Print version", flag("-V, --version")),
             String::new(),
             heading("Workflow Commands:"),
-            "  init, new, fetch, check, build, run, test, emit, clean".to_string(),
+            "  init, new, fetch, update, check, build, run, test, emit, clean".to_string(),
             String::new(),
             heading("Workspace Commands:"),
             "  work".to_string(),
@@ -393,6 +423,7 @@ Options:
             "  fol init --bin".to_string(),
             "  fol new demo --lib".to_string(),
             "  fol fetch".to_string(),
+            "  fol update".to_string(),
             "  fol build --release".to_string(),
             "  fol run".to_string(),
             "  fol emit rust".to_string(),
@@ -406,9 +437,10 @@ Options:
 mod tests {
     use super::{
         BuildCommand, CheckCommand, CompleteCommand, CompletionCommand, CompletionShellArg,
-        DirectTargetArg, EmitCommand, EmitLoweredCommand, EmitRustCommand, EmitSubcommand,
-        FetchCommand, FrontendCli, FrontendCommand, FrontendProfile, InitCommand, NewCommand,
-        RunCommand, TestCommand, UnitCommand, WorkCommand, WorkSubcommand,
+        CompileRootArgs, DirectTargetArg, EmitCommand, EmitLoweredCommand, EmitRustCommand,
+        EmitSubcommand, FetchCommand, FrontendCli, FrontendCommand, FrontendProfile,
+        InitCommand, NewCommand, RunCommand, TestCommand, UnitCommand, UpdateCommand,
+        WorkCommand, WorkSubcommand,
     };
     use crate::OutputMode;
 
@@ -437,6 +469,7 @@ mod tests {
             Some(FrontendCommand::Run(RunCommand {
                 target: DirectTargetArg::default(),
                 roots: CompileRootArgs::default(),
+                locked: false,
                 keep_build_dir: false,
                 args: vec!["--flag".to_string(), "value".to_string()],
             }))
@@ -492,12 +525,14 @@ mod tests {
         let check = FrontendCli::parse_from(["fol", "verify"]);
         let work = FrontendCli::parse_from(["fol", "workspace", "info"]);
         let fetch = FrontendCli::parse_from(["fol", "sync"]);
+        let update = FrontendCli::parse_from(["fol", "upgrade"]);
         let emit = FrontendCli::parse_from(["fol", "gen", "rust"]);
         let clean = FrontendCli::parse_from(["fol", "purge"]);
 
         assert_eq!(build.command, Some(FrontendCommand::Build(BuildCommand::default())));
         assert_eq!(check.command, Some(FrontendCommand::Check(CheckCommand::default())));
         assert_eq!(fetch.command, Some(FrontendCommand::Fetch(FetchCommand::default())));
+        assert_eq!(update.command, Some(FrontendCommand::Update(UpdateCommand::default())));
         assert_eq!(
             emit.command,
             Some(FrontendCommand::Emit(EmitCommand {
@@ -576,6 +611,7 @@ mod tests {
         assert!(help.contains("Shell Commands:"));
         assert!(help.contains("Examples:"));
         assert!(help.contains("fol build --release"));
+        assert!(help.contains("fol update"));
     }
 
     #[test]
@@ -602,6 +638,7 @@ mod tests {
         assert!(help.contains("check"));
         assert!(help.contains("verify"));
         assert!(help.contains("sync"));
+        assert!(help.contains("upgrade"));
         assert!(help.contains("purge"));
         assert!(help.contains("gen"));
         assert!(help.contains("completion"));
@@ -670,7 +707,7 @@ mod tests {
     }
 
     #[test]
-    fn lib_flags_parse_for_init_and_new_commands() {
+    fn duplicate_lib_flags_parse_for_init_and_new_commands() {
         let init = FrontendCli::parse_from(["fol", "init", "--lib"]);
         let new = FrontendCli::parse_from(["fol", "new", "demo", "--lib"]);
 
@@ -732,7 +769,61 @@ mod tests {
                     std_root: Some("/tmp/std".to_string()),
                     package_store_root: Some("/tmp/pkg".to_string()),
                 },
+                locked: false,
                 keep_build_dir: true,
+            }))
+        );
+    }
+
+    #[test]
+    fn fetch_and_locked_workflow_flags_parse_on_commands() {
+        let fetch = FrontendCli::parse_from(["fol", "fetch", "--locked", "--offline", "--refresh"]);
+        let build = FrontendCli::parse_from(["fol", "build", "--locked"]);
+        let run = FrontendCli::parse_from(["fol", "run", "--locked"]);
+        let test = FrontendCli::parse_from(["fol", "test", "--locked"]);
+        let check = FrontendCli::parse_from(["fol", "check", "--locked"]);
+
+        assert_eq!(
+            fetch.command,
+            Some(FrontendCommand::Fetch(FetchCommand {
+                roots: CompileRootArgs::default(),
+                locked: true,
+                offline: true,
+                refresh: true,
+            }))
+        );
+        assert_eq!(
+            build.command,
+            Some(FrontendCommand::Build(BuildCommand {
+                target: DirectTargetArg::default(),
+                roots: CompileRootArgs::default(),
+                locked: true,
+                keep_build_dir: false,
+            }))
+        );
+        assert_eq!(
+            run.command,
+            Some(FrontendCommand::Run(RunCommand {
+                target: DirectTargetArg::default(),
+                roots: CompileRootArgs::default(),
+                locked: true,
+                keep_build_dir: false,
+                args: Vec::new(),
+            }))
+        );
+        assert_eq!(
+            test.command,
+            Some(FrontendCommand::Test(TestCommand {
+                path: None,
+                locked: true,
+            }))
+        );
+        assert_eq!(
+            check.command,
+            Some(FrontendCommand::Check(CheckCommand {
+                target: DirectTargetArg::default(),
+                roots: CompileRootArgs::default(),
+                locked: true,
             }))
         );
     }

@@ -12,6 +12,9 @@ pub struct FrontendConfig {
     pub cache_root_override: Option<PathBuf>,
     pub git_cache_root_override: Option<PathBuf>,
     pub keep_build_dir: bool,
+    pub locked_fetch: bool,
+    pub offline_fetch: bool,
+    pub refresh_fetch: bool,
 }
 
 impl Default for FrontendConfig {
@@ -26,6 +29,9 @@ impl Default for FrontendConfig {
             cache_root_override: None,
             git_cache_root_override: None,
             keep_build_dir: false,
+            locked_fetch: false,
+            offline_fetch: false,
+            refresh_fetch: false,
         }
     }
 }
@@ -52,6 +58,15 @@ impl FrontendConfig {
         config.keep_build_dir = std::env::var_os("FOL_KEEP_BUILD_DIR")
             .map(|value| value == "1" || value.eq_ignore_ascii_case("true"))
             .unwrap_or(false);
+        config.locked_fetch = std::env::var_os("FOL_LOCKED")
+            .map(|value| value == "1" || value.eq_ignore_ascii_case("true"))
+            .unwrap_or(false);
+        config.offline_fetch = std::env::var_os("FOL_OFFLINE")
+            .map(|value| value == "1" || value.eq_ignore_ascii_case("true"))
+            .unwrap_or(false);
+        config.refresh_fetch = std::env::var_os("FOL_REFRESH")
+            .map(|value| value == "1" || value.eq_ignore_ascii_case("true"))
+            .unwrap_or(false);
         config
     }
 }
@@ -73,6 +88,9 @@ mod tests {
         assert!(config.cache_root_override.is_none());
         assert!(config.git_cache_root_override.is_none());
         assert!(!config.keep_build_dir);
+        assert!(!config.locked_fetch);
+        assert!(!config.offline_fetch);
+        assert!(!config.refresh_fetch);
     }
 
     #[test]
@@ -84,6 +102,9 @@ mod tests {
             std::env::set_var("FOL_CACHE_ROOT", "/tmp/cache");
             std::env::set_var("FOL_GIT_CACHE_ROOT", "/tmp/git-cache");
             std::env::set_var("FOL_KEEP_BUILD_DIR", "true");
+            std::env::set_var("FOL_LOCKED", "true");
+            std::env::set_var("FOL_OFFLINE", "true");
+            std::env::set_var("FOL_REFRESH", "true");
             std::env::set_var("FOL_OUTPUT", "json");
             std::env::set_var("FOL_PROFILE", "release");
         }
@@ -104,6 +125,9 @@ mod tests {
             Some(std::path::PathBuf::from("/tmp/git-cache"))
         );
         assert!(config.keep_build_dir);
+        assert!(config.locked_fetch);
+        assert!(config.offline_fetch);
+        assert!(config.refresh_fetch);
 
         unsafe {
             std::env::remove_var("FOL_STD_ROOT");
@@ -112,6 +136,9 @@ mod tests {
             std::env::remove_var("FOL_CACHE_ROOT");
             std::env::remove_var("FOL_GIT_CACHE_ROOT");
             std::env::remove_var("FOL_KEEP_BUILD_DIR");
+            std::env::remove_var("FOL_LOCKED");
+            std::env::remove_var("FOL_OFFLINE");
+            std::env::remove_var("FOL_REFRESH");
             std::env::remove_var("FOL_OUTPUT");
             std::env::remove_var("FOL_PROFILE");
         }

@@ -1,10 +1,12 @@
 use fol_frontend::{
     build_workspace, check_workspace, emit_lowered, emit_rust, run_command_from_args_in_dir,
-    run_workspace, test_workspace, FrontendArtifactKind, FrontendWorkspace, PackageRoot,
-    WorkspaceRoot,
+    run_workspace, test_workspace, check_workspace_with_config, build_workspace_with_config,
+    run_workspace_with_config, test_workspace_with_config, FrontendArtifactKind, FrontendConfig,
+    FrontendWorkspace, PackageRoot, WorkspaceRoot,
 };
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::process::Command;
 
 fn temp_root(label: &str) -> PathBuf {
     std::env::temp_dir().join(format!(
@@ -36,6 +38,7 @@ fn sample_workspace(root: &PathBuf) -> FrontendWorkspace {
         package_store_root_override: None,
         build_root: root.join(".fol/build"),
         cache_root: root.join(".fol/cache"),
+        git_cache_root: root.join(".fol/cache/git"),
     }
 }
 
@@ -51,6 +54,80 @@ fn check_command_round_trips_workspace_members_through_public_api() {
     assert_eq!(result.artifacts[0].kind, FrontendArtifactKind::PackageRoot);
 
     fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn locked_check_build_run_and_test_use_existing_lockfile() {
+    let root = temp_root("locked_workflow");
+    let app = root.join("app");
+    let remote = root.join("remote-logtiny");
+    create_git_package_repo(&remote, "logtiny", "0.1.0");
+    create_app_with_git_dep(&app, &remote);
+    let workspace = FrontendWorkspace {
+        root: WorkspaceRoot::new(root.clone()),
+        members: vec![PackageRoot::new(app)],
+        std_root_override: None,
+        package_store_root_override: Some(root.join(".fol/pkg")),
+        build_root: root.join(".fol/build"),
+        cache_root: root.join(".fol/cache"),
+        git_cache_root: root.join(".fol/cache/git"),
+    };
+
+    fol_frontend::fetch_workspace(&workspace).expect("initial fetch should succeed");
+    let locked = FrontendConfig {
+        locked_fetch: true,
+        ..FrontendConfig::default()
+    };
+
+    assert!(check_workspace_with_config(&workspace, &locked).is_ok());
+    assert!(build_workspace_with_config(&workspace, &locked).is_ok());
+    assert!(run_workspace_with_config(&workspace, &locked).is_ok());
+    assert!(test_workspace_with_config(&workspace, &locked).is_ok());
+
+    fs::remove_dir_all(root).ok();
+}
+
+fn create_app_with_git_dep(app: &Path, remote: &Path) {
+    fs::create_dir_all(app.join("src")).expect("should create app package");
+    fs::write(
+        app.join("package.yaml"),
+        format!(
+            "name: app\nversion: 0.1.0\ndep.logtiny: git:git+file://{}\n",
+            remote.display()
+        ),
+    )
+    .expect("should write app manifest");
+    fs::write(app.join("build.fol"), "def root: loc = \"src\"\n")
+        .expect("should write app build");
+    fs::write(app.join("src/main.fol"), "fun[] main(): int = {\n    return 0\n}\n")
+        .expect("should write app source");
+}
+
+fn create_git_package_repo(root: &Path, name: &str, version: &str) {
+    fs::create_dir_all(root.join("src")).expect("package repo should be creatable");
+    fs::write(
+        root.join("package.yaml"),
+        format!("name: {name}\nversion: {version}\n"),
+    )
+    .expect("package metadata should be writable");
+    fs::write(root.join("build.fol"), "def root: loc = \"src\"\n")
+        .expect("package build should be writable");
+    fs::write(root.join("src/lib.fol"), "var[exp] level: int = 1\n")
+        .expect("package source should be writable");
+    git(root, &["init"]);
+    git(root, &["config", "user.name", "FOL"]);
+    git(root, &["config", "user.email", "fol@example.com"]);
+    git(root, &["add", "."]);
+    git(root, &["commit", "-m", "init"]);
+}
+
+fn git(root: &Path, args: &[&str]) {
+    let status = Command::new("git")
+        .args(args)
+        .current_dir(root)
+        .status()
+        .expect("git command should run");
+    assert!(status.success(), "git {:?} should succeed", args);
 }
 
 #[test]
