@@ -971,7 +971,7 @@ not full long-term compiler completion.
 #### 6.3 done
 - emit recoverable routine return types as `FolRecover<T, E>`
 
-#### 6.4
+#### 6.4 done
 - emit local declarations and routine frame shells
 
 #### 6.5

@@ -49,6 +49,27 @@ pub fn render_routine_signature(
     ))
 }
 
+pub fn render_routine_shell(
+    package_identity: &PackageIdentity,
+    routine: &LoweredRoutine,
+    type_table: &LoweredTypeTable,
+) -> BackendResult<String> {
+    let header = render_routine_signature(package_identity, routine, type_table)?;
+    let local_decls = routine
+        .locals
+        .iter_with_ids()
+        .filter(|(local_id, _)| !routine.params.contains(local_id))
+        .map(|(local_id, local)| render_local_declaration(package_identity, routine, local_id, local, type_table))
+        .collect::<BackendResult<Vec<_>>>()?
+        .join("\n");
+
+    Ok(if local_decls.is_empty() {
+        format!("{header} {{\n    todo!()\n}}\n")
+    } else {
+        format!("{header} {{\n{local_decls}\n    todo!()\n}}\n")
+    })
+}
+
 fn routine_signature<'a>(
     type_table: &'a LoweredTypeTable,
     signature_id: Option<LoweredTypeId>,
@@ -104,6 +125,24 @@ fn render_param_list(
         .collect()
 }
 
+fn render_local_declaration(
+    package_identity: &PackageIdentity,
+    routine: &LoweredRoutine,
+    local_id: fol_lower::LoweredLocalId,
+    local: &fol_lower::LoweredLocal,
+    type_table: &LoweredTypeTable,
+) -> BackendResult<String> {
+    let rendered_type = match local.type_id {
+        Some(type_id) => render_rust_type(type_table, type_id)?,
+        None => "_".to_string(),
+    };
+    Ok(format!(
+        "    let mut {}: {} = todo!();",
+        mangle_local_name(package_identity, routine.id, local_id, local.name.as_deref()),
+        rendered_type
+    ))
+}
+
 fn render_routine_return_type(
     signature: &LoweredRoutineType,
     type_table: &LoweredTypeTable,
@@ -125,7 +164,7 @@ fn render_routine_return_type(
 
 #[cfg(test)]
 mod tests {
-    use super::{render_global_declaration, render_routine_signature};
+    use super::{render_global_declaration, render_routine_shell, render_routine_signature};
     use crate::testing::package_identity;
     use fol_lower::{
         LoweredBlockId, LoweredBuiltinType, LoweredGlobal, LoweredGlobalId, LoweredLocal,
@@ -232,5 +271,42 @@ mod tests {
 
         assert!(rendered.contains("pub fn r__pkg__entry__app__r2__load()"));
         assert!(rendered.ends_with(" -> rt::FolRecover<rt::FolInt, rt::FolStr>"));
+    }
+
+    #[test]
+    fn routine_shell_rendering_adds_non_param_locals_as_backend_frame_slots() {
+        let mut table = LoweredTypeTable::new();
+        let int_id = table.intern_builtin(LoweredBuiltinType::Int);
+        let bool_id = table.intern_builtin(LoweredBuiltinType::Bool);
+        let signature_id = table.intern(LoweredType::Routine(LoweredRoutineType {
+            params: vec![bool_id],
+            return_type: Some(int_id),
+            error_type: None,
+        }));
+        let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
+        let mut routine = LoweredRoutine::new(LoweredRoutineId(3), "compute", LoweredBlockId(0));
+        routine.signature = Some(signature_id);
+        let param_id = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(0),
+            type_id: Some(bool_id),
+            recoverable_error_type: None,
+            name: Some("flag".to_string()),
+        });
+        let temp_id = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(1),
+            type_id: Some(int_id),
+            recoverable_error_type: None,
+            name: Some("temp".to_string()),
+        });
+        routine.params.push(param_id);
+
+        let rendered =
+            render_routine_shell(&package_identity, &routine, &table).expect("routine shell");
+
+        assert!(rendered.contains("pub fn r__pkg__entry__app__r3__compute("));
+        assert!(rendered.contains("let mut l__pkg__entry__app__r3__l1__temp: rt::FolInt = todo!();"));
+        assert!(!rendered.contains("l__pkg__entry__app__r3__l0__flag: rt::FolInt = todo!();"));
+        assert!(rendered.contains("todo!()"));
+        assert_eq!(temp_id, LoweredLocalId(1));
     }
 }
