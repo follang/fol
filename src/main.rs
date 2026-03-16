@@ -22,26 +22,7 @@ use std::path::Path;
 fn main() {
     let raw_args = std::env::args_os().collect::<Vec<_>>();
     if should_use_frontend(&raw_args) {
-        match fol_frontend::run_command_from_args(raw_args.clone()) {
-            Ok((output, result)) => {
-                match output.render_command_summary(&result) {
-                    Ok(rendered) => println!("{rendered}"),
-                    Err(error) => {
-                        eprintln!("FrontendInternal: {error}");
-                        std::process::exit(1);
-                    }
-                }
-            }
-            Err(error) => {
-                let output = fol_frontend::FrontendOutput::new(fol_frontend::FrontendOutputConfig::default());
-                match output.render_error(&error) {
-                    Ok(rendered) => eprintln!("{rendered}"),
-                    Err(render_error) => eprintln!("FrontendInternal: {render_error}"),
-                }
-                std::process::exit(1);
-            }
-        }
-        return;
+        std::process::exit(fol_frontend::run_from_args(raw_args));
     }
 
     let matches = Command::new("fol")

@@ -90,6 +90,52 @@ pub fn run() -> FrontendResult<()> {
     Frontend::new().run()
 }
 
+pub fn run_from_args<I, T>(args: I) -> i32
+where
+    I: IntoIterator<Item = T>,
+    T: Into<std::ffi::OsString> + Clone,
+{
+    run_from_args_with_io(args, &mut std::io::stdout(), &mut std::io::stderr())
+}
+
+pub fn run_from_args_with_io<I, T>(
+    args: I,
+    stdout: &mut impl std::io::Write,
+    stderr: &mut impl std::io::Write,
+) -> i32
+where
+    I: IntoIterator<Item = T>,
+    T: Into<std::ffi::OsString> + Clone,
+{
+    match run_command_from_args(args) {
+        Ok((output, result)) => match output.render_command_summary(&result) {
+            Ok(rendered) => match writeln!(stdout, "{rendered}") {
+                Ok(()) => 0,
+                Err(error) => {
+                    let _ = writeln!(stderr, "FrontendInternal: {error}");
+                    1
+                }
+            },
+            Err(error) => {
+                let _ = writeln!(stderr, "FrontendInternal: {error}");
+                1
+            }
+        },
+        Err(error) => {
+            let output = FrontendOutput::new(FrontendOutputConfig::default());
+            match output.render_error(&error) {
+                Ok(rendered) => {
+                    let _ = writeln!(stderr, "{rendered}");
+                }
+                Err(render_error) => {
+                    let _ = writeln!(stderr, "FrontendInternal: {render_error}");
+                }
+            }
+            1
+        }
+    }
+}
+
 pub fn run_command_from_args<I, T>(
     args: I,
 ) -> FrontendResult<(FrontendOutput, FrontendCommandResult)>
@@ -229,6 +275,7 @@ mod tests {
         let frontend = Frontend::new();
         let _ = frontend;
         let _run_ptr: fn() -> FrontendResult<()> = run;
+        let _run_args_ptr: fn([&str; 2]) -> i32 = run_from_args;
     }
 
     #[test]
