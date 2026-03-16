@@ -1,6 +1,15 @@
 use crate::{FrontendError, FrontendErrorKind, FrontendResult, PackageRoot, WorkspaceRoot};
 use std::path::{Path, PathBuf};
 
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct FrontendWorkspaceConfig {
+    pub members: Vec<PathBuf>,
+    pub std_root_override: Option<PathBuf>,
+    pub package_store_root_override: Option<PathBuf>,
+    pub build_root_override: Option<PathBuf>,
+    pub cache_root_override: Option<PathBuf>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FrontendWorkspace {
     pub root: WorkspaceRoot,
@@ -47,6 +56,91 @@ pub fn enumerate_member_packages(
         .collect()
 }
 
+pub fn load_workspace_config(workspace_root: &WorkspaceRoot) -> FrontendResult<FrontendWorkspaceConfig> {
+    let raw = std::fs::read_to_string(&workspace_root.config_file).map_err(|error| {
+        FrontendError::new(
+            FrontendErrorKind::CommandFailed,
+            format!(
+                "could not read workspace config '{}': {}",
+                workspace_root.config_file.display(),
+                error
+            ),
+        )
+    })?;
+
+    let mut config = FrontendWorkspaceConfig::default();
+    let mut in_members = false;
+
+    for line in raw.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            continue;
+        }
+
+        if in_members && trimmed.starts_with('-') {
+            let member = trimmed.trim_start_matches('-').trim();
+            if member.is_empty() {
+                return Err(FrontendError::new(
+                    FrontendErrorKind::InvalidInput,
+                    format!(
+                        "workspace config '{}' has an empty member entry",
+                        workspace_root.config_file.display()
+                    ),
+                ));
+            }
+            config.members.push(PathBuf::from(strip_quotes(member)));
+            continue;
+        }
+
+        in_members = false;
+        let Some((key, value)) = trimmed.split_once(':') else {
+            return Err(FrontendError::new(
+                FrontendErrorKind::InvalidInput,
+                format!(
+                    "workspace config '{}' must use 'key: value' lines",
+                    workspace_root.config_file.display()
+                ),
+            ));
+        };
+
+        let key = key.trim();
+        let value = value.trim();
+
+        match key {
+            "members" => {
+                if !value.is_empty() {
+                    return Err(FrontendError::new(
+                        FrontendErrorKind::InvalidInput,
+                        format!(
+                            "workspace config '{}' must declare members as a list",
+                            workspace_root.config_file.display()
+                        ),
+                    ));
+                }
+                in_members = true;
+            }
+            "std_root" => config.std_root_override = Some(PathBuf::from(strip_quotes(value))),
+            "package_store_root" => {
+                config.package_store_root_override = Some(PathBuf::from(strip_quotes(value)))
+            }
+            "build_root" => config.build_root_override = Some(PathBuf::from(strip_quotes(value))),
+            "cache_root" => config.cache_root_override = Some(PathBuf::from(strip_quotes(value))),
+            _ => {
+                return Err(FrontendError::new(
+                    FrontendErrorKind::InvalidInput,
+                    format!(
+                        "workspace config '{}' has unsupported field '{}'",
+                        workspace_root.config_file.display(),
+                        key
+                    ),
+                ))
+            }
+        }
+    }
+
+    Ok(config)
+}
+
 fn absolute_member_root(workspace_root: &Path, member: &Path) -> PathBuf {
     if member.is_absolute() {
         member.to_path_buf()
@@ -55,9 +149,21 @@ fn absolute_member_root(workspace_root: &Path, member: &Path) -> PathBuf {
     }
 }
 
+fn strip_quotes(raw: &str) -> &str {
+    let bytes = raw.as_bytes();
+    if bytes.len() >= 2 && bytes.first() == bytes.last() {
+        match bytes[0] {
+            b'"' | b'\'' => &raw[1..raw.len() - 1],
+            _ => raw,
+        }
+    } else {
+        raw
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{enumerate_member_packages, FrontendWorkspace};
+    use super::{enumerate_member_packages, load_workspace_config, FrontendWorkspace, FrontendWorkspaceConfig};
     use crate::WorkspaceRoot;
     use std::{fs, path::PathBuf};
 
@@ -111,6 +217,43 @@ mod tests {
 
         assert_eq!(error.kind(), crate::FrontendErrorKind::InvalidInput);
         assert!(error.message().contains("missing 'package.yaml'"));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn workspace_config_loading_extracts_declared_member_paths() {
+        let root = std::env::temp_dir().join(format!("fol_frontend_config_members_{}", std::process::id()));
+        fs::create_dir_all(&root).unwrap();
+        fs::write(
+            root.join("fol.work.yaml"),
+            "members:\n  - app\n  - libs/core\n",
+        )
+        .unwrap();
+
+        let config = load_workspace_config(&WorkspaceRoot::new(root.clone())).unwrap();
+
+        assert_eq!(
+            config,
+            FrontendWorkspaceConfig {
+                members: vec![PathBuf::from("app"), PathBuf::from("libs/core")],
+                ..FrontendWorkspaceConfig::default()
+            }
+        );
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn workspace_config_loading_rejects_inline_members_scalars() {
+        let root = std::env::temp_dir().join(format!("fol_frontend_config_invalid_{}", std::process::id()));
+        fs::create_dir_all(&root).unwrap();
+        fs::write(root.join("fol.work.yaml"), "members: app\n").unwrap();
+
+        let error = load_workspace_config(&WorkspaceRoot::new(root.clone())).unwrap_err();
+
+        assert_eq!(error.kind(), crate::FrontendErrorKind::InvalidInput);
+        assert!(error.message().contains("must declare members as a list"));
 
         fs::remove_dir_all(root).ok();
     }

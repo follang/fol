@@ -27,7 +27,9 @@ pub use scaffold::{
     new_project_with_mode, package_target_kind, PackageTargetKind,
 };
 pub use ui::FrontendOutput;
-pub use workspace::{enumerate_member_packages, FrontendWorkspace};
+pub use workspace::{
+    enumerate_member_packages, load_workspace_config, FrontendWorkspace, FrontendWorkspaceConfig,
+};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct Frontend;
