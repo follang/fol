@@ -61,19 +61,30 @@ pub fn build_workspace_for_profile_with_config(
             &output_root,
         )
         .map_err(|error| FrontendError::new(FrontendErrorKind::CommandFailed, error.to_string()))?;
-        let fol_backend::BackendArtifact::CompiledBinary { binary_path, .. } = artifact else {
+        let fol_backend::BackendArtifact::CompiledBinary {
+            crate_root,
+            binary_path,
+        } = artifact
+        else {
             return Err(FrontendError::new(
                 FrontendErrorKind::CommandFailed,
                 "build command expected a compiled backend artifact",
             ));
         };
+        let label = member
+            .root
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("package")
+            .to_string();
+        result.artifacts.push(FrontendArtifactSummary::new(
+            FrontendArtifactKind::EmittedRust,
+            format!("{label}-crate"),
+            Some(std::path::PathBuf::from(crate_root)),
+        ));
         result.artifacts.push(FrontendArtifactSummary::new(
             FrontendArtifactKind::Binary,
-            member
-                .root
-                .file_name()
-                .and_then(|name| name.to_str())
-                .unwrap_or("package"),
+            label,
             Some(std::path::PathBuf::from(binary_path)),
         ));
     }
@@ -85,7 +96,15 @@ pub fn build_workspace_for_profile_with_config(
         ));
     }
 
-    result.summary = format!("built {} workspace package(s)", result.artifacts.len());
+    let binary_count = result
+        .artifacts
+        .iter()
+        .filter(|artifact| artifact.kind == FrontendArtifactKind::Binary)
+        .count();
+    result.summary = format!(
+        "built {binary_count} workspace package(s) into {}",
+        output_root.display()
+    );
     Ok(result)
 }
 
@@ -297,9 +316,10 @@ mod tests {
         let result = build_workspace(&workspace).unwrap();
 
         assert_eq!(result.command, "build");
-        assert_eq!(result.summary, "built 1 workspace package(s)");
-        assert_eq!(result.artifacts.len(), 1);
-        assert!(result.artifacts[0]
+        assert!(result.summary.contains("built 1 workspace package(s) into "));
+        assert_eq!(result.artifacts.len(), 2);
+        assert_eq!(result.artifacts[0].kind, FrontendArtifactKind::EmittedRust);
+        assert!(result.artifacts[1]
             .path
             .as_ref()
             .expect("binary path")
@@ -348,7 +368,7 @@ mod tests {
         )
         .unwrap();
 
-        let binary = result.artifacts[0].path.as_ref().expect("binary path");
+        let binary = result.artifacts[1].path.as_ref().expect("binary path");
         assert!(binary.display().to_string().contains("/.fol/build/release/"));
 
         fs::remove_dir_all(root).ok();
