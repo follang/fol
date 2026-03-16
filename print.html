@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-a9d5fac1.js";
+            window.path_to_searchindex_js = "searchindex-9160f0da.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-fc1769c7.js"></script>
@@ -3457,8 +3457,8 @@ errors that can be propagated or handled, typically associated with <code>report
 <li>how the current compiler reports syntax, package, and resolver failures</li>
 </ul>
 <h2 id="current-compiler-diagnostics"><a class="header" href="#current-compiler-diagnostics">Current compiler diagnostics</a></h2>
-<p>The current compiler surface already guarantees a few reporting behaviors even
-before a backend exists:</p>
+<p>The current compiler surface already guarantees a few reporting behaviors across
+the active parser/package/resolver/typecheck/lower/backend chain:</p>
 <ul>
 <li>parser, package-loading, resolver, typecheck, and lowering failures keep exact primary
 <code>file:line:column</code> locations</li>
@@ -3704,6 +3704,8 @@ when it wants to surface important information</li>
 <li><code>fol-resolver</code></li>
 <li><code>fol-typecheck</code></li>
 <li><code>fol-lower</code></li>
+<li><code>fol-runtime</code></li>
+<li><code>fol-backend</code></li>
 <li><code>fol-diagnostics</code></li>
 </ul>
 <p>That means errors are no longer just loose strings printed from one place.
@@ -3897,14 +3899,18 @@ structured fields are first-class rather than reverse-engineered from text.</p>
 <li>duplicate names</li>
 <li>ambiguous references</li>
 <li>type mismatches and unsupported semantic surfaces inside <code>V1</code></li>
-<li>unsupported lowered <code>V1</code> surfaces that still stop before any backend exists</li>
+<li>unsupported lowered <code>V1</code> surfaces before target emission</li>
+<li>backend emission and build failures when lowered <code>V1</code> workspaces cannot become
+runnable artifacts</li>
 </ul>
 <p>This is the important boundary for the current compiler stage:</p>
 <ul>
 <li>the compiler can now parse, resolve, type-check, and lower the supported <code>V1</code>
 subset</li>
-<li>diagnostics already cover failures from each of those stages</li>
-<li>the project still does not promise a finished backend, linker, or runtime in
+<li>diagnostics already cover failures from each of those stages plus backend
+emission/build failures</li>
+<li>the project now does promise a finished first backend for the current <code>V1</code>
+subset, while later targets, optimizations, and C ABI work remain outside
 this chapter</li>
 </ul>
 <h2 id="stable-codes"><a class="header" href="#stable-codes">Stable codes</a></h2>

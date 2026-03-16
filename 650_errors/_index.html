@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-a9d5fac1.js";
+            window.path_to_searchindex_js = "../searchindex-9160f0da.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-fc1769c7.js"></script>
@@ -191,8 +191,8 @@ errors that can be propagated or handled, typically associated with <code>report
 <li>how the current compiler reports syntax, package, and resolver failures</li>
 </ul>
 <h2 id="current-compiler-diagnostics"><a class="header" href="#current-compiler-diagnostics">Current compiler diagnostics</a></h2>
-<p>The current compiler surface already guarantees a few reporting behaviors even
-before a backend exists:</p>
+<p>The current compiler surface already guarantees a few reporting behaviors across
+the active parser/package/resolver/typecheck/lower/backend chain:</p>
 <ul>
 <li>parser, package-loading, resolver, typecheck, and lowering failures keep exact primary
 <code>file:line:column</code> locations</li>
