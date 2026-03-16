@@ -232,6 +232,7 @@ fn split_repository_and_selector(raw: &str) -> Result<(String, PackageGitSelecto
         match key.trim() {
             "branch" => selector.branch = Some(value.trim().to_string()),
             "tag" => selector.tag = Some(value.trim().to_string()),
+            "rev" => selector.rev = Some(value.trim().to_string()),
             other => {
                 return Err(PackageError::new(
                     PackageErrorKind::InvalidInput,
@@ -414,6 +415,22 @@ mod tests {
                 .as_ref()
                 .and_then(|git| git.selector.tag.as_deref()),
             Some("v0.1.0")
+        );
+    }
+
+    #[test]
+    fn package_locator_parses_revision_selectors() {
+        let locator = parse_package_locator(
+            "https://github.com/follang/json.git?rev=0123456789abcdef",
+        )
+        .expect("revision selectors should parse");
+
+        assert_eq!(
+            locator
+                .git
+                .as_ref()
+                .and_then(|git| git.selector.rev.as_deref()),
+            Some("0123456789abcdef")
         );
     }
 }
