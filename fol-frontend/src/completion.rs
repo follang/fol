@@ -50,6 +50,10 @@ pub fn generate_bash_completion_script() -> FrontendResult<String> {
     generate_completion_script(CompletionShell::Bash)
 }
 
+pub fn generate_zsh_completion_script() -> FrontendResult<String> {
+    generate_completion_script(CompletionShell::Zsh)
+}
+
 pub fn internal_complete_command() -> FrontendResult<FrontendCommandResult> {
     Ok(FrontendCommandResult::new(
         "_complete",
@@ -61,7 +65,7 @@ pub fn internal_complete_command() -> FrontendResult<FrontendCommandResult> {
 mod tests {
     use super::{
         completion_command, generate_bash_completion_script, internal_complete_command,
-        CompletionShell,
+        generate_zsh_completion_script, CompletionShell,
     };
 
     #[test]
@@ -85,5 +89,13 @@ mod tests {
 
         assert!(script.contains("_fol()"));
         assert!(script.contains("complete -F"));
+    }
+
+    #[test]
+    fn zsh_completion_script_contains_zsh_completion_shape() {
+        let script = generate_zsh_completion_script().unwrap();
+
+        assert!(script.contains("#compdef fol"));
+        assert!(script.contains("_arguments"));
     }
 }

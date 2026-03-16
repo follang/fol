@@ -33,7 +33,7 @@ pub use compile::{
 };
 pub use completion::{
     completion_command, generate_bash_completion_script, generate_completion_script,
-    internal_complete_command, CompletionShell,
+    generate_zsh_completion_script, internal_complete_command, CompletionShell,
 };
 pub use errors::{FrontendError, FrontendErrorKind, FrontendResult};
 pub use fetch::{
