@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-263056d8.js";
+            window.path_to_searchindex_js = "../searchindex-f72c28fa.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-0ba44881.js"></script>
@@ -212,7 +212,10 @@ coherent user tool.</p>
 <li><code>fol new</code></li>
 <li><code>fol work info</code></li>
 <li><code>fol work list</code></li>
+<li><code>fol work deps</code></li>
+<li><code>fol work status</code></li>
 <li><code>fol fetch</code></li>
+<li><code>fol update</code></li>
 <li><code>fol check</code></li>
 <li><code>fol build</code></li>
 <li><code>fol run</code></li>
@@ -360,16 +363,19 @@ into <code>fol-frontend</code>.</p>
 <li>project and workspace scaffolding</li>
 <li>root discovery</li>
 <li>package preparation through <code>fol-package</code></li>
+<li>git-backed dependency fetching and materialization</li>
+<li><code>fol.lock</code> writing, locked fetches, offline warm-cache fetches, and update flows</li>
+<li>workspace dependency/status reporting</li>
 <li>full <code>V1</code> build/run/test orchestration</li>
 <li>emitted Rust and lowered IR output</li>
 <li>shell completions</li>
-<li>migration-safe CLI routing</li>
+<li>safe cleanup of build/cache/git/package-store roots</li>
+<li>frontend-owned direct compile routing</li>
 </ul>
 <p>Future work is still expected around:</p>
 <ul>
-<li>remote dependency fetching</li>
-<li>richer package-store management</li>
-<li>lockfile/version workflows</li>
+<li>richer package-store policy beyond the first git/store workflow</li>
+<li>lockfile/version solving beyond the current pinned git contract</li>
 <li>additional backend targets</li>
 </ul>
 
