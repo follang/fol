@@ -391,38 +391,38 @@ layer for the executable `V1` surface.
 #### 2.2 done
 - add `same_folder_hidden_visibility`
 
-#### 2.3
+#### 2.3 done
 - add `subfolder_namespace`
 
-#### 2.4
+#### 2.4 done
 - add `deep_namespace_chain`
 
 ### Phase 3: Local Package Import Apps
 
-#### 3.1
+#### 3.1 done
 - add `loc_plain_values`
 
-#### 3.2
+#### 3.2 done
 - add `loc_types_and_records`
 
-#### 3.3
+#### 3.3 done
 - add `loc_methods`
 
-#### 3.4
+#### 3.4 done
 - add `loc_recoverable_calls`
 
 ### Phase 4: std/pkg Apps
 
-#### 4.1
+#### 4.1 done
 - add `std_basic_import`
 
-#### 4.2
+#### 4.2 done
 - add `std_namespace_import`
 
-#### 4.3
+#### 4.3 done
 - add `pkg_basic_import`
 
-#### 4.4
+#### 4.4 done
 - add `pkg_transitive_import`
 
 #### 4.5

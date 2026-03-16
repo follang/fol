@@ -513,3 +513,20 @@ fn pkg_basic_import_fixture_compiles_and_runs() {
         .expect("should run compiled pkg fixture");
     assert_exit_code(&run_output, 0);
 }
+
+#[test]
+fn pkg_transitive_import_fixture_compiles_and_runs() {
+    let root = fixture_root("pkg_transitive_import");
+    let app_root = root.join("app");
+    let pkg_root = root.join("pkg");
+
+    let compile_output =
+        compile_app_with_roots_keep_build_dir_expect_success(&app_root, None, Some(&pkg_root));
+    assert_artifact_paths_exist(&compile_output);
+
+    let binary = built_binary_path(&compile_output);
+    let run_output = Command::new(&binary)
+        .output()
+        .expect("should run compiled transitive pkg fixture");
+    assert_exit_code(&run_output, 0);
+}

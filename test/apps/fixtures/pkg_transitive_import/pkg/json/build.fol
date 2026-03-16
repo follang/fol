@@ -1,0 +1,2 @@
+def dep: pkg = "core"
+def root: loc = "src"
