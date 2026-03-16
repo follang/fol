@@ -1,3 +1,4 @@
+use crate::{FrontendError, FrontendErrorKind, FrontendResult};
 use std::path::PathBuf;
 
 pub const WORKSPACE_FILE_NAME: &str = "fol.work.yaml";
@@ -67,11 +68,23 @@ pub fn discover_root_from_explicit_path(path: &std::path::Path) -> Option<Discov
     discover_root_upward(path)
 }
 
+pub fn require_discovered_root(path: &std::path::Path) -> FrontendResult<DiscoveredRoot> {
+    discover_root_from_explicit_path(path).ok_or_else(|| {
+        FrontendError::new(
+            FrontendErrorKind::WorkspaceNotFound,
+            format!(
+                "could not find a FOL workspace or package root from '{}'",
+                path.display()
+            ),
+        )
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        discover_root_from_explicit_path, discover_root_upward, DiscoveredRoot, PackageRoot,
-        WorkspaceRoot, PACKAGE_FILE_NAME, WORKSPACE_FILE_NAME,
+        discover_root_from_explicit_path, discover_root_upward, require_discovered_root,
+        DiscoveredRoot, PackageRoot, WorkspaceRoot, PACKAGE_FILE_NAME, WORKSPACE_FILE_NAME,
     };
     use std::{fs, path::PathBuf};
 
@@ -121,6 +134,22 @@ mod tests {
         let discovered = discover_root_from_explicit_path(&root).unwrap();
 
         assert_eq!(discovered, DiscoveredRoot::Workspace(WorkspaceRoot::new(root.clone())));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn missing_roots_lower_into_frontend_workspace_not_found_errors() {
+        let root = std::env::temp_dir().join(format!(
+            "fol_frontend_missing_root_{}",
+            std::process::id()
+        ));
+        fs::create_dir_all(&root).unwrap();
+
+        let error = require_discovered_root(&root).unwrap_err();
+
+        assert_eq!(error.kind(), crate::FrontendErrorKind::WorkspaceNotFound);
+        assert!(error.message().contains("could not find a FOL workspace or package root"));
 
         fs::remove_dir_all(root).ok();
     }

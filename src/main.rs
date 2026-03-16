@@ -599,6 +599,17 @@ fn frontend_explicit_path_discovery_surface_smoke_compiles() {
 }
 
 #[test]
+fn frontend_missing_root_diagnostic_surface_smoke_compiles() {
+    let root = std::env::temp_dir().join(format!("fol_frontend_missing_{}", std::process::id()));
+    std::fs::create_dir_all(&root).unwrap();
+
+    let error = fol_frontend::require_discovered_root(&root).unwrap_err();
+    assert_eq!(error.kind(), fol_frontend::FrontendErrorKind::WorkspaceNotFound);
+
+    std::fs::remove_dir_all(root).ok();
+}
+
+#[test]
 fn frontend_output_helper_surface_smoke_compiles() {
     let output = fol_frontend::FrontendOutput::new(fol_frontend::FrontendOutputConfig::default());
 
