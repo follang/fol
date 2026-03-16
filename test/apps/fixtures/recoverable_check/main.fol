@@ -1,0 +1,13 @@
+fun[] load(flag: bol): int / str = {
+    when(flag) {
+        case(true) { report "bad-input" }
+        * { return 7 }
+    }
+}
+
+fun[] main(flag: bol): int = {
+    when(check(load(flag))) {
+        case(true) { return 1 }
+        * { return 0 }
+    }
+}

@@ -669,3 +669,161 @@ fn intrinsics_panic_check_fixture_compiles_and_runs() {
         "panic fixture should fail\nstdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&panic_output.stdout),
         String::from_utf8_lossy(&panic_output.stderr)
+    );
+    assert_output_contains(&panic_output, "panic");
+}
+
+#[test]
+fn recoverable_propagation_fixture_compiles_and_runs() {
+    let fixture = fixture_root("recoverable_propagation");
+
+    let compile_output = compile_app_keep_build_dir_expect_success(&fixture);
+    assert_artifact_paths_exist(&compile_output);
+
+    let run_output = compile_and_run_app(&fixture);
+    assert!(
+        !run_output.status.success(),
+        "propagated recoverable error should fail at process boundary\nstdout=\n{}\nstderr=\n{}",
+        String::from_utf8_lossy(&run_output.stdout),
+        String::from_utf8_lossy(&run_output.stderr)
+    );
+    assert_output_contains(&run_output, "recoverable error");
+}
+
+#[test]
+fn recoverable_check_fixture_compiles_and_runs() {
+    let fixture = fixture_root("recoverable_check");
+
+    let compile_output = compile_app_keep_build_dir_expect_success(&fixture);
+    assert_artifact_paths_exist(&compile_output);
+
+    let binary = built_binary_path(&compile_output);
+
+    let ok_output = Command::new(&binary)
+        .arg("false")
+        .output()
+        .expect("should run recoverable check success path");
+    assert_exit_code(&ok_output, 0);
+
+    let err_output = Command::new(&binary)
+        .arg("true")
+        .output()
+        .expect("should run recoverable check failure path");
+    assert_exit_code(&err_output, 0);
+}
+
+#[test]
+fn recoverable_fallback_fixture_compiles_and_runs() {
+    let fixture = fixture_root("recoverable_fallback");
+
+    let compile_output = compile_app_keep_build_dir_expect_success(&fixture);
+    assert_artifact_paths_exist(&compile_output);
+
+    let binary = built_binary_path(&compile_output);
+
+    let ok_output = Command::new(&binary)
+        .arg("false")
+        .output()
+        .expect("should run recoverable fallback success path");
+    assert_exit_code(&ok_output, 0);
+
+    let err_output = Command::new(&binary)
+        .arg("true")
+        .output()
+        .expect("should run recoverable fallback error path");
+    assert_exit_code(&err_output, 0);
+}
+
+#[test]
+fn recoverable_package_boundary_fixture_compiles_and_runs() {
+    let fixture = fixture_root("recoverable_package_boundary").join("app");
+
+    let compile_output = compile_app_keep_build_dir_expect_success(&fixture);
+    assert_artifact_paths_exist(&compile_output);
+
+    let binary = built_binary_path(&compile_output);
+
+    let ok_output = Command::new(&binary)
+        .arg("false")
+        .output()
+        .expect("should run package recoverable success path");
+    assert_exit_code(&ok_output, 0);
+
+    let err_output = Command::new(&binary)
+        .arg("true")
+        .output()
+        .expect("should run package recoverable fallback path");
+    assert_exit_code(&err_output, 0);
+}
+
+#[test]
+fn shell_optional_fixture_compiles_and_runs() {
+    let fixture = fixture_root("shell_optional");
+
+    let compile_output = compile_app_keep_build_dir_expect_success(&fixture);
+    assert_artifact_paths_exist(&compile_output);
+
+    let binary = built_binary_path(&compile_output);
+
+    let ok_output = Command::new(&binary)
+        .arg("true")
+        .output()
+        .expect("should run optional shell success path");
+    assert_exit_code(&ok_output, 0);
+
+    let nil_output = Command::new(&binary)
+        .arg("false")
+        .output()
+        .expect("should run optional shell nil path");
+    assert_exit_code(&nil_output, 0);
+}
+
+#[test]
+fn shell_error_fixture_compiles_and_runs() {
+    let fixture = fixture_root("shell_error");
+
+    let compile_output = compile_app_keep_build_dir_expect_success(&fixture);
+    assert_artifact_paths_exist(&compile_output);
+
+    let run_output = compile_and_run_app(&fixture);
+    assert_exit_code(&run_output, 0);
+}
+
+#[test]
+fn shell_vs_recoverable_boundary_fixture_compiles_and_runs() {
+    let fixture = fixture_root("shell_vs_recoverable_boundary");
+
+    let compile_output = compile_app_keep_build_dir_expect_success(&fixture);
+    assert_artifact_paths_exist(&compile_output);
+
+    let binary = built_binary_path(&compile_output);
+
+    let ok_output = Command::new(&binary)
+        .arg("false")
+        .output()
+        .expect("should run shell-vs-recoverable success path");
+    assert_exit_code(&ok_output, 0);
+
+    let err_output = Command::new(&binary)
+        .arg("true")
+        .output()
+        .expect("should run shell-vs-recoverable fallback path");
+    assert_exit_code(&err_output, 0);
+}
+
+#[test]
+fn fail_hidden_cross_file_fixture_fails_cleanly() {
+    let fixture = fixture_root("fail_hidden_cross_file");
+
+    let output = compile_app_expect_failure(&fixture);
+    assert_output_contains(&output, "ResolverUnresolvedName");
+}
+
+#[test]
+fn fail_loc_targets_formal_pkg_root_fixture_fails_cleanly() {
+    let fixture = fixture_root("fail_loc_targets_formal_pkg_root").join("app");
+
+    let output = compile_app_expect_failure(&fixture);
+    assert_output_contains(&output, "build.fol");
+    assert_output_contains(&output, "pkg");
+}

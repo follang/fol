@@ -459,38 +459,38 @@ layer for the executable `V1` surface.
 #### 6.5 done
 - add `intrinsics_not_len_echo`
 
-#### 6.6
+#### 6.6 done
 - add `intrinsics_panic_check`
 
 ### Phase 7: Recoverable And Shell Apps
 
-#### 7.1
+#### 7.1 done
 - add `recoverable_propagation`
 
-#### 7.2
+#### 7.2 done
 - add `recoverable_check`
 
-#### 7.3
+#### 7.3 done
 - add `recoverable_fallback`
 
-#### 7.4
+#### 7.4 done
 - add `recoverable_package_boundary`
 
-#### 7.5
+#### 7.5 done
 - add `shell_optional`
 
-#### 7.6
+#### 7.6 done
 - add `shell_error`
 
-#### 7.7
+#### 7.7 done
 - add `shell_vs_recoverable_boundary`
 
 ### Phase 8: Negative Whole-App Fixtures
 
-#### 8.1
+#### 8.1 done
 - add `fail_hidden_cross_file`
 
-#### 8.2
+#### 8.2 done
 - add `fail_loc_targets_formal_pkg_root`
 
 #### 8.3
