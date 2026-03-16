@@ -674,4 +674,47 @@ mod tests {
                 .expect("Temporary metadata fixture root should be removable after the test");
         }
     }
+
+    #[test]
+    fn yaml_metadata_dependency_matrix_stays_stable_for_local_pkg_and_git_forms() {
+        let temp_root = unique_temp_root("dep_matrix");
+        fs::create_dir_all(&temp_root).expect("Should create temporary metadata fixture root");
+        let metadata_path = temp_root.join("package.yaml");
+        fs::write(
+            &metadata_path,
+            concat!(
+                "name: demo\n",
+                "version: 0.1.0\n",
+                "dep.shared: loc:../shared\n",
+                "dep.core: pkg:org/core\n",
+                "dep.logtiny: git:git@github.com:bresilla/logtiny.git\n",
+            ),
+        )
+        .expect("Should write the dependency matrix fixture");
+
+        let metadata = parse_package_metadata(&metadata_path)
+            .expect("dependency matrix fixture should parse");
+
+        let matrix = metadata
+            .dependencies
+            .iter()
+            .map(|dep| (dep.alias.as_str(), dep.source_kind, dep.target.as_str()))
+            .collect::<Vec<_>>();
+
+        assert_eq!(
+            matrix,
+            vec![
+                ("shared", PackageDependencySourceKind::Local, "../shared"),
+                ("core", PackageDependencySourceKind::PackageStore, "org/core"),
+                (
+                    "logtiny",
+                    PackageDependencySourceKind::Git,
+                    "git@github.com:bresilla/logtiny.git",
+                ),
+            ]
+        );
+
+        fs::remove_dir_all(&temp_root)
+            .expect("Temporary metadata fixture root should be removable after the test");
+    }
 }
