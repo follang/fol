@@ -11,6 +11,7 @@ mod output;
 mod result;
 mod scaffold;
 mod ui;
+mod workspace;
 
 pub use cli::{FrontendCli, FrontendCommand, InitCommand, NewCommand, UnitCommand};
 pub use config::FrontendConfig;
@@ -26,6 +27,7 @@ pub use scaffold::{
     new_project_with_mode, package_target_kind, PackageTargetKind,
 };
 pub use ui::FrontendOutput;
+pub use workspace::FrontendWorkspace;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct Frontend;

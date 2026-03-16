@@ -566,6 +566,15 @@ fn frontend_workspace_root_surface_smoke_compiles() {
 }
 
 #[test]
+fn frontend_workspace_model_surface_smoke_compiles() {
+    let workspace = fol_frontend::FrontendWorkspace::new(fol_frontend::WorkspaceRoot::new(
+        std::path::PathBuf::from("/tmp/demo"),
+    ));
+
+    assert_eq!(workspace.root.root, std::path::PathBuf::from("/tmp/demo"));
+}
+
+#[test]
 fn frontend_package_root_surface_smoke_compiles() {
     let root = fol_frontend::PackageRoot::new(std::path::PathBuf::from("/tmp/demo"));
 
