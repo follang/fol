@@ -1,6 +1,7 @@
 //! Backend foundations for turning lowered `V1` FOL workspaces into runnable artifacts.
 
 mod config;
+mod control;
 mod emit;
 mod error;
 mod identity;
@@ -32,6 +33,7 @@ pub fn crate_name() -> &'static str {
 }
 
 pub use config::{BackendConfig, BackendMode, BackendTarget};
+pub use control::render_terminator;
 pub use emit::{
     emit_cargo_toml, emit_generated_crate_skeleton, emit_main_rs,
     emit_namespace_module_shells, emit_package_module_shells,

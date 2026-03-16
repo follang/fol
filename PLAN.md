@@ -1048,13 +1048,13 @@ not full long-term compiler completion.
 
 ## 45. Phase 10: Control-Flow And Terminator Emission
 
-#### 10.1
+#### 10.1 done
 - emit `Jump`
 
-#### 10.2
+#### 10.2 done
 - emit `Branch`
 
-#### 10.3
+#### 10.3 done
 - emit `Return`
 
 #### 10.4
