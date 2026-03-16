@@ -1,4 +1,15 @@
-use clap::{Args, Parser, Subcommand};
+use clap::{Args, CommandFactory, Parser, Subcommand};
+
+const AFTER_HELP: &str = "\
+Workflow Commands:
+  init, new, fetch, check, build, run, test, emit, clean
+
+Workspace Commands:
+  work
+
+Shell Commands:
+  completion
+";
 
 #[derive(Debug, Clone, Subcommand, PartialEq, Eq)]
 pub enum FrontendCommand {
@@ -48,6 +59,23 @@ impl FrontendCli {
     {
         <Self as Parser>::parse_from(args)
     }
+
+    pub fn command() -> clap::Command {
+        <Self as CommandFactory>::command().help_template(
+            "\
+{about-section}
+Usage: {usage}
+
+Commands:
+{subcommands}
+
+Options:
+{options}
+
+{after-help}",
+        )
+        .after_help(AFTER_HELP)
+    }
 }
 
 #[cfg(test)]
@@ -77,5 +105,14 @@ mod tests {
         assert_eq!(build.command, Some(FrontendCommand::Build(UnitCommand)));
         assert_eq!(check.command, Some(FrontendCommand::Check(UnitCommand)));
         assert_eq!(work.command, Some(FrontendCommand::Work(UnitCommand)));
+    }
+
+    #[test]
+    fn help_output_groups_commands_by_workflow_sections() {
+        let help = FrontendCli::command().render_long_help().to_string();
+
+        assert!(help.contains("Workflow Commands:"));
+        assert!(help.contains("Workspace Commands:"));
+        assert!(help.contains("Shell Commands:"));
     }
 }
