@@ -1,4 +1,4 @@
-use crate::{FrontendCommandResult, FrontendError, FrontendOutputConfig, OutputMode};
+use crate::{ColorPolicy, FrontendCommandResult, FrontendError, FrontendOutputConfig, OutputMode};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FrontendOutput {
@@ -16,6 +16,18 @@ impl FrontendOutput {
 
     pub fn is_machine_readable(&self) -> bool {
         matches!(self.config.mode, OutputMode::Json)
+    }
+
+    pub fn should_use_color(&self, is_tty: bool) -> bool {
+        if !matches!(self.config.mode, OutputMode::Human) {
+            return false;
+        }
+
+        match self.config.color {
+            ColorPolicy::Always => true,
+            ColorPolicy::Never => false,
+            ColorPolicy::Auto => is_tty,
+        }
     }
 
     pub fn render_human_header(&self, title: &str) -> String {
@@ -109,8 +121,8 @@ impl FrontendOutput {
 mod tests {
     use super::FrontendOutput;
     use crate::{
-        FrontendArtifactKind, FrontendArtifactSummary, FrontendCommandResult, FrontendError,
-        FrontendErrorKind, FrontendOutputConfig, OutputMode,
+        ColorPolicy, FrontendArtifactKind, FrontendArtifactSummary, FrontendCommandResult,
+        FrontendError, FrontendErrorKind, FrontendOutputConfig, OutputMode,
     };
     use std::path::PathBuf;
 
@@ -120,6 +132,8 @@ mod tests {
 
         assert_eq!(output.config().mode, OutputMode::Human);
         assert!(!output.is_machine_readable());
+        assert!(output.should_use_color(true));
+        assert!(!output.should_use_color(false));
     }
 
     #[test]
@@ -201,5 +215,25 @@ mod tests {
         assert!(human.contains("== build =="));
         assert!(plain.contains("command: build"));
         assert!(json.contains("\"command\": \"build\""));
+    }
+
+    #[test]
+    fn color_auto_detection_respects_mode_and_policy() {
+        let always = FrontendOutput::new(FrontendOutputConfig {
+            color: ColorPolicy::Always,
+            ..FrontendOutputConfig::default()
+        });
+        let never = FrontendOutput::new(FrontendOutputConfig {
+            color: ColorPolicy::Never,
+            ..FrontendOutputConfig::default()
+        });
+        let json = FrontendOutput::new(FrontendOutputConfig {
+            mode: OutputMode::Json,
+            ..FrontendOutputConfig::default()
+        });
+
+        assert!(always.should_use_color(false));
+        assert!(!never.should_use_color(true));
+        assert!(!json.should_use_color(true));
     }
 }
