@@ -66,14 +66,11 @@ impl PackageLocator {
 
 pub fn parse_package_locator(raw: &str) -> Result<PackageLocator, PackageError> {
     let trimmed = raw.trim();
+    if trimmed.starts_with("https://") || trimmed.starts_with("http://") {
+        return parse_https_git_locator(trimmed);
+    }
     if looks_like_future_git_locator(trimmed) {
-        return Err(PackageError::new(
-            PackageErrorKind::Unsupported,
-            format!(
-                "package dependency locator '{}' looks like a future git or remote locator; only installed-store slash paths are supported today",
-                raw
-            ),
-        ));
+        return Err(unsupported_remote_locator(raw));
     }
     let parts = trimmed.split('/').map(str::trim).collect::<Vec<_>>();
     if trimmed.is_empty() || parts.iter().any(|part| part.is_empty()) {
@@ -92,11 +89,56 @@ pub fn parse_package_locator(raw: &str) -> Result<PackageLocator, PackageError> 
     ))
 }
 
+fn parse_https_git_locator(raw: &str) -> Result<PackageLocator, PackageError> {
+    let without_scheme = raw
+        .split_once("://")
+        .map(|(_, rest)| rest)
+        .ok_or_else(|| unsupported_remote_locator(raw))?;
+    let mut segments = without_scheme
+        .split('/')
+        .map(str::trim)
+        .filter(|part| !part.is_empty())
+        .collect::<Vec<_>>();
+    if segments.len() < 3 {
+        return Err(PackageError::new(
+            PackageErrorKind::InvalidInput,
+            format!(
+                "git package locator '{}' must include a host, owner, and repository path",
+                raw
+            ),
+        ));
+    }
+    let host = segments.remove(0);
+    if host.is_empty() {
+        return Err(PackageError::new(
+            PackageErrorKind::InvalidInput,
+            format!("git package locator '{}' is missing a host", raw),
+        ));
+    }
+
+    Ok(PackageLocator::git(
+        raw.to_string(),
+        PackageGitTransport::Https,
+        raw.to_string(),
+        PackageGitSelector::default(),
+    ))
+}
+
 fn looks_like_future_git_locator(raw: &str) -> bool {
     raw.contains("://")
         || raw.starts_with("git+")
         || raw.starts_with("git@")
         || raw.ends_with(".git")
+}
+
+fn unsupported_remote_locator(raw: &str) -> PackageError {
+    PackageError::new(
+        PackageErrorKind::Unsupported,
+        format!(
+            "package dependency locator '{}' looks like a future git or remote locator; only installed-store slash paths are supported today",
+            raw
+        ),
+    )
 }
 
 #[cfg(test)]
@@ -136,7 +178,7 @@ mod tests {
 
     #[test]
     fn package_locator_reports_remote_git_forms_as_explicit_placeholders() {
-        let error = parse_package_locator("https://github.com/follang/json.git")
+        let error = parse_package_locator("git@github.com:follang/json.git")
             .expect_err("Remote git-like locators should fail with an explicit placeholder diagnostic");
 
         assert_eq!(error.kind(), crate::PackageErrorKind::Unsupported);
@@ -174,5 +216,22 @@ mod tests {
                 .and_then(|git| git.selector.branch.as_deref()),
             Some("main")
         );
+    }
+
+    #[test]
+    fn package_locator_parses_https_git_locators() {
+        let locator = parse_package_locator("https://github.com/follang/json.git")
+            .expect("HTTPS git locators should parse");
+
+        assert_eq!(locator.kind, PackageLocatorKind::Git);
+        assert_eq!(
+            locator.git.as_ref().map(|git| git.transport),
+            Some(PackageGitTransport::Https)
+        );
+        assert_eq!(
+            locator.git.as_ref().map(|git| git.repository.as_str()),
+            Some("https://github.com/follang/json.git")
+        );
+        assert!(locator.path_segments.is_empty());
     }
 }
