@@ -3,11 +3,15 @@ use crate::{
     BackendResult,
 };
 use fol_intrinsics::intrinsic_by_id;
-use fol_lower::{LoweredInstr, LoweredInstrKind, LoweredOperand, LoweredRoutine};
+use fol_lower::{
+    control::LoweredLinearKind, LoweredInstr, LoweredInstrKind, LoweredOperand, LoweredRoutine,
+    LoweredType, LoweredTypeTable,
+};
 use fol_resolver::PackageIdentity;
 
 pub fn render_core_instruction(
     package_identity: &PackageIdentity,
+    type_table: &LoweredTypeTable,
     routine: &LoweredRoutine,
     instruction: &LoweredInstr,
 ) -> BackendResult<String> {
@@ -145,6 +149,124 @@ pub fn render_core_instruction(
             };
             Ok(format!("let {result} = {expression};"))
         }
+        LoweredInstrKind::ConstructError { value, .. } => {
+            let result = rendered_result_local(package_identity, routine, instruction)?;
+            let expression = match value {
+                Some(value) => {
+                    let value = render_local_name(package_identity, routine, *value)?;
+                    format!("rt::FolError::new({value}.clone())")
+                }
+                None => "rt::FolError::new(())".to_string(),
+            };
+            Ok(format!("let {result} = {expression};"))
+        }
+        LoweredInstrKind::UnwrapShell { operand } => {
+            let result = rendered_result_local(package_identity, routine, instruction)?;
+            let operand_name = render_local_name(package_identity, routine, *operand)?;
+            let operand_local = routine.locals.get(*operand).ok_or_else(|| {
+                BackendError::new(
+                    BackendErrorKind::InvalidInput,
+                    format!("lowered local {:?} is missing", operand),
+                )
+            })?;
+            let Some(type_id) = operand_local.type_id else {
+                return Err(BackendError::new(
+                    BackendErrorKind::InvalidInput,
+                    format!("shell operand local {:?} does not have a lowered type", operand),
+                ));
+            };
+            let expression = match type_table.get(type_id) {
+                Some(LoweredType::Optional { .. }) => format!(
+                    "rt::unwrap_optional_shell({operand_name}.clone()).expect(\"optional shell\")"
+                ),
+                Some(LoweredType::Error { .. }) => {
+                    format!("rt::unwrap_error_shell({operand_name}.clone())")
+                }
+                other => {
+                    return Err(BackendError::new(
+                        BackendErrorKind::InvalidInput,
+                        format!("shell unwrap emission expected optional/error local but found {other:?}"),
+                    ))
+                }
+            };
+            Ok(format!("let {result} = {expression};"))
+        }
+        LoweredInstrKind::ConstructLinear {
+            kind,
+            elements,
+            ..
+        } => {
+            let result = rendered_result_local(package_identity, routine, instruction)?;
+            let elements = render_local_list(package_identity, routine, elements)?;
+            let expression = match kind {
+                LoweredLinearKind::Array => format!("[{elements}]"),
+                LoweredLinearKind::Vector => format!("rt::FolVec::from_items(vec![{elements}])"),
+                LoweredLinearKind::Sequence => format!("rt::FolSeq::from_items(vec![{elements}])"),
+            };
+            Ok(format!("let {result} = {expression};"))
+        }
+        LoweredInstrKind::ConstructSet { members, .. } => {
+            let result = rendered_result_local(package_identity, routine, instruction)?;
+            let members = render_local_list(package_identity, routine, members)?;
+            Ok(format!(
+                "let {result} = rt::FolSet::from_items(vec![{members}]);"
+            ))
+        }
+        LoweredInstrKind::ConstructMap { entries, .. } => {
+            let result = rendered_result_local(package_identity, routine, instruction)?;
+            let entries = entries
+                .iter()
+                .map(|(key, value)| {
+                    Ok(format!(
+                        "({}, {})",
+                        render_clone_expr(package_identity, routine, *key)?,
+                        render_clone_expr(package_identity, routine, *value)?
+                    ))
+                })
+                .collect::<BackendResult<Vec<_>>>()?
+                .join(", ");
+            Ok(format!(
+                "let {result} = rt::FolMap::from_pairs(vec![{entries}]);"
+            ))
+        }
+        LoweredInstrKind::IndexAccess { container, index } => {
+            let result = rendered_result_local(package_identity, routine, instruction)?;
+            let container_name = render_local_name(package_identity, routine, *container)?;
+            let index_name = render_local_name(package_identity, routine, *index)?;
+            let container_local = routine.locals.get(*container).ok_or_else(|| {
+                BackendError::new(
+                    BackendErrorKind::InvalidInput,
+                    format!("lowered local {:?} is missing", container),
+                )
+            })?;
+            let Some(type_id) = container_local.type_id else {
+                return Err(BackendError::new(
+                    BackendErrorKind::InvalidInput,
+                    format!("index container local {:?} does not have a lowered type", container),
+                ));
+            };
+            let expression = match type_table.get(type_id) {
+                Some(LoweredType::Array { .. }) => format!(
+                    "rt::index_array(&{container_name}, {index_name}.clone()).expect(\"array index\").clone()"
+                ),
+                Some(LoweredType::Vector { .. }) => format!(
+                    "rt::index_vec(&{container_name}, {index_name}.clone()).expect(\"vector index\").clone()"
+                ),
+                Some(LoweredType::Sequence { .. }) => format!(
+                    "rt::index_seq(&{container_name}, {index_name}.clone()).expect(\"sequence index\").clone()"
+                ),
+                Some(LoweredType::Map { .. }) => format!(
+                    "rt::lookup_map(&{container_name}, &{index_name}).expect(\"map key\").clone()"
+                ),
+                other => {
+                    return Err(BackendError::new(
+                        BackendErrorKind::InvalidInput,
+                        format!("index emission expected array/vector/sequence/map local but found {other:?}"),
+                    ))
+                }
+            };
+            Ok(format!("let {result} = {expression};"))
+        }
         other => Err(BackendError::new(
             BackendErrorKind::Unsupported,
             format!("core instruction emission is not implemented yet for {other:?}"),
@@ -166,6 +288,27 @@ fn render_native_intrinsic_expression(name: &str, args: &[String]) -> BackendRes
             format!("native Rust intrinsic emission is not implemented yet for '.{other}(...)'"),
         )),
     }
+}
+
+fn render_local_list(
+    package_identity: &PackageIdentity,
+    routine: &LoweredRoutine,
+    locals: &[fol_lower::LoweredLocalId],
+) -> BackendResult<String> {
+    locals
+        .iter()
+        .map(|local| render_clone_expr(package_identity, routine, *local))
+        .collect::<BackendResult<Vec<_>>>()
+        .map(|items| items.join(", "))
+}
+
+fn render_clone_expr(
+    package_identity: &PackageIdentity,
+    routine: &LoweredRoutine,
+    local_id: fol_lower::LoweredLocalId,
+) -> BackendResult<String> {
+    let name = render_local_name(package_identity, routine, local_id)?;
+    Ok(format!("{name}.clone()"))
 }
 
 fn rendered_result_local(
@@ -265,11 +408,14 @@ mod tests {
         };
 
         let const_rendered =
-            render_core_instruction(&package_identity, &routine, &const_instr).expect("const");
+            render_core_instruction(&package_identity, &table, &routine, &const_instr)
+                .expect("const");
         let load_local_rendered =
-            render_core_instruction(&package_identity, &routine, &load_local).expect("load");
+            render_core_instruction(&package_identity, &table, &routine, &load_local)
+                .expect("load");
         let store_local_rendered =
-            render_core_instruction(&package_identity, &routine, &store_local).expect("store");
+            render_core_instruction(&package_identity, &table, &routine, &store_local)
+                .expect("store");
 
         assert!(const_rendered.contains("let l__pkg__entry__app__r0__l0__value = 7_i64;"));
         assert!(load_local_rendered.contains("let l__pkg__entry__app__r0__l1__other = l__pkg__entry__app__r0__l0__value.clone();"));
@@ -307,7 +453,8 @@ mod tests {
             },
         };
 
-        let rendered = render_core_instruction(&package_identity, &routine, &call).expect("call");
+        let rendered =
+            render_core_instruction(&package_identity, &table, &routine, &call).expect("call");
 
         assert!(rendered.contains("let l__pkg__entry__app__r3__l1__result = r__pkg__entry__app__r9__callee("));
         assert!(rendered.contains("l__pkg__entry__app__r3__l0__value"));
@@ -341,7 +488,8 @@ mod tests {
         };
 
         let rendered =
-            render_core_instruction(&package_identity, &routine, &access).expect("field access");
+            render_core_instruction(&package_identity, &table, &routine, &access)
+                .expect("field access");
 
         assert_eq!(
             rendered,
@@ -404,9 +552,10 @@ mod tests {
         };
 
         let eq_rendered =
-            render_core_instruction(&package_identity, &routine, &eq_instr).expect("eq");
+            render_core_instruction(&package_identity, &table, &routine, &eq_instr).expect("eq");
         let not_rendered =
-            render_core_instruction(&package_identity, &routine, &not_instr).expect("not");
+            render_core_instruction(&package_identity, &table, &routine, &not_instr)
+                .expect("not");
 
         assert_eq!(
             eq_rendered,
@@ -510,7 +659,7 @@ mod tests {
             },
         ]
         .iter()
-        .map(|instruction| render_core_instruction(&package_identity, &routine, instruction))
+        .map(|instruction| render_core_instruction(&package_identity, &table, &routine, instruction))
         .collect::<Result<Vec<_>, _>>()
         .expect("snapshot should render")
         .join("\n");
@@ -554,7 +703,8 @@ mod tests {
         };
 
         let rendered =
-            render_core_instruction(&package_identity, &routine, &instruction).expect("length");
+            render_core_instruction(&package_identity, &table, &routine, &instruction)
+                .expect("length");
 
         assert_eq!(
             rendered,
@@ -590,7 +740,8 @@ mod tests {
         };
 
         let rendered =
-            render_core_instruction(&package_identity, &routine, &instruction).expect("echo");
+            render_core_instruction(&package_identity, &table, &routine, &instruction)
+                .expect("echo");
 
         assert_eq!(
             rendered,
@@ -623,7 +774,8 @@ mod tests {
         };
 
         let rendered =
-            render_core_instruction(&package_identity, &routine, &instruction).expect("check");
+            render_core_instruction(&package_identity, &table, &routine, &instruction)
+                .expect("check");
 
         assert_eq!(
             rendered,
@@ -656,7 +808,8 @@ mod tests {
         };
 
         let rendered =
-            render_core_instruction(&package_identity, &routine, &instruction).expect("unwrap");
+            render_core_instruction(&package_identity, &table, &routine, &instruction)
+                .expect("unwrap");
 
         assert_eq!(
             rendered,
@@ -667,6 +820,7 @@ mod tests {
     #[test]
     fn runtime_shaped_instruction_rendering_emits_recoverable_error_extraction() {
         let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
+        let table = LoweredTypeTable::new();
         let mut routine = LoweredRoutine::new(LoweredRoutineId(11), "main", LoweredBlockId(0));
         let source = routine.locals.push(LoweredLocal {
             id: LoweredLocalId(0),
@@ -687,7 +841,8 @@ mod tests {
         };
 
         let rendered =
-            render_core_instruction(&package_identity, &routine, &instruction).expect("extract");
+            render_core_instruction(&package_identity, &table, &routine, &instruction)
+                .expect("extract");
 
         assert_eq!(
             rendered,
@@ -738,9 +893,11 @@ mod tests {
         };
 
         let some_rendered =
-            render_core_instruction(&package_identity, &routine, &some_instr).expect("some");
+            render_core_instruction(&package_identity, &table, &routine, &some_instr)
+                .expect("some");
         let nil_rendered =
-            render_core_instruction(&package_identity, &routine, &nil_instr).expect("nil");
+            render_core_instruction(&package_identity, &table, &routine, &nil_instr)
+                .expect("nil");
 
         assert_eq!(
             some_rendered,
@@ -749,6 +906,240 @@ mod tests {
         assert_eq!(
             nil_rendered,
             "let l__pkg__entry__app__r12__l2__empty = rt::FolOption::nil();"
+        );
+    }
+
+    #[test]
+    fn runtime_shaped_instruction_rendering_emits_error_shell_construction() {
+        let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
+        let mut table = LoweredTypeTable::new();
+        let int_id = table.intern_builtin(LoweredBuiltinType::Int);
+        let error_id = table.intern(fol_lower::LoweredType::Error { inner: Some(int_id) });
+        let mut routine = LoweredRoutine::new(LoweredRoutineId(13), "main", LoweredBlockId(0));
+        let payload = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(0),
+            type_id: Some(int_id),
+            recoverable_error_type: None,
+            name: Some("value".to_string()),
+        });
+        let result = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(1),
+            type_id: Some(error_id),
+            recoverable_error_type: None,
+            name: Some("error".to_string()),
+        });
+        let instruction = LoweredInstr {
+            id: LoweredInstrId(27),
+            result: Some(result),
+            kind: LoweredInstrKind::ConstructError {
+                type_id: error_id,
+                value: Some(payload),
+            },
+        };
+
+        let rendered =
+            render_core_instruction(&package_identity, &table, &routine, &instruction)
+                .expect("error shell");
+
+        assert_eq!(
+            rendered,
+            "let l__pkg__entry__app__r13__l1__error = rt::FolError::new(l__pkg__entry__app__r13__l0__value.clone());"
+        );
+    }
+
+    #[test]
+    fn runtime_shaped_instruction_rendering_emits_shell_unwraps_for_optional_and_error_values() {
+        let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
+        let mut table = LoweredTypeTable::new();
+        let int_id = table.intern_builtin(LoweredBuiltinType::Int);
+        let optional_id = table.intern(fol_lower::LoweredType::Optional { inner: int_id });
+        let error_id = table.intern(fol_lower::LoweredType::Error { inner: Some(int_id) });
+        let mut routine = LoweredRoutine::new(LoweredRoutineId(14), "main", LoweredBlockId(0));
+        let maybe = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(0),
+            type_id: Some(optional_id),
+            recoverable_error_type: None,
+            name: Some("maybe".to_string()),
+        });
+        let err = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(1),
+            type_id: Some(error_id),
+            recoverable_error_type: None,
+            name: Some("err".to_string()),
+        });
+        let a = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(2),
+            type_id: Some(int_id),
+            recoverable_error_type: None,
+            name: Some("a".to_string()),
+        });
+        let b = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(3),
+            type_id: Some(int_id),
+            recoverable_error_type: None,
+            name: Some("b".to_string()),
+        });
+        let optional_instr = LoweredInstr {
+            id: LoweredInstrId(28),
+            result: Some(a),
+            kind: LoweredInstrKind::UnwrapShell { operand: maybe },
+        };
+        let error_instr = LoweredInstr {
+            id: LoweredInstrId(29),
+            result: Some(b),
+            kind: LoweredInstrKind::UnwrapShell { operand: err },
+        };
+
+        let optional_rendered =
+            render_core_instruction(&package_identity, &table, &routine, &optional_instr)
+                .expect("optional unwrap");
+        let error_rendered =
+            render_core_instruction(&package_identity, &table, &routine, &error_instr)
+                .expect("error unwrap");
+
+        assert_eq!(
+            optional_rendered,
+            "let l__pkg__entry__app__r14__l2__a = rt::unwrap_optional_shell(l__pkg__entry__app__r14__l0__maybe.clone()).expect(\"optional shell\");"
+        );
+        assert_eq!(
+            error_rendered,
+            "let l__pkg__entry__app__r14__l3__b = rt::unwrap_error_shell(l__pkg__entry__app__r14__l1__err.clone());"
+        );
+    }
+
+    #[test]
+    fn runtime_shaped_instruction_snapshot_stays_stable() {
+        let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
+        let mut table = LoweredTypeTable::new();
+        let int_id = table.intern_builtin(LoweredBuiltinType::Int);
+        let bool_id = table.intern_builtin(LoweredBuiltinType::Bool);
+        let optional_id = table.intern(fol_lower::LoweredType::Optional { inner: int_id });
+        let error_id = table.intern(fol_lower::LoweredType::Error { inner: Some(int_id) });
+        let mut routine = LoweredRoutine::new(LoweredRoutineId(15), "main", LoweredBlockId(0));
+        let value = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(0),
+            type_id: Some(int_id),
+            recoverable_error_type: None,
+            name: Some("value".to_string()),
+        });
+        let rec = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(1),
+            type_id: None,
+            recoverable_error_type: None,
+            name: Some("recover".to_string()),
+        });
+        let maybe = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(2),
+            type_id: Some(optional_id),
+            recoverable_error_type: None,
+            name: Some("maybe".to_string()),
+        });
+        let err = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(3),
+            type_id: Some(error_id),
+            recoverable_error_type: None,
+            name: Some("err".to_string()),
+        });
+        let count = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(4),
+            type_id: Some(int_id),
+            recoverable_error_type: None,
+            name: Some("count".to_string()),
+        });
+        let shown = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(5),
+            type_id: Some(int_id),
+            recoverable_error_type: None,
+            name: Some("shown".to_string()),
+        });
+        let failed = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(6),
+            type_id: Some(bool_id),
+            recoverable_error_type: None,
+            name: Some("failed".to_string()),
+        });
+        let ok = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(7),
+            type_id: Some(int_id),
+            recoverable_error_type: None,
+            name: Some("ok".to_string()),
+        });
+        let bad = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(8),
+            type_id: Some(int_id),
+            recoverable_error_type: None,
+            name: Some("bad".to_string()),
+        });
+
+        let rendered = [
+            LoweredInstr {
+                id: LoweredInstrId(30),
+                result: Some(count),
+                kind: LoweredInstrKind::LengthOf { operand: maybe },
+            },
+            LoweredInstr {
+                id: LoweredInstrId(31),
+                result: Some(shown),
+                kind: LoweredInstrKind::RuntimeHook {
+                    intrinsic: intrinsic_by_canonical_name("echo").expect("echo").id,
+                    args: vec![value],
+                },
+            },
+            LoweredInstr {
+                id: LoweredInstrId(32),
+                result: Some(failed),
+                kind: LoweredInstrKind::CheckRecoverable { operand: rec },
+            },
+            LoweredInstr {
+                id: LoweredInstrId(33),
+                result: Some(ok),
+                kind: LoweredInstrKind::UnwrapRecoverable { operand: rec },
+            },
+            LoweredInstr {
+                id: LoweredInstrId(34),
+                result: Some(bad),
+                kind: LoweredInstrKind::ExtractRecoverableError { operand: rec },
+            },
+            LoweredInstr {
+                id: LoweredInstrId(35),
+                result: Some(maybe),
+                kind: LoweredInstrKind::ConstructOptional {
+                    type_id: optional_id,
+                    value: Some(value),
+                },
+            },
+            LoweredInstr {
+                id: LoweredInstrId(36),
+                result: Some(err),
+                kind: LoweredInstrKind::ConstructError {
+                    type_id: error_id,
+                    value: Some(value),
+                },
+            },
+            LoweredInstr {
+                id: LoweredInstrId(37),
+                result: Some(ok),
+                kind: LoweredInstrKind::UnwrapShell { operand: maybe },
+            },
+        ]
+        .iter()
+        .map(|instruction| render_core_instruction(&package_identity, &table, &routine, instruction))
+        .collect::<Result<Vec<_>, _>>()
+        .expect("runtime snapshot should render")
+        .join("\n");
+
+        assert_eq!(
+            rendered,
+            concat!(
+                "let l__pkg__entry__app__r15__l4__count = rt::len(&l__pkg__entry__app__r15__l2__maybe);\n",
+                "let l__pkg__entry__app__r15__l5__shown = rt::echo(l__pkg__entry__app__r15__l0__value);\n",
+                "let l__pkg__entry__app__r15__l6__failed = rt::check_recoverable(&l__pkg__entry__app__r15__l1__recover);\n",
+                "let l__pkg__entry__app__r15__l7__ok = l__pkg__entry__app__r15__l1__recover.clone().into_value().expect(\"recoverable success\");\n",
+                "let l__pkg__entry__app__r15__l8__bad = l__pkg__entry__app__r15__l1__recover.clone().into_error().expect(\"recoverable error\");\n",
+                "let l__pkg__entry__app__r15__l2__maybe = rt::FolOption::some(l__pkg__entry__app__r15__l0__value.clone());\n",
+                "let l__pkg__entry__app__r15__l3__err = rt::FolError::new(l__pkg__entry__app__r15__l0__value.clone());\n",
+                "let l__pkg__entry__app__r15__l7__ok = rt::unwrap_optional_shell(l__pkg__entry__app__r15__l2__maybe.clone()).expect(\"optional shell\");"
+            )
         );
     }
 }

@@ -1014,13 +1014,13 @@ not full long-term compiler completion.
 #### 8.6 done
 - emit `ConstructOptional`
 
-#### 8.7
+#### 8.7 done
 - emit `ConstructError`
 
-#### 8.8
+#### 8.8 done
 - emit `UnwrapShell`
 
-#### 8.9
+#### 8.9 done
 - add snapshot tests for runtime-shaped instruction emission
 
 ## 44. Phase 9: Aggregate And Container Emission
