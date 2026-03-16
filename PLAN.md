@@ -996,7 +996,7 @@ not full long-term compiler completion.
 
 ## 43. Phase 8: Runtime-Shaped Instruction Emission
 
-#### 8.1
+#### 8.1 done
 - emit runtime-backed `.len(...)`
 
 #### 8.2

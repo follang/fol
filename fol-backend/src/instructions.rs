@@ -84,6 +84,11 @@ pub fn render_core_instruction(
                 None => Ok(format!("{expression};")),
             }
         }
+        LoweredInstrKind::LengthOf { operand } => {
+            let result = rendered_result_local(package_identity, routine, instruction)?;
+            let operand = render_local_name(package_identity, routine, *operand)?;
+            Ok(format!("let {result} = rt::len(&{operand});"))
+        }
         other => Err(BackendError::new(
             BackendErrorKind::Unsupported,
             format!("core instruction emission is not implemented yet for {other:?}"),
@@ -465,6 +470,39 @@ mod tests {
                 "let l__pkg__entry__app__r6__l4__same = !l__pkg__entry__app__r6__l2__flag;\n",
                 "let l__pkg__entry__app__r6__l3__tmp = l__pkg__entry__app__r6__l1__rhs.count.clone();"
             )
+        );
+    }
+
+    #[test]
+    fn runtime_shaped_instruction_rendering_emits_length_via_runtime_prelude() {
+        let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
+        let mut table = LoweredTypeTable::new();
+        let int_id = table.intern_builtin(LoweredBuiltinType::Int);
+        let mut routine = LoweredRoutine::new(LoweredRoutineId(7), "main", LoweredBlockId(0));
+        let source = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(0),
+            type_id: Some(int_id),
+            recoverable_error_type: None,
+            name: Some("items".to_string()),
+        });
+        let result = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(1),
+            type_id: Some(int_id),
+            recoverable_error_type: None,
+            name: Some("count".to_string()),
+        });
+        let instruction = LoweredInstr {
+            id: LoweredInstrId(20),
+            result: Some(result),
+            kind: LoweredInstrKind::LengthOf { operand: source },
+        };
+
+        let rendered =
+            render_core_instruction(&package_identity, &routine, &instruction).expect("length");
+
+        assert_eq!(
+            rendered,
+            "let l__pkg__entry__app__r7__l1__count = rt::len(&l__pkg__entry__app__r7__l0__items);"
         );
     }
 }
