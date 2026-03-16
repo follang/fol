@@ -1,5 +1,5 @@
 use crate::{FrontendCommandResult, FrontendError, FrontendOutputConfig, OutputMode};
-use console::style;
+use colored::Colorize;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FrontendOutput {
@@ -8,6 +8,7 @@ pub struct FrontendOutput {
 
 impl FrontendOutput {
     pub fn new(config: FrontendOutputConfig) -> Self {
+        colored::control::set_override(matches!(config.mode, OutputMode::Human));
         Self { config }
     }
 
@@ -25,7 +26,7 @@ impl FrontendOutput {
 
     fn styled_section(&self, title: &str) -> String {
         if self.should_use_color() {
-            format!("{}", style(title).bold().cyan())
+            title.bold().cyan().to_string()
         } else {
             title.to_string()
         }
@@ -34,7 +35,7 @@ impl FrontendOutput {
     fn styled_label(&self, label: &str, width: usize) -> String {
         let padded = format!("{label:<width$}");
         if self.should_use_color() {
-            format!("{}", style(padded).bold().yellow())
+            padded.bold().yellow().to_string()
         } else {
             padded
         }
@@ -42,7 +43,7 @@ impl FrontendOutput {
 
     fn styled_action(&self, action: &str) -> String {
         if self.should_use_color() {
-            format!("{}", style(action).bold().green())
+            action.bold().green().to_string()
         } else {
             action.to_string()
         }
@@ -50,7 +51,7 @@ impl FrontendOutput {
 
     fn styled_path(&self, path: &str) -> String {
         if self.should_use_color() {
-            format!("{}", style(path).cyan())
+            path.cyan().to_string()
         } else {
             path.to_string()
         }
@@ -58,7 +59,7 @@ impl FrontendOutput {
 
     fn styled_error_prefix(&self) -> String {
         if self.should_use_color() {
-            format!("{}", style("Error:").bold().red())
+            "Error:".red().bold().to_string()
         } else {
             "Error:".to_string()
         }
@@ -66,7 +67,7 @@ impl FrontendOutput {
 
     fn styled_note_prefix(&self) -> String {
         if self.should_use_color() {
-            format!("{}", style("Note:").bold().blue())
+            "Note:".blue().bold().to_string()
         } else {
             "Note:".to_string()
         }
