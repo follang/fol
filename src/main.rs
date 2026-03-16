@@ -619,6 +619,18 @@ fn root_binary_keeps_legacy_compiler_mode_for_direct_compile_inputs() {
     assert!(!should_use_frontend(&["fol".into(), "examples/full_v1_showcase/app".into()]));
     assert!(!should_use_frontend(&["fol".into(), "--json".into(), "test/main/main.fol".into()]));
     assert!(!should_use_frontend(&["fol".into(), "--emit-rust".into(), "test/main/main.fol".into()]));
+    assert!(!should_use_frontend(&["fol".into(), "--dump-lowered".into(), "test/main/main.fol".into()]));
+    assert!(!should_use_frontend(&["fol".into(), "--std-root".into(), "/tmp/std".into(), "test/main/main.fol".into()]));
+    assert!(!should_use_frontend(&["fol".into(), "--package-store-root".into(), "/tmp/pkg".into(), "test/main/main.fol".into()]));
+    assert!(!should_use_frontend(&["fol".into(), "--keep-build-dir".into(), "test/main/main.fol".into()]));
+}
+
+#[test]
+fn root_binary_preserves_frontend_global_flag_routing_for_workflow_commands() {
+    assert!(should_use_frontend(&["fol".into(), "--release".into(), "build".into()]));
+    assert!(should_use_frontend(&["fol".into(), "--debug".into(), "run".into()]));
+    assert!(should_use_frontend(&["fol".into(), "--color".into(), "always".into(), "test".into()]));
+    assert!(should_use_frontend(&["fol".into(), "--output".into(), "json".into(), "emit".into(), "rust".into()]));
 }
 
 #[test]
