@@ -1,6 +1,6 @@
 use fol_frontend::{
-    build_workspace, check_workspace, run_workspace, FrontendArtifactKind, FrontendWorkspace,
-    PackageRoot, WorkspaceRoot,
+    build_workspace, check_workspace, run_workspace, test_workspace, FrontendArtifactKind,
+    FrontendWorkspace, PackageRoot, WorkspaceRoot,
 };
 use std::fs;
 use std::path::PathBuf;
@@ -82,6 +82,38 @@ fn run_command_executes_single_workspace_members_through_public_api() {
     assert_eq!(result.command, "run");
     assert_eq!(result.artifacts.len(), 1);
     assert_eq!(result.artifacts[0].kind, FrontendArtifactKind::Binary);
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn test_command_traverses_all_runnable_workspace_members_through_public_api() {
+    let root = temp_root("test_workspace");
+    let app = sample_workspace(&root);
+    let tools_root = root.join("tools");
+    let tools_src = tools_root.join("src");
+    fs::create_dir_all(&tools_src).expect("should create tools source tree");
+    fs::write(tools_root.join("package.yaml"), "name: tools\nversion: 0.1.0\n")
+        .expect("should write tools manifest");
+    fs::write(tools_root.join("build.fol"), "def root: loc = \"src\"\n")
+        .expect("should write tools build");
+    fs::write(tools_src.join("main.fol"), "fun[] main(): int = {\n    return 0\n}\n")
+        .expect("should write tools main");
+
+    let workspace = FrontendWorkspace {
+        members: vec![app.members[0].clone(), PackageRoot::new(tools_root)],
+        ..app
+    };
+
+    let result = test_workspace(&workspace).expect("workspace test should succeed");
+
+    assert_eq!(result.command, "test");
+    assert_eq!(result.summary, "tested 2 workspace package(s)");
+    assert_eq!(result.artifacts.len(), 2);
+    assert!(result
+        .artifacts
+        .iter()
+        .all(|artifact| artifact.kind == FrontendArtifactKind::Binary));
 
     fs::remove_dir_all(root).ok();
 }
