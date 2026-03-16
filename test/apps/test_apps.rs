@@ -27,6 +27,41 @@ fn compile_app(entry: &Path) -> std::process::Output {
     run_fol(&[entry.to_str().expect("fixture path should be valid utf-8")])
 }
 
+fn compile_app_with_roots(
+    entry: &Path,
+    std_root: Option<&Path>,
+    package_store_root: Option<&Path>,
+) -> std::process::Output {
+    let mut args = Vec::new();
+    if let Some(std_root) = std_root {
+        args.push("--std-root".to_string());
+        args.push(
+            std_root
+                .to_str()
+                .expect("std root should be valid utf-8")
+                .to_string(),
+        );
+    }
+    if let Some(package_store_root) = package_store_root {
+        args.push("--package-store-root".to_string());
+        args.push(
+            package_store_root
+                .to_str()
+                .expect("package store root should be valid utf-8")
+                .to_string(),
+        );
+    }
+    args.push(
+        entry
+            .to_str()
+            .expect("fixture path should be valid utf-8")
+            .to_string(),
+    )
+    ;
+    let arg_refs = args.iter().map(String::as_str).collect::<Vec<_>>();
+    run_fol(&arg_refs)
+}
+
 fn compile_app_expect_success(entry: &Path) -> std::process::Output {
     let output = compile_app(entry);
     assert!(
@@ -43,6 +78,21 @@ fn compile_app_expect_failure(entry: &Path) -> std::process::Output {
     assert!(
         !output.status.success(),
         "expected app compile failure\nstdout=\n{}\nstderr=\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    output
+}
+
+fn compile_app_with_roots_expect_success(
+    entry: &Path,
+    std_root: Option<&Path>,
+    package_store_root: Option<&Path>,
+) -> std::process::Output {
+    let output = compile_app_with_roots(entry, std_root, package_store_root);
+    assert!(
+        output.status.success(),
+        "expected rooted app compile success\nstdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
@@ -122,6 +172,42 @@ fn app_harness_run_helper_executes_built_binary() {
         output.status.success(),
         "compiled app binary should run successfully"
     );
+
+    fs::remove_dir_all(&temp_root).ok();
+}
+
+#[test]
+fn app_harness_root_helpers_support_std_and_pkg_layouts() {
+    let temp_root = unique_temp_root("root_helpers");
+    let app_root = temp_root.join("app");
+    let std_root = temp_root.join("std");
+    let pkg_root = temp_root.join("pkg");
+    let math_root = pkg_root.join("math");
+
+    fs::create_dir_all(&app_root).expect("app root");
+    fs::create_dir_all(std_root.join("fmt")).expect("std root");
+    fs::create_dir_all(math_root.join("src")).expect("pkg src");
+
+    fs::write(
+        app_root.join("main.fol"),
+        concat!(
+            "use fmt: std = {\"fmt\"};\n",
+            "use math: pkg = {math};\n",
+            "fun[] main(): int = {\n",
+            "    return std_answer\n",
+            "}\n",
+        ),
+    )
+    .expect("app source");
+    fs::write(std_root.join("fmt").join("lib.fol"), "var[exp] std_answer: int = 3\n")
+        .expect("std source");
+    fs::write(math_root.join("package.yaml"), "name: math\nversion: 0.1.0\n")
+        .expect("pkg manifest");
+    fs::write(math_root.join("build.fol"), "def root: loc = \"src\"\n").expect("pkg build");
+    fs::write(math_root.join("src").join("lib.fol"), "var[exp] pkg_answer: int = 4\n")
+        .expect("pkg source");
+
+    compile_app_with_roots_expect_success(&app_root, Some(&std_root), Some(&pkg_root));
 
     fs::remove_dir_all(&temp_root).ok();
 }
