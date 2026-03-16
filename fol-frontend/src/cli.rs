@@ -141,40 +141,100 @@ pub struct NewCommand {
     disable_help_subcommand = true
 )]
 pub struct FrontendCli {
-    #[arg(value_name = "FILE_OR_FOLDER")]
+    #[arg(
+        value_name = "FILE_OR_FOLDER",
+        help = "Input FOL file or folder to compile directly"
+    )]
     pub input: Option<String>,
 
-    #[arg(long, global = true, env = "FOL_OUTPUT", value_enum, default_value_t = OutputMode::Human)]
+    #[arg(
+        long,
+        global = true,
+        env = "FOL_OUTPUT",
+        value_enum,
+        default_value_t = OutputMode::Human,
+        help = "Select frontend output mode"
+    )]
     pub output: OutputMode,
 
-    #[arg(long, global = true, action = clap::ArgAction::SetTrue)]
+    #[arg(
+        long,
+        global = true,
+        action = clap::ArgAction::SetTrue,
+        help = "Render direct-compile diagnostics as JSON"
+    )]
     pub json: bool,
 
-    #[arg(long, global = true, env = "FOL_COLOR", value_enum, default_value_t = ColorPolicy::Auto)]
+    #[arg(
+        long,
+        global = true,
+        env = "FOL_COLOR",
+        value_enum,
+        default_value_t = ColorPolicy::Auto,
+        help = "Select frontend color policy"
+    )]
     pub color: ColorPolicy,
 
-    #[arg(long, global = true, env = "FOL_PROFILE", value_enum)]
+    #[arg(
+        long,
+        global = true,
+        env = "FOL_PROFILE",
+        value_enum,
+        help = "Select the build profile"
+    )]
     pub profile: Option<FrontendProfile>,
 
-    #[arg(long, global = true, conflicts_with_all = ["release", "profile"])]
+    #[arg(
+        long,
+        global = true,
+        conflicts_with_all = ["release", "profile"],
+        help = "Force the debug profile"
+    )]
     pub debug: bool,
 
-    #[arg(long, global = true, conflicts_with_all = ["debug", "profile"])]
+    #[arg(
+        long,
+        global = true,
+        conflicts_with_all = ["debug", "profile"],
+        help = "Force the release profile"
+    )]
     pub release: bool,
 
-    #[arg(long, global = true, value_name = "DIR")]
+    #[arg(
+        long,
+        global = true,
+        value_name = "DIR",
+        help = "Override the standard-library root"
+    )]
     pub std_root: Option<String>,
 
-    #[arg(long, global = true, value_name = "DIR")]
+    #[arg(
+        long,
+        global = true,
+        value_name = "DIR",
+        help = "Override the installed package-store root"
+    )]
     pub package_store_root: Option<String>,
 
-    #[arg(long, global = true)]
+    #[arg(
+        long,
+        global = true,
+        help = "Print a deterministic lowered-workspace snapshot"
+    )]
     pub dump_lowered: bool,
 
-    #[arg(long, global = true)]
+    #[arg(
+        long,
+        global = true,
+        help = "Emit the generated Rust backend crate and stop"
+    )]
     pub emit_rust: bool,
 
-    #[arg(long, global = true)]
+    #[arg(
+        long,
+        global = true,
+        help = "Keep the generated backend crate directory"
+    )]
     pub keep_build_dir: bool,
 
     #[command(subcommand)]
