@@ -1,3 +1,4 @@
+use crate::OutputMode;
 use clap::{Args, CommandFactory, Parser, Subcommand};
 
 const AFTER_HELP: &str = "\
@@ -47,6 +48,9 @@ pub struct UnitCommand;
     disable_help_subcommand = true
 )]
 pub struct FrontendCli {
+    #[arg(long, global = true, value_enum, default_value_t = OutputMode::Human)]
+    pub output: OutputMode,
+
     #[command(subcommand)]
     pub command: Option<FrontendCommand>,
 }
@@ -86,6 +90,7 @@ mod tests {
     fn derive_root_parser_accepts_empty_invocation() {
         let cli = FrontendCli::parse_from(["fol"]);
 
+        assert_eq!(cli.output, OutputMode::Human);
         assert_eq!(cli.command, None);
     }
 
@@ -105,6 +110,14 @@ mod tests {
         assert_eq!(build.command, Some(FrontendCommand::Build(UnitCommand)));
         assert_eq!(check.command, Some(FrontendCommand::Check(UnitCommand)));
         assert_eq!(work.command, Some(FrontendCommand::Work(UnitCommand)));
+    }
+
+    #[test]
+    fn output_flag_parses_global_output_mode() {
+        let cli = FrontendCli::parse_from(["fol", "--output", "json", "build"]);
+
+        assert_eq!(cli.output, OutputMode::Json);
+        assert_eq!(cli.command, Some(FrontendCommand::Build(UnitCommand)));
     }
 
     #[test]
