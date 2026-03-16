@@ -1597,4 +1597,53 @@ mod tests {
             )
         );
     }
+
+    #[test]
+    fn unsupported_lowered_instruction_families_fail_explicitly() {
+        let mut table = LoweredTypeTable::new();
+        let int_id = table.intern_builtin(LoweredBuiltinType::Int);
+        let package_identity =
+            package_identity("app", PackageSourceKind::Entry, "/workspace/app");
+        let mut routine = LoweredRoutine::new(LoweredRoutineId(21), "main", LoweredBlockId(0));
+        let local_id = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(0),
+            type_id: Some(int_id),
+            recoverable_error_type: None,
+            name: Some("value".to_string()),
+        });
+
+        let unsupported = [
+            LoweredInstr {
+                id: LoweredInstrId(60),
+                result: Some(local_id),
+                kind: LoweredInstrKind::ConstructRecord {
+                    type_id: int_id,
+                    fields: vec![("field".to_string(), local_id)],
+                },
+            },
+            LoweredInstr {
+                id: LoweredInstrId(61),
+                result: Some(local_id),
+                kind: LoweredInstrKind::ConstructEntry {
+                    type_id: int_id,
+                    variant: "ok".to_string(),
+                    payload: Some(local_id),
+                },
+            },
+            LoweredInstr {
+                id: LoweredInstrId(62),
+                result: Some(local_id),
+                kind: LoweredInstrKind::Cast {
+                    operand: local_id,
+                    target_type: int_id,
+                },
+            },
+        ];
+
+        for instruction in unsupported {
+            let error = render_core_instruction(&package_identity, &table, &routine, &instruction)
+                .expect_err("unsupported families should fail explicitly");
+            assert_eq!(error.kind(), crate::BackendErrorKind::Unsupported);
+        }
+    }
 }

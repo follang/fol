@@ -47,6 +47,15 @@ mod integration_tests {
             .expect("Should run fol CLI")
     }
 
+    fn run_fol_with_env(args: &[&str], envs: &[(&str, &str)]) -> std::process::Output {
+        let mut command = Command::new(env!("CARGO_BIN_EXE_fol"));
+        command.args(args);
+        for (key, value) in envs {
+            command.env(key, value);
+        }
+        command.output().expect("Should run fol CLI with env")
+    }
+
     fn parse_cli_json(output: &std::process::Output) -> Value {
         let stdout = String::from_utf8_lossy(&output.stdout);
         let json_start = stdout
@@ -170,6 +179,20 @@ mod integration_tests {
             ),
         )
         .expect("Should write early-return when lowering fixture");
+        fixture
+    }
+
+    fn write_backend_scalar_fixture(root: &Path) -> PathBuf {
+        let fixture = root.join("main.fol");
+        std::fs::write(
+            &fixture,
+            concat!(
+                "fun[] main(): int = {\n",
+                "    return 7\n",
+                "}\n",
+            ),
+        )
+        .expect("Should write backend scalar fixture");
         fixture
     }
 
@@ -3111,6 +3134,121 @@ mod integration_tests {
         assert!(
             human.contains("10_bad.fol"),
             "Diagnostic output should name the second file that actually failed"
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_backend_cli_build_mode_reports_compiled_binary_path() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("backend_cli_build");
+        fs::create_dir_all(&temp_root).expect("Should create backend build fixture dir");
+        let fixture = write_backend_scalar_fixture(&temp_root);
+
+        let output = run_fol(&[
+            fixture
+                .to_str()
+                .expect("Backend build fixture path should be valid utf-8"),
+        ]);
+
+        assert!(
+            output.status.success(),
+            "Backend build mode should succeed: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let binary_marker = "binary=";
+        let binary_path = stdout
+            .lines()
+            .find_map(|line| line.split(binary_marker).nth(1))
+            .expect("Backend build output should report a compiled binary path")
+            .trim();
+
+        assert!(
+            Path::new(binary_path).exists(),
+            "Reported backend binary should exist at '{}'",
+            binary_path
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_backend_cli_emit_rust_mode_reports_generated_crate_root() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("backend_cli_emit");
+        fs::create_dir_all(&temp_root).expect("Should create backend emit fixture dir");
+        let fixture = write_backend_scalar_fixture(&temp_root);
+
+        let output = run_fol(&[
+            "--emit-rust",
+            "--keep-build-dir",
+            fixture
+                .to_str()
+                .expect("Backend emit fixture path should be valid utf-8"),
+        ]);
+
+        assert!(
+            output.status.success(),
+            "Backend emit mode should succeed: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let root_marker = "root=";
+        let root_path = stdout
+            .lines()
+            .find_map(|line| line.split(root_marker).nth(1))
+            .and_then(|line| line.split(" files=").next())
+            .expect("Emit mode should report a generated crate root")
+            .trim();
+
+        assert!(
+            Path::new(root_path).exists(),
+            "Reported generated Rust crate root should exist at '{}'",
+            root_path
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_backend_cli_surfaces_build_failures_as_backend_diagnostics() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("backend_cli_fail");
+        fs::create_dir_all(&temp_root).expect("Should create backend failure fixture dir");
+        let fixture = write_backend_scalar_fixture(&temp_root);
+        let missing_runtime = temp_root.join("missing-runtime");
+
+        let output = run_fol_with_env(
+            &[fixture
+                .to_str()
+                .expect("Backend failure fixture path should be valid utf-8")],
+            &[(
+                "FOL_BACKEND_RUNTIME_PATH",
+                missing_runtime
+                    .to_str()
+                    .expect("Missing runtime path should be valid utf-8"),
+            )],
+        );
+
+        assert!(
+            !output.status.success(),
+            "Backend build failure should exit non-zero"
+        );
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(
+            stdout.contains("BackendBuildFailure"),
+            "Backend failure diagnostics should preserve backend error identity, got:\n{}",
+            stdout
         );
 
         fs::remove_dir_all(&temp_root).ok();

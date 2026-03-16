@@ -1,5 +1,6 @@
 use crate::{
     identity::BackendWorkspaceIdentity,
+    BackendError, BackendErrorKind, BackendResult,
     trace::{BackendEmittedSourceMap, BackendTrace},
 };
 use fol_lower::{LoweredEntryCandidate, LoweredWorkspace};
@@ -53,6 +54,48 @@ impl BackendSession {
         &self.entry_candidates
     }
 
+    pub fn select_buildable_entry_candidate(&self) -> BackendResult<&LoweredEntryCandidate> {
+        match self.entry_candidates.as_slice() {
+            [] => Err(BackendError::new(
+                BackendErrorKind::InvalidInput,
+                "lowered workspace does not expose a backend-buildable entry routine",
+            )),
+            [candidate] => {
+                let package = self.workspace.package(&candidate.package_identity).ok_or_else(|| {
+                    BackendError::new(
+                        BackendErrorKind::InvalidInput,
+                        format!(
+                            "entry candidate '{}' points at missing package '{}'",
+                            candidate.name, candidate.package_identity.display_name
+                        ),
+                    )
+                })?;
+                if !package.routine_decls.contains_key(&candidate.routine_id) {
+                    return Err(BackendError::new(
+                        BackendErrorKind::InvalidInput,
+                        format!(
+                            "entry candidate '{}' points at missing routine {:?}",
+                            candidate.name, candidate.routine_id
+                        ),
+                    ));
+                }
+                Ok(candidate)
+            }
+            candidates => Err(BackendError::new(
+                BackendErrorKind::Unsupported,
+                format!(
+                    "backend build expects exactly one entry routine but found {} ({})",
+                    candidates.len(),
+                    candidates
+                        .iter()
+                        .map(|candidate| candidate.name.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ),
+            )),
+        }
+    }
+
     pub fn workspace_identity(&self) -> &BackendWorkspaceIdentity {
         &self.workspace_identity
     }
@@ -80,8 +123,11 @@ impl BackendSession {
 
 #[cfg(test)]
 mod tests {
+    use crate::testing::package_identity;
     use super::BackendSession;
     use crate::testing::sample_lowered_workspace;
+    use fol_lower::LoweredEntryCandidate;
+    use fol_resolver::PackageSourceKind;
 
     #[test]
     fn backend_session_keeps_lowered_workspace_inputs() {
@@ -120,5 +166,44 @@ mod tests {
                 .workspace_identity()
                 .hash
         );
+    }
+
+    #[test]
+    fn backend_session_selects_exactly_one_buildable_entry_candidate() {
+        let session = BackendSession::new(sample_lowered_workspace());
+
+        let selected = session
+            .select_buildable_entry_candidate()
+            .expect("one entry candidate should stay buildable");
+
+        assert_eq!(selected.name, "main");
+    }
+
+    #[test]
+    fn backend_session_rejects_missing_and_ambiguous_entry_candidates() {
+        let workspace = sample_lowered_workspace();
+        let mut missing = BackendSession::new(workspace.clone());
+        missing.entry_candidates.clear();
+
+        let missing_error = missing
+            .select_buildable_entry_candidate()
+            .expect_err("missing entry candidates should fail");
+        assert!(missing_error
+            .to_string()
+            .contains("does not expose a backend-buildable entry routine"));
+
+        let mut ambiguous = BackendSession::new(workspace);
+        ambiguous.entry_candidates.push(LoweredEntryCandidate {
+            package_identity: package_identity("app", PackageSourceKind::Entry, "/workspace/app"),
+            routine_id: fol_lower::LoweredRoutineId(1),
+            name: "alt_main".to_string(),
+        });
+
+        let ambiguous_error = ambiguous
+            .select_buildable_entry_candidate()
+            .expect_err("multiple entry candidates should fail");
+        assert!(ambiguous_error
+            .to_string()
+            .contains("expects exactly one entry routine"));
     }
 }

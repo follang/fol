@@ -9,6 +9,7 @@
 mod compiler_diagnostics;
 
 use clap::{Arg, Command};
+use fol_backend::{emit_backend_artifact, summarize_emitted_artifact, BackendConfig, BackendMode, BackendSession};
 use fol_diagnostics::{DiagnosticLocation, DiagnosticReport, OutputFormat};
 use fol_intrinsics as _;
 use fol_lower::{render_lowered_workspace, LoweredWorkspace, Lowerer};
@@ -54,6 +55,18 @@ fn main() {
                 .help("Print a deterministic lowered-workspace snapshot after a successful compile")
                 .action(clap::ArgAction::SetTrue),
         )
+        .arg(
+            Arg::new("emit-rust")
+                .long("emit-rust")
+                .help("Emit the generated Rust backend crate and stop before building it")
+                .action(clap::ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("keep-build-dir")
+                .long("keep-build-dir")
+                .help("Keep the generated backend crate directory after emission/build")
+                .action(clap::ArgAction::SetTrue),
+        )
         .get_matches();
 
     let file_path = matches
@@ -67,6 +80,15 @@ fn main() {
         package_store_root: matches.get_one::<String>("package-store-root").cloned(),
     };
     let dump_lowered = matches.get_flag("dump-lowered");
+    let backend_config = BackendConfig {
+        mode: if matches.get_flag("emit-rust") {
+            BackendMode::EmitSource
+        } else {
+            BackendMode::BuildArtifact
+        },
+        keep_build_dir: matches.get_flag("keep-build-dir"),
+        ..BackendConfig::default()
+    };
     let output_format = if json_output {
         OutputFormat::Json
     } else {
@@ -87,8 +109,30 @@ fn main() {
             if dump_lowered && !json_output && !diagnostics.has_errors() {
                 println!("{}", render_lowered_workspace(&lowered));
             }
-            if !json_output && !diagnostics.has_errors() {
-                println!("✓ Compilation successful!");
+            if !diagnostics.has_errors() {
+                if lowered.entry_candidates().is_empty() {
+                    if !json_output {
+                        println!("✓ Compilation successful!");
+                    }
+                } else {
+                    let backend_session = BackendSession::new(lowered);
+                    let output_root = std::env::current_dir()
+                        .map(|cwd| cwd.join("target"))
+                        .unwrap_or_else(|_| std::path::PathBuf::from("target"));
+                    match emit_backend_artifact(&backend_session, &backend_config, &output_root) {
+                        Ok(artifact) => {
+                            if !json_output {
+                                println!("{}", summarize_emitted_artifact(&artifact));
+                                println!("✓ Compilation successful!");
+                            }
+                        }
+                        Err(error) => {
+                            diagnostics.add_error(&fol_types::BasicError {
+                                message: error.to_string(),
+                            }, None);
+                        }
+                    }
+                }
             }
         }
         Err(_) => {

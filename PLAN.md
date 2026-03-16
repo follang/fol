@@ -1071,7 +1071,7 @@ not full long-term compiler completion.
 
 ## 46. Phase 11: Entry Wrapper And Process Outcome
 
-#### 11.1
+#### 11.1 done
 - select one backend-buildable entry routine
 
 #### 11.2
@@ -1119,22 +1119,22 @@ not full long-term compiler completion.
 
 ## 49. Phase 14: CLI Integration
 
-#### 14.1
+#### 14.1 done
 - wire `fol-backend` after lowering in the root CLI
 
-#### 14.2
+#### 14.2 done
 - add CLI flag for emit-only mode
 
-#### 14.3
+#### 14.3 done
 - add CLI flag for keeping generated backend artifacts
 
-#### 14.4
+#### 14.4 done
 - add CLI output for final artifact path
 
-#### 14.5
+#### 14.5 done
 - add end-to-end CLI tests for successful binary builds
 
-#### 14.6
+#### 14.6 done
 - add end-to-end CLI tests for backend diagnostics on emission/build failures
 
 ## 50. Phase 15: Behavioral End-To-End Coverage
@@ -1165,16 +1165,16 @@ not full long-term compiler completion.
 
 ## 51. Phase 16: Backend Hardening
 
-#### 16.1
+#### 16.1 done
 - add backend verification for impossible lowered-to-target situations
 
-#### 16.2
+#### 16.2 done
 - add deterministic emission-order tests
 
 #### 16.3
 - add stable source-to-output traceability checks
 
-#### 16.4
+#### 16.4 done
 - audit all currently supported lowered `V1` surfaces and ensure they either emit or fail explicitly with backend diagnostics
 
 ## 52. Phase 17: Docs Closeout

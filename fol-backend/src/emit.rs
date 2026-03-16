@@ -17,29 +17,25 @@ pub fn emit_cargo_toml(session: &BackendSession) -> EmittedRustFile {
         path: layout.cargo_toml_path,
         module_name: "cargo".to_string(),
         contents: format!(
-            "[package]\nname = \"{package_name}\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]\nfol-runtime = {{ path = \"{}\" }}\n",
+            "[package]\nname = \"{package_name}\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[workspace]\n\n[dependencies]\nfol-runtime = {{ path = \"{}\" }}\n",
             runtime_path.display()
         ),
     }
 }
 
-pub fn emit_main_rs(session: &BackendSession) -> EmittedRustFile {
+pub fn emit_main_rs(session: &BackendSession) -> BackendResult<EmittedRustFile> {
     let layout = plan_generated_crate_layout(session);
+    let entry_candidate = session.select_buildable_entry_candidate()?;
     let entry_name = &session.entry_identity().display_name;
-    let entry_candidates = session
-        .entry_candidates()
-        .iter()
-        .map(|candidate| format!("\"{}\"", candidate.name))
-        .collect::<Vec<_>>()
-        .join(", ");
 
-    EmittedRustFile {
+    Ok(EmittedRustFile {
         path: layout.main_rs_path,
         module_name: "main".to_string(),
         contents: format!(
-            "use fol_runtime::prelude as rt;\n\nmod packages;\n\nfn main() {{\n    let _runtime = rt::crate_name();\n    let _entry_package = \"{entry_name}\";\n    let _entry_candidates = [{entry_candidates}];\n    let _ = (&_runtime, &_entry_package, &_entry_candidates);\n}}\n"
+            "use fol_runtime::prelude as rt;\n\nmod packages;\n\nfn main() {{\n    let _runtime = rt::crate_name();\n    let _entry_package = \"{entry_name}\";\n    let _entry_name = \"{}\";\n    let _ = (&_runtime, &_entry_package, &_entry_name);\n}}\n",
+            entry_candidate.name
         ),
-    }
+    })
 }
 
 pub fn emit_package_module_shells(session: &BackendSession) -> Vec<EmittedRustFile> {
@@ -111,19 +107,19 @@ pub fn emit_namespace_module_shells(session: &BackendSession) -> Vec<EmittedRust
         .collect()
 }
 
-pub fn emit_generated_crate_skeleton(session: &BackendSession) -> BackendArtifact {
+pub fn emit_generated_crate_skeleton(session: &BackendSession) -> BackendResult<BackendArtifact> {
     let layout = plan_generated_crate_layout(session);
     let mut files = Vec::new();
     files.push(emit_cargo_toml(session));
-    files.push(emit_main_rs(session));
+    files.push(emit_main_rs(session)?);
     files.extend(emit_package_module_shells(session));
     files.extend(emit_namespace_module_shells(session));
     files.sort_by(|left, right| left.path.cmp(&right.path));
 
-    BackendArtifact::RustSourceCrate {
+    Ok(BackendArtifact::RustSourceCrate {
         root: layout.crate_dir_name,
         files,
-    }
+    })
 }
 
 pub fn write_generated_crate(output_root: &Path, artifact: &BackendArtifact) -> BackendResult<PathBuf> {
@@ -237,11 +233,17 @@ pub fn emit_backend_artifact(
     output_root: &Path,
 ) -> BackendResult<BackendArtifact> {
     let build_root = prepare_generated_build_dir(output_root)?;
-    let source_artifact = emit_generated_crate_skeleton(session);
+    let source_artifact = emit_generated_crate_skeleton(session)?;
     let crate_root = write_generated_crate(&build_root, &source_artifact)?;
 
     if matches!(config.mode, BackendMode::EmitSource) {
-        return Ok(source_artifact);
+        let BackendArtifact::RustSourceCrate { files, .. } = source_artifact else {
+            unreachable!("generated crate skeleton should stay a Rust source crate");
+        };
+        return Ok(BackendArtifact::RustSourceCrate {
+            root: crate_root.display().to_string(),
+            files,
+        });
     }
 
     let built_binary = build_generated_crate(&crate_root)?;
@@ -306,6 +308,9 @@ pub fn summarize_emitted_artifact(artifact: &BackendArtifact) -> String {
 }
 
 fn runtime_dependency_path() -> PathBuf {
+    if let Some(path) = std::env::var_os("FOL_BACKEND_RUNTIME_PATH") {
+        return PathBuf::from(path);
+    }
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .expect("workspace root")
@@ -354,14 +359,14 @@ mod tests {
     fn main_rs_emission_keeps_runtime_import_and_entry_metadata_shell() {
         let session = BackendSession::new(sample_lowered_workspace());
 
-        let emitted = emit_main_rs(&session);
+        let emitted = emit_main_rs(&session).expect("main.rs");
 
         assert_eq!(emitted.path, "src/main.rs");
         assert_eq!(emitted.module_name, "main");
         assert!(emitted.contents.contains("use fol_runtime::prelude as rt;"));
         assert!(emitted.contents.contains("mod packages;"));
         assert!(emitted.contents.contains("let _entry_package = \"app\";"));
-        assert!(emitted.contents.contains("\"main\""));
+        assert!(emitted.contents.contains("let _entry_name = \"main\";"));
     }
 
     #[test]
@@ -403,7 +408,7 @@ mod tests {
     fn generated_crate_skeleton_snapshot_stays_stable_for_foundation_backend_shape() {
         let session = BackendSession::new(sample_lowered_workspace());
 
-        let artifact = emit_generated_crate_skeleton(&session);
+        let artifact = emit_generated_crate_skeleton(&session).expect("artifact");
 
         let BackendArtifact::RustSourceCrate { root, files } = artifact else {
             panic!("expected RustSourceCrate artifact");
@@ -430,7 +435,7 @@ mod tests {
     #[test]
     fn generated_crate_writer_materializes_files_under_backend_build_root() {
         let session = BackendSession::new(sample_lowered_workspace());
-        let artifact = emit_generated_crate_skeleton(&session);
+        let artifact = emit_generated_crate_skeleton(&session).expect("artifact");
         let temp_root = temp_root("write");
         let build_root = prepare_generated_build_dir(&temp_root).expect("build root");
 
@@ -459,7 +464,7 @@ mod tests {
     #[test]
     fn cargo_build_support_compiles_the_generated_crate_skeleton() {
         let session = BackendSession::new(sample_lowered_workspace());
-        let artifact = emit_generated_crate_skeleton(&session);
+        let artifact = emit_generated_crate_skeleton(&session).expect("artifact");
         let temp_root = temp_root("cargo_build");
         let build_root = prepare_generated_build_dir(&temp_root).expect("build root");
         let crate_root = write_generated_crate(&build_root, &artifact).expect("write crate");
@@ -550,7 +555,7 @@ mod tests {
     #[test]
     fn full_generated_crate_snapshot_stays_stable_after_backend_materialization() {
         let session = BackendSession::new(sample_lowered_workspace());
-        let artifact = emit_generated_crate_skeleton(&session);
+        let artifact = emit_generated_crate_skeleton(&session).expect("artifact");
 
         let summary = summarize_emitted_artifact(&artifact);
 
@@ -558,5 +563,21 @@ mod tests {
         assert!(summary.contains("Cargo.toml"));
         assert!(summary.contains("src/main.rs"));
         assert!(summary.contains("src/packages/pkg__entry__app/root.rs"));
+    }
+
+    #[test]
+    fn generated_crate_artifact_file_order_stays_deterministic() {
+        let session = BackendSession::new(sample_lowered_workspace());
+        let artifact = emit_generated_crate_skeleton(&session).expect("artifact");
+
+        let BackendArtifact::RustSourceCrate { files, .. } = artifact else {
+            panic!("expected RustSourceCrate artifact");
+        };
+
+        let mut sorted_paths = files.iter().map(|file| file.path.clone()).collect::<Vec<_>>();
+        let original_paths = sorted_paths.clone();
+        sorted_paths.sort();
+
+        assert_eq!(original_paths, sorted_paths);
     }
 }

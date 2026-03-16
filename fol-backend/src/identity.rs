@@ -9,9 +9,10 @@ pub struct BackendWorkspaceIdentity {
 impl BackendWorkspaceIdentity {
     pub fn for_workspace(workspace: &LoweredWorkspace) -> Self {
         let hash = stable_workspace_hash(workspace);
+        let short_entry = truncate_component(&sanitize_component(&workspace.entry_identity().display_name));
         let crate_dir_name = format!(
             "fol-build-{}-{}",
-            sanitize_component(&workspace.entry_identity().display_name),
+            short_entry,
             &hash[..12]
         );
         Self {
@@ -39,6 +40,14 @@ fn sanitize_component(raw: &str) -> String {
         output = output.replace("__", "_");
     }
     output.trim_matches('_').to_string()
+}
+
+fn truncate_component(raw: &str) -> String {
+    const MAX_LEN: usize = 12;
+    if raw.len() <= MAX_LEN {
+        return raw.to_string();
+    }
+    raw[..MAX_LEN].trim_matches('_').to_string()
 }
 
 fn fnv1a64(bytes: &[u8]) -> u64 {
