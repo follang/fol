@@ -15,7 +15,7 @@ impl OutputMode {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
 pub enum ColorPolicy {
     Auto,
     Always,

@@ -1,4 +1,4 @@
-use crate::OutputMode;
+use crate::{ColorPolicy, OutputMode};
 use clap::{Args, CommandFactory, Parser, Subcommand};
 
 const AFTER_HELP: &str = "\
@@ -51,6 +51,9 @@ pub struct FrontendCli {
     #[arg(long, global = true, value_enum, default_value_t = OutputMode::Human)]
     pub output: OutputMode,
 
+    #[arg(long, global = true, value_enum, default_value_t = ColorPolicy::Auto)]
+    pub color: ColorPolicy,
+
     #[command(subcommand)]
     pub command: Option<FrontendCommand>,
 }
@@ -91,6 +94,7 @@ mod tests {
         let cli = FrontendCli::parse_from(["fol"]);
 
         assert_eq!(cli.output, OutputMode::Human);
+        assert_eq!(cli.color, ColorPolicy::Auto);
         assert_eq!(cli.command, None);
     }
 
@@ -117,6 +121,14 @@ mod tests {
         let cli = FrontendCli::parse_from(["fol", "--output", "json", "build"]);
 
         assert_eq!(cli.output, OutputMode::Json);
+        assert_eq!(cli.command, Some(FrontendCommand::Build(UnitCommand)));
+    }
+
+    #[test]
+    fn color_flag_parses_global_color_policy() {
+        let cli = FrontendCli::parse_from(["fol", "--color", "never", "build"]);
+
+        assert_eq!(cli.color, ColorPolicy::Never);
         assert_eq!(cli.command, Some(FrontendCommand::Build(UnitCommand)));
     }
 
