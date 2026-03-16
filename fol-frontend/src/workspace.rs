@@ -16,6 +16,8 @@ pub struct FrontendWorkspace {
     pub members: Vec<PackageRoot>,
     pub std_root_override: Option<PathBuf>,
     pub package_store_root_override: Option<PathBuf>,
+    pub build_root: PathBuf,
+    pub cache_root: PathBuf,
 }
 
 impl FrontendWorkspace {
@@ -25,12 +27,16 @@ impl FrontendWorkspace {
             members: Vec::new(),
             std_root_override: None,
             package_store_root_override: None,
+            build_root: PathBuf::from("/tmp/demo/.fol/build"),
+            cache_root: PathBuf::from("/tmp/demo/.fol/cache"),
         }
     }
 
     pub fn with_members(root: WorkspaceRoot, member_paths: &[PathBuf]) -> FrontendResult<Self> {
         Ok(Self {
             members: enumerate_member_packages(&root, member_paths)?,
+            build_root: default_build_root(&root.root),
+            cache_root: default_cache_root(&root.root),
             root,
             std_root_override: None,
             package_store_root_override: None,
@@ -48,6 +54,16 @@ impl FrontendWorkspace {
                 .package_store_root_override
                 .as_ref()
                 .map(|path| absolute_member_root(&root.root, path)),
+            build_root: config
+                .build_root_override
+                .as_ref()
+                .map(|path| absolute_member_root(&root.root, path))
+                .unwrap_or_else(|| default_build_root(&root.root)),
+            cache_root: config
+                .cache_root_override
+                .as_ref()
+                .map(|path| absolute_member_root(&root.root, path))
+                .unwrap_or_else(|| default_cache_root(&root.root)),
             root,
         })
     }
@@ -170,6 +186,14 @@ fn absolute_member_root(workspace_root: &Path, member: &Path) -> PathBuf {
     }
 }
 
+fn default_build_root(workspace_root: &Path) -> PathBuf {
+    workspace_root.join(".fol").join("build")
+}
+
+fn default_cache_root(workspace_root: &Path) -> PathBuf {
+    workspace_root.join(".fol").join("cache")
+}
+
 fn strip_quotes(raw: &str) -> &str {
     let bytes = raw.as_bytes();
     if bytes.len() >= 2 && bytes.first() == bytes.last() {
@@ -200,6 +224,8 @@ mod tests {
         assert!(workspace.members.is_empty());
         assert!(workspace.std_root_override.is_none());
         assert!(workspace.package_store_root_override.is_none());
+        assert_eq!(workspace.build_root, PathBuf::from("/tmp/demo/.fol/build"));
+        assert_eq!(workspace.cache_root, PathBuf::from("/tmp/demo/.fol/cache"));
     }
 
     #[test]
@@ -305,6 +331,8 @@ mod tests {
             workspace.package_store_root_override,
             Some(root.join(".fol/pkg"))
         );
+        assert_eq!(workspace.build_root, root.join(".fol/build"));
+        assert_eq!(workspace.cache_root, root.join(".fol/cache"));
 
         fs::remove_dir_all(root).ok();
     }
@@ -326,6 +354,48 @@ mod tests {
             config.package_store_root_override,
             Some(PathBuf::from(".fol/pkg"))
         );
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn workspace_config_loading_extracts_build_and_cache_overrides() {
+        let root = std::env::temp_dir().join(format!("fol_frontend_config_build_cache_{}", std::process::id()));
+        fs::create_dir_all(&root).unwrap();
+        fs::write(
+            root.join("fol.work.yaml"),
+            "members:\n  - app\nbuild_root: .artifacts/build\ncache_root: .artifacts/cache\n",
+        )
+        .unwrap();
+
+        let config = load_workspace_config(&WorkspaceRoot::new(root.clone())).unwrap();
+
+        assert_eq!(config.build_root_override, Some(PathBuf::from(".artifacts/build")));
+        assert_eq!(config.cache_root_override, Some(PathBuf::from(".artifacts/cache")));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn workspace_from_config_prefers_explicit_build_and_cache_roots() {
+        let root = std::env::temp_dir().join(format!("fol_frontend_workspace_paths_{}", std::process::id()));
+        let app = root.join("app");
+        fs::create_dir_all(&app).unwrap();
+        fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
+
+        let workspace = FrontendWorkspace::from_config(
+            WorkspaceRoot::new(root.clone()),
+            &FrontendWorkspaceConfig {
+                members: vec![PathBuf::from("app")],
+                build_root_override: Some(PathBuf::from(".artifacts/build")),
+                cache_root_override: Some(PathBuf::from(".artifacts/cache")),
+                ..FrontendWorkspaceConfig::default()
+            },
+        )
+        .unwrap();
+
+        assert_eq!(workspace.build_root, root.join(".artifacts/build"));
+        assert_eq!(workspace.cache_root, root.join(".artifacts/cache"));
 
         fs::remove_dir_all(root).ok();
     }
