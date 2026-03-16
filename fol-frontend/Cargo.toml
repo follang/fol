@@ -1,0 +1,12 @@
+[package]
+name = "fol-frontend"
+version = "0.1.0"
+edition = "2021"
+description = "User-facing frontend crate for the FOL toolchain"
+
+[lib]
+name = "fol_frontend"
+path = "src/lib.rs"
+
+[dependencies]
+clap = { version = "4.0", features = ["derive"] }

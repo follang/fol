@@ -481,6 +481,11 @@ fn backend_crate_foundation_smoke_compiles() {
 }
 
 #[test]
+fn frontend_crate_foundation_smoke_compiles() {
+    assert_eq!(fol_frontend::crate_name(), "fol-frontend");
+}
+
+#[test]
 fn backend_public_api_shell_smoke_compiles() {
     let backend = fol_backend::Backend::new();
     assert_eq!(format!("{backend:?}"), "Backend");
