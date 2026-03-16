@@ -1,4 +1,4 @@
-use crate::{FrontendOutputConfig, OutputMode};
+use crate::{FrontendCommandResult, FrontendError, FrontendOutputConfig, OutputMode};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FrontendOutput {
@@ -42,12 +42,42 @@ impl FrontendOutput {
             .join(" ");
         format!("{label}: {rendered}")
     }
+
+    pub fn render_json_result(
+        &self,
+        result: &FrontendCommandResult,
+    ) -> Result<String, serde_json::Error> {
+        serde_json::to_string_pretty(&serde_json::json!({
+            "command": result.command,
+            "summary": result.summary,
+            "artifacts": result
+                .artifacts
+                .iter()
+                .map(|artifact| serde_json::json!({
+                    "kind": artifact.kind.as_str(),
+                    "label": artifact.label,
+                    "path": artifact.path.as_ref().map(|path| path.to_string_lossy().to_string()),
+                }))
+                .collect::<Vec<_>>(),
+        }))
+    }
+
+    pub fn render_json_error(&self, error: &FrontendError) -> Result<String, serde_json::Error> {
+        serde_json::to_string_pretty(&serde_json::json!({
+            "kind": error.kind().as_str(),
+            "message": error.message(),
+        }))
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::FrontendOutput;
-    use crate::{FrontendOutputConfig, OutputMode};
+    use crate::{
+        FrontendArtifactKind, FrontendArtifactSummary, FrontendCommandResult, FrontendError,
+        FrontendErrorKind, FrontendOutputConfig, OutputMode,
+    };
+    use std::path::PathBuf;
 
     #[test]
     fn output_helper_keeps_frontend_output_config() {
@@ -84,5 +114,26 @@ mod tests {
             ),
             "status: kind=binary path=target/bin/demo"
         );
+    }
+
+    #[test]
+    fn json_helpers_render_structured_result_and_error_payloads() {
+        let output = FrontendOutput::new(FrontendOutputConfig::default());
+        let result = FrontendCommandResult::new("build", "built binary").with_artifact(
+            FrontendArtifactSummary::new(
+                FrontendArtifactKind::Binary,
+                "demo",
+                Some(PathBuf::from("target/bin/demo")),
+            ),
+        );
+        let error = FrontendError::new(FrontendErrorKind::CommandFailed, "failed");
+
+        let rendered_result = output.render_json_result(&result).unwrap();
+        let rendered_error = output.render_json_error(&error).unwrap();
+
+        assert!(rendered_result.contains("\"command\": \"build\""));
+        assert!(rendered_result.contains("\"kind\": \"binary\""));
+        assert!(rendered_error.contains("\"kind\": \"FrontendCommandFailed\""));
+        assert!(rendered_error.contains("\"message\": \"failed\""));
     }
 }

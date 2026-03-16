@@ -573,6 +573,8 @@ fn frontend_output_helper_surface_smoke_compiles() {
         output.render_plain_field("artifact", "target/bin/demo"),
         "artifact: target/bin/demo"
     );
+    let result = fol_frontend::FrontendCommandResult::new("build", "built binary");
+    assert!(output.render_json_result(&result).is_ok());
 }
 
 #[test]
