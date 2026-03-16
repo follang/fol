@@ -563,6 +563,11 @@ fn frontend_output_helper_surface_smoke_compiles() {
 
     assert_eq!(output.config().mode, fol_frontend::OutputMode::Human);
     assert!(!output.is_machine_readable());
+    assert_eq!(output.render_human_header("Build"), "== Build ==");
+    assert_eq!(
+        output.render_human_status("Built", "target/bin/demo"),
+        "Built: target/bin/demo"
+    );
 }
 
 #[test]
