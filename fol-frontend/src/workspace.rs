@@ -14,6 +14,8 @@ pub struct FrontendWorkspaceConfig {
 pub struct FrontendWorkspace {
     pub root: WorkspaceRoot,
     pub members: Vec<PackageRoot>,
+    pub std_root_override: Option<PathBuf>,
+    pub package_store_root_override: Option<PathBuf>,
 }
 
 impl FrontendWorkspace {
@@ -21,12 +23,31 @@ impl FrontendWorkspace {
         Self {
             root,
             members: Vec::new(),
+            std_root_override: None,
+            package_store_root_override: None,
         }
     }
 
     pub fn with_members(root: WorkspaceRoot, member_paths: &[PathBuf]) -> FrontendResult<Self> {
         Ok(Self {
             members: enumerate_member_packages(&root, member_paths)?,
+            root,
+            std_root_override: None,
+            package_store_root_override: None,
+        })
+    }
+
+    pub fn from_config(root: WorkspaceRoot, config: &FrontendWorkspaceConfig) -> FrontendResult<Self> {
+        Ok(Self {
+            members: enumerate_member_packages(&root, &config.members)?,
+            std_root_override: config
+                .std_root_override
+                .as_ref()
+                .map(|path| absolute_member_root(&root.root, path)),
+            package_store_root_override: config
+                .package_store_root_override
+                .as_ref()
+                .map(|path| absolute_member_root(&root.root, path)),
             root,
         })
     }
@@ -177,6 +198,8 @@ mod tests {
             PathBuf::from("/tmp/demo/fol.work.yaml")
         );
         assert!(workspace.members.is_empty());
+        assert!(workspace.std_root_override.is_none());
+        assert!(workspace.package_store_root_override.is_none());
     }
 
     #[test]
@@ -254,6 +277,55 @@ mod tests {
 
         assert_eq!(error.kind(), crate::FrontendErrorKind::InvalidInput);
         assert!(error.message().contains("must declare members as a list"));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn workspace_from_config_resolves_std_and_package_store_overrides() {
+        let root = std::env::temp_dir().join(format!("fol_frontend_config_overrides_{}", std::process::id()));
+        let app = root.join("app");
+        fs::create_dir_all(&app).unwrap();
+        fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
+
+        let workspace = FrontendWorkspace::from_config(
+            WorkspaceRoot::new(root.clone()),
+            &FrontendWorkspaceConfig {
+                members: vec![PathBuf::from("app")],
+                std_root_override: Some(PathBuf::from("std")),
+                package_store_root_override: Some(PathBuf::from(".fol/pkg")),
+                ..FrontendWorkspaceConfig::default()
+            },
+        )
+        .unwrap();
+
+        assert_eq!(workspace.members.len(), 1);
+        assert_eq!(workspace.std_root_override, Some(root.join("std")));
+        assert_eq!(
+            workspace.package_store_root_override,
+            Some(root.join(".fol/pkg"))
+        );
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn workspace_config_loading_extracts_std_and_package_store_overrides() {
+        let root = std::env::temp_dir().join(format!("fol_frontend_config_std_pkg_{}", std::process::id()));
+        fs::create_dir_all(&root).unwrap();
+        fs::write(
+            root.join("fol.work.yaml"),
+            "members:\n  - app\nstd_root: std\npackage_store_root: .fol/pkg\n",
+        )
+        .unwrap();
+
+        let config = load_workspace_config(&WorkspaceRoot::new(root.clone())).unwrap();
+
+        assert_eq!(config.std_root_override, Some(PathBuf::from("std")));
+        assert_eq!(
+            config.package_store_root_override,
+            Some(PathBuf::from(".fol/pkg"))
+        );
 
         fs::remove_dir_all(root).ok();
     }

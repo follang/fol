@@ -573,6 +573,8 @@ fn frontend_workspace_model_surface_smoke_compiles() {
 
     assert_eq!(workspace.root.root, std::path::PathBuf::from("/tmp/demo"));
     assert!(workspace.members.is_empty());
+    assert!(workspace.std_root_override.is_none());
+    assert!(workspace.package_store_root_override.is_none());
 }
 
 #[test]
