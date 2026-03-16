@@ -5,7 +5,9 @@
 
 mod config;
 mod cli;
+mod clean;
 mod compile;
+mod completion;
 mod discovery;
 mod errors;
 mod fetch;
@@ -20,6 +22,7 @@ pub use cli::{
     EmitCommand, EmitSubcommand, FrontendCli, FrontendCommand, FrontendProfile, InitCommand,
     NewCommand, UnitCommand,
 };
+pub use clean::{clean_workspace, clean_workspace_with_config};
 pub use config::FrontendConfig;
 pub use compile::{
     build_workspace, build_workspace_for_profile_with_config, build_workspace_with_config,
@@ -27,6 +30,9 @@ pub use compile::{
     emit_lowered, emit_lowered_with_config, emit_rust_with_config, profile_build_root,
     run_workspace, run_workspace_with_args_and_config, run_workspace_with_config, test_workspace,
     test_package, test_package_with_config, test_workspace_with_config,
+};
+pub use completion::{
+    completion_command, generate_completion_script, internal_complete_command, CompletionShell,
 };
 pub use errors::{FrontendError, FrontendErrorKind, FrontendResult};
 pub use fetch::{
