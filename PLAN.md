@@ -988,7 +988,7 @@ not full long-term compiler completion.
 #### 7.3 done
 - emit field access
 
-#### 7.4
+#### 7.4 done
 - emit scalar intrinsic calls as native Rust operations
 
 #### 7.5

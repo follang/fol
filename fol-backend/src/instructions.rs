@@ -2,6 +2,7 @@ use crate::{
     mangle_global_name, mangle_local_name, mangle_routine_name, BackendError, BackendErrorKind,
     BackendResult,
 };
+use fol_intrinsics::intrinsic_by_id;
 use fol_lower::{LoweredInstr, LoweredInstrKind, LoweredOperand, LoweredRoutine};
 use fol_resolver::PackageIdentity;
 
@@ -63,9 +64,45 @@ pub fn render_core_instruction(
             let base = render_local_name(package_identity, routine, *base)?;
             Ok(format!("let {result} = {base}.{field}.clone();"))
         }
+        LoweredInstrKind::IntrinsicCall { intrinsic, args } => {
+            let entry = intrinsic_by_id(*intrinsic).ok_or_else(|| {
+                BackendError::new(
+                    BackendErrorKind::InvalidInput,
+                    format!("intrinsic id {:?} is not registered", intrinsic),
+                )
+            })?;
+            let rendered_args = args
+                .iter()
+                .map(|local_id| render_local_name(package_identity, routine, *local_id))
+                .collect::<BackendResult<Vec<_>>>()?;
+            let expression = render_native_intrinsic_expression(entry.name, &rendered_args)?;
+            match instruction.result {
+                Some(_) => {
+                    let result = rendered_result_local(package_identity, routine, instruction)?;
+                    Ok(format!("let {result} = {expression};"))
+                }
+                None => Ok(format!("{expression};")),
+            }
+        }
         other => Err(BackendError::new(
             BackendErrorKind::Unsupported,
             format!("core instruction emission is not implemented yet for {other:?}"),
+        )),
+    }
+}
+
+fn render_native_intrinsic_expression(name: &str, args: &[String]) -> BackendResult<String> {
+    match (name, args) {
+        ("eq", [lhs, rhs]) => Ok(format!("{lhs} == {rhs}")),
+        ("nq", [lhs, rhs]) => Ok(format!("{lhs} != {rhs}")),
+        ("lt", [lhs, rhs]) => Ok(format!("{lhs} < {rhs}")),
+        ("gt", [lhs, rhs]) => Ok(format!("{lhs} > {rhs}")),
+        ("ge", [lhs, rhs]) => Ok(format!("{lhs} >= {rhs}")),
+        ("le", [lhs, rhs]) => Ok(format!("{lhs} <= {rhs}")),
+        ("not", [value]) => Ok(format!("!{value}")),
+        (other, _) => Err(BackendError::new(
+            BackendErrorKind::Unsupported,
+            format!("native Rust intrinsic emission is not implemented yet for '.{other}(...)'"),
         )),
     }
 }
@@ -120,6 +157,7 @@ fn render_operand(operand: &LoweredOperand) -> String {
 mod tests {
     use super::render_core_instruction;
     use crate::testing::package_identity;
+    use fol_intrinsics::intrinsic_by_canonical_name;
     use fol_lower::{
         LoweredBlockId, LoweredBuiltinType, LoweredInstr, LoweredInstrId, LoweredInstrKind,
         LoweredLocal, LoweredLocalId, LoweredOperand, LoweredRoutine, LoweredRoutineId,
@@ -247,6 +285,75 @@ mod tests {
         assert_eq!(
             rendered,
             "let l__pkg__entry__app__r4__l1__age = l__pkg__entry__app__r4__l0__user.age.clone();"
+        );
+    }
+
+    #[test]
+    fn core_instruction_rendering_emits_scalar_intrinsics_as_native_rust_ops() {
+        let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
+        let mut table = LoweredTypeTable::new();
+        let int_id = table.intern_builtin(LoweredBuiltinType::Int);
+        let bool_id = table.intern_builtin(LoweredBuiltinType::Bool);
+        let mut routine = LoweredRoutine::new(LoweredRoutineId(5), "main", LoweredBlockId(0));
+        let lhs = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(0),
+            type_id: Some(int_id),
+            recoverable_error_type: None,
+            name: Some("lhs".to_string()),
+        });
+        let rhs = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(1),
+            type_id: Some(int_id),
+            recoverable_error_type: None,
+            name: Some("rhs".to_string()),
+        });
+        let bool_value = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(2),
+            type_id: Some(bool_id),
+            recoverable_error_type: None,
+            name: Some("flag".to_string()),
+        });
+        let eq_result = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(3),
+            type_id: Some(bool_id),
+            recoverable_error_type: None,
+            name: Some("same".to_string()),
+        });
+        let not_result = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(4),
+            type_id: Some(bool_id),
+            recoverable_error_type: None,
+            name: Some("flipped".to_string()),
+        });
+        let eq_instr = LoweredInstr {
+            id: LoweredInstrId(5),
+            result: Some(eq_result),
+            kind: LoweredInstrKind::IntrinsicCall {
+                intrinsic: intrinsic_by_canonical_name("eq").expect("eq").id,
+                args: vec![lhs, rhs],
+            },
+        };
+        let not_instr = LoweredInstr {
+            id: LoweredInstrId(6),
+            result: Some(not_result),
+            kind: LoweredInstrKind::IntrinsicCall {
+                intrinsic: intrinsic_by_canonical_name("not").expect("not").id,
+                args: vec![bool_value],
+            },
+        };
+
+        let eq_rendered =
+            render_core_instruction(&package_identity, &routine, &eq_instr).expect("eq");
+        let not_rendered =
+            render_core_instruction(&package_identity, &routine, &not_instr).expect("not");
+
+        assert_eq!(
+            eq_rendered,
+            "let l__pkg__entry__app__r5__l3__same = l__pkg__entry__app__r5__l0__lhs == l__pkg__entry__app__r5__l1__rhs;"
+        );
+        assert_eq!(
+            not_rendered,
+            "let l__pkg__entry__app__r5__l4__flipped = !l__pkg__entry__app__r5__l2__flag;"
         );
     }
 }
