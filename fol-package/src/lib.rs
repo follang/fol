@@ -34,7 +34,7 @@ pub use metadata::{
     parse_package_metadata, PackageDependencyDecl, PackageDependencySourceKind, PackageMetadata,
 };
 pub use model::{PreparedExportMount, PreparedPackage};
-pub use paths::git_cache_path;
+pub use paths::{git_cache_path, git_store_path};
 pub use session::{
     canonical_directory_root, infer_package_root, parse_directory_package_syntax,
     resolve_directory_path, PackageSession,
