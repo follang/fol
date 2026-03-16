@@ -158,13 +158,22 @@ fn main() {
 }
 
 fn should_use_frontend(args: &[std::ffi::OsString]) -> bool {
+    if args.len() <= 1 {
+        return true;
+    }
+
     let Some(first) = args.get(1).and_then(|arg| arg.to_str()) else {
-        return false;
+        return true;
     };
 
     matches!(
         first,
-        "init"
+        "-h"
+            | "--help"
+            | "-V"
+            | "--version"
+            | "help"
+            | "init"
             | "i"
             | "bootstrap"
             | "new"
@@ -606,6 +615,9 @@ fn frontend_root_parser_surface_smoke_compiles() {
 
 #[test]
 fn root_binary_prefers_frontend_for_workflow_commands_and_aliases() {
+    assert!(should_use_frontend(&["fol".into()]));
+    assert!(should_use_frontend(&["fol".into(), "--help".into()]));
+    assert!(should_use_frontend(&["fol".into(), "--version".into()]));
     assert!(should_use_frontend(&["fol".into(), "build".into()]));
     assert!(should_use_frontend(&["fol".into(), "run".into()]));
     assert!(should_use_frontend(&["fol".into(), "workspace".into()]));
@@ -615,7 +627,6 @@ fn root_binary_prefers_frontend_for_workflow_commands_and_aliases() {
 
 #[test]
 fn root_binary_keeps_legacy_compiler_mode_for_direct_compile_inputs() {
-    assert!(!should_use_frontend(&["fol".into()]));
     assert!(!should_use_frontend(&["fol".into(), "examples/full_v1_showcase/app".into()]));
     assert!(!should_use_frontend(&["fol".into(), "--json".into(), "test/main/main.fol".into()]));
     assert!(!should_use_frontend(&["fol".into(), "--emit-rust".into(), "test/main/main.fol".into()]));

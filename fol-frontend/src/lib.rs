@@ -107,22 +107,30 @@ where
     I: IntoIterator<Item = T>,
     T: Into<std::ffi::OsString> + Clone,
 {
-    match run_command_from_args(args) {
-        Ok((output, result)) => match output.render_command_summary(&result) {
-            Ok(rendered) => match writeln!(stdout, "{rendered}") {
+    let args = args
+        .into_iter()
+        .map(|arg| arg.into())
+        .collect::<Vec<std::ffi::OsString>>();
+
+    match FrontendCli::try_parse_from(args.clone()) {
+        Err(error)
+            if matches!(
+                error.kind(),
+                clap::error::ErrorKind::DisplayHelp | clap::error::ErrorKind::DisplayVersion
+            ) =>
+        {
+            match write!(stdout, "{error}") {
                 Ok(()) => 0,
-                Err(error) => {
-                    let _ = writeln!(stderr, "FrontendInternal: {error}");
+                Err(write_error) => {
+                    let _ = writeln!(stderr, "FrontendInternal: {write_error}");
                     1
                 }
-            },
-            Err(error) => {
-                let _ = writeln!(stderr, "FrontendInternal: {error}");
-                1
             }
-        },
+        }
         Err(error) => {
             let output = FrontendOutput::new(FrontendOutputConfig::default());
+            let error = FrontendError::new(FrontendErrorKind::InvalidInput, error.to_string())
+                .with_note("run `fol --help` to inspect the available workflow commands");
             match output.render_error(&error) {
                 Ok(rendered) => {
                     let _ = writeln!(stderr, "{rendered}");
@@ -133,6 +141,43 @@ where
             }
             1
         }
+        Ok(cli) if cli.command.is_none() => {
+            let help = FrontendCli::command().render_long_help().to_string();
+            match writeln!(stdout, "{help}") {
+                Ok(()) => 0,
+                Err(error) => {
+                    let _ = writeln!(stderr, "FrontendInternal: {error}");
+                    1
+                }
+            }
+        }
+        Ok(_) => match run_command_from_args(args) {
+            Ok((output, result)) => match output.render_command_summary(&result) {
+                Ok(rendered) => match writeln!(stdout, "{rendered}") {
+                    Ok(()) => 0,
+                    Err(error) => {
+                        let _ = writeln!(stderr, "FrontendInternal: {error}");
+                        1
+                    }
+                },
+                Err(error) => {
+                    let _ = writeln!(stderr, "FrontendInternal: {error}");
+                    1
+                }
+            },
+            Err(error) => {
+                let output = FrontendOutput::new(FrontendOutputConfig::default());
+                match output.render_error(&error) {
+                    Ok(rendered) => {
+                        let _ = writeln!(stderr, "{rendered}");
+                    }
+                    Err(render_error) => {
+                        let _ = writeln!(stderr, "FrontendInternal: {render_error}");
+                    }
+                }
+                1
+            }
+        },
     }
 }
 
