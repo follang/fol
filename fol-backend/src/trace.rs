@@ -1,6 +1,9 @@
 use fol_lower::LoweredSourceSymbol;
 use fol_parser::ast::SyntaxOrigin;
 use fol_resolver::PackageIdentity;
+use crate::{plan_namespace_layouts, BackendError, BackendErrorKind, BackendResult, BackendSession};
+use fol_resolver::SourceUnitId;
+use std::collections::BTreeMap;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BackendEmittedSourceMapEntry {
@@ -73,13 +76,108 @@ impl BackendTrace {
     }
 }
 
+pub fn build_emitted_source_map(session: &BackendSession) -> BackendResult<BackendEmittedSourceMap> {
+    let source_unit_paths = source_unit_output_paths(session)?;
+    let mut map = BackendEmittedSourceMap::new();
+    for entry in session.workspace().source_map().entries() {
+        let source_unit_id = source_unit_for_symbol(session, entry.symbol)?;
+        let emitted_path = source_unit_paths.get(&source_unit_id).ok_or_else(|| {
+            BackendError::new(
+                BackendErrorKind::InvalidInput,
+                format!("missing emitted path for source unit {:?}", source_unit_id),
+            )
+        })?;
+        map.push(BackendEmittedSourceMapEntry {
+            emitted_path: emitted_path.clone(),
+            line: 1,
+            column: 1,
+            symbol: entry.symbol,
+            origin: entry.origin.clone(),
+        });
+    }
+    Ok(map)
+}
+
+pub fn build_backend_trace(session: &BackendSession) -> BackendResult<BackendTrace> {
+    let source_unit_paths = source_unit_output_paths(session)?;
+    let mut trace = BackendTrace::new();
+    for package in session.workspace().packages() {
+        for source_unit in &package.source_units {
+            let emitted_path = source_unit_paths.get(&source_unit.source_unit_id).cloned();
+            trace.push(BackendTraceRecord {
+                kind: BackendTraceKind::Emission,
+                emitted_path,
+                package_identity: Some(package.identity.clone()),
+                symbol: None,
+                detail: format!("namespace {}", source_unit.namespace),
+            });
+        }
+    }
+    Ok(trace)
+}
+
+fn source_unit_output_paths(session: &BackendSession) -> BackendResult<BTreeMap<SourceUnitId, String>> {
+    let mut output_paths = BTreeMap::new();
+    for plan in plan_namespace_layouts(session) {
+        let emitted_path = format!(
+            "src/packages/{}/{}",
+            crate::mangle_package_module_name(&plan.package_identity),
+            plan.relative_file
+        );
+        for source_unit_id in &plan.source_unit_ids {
+            output_paths.insert(*source_unit_id, emitted_path.clone());
+        }
+    }
+    Ok(output_paths)
+}
+
+fn source_unit_for_symbol(
+    session: &BackendSession,
+    symbol: LoweredSourceSymbol,
+) -> BackendResult<SourceUnitId> {
+    for package in session.workspace().packages() {
+        match symbol {
+            LoweredSourceSymbol::Global(global_id) => {
+                if let Some(global) = package.global_decls.get(&global_id) {
+                    return Ok(global.source_unit_id);
+                }
+            }
+            LoweredSourceSymbol::Routine(routine_id) => {
+                if let Some(routine) = package.routine_decls.get(&routine_id) {
+                    return routine.source_unit_id.ok_or_else(|| {
+                        BackendError::new(
+                            BackendErrorKind::InvalidInput,
+                            format!("routine {:?} is missing a source unit", routine_id),
+                        )
+                    });
+                }
+            }
+            LoweredSourceSymbol::Type(type_id) => {
+                if let Some(type_decl) = package
+                    .type_decls
+                    .values()
+                    .find(|type_decl| type_decl.runtime_type == type_id)
+                {
+                    return Ok(type_decl.source_unit_id);
+                }
+            }
+            LoweredSourceSymbol::Package(_) => {}
+        }
+    }
+
+    Err(BackendError::new(
+        BackendErrorKind::InvalidInput,
+        format!("could not map lowered symbol {:?} to a source unit", symbol),
+    ))
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        BackendEmittedSourceMap, BackendEmittedSourceMapEntry, BackendTrace, BackendTraceKind,
-        BackendTraceRecord,
+        build_backend_trace, build_emitted_source_map, BackendEmittedSourceMap,
+        BackendEmittedSourceMapEntry, BackendTrace, BackendTraceKind, BackendTraceRecord,
     };
-    use crate::testing::package_identity;
+    use crate::testing::{package_identity, sample_lowered_workspace};
     use fol_lower::{LoweredGlobalId, LoweredSourceSymbol};
     use fol_parser::ast::SyntaxOrigin;
     use fol_resolver::PackageSourceKind;
@@ -117,5 +215,28 @@ mod tests {
         assert_eq!(trace.records().len(), 1);
         assert_eq!(trace.records()[0].kind, BackendTraceKind::Layout);
         assert_eq!(source_map.entries()[0].origin.line, 2);
+    }
+
+    #[test]
+    fn backend_traceability_maps_lowered_origins_into_emitted_module_paths() {
+        let session = crate::BackendSession::new(sample_lowered_workspace());
+
+        let source_map = build_emitted_source_map(&session).expect("source map");
+        let trace = build_backend_trace(&session).expect("trace");
+
+        assert!(!source_map.entries().is_empty());
+        assert!(source_map
+            .entries()
+            .iter()
+            .all(|entry| entry.emitted_path.starts_with("src/packages/")));
+        assert!(source_map
+            .entries()
+            .iter()
+            .any(|entry| entry.emitted_path.ends_with("root.rs")));
+        assert!(!trace.records().is_empty());
+        assert!(trace
+            .records()
+            .iter()
+            .all(|record| matches!(record.kind, BackendTraceKind::Emission)));
     }
 }

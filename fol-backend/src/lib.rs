@@ -57,8 +57,8 @@ pub use signatures::{
     render_routine_signature,
 };
 pub use trace::{
-    BackendEmittedSourceMap, BackendEmittedSourceMapEntry, BackendTrace, BackendTraceKind,
-    BackendTraceRecord,
+    build_backend_trace, build_emitted_source_map, BackendEmittedSourceMap,
+    BackendEmittedSourceMapEntry, BackendTrace, BackendTraceKind, BackendTraceRecord,
 };
 pub use instructions::{render_core_instruction, render_core_instruction_in_workspace};
 pub use types::{

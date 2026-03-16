@@ -504,9 +504,14 @@ mod tests {
         write_generated_crate,
     };
     use crate::{
-        testing::{lowered_workspace_from_entry_path, sample_lowered_workspace},
+        testing::{
+            lowered_workspace_from_entry_path, lowered_workspace_from_entry_path_with_config,
+            sample_lowered_workspace,
+        },
         BackendArtifact, BackendConfig, BackendMode, BackendSession,
     };
+    use fol_package::PackageConfig;
+    use fol_resolver::ResolverConfig;
     use std::fs;
     use std::path::{Path, PathBuf};
     use std::process::Command;
@@ -549,6 +554,38 @@ mod tests {
             .output()
             .expect("run emitted binary");
         let _ = fs::remove_dir_all(&fixture_root);
+        output
+    }
+
+    fn build_and_run_workspace(
+        entry_path: &Path,
+        package_config: PackageConfig,
+        resolver_config: ResolverConfig,
+    ) -> std::process::Output {
+        let lowered = lowered_workspace_from_entry_path_with_config(
+            entry_path,
+            package_config,
+            resolver_config,
+        );
+        let session = BackendSession::new(lowered);
+        let output_root = temp_root("workspace_exec");
+        let artifact = emit_backend_artifact(
+            &session,
+            &BackendConfig {
+                mode: BackendMode::BuildArtifact,
+                keep_build_dir: true,
+                ..BackendConfig::default()
+            },
+            &output_root,
+        )
+        .expect("backend artifact");
+        let BackendArtifact::CompiledBinary { binary_path, .. } = artifact else {
+            panic!("expected compiled binary artifact");
+        };
+        let output = Command::new(&binary_path)
+            .output()
+            .expect("run emitted binary");
+        let _ = fs::remove_dir_all(&output_root);
         output
     }
 
@@ -897,5 +934,76 @@ mod tests {
 
         assert!(output.status.success());
         assert!(String::from_utf8_lossy(&output.stdout).contains("9"));
+    }
+
+    #[test]
+    fn executable_backend_runs_across_loc_std_and_pkg_package_graphs() {
+        let fixture_root = temp_root("workspace_graphs");
+        let app_root = fixture_root.join("app");
+        let shared_root = fixture_root.join("shared");
+        let std_root = fixture_root.join("std");
+        let pkg_root = fixture_root.join("pkg");
+        let pkg_math_root = pkg_root.join("math");
+
+        fs::create_dir_all(&app_root).expect("app root");
+        fs::create_dir_all(&shared_root).expect("shared root");
+        fs::create_dir_all(std_root.join("fmt")).expect("std root");
+        fs::create_dir_all(&pkg_math_root).expect("pkg root");
+
+        fs::write(
+            app_root.join("main.fol"),
+            concat!(
+                "use shared: loc = {\"../shared\"};\n",
+                "use fmt: std = {\"fmt\"};\n",
+                "use math: pkg = {math};\n",
+                "fun[] main(): int = {\n",
+                "    .echo(loc_answer)\n",
+                "    .echo(std_answer)\n",
+                "    .echo(pkg_answer)\n",
+                "    return loc_answer + std_answer + pkg_answer\n",
+                "}\n",
+            ),
+        )
+        .expect("app source");
+        fs::write(shared_root.join("lib.fol"), "var[exp] loc_answer: int = 2\n").expect("shared");
+        fs::write(std_root.join("fmt").join("lib.fol"), "var[exp] std_answer: int = 3\n")
+            .expect("std");
+        fs::write(
+            pkg_math_root.join("package.yaml"),
+            "name: math\nversion: 0.1.0\n",
+        )
+        .expect("pkg manifest");
+        fs::write(
+            pkg_math_root.join("build.fol"),
+            "def root: loc = {\"src\"}\n",
+        )
+        .expect("pkg build");
+        fs::create_dir_all(pkg_math_root.join("src")).expect("pkg src");
+        fs::write(
+            pkg_math_root.join("src").join("lib.fol"),
+            "var[exp] pkg_answer: int = 4\n",
+        )
+        .expect("pkg source");
+
+        let output = build_and_run_workspace(
+            &app_root,
+            PackageConfig {
+                std_root: Some(std_root.display().to_string()),
+                package_store_root: Some(pkg_root.display().to_string()),
+                package_cache_root: None,
+            },
+            ResolverConfig {
+                std_root: Some(std_root.display().to_string()),
+                package_store_root: Some(pkg_root.display().to_string()),
+            },
+        );
+
+        let _ = fs::remove_dir_all(&fixture_root);
+
+        assert!(output.status.success());
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(stdout.contains("2"));
+        assert!(stdout.contains("3"));
+        assert!(stdout.contains("4"));
     }
 }

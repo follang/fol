@@ -215,6 +215,18 @@ pub(crate) fn distinct_namespaces(workspace: &LoweredWorkspace) -> BTreeSet<Stri
 }
 
 pub(crate) fn lowered_workspace_from_entry_path(path: &Path) -> LoweredWorkspace {
+    lowered_workspace_from_entry_path_with_config(
+        path,
+        PackageConfig::default(),
+        fol_resolver::ResolverConfig::default(),
+    )
+}
+
+pub(crate) fn lowered_workspace_from_entry_path_with_config(
+    path: &Path,
+    package_config: PackageConfig,
+    resolver_config: fol_resolver::ResolverConfig,
+) -> LoweredWorkspace {
     let mut stream = if path.is_dir() {
         fol_stream::FileStream::from_folder(
             path.to_str()
@@ -233,14 +245,11 @@ pub(crate) fn lowered_workspace_from_entry_path(path: &Path) -> LoweredWorkspace
     let syntax = parser
         .parse_package(&mut lexer)
         .expect("backend test fixture should parse");
-    let prepared = PackageSession::with_config(PackageConfig::default())
+    let prepared = PackageSession::with_config(package_config)
         .prepare_entry_package(syntax)
         .expect("backend test fixture should prepare");
-    let resolved = fol_resolver::resolve_prepared_workspace_with_config(
-        prepared,
-        fol_resolver::ResolverConfig::default(),
-    )
-    .expect("backend test fixture should resolve");
+    let resolved = fol_resolver::resolve_prepared_workspace_with_config(prepared, resolver_config)
+        .expect("backend test fixture should resolve");
     let typed = Typechecker::new()
         .check_resolved_workspace(resolved)
         .expect("backend test fixture should typecheck");
