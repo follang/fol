@@ -47,7 +47,7 @@ pub enum FrontendCommand {
     #[command(visible_aliases = ["completions", "comp"])]
     Completion(CompletionCommand),
     #[command(hide = true, name = "_complete")]
-    Complete(UnitCommand),
+    Complete(CompleteCommand),
 }
 
 #[derive(Debug, Clone, Args, PartialEq, Eq, Default)]
@@ -63,6 +63,11 @@ pub struct WorkCommand {
 pub struct CompletionCommand {
     #[arg(value_enum)]
     pub shell: CompletionShellArg,
+}
+
+#[derive(Debug, Clone, Args, PartialEq, Eq)]
+pub struct CompleteCommand {
+    pub current: Option<String>,
 }
 
 #[derive(Debug, Clone, Args, PartialEq, Eq)]
@@ -178,7 +183,7 @@ mod tests {
     use super::{
         CompletionCommand, CompletionShellArg, EmitCommand, EmitSubcommand, FrontendCli,
         FrontendCommand, FrontendProfile, InitCommand, NewCommand, UnitCommand, WorkCommand,
-        WorkSubcommand,
+        WorkSubcommand, CompleteCommand,
     };
     use crate::{ColorPolicy, OutputMode};
 
@@ -226,6 +231,18 @@ mod tests {
             cli.command,
             Some(FrontendCommand::Completion(CompletionCommand {
                 shell: CompletionShellArg::Bash,
+            }))
+        );
+    }
+
+    #[test]
+    fn internal_complete_command_parses_optional_current_token() {
+        let cli = FrontendCli::parse_from(["fol", "_complete", "bu"]);
+
+        assert_eq!(
+            cli.command,
+            Some(FrontendCommand::Complete(CompleteCommand {
+                current: Some("bu".to_string()),
             }))
         );
     }

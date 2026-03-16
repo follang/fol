@@ -59,17 +59,50 @@ pub fn generate_fish_completion_script() -> FrontendResult<String> {
 }
 
 pub fn internal_complete_command() -> FrontendResult<FrontendCommandResult> {
+    internal_complete_command_with_query(None)
+}
+
+pub fn internal_complete_command_with_query(
+    current: Option<&str>,
+) -> FrontendResult<FrontendCommandResult> {
+    let matches = internal_complete_matches(current);
     Ok(FrontendCommandResult::new(
         "_complete",
-        "frontend internal completion hook is available",
+        matches.join("\n"),
     ))
+}
+
+pub fn internal_complete_matches(current: Option<&str>) -> Vec<String> {
+    let prefix = current.unwrap_or_default();
+    let command = FrontendCli::command();
+    let mut matches = Vec::new();
+
+    for subcommand in command.get_subcommands() {
+        if subcommand.is_hide_set() {
+            continue;
+        }
+        let name = subcommand.get_name().to_string();
+        if name.starts_with(prefix) {
+            matches.push(name);
+        }
+        for alias in subcommand.get_visible_aliases() {
+            if alias.starts_with(prefix) {
+                matches.push(alias.to_string());
+            }
+        }
+    }
+
+    matches.sort();
+    matches.dedup();
+    matches
 }
 
 #[cfg(test)]
 mod tests {
     use super::{
-        completion_command, generate_bash_completion_script, internal_complete_command,
-        generate_fish_completion_script, generate_zsh_completion_script, CompletionShell,
+        completion_command, generate_bash_completion_script, generate_fish_completion_script,
+        generate_zsh_completion_script, internal_complete_command_with_query,
+        internal_complete_matches, CompletionShell,
     };
 
     #[test]
@@ -82,9 +115,10 @@ mod tests {
 
     #[test]
     fn internal_complete_command_has_a_stable_placeholder_surface() {
-        let result = internal_complete_command().unwrap();
+        let result = internal_complete_command_with_query(Some("bu")).unwrap();
 
         assert_eq!(result.command, "_complete");
+        assert!(result.summary.contains("build"));
     }
 
     #[test]
@@ -109,5 +143,13 @@ mod tests {
 
         assert!(script.contains("complete -c fol"));
         assert!(script.contains("__fish_use_subcommand"));
+    }
+
+    #[test]
+    fn internal_complete_matches_filter_visible_commands_and_aliases() {
+        let matches = internal_complete_matches(Some("b"));
+
+        assert!(matches.contains(&"build".to_string()));
+        assert!(matches.contains(&"b".to_string()));
     }
 }

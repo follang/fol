@@ -19,8 +19,8 @@ mod work;
 mod workspace;
 
 pub use cli::{
-    CompletionCommand, CompletionShellArg, EmitCommand, EmitSubcommand, FrontendCli,
-    FrontendCommand, FrontendProfile, InitCommand, NewCommand, UnitCommand,
+    CompleteCommand, CompletionCommand, CompletionShellArg, EmitCommand, EmitSubcommand,
+    FrontendCli, FrontendCommand, FrontendProfile, InitCommand, NewCommand, UnitCommand,
 };
 pub use clean::{clean_workspace, clean_workspace_with_config};
 pub use config::FrontendConfig;
@@ -34,7 +34,7 @@ pub use compile::{
 pub use completion::{
     completion_command, generate_bash_completion_script, generate_completion_script,
     generate_fish_completion_script, generate_zsh_completion_script, internal_complete_command,
-    CompletionShell,
+    internal_complete_command_with_query, internal_complete_matches, CompletionShell,
 };
 pub use errors::{FrontendError, FrontendErrorKind, FrontendResult};
 pub use fetch::{
