@@ -153,4 +153,44 @@ mod tests {
 
         fs::remove_dir_all(root).ok();
     }
+
+    #[test]
+    fn workspace_discovery_handles_starting_from_files() {
+        let root = std::env::temp_dir().join(format!(
+            "fol_frontend_file_discovery_{}",
+            std::process::id()
+        ));
+        let nested = root.join("pkg").join("src");
+        let main_file = nested.join("main.fol");
+        fs::create_dir_all(&nested).unwrap();
+        fs::write(root.join("fol.work.yaml"), "members: []\n").unwrap();
+        fs::write(root.join("pkg").join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
+        fs::write(&main_file, "fun[] main(): int = { return 0 }\n").unwrap();
+
+        let discovered = discover_root_upward(&main_file).unwrap();
+
+        assert_eq!(discovered, DiscoveredRoot::Package(PackageRoot::new(root.join("pkg"))));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn workspace_file_takes_priority_over_outer_package_file() {
+        let root = std::env::temp_dir().join(format!(
+            "fol_frontend_workspace_priority_{}",
+            std::process::id()
+        ));
+        let workspace = root.join("ws");
+        let nested = workspace.join("member");
+        fs::create_dir_all(&nested).unwrap();
+        fs::write(root.join("package.yaml"), "name: outer\nversion: 0.1.0\n").unwrap();
+        fs::write(workspace.join("fol.work.yaml"), "members: []\n").unwrap();
+        fs::write(nested.join("package.yaml"), "name: inner\nversion: 0.1.0\n").unwrap();
+
+        let discovered = discover_root_upward(&nested).unwrap();
+
+        assert_eq!(discovered, DiscoveredRoot::Package(PackageRoot::new(nested.clone())));
+
+        fs::remove_dir_all(root).ok();
+    }
 }
