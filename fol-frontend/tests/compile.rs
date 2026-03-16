@@ -1,6 +1,6 @@
 use fol_frontend::{
-    build_workspace, check_workspace, run_workspace, test_workspace, FrontendArtifactKind,
-    FrontendWorkspace, PackageRoot, WorkspaceRoot,
+    build_workspace, check_workspace, emit_lowered, emit_rust, run_workspace, test_workspace,
+    FrontendArtifactKind, FrontendWorkspace, PackageRoot, WorkspaceRoot,
 };
 use std::fs;
 use std::path::PathBuf;
@@ -114,6 +114,40 @@ fn test_command_traverses_all_runnable_workspace_members_through_public_api() {
         .artifacts
         .iter()
         .all(|artifact| artifact.kind == FrontendArtifactKind::Binary));
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn emit_rust_command_reports_generated_crate_paths_through_public_api() {
+    let root = temp_root("emit_rust");
+    let workspace = sample_workspace(&root);
+
+    let result = emit_rust(&workspace).expect("emit rust should succeed");
+
+    assert_eq!(result.command, "emit rust");
+    assert_eq!(result.artifacts.len(), 1);
+    assert_eq!(result.artifacts[0].kind, FrontendArtifactKind::EmittedRust);
+    assert!(result.artifacts[0].path.as_ref().expect("crate path should exist").is_dir());
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn emit_lowered_command_reports_snapshot_paths_through_public_api() {
+    let root = temp_root("emit_lowered");
+    let workspace = sample_workspace(&root);
+
+    let result = emit_lowered(&workspace).expect("emit lowered should succeed");
+
+    assert_eq!(result.command, "emit lowered");
+    assert_eq!(result.artifacts.len(), 1);
+    assert_eq!(result.artifacts[0].kind, FrontendArtifactKind::LoweredSnapshot);
+    assert!(result.artifacts[0]
+        .path
+        .as_ref()
+        .expect("snapshot path should exist")
+        .is_file());
 
     fs::remove_dir_all(root).ok();
 }
