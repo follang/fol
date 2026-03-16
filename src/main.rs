@@ -568,6 +568,11 @@ fn frontend_output_helper_surface_smoke_compiles() {
         output.render_human_status("Built", "target/bin/demo"),
         "Built: target/bin/demo"
     );
+    assert_eq!(output.render_plain_section("build"), "build:");
+    assert_eq!(
+        output.render_plain_field("artifact", "target/bin/demo"),
+        "artifact: target/bin/demo"
+    );
 }
 
 #[test]

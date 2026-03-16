@@ -25,6 +25,23 @@ impl FrontendOutput {
     pub fn render_human_status(&self, action: &str, detail: &str) -> String {
         format!("{action}: {detail}")
     }
+
+    pub fn render_plain_section(&self, title: &str) -> String {
+        format!("{title}:")
+    }
+
+    pub fn render_plain_field(&self, label: &str, value: impl std::fmt::Display) -> String {
+        format!("{label}: {value}")
+    }
+
+    pub fn render_plain_status(&self, label: &str, fields: &[(&str, String)]) -> String {
+        let rendered = fields
+            .iter()
+            .map(|(name, value)| format!("{name}={value}"))
+            .collect::<Vec<_>>()
+            .join(" ");
+        format!("{label}: {rendered}")
+    }
 }
 
 #[cfg(test)]
@@ -48,6 +65,24 @@ mod tests {
         assert_eq!(
             output.render_human_status("Built", "target/bin/demo"),
             "Built: target/bin/demo"
+        );
+    }
+
+    #[test]
+    fn plain_helpers_render_stable_script_friendly_lines() {
+        let output = FrontendOutput::new(FrontendOutputConfig::default());
+
+        assert_eq!(output.render_plain_section("build"), "build:");
+        assert_eq!(
+            output.render_plain_field("artifact", "target/bin/demo"),
+            "artifact: target/bin/demo"
+        );
+        assert_eq!(
+            output.render_plain_status(
+                "status",
+                &[("kind", "binary".to_string()), ("path", "target/bin/demo".to_string())]
+            ),
+            "status: kind=binary path=target/bin/demo"
         );
     }
 }
