@@ -188,15 +188,43 @@ fn translate_checked_type(
     let lowered_type_id = match checked_type {
         CheckedType::Builtin(builtin) => lowered_types.intern_builtin(lower_builtin(builtin)),
         CheckedType::Declared { symbol, .. } => {
-            let runtime_type = program
-                .typed_symbol(symbol)
+            let typed_symbol = program.typed_symbol(symbol);
+            let runtime_type = typed_symbol
                 .and_then(|typed_symbol| typed_symbol.declared_type)
                 .ok_or_else(|| {
+                    let detail = program
+                        .resolved()
+                        .symbol(symbol)
+                        .map(|resolved_symbol| {
+                            format!(
+                                "{} '{}' in scope {}",
+                                match resolved_symbol.kind {
+                                    fol_resolver::SymbolKind::Type => "type",
+                                    fol_resolver::SymbolKind::Alias => "alias",
+                                    fol_resolver::SymbolKind::Routine => "routine",
+                                    fol_resolver::SymbolKind::ValueBinding => "value",
+                                    fol_resolver::SymbolKind::LabelBinding => "label",
+                                    fol_resolver::SymbolKind::DestructureBinding => "destructure",
+                                    fol_resolver::SymbolKind::Definition => "definition",
+                                    fol_resolver::SymbolKind::Segment => "segment",
+                                    fol_resolver::SymbolKind::ImportAlias => "import-alias",
+                                    fol_resolver::SymbolKind::Parameter => "parameter",
+                                    fol_resolver::SymbolKind::GenericParameter => "generic",
+                                    fol_resolver::SymbolKind::Standard => "standard",
+                                    fol_resolver::SymbolKind::Implementation => "implementation",
+                                    fol_resolver::SymbolKind::Capture => "capture",
+                                    fol_resolver::SymbolKind::LoopBinder => "loop-binder",
+                                    fol_resolver::SymbolKind::RollingBinder => "rolling-binder",
+                                },
+                                resolved_symbol.name,
+                                resolved_symbol.scope.0
+                            )
+                        })
+                        .unwrap_or_else(|| format!("symbol {}", symbol.0));
                     vec![LoweringError::with_kind(
                         LoweringErrorKind::InvalidInput,
                         format!(
-                            "typed declared symbol {} does not retain a lowered runtime shape yet",
-                            symbol.0
+                            "typed declared {detail} does not retain a lowered runtime shape yet"
                         ),
                     )]
                 })?;

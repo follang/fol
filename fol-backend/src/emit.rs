@@ -148,11 +148,10 @@ pub fn emit_package_module_shells(session: &BackendSession) -> Vec<EmittedRustFi
     files
 }
 
-pub fn emit_namespace_module_shells(session: &BackendSession) -> Vec<EmittedRustFile> {
-    plan_namespace_layouts(session)
-        .into_iter()
-        .map(|namespace_plan| {
-            let emitted_items = render_namespace_items(session, &namespace_plan);
+pub fn emit_namespace_module_shells(session: &BackendSession) -> BackendResult<Vec<EmittedRustFile>> {
+    let mut files = Vec::new();
+    for namespace_plan in plan_namespace_layouts(session) {
+        let emitted_items = render_namespace_items(session, &namespace_plan)?;
             let mut contents = format!(
                 "use fol_runtime::prelude as rt;\n\npub(crate) const NAMESPACE_NAME: &str = \"{}\";\npub(crate) const SOURCE_UNIT_IDS: &[usize] = &[{}];\n\npub(crate) fn namespace_runtime_marker() -> &'static str {{\n    let _ = rt::crate_name();\n    NAMESPACE_NAME\n}}\n",
                 namespace_plan.full_namespace,
@@ -167,7 +166,7 @@ pub fn emit_namespace_module_shells(session: &BackendSession) -> Vec<EmittedRust
                 contents.push('\n');
                 contents.push_str(&emitted_items);
             }
-            EmittedRustFile {
+            files.push(EmittedRustFile {
                 path: format!(
                     "src/packages/{}/{}",
                     mangle_package_module_name(&namespace_plan.package_identity),
@@ -175,9 +174,9 @@ pub fn emit_namespace_module_shells(session: &BackendSession) -> Vec<EmittedRust
                 ),
                 module_name: namespace_plan.module_name.clone(),
                 contents,
-            }
-        })
-        .collect()
+            });
+    }
+    Ok(files)
 }
 
 fn module_name_from_relative_part(relative_part: &str) -> String {
@@ -193,7 +192,7 @@ pub fn emit_generated_crate_skeleton(session: &BackendSession) -> BackendResult<
     files.push(emit_cargo_toml(session));
     files.push(emit_main_rs(session)?);
     files.extend(emit_package_module_shells(session));
-    files.extend(emit_namespace_module_shells(session));
+    files.extend(emit_namespace_module_shells(session)?);
     files.sort_by(|left, right| left.path.cmp(&right.path));
 
     Ok(BackendArtifact::RustSourceCrate {
@@ -456,9 +455,9 @@ fn resolve_entry_callable(
 fn render_namespace_items(
     session: &BackendSession,
     namespace_plan: &crate::NamespaceLayoutPlan,
-) -> String {
+) -> BackendResult<String> {
     let Some(package) = session.workspace().package(&namespace_plan.package_identity) else {
-        return String::new();
+        return Ok(String::new());
     };
     let mut items = Vec::new();
 
@@ -472,6 +471,7 @@ fn render_namespace_items(
     for type_decl in &types {
         let rendered = match &type_decl.kind {
             fol_lower::LoweredTypeDeclKind::Record { .. } => render_record_definition(
+                session.workspace(),
                 &namespace_plan.package_identity,
                 type_decl,
                 session.workspace().type_table(),
@@ -483,6 +483,7 @@ fn render_namespace_items(
                 ))
             }),
             fol_lower::LoweredTypeDeclKind::Entry { .. } => render_entry_definition(
+                session.workspace(),
                 &namespace_plan.package_identity,
                 type_decl,
                 session.workspace().type_table(),
@@ -495,10 +496,9 @@ fn render_namespace_items(
             }),
             fol_lower::LoweredTypeDeclKind::Alias { .. } => Ok(String::new()),
         };
-        if let Ok(rendered) = rendered {
-            if !rendered.is_empty() {
-                items.push(rendered);
-            }
+        let rendered = rendered?;
+        if !rendered.is_empty() {
+            items.push(rendered);
         }
     }
 
@@ -510,13 +510,13 @@ fn render_namespace_items(
         .collect::<Vec<_>>();
     globals.sort_by_key(|global| global.id.0);
     for global in &globals {
-        if let Ok(rendered) = render_global_declaration(
+        let rendered = render_global_declaration(
+            session.workspace(),
             &namespace_plan.package_identity,
             global,
             session.workspace().type_table(),
-        ) {
-            items.push(rendered);
-        }
+        )?;
+        items.push(rendered);
     }
 
     let mut routines = package
@@ -531,8 +531,8 @@ fn render_namespace_items(
         .collect::<Vec<_>>();
     routines.sort_by_key(|routine| routine.id.0);
 
-    items.extend(routines.iter().filter_map(|routine| {
-        render_routine_definition(
+    for routine in &routines {
+        let rendered = render_routine_definition(
             session.workspace(),
             &namespace_plan.package_identity,
             routine,
@@ -540,15 +540,16 @@ fn render_namespace_items(
         )
         .or_else(|_| {
             render_routine_shell(
+                session.workspace(),
                 &namespace_plan.package_identity,
                 routine,
                 session.workspace().type_table(),
             )
-        })
-        .ok()
-    }));
+        })?;
+        items.push(rendered);
+    }
 
-    items.join("\n")
+    Ok(items.join("\n"))
 }
 
 #[cfg(test)]

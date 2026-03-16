@@ -223,6 +223,20 @@ fn app_fixture_tree_exists() {
 }
 
 #[test]
+fn full_v1_showcase_example_compiles_and_runs() {
+    let entry = Path::new("examples/full_v1_showcase/app");
+
+    let compile_output = compile_app_keep_build_dir_expect_success(entry);
+    assert_artifact_paths_exist(&compile_output);
+
+    let run_output = Command::new(built_binary_path(&compile_output))
+        .output()
+        .expect("should run full v1 showcase binary");
+    assert_exit_code(&run_output, 0);
+    assert_output_contains(&run_output, "7");
+}
+
+#[test]
 fn app_harness_compile_only_helper_handles_success_and_failure() {
     let temp_root = unique_temp_root("compile_only");
     let good_root = temp_root.join("good");

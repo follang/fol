@@ -1,7 +1,7 @@
 use crate::{
     mangle_global_name, mangle_local_name, mangle_routine_name,
-    render_core_instruction_in_workspace, render_rust_type, render_terminator, BackendError,
-    BackendErrorKind, BackendResult,
+    render_core_instruction_in_workspace, render_rust_type_in_workspace, render_terminator,
+    BackendError, BackendErrorKind, BackendResult,
 };
 use fol_lower::{
     LoweredBlockId, LoweredGlobal, LoweredRoutine, LoweredRoutineType, LoweredType, LoweredTypeId,
@@ -10,12 +10,13 @@ use fol_lower::{
 use fol_resolver::PackageIdentity;
 
 pub fn render_global_declaration(
+    workspace: &LoweredWorkspace,
     package_identity: &PackageIdentity,
     global: &LoweredGlobal,
     type_table: &LoweredTypeTable,
 ) -> BackendResult<String> {
     let name = mangle_global_name(package_identity, global.id, &global.name);
-    let value_type = render_rust_type(type_table, global.type_id)?;
+    let value_type = render_rust_type_in_workspace(Some(workspace), type_table, global.type_id)?;
 
     Ok(if global.mutable {
         format!(
@@ -29,6 +30,7 @@ pub fn render_global_declaration(
 }
 
 pub fn render_routine_signature(
+    workspace: &LoweredWorkspace,
     package_identity: &PackageIdentity,
     routine: &LoweredRoutine,
     type_table: &LoweredTypeTable,
@@ -37,11 +39,20 @@ pub fn render_routine_signature(
 
     let mut params = Vec::new();
     if let Some(receiver_type) = routine.receiver_type {
-        params.push(format!("receiver: {}", render_rust_type(type_table, receiver_type)?));
+        params.push(format!(
+            "receiver: {}",
+            render_rust_type_in_workspace(Some(workspace), type_table, receiver_type)?
+        ));
     }
-    params.extend(render_param_list(package_identity, routine, signature, type_table)?);
+    params.extend(render_param_list(
+        workspace,
+        package_identity,
+        routine,
+        signature,
+        type_table,
+    )?);
 
-    let return_type = render_routine_return_type(signature, type_table)?;
+    let return_type = render_routine_return_type(workspace, signature, type_table)?;
 
     Ok(format!(
         "pub fn {}({}){}",
@@ -52,16 +63,19 @@ pub fn render_routine_signature(
 }
 
 pub fn render_routine_shell(
+    workspace: &LoweredWorkspace,
     package_identity: &PackageIdentity,
     routine: &LoweredRoutine,
     type_table: &LoweredTypeTable,
 ) -> BackendResult<String> {
-    let header = render_routine_signature(package_identity, routine, type_table)?;
+    let header = render_routine_signature(workspace, package_identity, routine, type_table)?;
     let local_decls = routine
         .locals
         .iter_with_ids()
         .filter(|(local_id, _)| !routine.params.contains(local_id))
-        .map(|(local_id, local)| render_local_declaration(package_identity, routine, local_id, local, type_table))
+        .map(|(local_id, local)| {
+            render_local_declaration(workspace, package_identity, routine, local_id, local, type_table)
+        })
         .collect::<BackendResult<Vec<_>>>()?
         .join("\n");
 
@@ -78,13 +92,13 @@ pub fn render_routine_definition(
     routine: &LoweredRoutine,
     type_table: &LoweredTypeTable,
 ) -> BackendResult<String> {
-    let header = render_routine_signature(package_identity, routine, type_table)?;
+    let header = render_routine_signature(workspace, package_identity, routine, type_table)?;
     let local_decls = routine
         .locals
         .iter_with_ids()
         .filter(|(local_id, _)| !routine.params.contains(local_id))
         .map(|(local_id, local)| {
-            render_local_declaration(package_identity, routine, local_id, local, type_table)
+            render_local_declaration(workspace, package_identity, routine, local_id, local, type_table)
         })
         .collect::<BackendResult<Vec<_>>>()?
         .join("\n");
@@ -133,13 +147,27 @@ fn routine_signature<'a>(
 }
 
 fn render_param_list(
+    workspace: &LoweredWorkspace,
     package_identity: &PackageIdentity,
     routine: &LoweredRoutine,
     signature: &LoweredRoutineType,
     type_table: &LoweredTypeTable,
 ) -> BackendResult<Vec<String>> {
-    routine
-        .params
+    let param_ids = if routine.receiver_type.is_some() {
+        routine.params.get(1..).ok_or_else(|| {
+            BackendError::new(
+                BackendErrorKind::InvalidInput,
+                format!(
+                    "receiver-qualified routine '{}' does not retain a receiver local slot",
+                    routine.name
+                ),
+            )
+        })?
+    } else {
+        routine.params.as_slice()
+    };
+
+    param_ids
         .iter()
         .enumerate()
         .map(|(index, local_id)| {
@@ -158,13 +186,14 @@ fn render_param_list(
             Ok(format!(
                 "{}: {}",
                 mangle_local_name(package_identity, routine.id, *local_id, local.name.as_deref()),
-                render_rust_type(type_table, type_id)?
+                render_rust_type_in_workspace(Some(workspace), type_table, type_id)?
             ))
         })
         .collect()
 }
 
 fn render_local_declaration(
+    workspace: &LoweredWorkspace,
     package_identity: &PackageIdentity,
     routine: &LoweredRoutine,
     local_id: fol_lower::LoweredLocalId,
@@ -174,10 +203,10 @@ fn render_local_declaration(
     let rendered_type = match (local.type_id, local.recoverable_error_type) {
         (Some(type_id), Some(error_type)) => format!(
             "rt::FolRecover<{}, {}>",
-            render_rust_type(type_table, type_id)?,
-            render_rust_type(type_table, error_type)?,
+            render_rust_type_in_workspace(Some(workspace), type_table, type_id)?,
+            render_rust_type_in_workspace(Some(workspace), type_table, error_type)?,
         ),
-        (Some(type_id), None) => render_rust_type(type_table, type_id)?,
+        (Some(type_id), None) => render_rust_type_in_workspace(Some(workspace), type_table, type_id)?,
         (None, _) => "_".to_string(),
     };
     Ok(format!(
@@ -238,18 +267,19 @@ fn render_block(
 }
 
 fn render_routine_return_type(
+    workspace: &LoweredWorkspace,
     signature: &LoweredRoutineType,
     type_table: &LoweredTypeTable,
 ) -> BackendResult<String> {
     let success_type = match signature.return_type {
-        Some(return_type) => render_rust_type(type_table, return_type)?,
+        Some(return_type) => render_rust_type_in_workspace(Some(workspace), type_table, return_type)?,
         None => "()".to_string(),
     };
     Ok(match signature.error_type {
         Some(error_type) => format!(
             " -> rt::FolRecover<{}, {}>",
             success_type,
-            render_rust_type(type_table, error_type)?
+            render_rust_type_in_workspace(Some(workspace), type_table, error_type)?
         ),
         None if signature.return_type.is_some() => format!(" -> {success_type}"),
         None => String::new(),
@@ -259,7 +289,7 @@ fn render_routine_return_type(
 #[cfg(test)]
 mod tests {
     use super::{render_global_declaration, render_routine_shell, render_routine_signature};
-    use crate::testing::package_identity;
+    use crate::testing::{package_identity, sample_lowered_workspace};
     use fol_lower::{
         LoweredBlockId, LoweredBuiltinType, LoweredGlobal, LoweredGlobalId, LoweredLocal,
         LoweredLocalId, LoweredRoutine, LoweredRoutineId, LoweredRoutineType, LoweredType,
@@ -290,11 +320,22 @@ mod tests {
             recoverable_error_type: None,
             mutable: true,
         };
+        let workspace = sample_lowered_workspace();
 
-        let immutable_rendered =
-            render_global_declaration(&package_identity, &immutable, &table).expect("global");
-        let mutable_rendered =
-            render_global_declaration(&package_identity, &mutable, &table).expect("global");
+        let immutable_rendered = render_global_declaration(
+            &workspace,
+            &package_identity,
+            &immutable,
+            &table,
+        )
+        .expect("global");
+        let mutable_rendered = render_global_declaration(
+            &workspace,
+            &package_identity,
+            &mutable,
+            &table,
+        )
+        .expect("global");
 
         assert!(immutable_rendered.contains("pub static g__pkg__entry__app__g0__answer"));
         assert!(immutable_rendered.contains("std::sync::OnceLock<rt::FolInt>"));
@@ -313,6 +354,7 @@ mod tests {
             error_type: None,
         }));
         let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
+        let workspace = sample_lowered_workspace();
         let mut plain = LoweredRoutine::new(LoweredRoutineId(0), "main", LoweredBlockId(0));
         plain.signature = Some(signature_id);
         let local_id = plain.locals.push(LoweredLocal {
@@ -335,9 +377,11 @@ mod tests {
         method.params.push(method_param);
 
         let plain_rendered =
-            render_routine_signature(&package_identity, &plain, &table).expect("signature");
+            render_routine_signature(&workspace, &package_identity, &plain, &table)
+                .expect("signature");
         let method_rendered =
-            render_routine_signature(&package_identity, &method, &table).expect("signature");
+            render_routine_signature(&workspace, &package_identity, &method, &table)
+                .expect("signature");
 
         assert!(plain_rendered.contains("pub fn r__pkg__entry__app__r0__main("));
         assert!(plain_rendered.contains("l__pkg__entry__app__r0__l0__flag: rt::FolBool"));
@@ -357,11 +401,12 @@ mod tests {
             error_type: Some(str_id),
         }));
         let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
+        let workspace = sample_lowered_workspace();
         let mut routine = LoweredRoutine::new(LoweredRoutineId(2), "load", LoweredBlockId(0));
         routine.signature = Some(signature_id);
 
-        let rendered =
-            render_routine_signature(&package_identity, &routine, &table).expect("signature");
+        let rendered = render_routine_signature(&workspace, &package_identity, &routine, &table)
+            .expect("signature");
 
         assert!(rendered.contains("pub fn r__pkg__entry__app__r2__load()"));
         assert!(rendered.ends_with(" -> rt::FolRecover<rt::FolInt, rt::FolStr>"));
@@ -378,6 +423,7 @@ mod tests {
             error_type: None,
         }));
         let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
+        let workspace = sample_lowered_workspace();
         let mut routine = LoweredRoutine::new(LoweredRoutineId(3), "compute", LoweredBlockId(0));
         routine.signature = Some(signature_id);
         let param_id = routine.locals.push(LoweredLocal {
@@ -394,8 +440,8 @@ mod tests {
         });
         routine.params.push(param_id);
 
-        let rendered =
-            render_routine_shell(&package_identity, &routine, &table).expect("routine shell");
+        let rendered = render_routine_shell(&workspace, &package_identity, &routine, &table)
+            .expect("routine shell");
 
         assert!(rendered.contains("pub fn r__pkg__entry__app__r3__compute("));
         assert!(rendered.contains("let mut l__pkg__entry__app__r3__l1__temp: rt::FolInt = Default::default();"));

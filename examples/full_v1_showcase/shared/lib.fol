@@ -1,0 +1,88 @@
+typ[exp] Status: ent = {
+    var OK: int = 1;
+    var WARN: int = 2;
+    var FAIL: int = 3
+}
+
+typ[exp] User: rec = {
+    name: str;
+    score: int;
+    active: bol
+}
+
+fun[exp] (User)tag(): int = {
+    return 7
+}
+
+fun[exp] lead(): User = {
+    return {
+        name = "Ada",
+        score = 7,
+        active = true,
+    }
+}
+
+fun[exp] backup(): User = {
+    return {
+        name = "Lin",
+        score = 5,
+        active = false,
+    }
+}
+
+fun[exp] pick_label(flag: bol): opt[str] = {
+    when(flag) {
+        case(true) { return "ready" }
+        * { return nil }
+    }
+}
+
+fun[exp] shell_error(): err[str] = {
+    return "broken"
+}
+
+fun[exp] load_score(flag: bol): int / str = {
+    when(flag) {
+        case(true) { report "score-missing" }
+        * { return 9 }
+    }
+}
+
+fun[exp] safe_score(flag: bol): int = {
+    return load_score(flag) || 4
+}
+
+fun[exp] score_failed(flag: bol): bol = {
+    return check(load_score(flag))
+}
+
+fun[exp] names(): seq[str] = {
+    return {"Ada", "Lin", "Bea"}
+}
+
+fun[exp] weights(): map[str, int] = {
+    return {{"ada", 7}, {"lin", 5}}
+}
+
+fun[exp] ids(): set[int] = {
+    return {}
+}
+
+fun[exp] okay_status(flag: bol): Status = {
+    when(flag) {
+        case(true) { return Status.OK }
+        * { return Status.WARN }
+    }
+}
+
+fun[exp] build_report(flag: bol): models::Report = {
+    return models::build_report(flag)
+}
+
+fun[exp] report_code(report: models::Report): int = {
+    return models::report_code(report)
+}
+
+fun[exp] owner_size(report: models::Report): int = {
+    return models::owner_size(report)
+}
