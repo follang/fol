@@ -11,6 +11,7 @@ mod output;
 mod result;
 mod scaffold;
 mod ui;
+mod work;
 mod workspace;
 
 pub use cli::{FrontendCli, FrontendCommand, InitCommand, NewCommand, UnitCommand};
@@ -27,6 +28,7 @@ pub use scaffold::{
     new_project_with_mode, package_target_kind, PackageTargetKind,
 };
 pub use ui::FrontendOutput;
+pub use work::work_info;
 pub use workspace::{
     enumerate_member_packages, load_workspace_config, FrontendWorkspace, FrontendWorkspaceConfig,
 };

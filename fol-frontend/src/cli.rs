@@ -25,7 +25,7 @@ pub enum FrontendCommand {
     #[command(visible_aliases = ["n"])]
     New(NewCommand),
     #[command(visible_aliases = ["w", "ws", "workspace"])]
-    Work(UnitCommand),
+    Work(WorkCommand),
     Fetch(UnitCommand),
     #[command(visible_aliases = ["b", "make"])]
     Build(UnitCommand),
@@ -45,6 +45,18 @@ pub enum FrontendCommand {
 
 #[derive(Debug, Clone, Args, PartialEq, Eq, Default)]
 pub struct UnitCommand;
+
+#[derive(Debug, Clone, Args, PartialEq, Eq)]
+pub struct WorkCommand {
+    #[command(subcommand)]
+    pub command: WorkSubcommand,
+}
+
+#[derive(Debug, Clone, Subcommand, PartialEq, Eq)]
+pub enum WorkSubcommand {
+    Info(UnitCommand),
+    List(UnitCommand),
+}
 
 #[derive(Debug, Clone, Args, PartialEq, Eq, Default)]
 pub struct InitCommand {
@@ -138,7 +150,10 @@ Options:
 
 #[cfg(test)]
 mod tests {
-    use super::{FrontendCli, FrontendCommand, FrontendProfile, InitCommand, NewCommand, UnitCommand};
+    use super::{
+        FrontendCli, FrontendCommand, FrontendProfile, InitCommand, NewCommand, UnitCommand,
+        WorkCommand, WorkSubcommand,
+    };
     use crate::{ColorPolicy, OutputMode};
 
     #[test]
@@ -162,11 +177,16 @@ mod tests {
     fn visible_aliases_parse_to_the_same_root_commands() {
         let build = FrontendCli::parse_from(["fol", "b"]);
         let check = FrontendCli::parse_from(["fol", "verify"]);
-        let work = FrontendCli::parse_from(["fol", "workspace"]);
+        let work = FrontendCli::parse_from(["fol", "workspace", "info"]);
 
         assert_eq!(build.command, Some(FrontendCommand::Build(UnitCommand)));
         assert_eq!(check.command, Some(FrontendCommand::Check(UnitCommand)));
-        assert_eq!(work.command, Some(FrontendCommand::Work(UnitCommand)));
+        assert_eq!(
+            work.command,
+            Some(FrontendCommand::Work(WorkCommand {
+                command: WorkSubcommand::Info(UnitCommand),
+            }))
+        );
     }
 
     #[test]
@@ -224,6 +244,25 @@ mod tests {
         assert!(help.contains("verify"));
         assert!(help.contains("completion"));
         assert!(help.contains("completions"));
+    }
+
+    #[test]
+    fn work_subcommands_parse_for_info_and_list() {
+        let info = FrontendCli::parse_from(["fol", "work", "info"]);
+        let list = FrontendCli::parse_from(["fol", "work", "list"]);
+
+        assert_eq!(
+            info.command,
+            Some(FrontendCommand::Work(WorkCommand {
+                command: WorkSubcommand::Info(UnitCommand),
+            }))
+        );
+        assert_eq!(
+            list.command,
+            Some(FrontendCommand::Work(WorkCommand {
+                command: WorkSubcommand::List(UnitCommand),
+            }))
+        );
     }
 
     #[test]

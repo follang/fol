@@ -551,9 +551,7 @@ fn frontend_root_parser_surface_smoke_compiles() {
 
     assert_eq!(
         cli.command,
-        Some(fol_frontend::FrontendCommand::Build(
-            fol_frontend::UnitCommand
-        ))
+        Some(fol_frontend::FrontendCommand::Build(fol_frontend::UnitCommand))
     );
 }
 
@@ -577,6 +575,17 @@ fn frontend_workspace_model_surface_smoke_compiles() {
     assert!(workspace.package_store_root_override.is_none());
     assert_eq!(workspace.build_root, std::path::PathBuf::from("/tmp/demo/.fol/build"));
     assert_eq!(workspace.cache_root, std::path::PathBuf::from("/tmp/demo/.fol/cache"));
+}
+
+#[test]
+fn frontend_work_info_surface_smoke_compiles() {
+    let workspace = fol_frontend::FrontendWorkspace::new(fol_frontend::WorkspaceRoot::new(
+        std::path::PathBuf::from("/tmp/demo"),
+    ));
+    let result = fol_frontend::work_info(&workspace);
+
+    assert_eq!(result.command, "work info");
+    assert!(result.summary.contains("root=/tmp/demo"));
 }
 
 #[test]
