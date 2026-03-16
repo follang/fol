@@ -2,6 +2,10 @@
 
 Last updated: 2026-03-16
 
+Phase 0 status:
+
+- [x] 0.1 Create `fol-frontend` plan reset commit
+
 This plan defines the next major milestone after the completed `V1` compiler
 pipeline:
 
