@@ -25,6 +25,7 @@ impl FrontendErrorKind {
 pub struct FrontendError {
     kind: FrontendErrorKind,
     message: String,
+    notes: Vec<String>,
 }
 
 impl FrontendError {
@@ -32,6 +33,7 @@ impl FrontendError {
         Self {
             kind,
             message: message.into(),
+            notes: Vec::new(),
         }
     }
 
@@ -41,6 +43,15 @@ impl FrontendError {
 
     pub fn message(&self) -> &str {
         &self.message
+    }
+
+    pub fn notes(&self) -> &[String] {
+        &self.notes
+    }
+
+    pub fn with_note(mut self, note: impl Into<String>) -> Self {
+        self.notes.push(note.into());
+        self
     }
 }
 
@@ -80,6 +91,7 @@ mod tests {
             error.to_string(),
             "FrontendWorkspaceNotFound: missing root"
         );
+        assert!(error.notes().is_empty());
     }
 
     #[test]
@@ -92,5 +104,20 @@ mod tests {
 
         assert_eq!(error.kind(), FrontendErrorKind::PackageFailed);
         assert!(error.to_string().starts_with("FrontendPackageFailed:"));
+    }
+
+    #[test]
+    fn frontend_error_can_carry_guidance_notes() {
+        let error = FrontendError::new(FrontendErrorKind::InvalidInput, "bad input")
+            .with_note("check package.yaml")
+            .with_note("run `fol work info`");
+
+        assert_eq!(
+            error.notes(),
+            &[
+                "check package.yaml".to_string(),
+                "run `fol work info`".to_string()
+            ]
+        );
     }
 }

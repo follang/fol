@@ -98,7 +98,24 @@ impl FrontendOutput {
         serde_json::to_string_pretty(&serde_json::json!({
             "kind": error.kind().as_str(),
             "message": error.message(),
+            "notes": error.notes(),
         }))
+    }
+
+    pub fn render_human_error(&self, error: &FrontendError) -> String {
+        let mut lines = vec![format!("error: {}", error)];
+        for note in error.notes() {
+            lines.push(format!("note: {note}"));
+        }
+        lines.join("\n")
+    }
+
+    pub fn render_plain_error(&self, error: &FrontendError) -> String {
+        let mut lines = vec![format!("error: {}", error)];
+        for note in error.notes() {
+            lines.push(format!("note: {note}"));
+        }
+        lines.join("\n")
     }
 
     pub fn render_command_summary(
@@ -133,6 +150,14 @@ impl FrontendOutput {
                 Ok(lines.join("\n"))
             }
             OutputMode::Json => self.render_json_result(result),
+        }
+    }
+
+    pub fn render_error(&self, error: &FrontendError) -> Result<String, serde_json::Error> {
+        match self.config.mode {
+            OutputMode::Human => Ok(self.render_human_error(error)),
+            OutputMode::Plain => Ok(self.render_plain_error(error)),
+            OutputMode::Json => self.render_json_error(error),
         }
     }
 }
@@ -208,7 +233,8 @@ mod tests {
                 Some(PathBuf::from("target/bin/demo")),
             ),
         );
-        let error = FrontendError::new(FrontendErrorKind::CommandFailed, "failed");
+        let error = FrontendError::new(FrontendErrorKind::CommandFailed, "failed")
+            .with_note("retry with `fol build --debug`");
 
         let rendered_result = output.render_json_result(&result).unwrap();
         let rendered_error = output.render_json_error(&error).unwrap();
@@ -217,6 +243,7 @@ mod tests {
         assert!(rendered_result.contains("\"kind\": \"binary\""));
         assert!(rendered_error.contains("\"kind\": \"FrontendCommandFailed\""));
         assert!(rendered_error.contains("\"message\": \"failed\""));
+        assert!(rendered_error.contains("\"notes\": ["));
     }
 
     #[test]
@@ -248,6 +275,34 @@ mod tests {
         assert!(human.contains("== build =="));
         assert!(plain.contains("command: build"));
         assert!(json.contains("\"command\": \"build\""));
+    }
+
+    #[test]
+    fn rendered_errors_respect_output_mode() {
+        let error = FrontendError::new(FrontendErrorKind::WorkspaceNotFound, "missing root")
+            .with_note("run `fol init`");
+
+        let human = FrontendOutput::new(FrontendOutputConfig::default())
+            .render_error(&error)
+            .unwrap();
+        let plain = FrontendOutput::new(FrontendOutputConfig {
+            mode: OutputMode::Plain,
+            ..FrontendOutputConfig::default()
+        })
+        .render_error(&error)
+        .unwrap();
+        let json = FrontendOutput::new(FrontendOutputConfig {
+            mode: OutputMode::Json,
+            ..FrontendOutputConfig::default()
+        })
+        .render_error(&error)
+        .unwrap();
+
+        assert!(human.contains("error: FrontendWorkspaceNotFound: missing root"));
+        assert!(human.contains("note: run `fol init`"));
+        assert!(plain.contains("error: FrontendWorkspaceNotFound: missing root"));
+        assert!(json.contains("\"FrontendWorkspaceNotFound\""));
+        assert!(json.contains("run `fol init`"));
     }
 
     #[test]
