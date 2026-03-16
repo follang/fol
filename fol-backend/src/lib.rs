@@ -4,6 +4,7 @@ mod config;
 mod emit;
 mod error;
 mod identity;
+mod instructions;
 mod layout;
 mod mangle;
 mod model;
@@ -52,6 +53,7 @@ pub use trace::{
     BackendEmittedSourceMap, BackendEmittedSourceMapEntry, BackendTrace, BackendTraceKind,
     BackendTraceRecord,
 };
+pub use instructions::render_core_instruction;
 pub use types::{
     render_entry_definition, render_entry_trait_impl, render_record_definition,
     render_record_trait_impl, render_rust_type,

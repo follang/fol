@@ -979,7 +979,7 @@ not full long-term compiler completion.
 
 ## 42. Phase 7: Core Instruction Emission
 
-#### 7.1
+#### 7.1 done
 - emit `Const`, `LoadLocal`, `StoreLocal`, `LoadGlobal`, and `StoreGlobal`
 
 #### 7.2
