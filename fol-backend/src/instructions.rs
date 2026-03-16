@@ -127,6 +127,13 @@ pub fn render_core_instruction(
                 "let {result} = {operand}.clone().into_value().expect(\"recoverable success\");"
             ))
         }
+        LoweredInstrKind::ExtractRecoverableError { operand } => {
+            let result = rendered_result_local(package_identity, routine, instruction)?;
+            let operand = render_local_name(package_identity, routine, *operand)?;
+            Ok(format!(
+                "let {result} = {operand}.clone().into_error().expect(\"recoverable error\");"
+            ))
+        }
         other => Err(BackendError::new(
             BackendErrorKind::Unsupported,
             format!("core instruction emission is not implemented yet for {other:?}"),
@@ -643,6 +650,37 @@ mod tests {
         assert_eq!(
             rendered,
             "let l__pkg__entry__app__r10__l1__unwrapped = l__pkg__entry__app__r10__l0__value.clone().into_value().expect(\"recoverable success\");"
+        );
+    }
+
+    #[test]
+    fn runtime_shaped_instruction_rendering_emits_recoverable_error_extraction() {
+        let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
+        let mut routine = LoweredRoutine::new(LoweredRoutineId(11), "main", LoweredBlockId(0));
+        let source = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(0),
+            type_id: None,
+            recoverable_error_type: None,
+            name: Some("value".to_string()),
+        });
+        let result = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(1),
+            type_id: None,
+            recoverable_error_type: None,
+            name: Some("error".to_string()),
+        });
+        let instruction = LoweredInstr {
+            id: LoweredInstrId(24),
+            result: Some(result),
+            kind: LoweredInstrKind::ExtractRecoverableError { operand: source },
+        };
+
+        let rendered =
+            render_core_instruction(&package_identity, &routine, &instruction).expect("extract");
+
+        assert_eq!(
+            rendered,
+            "let l__pkg__entry__app__r11__l1__error = l__pkg__entry__app__r11__l0__value.clone().into_error().expect(\"recoverable error\");"
         );
     }
 }
