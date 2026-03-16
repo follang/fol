@@ -24,6 +24,18 @@ impl Default for FrontendConfig {
     }
 }
 
+impl FrontendConfig {
+    pub fn from_env() -> Self {
+        let mut config = Self::default();
+        config.std_root_override = std::env::var_os("FOL_STD_ROOT").map(PathBuf::from);
+        config.package_store_root_override =
+            std::env::var_os("FOL_PACKAGE_STORE_ROOT").map(PathBuf::from);
+        config.build_root_override = std::env::var_os("FOL_BUILD_ROOT").map(PathBuf::from);
+        config.cache_root_override = std::env::var_os("FOL_CACHE_ROOT").map(PathBuf::from);
+        config
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::FrontendConfig;
@@ -39,5 +51,32 @@ mod tests {
         assert!(config.package_store_root_override.is_none());
         assert!(config.build_root_override.is_none());
         assert!(config.cache_root_override.is_none());
+    }
+
+    #[test]
+    fn frontend_config_reads_root_overrides_from_environment() {
+        unsafe {
+            std::env::set_var("FOL_STD_ROOT", "/tmp/std");
+            std::env::set_var("FOL_PACKAGE_STORE_ROOT", "/tmp/pkg");
+            std::env::set_var("FOL_BUILD_ROOT", "/tmp/build");
+            std::env::set_var("FOL_CACHE_ROOT", "/tmp/cache");
+        }
+
+        let config = FrontendConfig::from_env();
+
+        assert_eq!(config.std_root_override, Some(std::path::PathBuf::from("/tmp/std")));
+        assert_eq!(
+            config.package_store_root_override,
+            Some(std::path::PathBuf::from("/tmp/pkg"))
+        );
+        assert_eq!(config.build_root_override, Some(std::path::PathBuf::from("/tmp/build")));
+        assert_eq!(config.cache_root_override, Some(std::path::PathBuf::from("/tmp/cache")));
+
+        unsafe {
+            std::env::remove_var("FOL_STD_ROOT");
+            std::env::remove_var("FOL_PACKAGE_STORE_ROOT");
+            std::env::remove_var("FOL_BUILD_ROOT");
+            std::env::remove_var("FOL_CACHE_ROOT");
+        }
     }
 }
