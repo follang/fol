@@ -12,6 +12,7 @@
 pub mod config;
 pub mod build;
 pub mod errors;
+pub mod git;
 pub mod identity;
 pub mod locator;
 pub mod metadata;
@@ -25,6 +26,7 @@ pub use build::{
 };
 pub use config::PackageConfig;
 pub use errors::{PackageError, PackageErrorKind};
+pub use git::{wrap_git_failure, PackageGitMaterialization, PackageGitSourceSession};
 pub use identity::{PackageIdentity, PackageSourceKind};
 pub use locator::{
     parse_package_locator, PackageGitLocator, PackageGitSelector, PackageGitTransport,
