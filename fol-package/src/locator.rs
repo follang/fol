@@ -69,6 +69,9 @@ pub fn parse_package_locator(raw: &str) -> Result<PackageLocator, PackageError> 
     if trimmed.starts_with("https://") || trimmed.starts_with("http://") {
         return parse_https_git_locator(trimmed);
     }
+    if trimmed.starts_with("git@") {
+        return parse_ssh_git_locator(trimmed);
+    }
     if looks_like_future_git_locator(trimmed) {
         return Err(unsupported_remote_locator(raw));
     }
@@ -119,6 +122,48 @@ fn parse_https_git_locator(raw: &str) -> Result<PackageLocator, PackageError> {
     Ok(PackageLocator::git(
         raw.to_string(),
         PackageGitTransport::Https,
+        raw.to_string(),
+        PackageGitSelector::default(),
+    ))
+}
+
+fn parse_ssh_git_locator(raw: &str) -> Result<PackageLocator, PackageError> {
+    let Some((user_host, repo_path)) = raw.split_once(':') else {
+        return Err(PackageError::new(
+            PackageErrorKind::InvalidInput,
+            format!(
+                "git package locator '{}' must follow 'git@host:owner/repo.git' form",
+                raw
+            ),
+        ));
+    };
+    let Some((_user, host)) = user_host.split_once('@') else {
+        return Err(PackageError::new(
+            PackageErrorKind::InvalidInput,
+            format!(
+                "git package locator '{}' must include a user and host before ':'",
+                raw
+            ),
+        ));
+    };
+    let path_segments = repo_path
+        .split('/')
+        .map(str::trim)
+        .filter(|part| !part.is_empty())
+        .collect::<Vec<_>>();
+    if host.trim().is_empty() || path_segments.len() < 2 {
+        return Err(PackageError::new(
+            PackageErrorKind::InvalidInput,
+            format!(
+                "git package locator '{}' must include a host, owner, and repository path",
+                raw
+            ),
+        ));
+    }
+
+    Ok(PackageLocator::git(
+        raw.to_string(),
+        PackageGitTransport::Ssh,
         raw.to_string(),
         PackageGitSelector::default(),
     ))
@@ -233,5 +278,21 @@ mod tests {
             Some("https://github.com/follang/json.git")
         );
         assert!(locator.path_segments.is_empty());
+    }
+
+    #[test]
+    fn package_locator_parses_ssh_git_locators() {
+        let locator = parse_package_locator("git@github.com:follang/json.git")
+            .expect("SSH git locators should parse");
+
+        assert_eq!(locator.kind, PackageLocatorKind::Git);
+        assert_eq!(
+            locator.git.as_ref().map(|git| git.transport),
+            Some(PackageGitTransport::Ssh)
+        );
+        assert_eq!(
+            locator.git.as_ref().map(|git| git.repository.as_str()),
+            Some("git@github.com:follang/json.git")
+        );
     }
 }
