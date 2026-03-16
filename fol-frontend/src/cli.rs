@@ -194,6 +194,8 @@ pub struct EmitCommand {
 pub enum WorkSubcommand {
     Info(UnitCommand),
     List(UnitCommand),
+    Deps(UnitCommand),
+    Status(UnitCommand),
 }
 
 #[derive(Debug, Clone, Subcommand, PartialEq, Eq)]
@@ -649,6 +651,8 @@ mod tests {
     fn work_subcommands_parse_for_info_and_list() {
         let info = FrontendCli::parse_from(["fol", "work", "info"]);
         let list = FrontendCli::parse_from(["fol", "work", "list"]);
+        let deps = FrontendCli::parse_from(["fol", "work", "deps"]);
+        let status = FrontendCli::parse_from(["fol", "work", "status"]);
 
         assert_eq!(
             info.command,
@@ -662,6 +666,20 @@ mod tests {
             Some(FrontendCommand::Work(WorkCommand {
                 path: None,
                 command: WorkSubcommand::List(UnitCommand),
+            }))
+        );
+        assert_eq!(
+            deps.command,
+            Some(FrontendCommand::Work(WorkCommand {
+                path: None,
+                command: WorkSubcommand::Deps(UnitCommand),
+            }))
+        );
+        assert_eq!(
+            status.command,
+            Some(FrontendCommand::Work(WorkCommand {
+                path: None,
+                command: WorkSubcommand::Status(UnitCommand),
             }))
         );
     }

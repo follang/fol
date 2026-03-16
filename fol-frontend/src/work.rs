@@ -1,7 +1,8 @@
 use crate::{
-    FrontendArtifactKind, FrontendArtifactSummary, FrontendCommandResult, FrontendWorkspace,
+    select_package_store_root, FrontendArtifactKind, FrontendArtifactSummary,
+    FrontendCommandResult, FrontendConfig, FrontendError, FrontendErrorKind, FrontendResult,
+    FrontendWorkspace,
 };
-
 pub fn work_info(workspace: &FrontendWorkspace) -> FrontendCommandResult {
     let mut result = FrontendCommandResult::new("work info", workspace.info_summary_lines().join("\n"));
     result.artifacts.push(FrontendArtifactSummary::new(
@@ -36,11 +37,144 @@ pub fn work_list(workspace: &FrontendWorkspace) -> FrontendCommandResult {
     result
 }
 
+pub fn work_deps(workspace: &FrontendWorkspace) -> FrontendResult<FrontendCommandResult> {
+    let mut lines = Vec::new();
+    let mut result = FrontendCommandResult::new("work deps", "");
+
+    for member in &workspace.members {
+        let metadata = fol_package::parse_package_metadata(&member.manifest_file)
+            .map_err(FrontendError::from)?;
+        if metadata.dependencies.is_empty() {
+            lines.push(format!("{}:", metadata.name));
+            lines.push("  (no dependencies)".to_string());
+        } else {
+            lines.push(format!("{}:", metadata.name));
+            for dependency in &metadata.dependencies {
+                lines.push(format!(
+                    "  {} [{}] -> {}",
+                    dependency.alias,
+                    dependency_kind_label(dependency.source_kind),
+                    dependency.target
+                ));
+            }
+        }
+        result.artifacts.push(FrontendArtifactSummary::new(
+            FrontendArtifactKind::PackageRoot,
+            metadata.name,
+            Some(member.root.clone()),
+        ));
+    }
+
+    result.summary = lines.join("\n");
+    Ok(result)
+}
+
+pub fn work_status(
+    workspace: &FrontendWorkspace,
+    config: &FrontendConfig,
+) -> FrontendResult<FrontendCommandResult> {
+    let lockfile_path = workspace.root.root.join("fol.lock");
+    let lockfile = if lockfile_path.is_file() {
+        Some(
+            fol_package::parse_package_lockfile(
+                &std::fs::read_to_string(&lockfile_path).map_err(|error| {
+                    FrontendError::new(
+                        FrontendErrorKind::CommandFailed,
+                        format!(
+                            "could not read lockfile '{}': {}",
+                            lockfile_path.display(),
+                            error
+                        ),
+                    )
+                })?,
+            )
+            .map_err(FrontendError::from)?,
+        )
+    } else {
+        None
+    };
+    let package_store_root = select_package_store_root(config, workspace);
+    let git_store_root = package_store_root.join("git");
+
+    let mut summary = vec![
+        format!("workspace-root={}", workspace.root.root.display()),
+        format!("members={}", workspace.members.len()),
+        format!(
+            "lockfile={}",
+            if lockfile.is_some() { "present" } else { "missing" }
+        ),
+        format!("build-root={}", workspace.build_root.display()),
+        format!("cache-root={}", workspace.cache_root.display()),
+        format!("git-cache-root={}", workspace.git_cache_root.display()),
+        format!("package-store-root={}", package_store_root.display()),
+        format!("git-store-root={}", git_store_root.display()),
+    ];
+
+    if let Some(lockfile) = &lockfile {
+        summary.push(format!("locked-git-dependencies={}", lockfile.entries.len()));
+        for entry in &lockfile.entries {
+            summary.push(format!(
+                "  {} [{}] @ {}",
+                entry.alias,
+                entry.locator,
+                shorten_revision(&entry.selected_revision)
+            ));
+        }
+    }
+
+    let mut result = FrontendCommandResult::new("work status", summary.join("\n"));
+    result.artifacts.push(FrontendArtifactSummary::new(
+        FrontendArtifactKind::WorkspaceRoot,
+        "workspace-root",
+        Some(workspace.root.root.clone()),
+    ));
+    result.artifacts.push(FrontendArtifactSummary::new(
+        FrontendArtifactKind::BuildRoot,
+        "build-root",
+        Some(workspace.build_root.clone()),
+    ));
+    result.artifacts.push(FrontendArtifactSummary::new(
+        FrontendArtifactKind::CacheRoot,
+        "cache-root",
+        Some(workspace.cache_root.clone()),
+    ));
+    result.artifacts.push(FrontendArtifactSummary::new(
+        FrontendArtifactKind::CacheRoot,
+        "git-cache-root",
+        Some(workspace.git_cache_root.clone()),
+    ));
+    result.artifacts.push(FrontendArtifactSummary::new(
+        FrontendArtifactKind::PackageRoot,
+        "package-store-root",
+        Some(package_store_root),
+    ));
+    if lockfile_path.is_file() {
+        result.artifacts.push(FrontendArtifactSummary::new(
+            FrontendArtifactKind::PackageRoot,
+            "lockfile",
+            Some(lockfile_path),
+        ));
+    }
+    Ok(result)
+}
+
+fn dependency_kind_label(kind: fol_package::PackageDependencySourceKind) -> &'static str {
+    match kind {
+        fol_package::PackageDependencySourceKind::Local => "loc",
+        fol_package::PackageDependencySourceKind::PackageStore => "pkg",
+        fol_package::PackageDependencySourceKind::Git => "git",
+    }
+}
+
+fn shorten_revision(revision: &str) -> String {
+    revision.chars().take(12).collect()
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{work_info, work_list};
-    use crate::{FrontendWorkspace, PackageRoot, WorkspaceRoot};
-    use std::path::PathBuf;
+    use super::{work_deps, work_info, work_list, work_status};
+    use crate::{FrontendConfig, FrontendWorkspace, PackageRoot, WorkspaceRoot};
+    use std::{fs, path::PathBuf};
 
     #[test]
     fn work_info_returns_workspace_summary_as_command_result() {
@@ -73,5 +207,65 @@ mod tests {
         assert!(result.summary.contains("/tmp/demo/lib"));
         assert_eq!(result.artifacts.len(), 2);
         assert_eq!(result.artifacts[0].kind, crate::FrontendArtifactKind::PackageRoot);
+    }
+
+    #[test]
+    fn work_deps_reports_member_dependency_graphs() {
+        let root = std::env::temp_dir().join(format!("fol_frontend_work_deps_{}", std::process::id()));
+        let app = root.join("app");
+        fs::create_dir_all(&app).unwrap();
+        fs::write(
+            app.join("package.yaml"),
+            "name: app\nversion: 0.1.0\ndep.shared: loc:../shared\ndep.logtiny: git:git+https://github.com/bresilla/logtiny\n",
+        )
+        .unwrap();
+        let workspace = FrontendWorkspace {
+            root: WorkspaceRoot::new(root.clone()),
+            members: vec![PackageRoot::new(app.clone())],
+            std_root_override: None,
+            package_store_root_override: None,
+            build_root: root.join(".fol/build"),
+            cache_root: root.join(".fol/cache"),
+            git_cache_root: root.join(".fol/cache/git"),
+        };
+
+        let result = work_deps(&workspace).unwrap();
+
+        assert_eq!(result.command, "work deps");
+        assert!(result.summary.contains("app:"));
+        assert!(result.summary.contains("shared [loc] -> ../shared"));
+        assert!(result.summary.contains("logtiny [git] -> git+https://github.com/bresilla/logtiny"));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn work_status_reports_lockfile_and_roots() {
+        let root =
+            std::env::temp_dir().join(format!("fol_frontend_work_status_{}", std::process::id()));
+        fs::create_dir_all(&root).unwrap();
+        fs::write(
+            root.join("fol.lock"),
+            "version: 1\n- alias: logtiny\n  source: git\n  locator: git+https://github.com/bresilla/logtiny\n  revision: abcdef1234567890\n  root: /tmp/demo/.fol/pkg/git/logtiny/rev-abcdef1234567890\n",
+        )
+        .unwrap();
+        let workspace = FrontendWorkspace {
+            root: WorkspaceRoot::new(root.clone()),
+            members: vec![PackageRoot::new(root.join("app"))],
+            std_root_override: None,
+            package_store_root_override: Some(root.join(".fol/pkg")),
+            build_root: root.join(".fol/build"),
+            cache_root: root.join(".fol/cache"),
+            git_cache_root: root.join(".fol/cache/git"),
+        };
+
+        let result = work_status(&workspace, &FrontendConfig::default()).unwrap();
+
+        assert_eq!(result.command, "work status");
+        assert!(result.summary.contains("lockfile=present"));
+        assert!(result.summary.contains("locked-git-dependencies=1"));
+        assert!(result.summary.contains("logtiny [git+https://github.com/bresilla/logtiny] @ abcdef123456"));
+
+        fs::remove_dir_all(root).ok();
     }
 }

@@ -75,6 +75,10 @@ fn workspace_workflow_walkthrough_reports_member_and_artifact_roots() {
         .expect("work info should succeed");
     let (_, list) = run_command_from_args_in_dir(["fol", "work", "list"], &root)
         .expect("work list should succeed");
+    let (_, deps) = run_command_from_args_in_dir(["fol", "work", "deps"], &root)
+        .expect("work deps should succeed");
+    let (_, status) = run_command_from_args_in_dir(["fol", "work", "status"], &root)
+        .expect("work status should succeed");
     let (_, build) = run_command_from_args_in_dir(["fol", "build"], &root)
         .expect("build should succeed");
 
@@ -82,6 +86,10 @@ fn workspace_workflow_walkthrough_reports_member_and_artifact_roots() {
     assert!(info.summary.contains("members=2"));
     assert!(list.summary.contains(&app.display().to_string()));
     assert!(list.summary.contains(&lib.display().to_string()));
+    assert!(deps.summary.contains("app:"));
+    assert!(deps.summary.contains("(no dependencies)"));
+    assert!(status.summary.contains("lockfile=missing"));
+    assert!(status.summary.contains(&root.join(".fol/cache/git").display().to_string()));
     assert!(build.summary.contains(&root.join(".fol/build/debug").display().to_string()));
     assert_eq!(
         build

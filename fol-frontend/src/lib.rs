@@ -59,7 +59,7 @@ pub use scaffold::{
     new_project_with_mode, package_target_kind, PackageTargetKind,
 };
 pub use ui::FrontendOutput;
-pub use work::{work_info, work_list};
+pub use work::{work_deps, work_info, work_list, work_status};
 pub use workspace::{
     enumerate_member_packages, load_frontend_workspace, load_workspace_config, FrontendWorkspace,
     FrontendWorkspaceConfig,
@@ -420,6 +420,8 @@ fn dispatch_workspace_command(
         FrontendCommand::Work(command) => Ok(match command.command {
             cli::WorkSubcommand::Info(_) => work_info(workspace),
             cli::WorkSubcommand::List(_) => work_list(workspace),
+            cli::WorkSubcommand::Deps(_) => work_deps(workspace)?,
+            cli::WorkSubcommand::Status(_) => work_status(workspace, config)?,
         }),
         FrontendCommand::Fetch(command) => {
             fetch_workspace_with_config(workspace, &config_for_roots(config, &command.roots))
