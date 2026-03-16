@@ -21,6 +21,7 @@ The frontend owns:
 
 - derive-based `clap` command parsing
 - command aliases and grouped help
+- frontend-owned root help and version output
 - workspace and package discovery
 - package/workspace scaffolding
 - package preparation over `fol-package`
@@ -54,6 +55,13 @@ The current command surface is:
 - `fol completion`
 - hidden `_complete`
 
+The root help contract is:
+
+- `fol`
+- `fol --help`
+
+Both render the same frontend-owned help surface.
+
 Aliases are part of the tool contract too. Examples:
 
 - `fol build`, `fol b`, `fol make`
@@ -77,12 +85,23 @@ fol run -- --flag value
 The goal is to make `fol` feel like the canonical language tool, not just a
 compiler executable with a growing list of flags.
 
+Direct compile is still supported too, but it is frontend-owned now:
+
+```text
+fol path/to/package
+fol build path/to/package
+fol check path/to/package
+fol run path/to/package -- --flag value
+fol emit rust path/to/package
+fol emit lowered path/to/package
+```
+
 ## How Dispatch Works
 
 The frontend flow is:
 
 1. parse CLI arguments with `clap`
-2. resolve output/color/profile policy
+2. resolve output/profile policy
 3. detect the target root
 4. load the frontend workspace model
 5. dispatch the selected command
@@ -97,6 +116,14 @@ For example:
 - `fol run` builds first, then executes the produced binary
 - `fol emit rust` keeps the backend in source-emission mode
 - `fol emit lowered` writes lowered IR snapshots instead of invoking the backend
+
+Compile-oriented flags belong to the commands that use them. For example:
+
+- `--std-root` and `--package-store-root` belong to compile/fetch flows
+- `--keep-build-dir` belongs to backend-producing flows such as `build`, `run`,
+  and `emit rust`
+- `dump lowered` is represented as `fol emit lowered`, not as a root flag in the
+  public CLI
 
 ## Root Discovery
 
@@ -121,7 +148,6 @@ If no root is found, frontend diagnostics explain how to bootstrap one with
 The frontend currently supports environment and flag control for:
 
 - output mode
-- color policy
 - profile
 - std root
 - package store root
@@ -155,6 +181,8 @@ Frontend command summaries support:
 The frontend also owns human highlighting behavior. Actions and paths can be
 highlighted in human mode, while plain mode stays stable and ANSI-free.
 
+Human mode is always colorized. There is no public color-policy switch.
+
 ## Build Artifacts
 
 Frontend commands report explicit artifact roots.
@@ -172,16 +200,20 @@ This keeps the frontend closer to a build tool than to a thin compiler shell.
 
 ## Relationship To The Root Binary
 
-The repo still has a root `src/main.rs`, but it is now only a migration shim.
+The repo still has a root `src/main.rs`, but it is now just a thin entry shim
+into `fol-frontend`.
 
-The long-term direction is:
+The CLI behavior itself lives in `fol-frontend`.
 
-- workflow commands route through `fol-frontend`
-- direct legacy compile flags remain temporarily supported where feasible
-- more of the old root-main orchestration is pushed into `fol-frontend`
+That includes:
 
-So `fol-frontend` is the real home of the tool behavior, even while the root
-binary is still being trimmed down.
+- workflow commands
+- direct compile dispatch
+- root help
+- output rendering
+- frontend diagnostics
+
+So the root binary is no longer its own separate CLI implementation.
 
 ## Current Boundary
 
