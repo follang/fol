@@ -1,0 +1,6 @@
+use shared: loc = {"../shared"};
+
+fun[] main(): int = {
+    var values: seq[int] = numbers()
+    return values[0]
+}

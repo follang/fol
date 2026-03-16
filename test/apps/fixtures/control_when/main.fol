@@ -1,0 +1,10 @@
+fun[] choose(): int = {
+    when(true) {
+        case(true) { return 7 }
+        * { return 3 }
+    }
+}
+
+fun[] main(): int = {
+    return choose()
+}

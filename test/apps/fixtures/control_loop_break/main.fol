@@ -1,0 +1,10 @@
+fun[] spin_once(): int = {
+    loop(true) {
+        break
+    }
+    return 7
+}
+
+fun[] main(): int = {
+    return spin_once()
+}

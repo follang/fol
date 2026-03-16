@@ -1,11 +1,19 @@
-use crate::{mangle_type_name, BackendError, BackendErrorKind, BackendResult};
+use crate::{mangle_package_module_name, mangle_type_name, sanitize_backend_ident, BackendError, BackendErrorKind, BackendResult};
 use fol_lower::{
     LoweredBuiltinType, LoweredType, LoweredTypeDecl, LoweredTypeDeclKind, LoweredTypeId,
-    LoweredTypeTable, LoweredVariantLayout,
+    LoweredTypeTable, LoweredVariantLayout, LoweredWorkspace,
 };
 use fol_resolver::PackageIdentity;
 
 pub fn render_rust_type(type_table: &LoweredTypeTable, type_id: LoweredTypeId) -> BackendResult<String> {
+    render_rust_type_in_workspace(None, type_table, type_id)
+}
+
+pub fn render_rust_type_in_workspace(
+    workspace: Option<&LoweredWorkspace>,
+    type_table: &LoweredTypeTable,
+    type_id: LoweredTypeId,
+) -> BackendResult<String> {
     let Some(ty) = type_table.get(type_id) else {
         return Err(BackendError::new(
             BackendErrorKind::InvalidInput,
@@ -21,7 +29,7 @@ pub fn render_rust_type(type_table: &LoweredTypeTable, type_id: LoweredTypeId) -
             size: Some(size),
         } => Ok(format!(
             "rt::FolArray<{}, {size}>",
-            render_rust_type(type_table, *element_type)?
+            render_rust_type_in_workspace(workspace, type_table, *element_type)?
         )),
         LoweredType::Array { size: None, .. } => Err(BackendError::new(
             BackendErrorKind::Unsupported,
@@ -29,16 +37,16 @@ pub fn render_rust_type(type_table: &LoweredTypeTable, type_id: LoweredTypeId) -
         )),
         LoweredType::Vector { element_type } => Ok(format!(
             "rt::FolVec<{}>",
-            render_rust_type(type_table, *element_type)?
+            render_rust_type_in_workspace(workspace, type_table, *element_type)?
         )),
         LoweredType::Sequence { element_type } => Ok(format!(
             "rt::FolSeq<{}>",
-            render_rust_type(type_table, *element_type)?
+            render_rust_type_in_workspace(workspace, type_table, *element_type)?
         )),
         LoweredType::Set { member_types } => match member_types.as_slice() {
             [member_type] => Ok(format!(
                 "rt::FolSet<{}>",
-                render_rust_type(type_table, *member_type)?
+                render_rust_type_in_workspace(workspace, type_table, *member_type)?
             )),
             _ => Err(BackendError::new(
                 BackendErrorKind::Unsupported,
@@ -50,17 +58,23 @@ pub fn render_rust_type(type_table: &LoweredTypeTable, type_id: LoweredTypeId) -
             value_type,
         } => Ok(format!(
             "rt::FolMap<{}, {}>",
-            render_rust_type(type_table, *key_type)?,
-            render_rust_type(type_table, *value_type)?
+            render_rust_type_in_workspace(workspace, type_table, *key_type)?,
+            render_rust_type_in_workspace(workspace, type_table, *value_type)?
         )),
         LoweredType::Optional { inner } => Ok(format!(
             "rt::FolOption<{}>",
-            render_rust_type(type_table, *inner)?
+            render_rust_type_in_workspace(workspace, type_table, *inner)?
         )),
         LoweredType::Error { inner } => Ok(match inner {
-            Some(inner) => format!("rt::FolError<{}>", render_rust_type(type_table, *inner)?),
+            Some(inner) => format!(
+                "rt::FolError<{}>",
+                render_rust_type_in_workspace(workspace, type_table, *inner)?
+            ),
             None => "rt::FolError<()>".to_string(),
         }),
+        LoweredType::Record { .. } | LoweredType::Entry { .. } => {
+            render_named_runtime_type(workspace, type_id)
+        }
         other => Err(BackendError::new(
             BackendErrorKind::Unsupported,
             format!("Rust type rendering is not implemented yet for {other:?}"),
@@ -69,6 +83,7 @@ pub fn render_rust_type(type_table: &LoweredTypeTable, type_id: LoweredTypeId) -
 }
 
 pub fn render_record_definition(
+    workspace: &LoweredWorkspace,
     package_identity: &PackageIdentity,
     type_decl: &LoweredTypeDecl,
     type_table: &LoweredTypeTable,
@@ -83,14 +98,15 @@ pub fn render_record_definition(
     let rendered_fields = fields
         .iter()
         .map(|field| {
-            let rendered_type = render_rust_type(type_table, field.type_id)?;
+            let rendered_type =
+                render_rust_type_in_workspace(Some(workspace), type_table, field.type_id)?;
             Ok(format!("    pub {}: {},", field.name, rendered_type))
         })
         .collect::<BackendResult<Vec<_>>>()?
         .join("\n");
 
     Ok(format!(
-        "#[derive(Debug, Clone, PartialEq, Eq)]\npub struct {} {{\n{}\n}}\n",
+        "#[derive(Debug, Clone, PartialEq, Eq, Default)]\npub struct {} {{\n{}\n}}\n",
         mangle_type_name(package_identity, type_decl.runtime_type, &type_decl.name),
         rendered_fields
     ))
@@ -120,13 +136,14 @@ pub fn render_record_trait_impl(
         .join("\n");
 
     Ok(format!(
-        "impl rt::FolRecord for {type_name} {{\n    fn fol_record_name(&self) -> &'static str {{\n        \"{}\"\n    }}\n\n    fn fol_record_fields(&self) -> Vec<rt::FolNamedValue> {{\n        vec![\n{}\n        ]\n    }}\n}}\n\nimpl rt::FolEchoFormat for {type_name} {{\n    fn fol_echo_format(&self) -> String {{\n        rt::render_record(self)\n    }}\n}}\n",
+        "impl rt::FolRecord for {type_name} {{\n    fn fol_record_name(&self) -> &'static str {{\n        \"{}\"\n    }}\n\n    fn fol_record_fields(&self) -> Vec<rt::FolNamedValue> {{\n        vec![\n{}\n        ]\n    }}\n}}\n\nimpl rt::FolEchoFormat for {type_name} {{\n    fn fol_echo_format(&self) -> String {{\n        rt::render_record(self)\n    }}\n}}\n\nimpl std::fmt::Display for {type_name} {{\n    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {{\n        write!(f, \"{{}}\", rt::render_record(self))\n    }}\n}}\n",
         type_decl.name,
         rendered_fields
     ))
 }
 
 pub fn render_entry_definition(
+    workspace: &LoweredWorkspace,
     package_identity: &PackageIdentity,
     type_decl: &LoweredTypeDecl,
     type_table: &LoweredTypeTable,
@@ -140,14 +157,14 @@ pub fn render_entry_definition(
 
     let rendered_variants = variants
         .iter()
-        .map(|variant| render_entry_variant(variant, type_table))
+        .map(|variant| render_entry_variant(workspace, variant, type_table))
         .collect::<BackendResult<Vec<_>>>()?
         .join("\n");
+    let type_name = mangle_type_name(package_identity, type_decl.runtime_type, &type_decl.name);
+    let default_variant = render_entry_default_variant(workspace, variants, type_table)?;
 
     Ok(format!(
-        "#[derive(Debug, Clone, PartialEq, Eq)]\npub enum {} {{\n{}\n}}\n",
-        mangle_type_name(package_identity, type_decl.runtime_type, &type_decl.name),
-        rendered_variants
+        "#[derive(Debug, Clone, PartialEq, Eq)]\npub enum {type_name} {{\n{rendered_variants}\n}}\n\nimpl Default for {type_name} {{\n    fn default() -> Self {{\n        {default_variant}\n    }}\n}}\n",
     ))
 }
 
@@ -170,7 +187,7 @@ pub fn render_entry_trait_impl(
         .join("\n");
 
     Ok(format!(
-        "impl rt::FolEntry for {type_name} {{\n    fn fol_entry_name(&self) -> &'static str {{\n        \"{}\"\n    }}\n\n    fn fol_entry_variant_name(&self) -> &'static str {{\n        match self {{\n{}\n        }}\n    }}\n\n    fn fol_entry_fields(&self) -> Vec<rt::FolNamedValue> {{\n        match self {{\n{}\n        }}\n    }}\n}}\n\nimpl rt::FolEchoFormat for {type_name} {{\n    fn fol_echo_format(&self) -> String {{\n        rt::render_entry(self)\n    }}\n}}\n",
+        "impl rt::FolEntry for {type_name} {{\n    fn fol_entry_name(&self) -> &'static str {{\n        \"{}\"\n    }}\n\n    fn fol_entry_variant_name(&self) -> &'static str {{\n        match self {{\n{}\n        }}\n    }}\n\n    fn fol_entry_fields(&self) -> Vec<rt::FolNamedValue> {{\n        match self {{\n{}\n        }}\n    }}\n}}\n\nimpl rt::FolEchoFormat for {type_name} {{\n    fn fol_echo_format(&self) -> String {{\n        rt::render_entry(self)\n    }}\n}}\n\nimpl std::fmt::Display for {type_name} {{\n    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {{\n        write!(f, \"{{}}\", rt::render_entry(self))\n    }}\n}}\n",
         type_decl.name,
         match_arms,
         variants
@@ -182,6 +199,7 @@ pub fn render_entry_trait_impl(
 }
 
 fn render_entry_variant(
+    workspace: &LoweredWorkspace,
     variant: &LoweredVariantLayout,
     type_table: &LoweredTypeTable,
 ) -> BackendResult<String> {
@@ -189,10 +207,112 @@ fn render_entry_variant(
         Some(payload_type) => format!(
             "    {}({}),",
             variant.name,
-            render_rust_type(type_table, payload_type)?
+            render_rust_type_in_workspace(Some(workspace), type_table, payload_type)?
         ),
         None => format!("    {},", variant.name),
     })
+}
+
+fn render_entry_default_variant(
+    _workspace: &LoweredWorkspace,
+    variants: &[LoweredVariantLayout],
+    _type_table: &LoweredTypeTable,
+) -> BackendResult<String> {
+    let default_variant = variants.first().ok_or_else(|| {
+        BackendError::new(
+            BackendErrorKind::InvalidInput,
+            "entry definitions must retain at least one variant for Rust emission",
+        )
+    })?;
+    Ok(match default_variant.payload_type {
+        Some(_payload_type) => format!(
+            "Self::{}(Default::default())",
+            default_variant.name,
+        ),
+        None => format!("Self::{}", default_variant.name),
+    })
+}
+
+fn render_named_runtime_type(
+    workspace: Option<&LoweredWorkspace>,
+    type_id: LoweredTypeId,
+) -> BackendResult<String> {
+    let Some(workspace) = workspace else {
+        return Err(BackendError::new(
+            BackendErrorKind::Unsupported,
+            format!(
+                "workspace-aware Rust type rendering is required for named runtime type {:?}",
+                type_id
+            ),
+        ));
+    };
+
+    for package in workspace.packages() {
+        for type_decl in package.type_decls.values() {
+            if type_decl.runtime_type == type_id {
+                return Ok(format!(
+                    "{}::{}",
+                    render_namespace_module_path(workspace, &package.identity, type_decl.source_unit_id)?,
+                    mangle_type_name(&package.identity, type_decl.runtime_type, &type_decl.name)
+                ));
+            }
+        }
+    }
+
+    Err(BackendError::new(
+        BackendErrorKind::InvalidInput,
+        format!(
+            "named lowered runtime type {:?} does not map to any lowered type declaration",
+            type_id
+        ),
+    ))
+}
+
+fn render_namespace_module_path(
+    workspace: &LoweredWorkspace,
+    package_identity: &PackageIdentity,
+    source_unit_id: fol_resolver::SourceUnitId,
+) -> BackendResult<String> {
+    let package = workspace.package(package_identity).ok_or_else(|| {
+        BackendError::new(
+            BackendErrorKind::InvalidInput,
+            format!("package '{}' is missing from workspace", package_identity.display_name),
+        )
+    })?;
+    let source_unit = package
+        .source_units
+        .iter()
+        .find(|source_unit| source_unit.source_unit_id == source_unit_id)
+        .ok_or_else(|| {
+            BackendError::new(
+                BackendErrorKind::InvalidInput,
+                format!(
+                    "source unit {:?} is missing from package '{}'",
+                    source_unit_id, package_identity.display_name
+                ),
+            )
+        })?;
+    let mut segments = source_unit
+        .namespace
+        .split("::")
+        .filter(|segment| !segment.is_empty())
+        .map(sanitize_backend_ident)
+        .collect::<Vec<_>>();
+    if segments
+        .first()
+        .is_some_and(|segment| segment == &sanitize_backend_ident(&package_identity.display_name))
+    {
+        segments.remove(0);
+    }
+    let namespace_segment = match segments.as_slice() {
+        [] => "root".to_string(),
+        parts => parts.join("::"),
+    };
+    Ok(format!(
+        "crate::packages::{}::{}",
+        mangle_package_module_name(package_identity),
+        namespace_segment
+    ))
 }
 
 fn render_entry_trait_match_arm(variant: &LoweredVariantLayout) -> String {
@@ -227,9 +347,9 @@ fn render_builtin_type(builtin: LoweredBuiltinType) -> &'static str {
 mod tests {
     use super::{
         render_entry_definition, render_entry_trait_impl, render_record_definition,
-        render_record_trait_impl, render_rust_type,
+        render_record_trait_impl, render_rust_type, render_rust_type_in_workspace,
     };
-    use crate::testing::package_identity;
+    use crate::testing::{package_identity, sample_lowered_workspace};
     use fol_lower::{
         LoweredBuiltinType, LoweredFieldLayout, LoweredType, LoweredTypeDecl,
         LoweredTypeDeclKind, LoweredTypeTable, LoweredVariantLayout,
@@ -325,8 +445,9 @@ mod tests {
             },
         };
         let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
+        let workspace = sample_lowered_workspace();
 
-        let rendered = render_record_definition(&package_identity, &decl, &table)
+        let rendered = render_record_definition(&workspace, &package_identity, &decl, &table)
             .expect("record definition should render");
 
         assert!(rendered.contains("#[derive(Debug, Clone, PartialEq, Eq)]"));
@@ -412,8 +533,9 @@ mod tests {
             },
         };
         let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
+        let workspace = sample_lowered_workspace();
 
-        let rendered = render_entry_definition(&package_identity, &decl, &table)
+        let rendered = render_entry_definition(&workspace, &package_identity, &decl, &table)
             .expect("entry definition should render");
 
         assert!(rendered.contains("#[derive(Debug, Clone, PartialEq, Eq)]"));
@@ -532,13 +654,14 @@ mod tests {
             },
         };
         let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
+        let workspace = sample_lowered_workspace();
 
         let snapshot = [
-            render_record_definition(&package_identity, &record_decl, &table)
+            render_record_definition(&workspace, &package_identity, &record_decl, &table)
                 .expect("record definition should render"),
             render_record_trait_impl(&package_identity, &record_decl)
                 .expect("record trait impl should render"),
-            render_entry_definition(&package_identity, &entry_decl, &table)
+            render_entry_definition(&workspace, &package_identity, &entry_decl, &table)
                 .expect("entry definition should render"),
             render_entry_trait_impl(&package_identity, &entry_decl)
                 .expect("entry trait impl should render"),
@@ -553,5 +676,28 @@ mod tests {
         assert!(snapshot.contains("impl rt::FolEntry"));
         assert!(snapshot.contains("rt::render_record(self)"));
         assert!(snapshot.contains("rt::render_entry(self)"));
+    }
+
+    #[test]
+    fn named_runtime_types_render_through_workspace_paths() {
+        let workspace = sample_lowered_workspace();
+        let entry_package = workspace.entry_package();
+        let user_decl = entry_package
+            .type_decls
+            .values()
+            .find(|decl| decl.name == "User")
+            .expect("sample workspace should include User record");
+
+        let rendered = render_rust_type_in_workspace(
+            Some(&workspace),
+            workspace.type_table(),
+            user_decl.runtime_type,
+        )
+        .expect("named runtime type should render through its module path");
+
+        assert_eq!(
+            rendered,
+            "crate::packages::pkg__entry__app::root::ty__pkg__entry__app__t0__User"
+        );
     }
 }

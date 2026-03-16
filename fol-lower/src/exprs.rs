@@ -454,14 +454,44 @@ pub(crate) fn lower_routine_bodies(
     for (source_unit_index, source_unit) in typed_package.program.resolved().syntax().source_units.iter().enumerate() {
         let source_unit_id = SourceUnitId(source_unit_index);
         for item in &source_unit.items {
-            let (name, body) = match &item.node {
-                AstNode::FunDecl { name, body, .. }
-                | AstNode::ProDecl { name, body, .. }
-                | AstNode::LogDecl { name, body, .. } => (name.as_str(), body.as_slice()),
+            let (name, syntax_id, body) = match &item.node {
+                AstNode::FunDecl {
+                    name,
+                    syntax_id,
+                    body,
+                    ..
+                }
+                | AstNode::ProDecl {
+                    name,
+                    syntax_id,
+                    body,
+                    ..
+                }
+                | AstNode::LogDecl {
+                    name,
+                    syntax_id,
+                    body,
+                    ..
+                } => (name.as_str(), *syntax_id, body.as_slice()),
                 AstNode::Commented { node, .. } => match node.as_ref() {
-                    AstNode::FunDecl { name, body, .. }
-                    | AstNode::ProDecl { name, body, .. }
-                    | AstNode::LogDecl { name, body, .. } => (name.as_str(), body.as_slice()),
+                    AstNode::FunDecl {
+                        name,
+                        syntax_id,
+                        body,
+                        ..
+                    }
+                    | AstNode::ProDecl {
+                        name,
+                        syntax_id,
+                        body,
+                        ..
+                    }
+                    | AstNode::LogDecl {
+                        name,
+                        syntax_id,
+                        body,
+                        ..
+                    } => (name.as_str(), *syntax_id, body.as_slice()),
                     _ => continue,
                 },
                 _ => continue,
@@ -478,10 +508,8 @@ pub(crate) fn lower_routine_bodies(
                 ));
                 continue;
             };
-            let Some(scope_id) = typed_package
-                .program
-                .typed_symbol(symbol_id)
-                .map(|symbol| symbol.scope_id)
+            let Some(scope_id) = syntax_id
+                .and_then(|syntax_id| typed_package.program.resolved().scope_for_syntax(syntax_id))
             else {
                 errors.push(LoweringError::with_kind(
                     LoweringErrorKind::InvalidInput,
@@ -1531,7 +1559,7 @@ fn lower_when_statement(
     cases: &[fol_parser::ast::WhenCase],
     default: Option<&[AstNode]>,
 ) -> Result<(), LoweringError> {
-    let _ = lower_expression(
+    let subject = lower_expression(
         typed_package,
         type_table,
         checked_type_map,
@@ -1548,7 +1576,7 @@ fn lower_when_statement(
 
     for (index, case) in cases.iter().enumerate() {
         let (condition, body) = when_case_condition_and_body(case)?;
-        let lowered_condition = lower_expression(
+        let lowered_condition = lower_when_case_condition(
             typed_package,
             type_table,
             checked_type_map,
@@ -1557,6 +1585,7 @@ fn lower_when_statement(
             cursor,
             source_unit_id,
             scope_id,
+            &subject,
             condition,
         )?;
         let body_block = cursor.create_block();
@@ -1744,7 +1773,7 @@ fn lower_when_expression(
         ));
     };
 
-    let _ = lower_expression(
+    let subject = lower_expression(
         typed_package,
         type_table,
         checked_type_map,
@@ -1761,7 +1790,7 @@ fn lower_when_expression(
 
     for (index, case) in cases.iter().enumerate() {
         let (condition, body) = when_case_condition_and_body(case)?;
-        let lowered_condition = lower_expression(
+        let lowered_condition = lower_when_case_condition(
             typed_package,
             type_table,
             checked_type_map,
@@ -1770,6 +1799,7 @@ fn lower_when_expression(
             cursor,
             source_unit_id,
             scope_id,
+            &subject,
             condition,
         )?;
         let body_block = cursor.create_block();
@@ -1822,6 +1852,71 @@ fn lower_when_expression(
             LoweringErrorKind::InvalidInput,
             "value-producing when did not retain a lowered join value",
         )
+    })
+}
+
+fn lower_when_case_condition(
+    typed_package: &fol_typecheck::TypedPackage,
+    type_table: &crate::LoweredTypeTable,
+    checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
+    current_identity: &PackageIdentity,
+    decl_index: &WorkspaceDeclIndex,
+    cursor: &mut RoutineCursor<'_>,
+    source_unit_id: SourceUnitId,
+    scope_id: ScopeId,
+    subject: &LoweredValue,
+    condition: &AstNode,
+) -> Result<LoweredValue, LoweringError> {
+    let lowered_condition = lower_expression_observed(
+        typed_package,
+        type_table,
+        checked_type_map,
+        current_identity,
+        decl_index,
+        cursor,
+        source_unit_id,
+        scope_id,
+        Some(subject.type_id),
+        condition,
+    )?;
+    if subject.type_id != lowered_condition.type_id {
+        return Err(LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            format!(
+                "when case condition type {} does not match subject type {} in lowered V1",
+                lowered_condition.type_id.0, subject.type_id.0
+            ),
+        ));
+    }
+    let bool_type = checked_type_map
+        .get(&typed_package.program.builtin_types().bool_)
+        .copied()
+        .ok_or_else(|| {
+            LoweringError::with_kind(
+                LoweringErrorKind::InvalidInput,
+                "lowered workspace lost builtin bool while lowering when conditions",
+            )
+        })?;
+    let eq_intrinsic = fol_intrinsics::intrinsic_by_canonical_name("eq")
+        .ok_or_else(|| {
+            LoweringError::with_kind(
+                LoweringErrorKind::InvalidInput,
+                "intrinsic registry lost '.eq(...)' while lowering when conditions",
+            )
+        })?
+        .id;
+    let result_local = cursor.allocate_local(bool_type, None);
+    cursor.push_instr(
+        Some(result_local),
+        LoweredInstrKind::IntrinsicCall {
+            intrinsic: eq_intrinsic,
+            args: vec![subject.local_id, lowered_condition.local_id],
+        },
+    )?;
+    Ok(LoweredValue {
+        local_id: result_local,
+        type_id: bool_type,
+        recoverable_error_type: None,
     })
 }
 

@@ -1,0 +1,6 @@
+fun[] main(): int = {
+    when(.eq(.eq(7, 7), .eq(.nq(7, 8), .eq(.lt(3, 4), .eq(.gt(4, 3), .eq(.ge(7, 7), .le(3, 3))))))) {
+        case(true) { return 7 }
+        * { return 0 }
+    }
+}

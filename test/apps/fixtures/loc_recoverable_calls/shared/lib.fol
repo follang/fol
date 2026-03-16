@@ -1,0 +1,6 @@
+fun[exp] load(flag: bol): int / str = {
+    when(flag) {
+        case(true) { report "bad" }
+        * { return 3 }
+    }
+}

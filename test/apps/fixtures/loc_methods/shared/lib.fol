@@ -1,0 +1,9 @@
+typ[exp] Counter: rec = {
+    total: int
+}
+
+var[exp] current: Counter
+
+fun[exp] (Counter)read(): int = {
+    return 7
+}

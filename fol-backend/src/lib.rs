@@ -63,7 +63,7 @@ pub use trace::{
 pub use instructions::{render_core_instruction, render_core_instruction_in_workspace};
 pub use types::{
     render_entry_definition, render_entry_trait_impl, render_record_definition,
-    render_record_trait_impl, render_rust_type,
+    render_record_trait_impl, render_rust_type, render_rust_type_in_workspace,
 };
 
 pub type BackendResult<T> = Result<T, BackendError>;

@@ -1,0 +1,5 @@
+var[exp] loc_answer: int = 7
+
+fun[exp] emit(value: int): int = {
+    return value
+}

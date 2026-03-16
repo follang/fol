@@ -20,6 +20,10 @@ mod typecheck {
     include!("typecheck/test_typecheck.rs");
 }
 
+mod apps {
+    include!("apps/test_apps.rs");
+}
+
 #[cfg(test)]
 mod integration_tests {
     use serde_json::Value;

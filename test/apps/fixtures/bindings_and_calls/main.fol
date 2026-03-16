@@ -1,0 +1,13 @@
+fun[] seed(): int = {
+    return 5
+}
+
+fun[] identity(value: int): int = {
+    return value
+}
+
+fun[] main(): int = {
+    var start: int = seed()
+    var echoed: int = identity(start)
+    return echoed
+}

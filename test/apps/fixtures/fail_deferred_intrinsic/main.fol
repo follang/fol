@@ -1,0 +1,4 @@
+fun[] main(): int = {
+    var parts: seq[int] = {7, 8}
+    return .cap(parts)
+}

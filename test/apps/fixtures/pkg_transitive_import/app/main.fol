@@ -1,0 +1,5 @@
+use json: pkg = {json};
+
+fun[] main(): int = {
+    return answer
+}
