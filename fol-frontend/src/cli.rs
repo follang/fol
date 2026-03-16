@@ -18,6 +18,13 @@ pub enum FrontendProfile {
     Release,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
+pub enum CompletionShellArg {
+    Bash,
+    Zsh,
+    Fish,
+}
+
 #[derive(Debug, Clone, Subcommand, PartialEq, Eq)]
 pub enum FrontendCommand {
     #[command(visible_aliases = ["i"])]
@@ -38,7 +45,7 @@ pub enum FrontendCommand {
     Emit(EmitCommand),
     Clean(UnitCommand),
     #[command(visible_aliases = ["completions", "comp"])]
-    Completion(UnitCommand),
+    Completion(CompletionCommand),
     #[command(hide = true, name = "_complete")]
     Complete(UnitCommand),
 }
@@ -50,6 +57,12 @@ pub struct UnitCommand;
 pub struct WorkCommand {
     #[command(subcommand)]
     pub command: WorkSubcommand,
+}
+
+#[derive(Debug, Clone, Args, PartialEq, Eq)]
+pub struct CompletionCommand {
+    #[arg(value_enum)]
+    pub shell: CompletionShellArg,
 }
 
 #[derive(Debug, Clone, Args, PartialEq, Eq)]
@@ -163,8 +176,9 @@ Options:
 #[cfg(test)]
 mod tests {
     use super::{
-        EmitCommand, EmitSubcommand, FrontendCli, FrontendCommand, FrontendProfile, InitCommand,
-        NewCommand, UnitCommand, WorkCommand, WorkSubcommand,
+        CompletionCommand, CompletionShellArg, EmitCommand, EmitSubcommand, FrontendCli,
+        FrontendCommand, FrontendProfile, InitCommand, NewCommand, UnitCommand, WorkCommand,
+        WorkSubcommand,
     };
     use crate::{ColorPolicy, OutputMode};
 
@@ -200,6 +214,18 @@ mod tests {
             lowered.command,
             Some(FrontendCommand::Emit(EmitCommand {
                 command: EmitSubcommand::Lowered(UnitCommand),
+            }))
+        );
+    }
+
+    #[test]
+    fn completion_command_parses_requested_shell() {
+        let cli = FrontendCli::parse_from(["fol", "completion", "bash"]);
+
+        assert_eq!(
+            cli.command,
+            Some(FrontendCommand::Completion(CompletionCommand {
+                shell: CompletionShellArg::Bash,
             }))
         );
     }

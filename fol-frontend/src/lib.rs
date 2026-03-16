@@ -19,8 +19,8 @@ mod work;
 mod workspace;
 
 pub use cli::{
-    EmitCommand, EmitSubcommand, FrontendCli, FrontendCommand, FrontendProfile, InitCommand,
-    NewCommand, UnitCommand,
+    CompletionCommand, CompletionShellArg, EmitCommand, EmitSubcommand, FrontendCli,
+    FrontendCommand, FrontendProfile, InitCommand, NewCommand, UnitCommand,
 };
 pub use clean::{clean_workspace, clean_workspace_with_config};
 pub use config::FrontendConfig;
