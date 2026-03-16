@@ -3454,4 +3454,51 @@ mod integration_tests {
 
         std::fs::remove_dir_all(&temp_root).ok();
     }
+
+    #[test]
+    #[ignore = "requires network access to github.com"]
+    fn test_frontend_fetches_public_logtiny_from_github() {
+        let temp_root = unique_temp_root("frontend_fetch_public_logtiny");
+        let app_root = temp_root.join("app");
+        create_app_with_git_dependency_from_url(
+            &app_root,
+            "https://github.com/bresilla/logtiny",
+        );
+
+        let output = run_fol_in_dir(&app_root, &["fetch"]);
+
+        assert!(
+            output.status.success(),
+            "public git fetch should succeed: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(app_root.join("fol.lock").is_file(), "public fetch should write fol.lock");
+        assert!(
+            String::from_utf8_lossy(&output.stdout).contains("prepared 1 workspace package"),
+            "public fetch should keep the fetch summary"
+        );
+
+        std::fs::remove_dir_all(&temp_root).ok();
+    }
+
+    fn create_app_with_git_dependency_from_url(app_root: &Path, remote_url: &str) {
+        std::fs::create_dir_all(app_root.join("src")).expect("Should create app source dir");
+        std::fs::write(
+            app_root.join("package.yaml"),
+            format!(
+                "name: {}\nversion: 0.1.0\ndep.logtiny: git:git+{}\n",
+                app_root
+                    .file_name()
+                    .and_then(|name| name.to_str())
+                    .unwrap_or("app"),
+                remote_url
+            ),
+        )
+        .expect("Should write app manifest");
+        std::fs::write(app_root.join("build.fol"), "def root: loc = \"src\"\n")
+            .expect("Should write app build");
+        std::fs::write(app_root.join("src/main.fol"), "fun[] main(): int = {\n    return 0\n}\n")
+            .expect("Should write app source");
+    }
 }
