@@ -36,7 +36,7 @@ pub fn init_package_root(
         root.join("src").join(source_file),
         starter_source_template(target),
     )?;
-    fs::write(root.join("package.yaml"), "")?;
+    fs::write(root.join("package.yaml"), starter_package_manifest(root))?;
     fs::write(root.join("build.fol"), "")?;
 
     Ok(FrontendCommandResult::new("init", "initialized current directory").with_artifact(
@@ -98,6 +98,32 @@ fn starter_source_template(target: PackageTargetKind) -> &'static str {
     }
 }
 
+fn starter_package_manifest(root: &Path) -> String {
+    format!("name: {}\nversion: 0.1.0\n", starter_package_name(root))
+}
+
+fn starter_package_name(root: &Path) -> String {
+    let raw = root.file_name().and_then(|name| name.to_str()).unwrap_or("app");
+    let mut name = String::with_capacity(raw.len().max(3));
+
+    for (index, ch) in raw.chars().enumerate() {
+        let valid = ch.is_ascii_alphanumeric() || ch == '_';
+        let mapped = if valid { ch } else { '_' };
+        if index == 0 && mapped.is_ascii_digit() {
+            name.push('_');
+        }
+        if mapped.is_ascii() {
+            name.push(mapped);
+        }
+    }
+
+    if name.is_empty() {
+        "app".to_string()
+    } else {
+        name
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
@@ -130,6 +156,10 @@ mod tests {
         assert!(root.join("src/main.fol").is_file());
         assert!(root.join("package.yaml").is_file());
         assert!(root.join("build.fol").is_file());
+        assert_eq!(
+            fs::read_to_string(root.join("package.yaml")).unwrap(),
+            "name: fol_frontend_init_pkg_".to_string() + &std::process::id().to_string() + "\nversion: 0.1.0\n"
+        );
 
         fs::remove_dir_all(root).ok();
     }
@@ -190,6 +220,10 @@ mod tests {
         assert_eq!(result.command, "new");
         assert!(root.join("src").is_dir());
         assert!(root.join("package.yaml").is_file());
+        assert_eq!(
+            fs::read_to_string(root.join("package.yaml")).unwrap(),
+            "name: demo\nversion: 0.1.0\n"
+        );
 
         fs::remove_dir_all(parent).ok();
     }
@@ -236,5 +270,11 @@ mod tests {
 
         fs::remove_dir_all(init_root_dir).ok();
         fs::remove_dir_all(new_parent).ok();
+    }
+
+    #[test]
+    fn package_manifest_sanitizes_names_from_root_directories() {
+        let root = std::env::temp_dir().join("123-invalid-name");
+        assert_eq!(starter_package_name(&root), "_123_invalid_name");
     }
 }
