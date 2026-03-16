@@ -10,6 +10,15 @@ Workspace Commands:
 
 Shell Commands:
   completion
+
+Examples:
+  fol init --bin
+  fol new demo --lib
+  fol fetch
+  fol build --release
+  fol run
+  fol emit rust
+  fol completion bash
 ";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
@@ -360,6 +369,8 @@ mod tests {
         assert!(help.contains("Workflow Commands:"));
         assert!(help.contains("Workspace Commands:"));
         assert!(help.contains("Shell Commands:"));
+        assert!(help.contains("Examples:"));
+        assert!(help.contains("fol build --release"));
     }
 
     #[test]
