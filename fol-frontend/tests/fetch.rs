@@ -211,6 +211,38 @@ fn update_prunes_stale_workspace_local_git_materializations() {
     fs::remove_dir_all(root).ok();
 }
 
+#[test]
+fn locked_fetch_repairs_missing_pinned_materializations_from_warm_cache() {
+    let root = temp_root("locked_repair");
+    let app = root.join("app");
+    let remote = root.join("remote-logtiny");
+    create_git_package_repo(&remote, "logtiny", "0.1.0");
+    create_app_with_git_dep(&app, &remote);
+    let workspace = git_dep_workspace(&root, &app);
+
+    fetch_workspace(&workspace).expect("initial fetch should succeed");
+    let lockfile = fol_package::parse_package_lockfile(
+        &fs::read_to_string(root.join("fol.lock")).expect("lockfile should exist"),
+    )
+    .expect("lockfile should parse");
+    let materialized_root = PathBuf::from(lockfile.entries[0].materialized_root.clone());
+    fs::remove_dir_all(&materialized_root).expect("should remove pinned materialization");
+
+    let result = fetch_workspace_with_config(
+        &workspace,
+        &FrontendConfig {
+            locked_fetch: true,
+            offline_fetch: true,
+            ..FrontendConfig::default()
+        },
+    )
+    .expect("locked fetch should repair from the warm cache");
+
+    assert!(result.summary.contains("repaired 1 missing pinned materialization(s)"));
+    assert!(materialized_root.is_dir());
+    fs::remove_dir_all(root).ok();
+}
+
 fn git_dep_workspace(root: &Path, app: &Path) -> FrontendWorkspace {
     FrontendWorkspace {
         root: WorkspaceRoot::new(root.to_path_buf()),

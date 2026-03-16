@@ -32,6 +32,7 @@ struct FetchResolution {
     lockfile: fol_package::PackageLockfile,
     lockfile_path: PathBuf,
     package_store_root: PathBuf,
+    repaired_materializations: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -124,10 +125,18 @@ pub fn fetch_workspace_with_config(
     let mut result = FrontendCommandResult::new(
         "fetch",
         format!(
-            "prepared {} workspace package(s) and resolved {} package root(s) into {}{}",
+            "prepared {} workspace package(s) and resolved {} package root(s) into {}{}{}",
             resolution.preparation.packages.len(),
             resolution.resolved_packages.len(),
             resolution.package_store_root.display(),
+            if resolution.repaired_materializations > 0 {
+                format!(
+                    "; repaired {} missing pinned materialization(s)",
+                    resolution.repaired_materializations
+                )
+            } else {
+                String::new()
+            },
             if stale_pruned > 0 {
                 format!("; pruned {} stale git materialization(s)", stale_pruned)
             } else {
@@ -228,6 +237,7 @@ fn resolve_workspace_fetch(
         offline: config.offline_fetch,
         refresh: config.refresh_fetch,
     };
+    let mut repaired_materializations = 0usize;
 
     while let Some(root) = queued_roots.pop() {
         let canonical_root = std::fs::canonicalize(&root).unwrap_or(root.clone());
@@ -286,13 +296,20 @@ fn resolve_workspace_fetch(
                                 dependency.alias, locator.raw, entry.locator
                             )));
                         }
+                        let was_missing = !Path::new(&entry.materialized_root).is_dir();
                         git_session
                             .materialize_revision_with_options(
                                 &locator,
                                 &entry.selected_revision,
                                 fetch_options,
                             )
-                            .map_err(FrontendError::from)?
+                            .map_err(FrontendError::from)
+                            .map(|materialization| {
+                                if was_missing {
+                                    repaired_materializations += 1;
+                                }
+                                materialization
+                            })?
                     } else {
                         git_session
                             .materialize_selected_revision_with_options(&locator, fetch_options)
@@ -350,6 +367,7 @@ fn resolve_workspace_fetch(
         lockfile,
         lockfile_path: lockfile_path(workspace),
         package_store_root,
+        repaired_materializations,
     })
 }
 
