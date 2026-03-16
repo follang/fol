@@ -1,9 +1,10 @@
 use crate::{mangle_local_name, BackendError, BackendErrorKind, BackendResult};
-use fol_lower::{LoweredRoutine, LoweredTerminator};
+use fol_lower::{LoweredRoutine, LoweredTerminator, LoweredType, LoweredTypeTable};
 use fol_resolver::PackageIdentity;
 
 pub fn render_terminator(
     package_identity: &PackageIdentity,
+    type_table: &LoweredTypeTable,
     routine: &LoweredRoutine,
     terminator: &LoweredTerminator,
 ) -> BackendResult<String> {
@@ -24,11 +25,21 @@ pub fn render_terminator(
             ))
         }
         LoweredTerminator::Return { value } => match value {
-            Some(value) => Ok(format!(
-                "return {};",
-                render_local_name(package_identity, routine, *value)?
-            )),
-            None => Ok("return;".to_string()),
+            Some(value) => {
+                let value = render_local_name(package_identity, routine, *value)?;
+                if routine_returns_recoverable(type_table, routine)? {
+                    Ok(format!("return rt::FolRecover::ok({value});"))
+                } else {
+                    Ok(format!("return {value};"))
+                }
+            }
+            None => {
+                if routine_returns_recoverable(type_table, routine)? {
+                    Ok("return rt::FolRecover::ok(());".to_string())
+                } else {
+                    Ok("return;".to_string())
+                }
+            }
         },
         LoweredTerminator::Report { value } => match value {
             Some(value) => Ok(format!(
@@ -46,6 +57,26 @@ pub fn render_terminator(
             None => Ok("panic!(\"panic\");".to_string()),
         },
         LoweredTerminator::Unreachable => Ok("unreachable!();".to_string()),
+    }
+}
+
+fn routine_returns_recoverable(
+    type_table: &LoweredTypeTable,
+    routine: &LoweredRoutine,
+) -> BackendResult<bool> {
+    let Some(signature_id) = routine.signature else {
+        return Ok(false);
+    };
+    match type_table.get(signature_id) {
+        Some(LoweredType::Routine(signature)) => Ok(signature.error_type.is_some()),
+        Some(other) => Err(BackendError::new(
+            BackendErrorKind::InvalidInput,
+            format!("routine signature id did not point to a routine type: {other:?}"),
+        )),
+        None => Err(BackendError::new(
+            BackendErrorKind::InvalidInput,
+            format!("routine signature type {:?} is missing", signature_id),
+        )),
     }
 }
 
@@ -86,6 +117,7 @@ mod tests {
 
         let rendered = render_terminator(
             &package_identity,
+            &table,
             &routine,
             &LoweredTerminator::Jump {
                 target: LoweredBlockId(7),
@@ -111,6 +143,7 @@ mod tests {
 
         let rendered = render_terminator(
             &package_identity,
+            &table,
             &routine,
             &LoweredTerminator::Branch {
                 condition,
@@ -141,12 +174,14 @@ mod tests {
 
         let with_value = render_terminator(
             &package_identity,
+            &table,
             &routine,
             &LoweredTerminator::Return { value: Some(value) },
         )
         .expect("return value");
         let empty = render_terminator(
             &package_identity,
+            &table,
             &routine,
             &LoweredTerminator::Return { value: None },
         )
@@ -171,12 +206,14 @@ mod tests {
 
         let report = render_terminator(
             &package_identity,
+            &table,
             &routine,
             &LoweredTerminator::Report { value: Some(value) },
         )
         .expect("report");
         let panic = render_terminator(
             &package_identity,
+            &table,
             &routine,
             &LoweredTerminator::Panic { value: Some(value) },
         )
@@ -198,7 +235,7 @@ mod tests {
         let routine = LoweredRoutine::new(LoweredRoutineId(4), "main", LoweredBlockId(0));
 
         let rendered =
-            render_terminator(&package_identity, &routine, &LoweredTerminator::Unreachable)
+            render_terminator(&package_identity, &table, &routine, &LoweredTerminator::Unreachable)
                 .expect("unreachable");
 
         assert_eq!(rendered, "unreachable!();");
@@ -212,6 +249,11 @@ mod tests {
         let int_id = table.intern_builtin(LoweredBuiltinType::Int);
         let str_id = table.intern_builtin(LoweredBuiltinType::Str);
         let mut routine = LoweredRoutine::new(LoweredRoutineId(5), "main", LoweredBlockId(0));
+        routine.signature = Some(table.intern(LoweredType::Routine(fol_lower::LoweredRoutineType {
+            params: vec![bool_id],
+            return_type: Some(int_id),
+            error_type: Some(str_id),
+        })));
         let flag = routine.locals.push(LoweredLocal {
             id: LoweredLocalId(0),
             type_id: Some(bool_id),
@@ -250,7 +292,7 @@ mod tests {
             LoweredTerminator::Unreachable,
         ]
         .iter()
-        .map(|terminator| render_terminator(&package_identity, &routine, terminator))
+        .map(|terminator| render_terminator(&package_identity, &table, &routine, terminator))
         .collect::<Result<Vec<_>, _>>()
         .expect("control snapshot renders")
         .join("\n");
@@ -260,11 +302,45 @@ mod tests {
             concat!(
                 "__fol_next_block = 3; continue;\n",
                 "if l__pkg__entry__app__r5__l0__flag { __fol_next_block = 1; } else { __fol_next_block = 2; } continue;\n",
-                "return l__pkg__entry__app__r5__l1__value;\n",
+                "return rt::FolRecover::ok(l__pkg__entry__app__r5__l1__value);\n",
                 "return rt::FolRecover::err(l__pkg__entry__app__r5__l2__message);\n",
                 "panic!(\"{}\", rt::render_echo(&l__pkg__entry__app__r5__l2__message));\n",
                 "unreachable!();"
             )
+        );
+    }
+
+    #[test]
+    fn recoverable_return_rendering_wraps_success_values_in_runtime_abi() {
+        let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
+        let mut table = LoweredTypeTable::new();
+        let int_id = table.intern_builtin(LoweredBuiltinType::Int);
+        let str_id = table.intern_builtin(LoweredBuiltinType::Str);
+        let signature_id = table.intern(LoweredType::Routine(fol_lower::LoweredRoutineType {
+            params: vec![],
+            return_type: Some(int_id),
+            error_type: Some(str_id),
+        }));
+        let mut routine = LoweredRoutine::new(LoweredRoutineId(6), "main", LoweredBlockId(0));
+        routine.signature = Some(signature_id);
+        let value = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(0),
+            type_id: Some(int_id),
+            recoverable_error_type: None,
+            name: Some("value".to_string()),
+        });
+
+        let rendered = render_terminator(
+            &package_identity,
+            &table,
+            &routine,
+            &LoweredTerminator::Return { value: Some(value) },
+        )
+        .expect("recoverable return");
+
+        assert_eq!(
+            rendered,
+            "return rt::FolRecover::ok(l__pkg__entry__app__r6__l0__value);"
         );
     }
 }

@@ -5,8 +5,11 @@ use fol_lower::{
     LoweredType, LoweredTypeDecl, LoweredTypeDeclKind, LoweredTypeTable, LoweredWorkspace,
 };
 use fol_parser::ast::SyntaxOrigin;
+use fol_package::{PackageConfig, PackageSession};
 use fol_resolver::{PackageIdentity, PackageSourceKind, SourceUnitId, SymbolId};
+use fol_typecheck::Typechecker;
 use std::collections::{BTreeMap, BTreeSet};
+use std::path::Path;
 
 pub(crate) fn sample_lowered_workspace() -> LoweredWorkspace {
     sample_lowered_workspace_named("app")
@@ -209,6 +212,41 @@ pub(crate) fn distinct_namespaces(workspace: &LoweredWorkspace) -> BTreeSet<Stri
         .packages()
         .flat_map(|package| package.source_units.iter().map(|unit| unit.namespace.clone()))
         .collect()
+}
+
+pub(crate) fn lowered_workspace_from_entry_path(path: &Path) -> LoweredWorkspace {
+    let mut stream = if path.is_dir() {
+        fol_stream::FileStream::from_folder(
+            path.to_str()
+                .expect("backend test folder fixtures should be valid utf-8"),
+        )
+        .expect("backend test folder fixture should open")
+    } else {
+        fol_stream::FileStream::from_file(
+            path.to_str()
+                .expect("backend test file fixtures should be valid utf-8"),
+        )
+        .expect("backend test file fixture should open")
+    };
+    let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+    let mut parser = fol_parser::ast::AstParser::new();
+    let syntax = parser
+        .parse_package(&mut lexer)
+        .expect("backend test fixture should parse");
+    let prepared = PackageSession::with_config(PackageConfig::default())
+        .prepare_entry_package(syntax)
+        .expect("backend test fixture should prepare");
+    let resolved = fol_resolver::resolve_prepared_workspace_with_config(
+        prepared,
+        fol_resolver::ResolverConfig::default(),
+    )
+    .expect("backend test fixture should resolve");
+    let typed = Typechecker::new()
+        .check_resolved_workspace(resolved)
+        .expect("backend test fixture should typecheck");
+    fol_lower::Lowerer::new()
+        .lower_typed_workspace(typed)
+        .expect("backend test fixture should lower")
 }
 
 fn routine(

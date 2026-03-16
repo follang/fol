@@ -1,8 +1,11 @@
 use crate::{
-    mangle_package_module_name, plan_generated_crate_layout, plan_namespace_layouts,
-    plan_package_layouts, BackendArtifact, BackendConfig, BackendError, BackendErrorKind,
-    BackendMode, BackendResult, BackendSession, EmittedRustFile,
+    mangle_package_module_name, mangle_routine_name, plan_generated_crate_layout,
+    plan_namespace_layouts, plan_package_layouts, render_entry_definition, render_entry_trait_impl,
+    render_global_declaration, render_record_definition, render_record_trait_impl,
+    render_routine_definition, render_routine_shell, BackendArtifact, BackendConfig, BackendError,
+    BackendErrorKind, BackendMode, BackendResult, BackendSession, EmittedRustFile,
 };
+use fol_lower::LoweredType;
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -27,12 +30,25 @@ pub fn emit_main_rs(session: &BackendSession) -> BackendResult<EmittedRustFile> 
     let layout = plan_generated_crate_layout(session);
     let entry_candidate = session.select_buildable_entry_candidate()?;
     let entry_name = &session.entry_identity().display_name;
+    let entry_wrapper = match resolve_entry_callable(session, entry_candidate) {
+        Some(EntryCallable {
+            rust_path,
+            recoverable: false,
+        }) => format!("    let _ = {rust_path}();"),
+        Some(EntryCallable {
+            rust_path,
+            recoverable: true,
+        }) => format!(
+            "    let __fol_outcome = rt::outcome_from_recoverable({rust_path}());\n    if let Some(__fol_message) = rt::printable_outcome_message(&__fol_outcome) {{\n        eprintln!(\"{{}}\", __fol_message);\n    }}\n    std::process::exit(__fol_outcome.exit_code());"
+        ),
+        None => "    let _entry_name = \"placeholder\";".to_string(),
+    };
 
     Ok(EmittedRustFile {
         path: layout.main_rs_path,
         module_name: "main".to_string(),
         contents: format!(
-            "use fol_runtime::prelude as rt;\n\nmod packages;\n\nfn main() {{\n    let _runtime = rt::crate_name();\n    let _entry_package = \"{entry_name}\";\n    let _entry_name = \"{}\";\n    let _ = (&_runtime, &_entry_package, &_entry_name);\n}}\n",
+            "use fol_runtime::prelude as rt;\n\nmod packages;\n\nfn main() {{\n    let _runtime = rt::crate_name();\n    let _entry_package = \"{entry_name}\";\n    let _entry_name = \"{}\";\n    let _ = (&_runtime, &_entry_package, &_entry_name);\n{entry_wrapper}\n}}\n",
             entry_candidate.name
         ),
     })
@@ -86,14 +102,9 @@ pub fn emit_package_module_shells(session: &BackendSession) -> Vec<EmittedRustFi
 pub fn emit_namespace_module_shells(session: &BackendSession) -> Vec<EmittedRustFile> {
     plan_namespace_layouts(session)
         .into_iter()
-        .map(|namespace_plan| EmittedRustFile {
-            path: format!(
-                "src/packages/{}/{}",
-                mangle_package_module_name(&namespace_plan.package_identity),
-                namespace_plan.relative_file
-            ),
-            module_name: namespace_plan.module_name.clone(),
-            contents: format!(
+        .map(|namespace_plan| {
+            let emitted_items = render_namespace_items(session, &namespace_plan);
+            let mut contents = format!(
                 "use fol_runtime::prelude as rt;\n\npub(crate) const NAMESPACE_NAME: &str = \"{}\";\npub(crate) const SOURCE_UNIT_IDS: &[usize] = &[{}];\n\npub(crate) fn namespace_runtime_marker() -> &'static str {{\n    let _ = rt::crate_name();\n    NAMESPACE_NAME\n}}\n",
                 namespace_plan.full_namespace,
                 namespace_plan
@@ -102,7 +113,20 @@ pub fn emit_namespace_module_shells(session: &BackendSession) -> Vec<EmittedRust
                     .map(|source_unit_id| source_unit_id.0.to_string())
                     .collect::<Vec<_>>()
                     .join(", ")
-            ),
+            );
+            if !emitted_items.is_empty() {
+                contents.push('\n');
+                contents.push_str(&emitted_items);
+            }
+            EmittedRustFile {
+                path: format!(
+                    "src/packages/{}/{}",
+                    mangle_package_module_name(&namespace_plan.package_identity),
+                    namespace_plan.relative_file
+                ),
+                module_name: namespace_plan.module_name.clone(),
+                contents,
+            }
         })
         .collect()
 }
@@ -317,6 +341,160 @@ fn runtime_dependency_path() -> PathBuf {
         .join("fol-runtime")
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct EntryCallable {
+    rust_path: String,
+    recoverable: bool,
+}
+
+fn resolve_entry_callable(
+    session: &BackendSession,
+    entry_candidate: &fol_lower::LoweredEntryCandidate,
+) -> Option<EntryCallable> {
+    let package = session.workspace().package(&entry_candidate.package_identity)?;
+    let routine = package.routine_decls.get(&entry_candidate.routine_id)?;
+    if routine.receiver_type.is_some() || !routine.params.is_empty() {
+        return None;
+    }
+    let signature_id = routine.signature?;
+    let signature = match session.workspace().type_table().get(signature_id) {
+        Some(LoweredType::Routine(signature)) => signature,
+        _ => return None,
+    };
+    let source_unit_id = routine.source_unit_id?;
+    let namespace_plan = plan_namespace_layouts(session)
+        .into_iter()
+        .find(|plan| {
+            plan.package_identity == entry_candidate.package_identity
+                && plan.source_unit_ids.contains(&source_unit_id)
+        })?;
+    if render_routine_definition(
+        session.workspace(),
+        &entry_candidate.package_identity,
+        routine,
+        session.workspace().type_table(),
+    )
+    .is_err()
+    {
+        return None;
+    }
+    let namespace_path = namespace_plan
+        .relative_file
+        .trim_end_matches(".rs")
+        .replace('/', "::");
+    Some(EntryCallable {
+        rust_path: format!(
+            "packages::{}::{}::{}",
+            mangle_package_module_name(&entry_candidate.package_identity),
+            namespace_path,
+            mangle_routine_name(
+                &entry_candidate.package_identity,
+                entry_candidate.routine_id,
+                &entry_candidate.name
+            )
+        ),
+        recoverable: signature.error_type.is_some(),
+    })
+}
+
+fn render_namespace_items(
+    session: &BackendSession,
+    namespace_plan: &crate::NamespaceLayoutPlan,
+) -> String {
+    let Some(package) = session.workspace().package(&namespace_plan.package_identity) else {
+        return String::new();
+    };
+    let mut items = Vec::new();
+
+    let mut types = package
+        .type_decls
+        .values()
+        .filter(|type_decl| namespace_plan.source_unit_ids.contains(&type_decl.source_unit_id))
+        .cloned()
+        .collect::<Vec<_>>();
+    types.sort_by_key(|type_decl| type_decl.runtime_type.0);
+    for type_decl in &types {
+        let rendered = match &type_decl.kind {
+            fol_lower::LoweredTypeDeclKind::Record { .. } => render_record_definition(
+                &namespace_plan.package_identity,
+                type_decl,
+                session.workspace().type_table(),
+            )
+            .and_then(|definition| {
+                Ok(format!(
+                    "{definition}\n{}",
+                    render_record_trait_impl(&namespace_plan.package_identity, type_decl)?
+                ))
+            }),
+            fol_lower::LoweredTypeDeclKind::Entry { .. } => render_entry_definition(
+                &namespace_plan.package_identity,
+                type_decl,
+                session.workspace().type_table(),
+            )
+            .and_then(|definition| {
+                Ok(format!(
+                    "{definition}\n{}",
+                    render_entry_trait_impl(&namespace_plan.package_identity, type_decl)?
+                ))
+            }),
+            fol_lower::LoweredTypeDeclKind::Alias { .. } => Ok(String::new()),
+        };
+        if let Ok(rendered) = rendered {
+            if !rendered.is_empty() {
+                items.push(rendered);
+            }
+        }
+    }
+
+    let mut globals = package
+        .global_decls
+        .values()
+        .filter(|global| namespace_plan.source_unit_ids.contains(&global.source_unit_id))
+        .cloned()
+        .collect::<Vec<_>>();
+    globals.sort_by_key(|global| global.id.0);
+    for global in &globals {
+        if let Ok(rendered) = render_global_declaration(
+            &namespace_plan.package_identity,
+            global,
+            session.workspace().type_table(),
+        ) {
+            items.push(rendered);
+        }
+    }
+
+    let mut routines = package
+        .routine_decls
+        .values()
+        .filter(|routine| {
+            routine
+                .source_unit_id
+                .is_some_and(|source_unit_id| namespace_plan.source_unit_ids.contains(&source_unit_id))
+        })
+        .cloned()
+        .collect::<Vec<_>>();
+    routines.sort_by_key(|routine| routine.id.0);
+
+    items.extend(routines.iter().filter_map(|routine| {
+        render_routine_definition(
+            session.workspace(),
+            &namespace_plan.package_identity,
+            routine,
+            session.workspace().type_table(),
+        )
+        .or_else(|_| {
+            render_routine_shell(
+                &namespace_plan.package_identity,
+                routine,
+                session.workspace().type_table(),
+            )
+        })
+        .ok()
+    }));
+
+    items.join("\n")
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
@@ -325,8 +503,13 @@ mod tests {
         emit_package_module_shells, prepare_generated_build_dir, summarize_emitted_artifact,
         write_generated_crate,
     };
-    use crate::{testing::sample_lowered_workspace, BackendArtifact, BackendConfig, BackendMode, BackendSession};
-    use std::path::PathBuf;
+    use crate::{
+        testing::{lowered_workspace_from_entry_path, sample_lowered_workspace},
+        BackendArtifact, BackendConfig, BackendMode, BackendSession,
+    };
+    use std::fs;
+    use std::path::{Path, PathBuf};
+    use std::process::Command;
     use std::time::{SystemTime, UNIX_EPOCH};
 
     fn temp_root(label: &str) -> PathBuf {
@@ -335,6 +518,38 @@ mod tests {
             .expect("clock")
             .as_nanos();
         std::env::temp_dir().join(format!("fol_backend_{label}_{unique}"))
+    }
+
+    fn write_fixture(root: &Path, source: &str) -> PathBuf {
+        fs::create_dir_all(root).expect("backend fixture root");
+        let fixture = root.join("main.fol");
+        fs::write(&fixture, source).expect("backend fixture source");
+        fixture
+    }
+
+    fn build_and_run_fixture(source: &str) -> std::process::Output {
+        let fixture_root = temp_root("exec");
+        let fixture = write_fixture(&fixture_root, source);
+        let lowered = lowered_workspace_from_entry_path(&fixture);
+        let session = BackendSession::new(lowered);
+        let artifact = emit_backend_artifact(
+            &session,
+            &BackendConfig {
+                mode: BackendMode::BuildArtifact,
+                keep_build_dir: true,
+                ..BackendConfig::default()
+            },
+            &fixture_root,
+        )
+        .expect("backend artifact");
+        let BackendArtifact::CompiledBinary { binary_path, .. } = artifact else {
+            panic!("expected compiled binary artifact");
+        };
+        let output = Command::new(&binary_path)
+            .output()
+            .expect("run emitted binary");
+        let _ = fs::remove_dir_all(&fixture_root);
+        output
     }
 
     #[test]
@@ -579,5 +794,108 @@ mod tests {
         sorted_paths.sort();
 
         assert_eq!(original_paths, sorted_paths);
+    }
+
+    #[test]
+    fn executable_backend_runs_scalar_entry_routines_successfully() {
+        let output = build_and_run_fixture("fun[] main(): int = {\n    return 7\n}\n");
+
+        assert!(output.status.success());
+        assert_eq!(String::from_utf8_lossy(&output.stdout), "");
+        assert_eq!(String::from_utf8_lossy(&output.stderr), "");
+    }
+
+    #[test]
+    fn executable_backend_handles_recoverable_entry_failure_through_process_outcome() {
+        let output = build_and_run_fixture(
+            "fun[] main(): int / str = {\n    report \"broken\"\n}\n",
+        );
+
+        assert_eq!(output.status.code(), Some(1));
+        assert!(String::from_utf8_lossy(&output.stderr).contains("broken"));
+    }
+
+    #[test]
+    fn executable_backend_handles_recoverable_propagation_between_zero_arg_routines() {
+        let output = build_and_run_fixture(
+            concat!(
+                "fun[] load(): int / str = {\n",
+                "    report \"bad-input\"\n",
+                "}\n",
+                "fun[] main(): int / str = {\n",
+                "    return load()\n",
+                "}\n",
+            ),
+        );
+
+        assert_eq!(output.status.code(), Some(1));
+        assert!(String::from_utf8_lossy(&output.stderr).contains("bad-input"));
+    }
+
+    #[test]
+    fn executable_backend_runs_container_length_programs() {
+        let output = build_and_run_fixture(
+            concat!(
+                "fun[] main(): int = {\n",
+                "    var values: seq[int] = {1, 2, 3}\n",
+                "    .echo(.len(values))\n",
+                "    return 0\n",
+                "}\n",
+            ),
+        );
+
+        assert!(output.status.success());
+        assert!(String::from_utf8_lossy(&output.stdout).contains("3"));
+    }
+
+    #[test]
+    fn executable_backend_runs_echo_programs() {
+        let output = build_and_run_fixture(
+            concat!(
+                "fun[] main(): int = {\n",
+                "    .echo(\"hello\")\n",
+                "    return 0\n",
+                "}\n",
+            ),
+        );
+
+        assert!(output.status.success());
+        assert!(String::from_utf8_lossy(&output.stdout).contains("hello"));
+    }
+
+    #[test]
+    fn executable_backend_runs_check_programs() {
+        let output = build_and_run_fixture(
+            concat!(
+                "fun[] load(): int / str = {\n",
+                "    report \"broken\"\n",
+                "}\n",
+                "fun[] main(): int = {\n",
+                "    .echo(check(load()))\n",
+                "    return 0\n",
+                "}\n",
+            ),
+        );
+
+        assert!(output.status.success());
+        assert!(String::from_utf8_lossy(&output.stdout).contains("true"));
+    }
+
+    #[test]
+    fn executable_backend_runs_pipe_or_fallback_programs() {
+        let output = build_and_run_fixture(
+            concat!(
+                "fun[] load(): int / str = {\n",
+                "    report \"broken\"\n",
+                "}\n",
+                "fun[] main(): int = {\n",
+                "    .echo(load() || 9)\n",
+                "    return 0\n",
+                "}\n",
+            ),
+        );
+
+        assert!(output.status.success());
+        assert!(String::from_utf8_lossy(&output.stdout).contains("9"));
     }
 }

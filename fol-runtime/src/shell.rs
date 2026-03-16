@@ -9,6 +9,12 @@ pub enum FolOption<T> {
     Nil,
 }
 
+impl<T> Default for FolOption<T> {
+    fn default() -> Self {
+        Self::Nil
+    }
+}
+
 impl<T> FolOption<T> {
     pub fn some(value: T) -> Self {
         Self::Some(value)
@@ -68,6 +74,12 @@ impl<T: fmt::Display> fmt::Display for FolOption<T> {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
 pub struct FolError<T>(T);
+
+impl<T: Default> Default for FolError<T> {
+    fn default() -> Self {
+        Self(T::default())
+    }
+}
 
 impl<T> FolError<T> {
     pub fn new(value: T) -> Self {

@@ -1025,10 +1025,10 @@ not full long-term compiler completion.
 
 ## 44. Phase 9: Aggregate And Container Emission
 
-#### 9.1
+#### 9.1 done
 - emit record construction
 
-#### 9.2
+#### 9.2 done
 - emit entry construction
 
 #### 9.3 done
@@ -1074,16 +1074,16 @@ not full long-term compiler completion.
 #### 11.1 done
 - select one backend-buildable entry routine
 
-#### 11.2
+#### 11.2 done
 - emit Rust `main()` wrapper for ordinary return routines
 
-#### 11.3
+#### 11.3 done
 - emit Rust `main()` wrapper for recoverable entry routines through `FolProcessOutcome`
 
-#### 11.4
+#### 11.4 done
 - emit exit-code and printable-failure handling through runtime helpers
 
-#### 11.5
+#### 11.5 done
 - add executable tests for entry success/failure behavior
 
 ## 47. Phase 12: Build Orchestration
@@ -1139,16 +1139,16 @@ not full long-term compiler completion.
 
 ## 50. Phase 15: Behavioral End-To-End Coverage
 
-#### 15.1
+#### 15.1 done
 - add executable end-to-end tests for scalar programs
 
-#### 15.2
+#### 15.2 done
 - add executable end-to-end tests for records and entries
 
-#### 15.3
+#### 15.3 done
 - add executable end-to-end tests for containers and `.len(...)`
 
-#### 15.4
+#### 15.4 done
 - add executable end-to-end tests for `.echo(...)`
 
 #### 15.5

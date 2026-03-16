@@ -1,15 +1,31 @@
 use crate::{
-    mangle_global_name, mangle_local_name, mangle_routine_name, BackendError, BackendErrorKind,
-    BackendResult,
+    mangle_global_name, mangle_local_name, mangle_routine_name, mangle_type_name, BackendError,
+    BackendErrorKind, BackendResult,
 };
 use fol_intrinsics::intrinsic_by_id;
 use fol_lower::{
-    control::LoweredLinearKind, LoweredInstr, LoweredInstrKind, LoweredOperand, LoweredRoutine,
-    LoweredType, LoweredTypeTable,
+    control::LoweredLinearKind, LoweredGlobal, LoweredInstr, LoweredInstrKind, LoweredOperand,
+    LoweredRoutine, LoweredType, LoweredTypeDecl, LoweredTypeTable, LoweredWorkspace,
 };
 use fol_resolver::PackageIdentity;
 
 pub fn render_core_instruction(
+    package_identity: &PackageIdentity,
+    type_table: &LoweredTypeTable,
+    routine: &LoweredRoutine,
+    instruction: &LoweredInstr,
+) -> BackendResult<String> {
+    render_core_instruction_in_workspace(
+        None,
+        package_identity,
+        type_table,
+        routine,
+        instruction,
+    )
+}
+
+pub fn render_core_instruction_in_workspace(
+    workspace: Option<&LoweredWorkspace>,
     package_identity: &PackageIdentity,
     type_table: &LoweredTypeTable,
     routine: &LoweredRoutine,
@@ -32,16 +48,31 @@ pub fn render_core_instruction(
         }
         LoweredInstrKind::LoadGlobal { global } => {
             let result = rendered_result_local(package_identity, routine, instruction)?;
+            let (global_identity, global_decl) = resolve_global_decl(workspace, *global)?;
             Ok(format!(
-                "let {result} = {}.get().expect(\"global initialized\").clone();",
-                mangle_global_name(package_identity, *global, "global")
+                "let {result} = {};",
+                render_global_load(workspace, global_identity, global_decl)?
             ))
         }
         LoweredInstrKind::StoreGlobal { global, value } => {
+            let (global_identity, global_decl) = resolve_global_decl(workspace, *global)?;
             let value = render_local_name(package_identity, routine, *value)?;
+            if !global_decl.mutable {
+                return Err(BackendError::new(
+                    BackendErrorKind::Unsupported,
+                    format!(
+                        "store emission is not implemented for immutable global '{}'",
+                        global_decl.name
+                    ),
+                ));
+            }
+            let global_path = format!(
+                "{}::{}",
+                render_namespace_module_path(workspace, global_identity, global_decl.source_unit_id)?,
+                mangle_global_name(global_identity, *global, &global_decl.name)
+            );
             Ok(format!(
-                "*{}.lock().expect(\"global lock\") = {value}.clone();",
-                mangle_global_name(package_identity, *global, "global")
+                "*{global_path}.get_or_init(|| std::sync::Mutex::new(Default::default())).lock().expect(\"global lock\") = {value}.clone();",
             ))
         }
         LoweredInstrKind::Call {
@@ -54,7 +85,28 @@ pub fn render_core_instruction(
                 .map(|local_id| render_local_name(package_identity, routine, *local_id))
                 .collect::<BackendResult<Vec<_>>>()?
                 .join(", ");
-            let callee_name = mangle_routine_name(package_identity, *callee, "callee");
+            let (callee_identity, callee_decl) = resolve_routine_decl(workspace, *callee)?;
+            let callee_name = render_routine_path(workspace, callee_identity, callee_decl)?;
+            match instruction.result {
+                Some(_) => {
+                    let result = rendered_result_local(package_identity, routine, instruction)?;
+                    Ok(format!("let {result} = {callee_name}({rendered_args});"))
+                }
+                None => Ok(format!("{callee_name}({rendered_args});")),
+            }
+        }
+        LoweredInstrKind::Call {
+            callee,
+            args,
+            error_type: Some(_),
+        } => {
+            let rendered_args = args
+                .iter()
+                .map(|local_id| render_local_name(package_identity, routine, *local_id))
+                .collect::<BackendResult<Vec<_>>>()?
+                .join(", ");
+            let (callee_identity, callee_decl) = resolve_routine_decl(workspace, *callee)?;
+            let callee_name = render_routine_path(workspace, callee_identity, callee_decl)?;
             match instruction.result {
                 Some(_) => {
                     let result = rendered_result_local(package_identity, routine, instruction)?;
@@ -267,11 +319,232 @@ pub fn render_core_instruction(
             };
             Ok(format!("let {result} = {expression};"))
         }
+        LoweredInstrKind::ConstructRecord { type_id, fields } => {
+            let result = rendered_result_local(package_identity, routine, instruction)?;
+            let (type_identity, type_decl) = resolve_type_decl(workspace, *type_id)?;
+            let type_name = render_type_path(workspace, type_identity, type_decl)?;
+            let rendered_fields = fields
+                .iter()
+                .map(|(field, local)| {
+                    Ok(format!(
+                        "{field}: {}",
+                        render_clone_expr(package_identity, routine, *local)?
+                    ))
+                })
+                .collect::<BackendResult<Vec<_>>>()?
+                .join(", ");
+            Ok(format!(
+                "let {result} = {type_name} {{ {rendered_fields} }};"
+            ))
+        }
+        LoweredInstrKind::ConstructEntry {
+            type_id,
+            variant,
+            payload,
+        } => {
+            let result = rendered_result_local(package_identity, routine, instruction)?;
+            let (type_identity, type_decl) = resolve_type_decl(workspace, *type_id)?;
+            let type_name = render_type_path(workspace, type_identity, type_decl)?;
+            let expression = match payload {
+                Some(payload) => format!(
+                    "{type_name}::{variant}({})",
+                    render_clone_expr(package_identity, routine, *payload)?
+                ),
+                None => format!("{type_name}::{variant}"),
+            };
+            Ok(format!("let {result} = {expression};"))
+        }
         other => Err(BackendError::new(
             BackendErrorKind::Unsupported,
             format!("core instruction emission is not implemented yet for {other:?}"),
         )),
     }
+}
+
+fn resolve_global_decl(
+    workspace: Option<&LoweredWorkspace>,
+    global_id: fol_lower::LoweredGlobalId,
+) -> BackendResult<(&PackageIdentity, &LoweredGlobal)> {
+    let Some(workspace) = workspace else {
+        return Err(BackendError::new(
+            BackendErrorKind::Unsupported,
+            format!("workspace-aware global emission is required for global {:?}", global_id),
+        ));
+    };
+    workspace
+        .packages()
+        .find_map(|package| {
+            package
+                .global_decls
+                .get(&global_id)
+                .map(|global| (&package.identity, global))
+        })
+        .ok_or_else(|| {
+            BackendError::new(
+                BackendErrorKind::InvalidInput,
+                format!("lowered global {:?} is missing from the workspace", global_id),
+            )
+        })
+}
+
+fn resolve_routine_decl(
+    workspace: Option<&LoweredWorkspace>,
+    routine_id: fol_lower::LoweredRoutineId,
+) -> BackendResult<(&PackageIdentity, &LoweredRoutine)> {
+    let Some(workspace) = workspace else {
+        return Err(BackendError::new(
+            BackendErrorKind::Unsupported,
+            format!("workspace-aware routine emission is required for routine {:?}", routine_id),
+        ));
+    };
+    workspace
+        .packages()
+        .find_map(|package| {
+            package
+                .routine_decls
+                .get(&routine_id)
+                .map(|routine| (&package.identity, routine))
+        })
+        .ok_or_else(|| {
+            BackendError::new(
+                BackendErrorKind::InvalidInput,
+                format!("lowered routine {:?} is missing from the workspace", routine_id),
+            )
+        })
+}
+
+fn resolve_type_decl(
+    workspace: Option<&LoweredWorkspace>,
+    runtime_type: fol_lower::LoweredTypeId,
+) -> BackendResult<(&PackageIdentity, &LoweredTypeDecl)> {
+    let Some(workspace) = workspace else {
+        return Err(BackendError::new(
+            BackendErrorKind::Unsupported,
+            format!("workspace-aware aggregate emission is required for type {:?}", runtime_type),
+        ));
+    };
+    workspace
+        .packages()
+        .find_map(|package| {
+            package
+                .type_decls
+                .values()
+                .find(|type_decl| type_decl.runtime_type == runtime_type)
+                .map(|type_decl| (&package.identity, type_decl))
+        })
+        .ok_or_else(|| {
+            BackendError::new(
+                BackendErrorKind::InvalidInput,
+                format!(
+                    "lowered type {:?} does not have a rendered declaration owner",
+                    runtime_type
+                ),
+            )
+        })
+}
+
+fn render_global_load(
+    workspace: Option<&LoweredWorkspace>,
+    global_identity: &PackageIdentity,
+    global: &LoweredGlobal,
+) -> BackendResult<String> {
+    let global_name = format!(
+        "{}::{}",
+        render_namespace_module_path(workspace, global_identity, global.source_unit_id)?,
+        mangle_global_name(global_identity, global.id, &global.name)
+    );
+    if global.mutable {
+        Ok(format!(
+            "{}.get_or_init(|| std::sync::Mutex::new(Default::default())).lock().expect(\"global lock\").clone()",
+            global_name
+        ))
+    } else {
+        Ok(format!("{global_name}.get_or_init(Default::default).clone()"))
+    }
+}
+
+fn render_routine_path(
+    workspace: Option<&LoweredWorkspace>,
+    package_identity: &PackageIdentity,
+    routine: &LoweredRoutine,
+) -> BackendResult<String> {
+    Ok(format!(
+        "{}::{}",
+        render_namespace_module_path(
+            workspace,
+            package_identity,
+            routine.source_unit_id.ok_or_else(|| BackendError::new(
+                BackendErrorKind::InvalidInput,
+                format!("routine '{}' is missing a source unit", routine.name),
+            ))?,
+        )?,
+        mangle_routine_name(package_identity, routine.id, &routine.name)
+    ))
+}
+
+fn render_type_path(
+    workspace: Option<&LoweredWorkspace>,
+    package_identity: &PackageIdentity,
+    type_decl: &LoweredTypeDecl,
+) -> BackendResult<String> {
+    Ok(format!(
+        "{}::{}",
+        render_namespace_module_path(workspace, package_identity, type_decl.source_unit_id)?,
+        mangle_type_name(package_identity, type_decl.runtime_type, &type_decl.name)
+    ))
+}
+
+fn render_namespace_module_path(
+    workspace: Option<&LoweredWorkspace>,
+    package_identity: &PackageIdentity,
+    source_unit_id: fol_resolver::SourceUnitId,
+) -> BackendResult<String> {
+    let Some(workspace) = workspace else {
+        return Err(BackendError::new(
+            BackendErrorKind::Unsupported,
+            "workspace-aware namespace emission is required",
+        ));
+    };
+    let package = workspace.package(package_identity).ok_or_else(|| {
+        BackendError::new(
+            BackendErrorKind::InvalidInput,
+            format!("package '{}' is missing from workspace", package_identity.display_name),
+        )
+    })?;
+    let source_unit = package
+        .source_units
+        .iter()
+        .find(|source_unit| source_unit.source_unit_id == source_unit_id)
+        .ok_or_else(|| {
+            BackendError::new(
+                BackendErrorKind::InvalidInput,
+                format!(
+                    "source unit {:?} is missing from package '{}'",
+                    source_unit_id, package_identity.display_name
+                ),
+            )
+        })?;
+    let mut segments = source_unit
+        .namespace
+        .split("::")
+        .filter(|segment| !segment.is_empty())
+        .map(crate::sanitize_backend_ident)
+        .collect::<Vec<_>>();
+    if segments
+        .first()
+        .is_some_and(|segment| segment == &crate::sanitize_backend_ident(&package_identity.display_name))
+    {
+        segments.remove(0);
+    }
+    let namespace_segment = match segments.as_slice() {
+        [] => "root".to_string(),
+        parts => parts.join("::"),
+    };
+    Ok(format!(
+        "crate::packages::{}::{}",
+        crate::mangle_package_module_name(package_identity),
+        namespace_segment
+    ))
 }
 
 fn render_native_intrinsic_expression(name: &str, args: &[String]) -> BackendResult<String> {
@@ -363,11 +636,14 @@ mod tests {
     use crate::testing::package_identity;
     use fol_intrinsics::intrinsic_by_canonical_name;
     use fol_lower::{
-        LoweredBlockId, LoweredBuiltinType, LoweredInstr, LoweredInstrId, LoweredInstrKind,
-        LoweredLocal, LoweredLocalId, LoweredOperand, LoweredRoutine, LoweredRoutineId,
-        LoweredTypeTable,
+        LoweredBlockId, LoweredBuiltinType, LoweredFieldLayout, LoweredInstr, LoweredInstrId,
+        LoweredInstrKind, LoweredLocal, LoweredLocalId, LoweredOperand, LoweredPackage,
+        LoweredRecoverableAbi, LoweredRoutine, LoweredRoutineId, LoweredSourceMap,
+        LoweredType, LoweredTypeDecl, LoweredTypeDeclKind, LoweredTypeTable, LoweredVariantLayout,
+        LoweredWorkspace,
     };
     use fol_resolver::{PackageSourceKind, SourceUnitId, SymbolId};
+    use std::collections::BTreeMap;
 
     #[test]
     fn core_instruction_rendering_covers_constants_and_local_global_storage_shapes() {
@@ -1459,6 +1735,127 @@ mod tests {
     }
 
     #[test]
+    fn aggregate_and_container_rendering_emits_record_and_entry_constructors() {
+        let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
+        let mut table = LoweredTypeTable::new();
+        let bool_id = table.intern_builtin(LoweredBuiltinType::Bool);
+        let int_id = table.intern_builtin(LoweredBuiltinType::Int);
+        let record_type = table.intern(LoweredType::Record {
+            fields: BTreeMap::from([("count".to_string(), int_id)]),
+        });
+        let entry_type = table.intern(LoweredType::Entry {
+            variants: BTreeMap::from([("Ok".to_string(), Some(int_id))]),
+        });
+
+        let mut package = LoweredPackage::new(fol_lower::LoweredPackageId(0), package_identity.clone());
+        package.source_units.push(fol_lower::LoweredSourceUnit {
+            source_unit_id: SourceUnitId(0),
+            path: "app/main.fol".to_string(),
+            package: "app".to_string(),
+            namespace: "app".to_string(),
+        });
+        package.type_decls.insert(
+            SymbolId(0),
+            LoweredTypeDecl {
+                symbol_id: SymbolId(0),
+                source_unit_id: SourceUnitId(0),
+                name: "Counter".to_string(),
+                runtime_type: record_type,
+                kind: LoweredTypeDeclKind::Record {
+                    fields: vec![LoweredFieldLayout {
+                        name: "count".to_string(),
+                        type_id: int_id,
+                    }],
+                },
+            },
+        );
+        package.type_decls.insert(
+            SymbolId(1),
+            LoweredTypeDecl {
+                symbol_id: SymbolId(1),
+                source_unit_id: SourceUnitId(0),
+                name: "Status".to_string(),
+                runtime_type: entry_type,
+                kind: LoweredTypeDeclKind::Entry {
+                    variants: vec![LoweredVariantLayout {
+                        name: "Ok".to_string(),
+                        payload_type: Some(int_id),
+                    }],
+                },
+            },
+        );
+        let workspace = LoweredWorkspace::new(
+            package_identity.clone(),
+            BTreeMap::from([(package_identity.clone(), package)]),
+            Vec::new(),
+            table.clone(),
+            LoweredSourceMap::new(),
+            LoweredRecoverableAbi::v1(bool_id),
+        );
+
+        let mut routine = LoweredRoutine::new(LoweredRoutineId(30), "main", LoweredBlockId(0));
+        let value = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(0),
+            type_id: Some(int_id),
+            recoverable_error_type: None,
+            name: Some("value".to_string()),
+        });
+        let record_out = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(1),
+            type_id: Some(record_type),
+            recoverable_error_type: None,
+            name: Some("record".to_string()),
+        });
+        let entry_out = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(2),
+            type_id: Some(entry_type),
+            recoverable_error_type: None,
+            name: Some("entry".to_string()),
+        });
+
+        let record_rendered = render_core_instruction_in_workspace(
+            Some(&workspace),
+            &package_identity,
+            &table,
+            &routine,
+            &LoweredInstr {
+                id: LoweredInstrId(70),
+                result: Some(record_out),
+                kind: LoweredInstrKind::ConstructRecord {
+                    type_id: record_type,
+                    fields: vec![("count".to_string(), value)],
+                },
+            },
+        )
+        .expect("record constructor");
+        let entry_rendered = render_core_instruction_in_workspace(
+            Some(&workspace),
+            &package_identity,
+            &table,
+            &routine,
+            &LoweredInstr {
+                id: LoweredInstrId(71),
+                result: Some(entry_out),
+                kind: LoweredInstrKind::ConstructEntry {
+                    type_id: entry_type,
+                    variant: "Ok".to_string(),
+                    payload: Some(value),
+                },
+            },
+        )
+        .expect("entry constructor");
+
+        assert_eq!(
+            record_rendered,
+            "let l__pkg__entry__app__r30__l1__record = crate::packages::pkg__entry__app::root::ty__pkg__entry__app__t2__counter { count: l__pkg__entry__app__r30__l0__value.clone() };"
+        );
+        assert_eq!(
+            entry_rendered,
+            "let l__pkg__entry__app__r30__l2__entry = crate::packages::pkg__entry__app::root::ty__pkg__entry__app__t3__status::Ok(l__pkg__entry__app__r30__l0__value.clone());"
+        );
+    }
+
+    #[test]
     fn aggregate_and_container_snapshot_stays_stable() {
         let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
         let mut table = LoweredTypeTable::new();
@@ -1613,23 +2010,6 @@ mod tests {
         });
 
         let unsupported = [
-            LoweredInstr {
-                id: LoweredInstrId(60),
-                result: Some(local_id),
-                kind: LoweredInstrKind::ConstructRecord {
-                    type_id: int_id,
-                    fields: vec![("field".to_string(), local_id)],
-                },
-            },
-            LoweredInstr {
-                id: LoweredInstrId(61),
-                result: Some(local_id),
-                kind: LoweredInstrKind::ConstructEntry {
-                    type_id: int_id,
-                    variant: "ok".to_string(),
-                    payload: Some(local_id),
-                },
-            },
             LoweredInstr {
                 id: LoweredInstrId(62),
                 result: Some(local_id),

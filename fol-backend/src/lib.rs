@@ -52,12 +52,15 @@ pub use mangle::{
 };
 pub use model::{BackendArtifact, EmittedRustFile};
 pub use session::BackendSession;
-pub use signatures::{render_global_declaration, render_routine_shell, render_routine_signature};
+pub use signatures::{
+    render_global_declaration, render_routine_definition, render_routine_shell,
+    render_routine_signature,
+};
 pub use trace::{
     BackendEmittedSourceMap, BackendEmittedSourceMapEntry, BackendTrace, BackendTraceKind,
     BackendTraceRecord,
 };
-pub use instructions::render_core_instruction;
+pub use instructions::{render_core_instruction, render_core_instruction_in_workspace};
 pub use types::{
     render_entry_definition, render_entry_trait_impl, render_record_definition,
     render_record_trait_impl, render_rust_type,

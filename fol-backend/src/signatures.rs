@@ -1,9 +1,11 @@
 use crate::{
-    mangle_global_name, mangle_local_name, mangle_routine_name, render_rust_type, BackendError,
+    mangle_global_name, mangle_local_name, mangle_routine_name,
+    render_core_instruction_in_workspace, render_rust_type, render_terminator, BackendError,
     BackendErrorKind, BackendResult,
 };
 use fol_lower::{
-    LoweredGlobal, LoweredRoutine, LoweredRoutineType, LoweredType, LoweredTypeId, LoweredTypeTable,
+    LoweredBlockId, LoweredGlobal, LoweredRoutine, LoweredRoutineType, LoweredType, LoweredTypeId,
+    LoweredTypeTable, LoweredWorkspace,
 };
 use fol_resolver::PackageIdentity;
 
@@ -17,11 +19,11 @@ pub fn render_global_declaration(
 
     Ok(if global.mutable {
         format!(
-            "pub static {name}: std::sync::LazyLock<std::sync::Mutex<{value_type}>> = std::sync::LazyLock::new(|| std::sync::Mutex::new(todo!()));\n"
+            "pub static {name}: std::sync::OnceLock<std::sync::Mutex<{value_type}>> = std::sync::OnceLock::new();\n"
         )
     } else {
         format!(
-            "pub static {name}: std::sync::LazyLock<{value_type}> = std::sync::LazyLock::new(|| todo!());\n"
+            "pub static {name}: std::sync::OnceLock<{value_type}> = std::sync::OnceLock::new();\n"
         )
     })
 }
@@ -68,6 +70,43 @@ pub fn render_routine_shell(
     } else {
         format!("{header} {{\n{local_decls}\n    todo!()\n}}\n")
     })
+}
+
+pub fn render_routine_definition(
+    workspace: &LoweredWorkspace,
+    package_identity: &PackageIdentity,
+    routine: &LoweredRoutine,
+    type_table: &LoweredTypeTable,
+) -> BackendResult<String> {
+    let header = render_routine_signature(package_identity, routine, type_table)?;
+    let local_decls = routine
+        .locals
+        .iter_with_ids()
+        .filter(|(local_id, _)| !routine.params.contains(local_id))
+        .map(|(local_id, local)| {
+            render_local_declaration(package_identity, routine, local_id, local, type_table)
+        })
+        .collect::<BackendResult<Vec<_>>>()?
+        .join("\n");
+    let rendered_blocks = routine
+        .blocks
+        .iter_with_ids()
+        .map(|(block_id, block)| {
+            render_block(workspace, package_identity, routine, block_id, block, type_table)
+        })
+        .collect::<BackendResult<Vec<_>>>()?
+        .join("\n");
+
+    let local_section = if local_decls.is_empty() {
+        String::new()
+    } else {
+        format!("{local_decls}\n")
+    };
+
+    Ok(format!(
+        "{header} {{\n{local_section}    let mut __fol_next_block: usize = {};\n    loop {{\n        match __fol_next_block {{\n{rendered_blocks}\n            _ => unreachable!(\"invalid lowered block {{}}\", __fol_next_block),\n        }}\n    }}\n}}\n",
+        routine.entry_block.0
+    ))
 }
 
 fn routine_signature<'a>(
@@ -132,15 +171,70 @@ fn render_local_declaration(
     local: &fol_lower::LoweredLocal,
     type_table: &LoweredTypeTable,
 ) -> BackendResult<String> {
-    let rendered_type = match local.type_id {
-        Some(type_id) => render_rust_type(type_table, type_id)?,
-        None => "_".to_string(),
+    let rendered_type = match (local.type_id, local.recoverable_error_type) {
+        (Some(type_id), Some(error_type)) => format!(
+            "rt::FolRecover<{}, {}>",
+            render_rust_type(type_table, type_id)?,
+            render_rust_type(type_table, error_type)?,
+        ),
+        (Some(type_id), None) => render_rust_type(type_table, type_id)?,
+        (None, _) => "_".to_string(),
     };
     Ok(format!(
-        "    let mut {}: {} = todo!();",
+        "    let mut {}: {} = Default::default();",
         mangle_local_name(package_identity, routine.id, local_id, local.name.as_deref()),
         rendered_type
     ))
+}
+
+fn render_block(
+    workspace: &LoweredWorkspace,
+    package_identity: &PackageIdentity,
+    routine: &LoweredRoutine,
+    block_id: LoweredBlockId,
+    block: &fol_lower::LoweredBlock,
+    type_table: &LoweredTypeTable,
+) -> BackendResult<String> {
+    let instructions = block
+        .instructions
+        .iter()
+        .map(|instruction_id| {
+            let instruction = routine.instructions.get(*instruction_id).ok_or_else(|| {
+                BackendError::new(
+                    BackendErrorKind::InvalidInput,
+                    format!("lowered instruction {:?} is missing", instruction_id),
+                )
+            })?;
+            Ok(format!(
+                "                {}",
+                render_core_instruction_in_workspace(
+                    Some(workspace),
+                    package_identity,
+                    type_table,
+                    routine,
+                    instruction,
+                )?
+            ))
+        })
+        .collect::<BackendResult<Vec<_>>>()?
+        .join("\n");
+    let terminator = block.terminator.as_ref().ok_or_else(|| {
+        BackendError::new(
+            BackendErrorKind::InvalidInput,
+            format!("lowered block {:?} is missing a terminator", block_id),
+        )
+    })?;
+    let rendered_terminator = format!(
+        "                {}",
+        render_terminator(package_identity, type_table, routine, terminator)?
+    );
+    let body = if instructions.is_empty() {
+        rendered_terminator
+    } else {
+        format!("{instructions}\n{rendered_terminator}")
+    };
+
+    Ok(format!("            {} => {{\n{body}\n            }},", block_id.0))
 }
 
 fn render_routine_return_type(
@@ -203,9 +297,9 @@ mod tests {
             render_global_declaration(&package_identity, &mutable, &table).expect("global");
 
         assert!(immutable_rendered.contains("pub static g__pkg__entry__app__g0__answer"));
-        assert!(immutable_rendered.contains("std::sync::LazyLock<rt::FolInt>"));
+        assert!(immutable_rendered.contains("std::sync::OnceLock<rt::FolInt>"));
         assert!(mutable_rendered.contains("pub static g__pkg__entry__app__g1__counter"));
-        assert!(mutable_rendered.contains("std::sync::Mutex<rt::FolInt>"));
+        assert!(mutable_rendered.contains("std::sync::OnceLock<std::sync::Mutex<rt::FolInt>>"));
     }
 
     #[test]
@@ -304,8 +398,8 @@ mod tests {
             render_routine_shell(&package_identity, &routine, &table).expect("routine shell");
 
         assert!(rendered.contains("pub fn r__pkg__entry__app__r3__compute("));
-        assert!(rendered.contains("let mut l__pkg__entry__app__r3__l1__temp: rt::FolInt = todo!();"));
-        assert!(!rendered.contains("l__pkg__entry__app__r3__l0__flag: rt::FolInt = todo!();"));
+        assert!(rendered.contains("let mut l__pkg__entry__app__r3__l1__temp: rt::FolInt = Default::default();"));
+        assert!(!rendered.contains("l__pkg__entry__app__r3__l0__flag: rt::FolInt = Default::default();"));
         assert!(rendered.contains("todo!()"));
         assert_eq!(temp_id, LoweredLocalId(1));
     }
@@ -358,7 +452,7 @@ mod tests {
         assert!(snapshot.contains("r__pkg__entry__app__r4__load"));
         assert!(snapshot.contains("rt::FolRecover<rt::FolInt, rt::FolStr>"));
         assert!(snapshot.contains("l__pkg__entry__app__r4__l0__flag: rt::FolBool"));
-        assert!(snapshot.contains("let mut l__pkg__entry__app__r4__l1__value: rt::FolInt = todo!();"));
+        assert!(snapshot.contains("let mut l__pkg__entry__app__r4__l1__value: rt::FolInt = Default::default();"));
         assert_eq!(local_id, LoweredLocalId(1));
     }
 }

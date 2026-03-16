@@ -8,6 +8,12 @@ pub enum FolRecover<T, E> {
     Err(E),
 }
 
+impl<T: Default, E> Default for FolRecover<T, E> {
+    fn default() -> Self {
+        Self::Ok(T::default())
+    }
+}
+
 impl<T, E> FolRecover<T, E> {
     pub fn ok(value: T) -> Self {
         Self::Ok(value)
