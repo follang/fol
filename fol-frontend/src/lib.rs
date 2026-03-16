@@ -34,7 +34,7 @@ pub use compile::{
 pub use completion::{
     completion_command, generate_bash_completion_script, generate_completion_script,
     generate_fish_completion_script, generate_zsh_completion_script, internal_complete_command,
-    internal_complete_command_with_query, internal_complete_matches, CompletionShell,
+    internal_complete_command_with_tokens, internal_complete_matches, CompletionShell,
 };
 pub use errors::{FrontendError, FrontendErrorKind, FrontendResult};
 pub use fetch::{

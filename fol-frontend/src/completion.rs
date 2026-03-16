@@ -59,23 +59,53 @@ pub fn generate_fish_completion_script() -> FrontendResult<String> {
 }
 
 pub fn internal_complete_command() -> FrontendResult<FrontendCommandResult> {
-    internal_complete_command_with_query(None)
+    internal_complete_command_with_tokens(&[])
 }
 
-pub fn internal_complete_command_with_query(
-    current: Option<&str>,
+pub fn internal_complete_command_with_tokens(
+    tokens: &[String],
 ) -> FrontendResult<FrontendCommandResult> {
-    let matches = internal_complete_matches(current);
+    let matches = internal_complete_matches(tokens);
     Ok(FrontendCommandResult::new(
         "_complete",
         matches.join("\n"),
     ))
 }
 
-pub fn internal_complete_matches(current: Option<&str>) -> Vec<String> {
-    let prefix = current.unwrap_or_default();
+pub fn internal_complete_matches(tokens: &[String]) -> Vec<String> {
+    let (path, prefix) = match tokens.split_last() {
+        Some((last, rest)) => (rest, last.as_str()),
+        None => (&[][..], ""),
+    };
     let command = FrontendCli::command();
     let mut matches = Vec::new();
+    collect_matches_for_command(&command, path, prefix, &mut matches);
+
+    matches.sort();
+    matches.dedup();
+    matches
+}
+
+fn collect_matches_for_command(
+    command: &clap::Command,
+    path: &[String],
+    prefix: &str,
+    matches: &mut Vec<String>,
+) {
+    if let Some((head, tail)) = path.split_first() {
+        for subcommand in command.get_subcommands() {
+            if subcommand.is_hide_set() {
+                continue;
+            }
+            let name_match = subcommand.get_name() == head;
+            let alias_match = subcommand.get_visible_aliases().any(|alias| alias == head.as_str());
+            if name_match || alias_match {
+                collect_matches_for_command(subcommand, tail, prefix, matches);
+                return;
+            }
+        }
+        return;
+    }
 
     for subcommand in command.get_subcommands() {
         if subcommand.is_hide_set() {
@@ -91,17 +121,13 @@ pub fn internal_complete_matches(current: Option<&str>) -> Vec<String> {
             }
         }
     }
-
-    matches.sort();
-    matches.dedup();
-    matches
 }
 
 #[cfg(test)]
 mod tests {
     use super::{
         completion_command, generate_bash_completion_script, generate_fish_completion_script,
-        generate_zsh_completion_script, internal_complete_command_with_query,
+        generate_zsh_completion_script, internal_complete_command_with_tokens,
         internal_complete_matches, CompletionShell,
     };
 
@@ -115,7 +141,7 @@ mod tests {
 
     #[test]
     fn internal_complete_command_has_a_stable_placeholder_surface() {
-        let result = internal_complete_command_with_query(Some("bu")).unwrap();
+        let result = internal_complete_command_with_tokens(&["bu".to_string()]).unwrap();
 
         assert_eq!(result.command, "_complete");
         assert!(result.summary.contains("build"));
@@ -147,9 +173,18 @@ mod tests {
 
     #[test]
     fn internal_complete_matches_filter_visible_commands_and_aliases() {
-        let matches = internal_complete_matches(Some("b"));
+        let matches = internal_complete_matches(&["b".to_string()]);
 
         assert!(matches.contains(&"build".to_string()));
         assert!(matches.contains(&"b".to_string()));
+    }
+
+    #[test]
+    fn internal_complete_matches_follow_subcommand_context() {
+        let emit = internal_complete_matches(&["emit".to_string(), "r".to_string()]);
+        let work = internal_complete_matches(&["work".to_string(), "i".to_string()]);
+
+        assert!(emit.contains(&"rust".to_string()));
+        assert!(work.contains(&"info".to_string()));
     }
 }

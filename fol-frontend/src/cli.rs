@@ -67,7 +67,8 @@ pub struct CompletionCommand {
 
 #[derive(Debug, Clone, Args, PartialEq, Eq)]
 pub struct CompleteCommand {
-    pub current: Option<String>,
+    #[arg(trailing_var_arg = true)]
+    pub tokens: Vec<String>,
 }
 
 #[derive(Debug, Clone, Args, PartialEq, Eq)]
@@ -237,12 +238,12 @@ mod tests {
 
     #[test]
     fn internal_complete_command_parses_optional_current_token() {
-        let cli = FrontendCli::parse_from(["fol", "_complete", "bu"]);
+        let cli = FrontendCli::parse_from(["fol", "_complete", "emit", "ru"]);
 
         assert_eq!(
             cli.command,
             Some(FrontendCommand::Complete(CompleteCommand {
-                current: Some("bu".to_string()),
+                tokens: vec!["emit".to_string(), "ru".to_string()],
             }))
         );
     }
