@@ -103,7 +103,8 @@ pub fn fetch_workspace_with_config(
     workspace: &FrontendWorkspace,
     config: &FrontendConfig,
 ) -> FrontendResult<FrontendCommandResult> {
-    let resolution = resolve_workspace_fetch(workspace, config)?;
+    let resolution = resolve_workspace_fetch(workspace, config)
+        .map_err(|error| with_fetch_guidance(error, config))?;
     if !config.locked_fetch {
         std::fs::write(
             &resolution.lockfile_path,
@@ -118,14 +119,20 @@ pub fn fetch_workspace_with_config(
             ),
         ))?;
     }
+    let stale_pruned = prune_stale_git_materializations(workspace, config, &resolution.lockfile)?;
 
     let mut result = FrontendCommandResult::new(
         "fetch",
         format!(
-            "prepared {} workspace package(s) and resolved {} package root(s) into {}",
+            "prepared {} workspace package(s) and resolved {} package root(s) into {}{}",
             resolution.preparation.packages.len(),
             resolution.resolved_packages.len(),
-            resolution.package_store_root.display()
+            resolution.package_store_root.display(),
+            if stale_pruned > 0 {
+                format!("; pruned {} stale git materialization(s)", stale_pruned)
+            } else {
+                String::new()
+            }
         ),
     );
     result.artifacts.push(FrontendArtifactSummary::new(
@@ -365,6 +372,75 @@ fn load_existing_lockfile(workspace: &FrontendWorkspace) -> FrontendResult<fol_p
 fn lock_mismatch_error(message: impl Into<String>) -> FrontendError {
     FrontendError::new(crate::FrontendErrorKind::InvalidInput, message.into())
         .with_note("run `fol fetch` or `fol update` to refresh fol.lock")
+}
+
+fn with_fetch_guidance(mut error: FrontendError, config: &FrontendConfig) -> FrontendError {
+    let message = error.message().to_ascii_lowercase();
+    if config.offline_fetch {
+        error = error.with_note("offline mode only works when the git source already exists in the local cache");
+    }
+    if config.locked_fetch {
+        error = error.with_note("locked mode requires package.yaml and fol.lock to describe the same git dependencies");
+    }
+    if message.contains("permission denied")
+        || message.contains("could not read from remote repository")
+        || message.contains("authentication failed")
+    {
+        error = error.with_note("check that your git remote credentials and SSH keys are available to `git`");
+    }
+    if message.contains("could not resolve host")
+        || message.contains("name or service not known")
+        || message.contains("failed to connect")
+    {
+        error = error.with_note("check your network connection or rerun with `fol fetch --offline` after warming the cache");
+    }
+    error
+}
+
+fn prune_stale_git_materializations(
+    workspace: &FrontendWorkspace,
+    config: &FrontendConfig,
+    lockfile: &fol_package::PackageLockfile,
+) -> FrontendResult<usize> {
+    let package_store_root = select_package_store_root(config, workspace);
+    let workspace_local_root = workspace.root.root.join(".fol");
+    if !package_store_root.starts_with(&workspace_local_root) {
+        return Ok(0);
+    }
+    let git_store_root = package_store_root.join("git");
+    if !git_store_root.is_dir() {
+        return Ok(0);
+    }
+
+    let live_roots = lockfile
+        .entries
+        .iter()
+        .map(|entry| std::fs::canonicalize(&entry.materialized_root).unwrap_or_else(|_| PathBuf::from(&entry.materialized_root)))
+        .collect::<BTreeSet<_>>();
+    let mut removed = 0usize;
+    let mut stack = vec![git_store_root];
+
+    while let Some(root) = stack.pop() {
+        for entry in std::fs::read_dir(&root).map_err(FrontendError::from)? {
+            let entry = entry.map_err(FrontendError::from)?;
+            let path = entry.path();
+            if !path.is_dir() {
+                continue;
+            }
+            let file_name = path.file_name().and_then(|name| name.to_str()).unwrap_or_default();
+            if file_name.starts_with("rev_") {
+                let canonical = std::fs::canonicalize(&path).unwrap_or_else(|_| path.clone());
+                if !live_roots.contains(&canonical) {
+                    std::fs::remove_dir_all(&path).map_err(FrontendError::from)?;
+                    removed += 1;
+                }
+            } else {
+                stack.push(path);
+            }
+        }
+    }
+
+    Ok(removed)
 }
 
 fn diff_lockfile_revisions(

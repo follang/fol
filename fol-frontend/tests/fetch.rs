@@ -134,6 +134,28 @@ fn fetch_offline_uses_warm_git_cache() {
 }
 
 #[test]
+fn fetch_offline_without_a_warm_cache_adds_guidance_notes() {
+    let root = temp_root("offline_cold");
+    let app = root.join("app");
+    let remote = root.join("remote-logtiny");
+    create_git_package_repo(&remote, "logtiny", "0.1.0");
+    create_app_with_git_dep(&app, &remote);
+
+    let workspace = git_dep_workspace(&root, &app);
+    let error = fetch_workspace_with_config(
+        &workspace,
+        &FrontendConfig {
+            offline_fetch: true,
+            ..FrontendConfig::default()
+        },
+    )
+    .expect_err("offline fetch should fail without a warm cache");
+
+    assert!(error.notes().iter().any(|note| note.contains("offline mode only works")));
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
 fn update_workspace_refreshes_git_dependencies_through_public_api() {
     let root = temp_root("update");
     let app = root.join("app");
@@ -157,6 +179,35 @@ fn update_workspace_refreshes_git_dependencies_through_public_api() {
     assert_ne!(before, after);
     assert!(result.summary.contains("revisions changed: 1"));
     assert!(result.summary.contains("logtiny:"));
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn update_prunes_stale_workspace_local_git_materializations() {
+    let root = temp_root("update_prune");
+    let app = root.join("app");
+    let remote = root.join("remote-logtiny");
+    create_git_package_repo(&remote, "logtiny", "0.1.0");
+    create_app_with_git_dep(&app, &remote);
+    let workspace = git_dep_workspace(&root, &app);
+
+    fetch_workspace(&workspace).expect("initial fetch should succeed");
+    let before = fol_package::parse_package_lockfile(
+        &fs::read_to_string(root.join("fol.lock")).expect("lockfile should exist"),
+    )
+    .expect("lockfile should parse");
+    let old_root = PathBuf::from(before.entries[0].materialized_root.clone());
+    assert!(old_root.is_dir());
+
+    fs::write(remote.join("src/lib.fol"), "var[exp] level: int = 3\n").expect("should update remote source");
+    git(&remote, &["add", "."]);
+    git(&remote, &["commit", "-m", "bump-again"]);
+
+    let result = update_workspace_with_config(&workspace, &FrontendConfig::default())
+        .expect("update should succeed");
+
+    assert!(result.summary.contains("pruned 1 stale git materialization(s)"));
+    assert!(!old_root.exists());
     fs::remove_dir_all(root).ok();
 }
 
