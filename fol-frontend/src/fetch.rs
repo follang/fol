@@ -1,6 +1,6 @@
 use crate::{
     FrontendArtifactKind, FrontendArtifactSummary, FrontendCommandResult, FrontendError,
-    FrontendErrorKind, FrontendResult, FrontendWorkspace,
+    FrontendErrorKind, FrontendResult, FrontendWorkspace, FrontendConfig,
 };
 use std::path::PathBuf;
 
@@ -15,6 +15,17 @@ pub struct FrontendPreparedPackage {
 pub struct FrontendPackagePreparation {
     pub package_config: fol_package::PackageConfig,
     pub packages: Vec<FrontendPreparedPackage>,
+}
+
+pub fn select_package_store_root(
+    config: &FrontendConfig,
+    workspace: &FrontendWorkspace,
+) -> PathBuf {
+    config
+        .package_store_root_override
+        .clone()
+        .or_else(|| workspace.package_store_root_override.clone())
+        .unwrap_or_else(|| workspace.root.root.join(".fol").join("pkg"))
 }
 
 pub fn prepare_workspace_packages(
@@ -75,8 +86,8 @@ pub fn fetch_workspace(workspace: &FrontendWorkspace) -> FrontendResult<Frontend
 
 #[cfg(test)]
 mod tests {
-    use super::{fetch_workspace, prepare_workspace_packages};
-    use crate::{FrontendWorkspace, PackageRoot, WorkspaceRoot};
+    use super::{fetch_workspace, prepare_workspace_packages, select_package_store_root};
+    use crate::{FrontendConfig, FrontendWorkspace, PackageRoot, WorkspaceRoot};
     use std::{fs, path::PathBuf};
 
     #[test]
@@ -158,5 +169,40 @@ mod tests {
         assert_eq!(result.artifacts[0].path, Some(app));
 
         fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn package_store_root_selection_prefers_frontend_config_then_workspace_then_default() {
+        let workspace = FrontendWorkspace {
+            root: WorkspaceRoot::new(PathBuf::from("/tmp/demo")),
+            members: Vec::new(),
+            std_root_override: None,
+            package_store_root_override: Some(PathBuf::from("/tmp/demo/ws-pkg")),
+            build_root: PathBuf::from("/tmp/demo/.fol/build"),
+            cache_root: PathBuf::from("/tmp/demo/.fol/cache"),
+        };
+        let config = FrontendConfig {
+            package_store_root_override: Some(PathBuf::from("/tmp/demo/config-pkg")),
+            ..FrontendConfig::default()
+        };
+
+        assert_eq!(
+            select_package_store_root(&config, &workspace),
+            PathBuf::from("/tmp/demo/config-pkg")
+        );
+        assert_eq!(
+            select_package_store_root(&FrontendConfig::default(), &workspace),
+            PathBuf::from("/tmp/demo/ws-pkg")
+        );
+        assert_eq!(
+            select_package_store_root(
+                &FrontendConfig::default(),
+                &FrontendWorkspace {
+                    package_store_root_override: None,
+                    ..workspace
+                }
+            ),
+            PathBuf::from("/tmp/demo/.fol/pkg")
+        );
     }
 }

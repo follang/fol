@@ -19,7 +19,7 @@ pub use cli::{FrontendCli, FrontendCommand, InitCommand, NewCommand, UnitCommand
 pub use config::FrontendConfig;
 pub use errors::{FrontendError, FrontendErrorKind, FrontendResult};
 pub use fetch::{
-    fetch_workspace, prepare_workspace_packages, FrontendPackagePreparation,
+    fetch_workspace, prepare_workspace_packages, select_package_store_root, FrontendPackagePreparation,
     FrontendPreparedPackage,
 };
 pub use discovery::{
