@@ -20,7 +20,7 @@ pub use cli::{FrontendCli, FrontendCommand, InitCommand, NewCommand, UnitCommand
 pub use config::FrontendConfig;
 pub use compile::{
     build_workspace, build_workspace_with_config, check_workspace, check_workspace_with_config,
-    compile_member_workspace,
+    compile_member_workspace, run_workspace, run_workspace_with_config,
 };
 pub use errors::{FrontendError, FrontendErrorKind, FrontendResult};
 pub use fetch::{

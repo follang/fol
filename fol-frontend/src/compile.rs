@@ -85,6 +85,57 @@ pub fn build_workspace(workspace: &FrontendWorkspace) -> FrontendResult<Frontend
     build_workspace_with_config(workspace, &FrontendConfig::default())
 }
 
+pub fn run_workspace_with_config(
+    workspace: &FrontendWorkspace,
+    config: &FrontendConfig,
+) -> FrontendResult<FrontendCommandResult> {
+    let built = build_workspace_with_config(workspace, config)?;
+    if built.artifacts.len() != 1 {
+        return Err(FrontendError::new(
+            FrontendErrorKind::InvalidInput,
+            format!(
+                "run command requires exactly one runnable workspace package, found {}",
+                built.artifacts.len()
+            ),
+        ));
+    }
+
+    let binary = built.artifacts[0]
+        .path
+        .as_ref()
+        .cloned()
+        .ok_or_else(|| FrontendError::new(FrontendErrorKind::Internal, "build result is missing a binary path"))?;
+    let output = std::process::Command::new(&binary)
+        .output()
+        .map_err(|error| FrontendError::new(FrontendErrorKind::CommandFailed, error.to_string()))?;
+
+    if !output.status.success() {
+        return Err(FrontendError::new(
+            FrontendErrorKind::CommandFailed,
+            format!(
+                "run command failed for '{}': status {}",
+                binary.display(),
+                output.status
+            ),
+        ));
+    }
+
+    let mut result = FrontendCommandResult::new(
+        "run",
+        format!("ran {}", binary.display()),
+    );
+    result.artifacts.push(FrontendArtifactSummary::new(
+        FrontendArtifactKind::Binary,
+        "binary",
+        Some(binary),
+    ));
+    Ok(result)
+}
+
+pub fn run_workspace(workspace: &FrontendWorkspace) -> FrontendResult<FrontendCommandResult> {
+    run_workspace_with_config(workspace, &FrontendConfig::default())
+}
+
 pub fn compile_member_workspace(
     workspace: &FrontendWorkspace,
     config: &FrontendConfig,
@@ -177,7 +228,7 @@ fn lower_lowering_errors(errors: Vec<fol_lower::LoweringError>) -> FrontendError
 
 #[cfg(test)]
 mod tests {
-    use super::{build_workspace, check_workspace};
+    use super::{build_workspace, check_workspace, run_workspace};
     use crate::{FrontendWorkspace, PackageRoot, WorkspaceRoot};
     use std::{fs, path::PathBuf};
 
@@ -232,6 +283,39 @@ mod tests {
 
         assert_eq!(result.command, "build");
         assert_eq!(result.summary, "built 1 workspace package(s)");
+        assert_eq!(result.artifacts.len(), 1);
+        assert!(result.artifacts[0]
+            .path
+            .as_ref()
+            .expect("binary path")
+            .is_file());
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn run_workspace_executes_a_single_runnable_member() {
+        let root = std::env::temp_dir().join(format!("fol_frontend_run_{}", std::process::id()));
+        let app = root.join("app");
+        let src = app.join("src");
+        fs::create_dir_all(&src).unwrap();
+        fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
+        fs::write(app.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
+        fs::write(src.join("main.fol"), "fun[] main(): int = {\n    return 0\n}\n").unwrap();
+
+        let workspace = FrontendWorkspace {
+            root: WorkspaceRoot::new(root.clone()),
+            members: vec![PackageRoot::new(app)],
+            std_root_override: None,
+            package_store_root_override: None,
+            build_root: root.join(".fol/build"),
+            cache_root: root.join(".fol/cache"),
+        };
+
+        let result = run_workspace(&workspace).unwrap();
+
+        assert_eq!(result.command, "run");
+        assert!(result.summary.contains("ran "));
         assert_eq!(result.artifacts.len(), 1);
         assert!(result.artifacts[0]
             .path
