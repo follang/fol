@@ -12,6 +12,12 @@ Shell Commands:
   completion
 ";
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
+pub enum FrontendProfile {
+    Debug,
+    Release,
+}
+
 #[derive(Debug, Clone, Subcommand, PartialEq, Eq)]
 pub enum FrontendCommand {
     #[command(visible_aliases = ["i"])]
@@ -54,6 +60,15 @@ pub struct FrontendCli {
     #[arg(long, global = true, value_enum, default_value_t = ColorPolicy::Auto)]
     pub color: ColorPolicy,
 
+    #[arg(long, global = true, value_enum)]
+    pub profile: Option<FrontendProfile>,
+
+    #[arg(long, global = true, conflicts_with_all = ["release", "profile"])]
+    pub debug: bool,
+
+    #[arg(long, global = true, conflicts_with_all = ["debug", "profile"])]
+    pub release: bool,
+
     #[command(subcommand)]
     pub command: Option<FrontendCommand>,
 }
@@ -79,15 +94,26 @@ Commands:
 Options:
 {options}
 
-{after-help}",
+        {after-help}",
         )
         .after_help(AFTER_HELP)
+    }
+
+    pub fn selected_profile(&self) -> FrontendProfile {
+        if self.release {
+            FrontendProfile::Release
+        } else if self.debug {
+            FrontendProfile::Debug
+        } else {
+            self.profile.unwrap_or(FrontendProfile::Debug)
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{FrontendCli, FrontendCommand, UnitCommand};
+    use super::{FrontendCli, FrontendCommand, FrontendProfile, UnitCommand};
+    use crate::{ColorPolicy, OutputMode};
 
     #[test]
     fn derive_root_parser_accepts_empty_invocation() {
@@ -95,6 +121,7 @@ mod tests {
 
         assert_eq!(cli.output, OutputMode::Human);
         assert_eq!(cli.color, ColorPolicy::Auto);
+        assert_eq!(cli.selected_profile(), FrontendProfile::Debug);
         assert_eq!(cli.command, None);
     }
 
@@ -130,6 +157,15 @@ mod tests {
 
         assert_eq!(cli.color, ColorPolicy::Never);
         assert_eq!(cli.command, Some(FrontendCommand::Build(UnitCommand)));
+    }
+
+    #[test]
+    fn profile_flags_normalize_to_frontend_profile_selection() {
+        let profile = FrontendCli::parse_from(["fol", "--profile", "release", "build"]);
+        let release = FrontendCli::parse_from(["fol", "--release", "build"]);
+
+        assert_eq!(profile.selected_profile(), FrontendProfile::Release);
+        assert_eq!(release.selected_profile(), FrontendProfile::Release);
     }
 
     #[test]
