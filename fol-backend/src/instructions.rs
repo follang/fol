@@ -356,4 +356,115 @@ mod tests {
             "let l__pkg__entry__app__r5__l4__flipped = !l__pkg__entry__app__r5__l2__flag;"
         );
     }
+
+    #[test]
+    fn combined_core_instruction_snapshot_stays_stable() {
+        let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
+        let mut table = LoweredTypeTable::new();
+        let int_id = table.intern_builtin(LoweredBuiltinType::Int);
+        let bool_id = table.intern_builtin(LoweredBuiltinType::Bool);
+        let mut routine = LoweredRoutine::new(LoweredRoutineId(6), "main", LoweredBlockId(0));
+        let lhs = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(0),
+            type_id: Some(int_id),
+            recoverable_error_type: None,
+            name: Some("lhs".to_string()),
+        });
+        let rhs = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(1),
+            type_id: Some(int_id),
+            recoverable_error_type: None,
+            name: Some("rhs".to_string()),
+        });
+        let flag = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(2),
+            type_id: Some(bool_id),
+            recoverable_error_type: None,
+            name: Some("flag".to_string()),
+        });
+        let tmp = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(3),
+            type_id: Some(int_id),
+            recoverable_error_type: None,
+            name: Some("tmp".to_string()),
+        });
+        let bool_result = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(4),
+            type_id: Some(bool_id),
+            recoverable_error_type: None,
+            name: Some("same".to_string()),
+        });
+
+        let rendered = [
+            LoweredInstr {
+                id: LoweredInstrId(10),
+                result: Some(tmp),
+                kind: LoweredInstrKind::Const(LoweredOperand::Int(7)),
+            },
+            LoweredInstr {
+                id: LoweredInstrId(11),
+                result: Some(lhs),
+                kind: LoweredInstrKind::LoadLocal { local: tmp },
+            },
+            LoweredInstr {
+                id: LoweredInstrId(12),
+                result: None,
+                kind: LoweredInstrKind::StoreLocal {
+                    local: rhs,
+                    value: lhs,
+                },
+            },
+            LoweredInstr {
+                id: LoweredInstrId(13),
+                result: Some(tmp),
+                kind: LoweredInstrKind::Call {
+                    callee: LoweredRoutineId(8),
+                    args: vec![lhs, rhs],
+                    error_type: None,
+                },
+            },
+            LoweredInstr {
+                id: LoweredInstrId(14),
+                result: Some(bool_result),
+                kind: LoweredInstrKind::IntrinsicCall {
+                    intrinsic: intrinsic_by_canonical_name("eq").expect("eq").id,
+                    args: vec![lhs, rhs],
+                },
+            },
+            LoweredInstr {
+                id: LoweredInstrId(15),
+                result: Some(bool_result),
+                kind: LoweredInstrKind::IntrinsicCall {
+                    intrinsic: intrinsic_by_canonical_name("not").expect("not").id,
+                    args: vec![flag],
+                },
+            },
+            LoweredInstr {
+                id: LoweredInstrId(16),
+                result: Some(tmp),
+                kind: LoweredInstrKind::FieldAccess {
+                    base: rhs,
+                    field: "count".to_string(),
+                },
+            },
+        ]
+        .iter()
+        .map(|instruction| render_core_instruction(&package_identity, &routine, instruction))
+        .collect::<Result<Vec<_>, _>>()
+        .expect("snapshot should render")
+        .join("\n");
+
+        assert_eq!(
+            rendered,
+            concat!(
+                "let l__pkg__entry__app__r6__l3__tmp = 7_i64;\n",
+                "let l__pkg__entry__app__r6__l0__lhs = l__pkg__entry__app__r6__l3__tmp.clone();\n",
+                "l__pkg__entry__app__r6__l1__rhs = l__pkg__entry__app__r6__l0__lhs.clone();\n",
+                "let l__pkg__entry__app__r6__l3__tmp = r__pkg__entry__app__r8__callee(l__pkg__entry__app__r6__l0__lhs, l__pkg__entry__app__r6__l1__rhs);\n",
+                "let l__pkg__entry__app__r6__l4__same = l__pkg__entry__app__r6__l0__lhs == l__pkg__entry__app__r6__l1__rhs;\n",
+                "let l__pkg__entry__app__r6__l4__same = !l__pkg__entry__app__r6__l2__flag;\n",
+                "let l__pkg__entry__app__r6__l3__tmp = l__pkg__entry__app__r6__l1__rhs.count.clone();"
+            )
+        );
+    }
 }

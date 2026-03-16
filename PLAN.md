@@ -991,7 +991,7 @@ not full long-term compiler completion.
 #### 7.4 done
 - emit scalar intrinsic calls as native Rust operations
 
-#### 7.5
+#### 7.5 done
 - add snapshot tests for core instruction emission
 
 ## 43. Phase 8: Runtime-Shaped Instruction Emission
