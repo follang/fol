@@ -482,7 +482,7 @@ mod tests {
         PackageBuildDefinition, PackageBuildEntryPoint, PackageBuildEntryPointKind,
         PackageBuildMode, PackageNativeArtifact, PackageNativeArtifactKind,
     };
-    use crate::{PackageErrorKind, PackageLocator, PackageLocatorKind};
+    use crate::{PackageErrorKind, PackageLocator};
     use fol_parser::ast::AstParser;
     use fol_stream::FileStream;
     use std::fs;

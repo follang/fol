@@ -160,7 +160,7 @@ impl ToDiagnostic for PackageError {
 #[cfg(test)]
 mod tests {
     use super::{PackageError, PackageErrorKind};
-    use fol_diagnostics::{DiagnosticCode, DiagnosticReport};
+    use fol_diagnostics::{DiagnosticCode, DiagnosticReport, ToDiagnostic};
     use fol_parser::ast::SyntaxOrigin;
     use std::time::{SystemTime, UNIX_EPOCH};
 

@@ -318,31 +318,32 @@ fn plan_member_execution_from_build_source(
             format!("failed to read build file '{}': {error}", build_path.display()),
         )
     })?;
-    let extracted = extract_build_program_from_source(member, &build_path, &source)?;
-    if extracted.operations.is_empty() {
-        return Ok(None);
-    }
-    let operations = extracted.operations.clone();
-
-    let result = fol_package::evaluate_build_plan(&fol_package::BuildEvaluationRequest {
-        package_root: member.member_root.display().to_string(),
-        inputs: fol_package::BuildEvaluationInputs {
-            working_directory: member.member_root.display().to_string(),
-            ..fol_package::BuildEvaluationInputs::default()
+    let evaluated = fol_package::evaluate_build_source(
+        &fol_package::BuildEvaluationRequest {
+            package_root: member.member_root.display().to_string(),
+            inputs: fol_package::BuildEvaluationInputs {
+                working_directory: member.member_root.display().to_string(),
+                ..fol_package::BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
         },
-        operations,
-    })
+        &build_path,
+        &source,
+    )
     .map_err(|error| FrontendError::new(FrontendErrorKind::InvalidInput, error.to_string()))?;
+    let Some(evaluated) = evaluated else {
+        return Ok(None);
+    };
 
-    let mut steps = fol_package::project_graph_steps(&result.graph)
+    let mut steps = fol_package::project_graph_steps(&evaluated.result.graph)
         .into_iter()
         .map(|step| FrontendMemberPlannedStep {
-            selection: extracted.selection_for_step(&step.name, step.default_kind),
+            selection: selection_for_step(member, &evaluated.extracted, &step.name, step.default_kind),
             name: step.name,
             execution: step.default_kind.and_then(step_execution_kind_from_default),
         })
         .collect::<Vec<_>>();
-    for step in extracted.synthesized_default_steps() {
+    for step in synthesized_default_steps(member, &evaluated.extracted) {
         if !steps.iter().any(|existing| existing.name == step.name) {
             steps.push(step);
         }
@@ -364,244 +365,74 @@ fn plan_member_execution_from_build_source(
     Ok(Some(FrontendMemberExecutionPlan { steps }))
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct ExtractedBuildProgram {
-    operations: Vec<fol_package::BuildEvaluationOperation>,
-    executable_artifacts: Vec<crate::compile::FrontendArtifactExecutionSelection>,
-    test_artifacts: Vec<crate::compile::FrontendArtifactExecutionSelection>,
-    run_steps: std::collections::BTreeMap<String, crate::compile::FrontendArtifactExecutionSelection>,
+fn selection_for_step(
+    member: &FrontendMemberBuildRoute,
+    extracted: &fol_package::ExtractedBuildProgram,
+    step_name: &str,
+    default_kind: Option<fol_package::BuildDefaultStepKind>,
+) -> Option<crate::compile::FrontendArtifactExecutionSelection> {
+    if let Some(artifact_name) = extracted.run_steps.get(step_name) {
+        return extracted
+            .executable_artifacts
+            .iter()
+            .find(|artifact| artifact.name == *artifact_name)
+            .map(|artifact| artifact_selection(member, artifact));
+    }
+    match default_kind {
+        Some(fol_package::BuildDefaultStepKind::Build)
+        | Some(fol_package::BuildDefaultStepKind::Run) => {
+            single_selection(member, &extracted.executable_artifacts)
+        }
+        Some(fol_package::BuildDefaultStepKind::Test) => {
+            single_selection(member, &extracted.test_artifacts)
+        }
+        _ => None,
+    }
 }
 
-impl ExtractedBuildProgram {
-    fn new() -> Self {
-        Self {
-            operations: Vec::new(),
-            executable_artifacts: Vec::new(),
-            test_artifacts: Vec::new(),
-            run_steps: std::collections::BTreeMap::new(),
-        }
+fn synthesized_default_steps(
+    member: &FrontendMemberBuildRoute,
+    extracted: &fol_package::ExtractedBuildProgram,
+) -> Vec<FrontendMemberPlannedStep> {
+    let mut steps = Vec::new();
+    if let Some(selection) = single_selection(member, &extracted.executable_artifacts) {
+        steps.push(FrontendMemberPlannedStep {
+            name: "build".to_string(),
+            execution: Some(FrontendStepExecutionKind::Build),
+            selection: Some(selection.clone()),
+        });
+        steps.push(FrontendMemberPlannedStep {
+            name: "run".to_string(),
+            execution: Some(FrontendStepExecutionKind::Run),
+            selection: Some(selection),
+        });
     }
-
-    fn selection_for_step(
-        &self,
-        step_name: &str,
-        default_kind: Option<fol_package::BuildDefaultStepKind>,
-    ) -> Option<crate::compile::FrontendArtifactExecutionSelection> {
-        if let Some(selection) = self.run_steps.get(step_name) {
-            return Some(selection.clone());
-        }
-        match default_kind {
-            Some(fol_package::BuildDefaultStepKind::Build)
-            | Some(fol_package::BuildDefaultStepKind::Run) => {
-                single_selection(&self.executable_artifacts)
-            }
-            Some(fol_package::BuildDefaultStepKind::Test) => single_selection(&self.test_artifacts),
-            _ => None,
-        }
+    if let Some(selection) = single_selection(member, &extracted.test_artifacts) {
+        steps.push(FrontendMemberPlannedStep {
+            name: "test".to_string(),
+            execution: Some(FrontendStepExecutionKind::Test),
+            selection: Some(selection),
+        });
     }
-
-    fn synthesized_default_steps(&self) -> Vec<FrontendMemberPlannedStep> {
-        let mut steps = Vec::new();
-        if let Some(selection) = single_selection(&self.executable_artifacts) {
-            steps.push(FrontendMemberPlannedStep {
-                name: "build".to_string(),
-                execution: Some(FrontendStepExecutionKind::Build),
-                selection: Some(selection.clone()),
-            });
-            steps.push(FrontendMemberPlannedStep {
-                name: "run".to_string(),
-                execution: Some(FrontendStepExecutionKind::Run),
-                selection: Some(selection),
-            });
-        }
-        if let Some(selection) = single_selection(&self.test_artifacts) {
-            steps.push(FrontendMemberPlannedStep {
-                name: "test".to_string(),
-                execution: Some(FrontendStepExecutionKind::Test),
-                selection: Some(selection),
-            });
-        }
-        steps
-    }
+    steps
 }
 
 fn single_selection(
-    selections: &[crate::compile::FrontendArtifactExecutionSelection],
-) -> Option<crate::compile::FrontendArtifactExecutionSelection> {
-    (selections.len() == 1).then(|| selections[0].clone())
-}
-
-fn extract_build_program_from_source(
     member: &FrontendMemberBuildRoute,
-    build_path: &std::path::Path,
-    source: &str,
-) -> FrontendResult<ExtractedBuildProgram> {
-    let Some((param_name, body, body_line)) = extract_build_body(source) else {
-        return Ok(ExtractedBuildProgram::new());
-    };
-    let mut extracted = ExtractedBuildProgram::new();
-    let mut executable_artifacts = std::collections::BTreeMap::new();
-    let mut test_artifacts = std::collections::BTreeMap::new();
-    for (offset, raw_line) in body.lines().enumerate() {
-        let line_number = body_line + offset;
-        let line = raw_line
-            .split_once("//")
-            .map_or(raw_line, |(prefix, _)| prefix)
-            .trim()
-            .trim_end_matches(';')
-            .trim();
-        if line.is_empty() || line == "return ." {
-            continue;
-        }
-        let Some(call) = line.strip_prefix(&format!("{param_name}.")) else {
-            continue;
-        };
-        let Some((method, raw_args)) = call.split_once('(') else {
-            continue;
-        };
-        let args_text = raw_args.trim_end_matches(')').trim();
-        let args = parse_build_string_args(args_text);
-        let origin = fol_parser::ast::SyntaxOrigin {
-            file: Some(build_path.display().to_string()),
-            line: line_number,
-            column: 1,
-            length: raw_line.len(),
-        };
-        let kind = match (method.trim(), args.as_slice()) {
-            ("standard_target", [name]) => fol_package::BuildEvaluationOperationKind::StandardTarget(
-                fol_package::StandardTargetRequest::new(name.clone()),
-            ),
-            ("standard_optimize", [name]) => {
-                fol_package::BuildEvaluationOperationKind::StandardOptimize(
-                    fol_package::StandardOptimizeRequest::new(name.clone()),
-                )
-            }
-            ("add_exe", [name, root_module]) => {
-                executable_artifacts.insert(
-                    name.clone(),
-                    crate::compile::FrontendArtifactExecutionSelection {
-                        package_root: member.member_root.clone(),
-                        label: name.clone(),
-                        root_module: Some(root_module.clone()),
-                    },
-                );
-                fol_package::BuildEvaluationOperationKind::AddExe(fol_package::ExecutableRequest {
-                    name: name.clone(),
-                    root_module: root_module.clone(),
-                })
-            }
-            ("add_static_lib", [name, root_module]) => {
-                fol_package::BuildEvaluationOperationKind::AddStaticLib(
-                    fol_package::StaticLibraryRequest {
-                        name: name.clone(),
-                        root_module: root_module.clone(),
-                    },
-                )
-            }
-            ("add_shared_lib", [name, root_module]) => {
-                fol_package::BuildEvaluationOperationKind::AddSharedLib(
-                    fol_package::SharedLibraryRequest {
-                        name: name.clone(),
-                        root_module: root_module.clone(),
-                    },
-                )
-            }
-            ("add_test", [name, root_module]) => {
-                test_artifacts.insert(
-                    name.clone(),
-                    crate::compile::FrontendArtifactExecutionSelection {
-                        package_root: member.member_root.clone(),
-                        label: name.clone(),
-                        root_module: Some(root_module.clone()),
-                    },
-                );
-                fol_package::BuildEvaluationOperationKind::AddTest(
-                    fol_package::TestArtifactRequest {
-                        name: name.clone(),
-                        root_module: root_module.clone(),
-                    },
-                )
-            }
-            ("step", [name, depends_on @ ..]) => fol_package::BuildEvaluationOperationKind::Step(
-                fol_package::BuildEvaluationStepRequest {
-                    name: name.clone(),
-                    depends_on: depends_on.to_vec(),
-                },
-            ),
-            ("add_run", [name, artifact, depends_on @ ..]) => {
-                if let Some(selection) = executable_artifacts.get(artifact) {
-                    extracted.run_steps.insert(name.clone(), selection.clone());
-                }
-                fol_package::BuildEvaluationOperationKind::AddRun(
-                    fol_package::BuildEvaluationRunRequest {
-                        name: name.clone(),
-                        artifact: artifact.clone(),
-                        depends_on: depends_on.to_vec(),
-                    },
-                )
-            }
-            ("install", [name, artifact]) => {
-                fol_package::BuildEvaluationOperationKind::InstallArtifact(
-                    fol_package::BuildEvaluationInstallArtifactRequest {
-                        name: name.clone(),
-                        artifact: artifact.clone(),
-                    },
-                )
-            }
-            ("dependency", [alias, package]) => {
-                fol_package::BuildEvaluationOperationKind::Dependency(
-                    fol_package::DependencyRequest {
-                        alias: alias.clone(),
-                        package: package.clone(),
-                    },
-                )
-            }
-            _ => {
-                return Err(FrontendError::new(
-                    FrontendErrorKind::InvalidInput,
-                    format!(
-                        "unsupported build API call in '{}': {}",
-                        build_path.display(),
-                        raw_line.trim()
-                    ),
-                ))
-            }
-        };
-        extracted.operations.push(fol_package::BuildEvaluationOperation {
-            origin: Some(origin),
-            kind,
-        });
-    }
-    extracted.executable_artifacts = executable_artifacts.into_values().collect();
-    extracted.test_artifacts = test_artifacts.into_values().collect();
-    Ok(extracted)
+    artifacts: &[fol_package::ExtractedBuildArtifact],
+) -> Option<crate::compile::FrontendArtifactExecutionSelection> {
+    (artifacts.len() == 1).then(|| artifact_selection(member, &artifacts[0]))
 }
 
-fn extract_build_body(source: &str) -> Option<(String, String, usize)> {
-    let start = source.find("def build(")?;
-    let rest = &source[start + "def build(".len()..];
-    let param_end = rest.find(':')?;
-    let param_name = rest[..param_end].trim().to_string();
-    if param_name.is_empty() {
-        return None;
+fn artifact_selection(
+    member: &FrontendMemberBuildRoute,
+    artifact: &fol_package::ExtractedBuildArtifact,
+) -> crate::compile::FrontendArtifactExecutionSelection {
+    crate::compile::FrontendArtifactExecutionSelection {
+        package_root: member.member_root.clone(),
+        label: artifact.name.clone(),
+        root_module: Some(artifact.root_module.clone()),
     }
-    let after_equals = rest.find('=')?;
-    let body_start = start + "def build(".len() + after_equals + 1;
-    let body_source = source[body_start..].trim_start();
-    let body_line = source[..body_start].chars().filter(|ch| *ch == '\n').count() + 1;
-    if let Some(stripped) = body_source.strip_prefix('{') {
-        let block_end = stripped.rfind('}')?;
-        return Some((param_name, stripped[..block_end].to_string(), body_line + 1));
-    }
-    Some((param_name, body_source.trim_end_matches(';').to_string(), body_line))
-}
-
-fn parse_build_string_args(args: &str) -> Vec<String> {
-    args.split(',')
-        .map(str::trim)
-        .filter_map(|arg| arg.strip_prefix('"').and_then(|arg| arg.strip_suffix('"')))
-        .map(str::to_string)
-        .collect()
 }
 
 fn step_execution_kind_from_default(

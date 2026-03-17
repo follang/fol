@@ -62,10 +62,12 @@ pub use build_dependency::{
     DependencySourceRootSurface, DependencyStepSurface, DependencyStepSurfaceSet,
 };
 pub use build_eval::{
-    evaluate_build_plan, AllowedBuildTimeOperation, BuildEvaluationBoundary, BuildEvaluationError,
+    evaluate_build_plan, evaluate_build_source, extract_build_program_from_source,
+    AllowedBuildTimeOperation, BuildEvaluationBoundary, BuildEvaluationError,
     BuildEvaluationErrorKind, BuildEvaluationInputs, BuildEvaluationInstallArtifactRequest,
     BuildEvaluationOperation, BuildEvaluationOperationKind, BuildEvaluationRequest,
     BuildEvaluationResult, BuildEvaluationRunRequest, BuildEvaluationStepRequest,
+    EvaluatedBuildSource, ExtractedBuildArtifact, ExtractedBuildProgram,
 };
 pub use build_graph::{
     BuildArtifact, BuildArtifactDependency, BuildArtifactId, BuildArtifactInput,

@@ -16,7 +16,7 @@ use fol_diagnostics::{
 };
 use fol_parser::ast::SyntaxOrigin;
 use fol_types::Glitch;
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, path::Path};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BuildEvaluationBoundary {
@@ -257,6 +257,26 @@ pub struct BuildEvaluationResult {
     pub graph: BuildGraph,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExtractedBuildArtifact {
+    pub name: String,
+    pub root_module: String,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ExtractedBuildProgram {
+    pub operations: Vec<BuildEvaluationOperation>,
+    pub executable_artifacts: Vec<ExtractedBuildArtifact>,
+    pub test_artifacts: Vec<ExtractedBuildArtifact>,
+    pub run_steps: BTreeMap<String, String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EvaluatedBuildSource {
+    pub extracted: ExtractedBuildProgram,
+    pub result: BuildEvaluationResult,
+}
+
 impl BuildEvaluationResult {
     pub fn new(
         boundary: BuildEvaluationBoundary,
@@ -473,6 +493,180 @@ pub fn evaluate_build_plan(
     ))
 }
 
+pub fn extract_build_program_from_source(
+    build_path: &Path,
+    source: &str,
+) -> Result<ExtractedBuildProgram, BuildEvaluationError> {
+    let Some((param_name, body, body_line)) = extract_build_body(source) else {
+        return Ok(ExtractedBuildProgram::default());
+    };
+    let mut extracted = ExtractedBuildProgram::default();
+    let mut executable_artifacts = BTreeMap::new();
+    let mut test_artifacts = BTreeMap::new();
+    for (offset, raw_line) in body.lines().enumerate() {
+        let line_number = body_line + offset;
+        let line = raw_line
+            .split_once("//")
+            .map_or(raw_line, |(prefix, _)| prefix)
+            .trim()
+            .trim_end_matches(';')
+            .trim();
+        if line.is_empty() || line == "return ." {
+            continue;
+        }
+        let Some(call) = line.strip_prefix(&format!("{param_name}.")) else {
+            continue;
+        };
+        let Some((method, raw_args)) = call.split_once('(') else {
+            continue;
+        };
+        let args_text = raw_args.trim_end_matches(')').trim();
+        let args = parse_build_string_args(args_text);
+        let origin = SyntaxOrigin {
+            file: Some(build_path.display().to_string()),
+            line: line_number,
+            column: 1,
+            length: raw_line.len(),
+        };
+        let kind = match (method.trim(), args.as_slice()) {
+            ("standard_target", [name]) => {
+                BuildEvaluationOperationKind::StandardTarget(StandardTargetRequest::new(name.clone()))
+            }
+            ("standard_optimize", [name]) => BuildEvaluationOperationKind::StandardOptimize(
+                StandardOptimizeRequest::new(name.clone()),
+            ),
+            ("add_exe", [name, root_module]) => {
+                executable_artifacts.insert(
+                    name.clone(),
+                    ExtractedBuildArtifact {
+                        name: name.clone(),
+                        root_module: root_module.clone(),
+                    },
+                );
+                BuildEvaluationOperationKind::AddExe(ExecutableRequest {
+                    name: name.clone(),
+                    root_module: root_module.clone(),
+                })
+            }
+            ("add_static_lib", [name, root_module]) => {
+                BuildEvaluationOperationKind::AddStaticLib(StaticLibraryRequest {
+                    name: name.clone(),
+                    root_module: root_module.clone(),
+                })
+            }
+            ("add_shared_lib", [name, root_module]) => {
+                BuildEvaluationOperationKind::AddSharedLib(SharedLibraryRequest {
+                    name: name.clone(),
+                    root_module: root_module.clone(),
+                })
+            }
+            ("add_test", [name, root_module]) => {
+                test_artifacts.insert(
+                    name.clone(),
+                    ExtractedBuildArtifact {
+                        name: name.clone(),
+                        root_module: root_module.clone(),
+                    },
+                );
+                BuildEvaluationOperationKind::AddTest(TestArtifactRequest {
+                    name: name.clone(),
+                    root_module: root_module.clone(),
+                })
+            }
+            ("step", [name, depends_on @ ..]) => {
+                BuildEvaluationOperationKind::Step(BuildEvaluationStepRequest {
+                    name: name.clone(),
+                    depends_on: depends_on.to_vec(),
+                })
+            }
+            ("add_run", [name, artifact, depends_on @ ..]) => {
+                extracted.run_steps.insert(name.clone(), artifact.clone());
+                BuildEvaluationOperationKind::AddRun(BuildEvaluationRunRequest {
+                    name: name.clone(),
+                    artifact: artifact.clone(),
+                    depends_on: depends_on.to_vec(),
+                })
+            }
+            ("install", [name, artifact]) => {
+                BuildEvaluationOperationKind::InstallArtifact(
+                    BuildEvaluationInstallArtifactRequest {
+                        name: name.clone(),
+                        artifact: artifact.clone(),
+                    },
+                )
+            }
+            ("dependency", [alias, package]) => {
+                BuildEvaluationOperationKind::Dependency(DependencyRequest {
+                    alias: alias.clone(),
+                    package: package.clone(),
+                })
+            }
+            _ => {
+                return Err(BuildEvaluationError::with_origin(
+                    BuildEvaluationErrorKind::Unsupported,
+                    format!(
+                        "unsupported build API call in '{}': {}",
+                        build_path.display(),
+                        raw_line.trim()
+                    ),
+                    origin,
+                ))
+            }
+        };
+        extracted.operations.push(BuildEvaluationOperation {
+            origin: Some(origin),
+            kind,
+        });
+    }
+    extracted.executable_artifacts = executable_artifacts.into_values().collect();
+    extracted.test_artifacts = test_artifacts.into_values().collect();
+    Ok(extracted)
+}
+
+pub fn evaluate_build_source(
+    request: &BuildEvaluationRequest,
+    build_path: &Path,
+    source: &str,
+) -> Result<Option<EvaluatedBuildSource>, BuildEvaluationError> {
+    let extracted = extract_build_program_from_source(build_path, source)?;
+    if extracted.operations.is_empty() {
+        return Ok(None);
+    }
+    let result = evaluate_build_plan(&BuildEvaluationRequest {
+        package_root: request.package_root.clone(),
+        inputs: request.inputs.clone(),
+        operations: extracted.operations.clone(),
+    })?;
+    Ok(Some(EvaluatedBuildSource { extracted, result }))
+}
+
+fn extract_build_body(source: &str) -> Option<(String, String, usize)> {
+    let start = source.find("def build(")?;
+    let rest = &source[start + "def build(".len()..];
+    let param_end = rest.find(':')?;
+    let param_name = rest[..param_end].trim().to_string();
+    if param_name.is_empty() {
+        return None;
+    }
+    let after_equals = rest.find('=')?;
+    let body_start = start + "def build(".len() + after_equals + 1;
+    let body_source = source[body_start..].trim_start();
+    let body_line = source[..body_start].chars().filter(|ch| *ch == '\n').count() + 1;
+    if let Some(stripped) = body_source.strip_prefix('{') {
+        let block_end = stripped.rfind('}')?;
+        return Some((param_name, stripped[..block_end].to_string(), body_line + 1));
+    }
+    Some((param_name, body_source.trim_end_matches(';').to_string(), body_line))
+}
+
+fn parse_build_string_args(args: &str) -> Vec<String> {
+    args.split(',')
+        .map(str::trim)
+        .filter_map(|arg| arg.strip_prefix('"').and_then(|arg| arg.strip_suffix('"')))
+        .map(str::to_string)
+        .collect()
+}
+
 fn evaluation_invalid_input(
     message: impl Into<String>,
     origin: Option<SyntaxOrigin>,
@@ -501,7 +695,7 @@ fn evaluation_error(
 #[cfg(test)]
 mod tests {
     use super::{
-        evaluate_build_plan, AllowedBuildTimeOperation, BuildEvaluationBoundary,
+        evaluate_build_plan, evaluate_build_source, AllowedBuildTimeOperation, BuildEvaluationBoundary,
         BuildEvaluationError, BuildEvaluationErrorKind, BuildEvaluationInputs,
         BuildEvaluationInstallArtifactRequest, BuildEvaluationOperation,
         BuildEvaluationOperationKind, BuildEvaluationRequest, BuildEvaluationResult,
@@ -510,12 +704,13 @@ mod tests {
     use crate::build_option::{BuildOptimizeMode, BuildOptionDeclaration, BuildTargetTriple};
     use crate::build_graph::BuildGraph;
     use crate::{
-        CodegenKind, CodegenRequest, CopyFileRequest, ExecutableRequest, StandardOptimizeRequest,
-        StandardTargetRequest, SystemToolRequest, UserOptionRequest, WriteFileRequest,
+        CodegenKind, CodegenRequest, DependencyRequest, ExecutableRequest, InstallDirRequest,
+        StandardOptimizeRequest, StandardTargetRequest, SystemToolRequest, UserOptionRequest,
     };
+    use crate::build_api::{CopyFileRequest, WriteFileRequest};
     use fol_diagnostics::{DiagnosticCode, ToDiagnostic};
     use fol_parser::ast::SyntaxOrigin;
-    use std::collections::BTreeMap;
+    use std::{collections::BTreeMap, path::Path};
 
     #[test]
     fn build_evaluation_request_defaults_to_an_empty_package_root() {
@@ -653,6 +848,7 @@ mod tests {
         let mut request = BuildEvaluationRequest {
             package_root: "/pkg".to_string(),
             inputs: BuildEvaluationInputs::default(),
+            operations: Vec::new(),
         };
         request
             .inputs
@@ -938,5 +1134,37 @@ mod tests {
         let result = evaluate_build_plan(&request).expect("generated-file replay should succeed");
 
         assert_eq!(result.graph.generated_files().len(), 4);
+    }
+
+    #[test]
+    fn build_source_evaluator_extracts_and_replays_restricted_build_bodies() {
+        let source = concat!(
+            "def build(graph: int): int = {\n",
+            "    graph.add_exe(\"app\", \"src/app.fol\");\n",
+            "    graph.add_test(\"app_test\", \"test/app.fol\");\n",
+            "    graph.add_run(\"serve\", \"app\");\n",
+            "    return .\n",
+            "}\n",
+        );
+        let request = BuildEvaluationRequest {
+            package_root: "/pkg".to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: "/pkg".to_string(),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        };
+
+        let evaluated = evaluate_build_source(&request, Path::new("/pkg/build.fol"), source)
+            .expect("restricted build body should evaluate")
+            .expect("build body should produce operations");
+
+        assert_eq!(evaluated.extracted.operations.len(), 3);
+        assert_eq!(evaluated.extracted.executable_artifacts.len(), 1);
+        assert_eq!(evaluated.extracted.executable_artifacts[0].root_module, "src/app.fol");
+        assert_eq!(evaluated.extracted.test_artifacts.len(), 1);
+        assert_eq!(evaluated.extracted.run_steps.get("serve"), Some(&"app".to_string()));
+        assert_eq!(evaluated.result.graph.artifacts().len(), 2);
+        assert_eq!(evaluated.result.graph.steps().len(), 1);
     }
 }
