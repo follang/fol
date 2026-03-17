@@ -54,6 +54,21 @@ pub struct BuildArtifactReport {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BuildArtifactPipelinePlan {
+    pub definition: BuildArtifactDefinition,
+    pub stages: Vec<BuildArtifactPipelineStage>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BuildArtifactPipelineStage {
+    Package,
+    Resolver,
+    Typecheck,
+    Lower,
+    Backend,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BuildArtifactDefinition {
     pub name: String,
     pub kind: BuildArtifactModelKind,
@@ -89,7 +104,8 @@ mod tests {
     use super::{
         BuildArtifactDefinition, BuildArtifactLinkage, BuildArtifactModelKind,
         BuildArtifactModuleConfig, BuildArtifactOutput, BuildArtifactReport,
-        BuildArtifactRootSource, BuildArtifactSet,
+        BuildArtifactPipelinePlan, BuildArtifactPipelineStage, BuildArtifactRootSource,
+        BuildArtifactSet,
         BuildArtifactTargetConfig,
     };
 
@@ -202,5 +218,40 @@ mod tests {
             }
             other => panic!("unexpected docs output: {other:?}"),
         }
+    }
+
+    #[test]
+    fn artifact_pipeline_plan_tracks_all_compiler_and_backend_stages() {
+        let plan = BuildArtifactPipelinePlan {
+            definition: BuildArtifactDefinition {
+                name: "app".to_string(),
+                kind: BuildArtifactModelKind::Executable,
+                root_source: BuildArtifactRootSource {
+                    path: "src/main.fol".to_string(),
+                },
+                modules: BuildArtifactModuleConfig {
+                    roots: vec!["src".to_string()],
+                },
+                output_name: "app".to_string(),
+                linkage: BuildArtifactLinkage::Executable,
+                target: BuildArtifactTargetConfig {
+                    target: Some("native".to_string()),
+                    optimize: Some("debug".to_string()),
+                },
+                native_artifacts: Vec::new(),
+            },
+            stages: vec![
+                BuildArtifactPipelineStage::Package,
+                BuildArtifactPipelineStage::Resolver,
+                BuildArtifactPipelineStage::Typecheck,
+                BuildArtifactPipelineStage::Lower,
+                BuildArtifactPipelineStage::Backend,
+            ],
+        };
+
+        assert_eq!(plan.definition.name, "app");
+        assert_eq!(plan.stages.len(), 5);
+        assert_eq!(plan.stages[0], BuildArtifactPipelineStage::Package);
+        assert_eq!(plan.stages[4], BuildArtifactPipelineStage::Backend);
     }
 }
