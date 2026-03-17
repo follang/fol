@@ -240,7 +240,7 @@ Round 1 slice tracker:
 - [x] Slice 7. Add object-style artifact config shape types.
 - [x] Slice 8. Add option value/config shape types for semantic build calls.
 - [x] Slice 9. Add chaining metadata for `.depend_on(...)` and related flows.
-- [ ] Slice 10. Re-export and test the full Phase 1 semantic build surface.
+- [x] Slice 10. Re-export and test the full Phase 1 semantic build surface.
 
 ## Phase 2: Admit `build.fol` Into The Normal Semantic Pipeline
 

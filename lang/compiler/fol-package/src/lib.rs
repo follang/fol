@@ -96,6 +96,16 @@ pub use build_step::{
     BuildStepEventKind, BuildStepExecutionRequest, BuildStepExecutionResult, BuildStepPlanError,
     BuildStepReport,
 };
+pub use build_semantic::{
+    canonical_artifact_config_shapes, canonical_chain_metadata,
+    canonical_graph_method_signatures, canonical_handle_method_signatures,
+    canonical_option_config_shapes, canonical_option_value_kinds, BuildSemanticChainKind,
+    BuildSemanticChainMetadata, BuildSemanticMethodParameter, BuildSemanticMethodSignature,
+    BuildSemanticOptionValueKind, BuildSemanticParameterShape, BuildSemanticRecordField,
+    BuildSemanticRecordShape, BuildSemanticRecordShapeKind, BuildSemanticType,
+    BuildSemanticTypeFamily, BuildStdlibImportSurface, BuildStdlibModuleKind,
+    BuildStdlibModulePath,
+};
 pub use config::PackageConfig;
 pub use errors::{PackageError, PackageErrorKind};
 pub use git::{
@@ -122,6 +132,9 @@ pub use session::{
 #[cfg(test)]
 mod tests {
     use super::{
+        canonical_chain_metadata, canonical_graph_method_signatures,
+        canonical_handle_method_signatures, canonical_option_value_kinds,
+        BuildSemanticChainKind, BuildSemanticType, BuildSemanticTypeFamily,
         NativeArtifactDefinition, NativeArtifactKind, NativeArtifactSet, NativeLinkDirective,
         NativeLinkInput, NativeLinkMode,
     };
@@ -142,5 +155,22 @@ mod tests {
 
         assert_eq!(set.definitions().len(), 1);
         assert_eq!(directive.mode, NativeLinkMode::Static);
+    }
+
+    #[test]
+    fn crate_root_reexports_semantic_build_surface_types() {
+        let graph = BuildSemanticType::graph();
+        let methods = canonical_graph_method_signatures();
+        let handles = canonical_handle_method_signatures();
+        let chains = canonical_chain_metadata();
+        let option_kinds = canonical_option_value_kinds();
+
+        assert_eq!(graph.family, BuildSemanticTypeFamily::Graph);
+        assert!(methods.iter().any(|method| method.name == "add_exe"));
+        assert!(handles.iter().all(|method| method.name == "depend_on"));
+        assert!(chains
+            .iter()
+            .any(|chain| chain.kind == BuildSemanticChainKind::RunDependency));
+        assert!(option_kinds.len() >= 7);
     }
 }
