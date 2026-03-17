@@ -1,0 +1,13 @@
+==================
+Expressions
+==================
+
+fun demo(flag: bol, items: seq[int]): int = {
+    var value: int = .len(items)
+    when(flag) {
+        return .echo(value)
+    }
+    loop {
+        break value
+    }
+}

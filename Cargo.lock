@@ -152,6 +152,7 @@ dependencies = [
  "dyn-clone",
  "fol-backend",
  "fol-diagnostics",
+ "fol-editor",
  "fol-frontend",
  "fol-intrinsics",
  "fol-lexer",
@@ -190,6 +191,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "fol-editor"
+version = "0.1.0"
+dependencies = [
+ "fol-diagnostics",
+ "fol-lexer",
+ "fol-package",
+ "fol-parser",
+ "fol-resolver",
+ "fol-stream",
+ "fol-typecheck",
+ "fol-types",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "fol-frontend"
 version = "0.1.0"
 dependencies = [
@@ -198,6 +215,7 @@ dependencies = [
  "colored 2.2.0",
  "fol-backend",
  "fol-diagnostics",
+ "fol-editor",
  "fol-lexer",
  "fol-lower",
  "fol-package",

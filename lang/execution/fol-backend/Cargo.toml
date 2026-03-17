@@ -1,0 +1,16 @@
+[package]
+name = "fol-backend"
+version = "0.1.0"
+edition = "2021"
+description = "Backend code generation crate for executable FOL V1 programs"
+
+[lib]
+name = "fol_backend"
+path = "src/lib.rs"
+
+[dependencies]
+fol-intrinsics = { path = "../../compiler/fol-intrinsics" }
+fol-lower = { path = "../../compiler/fol-lower" }
+fol-parser = { path = "../../compiler/fol-parser" }
+fol-resolver = { path = "../../compiler/fol-resolver" }
+fol-runtime = { path = "../fol-runtime" }
