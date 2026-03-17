@@ -154,14 +154,14 @@ mod tests {
             prepared
                 .build
                 .as_ref()
-                .map(|build| build.compatibility.exports.len()),
+                .map(|build| build.exports().len()),
             Some(1)
         );
         assert_eq!(
             prepared
                 .build
                 .as_ref()
-                .map(|build| build.compatibility.native_artifacts.len()),
+                .map(|build| build.native_artifacts().len()),
             Some(1)
         );
         assert_eq!(prepared.exports.len(), 1);

@@ -45,6 +45,30 @@ pub struct PackageBuildDefinition {
     pub compatibility: PackageBuildCompatibility,
 }
 
+impl PackageBuildDefinition {
+    pub fn compatibility(&self) -> &PackageBuildCompatibility {
+        &self.compatibility
+    }
+
+    pub fn dependencies(&self) -> &[BuildDependency] {
+        &self.compatibility.dependencies
+    }
+
+    pub fn exports(&self) -> &[BuildExport] {
+        &self.compatibility.exports
+    }
+
+    pub fn native_artifacts(&self) -> &[PackageNativeArtifact] {
+        &self.compatibility.native_artifacts
+    }
+
+    pub fn has_compatibility_controls(&self) -> bool {
+        !self.dependencies().is_empty()
+            || !self.exports().is_empty()
+            || !self.native_artifacts().is_empty()
+    }
+}
+
 pub fn parse_package_build(path: &Path) -> Result<PackageBuildDefinition, PackageError> {
     let path_str = path.to_str().ok_or_else(|| {
         PackageError::new(
@@ -430,7 +454,7 @@ mod tests {
             parse_package_build(&build_path).expect("Build native artifact fixture should parse");
 
         assert_eq!(
-            build.compatibility.native_artifacts,
+            build.native_artifacts(),
             vec![
                 PackageNativeArtifact {
                     alias: "api".to_string(),
@@ -454,8 +478,8 @@ mod tests {
                 },
             ],
         );
-        assert!(build.compatibility.dependencies.is_empty());
-        assert!(build.compatibility.exports.is_empty());
+        assert!(build.dependencies().is_empty());
+        assert!(build.exports().is_empty());
 
         fs::remove_dir_all(&temp_root)
             .expect("Temporary build fixture root should be removable after the test");
@@ -521,9 +545,9 @@ mod tests {
         let build = parse_package_build(&build_path)
             .expect("Build files should parse ordinary use declarations even though they do not define package edges");
 
-        assert!(build.compatibility.dependencies.is_empty());
-        assert!(build.compatibility.exports.is_empty());
-        assert!(build.compatibility.native_artifacts.is_empty());
+        assert!(build.dependencies().is_empty());
+        assert!(build.exports().is_empty());
+        assert!(build.native_artifacts().is_empty());
 
         fs::remove_dir_all(&temp_root)
             .expect("Temporary build fixture root should be removable after the test");
@@ -540,9 +564,9 @@ mod tests {
         let build = parse_package_build(&build_path)
             .expect("Build files should allow unrelated top-level FOL declarations in phase one");
 
-        assert!(build.compatibility.dependencies.is_empty());
-        assert!(build.compatibility.exports.is_empty());
-        assert!(build.compatibility.native_artifacts.is_empty());
+        assert!(build.dependencies().is_empty());
+        assert!(build.exports().is_empty());
+        assert!(build.native_artifacts().is_empty());
 
         fs::remove_dir_all(&temp_root)
             .expect("Temporary build fixture root should be removable after the test");

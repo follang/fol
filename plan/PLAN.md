@@ -790,7 +790,7 @@ Each slice must land green with `make build` and `make test` before commit.
    first implementation round.
 2. `[complete]` Split raw V1 package-control data into an explicit compatibility
    sub-structure in `PackageBuildDefinition`.
-3. `[pending]` Add compatibility accessors/helpers so callers stop depending on
+3. `[complete]` Add compatibility accessors/helpers so callers stop depending on
    ad-hoc field layout.
 4. `[pending]` Introduce modern build-entry metadata types in the package build
    model.

@@ -502,8 +502,7 @@ mod tests {
                 .build
                 .as_ref()
                 .expect("Installed package roots should retain parsed build definitions")
-                .compatibility
-                .exports
+                .exports()
                 .len(),
             1
         );
@@ -825,7 +824,7 @@ mod tests {
                 .prepared
                 .build
                 .as_ref()
-                .map(|build| build.compatibility.dependencies.len()),
+                .map(|build| build.dependencies().len()),
             Some(1)
         );
         assert_eq!(
