@@ -28,7 +28,7 @@ pub use cli::{
     FrontendCommand, FrontendProfile, InitCommand, NewCommand, PackCommand, PackSubcommand,
     RunCommand, TestCommand, ToolCommand, ToolSubcommand, UnitCommand, UpdateCommand,
 };
-pub use build_route::{FrontendBuildWorkflowMode, FrontendMemberBuildRoute};
+pub use build_route::{FrontendBuildStep, FrontendBuildWorkflowMode, FrontendMemberBuildRoute};
 pub use clean::{clean_workspace, clean_workspace_with_config};
 pub use config::FrontendConfig;
 pub use compile::{
