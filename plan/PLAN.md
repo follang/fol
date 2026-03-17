@@ -399,7 +399,7 @@ Round 1 slice tracker:
 - [x] Slice 7. Make determinism keys derive from the explicit input envelope.
 - [x] Slice 8. Add forbidden-capability diagnostic helpers and regression tests.
 - [x] Slice 9. Re-export and test the Phase 4 capability-model surface.
-- [ ] Slice 10. Clean remaining capability-model call sites and lock the round.
+- [x] Slice 10. Clean remaining capability-model call sites and lock the round.
 
 ## Phase 5: Real Build Routine Evaluation
 

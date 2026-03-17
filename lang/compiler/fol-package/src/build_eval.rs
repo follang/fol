@@ -478,6 +478,16 @@ pub fn evaluate_build_plan(
     for (name, value) in &request.inputs.options {
         resolved_options.insert(name.clone(), value.clone());
     }
+    if resolved_options.get("target").is_none() {
+        if let Some(target) = &request.inputs.target {
+            resolved_options.insert("target", target.render());
+        }
+    }
+    if resolved_options.get("optimize").is_none() {
+        if let Some(optimize) = request.inputs.optimize {
+            resolved_options.insert("optimize", optimize.as_str());
+        }
+    }
 
     for operation in &request.operations {
         match &operation.kind {
@@ -1819,6 +1829,38 @@ mod tests {
         ));
         assert_eq!(result.resolved_options.get("target"), Some("aarch64-macos-gnu"));
         assert_eq!(result.resolved_options.get("optimize"), Some("release-fast"));
+    }
+
+    #[test]
+    fn build_evaluator_uses_typed_target_and_optimize_inputs_without_duplicate_option_overrides() {
+        let request = BuildEvaluationRequest {
+            package_root: "/pkg".to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: "/tmp/pkg".to_string(),
+                target: BuildTargetTriple::parse("x86_64-linux-gnu"),
+                optimize: BuildOptimizeMode::parse("release-safe"),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: vec![
+                BuildEvaluationOperation {
+                    origin: None,
+                    kind: BuildEvaluationOperationKind::StandardTarget(
+                        StandardTargetRequest::new("target"),
+                    ),
+                },
+                BuildEvaluationOperation {
+                    origin: None,
+                    kind: BuildEvaluationOperationKind::StandardOptimize(
+                        StandardOptimizeRequest::new("optimize"),
+                    ),
+                },
+            ],
+        };
+
+        let result = evaluate_build_plan(&request).expect("typed target/optimize inputs should seed resolved options");
+
+        assert_eq!(result.resolved_options.get("target"), Some("x86_64-linux-gnu"));
+        assert_eq!(result.resolved_options.get("optimize"), Some("release-safe"));
     }
 
     #[test]
