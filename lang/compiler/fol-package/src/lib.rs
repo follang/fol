@@ -22,7 +22,8 @@ pub mod paths;
 pub mod session;
 
 pub use build::{
-    parse_package_build, BuildDependency, BuildExport, PackageBuildDefinition,
+    parse_package_build, BuildDependency, BuildExport, PackageBuildCompatibility,
+    PackageBuildDefinition, PackageBuildEntryPoint, PackageBuildEntryPointKind, PackageBuildMode,
     PackageNativeArtifact, PackageNativeArtifactKind,
 };
 pub use config::PackageConfig;

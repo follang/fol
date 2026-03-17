@@ -802,7 +802,7 @@ Each slice must land green with `make build` and `make test` before commit.
 8. `[complete]` Cover compatibility-plus-entry coexistence in package parser
    tests.
 9. `[complete]` Cover prepared-package loading for modern-entry package roots.
-10. `[pending]` Expose the richer package-build surface from `fol-package`'s
+10. `[complete]` Expose the richer package-build surface from `fol-package`'s
     public API.
 
 ## Success Criteria
