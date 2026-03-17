@@ -529,6 +529,29 @@ Tests required:
 Exit criteria:
 - workspace commands are graph-driven by default
 
+Round 1 slice tracker:
+
+- [x] Slice 1. Add a concrete Phase 7 implementation tracker for graph-driven
+  frontend command routing.
+- [ ] Slice 2. Add a shared frontend route helper that projects graph steps into
+  member execution plans.
+- [ ] Slice 3. Switch default compatibility/no-build planning onto graph step
+  projection instead of hand-built step lists.
+- [ ] Slice 4. Make workspace command-to-step mapping explicit through one
+  frontend helper used by dispatch.
+- [ ] Slice 5. Add routed workspace coverage for CLI `--step` selection on
+  custom graph steps.
+- [ ] Slice 6. Add graph-driven coverage for multiple runnable artifacts with
+  explicit named run steps.
+- [ ] Slice 7. Add graph-driven coverage for multiple buildable artifacts with
+  explicit named build steps.
+- [ ] Slice 8. Tighten ambiguous default multi-artifact execution errors so they
+  fail clearly without legacy `src/main.fol` fallback guessing.
+- [ ] Slice 9. Add modern/hybrid workspace regressions proving routed commands
+  stay off compatibility-only assumptions.
+- [ ] Slice 10. Re-export, test, and lock the full Phase 7 graph-driven
+  frontend routing round.
+
 ## Phase 8: Step Handles And Chaining
 
 Goal:
