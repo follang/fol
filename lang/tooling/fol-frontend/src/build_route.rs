@@ -102,46 +102,16 @@ pub fn plan_workspace_build_route(
 }
 
 fn load_member_build_mode(build_path: &std::path::Path) -> FrontendResult<FrontendBuildWorkflowMode> {
-    match fol_package::parse_package_build(build_path) {
-        Ok(build) => FrontendBuildWorkflowMode::from_package_build_mode(build.mode()).ok_or_else(|| {
-            FrontendError::new(
-                FrontendErrorKind::Internal,
-                format!(
-                    "workspace member build '{}' has an unmappable build mode",
-                    build_path.display()
-                ),
-            )
-        }),
-        Err(error) => {
-            let contents = std::fs::read_to_string(build_path)
-                .map_err(|_| FrontendError::from(error.clone()))?;
-            classify_build_mode_from_source(&contents).ok_or_else(|| FrontendError::from(error))
-        }
-    }
-}
-
-fn classify_build_mode_from_source(contents: &str) -> Option<FrontendBuildWorkflowMode> {
-    let mut has_compatibility_controls = false;
-    let mut has_build_entry = false;
-
-    for line in contents.lines().map(str::trim) {
-        if line.is_empty() || line.starts_with("//") || line.starts_with('#') {
-            continue;
-        }
-        if line.contains("def build(") {
-            has_build_entry = true;
-        }
-        if line.starts_with("def ") && (line.contains(": pkg") || line.contains(": loc")) {
-            has_compatibility_controls = true;
-        }
-    }
-
-    match (has_compatibility_controls, has_build_entry) {
-        (false, false) => None,
-        (true, false) => Some(FrontendBuildWorkflowMode::Compatibility),
-        (false, true) => Some(FrontendBuildWorkflowMode::Modern),
-        (true, true) => Some(FrontendBuildWorkflowMode::Hybrid),
-    }
+    let build = fol_package::parse_package_build(build_path)?;
+    FrontendBuildWorkflowMode::from_package_build_mode(build.mode()).ok_or_else(|| {
+        FrontendError::new(
+            FrontendErrorKind::Internal,
+            format!(
+                "workspace member build '{}' has an unmappable build mode",
+                build_path.display()
+            ),
+        )
+    })
 }
 
 pub fn execute_workspace_build_route(
@@ -176,6 +146,16 @@ pub fn execute_workspace_build_route(
 }
 
 fn plan_member_execution(
+    member: &FrontendMemberBuildRoute,
+) -> FrontendResult<FrontendMemberExecutionPlan> {
+    if let Some(plan) = plan_member_execution_from_build_source(member)? {
+        return Ok(plan);
+    }
+
+    plan_member_default_execution(member)
+}
+
+fn plan_member_default_execution(
     member: &FrontendMemberBuildRoute,
 ) -> FrontendResult<FrontendMemberExecutionPlan> {
     let requested_step = fol_package::BuildRequestedStep::Default(fol_package::BuildDefaultStepKind::Check);
@@ -245,6 +225,192 @@ fn plan_member_execution(
     Ok(FrontendMemberExecutionPlan { available_steps })
 }
 
+fn plan_member_execution_from_build_source(
+    member: &FrontendMemberBuildRoute,
+) -> FrontendResult<Option<FrontendMemberExecutionPlan>> {
+    let build_path = member.member_root.join("build.fol");
+    let source = std::fs::read_to_string(&build_path).map_err(|error| {
+        FrontendError::new(
+            FrontendErrorKind::CommandFailed,
+            format!("failed to read build file '{}': {error}", build_path.display()),
+        )
+    })?;
+    let operations = extract_build_operations_from_source(&build_path, &source)?;
+    if operations.is_empty() {
+        return Ok(None);
+    }
+
+    let result = fol_package::evaluate_build_plan(&fol_package::BuildEvaluationRequest {
+        package_root: member.member_root.display().to_string(),
+        inputs: fol_package::BuildEvaluationInputs {
+            working_directory: member.member_root.display().to_string(),
+            ..fol_package::BuildEvaluationInputs::default()
+        },
+        operations,
+    })
+    .map_err(|error| FrontendError::new(FrontendErrorKind::InvalidInput, error.to_string()))?;
+
+    let mut available_steps = fol_package::project_graph_steps(&result.graph)
+        .into_iter()
+        .map(|step| step.name)
+        .collect::<Vec<_>>();
+    if available_steps.is_empty() {
+        return Ok(None);
+    }
+    available_steps.sort();
+    available_steps.dedup();
+    Ok(Some(FrontendMemberExecutionPlan { available_steps }))
+}
+
+fn extract_build_operations_from_source(
+    build_path: &std::path::Path,
+    source: &str,
+) -> FrontendResult<Vec<fol_package::BuildEvaluationOperation>> {
+    let Some((param_name, body, body_line)) = extract_build_body(source) else {
+        return Ok(Vec::new());
+    };
+    let mut operations = Vec::new();
+    for (offset, raw_line) in body.lines().enumerate() {
+        let line_number = body_line + offset;
+        let line = raw_line
+            .split_once("//")
+            .map_or(raw_line, |(prefix, _)| prefix)
+            .trim()
+            .trim_end_matches(';')
+            .trim();
+        if line.is_empty() || line == "return ." {
+            continue;
+        }
+        let Some(call) = line.strip_prefix(&format!("{param_name}.")) else {
+            continue;
+        };
+        let Some((method, raw_args)) = call.split_once('(') else {
+            continue;
+        };
+        let args_text = raw_args.trim_end_matches(')').trim();
+        let args = parse_build_string_args(args_text);
+        let origin = fol_parser::ast::SyntaxOrigin {
+            file: Some(build_path.display().to_string()),
+            line: line_number,
+            column: 1,
+            length: raw_line.len(),
+        };
+        let kind = match (method.trim(), args.as_slice()) {
+            ("standard_target", [name]) => fol_package::BuildEvaluationOperationKind::StandardTarget(
+                fol_package::StandardTargetRequest::new(name.clone()),
+            ),
+            ("standard_optimize", [name]) => {
+                fol_package::BuildEvaluationOperationKind::StandardOptimize(
+                    fol_package::StandardOptimizeRequest::new(name.clone()),
+                )
+            }
+            ("add_exe", [name, root_module]) => {
+                fol_package::BuildEvaluationOperationKind::AddExe(fol_package::ExecutableRequest {
+                    name: name.clone(),
+                    root_module: root_module.clone(),
+                })
+            }
+            ("add_static_lib", [name, root_module]) => {
+                fol_package::BuildEvaluationOperationKind::AddStaticLib(
+                    fol_package::StaticLibraryRequest {
+                        name: name.clone(),
+                        root_module: root_module.clone(),
+                    },
+                )
+            }
+            ("add_shared_lib", [name, root_module]) => {
+                fol_package::BuildEvaluationOperationKind::AddSharedLib(
+                    fol_package::SharedLibraryRequest {
+                        name: name.clone(),
+                        root_module: root_module.clone(),
+                    },
+                )
+            }
+            ("add_test", [name, root_module]) => {
+                fol_package::BuildEvaluationOperationKind::AddTest(
+                    fol_package::TestArtifactRequest {
+                        name: name.clone(),
+                        root_module: root_module.clone(),
+                    },
+                )
+            }
+            ("step", [name]) => fol_package::BuildEvaluationOperationKind::Step(
+                fol_package::BuildEvaluationStepRequest {
+                    name: name.clone(),
+                    depends_on: Vec::new(),
+                },
+            ),
+            ("add_run", [name, artifact]) => {
+                fol_package::BuildEvaluationOperationKind::AddRun(
+                    fol_package::BuildEvaluationRunRequest {
+                        name: name.clone(),
+                        artifact: artifact.clone(),
+                        depends_on: Vec::new(),
+                    },
+                )
+            }
+            ("install", [name, artifact]) => {
+                fol_package::BuildEvaluationOperationKind::InstallArtifact(
+                    fol_package::BuildEvaluationInstallArtifactRequest {
+                        name: name.clone(),
+                        artifact: artifact.clone(),
+                    },
+                )
+            }
+            ("dependency", [alias, package]) => {
+                fol_package::BuildEvaluationOperationKind::Dependency(
+                    fol_package::DependencyRequest {
+                        alias: alias.clone(),
+                        package: package.clone(),
+                    },
+                )
+            }
+            _ => {
+                return Err(FrontendError::new(
+                    FrontendErrorKind::InvalidInput,
+                    format!(
+                        "unsupported build API call in '{}': {}",
+                        build_path.display(),
+                        raw_line.trim()
+                    ),
+                ))
+            }
+        };
+        operations.push(fol_package::BuildEvaluationOperation {
+            origin: Some(origin),
+            kind,
+        });
+    }
+    Ok(operations)
+}
+
+fn extract_build_body(source: &str) -> Option<(String, String, usize)> {
+    let start = source.find("def build(")?;
+    let rest = &source[start + "def build(".len()..];
+    let param_end = rest.find(':')?;
+    let param_name = rest[..param_end].trim().to_string();
+    if param_name.is_empty() {
+        return None;
+    }
+    let after_equals = rest.find('=')?;
+    let body_start = start + "def build(".len() + after_equals + 1;
+    let body_source = source[body_start..].trim_start();
+    let body_line = source[..body_start].chars().filter(|ch| *ch == '\n').count() + 1;
+    if let Some(stripped) = body_source.strip_prefix('{') {
+        let block_end = stripped.rfind('}')?;
+        return Some((param_name, stripped[..block_end].to_string(), body_line + 1));
+    }
+    Some((param_name, body_source.trim_end_matches(';').to_string(), body_line))
+}
+
+fn parse_build_string_args(args: &str) -> Vec<String> {
+    args.split(',')
+        .map(str::trim)
+        .filter_map(|arg| arg.strip_prefix('"').and_then(|arg| arg.strip_suffix('"')))
+        .map(str::to_string)
+        .collect()
+}
+
 fn default_runnable_root_module(member_root: &std::path::Path) -> FrontendResult<Option<String>> {
     let main_path = member_root.join("src/main.fol");
     if !main_path.is_file() {
@@ -283,7 +449,7 @@ fn unknown_workspace_build_step_error(
 #[cfg(test)]
 mod tests {
     use super::{
-        execute_workspace_build_route, plan_workspace_build_route,
+        execute_workspace_build_route, plan_member_execution, plan_workspace_build_route,
         FrontendBuildStep, FrontendBuildWorkflowMode, FrontendCompatibilityBuildRequest,
         FrontendMemberBuildRoute, FrontendWorkspaceBuildRoute,
     };
@@ -542,6 +708,99 @@ mod tests {
         );
 
         fs::remove_dir_all(&workspace.root.root).ok();
+    }
+
+    #[test]
+    fn build_body_step_calls_flow_into_member_execution_plans() {
+        let root = std::env::temp_dir().join(format!(
+            "fol_frontend_build_route_body_steps_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system time before epoch")
+                .as_nanos()
+        ));
+        fs::create_dir_all(root.join("src")).unwrap();
+        fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
+        fs::write(
+            root.join("build.fol"),
+            concat!(
+                "def build(graph: int): int = {\n",
+                "    graph.step(\"docs\");\n",
+                "    graph.step(\"lint\");\n",
+                "    return .\n",
+                "}\n",
+            ),
+        )
+        .unwrap();
+
+        let plan = plan_member_execution(&FrontendMemberBuildRoute {
+            member_root: root.clone(),
+            package_name: "demo".to_string(),
+            mode: FrontendBuildWorkflowMode::Modern,
+        })
+        .unwrap();
+
+        assert!(plan.available_steps.contains(&"docs".to_string()));
+        assert!(plan.available_steps.contains(&"lint".to_string()));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn custom_build_steps_are_known_before_execution_rejects_them() {
+        let root = std::env::temp_dir().join(format!(
+            "fol_frontend_build_route_custom_step_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system time before epoch")
+                .as_nanos()
+        ));
+        fs::create_dir_all(root.join("src")).unwrap();
+        fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
+        fs::write(
+            root.join("build.fol"),
+            concat!(
+                "def build(graph: int): int = {\n",
+                "    graph.step(\"docs\");\n",
+                "    return .\n",
+                "}\n",
+            ),
+        )
+        .unwrap();
+        fs::write(
+            root.join("src/main.fol"),
+            "fun[] main(): int = {\n    return 0\n}\n",
+        )
+        .unwrap();
+        let workspace = FrontendWorkspace {
+            root: WorkspaceRoot::new(root.clone()),
+            members: vec![PackageRoot::new(root.clone())],
+            std_root_override: None,
+            package_store_root_override: None,
+            build_root: root.join(".fol/build"),
+            cache_root: root.join(".fol/cache"),
+            git_cache_root: root.join(".fol/cache/git"),
+        };
+
+        let error = execute_workspace_build_route(
+            &workspace,
+            &FrontendConfig::default(),
+            &FrontendCompatibilityBuildRequest {
+                requested_step: "docs".to_string(),
+                profile: FrontendProfile::Debug,
+                run_args: Vec::new(),
+            },
+        )
+        .expect_err("custom step execution should still reject unsupported execution");
+
+        assert_eq!(error.kind(), crate::FrontendErrorKind::InvalidInput);
+        assert!(error
+            .message()
+            .contains("workspace build execution does not support step 'docs'"));
+
+        fs::remove_dir_all(root).ok();
     }
 
     #[test]

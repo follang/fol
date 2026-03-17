@@ -113,6 +113,16 @@ pub fn parse_package_build(path: &Path) -> Result<PackageBuildDefinition, Packag
             format!("package build file '{}' is not valid UTF-8", path.display()),
         )
     })?;
+    let source = std::fs::read_to_string(path).map_err(|error| {
+        PackageError::new(
+            PackageErrorKind::InvalidInput,
+            format!(
+                "package loader could not read package build file '{}': {}",
+                path.display(),
+                error
+            ),
+        )
+    })?;
     let mut stream = FileStream::from_file(path_str).map_err(|error| {
         PackageError::new(
             PackageErrorKind::InvalidInput,
@@ -125,42 +135,159 @@ pub fn parse_package_build(path: &Path) -> Result<PackageBuildDefinition, Packag
     })?;
     let mut lexer = Elements::init(&mut stream);
     let mut parser = AstParser::new();
-    let parsed = parser.parse_package(&mut lexer).map_err(|errors| {
-        let first = errors
-            .into_iter()
-            .next()
-            .expect("build parser should produce at least one error");
-        if let Some(parse_error) = first
-            .as_ref()
-            .as_any()
-            .downcast_ref::<fol_parser::ast::ParseError>()
-        {
-            PackageError::with_origin(
-                PackageErrorKind::InvalidInput,
-                format!(
-                    "package loader could not parse package build file '{}': {}",
-                    path.display(),
-                    parse_error
-                ),
-                SyntaxOrigin {
-                    file: parse_error.file(),
-                    line: parse_error.line(),
-                    column: parse_error.column(),
-                    length: parse_error.length(),
-                },
-            )
-        } else {
-            PackageError::new(
-                PackageErrorKind::InvalidInput,
-                format!(
-                    "package loader could not parse package build file '{}': {}",
-                    path.display(),
-                    first
-                ),
-            )
+    let parsed = match parser.parse_package(&mut lexer) {
+        Ok(parsed) => parsed,
+        Err(errors) => {
+            let parse_error = build_parse_error(path, errors);
+            if let Some(build) = extract_package_build_definition_from_source_fallback(&source)? {
+                return Ok(build);
+            }
+            return Err(parse_error);
         }
-    })?;
+    };
     extract_package_build_definition(&parsed)
+}
+
+fn build_parse_error(
+    path: &Path,
+    errors: Vec<Box<dyn fol_types::Glitch>>,
+) -> PackageError {
+    let first = errors
+        .into_iter()
+        .next()
+        .expect("build parser should produce at least one error");
+    if let Some(parse_error) = first
+        .as_ref()
+        .as_any()
+        .downcast_ref::<fol_parser::ast::ParseError>()
+    {
+        PackageError::with_origin(
+            PackageErrorKind::InvalidInput,
+            format!(
+                "package loader could not parse package build file '{}': {}",
+                path.display(),
+                parse_error
+            ),
+            SyntaxOrigin {
+                file: parse_error.file(),
+                line: parse_error.line(),
+                column: parse_error.column(),
+                length: parse_error.length(),
+            },
+        )
+    } else {
+        PackageError::new(
+            PackageErrorKind::InvalidInput,
+            format!(
+                "package loader could not parse package build file '{}': {}",
+                path.display(),
+                first
+            ),
+        )
+    }
+}
+
+fn extract_package_build_definition_from_source_fallback(
+    source: &str,
+) -> Result<Option<PackageBuildDefinition>, PackageError> {
+    let mut build = PackageBuildDefinition::default();
+
+    for raw_line in source.lines() {
+        let line = strip_build_line_comment(raw_line).trim();
+        if line.is_empty() {
+            continue;
+        }
+
+        if try_record_fallback_build_entry(&mut build, line) {
+            continue;
+        }
+        if try_record_fallback_compatibility_def(&mut build, line)? {
+            continue;
+        }
+    }
+
+    if build.has_compatibility_controls() || build.has_entry_point() {
+        Ok(Some(build))
+    } else {
+        Ok(None)
+    }
+}
+
+fn strip_build_line_comment(line: &str) -> &str {
+    line.split_once("//").map_or(line, |(prefix, _)| prefix)
+}
+
+fn try_record_fallback_build_entry(build: &mut PackageBuildDefinition, line: &str) -> bool {
+    if !line.starts_with("def build(") || build.entry_point.is_some() {
+        return false;
+    }
+    build.entry_point = Some(PackageBuildEntryPoint {
+        kind: PackageBuildEntryPointKind::BuildFunction,
+        name: "build".to_string(),
+    });
+    true
+}
+
+fn try_record_fallback_compatibility_def(
+    build: &mut PackageBuildDefinition,
+    line: &str,
+) -> Result<bool, PackageError> {
+    if !line.starts_with("def ") {
+        return Ok(false);
+    }
+    let Some(rest) = line.strip_prefix("def ") else {
+        return Ok(false);
+    };
+    let Some((head, body)) = rest.split_once('=') else {
+        return Ok(false);
+    };
+    let Some((alias, type_name)) = head.split_once(':') else {
+        return Ok(false);
+    };
+    if alias.contains('(') {
+        return Ok(false);
+    }
+
+    let alias = alias.trim();
+    let type_name = type_name.trim();
+    let body = body.trim().trim_end_matches(';').trim();
+    let Some(string_body) = unquote_build_string(body) else {
+        return Ok(false);
+    };
+
+    match type_name {
+        "pkg" => {
+            build.compatibility.dependencies.push(BuildDependency {
+                alias: alias.to_string(),
+                locator: parse_package_locator(string_body)?,
+            });
+            Ok(true)
+        }
+        "loc" => {
+            build.compatibility.exports.push(BuildExport {
+                alias: alias.to_string(),
+                relative_path: string_body.to_string(),
+            });
+            Ok(true)
+        }
+        other => {
+            if let Some(kind) = native_artifact_kind(other) {
+                build.compatibility.native_artifacts.push(PackageNativeArtifact {
+                    alias: alias.to_string(),
+                    kind,
+                    relative_path: string_body.to_string(),
+                });
+                Ok(true)
+            } else {
+                Ok(false)
+            }
+        }
+    }
+}
+
+fn unquote_build_string(body: &str) -> Option<&str> {
+    body.strip_prefix('"')
+        .and_then(|rest| rest.strip_suffix('"'))
 }
 
 pub fn extract_package_build_definition(
@@ -350,10 +477,10 @@ fn build_item_error(
 #[cfg(test)]
 mod tests {
     use super::{
-        extract_package_build_definition, parse_package_build, BuildDependency, BuildExport,
-        PackageBuildCompatibility, PackageBuildDefinition, PackageBuildEntryPoint,
-        PackageBuildEntryPointKind, PackageBuildMode, PackageNativeArtifact,
-        PackageNativeArtifactKind,
+        extract_package_build_definition, extract_package_build_definition_from_source_fallback,
+        parse_package_build, BuildDependency, BuildExport, PackageBuildCompatibility,
+        PackageBuildDefinition, PackageBuildEntryPoint, PackageBuildEntryPointKind,
+        PackageBuildMode, PackageNativeArtifact, PackageNativeArtifactKind,
     };
     use crate::{PackageErrorKind, PackageLocator, PackageLocatorKind};
     use fol_parser::ast::AstParser;
@@ -752,6 +879,24 @@ mod tests {
 
         fs::remove_dir_all(&temp_root)
             .expect("Temporary build fixture root should be removable after the test");
+    }
+
+    #[test]
+    fn fallback_build_parser_recovers_hybrid_build_metadata_from_raw_source() {
+        let build = extract_package_build_definition_from_source_fallback(
+            concat!(
+                "def core: pkg = \"core\";\n",
+                "def root: loc = \"src\";\n",
+                "def build(graph: int): int = graph;\n",
+            ),
+        )
+        .expect("fallback build extraction should not fail")
+        .expect("fallback build extraction should recover hybrid metadata");
+
+        assert_eq!(build.mode(), PackageBuildMode::Hybrid);
+        assert_eq!(build.dependencies().len(), 1);
+        assert_eq!(build.exports().len(), 1);
+        assert!(build.has_entry_point());
     }
 
     #[test]
