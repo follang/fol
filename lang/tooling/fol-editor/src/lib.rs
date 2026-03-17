@@ -36,7 +36,7 @@ pub use lsp::{
 pub use paths::{EditorDocumentPath, EditorDocumentUri};
 pub use session::{EditorConfig, EditorSession};
 pub use tree_sitter::{
-    fol_tree_sitter_corpus, fol_tree_sitter_grammar, fol_tree_sitter_highlights_query,
+    fol_tree_sitter_config, fol_tree_sitter_corpus, fol_tree_sitter_grammar, fol_tree_sitter_highlights_query,
     fol_tree_sitter_locals_query, fol_tree_sitter_query_snapshots,
     fol_tree_sitter_symbols_query, TreeSitterCorpusCase, TreeSitterQuerySnapshot,
 };

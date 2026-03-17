@@ -10,6 +10,11 @@ module.exports = grammar({
   conflicts: $ => [
     [$.qualified_path, $.call_expr],
     [$.record_literal, $.block],
+    [$.record_literal, $.container_literal],
+    [$.block, $.stmt],
+    [$.block, $.record_literal, $.container_literal],
+    [$.block, $.stmt, $.container_literal],
+    [$.block, $.container_literal],
   ],
 
   rules: {
@@ -66,9 +71,9 @@ module.exports = grammar({
       $.expr,
     ),
 
-    return_stmt: $ => seq('return', optional($.expr)),
-    report_stmt: $ => seq('report', $.expr),
-    break_stmt: $ => seq('break', optional($.expr)),
+    return_stmt: $ => prec.right(seq('return', optional($.expr))),
+    report_stmt: $ => prec.right(seq('report', $.expr)),
+    break_stmt: $ => prec.right(seq('break', optional($.expr))),
     when_expr: $ => seq('when', '(', $.expr, ')', $.block),
     loop_expr: $ => seq('loop', optional($.expr), $.block),
 

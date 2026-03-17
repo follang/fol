@@ -1,5 +1,5 @@
 use crate::{
-    fol_tree_sitter_corpus, fol_tree_sitter_grammar, fol_tree_sitter_highlights_query,
+    fol_tree_sitter_config, fol_tree_sitter_corpus, fol_tree_sitter_grammar, fol_tree_sitter_highlights_query,
     fol_tree_sitter_locals_query, fol_tree_sitter_query_snapshots, fol_tree_sitter_symbols_query,
     EditorError, EditorErrorKind, EditorResult,
 };
@@ -131,6 +131,7 @@ pub fn editor_tree_generate_bundle(path: &Path) -> EditorResult<EditorCommandSum
     write_bundle_file(&queries_root.join("locals.scm"), fol_tree_sitter_locals_query())?;
     write_bundle_file(&queries_root.join("symbols.scm"), fol_tree_sitter_symbols_query())?;
     write_bundle_file(&path.join("package.json"), TREE_SITTER_PACKAGE_JSON)?;
+    write_bundle_file(&path.join("tree-sitter.json"), fol_tree_sitter_config())?;
 
     for case in fol_tree_sitter_corpus() {
         write_bundle_file(&corpus_root.join(format!("{}.txt", case.name)), case.source)?;
@@ -147,30 +148,54 @@ pub fn editor_tree_generate_bundle(path: &Path) -> EditorResult<EditorCommandSum
 
     match std::process::Command::new("tree-sitter")
         .arg("generate")
+        .arg("--js-runtime")
+        .arg("native")
         .current_dir(path)
         .status()
     {
         Ok(status) if status.success() => {
             let parser_path = path.join("src").join("parser.c");
-            summary = summary.with_detail(format!("parser_generated={}", parser_path.is_file()));
             if parser_path.is_file() {
-                summary = summary.with_detail(format!("parser={}", parser_path.display()));
+                summary = summary
+                    .with_detail("parser_generated=true")
+                    .with_detail(format!("parser={}", parser_path.display()))
+                    .with_detail("tree_sitter_runtime=native");
+            } else {
+                return Err(EditorError::new(
+                    EditorErrorKind::Internal,
+                    format!(
+                        "tree-sitter reported success but did not produce '{}'",
+                        parser_path.display()
+                    ),
+                )
+                .with_note("the generated bundle is incomplete")
+                .with_note("check the tree-sitter CLI version and grammar assets"));
             }
         }
         Ok(status) => {
-            summary = summary
-                .with_detail("parser_generated=false")
-                .with_detail(format!("tree_sitter_status={status}"));
+            return Err(EditorError::new(
+                EditorErrorKind::Internal,
+                format!("tree-sitter parser generation failed with status {status}"),
+            )
+            .with_note("`fol tool tree generate` requires a working `tree-sitter` CLI")
+            .with_note("this command uses `tree-sitter generate --js-runtime native`")
+            .with_note("fix the grammar or your local tree-sitter install, then try again"));
         }
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-            summary = summary
-                .with_detail("parser_generated=false")
-                .with_detail("tree_sitter_cli=missing");
+            return Err(EditorError::new(
+                EditorErrorKind::Internal,
+                "failed to run `tree-sitter generate --js-runtime native`",
+            )
+            .with_note("install the `tree-sitter` CLI and retry")
+            .with_note("no Node.js runtime is required for this command"));
         }
         Err(error) => {
-            summary = summary
-                .with_detail("parser_generated=false")
-                .with_detail(format!("tree_sitter_error={error}"));
+            return Err(EditorError::new(
+                EditorErrorKind::Internal,
+                format!("failed to run tree-sitter parser generation: {error}"),
+            )
+            .with_note("the bundle files were written, but parser generation did not complete")
+            .with_note("no Node.js runtime is required for this command"));
         }
     }
 

@@ -11,6 +11,7 @@ pub struct TreeSitterQuerySnapshot {
 }
 
 const GRAMMAR_SOURCE: &str = include_str!("../tree-sitter/grammar.js");
+const TREE_SITTER_CONFIG: &str = include_str!("../tree-sitter/tree-sitter.json");
 const HIGHLIGHTS_QUERY: &str = include_str!("../queries/fol/highlights.scm");
 const LOCALS_QUERY: &str = include_str!("../queries/fol/locals.scm");
 const SYMBOLS_QUERY: &str = include_str!("../queries/fol/symbols.scm");
@@ -22,6 +23,10 @@ const CORPUS_SHOWCASE: &str =
 
 pub fn fol_tree_sitter_grammar() -> &'static str {
     GRAMMAR_SOURCE
+}
+
+pub fn fol_tree_sitter_config() -> &'static str {
+    TREE_SITTER_CONFIG
 }
 
 pub fn fol_tree_sitter_highlights_query() -> &'static str {
@@ -77,7 +82,7 @@ pub fn fol_tree_sitter_query_snapshots() -> &'static [TreeSitterQuerySnapshot] {
 #[cfg(test)]
 mod tests {
     use super::{
-        fol_tree_sitter_corpus, fol_tree_sitter_grammar, fol_tree_sitter_highlights_query,
+        fol_tree_sitter_config, fol_tree_sitter_corpus, fol_tree_sitter_grammar, fol_tree_sitter_highlights_query,
         fol_tree_sitter_locals_query, fol_tree_sitter_query_snapshots,
         fol_tree_sitter_symbols_query,
     };
@@ -87,6 +92,15 @@ mod tests {
         let grammar = fol_tree_sitter_grammar();
         assert!(grammar.contains("name: 'fol'"));
         assert!(grammar.contains("$.source_file"));
+    }
+
+    #[test]
+    fn tree_sitter_config_declares_fol_scope_and_queries() {
+        let config = fol_tree_sitter_config();
+        assert!(config.contains("\"scope\": \"source.fol\""));
+        assert!(config.contains("\"file-types\": [\"fol\"]"));
+        assert!(config.contains("\"highlights\": \"queries/fol/highlights.scm\""));
+        assert!(config.contains("\"locals\": \"queries/fol/locals.scm\""));
     }
 
     #[test]
