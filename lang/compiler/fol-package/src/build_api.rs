@@ -133,6 +133,17 @@ pub enum BuildApiNameError {
     InvalidCharacter(char),
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum BuildApiError {
+    InvalidName(BuildApiNameError),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BuildArtifactHandle {
+    pub artifact_id: crate::build_graph::BuildArtifactId,
+    pub root_module_id: crate::build_graph::BuildModuleId,
+}
+
 pub fn validate_build_name(name: &str) -> Result<(), BuildApiNameError> {
     if name.is_empty() {
         return Err(BuildApiNameError::Empty);
@@ -196,17 +207,79 @@ impl<'a> BuildApi<'a> {
             default: request.default,
         }
     }
+
+    pub fn add_exe(
+        &mut self,
+        request: ExecutableRequest,
+    ) -> Result<BuildArtifactHandle, BuildApiError> {
+        self.add_named_artifact(
+            request.name,
+            request.root_module,
+            crate::build_graph::BuildArtifactKind::Executable,
+        )
+    }
+
+    pub fn add_static_lib(
+        &mut self,
+        request: StaticLibraryRequest,
+    ) -> Result<BuildArtifactHandle, BuildApiError> {
+        self.add_named_artifact(
+            request.name,
+            request.root_module,
+            crate::build_graph::BuildArtifactKind::StaticLibrary,
+        )
+    }
+
+    pub fn add_shared_lib(
+        &mut self,
+        request: SharedLibraryRequest,
+    ) -> Result<BuildArtifactHandle, BuildApiError> {
+        self.add_named_artifact(
+            request.name,
+            request.root_module,
+            crate::build_graph::BuildArtifactKind::SharedLibrary,
+        )
+    }
+
+    pub fn add_test(
+        &mut self,
+        request: TestArtifactRequest,
+    ) -> Result<BuildArtifactHandle, BuildApiError> {
+        self.add_named_artifact(
+            request.name,
+            request.root_module,
+            crate::build_graph::BuildArtifactKind::Executable,
+        )
+    }
+
+    fn add_named_artifact(
+        &mut self,
+        name: String,
+        root_module: String,
+        kind: crate::build_graph::BuildArtifactKind,
+    ) -> Result<BuildArtifactHandle, BuildApiError> {
+        validate_build_name(&name).map_err(BuildApiError::InvalidName)?;
+        let module_id = self
+            .graph
+            .add_module(crate::build_graph::BuildModuleKind::Source, root_module);
+        let artifact_id = self.graph.add_artifact(kind, name);
+        self.graph.add_artifact_module_input(artifact_id, module_id);
+        Ok(BuildArtifactHandle {
+            artifact_id,
+            root_module_id: module_id,
+        })
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::{
-        validate_build_name, BuildApi, BuildApiNameError, BuildOptionValue, ExecutableRequest,
-        SharedLibraryRequest, StandardOptimizeRequest, StandardTargetRequest, StaticLibraryRequest,
-        TestArtifactRequest, UserOptionRequest,
+        validate_build_name, BuildApi, BuildApiError, BuildApiNameError, BuildOptionValue,
+        ExecutableRequest, SharedLibraryRequest, StandardOptimizeRequest, StandardTargetRequest,
+        StaticLibraryRequest, TestArtifactRequest, UserOptionRequest,
     };
     use crate::build_graph::BuildGraph;
-    use crate::build_graph::BuildOptionKind;
+    use crate::build_graph::{BuildArtifactInput, BuildArtifactKind, BuildOptionKind};
 
     #[test]
     fn build_api_wraps_a_graph_reference() {
@@ -325,5 +398,75 @@ mod tests {
         assert_eq!(static_lib.name, "support");
         assert_eq!(shared_lib.name, "plugin");
         assert_eq!(tests.root_module, "test/app.fol");
+    }
+
+    #[test]
+    fn build_api_add_exe_and_lib_methods_create_graph_artifacts_and_modules() {
+        let mut graph = BuildGraph::new();
+        let mut api = BuildApi::new(&mut graph);
+
+        let exe = api
+            .add_exe(ExecutableRequest {
+                name: "app".to_string(),
+                root_module: "src/app.fol".to_string(),
+            })
+            .expect("valid executable request should succeed");
+        let static_lib = api
+            .add_static_lib(StaticLibraryRequest {
+                name: "support".to_string(),
+                root_module: "src/support.fol".to_string(),
+            })
+            .expect("valid static library request should succeed");
+        let shared_lib = api
+            .add_shared_lib(SharedLibraryRequest {
+                name: "plugin".to_string(),
+                root_module: "src/plugin.fol".to_string(),
+            })
+            .expect("valid shared library request should succeed");
+
+        assert_eq!(api.graph().artifacts()[0].id, exe.artifact_id);
+        assert_eq!(api.graph().artifacts()[0].kind, BuildArtifactKind::Executable);
+        assert_eq!(api.graph().artifacts()[1].id, static_lib.artifact_id);
+        assert_eq!(api.graph().artifacts()[1].kind, BuildArtifactKind::StaticLibrary);
+        assert_eq!(api.graph().artifacts()[2].id, shared_lib.artifact_id);
+        assert_eq!(api.graph().artifacts()[2].kind, BuildArtifactKind::SharedLibrary);
+        assert_eq!(
+            api.graph().artifact_inputs_for(exe.artifact_id).collect::<Vec<_>>(),
+            vec![BuildArtifactInput::Module(exe.root_module_id)]
+        );
+    }
+
+    #[test]
+    fn build_api_add_test_uses_the_executable_artifact_shape() {
+        let mut graph = BuildGraph::new();
+        let mut api = BuildApi::new(&mut graph);
+
+        let tests = api
+            .add_test(TestArtifactRequest {
+                name: "app-tests".to_string(),
+                root_module: "test/app.fol".to_string(),
+            })
+            .expect("valid test artifact request should succeed");
+
+        assert_eq!(api.graph().artifacts()[0].id, tests.artifact_id);
+        assert_eq!(api.graph().artifacts()[0].kind, BuildArtifactKind::Executable);
+    }
+
+    #[test]
+    fn build_api_artifact_methods_reject_invalid_names() {
+        let mut graph = BuildGraph::new();
+        let mut api = BuildApi::new(&mut graph);
+
+        let error = api
+            .add_exe(ExecutableRequest {
+                name: "App".to_string(),
+                root_module: "src/app.fol".to_string(),
+            })
+            .expect_err("mixed-case names should be rejected");
+
+        assert_eq!(
+            error,
+            BuildApiError::InvalidName(BuildApiNameError::InvalidCharacter('A'))
+        );
     }
 }
