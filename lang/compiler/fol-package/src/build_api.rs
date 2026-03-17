@@ -58,8 +58,10 @@ pub struct StandardOptimizeOption {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BuildOptionValue {
     Bool(bool),
+    Int(i64),
     String(String),
     Enum(String),
+    Path(String),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -86,11 +88,27 @@ impl UserOptionRequest {
         }
     }
 
+    pub fn int(name: impl Into<String>, default: i64) -> Self {
+        Self {
+            name: name.into(),
+            kind: BuildOptionKind::Int,
+            default: Some(BuildOptionValue::Int(default)),
+        }
+    }
+
     pub fn enumeration(name: impl Into<String>, default: impl Into<String>) -> Self {
         Self {
             name: name.into(),
             kind: BuildOptionKind::Enum,
             default: Some(BuildOptionValue::Enum(default.into())),
+        }
+    }
+
+    pub fn path(name: impl Into<String>, default: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            kind: BuildOptionKind::Path,
+            default: Some(BuildOptionValue::Path(default.into())),
         }
     }
 }
@@ -520,6 +538,23 @@ mod tests {
         );
         assert_eq!(api.graph().options()[0].kind, BuildOptionKind::String);
         assert_eq!(api.graph().options()[1].kind, BuildOptionKind::Enum);
+    }
+
+    #[test]
+    fn build_api_records_int_and_path_user_options_in_the_graph() {
+        let mut graph = BuildGraph::new();
+        let mut api = BuildApi::new(&mut graph);
+
+        let jobs = api.option(UserOptionRequest::int("jobs", 8));
+        let sysroot = api.option(UserOptionRequest::path("sysroot", "/opt/sdk"));
+
+        assert_eq!(jobs.default, Some(BuildOptionValue::Int(8)));
+        assert_eq!(
+            sysroot.default,
+            Some(BuildOptionValue::Path("/opt/sdk".to_string()))
+        );
+        assert_eq!(api.graph().options()[0].kind, BuildOptionKind::Int);
+        assert_eq!(api.graph().options()[1].kind, BuildOptionKind::Path);
     }
 
     #[test]

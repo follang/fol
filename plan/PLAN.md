@@ -894,7 +894,7 @@ Each slice must land green with `make build` and `make test` before commit.
 2. `[complete]` Introduce a dedicated `build_option` module with option-declaration shell types.
 3. `[complete]` Add canonical target architecture, operating-system, environment, and triple parsing/rendering types.
 4. `[complete]` Add canonical optimization-mode enums and frontend-profile mapping helpers.
-5. `[pending]` Extend user option declarations and values to cover `int` and `path` kinds.
+5. `[complete]` Extend user option declarations and values to cover `int` and `path` kinds.
 6. `[pending]` Add build-option override parsing and resolved-option-set lookup helpers.
 7. `[pending]` Replay option declarations and CLI/input overrides through the build evaluator result.
 8. `[pending]` Add artifact-target selection helpers that project resolved target/optimize values into artifact config.

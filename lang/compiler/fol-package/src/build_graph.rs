@@ -65,8 +65,10 @@ pub enum BuildOptionKind {
     Target,
     Optimize,
     Bool,
+    Int,
     String,
     Enum,
+    Path,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -510,6 +512,8 @@ mod tests {
         assert_eq!(BuildModuleKind::Generated, BuildModuleKind::Generated);
         assert_eq!(BuildGeneratedFileKind::CaptureOutput, BuildGeneratedFileKind::CaptureOutput);
         assert_eq!(BuildOptionKind::Optimize, BuildOptionKind::Optimize);
+        assert_eq!(BuildOptionKind::Int, BuildOptionKind::Int);
+        assert_eq!(BuildOptionKind::Path, BuildOptionKind::Path);
         assert_eq!(BuildInstallKind::Directory, BuildInstallKind::Directory);
     }
 
