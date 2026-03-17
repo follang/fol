@@ -7,7 +7,7 @@ pub struct StandardTargetDeclaration {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StandardOptimizeDeclaration {
     pub name: String,
-    pub default: Option<String>,
+    pub default: Option<BuildOptimizeMode>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -119,6 +119,43 @@ impl BuildTargetTriple {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BuildOptimizeMode {
+    Debug,
+    ReleaseSafe,
+    ReleaseFast,
+    ReleaseSmall,
+}
+
+impl BuildOptimizeMode {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Debug => "debug",
+            Self::ReleaseSafe => "release-safe",
+            Self::ReleaseFast => "release-fast",
+            Self::ReleaseSmall => "release-small",
+        }
+    }
+
+    pub fn parse(raw: &str) -> Option<Self> {
+        match raw {
+            "debug" => Some(Self::Debug),
+            "release-safe" => Some(Self::ReleaseSafe),
+            "release-fast" => Some(Self::ReleaseFast),
+            "release-small" => Some(Self::ReleaseSmall),
+            _ => None,
+        }
+    }
+
+    pub fn from_frontend_profile_name(raw: &str) -> Option<Self> {
+        match raw {
+            "debug" => Some(Self::Debug),
+            "release" => Some(Self::ReleaseSafe),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct BuildOptionDeclarationSet {
     declarations: Vec<BuildOptionDeclaration>,
@@ -141,7 +178,7 @@ impl BuildOptionDeclarationSet {
 #[cfg(test)]
 mod tests {
     use super::{
-        BuildOptionDeclaration, BuildOptionDeclarationSet, BuildTargetArch,
+        BuildOptimizeMode, BuildOptionDeclaration, BuildOptionDeclarationSet, BuildTargetArch,
         BuildTargetEnvironment, BuildTargetOs, BuildTargetTriple,
         StandardOptimizeDeclaration, StandardTargetDeclaration, UserOptionDeclaration,
     };
@@ -169,7 +206,7 @@ mod tests {
         set.add(BuildOptionDeclaration::StandardOptimize(
             StandardOptimizeDeclaration {
                 name: "optimize".to_string(),
-                default: Some("debug".to_string()),
+                default: Some(BuildOptimizeMode::Debug),
             },
         ));
         set.add(BuildOptionDeclaration::User(UserOptionDeclaration {
@@ -211,5 +248,28 @@ mod tests {
         assert!(BuildTargetTriple::parse("x86_64").is_none());
         assert!(BuildTargetTriple::parse("sparc-linux-gnu").is_none());
         assert!(BuildTargetTriple::parse("x86_64-linux-gnu-extra").is_none());
+    }
+
+    #[test]
+    fn build_optimize_mode_parses_and_renders_canonical_modes() {
+        assert_eq!(
+            BuildOptimizeMode::parse("release-fast"),
+            Some(BuildOptimizeMode::ReleaseFast)
+        );
+        assert_eq!(BuildOptimizeMode::Debug.as_str(), "debug");
+        assert_eq!(BuildOptimizeMode::ReleaseSmall.as_str(), "release-small");
+    }
+
+    #[test]
+    fn build_optimize_mode_maps_frontend_profiles_onto_canonical_modes() {
+        assert_eq!(
+            BuildOptimizeMode::from_frontend_profile_name("debug"),
+            Some(BuildOptimizeMode::Debug)
+        );
+        assert_eq!(
+            BuildOptimizeMode::from_frontend_profile_name("release"),
+            Some(BuildOptimizeMode::ReleaseSafe)
+        );
+        assert_eq!(BuildOptimizeMode::from_frontend_profile_name("bench"), None);
     }
 }
