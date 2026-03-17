@@ -4,6 +4,7 @@ use fol_diagnostics::{
 };
 use fol_parser::ast::SyntaxOrigin;
 use fol_types::Glitch;
+use std::collections::BTreeMap;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BuildEvaluationBoundary {
@@ -142,6 +143,45 @@ impl ToDiagnostic for BuildEvaluationError {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct BuildEvaluationRequest {
     pub package_root: String,
+    pub inputs: BuildEvaluationInputs,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct BuildEvaluationInputs {
+    pub working_directory: String,
+    pub options: BTreeMap<String, String>,
+    pub environment: BTreeMap<String, String>,
+}
+
+impl BuildEvaluationInputs {
+    pub fn determinism_key(&self) -> String {
+        let options = self
+            .options
+            .iter()
+            .map(|(key, value)| format!("{key}={value}"))
+            .collect::<Vec<_>>()
+            .join(",");
+        let environment = self
+            .environment
+            .iter()
+            .map(|(key, value)| format!("{key}={value}"))
+            .collect::<Vec<_>>()
+            .join(",");
+        format!(
+            "cwd={};options=[{}];env=[{}]",
+            self.working_directory, options, environment
+        )
+    }
+}
+
+impl BuildEvaluationRequest {
+    pub fn determinism_key(&self) -> String {
+        format!(
+            "root={};{}",
+            self.package_root,
+            self.inputs.determinism_key()
+        )
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -172,17 +212,20 @@ impl BuildEvaluationResult {
 mod tests {
     use super::{
         AllowedBuildTimeOperation, BuildEvaluationBoundary, BuildEvaluationError,
-        BuildEvaluationErrorKind, BuildEvaluationRequest, BuildEvaluationResult,
+        BuildEvaluationErrorKind, BuildEvaluationInputs, BuildEvaluationRequest,
+        BuildEvaluationResult,
     };
     use crate::build_graph::BuildGraph;
     use fol_diagnostics::{DiagnosticCode, ToDiagnostic};
     use fol_parser::ast::SyntaxOrigin;
+    use std::collections::BTreeMap;
 
     #[test]
     fn build_evaluation_request_defaults_to_an_empty_package_root() {
         let request = BuildEvaluationRequest::default();
 
         assert!(request.package_root.is_empty());
+        assert!(request.inputs.working_directory.is_empty());
     }
 
     #[test]
@@ -257,5 +300,42 @@ mod tests {
 
         assert_eq!(diagnostic.code, DiagnosticCode::new("K1103"));
         assert!(diagnostic.message.contains("graph validation failed"));
+    }
+
+    #[test]
+    fn build_evaluation_input_determinism_key_is_stable_for_sorted_inputs() {
+        let mut options = BTreeMap::new();
+        options.insert("optimize".to_string(), "debug".to_string());
+        options.insert("target".to_string(), "native".to_string());
+        let mut environment = BTreeMap::new();
+        environment.insert("CC".to_string(), "clang".to_string());
+        environment.insert("AR".to_string(), "llvm-ar".to_string());
+        let inputs = BuildEvaluationInputs {
+            working_directory: "/work/app".to_string(),
+            options,
+            environment,
+        };
+
+        assert_eq!(
+            inputs.determinism_key(),
+            "cwd=/work/app;options=[optimize=debug,target=native];env=[AR=llvm-ar,CC=clang]"
+        );
+    }
+
+    #[test]
+    fn build_evaluation_request_determinism_key_includes_root_and_inputs() {
+        let mut request = BuildEvaluationRequest {
+            package_root: "/pkg".to_string(),
+            inputs: BuildEvaluationInputs::default(),
+        };
+        request
+            .inputs
+            .options
+            .insert("target".to_string(), "native".to_string());
+
+        assert_eq!(
+            request.determinism_key(),
+            "root=/pkg;cwd=;options=[target=native];env=[]"
+        );
     }
 }
