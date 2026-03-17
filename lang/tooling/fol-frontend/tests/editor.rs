@@ -1,4 +1,4 @@
-use fol_frontend::{run_command_from_args, run_command_from_args_in_dir};
+use fol_frontend::{run_command_from_args, run_command_from_args_in_dir, run_from_args_with_io};
 use std::fs;
 use std::path::PathBuf;
 
@@ -37,6 +37,7 @@ fn editor_file_commands_dispatch_against_real_fol_fixtures() {
     assert_eq!(parse.command, "parse");
     assert!(parse.summary.contains("grammar_bytes="));
     assert_eq!(highlight.command, "highlight");
+    assert!(highlight.summary.contains("query_bytes="));
     assert!(highlight.summary.contains("keyword_hits="));
     assert_eq!(symbols.command, "symbols");
     assert!(symbols.summary.contains("query_snapshots=3"));
@@ -54,6 +55,7 @@ fn editor_commands_respect_requested_output_mode() {
 
     assert!(rendered.contains("command: parse"));
     assert!(rendered.contains("summary: loaded"));
+    assert!(rendered.contains("bytes="));
 }
 
 #[test]
@@ -74,4 +76,44 @@ fn editor_commands_do_not_require_workspace_discovery() {
     assert!(result.summary.contains("path="));
 
     fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn editor_command_plain_output_stays_snapshot_stable_for_real_fixtures() {
+    let fixture = "xtra/logtiny/src/log.fol";
+    let (output, result) =
+        run_command_from_args(["fol", "editor", "--output", "plain", "symbols", fixture])
+            .expect("editor symbols should support plain output");
+    let rendered = output
+        .render_command_summary(&result)
+        .expect("plain output should render");
+
+    assert_eq!(
+        rendered,
+        "command: symbols\nsummary: symbol query ready with 803 bytes (lines=52, path=xtra/logtiny/src/log.fol, query_snapshots=3, symbol_candidates=8)"
+    );
+}
+
+#[test]
+fn editor_command_json_errors_keep_stable_shapes() {
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+
+    let code = run_from_args_with_io(
+        ["fol", "editor", "--output", "json", "parse", "missing-editor-file.fol"],
+        &mut stdout,
+        &mut stderr,
+    );
+
+    assert_eq!(code, 1);
+    assert!(stdout.is_empty());
+
+    let rendered = String::from_utf8(stderr).expect("stderr should be utf8");
+    let parsed: serde_json::Value = serde_json::from_str(&rendered).expect("stderr should be json");
+    assert_eq!(parsed["kind"], "FrontendCommandFailed");
+    assert!(parsed["message"]
+        .as_str()
+        .expect("message should be a string")
+        .contains("failed to read"));
+    assert!(parsed["notes"].is_array());
 }

@@ -376,16 +376,16 @@ The minimum real fixture sources should include:
 
 - `9.1` complete: added document-symbol extraction via compiler/tree-sitter data
 - `9.2` complete: included routines, types, bindings, and namespaces
-- `9.3` keep symbol hierarchy stable for nested items
-- `9.4` add integration tests for document symbols
+- `9.3` complete: kept symbol hierarchy stable for nested items
+- `9.4` complete: added integration tests for document symbols
 
 ### Phase 10: Hardening
 
 - `10.1` add editor-facing guidance for workspace-not-found situations
-- `10.2` add editor-facing guidance for unsupported future-version syntax
-- `10.3` add stable JSON error shapes for CLI editor subcommands
-- `10.4` add deterministic fixture snapshots for parse/highlight/symbol output
-- `10.5` lock real examples through tree-sitter and LSP test paths
+- `10.2` complete: added editor-facing guidance for unsupported future-version syntax
+- `10.3` complete: added stable JSON error shapes for CLI editor subcommands
+- `10.4` complete: added deterministic fixture snapshots for parse/highlight/symbol output
+- `10.5` complete: locked real examples through tree-sitter and LSP test paths
 
 ### Phase 11: Docs Closeout
 

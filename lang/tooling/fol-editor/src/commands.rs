@@ -34,6 +34,10 @@ pub fn editor_lsp_entrypoint() -> EditorResult<EditorCommandSummary> {
     .with_detail("transport/runtime wiring lands in the LSP foundation phase"))
 }
 
+fn source_line_count(source: &str) -> usize {
+    source.lines().count()
+}
+
 pub fn editor_parse_file(path: &Path) -> EditorResult<EditorCommandSummary> {
     let source = std::fs::read_to_string(path).map_err(|error| {
         EditorError::new(
@@ -46,6 +50,8 @@ pub fn editor_parse_file(path: &Path) -> EditorResult<EditorCommandSummary> {
         format!("loaded {} bytes for tree-sitter parsing", source.len()),
     )
     .with_detail(format!("path={}", path.display()))
+    .with_detail(format!("lines={}", source_line_count(&source)))
+    .with_detail(format!("bytes={}", source.len()))
     .with_detail(format!("grammar_bytes={}", fol_tree_sitter_grammar().len())))
 }
 
@@ -67,6 +73,8 @@ pub fn editor_highlight_file(path: &Path) -> EditorResult<EditorCommandSummary> 
         format!("highlight query ready with {} bytes", query.len()),
     )
     .with_detail(format!("path={}", path.display()))
+    .with_detail(format!("lines={}", source_line_count(&source)))
+    .with_detail(format!("query_bytes={}", query.len()))
     .with_detail(format!("keyword_hits={keyword_hits}")))
 }
 
@@ -86,6 +94,7 @@ pub fn editor_symbols_file(path: &Path) -> EditorResult<EditorCommandSummary> {
         format!("symbol query ready with {} bytes", fol_tree_sitter_symbols_query().len()),
     )
     .with_detail(format!("path={}", path.display()))
+    .with_detail(format!("lines={}", source_line_count(&source)))
     .with_detail(format!("symbol_candidates={symbol_count}"))
     .with_detail(format!("query_snapshots={}", fol_tree_sitter_query_snapshots().len())))
 }
@@ -107,8 +116,60 @@ mod tests {
     #[test]
     fn file_backed_editor_commands_report_path_and_shape() {
         let path = PathBuf::from("test/apps/fixtures/record_flow/main.fol");
-        assert!(editor_parse_file(&path).unwrap().details[0].contains("path="));
-        assert!(editor_highlight_file(&path).unwrap().details[1].contains("keyword_hits="));
-        assert!(editor_symbols_file(&path).unwrap().details[1].contains("symbol_candidates="));
+        let parse = editor_parse_file(&path).unwrap();
+        let highlight = editor_highlight_file(&path).unwrap();
+        let symbols = editor_symbols_file(&path).unwrap();
+
+        assert!(parse.details.iter().any(|detail| detail.contains("path=")));
+        assert!(parse.details.iter().any(|detail| detail.contains("lines=")));
+        assert!(highlight
+            .details
+            .iter()
+            .any(|detail| detail.contains("keyword_hits=")));
+        assert!(symbols
+            .details
+            .iter()
+            .any(|detail| detail.contains("symbol_candidates=")));
+    }
+
+    #[test]
+    fn real_fixtures_keep_editor_command_summaries_stable() {
+        let showcase = PathBuf::from("test/apps/showcases/full_v1_showcase/app/main.fol");
+        let package = PathBuf::from("xtra/logtiny/src/log.fol");
+
+        let parse = editor_parse_file(&showcase).unwrap();
+        let highlight = editor_highlight_file(&showcase).unwrap();
+        let symbols = editor_symbols_file(&package).unwrap();
+
+        assert_eq!(parse.command, "parse");
+        assert_eq!(
+            parse.details,
+            vec![
+                "path=test/apps/showcases/full_v1_showcase/app/main.fol".to_string(),
+                "lines=98".to_string(),
+                "bytes=2094".to_string(),
+                format!("grammar_bytes={}", fol_tree_sitter_grammar().len()),
+            ]
+        );
+        assert_eq!(highlight.command, "highlight");
+        assert_eq!(
+            highlight.details,
+            vec![
+                "path=test/apps/showcases/full_v1_showcase/app/main.fol".to_string(),
+                "lines=98".to_string(),
+                format!("query_bytes={}", crate::fol_tree_sitter_highlights_query().len()),
+                "keyword_hits=19".to_string(),
+            ]
+        );
+        assert_eq!(symbols.command, "symbols");
+        assert_eq!(
+            symbols.details,
+            vec![
+                "path=xtra/logtiny/src/log.fol".to_string(),
+                "lines=52".to_string(),
+                "symbol_candidates=8".to_string(),
+                format!("query_snapshots={}", fol_tree_sitter_query_snapshots().len()),
+            ]
+        );
     }
 }
