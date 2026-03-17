@@ -1,6 +1,7 @@
 use crate::{
-    fol_tree_sitter_grammar, fol_tree_sitter_highlights_query, fol_tree_sitter_query_snapshots,
-    fol_tree_sitter_symbols_query, EditorError, EditorErrorKind, EditorResult,
+    fol_tree_sitter_corpus, fol_tree_sitter_grammar, fol_tree_sitter_highlights_query,
+    fol_tree_sitter_locals_query, fol_tree_sitter_query_snapshots, fol_tree_sitter_symbols_query,
+    EditorError, EditorErrorKind, EditorResult,
 };
 use std::path::Path;
 
@@ -99,11 +100,122 @@ pub fn editor_symbols_file(path: &Path) -> EditorResult<EditorCommandSummary> {
     .with_detail(format!("query_snapshots={}", fol_tree_sitter_query_snapshots().len())))
 }
 
+pub fn editor_tree_generate_bundle(path: &Path) -> EditorResult<EditorCommandSummary> {
+    if path.exists() && !path.is_dir() {
+        return Err(EditorError::new(
+            EditorErrorKind::InvalidDocumentPath,
+            format!("tree output root '{}' is not a directory", path.display()),
+        ));
+    }
+
+    let queries_root = path.join("queries").join("fol");
+    let corpus_root = path.join("test").join("corpus");
+    std::fs::create_dir_all(&queries_root).map_err(|error| {
+        EditorError::new(
+            EditorErrorKind::Internal,
+            format!("failed to create query root '{}': {error}", queries_root.display()),
+        )
+    })?;
+    std::fs::create_dir_all(&corpus_root).map_err(|error| {
+        EditorError::new(
+            EditorErrorKind::Internal,
+            format!("failed to create corpus root '{}': {error}", corpus_root.display()),
+        )
+    })?;
+
+    write_bundle_file(&path.join("grammar.js"), fol_tree_sitter_grammar())?;
+    write_bundle_file(
+        &queries_root.join("highlights.scm"),
+        fol_tree_sitter_highlights_query(),
+    )?;
+    write_bundle_file(&queries_root.join("locals.scm"), fol_tree_sitter_locals_query())?;
+    write_bundle_file(&queries_root.join("symbols.scm"), fol_tree_sitter_symbols_query())?;
+    write_bundle_file(&path.join("package.json"), TREE_SITTER_PACKAGE_JSON)?;
+
+    for case in fol_tree_sitter_corpus() {
+        write_bundle_file(&corpus_root.join(format!("{}.txt", case.name)), case.source)?;
+    }
+
+    let mut summary = EditorCommandSummary::new(
+        "tree generate",
+        format!("tree-sitter bundle ready at {}", path.display()),
+    )
+    .with_detail(format!("root={}", path.display()))
+    .with_detail(format!("query_files={}", fol_tree_sitter_query_snapshots().len()))
+    .with_detail(format!("corpus_files={}", fol_tree_sitter_corpus().len()))
+    .with_detail(format!("grammar_bytes={}", fol_tree_sitter_grammar().len()));
+
+    match std::process::Command::new("tree-sitter")
+        .arg("generate")
+        .current_dir(path)
+        .status()
+    {
+        Ok(status) if status.success() => {
+            let parser_path = path.join("src").join("parser.c");
+            summary = summary.with_detail(format!("parser_generated={}", parser_path.is_file()));
+            if parser_path.is_file() {
+                summary = summary.with_detail(format!("parser={}", parser_path.display()));
+            }
+        }
+        Ok(status) => {
+            summary = summary
+                .with_detail("parser_generated=false")
+                .with_detail(format!("tree_sitter_status={status}"));
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            summary = summary
+                .with_detail("parser_generated=false")
+                .with_detail("tree_sitter_cli=missing");
+        }
+        Err(error) => {
+            summary = summary
+                .with_detail("parser_generated=false")
+                .with_detail(format!("tree_sitter_error={error}"));
+        }
+    }
+
+    Ok(summary)
+}
+
+const TREE_SITTER_PACKAGE_JSON: &str = r#"{
+  "name": "tree-sitter-fol",
+  "version": "0.1.0",
+  "private": true,
+  "grammars": [
+    {
+      "name": "fol",
+      "scope": "source.fol",
+      "file-types": ["fol"]
+    }
+  ]
+}
+"#;
+
+fn write_bundle_file(path: &Path, contents: &str) -> EditorResult<()> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|error| {
+            EditorError::new(
+                EditorErrorKind::Internal,
+                format!("failed to create '{}' : {error}", parent.display()),
+            )
+        })?;
+    }
+    std::fs::write(path, contents).map_err(|error| {
+        EditorError::new(
+            EditorErrorKind::Internal,
+            format!("failed to write '{}': {error}", path.display()),
+        )
+    })?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
         editor_highlight_file, editor_lsp_entrypoint, editor_parse_file, editor_symbols_file,
+        editor_tree_generate_bundle,
     };
+    use crate::{fol_tree_sitter_grammar, fol_tree_sitter_query_snapshots};
     use std::path::PathBuf;
 
     #[test]
@@ -171,5 +283,32 @@ mod tests {
                 format!("query_snapshots={}", fol_tree_sitter_query_snapshots().len()),
             ]
         );
+    }
+
+    #[test]
+    fn tree_generate_bundle_writes_editor_consumable_assets() {
+        let root = std::env::temp_dir().join(format!(
+            "fol_editor_tree_bundle_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system time should be after epoch")
+                .as_nanos()
+        ));
+        let summary = editor_tree_generate_bundle(&root).unwrap();
+
+        assert_eq!(summary.command, "tree generate");
+        assert!(root.join("grammar.js").is_file());
+        assert!(root.join("queries/fol/highlights.scm").is_file());
+        assert!(root.join("queries/fol/locals.scm").is_file());
+        assert!(root.join("queries/fol/symbols.scm").is_file());
+        assert!(root.join("test/corpus/declarations.txt").is_file());
+        assert!(summary.details.iter().any(|detail| detail.contains("query_files=3")));
+        assert!(summary
+            .details
+            .iter()
+            .any(|detail| detail.contains("parser_generated=")));
+
+        std::fs::remove_dir_all(root).ok();
     }
 }

@@ -15,6 +15,7 @@ mod workspace;
 
 pub use commands::{
     editor_highlight_file, editor_lsp_entrypoint, editor_parse_file, editor_symbols_file,
+    editor_tree_generate_bundle,
     EditorCommandSummary,
 };
 pub use convert::{
@@ -63,7 +64,7 @@ pub fn crate_name() -> &'static str {
 mod tests {
     use super::{
         crate_name, editor_highlight_file, editor_lsp_entrypoint, editor_parse_file,
-        editor_symbols_file, fol_tree_sitter_corpus, fol_tree_sitter_grammar,
+        editor_symbols_file, editor_tree_generate_bundle, fol_tree_sitter_corpus, fol_tree_sitter_grammar,
         fol_tree_sitter_highlights_query, fol_tree_sitter_locals_query,
         fol_tree_sitter_query_snapshots, fol_tree_sitter_symbols_query, map_document_workspace,
         materialize_analysis_overlay, diagnostic_to_lsp, Editor, EditorConfig, EditorDocument,
@@ -129,6 +130,9 @@ mod tests {
         assert_eq!(editor_parse_file(&path).unwrap().command, "parse");
         assert_eq!(editor_highlight_file(&path).unwrap().command, "highlight");
         assert_eq!(editor_symbols_file(&path).unwrap().command, "symbols");
+        let root = std::env::temp_dir().join("fol_editor_public_tree_bundle_smoke");
+        assert_eq!(editor_tree_generate_bundle(&root).unwrap().command, "tree generate");
+        std::fs::remove_dir_all(root).ok();
     }
 
     #[test]

@@ -263,6 +263,17 @@ pub struct CompletionCommand {
 }
 
 #[derive(Debug, Clone, Args, PartialEq, Eq)]
+pub struct TreeCommand {
+    #[command(subcommand)]
+    pub command: TreeSubcommand,
+}
+
+#[derive(Debug, Clone, Args, PartialEq, Eq)]
+pub struct TreeGenerateCommand {
+    pub path: String,
+}
+
+#[derive(Debug, Clone, Args, PartialEq, Eq)]
 pub struct CompleteCommand {
     #[arg(trailing_var_arg = true)]
     pub tokens: Vec<String>,
@@ -317,10 +328,16 @@ pub enum ToolSubcommand {
     Parse(EditorPathCommand),
     Highlight(EditorPathCommand),
     Symbols(EditorPathCommand),
+    Tree(TreeCommand),
     #[command(visible_aliases = ["cl", "purge"])]
     Clean(UnitCommand),
     #[command(visible_aliases = ["completions", "comp"])]
     Completion(CompletionCommand),
+}
+
+#[derive(Debug, Clone, Subcommand, PartialEq, Eq)]
+pub enum TreeSubcommand {
+    Generate(TreeGenerateCommand),
 }
 
 #[derive(Debug, Clone, Subcommand, PartialEq, Eq)]
@@ -498,8 +515,9 @@ mod tests {
         EditorPathCommand, EmitCommand, EmitLoweredCommand, EmitRustCommand,
         EmitSubcommand, FetchCommand, FrontendCli, FrontendCommand, FrontendOutputArgs,
         FrontendProfile, FrontendProfileArgs, InitCommand, NewCommand, PackCommand,
-        PackSubcommand, RunCommand, TestCommand, ToolCommand, ToolSubcommand, UnitCommand,
-        UpdateCommand, WorkCommand, WorkSubcommand,
+        PackSubcommand, RunCommand, TestCommand, ToolCommand, ToolSubcommand, TreeCommand,
+        TreeGenerateCommand, TreeSubcommand, UnitCommand, UpdateCommand, WorkCommand,
+        WorkSubcommand,
     };
     use crate::OutputMode;
     use std::sync::{Mutex, MutexGuard, OnceLock};
@@ -608,6 +626,7 @@ mod tests {
         let parse = parse_clean(["fol", "tool", "parse", "demo/main.fol"]);
         let highlight = parse_clean(["fol", "tool", "highlight", "demo/main.fol"]);
         let symbols = parse_clean(["fol", "tool", "symbols", "demo/main.fol"]);
+        let tree = parse_clean(["fol", "tool", "tree", "generate", "/tmp/fol-tree"]);
 
         assert_eq!(
             lsp.command,
@@ -640,6 +659,17 @@ mod tests {
                 output: default_output_args(),
                 command: ToolSubcommand::Symbols(EditorPathCommand {
                     path: "demo/main.fol".to_string(),
+                }),
+            }))
+        );
+        assert_eq!(
+            tree.command,
+            Some(FrontendCommand::Tool(ToolCommand {
+                output: default_output_args(),
+                command: ToolSubcommand::Tree(TreeCommand {
+                    command: TreeSubcommand::Generate(TreeGenerateCommand {
+                        path: "/tmp/fol-tree".to_string(),
+                    }),
                 }),
             }))
         );

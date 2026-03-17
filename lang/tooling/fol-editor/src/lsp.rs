@@ -829,8 +829,9 @@ mod tests {
         EditorLspServer, JsonRpcId, JsonRpcNotification, JsonRpcRequest,
         LspDefinitionParams, LspDidChangeTextDocumentParams, LspDidCloseTextDocumentParams,
         LspDidOpenTextDocumentParams, LspDocumentSymbolParams, LspHover, LspHoverParams,
-        LspInitializeResult, LspLocation, LspPosition, LspTextDocumentContentChangeEvent,
-        LspTextDocumentIdentifier, LspTextDocumentItem, LspVersionedTextDocumentIdentifier,
+        LspInitializeResult, LspLocation, LspPosition, LspPublishDiagnosticsParams,
+        LspTextDocumentContentChangeEvent, LspTextDocumentIdentifier, LspTextDocumentItem,
+        LspVersionedTextDocumentIdentifier,
     };
     use crate::EditorConfig;
     use std::fs;

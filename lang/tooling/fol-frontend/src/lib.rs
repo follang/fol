@@ -46,6 +46,7 @@ pub use direct::{
 };
 pub use editor::{
     editor_highlight_command, editor_lsp_command, editor_parse_command, editor_symbols_command,
+    editor_tree_generate_command,
 };
 pub use errors::{FrontendError, FrontendErrorKind, FrontendResult};
 pub use fetch::{
@@ -380,6 +381,11 @@ fn dispatch_cli(cli: &FrontendCli, config: &FrontendConfig) -> FrontendResult<Fr
                 editor_highlight_command(&command.path, config)
             }
             ToolSubcommand::Symbols(command) => editor_symbols_command(&command.path, config),
+            ToolSubcommand::Tree(command) => match &command.command {
+                cli::TreeSubcommand::Generate(command) => {
+                    editor_tree_generate_command(&command.path, config)
+                }
+            },
             ToolSubcommand::Completion(command) => {
                 completion_command(parse_completion_shell(command.shell))
             }
@@ -527,7 +533,8 @@ fn dispatch_workspace_command(
             ToolSubcommand::Lsp(_)
             | ToolSubcommand::Parse(_)
             | ToolSubcommand::Highlight(_)
-            | ToolSubcommand::Symbols(_) => Err(FrontendError::new(
+            | ToolSubcommand::Symbols(_)
+            | ToolSubcommand::Tree(_) => Err(FrontendError::new(
                 FrontendErrorKind::Internal,
                 "unexpected editor command reached workspace dispatcher",
             )),

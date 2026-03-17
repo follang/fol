@@ -64,10 +64,20 @@ pub fn editor_symbols_command(
         .map_err(lower_editor_error)
 }
 
+pub fn editor_tree_generate_command(
+    path: &str,
+    _config: &FrontendConfig,
+) -> FrontendResult<FrontendCommandResult> {
+    fol_editor::editor_tree_generate_bundle(Path::new(path))
+        .map(editor_summary_to_result)
+        .map_err(lower_editor_error)
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
         editor_highlight_command, editor_lsp_command, editor_parse_command, editor_symbols_command,
+        editor_tree_generate_command,
     };
     use crate::{FrontendConfig, FrontendErrorKind};
 
@@ -82,6 +92,9 @@ mod tests {
             editor_highlight_command(path, &config).expect("highlight command should succeed");
         let symbols =
             editor_symbols_command(path, &config).expect("symbols command should succeed");
+        let tree_root = std::env::temp_dir().join("fol_frontend_editor_tree_command_smoke");
+        let tree = editor_tree_generate_command(tree_root.to_str().unwrap(), &config)
+            .expect("tree generate command should succeed");
 
         assert_eq!(lsp.command, "lsp");
         assert!(lsp.summary.contains("fol tool lsp"));
@@ -91,6 +104,9 @@ mod tests {
         assert!(highlight.summary.contains("keyword_hits="));
         assert_eq!(symbols.command, "symbols");
         assert!(symbols.summary.contains("symbol_candidates="));
+        assert_eq!(tree.command, "tree generate");
+        assert!(tree.summary.contains("tree-sitter bundle ready"));
+        std::fs::remove_dir_all(tree_root).ok();
     }
 
     #[test]
