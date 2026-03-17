@@ -221,6 +221,53 @@ pub struct BuildEvaluationInputs {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct BuildEvaluationInputEnvelope {
+    pub working_directory: String,
+    pub target: Option<BuildTargetTriple>,
+    pub optimize: Option<BuildOptimizeMode>,
+    pub options: BTreeMap<String, String>,
+    pub declared_environment: Vec<String>,
+    pub selected_environment: BTreeMap<String, String>,
+}
+
+impl BuildEvaluationInputEnvelope {
+    pub fn determinism_key(&self) -> String {
+        let options = self
+            .options
+            .iter()
+            .map(|(key, value)| format!("{key}={value}"))
+            .collect::<Vec<_>>()
+            .join(",");
+        let declared_environment = self.declared_environment.join(",");
+        let target = self
+            .target
+            .as_ref()
+            .map(BuildTargetTriple::render)
+            .unwrap_or_default();
+        let optimize = self
+            .optimize
+            .as_ref()
+            .map(|mode| mode.as_str().to_string())
+            .unwrap_or_default();
+        let selected_environment = self
+            .selected_environment
+            .iter()
+            .map(|(key, value)| format!("{key}={value}"))
+            .collect::<Vec<_>>()
+            .join(",");
+        format!(
+            "cwd={};target={};optimize={};options=[{}];declared_env=[{}];env=[{}]",
+            self.working_directory,
+            target,
+            optimize,
+            options,
+            declared_environment,
+            selected_environment
+        )
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct BuildEnvironmentSelectionPolicy {
     declared_names: Vec<String>,
 }
@@ -258,33 +305,19 @@ impl BuildEnvironmentSelectionPolicy {
 }
 
 impl BuildEvaluationInputs {
+    pub fn explicit_envelope(&self) -> BuildEvaluationInputEnvelope {
+        BuildEvaluationInputEnvelope {
+            working_directory: self.working_directory.clone(),
+            target: self.target.clone(),
+            optimize: self.optimize,
+            options: self.options.clone(),
+            declared_environment: self.environment_policy.declared_names().to_vec(),
+            selected_environment: self.environment_policy.select(self.environment.iter()),
+        }
+    }
+
     pub fn determinism_key(&self) -> String {
-        let options = self
-            .options
-            .iter()
-            .map(|(key, value)| format!("{key}={value}"))
-            .collect::<Vec<_>>()
-            .join(",");
-        let target = self
-            .target
-            .as_ref()
-            .map(BuildTargetTriple::render)
-            .unwrap_or_default();
-        let optimize = self
-            .optimize
-            .as_ref()
-            .map(|mode| mode.as_str().to_string())
-            .unwrap_or_default();
-        let environment = self
-            .environment
-            .iter()
-            .map(|(key, value)| format!("{key}={value}"))
-            .collect::<Vec<_>>()
-            .join(",");
-        format!(
-            "cwd={};target={};optimize={};options=[{}];env=[{}]",
-            self.working_directory, target, optimize, options, environment
-        )
+        self.explicit_envelope().determinism_key()
     }
 }
 
@@ -1194,8 +1227,8 @@ mod tests {
     use super::{
         canonical_graph_construction_capabilities, evaluate_build_plan, evaluate_build_source,
         AllowedBuildTimeOperation, BuildEvaluationBoundary, BuildEvaluationError,
-        BuildEnvironmentSelectionPolicy, BuildEvaluationErrorKind, BuildEvaluationInputs,
-        BuildRuntimeCapabilityModel, ForbiddenBuildTimeOperation,
+        BuildEnvironmentSelectionPolicy, BuildEvaluationErrorKind, BuildEvaluationInputEnvelope,
+        BuildEvaluationInputs, BuildRuntimeCapabilityModel, ForbiddenBuildTimeOperation,
         BuildEvaluationInstallArtifactRequest, BuildEvaluationOperation,
         BuildEvaluationOperationKind, BuildEvaluationRequest, BuildEvaluationResult,
         BuildEvaluationRunRequest, BuildEvaluationStepRequest,
@@ -1432,7 +1465,7 @@ mod tests {
 
         assert_eq!(
             inputs.determinism_key(),
-            "cwd=/work/app;target=x86_64-linux-gnu;optimize=debug;options=[optimize=debug,target=native];env=[AR=llvm-ar,CC=clang]"
+            "cwd=/work/app;target=x86_64-linux-gnu;optimize=debug;options=[optimize=debug,target=native];declared_env=[AR,CC];env=[AR=llvm-ar,CC=clang]"
         );
     }
 
@@ -1452,7 +1485,7 @@ mod tests {
 
         assert_eq!(
             request.determinism_key(),
-            "root=/pkg;cwd=;target=aarch64-macos-gnu;optimize=release-fast;options=[target=native];env=[];ops=0"
+            "root=/pkg;cwd=;target=aarch64-macos-gnu;optimize=release-fast;options=[target=native];declared_env=[];env=[];ops=0"
         );
     }
 
@@ -1471,7 +1504,40 @@ mod tests {
 
         assert_eq!(
             request.determinism_key(),
-            "root=/pkg;cwd=;target=;optimize=;options=[];env=[];ops=1"
+            "root=/pkg;cwd=;target=;optimize=;options=[];declared_env=[];env=[];ops=1"
+        );
+    }
+
+    #[test]
+    fn explicit_input_envelope_filters_ambient_environment_before_keying() {
+        let inputs = BuildEvaluationInputs {
+            working_directory: "/pkg".to_string(),
+            target: BuildTargetTriple::parse("x86_64-linux-gnu"),
+            optimize: BuildOptimizeMode::parse("release-safe"),
+            options: BTreeMap::from([("strip".to_string(), "true".to_string())]),
+            environment_policy: BuildEnvironmentSelectionPolicy::new(["CC"]),
+            environment: BTreeMap::from([
+                ("CC".to_string(), "clang".to_string()),
+                ("HOME".to_string(), "/tmp/home".to_string()),
+            ]),
+        };
+
+        let envelope = inputs.explicit_envelope();
+
+        assert_eq!(
+            envelope,
+            BuildEvaluationInputEnvelope {
+                working_directory: "/pkg".to_string(),
+                target: BuildTargetTriple::parse("x86_64-linux-gnu"),
+                optimize: BuildOptimizeMode::parse("release-safe"),
+                options: BTreeMap::from([("strip".to_string(), "true".to_string())]),
+                declared_environment: vec!["CC".to_string()],
+                selected_environment: BTreeMap::from([("CC".to_string(), "clang".to_string())]),
+            }
+        );
+        assert_eq!(
+            envelope.determinism_key(),
+            "cwd=/pkg;target=x86_64-linux-gnu;optimize=release-safe;options=[strip=true];declared_env=[CC];env=[CC=clang]"
         );
     }
 
