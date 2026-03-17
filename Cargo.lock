@@ -193,6 +193,17 @@ dependencies = [
 [[package]]
 name = "fol-editor"
 version = "0.1.0"
+dependencies = [
+ "fol-diagnostics",
+ "fol-lexer",
+ "fol-package",
+ "fol-parser",
+ "fol-resolver",
+ "fol-stream",
+ "fol-types",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "fol-frontend"

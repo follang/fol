@@ -1,4 +1,5 @@
-use crate::EditorDocumentStore;
+use crate::{EditorDocumentStore, EditorWorkspaceMapping};
+use std::collections::BTreeMap;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EditorConfig {
@@ -10,6 +11,8 @@ pub struct EditorConfig {
 pub struct EditorSession {
     pub config: EditorConfig,
     pub documents: EditorDocumentStore,
+    pub mappings: BTreeMap<String, EditorWorkspaceMapping>,
+    pub shutdown_requested: bool,
 }
 
 impl Default for EditorConfig {
@@ -30,6 +33,8 @@ impl EditorSession {
         Self {
             config,
             documents: EditorDocumentStore::default(),
+            mappings: BTreeMap::new(),
+            shutdown_requested: false,
         }
     }
 }
@@ -57,5 +62,7 @@ mod tests {
     fn editor_session_starts_with_an_empty_document_store() {
         let session = EditorSession::new(EditorConfig::default());
         assert!(session.documents.is_empty());
+        assert!(session.mappings.is_empty());
+        assert!(!session.shutdown_requested);
     }
 }

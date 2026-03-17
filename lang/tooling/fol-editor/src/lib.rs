@@ -4,24 +4,42 @@
 //! the compiler-backed language-server layer.
 
 mod commands;
+mod convert;
 mod documents;
 mod error;
+mod lsp;
 mod paths;
 mod session;
 mod tree_sitter;
+mod workspace;
 
 pub use commands::{
     editor_highlight_file, editor_lsp_entrypoint, editor_parse_file, editor_symbols_file,
     EditorCommandSummary,
 };
+pub use convert::{
+    diagnostic_to_lsp, location_to_range, LspDiagnostic, LspDiagnosticRelatedInformation,
+    LspDiagnosticSeverity, LspLocation, LspPosition, LspRange,
+};
 pub use documents::{EditorDocument, EditorDocumentStore};
 pub use error::{EditorError, EditorErrorKind, EditorResult};
+pub use lsp::{
+    EditorLspServer, JsonRpcId, JsonRpcNotification, JsonRpcRequest, JsonRpcResponse,
+    LspDidChangeTextDocumentParams, LspDidCloseTextDocumentParams, LspDidOpenTextDocumentParams,
+    LspInitializeParams, LspInitializeResult, LspPublishDiagnosticsParams,
+    LspServerCapabilities, LspServerInfo, LspTextDocumentContentChangeEvent,
+    LspTextDocumentItem, LspTextDocumentSyncOptions, LspVersionedTextDocumentIdentifier,
+};
 pub use paths::{EditorDocumentPath, EditorDocumentUri};
 pub use session::{EditorConfig, EditorSession};
 pub use tree_sitter::{
     fol_tree_sitter_corpus, fol_tree_sitter_grammar, fol_tree_sitter_highlights_query,
     fol_tree_sitter_locals_query, fol_tree_sitter_query_snapshots,
     fol_tree_sitter_symbols_query, TreeSitterCorpusCase, TreeSitterQuerySnapshot,
+};
+pub use workspace::{
+    map_document_workspace, materialize_analysis_overlay, EditorAnalysisOverlay,
+    EditorWorkspaceMapping,
 };
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -45,9 +63,10 @@ mod tests {
         crate_name, editor_highlight_file, editor_lsp_entrypoint, editor_parse_file,
         editor_symbols_file, fol_tree_sitter_corpus, fol_tree_sitter_grammar,
         fol_tree_sitter_highlights_query, fol_tree_sitter_locals_query,
-        fol_tree_sitter_query_snapshots, fol_tree_sitter_symbols_query, Editor, EditorConfig,
-        EditorDocument, EditorDocumentPath, EditorDocumentStore, EditorDocumentUri, EditorError,
-        EditorErrorKind, EditorResult, EditorSession, CRATE_NAME,
+        fol_tree_sitter_query_snapshots, fol_tree_sitter_symbols_query, map_document_workspace,
+        materialize_analysis_overlay, diagnostic_to_lsp, Editor, EditorConfig, EditorDocument,
+        EditorDocumentPath, EditorDocumentStore, EditorDocumentUri, EditorError, EditorErrorKind,
+        EditorLspServer, EditorResult, EditorSession, LspDiagnosticSeverity, CRATE_NAME,
     };
     use std::path::PathBuf;
 
@@ -108,5 +127,27 @@ mod tests {
         assert_eq!(editor_parse_file(&path).unwrap().command, "parse");
         assert_eq!(editor_highlight_file(&path).unwrap().command, "highlight");
         assert_eq!(editor_symbols_file(&path).unwrap().command, "symbols");
+    }
+
+    #[test]
+    fn lsp_and_workspace_shells_are_publicly_constructible() {
+        let path = PathBuf::from("test/apps/fixtures/record_flow/main.fol")
+            .canonicalize()
+            .expect("fixture path should canonicalize");
+        let mapping = map_document_workspace(&path, &EditorConfig::default()).unwrap();
+        let document = EditorDocument::new(
+            EditorDocumentUri::from_file_path(path.clone()).unwrap(),
+            1,
+            std::fs::read_to_string(&path).unwrap(),
+        )
+        .unwrap();
+        let overlay = materialize_analysis_overlay(&mapping, &document).unwrap();
+        let server = EditorLspServer::new(EditorConfig::default());
+        let diagnostic = diagnostic_to_lsp(&fol_diagnostics::Diagnostic::error("E1000", "boom"));
+
+        assert!(overlay.analysis_root().is_dir());
+        assert!(mapping.package_root.is_some());
+        assert!(server.session.documents.is_empty());
+        assert_eq!(diagnostic.severity, LspDiagnosticSeverity::Error);
     }
 }

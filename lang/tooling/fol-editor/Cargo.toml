@@ -9,3 +9,12 @@ name = "fol_editor"
 path = "src/lib.rs"
 
 [dependencies]
+fol-diagnostics = { path = "../../compiler/fol-diagnostics" }
+fol-lexer = { path = "../../compiler/fol-lexer" }
+fol-package = { path = "../../compiler/fol-package" }
+fol-parser = { path = "../../compiler/fol-parser" }
+fol-resolver = { path = "../../compiler/fol-resolver" }
+fol-stream = { path = "../../compiler/fol-stream" }
+fol-types = { path = "../../compiler/fol-types" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

@@ -347,19 +347,19 @@ The minimum real fixture sources should include:
 
 ### Phase 6: LSP Foundation
 
-- `6.1` add LSP transport/session shell
-- `6.2` add JSON-RPC message models
-- `6.3` add initialize/shutdown/exit handling
-- `6.4` add text document open/change/close tracking
-- `6.5` add workspace root mapping from open files
-- `6.6` add server smoke tests
+- `6.1` complete: added LSP transport/session shell
+- `6.2` complete: added JSON-RPC message models
+- `6.3` complete: added initialize/shutdown/exit handling
+- `6.4` complete: added text document open/change/close tracking
+- `6.5` complete: added workspace root mapping from open files
+- `6.6` complete: added server smoke tests
 
 ### Phase 7: Diagnostics
 
-- `7.1` map open documents into compiler package/workspace analysis
-- `7.2` publish parser diagnostics from `fol-diagnostics`
-- `7.3` publish package/loading diagnostics from `fol-diagnostics`
-- `7.4` publish resolver diagnostics from `fol-diagnostics`
+- `7.1` complete: mapped open documents into compiler package/workspace analysis
+- `7.2` complete: published parser diagnostics from `fol-diagnostics`
+- `7.3` complete: published package/loading diagnostics from `fol-diagnostics`
+- `7.4` complete: published resolver diagnostics from `fol-diagnostics`
 - `7.5` publish typecheck diagnostics from `fol-diagnostics`
 - `7.6` convert `fol-diagnostics` locations and related labels into LSP ranges
 - `7.7` add diagnostics integration tests on real fixtures
