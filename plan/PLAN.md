@@ -476,7 +476,7 @@ Round 1 slice tracker:
   textual build-body extractor path.
 - [x] Slice 2. Add semantic runtime artifact metadata for executable, test, and
   library outputs produced by evaluated build programs.
-- [ ] Slice 3. Add semantic runtime step-binding metadata for default and named
+- [x] Slice 3. Add semantic runtime step-binding metadata for default and named
   steps that target evaluated artifacts.
 - [ ] Slice 4. Add a package-layer evaluated build-program surface that carries
   runtime metadata plus the evaluated graph result.

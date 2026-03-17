@@ -50,6 +50,36 @@ impl BuildRuntimeArtifact {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BuildRuntimeStepBindingKind {
+    DefaultBuild,
+    DefaultRun,
+    DefaultTest,
+    NamedRun,
+    NamedStep,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BuildRuntimeStepBinding {
+    pub step_name: String,
+    pub kind: BuildRuntimeStepBindingKind,
+    pub artifact_name: Option<String>,
+}
+
+impl BuildRuntimeStepBinding {
+    pub fn new(
+        step_name: impl Into<String>,
+        kind: BuildRuntimeStepBindingKind,
+        artifact_name: Option<impl Into<String>>,
+    ) -> Self {
+        Self {
+            step_name: step_name.into(),
+            kind,
+            artifact_name: artifact_name.map(|name| name.into()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BuildRuntimeHandleKind {
     Graph,
     Artifact,
@@ -219,7 +249,8 @@ mod tests {
         BuildRuntimeDiagnostic, BuildRuntimeDiagnosticKind, BuildRuntimeExpr, BuildRuntimeFrame,
         BuildRuntimeHandle, BuildRuntimeHandleKind, BuildRuntimeLocalId, BuildRuntimeMethodCall,
         BuildRuntimeProgram, BuildRuntimeReceiverKind, BuildRuntimeRecordField,
-        BuildRuntimeStmt, BuildRuntimeValue, find_record_field,
+        BuildRuntimeStepBinding, BuildRuntimeStepBindingKind, BuildRuntimeStmt,
+        BuildRuntimeValue, find_record_field,
     };
 
     #[test]
@@ -249,6 +280,25 @@ mod tests {
         assert_eq!(exe.root_module, "src/app.fol");
         assert_eq!(test.kind, BuildRuntimeArtifactKind::Test);
         assert_eq!(test.name, "app_test");
+    }
+
+    #[test]
+    fn runtime_step_bindings_cover_default_and_named_artifact_steps() {
+        let run = BuildRuntimeStepBinding::new(
+            "run",
+            BuildRuntimeStepBindingKind::DefaultRun,
+            Some("app"),
+        );
+        let named = BuildRuntimeStepBinding::new(
+            "serve",
+            BuildRuntimeStepBindingKind::NamedRun,
+            Some("app"),
+        );
+
+        assert_eq!(run.kind, BuildRuntimeStepBindingKind::DefaultRun);
+        assert_eq!(run.artifact_name.as_deref(), Some("app"));
+        assert_eq!(named.step_name, "serve");
+        assert_eq!(named.kind, BuildRuntimeStepBindingKind::NamedRun);
     }
 
     #[test]
