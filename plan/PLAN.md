@@ -543,7 +543,7 @@ Round 1 slice tracker:
   custom graph steps.
 - [x] Slice 6. Add graph-driven coverage for multiple runnable artifacts with
   explicit named run steps.
-- [ ] Slice 7. Add graph-driven coverage for multiple buildable artifacts with
+- [x] Slice 7. Add graph-driven coverage for multiple buildable artifacts with
   explicit named build steps.
 - [ ] Slice 8. Tighten ambiguous default multi-artifact execution errors so they
   fail clearly without legacy `src/main.fol` fallback guessing.
