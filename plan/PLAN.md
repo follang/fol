@@ -901,6 +901,22 @@ Each slice must land green with `make build` and `make test` before commit.
 9. `[complete]` Add frontend CLI/config build-option override surfaces for target, optimize, and repeated named options.
 10. `[complete]` Re-export the draft build-option surface from `fol-package`.
 
+## Round 8 Slice Tracker
+
+This round focuses on Phase 8 dependency build surfaces in `fol-package`.
+Each slice must land green with `make build` and `make test` before commit.
+
+1. `[complete]` Lock the eighth implementation round around dependency build-surface modeling.
+2. `[pending]` Introduce a dedicated `build_dependency` module with dependency-surface shell types.
+3. `[pending]` Add dependency-provided module and source-root surface records.
+4. `[pending]` Add dependency-provided artifact, step, and generated-output surface records.
+5. `[pending]` Add dependency build-handle and dependency-surface collection types.
+6. `[pending]` Add export-to-dependency bridge helpers that project prepared export mounts into dependency module surfaces.
+7. `[pending]` Add dependency build-evaluation mode enums for eager, lazy, and on-demand surface loading.
+8. `[pending]` Extend dependency requests/handles in the draft build API to carry declared build-surface collections.
+9. `[pending]` Extend prepared-package modeling to retain optional dependency build-surface exports alongside compatibility exports.
+10. `[pending]` Re-export the draft dependency build-surface model from `fol-package`.
+
 ## Success Criteria
 
 This plan is complete when:
