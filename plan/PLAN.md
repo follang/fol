@@ -958,7 +958,7 @@ Each slice must land green with `make build` and `make test` before commit.
 2. `[complete]` Introduce a dedicated frontend build-route module with workflow-mode shell types.
 3. `[complete]` Add default build-step mapping for `build` / `run` / `test` / `check` commands.
 4. `[complete]` Add explicit `--step` CLI arguments for workspace code commands.
-5. `[pending]` Thread selected build-step overrides through frontend configuration.
+5. `[complete]` Thread selected build-step overrides through frontend configuration.
 6. `[pending]` Add workspace build-file route planning that classifies compatibility, hybrid, and modern members.
 7. `[pending]` Add compatibility-step execution helpers that map named steps onto existing frontend workspace commands.
 8. `[pending]` Route workspace code commands through the new build-route planner and compatibility executor.

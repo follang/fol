@@ -306,18 +306,22 @@ fn frontend_config_from_cli(
         Some(FrontendCommand::Code(command)) => match &command.command {
             CodeSubcommand::Build(command) => {
                 config.locked_fetch = command.locked;
+                apply_build_step_args(&mut config, &command.step);
                 apply_build_option_args(&mut config, &command.options);
             }
             CodeSubcommand::Run(command) => {
                 config.locked_fetch = command.locked;
+                apply_build_step_args(&mut config, &command.step);
                 apply_build_option_args(&mut config, &command.options);
             }
             CodeSubcommand::Test(command) => {
                 config.locked_fetch = command.locked;
+                apply_build_step_args(&mut config, &command.step);
                 apply_build_option_args(&mut config, &command.options);
             }
             CodeSubcommand::Check(command) => {
                 config.locked_fetch = command.locked;
+                apply_build_step_args(&mut config, &command.step);
                 apply_build_option_args(&mut config, &command.options);
             }
             CodeSubcommand::Emit(_) => {}
@@ -336,6 +340,12 @@ fn apply_build_option_args(config: &mut FrontendConfig, options: &cli::BuildOpti
     }
     if !options.build_options.is_empty() {
         config.build_option_overrides = options.build_options.clone();
+    }
+}
+
+fn apply_build_step_args(config: &mut FrontendConfig, step: &cli::BuildStepArgs) {
+    if let Some(step) = &step.step {
+        config.build_step_override = Some(step.clone());
     }
 }
 
@@ -728,6 +738,15 @@ mod tests {
         );
         assert_eq!(config.build_optimize_override.as_deref(), Some("release-fast"));
         assert_eq!(config.build_option_overrides, vec!["jobs=16".to_string()]);
+    }
+
+    #[test]
+    fn frontend_config_from_cli_keeps_selected_build_step_override() {
+        let cli = FrontendCli::parse_from(["fol", "code", "build", "--step", "docs"]);
+
+        let config = frontend_config_from_cli(&cli, None);
+
+        assert_eq!(config.build_step_override.as_deref(), Some("docs"));
     }
 }
 fn code_has_direct_target(command: &CodeCommand) -> bool {

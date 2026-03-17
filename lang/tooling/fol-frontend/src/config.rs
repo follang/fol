@@ -14,6 +14,7 @@ pub struct FrontendConfig {
     pub build_target_override: Option<String>,
     pub build_optimize_override: Option<String>,
     pub build_option_overrides: Vec<String>,
+    pub build_step_override: Option<String>,
     pub keep_build_dir: bool,
     pub locked_fetch: bool,
     pub offline_fetch: bool,
@@ -34,6 +35,7 @@ impl Default for FrontendConfig {
             build_target_override: None,
             build_optimize_override: None,
             build_option_overrides: Vec::new(),
+            build_step_override: None,
             keep_build_dir: false,
             locked_fetch: false,
             offline_fetch: false,
@@ -63,6 +65,7 @@ impl FrontendConfig {
         config.git_cache_root_override = std::env::var_os("FOL_GIT_CACHE_ROOT").map(PathBuf::from);
         config.build_target_override = std::env::var("FOL_BUILD_TARGET").ok();
         config.build_optimize_override = std::env::var("FOL_BUILD_OPTIMIZE").ok();
+        config.build_step_override = std::env::var("FOL_BUILD_STEP").ok();
         config.build_option_overrides = std::env::var("FOL_BUILD_OPTIONS")
             .ok()
             .map(|value| {
@@ -108,6 +111,7 @@ mod tests {
         assert!(config.build_target_override.is_none());
         assert!(config.build_optimize_override.is_none());
         assert!(config.build_option_overrides.is_empty());
+        assert!(config.build_step_override.is_none());
         assert!(!config.keep_build_dir);
         assert!(!config.locked_fetch);
         assert!(!config.offline_fetch);
@@ -123,6 +127,7 @@ mod tests {
         std::env::set_var("FOL_GIT_CACHE_ROOT", "/tmp/git-cache");
         std::env::set_var("FOL_BUILD_TARGET", "aarch64-macos-gnu");
         std::env::set_var("FOL_BUILD_OPTIMIZE", "release-fast");
+        std::env::set_var("FOL_BUILD_STEP", "docs");
         std::env::set_var("FOL_BUILD_OPTIONS", "jobs=16,strip=true");
         std::env::set_var("FOL_KEEP_BUILD_DIR", "true");
         std::env::set_var("FOL_LOCKED", "true");
@@ -151,6 +156,7 @@ mod tests {
             Some("aarch64-macos-gnu")
         );
         assert_eq!(config.build_optimize_override.as_deref(), Some("release-fast"));
+        assert_eq!(config.build_step_override.as_deref(), Some("docs"));
         assert_eq!(
             config.build_option_overrides,
             vec!["jobs=16".to_string(), "strip=true".to_string()]
@@ -167,6 +173,7 @@ mod tests {
         std::env::remove_var("FOL_GIT_CACHE_ROOT");
         std::env::remove_var("FOL_BUILD_TARGET");
         std::env::remove_var("FOL_BUILD_OPTIMIZE");
+        std::env::remove_var("FOL_BUILD_STEP");
         std::env::remove_var("FOL_BUILD_OPTIONS");
         std::env::remove_var("FOL_KEEP_BUILD_DIR");
         std::env::remove_var("FOL_LOCKED");
