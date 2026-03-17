@@ -6,9 +6,12 @@ pub struct TreeSitterCorpusCase {
 
 const GRAMMAR_SOURCE: &str = include_str!("../tree-sitter/grammar.js");
 const HIGHLIGHTS_QUERY: &str = include_str!("../queries/fol/highlights.scm");
+const LOCALS_QUERY: &str = include_str!("../queries/fol/locals.scm");
 const CORPUS_DECLARATIONS: &str = include_str!("../tree-sitter/test/corpus/declarations.txt");
 const CORPUS_EXPRESSIONS: &str = include_str!("../tree-sitter/test/corpus/expressions.txt");
 const CORPUS_RECOVERABLE: &str = include_str!("../tree-sitter/test/corpus/recoverable.txt");
+const CORPUS_SHOWCASE: &str =
+    include_str!("../../../../test/apps/showcases/full_v1_showcase/app/main.fol");
 
 pub fn fol_tree_sitter_grammar() -> &'static str {
     GRAMMAR_SOURCE
@@ -16,6 +19,10 @@ pub fn fol_tree_sitter_grammar() -> &'static str {
 
 pub fn fol_tree_sitter_highlights_query() -> &'static str {
     HIGHLIGHTS_QUERY
+}
+
+pub fn fol_tree_sitter_locals_query() -> &'static str {
+    LOCALS_QUERY
 }
 
 pub fn fol_tree_sitter_corpus() -> &'static [TreeSitterCorpusCase] {
@@ -32,6 +39,10 @@ pub fn fol_tree_sitter_corpus() -> &'static [TreeSitterCorpusCase] {
             name: "recoverable",
             source: CORPUS_RECOVERABLE,
         },
+        TreeSitterCorpusCase {
+            name: "showcase",
+            source: CORPUS_SHOWCASE,
+        },
     ]
 }
 
@@ -39,6 +50,7 @@ pub fn fol_tree_sitter_corpus() -> &'static [TreeSitterCorpusCase] {
 mod tests {
     use super::{
         fol_tree_sitter_corpus, fol_tree_sitter_grammar, fol_tree_sitter_highlights_query,
+        fol_tree_sitter_locals_query,
     };
 
     #[test]
@@ -75,6 +87,29 @@ mod tests {
     }
 
     #[test]
+    fn grammar_covers_v1_surface_families_explicitly() {
+        let grammar = fol_tree_sitter_grammar();
+        for needle in [
+            "source_kind",
+            "'loc'",
+            "'std'",
+            "'pkg'",
+            "typed_binding",
+            "method_decl",
+            "record_type",
+            "entry_type",
+            "qualified_path",
+            "dot_intrinsic",
+            "container_type",
+            "shell_type",
+            "nil_literal",
+            "unwrap_expr",
+        ] {
+            assert!(grammar.contains(needle), "missing v1 grammar marker: {needle}");
+        }
+    }
+
+    #[test]
     fn grammar_mentions_editor_friendly_recovery_shapes() {
         let grammar = fol_tree_sitter_grammar();
         assert!(grammar.contains("conflicts: $ => ["));
@@ -100,11 +135,35 @@ mod tests {
     }
 
     #[test]
+    fn highlight_query_covers_intrinsics_and_qualified_paths() {
+        let query = fol_tree_sitter_highlights_query();
+        assert!(query.contains("(dot_intrinsic name: (identifier) @function.builtin"));
+        assert!(query.contains("(qualified_path"));
+        assert!(query.contains("@namespace"));
+    }
+
+    #[test]
+    fn locals_query_captures_bindings_parameters_and_function_names() {
+        let query = fol_tree_sitter_locals_query();
+        for needle in [
+            "@local.scope",
+            "@local.definition",
+            "@local.reference",
+            "(param name: (identifier) @local.definition)",
+            "(var_decl name: (identifier) @local.definition)",
+            "(fun_decl name: (identifier) @local.definition.function)",
+        ] {
+            assert!(query.contains(needle), "missing locals capture marker: {needle}");
+        }
+    }
+
+    #[test]
     fn corpus_smoke_cases_cover_real_v1_surfaces() {
         let corpus = fol_tree_sitter_corpus();
-        assert_eq!(corpus.len(), 3);
+        assert_eq!(corpus.len(), 4);
         assert!(corpus.iter().any(|case| case.source.contains("use shared: loc")));
         assert!(corpus.iter().any(|case| case.source.contains("when(flag)")));
         assert!(corpus.iter().any(|case| case.source.contains("report \"bad-input\"")));
+        assert!(corpus.iter().any(|case| case.source.contains("typ Summary: rec")));
     }
 }

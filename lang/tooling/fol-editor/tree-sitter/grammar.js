@@ -26,17 +26,24 @@ module.exports = grammar({
       $.doc_comment,
     ),
 
-    use_decl: $ => seq('use', field('name', $.identifier), ':', field('source_kind', $.identifier), '=', '{', $.qualified_path, '}'),
-    var_decl: $ => seq('var', field('name', $.identifier), ':', field('type', $.type_expr), '=', field('value', $.expr)),
-    fun_decl: $ => seq('fun', optional($.receiver), field('name', $.identifier), $.params, optional($.error_type), '=', $.block),
-    log_decl: $ => seq('log', optional($.receiver), field('name', $.identifier), $.params, ':', 'bol', '=', $.block),
-    typ_decl: $ => seq('typ', field('name', $.identifier), ':', choice('rec', 'ent'), '=', $.block),
+    use_decl: $ => seq('use', field('name', $.identifier), ':', field('source_kind', $.source_kind), '=', '{', $.qualified_path, '}'),
+    var_decl: $ => seq('var', $.typed_binding, '=', field('value', $.expr)),
+    fun_decl: $ => seq('fun', field('declaration', choice($.plain_fun_decl, $.method_decl))),
+    log_decl: $ => seq('log', field('declaration', choice($.plain_log_decl, $.method_decl))),
+    typ_decl: $ => seq('typ', field('name', $.identifier), ':', choice($.record_type, $.entry_type), '=', $.block),
     ali_decl: $ => seq('ali', field('name', $.identifier), ':', field('target', $.type_expr)),
 
+    source_kind: _ => choice('loc', 'std', 'pkg'),
+    typed_binding: $ => seq(field('name', $.identifier), ':', field('type', $.type_expr)),
+    plain_fun_decl: $ => seq(field('name', $.identifier), $.params, optional($.error_type), '=', $.block),
+    plain_log_decl: $ => seq(field('name', $.identifier), $.params, ':', 'bol', '=', $.block),
+    method_decl: $ => seq($.receiver, field('name', $.identifier), $.params, optional($.error_type), '=', $.block),
     receiver: $ => seq('(', $.type_expr, ')'),
     params: $ => seq('(', optional(commaSep1($.param)), ')'),
     param: $ => seq(field('name', $.identifier), ':', field('type', $.type_expr)),
     error_type: $ => seq('/', $.type_expr),
+    record_type: _ => 'rec',
+    entry_type: _ => 'ent',
 
     type_expr: $ => choice(
       $.qualified_path,
@@ -85,7 +92,7 @@ module.exports = grammar({
     field_init: $ => seq(field('name', $.identifier), '=', field('value', $.expr)),
     container_literal: $ => seq('{', optional(commaSep1($.expr)), '}'),
 
-    qualified_path: $ => seq($.identifier, repeat(seq('::', $.identifier))),
+    qualified_path: $ => seq(field('root', $.identifier), repeat1(seq('::', field('segment', $.identifier)))),
     identifier: _ => /[A-Za-z_][A-Za-z0-9_]*/,
     integer_literal: _ => /[0-9]+/,
     string_literal: _ => /"([^"\\]|\\.)*"/,

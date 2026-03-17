@@ -315,21 +315,21 @@ The minimum real fixture sources should include:
 
 ### Phase 3: Tree-sitter V1 Coverage
 
-- `3.1` cover `use` declarations and source kinds
-- `3.2` cover variables and typed bindings
-- `3.3` cover functions, logicals, and methods
-- `3.4` cover records, entries, and aliases
-- `3.5` cover `when`, `loop`, `return`, `report`, and `break`
-- `3.6` cover qualified paths and dot intrinsics
-- `3.7` cover containers, shells, `nil`, and postfix `!`
-- `3.8` add corpus fixtures from real `V1` examples
+- `3.1` complete: covered `use` declarations and source kinds
+- `3.2` complete: covered variables and typed bindings
+- `3.3` complete: covered functions, logicals, and methods
+- `3.4` complete: covered records, entries, and aliases
+- `3.5` complete: covered `when`, `loop`, `return`, `report`, and `break`
+- `3.6` complete: covered qualified paths and dot intrinsics
+- `3.7` complete: covered containers, shells, `nil`, and postfix `!`
+- `3.8` complete: added corpus fixtures from real `V1` examples
 
 ### Phase 4: Query Layer
 
 - `4.1` complete: added `highlights.scm`
 - `4.2` complete: highlighted declarations, types, keywords, and literals
-- `4.3` highlight intrinsics and qualified paths
-- `4.4` add `locals.scm`
+- `4.3` complete: highlighted intrinsics and qualified paths
+- `4.4` complete: added `locals.scm`
 - `4.5` add `symbols.scm`
 - `4.6` keep query assets in editor-consumable on-disk layout
 - `4.7` snapshot query captures on real fixtures

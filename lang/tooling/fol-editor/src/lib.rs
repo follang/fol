@@ -15,7 +15,7 @@ pub use paths::{EditorDocumentPath, EditorDocumentUri};
 pub use session::{EditorConfig, EditorSession};
 pub use tree_sitter::{
     fol_tree_sitter_corpus, fol_tree_sitter_grammar, fol_tree_sitter_highlights_query,
-    TreeSitterCorpusCase,
+    fol_tree_sitter_locals_query, TreeSitterCorpusCase,
 };
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -37,7 +37,7 @@ pub fn crate_name() -> &'static str {
 mod tests {
     use super::{
         crate_name, fol_tree_sitter_corpus, fol_tree_sitter_grammar,
-        fol_tree_sitter_highlights_query, Editor, EditorConfig, EditorDocument,
+        fol_tree_sitter_highlights_query, fol_tree_sitter_locals_query, Editor, EditorConfig, EditorDocument,
         EditorDocumentPath, EditorDocumentStore, EditorDocumentUri, EditorError,
         EditorErrorKind, EditorResult, EditorSession, CRATE_NAME,
     };
@@ -86,6 +86,7 @@ mod tests {
     fn tree_sitter_assets_are_publicly_reachable() {
         assert!(fol_tree_sitter_grammar().contains("module.exports = grammar"));
         assert!(fol_tree_sitter_highlights_query().contains("@keyword"));
+        assert!(fol_tree_sitter_locals_query().contains("@local.definition"));
         assert!(!fol_tree_sitter_corpus().is_empty());
     }
 }

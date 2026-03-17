@@ -20,7 +20,7 @@
 (param name: (identifier) @variable.parameter)
 (var_decl name: (identifier) @variable)
 (field_init name: (identifier) @property)
-(dot_intrinsic name: (identifier) @method)
+(dot_intrinsic name: (identifier) @function.builtin)
 (qualified_path (identifier) @namespace)
 (string_literal) @string
 (integer_literal) @number
