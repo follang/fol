@@ -7,7 +7,8 @@ use crate::{
 use crate::build_api::{CopyFileRequest, WriteFileRequest};
 use crate::build_codegen::{CodegenRequest, SystemToolRequest};
 use crate::build_runtime::{
-    BuildRuntimeArtifact, BuildRuntimeProgram, BuildRuntimeStepBinding,
+    BuildExecutionRepresentation, BuildRuntimeArtifact, BuildRuntimeArtifactKind,
+    BuildRuntimeProgram, BuildRuntimeStepBinding, BuildRuntimeStepBindingKind,
 };
 use crate::build_option::{
     BuildOptionDeclaration, BuildOptionDeclarationSet, BuildOptimizeMode, BuildTargetTriple,
@@ -445,6 +446,7 @@ pub struct ExtractedBuildProgram {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EvaluatedBuildSource {
     pub extracted: ExtractedBuildProgram,
+    pub evaluated: EvaluatedBuildProgram,
     pub result: BuildEvaluationResult,
 }
 
@@ -720,7 +722,74 @@ pub fn evaluate_build_source(
         inputs: request.inputs.clone(),
         operations: extracted.operations.clone(),
     })?;
-    Ok(Some(EvaluatedBuildSource { extracted, result }))
+    let evaluated = evaluated_build_program_from_extracted(&extracted, &result);
+    Ok(Some(EvaluatedBuildSource {
+        extracted,
+        evaluated,
+        result,
+    }))
+}
+
+fn evaluated_build_program_from_extracted(
+    extracted: &ExtractedBuildProgram,
+    result: &BuildEvaluationResult,
+) -> EvaluatedBuildProgram {
+    let mut step_bindings = extracted
+        .run_steps
+        .iter()
+        .map(|(step_name, artifact_name)| {
+            let kind = if step_name == "run" {
+                BuildRuntimeStepBindingKind::DefaultRun
+            } else {
+                BuildRuntimeStepBindingKind::NamedRun
+            };
+            BuildRuntimeStepBinding::new(step_name.clone(), kind, Some(artifact_name.clone()))
+        })
+        .collect::<Vec<_>>();
+    if extracted.executable_artifacts.len() == 1
+        && !step_bindings.iter().any(|binding| binding.step_name == "build")
+    {
+        step_bindings.push(BuildRuntimeStepBinding::new(
+            "build",
+            BuildRuntimeStepBindingKind::DefaultBuild,
+            Some(extracted.executable_artifacts[0].name.clone()),
+        ));
+    }
+    if extracted.test_artifacts.len() == 1
+        && !step_bindings.iter().any(|binding| binding.step_name == "test")
+    {
+        step_bindings.push(BuildRuntimeStepBinding::new(
+            "test",
+            BuildRuntimeStepBindingKind::DefaultTest,
+            Some(extracted.test_artifacts[0].name.clone()),
+        ));
+    }
+
+    let artifacts = extracted
+        .executable_artifacts
+        .iter()
+        .map(|artifact| {
+            BuildRuntimeArtifact::new(
+                artifact.name.clone(),
+                BuildRuntimeArtifactKind::Executable,
+                artifact.root_module.clone(),
+            )
+        })
+        .chain(extracted.test_artifacts.iter().map(|artifact| {
+            BuildRuntimeArtifact::new(
+                artifact.name.clone(),
+                BuildRuntimeArtifactKind::Test,
+                artifact.root_module.clone(),
+            )
+        }))
+        .collect::<Vec<_>>();
+
+    EvaluatedBuildProgram {
+        program: BuildRuntimeProgram::new(BuildExecutionRepresentation::RestrictedRuntimeIr),
+        artifacts,
+        step_bindings,
+        result: result.clone(),
+    }
 }
 
 fn extract_build_body(source: &str) -> Option<(String, String, usize)> {
@@ -1951,6 +2020,12 @@ mod tests {
         assert_eq!(evaluated.extracted.executable_artifacts[0].root_module, "src/app.fol");
         assert_eq!(evaluated.extracted.test_artifacts.len(), 1);
         assert_eq!(evaluated.extracted.run_steps.get("serve"), Some(&"app".to_string()));
+        assert_eq!(evaluated.evaluated.artifacts.len(), 2);
+        assert!(evaluated
+            .evaluated
+            .step_bindings
+            .iter()
+            .any(|binding| binding.step_name == "serve"));
         assert_eq!(evaluated.result.graph.artifacts().len(), 2);
         assert_eq!(evaluated.result.graph.steps().len(), 1);
     }
@@ -1990,6 +2065,12 @@ mod tests {
         assert_eq!(evaluated.extracted.executable_artifacts[0].name, "demo");
         assert_eq!(evaluated.extracted.executable_artifacts[0].root_module, "src/demo.fol");
         assert_eq!(evaluated.extracted.run_steps.get("run"), Some(&"demo".to_string()));
+        assert_eq!(evaluated.evaluated.artifacts.len(), 1);
+        assert!(evaluated
+            .evaluated
+            .step_bindings
+            .iter()
+            .any(|binding| binding.step_name == "run"));
         assert_eq!(evaluated.result.graph.artifacts().len(), 1);
         assert_eq!(evaluated.result.graph.installs().len(), 1);
         assert_eq!(evaluated.result.graph.steps().len(), 1);

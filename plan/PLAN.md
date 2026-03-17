@@ -480,7 +480,7 @@ Round 1 slice tracker:
   steps that target evaluated artifacts.
 - [x] Slice 4. Add a package-layer evaluated build-program surface that carries
   runtime metadata plus the evaluated graph result.
-- [ ] Slice 5. Migrate package-layer build-source translation internals onto the
+- [x] Slice 5. Migrate package-layer build-source translation internals onto the
   runtime metadata surface instead of extractor-era result objects.
 - [ ] Slice 6. Switch frontend build-route planning to consume semantic runtime
   metadata from `fol-package`.
