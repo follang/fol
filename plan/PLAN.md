@@ -328,7 +328,7 @@ Round 1 slice tracker:
 - [x] Slice 8. Validate semantic build-entry return type names.
 - [x] Slice 9. Surface semantic build-entry validation through prepared-package
   helpers.
-- [ ] Slice 10. Re-export and test the Phase 3 semantic build-entry surface.
+- [x] Slice 10. Re-export and test the Phase 3 semantic build-entry surface.
 
 ## Phase 4: Build-Time Capability Model
 

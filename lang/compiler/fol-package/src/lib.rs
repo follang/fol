@@ -64,6 +64,13 @@ pub use build_dependency::{
     DependencyGeneratedOutputSurfaceSet, DependencyModuleSurface, DependencyModuleSurfaceSet,
     DependencySourceRootSurface, DependencyStepSurface, DependencyStepSurfaceSet,
 };
+pub use build_entry::{
+    collect_build_entry_candidates, validate_build_entry_cardinality,
+    validate_build_entry_parameter_shape, validate_build_entry_parameter_type,
+    validate_build_entry_return_type, validate_parsed_build_entry,
+    BuildEntryCandidate, BuildEntrySignatureExpectation, BuildEntryValidationError,
+    BuildEntryValidationErrorKind, ValidatedBuildEntry,
+};
 pub use build_eval::{
     evaluate_build_plan, evaluate_build_source, extract_build_program_from_source,
     AllowedBuildTimeOperation, BuildEvaluationBoundary, BuildEvaluationError,
@@ -134,6 +141,7 @@ pub use session::{
 #[cfg(test)]
 mod tests {
     use super::{
+        collect_build_entry_candidates, validate_parsed_build_entry, BuildEntrySignatureExpectation,
         canonical_chain_metadata, canonical_graph_method_signatures, canonical_handle_method_signatures,
         canonical_option_value_kinds, BuildSemanticChainKind, BuildSemanticType,
         BuildSemanticTypeFamily, ParsedSourceUnitKind,
@@ -179,5 +187,49 @@ mod tests {
     #[test]
     fn crate_root_reexports_parsed_source_unit_kinds() {
         assert_eq!(ParsedSourceUnitKind::Build, fol_parser::ast::ParsedSourceUnitKind::Build);
+    }
+
+    #[test]
+    fn crate_root_reexports_semantic_build_entry_surface() {
+        let syntax = fol_parser::ast::ParsedPackage {
+            package: "demo".to_string(),
+            source_units: vec![fol_parser::ast::ParsedSourceUnit {
+                path: "build.fol".to_string(),
+                package: "demo".to_string(),
+                namespace: "demo".to_string(),
+                kind: ParsedSourceUnitKind::Build,
+                items: vec![fol_parser::ast::ParsedTopLevel {
+                    node_id: fol_parser::ast::SyntaxNodeId(1),
+                    node: fol_parser::ast::AstNode::DefDecl {
+                        options: Vec::new(),
+                        name: "build".to_string(),
+                        params: vec![fol_parser::ast::Parameter {
+                            name: "graph".to_string(),
+                            param_type: fol_parser::ast::FolType::Named {
+                                syntax_id: None,
+                                name: "Graph".to_string(),
+                            },
+                            is_borrowable: false,
+                            is_mutex: false,
+                            default: None,
+                        }],
+                        def_type: fol_parser::ast::FolType::Named {
+                            syntax_id: None,
+                            name: "Graph".to_string(),
+                        },
+                        body: Vec::new(),
+                    },
+                    meta: fol_parser::ast::ParsedTopLevelMeta::default(),
+                }],
+            }],
+            syntax_index: fol_parser::ast::SyntaxIndex::default(),
+        };
+
+        let candidates = collect_build_entry_candidates(&syntax);
+        let validated = validate_parsed_build_entry(&syntax, &BuildEntrySignatureExpectation::canonical())
+            .expect("crate root should expose semantic build entry validation");
+
+        assert_eq!(candidates.len(), 1);
+        assert_eq!(validated.candidate.name, "build");
     }
 }
