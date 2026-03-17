@@ -853,6 +853,22 @@ Each slice must land green with `make build` and `make test` before commit.
 9. `[complete]` Reject unsupported operations and graph-validation failures with explicit evaluation diagnostics.
 10. `[complete]` Re-export the draft build-evaluator surface from `fol-package`.
 
+## Round 5 Slice Tracker
+
+This round focuses on Phase 5 artifact-model work in `fol-package`.
+Each slice must land green with `make build` and `make test` before commit.
+
+1. `[complete]` Lock the fifth implementation round around a first-class artifact model.
+2. `[pending]` Introduce a dedicated `build_artifact` module with artifact-definition shell types.
+3. `[pending]` Add first-class artifact kind enums covering executable, libraries, tests, generated source, and docs bundles.
+4. `[pending]` Add artifact root/source/module configuration records and linkage/output-name fields.
+5. `[pending]` Add target/optimize/native-artifact attachment fields to artifact definitions.
+6. `[pending]` Add artifact output/reporting model types for emitted crates, binaries, generated bundles, and docs bundles.
+7. `[pending]` Add compiler-pipeline plan records that connect package, resolver, typecheck, lower, and backend stages to one artifact definition.
+8. `[pending]` Add graph-to-artifact projection helpers for executable/library/test artifact nodes.
+9. `[pending]` Add artifact-report summary helpers that preserve frontend-facing output strings and paths.
+10. `[pending]` Re-export the draft artifact-model surface from `fol-package`.
+
 ## Success Criteria
 
 This plan is complete when:
