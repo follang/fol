@@ -25,10 +25,12 @@ pub use documents::{EditorDocument, EditorDocumentStore};
 pub use error::{EditorError, EditorErrorKind, EditorResult};
 pub use lsp::{
     EditorLspServer, JsonRpcId, JsonRpcNotification, JsonRpcRequest, JsonRpcResponse,
-    LspDidChangeTextDocumentParams, LspDidCloseTextDocumentParams, LspDidOpenTextDocumentParams,
-    LspInitializeParams, LspInitializeResult, LspPublishDiagnosticsParams,
+    LspDefinitionParams, LspDidChangeTextDocumentParams, LspDidCloseTextDocumentParams,
+    LspDidOpenTextDocumentParams, LspDocumentSymbol, LspDocumentSymbolParams, LspHover,
+    LspHoverParams, LspInitializeParams, LspInitializeResult, LspPublishDiagnosticsParams,
     LspServerCapabilities, LspServerInfo, LspTextDocumentContentChangeEvent,
-    LspTextDocumentItem, LspTextDocumentSyncOptions, LspVersionedTextDocumentIdentifier,
+    LspTextDocumentIdentifier, LspTextDocumentItem, LspTextDocumentSyncOptions,
+    LspVersionedTextDocumentIdentifier,
 };
 pub use paths::{EditorDocumentPath, EditorDocumentUri};
 pub use session::{EditorConfig, EditorSession};

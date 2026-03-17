@@ -360,22 +360,22 @@ The minimum real fixture sources should include:
 - `7.2` complete: published parser diagnostics from `fol-diagnostics`
 - `7.3` complete: published package/loading diagnostics from `fol-diagnostics`
 - `7.4` complete: published resolver diagnostics from `fol-diagnostics`
-- `7.5` publish typecheck diagnostics from `fol-diagnostics`
-- `7.6` convert `fol-diagnostics` locations and related labels into LSP ranges
-- `7.7` add diagnostics integration tests on real fixtures
+- `7.5` complete: published typecheck diagnostics from `fol-diagnostics`
+- `7.6` complete: converted `fol-diagnostics` locations and related labels into LSP ranges
+- `7.7` complete: added diagnostics integration tests on real fixtures
 
 ### Phase 8: Hover And Definition
 
-- `8.1` add hover request handling
-- `8.2` expose symbol/type summary text for hover
-- `8.3` add go-to-definition for local declarations
-- `8.4` add go-to-definition for imported symbols
-- `8.5` add integration tests for hover/definition
+- `8.1` complete: added hover request handling
+- `8.2` complete: exposed symbol/type summary text for hover
+- `8.3` complete: added go-to-definition for local declarations
+- `8.4` complete: added go-to-definition for imported symbols
+- `8.5` complete: added integration tests for hover/definition
 
 ### Phase 9: Symbols
 
-- `9.1` add document-symbol extraction via compiler/tree-sitter data
-- `9.2` include routines, types, bindings, and namespaces
+- `9.1` complete: added document-symbol extraction via compiler/tree-sitter data
+- `9.2` complete: included routines, types, bindings, and namespaces
 - `9.3` keep symbol hierarchy stable for nested items
 - `9.4` add integration tests for document symbols
 

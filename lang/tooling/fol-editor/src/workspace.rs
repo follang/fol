@@ -15,6 +15,7 @@ pub struct EditorAnalysisOverlay {
     temp_root: PathBuf,
     analysis_root: PathBuf,
     package_root: Option<PathBuf>,
+    document_path: PathBuf,
 }
 
 impl EditorAnalysisOverlay {
@@ -24,6 +25,10 @@ impl EditorAnalysisOverlay {
 
     pub fn package_root(&self) -> Option<&Path> {
         self.package_root.as_deref()
+    }
+
+    pub fn document_path(&self) -> &Path {
+        &self.document_path
     }
 }
 
@@ -140,6 +145,7 @@ pub fn materialize_analysis_overlay(
         temp_root: temp_root.clone(),
         analysis_root: temp_root,
         package_root,
+        document_path: overlay_document,
     })
 }
 
@@ -262,6 +268,7 @@ mod tests {
             "fun[] main(): int = {\n    return 7\n}\n"
         );
         assert_eq!(overlay.package_root(), Some(overlay.analysis_root()));
+        assert_eq!(overlay.document_path(), overlay.analysis_root().join("src/main.fol"));
 
         fs::remove_dir_all(root).ok();
     }

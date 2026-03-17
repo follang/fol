@@ -336,6 +336,14 @@ impl ResolvedProgram {
         self.imports.get(id)
     }
 
+    pub fn all_symbols(&self) -> impl Iterator<Item = &ResolvedSymbol> {
+        self.symbols.iter()
+    }
+
+    pub fn all_references(&self) -> impl Iterator<Item = &ResolvedReference> {
+        self.references.iter()
+    }
+
     pub fn symbols_in_scope(&self, scope_id: ScopeId) -> Vec<&ResolvedSymbol> {
         self.scope(scope_id)
             .map(|scope| {

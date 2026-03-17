@@ -266,6 +266,14 @@ impl TypedProgram {
         self.references.get(&reference_id)
     }
 
+    pub fn all_typed_symbols(&self) -> impl Iterator<Item = &TypedSymbol> {
+        self.symbols.values()
+    }
+
+    pub fn all_typed_references(&self) -> impl Iterator<Item = &TypedReference> {
+        self.references.values()
+    }
+
     pub(crate) fn typed_reference_mut(
         &mut self,
         reference_id: fol_resolver::ReferenceId,

@@ -15,6 +15,7 @@ fol-package = { path = "../../compiler/fol-package" }
 fol-parser = { path = "../../compiler/fol-parser" }
 fol-resolver = { path = "../../compiler/fol-resolver" }
 fol-stream = { path = "../../compiler/fol-stream" }
+fol-typecheck = { path = "../../compiler/fol-typecheck" }
 fol-types = { path = "../../compiler/fol-types" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
