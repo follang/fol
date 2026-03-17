@@ -949,6 +949,22 @@ Each slice must land green with `make build` and `make test` before commit.
 9. `[complete]` Extend prepared-package modeling to retain optional native artifact surfaces alongside compatibility native placeholders.
 10. `[complete]` Re-export the draft native-artifact surface from `fol-package`.
 
+## Round 11 Slice Tracker
+
+This round focuses on Phase 11 CLI-migration groundwork in `fol-frontend`.
+Each slice must land green with `make build` and `make test` before commit.
+
+1. `[complete]` Lock the eleventh implementation round around CLI migration and build-step routing.
+2. `[pending]` Introduce a dedicated frontend build-route module with workflow-mode shell types.
+3. `[pending]` Add default build-step mapping for `build` / `run` / `test` / `check` commands.
+4. `[pending]` Add explicit `--step` CLI arguments for workspace code commands.
+5. `[pending]` Thread selected build-step overrides through frontend configuration.
+6. `[pending]` Add workspace build-file route planning that classifies compatibility, hybrid, and modern members.
+7. `[pending]` Add compatibility-step execution helpers that map named steps onto existing frontend workspace commands.
+8. `[pending]` Route workspace code commands through the new build-route planner and compatibility executor.
+9. `[pending]` Preserve stable compatibility command summaries and artifact reporting through routed step execution.
+10. `[pending]` Reject modern-entry workspace commands with explicit unsupported-build-entry diagnostics until graph execution lands.
+
 ## Success Criteria
 
 This plan is complete when:
