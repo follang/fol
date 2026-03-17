@@ -926,7 +926,7 @@ Each slice must land green with `make build` and `make test` before commit.
 2. `[complete]` Introduce a dedicated `build_codegen` module with generated-file shell types.
 3. `[complete]` Add generated-file action definitions for write, copy, and captured-tool outputs.
 4. `[complete]` Add generated-file install/helper projection types for install-file style flows.
-5. `[pending]` Add controlled system-tool invocation request/result model types.
+5. `[complete]` Add controlled system-tool invocation request/result model types.
 6. `[pending]` Add codegen request/result model types for FOL generation, schema generation, and asset preprocessing.
 7. `[pending]` Add generated-output dependency collection and lookup helpers.
 8. `[pending]` Extend the draft build API with write-file, copy-file, system-tool, and codegen helpers.

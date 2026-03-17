@@ -38,6 +38,20 @@ impl GeneratedFileInstallProjection {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SystemToolRequest {
+    pub tool: String,
+    pub args: Vec<String>,
+    pub outputs: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SystemToolResult {
+    pub tool: String,
+    pub exit_status: i32,
+    pub generated_outputs: Vec<String>,
+}
+
 impl GeneratedFileSet {
     pub fn new() -> Self {
         Self::default()
@@ -56,7 +70,7 @@ impl GeneratedFileSet {
 mod tests {
     use super::{
         GeneratedFileAction, GeneratedFileDefinition, GeneratedFileInstallProjection,
-        GeneratedFileSet,
+        GeneratedFileSet, SystemToolRequest, SystemToolResult,
     };
 
     #[test]
@@ -115,5 +129,24 @@ mod tests {
         assert_eq!(projection.generated_file_name, "config");
         assert_eq!(projection.install_name, "install-config");
         assert_eq!(projection.install_path, "share/config.json");
+    }
+
+    #[test]
+    fn system_tool_models_keep_requests_and_results_stable() {
+        let request = SystemToolRequest {
+            tool: "flatc".to_string(),
+            args: vec!["--fol".to_string(), "schema.fbs".to_string()],
+            outputs: vec!["gen/schema.fol".to_string()],
+        };
+        let result = SystemToolResult {
+            tool: "flatc".to_string(),
+            exit_status: 0,
+            generated_outputs: vec!["gen/schema.fol".to_string()],
+        };
+
+        assert_eq!(request.tool, "flatc");
+        assert_eq!(request.outputs, vec!["gen/schema.fol".to_string()]);
+        assert_eq!(result.exit_status, 0);
+        assert_eq!(result.generated_outputs.len(), 1);
     }
 }
