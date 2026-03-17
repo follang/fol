@@ -299,8 +299,8 @@ The minimum real fixture sources should include:
 - `1.2` complete: added the public crate API shell
 - `1.3` complete: added structured editor-tooling error types
 - `1.4` complete: added shared document URI/path helpers
-- `1.5` add a document store model
-- `1.6` add editor config/session shells
+- `1.5` complete: added a document store model
+- `1.6` complete: added editor config/session shells
 
 ### Phase 2: Tree-sitter Grammar Foundation
 

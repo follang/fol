@@ -1,0 +1,61 @@
+use crate::EditorDocumentStore;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EditorConfig {
+    pub full_document_sync: bool,
+    pub root_markers: Vec<String>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct EditorSession {
+    pub config: EditorConfig,
+    pub documents: EditorDocumentStore,
+}
+
+impl Default for EditorConfig {
+    fn default() -> Self {
+        Self {
+            full_document_sync: true,
+            root_markers: vec![
+                "fol.work.yaml".to_string(),
+                "package.yaml".to_string(),
+                ".git".to_string(),
+            ],
+        }
+    }
+}
+
+impl EditorSession {
+    pub fn new(config: EditorConfig) -> Self {
+        Self {
+            config,
+            documents: EditorDocumentStore::default(),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{EditorConfig, EditorSession};
+
+    #[test]
+    fn editor_config_defaults_to_full_sync_and_standard_root_markers() {
+        let config = EditorConfig::default();
+
+        assert!(config.full_document_sync);
+        assert_eq!(
+            config.root_markers,
+            vec![
+                "fol.work.yaml".to_string(),
+                "package.yaml".to_string(),
+                ".git".to_string()
+            ]
+        );
+    }
+
+    #[test]
+    fn editor_session_starts_with_an_empty_document_store() {
+        let session = EditorSession::new(EditorConfig::default());
+        assert!(session.documents.is_empty());
+    }
+}
