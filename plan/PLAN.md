@@ -816,7 +816,7 @@ Each slice must land green with `make build` and `make test` before commit.
 4. `[complete]` Add `BuildGraph` storage tables plus allocation helpers for each node family.
 5. `[complete]` Add step-dependency edges and graph APIs for explicit step-to-step dependencies.
 6. `[complete]` Add artifact-input edges for module and generated-file dependencies.
-7. `[pending]` Add graph validation error types and empty-graph validation entrypoints.
+7. `[complete]` Add graph validation error types and empty-graph validation entrypoints.
 8. `[pending]` Validate step dependency cycles with source-local regression tests.
 9. `[pending]` Validate artifact input references and install-target shape constraints.
 10. `[pending]` Re-export the build-graph IR from `fol-package`'s public API.

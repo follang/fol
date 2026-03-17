@@ -136,6 +136,19 @@ pub struct BuildArtifactDependency {
     pub input: BuildArtifactInput,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum BuildGraphValidationErrorKind {
+    StepDependencyCycle,
+    MissingArtifactInput,
+    InvalidInstallTarget,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BuildGraphValidationError {
+    pub kind: BuildGraphValidationErrorKind,
+    pub message: String,
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct BuildGraph {
     steps: Vec<BuildStep>,
@@ -295,15 +308,30 @@ impl BuildGraph {
             .filter(move |edge| edge.artifact == artifact)
             .map(|edge| edge.input)
     }
+
+    pub fn validate(&self) -> Vec<BuildGraphValidationError> {
+        let mut errors = Vec::new();
+        self.validate_step_dependencies(&mut errors);
+        self.validate_artifact_inputs(&mut errors);
+        self.validate_installs(&mut errors);
+        errors
+    }
+
+    fn validate_step_dependencies(&self, _errors: &mut Vec<BuildGraphValidationError>) {}
+
+    fn validate_artifact_inputs(&self, _errors: &mut Vec<BuildGraphValidationError>) {}
+
+    fn validate_installs(&self, _errors: &mut Vec<BuildGraphValidationError>) {}
 }
 
 #[cfg(test)]
 mod tests {
     use super::{
         BuildArtifactDependency, BuildArtifactId, BuildArtifactInput, BuildArtifactKind,
-        BuildGeneratedFileId, BuildGeneratedFileKind, BuildGraph, BuildInstallId,
-        BuildInstallKind, BuildModuleId, BuildModuleKind, BuildOptionId, BuildOptionKind,
-        BuildStepDependency, BuildStepId, BuildStepKind,
+        BuildGeneratedFileId, BuildGeneratedFileKind, BuildGraph, BuildGraphValidationError,
+        BuildGraphValidationErrorKind, BuildInstallId, BuildInstallKind, BuildModuleId,
+        BuildModuleKind, BuildOptionId, BuildOptionKind, BuildStepDependency, BuildStepId,
+        BuildStepKind,
     };
 
     #[test]
@@ -464,6 +492,29 @@ mod tests {
                 BuildArtifactInput::Module(module),
                 BuildArtifactInput::GeneratedFile(generated),
             ]
+        );
+    }
+
+    #[test]
+    fn empty_build_graph_validation_is_clean() {
+        let graph = BuildGraph::new();
+
+        assert!(graph.validate().is_empty());
+    }
+
+    #[test]
+    fn build_graph_validation_errors_keep_kind_and_message() {
+        let error = BuildGraphValidationError {
+            kind: BuildGraphValidationErrorKind::InvalidInstallTarget,
+            message: "install target must resolve to a known artifact".to_string(),
+        };
+
+        assert_eq!(
+            error,
+            BuildGraphValidationError {
+                kind: BuildGraphValidationErrorKind::InvalidInstallTarget,
+                message: "install target must resolve to a known artifact".to_string(),
+            }
         );
     }
 }
