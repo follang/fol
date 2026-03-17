@@ -297,8 +297,8 @@ The minimum real fixture sources should include:
 
 - `1.1` complete: added the `fol-editor` workspace crate
 - `1.2` complete: added the public crate API shell
-- `1.3` add structured editor-tooling error types
-- `1.4` add shared document URI/path helpers
+- `1.3` complete: added structured editor-tooling error types
+- `1.4` complete: added shared document URI/path helpers
 - `1.5` add a document store model
 - `1.6` add editor config/session shells
 
