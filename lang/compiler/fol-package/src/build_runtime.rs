@@ -95,6 +95,31 @@ pub enum BuildRuntimeExpr {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BuildRuntimeRecordField {
+    pub name: String,
+    pub value: BuildRuntimeExpr,
+}
+
+impl BuildRuntimeRecordField {
+    pub fn new(name: impl Into<String>, value: BuildRuntimeExpr) -> Self {
+        Self {
+            name: name.into(),
+            value,
+        }
+    }
+}
+
+pub fn find_record_field<'a>(
+    fields: &'a [BuildRuntimeRecordField],
+    name: &str,
+) -> Option<&'a BuildRuntimeExpr> {
+    fields
+        .iter()
+        .find(|field| field.name == name)
+        .map(|field| &field.value)
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BuildRuntimeStmt {
     Bind {
         local: BuildRuntimeLocalId,
@@ -108,8 +133,8 @@ pub enum BuildRuntimeStmt {
 mod tests {
     use super::{
         BuildExecutionRepresentation, BuildRuntimeExpr, BuildRuntimeFrame, BuildRuntimeHandle,
-        BuildRuntimeHandleKind, BuildRuntimeLocalId, BuildRuntimeProgram, BuildRuntimeStmt,
-        BuildRuntimeValue,
+        BuildRuntimeHandleKind, BuildRuntimeLocalId, BuildRuntimeProgram, BuildRuntimeRecordField,
+        BuildRuntimeStmt, BuildRuntimeValue, find_record_field,
     };
 
     #[test]
@@ -205,5 +230,26 @@ mod tests {
             ret,
             BuildRuntimeStmt::Return(BuildRuntimeExpr::Value(BuildRuntimeValue::Void))
         ));
+    }
+
+    #[test]
+    fn runtime_record_helpers_find_named_fields_in_object_style_configs() {
+        let fields = vec![
+            BuildRuntimeRecordField::new(
+                "name",
+                BuildRuntimeExpr::Value(BuildRuntimeValue::String("demo".to_string())),
+            ),
+            BuildRuntimeRecordField::new(
+                "root",
+                BuildRuntimeExpr::Value(BuildRuntimeValue::Path("src/main.fol".to_string())),
+            ),
+        ];
+
+        assert!(matches!(
+            find_record_field(&fields, "root"),
+            Some(BuildRuntimeExpr::Value(BuildRuntimeValue::Path(path)))
+                if path == "src/main.fol"
+        ));
+        assert!(find_record_field(&fields, "missing").is_none());
     }
 }
