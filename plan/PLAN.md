@@ -875,7 +875,7 @@ This round focuses on Phase 6 step-execution-model work in `fol-package`.
 Each slice must land green with `make build` and `make test` before commit.
 
 1. `[complete]` Lock the sixth implementation round around build-step execution planning.
-2. `[pending]` Introduce a dedicated `build_step` module with step-plan request/result shell types.
+2. `[complete]` Introduce a dedicated `build_step` module with step-plan request/result shell types.
 3. `[pending]` Add explicit default-step kind enums for build, run, test, install, and check.
 4. `[pending]` Add custom step-definition and requested-step selector model types.
 5. `[pending]` Add topological step-order planning helpers over graph step dependencies.
