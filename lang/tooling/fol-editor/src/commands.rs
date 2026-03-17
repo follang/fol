@@ -1,6 +1,6 @@
 use crate::{
     fol_tree_sitter_config, fol_tree_sitter_corpus, fol_tree_sitter_grammar, fol_tree_sitter_highlights_query,
-    fol_tree_sitter_locals_query, fol_tree_sitter_query_snapshots, fol_tree_sitter_symbols_query,
+    fol_tree_sitter_query_snapshots, fol_tree_sitter_symbols_query,
     EditorError, EditorErrorKind, EditorResult,
 };
 use std::path::Path;
@@ -148,12 +148,12 @@ pub fn editor_tree_generate_bundle(path: &Path) -> EditorResult<EditorCommandSum
     })?;
 
     write_bundle_file(&path.join("grammar.js"), fol_tree_sitter_grammar())?;
-    write_bundle_file(
-        &queries_root.join("highlights.scm"),
-        fol_tree_sitter_highlights_query(),
-    )?;
-    write_bundle_file(&queries_root.join("locals.scm"), fol_tree_sitter_locals_query())?;
-    write_bundle_file(&queries_root.join("symbols.scm"), fol_tree_sitter_symbols_query())?;
+    for snapshot in fol_tree_sitter_query_snapshots() {
+        write_bundle_file(
+            &queries_root.join(format!("{}.scm", snapshot.name)),
+            snapshot.query,
+        )?;
+    }
     write_bundle_file(&path.join("package.json"), TREE_SITTER_PACKAGE_JSON)?;
     write_bundle_file(&path.join("tree-sitter.json"), fol_tree_sitter_config())?;
 
@@ -366,6 +366,28 @@ mod tests {
             .details
             .iter()
             .any(|detail| detail.contains("parser_generated=")));
+
+        std::fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn tree_generate_bundle_exports_every_registered_query_snapshot() {
+        let root = std::env::temp_dir().join(format!(
+            "fol_editor_tree_bundle_queries_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system time should be after epoch")
+                .as_nanos()
+        ));
+        editor_tree_generate_bundle(&root).unwrap();
+
+        for snapshot in fol_tree_sitter_query_snapshots() {
+            let exported = root
+                .join("queries/fol")
+                .join(format!("{}.scm", snapshot.name));
+            assert!(exported.is_file(), "missing exported query snapshot: {}", exported.display());
+        }
 
         std::fs::remove_dir_all(root).ok();
     }
