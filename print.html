@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-4b987114.js";
+            window.path_to_searchindex_js = "searchindex-8d169703.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-53f6a814.js"></script>
@@ -396,12 +396,14 @@ workflow shell for:</p>
 <p>It already covers:</p>
 <ul>
 <li>project and workspace scaffolding</li>
+<li>documented <code>build.fol</code> package entry files for new projects</li>
 <li>root discovery</li>
 <li>package preparation through <code>fol-package</code></li>
 <li>git-backed dependency fetching and materialization</li>
 <li><code>fol.lock</code> writing, locked fetches, offline warm-cache fetches, and update flows</li>
 <li>workspace dependency/status reporting</li>
 <li>full <code>V1</code> build/run/test orchestration</li>
+<li>routed workspace <code>build/run/test/check</code> entry through <code>build.fol</code></li>
 <li>emitted Rust and lowered IR output</li>
 <li>editor-tooling entrypoints for parse, highlight, symbols, and LSP startup</li>
 <li>shell completions</li>
@@ -424,6 +426,8 @@ workflow shell for:</p>
 <ul>
 <li>Tree-sitter assets for syntax/highlighting/query work</li>
 <li>the language server for compiler-backed editor services</li>
+<li>build-file affordances for <code>build.fol</code> through the same parse/highlight/symbol
+and LSP surfaces used for ordinary source files</li>
 </ul>
 <p>The detailed operational reference now lives in the Tooling section:</p>
 <ul>
@@ -764,8 +768,12 @@ bundle without forcing you to manually copy query files around.</p>
 <li>hover</li>
 <li>go-to-definition</li>
 <li>document symbols</li>
+<li>completion</li>
+<li>the same compiler-backed behavior for ordinary source files and <code>build.fol</code></li>
 </ul>
-<p>Completion is the next active milestone after the first editor bring-up.</p>
+<p>That means build files should not need a separate editor mode.
+<code>build.fol</code> goes through the same language server entrypoint as the rest of the
+package.</p>
 <h2 id="analysis-model"><a class="header" href="#analysis-model">Analysis Model</a></h2>
 <p>The server works like this:</p>
 <ol>
@@ -789,6 +797,7 @@ message quality and meaning.</p>
 <li>hover on resolved symbols</li>
 <li>go-to-definition across current-package and imported symbols where supported</li>
 <li>document symbols for the current file</li>
+<li>completion in ordinary source files and <code>build.fol</code></li>
 </ul>
 <p>If the client is attached but you see no diagnostics at all, the likely issue is
 not Tree-sitter. It is the LSP request/attach path.</p>
@@ -3725,31 +3734,40 @@ It is intentionally not a normal <code>.fol</code> source file.</p>
 <li>build logic</li>
 </ul>
 <h3 id="buildfol"><a class="header" href="#buildfol"><code>build.fol</code></a></h3>
-<p><code>build.fol</code> is where the package is assembled.</p>
+<p><code>build.fol</code> is the package build entry file.</p>
 <p>This file is responsible for:</p>
 <ul>
 <li>declaring package dependencies</li>
 <li>declaring which directories/namespaces are exported</li>
-<li>defining the package surface that consumers import</li>
+<li>declaring the source root used by the current frontend workflow</li>
+<li>becoming the future home of the canonical build-graph entrypoint</li>
 </ul>
 <p><code>build.fol</code> is still an ordinary FOL file.
 It is parsed with the same front-end as other <code>.fol</code> sources.
-The difference is that the package layer only extracts package meaning from recognized top-level definitions inside it.</p>
+The difference is that the package layer extracts package meaning from recognized top-level definitions inside it.</p>
+<p>Today that means:</p>
+<ul>
+<li>compatibility-style top-level <code>def</code> records such as package dependencies,
+exports, and root declarations are active</li>
+<li><code>fol code build/run/test/check</code> starts from <code>build.fol</code></li>
+<li>canonical <code>def build(...)</code> entries are recognized as the future build direction,
+but graph-backed execution is not wired in yet</li>
+</ul>
 <p>So:</p>
 <ul>
 <li><code>def</code> is still a general FOL declaration form</li>
 <li><code>build.fol</code> is not a separate mini-language</li>
-<li>only specific top-level <code>def</code> records are treated as package dependency/export definitions in the current package phase</li>
+<li>only specific top-level <code>def</code> records are treated as package/build definitions in the current package phase</li>
 </ul>
 <p>That means:</p>
 <ul>
 <li>ordinary source <code>.fol</code> files use <code>use</code> to consume packages/namespaces</li>
-<li><code>build.fol</code> uses <code>def</code> to define package dependencies and exports</li>
+<li><code>build.fol</code> uses <code>def</code> to define package dependencies, exports, and current root declarations</li>
 </ul>
 <p>So <code>use</code> and <code>def</code> serve different jobs:</p>
 <ul>
 <li><code>use</code> = consume functionality</li>
-<li><code>def</code> in <code>build.fol</code> = define package graph / exported surface</li>
+<li><code>def</code> in <code>build.fol</code> = define package/build surface</li>
 </ul>
 <h2 id="system-libraries"><a class="header" href="#system-libraries">System libraries</a></h2>
 <p>This is how including other libraries works, for example include <code>fmt</code> module from standard library:</p>
@@ -3794,7 +3812,8 @@ But if the target directory already defines <code>build.fol</code> at its root, 
 <li>that root must contain <code>package.yaml</code></li>
 <li>that root must contain <code>build.fol</code></li>
 <li><code>package.yaml</code> provides metadata only</li>
-<li><code>build.fol</code> defines dependencies and exports</li>
+<li><code>build.fol</code> is the package build entry file and currently defines dependencies,
+exports, and root declarations that package loading depends on</li>
 <li>raw transport URLs do not appear in source code; package acquisition and installed-package preparation are separate from ordinary source resolution</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
@@ -3907,7 +3926,7 @@ The package is the folder; the file is a source unit inside that package.</p>
 It is a formal package root with:</p>
 <ul>
 <li><code>package.yaml</code> for metadata</li>
-<li><code>build.fol</code> for dependencies and exports</li>
+<li><code>build.fol</code> as the package build entry file</li>
 </ul>
 <p>This keeps the language model clean:</p>
 <ul>
@@ -3915,10 +3934,13 @@ It is a formal package root with:</p>
 <li>package definitions are extracted from recognized top-level <code>def</code> declarations in <code>build.fol</code></li>
 <li>package metadata lives in <code>package.yaml</code></li>
 <li>package loading happens before ordinary name resolution</li>
+<li>current frontend workflows still read compatibility dependency/export/root
+declarations from <code>build.fol</code></li>
 </ul>
 <p><code>build.fol</code> itself is still ordinary FOL syntax.
 It is not a separate mini-language.
-The package layer simply gives package meaning to a narrow set of recognized top-level definitions there.</p>
+The package layer simply gives package/build meaning to a narrow set of
+recognized top-level definitions there.</p>
 <h2 id="blocks"><a class="header" href="#blocks">Blocks</a></h2>
 <p>Block statement is used for scopes where members get destroyed when scope is finished. And there are two ways to define a block:</p>
 <ul>

@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-4b987114.js";
+            window.path_to_searchindex_js = "../searchindex-8d169703.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-53f6a814.js"></script>
@@ -188,8 +188,12 @@
 <li>hover</li>
 <li>go-to-definition</li>
 <li>document symbols</li>
+<li>completion</li>
+<li>the same compiler-backed behavior for ordinary source files and <code>build.fol</code></li>
 </ul>
-<p>Completion is the next active milestone after the first editor bring-up.</p>
+<p>That means build files should not need a separate editor mode.
+<code>build.fol</code> goes through the same language server entrypoint as the rest of the
+package.</p>
 <h2 id="analysis-model"><a class="header" href="#analysis-model">Analysis Model</a></h2>
 <p>The server works like this:</p>
 <ol>
@@ -213,6 +217,7 @@ message quality and meaning.</p>
 <li>hover on resolved symbols</li>
 <li>go-to-definition across current-package and imported symbols where supported</li>
 <li>document symbols for the current file</li>
+<li>completion in ordinary source files and <code>build.fol</code></li>
 </ul>
 <p>If the client is attached but you see no diagnostics at all, the likely issue is
 not Tree-sitter. It is the LSP request/attach path.</p>

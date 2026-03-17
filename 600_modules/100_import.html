@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-4b987114.js";
+            window.path_to_searchindex_js = "../searchindex-8d169703.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-53f6a814.js"></script>
@@ -261,31 +261,40 @@ It is intentionally not a normal <code>.fol</code> source file.</p>
 <li>build logic</li>
 </ul>
 <h3 id="buildfol"><a class="header" href="#buildfol"><code>build.fol</code></a></h3>
-<p><code>build.fol</code> is where the package is assembled.</p>
+<p><code>build.fol</code> is the package build entry file.</p>
 <p>This file is responsible for:</p>
 <ul>
 <li>declaring package dependencies</li>
 <li>declaring which directories/namespaces are exported</li>
-<li>defining the package surface that consumers import</li>
+<li>declaring the source root used by the current frontend workflow</li>
+<li>becoming the future home of the canonical build-graph entrypoint</li>
 </ul>
 <p><code>build.fol</code> is still an ordinary FOL file.
 It is parsed with the same front-end as other <code>.fol</code> sources.
-The difference is that the package layer only extracts package meaning from recognized top-level definitions inside it.</p>
+The difference is that the package layer extracts package meaning from recognized top-level definitions inside it.</p>
+<p>Today that means:</p>
+<ul>
+<li>compatibility-style top-level <code>def</code> records such as package dependencies,
+exports, and root declarations are active</li>
+<li><code>fol code build/run/test/check</code> starts from <code>build.fol</code></li>
+<li>canonical <code>def build(...)</code> entries are recognized as the future build direction,
+but graph-backed execution is not wired in yet</li>
+</ul>
 <p>So:</p>
 <ul>
 <li><code>def</code> is still a general FOL declaration form</li>
 <li><code>build.fol</code> is not a separate mini-language</li>
-<li>only specific top-level <code>def</code> records are treated as package dependency/export definitions in the current package phase</li>
+<li>only specific top-level <code>def</code> records are treated as package/build definitions in the current package phase</li>
 </ul>
 <p>That means:</p>
 <ul>
 <li>ordinary source <code>.fol</code> files use <code>use</code> to consume packages/namespaces</li>
-<li><code>build.fol</code> uses <code>def</code> to define package dependencies and exports</li>
+<li><code>build.fol</code> uses <code>def</code> to define package dependencies, exports, and current root declarations</li>
 </ul>
 <p>So <code>use</code> and <code>def</code> serve different jobs:</p>
 <ul>
 <li><code>use</code> = consume functionality</li>
-<li><code>def</code> in <code>build.fol</code> = define package graph / exported surface</li>
+<li><code>def</code> in <code>build.fol</code> = define package/build surface</li>
 </ul>
 <h2 id="system-libraries"><a class="header" href="#system-libraries">System libraries</a></h2>
 <p>This is how including other libraries works, for example include <code>fmt</code> module from standard library:</p>
@@ -330,7 +339,8 @@ But if the target directory already defines <code>build.fol</code> at its root, 
 <li>that root must contain <code>package.yaml</code></li>
 <li>that root must contain <code>build.fol</code></li>
 <li><code>package.yaml</code> provides metadata only</li>
-<li><code>build.fol</code> defines dependencies and exports</li>
+<li><code>build.fol</code> is the package build entry file and currently defines dependencies,
+exports, and root declarations that package loading depends on</li>
 <li>raw transport URLs do not appear in source code; package acquisition and installed-package preparation are separate from ordinary source resolution</li>
 </ul>
 
