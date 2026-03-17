@@ -1,3 +1,7 @@
+use crate::build_dependency::{
+    DependencyArtifactSurfaceSet, DependencyBuildHandle, DependencyGeneratedOutputSurfaceSet,
+    DependencyModuleSurfaceSet, DependencyStepSurfaceSet,
+};
 use crate::build_graph::BuildGraph;
 use crate::build_graph::{BuildOptionId, BuildOptionKind};
 
@@ -236,6 +240,11 @@ pub struct DependencyHandle {
     pub alias: String,
     pub package: String,
     pub root_module_id: crate::build_graph::BuildModuleId,
+    pub build: DependencyBuildHandle,
+    pub modules: DependencyModuleSurfaceSet,
+    pub artifacts: DependencyArtifactSurfaceSet,
+    pub steps: DependencyStepSurfaceSet,
+    pub generated_outputs: DependencyGeneratedOutputSurfaceSet,
 }
 
 pub fn validate_build_name(name: &str) -> Result<(), BuildApiNameError> {
@@ -435,14 +444,24 @@ impl<'a> BuildApi<'a> {
 
     pub fn dependency(&mut self, request: DependencyRequest) -> Result<DependencyHandle, BuildApiError> {
         validate_build_name(&request.alias).map_err(BuildApiError::InvalidName)?;
+        let alias = request.alias;
+        let package = request.package;
         let module_id = self.graph.add_module(
             crate::build_graph::BuildModuleKind::Imported,
-            format!("{}:{}", request.alias, request.package),
+            format!("{alias}:{package}"),
         );
         Ok(DependencyHandle {
-            alias: request.alias,
-            package: request.package,
+            alias: alias.clone(),
+            package: package.clone(),
             root_module_id: module_id,
+            build: DependencyBuildHandle {
+                alias,
+                package,
+            },
+            modules: DependencyModuleSurfaceSet::default(),
+            artifacts: DependencyArtifactSurfaceSet::default(),
+            steps: DependencyStepSurfaceSet::default(),
+            generated_outputs: DependencyGeneratedOutputSurfaceSet::default(),
         })
     }
 }
@@ -789,5 +808,11 @@ mod tests {
         assert_eq!(api.graph().modules()[0].id, dependency.root_module_id);
         assert_eq!(api.graph().modules()[0].kind, BuildModuleKind::Imported);
         assert_eq!(api.graph().modules()[0].name, "logtiny:org/logtiny");
+        assert_eq!(dependency.build.alias, "logtiny");
+        assert_eq!(dependency.build.package, "org/logtiny");
+        assert!(dependency.modules.modules.is_empty());
+        assert!(dependency.artifacts.artifacts.is_empty());
+        assert!(dependency.steps.steps.is_empty());
+        assert!(dependency.generated_outputs.generated_outputs.is_empty());
     }
 }
