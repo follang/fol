@@ -170,12 +170,41 @@ pub fn validate_build_entry_parameter_shape(
     Ok(entry)
 }
 
+pub fn validate_build_entry_parameter_type(
+    entry: ValidatedBuildEntry,
+    expectation: &BuildEntrySignatureExpectation,
+) -> Result<ValidatedBuildEntry, Vec<BuildEntryValidationError>> {
+    let Some(parameter_type_name) = entry
+        .candidate
+        .parameter_type_names
+        .first()
+        .and_then(|name| name.as_deref())
+    else {
+        return Err(vec![BuildEntryValidationError::new(
+            BuildEntryValidationErrorKind::WrongParameterType,
+            "semantic `build` entry parameter must name the canonical build graph type",
+        )]);
+    };
+
+    if !expectation.accepts_parameter_type(parameter_type_name) {
+        return Err(vec![BuildEntryValidationError::new(
+            BuildEntryValidationErrorKind::WrongParameterType,
+            format!(
+                "semantic `build` entry parameter type '{}' is not one of the canonical build graph types",
+                parameter_type_name
+            ),
+        )]);
+    }
+
+    Ok(entry)
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
         collect_build_entry_candidates, validate_build_entry_cardinality,
-        validate_build_entry_parameter_shape, BuildEntryCandidate, BuildEntrySignatureExpectation,
-        BuildEntryValidationError,
+        validate_build_entry_parameter_shape, validate_build_entry_parameter_type,
+        BuildEntryCandidate, BuildEntrySignatureExpectation, BuildEntryValidationError,
         BuildEntryValidationErrorKind, ValidatedBuildEntry,
     };
 
@@ -317,5 +346,35 @@ mod tests {
         let errors = validate_build_entry_parameter_shape(invalid)
             .expect_err("multiple parameters should fail semantic build entry validation");
         assert_eq!(errors[0].kind, BuildEntryValidationErrorKind::WrongParameterCount);
+    }
+
+    #[test]
+    fn parameter_type_validation_requires_canonical_graph_type_names() {
+        let expectation = BuildEntrySignatureExpectation::canonical();
+        let valid = ValidatedBuildEntry {
+            candidate: BuildEntryCandidate {
+                source_unit_path: "build.fol".to_string(),
+                syntax_id: fol_parser::ast::SyntaxNodeId(1),
+                name: "build".to_string(),
+                parameter_names: vec!["graph".to_string()],
+                parameter_type_names: vec![Some("build::Graph".to_string())],
+                return_type_name: Some("Graph".to_string()),
+            },
+        };
+        assert!(validate_build_entry_parameter_type(valid, &expectation).is_ok());
+
+        let invalid = ValidatedBuildEntry {
+            candidate: BuildEntryCandidate {
+                source_unit_path: "build.fol".to_string(),
+                syntax_id: fol_parser::ast::SyntaxNodeId(2),
+                name: "build".to_string(),
+                parameter_names: vec!["graph".to_string()],
+                parameter_type_names: vec![Some("int".to_string())],
+                return_type_name: Some("Graph".to_string()),
+            },
+        };
+        let errors = validate_build_entry_parameter_type(invalid, &expectation)
+            .expect_err("non-graph parameter types should fail semantic build entry validation");
+        assert_eq!(errors[0].kind, BuildEntryValidationErrorKind::WrongParameterType);
     }
 }
