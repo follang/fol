@@ -106,7 +106,8 @@ mod tests {
         assert_eq!(parse.command, "parse");
         assert!(parse.summary.contains("path=test/apps/fixtures/record_flow/main.fol"));
         assert_eq!(highlight.command, "highlight");
-        assert!(highlight.summary.contains("keyword_hits="));
+        assert!(highlight.summary.contains("capture_count="));
+        assert!(highlight.summary.contains("captures="));
         assert_eq!(symbols.command, "symbols");
         assert!(symbols.summary.contains("symbol_candidates="));
         assert_eq!(tree.command, "tree generate");

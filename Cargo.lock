@@ -195,6 +195,7 @@ name = "fol-editor"
 version = "0.1.0"
 dependencies = [
  "fol-diagnostics",
+ "fol-intrinsics",
  "fol-lexer",
  "fol-package",
  "fol-parser",

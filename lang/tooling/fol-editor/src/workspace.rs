@@ -62,8 +62,8 @@ pub fn map_document_workspace(
     let workspace_root = config
         .root_markers
         .iter()
-        .find(|marker| marker.as_str() == "fol.work.yaml")
-        .and_then(|marker| find_upward_marker(directory, marker));
+        .filter(|marker| marker.as_str() != "package.yaml")
+        .find_map(|marker| find_upward_marker(directory, marker));
     let analysis_root = workspace_root
         .clone()
         .or_else(|| package_root.clone())
@@ -152,7 +152,8 @@ pub fn materialize_analysis_overlay(
 fn find_upward_marker(start: &Path, marker: &str) -> Option<PathBuf> {
     let mut current = Some(start);
     while let Some(path) = current {
-        if path.join(marker).is_file() {
+        let candidate = path.join(marker);
+        if candidate.is_file() || candidate.is_dir() {
             return Some(path.to_path_buf());
         }
         current = path.parent();

@@ -1,6 +1,6 @@
 use crate::{
     fol_tree_sitter_config, fol_tree_sitter_corpus, fol_tree_sitter_grammar, fol_tree_sitter_highlights_query,
-    fol_tree_sitter_locals_query, fol_tree_sitter_query_snapshots, fol_tree_sitter_symbols_query,
+    fol_tree_sitter_query_snapshots, fol_tree_sitter_symbols_query,
     EditorError, EditorErrorKind, EditorResult,
 };
 use std::path::Path;
@@ -30,13 +30,27 @@ impl EditorCommandSummary {
 pub fn editor_lsp_entrypoint() -> EditorResult<EditorCommandSummary> {
     Ok(EditorCommandSummary::new(
         "lsp",
-        "ready to serve editor requests through `fol tool lsp`",
+        "ready to serve diagnostics, hover, definition, symbols, and completion through `fol tool lsp`",
     )
-    .with_detail("transport/runtime wiring lands in the LSP foundation phase"))
+    .with_detail("transport=stdio")
+    .with_detail("features=diagnostics,hover,definition,symbols,completion"))
 }
 
 fn source_line_count(source: &str) -> usize {
     source.lines().count()
+}
+
+fn sorted_query_captures(query: &str) -> Vec<String> {
+    let mut captures = query
+        .split(|ch: char| ch.is_whitespace() || matches!(ch, ')' | '(' | '[' | ']'))
+        .filter_map(|part| part.strip_prefix('@'))
+        .map(|capture| capture.trim_end_matches(|ch: char| ch == ')' || ch == ']'))
+        .filter(|capture| !capture.is_empty())
+        .map(|capture| capture.to_string())
+        .collect::<Vec<_>>();
+    captures.sort();
+    captures.dedup();
+    captures
 }
 
 pub fn editor_parse_file(path: &Path) -> EditorResult<EditorCommandSummary> {
@@ -64,19 +78,18 @@ pub fn editor_highlight_file(path: &Path) -> EditorResult<EditorCommandSummary> 
         )
     })?;
     let query = fol_tree_sitter_highlights_query();
-    let keyword_hits = source
-        .matches("fun")
-        .count()
-        + source.matches("typ").count()
-        + source.matches("var").count();
+    let captures = sorted_query_captures(query);
     Ok(EditorCommandSummary::new(
         "highlight",
-        format!("highlight query ready with {} bytes", query.len()),
+        format!("highlight query ready with {} captures", captures.len()),
     )
     .with_detail(format!("path={}", path.display()))
     .with_detail(format!("lines={}", source_line_count(&source)))
     .with_detail(format!("query_bytes={}", query.len()))
-    .with_detail(format!("keyword_hits={keyword_hits}")))
+    .with_detail(format!("capture_count={}", captures.len()))
+    .with_detail(format!("captures={}", captures.join(",")))
+    .with_detail("import_kinds=loc,pkg,std")
+    .with_detail("intrinsic_names=echo,eq,ge,gt,le,len,lt,not,nq"))
 }
 
 pub fn editor_symbols_file(path: &Path) -> EditorResult<EditorCommandSummary> {
@@ -136,12 +149,12 @@ pub fn editor_tree_generate_bundle(path: &Path) -> EditorResult<EditorCommandSum
     })?;
 
     write_bundle_file(&path.join("grammar.js"), fol_tree_sitter_grammar())?;
-    write_bundle_file(
-        &queries_root.join("highlights.scm"),
-        fol_tree_sitter_highlights_query(),
-    )?;
-    write_bundle_file(&queries_root.join("locals.scm"), fol_tree_sitter_locals_query())?;
-    write_bundle_file(&queries_root.join("symbols.scm"), fol_tree_sitter_symbols_query())?;
+    for snapshot in fol_tree_sitter_query_snapshots() {
+        write_bundle_file(
+            &queries_root.join(format!("{}.scm", snapshot.name)),
+            snapshot.query,
+        )?;
+    }
     write_bundle_file(&path.join("package.json"), TREE_SITTER_PACKAGE_JSON)?;
     write_bundle_file(&path.join("tree-sitter.json"), fol_tree_sitter_config())?;
 
@@ -251,7 +264,7 @@ fn write_bundle_file(path: &Path, contents: &str) -> EditorResult<()> {
 mod tests {
     use super::{
         editor_highlight_file, editor_lsp_entrypoint, editor_parse_file, editor_symbols_file,
-        editor_tree_generate_bundle,
+        editor_tree_generate_bundle, sorted_query_captures,
     };
     use crate::{fol_tree_sitter_grammar, fol_tree_sitter_query_snapshots};
     use std::path::PathBuf;
@@ -261,6 +274,12 @@ mod tests {
         let summary = editor_lsp_entrypoint().unwrap();
         assert_eq!(summary.command, "lsp");
         assert!(summary.summary.contains("fol tool lsp"));
+        assert!(summary.summary.contains("completion"));
+        assert!(summary.details.iter().any(|detail| detail == "transport=stdio"));
+        assert!(summary
+            .details
+            .iter()
+            .any(|detail| detail == "features=diagnostics,hover,definition,symbols,completion"));
     }
 
     #[test]
@@ -275,7 +294,11 @@ mod tests {
         assert!(highlight
             .details
             .iter()
-            .any(|detail| detail.contains("keyword_hits=")));
+            .any(|detail| detail.contains("capture_count=")));
+        assert!(highlight
+            .details
+            .iter()
+            .any(|detail| detail.contains("captures=")));
         assert!(symbols
             .details
             .iter()
@@ -290,6 +313,7 @@ mod tests {
         let parse = editor_parse_file(&showcase).unwrap();
         let highlight = editor_highlight_file(&showcase).unwrap();
         let symbols = editor_symbols_file(&package).unwrap();
+        let highlight_captures = sorted_query_captures(crate::fol_tree_sitter_highlights_query());
 
         assert_eq!(parse.command, "parse");
         assert_eq!(
@@ -308,7 +332,10 @@ mod tests {
                 "path=test/apps/showcases/full_v1_showcase/app/main.fol".to_string(),
                 "lines=98".to_string(),
                 format!("query_bytes={}", crate::fol_tree_sitter_highlights_query().len()),
-                "keyword_hits=19".to_string(),
+                format!("capture_count={}", highlight_captures.len()),
+                format!("captures={}", highlight_captures.join(",")),
+                "import_kinds=loc,pkg,std".to_string(),
+                "intrinsic_names=echo,eq,ge,gt,le,len,lt,not,nq".to_string(),
             ]
         );
         assert_eq!(symbols.command, "symbols");
@@ -346,6 +373,94 @@ mod tests {
             .details
             .iter()
             .any(|detail| detail.contains("parser_generated=")));
+
+        std::fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn tree_generate_bundle_exports_every_registered_query_snapshot() {
+        let root = std::env::temp_dir().join(format!(
+            "fol_editor_tree_bundle_queries_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system time should be after epoch")
+                .as_nanos()
+        ));
+        editor_tree_generate_bundle(&root).unwrap();
+
+        for snapshot in fol_tree_sitter_query_snapshots() {
+            let exported = root
+                .join("queries/fol")
+                .join(format!("{}.scm", snapshot.name));
+            assert!(exported.is_file(), "missing exported query snapshot: {}", exported.display());
+        }
+
+        std::fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn tree_generate_bundle_keeps_exported_assets_exactly_in_sync() {
+        let root = std::env::temp_dir().join(format!(
+            "fol_editor_tree_bundle_exact_assets_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system time should be after epoch")
+                .as_nanos()
+        ));
+        editor_tree_generate_bundle(&root).unwrap();
+
+        assert_eq!(
+            std::fs::read_to_string(root.join("grammar.js")).unwrap(),
+            fol_tree_sitter_grammar()
+        );
+        assert_eq!(
+            std::fs::read_to_string(root.join("tree-sitter.json")).unwrap(),
+            crate::fol_tree_sitter_config()
+        );
+        for snapshot in fol_tree_sitter_query_snapshots() {
+            assert_eq!(
+                std::fs::read_to_string(root.join("queries/fol").join(format!("{}.scm", snapshot.name)))
+                    .unwrap(),
+                snapshot.query
+            );
+        }
+
+        std::fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn tree_generate_bundle_stays_neovim_consumable() {
+        let root = std::env::temp_dir().join(format!(
+            "fol_editor_tree_bundle_nvim_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system time should be after epoch")
+                .as_nanos()
+        ));
+        let summary = editor_tree_generate_bundle(&root).unwrap();
+
+        assert!(root.join("src/parser.c").is_file());
+        assert!(root.join("package.json").is_file());
+        assert!(root.join("tree-sitter.json").is_file());
+        assert!(root.join("queries/fol/highlights.scm").is_file());
+        assert!(root.join("queries/fol/locals.scm").is_file());
+        assert!(root.join("queries/fol/symbols.scm").is_file());
+        assert!(summary
+            .details
+            .iter()
+            .any(|detail| detail == "parser_generated=true"));
+        assert!(summary
+            .details
+            .iter()
+            .any(|detail| detail == "tree_sitter_runtime=native"));
+
+        let package_json = std::fs::read_to_string(root.join("package.json")).unwrap();
+        assert!(package_json.contains("\"scope\": \"source.fol\"") || package_json.contains("\"file-types\": [\"fol\"]"));
+        let config = std::fs::read_to_string(root.join("tree-sitter.json")).unwrap();
+        assert!(config.contains("\"highlights\": \"queries/fol/highlights.scm\""));
 
         std::fs::remove_dir_all(root).ok();
     }

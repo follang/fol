@@ -124,6 +124,24 @@ over:
 - edit-distance matching
 - complicated insert text transformations
 
+## Current Baseline Gaps
+
+Before this milestone, the real editor gaps are:
+
+- Tree-sitter highlighting still treats many FOL surfaces too generically
+- declaration modifiers like `[exp]` and similar bracketed markers are not yet
+  represented clearly enough
+- import source kinds and effect-ish keywords are not distinct enough in the
+  current query layer
+- dotted intrinsic surfaces are present, but not rich enough to feel language
+  specific
+- `fol tool highlight` is still more of a smoke command than an inspection tool
+- the LSP is attached and serving diagnostics/navigation, but completion is not
+  implemented yet
+- completion provider capabilities are not advertised yet
+- there is no first-pass completion contract yet for locals, params, imports,
+  types, or dot intrinsics
+
 ## Highlighting Scope
 
 The highlight pass should cover the current `V1` syntax more deeply than the
@@ -283,101 +301,108 @@ over tiny synthetic one-liners, unless a one-liner is the clearest regression.
 
 ### Phase 0: Freeze boundary and baseline
 
-- `0.1` replace the old editor-closeout plan with this focused highlight +
-  completion plan
-- `0.2` document the exact current highlight and completion gaps before changes
-- `0.3` add a small acceptance checklist for Neovim-facing verification
+- `0.1` complete: replace the old editor-closeout plan with this focused
+  highlight + completion plan
+- `0.2` complete: document the exact current highlight and completion gaps
+  before changes
+- `0.3` complete: add a small acceptance checklist for Neovim-facing
+  verification
 
 ### Phase 1: Highlight query audit
 
-- `1.1` audit current `highlights.scm` against current `V1` grammar node shapes
-- `1.2` remove any remaining impossible or overly generic patterns
-- `1.3` lock query validity against the generated parser bundle path
-- `1.4` add tests that fail when highlight queries reference non-existent nodes
+- `1.1` complete: audit current `highlights.scm` against current `V1` grammar
+  node shapes
+- `1.2` complete: remove any remaining impossible or overly generic patterns
+- `1.3` complete: lock query validity against the generated parser bundle path
+- `1.4` complete: add tests that fail when highlight queries reference
+  non-existent nodes
 
 ### Phase 2: Declaration and modifier highlighting
 
-- `2.1` highlight declaration heads distinctly: `fun`, `log`, `typ`, `ali`,
-  `var`, `use`
-- `2.2` highlight declaration modifiers in bracket forms like `[exp]`, `[par]`,
-  and other real surfaced markers
-- `2.3` highlight declaration names by role: function/log/type/alias/binding
-- `2.4` add highlight snapshots for declaration-heavy real fixtures
+- `2.1` complete: highlight declaration heads distinctly: `fun`, `log`, `typ`,
+  `ali`, `var`, `use`
+- `2.2` complete: highlight declaration modifiers in bracket forms like
+  `[exp]`, `[par]`, and other real surfaced markers
+- `2.3` complete: highlight declaration names by role:
+  function/log/type/alias/binding
+- `2.4` complete: add highlight snapshots for declaration-heavy real fixtures
 
 ### Phase 3: Keyword and import-kind highlighting
 
-- `3.1` highlight control/effect keywords consistently
-- `3.2` highlight import source-kind markers: `loc`, `pkg`, `std`
-- `3.3` highlight shell-related keywords/literals including `nil`
-- `3.4` lock real-fixture snapshots for keyword/import-heavy files
+- `3.1` complete: highlight control/effect keywords consistently
+- `3.2` complete: highlight import source-kind markers: `loc`, `pkg`, `std`
+- `3.3` complete: highlight shell-related keywords/literals including `nil`
+- `3.4` complete: lock real-fixture snapshots for keyword/import-heavy files
 
 ### Phase 4: Type and intrinsic highlighting
 
-- `4.1` highlight builtin types and named type references more clearly
-- `4.2` highlight typed-binding/type-annotation surfaces distinctly
-- `4.3` highlight dotted intrinsic names like `.len`, `.echo`, comparisons, and
+- `4.1` complete: highlight builtin types and named type references more clearly
+- `4.2` complete: highlight typed-binding/type-annotation surfaces distinctly
+- `4.3` complete: highlight dotted intrinsic names like `.len`, `.echo`, comparisons, and
   boolean/query intrinsics
-- `4.4` add snapshots for container/shell/intrinsic-heavy fixtures
+- `4.4` complete: add snapshots for container/shell/intrinsic-heavy fixtures
 
 ### Phase 5: Highlight command and bundle hardening
 
-- `5.1` make `fol tool highlight` output more inspection-friendly for query work
-- `5.2` ensure `fol tool tree generate` always exports the latest query set
-- `5.3` add regression coverage so generated bundles contain the current query
+- `5.1` complete: make `fol tool highlight` output more inspection-friendly for query work
+- `5.2` complete: ensure `fol tool tree generate` always exports the latest query set
+- `5.3` complete: add regression coverage so generated bundles contain the current query
   files exactly
-- `5.4` verify the generated bundle remains Neovim-consumable
+- `5.4` complete: verify the generated bundle remains Neovim-consumable
 
 ### Phase 6: Completion protocol foundation
 
-- `6.1` add `textDocument/completion` request handling to the LSP server
-- `6.2` advertise a real completion provider from `initialize`
-- `6.3` define the internal completion item model in `fol-editor`
-- `6.4` add focused stdio/request tests for completion request/response framing
+- `6.1` complete: add `textDocument/completion` request handling to the LSP server
+- `6.2` complete: advertise a real completion provider from `initialize`
+- `6.3` complete: define the internal completion item model in `fol-editor`
+- `6.4` complete: add focused stdio/request tests for completion request/response framing
 
 ### Phase 7: Scope and symbol completion
 
-- `7.1` return local binding completions
-- `7.2` return routine parameter completions
-- `7.3` return current-package top-level declaration completions
-- `7.4` return imported visible declaration completions
-- `7.5` filter duplicate/irrelevant candidates deterministically
-- `7.6` lock tests for local/imported symbol completion
+- `7.1` complete: return local binding completions
+- `7.2` complete: return routine parameter completions
+- `7.3` complete: return current-package top-level declaration completions
+- `7.4` complete: return imported visible declaration completions
+- `7.5` complete: filter duplicate/irrelevant candidates deterministically
+- `7.6` complete: lock tests for local/imported symbol completion
 
 ### Phase 8: Type-position completion
 
-- `8.1` detect ordinary declared-type completion contexts
-- `8.2` offer builtin type completions in type positions
-- `8.3` offer visible named type completions in type positions
-- `8.4` add tests for record/entry/alias/builtin type completion
+- `8.1` complete: detect ordinary declared-type completion contexts
+- `8.2` complete: offer builtin type completions in type positions
+- `8.3` complete: offer visible named type completions in type positions
+- `8.4` complete: add tests for record/entry/alias/builtin type completion
 
 ### Phase 9: Qualified and namespace completion
 
-- `9.1` detect qualified path completion contexts
-- `9.2` offer namespace/package members after qualification
-- `9.3` keep package-local and imported namespace completion separated clearly
-- `9.4` add tests for `loc` and same-package namespace completion
+- `9.1` complete: detect qualified path completion contexts
+- `9.2` complete: offer namespace/package members after qualification
+- `9.3` complete: keep package-local and imported namespace completion separated clearly
+- `9.4` complete: add tests for `loc` and same-package namespace completion
 
 ### Phase 10: Dot completion
 
-- `10.1` detect `.` completion trigger contexts
-- `10.2` map typed receiver families to supported `V1` intrinsics
-- `10.3` return conservative fallback intrinsic suggestions when typing context
-  is incomplete but still safe
-- `10.4` add tests for `.len`, `.echo`, comparison, and boolean/query completion
+- `10.1` complete: detect `.` completion trigger contexts
+- `10.2` complete: map typed receiver families to supported `V1` intrinsics
+- `10.3` complete: return conservative fallback intrinsic suggestions when typing
+  context is incomplete but still safe
+- `10.4` complete: add tests for `.len`, `.echo`, comparison, and boolean/query
+  completion
 
 ### Phase 11: Ranking, filtering, and response shaping
 
-- `11.1` choose stable completion item kinds/details for FOL symbols
-- `11.2` return deterministic ordering for repeated requests
-- `11.3` avoid noisy suggestions from unrelated packages/files
-- `11.4` add plain tests locking item labels/kinds/order
+- `11.1` complete: choose stable completion item kinds/details for FOL symbols
+- `11.2` complete: return deterministic ordering for repeated requests
+- `11.3` complete: avoid noisy suggestions from unrelated packages/files
+- `11.4` complete: add plain tests locking item labels/kinds/order
 
 ### Phase 12: Frontend and tool command coverage
 
-- `12.1` keep `fol tool lsp` compatible with the new completion capability
-- `12.2` extend frontend/editor tests if command summaries or help output shift
-- `12.3` ensure `fol tool parse/highlight/symbols` remain stable while query
-  work lands
+- `12.1` complete: keep `fol tool lsp` compatible with the new completion capability
+- `12.2` complete: extend frontend/editor tests if command summaries or help output
+  shift
+- `12.3` complete: ensure `fol tool parse/highlight/symbols` remain stable while
+  query work lands
 
 ### Phase 13: Real-editor hardening
 
@@ -407,9 +432,21 @@ This plan is only done when all of these are true:
 - `make build` passes
 - `make test` passes
 
+### Neovim Verification
+
+The acceptance pass should also verify this real editor flow:
+
+1. `fol tool tree generate /tmp/fol`
+2. Neovim Tree-sitter loads the generated parser/query bundle
+3. a real `.fol` file highlights declaration modifiers and intrinsic surfaces
+4. `fol tool lsp` attaches to the buffer
+5. source-file diagnostics appear on real source errors
+6. hover and go-to-definition still work after the completion changes land
+7. completion appears in the same buffer for locals/imports/types/dot contexts
+
 ## Progress
 
 Current milestone state:
 
-- `0 / 49` slices complete
-- `0%`
+- `49 / 49` slices complete
+- `100%`
