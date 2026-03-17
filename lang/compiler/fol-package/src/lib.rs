@@ -37,6 +37,12 @@ pub use build_api::{
     StandardTargetOption, StandardTargetRequest, StaticLibraryRequest, StepHandle, StepRequest,
     TestArtifactRequest, UserOption, UserOptionRequest,
 };
+pub use build_eval::{
+    evaluate_build_plan, AllowedBuildTimeOperation, BuildEvaluationBoundary, BuildEvaluationError,
+    BuildEvaluationErrorKind, BuildEvaluationInputs, BuildEvaluationInstallArtifactRequest,
+    BuildEvaluationOperation, BuildEvaluationOperationKind, BuildEvaluationRequest,
+    BuildEvaluationResult, BuildEvaluationRunRequest, BuildEvaluationStepRequest,
+};
 pub use build_graph::{
     BuildArtifact, BuildArtifactDependency, BuildArtifactId, BuildArtifactInput,
     BuildArtifactKind, BuildGeneratedFile, BuildGeneratedFileId, BuildGeneratedFileKind,
