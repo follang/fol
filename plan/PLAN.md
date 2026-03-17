@@ -447,7 +447,7 @@ Round 1 slice tracker:
   run, install, dependency, target, and optimize values.
 - [x] Slice 4. Add a runtime local-frame model that preserves aliasing and
   repeated handle flow through locals.
-- [ ] Slice 5. Add restricted runtime expression nodes for locals, literals,
+- [x] Slice 5. Add restricted runtime expression nodes for locals, literals,
   records, and method calls.
 - [ ] Slice 6. Add restricted runtime statement nodes for `var`, effectful
   expression statements, and returns.

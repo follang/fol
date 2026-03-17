@@ -85,11 +85,19 @@ impl BuildRuntimeFrame {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum BuildRuntimeExpr {
+    Local(BuildRuntimeLocalId),
+    Value(BuildRuntimeValue),
+    Record(Vec<(String, BuildRuntimeExpr)>),
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        BuildExecutionRepresentation, BuildRuntimeFrame, BuildRuntimeHandle,
-        BuildRuntimeHandleKind, BuildRuntimeLocalId, BuildRuntimeProgram, BuildRuntimeValue,
+        BuildExecutionRepresentation, BuildRuntimeExpr, BuildRuntimeFrame,
+        BuildRuntimeHandle, BuildRuntimeHandleKind, BuildRuntimeLocalId, BuildRuntimeProgram,
+        BuildRuntimeValue,
     };
 
     #[test]
@@ -139,6 +147,24 @@ mod tests {
         assert_eq!(frame.get(BuildRuntimeLocalId(0)), Some(&handle));
         assert_eq!(frame.get(BuildRuntimeLocalId(1)), Some(&handle));
         assert!(!frame.alias(BuildRuntimeLocalId(2), BuildRuntimeLocalId(99)));
+    }
+
+    #[test]
+    fn runtime_expressions_cover_locals_literals_and_object_style_records() {
+        let expression = BuildRuntimeExpr::Record(vec![
+            (
+                "name".to_string(),
+                BuildRuntimeExpr::Value(BuildRuntimeValue::String("demo".to_string())),
+            ),
+            ("artifact".to_string(), BuildRuntimeExpr::Local(BuildRuntimeLocalId(3))),
+        ]);
+
+        assert!(matches!(
+            expression,
+            BuildRuntimeExpr::Record(fields)
+            if fields[0].0 == "name"
+                && matches!(fields[1].1, BuildRuntimeExpr::Local(BuildRuntimeLocalId(3)))
+        ));
     }
 }
 use std::collections::BTreeMap;
