@@ -26,6 +26,12 @@ mod apps {
 
 #[cfg(test)]
 mod integration_tests {
+    use fol_editor::{
+        EditorConfig, EditorLspServer, JsonRpcId, JsonRpcNotification, JsonRpcRequest,
+        LspCompletionList, LspCompletionParams, LspDidOpenTextDocumentParams,
+        LspDocumentSymbol, LspDocumentSymbolParams, LspPosition, LspTextDocumentIdentifier,
+        LspTextDocumentItem,
+    };
     use serde_json::Value;
     use std::path::{Path, PathBuf};
     use std::process::Command;
@@ -76,6 +82,28 @@ mod integration_tests {
             .find('{')
             .expect("CLI JSON output should contain a JSON object");
         serde_json::from_str(&stdout[json_start..]).expect("CLI JSON output should stay valid")
+    }
+
+    fn open_lsp_document(server: &mut EditorLspServer, uri: String, text: &str) {
+        let diagnostics = server
+            .handle_notification(JsonRpcNotification {
+                jsonrpc: "2.0".to_string(),
+                method: "textDocument/didOpen".to_string(),
+                params: Some(
+                    serde_json::to_value(LspDidOpenTextDocumentParams {
+                        text_document: LspTextDocumentItem {
+                            uri,
+                            language_id: "fol".to_string(),
+                            version: 1,
+                            text: text.to_string(),
+                        },
+                    })
+                    .expect("LSP didOpen params should serialize"),
+                ),
+            })
+            .expect("LSP didOpen should succeed");
+
+        assert_eq!(diagnostics.len(), 1);
     }
 
     fn write_combined_lowering_repro_fixture(root: &Path) -> PathBuf {
@@ -3509,6 +3537,77 @@ mod integration_tests {
             .as_str()
             .expect("symbols summary should be a string")
             .contains("xtra/logtiny/build.fol"));
+    }
+
+    #[test]
+    fn test_lsp_covers_build_fol_symbols_and_completion() {
+        let temp_root = unique_temp_root("lsp_build_fol");
+        std::fs::create_dir_all(temp_root.join("src")).expect("should create source root");
+        std::fs::write(
+            temp_root.join("package.yaml"),
+            "name: demo\nversion: 0.1.0\n",
+        )
+        .expect("should write package metadata");
+        let build_text = concat!(
+            "def root: loc = \"src\";\n",
+            "def shared: loc = \"shared\";\n",
+            "def build(graph: int): int = {\n",
+            "    return .\n",
+            "}\n",
+        );
+        std::fs::write(temp_root.join("build.fol"), build_text).expect("should write build file");
+        let uri = format!("file://{}", temp_root.join("build.fol").display());
+
+        let mut server = EditorLspServer::new(EditorConfig::default());
+        open_lsp_document(&mut server, uri.clone(), build_text);
+
+        let symbols = server
+            .handle_request(JsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: JsonRpcId::Number(1),
+                method: "textDocument/documentSymbol".to_string(),
+                params: Some(
+                    serde_json::to_value(LspDocumentSymbolParams {
+                        text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    })
+                    .expect("documentSymbol params should serialize"),
+                ),
+            })
+            .expect("documentSymbol request should succeed")
+            .expect("documentSymbol should produce a response");
+        let symbols: Vec<LspDocumentSymbol> =
+            serde_json::from_value(symbols.result.expect("symbols should have a result"))
+                .expect("document symbols should deserialize");
+
+        assert!(symbols.is_empty());
+
+        let completion = server
+            .handle_request(JsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: JsonRpcId::Number(2),
+                method: "textDocument/completion".to_string(),
+                params: Some(
+                    serde_json::to_value(LspCompletionParams {
+                        text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                        position: LspPosition {
+                            line: 3,
+                            character: 12,
+                        },
+                        context: None,
+                    })
+                    .expect("completion params should serialize"),
+                ),
+            })
+            .expect("completion request should succeed")
+            .expect("completion should produce a response");
+        let completion: LspCompletionList =
+            serde_json::from_value(completion.result.expect("completion should have a result"))
+                .expect("completion result should deserialize");
+
+        assert!(completion.items.iter().any(|item| item.label == "len"));
+        assert!(completion.items.iter().any(|item| item.label == "echo"));
+
+        std::fs::remove_dir_all(&temp_root).ok();
     }
 
     #[test]
