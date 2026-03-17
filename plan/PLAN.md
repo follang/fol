@@ -965,6 +965,22 @@ Each slice must land green with `make build` and `make test` before commit.
 9. `[complete]` Preserve stable compatibility command summaries and artifact reporting through routed step execution.
 10. `[complete]` Reject modern-entry workspace commands with explicit unsupported-build-entry diagnostics until graph execution lands.
 
+## Round 12 Slice Tracker
+
+This round focuses on Phase 12 docs, scaffolding, editor surfaces, and sample projects.
+Each slice must land green with `make build` and `make test` before commit.
+
+1. `[complete]` Lock the twelfth implementation round around docs, scaffolding, editor build-file affordances, and examples.
+2. `[pending]` Update frontend package scaffolding so generated `build.fol` files explain the current root/export path and future build entrypoint direction.
+3. `[pending]` Add scaffold regression tests that lock the new generated `build.fol` template for bin and lib packages.
+4. `[pending]` Rewrite `README.md` build/package descriptions around `build.fol` as the documented entry file and current routed workflow status.
+5. `[pending]` Rewrite the `book` package/import/build-root sections so they teach the current `build.fol` model clearly.
+6. `[pending]` Update `book` tooling/editor sections so build-file workflows and LSP/editor entrypoints are documented together.
+7. `[pending]` Add frontend editor-command regression coverage for `build.fol` parse/highlight/symbol extraction.
+8. `[pending]` Add LSP regression coverage for `build.fol` symbol extraction and completion affordances.
+9. `[pending]` Add a checked-in `examples/` tree with simple exe, static-lib, shared-lib, generated-file, and dependency-workspace sample projects.
+10. `[pending]` Add tests that validate the checked-in examples are discoverable and their formal package `build.fol` files parse cleanly.
+
 ## Success Criteria
 
 This plan is complete when:
