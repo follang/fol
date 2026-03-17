@@ -222,23 +222,18 @@ fn plan_member_default_execution(
         fol_package::BuildStepKind::Check,
         requested_step.name().to_string(),
     );
-    let mut steps = vec![FrontendMemberPlannedStep {
-        name: requested_step.name().to_string(),
-        execution: Some(FrontendStepExecutionKind::Check),
-        selection: None,
-    }];
+    let mut artifacts = Vec::new();
+    let mut step_bindings = Vec::new();
 
     if let Some(root_module) = default_runnable_root_module(&member.member_root)? {
-        let selection = crate::compile::FrontendArtifactExecutionSelection {
-            package_root: member.member_root.clone(),
-            label: member.package_name.clone(),
-            root_module: Some(root_module.clone()),
-        };
         let build = graph.add_step(fol_package::BuildStepKind::Default, "build");
         graph.add_step_dependency(check, build);
 
-        let artifact = graph.add_artifact(fol_package::BuildArtifactKind::Executable, member.package_name.clone());
-        let module = graph.add_module(fol_package::BuildModuleKind::Source, root_module);
+        let artifact_name = member.package_name.clone();
+        let artifact =
+            graph.add_artifact(fol_package::BuildArtifactKind::Executable, artifact_name.clone());
+        let module =
+            graph.add_module(fol_package::BuildModuleKind::Source, root_module.clone());
         graph.add_artifact_module_input(artifact, module);
 
         let run = graph.add_step(fol_package::BuildStepKind::Run, "run");
@@ -267,22 +262,27 @@ fn plan_member_default_execution(
             }
         }
 
-        steps.extend([
-            FrontendMemberPlannedStep {
-                name: "build".to_string(),
-                execution: Some(FrontendStepExecutionKind::Build),
-                selection: Some(selection.clone()),
-            },
-            FrontendMemberPlannedStep {
-                name: "run".to_string(),
-                execution: Some(FrontendStepExecutionKind::Run),
-                selection: Some(selection.clone()),
-            },
-            FrontendMemberPlannedStep {
-                name: "test".to_string(),
-                execution: Some(FrontendStepExecutionKind::Test),
-                selection: Some(selection),
-            },
+        artifacts.push(fol_package::build_runtime::BuildRuntimeArtifact::new(
+            artifact_name.clone(),
+            fol_package::build_runtime::BuildRuntimeArtifactKind::Executable,
+            root_module,
+        ));
+        step_bindings.extend([
+            fol_package::build_runtime::BuildRuntimeStepBinding::new(
+                "build",
+                fol_package::build_runtime::BuildRuntimeStepBindingKind::DefaultBuild,
+                Some(artifact_name.clone()),
+            ),
+            fol_package::build_runtime::BuildRuntimeStepBinding::new(
+                "run",
+                fol_package::build_runtime::BuildRuntimeStepBindingKind::DefaultRun,
+                Some(artifact_name.clone()),
+            ),
+            fol_package::build_runtime::BuildRuntimeStepBinding::new(
+                "test",
+                fol_package::build_runtime::BuildRuntimeStepBindingKind::DefaultTest,
+                Some(artifact_name),
+            ),
         ]);
     } else {
         let order = fol_package::plan_step_order(&graph, check).map_err(|error| {
@@ -305,7 +305,26 @@ fn plan_member_default_execution(
         }
     }
 
-    Ok(FrontendMemberExecutionPlan { steps })
+    plan_member_execution_from_graph(
+        member,
+        &graph,
+        &fol_package::build_eval::EvaluatedBuildProgram {
+            program: fol_package::BuildRuntimeProgram::new(
+                fol_package::BuildExecutionRepresentation::RestrictedRuntimeIr,
+            ),
+            artifacts,
+            step_bindings,
+            result: fol_package::BuildEvaluationResult::new(
+                fol_package::BuildEvaluationBoundary::GraphConstructionSubset,
+                fol_package::canonical_graph_construction_capabilities(),
+                member.member_root.display().to_string(),
+                fol_package::BuildOptionDeclarationSet::new(),
+                fol_package::ResolvedBuildOptionSet::new(),
+                graph.clone(),
+            ),
+        },
+        false,
+    )
 }
 
 fn plan_member_execution_from_build_source(
@@ -731,6 +750,25 @@ mod tests {
 
         assert!(plan.steps.iter().any(|step| step.name == "build"));
         assert!(plan.steps.iter().any(|step| step.name == "check"));
+    }
+
+    #[test]
+    fn default_member_planning_uses_graph_projected_build_run_test_and_check_steps() {
+        let workspace = compatibility_workspace_fixture("compat_graph_plan");
+
+        let plan = plan_member_execution(&FrontendMemberBuildRoute {
+            member_root: workspace.members[0].root.clone(),
+            package_name: "app".to_string(),
+            mode: FrontendBuildWorkflowMode::Compatibility,
+        })
+        .expect("default member planning should succeed");
+
+        assert!(plan.steps.iter().any(|step| step.name == "build"));
+        assert!(plan.steps.iter().any(|step| step.name == "run"));
+        assert!(plan.steps.iter().any(|step| step.name == "test"));
+        assert!(plan.steps.iter().any(|step| step.name == "check"));
+
+        fs::remove_dir_all(&workspace.root.root).ok();
     }
 
     #[test]

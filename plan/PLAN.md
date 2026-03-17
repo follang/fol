@@ -535,7 +535,7 @@ Round 1 slice tracker:
   frontend command routing.
 - [x] Slice 2. Add a shared frontend route helper that projects graph steps into
   member execution plans.
-- [ ] Slice 3. Switch default compatibility/no-build planning onto graph step
+- [x] Slice 3. Switch default compatibility/no-build planning onto graph step
   projection instead of hand-built step lists.
 - [ ] Slice 4. Make workspace command-to-step mapping explicit through one
   frontend helper used by dispatch.
