@@ -474,7 +474,7 @@ Round 1 slice tracker:
 
 - [ ] Slice 1. Add a concrete Phase 6 implementation tracker for removing the
   textual build-body extractor path.
-- [ ] Slice 2. Add semantic runtime artifact metadata for executable, test, and
+- [x] Slice 2. Add semantic runtime artifact metadata for executable, test, and
   library outputs produced by evaluated build programs.
 - [ ] Slice 3. Add semantic runtime step-binding metadata for default and named
   steps that target evaluated artifacts.

@@ -21,6 +21,35 @@ impl BuildRuntimeProgram {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BuildRuntimeArtifactKind {
+    Executable,
+    StaticLibrary,
+    SharedLibrary,
+    Test,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BuildRuntimeArtifact {
+    pub name: String,
+    pub kind: BuildRuntimeArtifactKind,
+    pub root_module: String,
+}
+
+impl BuildRuntimeArtifact {
+    pub fn new(
+        name: impl Into<String>,
+        kind: BuildRuntimeArtifactKind,
+        root_module: impl Into<String>,
+    ) -> Self {
+        Self {
+            name: name.into(),
+            kind,
+            root_module: root_module.into(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BuildRuntimeHandleKind {
     Graph,
     Artifact,
@@ -186,10 +215,11 @@ pub enum BuildRuntimeStmt {
 #[cfg(test)]
 mod tests {
     use super::{
-        BuildExecutionRepresentation, BuildRuntimeExpr, BuildRuntimeFrame, BuildRuntimeHandle,
-        BuildRuntimeHandleKind, BuildRuntimeLocalId, BuildRuntimeMethodCall, BuildRuntimeProgram,
-        BuildRuntimeDiagnostic, BuildRuntimeDiagnosticKind, BuildRuntimeReceiverKind,
-        BuildRuntimeRecordField, BuildRuntimeStmt, BuildRuntimeValue, find_record_field,
+        BuildExecutionRepresentation, BuildRuntimeArtifact, BuildRuntimeArtifactKind,
+        BuildRuntimeDiagnostic, BuildRuntimeDiagnosticKind, BuildRuntimeExpr, BuildRuntimeFrame,
+        BuildRuntimeHandle, BuildRuntimeHandleKind, BuildRuntimeLocalId, BuildRuntimeMethodCall,
+        BuildRuntimeProgram, BuildRuntimeReceiverKind, BuildRuntimeRecordField,
+        BuildRuntimeStmt, BuildRuntimeValue, find_record_field,
     };
 
     #[test]
@@ -200,6 +230,25 @@ mod tests {
             program.representation(),
             BuildExecutionRepresentation::RestrictedRuntimeIr
         );
+    }
+
+    #[test]
+    fn runtime_artifacts_cover_executable_test_and_library_outputs() {
+        let exe = BuildRuntimeArtifact::new(
+            "app",
+            BuildRuntimeArtifactKind::Executable,
+            "src/app.fol",
+        );
+        let test = BuildRuntimeArtifact::new(
+            "app_test",
+            BuildRuntimeArtifactKind::Test,
+            "test/app.fol",
+        );
+
+        assert_eq!(exe.kind, BuildRuntimeArtifactKind::Executable);
+        assert_eq!(exe.root_module, "src/app.fol");
+        assert_eq!(test.kind, BuildRuntimeArtifactKind::Test);
+        assert_eq!(test.name, "app_test");
     }
 
     #[test]
