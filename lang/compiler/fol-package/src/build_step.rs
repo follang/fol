@@ -80,6 +80,28 @@ pub struct BuildStepCacheKey {
     pub fingerprint: String,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BuildStepEventKind {
+    Requested,
+    Executed,
+    Skipped,
+    ProducedOutput,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BuildStepEvent {
+    pub step_name: String,
+    pub kind: BuildStepEventKind,
+    pub detail: String,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct BuildStepReport {
+    pub requested_step: String,
+    pub events: Vec<BuildStepEvent>,
+    pub produced_outputs: Vec<String>,
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct BuildStepExecutionRequest {
     pub requested_step: String,
@@ -151,8 +173,8 @@ fn visit_step_order(
 mod tests {
     use super::{
         plan_step_order, BuildDefaultStepKind, BuildRequestedStep, BuildStepDefinition,
-        BuildStepCacheBoundary, BuildStepCacheKey, BuildStepExecutionRequest,
-        BuildStepExecutionResult, BuildStepPlanError,
+        BuildStepCacheBoundary, BuildStepCacheKey, BuildStepEvent, BuildStepEventKind,
+        BuildStepExecutionRequest, BuildStepExecutionResult, BuildStepPlanError, BuildStepReport,
     };
     use crate::build_graph::{BuildGraph, BuildStepId, BuildStepKind};
 
@@ -221,6 +243,31 @@ mod tests {
         assert_eq!(key.boundaries.len(), 3);
         assert_eq!(key.boundaries[2], BuildStepCacheBoundary::Options);
         assert_eq!(key.fingerprint, "sha256:abc123");
+    }
+
+    #[test]
+    fn build_step_reports_keep_execution_events_and_outputs() {
+        let report = BuildStepReport {
+            requested_step: "build".to_string(),
+            events: vec![
+                BuildStepEvent {
+                    step_name: "build".to_string(),
+                    kind: BuildStepEventKind::Requested,
+                    detail: "requested by cli".to_string(),
+                },
+                BuildStepEvent {
+                    step_name: "build".to_string(),
+                    kind: BuildStepEventKind::ProducedOutput,
+                    detail: "zig-out/bin/app".to_string(),
+                },
+            ],
+            produced_outputs: vec!["zig-out/bin/app".to_string()],
+        };
+
+        assert_eq!(report.requested_step, "build");
+        assert_eq!(report.events.len(), 2);
+        assert_eq!(report.events[0].kind, BuildStepEventKind::Requested);
+        assert_eq!(report.produced_outputs, vec!["zig-out/bin/app".to_string()]);
     }
 
     #[test]
