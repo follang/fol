@@ -155,6 +155,40 @@ impl BuildEvaluationError {
     }
 }
 
+pub fn forbidden_capability_message(operation: ForbiddenBuildTimeOperation) -> &'static str {
+    match operation {
+        ForbiddenBuildTimeOperation::ArbitraryFilesystemRead => {
+            "build evaluation forbids arbitrary filesystem reads"
+        }
+        ForbiddenBuildTimeOperation::ArbitraryFilesystemWrite => {
+            "build evaluation forbids arbitrary filesystem writes"
+        }
+        ForbiddenBuildTimeOperation::ArbitraryNetworkAccess => {
+            "build evaluation forbids arbitrary network access"
+        }
+        ForbiddenBuildTimeOperation::WallClockAccess => {
+            "build evaluation forbids wall-clock access"
+        }
+        ForbiddenBuildTimeOperation::AmbientEnvironmentAccess => {
+            "build evaluation forbids ambient environment access outside declared inputs"
+        }
+        ForbiddenBuildTimeOperation::UncontrolledProcessExecution => {
+            "build evaluation forbids uncontrolled process execution"
+        }
+    }
+}
+
+pub fn forbidden_capability_error(
+    operation: ForbiddenBuildTimeOperation,
+    origin: Option<SyntaxOrigin>,
+) -> BuildEvaluationError {
+    evaluation_error(
+        BuildEvaluationErrorKind::Unsupported,
+        forbidden_capability_message(operation),
+        origin,
+    )
+}
+
 impl std::fmt::Display for BuildEvaluationError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "BuildEvaluation{:?}: {}", self.kind, self.message)
@@ -1226,9 +1260,10 @@ fn evaluation_error(
 mod tests {
     use super::{
         canonical_graph_construction_capabilities, evaluate_build_plan, evaluate_build_source,
-        AllowedBuildTimeOperation, BuildEvaluationBoundary, BuildEvaluationError,
-        BuildEnvironmentSelectionPolicy, BuildEvaluationErrorKind, BuildEvaluationInputEnvelope,
-        BuildEvaluationInputs, BuildRuntimeCapabilityModel, ForbiddenBuildTimeOperation,
+        forbidden_capability_error, forbidden_capability_message, AllowedBuildTimeOperation,
+        BuildEvaluationBoundary, BuildEvaluationError, BuildEnvironmentSelectionPolicy,
+        BuildEvaluationErrorKind, BuildEvaluationInputEnvelope, BuildEvaluationInputs,
+        BuildRuntimeCapabilityModel, ForbiddenBuildTimeOperation,
         BuildEvaluationInstallArtifactRequest, BuildEvaluationOperation,
         BuildEvaluationOperationKind, BuildEvaluationRequest, BuildEvaluationResult,
         BuildEvaluationRunRequest, BuildEvaluationStepRequest,
@@ -1539,6 +1574,37 @@ mod tests {
             envelope.determinism_key(),
             "cwd=/pkg;target=x86_64-linux-gnu;optimize=release-safe;options=[strip=true];declared_env=[CC];env=[CC=clang]"
         );
+    }
+
+    #[test]
+    fn forbidden_capability_messages_are_specific_to_the_runtime_surface() {
+        assert!(forbidden_capability_message(
+            ForbiddenBuildTimeOperation::ArbitraryFilesystemRead
+        )
+        .contains("filesystem reads"));
+        assert!(forbidden_capability_message(
+            ForbiddenBuildTimeOperation::AmbientEnvironmentAccess
+        )
+        .contains("declared inputs"));
+    }
+
+    #[test]
+    fn forbidden_capability_errors_lower_to_unsupported_diagnostics() {
+        let error = forbidden_capability_error(
+            ForbiddenBuildTimeOperation::ArbitraryNetworkAccess,
+            Some(SyntaxOrigin {
+                file: Some("build.fol".to_string()),
+                line: 4,
+                column: 2,
+                length: 5,
+            }),
+        );
+        let diagnostic = error.to_diagnostic();
+
+        assert_eq!(error.kind(), BuildEvaluationErrorKind::Unsupported);
+        assert!(error.message().contains("network access"));
+        assert_eq!(diagnostic.code, DiagnosticCode::new("K1102"));
+        assert_eq!(diagnostic.primary_labels.len(), 1);
     }
 
     #[test]
