@@ -818,7 +818,7 @@ Each slice must land green with `make build` and `make test` before commit.
 6. `[complete]` Add artifact-input edges for module and generated-file dependencies.
 7. `[complete]` Add graph validation error types and empty-graph validation entrypoints.
 8. `[complete]` Validate step dependency cycles with source-local regression tests.
-9. `[pending]` Validate artifact input references and install-target shape constraints.
+9. `[complete]` Validate artifact input references and install-target shape constraints.
 10. `[pending]` Re-export the build-graph IR from `fol-package`'s public API.
 
 ## Success Criteria

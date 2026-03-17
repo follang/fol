@@ -116,6 +116,7 @@ pub struct BuildInstall {
     pub id: BuildInstallId,
     pub kind: BuildInstallKind,
     pub name: String,
+    pub target: Option<BuildInstallTarget>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -134,6 +135,13 @@ pub enum BuildArtifactInput {
 pub struct BuildArtifactDependency {
     pub artifact: BuildArtifactId,
     pub input: BuildArtifactInput,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum BuildInstallTarget {
+    Artifact(BuildArtifactId),
+    GeneratedFile(BuildGeneratedFileId),
+    DirectoryPath(String),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -261,11 +269,21 @@ impl BuildGraph {
         kind: BuildInstallKind,
         name: impl Into<String>,
     ) -> BuildInstallId {
+        self.add_install_with_target(kind, name, None)
+    }
+
+    pub fn add_install_with_target(
+        &mut self,
+        kind: BuildInstallKind,
+        name: impl Into<String>,
+        target: Option<BuildInstallTarget>,
+    ) -> BuildInstallId {
         let id = BuildInstallId::from_index(self.installs.len());
         self.installs.push(BuildInstall {
             id,
             kind,
             name: name.into(),
+            target,
         });
         id
     }
@@ -327,9 +345,96 @@ impl BuildGraph {
         }
     }
 
-    fn validate_artifact_inputs(&self, _errors: &mut Vec<BuildGraphValidationError>) {}
+    fn validate_artifact_inputs(&self, errors: &mut Vec<BuildGraphValidationError>) {
+        for edge in &self.artifact_dependencies {
+            if edge.artifact.index() >= self.artifacts.len() {
+                errors.push(BuildGraphValidationError {
+                    kind: BuildGraphValidationErrorKind::MissingArtifactInput,
+                    message: format!(
+                        "artifact input edge references unknown artifact {}",
+                        edge.artifact
+                    ),
+                });
+                continue;
+            }
 
-    fn validate_installs(&self, _errors: &mut Vec<BuildGraphValidationError>) {}
+            match edge.input {
+                BuildArtifactInput::Module(module) if module.index() >= self.modules.len() => {
+                    errors.push(BuildGraphValidationError {
+                        kind: BuildGraphValidationErrorKind::MissingArtifactInput,
+                        message: format!(
+                            "artifact input edge references unknown module {} for {}",
+                            module, edge.artifact
+                        ),
+                    });
+                }
+                BuildArtifactInput::GeneratedFile(generated)
+                    if generated.index() >= self.generated_files.len() =>
+                {
+                    errors.push(BuildGraphValidationError {
+                        kind: BuildGraphValidationErrorKind::MissingArtifactInput,
+                        message: format!(
+                            "artifact input edge references unknown generated file {} for {}",
+                            generated, edge.artifact
+                        ),
+                    });
+                }
+                _ => {}
+            }
+        }
+    }
+
+    fn validate_installs(&self, errors: &mut Vec<BuildGraphValidationError>) {
+        for install in &self.installs {
+            match (&install.kind, install.target.as_ref()) {
+                (BuildInstallKind::Artifact, Some(BuildInstallTarget::Artifact(artifact))) => {
+                    if artifact.index() >= self.artifacts.len() {
+                        errors.push(BuildGraphValidationError {
+                            kind: BuildGraphValidationErrorKind::InvalidInstallTarget,
+                            message: format!(
+                                "install {} references unknown artifact {}",
+                                install.id, artifact
+                            ),
+                        });
+                    }
+                }
+                (BuildInstallKind::File, Some(BuildInstallTarget::GeneratedFile(generated))) => {
+                    if generated.index() >= self.generated_files.len() {
+                        errors.push(BuildGraphValidationError {
+                            kind: BuildGraphValidationErrorKind::InvalidInstallTarget,
+                            message: format!(
+                                "install {} references unknown generated file {}",
+                                install.id, generated
+                            ),
+                        });
+                    }
+                }
+                (BuildInstallKind::Directory, Some(BuildInstallTarget::DirectoryPath(path))) => {
+                    if path.is_empty() {
+                        errors.push(BuildGraphValidationError {
+                            kind: BuildGraphValidationErrorKind::InvalidInstallTarget,
+                            message: format!("install {} directory target must not be empty", install.id),
+                        });
+                    }
+                }
+                (_, None) => {
+                    errors.push(BuildGraphValidationError {
+                        kind: BuildGraphValidationErrorKind::InvalidInstallTarget,
+                        message: format!("install {} is missing a target", install.id),
+                    });
+                }
+                _ => {
+                    errors.push(BuildGraphValidationError {
+                        kind: BuildGraphValidationErrorKind::InvalidInstallTarget,
+                        message: format!(
+                            "install {} target shape does not match {:?}",
+                            install.id, install.kind
+                        ),
+                    });
+                }
+            }
+        }
+    }
 
     fn visit_step_dependencies(
         &self,
@@ -373,9 +478,9 @@ mod tests {
     use super::{
         BuildArtifactDependency, BuildArtifactId, BuildArtifactInput, BuildArtifactKind,
         BuildGeneratedFileId, BuildGeneratedFileKind, BuildGraph, BuildGraphValidationError,
-        BuildGraphValidationErrorKind, BuildInstallId, BuildInstallKind, BuildModuleId,
-        BuildModuleKind, BuildOptionId, BuildOptionKind, BuildStepDependency, BuildStepId,
-        BuildStepKind,
+        BuildGraphValidationErrorKind, BuildInstallId, BuildInstallKind, BuildInstallTarget,
+        BuildModuleId, BuildModuleKind, BuildOptionId, BuildOptionKind, BuildStepDependency,
+        BuildStepId, BuildStepKind,
     };
 
     #[test]
@@ -449,6 +554,7 @@ mod tests {
         );
         assert_eq!(graph.options()[0].kind, BuildOptionKind::Bool);
         assert_eq!(graph.installs()[0].kind, BuildInstallKind::Directory);
+        assert_eq!(graph.installs()[0].target, None);
     }
 
     #[test]
@@ -594,5 +700,44 @@ mod tests {
         assert!(errors[0].message.contains("step:0"));
         assert!(errors[0].message.contains("step:1"));
         assert!(errors[0].message.contains("step:2"));
+    }
+
+    #[test]
+    fn build_graph_validation_rejects_unknown_artifact_inputs() {
+        let mut graph = BuildGraph::new();
+        let artifact = graph.add_artifact(BuildArtifactKind::Executable, "app");
+
+        graph.add_artifact_module_input(artifact, BuildModuleId(99));
+        graph.add_artifact_generated_file_input(artifact, BuildGeneratedFileId(77));
+
+        let errors = graph.validate();
+
+        assert_eq!(errors.len(), 2);
+        assert!(errors
+            .iter()
+            .all(|error| error.kind == BuildGraphValidationErrorKind::MissingArtifactInput));
+    }
+
+    #[test]
+    fn build_graph_validation_rejects_invalid_install_targets() {
+        let mut graph = BuildGraph::new();
+        graph.add_install(BuildInstallKind::Artifact, "install-missing");
+        graph.add_install_with_target(
+            BuildInstallKind::Artifact,
+            "install-wrong-shape",
+            Some(BuildInstallTarget::DirectoryPath("bin".to_string())),
+        );
+        graph.add_install_with_target(
+            BuildInstallKind::File,
+            "install-unknown-generated",
+            Some(BuildInstallTarget::GeneratedFile(BuildGeneratedFileId(44))),
+        );
+
+        let errors = graph.validate();
+
+        assert_eq!(errors.len(), 3);
+        assert!(errors
+            .iter()
+            .all(|error| error.kind == BuildGraphValidationErrorKind::InvalidInstallTarget));
     }
 }
