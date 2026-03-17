@@ -17,6 +17,7 @@ pub mod build_codegen;
 pub mod build_dependency;
 pub mod build_eval;
 pub mod build_graph;
+pub mod build_native;
 pub mod build_option;
 pub mod build_step;
 pub mod errors;
