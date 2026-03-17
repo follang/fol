@@ -13,6 +13,7 @@ members = [
     "lang/execution/fol-runtime",
     "lang/execution/fol-backend",
     "lang/tooling/fol-frontend",
+    "lang/tooling/fol-editor",
 ]
 
 [package]
@@ -37,6 +38,7 @@ fol-typecheck = { path = "lang/compiler/fol-typecheck" }
 fol-lower = { path = "lang/compiler/fol-lower" }
 fol-intrinsics = { path = "lang/compiler/fol-intrinsics" }
 fol-frontend = { path = "lang/tooling/fol-frontend" }
+fol-editor = { path = "lang/tooling/fol-editor" }
 fol-backend = { path = "lang/execution/fol-backend" }
 regex = "1"
 colored = "1"

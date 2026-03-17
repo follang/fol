@@ -1,0 +1,11 @@
+[package]
+name = "fol-editor"
+version = "0.1.0"
+edition = "2021"
+description = "Editor tooling crate for the FOL language"
+
+[lib]
+name = "fol_editor"
+path = "src/lib.rs"
+
+[dependencies]
