@@ -3679,6 +3679,29 @@ mod integration_tests {
     }
 
     #[test]
+    fn test_examples_formal_packages_keep_build_source_units_in_syntax() {
+        for root in example_package_roots() {
+            let display_name = root
+                .file_name()
+                .and_then(|name| name.to_str())
+                .expect("example package name should be utf-8");
+            let syntax = parse_directory_package_syntax(&root, display_name, PackageSourceKind::Package)
+                .expect("formal example package syntax should parse");
+
+            assert_eq!(
+                syntax
+                    .source_units
+                    .iter()
+                    .filter(|unit| unit.kind == fol_parser::ast::ParsedSourceUnitKind::Build)
+                    .count(),
+                1,
+                "expected exactly one build source unit in {}",
+                root.display()
+            );
+        }
+    }
+
+    #[test]
     #[ignore = "requires network access to github.com"]
     fn test_frontend_fetches_public_logtiny_from_github() {
         let temp_root = unique_temp_root("frontend_fetch_public_logtiny");

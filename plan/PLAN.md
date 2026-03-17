@@ -285,7 +285,7 @@ Round 1 slice tracker:
   source units.
 - [x] Slice 8. Keep lowering/runtime entry discovery from treating build units
   as ordinary runtime source units.
-- [ ] Slice 9. Add package/resolver/typechecker coverage for build source-unit
+- [x] Slice 9. Add package/resolver/typechecker coverage for build source-unit
   visibility rules in Phase 2.
 - [ ] Slice 10. Re-export and test the full Phase 2 build source-unit pipeline
   surface.
