@@ -169,6 +169,29 @@ pub struct RunHandle {
     pub artifact_id: crate::build_graph::BuildArtifactId,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct InstallArtifactRequest {
+    pub name: String,
+    pub artifact: BuildArtifactHandle,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct InstallFileRequest {
+    pub name: String,
+    pub path: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct InstallDirRequest {
+    pub name: String,
+    pub path: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct InstallHandle {
+    pub install_id: crate::build_graph::BuildInstallId,
+}
+
 pub fn validate_build_name(name: &str) -> Result<(), BuildApiNameError> {
     if name.is_empty() {
         return Err(BuildApiNameError::Empty);
@@ -322,18 +345,62 @@ impl<'a> BuildApi<'a> {
             artifact_id: request.artifact.artifact_id,
         })
     }
+
+    pub fn install(
+        &mut self,
+        request: InstallArtifactRequest,
+    ) -> Result<InstallHandle, BuildApiError> {
+        validate_build_name(&request.name).map_err(BuildApiError::InvalidName)?;
+        let install_id = self.graph.add_install_with_target(
+            crate::build_graph::BuildInstallKind::Artifact,
+            request.name,
+            Some(crate::build_graph::BuildInstallTarget::Artifact(
+                request.artifact.artifact_id,
+            )),
+        );
+        Ok(InstallHandle { install_id })
+    }
+
+    pub fn install_file(&mut self, request: InstallFileRequest) -> Result<InstallHandle, BuildApiError> {
+        validate_build_name(&request.name).map_err(BuildApiError::InvalidName)?;
+        let generated = self.graph.add_generated_file(
+            crate::build_graph::BuildGeneratedFileKind::Copy,
+            request.path,
+        );
+        let install_id = self.graph.add_install_with_target(
+            crate::build_graph::BuildInstallKind::File,
+            request.name,
+            Some(crate::build_graph::BuildInstallTarget::GeneratedFile(generated)),
+        );
+        Ok(InstallHandle { install_id })
+    }
+
+    pub fn install_dir(&mut self, request: InstallDirRequest) -> Result<InstallHandle, BuildApiError> {
+        validate_build_name(&request.name).map_err(BuildApiError::InvalidName)?;
+        let install_id = self.graph.add_install_with_target(
+            crate::build_graph::BuildInstallKind::Directory,
+            request.name,
+            Some(crate::build_graph::BuildInstallTarget::DirectoryPath(
+                request.path,
+            )),
+        );
+        Ok(InstallHandle { install_id })
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::{
         validate_build_name, BuildApi, BuildApiError, BuildApiNameError, BuildOptionValue,
-        ExecutableRequest, RunRequest, SharedLibraryRequest, StandardOptimizeRequest,
-        StandardTargetRequest, StaticLibraryRequest, StepRequest, TestArtifactRequest,
-        UserOptionRequest,
+        ExecutableRequest, InstallArtifactRequest, InstallDirRequest, InstallFileRequest,
+        RunRequest, SharedLibraryRequest, StandardOptimizeRequest, StandardTargetRequest,
+        StaticLibraryRequest, StepRequest, TestArtifactRequest, UserOptionRequest,
     };
     use crate::build_graph::BuildGraph;
-    use crate::build_graph::{BuildArtifactInput, BuildArtifactKind, BuildOptionKind, BuildStepKind};
+    use crate::build_graph::{
+        BuildArtifactInput, BuildArtifactKind, BuildInstallKind, BuildInstallTarget,
+        BuildOptionKind, BuildStepKind,
+    };
 
     #[test]
     fn build_api_wraps_a_graph_reference() {
@@ -579,6 +646,52 @@ mod tests {
         assert_eq!(
             api.graph().step_dependencies_for(run.step_id).collect::<Vec<_>>(),
             vec![build.step_id]
+        );
+    }
+
+    #[test]
+    fn build_api_install_methods_record_install_targets_in_the_graph() {
+        let mut graph = BuildGraph::new();
+        let mut api = BuildApi::new(&mut graph);
+        let exe = api
+            .add_exe(ExecutableRequest {
+                name: "app".to_string(),
+                root_module: "src/app.fol".to_string(),
+            })
+            .expect("valid executable request should succeed");
+
+        let artifact_install = api
+            .install(InstallArtifactRequest {
+                name: "install-app".to_string(),
+                artifact: exe.clone(),
+            })
+            .expect("valid artifact install should succeed");
+        let file_install = api
+            .install_file(InstallFileRequest {
+                name: "install-config".to_string(),
+                path: "share/config.json".to_string(),
+            })
+            .expect("valid file install should succeed");
+        let dir_install = api
+            .install_dir(InstallDirRequest {
+                name: "install-assets".to_string(),
+                path: "share/assets".to_string(),
+            })
+            .expect("valid directory install should succeed");
+
+        assert_eq!(api.graph().installs()[0].id, artifact_install.install_id);
+        assert_eq!(api.graph().installs()[0].kind, BuildInstallKind::Artifact);
+        assert_eq!(
+            api.graph().installs()[0].target,
+            Some(BuildInstallTarget::Artifact(exe.artifact_id))
+        );
+        assert_eq!(api.graph().installs()[1].id, file_install.install_id);
+        assert_eq!(api.graph().installs()[1].kind, BuildInstallKind::File);
+        assert_eq!(api.graph().installs()[2].id, dir_install.install_id);
+        assert_eq!(api.graph().installs()[2].kind, BuildInstallKind::Directory);
+        assert_eq!(
+            api.graph().installs()[2].target,
+            Some(BuildInstallTarget::DirectoryPath("share/assets".to_string()))
         );
     }
 }
