@@ -38,6 +38,12 @@ pub use build_api::{
     StandardTargetOption, StandardTargetRequest, StaticLibraryRequest, StepHandle, StepRequest,
     TestArtifactRequest, UserOption, UserOptionRequest,
 };
+pub use build_artifact::{
+    project_graph_artifacts, BuildArtifactDefinition, BuildArtifactLinkage,
+    BuildArtifactModelKind, BuildArtifactModuleConfig, BuildArtifactOutput,
+    BuildArtifactPipelinePlan, BuildArtifactPipelineStage, BuildArtifactReport,
+    BuildArtifactRootSource, BuildArtifactSet, BuildArtifactTargetConfig,
+};
 pub use build_eval::{
     evaluate_build_plan, AllowedBuildTimeOperation, BuildEvaluationBoundary, BuildEvaluationError,
     BuildEvaluationErrorKind, BuildEvaluationInputs, BuildEvaluationInstallArtifactRequest,
