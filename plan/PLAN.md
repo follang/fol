@@ -972,7 +972,7 @@ Each slice must land green with `make build` and `make test` before commit.
 
 1. `[complete]` Lock the twelfth implementation round around docs, scaffolding, editor build-file affordances, and examples.
 2. `[complete]` Update frontend package scaffolding so generated `build.fol` files explain the current root/export path and future build entrypoint direction.
-3. `[pending]` Add scaffold regression tests that lock the new generated `build.fol` template for bin and lib packages.
+3. `[complete]` Add scaffold regression tests that lock the new generated `build.fol` template for bin and lib packages.
 4. `[pending]` Rewrite `README.md` build/package descriptions around `build.fol` as the documented entry file and current routed workflow status.
 5. `[pending]` Rewrite the `book` package/import/build-root sections so they teach the current `build.fol` model clearly.
 6. `[pending]` Update `book` tooling/editor sections so build-file workflows and LSP/editor entrypoints are documented together.

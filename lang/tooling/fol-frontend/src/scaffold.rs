@@ -229,6 +229,52 @@ mod tests {
     }
 
     #[test]
+    fn bin_target_scaffolding_locks_documented_build_file_template() {
+        let root =
+            std::env::temp_dir().join(format!("fol_frontend_bin_build_template_{}", std::process::id()));
+        fs::create_dir_all(&root).unwrap();
+
+        init_package_root(&root, PackageTargetKind::Bin).unwrap();
+
+        assert_eq!(
+            fs::read_to_string(root.join("build.fol")).unwrap(),
+            concat!(
+                "// build.fol is the package build entry file.\n",
+                "// Today the frontend reads compatibility definitions here.\n",
+                "def root: loc = \"src\"\n",
+                "\n",
+                "// Future graph-backed builds will add a canonical build entry here.\n",
+                "// def build(graph: int): int = graph;\n",
+            )
+        );
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn lib_target_scaffolding_locks_documented_build_file_template() {
+        let root =
+            std::env::temp_dir().join(format!("fol_frontend_lib_build_template_{}", std::process::id()));
+        fs::create_dir_all(&root).unwrap();
+
+        init_package_root(&root, PackageTargetKind::Lib).unwrap();
+
+        assert_eq!(
+            fs::read_to_string(root.join("build.fol")).unwrap(),
+            concat!(
+                "// build.fol is the package build entry file.\n",
+                "// Today the frontend reads compatibility definitions here.\n",
+                "def root: loc = \"src\"\n",
+                "\n",
+                "// Library packages can later expose build steps from this file.\n",
+                "// def build(graph: int): int = graph;\n",
+            )
+        );
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
     fn workspace_init_creates_workspace_root_file() {
         let root = std::env::temp_dir().join(format!("fol_frontend_init_ws_{}", std::process::id()));
         fs::create_dir_all(&root).unwrap();
