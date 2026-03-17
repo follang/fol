@@ -1,4 +1,7 @@
-use crate::{parse_package_locator, PackageError, PackageErrorKind, PackageLocator};
+use crate::{
+    build_entry::BuildEntrySignatureExpectation, parse_package_locator, PackageError,
+    PackageErrorKind, PackageLocator,
+};
 use fol_lexer::lexer::stage3::Elements;
 use fol_parser::ast::{
     AstNode, AstParser, FolType, Literal, ParsedPackage, SyntaxIndex, SyntaxNodeId, SyntaxOrigin,
@@ -103,6 +106,21 @@ impl PackageBuildDefinition {
             (false, true) => PackageBuildMode::ModernOnly,
             (true, true) => PackageBuildMode::Hybrid,
         }
+    }
+}
+
+pub fn classify_semantic_build_mode(
+    parsed: &ParsedPackage,
+    has_compatibility_controls: bool,
+) -> PackageBuildMode {
+    let has_semantic_entry =
+        crate::build_entry::validate_parsed_build_entry(parsed, &BuildEntrySignatureExpectation::canonical())
+            .is_ok();
+    match (has_compatibility_controls, has_semantic_entry) {
+        (false, false) => PackageBuildMode::Empty,
+        (true, false) => PackageBuildMode::CompatibilityOnly,
+        (false, true) => PackageBuildMode::ModernOnly,
+        (true, true) => PackageBuildMode::Hybrid,
     }
 }
 
@@ -477,10 +495,11 @@ fn build_item_error(
 #[cfg(test)]
 mod tests {
     use super::{
-        extract_package_build_definition, extract_package_build_definition_from_source_fallback,
-        parse_package_build, BuildDependency, BuildExport, PackageBuildCompatibility,
-        PackageBuildDefinition, PackageBuildEntryPoint, PackageBuildEntryPointKind,
-        PackageBuildMode, PackageNativeArtifact, PackageNativeArtifactKind,
+        classify_semantic_build_mode, extract_package_build_definition,
+        extract_package_build_definition_from_source_fallback, parse_package_build, BuildDependency,
+        BuildExport, PackageBuildCompatibility, PackageBuildDefinition, PackageBuildEntryPoint,
+        PackageBuildEntryPointKind, PackageBuildMode, PackageNativeArtifact,
+        PackageNativeArtifactKind,
     };
     use crate::{PackageErrorKind, PackageLocator};
     use fol_parser::ast::AstParser;
@@ -876,6 +895,34 @@ mod tests {
         );
         assert!(!build.has_compatibility_controls());
         assert_eq!(build.mode(), PackageBuildMode::ModernOnly);
+
+        fs::remove_dir_all(&temp_root)
+            .expect("Temporary build fixture root should be removable after the test");
+    }
+
+    #[test]
+    fn semantic_build_mode_classification_prefers_validated_build_entries() {
+        let temp_root = unique_temp_root("semantic_build_mode");
+        fs::create_dir_all(&temp_root).expect("Should create temporary build fixture root");
+        let build_path = temp_root.join("build.fol");
+        fs::write(
+            &build_path,
+            "def root: loc = \"src\";\ndef build(graph: Graph): Graph = graph;\n",
+        )
+        .expect("Should write the semantic build-mode fixture");
+        let mut stream = FileStream::from_file(
+            build_path
+                .to_str()
+                .expect("Temporary build fixture path should be valid UTF-8"),
+        )
+        .expect("Should open the semantic build-mode fixture");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let parsed = parser
+            .parse_package(&mut lexer)
+            .expect("semantic build-mode fixture should parse");
+
+        assert_eq!(classify_semantic_build_mode(&parsed, true), PackageBuildMode::Hybrid);
 
         fs::remove_dir_all(&temp_root)
             .expect("Temporary build fixture root should be removable after the test");

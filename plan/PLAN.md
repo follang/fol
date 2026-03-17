@@ -334,7 +334,7 @@ Round 2 slice tracker:
 
 - [ ] Slice 1. Add a concrete Phase 3 migration tracker for deleting textual
   build-entry fallback paths.
-- [ ] Slice 2. Add a semantic helper that classifies modern vs compatibility
+- [x] Slice 2. Add a semantic helper that classifies modern vs compatibility
   build modes from parsed build syntax.
 - [ ] Slice 3. Stop AST extraction from recording legacy build-entry metadata.
 - [ ] Slice 4. Stop raw-source fallback from inventing `def build(...)` entry
