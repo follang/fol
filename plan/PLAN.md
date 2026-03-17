@@ -340,7 +340,7 @@ over tiny synthetic one-liners, unless a one-liner is the clearest regression.
 - `4.2` complete: highlight typed-binding/type-annotation surfaces distinctly
 - `4.3` complete: highlight dotted intrinsic names like `.len`, `.echo`, comparisons, and
   boolean/query intrinsics
-- `4.4` add snapshots for container/shell/intrinsic-heavy fixtures
+- `4.4` complete: add snapshots for container/shell/intrinsic-heavy fixtures
 
 ### Phase 5: Highlight command and bundle hardening
 
@@ -446,5 +446,5 @@ The acceptance pass should also verify this real editor flow:
 
 Current milestone state:
 
-- `18 / 49` slices complete
-- `37%`
+- `19 / 49` slices complete
+- `39%`

@@ -713,4 +713,57 @@ mod tests {
 
         std::fs::remove_dir_all(root).ok();
     }
+
+    #[test]
+    fn container_shell_and_intrinsic_fixtures_keep_snapshot_shape() {
+        let root = build_bundle_root("container_shell_intrinsic_snapshots");
+        let container_output = run_tree_sitter_query(
+            &root,
+            &root.join("queries/fol/highlights.scm"),
+            &PathBuf::from("test/apps/fixtures/container_map_set/main.fol"),
+        );
+        assert!(container_output.status.success());
+        let container = String::from_utf8_lossy(&container_output.stdout);
+        for needle in [
+            "type.builtin",
+            "punctuation.bracket",
+            "punctuation.delimiter",
+            "function.builtin",
+        ] {
+            assert!(
+                container.contains(needle),
+                "container fixture lost snapshot capture: {needle}\n{container}"
+            );
+        }
+
+        let shell_output = run_tree_sitter_query(
+            &root,
+            &root.join("queries/fol/highlights.scm"),
+            &PathBuf::from("test/apps/fixtures/shell_optional/main.fol"),
+        );
+        assert!(shell_output.status.success());
+        let shell = String::from_utf8_lossy(&shell_output.stdout);
+        for needle in ["type.builtin", "constant.builtin", "operator", "punctuation.bracket"] {
+            assert!(
+                shell.contains(needle),
+                "shell fixture lost snapshot capture: {needle}\n{shell}"
+            );
+        }
+
+        let showcase_output = run_tree_sitter_query(
+            &root,
+            &root.join("queries/fol/highlights.scm"),
+            &PathBuf::from("test/apps/showcases/full_v1_showcase/app/main.fol"),
+        );
+        assert!(showcase_output.status.success());
+        let showcase = String::from_utf8_lossy(&showcase_output.stdout);
+        for needle in ["type.builtin", "function.builtin", "operator", "type"] {
+            assert!(
+                showcase.contains(needle),
+                "showcase fixture lost container/shell/intrinsic capture: {needle}\n{showcase}"
+            );
+        }
+
+        std::fs::remove_dir_all(root).ok();
+    }
 }
