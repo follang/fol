@@ -63,6 +63,29 @@ impl BuildRuntimeCapabilityModel {
     }
 }
 
+pub fn canonical_graph_construction_capabilities() -> BuildRuntimeCapabilityModel {
+    BuildRuntimeCapabilityModel::new(
+        vec![
+            AllowedBuildTimeOperation::GraphMutation,
+            AllowedBuildTimeOperation::OptionRead,
+            AllowedBuildTimeOperation::PathJoin,
+            AllowedBuildTimeOperation::PathNormalize,
+            AllowedBuildTimeOperation::StringBasic,
+            AllowedBuildTimeOperation::ContainerBasic,
+            AllowedBuildTimeOperation::ControlledFileGeneration,
+            AllowedBuildTimeOperation::ControlledProcessExecution,
+        ],
+        vec![
+            ForbiddenBuildTimeOperation::ArbitraryFilesystemRead,
+            ForbiddenBuildTimeOperation::ArbitraryFilesystemWrite,
+            ForbiddenBuildTimeOperation::ArbitraryNetworkAccess,
+            ForbiddenBuildTimeOperation::WallClockAccess,
+            ForbiddenBuildTimeOperation::AmbientEnvironmentAccess,
+            ForbiddenBuildTimeOperation::UncontrolledProcessExecution,
+        ],
+    )
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BuildEvaluationErrorKind {
     InvalidInput,
@@ -510,13 +533,7 @@ pub fn evaluate_build_plan(
 
     Ok(BuildEvaluationResult::new(
         BuildEvaluationBoundary::GraphConstructionSubset,
-        BuildRuntimeCapabilityModel::new(
-            vec![
-                AllowedBuildTimeOperation::GraphMutation,
-                AllowedBuildTimeOperation::OptionRead,
-            ],
-            Vec::new(),
-        ),
+        canonical_graph_construction_capabilities(),
         request.package_root.clone(),
         option_declarations,
         resolved_options,
@@ -1125,9 +1142,10 @@ fn evaluation_error(
 #[cfg(test)]
 mod tests {
     use super::{
-        evaluate_build_plan, evaluate_build_source, AllowedBuildTimeOperation,
-        BuildEvaluationBoundary, BuildEvaluationError, BuildEvaluationErrorKind,
-        BuildEvaluationInputs, BuildRuntimeCapabilityModel, ForbiddenBuildTimeOperation,
+        canonical_graph_construction_capabilities, evaluate_build_plan, evaluate_build_source,
+        AllowedBuildTimeOperation, BuildEvaluationBoundary, BuildEvaluationError,
+        BuildEvaluationErrorKind, BuildEvaluationInputs, BuildRuntimeCapabilityModel,
+        ForbiddenBuildTimeOperation,
         BuildEvaluationInstallArtifactRequest, BuildEvaluationOperation,
         BuildEvaluationOperationKind, BuildEvaluationRequest, BuildEvaluationResult,
         BuildEvaluationRunRequest, BuildEvaluationStepRequest,
@@ -1236,6 +1254,27 @@ mod tests {
             model.forbidden_operations,
             vec![ForbiddenBuildTimeOperation::WallClockAccess]
         );
+    }
+
+    #[test]
+    fn canonical_graph_construction_capabilities_cover_the_declared_runtime_surface() {
+        let capabilities = canonical_graph_construction_capabilities();
+
+        assert!(capabilities
+            .allowed_operations
+            .contains(&AllowedBuildTimeOperation::GraphMutation));
+        assert!(capabilities
+            .allowed_operations
+            .contains(&AllowedBuildTimeOperation::ControlledFileGeneration));
+        assert!(capabilities
+            .allowed_operations
+            .contains(&AllowedBuildTimeOperation::ControlledProcessExecution));
+        assert!(capabilities
+            .forbidden_operations
+            .contains(&ForbiddenBuildTimeOperation::ArbitraryNetworkAccess));
+        assert!(capabilities
+            .forbidden_operations
+            .contains(&ForbiddenBuildTimeOperation::AmbientEnvironmentAccess));
     }
 
     #[test]

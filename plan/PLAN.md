@@ -393,7 +393,7 @@ Round 1 slice tracker:
 - [x] Slice 2. Add explicit forbidden build-time capability categories.
 - [x] Slice 3. Add a first-class runtime capability model for allowed and
   forbidden operations.
-- [ ] Slice 4. Add a canonical graph-construction capability preset.
+- [x] Slice 4. Add a canonical graph-construction capability preset.
 - [ ] Slice 5. Add explicit target/optimize fields to the build input envelope.
 - [ ] Slice 6. Add declared environment selection policy types and helpers.
 - [ ] Slice 7. Make determinism keys derive from the explicit input envelope.
