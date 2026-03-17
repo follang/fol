@@ -1,18 +1,19 @@
 [workspace]
 members = [
-    "fol-types",
-    "fol-stream", 
-    "fol-lexer",
-    "fol-parser",
-    "fol-package",
-    "fol-diagnostics",
-    "fol-resolver",
-    "fol-typecheck",
-    "fol-lower",
-    "fol-intrinsics",
-    "fol-runtime",
-    "fol-backend",
-    "fol-frontend",
+    "lang/compiler/fol-types",
+    "lang/compiler/fol-stream",
+    "lang/compiler/fol-lexer",
+    "lang/compiler/fol-parser",
+    "lang/compiler/fol-package",
+    "lang/compiler/fol-diagnostics",
+    "lang/compiler/fol-resolver",
+    "lang/compiler/fol-typecheck",
+    "lang/compiler/fol-lower",
+    "lang/compiler/fol-intrinsics",
+    "lang/execution/fol-runtime",
+    "lang/execution/fol-backend",
+    "lang/tooling/fol-frontend",
+    "lang/tooling/fol-editor",
 ]
 
 [package]
@@ -23,21 +24,22 @@ edition = "2021"
 
 [[bin]]
 name = "fol"
-path = "src/main.rs"
+path = "lang/tooling/fol-frontend/src/main.rs"
 
 [dependencies]
-fol-types = { path = "fol-types" }
-fol-stream = { path = "fol-stream" }  
-fol-lexer = { path = "fol-lexer" }
-fol-parser = { path = "fol-parser" }
-fol-package = { path = "fol-package" }
-fol-diagnostics = { path = "fol-diagnostics" }
-fol-resolver = { path = "fol-resolver" }
-fol-typecheck = { path = "fol-typecheck" }
-fol-lower = { path = "fol-lower" }
-fol-intrinsics = { path = "fol-intrinsics" }
-fol-frontend = { path = "fol-frontend" }
-fol-backend = { path = "fol-backend" }
+fol-types = { path = "lang/compiler/fol-types" }
+fol-stream = { path = "lang/compiler/fol-stream" }
+fol-lexer = { path = "lang/compiler/fol-lexer" }
+fol-parser = { path = "lang/compiler/fol-parser" }
+fol-package = { path = "lang/compiler/fol-package" }
+fol-diagnostics = { path = "lang/compiler/fol-diagnostics" }
+fol-resolver = { path = "lang/compiler/fol-resolver" }
+fol-typecheck = { path = "lang/compiler/fol-typecheck" }
+fol-lower = { path = "lang/compiler/fol-lower" }
+fol-intrinsics = { path = "lang/compiler/fol-intrinsics" }
+fol-frontend = { path = "lang/tooling/fol-frontend" }
+fol-editor = { path = "lang/tooling/fol-editor" }
+fol-backend = { path = "lang/execution/fol-backend" }
 regex = "1"
 colored = "1"
 dyn-clone = "1"

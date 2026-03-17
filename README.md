@@ -23,8 +23,8 @@ FOL is a general-purpose, systems programming language designed for robustness, 
 
 Current compiler status: `fol-stream`, `fol-lexer`, `fol-parser`,
 `fol-package`, `fol-resolver`, `fol-typecheck`, `fol-lower`,
-`fol-intrinsics`, `fol-runtime`, `fol-backend`, `fol-frontend`, diagnostics,
-and the root CLI are implemented and actively tested. Package loading now
+`fol-intrinsics`, `fol-runtime`, `fol-backend`, `fol-frontend`, `fol-editor`,
+diagnostics, and the root CLI are implemented and actively tested. Package loading now
 flows through `fol-package`, which prepares directory and installed-package
 surfaces ahead of name resolution.
 `fol-intrinsics` is now the shared compiler-owned intrinsic registry for the
@@ -63,7 +63,10 @@ user-facing workflow layer on top of that compiler stack: derive-based command
 parsing, workspace/package discovery, `init/new/fetch/update/check/build/run/
 test/emit/clean/completion`, `work info/list/deps/status`, human/plain/json
 output, explicit artifact-root reporting, git-backed dependency fetching with
-`fol.lock`, and one canonical `fol` tool.
+`fol.lock`, and one canonical `fol` tool. `fol-editor` now adds the first
+editor-tooling layer under that same frontend entrypoint: Tree-sitter grammar
+and queries, `fol tool parse/highlight/symbols`, and an LSP server with
+diagnostics, hover, definition, and document symbols for the current milestone.
 
 The next major compiler work no longer sits at the first backend boundary.
 That milestone is now real. Follow-on work should build on top of it:

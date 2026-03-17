@@ -1,0 +1,15 @@
+==================
+Declarations
+==================
+
+use shared: loc = {shared::lib}
+ali Result: seq[str]
+typ User: rec = {
+    name: str
+}
+fun load(path: str): str / str = {
+    return path
+}
+log ready(): bol = {
+    return true
+}
