@@ -3,8 +3,8 @@ use crate::session::{LoadedPackage, PackageIdentity};
 use crate::{ResolverError, ResolverErrorKind};
 use fol_package::PreparedPackage;
 use fol_parser::ast::{
-    FolType, ParsedDeclScope, ParsedDeclVisibility, ParsedPackage, SyntaxIndex, SyntaxNodeId,
-    SyntaxOrigin, UsePathSegment,
+    FolType, ParsedDeclScope, ParsedDeclVisibility, ParsedPackage, ParsedSourceUnitKind,
+    SyntaxIndex, SyntaxNodeId, SyntaxOrigin, UsePathSegment,
 };
 use std::collections::BTreeMap;
 
@@ -26,6 +26,7 @@ pub struct ResolvedSourceUnit {
     pub path: String,
     pub package: String,
     pub namespace: String,
+    pub kind: ParsedSourceUnitKind,
     pub scope_id: ScopeId,
     pub top_level_nodes: Vec<SyntaxNodeId>,
 }
@@ -235,6 +236,7 @@ impl ResolvedProgram {
                 path: source_unit.path.clone(),
                 package: source_unit.package.clone(),
                 namespace: source_unit.namespace.clone(),
+                kind: source_unit.kind,
                 scope_id: ScopeId(0),
                 top_level_nodes,
             });
@@ -314,6 +316,18 @@ impl ResolvedProgram {
 
     pub fn source_unit(&self, id: SourceUnitId) -> Option<&ResolvedSourceUnit> {
         self.source_units.get(id)
+    }
+
+    pub fn ordinary_source_units(&self) -> impl Iterator<Item = &ResolvedSourceUnit> {
+        self.source_units
+            .iter()
+            .filter(|unit| unit.kind == ParsedSourceUnitKind::Ordinary)
+    }
+
+    pub fn build_source_units(&self) -> impl Iterator<Item = &ResolvedSourceUnit> {
+        self.source_units
+            .iter()
+            .filter(|unit| unit.kind == ParsedSourceUnitKind::Build)
     }
 
     pub fn namespace_scope(&self, namespace: &str) -> Option<ScopeId> {
@@ -431,6 +445,7 @@ impl ResolvedProgram {
             path: loaded.identity.canonical_root.clone(),
             package: root_name.clone(),
             namespace: root_name.clone(),
+            kind: ParsedSourceUnitKind::Ordinary,
             scope_id: ScopeId(0),
             top_level_nodes: Vec::new(),
         });
@@ -643,6 +658,51 @@ impl ResolvedProgram {
         scope.symbol_keys.entry(canonical_name).or_default().push(symbol_id);
 
         Ok(symbol_id)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ResolvedProgram;
+    use fol_parser::ast::{
+        ParsedPackage, ParsedSourceUnit, ParsedSourceUnitKind, SyntaxIndex,
+    };
+
+    #[test]
+    fn resolved_program_keeps_build_source_unit_kinds() {
+        let syntax = ParsedPackage {
+            package: "demo".to_string(),
+            source_units: vec![
+                ParsedSourceUnit {
+                    path: "build.fol".to_string(),
+                    package: "demo".to_string(),
+                    namespace: "demo".to_string(),
+                    kind: ParsedSourceUnitKind::Build,
+                    items: Vec::new(),
+                },
+                ParsedSourceUnit {
+                    path: "src/main.fol".to_string(),
+                    package: "demo".to_string(),
+                    namespace: "demo::src".to_string(),
+                    kind: ParsedSourceUnitKind::Ordinary,
+                    items: Vec::new(),
+                },
+            ],
+            syntax_index: SyntaxIndex::default(),
+        };
+
+        let resolved = ResolvedProgram::new(syntax);
+
+        assert_eq!(resolved.build_source_units().count(), 1);
+        assert_eq!(resolved.ordinary_source_units().count(), 1);
+        assert_eq!(
+            resolved.source_unit(crate::SourceUnitId(0)).map(|unit| unit.kind),
+            Some(ParsedSourceUnitKind::Build)
+        );
+        assert_eq!(
+            resolved.source_unit(crate::SourceUnitId(1)).map(|unit| unit.kind),
+            Some(ParsedSourceUnitKind::Ordinary)
+        );
     }
 }
 

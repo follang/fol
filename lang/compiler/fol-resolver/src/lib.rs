@@ -28,6 +28,7 @@ pub mod model;
 pub mod session;
 pub mod traverse;
 
+pub use fol_parser::ast::ParsedSourceUnitKind;
 pub use errors::{ResolverError, ResolverErrorKind};
 pub use ids::{IdTable, ImportId, ReferenceId, ScopeId, SourceUnitId, SymbolId};
 pub use model::{
