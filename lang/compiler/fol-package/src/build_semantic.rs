@@ -398,16 +398,54 @@ pub fn canonical_option_value_kinds() -> Vec<BuildSemanticOptionValueKind> {
     ]
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BuildSemanticChainKind {
+    StepDependency,
+    RunDependency,
+    InstallDependency,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BuildSemanticChainMetadata {
+    pub receiver: BuildSemanticTypeFamily,
+    pub method: String,
+    pub kind: BuildSemanticChainKind,
+    pub carries_step_handle: bool,
+}
+
+pub fn canonical_chain_metadata() -> Vec<BuildSemanticChainMetadata> {
+    vec![
+        BuildSemanticChainMetadata {
+            receiver: BuildSemanticTypeFamily::StepHandle,
+            method: "depend_on".to_string(),
+            kind: BuildSemanticChainKind::StepDependency,
+            carries_step_handle: true,
+        },
+        BuildSemanticChainMetadata {
+            receiver: BuildSemanticTypeFamily::RunHandle,
+            method: "depend_on".to_string(),
+            kind: BuildSemanticChainKind::RunDependency,
+            carries_step_handle: true,
+        },
+        BuildSemanticChainMetadata {
+            receiver: BuildSemanticTypeFamily::InstallHandle,
+            method: "depend_on".to_string(),
+            kind: BuildSemanticChainKind::InstallDependency,
+            carries_step_handle: true,
+        },
+    ]
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        canonical_artifact_config_shapes, canonical_graph_method_signatures,
-        canonical_handle_method_signatures, canonical_option_config_shapes,
-        canonical_option_value_kinds, BuildSemanticMethodParameter,
-        BuildSemanticMethodSignature, BuildSemanticOptionValueKind,
-        BuildSemanticParameterShape, BuildSemanticRecordShapeKind, BuildSemanticType,
-        BuildSemanticTypeFamily, BuildStdlibImportSurface, BuildStdlibModuleKind,
-        BuildStdlibModulePath,
+        canonical_artifact_config_shapes, canonical_chain_metadata,
+        canonical_graph_method_signatures, canonical_handle_method_signatures,
+        canonical_option_config_shapes, canonical_option_value_kinds,
+        BuildSemanticChainKind, BuildSemanticMethodParameter, BuildSemanticMethodSignature,
+        BuildSemanticOptionValueKind, BuildSemanticParameterShape,
+        BuildSemanticRecordShapeKind, BuildSemanticType, BuildSemanticTypeFamily,
+        BuildStdlibImportSurface, BuildStdlibModuleKind, BuildStdlibModulePath,
     };
 
     #[test]
@@ -597,5 +635,26 @@ mod tests {
         assert!(kinds.contains(&BuildSemanticOptionValueKind::String));
         assert!(kinds.contains(&BuildSemanticOptionValueKind::Enum));
         assert!(kinds.contains(&BuildSemanticOptionValueKind::Path));
+    }
+
+    #[test]
+    fn canonical_chain_metadata_covers_depend_on_receivers() {
+        let metadata = canonical_chain_metadata();
+
+        assert_eq!(metadata.len(), 3);
+        assert!(metadata.iter().all(|entry| entry.method == "depend_on"));
+        assert!(metadata.iter().all(|entry| entry.carries_step_handle));
+    }
+
+    #[test]
+    fn canonical_chain_metadata_distinguishes_chain_kinds_per_receiver() {
+        let metadata = canonical_chain_metadata();
+
+        assert_eq!(metadata[0].receiver, BuildSemanticTypeFamily::StepHandle);
+        assert_eq!(metadata[0].kind, BuildSemanticChainKind::StepDependency);
+        assert_eq!(metadata[1].receiver, BuildSemanticTypeFamily::RunHandle);
+        assert_eq!(metadata[1].kind, BuildSemanticChainKind::RunDependency);
+        assert_eq!(metadata[2].receiver, BuildSemanticTypeFamily::InstallHandle);
+        assert_eq!(metadata[2].kind, BuildSemanticChainKind::InstallDependency);
     }
 }
