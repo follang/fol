@@ -943,7 +943,7 @@ Each slice must land green with `make build` and `make test` before commit.
 3. `[complete]` Add first-class native artifact kinds for headers, objects, static libraries, and shared libraries.
 4. `[complete]` Add include-path and library-path model types for native artifact search semantics.
 5. `[complete]` Add native link mode and link input records for backend-produced artifacts.
-6. `[pending]` Add cross-platform native naming/path convention helpers for headers and libraries.
+6. `[complete]` Add cross-platform native naming/path convention helpers for headers and libraries.
 7. `[pending]` Add compatibility projection helpers from parsed placeholder native artifacts into the new native-artifact model.
 8. `[pending]` Extend artifact definitions to retain structured native artifact attachments instead of plain strings.
 9. `[pending]` Extend prepared-package modeling to retain optional native artifact surfaces alongside compatibility native placeholders.

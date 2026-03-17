@@ -43,11 +43,41 @@ pub struct NativeLinkDirective {
     pub mode: NativeLinkMode,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NativePlatform {
+    Linux,
+    MacOS,
+    Windows,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NativeArtifactDefinition {
     pub name: String,
     pub kind: NativeArtifactKind,
     pub relative_path: String,
+}
+
+impl NativeArtifactDefinition {
+    pub fn canonical_file_name(&self, platform: NativePlatform) -> String {
+        match self.kind {
+            NativeArtifactKind::Header => self.name.clone(),
+            NativeArtifactKind::Object => match platform {
+                NativePlatform::Windows => format!("{}.obj", self.name),
+                NativePlatform::Linux | NativePlatform::MacOS => format!("{}.o", self.name),
+            },
+            NativeArtifactKind::StaticLibrary => match platform {
+                NativePlatform::Windows => format!("{}.lib", self.name),
+                NativePlatform::Linux | NativePlatform::MacOS => {
+                    format!("lib{}.a", self.name)
+                }
+            },
+            NativeArtifactKind::SharedLibrary => match platform {
+                NativePlatform::Windows => format!("{}.dll", self.name),
+                NativePlatform::Linux => format!("lib{}.so", self.name),
+                NativePlatform::MacOS => format!("lib{}.dylib", self.name),
+            },
+        }
+    }
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -73,7 +103,7 @@ impl NativeArtifactSet {
 mod tests {
     use super::{
         NativeArtifactDefinition, NativeArtifactKind, NativeArtifactSet, NativeIncludePath,
-        NativeLibraryPath, NativeLinkDirective, NativeLinkInput, NativeLinkMode,
+        NativeLibraryPath, NativeLinkDirective, NativeLinkInput, NativeLinkMode, NativePlatform,
         NativeSearchPathOrigin,
     };
 
@@ -172,5 +202,47 @@ mod tests {
 
         assert_eq!(directive.mode, NativeLinkMode::Static);
         assert_eq!(directive.input, NativeLinkInput::Artifact(artifact));
+    }
+
+    #[test]
+    fn native_header_names_stay_plain_across_platforms() {
+        let header = NativeArtifactDefinition {
+            name: "api.h".to_string(),
+            kind: NativeArtifactKind::Header,
+            relative_path: "include/api.h".to_string(),
+        };
+
+        assert_eq!(header.canonical_file_name(NativePlatform::Linux), "api.h");
+        assert_eq!(header.canonical_file_name(NativePlatform::MacOS), "api.h");
+        assert_eq!(header.canonical_file_name(NativePlatform::Windows), "api.h");
+    }
+
+    #[test]
+    fn native_library_names_follow_platform_conventions() {
+        let static_lib = NativeArtifactDefinition {
+            name: "ssl".to_string(),
+            kind: NativeArtifactKind::StaticLibrary,
+            relative_path: "native/libssl.a".to_string(),
+        };
+        let shared_lib = NativeArtifactDefinition {
+            name: "crypto".to_string(),
+            kind: NativeArtifactKind::SharedLibrary,
+            relative_path: "native/libcrypto.so".to_string(),
+        };
+
+        assert_eq!(static_lib.canonical_file_name(NativePlatform::Linux), "libssl.a");
+        assert_eq!(static_lib.canonical_file_name(NativePlatform::Windows), "ssl.lib");
+        assert_eq!(
+            shared_lib.canonical_file_name(NativePlatform::Linux),
+            "libcrypto.so"
+        );
+        assert_eq!(
+            shared_lib.canonical_file_name(NativePlatform::MacOS),
+            "libcrypto.dylib"
+        );
+        assert_eq!(
+            shared_lib.canonical_file_name(NativePlatform::Windows),
+            "crypto.dll"
+        );
     }
 }
