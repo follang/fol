@@ -22,8 +22,8 @@ mod workspace;
 
 pub use cli::{
     BuildCommand, CheckCommand, CodeCommand, CodeSubcommand, CompleteCommand, CompletionCommand,
-    CompletionShellArg, EditorCommand, EditorPathCommand, EditorSubcommand, EmitCommand,
-    EmitLoweredCommand, EmitRustCommand, EmitSubcommand, FetchCommand, FrontendCli,
+    CompletionShellArg, EditorPathCommand, EmitCommand, EmitLoweredCommand, EmitRustCommand,
+    EmitSubcommand, FetchCommand, FrontendCli,
     FrontendCommand, FrontendProfile, InitCommand, NewCommand, PackCommand, PackSubcommand,
     RunCommand, TestCommand, ToolCommand, ToolSubcommand, UnitCommand, UpdateCommand,
 };
@@ -307,10 +307,7 @@ fn command_output_mode(cli: &FrontendCli) -> Option<OutputMode> {
         Some(FrontendCommand::Work(command)) => Some(command.output.output),
         Some(FrontendCommand::Pack(command)) => Some(command.output.output),
         Some(FrontendCommand::Code(command)) => Some(command.output.output),
-        Some(FrontendCommand::Tool(command)) => match &command.command {
-            ToolSubcommand::Editor(editor) => Some(editor.output.output),
-            _ => Some(command.output.output),
-        },
+        Some(FrontendCommand::Tool(command)) => Some(command.output.output),
         Some(FrontendCommand::Complete(_)) | None => None,
     }
 }
@@ -377,17 +374,15 @@ fn dispatch_cli(cli: &FrontendCli, config: &FrontendConfig) -> FrontendResult<Fr
             }
         }
         Some(FrontendCommand::Tool(command)) => match &command.command {
+            ToolSubcommand::Lsp(_) => editor_lsp_command(config),
+            ToolSubcommand::Parse(command) => editor_parse_command(&command.path, config),
+            ToolSubcommand::Highlight(command) => {
+                editor_highlight_command(&command.path, config)
+            }
+            ToolSubcommand::Symbols(command) => editor_symbols_command(&command.path, config),
             ToolSubcommand::Completion(command) => {
                 completion_command(parse_completion_shell(command.shell))
             }
-            ToolSubcommand::Editor(command) => match &command.command {
-                EditorSubcommand::Lsp(_) => editor_lsp_command(config),
-                EditorSubcommand::Parse(command) => editor_parse_command(&command.path, config),
-                EditorSubcommand::Highlight(command) => {
-                    editor_highlight_command(&command.path, config)
-                }
-                EditorSubcommand::Symbols(command) => editor_symbols_command(&command.path, config),
-            },
             ToolSubcommand::Clean(_) => {
                 let discovered = discovered_root_for_command(&cli.command.as_ref().unwrap(), &config.working_directory)?;
                 let workspace = load_frontend_workspace(&discovered, config)?;
@@ -529,7 +524,10 @@ fn dispatch_workspace_command(
         },
         FrontendCommand::Tool(command) => match &command.command {
             ToolSubcommand::Clean(_) => clean_workspace_with_config(workspace, config),
-            ToolSubcommand::Editor(_) => Err(FrontendError::new(
+            ToolSubcommand::Lsp(_)
+            | ToolSubcommand::Parse(_)
+            | ToolSubcommand::Highlight(_)
+            | ToolSubcommand::Symbols(_) => Err(FrontendError::new(
                 FrontendErrorKind::Internal,
                 "unexpected editor command reached workspace dispatcher",
             )),

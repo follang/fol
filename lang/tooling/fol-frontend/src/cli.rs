@@ -257,15 +257,6 @@ pub struct ToolCommand {
 }
 
 #[derive(Debug, Clone, Args, PartialEq, Eq)]
-pub struct EditorCommand {
-    #[command(flatten)]
-    pub output: FrontendOutputArgs,
-
-    #[command(subcommand)]
-    pub command: EditorSubcommand,
-}
-
-#[derive(Debug, Clone, Args, PartialEq, Eq)]
 pub struct CompletionCommand {
     #[arg(value_enum)]
     pub shell: CompletionShellArg,
@@ -322,19 +313,14 @@ pub enum CodeSubcommand {
 
 #[derive(Debug, Clone, Subcommand, PartialEq, Eq)]
 pub enum ToolSubcommand {
-    #[command(visible_aliases = ["cl", "purge"])]
-    Clean(UnitCommand),
-    Editor(EditorCommand),
-    #[command(visible_aliases = ["completions", "comp"])]
-    Completion(CompletionCommand),
-}
-
-#[derive(Debug, Clone, Subcommand, PartialEq, Eq)]
-pub enum EditorSubcommand {
     Lsp(UnitCommand),
     Parse(EditorPathCommand),
     Highlight(EditorPathCommand),
     Symbols(EditorPathCommand),
+    #[command(visible_aliases = ["cl", "purge"])]
+    Clean(UnitCommand),
+    #[command(visible_aliases = ["completions", "comp"])]
+    Completion(CompletionCommand),
 }
 
 #[derive(Debug, Clone, Subcommand, PartialEq, Eq)]
@@ -507,8 +493,8 @@ impl FrontendCli {
 mod tests {
     use super::{
         BuildCommand, CheckCommand, CodeCommand, CodeSubcommand, CompleteCommand,
-        CompletionCommand, CompletionShellArg, CompileRootArgs, DirectTargetArg, EditorCommand,
-        EditorPathCommand, EditorSubcommand, EmitCommand, EmitLoweredCommand, EmitRustCommand,
+        CompletionCommand, CompletionShellArg, CompileRootArgs, DirectTargetArg,
+        EditorPathCommand, EmitCommand, EmitLoweredCommand, EmitRustCommand,
         EmitSubcommand, FetchCommand, FrontendCli, FrontendCommand, FrontendOutputArgs,
         FrontendProfile, FrontendProfileArgs, InitCommand, NewCommand, PackCommand,
         PackSubcommand, RunCommand, TestCommand, ToolCommand, ToolSubcommand, UnitCommand,
@@ -617,30 +603,24 @@ mod tests {
 
     #[test]
     fn editor_subcommands_parse_through_derive_tree() {
-        let lsp = parse_clean(["fol", "tool", "editor", "lsp"]);
-        let parse = parse_clean(["fol", "tool", "editor", "parse", "demo/main.fol"]);
-        let highlight = parse_clean(["fol", "tool", "editor", "highlight", "demo/main.fol"]);
-        let symbols = parse_clean(["fol", "tool", "editor", "symbols", "demo/main.fol"]);
+        let lsp = parse_clean(["fol", "tool", "lsp"]);
+        let parse = parse_clean(["fol", "tool", "parse", "demo/main.fol"]);
+        let highlight = parse_clean(["fol", "tool", "highlight", "demo/main.fol"]);
+        let symbols = parse_clean(["fol", "tool", "symbols", "demo/main.fol"]);
 
         assert_eq!(
             lsp.command,
             Some(FrontendCommand::Tool(ToolCommand {
                 output: default_output_args(),
-                command: ToolSubcommand::Editor(EditorCommand {
-                    output: default_output_args(),
-                    command: EditorSubcommand::Lsp(UnitCommand),
-                }),
+                command: ToolSubcommand::Lsp(UnitCommand),
             }))
         );
         assert_eq!(
             parse.command,
             Some(FrontendCommand::Tool(ToolCommand {
                 output: default_output_args(),
-                command: ToolSubcommand::Editor(EditorCommand {
-                    output: default_output_args(),
-                    command: EditorSubcommand::Parse(EditorPathCommand {
-                        path: "demo/main.fol".to_string(),
-                    }),
+                command: ToolSubcommand::Parse(EditorPathCommand {
+                    path: "demo/main.fol".to_string(),
                 }),
             }))
         );
@@ -648,11 +628,8 @@ mod tests {
             highlight.command,
             Some(FrontendCommand::Tool(ToolCommand {
                 output: default_output_args(),
-                command: ToolSubcommand::Editor(EditorCommand {
-                    output: default_output_args(),
-                    command: EditorSubcommand::Highlight(EditorPathCommand {
-                        path: "demo/main.fol".to_string(),
-                    }),
+                command: ToolSubcommand::Highlight(EditorPathCommand {
+                    path: "demo/main.fol".to_string(),
                 }),
             }))
         );
@@ -660,11 +637,8 @@ mod tests {
             symbols.command,
             Some(FrontendCommand::Tool(ToolCommand {
                 output: default_output_args(),
-                command: ToolSubcommand::Editor(EditorCommand {
-                    output: default_output_args(),
-                    command: EditorSubcommand::Symbols(EditorPathCommand {
-                        path: "demo/main.fol".to_string(),
-                    }),
+                command: ToolSubcommand::Symbols(EditorPathCommand {
+                    path: "demo/main.fol".to_string(),
                 }),
             }))
         );
@@ -704,7 +678,7 @@ mod tests {
         let work = parse_clean(["fol", "w", "info"]);
         let pack = parse_clean(["fol", "p", "fetch"]);
         let code = parse_clean(["fol", "c", "build"]);
-        let editor = parse_clean(["fol", "t", "editor", "lsp"]);
+        let editor = parse_clean(["fol", "t", "lsp"]);
         let tool = parse_clean(["fol", "t", "clean"]);
         let fetch = parse_clean(["fol", "pack", "sync"]);
         let update = parse_clean(["fol", "pack", "upgrade"]);
@@ -762,10 +736,7 @@ mod tests {
         })));
         assert_eq!(editor.command, Some(FrontendCommand::Tool(ToolCommand {
             output: default_output_args(),
-            command: ToolSubcommand::Editor(EditorCommand {
-                output: default_output_args(),
-                command: EditorSubcommand::Lsp(UnitCommand),
-            }),
+            command: ToolSubcommand::Lsp(UnitCommand),
         })));
         assert_eq!(tool.command, Some(FrontendCommand::Tool(ToolCommand {
             output: default_output_args(),

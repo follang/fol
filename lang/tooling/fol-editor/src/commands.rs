@@ -29,7 +29,7 @@ impl EditorCommandSummary {
 pub fn editor_lsp_entrypoint() -> EditorResult<EditorCommandSummary> {
     Ok(EditorCommandSummary::new(
         "lsp",
-        "ready to serve editor requests through `fol tool editor lsp`",
+        "ready to serve editor requests through `fol tool lsp`",
     )
     .with_detail("transport/runtime wiring lands in the LSP foundation phase"))
 }
@@ -110,7 +110,7 @@ mod tests {
     fn lsp_entrypoint_summary_is_stable() {
         let summary = editor_lsp_entrypoint().unwrap();
         assert_eq!(summary.command, "lsp");
-        assert!(summary.summary.contains("fol tool editor lsp"));
+        assert!(summary.summary.contains("fol tool lsp"));
     }
 
     #[test]

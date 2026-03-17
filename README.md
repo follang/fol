@@ -65,7 +65,7 @@ test/emit/clean/completion`, `work info/list/deps/status`, human/plain/json
 output, explicit artifact-root reporting, git-backed dependency fetching with
 `fol.lock`, and one canonical `fol` tool. `fol-editor` now adds the first
 editor-tooling layer under that same frontend entrypoint: Tree-sitter grammar
-and queries, `fol tool editor parse/highlight/symbols`, and an LSP server with
+and queries, `fol tool parse/highlight/symbols`, and an LSP server with
 diagnostics, hover, definition, and document symbols for the current milestone.
 
 The next major compiler work no longer sits at the first backend boundary.
