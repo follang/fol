@@ -908,7 +908,7 @@ Each slice must land green with `make build` and `make test` before commit.
 
 1. `[complete]` Lock the eighth implementation round around dependency build-surface modeling.
 2. `[complete]` Introduce a dedicated `build_dependency` module with dependency-surface shell types.
-3. `[pending]` Add dependency-provided module and source-root surface records.
+3. `[complete]` Add dependency-provided module and source-root surface records.
 4. `[pending]` Add dependency-provided artifact, step, and generated-output surface records.
 5. `[pending]` Add dependency build-handle and dependency-surface collection types.
 6. `[pending]` Add export-to-dependency bridge helpers that project prepared export mounts into dependency module surfaces.
