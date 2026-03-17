@@ -1158,11 +1158,10 @@ mod tests {
             .expect("Package session should load pkg roots with modern build entry metadata");
 
         assert!(loaded.exports.is_empty());
-        assert!(loaded.has_build_entry_point());
-        assert_eq!(
-            loaded.build_entry_point().map(|entry| entry.name.as_str()),
-            Some("build")
-        );
+        assert_eq!(loaded.build_mode(), crate::build::PackageBuildMode::Empty);
+        assert!(loaded
+            .validate_semantic_build_entry(&crate::build_entry::BuildEntrySignatureExpectation::canonical())
+            .is_err());
 
         fs::remove_dir_all(&temp_root)
             .expect("Temporary package-store fixture should be removable after the test");

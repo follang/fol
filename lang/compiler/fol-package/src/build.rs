@@ -44,11 +44,6 @@ pub struct PackageBuildCompatibility {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PackageBuildEntryPointKind {
-    BuildFunction,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PackageBuildMode {
     Empty,
     CompatibilityOnly,
@@ -57,15 +52,18 @@ pub enum PackageBuildMode {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PackageBuildEntryPoint {
-    pub kind: PackageBuildEntryPointKind,
-    pub name: String,
-}
-
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct PackageBuildDefinition {
     pub compatibility: PackageBuildCompatibility,
-    pub entry_point: Option<PackageBuildEntryPoint>,
+    pub mode: PackageBuildMode,
+}
+
+impl Default for PackageBuildDefinition {
+    fn default() -> Self {
+        Self {
+            compatibility: PackageBuildCompatibility::default(),
+            mode: PackageBuildMode::Empty,
+        }
+    }
 }
 
 impl PackageBuildDefinition {
@@ -91,21 +89,8 @@ impl PackageBuildDefinition {
             || !self.native_artifacts().is_empty()
     }
 
-    pub fn entry_point(&self) -> Option<&PackageBuildEntryPoint> {
-        self.entry_point.as_ref()
-    }
-
-    pub fn has_entry_point(&self) -> bool {
-        self.entry_point().is_some()
-    }
-
     pub fn mode(&self) -> PackageBuildMode {
-        match (self.has_compatibility_controls(), self.has_entry_point()) {
-            (false, false) => PackageBuildMode::Empty,
-            (true, false) => PackageBuildMode::CompatibilityOnly,
-            (false, true) => PackageBuildMode::ModernOnly,
-            (true, true) => PackageBuildMode::Hybrid,
-        }
+        self.mode
     }
 }
 
@@ -164,7 +149,7 @@ pub fn parse_package_build(path: &Path) -> Result<PackageBuildDefinition, Packag
         }
     };
     let mut build = extract_package_build_definition(&parsed)?;
-    apply_semantic_build_entry_point(&parsed, &mut build);
+    build.mode = classify_semantic_build_mode(&parsed, build.has_compatibility_controls());
     Ok(build)
 }
 
@@ -224,6 +209,7 @@ fn extract_package_build_definition_from_source_fallback(
     }
 
     if build.has_compatibility_controls() {
+        build.mode = PackageBuildMode::CompatibilityOnly;
         Ok(Some(build))
     } else {
         Ok(None)
@@ -411,17 +397,6 @@ pub fn extract_package_build_definition(
     Ok(build)
 }
 
-fn apply_semantic_build_entry_point(parsed: &ParsedPackage, build: &mut PackageBuildDefinition) {
-    if crate::build_entry::validate_parsed_build_entry(parsed, &BuildEntrySignatureExpectation::canonical()).is_ok()
-        && build.entry_point.is_none()
-    {
-        build.entry_point = Some(PackageBuildEntryPoint {
-            kind: PackageBuildEntryPointKind::BuildFunction,
-            name: "build".to_string(),
-        });
-    }
-}
-
 fn build_string_body(
     label: &str,
     body: &[AstNode],
@@ -463,19 +438,6 @@ fn native_artifact_kind(name: &str) -> Option<PackageNativeArtifactKind> {
     }
 }
 
-fn maybe_record_build_entry_point(
-    build: &mut PackageBuildDefinition,
-    name: &str,
-    params: &[fol_parser::ast::Parameter],
-) {
-    if name == "build" && !params.is_empty() && build.entry_point.is_none() {
-        build.entry_point = Some(PackageBuildEntryPoint {
-            kind: PackageBuildEntryPointKind::BuildFunction,
-            name: name.to_string(),
-        });
-    }
-}
-
 fn build_item_error(
     syntax_index: &SyntaxIndex,
     node_id: SyntaxNodeId,
@@ -492,9 +454,8 @@ mod tests {
     use super::{
         classify_semantic_build_mode, extract_package_build_definition,
         extract_package_build_definition_from_source_fallback, parse_package_build, BuildDependency,
-        BuildExport, PackageBuildCompatibility, PackageBuildDefinition, PackageBuildEntryPoint,
-        PackageBuildEntryPointKind, PackageBuildMode, PackageNativeArtifact,
-        PackageNativeArtifactKind,
+        BuildExport, PackageBuildCompatibility, PackageBuildDefinition, PackageBuildMode,
+        PackageNativeArtifact, PackageNativeArtifactKind,
     };
     use crate::{PackageErrorKind, PackageLocator};
     use fol_parser::ast::AstParser;
@@ -552,7 +513,7 @@ mod tests {
                     exports: Vec::new(),
                     native_artifacts: Vec::new(),
                 },
-                entry_point: None,
+                mode: PackageBuildMode::CompatibilityOnly,
             }
         );
 
@@ -616,7 +577,7 @@ mod tests {
                     ],
                     native_artifacts: Vec::new(),
                 },
-                entry_point: None,
+                mode: PackageBuildMode::CompatibilityOnly,
             }
         );
 
@@ -808,10 +769,7 @@ mod tests {
                     }],
                     native_artifacts: Vec::new(),
                 },
-                entry_point: Some(PackageBuildEntryPoint {
-                    kind: PackageBuildEntryPointKind::BuildFunction,
-                    name: "build".to_string(),
-                }),
+                mode: PackageBuildMode::Empty,
             }
         );
 
@@ -881,13 +839,6 @@ mod tests {
 
         let build = parse_package_build(&build_path).expect("Build entry fixture should parse");
 
-        assert_eq!(
-            build.entry_point(),
-            Some(&PackageBuildEntryPoint {
-                kind: PackageBuildEntryPointKind::BuildFunction,
-                name: "build".to_string(),
-            })
-        );
         assert!(!build.has_compatibility_controls());
         assert_eq!(build.mode(), PackageBuildMode::ModernOnly);
 
@@ -921,7 +872,7 @@ mod tests {
             .expect("AST build extraction should keep only compatibility controls");
 
         assert_eq!(build.mode(), PackageBuildMode::CompatibilityOnly);
-        assert!(build.entry_point().is_none());
+        assert_eq!(build.mode(), PackageBuildMode::Empty);
         assert_eq!(build.exports().len(), 1);
 
         fs::remove_dir_all(&temp_root)
@@ -971,7 +922,7 @@ mod tests {
         assert_eq!(build.mode(), PackageBuildMode::CompatibilityOnly);
         assert_eq!(build.dependencies().len(), 1);
         assert_eq!(build.exports().len(), 1);
-        assert!(build.entry_point().is_none());
+        assert_eq!(build.mode(), PackageBuildMode::CompatibilityOnly);
     }
 
     #[test]
@@ -998,7 +949,7 @@ mod tests {
                 exports: Vec::new(),
                 native_artifacts: Vec::new(),
             },
-            entry_point: None,
+            mode: PackageBuildMode::CompatibilityOnly,
         };
 
         assert_eq!(compatibility.mode(), PackageBuildMode::CompatibilityOnly);
@@ -1024,7 +975,7 @@ mod tests {
         assert_eq!(build.mode(), PackageBuildMode::Hybrid);
         assert_eq!(build.dependencies().len(), 1);
         assert_eq!(build.exports().len(), 1);
-        assert!(build.has_entry_point());
+        assert_eq!(build.mode(), PackageBuildMode::Hybrid);
 
         fs::remove_dir_all(&temp_root)
             .expect("Temporary build fixture root should be removable after the test");

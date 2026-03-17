@@ -339,7 +339,7 @@ Round 2 slice tracker:
 - [x] Slice 3. Stop AST extraction from recording legacy build-entry metadata.
 - [x] Slice 4. Stop raw-source fallback from inventing `def build(...)` entry
   points.
-- [ ] Slice 5. Replace legacy entry-point result objects with semantic build-mode
+- [x] Slice 5. Replace legacy entry-point result objects with semantic build-mode
   state in `PackageBuildDefinition`.
 - [ ] Slice 6. Remove prepared-package helper APIs that expose legacy build-entry
   metadata.

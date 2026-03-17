@@ -35,8 +35,7 @@ pub mod session;
 pub use fol_parser::ast::ParsedSourceUnitKind;
 pub use build::{
     parse_package_build, BuildDependency, BuildExport, PackageBuildCompatibility,
-    PackageBuildDefinition, PackageBuildEntryPoint, PackageBuildEntryPointKind, PackageBuildMode,
-    PackageNativeArtifact, PackageNativeArtifactKind,
+    PackageBuildDefinition, PackageBuildMode, PackageNativeArtifact, PackageNativeArtifactKind,
 };
 pub use build_api::{
     validate_build_name, BuildApi, BuildApiError, BuildApiNameError, BuildArtifactHandle,

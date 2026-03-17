@@ -1,6 +1,8 @@
 use crate::{
-    build_dependency::DependencyBuildSurfaceSet, build_entry::{BuildEntrySignatureExpectation, BuildEntryValidationError, ValidatedBuildEntry}, build_native::NativeArtifactSet,
-    PackageBuildDefinition, PackageIdentity, PackageMetadata, PackageSourceKind,
+    build_dependency::DependencyBuildSurfaceSet,
+    build_entry::{BuildEntrySignatureExpectation, BuildEntryValidationError, ValidatedBuildEntry},
+    build_native::NativeArtifactSet, PackageBuildDefinition, PackageBuildMode, PackageIdentity,
+    PackageMetadata, PackageSourceKind,
 };
 use fol_parser::ast::{ParsedPackage, ParsedSourceUnit, ParsedSourceUnitKind};
 
@@ -62,12 +64,11 @@ impl PreparedPackage {
         self.identity.source_kind
     }
 
-    pub fn build_entry_point(&self) -> Option<&crate::build::PackageBuildEntryPoint> {
-        self.build.as_ref().and_then(|build| build.entry_point())
-    }
-
-    pub fn has_build_entry_point(&self) -> bool {
-        self.build_entry_point().is_some()
+    pub fn build_mode(&self) -> PackageBuildMode {
+        self.build
+            .as_ref()
+            .map(PackageBuildDefinition::mode)
+            .unwrap_or(PackageBuildMode::Empty)
     }
 
     pub fn source_units(&self) -> &[ParsedSourceUnit] {
@@ -102,11 +103,12 @@ mod tests {
     use crate::{
         build_dependency::DependencyBuildSurfaceSet,
         build_native::{NativeArtifactDefinition, NativeArtifactKind, NativeArtifactSet},
-        build::{PackageBuildCompatibility, PackageBuildEntryPoint, PackageBuildEntryPointKind},
+        build::PackageBuildCompatibility,
         build_entry::BuildEntrySignatureExpectation,
-        BuildDependency, BuildExport, PackageBuildDefinition, PackageConfig, PackageDependencyDecl,
-        PackageDependencySourceKind, PackageIdentity, PackageLocator, PackageMetadata,
-        PackageNativeArtifact, PackageNativeArtifactKind, PackageSourceKind, PreparedExportMount,
+        BuildDependency, BuildExport, PackageBuildDefinition, PackageBuildMode, PackageConfig,
+        PackageDependencyDecl, PackageDependencySourceKind, PackageIdentity, PackageLocator,
+        PackageMetadata, PackageNativeArtifact, PackageNativeArtifactKind, PackageSourceKind,
+        PreparedExportMount,
     };
     use fol_parser::ast::{AstParser, ParsedPackage, ParsedSourceUnitKind};
     use fol_stream::FileStream;
@@ -200,10 +202,7 @@ mod tests {
                         relative_path: "include/api.h".to_string(),
                     }],
                 },
-                entry_point: Some(PackageBuildEntryPoint {
-                    kind: PackageBuildEntryPointKind::BuildFunction,
-                    name: "build".to_string(),
-                }),
+                mode: PackageBuildMode::Hybrid,
             },
             vec![PreparedExportMount {
                 source_namespace: "json::src".to_string(),
@@ -235,14 +234,7 @@ mod tests {
             prepared.native_surfaces.as_ref().map(|set| set.definitions().len()),
             Some(1)
         );
-        assert!(prepared.has_build_entry_point());
-        assert_eq!(
-            prepared.build_entry_point(),
-            Some(&PackageBuildEntryPoint {
-                kind: PackageBuildEntryPointKind::BuildFunction,
-                name: "build".to_string(),
-            })
-        );
+        assert_eq!(prepared.build_mode(), PackageBuildMode::Hybrid);
     }
 
     #[test]
