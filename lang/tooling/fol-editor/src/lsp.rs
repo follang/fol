@@ -678,6 +678,7 @@ impl SemanticSnapshot {
     fn plain_completion_items(&self, position: LspPosition) -> Vec<EditorCompletionItem> {
         let mut items = self.local_completion_items(position);
         items.extend(self.current_package_top_level_completion_items());
+        items.extend(self.import_alias_completion_items(position));
         items
     }
 
@@ -748,6 +749,29 @@ impl SemanticSnapshot {
                 insert_text: None,
             })
             .collect()
+    }
+
+    fn import_alias_completion_items(&self, position: LspPosition) -> Vec<EditorCompletionItem> {
+        let Some((program, scope_id)) = self.scope_at_position(position) else {
+            return Vec::new();
+        };
+        let mut items = Vec::new();
+        let mut cursor = Some(scope_id);
+        while let Some(current_scope_id) = cursor {
+            for symbol in program.symbols_in_scope(current_scope_id) {
+                if symbol.kind != fol_resolver::SymbolKind::ImportAlias {
+                    continue;
+                }
+                items.push(EditorCompletionItem {
+                    label: symbol.name.clone(),
+                    kind: symbol_kind_code(symbol.kind),
+                    detail: Some(render_symbol_kind(symbol.kind).to_string()),
+                    insert_text: None,
+                });
+            }
+            cursor = program.scope(current_scope_id).and_then(|scope| scope.parent);
+        }
+        items
     }
 
     fn current_program(&self) -> Option<&fol_resolver::ResolvedProgram> {
@@ -1724,6 +1748,45 @@ mod tests {
             .find(|item| item.label == "helper")
             .and_then(|item| item.detail.as_deref())
             == Some("routine"));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn lsp_server_returns_import_alias_completions() {
+        let (root, uri) = sample_loc_workspace_root("completion_import_alias");
+        let text = fs::read_to_string(root.join("app/src/main.fol")).unwrap();
+        let mut server = EditorLspServer::new(EditorConfig::default());
+        open_document(&mut server, uri.clone(), &text);
+
+        let completion = server
+            .handle_request(JsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: JsonRpcId::Number(33),
+                method: "textDocument/completion".to_string(),
+                params: Some(
+                    serde_json::to_value(LspCompletionParams {
+                        text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                        position: LspPosition {
+                            line: 3,
+                            character: 12,
+                        },
+                        context: None,
+                    })
+                    .unwrap(),
+                ),
+            })
+            .unwrap()
+            .unwrap();
+
+        let completion: LspCompletionList = serde_json::from_value(completion.result.unwrap()).unwrap();
+        assert!(completion.items.iter().any(|item| item.label == "shared"));
+        assert!(completion
+            .items
+            .iter()
+            .find(|item| item.label == "shared")
+            .and_then(|item| item.detail.as_deref())
+            == Some("namespace"));
 
         fs::remove_dir_all(root).ok();
     }
