@@ -695,6 +695,9 @@ impl SemanticSnapshot {
                 items.extend(self.visible_named_type_completion_items());
                 return dedupe_completion_items(items);
             }
+            CompletionContext::QualifiedPath { qualifier } => {
+                return self.qualified_completion_items(&qualifier);
+            }
             _ => return Vec::new(),
         }
         let mut items = self.local_completion_items(position);
@@ -741,6 +744,57 @@ impl SemanticSnapshot {
                 insert_text: None,
             })
             .collect()
+    }
+
+    fn qualified_completion_items(&self, qualifier: &str) -> Vec<EditorCompletionItem> {
+        let Some(program) = self.current_program() else {
+            return Vec::new();
+        };
+        let mut items = Vec::new();
+
+        if let Some(scope_id) = program.namespace_scope(qualifier) {
+            items.extend(program.symbols_in_scope(scope_id).into_iter().map(|symbol| EditorCompletionItem {
+                label: symbol.name.clone(),
+                kind: symbol_kind_code(symbol.kind),
+                detail: Some(render_symbol_kind(symbol.kind).to_string()),
+                insert_text: None,
+            }));
+        }
+
+        for source_unit in program.source_units.iter() {
+            if source_unit.namespace != qualifier {
+                continue;
+            }
+            items.extend(program.symbols_in_scope(source_unit.scope_id).into_iter().map(|symbol| EditorCompletionItem {
+                label: symbol.name.clone(),
+                kind: symbol_kind_code(symbol.kind),
+                detail: Some(render_symbol_kind(symbol.kind).to_string()),
+                insert_text: None,
+            }));
+        }
+
+        let prefix = format!("{qualifier}::");
+        let mut child_namespaces = std::collections::BTreeSet::new();
+        for (_, scope) in program.scopes.iter_with_ids() {
+            let fol_resolver::ScopeKind::NamespaceRoot { namespace } = &scope.kind else {
+                continue;
+            };
+            let Some(remainder) = namespace.strip_prefix(&prefix) else {
+                continue;
+            };
+            let child = remainder.split("::").next().unwrap_or("");
+            if !child.is_empty() {
+                child_namespaces.insert(child.to_string());
+            }
+        }
+        items.extend(child_namespaces.into_iter().map(|label| EditorCompletionItem {
+            label,
+            kind: 3,
+            detail: Some("namespace".to_string()),
+            insert_text: None,
+        }));
+
+        dedupe_completion_items(items)
     }
 
     fn local_completion_items(&self, position: LspPosition) -> Vec<EditorCompletionItem> {
@@ -2030,6 +2084,50 @@ mod tests {
         assert!(labels.contains(&"Local"));
         assert!(labels.contains(&"Status"));
         assert!(labels.contains(&"Report"));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn lsp_server_returns_same_package_namespace_members_after_qualification() {
+        let (root, uri) = sample_package_root("completion_namespace_local");
+        fs::write(
+            root.join("src/main.fol"),
+            "fun[] main(): int = {\n    return api::\n}\n",
+        )
+        .unwrap();
+        fs::create_dir_all(root.join("src/api")).unwrap();
+        fs::write(
+            root.join("src/api/lib.fol"),
+            "fun[exp] helper(): int = {\n    return 7\n}\n",
+        )
+        .unwrap();
+        let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
+        let mut server = EditorLspServer::new(EditorConfig::default());
+        open_document(&mut server, uri.clone(), &text);
+
+        let completion = server
+            .handle_request(JsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: JsonRpcId::Number(39),
+                method: "textDocument/completion".to_string(),
+                params: Some(
+                    serde_json::to_value(LspCompletionParams {
+                        text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                        position: LspPosition {
+                            line: 1,
+                            character: 16,
+                        },
+                        context: None,
+                    })
+                    .unwrap(),
+                ),
+            })
+            .unwrap()
+            .unwrap();
+
+        let completion: LspCompletionList = serde_json::from_value(completion.result.unwrap()).unwrap();
+        assert!(completion.items.iter().any(|item| item.label == "helper"));
 
         fs::remove_dir_all(root).ok();
     }

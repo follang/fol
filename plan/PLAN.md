@@ -376,7 +376,7 @@ over tiny synthetic one-liners, unless a one-liner is the clearest regression.
 ### Phase 9: Qualified and namespace completion
 
 - `9.1` complete: detect qualified path completion contexts
-- `9.2` offer namespace/package members after qualification
+- `9.2` complete: offer namespace/package members after qualification
 - `9.3` keep package-local and imported namespace completion separated clearly
 - `9.4` add tests for `loc` and same-package namespace completion
 
@@ -446,5 +446,5 @@ The acceptance pass should also verify this real editor flow:
 
 Current milestone state:
 
-- `38 / 49` slices complete
-- `78%`
+- `39 / 49` slices complete
+- `80%`
