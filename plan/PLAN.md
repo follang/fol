@@ -287,7 +287,7 @@ Round 1 slice tracker:
   as ordinary runtime source units.
 - [x] Slice 9. Add package/resolver/typechecker coverage for build source-unit
   visibility rules in Phase 2.
-- [ ] Slice 10. Re-export and test the full Phase 2 build source-unit pipeline
+- [x] Slice 10. Re-export and test the full Phase 2 build source-unit pipeline
   surface.
 
 ## Phase 3: Locate And Validate The Canonical Build Entry

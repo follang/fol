@@ -31,6 +31,7 @@ pub mod model;
 pub mod paths;
 pub mod session;
 
+pub use fol_parser::ast::ParsedSourceUnitKind;
 pub use build::{
     parse_package_build, BuildDependency, BuildExport, PackageBuildCompatibility,
     PackageBuildDefinition, PackageBuildEntryPoint, PackageBuildEntryPointKind, PackageBuildMode,
@@ -132,9 +133,9 @@ pub use session::{
 #[cfg(test)]
 mod tests {
     use super::{
-        canonical_chain_metadata, canonical_graph_method_signatures,
-        canonical_handle_method_signatures, canonical_option_value_kinds,
-        BuildSemanticChainKind, BuildSemanticType, BuildSemanticTypeFamily,
+        canonical_chain_metadata, canonical_graph_method_signatures, canonical_handle_method_signatures,
+        canonical_option_value_kinds, BuildSemanticChainKind, BuildSemanticType,
+        BuildSemanticTypeFamily, ParsedSourceUnitKind,
         NativeArtifactDefinition, NativeArtifactKind, NativeArtifactSet, NativeLinkDirective,
         NativeLinkInput, NativeLinkMode,
     };
@@ -172,5 +173,10 @@ mod tests {
             .iter()
             .any(|chain| chain.kind == BuildSemanticChainKind::RunDependency));
         assert!(option_kinds.len() >= 7);
+    }
+
+    #[test]
+    fn crate_root_reexports_parsed_source_unit_kinds() {
+        assert_eq!(ParsedSourceUnitKind::Build, fol_parser::ast::ParsedSourceUnitKind::Build);
     }
 }
