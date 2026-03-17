@@ -1539,6 +1539,30 @@ mod tests {
     }
 
     #[test]
+    fn completion_context_detects_qualified_paths() {
+        let uri = EditorDocumentUri::from_file_path(PathBuf::from("/tmp/qualified_context.fol")).unwrap();
+        let document = EditorDocument::new(
+            uri,
+            1,
+            "fun[] main(): int = {\n    return api::\n}\n".to_string(),
+        )
+        .unwrap();
+
+        assert_eq!(
+            completion_context(
+                &document,
+                LspPosition {
+                    line: 1,
+                    character: 16,
+                }
+            ),
+            CompletionContext::QualifiedPath {
+                qualifier: "api".to_string(),
+            }
+        );
+    }
+
+    #[test]
     fn lsp_server_tracks_open_change_and_close_document_lifecycle() {
         let (root, uri) = sample_package_root("lifecycle");
         let mut server = EditorLspServer::new(EditorConfig::default());
