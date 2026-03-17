@@ -104,9 +104,104 @@ impl BuildSemanticType {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BuildSemanticParameterShape {
+    Scalar,
+    Record,
+    Handle,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BuildSemanticMethodParameter {
+    pub name: String,
+    pub shape: BuildSemanticParameterShape,
+    pub value_type: Option<BuildSemanticTypeFamily>,
+    pub optional: bool,
+    pub variadic: bool,
+}
+
+impl BuildSemanticMethodParameter {
+    pub fn scalar(name: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            shape: BuildSemanticParameterShape::Scalar,
+            value_type: None,
+            optional: false,
+            variadic: false,
+        }
+    }
+
+    pub fn record(name: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            shape: BuildSemanticParameterShape::Record,
+            value_type: None,
+            optional: false,
+            variadic: false,
+        }
+    }
+
+    pub fn handle(name: impl Into<String>, family: BuildSemanticTypeFamily) -> Self {
+        Self {
+            name: name.into(),
+            shape: BuildSemanticParameterShape::Handle,
+            value_type: Some(family),
+            optional: false,
+            variadic: false,
+        }
+    }
+
+    pub fn optional(mut self) -> Self {
+        self.optional = true;
+        self
+    }
+
+    pub fn variadic(mut self) -> Self {
+        self.variadic = true;
+        self
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BuildSemanticMethodSignature {
+    pub receiver: BuildSemanticTypeFamily,
+    pub name: String,
+    pub params: Vec<BuildSemanticMethodParameter>,
+    pub returns: Option<BuildSemanticTypeFamily>,
+    pub chainable: bool,
+}
+
+impl BuildSemanticMethodSignature {
+    pub fn new(receiver: BuildSemanticTypeFamily, name: impl Into<String>) -> Self {
+        Self {
+            receiver,
+            name: name.into(),
+            params: Vec::new(),
+            returns: None,
+            chainable: false,
+        }
+    }
+
+    pub fn with_param(mut self, param: BuildSemanticMethodParameter) -> Self {
+        self.params.push(param);
+        self
+    }
+
+    pub fn returning(mut self, family: BuildSemanticTypeFamily) -> Self {
+        self.returns = Some(family);
+        self
+    }
+
+    pub fn chainable(mut self) -> Self {
+        self.chainable = true;
+        self
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
+        BuildSemanticMethodParameter, BuildSemanticMethodSignature, BuildSemanticParameterShape,
         BuildSemanticType, BuildSemanticTypeFamily, BuildStdlibImportSurface,
         BuildStdlibModuleKind, BuildStdlibModulePath,
     };
@@ -156,5 +251,37 @@ mod tests {
             BuildSemanticType::generated_file_handle().name,
             "GeneratedFile"
         );
+    }
+
+    #[test]
+    fn semantic_method_parameters_capture_scalar_record_and_handle_shapes() {
+        let scalar = BuildSemanticMethodParameter::scalar("name");
+        let record = BuildSemanticMethodParameter::record("config").optional();
+        let handle = BuildSemanticMethodParameter::handle(
+            "artifact",
+            BuildSemanticTypeFamily::ArtifactHandle,
+        )
+        .variadic();
+
+        assert_eq!(scalar.shape, BuildSemanticParameterShape::Scalar);
+        assert_eq!(record.shape, BuildSemanticParameterShape::Record);
+        assert!(record.optional);
+        assert_eq!(handle.shape, BuildSemanticParameterShape::Handle);
+        assert_eq!(handle.value_type, Some(BuildSemanticTypeFamily::ArtifactHandle));
+        assert!(handle.variadic);
+    }
+
+    #[test]
+    fn semantic_method_signatures_keep_receiver_return_and_chainability() {
+        let signature = BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::Graph, "add_exe")
+            .with_param(BuildSemanticMethodParameter::record("config"))
+            .returning(BuildSemanticTypeFamily::ArtifactHandle)
+            .chainable();
+
+        assert_eq!(signature.receiver, BuildSemanticTypeFamily::Graph);
+        assert_eq!(signature.name, "add_exe");
+        assert_eq!(signature.params.len(), 1);
+        assert_eq!(signature.returns, Some(BuildSemanticTypeFamily::ArtifactHandle));
+        assert!(signature.chainable);
     }
 }

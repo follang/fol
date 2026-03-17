@@ -234,7 +234,7 @@ Round 1 slice tracker:
   rules.
 - [x] Slice 2. Add canonical semantic build stdlib module identity types.
 - [x] Slice 3. Add semantic build surface type families for graph/handles.
-- [ ] Slice 4. Add semantic method signature types for the build stdlib.
+- [x] Slice 4. Add semantic method signature types for the build stdlib.
 - [ ] Slice 5. Add canonical graph method signatures.
 - [ ] Slice 6. Add canonical handle method signatures.
 - [ ] Slice 7. Add object-style artifact config shape types.
