@@ -86,6 +86,38 @@ mod tests {
         fol_tree_sitter_locals_query, fol_tree_sitter_query_snapshots,
         fol_tree_sitter_symbols_query,
     };
+    use std::path::{Path, PathBuf};
+    use std::process::Command;
+
+    fn temp_root(label: &str) -> PathBuf {
+        std::env::temp_dir().join(format!(
+            "fol_editor_tree_query_{}_{}_{}",
+            label,
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system time should be after epoch")
+                .as_nanos()
+        ))
+    }
+
+    fn build_bundle_root(label: &str) -> PathBuf {
+        let root = temp_root(label);
+        crate::editor_tree_generate_bundle(&root).expect("tree bundle generation should succeed");
+        root
+    }
+
+    fn run_tree_sitter_query(bundle_root: &Path, query_path: &Path, source_path: &Path) -> std::process::Output {
+        Command::new("tree-sitter")
+            .arg("query")
+            .arg("--grammar-path")
+            .arg(bundle_root)
+            .arg("--quiet")
+            .arg(query_path)
+            .arg(source_path)
+            .output()
+            .expect("tree-sitter query should run")
+    }
 
     #[test]
     fn grammar_scaffold_has_the_fol_language_name() {
@@ -308,5 +340,49 @@ mod tests {
         assert!(corpus.iter().any(|case| case.source.contains("when(flag)")));
         assert!(corpus.iter().any(|case| case.source.contains("report \"bad-input\"")));
         assert!(corpus.iter().any(|case| case.source.contains("typ Summary: rec")));
+    }
+
+    #[test]
+    fn generated_bundle_highlight_query_validates_against_tree_sitter() {
+        let root = build_bundle_root("valid");
+        let output = run_tree_sitter_query(
+            &root,
+            &root.join("queries/fol/highlights.scm"),
+            &PathBuf::from("xtra/logtiny/src/log.fol"),
+        );
+
+        assert!(
+            output.status.success(),
+            "tree-sitter query failed:\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+
+        std::fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn invalid_highlight_query_node_references_fail_bundle_validation() {
+        let root = build_bundle_root("invalid");
+        let query_path = root.join("queries/fol/highlights.scm");
+        std::fs::write(&query_path, "(missing_fol_node) @keyword").unwrap();
+
+        let output = run_tree_sitter_query(&root, &query_path, &PathBuf::from("xtra/logtiny/src/log.fol"));
+
+        assert!(
+            !output.status.success(),
+            "invalid query unexpectedly succeeded:\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stderr).contains("Invalid node type")
+                || String::from_utf8_lossy(&output.stderr).contains("Query error"),
+            "unexpected error output:\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+
+        std::fs::remove_dir_all(root).ok();
     }
 }

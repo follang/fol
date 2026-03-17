@@ -313,8 +313,9 @@ over tiny synthetic one-liners, unless a one-liner is the clearest regression.
 - `1.1` complete: audit current `highlights.scm` against current `V1` grammar
   node shapes
 - `1.2` complete: remove any remaining impossible or overly generic patterns
-- `1.3` lock query validity against the generated parser bundle path
-- `1.4` add tests that fail when highlight queries reference non-existent nodes
+- `1.3` complete: lock query validity against the generated parser bundle path
+- `1.4` complete: add tests that fail when highlight queries reference
+  non-existent nodes
 
 ### Phase 2: Declaration and modifier highlighting
 
@@ -445,5 +446,5 @@ The acceptance pass should also verify this real editor flow:
 
 Current milestone state:
 
-- `8 / 49` slices complete
-- `16%`
+- `10 / 49` slices complete
+- `20%`
