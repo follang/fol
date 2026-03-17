@@ -149,6 +149,30 @@ impl BuildRuntimeMethodCall {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BuildRuntimeDiagnosticKind {
+    MissingEntry,
+    UnsupportedStatement,
+    UnsupportedExpression,
+    UnknownMethod,
+    MissingField,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BuildRuntimeDiagnostic {
+    pub kind: BuildRuntimeDiagnosticKind,
+    pub message: String,
+}
+
+impl BuildRuntimeDiagnostic {
+    pub fn new(kind: BuildRuntimeDiagnosticKind, message: impl Into<String>) -> Self {
+        Self {
+            kind,
+            message: message.into(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BuildRuntimeStmt {
     Bind {
@@ -164,8 +188,8 @@ mod tests {
     use super::{
         BuildExecutionRepresentation, BuildRuntimeExpr, BuildRuntimeFrame, BuildRuntimeHandle,
         BuildRuntimeHandleKind, BuildRuntimeLocalId, BuildRuntimeMethodCall, BuildRuntimeProgram,
-        BuildRuntimeReceiverKind, BuildRuntimeRecordField, BuildRuntimeStmt, BuildRuntimeValue,
-        find_record_field,
+        BuildRuntimeDiagnostic, BuildRuntimeDiagnosticKind, BuildRuntimeReceiverKind,
+        BuildRuntimeRecordField, BuildRuntimeStmt, BuildRuntimeValue, find_record_field,
     };
 
     #[test]
@@ -312,5 +336,25 @@ mod tests {
             BuildRuntimeReceiverKind::Handle(BuildRuntimeHandleKind::Step)
         ));
         assert_eq!(handle_call.arguments.len(), 1);
+    }
+
+    #[test]
+    fn runtime_diagnostics_cover_translation_and_evaluation_failures() {
+        let unsupported_statement = BuildRuntimeDiagnostic::new(
+            BuildRuntimeDiagnosticKind::UnsupportedStatement,
+            "build runtime does not yet lower `when` statements",
+        );
+        let missing_field = BuildRuntimeDiagnostic::new(
+            BuildRuntimeDiagnosticKind::MissingField,
+            "artifact config is missing the required `root` field",
+        );
+
+        assert_eq!(
+            unsupported_statement.kind,
+            BuildRuntimeDiagnosticKind::UnsupportedStatement
+        );
+        assert!(unsupported_statement.message.contains("when"));
+        assert_eq!(missing_field.kind, BuildRuntimeDiagnosticKind::MissingField);
+        assert!(missing_field.message.contains("root"));
     }
 }
