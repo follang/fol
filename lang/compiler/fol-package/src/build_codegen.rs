@@ -52,6 +52,26 @@ pub struct SystemToolResult {
     pub generated_outputs: Vec<String>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CodegenKind {
+    FolToFol,
+    Schema,
+    AssetPreprocess,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CodegenRequest {
+    pub kind: CodegenKind,
+    pub input: String,
+    pub output: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CodegenResult {
+    pub kind: CodegenKind,
+    pub output: String,
+}
+
 impl GeneratedFileSet {
     pub fn new() -> Self {
         Self::default()
@@ -69,8 +89,9 @@ impl GeneratedFileSet {
 #[cfg(test)]
 mod tests {
     use super::{
-        GeneratedFileAction, GeneratedFileDefinition, GeneratedFileInstallProjection,
-        GeneratedFileSet, SystemToolRequest, SystemToolResult,
+        CodegenKind, CodegenRequest, CodegenResult, GeneratedFileAction,
+        GeneratedFileDefinition, GeneratedFileInstallProjection, GeneratedFileSet,
+        SystemToolRequest, SystemToolResult,
     };
 
     #[test]
@@ -148,5 +169,28 @@ mod tests {
         assert_eq!(request.outputs, vec!["gen/schema.fol".to_string()]);
         assert_eq!(result.exit_status, 0);
         assert_eq!(result.generated_outputs.len(), 1);
+    }
+
+    #[test]
+    fn codegen_models_cover_fol_schema_and_asset_flows() {
+        let fol = CodegenRequest {
+            kind: CodegenKind::FolToFol,
+            input: "schema/source.fol".to_string(),
+            output: "gen/source.fol".to_string(),
+        };
+        let schema = CodegenRequest {
+            kind: CodegenKind::Schema,
+            input: "schema/api.yaml".to_string(),
+            output: "gen/api.fol".to_string(),
+        };
+        let asset = CodegenResult {
+            kind: CodegenKind::AssetPreprocess,
+            output: "gen/logo.bin".to_string(),
+        };
+
+        assert!(matches!(fol.kind, CodegenKind::FolToFol));
+        assert!(matches!(schema.kind, CodegenKind::Schema));
+        assert!(matches!(asset.kind, CodegenKind::AssetPreprocess));
+        assert_eq!(asset.output, "gen/logo.bin");
     }
 }
