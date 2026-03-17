@@ -40,9 +40,21 @@ pub struct PackageBuildCompatibility {
     pub native_artifacts: Vec<PackageNativeArtifact>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PackageBuildEntryPointKind {
+    BuildFunction,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PackageBuildEntryPoint {
+    pub kind: PackageBuildEntryPointKind,
+    pub name: String,
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct PackageBuildDefinition {
     pub compatibility: PackageBuildCompatibility,
+    pub entry_point: Option<PackageBuildEntryPoint>,
 }
 
 impl PackageBuildDefinition {
@@ -66,6 +78,14 @@ impl PackageBuildDefinition {
         !self.dependencies().is_empty()
             || !self.exports().is_empty()
             || !self.native_artifacts().is_empty()
+    }
+
+    pub fn entry_point(&self) -> Option<&PackageBuildEntryPoint> {
+        self.entry_point.as_ref()
+    }
+
+    pub fn has_entry_point(&self) -> bool {
+        self.entry_point().is_some()
     }
 }
 
@@ -364,6 +384,7 @@ mod tests {
                     exports: Vec::new(),
                     native_artifacts: Vec::new(),
                 },
+                entry_point: None,
             }
         );
 
@@ -427,6 +448,7 @@ mod tests {
                     ],
                     native_artifacts: Vec::new(),
                 },
+                entry_point: None,
             }
         );
 
@@ -617,6 +639,7 @@ mod tests {
                     }],
                     native_artifacts: Vec::new(),
                 },
+                entry_point: None,
             }
         );
 

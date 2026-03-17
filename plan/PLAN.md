@@ -792,7 +792,7 @@ Each slice must land green with `make build` and `make test` before commit.
    sub-structure in `PackageBuildDefinition`.
 3. `[complete]` Add compatibility accessors/helpers so callers stop depending on
    ad-hoc field layout.
-4. `[pending]` Introduce modern build-entry metadata types in the package build
+4. `[complete]` Introduce modern build-entry metadata types in the package build
    model.
 5. `[pending]` Detect canonical `build` entry declarations during `build.fol`
    extraction.

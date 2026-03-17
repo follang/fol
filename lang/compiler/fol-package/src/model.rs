@@ -141,6 +141,7 @@ mod tests {
                         relative_path: "include/api.h".to_string(),
                     }],
                 },
+                entry_point: None,
             },
             vec![PreparedExportMount {
                 source_namespace: "json::src".to_string(),
