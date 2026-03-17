@@ -805,6 +805,22 @@ Each slice must land green with `make build` and `make test` before commit.
 10. `[complete]` Expose the richer package-build surface from `fol-package`'s
     public API.
 
+## Round 2 Slice Tracker
+
+This round focuses on Phase 2 build-graph IR work in `fol-package`.
+Each slice must land green with `make build` and `make test` before commit.
+
+1. `[complete]` Lock the second implementation round around the build-graph IR.
+2. `[pending]` Introduce a dedicated `build_graph` module with stable graph ID types.
+3. `[pending]` Add core graph node-kind enums for steps, artifacts, modules, generated files, options, and installs.
+4. `[pending]` Add `BuildGraph` storage tables plus allocation helpers for each node family.
+5. `[pending]` Add step-dependency edges and graph APIs for explicit step-to-step dependencies.
+6. `[pending]` Add artifact-input edges for module and generated-file dependencies.
+7. `[pending]` Add graph validation error types and empty-graph validation entrypoints.
+8. `[pending]` Validate step dependency cycles with source-local regression tests.
+9. `[pending]` Validate artifact input references and install-target shape constraints.
+10. `[pending]` Re-export the build-graph IR from `fol-package`'s public API.
+
 ## Success Criteria
 
 This plan is complete when:
