@@ -25,6 +25,24 @@ pub struct NativeLibraryPath {
     pub relative_path: String,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NativeLinkMode {
+    Static,
+    Dynamic,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum NativeLinkInput {
+    Artifact(NativeArtifactDefinition),
+    LibraryName(String),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NativeLinkDirective {
+    pub input: NativeLinkInput,
+    pub mode: NativeLinkMode,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NativeArtifactDefinition {
     pub name: String,
@@ -55,7 +73,8 @@ impl NativeArtifactSet {
 mod tests {
     use super::{
         NativeArtifactDefinition, NativeArtifactKind, NativeArtifactSet, NativeIncludePath,
-        NativeLibraryPath, NativeSearchPathOrigin,
+        NativeLibraryPath, NativeLinkDirective, NativeLinkInput, NativeLinkMode,
+        NativeSearchPathOrigin,
     };
 
     #[test]
@@ -123,5 +142,35 @@ mod tests {
         assert_eq!(package.origin, NativeSearchPathOrigin::PackageRoot);
         assert_eq!(build.origin, NativeSearchPathOrigin::BuildRoot);
         assert_eq!(system.origin, NativeSearchPathOrigin::System);
+    }
+
+    #[test]
+    fn native_link_directives_keep_mode_and_library_inputs() {
+        let directive = NativeLinkDirective {
+            input: NativeLinkInput::LibraryName("ssl".to_string()),
+            mode: NativeLinkMode::Dynamic,
+        };
+
+        assert_eq!(directive.mode, NativeLinkMode::Dynamic);
+        assert_eq!(
+            directive.input,
+            NativeLinkInput::LibraryName("ssl".to_string())
+        );
+    }
+
+    #[test]
+    fn native_link_directives_can_reference_declared_native_artifacts() {
+        let artifact = NativeArtifactDefinition {
+            name: "crypto".to_string(),
+            kind: NativeArtifactKind::StaticLibrary,
+            relative_path: "native/libcrypto.a".to_string(),
+        };
+        let directive = NativeLinkDirective {
+            input: NativeLinkInput::Artifact(artifact.clone()),
+            mode: NativeLinkMode::Static,
+        };
+
+        assert_eq!(directive.mode, NativeLinkMode::Static);
+        assert_eq!(directive.input, NativeLinkInput::Artifact(artifact));
     }
 }
