@@ -885,6 +885,22 @@ Each slice must land green with `make build` and `make test` before commit.
 9. `[complete]` Add stable step-report summary helpers aligned with frontend-facing reporting.
 10. `[complete]` Re-export the draft step-execution surface from `fol-package`.
 
+## Round 7 Slice Tracker
+
+This round focuses on Phase 7 standard-option work in `fol-package` and `fol-frontend`.
+Each slice must land green with `make build` and `make test` before commit.
+
+1. `[complete]` Lock the seventh implementation round around canonical build-option modeling.
+2. `[pending]` Introduce a dedicated `build_option` module with option-declaration shell types.
+3. `[pending]` Add canonical target architecture, operating-system, environment, and triple parsing/rendering types.
+4. `[pending]` Add canonical optimization-mode enums and frontend-profile mapping helpers.
+5. `[pending]` Extend user option declarations and values to cover `int` and `path` kinds.
+6. `[pending]` Add build-option override parsing and resolved-option-set lookup helpers.
+7. `[pending]` Replay option declarations and CLI/input overrides through the build evaluator result.
+8. `[pending]` Add artifact-target selection helpers that project resolved target/optimize values into artifact config.
+9. `[pending]` Add frontend CLI/config build-option override surfaces for target, optimize, and repeated named options.
+10. `[pending]` Re-export the draft build-option surface from `fol-package`.
+
 ## Success Criteria
 
 This plan is complete when:
