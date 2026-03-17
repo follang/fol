@@ -1,452 +1,818 @@
-# FOL Editor Plan: Highlighting + Completion
+# FOL Build Plan: `build.fol` As The Real Entry Point
 
 Last updated: 2026-03-17
 
-This plan replaces the closed first `fol-editor` milestone.
+This plan replaces the previous editor-focused milestone.
 
-The next active milestone is narrower and more practical:
+The next active milestone is to turn `build.fol` from a very small package-control
+file into the real build entry point for FOL projects, in the same broad spirit
+that `build.zig` is the build entry point for Zig projects.
 
-- make FOL highlighting feel complete and language-aware
-- implement the first useful LSP completion pass
+The goal is not to copy Zig token-for-token. The goal is to achieve the same
+capability level through FOL syntax and FOL semantics.
 
-This is not a “general editor improvements” bucket. It is a focused follow-up on
-the now-working Tree-sitter + LSP base.
+## Why This Plan Exists
 
-## Goal
+After scanning the current repo state:
 
-At closeout, the editor experience should feel like a real language, not a thin
-syntax demo.
+- `build.fol` already exists and is mandatory for formal `pkg` roots.
+- today it is only extracted for:
+  - package dependencies via top-level `def name: pkg = "..."`,
+  - exported roots via top-level `def name: loc = "..."`,
+  - inert native-artifact placeholders like `header`, `object`,
+    `static_lib`, and `shared_lib`.
+- `fol-package` treats `build.fol` as ordinary FOL syntax, but only a narrow
+  subset of top-level `def` declarations has package meaning during package
+  preparation.
+- `fol code check/build/run/test` currently drive compilation directly through
+  frontend/backend commands, not through a real user-authored build graph.
+- the current system has package loading, dependency fetching, lockfiles, CLI
+  workflows, and backend artifact generation, but it does **not** yet have:
+  - a first-class build graph,
+  - user-declared build steps,
+  - target/optimize option plumbing through `build.fol`,
+  - generated-file steps,
+  - install/run/test/docs steps declared in `build.fol`,
+  - explicit artifact dependencies between build nodes,
+  - a standard build API surface comparable to Zig’s build system.
 
-That means:
+## What Was Scanned Before Writing This Plan
 
-- the Tree-sitter highlight layer should visibly distinguish the important FOL
-  surfaces
-- `fol tool lsp` should provide real `textDocument/completion`
-- completion should be useful in ordinary coding, not just technically present
+Repo context reviewed:
+
+- [`README.md`](../README.md)
+- [`book/src/600_modules/100_import.md`](../book/src/600_modules/100_import.md)
+- [`book/src/600_modules/200_blocks.md`](../book/src/600_modules/200_blocks.md)
+- [`book/src/050_tooling/200_tool_commands.md`](../book/src/050_tooling/200_tool_commands.md)
+- [`plan/PROGRESS.md`](./PROGRESS.md)
+- [`lang/compiler/fol-package/src/build.rs`](../lang/compiler/fol-package/src/build.rs)
+- [`lang/compiler/fol-package/src/model.rs`](../lang/compiler/fol-package/src/model.rs)
+- [`lang/compiler/fol-package/src/session.rs`](../lang/compiler/fol-package/src/session.rs)
+- parser and resolver tests that exercise current `build.fol` extraction and
+  package/export semantics
+
+External reference reviewed:
+
+- Zig build-system documentation from the official Zig docs/site, with focus on:
+  - `build.zig` as the build entry point
+  - step graphs
+  - artifact creation
+  - standard target/optimization options
+  - run/test/install/doc steps
+  - dependency wiring
+  - generated files and custom steps
+
+## Zig Model We Want To Match
+
+The build system we want from FOL should match Zig at the capability level in
+these ways:
+
+1. One build entry file per project root.
+2. The entry file constructs a build graph rather than acting as inert metadata.
+3. Artifacts are explicit nodes.
+4. Build actions form named steps and dependencies.
+5. Target and optimization settings are standard first-class options.
+6. User options are part of the build graph, not ad-hoc CLI hacks.
+7. Running, testing, installing, documenting, codegen, and custom actions are
+   all expressible as graph nodes.
+8. Dependencies can contribute modules/artifacts/steps into the consuming build.
+9. Generated files and external tools can feed later build stages.
+10. The CLI executes a requested step from that graph rather than bypassing it.
+
+## FOL-Specific Constraints
+
+FOL should not become “Zig with different keywords”.
+
+The FOL version should preserve these constraints:
+
+1. `build.fol` stays valid FOL syntax.
+2. We do not introduce a separate build-only parser if ordinary FOL parsing can
+   support the model.
+3. The build API should look like ordinary FOL declarations/calls, not a YAML
+   document or shell DSL.
+4. Build evaluation must be deterministic and side-effect controlled.
+5. Package metadata remains in `package.yaml`; `build.fol` owns build graph and
+   export/build behavior.
+6. The repo must preserve the current `loc/std/pkg` package model.
 
 ## Desired End State
 
-After this plan, the repo should support:
+At the end of this plan:
 
-```text
-fol tool lsp
-fol tool parse path/to/file.fol
-fol tool highlight path/to/file.fol
-fol tool symbols path/to/file.fol
-fol tool tree generate /tmp/fol
+- `build.fol` is the canonical build entry point for package roots.
+- `fol code build/run/test/check` resolve and execute build graph steps from
+  `build.fol`.
+- build declarations can create executable/library/test/doc/codegen/install/run
+  nodes and wire dependencies between them.
+- package exports move from “special extracted `def loc` records only” toward a
+  coherent build-graph concept, while preserving the package import contract.
+- the current narrow V1 package-control behavior still works during migration,
+  then becomes a subset of the richer build model instead of a separate mode.
+
+## Non-Goals For This Milestone
+
+This plan does **not** require all future package-manager ambitions up front.
+
+Specifically out of scope unless needed by a later phase:
+
+- remote registries beyond current fetch/update/store roots
+- cross-language package publishing UX
+- full C/C++ toolchain abstraction parity on day one
+- distributed build execution
+- IDE build-graph visualization
+- user-defined build graph plugins loaded from arbitrary native code
+
+## Current Baseline
+
+The repo already has these build-adjacent pieces:
+
+### Package Control
+
+- formal `pkg` roots require `package.yaml` and `build.fol`
+- `build.fol` extraction currently recognizes:
+  - dependency defs of type `pkg`
+  - export defs of type `loc`
+  - reserved native-artifact placeholder defs
+- prepared export mounts are computed from build-declared export roots
+
+### CLI Workflow
+
+- `fol work ...` covers project/workspace setup and inspection
+- `fol pack fetch/update` covers dependency materialization and lockfile handling
+- `fol code check/build/run/test` covers compile pipeline driving
+
+### Compiler Pipeline
+
+- package loading
+- resolver workspaces
+- typechecking
+- lowering
+- backend artifact generation
+
+### Missing Build-System Pieces
+
+- no graph object
+- no named user-defined steps
+- no standard `target` / `optimize` build options
+- no first-class “add executable/library/test” API
+- no installed-artifact step model
+- no generated file step model
+- no build-time options/modules interface
+- no package dependency handoff into build graph nodes
+
+## Proposed FOL Build Surface
+
+This plan assumes `build.fol` grows into a standard-library-backed build API.
+
+The likely direction is:
+
+```fol
+use build: std = {"fol/build"};
+
+def build(graph: build::Graph): void = {
+    var target = graph.standard_target();
+    var optimize = graph.standard_optimize();
+
+    var app = graph.add_exe({
+        name = "demo",
+        root = "src/main.fol",
+        target = target,
+        optimize = optimize,
+    });
+
+    graph.install(app);
+
+    var run_app = graph.add_run(app);
+    graph.step("run", "Run the demo").depend_on(run_app);
+}
 ```
 
-And editors should have:
+The exact syntax is not locked by this plan. The capability set is.
 
-- richer Tree-sitter highlighting for current `V1`
-- stable query coverage for declaration modifiers and language keywords
-- first-pass LSP completion for:
-  - local bindings
-  - routine params
-  - top-level declarations in the current package
-  - imported declarations
-  - type names
-  - method/routine names where already semantically visible
-  - dot intrinsics for supported `V1` surfaces
+## Concept Mapping: Zig To FOL
 
-## Non-Goals
+### Entry file
 
-This plan does not include:
+- Zig: `build.zig`
+- FOL target: `build.fol`
 
-- rename
-- references
-- semantic tokens
-- code actions
-- snippet expansion policy
-- formatter support
-- fuzzy ranking or AI-style completion
-- full context-aware completion for every future `V2`/`V3` language surface
-
-Those belong in later editor follow-up work.
-
-## Boundary
-
-This milestone should touch:
-
-- `lang/tooling/fol-editor`
-- `lang/tooling/fol-frontend` only where command dispatch/output changes are
-  needed
-- Neovim-facing Tree-sitter bundle generation only if required for query
-  packaging
-- book/docs only after the feature work is stable
-
-It should not change:
-
-- compiler semantics unless a completion/highlight pass exposes a real bug
-- package model
-- backend behavior
-
-## Principles
-
-### 1. Highlighting should reflect FOL, not generic C-ish defaults
-
-FOL has visible language markers like:
-
-- `fun[exp]`
-- `fun[par]`
-- `fun[rec]`
-- `log[...]`
-- `typ[...]`
-- `ali[...]`
-- shells like `nil`
-- effect-ish surfaces like `report`, `check`, `panic`
-- package/import kinds like `loc`, `pkg`, `std`
-
-Those should be represented intentionally in the query layer.
-
-### 2. Completion should come from semantic truth
-
-Completion should not be built from regexes or Tree-sitter-only guesses where
-compiler truth is available.
-
-Preferred sources:
-
-- typed/resolved workspace state
-- current document overlay state
-- explicit intrinsic tables
-
-### 3. Ship useful completion before clever completion
-
-First pass should prefer:
-
-- predictable
-- stable
-- easy to test
-
-over:
-
-- fuzzy ranking
-- edit-distance matching
-- complicated insert text transformations
-
-## Current Baseline Gaps
-
-Before this milestone, the real editor gaps are:
-
-- Tree-sitter highlighting still treats many FOL surfaces too generically
-- declaration modifiers like `[exp]` and similar bracketed markers are not yet
-  represented clearly enough
-- import source kinds and effect-ish keywords are not distinct enough in the
-  current query layer
-- dotted intrinsic surfaces are present, but not rich enough to feel language
-  specific
-- `fol tool highlight` is still more of a smoke command than an inspection tool
-- the LSP is attached and serving diagnostics/navigation, but completion is not
-  implemented yet
-- completion provider capabilities are not advertised yet
-- there is no first-pass completion contract yet for locals, params, imports,
-  types, or dot intrinsics
-
-## Highlighting Scope
-
-The highlight pass should cover the current `V1` syntax more deeply than the
-first milestone.
-
-Target improvements:
-
-- declaration heads and head modifiers:
-  - `fun`
-  - `log`
-  - `typ`
-  - `ali`
-  - `var`
-  - `use`
-- bracketed declaration modes:
-  - `[exp]`
-  - `[par]`
-  - other currently surfaced markers that exist in the real parser/grammar
-- import source kinds:
-  - `loc`
-  - `pkg`
-  - `std`
-- control/effect keywords:
-  - `when`
-  - `loop`
-  - `return`
-  - `break`
-  - `report`
-  - `check`
-  - `panic`
-  - `unreachable`
-- declaration names by role:
-  - routines
-  - logs
-  - aliases
-  - records
-  - entries
-  - variants
-  - bindings
-- typed-binding punctuation and shells:
-  - type annotations
-  - `/`
-  - `!`
-  - `nil`
-- intrinsic-like dotted names:
-  - `.len`
-  - `.echo`
-  - comparison/bool/query intrinsics already supported in `V1`
+### Build graph root
 
-The goal is not “more colors” by itself. The goal is that important syntactic
-roles are visually distinguishable.
+- Zig: `std.Build`
+- FOL target: `fol/build::Graph` or equivalent
 
-## Completion Scope
+### Artifact creation
 
-The first completion pass should support these contexts:
+- Zig: `addExecutable`, `addStaticLibrary`, `addSharedLibrary`, `addTest`
+- FOL target:
+  - `graph.add_exe(...)`
+  - `graph.add_static_lib(...)`
+  - `graph.add_shared_lib(...)`
+  - `graph.add_test(...)`
 
-### Plain identifier completion
+### Standard options
 
-When completing in an identifier position, offer:
+- Zig: `standardTargetOptions`, `standardOptimizeOption`
+- FOL target:
+  - `graph.standard_target()`
+  - `graph.standard_optimize()`
 
-- local bindings
-- routine params
-- top-level values/routines/types in the current package
-- imported symbols that are visible in the current scope
+### Step graph
 
-### Qualified completion
+- Zig: named/custom steps with dependencies
+- FOL target:
+  - `graph.step(name, description)`
+  - `.depend_on(...)`
 
-When completing after a namespace/package qualifier, offer:
+### Running artifacts
 
-- visible declarations exported by that namespace/package
+- Zig: `addRunArtifact`
+- FOL target:
+  - `graph.add_run(artifact)`
 
-### Type-position completion
+### Install surface
 
-When completing in a declared type position, offer:
+- Zig: install artifact/file/dir steps
+- FOL target:
+  - `graph.install(artifact)`
+  - `graph.install_file(...)`
+  - `graph.install_dir(...)`
 
-- builtin types
-- visible named record/entry/alias types
-- imported type declarations
+### Generated files / custom tools
 
-### Dot completion
+- Zig: generated files, system commands, custom steps
+- FOL target:
+  - `graph.add_write_file(...)`
+  - `graph.add_codegen(...)`
+  - `graph.add_system_tool(...)`
+  - `graph.add_step(...)`
 
-When completing after `.`, offer:
+### Dependency handoff
 
-- supported intrinsics for the receiver family, when type information is known
-- otherwise, a conservative fallback of current `V1` intrinsic names if the
-  receiver family cannot yet be derived safely
+- Zig: dependency packages expose modules/artifacts to the consumer build
+- FOL target:
+  - dependency roots expose build graph surfaces, importable modules, artifacts,
+    and possibly named steps
 
-### Trigger behavior
+## Architecture Decisions We Must Lock Early
 
-First pass triggers should be minimal and explicit:
+These are not optional cleanup items. They are gating design choices.
 
-- ordinary completion request
-- `.` trigger for intrinsic/member-like completion
-- `:` or `/` should not gain completion unless that falls out naturally and
-  stays correct
+### 1. What Executes `build.fol`?
 
-## Completion Output Contract
+Options:
 
-The LSP should advertise a real completion provider.
+1. Dedicated interpreter over parsed/typechecked/lowered build subsets.
+2. Compile `build.fol` into an internal IR/VM and execute that.
+3. Reuse backend/runtime execution and run build scripts as normal FOL code.
 
-First completion items should include:
+Planned direction:
 
-- `label`
-- `kind`
-- `detail`
-- simple `insertText` or plain replacement text
+- prefer a dedicated build evaluator over full general runtime execution
+- keep the evaluator deterministic
+- whitelist build APIs and I/O surfaces explicitly
+- avoid making arbitrary ordinary runtime behavior the build contract too early
 
-Do not overcomplicate the first pass with:
+### 2. Is `build.fol` Just One Function Or A Broader Surface?
 
-- snippets everywhere
-- documentation resolution requests
-- command-based follow-up actions
+Options:
 
-Useful `kind` mapping matters:
+1. one required `def build(...)`
+2. extracted top-level declarations plus one orchestrating entry
+3. multiple named top-level build entry hooks
 
-- variable/local
-- function/routine
-- method
-- module/namespace
-- type/class/struct-ish mapping for record/entry/alias surfaces
-- keyword
+Planned direction:
 
-## Testing Rules
+- keep one canonical entry surface for graph construction
+- allow helper defs/types/functions in the file
+- preserve current extraction compatibility during migration
 
-Every feature/fix commit in this milestone should include its relevant test.
+### 3. How Do Current Export Defs Migrate?
 
-Required test layers:
+Current:
 
-- query snapshot tests
-- `fol tool highlight` output tests
-- `fol tool symbols` stability where query changes affect symbol capture
-- LSP request/response tests for completion
-- root integration tests where frontend command behavior changes
+- `def root: loc = "src"`
+- `def fmt: loc = "src/fmt"`
 
-Completion tests should cover:
+We need to decide whether exports become:
 
-- local bindings
-- params
-- imported names
-- type-position candidates
-- dot completion
-- no bogus suggestions from unrelated files
+1. a compatibility shim on top of the new graph
+2. a dedicated package-surface section in the build API
+3. ordinary graph nodes marked for package export
 
-## Fixture Policy
+Planned direction:
 
-Use real checked-in `.fol` fixtures where possible.
+- keep current `def ...: loc = "..."` export declarations as compatibility input
+  in Phase 1
+- introduce a richer build-native export API later
+- migrate resolver/package preparation onto the richer model only after both
+  surfaces coexist
 
-Prefer:
+### 4. What Is The First-Class Unit Of Dependency Exposure?
 
-- `test/apps/fixtures/...`
-- `test/apps/showcases/...`
-- `xtra/logtiny`
+Candidates:
 
-over tiny synthetic one-liners, unless a one-liner is the clearest regression.
+- source roots
+- modules
+- named export surfaces
+- artifacts
+- generated outputs
+- step handles
 
-## Phases
+Planned direction:
+
+- model dependency exposure as a structured build package handle that can provide:
+  - modules/source roots,
+  - artifacts,
+  - named steps,
+  - generated outputs,
+  - build options metadata
+
+## Milestones
+
+## Phase 0: Repo Baseline And Vocabulary Lock
 
-### Phase 0: Freeze boundary and baseline
+Purpose:
 
-- `0.1` complete: replace the old editor-closeout plan with this focused
-  highlight + completion plan
-- `0.2` complete: document the exact current highlight and completion gaps
-  before changes
-- `0.3` complete: add a small acceptance checklist for Neovim-facing
-  verification
+- stop mixing “package metadata”, “package exports”, “artifact building”, and
+  “build graph” as if they were the same thing
 
-### Phase 1: Highlight query audit
+Work:
 
-- `1.1` complete: audit current `highlights.scm` against current `V1` grammar
-  node shapes
-- `1.2` complete: remove any remaining impossible or overly generic patterns
-- `1.3` complete: lock query validity against the generated parser bundle path
-- `1.4` complete: add tests that fail when highlight queries reference
-  non-existent nodes
+1. Define repo-wide terms:
+   - package root
+   - build root
+   - build entry point
+   - module/source root
+   - artifact
+   - install root
+   - step
+   - dependency package
+   - generated file
+2. Document current-state `build.fol` behavior precisely from code.
+3. Record all current CLI/build/package entrypoints that bypass `build.fol`.
+4. Identify which existing `fol code ...` operations will become named default
+   build steps versus direct compiler commands.
+
+Exit criteria:
+
+- one stable glossary in docs and code comments
+- no ambiguity about current versus planned `build.fol` semantics
+
+## Phase 1: Formalize `build.fol` V1 Compatibility Layer
+
+Purpose:
+
+- preserve the current package model while preparing the richer build system
+
+Work:
+
+1. Split “package control extraction” from “future build graph evaluation” in
+   `fol-package`.
+2. Introduce an explicit internal representation for:
+   - compatibility exports,
+   - compatibility dependencies,
+   - compatibility native-artifact placeholders,
+   - future graph entry node metadata.
+3. Keep current `pkg` import behavior green while refactoring internal data
+   structures.
+4. Add tests that lock current compatibility behavior before expanding features.
+
+Files likely touched:
+
+- `lang/compiler/fol-package/src/build.rs`
+- `lang/compiler/fol-package/src/model.rs`
+- `lang/compiler/fol-package/src/session.rs`
+
+Exit criteria:
+
+- existing `pkg` import/export behavior remains unchanged
+- package preparation owns a richer internal model than just three extracted lists
+
+## Phase 2: Define The Build Graph IR
+
+Purpose:
+
+- create the internal model that the eventual `build.fol` evaluator will build
+
+Work:
+
+1. Design build graph IDs/tables:
+   - package
+   - step
+   - artifact
+   - module/root
+   - generated file
+   - option
+   - install action
+2. Define graph node categories:
+   - executable
+   - static library
+   - shared library
+   - test artifact
+   - run action
+   - install action
+   - documentation action
+   - custom/system command action
+   - generated-file action
+3. Define dependency edges:
+   - step -> step
+   - artifact -> artifact
+   - artifact -> module/root
+   - generated file -> artifact
+4. Define graph validation rules:
+   - no cycles where disallowed
+   - missing source root diagnostics
+   - invalid install destinations
+   - invalid dependency exposure
+
+Exit criteria:
+
+- a standalone `BuildGraph` model exists
+- validation can reject malformed graphs before execution
+
+## Phase 3: Standard Build Library API Surface
+
+Purpose:
+
+- define the public FOL-side API that `build.fol` scripts will call
+
+Work:
+
+1. Create a standard build API namespace, likely under `std` / `core`.
+2. Design first public graph methods:
+   - `standard_target`
+   - `standard_optimize`
+   - `option`
+   - `step`
+   - `add_exe`
+   - `add_static_lib`
+   - `add_shared_lib`
+   - `add_test`
+   - `add_run`
+   - `install`
+   - `install_file`
+   - `install_dir`
+   - `dependency`
+3. Decide how FOL syntax expresses structured build arguments:
+   - records
+   - builder methods
+   - named arg records
+4. Freeze the naming rules early to avoid churn in examples and docs.
+
+Exit criteria:
+
+- one draft public API exists
+- examples can be written even before execution is implemented
+
+## Phase 4: Build Evaluator
+
+Purpose:
+
+- execute `build.fol` as graph-construction code
+
+Work:
+
+1. Choose evaluator boundary:
+   - parser/resolver/typecheck input
+   - dedicated evaluated subset
+   - no arbitrary unrestricted runtime execution
+2. Define allowed build-time operations:
+   - graph creation
+   - option reads
+   - path joins/normalization
+   - string/container basics
+   - controlled file generation
+   - controlled process execution
+3. Reject non-deterministic or unsupported ordinary language surfaces in
+   `build.fol` with explicit diagnostics.
+4. Surface build-evaluation diagnostics through `fol-diagnostics`.
+5. Guarantee that evaluating the same `build.fol` and inputs yields the same
+   graph.
+
+Exit criteria:
+
+- `build.fol` can construct a validated graph in-process
+- graph-construction diagnostics are clear and source-located
+
+## Phase 5: Artifact Model
+
+Purpose:
+
+- make artifact creation first-class instead of hardcoded CLI behavior
+
+Work:
+
+1. Define artifact kinds:
+   - exe
+   - static lib
+   - shared lib
+   - test bundle
+   - generated source bundle
+   - docs bundle
+2. Define artifact configuration:
+   - entry/root source
+   - package roots/modules
+   - target
+   - optimize mode
+   - output name
+   - linkage mode
+   - native artifacts
+3. Connect artifacts to existing compiler pipeline:
+   - `fol-package`
+   - resolver
+   - typechecker
+   - lowerer
+   - backend
+4. Preserve emitted artifact reporting through the frontend.
+
+Exit criteria:
+
+- build graph nodes can produce backend artifacts through one shared path
+
+## Phase 6: Step Execution Model
+
+Purpose:
+
+- turn the graph into something the CLI can execute
+
+Work:
+
+1. Define default steps:
+   - `build`
+   - `run`
+   - `test`
+   - `install`
+   - `check`
+2. Define custom named steps.
+3. Define step dependency semantics and topological execution.
+4. Add incremental step/result caching boundaries.
+5. Add stable human/plain/json reporting for:
+   - requested step
+   - executed substeps
+   - skipped cached substeps
+   - produced artifacts
+
+Exit criteria:
+
+- the frontend can execute a named build step from `build.fol`
+
+## Phase 7: Standard Target / Optimize / User Options
 
-### Phase 2: Declaration and modifier highlighting
+Purpose:
 
-- `2.1` complete: highlight declaration heads distinctly: `fun`, `log`, `typ`,
-  `ali`, `var`, `use`
-- `2.2` complete: highlight declaration modifiers in bracket forms like
-  `[exp]`, `[par]`, and other real surfaced markers
-- `2.3` complete: highlight declaration names by role:
-  function/log/type/alias/binding
-- `2.4` complete: add highlight snapshots for declaration-heavy real fixtures
+- match one of Zig’s most important build-system strengths
 
-### Phase 3: Keyword and import-kind highlighting
+Work:
 
-- `3.1` complete: highlight control/effect keywords consistently
-- `3.2` complete: highlight import source-kind markers: `loc`, `pkg`, `std`
-- `3.3` complete: highlight shell-related keywords/literals including `nil`
-- `3.4` complete: lock real-fixture snapshots for keyword/import-heavy files
+1. Define canonical target triple/config model for FOL.
+2. Define canonical optimization modes.
+3. Define user option declarations:
+   - bool
+   - int
+   - string
+   - enum
+   - path
+4. Wire options into:
+   - build evaluation
+   - CLI argument parsing
+   - artifact configuration
+5. Ensure options appear in `fol code ... --help` in a build-aware way.
+
+Exit criteria:
+
+- `build.fol` can configure target/optimize and user options without custom CLI
+  one-offs
 
-### Phase 4: Type and intrinsic highlighting
+## Phase 8: Dependency Build Surfaces
 
-- `4.1` complete: highlight builtin types and named type references more clearly
-- `4.2` complete: highlight typed-binding/type-annotation surfaces distinctly
-- `4.3` complete: highlight dotted intrinsic names like `.len`, `.echo`, comparisons, and
-  boolean/query intrinsics
-- `4.4` complete: add snapshots for container/shell/intrinsic-heavy fixtures
+Purpose:
 
-### Phase 5: Highlight command and bundle hardening
+- let one package’s build graph expose usable build products to another
 
-- `5.1` complete: make `fol tool highlight` output more inspection-friendly for query work
-- `5.2` complete: ensure `fol tool tree generate` always exports the latest query set
-- `5.3` complete: add regression coverage so generated bundles contain the current query
-  files exactly
-- `5.4` complete: verify the generated bundle remains Neovim-consumable
+Work:
 
-### Phase 6: Completion protocol foundation
+1. Define dependency build handles.
+2. Support dependency-provided:
+   - modules/source roots
+   - artifacts
+   - named steps
+   - generated outputs
+3. Reconcile dependency build surfaces with current package export semantics.
+4. Decide how dependency build scripts are evaluated:
+   - eagerly,
+   - lazily,
+   - or per requested surface.
+5. Preserve current `loc/std/pkg` source resolution rules while layering build
+   surfaces on top.
+
+Exit criteria:
+
+- dependent packages can consume build-exposed artifacts/modules instead of only
+  source exports
 
-- `6.1` complete: add `textDocument/completion` request handling to the LSP server
-- `6.2` complete: advertise a real completion provider from `initialize`
-- `6.3` complete: define the internal completion item model in `fol-editor`
-- `6.4` complete: add focused stdio/request tests for completion request/response framing
+## Phase 9: Generated Files, Codegen, And External Tools
 
-### Phase 7: Scope and symbol completion
+Purpose:
 
-- `7.1` complete: return local binding completions
-- `7.2` complete: return routine parameter completions
-- `7.3` complete: return current-package top-level declaration completions
-- `7.4` complete: return imported visible declaration completions
-- `7.5` complete: filter duplicate/irrelevant candidates deterministically
-- `7.6` complete: lock tests for local/imported symbol completion
+- reach practical parity with the useful middle of Zig’s build system
 
-### Phase 8: Type-position completion
+Work:
 
-- `8.1` complete: detect ordinary declared-type completion contexts
-- `8.2` complete: offer builtin type completions in type positions
-- `8.3` complete: offer visible named type completions in type positions
-- `8.4` complete: add tests for record/entry/alias/builtin type completion
+1. Add generated-file nodes.
+2. Add write-file / copy-file / install-file helpers.
+3. Add controlled system-tool invocation.
+4. Add codegen step APIs for:
+   - FOL-to-FOL generation
+   - foreign schema/code generation
+   - asset preprocessing
+5. Define dependency tracking for generated outputs.
 
-### Phase 9: Qualified and namespace completion
+Exit criteria:
 
-- `9.1` complete: detect qualified path completion contexts
-- `9.2` complete: offer namespace/package members after qualification
-- `9.3` complete: keep package-local and imported namespace completion separated clearly
-- `9.4` complete: add tests for `loc` and same-package namespace completion
+- generated build products can feed later artifact steps safely
 
-### Phase 10: Dot completion
+## Phase 10: Native Artifacts And C ABI Work
 
-- `10.1` complete: detect `.` completion trigger contexts
-- `10.2` complete: map typed receiver families to supported `V1` intrinsics
-- `10.3` complete: return conservative fallback intrinsic suggestions when typing
-  context is incomplete but still safe
-- `10.4` complete: add tests for `.len`, `.echo`, comparison, and boolean/query
-  completion
+Purpose:
 
-### Phase 11: Ranking, filtering, and response shaping
+- turn current inert placeholders into real build surfaces
 
-- `11.1` complete: choose stable completion item kinds/details for FOL symbols
-- `11.2` complete: return deterministic ordering for repeated requests
-- `11.3` complete: avoid noisy suggestions from unrelated packages/files
-- `11.4` complete: add plain tests locking item labels/kinds/order
+Work:
 
-### Phase 12: Frontend and tool command coverage
+1. Upgrade current placeholder records:
+   - `header`
+   - `object`
+   - `static_lib`
+   - `shared_lib`
+2. Define include-path and library-path semantics.
+3. Define linking semantics into backend-produced artifacts.
+4. Decide whether compile-C / compile-C++ style steps are first-class in this
+   milestone or deferred.
+5. Lock cross-platform naming/path conventions.
 
-- `12.1` complete: keep `fol tool lsp` compatible with the new completion capability
-- `12.2` complete: extend frontend/editor tests if command summaries or help output
-  shift
-- `12.3` complete: ensure `fol tool parse/highlight/symbols` remain stable while
-  query work lands
+Exit criteria:
 
-### Phase 13: Real-editor hardening
+- today’s native-artifact placeholders become executable build graph inputs
 
-- `13.1` test the full Neovim path against the generated Tree-sitter bundle
-- `13.2` test real LSP diagnostics + completion on checked-in package fixtures
-- `13.3` fix any remaining overlay/root/filtering bugs exposed by editor use
-- `13.4` keep each discovered bug as a permanent regression test
+## Phase 11: CLI Migration
 
-### Phase 14: Docs closeout
+Purpose:
 
-- `14.1` update `book` docs for richer highlighting and first completion support
-- `14.2` update repo status docs if the public editor surface changed
-- `14.3` turn this file into a completion record once the milestone is finished
+- make `fol code ...` actually honor `build.fol`
 
-## Acceptance Checklist
+Work:
 
-This plan is only done when all of these are true:
+1. Define CLI fallback rules:
+   - if `build.fol` has no modern build entry, use compatibility mode
+   - if it has a build entry, execute graph steps
+2. Map commands:
+   - `fol code build`
+   - `fol code run`
+   - `fol code test`
+   - `fol code check`
+   onto default build steps
+3. Add explicit step selection:
+   - `fol code build --step docs`
+   - similar targeted execution
+4. Keep artifact reporting stable across migration.
+5. Preserve human/plain/json output formats.
 
-- `fol tool highlight <PATH>` visibly reports the richer highlight captures
-- generated Tree-sitter bundles contain the latest `.scm` queries
-- Neovim Tree-sitter highlighting covers declaration modifiers and intrinsic
-  surfaces better than the previous milestone
-- `fol tool lsp` advertises completion support
-- completion returns useful candidates for locals, imports, types, and dot
-  intrinsics
-- diagnostics still stay file-correct while completion is enabled
-- `make build` passes
-- `make test` passes
+Exit criteria:
 
-### Neovim Verification
+- ordinary user workflows go through `build.fol` by default
 
-The acceptance pass should also verify this real editor flow:
+## Phase 12: Docs, Scaffolding, And Editor Surfaces
 
-1. `fol tool tree generate /tmp/fol`
-2. Neovim Tree-sitter loads the generated parser/query bundle
-3. a real `.fol` file highlights declaration modifiers and intrinsic surfaces
-4. `fol tool lsp` attaches to the buffer
-5. source-file diagnostics appear on real source errors
-6. hover and go-to-definition still work after the completion changes land
-7. completion appears in the same buffer for locals/imports/types/dot contexts
+Purpose:
 
-## Progress
+- make the new build model the documented normal path
 
-Current milestone state:
+Work:
 
-- `49 / 49` slices complete
-- `100%`
+1. Rewrite `book` sections on packages/imports/build roots.
+2. Update `README.md` build/package descriptions.
+3. Update project scaffolding so new packages generate the new `build.fol`
+   entrypoint shape.
+4. Add editor/LSP affordances for build files:
+   - highlighting
+   - completion
+   - symbol extraction
+   - diagnostics
+5. Add sample projects:
+   - simple exe
+   - static lib
+   - shared lib
+   - generated file
+   - dependency-consuming workspace
+
+Exit criteria:
+
+- a new user can learn and use the `build.fol` system from repo docs alone
+
+## Testing Matrix
+
+Each phase must add tests at the right layer.
+
+### Parser / Package Tests
+
+- valid build entry parsing
+- compatibility export/dependency parsing
+- invalid build declarations
+- native artifact parsing
+
+### Build Graph Tests
+
+- graph validation
+- cycle detection
+- option handling
+- step dependency ordering
+
+### Evaluator Tests
+
+- deterministic graph construction
+- unsupported-surface diagnostics
+- option propagation
+
+### Frontend Tests
+
+- `fol code build/run/test/check` using build graph
+- human/plain/json reporting
+- step selection
+
+### Integration Tests
+
+- single-package executable
+- multi-package dependency build
+- generated file feeding compile
+- install surface
+- native artifact linking when implemented
+
+## Migration Strategy
+
+We should not break current formal packages immediately.
+
+The migration path should be:
+
+1. keep current compatibility extraction
+2. introduce modern build entrypoint behind coexistence
+3. let CLI detect both modes
+4. migrate scaffolding and docs
+5. only then consider deprecating compatibility-only `build.fol` files
+
+## Immediate Step Order
+
+These are the exact next actions after approving this plan:
+
+1. Write a short design note that freezes the vocabulary and current-state
+   baseline.
+2. Introduce a dedicated build-graph model crate/module or a strongly isolated
+   internal module in `fol-package`.
+3. Refactor current `build.fol` extraction into an explicit compatibility layer.
+4. Draft the first public build API shape in docs/examples before coding the
+   evaluator.
+5. Implement build-graph validation before graph execution.
+6. Implement a minimal evaluator that can:
+   - read target/optimize options,
+   - create one executable artifact,
+   - install it,
+   - define a `run` step.
+7. Route `fol code build` through that minimal graph path.
+8. Expand from there to tests, dependencies, generated files, and native
+   artifacts.
+
+## Round 1 Slice Tracker
+
+This round focuses on Phase 1 compatibility-layer work in `fol-package`.
+Each slice must land green with `make build` and `make test` before commit.
+
+1. `[complete]` Replace the old plan with this `build.fol` roadmap and lock the
+   first implementation round.
+2. `[pending]` Split raw V1 package-control data into an explicit compatibility
+   sub-structure in `PackageBuildDefinition`.
+3. `[pending]` Add compatibility accessors/helpers so callers stop depending on
+   ad-hoc field layout.
+4. `[pending]` Introduce modern build-entry metadata types in the package build
+   model.
+5. `[pending]` Detect canonical `build` entry declarations during `build.fol`
+   extraction.
+6. `[pending]` Thread build-entry metadata through prepared package state.
+7. `[pending]` Add explicit build-mode classification for empty / compatibility /
+   hybrid / modern build files.
+8. `[pending]` Cover compatibility-plus-entry coexistence in package parser
+   tests.
+9. `[pending]` Cover prepared-package loading for modern-entry package roots.
+10. `[pending]` Expose the richer package-build surface from `fol-package`'s
+    public API.
+
+## Success Criteria
+
+This plan is complete when:
+
+1. `build.fol` is the actual build entrypoint for FOL projects.
+2. `fol code ...` runs through a real build graph.
+3. the graph can express executables, libraries, tests, run/install steps,
+   options, and dependency-provided build surfaces.
+4. current `pkg` dependency/export semantics are preserved through migration.
+5. the result feels comparable to Zig’s build system in power, while still
+   reading like FOL.
