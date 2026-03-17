@@ -16,22 +16,22 @@ fn temp_root(label: &str) -> PathBuf {
 
 #[test]
 fn editor_lsp_command_is_publicly_dispatchable() {
-    let (_, result) = run_command_from_args_in_dir(["fol", "editor", "lsp"], "xtra/logtiny")
+    let (_, result) = run_command_from_args_in_dir(["fol", "tool", "editor", "lsp"], "xtra/logtiny")
         .expect("editor lsp should dispatch");
 
     assert_eq!(result.command, "lsp");
-    assert!(result.summary.contains("fol editor lsp"));
+    assert!(result.summary.contains("fol tool editor lsp"));
 }
 
 #[test]
 fn editor_file_commands_dispatch_against_real_fol_fixtures() {
     let fixture = "test/apps/fixtures/record_flow/main.fol";
 
-    let (_, parse) = run_command_from_args(["fol", "editor", "parse", fixture])
+    let (_, parse) = run_command_from_args(["fol", "tool", "editor", "parse", fixture])
         .expect("editor parse should dispatch");
-    let (_, highlight) = run_command_from_args(["fol", "editor", "highlight", fixture])
+    let (_, highlight) = run_command_from_args(["fol", "tool", "editor", "highlight", fixture])
         .expect("editor highlight should dispatch");
-    let (_, symbols) = run_command_from_args(["fol", "editor", "symbols", fixture])
+    let (_, symbols) = run_command_from_args(["fol", "tool", "editor", "symbols", fixture])
         .expect("editor symbols should dispatch");
 
     assert_eq!(parse.command, "parse");
@@ -47,7 +47,7 @@ fn editor_file_commands_dispatch_against_real_fol_fixtures() {
 fn editor_commands_respect_requested_output_mode() {
     let fixture = "test/apps/fixtures/record_flow/main.fol";
     let (output, result) =
-        run_command_from_args(["fol", "editor", "--output", "plain", "parse", fixture])
+        run_command_from_args(["fol", "tool", "editor", "--output", "plain", "parse", fixture])
             .expect("editor parse should support output mode");
     let rendered = output
         .render_command_summary(&result)
@@ -67,7 +67,7 @@ fn editor_commands_do_not_require_workspace_discovery() {
         .expect("should write sample source");
 
     let (_, result) = run_command_from_args_in_dir(
-        ["fol", "editor", "parse", file.to_string_lossy().as_ref()],
+        ["fol", "tool", "editor", "parse", file.to_string_lossy().as_ref()],
         &root,
     )
     .expect("editor parse should not need a workspace root");
@@ -82,7 +82,7 @@ fn editor_commands_do_not_require_workspace_discovery() {
 fn editor_command_plain_output_stays_snapshot_stable_for_real_fixtures() {
     let fixture = "xtra/logtiny/src/log.fol";
     let (output, result) =
-        run_command_from_args(["fol", "editor", "--output", "plain", "symbols", fixture])
+        run_command_from_args(["fol", "tool", "editor", "--output", "plain", "symbols", fixture])
             .expect("editor symbols should support plain output");
     let rendered = output
         .render_command_summary(&result)
@@ -100,7 +100,7 @@ fn editor_command_json_errors_keep_stable_shapes() {
     let mut stderr = Vec::new();
 
     let code = run_from_args_with_io(
-        ["fol", "editor", "--output", "json", "parse", "missing-editor-file.fol"],
+        ["fol", "tool", "editor", "--output", "json", "parse", "missing-editor-file.fol"],
         &mut stdout,
         &mut stderr,
     );
@@ -122,7 +122,7 @@ fn editor_command_json_errors_keep_stable_shapes() {
 fn editor_lsp_reports_workspace_guidance_when_no_root_is_present() {
     let root = temp_root("missing_lsp_root");
     fs::create_dir_all(&root).expect("should create temp root");
-    let error = run_command_from_args_in_dir(["fol", "editor", "lsp"], &root)
+    let error = run_command_from_args_in_dir(["fol", "tool", "editor", "lsp"], &root)
         .expect_err("editor lsp should require a discovered root");
     let rendered = fol_frontend::FrontendOutput::new(fol_frontend::FrontendOutputConfig {
         mode: fol_frontend::OutputMode::Json,

@@ -13,10 +13,10 @@ That crate owns two related but separate editor surfaces:
 
 The public entrypoint stays under the frontend:
 
-- `fol editor lsp`
-- `fol editor parse <PATH>`
-- `fol editor highlight <PATH>`
-- `fol editor symbols <PATH>`
+- `fol tool editor lsp`
+- `fol tool editor parse <PATH>`
+- `fol tool editor highlight <PATH>`
+- `fol tool editor symbols <PATH>`
 
 So editor workflows remain part of the main `fol` tool instead of introducing a
 second standalone user command.
@@ -100,7 +100,7 @@ It already covers:
 
 - Tree-sitter grammar for current `V1`
 - on-disk query files in editor-consumable layout
-- frontend-owned `fol editor ...` commands
+- frontend-owned `fol tool editor ...` commands
 - LSP diagnostics for parser/package/resolver/typecheck failures
 - hover and definition for initial supported cases
 - document symbols

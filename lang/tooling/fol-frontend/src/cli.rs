@@ -81,8 +81,6 @@ pub enum FrontendCommand {
     Pack(PackCommand),
     #[command(visible_alias = "c")]
     Code(CodeCommand),
-    #[command(visible_alias = "e")]
-    Editor(EditorCommand),
     #[command(visible_alias = "t")]
     Tool(ToolCommand),
     #[command(hide = true, name = "_complete")]
@@ -326,6 +324,7 @@ pub enum CodeSubcommand {
 pub enum ToolSubcommand {
     #[command(visible_aliases = ["cl", "purge"])]
     Clean(UnitCommand),
+    Editor(EditorCommand),
     #[command(visible_aliases = ["completions", "comp"])]
     Completion(CompletionCommand),
 }
@@ -618,42 +617,54 @@ mod tests {
 
     #[test]
     fn editor_subcommands_parse_through_derive_tree() {
-        let lsp = parse_clean(["fol", "editor", "lsp"]);
-        let parse = parse_clean(["fol", "editor", "parse", "demo/main.fol"]);
-        let highlight = parse_clean(["fol", "editor", "highlight", "demo/main.fol"]);
-        let symbols = parse_clean(["fol", "editor", "symbols", "demo/main.fol"]);
+        let lsp = parse_clean(["fol", "tool", "editor", "lsp"]);
+        let parse = parse_clean(["fol", "tool", "editor", "parse", "demo/main.fol"]);
+        let highlight = parse_clean(["fol", "tool", "editor", "highlight", "demo/main.fol"]);
+        let symbols = parse_clean(["fol", "tool", "editor", "symbols", "demo/main.fol"]);
 
         assert_eq!(
             lsp.command,
-            Some(FrontendCommand::Editor(EditorCommand {
+            Some(FrontendCommand::Tool(ToolCommand {
                 output: default_output_args(),
-                command: EditorSubcommand::Lsp(UnitCommand),
+                command: ToolSubcommand::Editor(EditorCommand {
+                    output: default_output_args(),
+                    command: EditorSubcommand::Lsp(UnitCommand),
+                }),
             }))
         );
         assert_eq!(
             parse.command,
-            Some(FrontendCommand::Editor(EditorCommand {
+            Some(FrontendCommand::Tool(ToolCommand {
                 output: default_output_args(),
-                command: EditorSubcommand::Parse(EditorPathCommand {
-                    path: "demo/main.fol".to_string(),
+                command: ToolSubcommand::Editor(EditorCommand {
+                    output: default_output_args(),
+                    command: EditorSubcommand::Parse(EditorPathCommand {
+                        path: "demo/main.fol".to_string(),
+                    }),
                 }),
             }))
         );
         assert_eq!(
             highlight.command,
-            Some(FrontendCommand::Editor(EditorCommand {
+            Some(FrontendCommand::Tool(ToolCommand {
                 output: default_output_args(),
-                command: EditorSubcommand::Highlight(EditorPathCommand {
-                    path: "demo/main.fol".to_string(),
+                command: ToolSubcommand::Editor(EditorCommand {
+                    output: default_output_args(),
+                    command: EditorSubcommand::Highlight(EditorPathCommand {
+                        path: "demo/main.fol".to_string(),
+                    }),
                 }),
             }))
         );
         assert_eq!(
             symbols.command,
-            Some(FrontendCommand::Editor(EditorCommand {
+            Some(FrontendCommand::Tool(ToolCommand {
                 output: default_output_args(),
-                command: EditorSubcommand::Symbols(EditorPathCommand {
-                    path: "demo/main.fol".to_string(),
+                command: ToolSubcommand::Editor(EditorCommand {
+                    output: default_output_args(),
+                    command: EditorSubcommand::Symbols(EditorPathCommand {
+                        path: "demo/main.fol".to_string(),
+                    }),
                 }),
             }))
         );
@@ -693,7 +704,7 @@ mod tests {
         let work = parse_clean(["fol", "w", "info"]);
         let pack = parse_clean(["fol", "p", "fetch"]);
         let code = parse_clean(["fol", "c", "build"]);
-        let editor = parse_clean(["fol", "e", "lsp"]);
+        let editor = parse_clean(["fol", "t", "editor", "lsp"]);
         let tool = parse_clean(["fol", "t", "clean"]);
         let fetch = parse_clean(["fol", "pack", "sync"]);
         let update = parse_clean(["fol", "pack", "upgrade"]);
@@ -749,9 +760,12 @@ mod tests {
             profile: default_profile_args(),
             command: CodeSubcommand::Build(BuildCommand::default()),
         })));
-        assert_eq!(editor.command, Some(FrontendCommand::Editor(EditorCommand {
+        assert_eq!(editor.command, Some(FrontendCommand::Tool(ToolCommand {
             output: default_output_args(),
-            command: EditorSubcommand::Lsp(UnitCommand),
+            command: ToolSubcommand::Editor(EditorCommand {
+                output: default_output_args(),
+                command: EditorSubcommand::Lsp(UnitCommand),
+            }),
         })));
         assert_eq!(tool.command, Some(FrontendCommand::Tool(ToolCommand {
             output: default_output_args(),

@@ -27,7 +27,7 @@ pub fn editor_lsp_command(config: &FrontendConfig) -> FrontendResult<FrontendCom
     require_discovered_root(&config.working_directory).map_err(|error| {
         if error.kind() == FrontendErrorKind::WorkspaceNotFound {
             error.with_note("start the editor inside a FOL package or workspace root")
-                .with_note("or open a package directory before launching `fol editor lsp`")
+                .with_note("or open a package directory before launching `fol tool editor lsp`")
         } else {
             error
         }
@@ -84,7 +84,7 @@ mod tests {
             editor_symbols_command(path, &config).expect("symbols command should succeed");
 
         assert_eq!(lsp.command, "lsp");
-        assert!(lsp.summary.contains("fol editor lsp"));
+        assert!(lsp.summary.contains("fol tool editor lsp"));
         assert_eq!(parse.command, "parse");
         assert!(parse.summary.contains("path=test/apps/fixtures/record_flow/main.fol"));
         assert_eq!(highlight.command, "highlight");
@@ -130,7 +130,7 @@ mod tests {
         assert!(error
             .notes()
             .iter()
-            .any(|note| note.contains("fol editor lsp")));
+            .any(|note| note.contains("fol tool editor lsp")));
 
         std::fs::remove_dir_all(&config.working_directory).ok();
     }

@@ -54,10 +54,10 @@ The current command surface is:
 - `fol code test`
 - `fol code emit rust`
 - `fol code emit lowered`
-- `fol editor lsp`
-- `fol editor parse <PATH>`
-- `fol editor highlight <PATH>`
-- `fol editor symbols <PATH>`
+- `fol tool editor lsp`
+- `fol tool editor parse <PATH>`
+- `fol tool editor highlight <PATH>`
+- `fol tool editor symbols <PATH>`
 - `fol tool clean`
 - `fol tool completion`
 - hidden `_complete`
@@ -91,7 +91,7 @@ fol pack fetch
 fol code check
 fol code build --release
 fol code run -- --flag value
-fol editor symbols src/main.fol
+fol tool editor symbols src/main.fol
 ```
 
 The goal is to make `fol` feel like the canonical language tool, not just a
@@ -128,7 +128,7 @@ For example:
 - `fol code run` builds first, then executes the produced binary
 - `fol code emit rust` keeps the backend in source-emission mode
 - `fol code emit lowered` writes lowered IR snapshots instead of invoking the backend
-- `fol editor ...` dispatches editor parsing, query, and LSP flows into `fol-editor`
+- `fol tool editor ...` dispatches editor parsing, query, and LSP flows into `fol-editor`
 
 Compile-oriented flags belong to the commands that use them. For example:
 
@@ -202,10 +202,10 @@ The frontend also owns the public entrypoint for editor tooling.
 
 That command family is:
 
-- `fol editor lsp`
-- `fol editor parse <PATH>`
-- `fol editor highlight <PATH>`
-- `fol editor symbols <PATH>`
+- `fol tool editor lsp`
+- `fol tool editor parse <PATH>`
+- `fol tool editor highlight <PATH>`
+- `fol tool editor symbols <PATH>`
 
 The frontend does not implement Tree-sitter parsing or LSP semantics itself. It
 parses the command, applies output policy, dispatches into `fol-editor`, and

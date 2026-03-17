@@ -667,10 +667,10 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - Document-symbol output is now stabilized for nested items and real package
   fixtures.
 - `fol-frontend` now exposes that crate under:
-- `fol editor lsp`
-- `fol editor parse <PATH>`
-- `fol editor highlight <PATH>`
-- `fol editor symbols <PATH>`
+- `fol tool editor lsp`
+- `fol tool editor parse <PATH>`
+- `fol tool editor highlight <PATH>`
+- `fol tool editor symbols <PATH>`
 - Editor coverage now includes:
 - query snapshot access on real fixtures
 - frontend dispatch tests for editor commands
