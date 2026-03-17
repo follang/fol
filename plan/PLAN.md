@@ -124,6 +124,24 @@ over:
 - edit-distance matching
 - complicated insert text transformations
 
+## Current Baseline Gaps
+
+Before this milestone, the real editor gaps are:
+
+- Tree-sitter highlighting still treats many FOL surfaces too generically
+- declaration modifiers like `[exp]` and similar bracketed markers are not yet
+  represented clearly enough
+- import source kinds and effect-ish keywords are not distinct enough in the
+  current query layer
+- dotted intrinsic surfaces are present, but not rich enough to feel language
+  specific
+- `fol tool highlight` is still more of a smoke command than an inspection tool
+- the LSP is attached and serving diagnostics/navigation, but completion is not
+  implemented yet
+- completion provider capabilities are not advertised yet
+- there is no first-pass completion contract yet for locals, params, imports,
+  types, or dot intrinsics
+
 ## Highlighting Scope
 
 The highlight pass should cover the current `V1` syntax more deeply than the
@@ -285,7 +303,8 @@ over tiny synthetic one-liners, unless a one-liner is the clearest regression.
 
 - `0.1` complete: replace the old editor-closeout plan with this focused
   highlight + completion plan
-- `0.2` document the exact current highlight and completion gaps before changes
+- `0.2` complete: document the exact current highlight and completion gaps
+  before changes
 - `0.3` add a small acceptance checklist for Neovim-facing verification
 
 ### Phase 1: Highlight query audit
@@ -411,5 +430,5 @@ This plan is only done when all of these are true:
 
 Current milestone state:
 
-- `1 / 49` slices complete
-- `2%`
+- `2 / 49` slices complete
+- `4%`
