@@ -50,16 +50,24 @@ impl PreparedPackage {
     pub fn source_kind(&self) -> PackageSourceKind {
         self.identity.source_kind
     }
+
+    pub fn build_entry_point(&self) -> Option<&crate::build::PackageBuildEntryPoint> {
+        self.build.as_ref().and_then(|build| build.entry_point())
+    }
+
+    pub fn has_build_entry_point(&self) -> bool {
+        self.build_entry_point().is_some()
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::PreparedPackage;
     use crate::{
-        build::PackageBuildCompatibility, BuildDependency, BuildExport, PackageBuildDefinition,
-        PackageConfig, PackageDependencyDecl, PackageDependencySourceKind, PackageIdentity,
-        PackageLocator, PackageMetadata, PackageNativeArtifact, PackageNativeArtifactKind,
-        PackageSourceKind, PreparedExportMount,
+        build::{PackageBuildCompatibility, PackageBuildEntryPoint, PackageBuildEntryPointKind},
+        BuildDependency, BuildExport, PackageBuildDefinition, PackageConfig, PackageDependencyDecl,
+        PackageDependencySourceKind, PackageIdentity, PackageLocator, PackageMetadata,
+        PackageNativeArtifact, PackageNativeArtifactKind, PackageSourceKind, PreparedExportMount,
     };
     use fol_parser::ast::{AstParser, ParsedPackage};
     use fol_stream::FileStream;
@@ -141,7 +149,10 @@ mod tests {
                         relative_path: "include/api.h".to_string(),
                     }],
                 },
-                entry_point: None,
+                entry_point: Some(PackageBuildEntryPoint {
+                    kind: PackageBuildEntryPointKind::BuildFunction,
+                    name: "build".to_string(),
+                }),
             },
             vec![PreparedExportMount {
                 source_namespace: "json::src".to_string(),
@@ -166,5 +177,13 @@ mod tests {
             Some(1)
         );
         assert_eq!(prepared.exports.len(), 1);
+        assert!(prepared.has_build_entry_point());
+        assert_eq!(
+            prepared.build_entry_point(),
+            Some(&PackageBuildEntryPoint {
+                kind: PackageBuildEntryPointKind::BuildFunction,
+                name: "build".to_string(),
+            })
+        );
     }
 }

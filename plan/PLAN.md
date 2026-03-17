@@ -796,7 +796,7 @@ Each slice must land green with `make build` and `make test` before commit.
    model.
 5. `[complete]` Detect canonical `build` entry declarations during `build.fol`
    extraction.
-6. `[pending]` Thread build-entry metadata through prepared package state.
+6. `[complete]` Thread build-entry metadata through prepared package state.
 7. `[pending]` Add explicit build-mode classification for empty / compatibility /
    hybrid / modern build files.
 8. `[pending]` Cover compatibility-plus-entry coexistence in package parser
