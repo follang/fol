@@ -455,14 +455,23 @@ impl EditorLspServer {
     pub fn completion(
         &self,
         uri: &EditorDocumentUri,
-        _position: LspPosition,
+        position: LspPosition,
     ) -> EditorResult<LspCompletionList> {
         let document = self.open_document(uri)?;
         let mapping = self.document_mapping(document, uri)?;
-        let _snapshot = analyze_document_semantics(document, &mapping)?;
+        let snapshot = analyze_document_semantics(document, &mapping)?;
         Ok(LspCompletionList {
             is_incomplete: false,
-            items: Vec::new(),
+            items: snapshot
+                .local_completion_items(position)
+                .into_iter()
+                .map(|item| LspCompletionItem {
+                    label: item.label,
+                    kind: item.kind,
+                    detail: item.detail,
+                    insert_text: item.insert_text,
+                })
+                .collect(),
         })
     }
 
@@ -666,6 +675,55 @@ struct SemanticSnapshot {
 }
 
 impl SemanticSnapshot {
+    fn local_completion_items(&self, position: LspPosition) -> Vec<EditorCompletionItem> {
+        let Some((program, scope_id)) = self.scope_at_position(position) else {
+            return Vec::new();
+        };
+        let mut items = Vec::new();
+        let mut cursor = Some(scope_id);
+        while let Some(current_scope_id) = cursor {
+            for symbol in program.symbols_in_scope(current_scope_id) {
+                if !matches!(
+                    symbol.kind,
+                    fol_resolver::SymbolKind::ValueBinding
+                        | fol_resolver::SymbolKind::LabelBinding
+                        | fol_resolver::SymbolKind::DestructureBinding
+                        | fol_resolver::SymbolKind::LoopBinder
+                        | fol_resolver::SymbolKind::RollingBinder
+                        | fol_resolver::SymbolKind::Capture
+                ) {
+                    continue;
+                }
+                items.push(EditorCompletionItem {
+                    label: symbol.name.clone(),
+                    kind: symbol_kind_code(symbol.kind),
+                    detail: Some(render_symbol_kind(symbol.kind).to_string()),
+                    insert_text: None,
+                });
+            }
+            cursor = program.scope(current_scope_id).and_then(|scope| scope.parent);
+        }
+        items
+    }
+
+    fn scope_at_position(
+        &self,
+        position: LspPosition,
+    ) -> Option<(&fol_resolver::ResolvedProgram, fol_resolver::ScopeId)> {
+        let typed = self.typed_workspace.as_ref()?;
+        let analyzed_path = self.analyzed_path.as_ref()?;
+        for package in typed.packages() {
+            let program = package.program.resolved();
+            let Some(syntax_id) = syntax_at_position(program, analyzed_path.as_path(), position) else {
+                continue;
+            };
+            if let Some(scope_id) = program.scope_for_syntax(syntax_id) {
+                return Some((program, scope_id));
+            }
+        }
+        None
+    }
+
     fn reference_at(&self, position: LspPosition) -> Option<&fol_resolver::ResolvedReference> {
         let typed = self.typed_workspace.as_ref()?;
         let analyzed_path = self.analyzed_path.as_ref()?;
@@ -1521,7 +1579,9 @@ mod tests {
 
         let completion: LspCompletionList = serde_json::from_value(completion.result.unwrap()).unwrap();
         assert!(!completion.is_incomplete);
-        assert!(completion.items.is_empty());
+        assert_eq!(completion.items.len(), 1);
+        assert_eq!(completion.items[0].label, "value");
+        assert_eq!(completion.items[0].detail.as_deref(), Some("binding"));
 
         fs::remove_dir_all(root).ok();
     }

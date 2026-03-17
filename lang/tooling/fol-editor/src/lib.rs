@@ -250,7 +250,7 @@ mod tests {
         let rendered = String::from_utf8(output).unwrap();
         assert!(rendered.contains("\"completionProvider\""));
         assert!(rendered.contains("\"isIncomplete\":false"));
-        assert!(rendered.contains("\"items\":[]"));
+        assert!(rendered.contains("\"label\":\"value\""));
 
         std::fs::remove_dir_all(root).ok();
     }

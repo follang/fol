@@ -359,7 +359,7 @@ over tiny synthetic one-liners, unless a one-liner is the clearest regression.
 
 ### Phase 7: Scope and symbol completion
 
-- `7.1` return local binding completions
+- `7.1` complete: return local binding completions
 - `7.2` return routine parameter completions
 - `7.3` return current-package top-level declaration completions
 - `7.4` return imported visible declaration completions
@@ -446,5 +446,5 @@ The acceptance pass should also verify this real editor flow:
 
 Current milestone state:
 
-- `27 / 49` slices complete
-- `55%`
+- `28 / 49` slices complete
+- `57%`
