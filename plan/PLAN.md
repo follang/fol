@@ -445,7 +445,7 @@ Round 1 slice tracker:
   restricted runtime IR.
 - [x] Slice 3. Add runtime value and handle kinds for graph, artifact, step,
   run, install, dependency, target, and optimize values.
-- [ ] Slice 4. Add a runtime local-frame model that preserves aliasing and
+- [x] Slice 4. Add a runtime local-frame model that preserves aliasing and
   repeated handle flow through locals.
 - [ ] Slice 5. Add restricted runtime expression nodes for locals, literals,
   records, and method calls.

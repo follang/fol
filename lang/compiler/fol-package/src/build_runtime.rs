@@ -55,11 +55,41 @@ pub enum BuildRuntimeValue {
     Handle(BuildRuntimeHandle),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct BuildRuntimeLocalId(pub u32);
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct BuildRuntimeFrame {
+    locals: BTreeMap<BuildRuntimeLocalId, BuildRuntimeValue>,
+}
+
+impl BuildRuntimeFrame {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn bind(&mut self, local: BuildRuntimeLocalId, value: BuildRuntimeValue) {
+        self.locals.insert(local, value);
+    }
+
+    pub fn get(&self, local: BuildRuntimeLocalId) -> Option<&BuildRuntimeValue> {
+        self.locals.get(&local)
+    }
+
+    pub fn alias(&mut self, target: BuildRuntimeLocalId, source: BuildRuntimeLocalId) -> bool {
+        let Some(value) = self.locals.get(&source).cloned() else {
+            return false;
+        };
+        self.locals.insert(target, value);
+        true
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        BuildExecutionRepresentation, BuildRuntimeHandle, BuildRuntimeHandleKind,
-        BuildRuntimeProgram, BuildRuntimeValue,
+        BuildExecutionRepresentation, BuildRuntimeFrame, BuildRuntimeHandle,
+        BuildRuntimeHandleKind, BuildRuntimeLocalId, BuildRuntimeProgram, BuildRuntimeValue,
     };
 
     #[test]
@@ -94,4 +124,21 @@ mod tests {
             BuildRuntimeValue::Optimize("release-safe".to_string())
         );
     }
+
+    #[test]
+    fn runtime_frames_preserve_handle_aliases_across_repeated_local_flow() {
+        let handle = BuildRuntimeValue::Handle(BuildRuntimeHandle::new(
+            BuildRuntimeHandleKind::Artifact,
+            "app",
+        ));
+        let mut frame = BuildRuntimeFrame::new();
+
+        frame.bind(BuildRuntimeLocalId(0), handle.clone());
+        assert!(frame.alias(BuildRuntimeLocalId(1), BuildRuntimeLocalId(0)));
+
+        assert_eq!(frame.get(BuildRuntimeLocalId(0)), Some(&handle));
+        assert_eq!(frame.get(BuildRuntimeLocalId(1)), Some(&handle));
+        assert!(!frame.alias(BuildRuntimeLocalId(2), BuildRuntimeLocalId(99)));
+    }
 }
+use std::collections::BTreeMap;
