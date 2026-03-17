@@ -3146,30 +3146,15 @@ fn v1_boundary_rejects_v3_expression_surfaces() {
 }
 
 #[test]
-fn ordinary_typechecking_rejects_build_fol_source_units() {
-    let errors = typecheck_fixture_folder_errors(&[(
-        "build.fol",
-        "`package build`\n",
-    )]);
+fn ordinary_typechecking_keeps_build_fol_source_units_without_failing() {
+    let typed = typecheck_fixture_folder(&[("build.fol", "`package build`\n")]);
 
-    assert!(
-        errors.iter().any(|error| {
-            error.kind() == TypecheckErrorKind::Unsupported
-                && error
-                    .message()
-                    .contains("ordinary typechecking does not interpret build.fol package semantics")
-        }),
-        "Expected a build.fol typechecking boundary diagnostic, got: {errors:?}"
+    assert_eq!(typed.source_units().len(), 1);
+    assert_eq!(
+        typed.source_units()[0].kind,
+        fol_parser::ast::ParsedSourceUnitKind::Build
     );
-    assert!(
-        errors.iter().any(|error| {
-            error
-                .origin()
-                .and_then(|origin| origin.file.as_deref())
-                .is_some_and(|file| file.ends_with("build.fol"))
-        }),
-        "Expected build.fol boundary diagnostics to keep the source-unit path, got: {errors:?}"
-    );
+    assert_eq!(typed.build_source_units().count(), 1);
 }
 
 #[test]

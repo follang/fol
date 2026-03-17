@@ -3,8 +3,8 @@ use crate::{
     TypecheckErrorKind, TypecheckResult, TypedProgram,
 };
 use fol_parser::ast::{
-    AstNode, BindingPattern, FolType, Parameter, ParsedTopLevel, SyntaxOrigin, SyntaxNodeId,
-    TypeDefinition, TypeOption, VarOption,
+    AstNode, BindingPattern, FolType, Parameter, ParsedSourceUnitKind, ParsedTopLevel,
+    SyntaxOrigin, SyntaxNodeId, TypeDefinition, TypeOption, VarOption,
 };
 use fol_resolver::{ResolvedProgram, ScopeId, SourceUnitId, SymbolId, SymbolKind};
 use std::collections::BTreeMap;
@@ -15,6 +15,9 @@ pub fn lower_declaration_signatures(typed: &mut TypedProgram) -> TypecheckResult
     let mut errors = Vec::new();
 
     for (source_unit_index, source_unit) in syntax.source_units.iter().enumerate() {
+        if source_unit.kind == ParsedSourceUnitKind::Build {
+            continue;
+        }
         let source_unit_id = SourceUnitId(source_unit_index);
         for item in &source_unit.items {
             if let Err(error) =
