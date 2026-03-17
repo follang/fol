@@ -348,7 +348,7 @@ over tiny synthetic one-liners, unless a one-liner is the clearest regression.
 - `5.2` complete: ensure `fol tool tree generate` always exports the latest query set
 - `5.3` complete: add regression coverage so generated bundles contain the current query
   files exactly
-- `5.4` verify the generated bundle remains Neovim-consumable
+- `5.4` complete: verify the generated bundle remains Neovim-consumable
 
 ### Phase 6: Completion protocol foundation
 
@@ -446,5 +446,5 @@ The acceptance pass should also verify this real editor flow:
 
 Current milestone state:
 
-- `22 / 49` slices complete
-- `45%`
+- `23 / 49` slices complete
+- `47%`

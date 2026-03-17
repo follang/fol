@@ -424,6 +424,41 @@ mod tests {
     }
 
     #[test]
+    fn tree_generate_bundle_stays_neovim_consumable() {
+        let root = std::env::temp_dir().join(format!(
+            "fol_editor_tree_bundle_nvim_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system time should be after epoch")
+                .as_nanos()
+        ));
+        let summary = editor_tree_generate_bundle(&root).unwrap();
+
+        assert!(root.join("src/parser.c").is_file());
+        assert!(root.join("package.json").is_file());
+        assert!(root.join("tree-sitter.json").is_file());
+        assert!(root.join("queries/fol/highlights.scm").is_file());
+        assert!(root.join("queries/fol/locals.scm").is_file());
+        assert!(root.join("queries/fol/symbols.scm").is_file());
+        assert!(summary
+            .details
+            .iter()
+            .any(|detail| detail == "parser_generated=true"));
+        assert!(summary
+            .details
+            .iter()
+            .any(|detail| detail == "tree_sitter_runtime=native"));
+
+        let package_json = std::fs::read_to_string(root.join("package.json")).unwrap();
+        assert!(package_json.contains("\"scope\": \"source.fol\"") || package_json.contains("\"file-types\": [\"fol\"]"));
+        let config = std::fs::read_to_string(root.join("tree-sitter.json")).unwrap();
+        assert!(config.contains("\"highlights\": \"queries/fol/highlights.scm\""));
+
+        std::fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
     fn tree_generate_bundle_clears_existing_output_roots() {
         let root = std::env::temp_dir().join(format!(
             "fol_editor_tree_bundle_stale_{}_{}",
