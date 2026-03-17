@@ -549,7 +549,7 @@ Round 1 slice tracker:
   fail clearly without legacy `src/main.fol` fallback guessing.
 - [x] Slice 9. Add modern/hybrid workspace regressions proving routed commands
   stay off compatibility-only assumptions.
-- [ ] Slice 10. Re-export, test, and lock the full Phase 7 graph-driven
+- [x] Slice 10. Re-export, test, and lock the full Phase 7 graph-driven
   frontend routing round.
 
 ## Phase 8: Step Handles And Chaining

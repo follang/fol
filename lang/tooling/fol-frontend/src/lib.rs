@@ -29,6 +29,7 @@ pub use cli::{
     RunCommand, TestCommand, ToolCommand, ToolSubcommand, UnitCommand, UpdateCommand,
 };
 pub use build_route::{
+    execute_workspace_build_route, plan_workspace_build_route, requested_workspace_step,
     FrontendBuildStep, FrontendBuildWorkflowMode, FrontendCompatibilityBuildRequest,
     FrontendMemberBuildRoute, FrontendWorkspaceBuildRoute,
 };
@@ -777,6 +778,32 @@ mod tests {
         let frontend = Frontend::new();
         let _ = frontend;
         let _run_ptr: fn() -> FrontendResult<()> = run;
+    }
+
+    #[test]
+    fn graph_driven_build_route_surface_is_reexported_at_crate_root() {
+        let workspace = compatibility_dispatch_fixture("public_build_route_surface");
+        let requested_step =
+            requested_workspace_step(&CodeSubcommand::Build(BuildCommand::default()), None);
+        assert_eq!(requested_step, "build");
+
+        let route = plan_workspace_build_route(&workspace, requested_step.clone())
+            .expect("crate root route re-export should plan");
+        assert_eq!(route.requested_step, requested_step);
+
+        let result = execute_workspace_build_route(
+            &workspace,
+            &FrontendConfig::default(),
+            &FrontendCompatibilityBuildRequest {
+                requested_step,
+                profile: FrontendProfile::Debug,
+                run_args: Vec::new(),
+            },
+        )
+        .expect("crate root route re-export should execute");
+        assert_eq!(result.command, "build");
+
+        std::fs::remove_dir_all(workspace.root.root).ok();
     }
 
     #[test]
