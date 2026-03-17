@@ -75,11 +75,13 @@ impl FrontendProfileArgs {
 
 #[derive(Debug, Clone, Subcommand, PartialEq, Eq)]
 pub enum FrontendCommand {
-    #[command(visible_aliases = ["w", "ws", "workspace"])]
+    #[command(visible_alias = "w")]
     Work(WorkCommand),
-    #[command(visible_aliases = ["pkg", "package"])]
+    #[command(visible_alias = "p")]
     Pack(PackCommand),
+    #[command(visible_alias = "c")]
     Code(CodeCommand),
+    #[command(visible_alias = "t")]
     Tool(ToolCommand),
     #[command(hide = true, name = "_complete")]
     Complete(CompleteCommand),
@@ -620,7 +622,10 @@ mod tests {
     fn visible_aliases_parse_to_the_same_root_commands() {
         let build = parse_clean(["fol", "code", "make"]);
         let check = parse_clean(["fol", "code", "verify"]);
-        let work = parse_clean(["fol", "workspace", "info"]);
+        let work = parse_clean(["fol", "w", "info"]);
+        let pack = parse_clean(["fol", "p", "fetch"]);
+        let code = parse_clean(["fol", "c", "build"]);
+        let tool = parse_clean(["fol", "t", "clean"]);
         let fetch = parse_clean(["fol", "pack", "sync"]);
         let update = parse_clean(["fol", "pack", "upgrade"]);
         let emit = parse_clean(["fol", "code", "gen", "rust"]);
@@ -666,6 +671,19 @@ mod tests {
                 command: WorkSubcommand::Info(UnitCommand),
             }))
         );
+        assert_eq!(pack.command, Some(FrontendCommand::Pack(PackCommand {
+            output: default_output_args(),
+            command: PackSubcommand::Fetch(FetchCommand::default()),
+        })));
+        assert_eq!(code.command, Some(FrontendCommand::Code(CodeCommand {
+            output: default_output_args(),
+            profile: default_profile_args(),
+            command: CodeSubcommand::Build(BuildCommand::default()),
+        })));
+        assert_eq!(tool.command, Some(FrontendCommand::Tool(ToolCommand {
+            output: default_output_args(),
+            command: ToolSubcommand::Clean(UnitCommand),
+        })));
     }
 
     #[test]
@@ -797,11 +815,13 @@ mod tests {
         let help = FrontendCli::command().render_long_help().to_string();
 
         assert!(help.contains("work"));
-        assert!(help.contains("workspace"));
+        assert!(help.contains("[aliases: w]"));
         assert!(help.contains("pack"));
-        assert!(help.contains("package"));
+        assert!(help.contains("[aliases: p]"));
         assert!(help.contains("code"));
+        assert!(help.contains("[aliases: c]"));
         assert!(help.contains("tool"));
+        assert!(help.contains("[aliases: t]"));
     }
 
     #[test]

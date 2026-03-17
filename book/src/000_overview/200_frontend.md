@@ -71,8 +71,11 @@ Aliases are part of the tool contract too. Examples:
 - `fol pack fetch`, `fol pack f`, `fol pack sync`
 - `fol tool clean`, `fol tool cl`, `fol tool purge`
 - `fol code check`, `fol code c`, `fol code verify`
-- `fol work`, `fol w`, `fol ws`, `fol workspace`
-- `fol pack`, `fol pkg`, `fol package`
+- root groups use one-letter aliases only:
+  - `fol work`, `fol w`
+  - `fol pack`, `fol p`
+  - `fol code`, `fol c`
+  - `fol tool`, `fol t`
 
 ## One Tool
 
