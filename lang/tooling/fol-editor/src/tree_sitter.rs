@@ -547,4 +547,49 @@ mod tests {
 
         std::fs::remove_dir_all(root).ok();
     }
+
+    #[test]
+    fn keyword_and_import_heavy_real_fixtures_keep_snapshot_shape() {
+        let root = build_bundle_root("keyword_import_snapshots");
+        let mixed_output = run_tree_sitter_query(
+            &root,
+            &root.join("queries/fol/highlights.scm"),
+            &PathBuf::from("test/apps/fixtures/mixed_loc_std_pkg/app/main.fol"),
+        );
+        assert!(mixed_output.status.success());
+        let mixed = String::from_utf8_lossy(&mixed_output.stdout);
+        for needle in [
+            "keyword.import",
+            "namespace",
+            "keyword.conditional",
+            "keyword.return",
+            "function.builtin",
+        ] {
+            assert!(
+                mixed.contains(needle),
+                "mixed import fixture lost keyword/import capture: {needle}\n{mixed}"
+            );
+        }
+
+        let panic_output = run_tree_sitter_query(
+            &root,
+            &root.join("queries/fol/highlights.scm"),
+            &PathBuf::from("test/apps/fixtures/intrinsics_panic_check/main.fol"),
+        );
+        assert!(panic_output.status.success());
+        let panic_fixture = String::from_utf8_lossy(&panic_output.stdout);
+        for needle in [
+            "keyword.exception",
+            "keyword.conditional",
+            "keyword.return",
+            "operator",
+        ] {
+            assert!(
+                panic_fixture.contains(needle),
+                "panic/check fixture lost keyword snapshot capture: {needle}\n{panic_fixture}"
+            );
+        }
+
+        std::fs::remove_dir_all(root).ok();
+    }
 }
