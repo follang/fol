@@ -325,7 +325,7 @@ over tiny synthetic one-liners, unless a one-liner is the clearest regression.
   `[exp]`, `[par]`, and other real surfaced markers
 - `2.3` complete: highlight declaration names by role:
   function/log/type/alias/binding
-- `2.4` add highlight snapshots for declaration-heavy real fixtures
+- `2.4` complete: add highlight snapshots for declaration-heavy real fixtures
 
 ### Phase 3: Keyword and import-kind highlighting
 
@@ -446,5 +446,5 @@ The acceptance pass should also verify this real editor flow:
 
 Current milestone state:
 
-- `10 / 49` slices complete
-- `20%`
+- `11 / 49` slices complete
+- `22%`

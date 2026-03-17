@@ -107,12 +107,19 @@ mod tests {
         root
     }
 
+    fn tree_sitter_cache_root(label: &str) -> PathBuf {
+        let root = temp_root(&format!("cache_{label}"));
+        std::fs::create_dir_all(&root).expect("tree-sitter cache root should be created");
+        root
+    }
+
     fn run_tree_sitter_query(bundle_root: &Path, query_path: &Path, source_path: &Path) -> std::process::Output {
+        let cache_root = tree_sitter_cache_root("query");
         Command::new("tree-sitter")
+            .env("XDG_CACHE_HOME", &cache_root)
             .arg("query")
             .arg("--grammar-path")
             .arg(bundle_root)
-            .arg("--quiet")
             .arg(query_path)
             .arg(source_path)
             .output()
@@ -230,7 +237,7 @@ mod tests {
 
         assert!(grammar.contains("optional(field('modifiers', $.decl_modifiers))"));
         assert!(grammar.contains("seq('[', optional($.modifier_list), ']')"));
-        assert!(query.contains("(decl_modifiers (identifier) @attribute)"));
+        assert!(query.contains("(decl_modifiers (modifier_list (identifier) @attribute))"));
     }
 
     #[test]
@@ -357,6 +364,9 @@ mod tests {
             String::from_utf8_lossy(&output.stdout),
             String::from_utf8_lossy(&output.stderr)
         );
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(stdout.contains("function"));
+        assert!(stdout.contains("attribute"));
 
         std::fs::remove_dir_all(root).ok();
     }
@@ -382,6 +392,53 @@ mod tests {
             String::from_utf8_lossy(&output.stdout),
             String::from_utf8_lossy(&output.stderr)
         );
+
+        std::fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn declaration_heavy_real_fixtures_keep_highlight_captures_stable() {
+        let root = build_bundle_root("declaration_snapshots");
+        let logtiny_output = run_tree_sitter_query(
+            &root,
+            &root.join("queries/fol/highlights.scm"),
+            &PathBuf::from("xtra/logtiny/src/log.fol"),
+        );
+        assert!(logtiny_output.status.success());
+        let logtiny = String::from_utf8_lossy(&logtiny_output.stdout);
+        for needle in [
+            "keyword.type",
+            "type.definition",
+            "attribute",
+            "function",
+            "function.builtin",
+            "variable.parameter",
+        ] {
+            assert!(
+                logtiny.contains(needle),
+                "declaration-heavy package fixture lost highlight capture: {needle}\n{logtiny}"
+            );
+        }
+
+        let showcase_output = run_tree_sitter_query(
+            &root,
+            &root.join("queries/fol/highlights.scm"),
+            &PathBuf::from("test/apps/showcases/full_v1_showcase/app/main.fol"),
+        );
+        assert!(showcase_output.status.success());
+        let showcase = String::from_utf8_lossy(&showcase_output.stdout);
+        for needle in [
+            "keyword.function",
+            "type",
+            "namespace",
+            "variable",
+            "property",
+        ] {
+            assert!(
+                showcase.contains(needle),
+                "showcase fixture lost declaration highlight capture: {needle}\n{showcase}"
+            );
+        }
 
         std::fs::remove_dir_all(root).ok();
     }
