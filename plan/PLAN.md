@@ -305,7 +305,8 @@ over tiny synthetic one-liners, unless a one-liner is the clearest regression.
   highlight + completion plan
 - `0.2` complete: document the exact current highlight and completion gaps
   before changes
-- `0.3` add a small acceptance checklist for Neovim-facing verification
+- `0.3` complete: add a small acceptance checklist for Neovim-facing
+  verification
 
 ### Phase 1: Highlight query audit
 
@@ -426,9 +427,21 @@ This plan is only done when all of these are true:
 - `make build` passes
 - `make test` passes
 
+### Neovim Verification
+
+The acceptance pass should also verify this real editor flow:
+
+1. `fol tool tree generate /tmp/fol`
+2. Neovim Tree-sitter loads the generated parser/query bundle
+3. a real `.fol` file highlights declaration modifiers and intrinsic surfaces
+4. `fol tool lsp` attaches to the buffer
+5. source-file diagnostics appear on real source errors
+6. hover and go-to-definition still work after the completion changes land
+7. completion appears in the same buffer for locals/imports/types/dot contexts
+
 ## Progress
 
 Current milestone state:
 
-- `2 / 49` slices complete
-- `4%`
+- `3 / 49` slices complete
+- `6%`
