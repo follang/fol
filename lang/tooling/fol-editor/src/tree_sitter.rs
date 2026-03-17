@@ -202,6 +202,8 @@ mod tests {
         assert!(grammar.contains("conflicts: $ => ["));
         assert!(grammar.contains("extras: $ => ["));
         assert!(grammar.contains("optional($.error_type)"));
+        assert!(grammar.contains("$.field_access"));
+        assert!(grammar.contains("$.boolean_literal"));
     }
 
     #[test]
@@ -222,6 +224,7 @@ mod tests {
             "@punctuation.bracket",
             "@operator",
             "@constant.builtin",
+            "@boolean",
             "@string",
             "@number",
             "@comment",
@@ -247,6 +250,7 @@ mod tests {
 
         assert!(grammar.contains("optional(field('modifiers', $.decl_modifiers))"));
         assert!(grammar.contains("seq('[', optional($.modifier_list), ']')"));
+        assert!(query.contains("(decl_modifiers \"[\" @punctuation.bracket \"]\" @punctuation.bracket)"));
         assert!(query.contains("(decl_modifiers (modifier_list (identifier) @attribute))"));
     }
 
@@ -278,30 +282,48 @@ mod tests {
         let query = fol_tree_sitter_highlights_query();
         for needle in [
             "(use_decl name: (identifier) @namespace)",
-            "(typ_decl name: (identifier) @type)",
+            "(typ_decl name: (identifier) @type.definition)",
             "(ali_decl name: (identifier) @type.definition)",
-            "(typed_binding \":\" @punctuation.delimiter)",
-            "(param \":\" @punctuation.delimiter)",
-            "(ali_decl \":\" @punctuation.delimiter)",
-            "(typ_decl \":\" @punctuation.delimiter)",
-            "(container_type \"[\" @punctuation.bracket \"]\" @punctuation.bracket)",
-            "(shell_type \"[\" @punctuation.bracket \"]\" @punctuation.bracket)",
-            "(record_type) @type.builtin",
-            "(entry_type) @type.builtin",
-            "(typed_binding type: (identifier) @type.builtin",
-            "(param type: (identifier) @type.builtin",
-            "(typed_binding type: (identifier) @type",
-            "(param type: (identifier) @type",
-            "(typed_binding type: (qualified_path) @type)",
-            "(param type: (qualified_path) @type)",
-            "(error_type \"/\" @operator)",
             "(fun_decl declaration: (plain_fun_decl name: (identifier) @function))",
             "(fun_decl declaration: (method_decl name: (identifier) @function.method))",
-            "(log_decl declaration: (plain_log_decl name: (identifier) @function.builtin))",
-            "(var_decl (typed_binding name: (identifier) @variable))",
+            "(log_decl declaration: (plain_log_decl name: (identifier) @function))",
+            "(log_decl declaration: (method_decl name: (identifier) @function.method))",
+            "(typed_binding \":\" @punctuation.delimiter)",
+            "(param \":\" @punctuation.delimiter)",
+            "(return_type \":\" @punctuation.delimiter)",
+            "(ali_decl \":\" @punctuation.delimiter)",
+            "(typ_decl \":\" @punctuation.delimiter)",
+            "(var_decl \"=\" @operator)",
+            "(params \"(\" @punctuation.bracket \")\" @punctuation.bracket)",
+            "(receiver \"(\" @punctuation.bracket \")\" @punctuation.bracket)",
+            "(block \"{\" @punctuation.bracket \"}\" @punctuation.bracket)",
+            "(type_block \"{\" @punctuation.bracket \"}\" @punctuation.bracket)",
+            "(container_type \"[\" @punctuation.bracket \"]\" @punctuation.bracket)",
+            "(shell_type \"[\" @punctuation.bracket \"]\" @punctuation.bracket)",
+            "(container_type \"arr\" @type.builtin)",
+            "(shell_type \"opt\" @type.builtin)",
+            "(record_type) @type.builtin",
+            "(entry_type) @type.builtin",
+            "(typed_binding type: (type_expr (identifier) @type.builtin)",
+            "(param type: (type_expr (identifier) @type.builtin)",
+            "(return_type (type_expr (identifier) @type.builtin)",
+            "(typed_binding type: (type_expr (identifier) @type)",
+            "(param type: (type_expr (identifier) @type)",
+            "(return_type (type_expr (identifier) @type)",
+            "(typed_binding type: (type_expr (qualified_path) @type))",
+            "(param type: (type_expr (qualified_path) @type))",
+            "(return_type (type_expr (qualified_path) @type))",
+            "(error_type \"/\" @operator)",
+            "(type_block (typed_binding name: (identifier) @property))",
+            "(var_decl (typed_binding name: (identifier) @constant)",
+            "(var_decl (typed_binding name: (identifier) @variable)",
+            "(field_init name: (identifier) @property)",
+            "(field_init \"=\" @operator)",
+            "(field_access field: (identifier) @property)",
             "(dot_intrinsic \".\" @operator)",
             "(unwrap_expr \"!\" @operator)",
             "(nil_literal) @constant.builtin",
+            "(boolean_literal) @boolean",
         ] {
             assert!(query.contains(needle), "missing declaration role capture: {needle}");
         }
@@ -314,7 +336,7 @@ mod tests {
 
         assert!(grammar.contains("field('declaration', choice($.plain_fun_decl, $.method_decl))"));
         assert!(grammar.contains("field('declaration', choice($.plain_log_decl, $.method_decl))"));
-        assert!(grammar.contains("seq('var', $.typed_binding"));
+        assert!(grammar.contains("seq('var', optional(field('modifiers', $.decl_modifiers)), $.typed_binding"));
 
         for needle in [
             "(use_decl \"use\" @keyword.import)",
@@ -323,12 +345,21 @@ mod tests {
             "(typ_decl \"typ\" @keyword.type)",
             "(ali_decl \"ali\" @keyword.type)",
             "(use_decl name: (identifier) @namespace)",
+            "(typ_decl name: (identifier) @type.definition)",
             "(ali_decl name: (identifier) @type.definition)",
             "(fun_decl declaration: (plain_fun_decl",
             "(fun_decl declaration: (method_decl",
             "(log_decl declaration: (plain_log_decl",
             "(log_decl declaration: (method_decl",
-            "(var_decl (typed_binding name: (identifier) @variable))",
+            "(params \"(\" @punctuation.bracket \")\" @punctuation.bracket)",
+            "(block \"{\" @punctuation.bracket \"}\" @punctuation.bracket)",
+            "(type_block \"{\" @punctuation.bracket \"}\" @punctuation.bracket)",
+            "(field_access receiver:",
+            "(field_access field: (identifier) @property)",
+            "(qualified_path root: (identifier) @namespace)",
+            "(qualified_path segment: (identifier) @namespace)",
+            "(var_decl (typed_binding name: (identifier) @constant)",
+            "(var_decl (typed_binding name: (identifier) @variable)",
         ] {
             assert!(
                 query.contains(needle),
@@ -383,6 +414,7 @@ mod tests {
         assert!(corpus.iter().any(|case| case.source.contains("when(flag)")));
         assert!(corpus.iter().any(|case| case.source.contains("report \"bad-input\"")));
         assert!(corpus.iter().any(|case| case.source.contains("typ Summary: rec")));
+        assert!(corpus.iter().any(|case| case.source.contains("true") || case.source.contains("false")));
     }
 
     #[test]
@@ -447,7 +479,8 @@ mod tests {
             "type.definition",
             "attribute",
             "function",
-            "function.builtin",
+            "boolean",
+            "property",
             "variable.parameter",
         ] {
             assert!(
