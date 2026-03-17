@@ -441,7 +441,7 @@ Round 1 slice tracker:
 
 - [ ] Slice 1. Add a concrete Phase 5 implementation tracker for the first
   runtime-IR round.
-- [ ] Slice 2. Choose and model the build execution representation as a
+- [x] Slice 2. Choose and model the build execution representation as a
   restricted runtime IR.
 - [ ] Slice 3. Add runtime value and handle kinds for graph, artifact, step,
   run, install, dependency, target, and optimize values.

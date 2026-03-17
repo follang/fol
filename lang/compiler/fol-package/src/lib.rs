@@ -20,6 +20,7 @@ pub mod build_eval;
 pub mod build_graph;
 pub mod build_native;
 pub mod build_option;
+pub mod build_runtime;
 pub mod build_step;
 pub mod build_semantic;
 pub mod errors;
