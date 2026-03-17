@@ -439,7 +439,7 @@ Exit criteria:
 
 Round 1 slice tracker:
 
-- [ ] Slice 1. Add a concrete Phase 5 implementation tracker for the first
+- [x] Slice 1. Add a concrete Phase 5 implementation tracker for the first
   runtime-IR round.
 - [x] Slice 2. Choose and model the build execution representation as a
   restricted runtime IR.
