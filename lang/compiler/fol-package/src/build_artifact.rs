@@ -1,6 +1,17 @@
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BuildArtifactModelKind {
+    Executable,
+    StaticLibrary,
+    SharedLibrary,
+    TestBundle,
+    GeneratedSourceBundle,
+    DocsBundle,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BuildArtifactDefinition {
     pub name: String,
+    pub kind: BuildArtifactModelKind,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -24,7 +35,7 @@ impl BuildArtifactSet {
 
 #[cfg(test)]
 mod tests {
-    use super::{BuildArtifactDefinition, BuildArtifactSet};
+    use super::{BuildArtifactDefinition, BuildArtifactModelKind, BuildArtifactSet};
 
     #[test]
     fn build_artifact_set_starts_empty() {
@@ -38,8 +49,19 @@ mod tests {
         let mut set = BuildArtifactSet::new();
         set.add_definition(BuildArtifactDefinition {
             name: "app".to_string(),
+            kind: BuildArtifactModelKind::Executable,
         });
 
         assert_eq!(set.definitions()[0].name, "app");
+    }
+
+    #[test]
+    fn artifact_model_kinds_cover_phase_five_bundle_shapes() {
+        assert_eq!(
+            BuildArtifactModelKind::GeneratedSourceBundle,
+            BuildArtifactModelKind::GeneratedSourceBundle
+        );
+        assert_eq!(BuildArtifactModelKind::DocsBundle, BuildArtifactModelKind::DocsBundle);
+        assert_eq!(BuildArtifactModelKind::TestBundle, BuildArtifactModelKind::TestBundle);
     }
 }
