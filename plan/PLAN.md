@@ -341,7 +341,7 @@ Round 2 slice tracker:
   points.
 - [x] Slice 5. Replace legacy entry-point result objects with semantic build-mode
   state in `PackageBuildDefinition`.
-- [ ] Slice 6. Remove prepared-package helper APIs that expose legacy build-entry
+- [x] Slice 6. Remove prepared-package helper APIs that expose legacy build-entry
   metadata.
 - [ ] Slice 7. Move package-session coverage from legacy build-entry metadata to
   semantic build validation.

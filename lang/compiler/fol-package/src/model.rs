@@ -95,6 +95,13 @@ impl PreparedPackage {
     ) -> Result<ValidatedBuildEntry, Vec<BuildEntryValidationError>> {
         crate::build_entry::validate_parsed_build_entry(&self.syntax, expectation)
     }
+
+    pub fn has_semantic_build_entry(
+        &self,
+        expectation: &BuildEntrySignatureExpectation,
+    ) -> bool {
+        self.validate_semantic_build_entry(expectation).is_ok()
+    }
 }
 
 #[cfg(test)]
@@ -315,5 +322,6 @@ mod tests {
             .validate_semantic_build_entry(&BuildEntrySignatureExpectation::canonical())
             .expect("prepared packages should validate semantic build entries");
         assert_eq!(validated.candidate.name, "build");
+        assert!(prepared.has_semantic_build_entry(&BuildEntrySignatureExpectation::canonical()));
     }
 }
