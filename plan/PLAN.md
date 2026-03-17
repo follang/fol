@@ -336,14 +336,14 @@ The minimum real fixture sources should include:
 
 ### Phase 5: Frontend Editor Commands
 
-- `5.1` add `editor` command family to `fol-frontend`
-- `5.2` add `fol editor lsp`
-- `5.3` add `fol editor parse`
-- `5.4` add `fol editor highlight`
-- `5.5` add `fol editor symbols`
-- `5.6` add human/plain/json output for editor subcommands
-- `5.7` keep `fol editor lsp` as the canonical public LSP entrypoint
-- `5.8` add frontend integration tests for editor commands
+- `5.1` complete: added `editor` command family to `fol-frontend`
+- `5.2` complete: added `fol editor lsp`
+- `5.3` complete: added `fol editor parse`
+- `5.4` complete: added `fol editor highlight`
+- `5.5` complete: added `fol editor symbols`
+- `5.6` complete: added human/plain/json output for editor subcommands
+- `5.7` complete: kept `fol editor lsp` as the canonical public LSP entrypoint
+- `5.8` complete: added frontend integration tests for editor commands
 
 ### Phase 6: LSP Foundation
 

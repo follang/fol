@@ -10,6 +10,7 @@ mod compile;
 mod completion;
 mod direct;
 mod discovery;
+mod editor;
 mod errors;
 mod fetch;
 mod output;
@@ -21,10 +22,10 @@ mod workspace;
 
 pub use cli::{
     BuildCommand, CheckCommand, CodeCommand, CodeSubcommand, CompleteCommand, CompletionCommand,
-    CompletionShellArg, EmitCommand, EmitLoweredCommand, EmitRustCommand, EmitSubcommand,
-    FetchCommand, FrontendCli, FrontendCommand, FrontendProfile, InitCommand, NewCommand,
-    PackCommand, PackSubcommand, RunCommand, TestCommand, ToolCommand, ToolSubcommand,
-    UnitCommand, UpdateCommand,
+    CompletionShellArg, EditorCommand, EditorPathCommand, EditorSubcommand, EmitCommand,
+    EmitLoweredCommand, EmitRustCommand, EmitSubcommand, FetchCommand, FrontendCli,
+    FrontendCommand, FrontendProfile, InitCommand, NewCommand, PackCommand, PackSubcommand,
+    RunCommand, TestCommand, ToolCommand, ToolSubcommand, UnitCommand, UpdateCommand,
 };
 pub use clean::{clean_workspace, clean_workspace_with_config};
 pub use config::FrontendConfig;
@@ -42,6 +43,9 @@ pub use completion::{
 };
 pub use direct::{
     run_direct_compile, run_direct_compile_with_io, DirectCompileConfig, DirectCompileMode,
+};
+pub use editor::{
+    editor_highlight_command, editor_lsp_command, editor_parse_command, editor_symbols_command,
 };
 pub use errors::{FrontendError, FrontendErrorKind, FrontendResult};
 pub use fetch::{
@@ -303,6 +307,7 @@ fn command_output_mode(cli: &FrontendCli) -> Option<OutputMode> {
         Some(FrontendCommand::Work(command)) => Some(command.output.output),
         Some(FrontendCommand::Pack(command)) => Some(command.output.output),
         Some(FrontendCommand::Code(command)) => Some(command.output.output),
+        Some(FrontendCommand::Editor(command)) => Some(command.output.output),
         Some(FrontendCommand::Tool(command)) => Some(command.output.output),
         Some(FrontendCommand::Complete(_)) | None => None,
     }
@@ -369,6 +374,12 @@ fn dispatch_cli(cli: &FrontendCli, config: &FrontendConfig) -> FrontendResult<Fr
                 dispatch_workspace_command(cli.command.as_ref().unwrap(), &workspace, config)
             }
         }
+        Some(FrontendCommand::Editor(command)) => match &command.command {
+            EditorSubcommand::Lsp(_) => editor_lsp_command(),
+            EditorSubcommand::Parse(command) => editor_parse_command(&command.path, config),
+            EditorSubcommand::Highlight(command) => editor_highlight_command(&command.path, config),
+            EditorSubcommand::Symbols(command) => editor_symbols_command(&command.path, config),
+        },
         Some(FrontendCommand::Tool(command)) => match &command.command {
             ToolSubcommand::Completion(command) => {
                 completion_command(parse_completion_shell(command.shell))
@@ -512,6 +523,10 @@ fn dispatch_workspace_command(
                 }
             },
         },
+        FrontendCommand::Editor(_) => Err(FrontendError::new(
+            FrontendErrorKind::Internal,
+            "unexpected editor command reached workspace dispatcher",
+        )),
         FrontendCommand::Tool(command) => match &command.command {
             ToolSubcommand::Clean(_) => clean_workspace_with_config(workspace, config),
             ToolSubcommand::Completion(_) => Err(FrontendError::new(
@@ -564,6 +579,7 @@ fn discovered_root_for_command(
             CodeSubcommand::Test(command) => command.path.as_deref(),
             _ => None,
         },
+        FrontendCommand::Editor(_) => None,
         _ => None,
     };
     if let Some(path) = explicit {
