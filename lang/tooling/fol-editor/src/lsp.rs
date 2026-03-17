@@ -688,6 +688,8 @@ impl SemanticSnapshot {
                     fol_resolver::SymbolKind::ValueBinding
                         | fol_resolver::SymbolKind::LabelBinding
                         | fol_resolver::SymbolKind::DestructureBinding
+                        | fol_resolver::SymbolKind::Parameter
+                        | fol_resolver::SymbolKind::GenericParameter
                         | fol_resolver::SymbolKind::LoopBinder
                         | fol_resolver::SymbolKind::RollingBinder
                         | fol_resolver::SymbolKind::Capture
@@ -1579,9 +1581,57 @@ mod tests {
 
         let completion: LspCompletionList = serde_json::from_value(completion.result.unwrap()).unwrap();
         assert!(!completion.is_incomplete);
-        assert_eq!(completion.items.len(), 1);
-        assert_eq!(completion.items[0].label, "value");
-        assert_eq!(completion.items[0].detail.as_deref(), Some("binding"));
+        assert!(completion.items.iter().any(|item| item.label == "value"));
+        assert!(completion
+            .items
+            .iter()
+            .find(|item| item.label == "value")
+            .and_then(|item| item.detail.as_deref())
+            == Some("binding"));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn lsp_server_returns_routine_parameter_completions() {
+        let (root, uri) = sample_package_root("completion_params");
+        fs::write(
+            root.join("src/main.fol"),
+            "fun[] main(total: int): int = {\n    return total\n}\n",
+        )
+        .unwrap();
+        let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
+        let mut server = EditorLspServer::new(EditorConfig::default());
+        open_document(&mut server, uri.clone(), &text);
+
+        let completion = server
+            .handle_request(JsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: JsonRpcId::Number(31),
+                method: "textDocument/completion".to_string(),
+                params: Some(
+                    serde_json::to_value(LspCompletionParams {
+                        text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                        position: LspPosition {
+                            line: 1,
+                            character: 12,
+                        },
+                        context: None,
+                    })
+                    .unwrap(),
+                ),
+            })
+            .unwrap()
+            .unwrap();
+
+        let completion: LspCompletionList = serde_json::from_value(completion.result.unwrap()).unwrap();
+        assert!(completion.items.iter().any(|item| item.label == "total"));
+        assert!(completion
+            .items
+            .iter()
+            .find(|item| item.label == "total")
+            .and_then(|item| item.detail.as_deref())
+            == Some("parameter"));
 
         fs::remove_dir_all(root).ok();
     }
