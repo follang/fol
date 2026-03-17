@@ -98,6 +98,15 @@ impl FrontendBuildStep {
     }
 }
 
+pub fn requested_workspace_step(
+    command: &crate::CodeSubcommand,
+    override_step: Option<&str>,
+) -> String {
+    override_step
+        .map(str::to_string)
+        .unwrap_or_else(|| FrontendBuildStep::default_for_code_subcommand(command).as_str().to_string())
+}
+
 pub fn plan_workspace_build_route(
     workspace: &FrontendWorkspace,
     requested_step: impl Into<String>,
@@ -805,6 +814,16 @@ mod tests {
             )),
             FrontendBuildStep::Check
         );
+    }
+
+    #[test]
+    fn requested_workspace_step_prefers_explicit_override_and_falls_back_to_command_default() {
+        let build = crate::CodeSubcommand::Build(crate::BuildCommand::default());
+        let run = crate::CodeSubcommand::Run(crate::RunCommand::default());
+
+        assert_eq!(super::requested_workspace_step(&build, None), "build");
+        assert_eq!(super::requested_workspace_step(&run, None), "run");
+        assert_eq!(super::requested_workspace_step(&build, Some("docs")), "docs");
     }
 
     #[test]

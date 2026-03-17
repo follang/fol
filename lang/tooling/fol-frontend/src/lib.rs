@@ -629,10 +629,8 @@ fn dispatch_workspace_code_route(
     default_profile: FrontendProfile,
     run_args: &[String],
 ) -> FrontendResult<FrontendCommandResult> {
-    let requested_step = config
-        .build_step_override
-        .clone()
-        .unwrap_or_else(|| FrontendBuildStep::default_for_code_subcommand(command).as_str().to_string());
+    let requested_step =
+        build_route::requested_workspace_step(command, config.build_step_override.as_deref());
     if matches!(command, CodeSubcommand::Emit(_)) {
         return Err(FrontendError::new(
             FrontendErrorKind::Internal,
