@@ -6,6 +6,25 @@ pub enum NativeArtifactKind {
     SharedLibrary,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NativeSearchPathOrigin {
+    PackageRoot,
+    BuildRoot,
+    System,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NativeIncludePath {
+    pub origin: NativeSearchPathOrigin,
+    pub relative_path: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NativeLibraryPath {
+    pub origin: NativeSearchPathOrigin,
+    pub relative_path: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NativeArtifactDefinition {
     pub name: String,
@@ -34,7 +53,10 @@ impl NativeArtifactSet {
 
 #[cfg(test)]
 mod tests {
-    use super::{NativeArtifactDefinition, NativeArtifactKind, NativeArtifactSet};
+    use super::{
+        NativeArtifactDefinition, NativeArtifactKind, NativeArtifactSet, NativeIncludePath,
+        NativeLibraryPath, NativeSearchPathOrigin,
+    };
 
     #[test]
     fn native_artifact_set_starts_empty() {
@@ -70,5 +92,36 @@ mod tests {
             NativeArtifactKind::SharedLibrary,
             NativeArtifactKind::SharedLibrary
         );
+    }
+
+    #[test]
+    fn native_include_paths_keep_origin_and_relative_path() {
+        let path = NativeIncludePath {
+            origin: NativeSearchPathOrigin::PackageRoot,
+            relative_path: "include".to_string(),
+        };
+
+        assert_eq!(path.origin, NativeSearchPathOrigin::PackageRoot);
+        assert_eq!(path.relative_path, "include");
+    }
+
+    #[test]
+    fn native_library_paths_cover_package_build_and_system_origins() {
+        let package = NativeLibraryPath {
+            origin: NativeSearchPathOrigin::PackageRoot,
+            relative_path: "native/lib".to_string(),
+        };
+        let build = NativeLibraryPath {
+            origin: NativeSearchPathOrigin::BuildRoot,
+            relative_path: "out/lib".to_string(),
+        };
+        let system = NativeLibraryPath {
+            origin: NativeSearchPathOrigin::System,
+            relative_path: "/usr/lib".to_string(),
+        };
+
+        assert_eq!(package.origin, NativeSearchPathOrigin::PackageRoot);
+        assert_eq!(build.origin, NativeSearchPathOrigin::BuildRoot);
+        assert_eq!(system.origin, NativeSearchPathOrigin::System);
     }
 }
