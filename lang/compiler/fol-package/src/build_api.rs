@@ -144,6 +144,31 @@ pub struct BuildArtifactHandle {
     pub root_module_id: crate::build_graph::BuildModuleId,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StepRequest {
+    pub name: String,
+    pub depends_on: Vec<crate::build_graph::BuildStepId>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StepHandle {
+    pub step_id: crate::build_graph::BuildStepId,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RunRequest {
+    pub name: String,
+    pub artifact: BuildArtifactHandle,
+    pub depends_on: Vec<crate::build_graph::BuildStepId>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RunHandle {
+    pub step_id: crate::build_graph::BuildStepId,
+    pub artifact_id: crate::build_graph::BuildArtifactId,
+}
+
 pub fn validate_build_name(name: &str) -> Result<(), BuildApiNameError> {
     if name.is_empty() {
         return Err(BuildApiNameError::Empty);
@@ -269,17 +294,46 @@ impl<'a> BuildApi<'a> {
             root_module_id: module_id,
         })
     }
+
+    pub fn step(&mut self, request: StepRequest) -> Result<StepHandle, BuildApiError> {
+        validate_build_name(&request.name).map_err(BuildApiError::InvalidName)?;
+        let step_id = self
+            .graph
+            .add_step(crate::build_graph::BuildStepKind::Default, request.name.clone());
+        for dependency in request.depends_on {
+            self.graph.add_step_dependency(step_id, dependency);
+        }
+        Ok(StepHandle {
+            step_id,
+            name: request.name,
+        })
+    }
+
+    pub fn add_run(&mut self, request: RunRequest) -> Result<RunHandle, BuildApiError> {
+        validate_build_name(&request.name).map_err(BuildApiError::InvalidName)?;
+        let step_id = self
+            .graph
+            .add_step(crate::build_graph::BuildStepKind::Run, request.name);
+        for dependency in request.depends_on {
+            self.graph.add_step_dependency(step_id, dependency);
+        }
+        Ok(RunHandle {
+            step_id,
+            artifact_id: request.artifact.artifact_id,
+        })
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::{
         validate_build_name, BuildApi, BuildApiError, BuildApiNameError, BuildOptionValue,
-        ExecutableRequest, SharedLibraryRequest, StandardOptimizeRequest, StandardTargetRequest,
-        StaticLibraryRequest, TestArtifactRequest, UserOptionRequest,
+        ExecutableRequest, RunRequest, SharedLibraryRequest, StandardOptimizeRequest,
+        StandardTargetRequest, StaticLibraryRequest, StepRequest, TestArtifactRequest,
+        UserOptionRequest,
     };
     use crate::build_graph::BuildGraph;
-    use crate::build_graph::{BuildArtifactInput, BuildArtifactKind, BuildOptionKind};
+    use crate::build_graph::{BuildArtifactInput, BuildArtifactKind, BuildOptionKind, BuildStepKind};
 
     #[test]
     fn build_api_wraps_a_graph_reference() {
@@ -467,6 +521,64 @@ mod tests {
         assert_eq!(
             error,
             BuildApiError::InvalidName(BuildApiNameError::InvalidCharacter('A'))
+        );
+    }
+
+    #[test]
+    fn build_api_step_adds_named_default_steps_and_dependencies() {
+        let mut graph = BuildGraph::new();
+        let mut api = BuildApi::new(&mut graph);
+        let base = api
+            .step(StepRequest {
+                name: "build".to_string(),
+                depends_on: Vec::new(),
+            })
+            .expect("valid step request should succeed");
+        let check = api
+            .step(StepRequest {
+                name: "check".to_string(),
+                depends_on: vec![base.step_id],
+            })
+            .expect("valid dependent step should succeed");
+
+        assert_eq!(api.graph().steps()[0].kind, BuildStepKind::Default);
+        assert_eq!(api.graph().steps()[1].id, check.step_id);
+        assert_eq!(
+            api.graph().step_dependencies_for(check.step_id).collect::<Vec<_>>(),
+            vec![base.step_id]
+        );
+    }
+
+    #[test]
+    fn build_api_add_run_creates_a_run_step() {
+        let mut graph = BuildGraph::new();
+        let mut api = BuildApi::new(&mut graph);
+        let build = api
+            .step(StepRequest {
+                name: "build".to_string(),
+                depends_on: Vec::new(),
+            })
+            .expect("build step should succeed");
+        let exe = api
+            .add_exe(ExecutableRequest {
+                name: "app".to_string(),
+                root_module: "src/app.fol".to_string(),
+            })
+            .expect("valid executable request should succeed");
+
+        let run = api
+            .add_run(RunRequest {
+                name: "run".to_string(),
+                artifact: exe.clone(),
+                depends_on: vec![build.step_id],
+            })
+            .expect("valid run request should succeed");
+
+        assert_eq!(run.artifact_id, exe.artifact_id);
+        assert_eq!(api.graph().steps()[1].kind, BuildStepKind::Run);
+        assert_eq!(
+            api.graph().step_dependencies_for(run.step_id).collect::<Vec<_>>(),
+            vec![build.step_id]
         );
     }
 }
