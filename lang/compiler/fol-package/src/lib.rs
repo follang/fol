@@ -27,6 +27,14 @@ pub use build::{
     PackageBuildDefinition, PackageBuildEntryPoint, PackageBuildEntryPointKind, PackageBuildMode,
     PackageNativeArtifact, PackageNativeArtifactKind,
 };
+pub use build_graph::{
+    BuildArtifact, BuildArtifactDependency, BuildArtifactId, BuildArtifactInput,
+    BuildArtifactKind, BuildGeneratedFile, BuildGeneratedFileId, BuildGeneratedFileKind,
+    BuildGraph, BuildGraphValidationError, BuildGraphValidationErrorKind, BuildInstall,
+    BuildInstallId, BuildInstallKind, BuildInstallTarget, BuildModule, BuildModuleId,
+    BuildModuleKind, BuildOption, BuildOptionId, BuildOptionKind, BuildStep,
+    BuildStepDependency, BuildStepId, BuildStepKind,
+};
 pub use config::PackageConfig;
 pub use errors::{PackageError, PackageErrorKind};
 pub use git::{
