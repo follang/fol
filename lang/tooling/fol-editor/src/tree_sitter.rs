@@ -202,6 +202,21 @@ mod tests {
     }
 
     #[test]
+    fn highlight_query_captures_each_declaration_head_explicitly() {
+        let query = fol_tree_sitter_highlights_query();
+        for needle in [
+            "(use_decl \"use\" @keyword.import)",
+            "(var_decl \"var\" @keyword)",
+            "(fun_decl \"fun\" @keyword.function)",
+            "(log_decl \"log\" @keyword.function)",
+            "(typ_decl \"typ\" @keyword.type)",
+            "(ali_decl \"ali\" @keyword.type)",
+        ] {
+            assert!(query.contains(needle), "missing declaration head capture: {needle}");
+        }
+    }
+
+    #[test]
     fn highlight_query_uses_current_declaration_field_shapes() {
         let grammar = fol_tree_sitter_grammar();
         let query = fol_tree_sitter_highlights_query();

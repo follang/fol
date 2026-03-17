@@ -318,8 +318,8 @@ over tiny synthetic one-liners, unless a one-liner is the clearest regression.
 
 ### Phase 2: Declaration and modifier highlighting
 
-- `2.1` highlight declaration heads distinctly: `fun`, `log`, `typ`, `ali`,
-  `var`, `use`
+- `2.1` complete: highlight declaration heads distinctly: `fun`, `log`, `typ`,
+  `ali`, `var`, `use`
 - `2.2` complete: highlight declaration modifiers in bracket forms like
   `[exp]`, `[par]`, and other real surfaced markers
 - `2.3` highlight declaration names by role: function/log/type/alias/binding
@@ -444,5 +444,5 @@ The acceptance pass should also verify this real editor flow:
 
 Current milestone state:
 
-- `6 / 49` slices complete
-- `12%`
+- `7 / 49` slices complete
+- `14%`
