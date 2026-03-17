@@ -1129,7 +1129,7 @@ mod tests {
 
     #[test]
     fn package_session_keeps_semantic_build_entries_for_formal_pkg_roots() {
-        let temp_root = unique_temp_root("pkg_modern_build_entry");
+        let temp_root = unique_temp_root("pkg_semantic_build_entry");
         let store_root = temp_root.join("store");
         fs::create_dir_all(store_root.join("json"))
             .expect("Should create a temporary package-store fixture");
@@ -1144,7 +1144,7 @@ mod tests {
             store_root.join("json/build.fol"),
             "def build(graph: Graph): Graph = graph;\n",
         )
-        .expect("Should write the modern build entry fixture");
+        .expect("Should write the semantic build entry fixture");
         let mut session = PackageSession::new();
 
         let loaded = session
@@ -1155,7 +1155,7 @@ mod tests {
                     spelling: "json".to_string(),
                 }],
             )
-            .expect("Package session should load pkg roots with modern build entry metadata");
+            .expect("Package session should load pkg roots with semantic build entries");
 
         assert!(loaded.exports.is_empty());
         assert_eq!(loaded.build_mode(), crate::build::PackageBuildMode::ModernOnly);

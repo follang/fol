@@ -931,7 +931,7 @@ mod tests {
     }
 
     #[test]
-    fn workspace_dispatch_executes_modern_build_entry_packages_through_workspace_route() {
+    fn workspace_dispatch_executes_modern_semantic_build_packages_through_workspace_route() {
         let workspace = modern_dispatch_fixture("modern_only", false);
         let command = FrontendCommand::Code(CodeCommand {
             output: FrontendOutputArgs::default(),
@@ -940,7 +940,7 @@ mod tests {
         });
 
         let result = dispatch_workspace_command(&command, &workspace, &FrontendConfig::default())
-            .expect("modern build entry packages should execute");
+            .expect("modern semantic build packages should execute");
 
         assert_eq!(result.command, "build");
         assert!(result.summary.contains("built 1 workspace package(s) into "));
@@ -949,7 +949,7 @@ mod tests {
     }
 
     #[test]
-    fn workspace_dispatch_executes_hybrid_build_entry_packages_through_workspace_route() {
+    fn workspace_dispatch_executes_hybrid_semantic_build_packages_through_workspace_route() {
         let workspace = modern_dispatch_fixture("hybrid", true);
         let command = FrontendCommand::Code(CodeCommand {
             output: FrontendOutputArgs::default(),

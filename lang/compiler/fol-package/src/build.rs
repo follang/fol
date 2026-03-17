@@ -830,14 +830,14 @@ mod tests {
     }
 
     #[test]
-    fn package_build_parser_detects_canonical_build_entry_definitions() {
-        let temp_root = unique_temp_root("build_entry");
+    fn package_build_parser_classifies_semantic_modern_build_files() {
+        let temp_root = unique_temp_root("semantic_modern_build");
         fs::create_dir_all(&temp_root).expect("Should create temporary build fixture root");
         let build_path = temp_root.join("build.fol");
         fs::write(&build_path, "def build(graph: int): int = graph;\n")
-            .expect("Should write the build entry fixture");
+            .expect("Should write the semantic modern build fixture");
 
-        let build = parse_package_build(&build_path).expect("Build entry fixture should parse");
+        let build = parse_package_build(&build_path).expect("Semantic modern build fixture should parse");
 
         assert!(!build.has_compatibility_controls());
         assert_eq!(build.mode(), PackageBuildMode::ModernOnly);

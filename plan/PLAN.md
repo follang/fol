@@ -349,7 +349,7 @@ Round 2 slice tracker:
   classifies broken modern builds as valid modern/hybrid builds.
 - [x] Slice 9. Re-export and test the migrated Phase 3 semantic build-mode
   surface.
-- [ ] Slice 10. Delete the last temporary legacy build-entry helpers and clean
+- [x] Slice 10. Delete the last temporary legacy build-entry helpers and clean
   up call sites.
 
 ## Phase 4: Build-Time Capability Model
