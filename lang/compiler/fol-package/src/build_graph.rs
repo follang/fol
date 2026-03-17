@@ -118,6 +118,12 @@ pub struct BuildInstall {
     pub name: String,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BuildStepDependency {
+    pub step: BuildStepId,
+    pub depends_on: BuildStepId,
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct BuildGraph {
     steps: Vec<BuildStep>,
@@ -126,6 +132,7 @@ pub struct BuildGraph {
     generated_files: Vec<BuildGeneratedFile>,
     options: Vec<BuildOption>,
     installs: Vec<BuildInstall>,
+    step_dependencies: Vec<BuildStepDependency>,
 }
 
 impl BuildGraph {
@@ -155,6 +162,10 @@ impl BuildGraph {
 
     pub fn installs(&self) -> &[BuildInstall] {
         &self.installs
+    }
+
+    pub fn step_dependencies(&self) -> &[BuildStepDependency] {
+        &self.step_dependencies
     }
 
     pub fn add_step(&mut self, kind: BuildStepKind, name: impl Into<String>) -> BuildStepId {
@@ -228,6 +239,17 @@ impl BuildGraph {
         });
         id
     }
+
+    pub fn add_step_dependency(&mut self, step: BuildStepId, depends_on: BuildStepId) {
+        self.step_dependencies.push(BuildStepDependency { step, depends_on });
+    }
+
+    pub fn step_dependencies_for(&self, step: BuildStepId) -> impl Iterator<Item = BuildStepId> + '_ {
+        self.step_dependencies
+            .iter()
+            .filter(move |edge| edge.step == step)
+            .map(|edge| edge.depends_on)
+    }
 }
 
 #[cfg(test)]
@@ -235,7 +257,7 @@ mod tests {
     use super::{
         BuildArtifactId, BuildArtifactKind, BuildGeneratedFileId, BuildGeneratedFileKind,
         BuildGraph, BuildInstallId, BuildInstallKind, BuildModuleId, BuildModuleKind,
-        BuildOptionId, BuildOptionKind, BuildStepId, BuildStepKind,
+        BuildOptionId, BuildOptionKind, BuildStepDependency, BuildStepId, BuildStepKind,
     };
 
     #[test]
@@ -309,5 +331,47 @@ mod tests {
         );
         assert_eq!(graph.options()[0].kind, BuildOptionKind::Bool);
         assert_eq!(graph.installs()[0].kind, BuildInstallKind::Directory);
+    }
+
+    #[test]
+    fn build_graph_records_explicit_step_dependencies() {
+        let mut graph = BuildGraph::new();
+        let compile = graph.add_step(BuildStepKind::Default, "compile");
+        let test = graph.add_step(BuildStepKind::Test, "test");
+        let run = graph.add_step(BuildStepKind::Run, "run");
+
+        graph.add_step_dependency(test, compile);
+        graph.add_step_dependency(run, compile);
+
+        assert_eq!(
+            graph.step_dependencies(),
+            &[
+                BuildStepDependency {
+                    step: test,
+                    depends_on: compile,
+                },
+                BuildStepDependency {
+                    step: run,
+                    depends_on: compile,
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn build_graph_can_query_dependencies_for_one_step() {
+        let mut graph = BuildGraph::new();
+        let compile = graph.add_step(BuildStepKind::Default, "compile");
+        let install = graph.add_step(BuildStepKind::Install, "install");
+        let run = graph.add_step(BuildStepKind::Run, "run");
+
+        graph.add_step_dependency(install, compile);
+        graph.add_step_dependency(run, compile);
+
+        let install_dependencies = graph.step_dependencies_for(install).collect::<Vec<_>>();
+        let run_dependencies = graph.step_dependencies_for(run).collect::<Vec<_>>();
+
+        assert_eq!(install_dependencies, vec![compile]);
+        assert_eq!(run_dependencies, vec![compile]);
     }
 }
