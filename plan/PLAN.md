@@ -794,7 +794,7 @@ Each slice must land green with `make build` and `make test` before commit.
    ad-hoc field layout.
 4. `[complete]` Introduce modern build-entry metadata types in the package build
    model.
-5. `[pending]` Detect canonical `build` entry declarations during `build.fol`
+5. `[complete]` Detect canonical `build` entry declarations during `build.fol`
    extraction.
 6. `[pending]` Thread build-entry metadata through prepared package state.
 7. `[pending]` Add explicit build-mode classification for empty / compatibility /

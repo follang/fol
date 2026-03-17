@@ -251,15 +251,11 @@ pub fn extract_package_build_definition(
                             )?,
                         });
                     } else {
-                        // Ordinary FOL defs in build.fol are allowed; only pkg/loc defs
-                        // and reserved native-artifact placeholder defs participate in
-                        // phase-one package extraction.
+                        maybe_record_build_entry_point(&mut build, name, params);
                     }
                 }
                 _ => {
-                    // Ordinary FOL defs in build.fol are allowed; only pkg/loc defs
-                    // and reserved native-artifact placeholder defs participate in
-                    // phase-one package extraction.
+                    maybe_record_build_entry_point(&mut build, name, params);
                 }
             },
             _ => {}
@@ -310,6 +306,19 @@ fn native_artifact_kind(name: &str) -> Option<PackageNativeArtifactKind> {
     }
 }
 
+fn maybe_record_build_entry_point(
+    build: &mut PackageBuildDefinition,
+    name: &str,
+    params: &[fol_parser::ast::Parameter],
+) {
+    if name == "build" && !params.is_empty() && build.entry_point.is_none() {
+        build.entry_point = Some(PackageBuildEntryPoint {
+            kind: PackageBuildEntryPointKind::BuildFunction,
+            name: name.to_string(),
+        });
+    }
+}
+
 fn build_item_error(
     syntax_index: &SyntaxIndex,
     node_id: SyntaxNodeId,
@@ -325,8 +334,8 @@ fn build_item_error(
 mod tests {
     use super::{
         extract_package_build_definition, parse_package_build, BuildDependency, BuildExport,
-        PackageBuildCompatibility, PackageBuildDefinition, PackageNativeArtifact,
-        PackageNativeArtifactKind,
+        PackageBuildCompatibility, PackageBuildDefinition, PackageBuildEntryPoint,
+        PackageBuildEntryPointKind, PackageNativeArtifact, PackageNativeArtifactKind,
     };
     use crate::{PackageErrorKind, PackageLocator, PackageLocatorKind};
     use fol_parser::ast::AstParser;
@@ -607,6 +616,7 @@ mod tests {
                 "fun[] helper(): int = { return 1; }\n",
                 "def core: pkg = \"core\";\n",
                 "def root: loc = \"src\";\n",
+                "def build(graph: int): int = graph;\n",
             ),
         )
         .expect("Should write the mixed build fixture");
@@ -639,7 +649,10 @@ mod tests {
                     }],
                     native_artifacts: Vec::new(),
                 },
-                entry_point: None,
+                entry_point: Some(PackageBuildEntryPoint {
+                    kind: PackageBuildEntryPointKind::BuildFunction,
+                    name: "build".to_string(),
+                }),
             }
         );
 
@@ -694,6 +707,29 @@ mod tests {
         assert_eq!(origin.file.as_deref(), build_path.to_str());
         assert_eq!(origin.line, 1);
         assert_eq!(origin.column, 1);
+
+        fs::remove_dir_all(&temp_root)
+            .expect("Temporary build fixture root should be removable after the test");
+    }
+
+    #[test]
+    fn package_build_parser_detects_canonical_build_entry_definitions() {
+        let temp_root = unique_temp_root("build_entry");
+        fs::create_dir_all(&temp_root).expect("Should create temporary build fixture root");
+        let build_path = temp_root.join("build.fol");
+        fs::write(&build_path, "def build(graph: int): int = graph;\n")
+            .expect("Should write the build entry fixture");
+
+        let build = parse_package_build(&build_path).expect("Build entry fixture should parse");
+
+        assert_eq!(
+            build.entry_point(),
+            Some(&PackageBuildEntryPoint {
+                kind: PackageBuildEntryPointKind::BuildFunction,
+                name: "build".to_string(),
+            })
+        );
+        assert!(!build.has_compatibility_controls());
 
         fs::remove_dir_all(&temp_root)
             .expect("Temporary build fixture root should be removable after the test");
