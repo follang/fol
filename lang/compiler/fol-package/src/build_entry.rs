@@ -74,10 +74,53 @@ impl BuildEntryValidationError {
     }
 }
 
+pub fn collect_build_entry_candidates(
+    syntax: &fol_parser::ast::ParsedPackage,
+) -> Vec<BuildEntryCandidate> {
+    let mut candidates = Vec::new();
+
+    for source_unit in &syntax.source_units {
+        if source_unit.kind != fol_parser::ast::ParsedSourceUnitKind::Build {
+            continue;
+        }
+
+        for item in &source_unit.items {
+            let fol_parser::ast::AstNode::DefDecl {
+                name,
+                params,
+                def_type,
+                ..
+            } = &item.node
+            else {
+                continue;
+            };
+
+            if name != "build" {
+                continue;
+            }
+
+            candidates.push(BuildEntryCandidate {
+                source_unit_path: source_unit.path.clone(),
+                syntax_id: item.node_id,
+                name: name.clone(),
+                parameter_names: params.iter().map(|param| param.name.clone()).collect(),
+                parameter_type_names: params
+                    .iter()
+                    .map(|param| param.param_type.named_text())
+                    .collect(),
+                return_type_name: def_type.named_text(),
+            });
+        }
+    }
+
+    candidates
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        BuildEntryCandidate, BuildEntrySignatureExpectation, BuildEntryValidationError,
+        collect_build_entry_candidates, BuildEntryCandidate, BuildEntrySignatureExpectation,
+        BuildEntryValidationError,
         BuildEntryValidationErrorKind, ValidatedBuildEntry,
     };
 
@@ -113,5 +156,58 @@ mod tests {
         assert_eq!(validated.candidate, candidate);
         assert_eq!(error.kind, BuildEntryValidationErrorKind::WrongReturnType);
         assert!(error.origin.is_none());
+    }
+
+    #[test]
+    fn candidate_collection_scans_only_build_source_units() {
+        let syntax = fol_parser::ast::ParsedPackage {
+            package: "demo".to_string(),
+            source_units: vec![
+                fol_parser::ast::ParsedSourceUnit {
+                    path: "build.fol".to_string(),
+                    package: "demo".to_string(),
+                    namespace: "demo".to_string(),
+                    kind: fol_parser::ast::ParsedSourceUnitKind::Build,
+                    items: vec![fol_parser::ast::ParsedTopLevel {
+                        node_id: fol_parser::ast::SyntaxNodeId(1),
+                        node: fol_parser::ast::AstNode::DefDecl {
+                            options: Vec::new(),
+                            name: "build".to_string(),
+                            params: vec![fol_parser::ast::Parameter {
+                                name: "graph".to_string(),
+                                param_type: fol_parser::ast::FolType::Named {
+                                    syntax_id: None,
+                                    name: "Graph".to_string(),
+                                },
+                                is_borrowable: false,
+                                is_mutex: false,
+                                default: None,
+                            }],
+                            def_type: fol_parser::ast::FolType::Named {
+                                syntax_id: None,
+                                name: "Graph".to_string(),
+                            },
+                            body: Vec::new(),
+                        },
+                        meta: fol_parser::ast::ParsedTopLevelMeta::default(),
+                    }],
+                },
+                fol_parser::ast::ParsedSourceUnit {
+                    path: "src/main.fol".to_string(),
+                    package: "demo".to_string(),
+                    namespace: "demo::src".to_string(),
+                    kind: fol_parser::ast::ParsedSourceUnitKind::Ordinary,
+                    items: Vec::new(),
+                },
+            ],
+            syntax_index: fol_parser::ast::SyntaxIndex::default(),
+        };
+
+        let candidates = collect_build_entry_candidates(&syntax);
+
+        assert_eq!(candidates.len(), 1);
+        assert_eq!(candidates[0].source_unit_path, "build.fol");
+        assert_eq!(candidates[0].parameter_names, vec!["graph".to_string()]);
+        assert_eq!(candidates[0].return_type_name.as_deref(), Some("Graph"));
     }
 }
