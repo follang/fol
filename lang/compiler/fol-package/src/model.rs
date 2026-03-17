@@ -2,7 +2,7 @@ use crate::{
     build_dependency::DependencyBuildSurfaceSet, build_native::NativeArtifactSet,
     PackageBuildDefinition, PackageIdentity, PackageMetadata, PackageSourceKind,
 };
-use fol_parser::ast::ParsedPackage;
+use fol_parser::ast::{ParsedPackage, ParsedSourceUnit, ParsedSourceUnitKind};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PreparedExportMount {
@@ -69,6 +69,24 @@ impl PreparedPackage {
     pub fn has_build_entry_point(&self) -> bool {
         self.build_entry_point().is_some()
     }
+
+    pub fn source_units(&self) -> &[ParsedSourceUnit] {
+        &self.syntax.source_units
+    }
+
+    pub fn build_source_units(&self) -> impl Iterator<Item = &ParsedSourceUnit> {
+        self.syntax
+            .source_units
+            .iter()
+            .filter(|unit| unit.kind == ParsedSourceUnitKind::Build)
+    }
+
+    pub fn ordinary_source_units(&self) -> impl Iterator<Item = &ParsedSourceUnit> {
+        self.syntax
+            .source_units
+            .iter()
+            .filter(|unit| unit.kind == ParsedSourceUnitKind::Ordinary)
+    }
 }
 
 #[cfg(test)]
@@ -82,7 +100,7 @@ mod tests {
         PackageDependencySourceKind, PackageIdentity, PackageLocator, PackageMetadata,
         PackageNativeArtifact, PackageNativeArtifactKind, PackageSourceKind, PreparedExportMount,
     };
-    use fol_parser::ast::{AstParser, ParsedPackage};
+    use fol_parser::ast::{AstParser, ParsedPackage, ParsedSourceUnitKind};
     use fol_stream::FileStream;
 
     fn parse_fixture_package() -> ParsedPackage {
@@ -125,6 +143,10 @@ mod tests {
         assert!(prepared.dependency_surfaces.is_none());
         assert!(prepared.native_surfaces.is_none());
         assert_eq!(prepared.syntax.source_units.len(), 1);
+        assert_eq!(
+            prepared.source_units()[0].kind,
+            ParsedSourceUnitKind::Ordinary
+        );
     }
 
     #[test]
@@ -212,6 +234,36 @@ mod tests {
                 kind: PackageBuildEntryPointKind::BuildFunction,
                 name: "build".to_string(),
             })
+        );
+    }
+
+    #[test]
+    fn prepared_package_helpers_split_build_and_ordinary_units() {
+        let mut syntax = parse_fixture_package();
+        syntax.source_units.push(fol_parser::ast::ParsedSourceUnit {
+            path: "build.fol".to_string(),
+            package: syntax.package.clone(),
+            namespace: syntax.package.clone(),
+            kind: ParsedSourceUnitKind::Build,
+            items: Vec::new(),
+        });
+        let prepared = PreparedPackage::new(
+            PackageIdentity {
+                source_kind: PackageSourceKind::Entry,
+                canonical_root: "/tmp/fixture".to_string(),
+                display_name: "fixture".to_string(),
+            },
+            syntax,
+        );
+
+        assert_eq!(prepared.build_source_units().count(), 1);
+        assert_eq!(prepared.ordinary_source_units().count(), 1);
+        assert_eq!(
+            prepared
+                .build_source_units()
+                .next()
+                .map(|unit| unit.path.as_str()),
+            Some("build.fol")
         );
     }
 }

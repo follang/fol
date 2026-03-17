@@ -276,7 +276,7 @@ Round 1 slice tracker:
   rules.
 - [x] Slice 2. Add parsed source-unit kind metadata that distinguishes build
   units from ordinary units.
-- [ ] Slice 3. Add prepared-package helpers for build source units.
+- [x] Slice 3. Add prepared-package helpers for build source units.
 - [ ] Slice 4. Load `build.fol` into prepared formal-package syntax instead of
   excluding it as a control file.
 - [ ] Slice 5. Carry source-unit kind metadata through resolved programs.
