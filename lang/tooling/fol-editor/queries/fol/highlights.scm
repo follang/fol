@@ -1,16 +1,15 @@
-[
-  "use"
-  "var"
-  "fun"
-  "log"
-  "typ"
-  "ali"
-  "when"
-  "loop"
-  "return"
-  "report"
-  "break"
-] @keyword
+(use_decl "use" @keyword.import)
+(var_decl "var" @keyword)
+(fun_decl "fun" @keyword.function)
+(log_decl "log" @keyword.function)
+(typ_decl "typ" @keyword.type)
+(ali_decl "ali" @keyword.type)
+(when_expr "when" @keyword.conditional)
+(loop_expr "loop" @keyword.repeat)
+(return_stmt "return" @keyword.return)
+(report_stmt "report" @keyword.exception)
+(break_stmt "break" @keyword.repeat)
+(source_kind) @keyword.import
 
 (typ_decl name: (identifier) @type)
 (ali_decl name: (identifier) @type)

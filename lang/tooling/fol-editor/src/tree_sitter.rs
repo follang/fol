@@ -164,7 +164,11 @@ mod tests {
     fn highlight_query_covers_declarations_keywords_and_literals() {
         let query = fol_tree_sitter_highlights_query();
         for needle in [
-            "@keyword",
+            "@keyword.import",
+            "@keyword.function",
+            "@keyword.type",
+            "@keyword.conditional",
+            "@keyword.return",
             "@type",
             "@function",
             "@method",
@@ -195,6 +199,11 @@ mod tests {
         assert!(grammar.contains("seq('var', $.typed_binding"));
 
         for needle in [
+            "(use_decl \"use\" @keyword.import)",
+            "(fun_decl \"fun\" @keyword.function)",
+            "(log_decl \"log\" @keyword.function)",
+            "(typ_decl \"typ\" @keyword.type)",
+            "(ali_decl \"ali\" @keyword.type)",
             "(fun_decl declaration: (plain_fun_decl",
             "(fun_decl declaration: (method_decl",
             "(log_decl declaration: (plain_log_decl",
