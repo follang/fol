@@ -322,7 +322,8 @@ over tiny synthetic one-liners, unless a one-liner is the clearest regression.
   `ali`, `var`, `use`
 - `2.2` complete: highlight declaration modifiers in bracket forms like
   `[exp]`, `[par]`, and other real surfaced markers
-- `2.3` highlight declaration names by role: function/log/type/alias/binding
+- `2.3` complete: highlight declaration names by role:
+  function/log/type/alias/binding
 - `2.4` add highlight snapshots for declaration-heavy real fixtures
 
 ### Phase 3: Keyword and import-kind highlighting
@@ -444,5 +445,5 @@ The acceptance pass should also verify this real editor flow:
 
 Current milestone state:
 
-- `7 / 49` slices complete
-- `14%`
+- `8 / 49` slices complete
+- `16%`

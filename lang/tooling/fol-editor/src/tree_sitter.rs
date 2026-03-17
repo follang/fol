@@ -217,6 +217,22 @@ mod tests {
     }
 
     #[test]
+    fn highlight_query_distinguishes_declaration_names_by_role() {
+        let query = fol_tree_sitter_highlights_query();
+        for needle in [
+            "(use_decl name: (identifier) @namespace)",
+            "(typ_decl name: (identifier) @type)",
+            "(ali_decl name: (identifier) @type.definition)",
+            "(fun_decl declaration: (plain_fun_decl name: (identifier) @function))",
+            "(fun_decl declaration: (method_decl name: (identifier) @function.method))",
+            "(log_decl declaration: (plain_log_decl name: (identifier) @function.builtin))",
+            "(var_decl (typed_binding name: (identifier) @variable))",
+        ] {
+            assert!(query.contains(needle), "missing declaration role capture: {needle}");
+        }
+    }
+
+    #[test]
     fn highlight_query_uses_current_declaration_field_shapes() {
         let grammar = fol_tree_sitter_grammar();
         let query = fol_tree_sitter_highlights_query();
@@ -231,6 +247,8 @@ mod tests {
             "(log_decl \"log\" @keyword.function)",
             "(typ_decl \"typ\" @keyword.type)",
             "(ali_decl \"ali\" @keyword.type)",
+            "(use_decl name: (identifier) @namespace)",
+            "(ali_decl name: (identifier) @type.definition)",
             "(fun_decl declaration: (plain_fun_decl",
             "(fun_decl declaration: (method_decl",
             "(log_decl declaration: (plain_log_decl",

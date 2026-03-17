@@ -12,12 +12,13 @@
 (source_kind) @keyword.import
 (decl_modifiers (identifier) @attribute)
 
+(use_decl name: (identifier) @namespace)
 (typ_decl name: (identifier) @type)
-(ali_decl name: (identifier) @type)
+(ali_decl name: (identifier) @type.definition)
 (fun_decl declaration: (plain_fun_decl name: (identifier) @function))
 (fun_decl declaration: (method_decl name: (identifier) @function.method))
-(log_decl declaration: (plain_log_decl name: (identifier) @function))
-(log_decl declaration: (method_decl name: (identifier) @function.method))
+(log_decl declaration: (plain_log_decl name: (identifier) @function.builtin))
+(log_decl declaration: (method_decl name: (identifier) @function.builtin))
 (param name: (identifier) @variable.parameter)
 (var_decl (typed_binding name: (identifier) @variable))
 (field_init name: (identifier) @property)
