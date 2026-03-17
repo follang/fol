@@ -541,7 +541,7 @@ Round 1 slice tracker:
   frontend helper used by dispatch.
 - [x] Slice 5. Add routed workspace coverage for CLI `--step` selection on
   custom graph steps.
-- [ ] Slice 6. Add graph-driven coverage for multiple runnable artifacts with
+- [x] Slice 6. Add graph-driven coverage for multiple runnable artifacts with
   explicit named run steps.
 - [ ] Slice 7. Add graph-driven coverage for multiple buildable artifacts with
   explicit named build steps.

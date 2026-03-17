@@ -637,7 +637,7 @@ mod tests {
     use super::{
         execute_workspace_build_route, plan_member_execution, plan_workspace_build_route,
         FrontendBuildStep, FrontendBuildWorkflowMode, FrontendCompatibilityBuildRequest,
-        FrontendMemberBuildRoute, FrontendWorkspaceBuildRoute,
+        FrontendMemberBuildRoute, FrontendStepExecutionKind, FrontendWorkspaceBuildRoute,
     };
     use crate::{FrontendConfig, FrontendProfile, FrontendWorkspace, PackageRoot, WorkspaceRoot};
     use std::{fs, path::PathBuf};
@@ -1189,6 +1189,63 @@ mod tests {
 
         assert_eq!(result.command, "run");
         assert!(result.summary.contains("ran "));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn explicit_named_run_steps_select_the_requested_artifact_when_multiple_runnables_exist() {
+        let root = std::env::temp_dir().join(format!(
+            "fol_frontend_build_route_multi_run_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system time before epoch")
+                .as_nanos()
+        ));
+        fs::create_dir_all(root.join("src")).unwrap();
+        fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
+        fs::write(
+            root.join("build.fol"),
+            concat!(
+                "def root: loc = \"src\";\n",
+                "def build(graph: int): int = {\n",
+                "    graph.add_exe(\"serve_app\", \"src/serve.fol\");\n",
+                "    graph.add_exe(\"admin_app\", \"src/admin.fol\");\n",
+                "    graph.add_run(\"serve\", \"serve_app\");\n",
+                "    graph.add_run(\"admin\", \"admin_app\");\n",
+                "    return graph\n",
+                "}\n",
+            ),
+        )
+        .unwrap();
+        fs::write(
+            root.join("src/serve.fol"),
+            "fun[] main(): int = {\n    return 0\n}\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("src/admin.fol"),
+            "fun[] main(): int = {\n    return 0\n}\n",
+        )
+        .unwrap();
+        let plan = plan_member_execution(&FrontendMemberBuildRoute {
+            member_root: root.clone(),
+            package_name: "demo".to_string(),
+            mode: FrontendBuildWorkflowMode::Hybrid,
+        })
+        .expect("member planning should keep named run step selections");
+
+        let admin = plan
+            .steps
+            .iter()
+            .find(|step| step.name == "admin")
+            .expect("admin run step should be present");
+        assert_eq!(admin.execution, Some(FrontendStepExecutionKind::Run));
+        assert_eq!(
+            admin.selection.as_ref().map(|selection| selection.label.as_str()),
+            Some("admin_app")
+        );
 
         fs::remove_dir_all(root).ok();
     }
