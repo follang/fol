@@ -650,20 +650,46 @@ fn dispatch_workspace_code_route(
         );
     }
 
-    match command {
-        CodeSubcommand::Build(_) => build_workspace_for_profile_with_config(
-            workspace,
-            config,
-            config.profile_override.unwrap_or(default_profile),
-        ),
-        CodeSubcommand::Check(_) => check_workspace_with_config(workspace, config),
-        CodeSubcommand::Run(_) => run_workspace_with_args_and_config(workspace, config, run_args),
-        CodeSubcommand::Test(_) => test_workspace_with_config(workspace, config),
-        CodeSubcommand::Emit(_) => Err(FrontendError::new(
+    if matches!(command, CodeSubcommand::Emit(_)) {
+        return Err(FrontendError::new(
             FrontendErrorKind::Internal,
             "emit commands do not participate in workspace build-step routing",
-        )),
+        ));
     }
+
+    Err(unsupported_workspace_build_route_error(&route))
+}
+
+fn unsupported_workspace_build_route_error(
+    route: &FrontendWorkspaceBuildRoute,
+) -> FrontendError {
+    let unsupported_members = route
+        .members
+        .iter()
+        .filter(|member| member.mode != FrontendBuildWorkflowMode::Compatibility)
+        .map(|member| {
+            format!(
+                "{} ({})",
+                member.package_name,
+                match member.mode {
+                    FrontendBuildWorkflowMode::Compatibility => "compatibility",
+                    FrontendBuildWorkflowMode::Modern => "modern",
+                    FrontendBuildWorkflowMode::Hybrid => "hybrid",
+                }
+            )
+        })
+        .collect::<Vec<_>>();
+
+    FrontendError::new(
+        FrontendErrorKind::InvalidInput,
+        format!(
+            "workspace build-step routing does not support modern build.fol entry points yet for step '{}': {}",
+            route.requested_step,
+            unsupported_members.join(", ")
+        ),
+    )
+    .with_note("Only compatibility-only build.fol packages can run through workspace build/run/test/check right now.")
+    .with_note("Graph-backed modern build.fol execution still needs to be implemented.")
 }
 
 fn emit_has_direct_target(command: &EmitCommand) -> bool {
@@ -724,6 +750,63 @@ fn parse_completion_shell(shell: CompletionShellArg) -> CompletionShell {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn compatibility_dispatch_fixture(label: &str) -> FrontendWorkspace {
+        let root = std::env::temp_dir().join(format!(
+            "fol_frontend_dispatch_route_{label}_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system time before epoch")
+                .as_nanos()
+        ));
+        let src = root.join("src");
+        std::fs::create_dir_all(&src).unwrap();
+        std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
+        std::fs::write(root.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
+        std::fs::write(src.join("main.fol"), "fun[] main(): int = {\n    return 0\n}\n").unwrap();
+
+        FrontendWorkspace {
+            root: WorkspaceRoot::new(root.clone()),
+            members: vec![PackageRoot::new(root.clone())],
+            std_root_override: None,
+            package_store_root_override: None,
+            build_root: root.join(".fol/build"),
+            cache_root: root.join(".fol/cache"),
+            git_cache_root: root.join(".fol/cache/git"),
+        }
+    }
+
+    fn modern_dispatch_fixture(label: &str, hybrid: bool) -> FrontendWorkspace {
+        let root = std::env::temp_dir().join(format!(
+            "fol_frontend_dispatch_modern_{label}_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system time before epoch")
+                .as_nanos()
+        ));
+        let src = root.join("src");
+        std::fs::create_dir_all(&src).unwrap();
+        std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
+        let build_fol = if hybrid {
+            "def root: loc = \"src\"\ndef build(graph: int): int = graph;\n"
+        } else {
+            "def build(graph: int): int = graph;\n"
+        };
+        std::fs::write(root.join("build.fol"), build_fol).unwrap();
+        std::fs::write(src.join("main.fol"), "fun[] main(): int = {\n    return 0\n}\n").unwrap();
+
+        FrontendWorkspace {
+            root: WorkspaceRoot::new(root.clone()),
+            members: vec![PackageRoot::new(root.clone())],
+            std_root_override: None,
+            package_store_root_override: None,
+            build_root: root.join(".fol/build"),
+            cache_root: root.join(".fol/cache"),
+            git_cache_root: root.join(".fol/cache/git"),
+        }
+    }
 
     #[test]
     fn crate_name_matches_frontend_identity() {
@@ -821,29 +904,7 @@ mod tests {
 
     #[test]
     fn workspace_dispatch_routes_compatibility_build_steps_through_named_step_selection() {
-        let root = std::env::temp_dir().join(format!(
-            "fol_frontend_dispatch_route_{}_{}",
-            std::process::id(),
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .expect("system time before epoch")
-                .as_nanos()
-        ));
-        let src = root.join("src");
-        std::fs::create_dir_all(&src).unwrap();
-        std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
-        std::fs::write(root.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
-        std::fs::write(src.join("main.fol"), "fun[] main(): int = {\n    return 0\n}\n").unwrap();
-
-        let workspace = FrontendWorkspace {
-            root: WorkspaceRoot::new(root.clone()),
-            members: vec![PackageRoot::new(root.clone())],
-            std_root_override: None,
-            package_store_root_override: None,
-            build_root: root.join(".fol/build"),
-            cache_root: root.join(".fol/cache"),
-            git_cache_root: root.join(".fol/cache/git"),
-        };
+        let workspace = compatibility_dispatch_fixture("check_step");
         let command = FrontendCommand::Code(CodeCommand {
             command: CodeSubcommand::Build(BuildCommand::default()),
         });
@@ -857,7 +918,86 @@ mod tests {
         assert_eq!(result.command, "check");
         assert!(result.summary.contains("checked 1 workspace package(s)"));
 
-        std::fs::remove_dir_all(root).ok();
+        std::fs::remove_dir_all(&workspace.root.root).ok();
+    }
+
+    #[test]
+    fn workspace_dispatch_keeps_build_artifacts_on_routed_compatibility_execution() {
+        let workspace = compatibility_dispatch_fixture("build_artifacts");
+        let command = FrontendCommand::Code(CodeCommand {
+            command: CodeSubcommand::Build(BuildCommand::default()),
+        });
+
+        let result =
+            dispatch_workspace_command(&command, &workspace, &FrontendConfig::default()).unwrap();
+
+        assert_eq!(result.command, "build");
+        assert!(result.summary.contains("built 1 workspace package(s) into "));
+        assert_eq!(result.artifacts.len(), 3);
+        assert_eq!(result.artifacts[0].kind, FrontendArtifactKind::BuildRoot);
+        assert_eq!(result.artifacts[1].kind, FrontendArtifactKind::EmittedRust);
+        assert_eq!(result.artifacts[2].kind, FrontendArtifactKind::Binary);
+        assert!(result.artifacts[2]
+            .path
+            .as_ref()
+            .expect("binary path should be retained")
+            .is_file());
+
+        std::fs::remove_dir_all(&workspace.root.root).ok();
+    }
+
+    #[test]
+    fn workspace_dispatch_keeps_run_summary_and_binary_artifact_on_routed_execution() {
+        let workspace = compatibility_dispatch_fixture("run_artifacts");
+        let command = FrontendCommand::Code(CodeCommand {
+            command: CodeSubcommand::Run(RunCommand::default()),
+        });
+
+        let result =
+            dispatch_workspace_command(&command, &workspace, &FrontendConfig::default()).unwrap();
+
+        assert_eq!(result.command, "run");
+        assert!(result.summary.contains("ran "));
+        assert_eq!(result.artifacts.len(), 1);
+        assert_eq!(result.artifacts[0].kind, FrontendArtifactKind::Binary);
+
+        std::fs::remove_dir_all(&workspace.root.root).ok();
+    }
+
+    #[test]
+    fn workspace_dispatch_rejects_modern_build_entry_packages_until_graph_execution_exists() {
+        let workspace = modern_dispatch_fixture("modern_only", false);
+        let command = FrontendCommand::Code(CodeCommand {
+            command: CodeSubcommand::Build(BuildCommand::default()),
+        });
+
+        let error = dispatch_workspace_command(&command, &workspace, &FrontendConfig::default())
+            .expect_err("modern build entry packages should be rejected");
+
+        assert_eq!(error.kind(), FrontendErrorKind::InvalidInput);
+        assert!(error
+            .message()
+            .contains("does not support modern build.fol entry points yet"));
+        assert!(error.message().contains("demo (modern)"));
+        assert_eq!(error.notes().len(), 2);
+
+        std::fs::remove_dir_all(&workspace.root.root).ok();
+    }
+
+    #[test]
+    fn workspace_dispatch_rejects_hybrid_build_entry_packages_until_graph_execution_exists() {
+        let workspace = modern_dispatch_fixture("hybrid", true);
+        let command = FrontendCommand::Code(CodeCommand {
+            command: CodeSubcommand::Check(CheckCommand::default()),
+        });
+
+        let error = dispatch_workspace_command(&command, &workspace, &FrontendConfig::default())
+            .expect_err("hybrid build entry packages should be rejected");
+
+        assert_eq!(error.kind(), FrontendErrorKind::InvalidInput);
+        assert!(error.message().contains("demo (hybrid)"));
+
+        std::fs::remove_dir_all(&workspace.root.root).ok();
     }
 }
 fn code_has_direct_target(command: &CodeCommand) -> bool {
