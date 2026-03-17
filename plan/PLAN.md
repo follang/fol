@@ -391,7 +391,7 @@ Round 1 slice tracker:
 - [ ] Slice 1. Add a concrete Phase 4 implementation tracker with completion
   rules.
 - [x] Slice 2. Add explicit forbidden build-time capability categories.
-- [ ] Slice 3. Add a first-class runtime capability model for allowed and
+- [x] Slice 3. Add a first-class runtime capability model for allowed and
   forbidden operations.
 - [ ] Slice 4. Add a canonical graph-construction capability preset.
 - [ ] Slice 5. Add explicit target/optimize fields to the build input envelope.

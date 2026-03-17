@@ -45,6 +45,24 @@ pub enum ForbiddenBuildTimeOperation {
     UncontrolledProcessExecution,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BuildRuntimeCapabilityModel {
+    pub allowed_operations: Vec<AllowedBuildTimeOperation>,
+    pub forbidden_operations: Vec<ForbiddenBuildTimeOperation>,
+}
+
+impl BuildRuntimeCapabilityModel {
+    pub fn new(
+        allowed_operations: Vec<AllowedBuildTimeOperation>,
+        forbidden_operations: Vec<ForbiddenBuildTimeOperation>,
+    ) -> Self {
+        Self {
+            allowed_operations,
+            forbidden_operations,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BuildEvaluationErrorKind {
     InvalidInput,
@@ -260,7 +278,7 @@ pub struct BuildEvaluationInstallArtifactRequest {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BuildEvaluationResult {
     pub boundary: BuildEvaluationBoundary,
-    pub allowed_operations: Vec<AllowedBuildTimeOperation>,
+    pub capabilities: BuildRuntimeCapabilityModel,
     pub package_root: String,
     pub option_declarations: BuildOptionDeclarationSet,
     pub resolved_options: ResolvedBuildOptionSet,
@@ -290,7 +308,7 @@ pub struct EvaluatedBuildSource {
 impl BuildEvaluationResult {
     pub fn new(
         boundary: BuildEvaluationBoundary,
-        allowed_operations: Vec<AllowedBuildTimeOperation>,
+        capabilities: BuildRuntimeCapabilityModel,
         package_root: impl Into<String>,
         option_declarations: BuildOptionDeclarationSet,
         resolved_options: ResolvedBuildOptionSet,
@@ -298,7 +316,7 @@ impl BuildEvaluationResult {
     ) -> Self {
         Self {
             boundary,
-            allowed_operations,
+            capabilities,
             package_root: package_root.into(),
             option_declarations,
             resolved_options,
@@ -492,10 +510,13 @@ pub fn evaluate_build_plan(
 
     Ok(BuildEvaluationResult::new(
         BuildEvaluationBoundary::GraphConstructionSubset,
-        vec![
-            AllowedBuildTimeOperation::GraphMutation,
-            AllowedBuildTimeOperation::OptionRead,
-        ],
+        BuildRuntimeCapabilityModel::new(
+            vec![
+                AllowedBuildTimeOperation::GraphMutation,
+                AllowedBuildTimeOperation::OptionRead,
+            ],
+            Vec::new(),
+        ),
         request.package_root.clone(),
         option_declarations,
         resolved_options,
@@ -1106,7 +1127,7 @@ mod tests {
     use super::{
         evaluate_build_plan, evaluate_build_source, AllowedBuildTimeOperation,
         BuildEvaluationBoundary, BuildEvaluationError, BuildEvaluationErrorKind,
-        BuildEvaluationInputs, ForbiddenBuildTimeOperation,
+        BuildEvaluationInputs, BuildRuntimeCapabilityModel, ForbiddenBuildTimeOperation,
         BuildEvaluationInstallArtifactRequest, BuildEvaluationOperation,
         BuildEvaluationOperationKind, BuildEvaluationRequest, BuildEvaluationResult,
         BuildEvaluationRunRequest, BuildEvaluationStepRequest,
@@ -1136,7 +1157,10 @@ mod tests {
         let graph = BuildGraph::new();
         let result = BuildEvaluationResult::new(
             BuildEvaluationBoundary::GraphConstructionSubset,
-            vec![AllowedBuildTimeOperation::GraphMutation],
+            BuildRuntimeCapabilityModel::new(
+                vec![AllowedBuildTimeOperation::GraphMutation],
+                Vec::new(),
+            ),
             "app",
             crate::BuildOptionDeclarationSet::new(),
             crate::ResolvedBuildOptionSet::new(),
@@ -1151,10 +1175,13 @@ mod tests {
     fn build_evaluation_result_keeps_boundary_and_allowed_operation_metadata() {
         let result = BuildEvaluationResult::new(
             BuildEvaluationBoundary::GraphConstructionSubset,
-            vec![
-                AllowedBuildTimeOperation::GraphMutation,
-                AllowedBuildTimeOperation::OptionRead,
-            ],
+            BuildRuntimeCapabilityModel::new(
+                vec![
+                    AllowedBuildTimeOperation::GraphMutation,
+                    AllowedBuildTimeOperation::OptionRead,
+                ],
+                vec![ForbiddenBuildTimeOperation::ArbitraryNetworkAccess],
+            ),
             "pkg",
             crate::BuildOptionDeclarationSet::new(),
             crate::ResolvedBuildOptionSet::new(),
@@ -1166,11 +1193,15 @@ mod tests {
             BuildEvaluationBoundary::GraphConstructionSubset
         );
         assert_eq!(
-            result.allowed_operations,
+            result.capabilities.allowed_operations,
             vec![
                 AllowedBuildTimeOperation::GraphMutation,
                 AllowedBuildTimeOperation::OptionRead,
             ]
+        );
+        assert_eq!(
+            result.capabilities.forbidden_operations,
+            vec![ForbiddenBuildTimeOperation::ArbitraryNetworkAccess]
         );
     }
 
@@ -1191,6 +1222,23 @@ mod tests {
     }
 
     #[test]
+    fn runtime_capability_models_keep_allowed_and_forbidden_sets_together() {
+        let model = BuildRuntimeCapabilityModel::new(
+            vec![AllowedBuildTimeOperation::GraphMutation],
+            vec![ForbiddenBuildTimeOperation::WallClockAccess],
+        );
+
+        assert_eq!(
+            model.allowed_operations,
+            vec![AllowedBuildTimeOperation::GraphMutation]
+        );
+        assert_eq!(
+            model.forbidden_operations,
+            vec![ForbiddenBuildTimeOperation::WallClockAccess]
+        );
+    }
+
+    #[test]
     fn build_evaluation_result_keeps_declared_and_resolved_options() {
         let mut declarations = crate::BuildOptionDeclarationSet::new();
         declarations.add(BuildOptionDeclaration::StandardOptimize(
@@ -1203,7 +1251,10 @@ mod tests {
         resolved.insert("optimize", "release-fast");
         let result = BuildEvaluationResult::new(
             BuildEvaluationBoundary::GraphConstructionSubset,
-            vec![AllowedBuildTimeOperation::OptionRead],
+            BuildRuntimeCapabilityModel::new(
+                vec![AllowedBuildTimeOperation::OptionRead],
+                Vec::new(),
+            ),
             "pkg",
             declarations,
             resolved,
