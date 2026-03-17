@@ -1094,6 +1094,51 @@ mod tests {
     }
 
     #[test]
+    fn cli_selected_custom_graph_steps_flow_into_the_routed_member_plan() {
+        let root = std::env::temp_dir().join(format!(
+            "fol_frontend_build_route_cli_step_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system time before epoch")
+                .as_nanos()
+        ));
+        fs::create_dir_all(root.join("src")).unwrap();
+        fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
+        fs::write(
+            root.join("build.fol"),
+            concat!(
+                "def root: loc = \"src\";\n",
+                "def build(graph: int): int = {\n",
+                "    graph.step(\"docs\");\n",
+                "    return graph\n",
+                "}\n",
+            ),
+        )
+        .unwrap();
+        fs::write(
+            root.join("src/main.fol"),
+            "fun[] main(): int = {\n    return 0\n}\n",
+        )
+        .unwrap();
+        let requested_step = super::requested_workspace_step(
+            &crate::CodeSubcommand::Build(crate::BuildCommand::default()),
+            Some("docs"),
+        );
+        let plan = plan_member_execution(&FrontendMemberBuildRoute {
+            member_root: root.clone(),
+            package_name: "demo".to_string(),
+            mode: FrontendBuildWorkflowMode::Hybrid,
+        })
+        .expect("member planning should surface the custom docs step");
+
+        assert_eq!(requested_step, "docs");
+        assert!(plan.steps.iter().any(|step| step.name == "docs"));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
     fn custom_run_steps_execute_through_run_dispatch() {
         let root = std::env::temp_dir().join(format!(
             "fol_frontend_build_route_custom_run_{}_{}",

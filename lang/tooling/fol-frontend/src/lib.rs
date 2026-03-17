@@ -766,6 +766,7 @@ mod tests {
         }
     }
 
+
     #[test]
     fn crate_name_matches_frontend_identity() {
         assert_eq!(crate_name(), "fol-frontend");
@@ -963,6 +964,7 @@ mod tests {
 
         std::fs::remove_dir_all(&workspace.root.root).ok();
     }
+
 }
 fn code_has_direct_target(command: &CodeCommand) -> bool {
     match &command.command {

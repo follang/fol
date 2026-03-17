@@ -539,7 +539,7 @@ Round 1 slice tracker:
   projection instead of hand-built step lists.
 - [x] Slice 4. Make workspace command-to-step mapping explicit through one
   frontend helper used by dispatch.
-- [ ] Slice 5. Add routed workspace coverage for CLI `--step` selection on
+- [x] Slice 5. Add routed workspace coverage for CLI `--step` selection on
   custom graph steps.
 - [ ] Slice 6. Add graph-driven coverage for multiple runnable artifacts with
   explicit named run steps.
