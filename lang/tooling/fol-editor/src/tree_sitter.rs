@@ -137,6 +137,8 @@ mod tests {
             "'loc'",
             "'std'",
             "'pkg'",
+            "decl_modifiers",
+            "modifier_list",
             "typed_binding",
             "method_decl",
             "record_type",
@@ -187,6 +189,16 @@ mod tests {
         assert!(query.contains("(dot_intrinsic name: (identifier) @function.builtin"));
         assert!(query.contains("(qualified_path"));
         assert!(query.contains("@namespace"));
+    }
+
+    #[test]
+    fn grammar_and_query_cover_bracketed_declaration_modifiers() {
+        let grammar = fol_tree_sitter_grammar();
+        let query = fol_tree_sitter_highlights_query();
+
+        assert!(grammar.contains("optional(field('modifiers', $.decl_modifiers))"));
+        assert!(grammar.contains("seq('[', optional($.modifier_list), ']')"));
+        assert!(query.contains("(decl_modifiers (identifier) @attribute)"));
     }
 
     #[test]

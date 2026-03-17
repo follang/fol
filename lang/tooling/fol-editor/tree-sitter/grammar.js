@@ -33,12 +33,14 @@ module.exports = grammar({
 
     use_decl: $ => seq('use', field('name', $.identifier), ':', field('source_kind', $.source_kind), '=', '{', $.qualified_path, '}'),
     var_decl: $ => seq('var', $.typed_binding, '=', field('value', $.expr)),
-    fun_decl: $ => seq('fun', field('declaration', choice($.plain_fun_decl, $.method_decl))),
-    log_decl: $ => seq('log', field('declaration', choice($.plain_log_decl, $.method_decl))),
-    typ_decl: $ => seq('typ', field('name', $.identifier), ':', choice($.record_type, $.entry_type), '=', $.block),
-    ali_decl: $ => seq('ali', field('name', $.identifier), ':', field('target', $.type_expr)),
+    fun_decl: $ => seq('fun', optional(field('modifiers', $.decl_modifiers)), field('declaration', choice($.plain_fun_decl, $.method_decl))),
+    log_decl: $ => seq('log', optional(field('modifiers', $.decl_modifiers)), field('declaration', choice($.plain_log_decl, $.method_decl))),
+    typ_decl: $ => seq('typ', optional(field('modifiers', $.decl_modifiers)), field('name', $.identifier), ':', choice($.record_type, $.entry_type), '=', $.block),
+    ali_decl: $ => seq('ali', optional(field('modifiers', $.decl_modifiers)), field('name', $.identifier), ':', field('target', $.type_expr)),
 
     source_kind: _ => choice('loc', 'std', 'pkg'),
+    decl_modifiers: $ => seq('[', optional($.modifier_list), ']'),
+    modifier_list: $ => seq($.identifier, repeat(seq(choice(',', ';'), $.identifier)), optional(choice(',', ';'))),
     typed_binding: $ => seq(field('name', $.identifier), ':', field('type', $.type_expr)),
     plain_fun_decl: $ => seq(field('name', $.identifier), $.params, optional($.error_type), '=', $.block),
     plain_log_decl: $ => seq(field('name', $.identifier), $.params, ':', 'bol', '=', $.block),

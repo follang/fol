@@ -10,6 +10,7 @@
 (report_stmt "report" @keyword.exception)
 (break_stmt "break" @keyword.repeat)
 (source_kind) @keyword.import
+(decl_modifiers (identifier) @attribute)
 
 (typ_decl name: (identifier) @type)
 (ali_decl name: (identifier) @type)
