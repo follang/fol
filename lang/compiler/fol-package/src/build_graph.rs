@@ -317,11 +317,55 @@ impl BuildGraph {
         errors
     }
 
-    fn validate_step_dependencies(&self, _errors: &mut Vec<BuildGraphValidationError>) {}
+    fn validate_step_dependencies(&self, errors: &mut Vec<BuildGraphValidationError>) {
+        let mut visiting = vec![false; self.steps.len()];
+        let mut visited = vec![false; self.steps.len()];
+        let mut stack = Vec::new();
+
+        for step in &self.steps {
+            self.visit_step_dependencies(step.id, &mut visiting, &mut visited, &mut stack, errors);
+        }
+    }
 
     fn validate_artifact_inputs(&self, _errors: &mut Vec<BuildGraphValidationError>) {}
 
     fn validate_installs(&self, _errors: &mut Vec<BuildGraphValidationError>) {}
+
+    fn visit_step_dependencies(
+        &self,
+        step: BuildStepId,
+        visiting: &mut [bool],
+        visited: &mut [bool],
+        stack: &mut Vec<BuildStepId>,
+        errors: &mut Vec<BuildGraphValidationError>,
+    ) {
+        let index = step.index();
+        if index >= self.steps.len() || visited[index] {
+            return;
+        }
+        if visiting[index] {
+            let cycle_start = stack.iter().position(|candidate| *candidate == step).unwrap_or(0);
+            let mut cycle = stack[cycle_start..]
+                .iter()
+                .map(|entry| entry.to_string())
+                .collect::<Vec<_>>();
+            cycle.push(step.to_string());
+            errors.push(BuildGraphValidationError {
+                kind: BuildGraphValidationErrorKind::StepDependencyCycle,
+                message: format!("step dependency cycle detected: {}", cycle.join(" -> ")),
+            });
+            return;
+        }
+
+        visiting[index] = true;
+        stack.push(step);
+        for dependency in self.step_dependencies_for(step) {
+            self.visit_step_dependencies(dependency, visiting, visited, stack, errors);
+        }
+        stack.pop();
+        visiting[index] = false;
+        visited[index] = true;
+    }
 }
 
 #[cfg(test)]
@@ -516,5 +560,39 @@ mod tests {
                 message: "install target must resolve to a known artifact".to_string(),
             }
         );
+    }
+
+    #[test]
+    fn build_graph_validation_rejects_self_cycles() {
+        let mut graph = BuildGraph::new();
+        let build = graph.add_step(BuildStepKind::Default, "build");
+
+        graph.add_step_dependency(build, build);
+
+        let errors = graph.validate();
+
+        assert_eq!(errors.len(), 1);
+        assert_eq!(errors[0].kind, BuildGraphValidationErrorKind::StepDependencyCycle);
+        assert!(errors[0].message.contains("step:0 -> step:0"));
+    }
+
+    #[test]
+    fn build_graph_validation_rejects_multi_step_cycles() {
+        let mut graph = BuildGraph::new();
+        let build = graph.add_step(BuildStepKind::Default, "build");
+        let test = graph.add_step(BuildStepKind::Test, "test");
+        let run = graph.add_step(BuildStepKind::Run, "run");
+
+        graph.add_step_dependency(build, test);
+        graph.add_step_dependency(test, run);
+        graph.add_step_dependency(run, build);
+
+        let errors = graph.validate();
+
+        assert_eq!(errors.len(), 1);
+        assert_eq!(errors[0].kind, BuildGraphValidationErrorKind::StepDependencyCycle);
+        assert!(errors[0].message.contains("step:0"));
+        assert!(errors[0].message.contains("step:1"));
+        assert!(errors[0].message.contains("step:2"));
     }
 }
