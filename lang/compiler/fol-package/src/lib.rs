@@ -48,6 +48,11 @@ pub use build_artifact::{
     BuildArtifactPipelinePlan, BuildArtifactPipelineStage, BuildArtifactReport,
     BuildArtifactRootSource, BuildArtifactSet, BuildArtifactTargetConfig,
 };
+pub use build_codegen::{
+    CodegenKind, CodegenRequest, CodegenResult, GeneratedFileAction,
+    GeneratedFileDefinition, GeneratedFileInstallProjection, GeneratedFileSet,
+    GeneratedOutputDependencySet, SystemToolRequest, SystemToolResult,
+};
 pub use build_dependency::{
     dependency_modules_from_exports, DependencyArtifactSurface, DependencyArtifactSurfaceSet,
     DependencyBuildEvaluationMode, DependencyBuildHandle, DependencyBuildSurface,

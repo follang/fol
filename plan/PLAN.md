@@ -931,7 +931,7 @@ Each slice must land green with `make build` and `make test` before commit.
 7. `[complete]` Add generated-output dependency collection and lookup helpers.
 8. `[complete]` Extend the draft build API with write-file, copy-file, system-tool, and codegen helpers.
 9. `[complete]` Extend the build evaluator operation model to replay generated-file and tool/codegen actions.
-10. `[pending]` Re-export the draft generated-file and codegen surface from `fol-package`.
+10. `[complete]` Re-export the draft generated-file and codegen surface from `fol-package`.
 
 ## Success Criteria
 
