@@ -11,6 +11,7 @@
 
 pub mod config;
 pub mod build;
+pub mod build_graph;
 pub mod errors;
 pub mod git;
 pub mod identity;
