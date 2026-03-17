@@ -13,6 +13,7 @@ pub mod config;
 pub mod build;
 pub mod build_api;
 pub mod build_artifact;
+pub mod build_codegen;
 pub mod build_dependency;
 pub mod build_eval;
 pub mod build_graph;
