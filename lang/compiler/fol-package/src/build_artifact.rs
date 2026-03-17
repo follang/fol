@@ -26,6 +26,12 @@ pub struct BuildArtifactModuleConfig {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BuildArtifactTargetConfig {
+    pub target: Option<String>,
+    pub optimize: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BuildArtifactDefinition {
     pub name: String,
     pub kind: BuildArtifactModelKind,
@@ -33,6 +39,8 @@ pub struct BuildArtifactDefinition {
     pub modules: BuildArtifactModuleConfig,
     pub output_name: String,
     pub linkage: BuildArtifactLinkage,
+    pub target: BuildArtifactTargetConfig,
+    pub native_artifacts: Vec<String>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -59,6 +67,7 @@ mod tests {
     use super::{
         BuildArtifactDefinition, BuildArtifactLinkage, BuildArtifactModelKind,
         BuildArtifactModuleConfig, BuildArtifactRootSource, BuildArtifactSet,
+        BuildArtifactTargetConfig,
     };
 
     #[test]
@@ -82,6 +91,11 @@ mod tests {
             },
             output_name: "app".to_string(),
             linkage: BuildArtifactLinkage::Executable,
+            target: BuildArtifactTargetConfig {
+                target: None,
+                optimize: None,
+            },
+            native_artifacts: Vec::new(),
         });
 
         assert_eq!(set.definitions()[0].name, "app");
@@ -110,11 +124,19 @@ mod tests {
             },
             output_name: "fol_plugin".to_string(),
             linkage: BuildArtifactLinkage::Shared,
+            target: BuildArtifactTargetConfig {
+                target: Some("x86_64-linux-gnu".to_string()),
+                optimize: Some("release".to_string()),
+            },
+            native_artifacts: vec!["ssl".to_string(), "zlib".to_string()],
         };
 
         assert_eq!(definition.root_source.path, "src/plugin.fol");
         assert_eq!(definition.modules.roots.len(), 2);
         assert_eq!(definition.output_name, "fol_plugin");
         assert_eq!(definition.linkage, BuildArtifactLinkage::Shared);
+        assert_eq!(definition.target.target.as_deref(), Some("x86_64-linux-gnu"));
+        assert_eq!(definition.target.optimize.as_deref(), Some("release"));
+        assert_eq!(definition.native_artifacts, vec!["ssl".to_string(), "zlib".to_string()]);
     }
 }
