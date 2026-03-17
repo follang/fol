@@ -40,7 +40,21 @@ pub struct FrontendCompatibilityBuildRequest {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct FrontendMemberExecutionPlan {
-    available_steps: Vec<String>,
+    steps: Vec<FrontendMemberPlannedStep>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct FrontendMemberPlannedStep {
+    name: String,
+    execution: Option<FrontendStepExecutionKind>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum FrontendStepExecutionKind {
+    Build,
+    Run,
+    Test,
+    Check,
 }
 
 impl FrontendBuildWorkflowMode {
@@ -128,20 +142,20 @@ pub fn execute_workspace_build_route(
     let requested_step = request.requested_step.as_str();
     if !member_plans
         .iter()
-        .any(|plan| plan.available_steps.iter().any(|step| step == requested_step))
+        .any(|plan| plan.steps.iter().any(|step| step.name == requested_step))
     {
         return Err(unknown_workspace_build_step_error(requested_step, &route));
     }
 
-    match request.requested_step.as_str() {
-        "build" => crate::build_workspace_for_profile_with_config(workspace, config, request.profile),
-        "check" => crate::check_workspace_with_config(workspace, config),
-        "run" => crate::run_workspace_with_args_and_config(workspace, config, &request.run_args),
-        "test" => crate::test_workspace_with_config(workspace, config),
-        step => Err(FrontendError::new(
-            FrontendErrorKind::InvalidInput,
-            format!("workspace build execution does not support step '{step}'"),
-        )),
+    match resolve_requested_step_execution(requested_step, &member_plans)? {
+        FrontendStepExecutionKind::Build => {
+            crate::build_workspace_for_profile_with_config(workspace, config, request.profile)
+        }
+        FrontendStepExecutionKind::Check => crate::check_workspace_with_config(workspace, config),
+        FrontendStepExecutionKind::Run => {
+            crate::run_workspace_with_args_and_config(workspace, config, &request.run_args)
+        }
+        FrontendStepExecutionKind::Test => crate::test_workspace_with_config(workspace, config),
     }
 }
 
@@ -164,7 +178,10 @@ fn plan_member_default_execution(
         fol_package::BuildStepKind::Check,
         requested_step.name().to_string(),
     );
-    let mut available_steps = vec![requested_step.name().to_string()];
+    let mut steps = vec![FrontendMemberPlannedStep {
+        name: requested_step.name().to_string(),
+        execution: Some(FrontendStepExecutionKind::Check),
+    }];
 
     if let Some(root_module) = default_runnable_root_module(&member.member_root)? {
         let build = graph.add_step(fol_package::BuildStepKind::Default, "build");
@@ -200,7 +217,20 @@ fn plan_member_default_execution(
             }
         }
 
-        available_steps.extend(["build", "run", "test"].into_iter().map(str::to_string));
+        steps.extend([
+            FrontendMemberPlannedStep {
+                name: "build".to_string(),
+                execution: Some(FrontendStepExecutionKind::Build),
+            },
+            FrontendMemberPlannedStep {
+                name: "run".to_string(),
+                execution: Some(FrontendStepExecutionKind::Run),
+            },
+            FrontendMemberPlannedStep {
+                name: "test".to_string(),
+                execution: Some(FrontendStepExecutionKind::Test),
+            },
+        ]);
     } else {
         let order = fol_package::plan_step_order(&graph, check).map_err(|error| {
             FrontendError::new(
@@ -222,7 +252,7 @@ fn plan_member_default_execution(
         }
     }
 
-    Ok(FrontendMemberExecutionPlan { available_steps })
+    Ok(FrontendMemberExecutionPlan { steps })
 }
 
 fn plan_member_execution_from_build_source(
@@ -250,16 +280,19 @@ fn plan_member_execution_from_build_source(
     })
     .map_err(|error| FrontendError::new(FrontendErrorKind::InvalidInput, error.to_string()))?;
 
-    let mut available_steps = fol_package::project_graph_steps(&result.graph)
+    let mut steps = fol_package::project_graph_steps(&result.graph)
         .into_iter()
-        .map(|step| step.name)
+        .map(|step| FrontendMemberPlannedStep {
+            name: step.name,
+            execution: step.default_kind.and_then(step_execution_kind_from_default),
+        })
         .collect::<Vec<_>>();
-    if available_steps.is_empty() {
+    if steps.is_empty() {
         return Ok(None);
     }
-    available_steps.sort();
-    available_steps.dedup();
-    Ok(Some(FrontendMemberExecutionPlan { available_steps }))
+    steps.sort_by(|left, right| left.name.cmp(&right.name));
+    steps.dedup_by(|left, right| left.name == right.name && left.execution == right.execution);
+    Ok(Some(FrontendMemberExecutionPlan { steps }))
 }
 
 fn extract_build_operations_from_source(
@@ -334,18 +367,18 @@ fn extract_build_operations_from_source(
                     },
                 )
             }
-            ("step", [name]) => fol_package::BuildEvaluationOperationKind::Step(
+            ("step", [name, depends_on @ ..]) => fol_package::BuildEvaluationOperationKind::Step(
                 fol_package::BuildEvaluationStepRequest {
                     name: name.clone(),
-                    depends_on: Vec::new(),
+                    depends_on: depends_on.to_vec(),
                 },
             ),
-            ("add_run", [name, artifact]) => {
+            ("add_run", [name, artifact, depends_on @ ..]) => {
                 fol_package::BuildEvaluationOperationKind::AddRun(
                     fol_package::BuildEvaluationRunRequest {
                         name: name.clone(),
                         artifact: artifact.clone(),
-                        depends_on: Vec::new(),
+                        depends_on: depends_on.to_vec(),
                     },
                 )
             }
@@ -409,6 +442,52 @@ fn parse_build_string_args(args: &str) -> Vec<String> {
         .filter_map(|arg| arg.strip_prefix('"').and_then(|arg| arg.strip_suffix('"')))
         .map(str::to_string)
         .collect()
+}
+
+fn step_execution_kind_from_default(
+    kind: fol_package::BuildDefaultStepKind,
+) -> Option<FrontendStepExecutionKind> {
+    match kind {
+        fol_package::BuildDefaultStepKind::Build => Some(FrontendStepExecutionKind::Build),
+        fol_package::BuildDefaultStepKind::Run => Some(FrontendStepExecutionKind::Run),
+        fol_package::BuildDefaultStepKind::Test => Some(FrontendStepExecutionKind::Test),
+        fol_package::BuildDefaultStepKind::Check => Some(FrontendStepExecutionKind::Check),
+        fol_package::BuildDefaultStepKind::Install => None,
+    }
+}
+
+fn resolve_requested_step_execution(
+    requested_step: &str,
+    member_plans: &[FrontendMemberExecutionPlan],
+) -> FrontendResult<FrontendStepExecutionKind> {
+    let mut resolved = None;
+    for execution in member_plans
+        .iter()
+        .flat_map(|plan| plan.steps.iter())
+        .filter(|step| step.name == requested_step)
+        .filter_map(|step| step.execution)
+    {
+        match resolved {
+            None => resolved = Some(execution),
+            Some(current) if current == execution => {}
+            Some(current) => {
+                return Err(FrontendError::new(
+                    FrontendErrorKind::InvalidInput,
+                    format!(
+                        "workspace build execution step '{}' resolves to incompatible execution kinds: {:?} and {:?}",
+                        requested_step, current, execution
+                    ),
+                ))
+            }
+        }
+    }
+
+    resolved.ok_or_else(|| {
+        FrontendError::new(
+            FrontendErrorKind::InvalidInput,
+            format!("workspace build execution does not support step '{requested_step}'"),
+        )
+    })
 }
 
 fn default_runnable_root_module(member_root: &std::path::Path) -> FrontendResult<Option<String>> {
@@ -741,14 +820,59 @@ mod tests {
         })
         .unwrap();
 
-        assert!(plan.available_steps.contains(&"docs".to_string()));
-        assert!(plan.available_steps.contains(&"lint".to_string()));
+        assert!(plan.steps.iter().any(|step| step.name == "docs"));
+        assert!(plan.steps.iter().any(|step| step.name == "lint"));
 
         fs::remove_dir_all(root).ok();
     }
 
     #[test]
-    fn custom_build_steps_are_known_before_execution_rejects_them() {
+    fn build_body_step_dependencies_are_accepted_during_member_planning() {
+        let root = std::env::temp_dir().join(format!(
+            "fol_frontend_build_route_body_step_deps_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system time before epoch")
+                .as_nanos()
+        ));
+        fs::create_dir_all(root.join("src")).unwrap();
+        fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
+        fs::write(
+            root.join("build.fol"),
+            concat!(
+                "def build(graph: int): int = {\n",
+                "    graph.add_exe(\"app\", \"src/main.fol\");\n",
+                "    graph.step(\"gen\");\n",
+                "    graph.step(\"docs\", \"gen\");\n",
+                "    graph.add_run(\"run\", \"app\", \"docs\");\n",
+                "    return .\n",
+                "}\n",
+            ),
+        )
+        .unwrap();
+        fs::write(
+            root.join("src/main.fol"),
+            "fun[] main(): int = {\n    return 0\n}\n",
+        )
+        .unwrap();
+
+        let plan = plan_member_execution(&FrontendMemberBuildRoute {
+            member_root: root.clone(),
+            package_name: "demo".to_string(),
+            mode: FrontendBuildWorkflowMode::Modern,
+        })
+        .unwrap();
+
+        assert!(plan.steps.iter().any(|step| step.name == "gen"));
+        assert!(plan.steps.iter().any(|step| step.name == "docs"));
+        assert!(plan.steps.iter().any(|step| step.name == "run"));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn custom_build_steps_execute_through_build_dispatch() {
         let root = std::env::temp_dir().join(format!(
             "fol_frontend_build_route_custom_step_{}_{}",
             std::process::id(),
@@ -784,7 +908,7 @@ mod tests {
             git_cache_root: root.join(".fol/cache/git"),
         };
 
-        let error = execute_workspace_build_route(
+        let result = execute_workspace_build_route(
             &workspace,
             &FrontendConfig::default(),
             &FrontendCompatibilityBuildRequest {
@@ -793,12 +917,65 @@ mod tests {
                 run_args: Vec::new(),
             },
         )
-        .expect_err("custom step execution should still reject unsupported execution");
+        .expect("custom build-like step should dispatch through build execution");
 
-        assert_eq!(error.kind(), crate::FrontendErrorKind::InvalidInput);
-        assert!(error
-            .message()
-            .contains("workspace build execution does not support step 'docs'"));
+        assert_eq!(result.command, "build");
+        assert!(result.summary.contains("built 1 workspace package(s) into "));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn custom_run_steps_execute_through_run_dispatch() {
+        let root = std::env::temp_dir().join(format!(
+            "fol_frontend_build_route_custom_run_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system time before epoch")
+                .as_nanos()
+        ));
+        fs::create_dir_all(root.join("src")).unwrap();
+        fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
+        fs::write(
+            root.join("build.fol"),
+            concat!(
+                "def build(graph: int): int = {\n",
+                "    graph.add_exe(\"app\", \"src/main.fol\");\n",
+                "    graph.add_run(\"serve\", \"app\");\n",
+                "    return .\n",
+                "}\n",
+            ),
+        )
+        .unwrap();
+        fs::write(
+            root.join("src/main.fol"),
+            "fun[] main(): int = {\n    return 0\n}\n",
+        )
+        .unwrap();
+        let workspace = FrontendWorkspace {
+            root: WorkspaceRoot::new(root.clone()),
+            members: vec![PackageRoot::new(root.clone())],
+            std_root_override: None,
+            package_store_root_override: None,
+            build_root: root.join(".fol/build"),
+            cache_root: root.join(".fol/cache"),
+            git_cache_root: root.join(".fol/cache/git"),
+        };
+
+        let result = execute_workspace_build_route(
+            &workspace,
+            &FrontendConfig::default(),
+            &FrontendCompatibilityBuildRequest {
+                requested_step: "serve".to_string(),
+                profile: FrontendProfile::Debug,
+                run_args: Vec::new(),
+            },
+        )
+        .expect("custom run step should dispatch through run execution");
+
+        assert_eq!(result.command, "run");
+        assert!(result.summary.contains("ran "));
 
         fs::remove_dir_all(root).ok();
     }
