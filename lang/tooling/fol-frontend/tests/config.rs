@@ -8,9 +8,7 @@ struct EnvGuard {
 impl EnvGuard {
     fn set(key: &'static str, value: &str) -> Self {
         let old = std::env::var_os(key);
-        unsafe {
-            std::env::set_var(key, value);
-        }
+        std::env::set_var(key, value);
         Self { key, old }
     }
 }
@@ -18,12 +16,12 @@ impl EnvGuard {
 impl Drop for EnvGuard {
     fn drop(&mut self) {
         match &self.old {
-            Some(value) => unsafe {
+            Some(value) => {
                 std::env::set_var(self.key, value);
-            },
-            None => unsafe {
+            }
+            None => {
                 std::env::remove_var(self.key);
-            },
+            }
         }
     }
 }

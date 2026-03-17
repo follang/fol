@@ -95,19 +95,17 @@ mod tests {
 
     #[test]
     fn frontend_config_reads_root_overrides_from_environment() {
-        unsafe {
-            std::env::set_var("FOL_STD_ROOT", "/tmp/std");
-            std::env::set_var("FOL_PACKAGE_STORE_ROOT", "/tmp/pkg");
-            std::env::set_var("FOL_BUILD_ROOT", "/tmp/build");
-            std::env::set_var("FOL_CACHE_ROOT", "/tmp/cache");
-            std::env::set_var("FOL_GIT_CACHE_ROOT", "/tmp/git-cache");
-            std::env::set_var("FOL_KEEP_BUILD_DIR", "true");
-            std::env::set_var("FOL_LOCKED", "true");
-            std::env::set_var("FOL_OFFLINE", "true");
-            std::env::set_var("FOL_REFRESH", "true");
-            std::env::set_var("FOL_OUTPUT", "json");
-            std::env::set_var("FOL_PROFILE", "release");
-        }
+        std::env::set_var("FOL_STD_ROOT", "/tmp/std");
+        std::env::set_var("FOL_PACKAGE_STORE_ROOT", "/tmp/pkg");
+        std::env::set_var("FOL_BUILD_ROOT", "/tmp/build");
+        std::env::set_var("FOL_CACHE_ROOT", "/tmp/cache");
+        std::env::set_var("FOL_GIT_CACHE_ROOT", "/tmp/git-cache");
+        std::env::set_var("FOL_KEEP_BUILD_DIR", "true");
+        std::env::set_var("FOL_LOCKED", "true");
+        std::env::set_var("FOL_OFFLINE", "true");
+        std::env::set_var("FOL_REFRESH", "true");
+        std::env::set_var("FOL_OUTPUT", "json");
+        std::env::set_var("FOL_PROFILE", "release");
 
         let config = FrontendConfig::from_env();
 
@@ -129,18 +127,16 @@ mod tests {
         assert!(config.offline_fetch);
         assert!(config.refresh_fetch);
 
-        unsafe {
-            std::env::remove_var("FOL_STD_ROOT");
-            std::env::remove_var("FOL_PACKAGE_STORE_ROOT");
-            std::env::remove_var("FOL_BUILD_ROOT");
-            std::env::remove_var("FOL_CACHE_ROOT");
-            std::env::remove_var("FOL_GIT_CACHE_ROOT");
-            std::env::remove_var("FOL_KEEP_BUILD_DIR");
-            std::env::remove_var("FOL_LOCKED");
-            std::env::remove_var("FOL_OFFLINE");
-            std::env::remove_var("FOL_REFRESH");
-            std::env::remove_var("FOL_OUTPUT");
-            std::env::remove_var("FOL_PROFILE");
-        }
+        std::env::remove_var("FOL_STD_ROOT");
+        std::env::remove_var("FOL_PACKAGE_STORE_ROOT");
+        std::env::remove_var("FOL_BUILD_ROOT");
+        std::env::remove_var("FOL_CACHE_ROOT");
+        std::env::remove_var("FOL_GIT_CACHE_ROOT");
+        std::env::remove_var("FOL_KEEP_BUILD_DIR");
+        std::env::remove_var("FOL_LOCKED");
+        std::env::remove_var("FOL_OFFLINE");
+        std::env::remove_var("FOL_REFRESH");
+        std::env::remove_var("FOL_OUTPUT");
+        std::env::remove_var("FOL_PROFILE");
     }
 }

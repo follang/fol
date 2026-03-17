@@ -82,7 +82,7 @@ pub fn clean_workspace(workspace: &FrontendWorkspace) -> FrontendResult<Frontend
 mod tests {
     use super::clean_workspace_with_config;
     use crate::{FrontendConfig, FrontendWorkspace, WorkspaceRoot};
-    use std::{fs, path::PathBuf};
+    use std::fs;
 
     #[test]
     fn clean_workspace_exposes_a_stable_command_shell() {

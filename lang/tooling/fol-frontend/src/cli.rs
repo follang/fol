@@ -501,10 +501,8 @@ mod tests {
 
     fn parse_clean<const N: usize>(args: [&str; N]) -> FrontendCli {
         let _guard = env_lock();
-        unsafe {
-            std::env::remove_var("FOL_OUTPUT");
-            std::env::remove_var("FOL_PROFILE");
-        }
+        std::env::remove_var("FOL_OUTPUT");
+        std::env::remove_var("FOL_PROFILE");
         FrontendCli::parse_from(args)
     }
 
@@ -519,10 +517,8 @@ mod tests {
     #[test]
     fn derive_root_parser_accepts_empty_invocation() {
         let _guard = env_lock();
-        unsafe {
-            std::env::remove_var("FOL_OUTPUT");
-            std::env::remove_var("FOL_PROFILE");
-        }
+        std::env::remove_var("FOL_OUTPUT");
+        std::env::remove_var("FOL_PROFILE");
         let cli = parse_clean(["fol"]);
 
         assert_eq!(cli.output, OutputMode::Human);
@@ -721,10 +717,8 @@ mod tests {
     #[test]
     fn cli_env_values_feed_output_and_profile_defaults() {
         let _guard = env_lock();
-        unsafe {
-            std::env::set_var("FOL_OUTPUT", "plain");
-            std::env::set_var("FOL_PROFILE", "release");
-        }
+        std::env::set_var("FOL_OUTPUT", "plain");
+        std::env::set_var("FOL_PROFILE", "release");
 
         let cli = FrontendCli::parse_from(["fol", "code", "build"]);
 
@@ -742,19 +736,15 @@ mod tests {
             }))
         );
 
-        unsafe {
-            std::env::remove_var("FOL_OUTPUT");
-            std::env::remove_var("FOL_PROFILE");
-        }
+        std::env::remove_var("FOL_OUTPUT");
+        std::env::remove_var("FOL_PROFILE");
     }
 
     #[test]
     fn explicit_flags_override_env_values() {
         let _guard = env_lock();
-        unsafe {
-            std::env::set_var("FOL_OUTPUT", "plain");
-            std::env::set_var("FOL_PROFILE", "release");
-        }
+        std::env::set_var("FOL_OUTPUT", "plain");
+        std::env::set_var("FOL_PROFILE", "release");
 
         let cli = FrontendCli::parse_from(["fol", "code", "--output", "json", "--debug", "build"]);
 
@@ -772,10 +762,8 @@ mod tests {
             }))
         );
 
-        unsafe {
-            std::env::remove_var("FOL_OUTPUT");
-            std::env::remove_var("FOL_PROFILE");
-        }
+        std::env::remove_var("FOL_OUTPUT");
+        std::env::remove_var("FOL_PROFILE");
     }
 
     #[test]
