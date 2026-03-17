@@ -395,7 +395,7 @@ Round 1 slice tracker:
   forbidden operations.
 - [x] Slice 4. Add a canonical graph-construction capability preset.
 - [x] Slice 5. Add explicit target/optimize fields to the build input envelope.
-- [ ] Slice 6. Add declared environment selection policy types and helpers.
+- [x] Slice 6. Add declared environment selection policy types and helpers.
 - [ ] Slice 7. Make determinism keys derive from the explicit input envelope.
 - [ ] Slice 8. Add forbidden-capability diagnostic helpers and regression tests.
 - [ ] Slice 9. Re-export and test the Phase 4 capability-model surface.

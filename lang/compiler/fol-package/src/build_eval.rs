@@ -216,7 +216,45 @@ pub struct BuildEvaluationInputs {
     pub target: Option<BuildTargetTriple>,
     pub optimize: Option<BuildOptimizeMode>,
     pub options: BTreeMap<String, String>,
+    pub environment_policy: BuildEnvironmentSelectionPolicy,
     pub environment: BTreeMap<String, String>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct BuildEnvironmentSelectionPolicy {
+    declared_names: Vec<String>,
+}
+
+impl BuildEnvironmentSelectionPolicy {
+    pub fn new(names: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        let mut declared_names = names.into_iter().map(Into::into).collect::<Vec<_>>();
+        declared_names.sort();
+        declared_names.dedup();
+        Self { declared_names }
+    }
+
+    pub fn declared_names(&self) -> &[String] {
+        &self.declared_names
+    }
+
+    pub fn allows(&self, name: &str) -> bool {
+        self.declared_names.iter().any(|declared| declared == name)
+    }
+
+    pub fn select<'a>(
+        &self,
+        environment: impl IntoIterator<Item = (&'a String, &'a String)>,
+    ) -> BTreeMap<String, String> {
+        environment
+            .into_iter()
+            .filter(|(name, _)| self.allows(name))
+            .map(|(name, value)| (name.clone(), value.clone()))
+            .collect()
+    }
+
+    pub fn determinism_key(&self) -> String {
+        self.declared_names.join(",")
+    }
 }
 
 impl BuildEvaluationInputs {
@@ -1156,8 +1194,8 @@ mod tests {
     use super::{
         canonical_graph_construction_capabilities, evaluate_build_plan, evaluate_build_source,
         AllowedBuildTimeOperation, BuildEvaluationBoundary, BuildEvaluationError,
-        BuildEvaluationErrorKind, BuildEvaluationInputs, BuildRuntimeCapabilityModel,
-        ForbiddenBuildTimeOperation,
+        BuildEnvironmentSelectionPolicy, BuildEvaluationErrorKind, BuildEvaluationInputs,
+        BuildRuntimeCapabilityModel, ForbiddenBuildTimeOperation,
         BuildEvaluationInstallArtifactRequest, BuildEvaluationOperation,
         BuildEvaluationOperationKind, BuildEvaluationRequest, BuildEvaluationResult,
         BuildEvaluationRunRequest, BuildEvaluationStepRequest,
@@ -1292,6 +1330,28 @@ mod tests {
     }
 
     #[test]
+    fn environment_selection_policy_sorts_and_filters_declared_variables() {
+        let policy = BuildEnvironmentSelectionPolicy::new(["CC", "AR", "CC"]);
+        let selected = policy.select(BTreeMap::from([
+            ("CC".to_string(), "clang".to_string()),
+            ("AR".to_string(), "llvm-ar".to_string()),
+            ("HOME".to_string(), "/tmp/home".to_string()),
+        ]).iter());
+
+        assert_eq!(
+            policy.declared_names(),
+            &vec!["AR".to_string(), "CC".to_string()]
+        );
+        assert_eq!(
+            selected,
+            BTreeMap::from([
+                ("AR".to_string(), "llvm-ar".to_string()),
+                ("CC".to_string(), "clang".to_string()),
+            ])
+        );
+    }
+
+    #[test]
     fn build_evaluation_result_keeps_declared_and_resolved_options() {
         let mut declarations = crate::BuildOptionDeclarationSet::new();
         declarations.add(BuildOptionDeclaration::StandardOptimize(
@@ -1366,6 +1426,7 @@ mod tests {
             target: BuildTargetTriple::parse("x86_64-linux-gnu"),
             optimize: BuildOptimizeMode::parse("debug"),
             options,
+            environment_policy: BuildEnvironmentSelectionPolicy::new(["CC", "AR"]),
             environment,
         };
 
@@ -1589,6 +1650,7 @@ mod tests {
                     ("target".to_string(), "aarch64-macos-gnu".to_string()),
                     ("optimize".to_string(), "release-fast".to_string()),
                 ]),
+                environment_policy: BuildEnvironmentSelectionPolicy::default(),
                 environment: BTreeMap::new(),
             },
             operations: vec![
