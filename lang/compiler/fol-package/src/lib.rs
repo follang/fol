@@ -72,12 +72,16 @@ pub use build_entry::{
     BuildEntryValidationErrorKind, ValidatedBuildEntry,
 };
 pub use build_eval::{
-    evaluate_build_plan, evaluate_build_source, extract_build_program_from_source,
-    AllowedBuildTimeOperation, BuildEvaluationBoundary, BuildEvaluationError,
-    BuildEvaluationErrorKind, BuildEvaluationInputs, BuildEvaluationInstallArtifactRequest,
-    BuildEvaluationOperation, BuildEvaluationOperationKind, BuildEvaluationRequest,
-    BuildEvaluationResult, BuildEvaluationRunRequest, BuildEvaluationStepRequest,
+    canonical_graph_construction_capabilities, evaluate_build_plan, evaluate_build_source,
+    extract_build_program_from_source, forbidden_capability_error,
+    forbidden_capability_message, AllowedBuildTimeOperation, BuildEnvironmentSelectionPolicy,
+    BuildEvaluationBoundary, BuildEvaluationError, BuildEvaluationErrorKind,
+    BuildEvaluationInputEnvelope, BuildEvaluationInputs,
+    BuildEvaluationInstallArtifactRequest, BuildEvaluationOperation,
+    BuildEvaluationOperationKind, BuildEvaluationRequest, BuildEvaluationResult,
+    BuildEvaluationRunRequest, BuildEvaluationStepRequest, BuildRuntimeCapabilityModel,
     EvaluatedBuildSource, ExtractedBuildArtifact, ExtractedBuildProgram,
+    ForbiddenBuildTimeOperation,
 };
 pub use build_graph::{
     BuildArtifact, BuildArtifactDependency, BuildArtifactId, BuildArtifactInput,
@@ -141,12 +145,15 @@ pub use session::{
 #[cfg(test)]
 mod tests {
     use super::{
-        collect_build_entry_candidates, validate_parsed_build_entry, BuildEntrySignatureExpectation,
-        canonical_chain_metadata, canonical_graph_method_signatures, canonical_handle_method_signatures,
-        canonical_option_value_kinds, BuildSemanticChainKind, BuildSemanticType,
-        BuildSemanticTypeFamily, ParsedSourceUnitKind,
-        NativeArtifactDefinition, NativeArtifactKind, NativeArtifactSet, NativeLinkDirective,
-        NativeLinkInput, NativeLinkMode,
+        canonical_chain_metadata, canonical_graph_construction_capabilities,
+        canonical_graph_method_signatures, canonical_handle_method_signatures,
+        canonical_option_value_kinds, classify_semantic_build_mode,
+        collect_build_entry_candidates, forbidden_capability_message,
+        validate_parsed_build_entry, AllowedBuildTimeOperation, BuildEntrySignatureExpectation,
+        BuildSemanticChainKind, BuildSemanticType, BuildSemanticTypeFamily,
+        ForbiddenBuildTimeOperation, NativeArtifactDefinition, NativeArtifactKind,
+        NativeArtifactSet, NativeLinkDirective, NativeLinkInput, NativeLinkMode,
+        PackageBuildMode, ParsedSourceUnitKind,
     };
 
     #[test]
@@ -270,5 +277,21 @@ mod tests {
         };
 
         assert_eq!(classify_semantic_build_mode(&syntax, false), PackageBuildMode::ModernOnly);
+    }
+
+    #[test]
+    fn crate_root_reexports_phase_four_capability_surface() {
+        let capabilities = canonical_graph_construction_capabilities();
+
+        assert!(capabilities
+            .allowed_operations
+            .contains(&AllowedBuildTimeOperation::GraphMutation));
+        assert!(capabilities
+            .forbidden_operations
+            .contains(&ForbiddenBuildTimeOperation::ArbitraryNetworkAccess));
+        assert!(forbidden_capability_message(
+            ForbiddenBuildTimeOperation::AmbientEnvironmentAccess
+        )
+        .contains("declared inputs"));
     }
 }
