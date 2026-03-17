@@ -437,6 +437,27 @@ Exit criteria:
 - the current restricted string extractor is no longer needed for supported
   build scripts
 
+Round 1 slice tracker:
+
+- [ ] Slice 1. Add a concrete Phase 5 implementation tracker for the first
+  runtime-IR round.
+- [ ] Slice 2. Choose and model the build execution representation as a
+  restricted runtime IR.
+- [ ] Slice 3. Add runtime value and handle kinds for graph, artifact, step,
+  run, install, dependency, target, and optimize values.
+- [ ] Slice 4. Add a runtime local-frame model that preserves aliasing and
+  repeated handle flow through locals.
+- [ ] Slice 5. Add restricted runtime expression nodes for locals, literals,
+  records, and method calls.
+- [ ] Slice 6. Add restricted runtime statement nodes for `var`, effectful
+  expression statements, and returns.
+- [ ] Slice 7. Add runtime record-field helpers for object-style build config
+  values.
+- [ ] Slice 8. Add runtime method invocation modeling for graph and handle
+  receivers.
+- [ ] Slice 9. Add runtime translation/evaluation diagnostic kinds and tests.
+- [ ] Slice 10. Re-export and test the Phase 5 runtime-IR surface.
+
 ## Phase 6: Remove Textual Build-Body Extraction
 
 Goal:
