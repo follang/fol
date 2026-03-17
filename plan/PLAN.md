@@ -961,7 +961,7 @@ Each slice must land green with `make build` and `make test` before commit.
 5. `[complete]` Thread selected build-step overrides through frontend configuration.
 6. `[complete]` Add workspace build-file route planning that classifies compatibility, hybrid, and modern members.
 7. `[complete]` Add compatibility-step execution helpers that map named steps onto existing frontend workspace commands.
-8. `[pending]` Route workspace code commands through the new build-route planner and compatibility executor.
+8. `[complete]` Route workspace code commands through the new build-route planner and compatibility executor.
 9. `[pending]` Preserve stable compatibility command summaries and artifact reporting through routed step execution.
 10. `[pending]` Reject modern-entry workspace commands with explicit unsupported-build-entry diagnostics until graph execution lands.
 

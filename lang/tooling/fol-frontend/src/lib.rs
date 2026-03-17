@@ -28,7 +28,10 @@ pub use cli::{
     FrontendCommand, FrontendProfile, InitCommand, NewCommand, PackCommand, PackSubcommand,
     RunCommand, TestCommand, ToolCommand, ToolSubcommand, UnitCommand, UpdateCommand,
 };
-pub use build_route::{FrontendBuildStep, FrontendBuildWorkflowMode, FrontendMemberBuildRoute};
+pub use build_route::{
+    FrontendBuildStep, FrontendBuildWorkflowMode, FrontendCompatibilityBuildRequest,
+    FrontendMemberBuildRoute, FrontendWorkspaceBuildRoute,
+};
 pub use clean::{clean_workspace, clean_workspace_with_config};
 pub use config::FrontendConfig;
 pub use compile::{
@@ -545,25 +548,48 @@ fn dispatch_workspace_command(
                 update_workspace_with_config(workspace, &config_for_roots(config, &command.roots))
             }
         },
-        FrontendCommand::Code(command) => match &command.command {
-            CodeSubcommand::Build(command) => {
-                build_workspace_for_profile_with_config(
+        FrontendCommand::Code(code) => match &code.command {
+            CodeSubcommand::Build(build) => {
+                let routed_config =
+                    config_for_roots_keep_build(config, &build.roots, build.keep_build_dir);
+                dispatch_workspace_code_route(
                     workspace,
-                    &config_for_roots_keep_build(config, &command.roots, command.keep_build_dir),
-                    config.profile_override.unwrap_or(FrontendProfile::Debug),
+                    &routed_config,
+                    &code.command,
+                    FrontendProfile::Debug,
+                    &[],
                 )
             }
-            CodeSubcommand::Check(command) => {
-                check_workspace_with_config(workspace, &config_for_roots(config, &command.roots))
-            }
-            CodeSubcommand::Run(command) => {
-                run_workspace_with_args_and_config(
+            CodeSubcommand::Check(check) => {
+                let routed_config = config_for_roots(config, &check.roots);
+                dispatch_workspace_code_route(
                     workspace,
-                    &config_for_roots_keep_build(config, &command.roots, command.keep_build_dir),
-                    &command.args,
+                    &routed_config,
+                    &code.command,
+                    FrontendProfile::Debug,
+                    &[],
                 )
             }
-            CodeSubcommand::Test(_) => test_workspace_with_config(workspace, config),
+            CodeSubcommand::Run(run) => {
+                let routed_config =
+                    config_for_roots_keep_build(config, &run.roots, run.keep_build_dir);
+                dispatch_workspace_code_route(
+                    workspace,
+                    &routed_config,
+                    &code.command,
+                    FrontendProfile::Debug,
+                    &run.args,
+                )
+            }
+            CodeSubcommand::Test(_) => {
+                dispatch_workspace_code_route(
+                    workspace,
+                    config,
+                    &code.command,
+                    FrontendProfile::Debug,
+                    &[],
+                )
+            }
             CodeSubcommand::Emit(command) => match &command.command {
                 EmitSubcommand::Rust(emit) => emit_rust_with_config(
                     workspace,
@@ -592,6 +618,50 @@ fn dispatch_workspace_command(
         FrontendCommand::Complete(_) => Err(FrontendError::new(
             FrontendErrorKind::Internal,
             "unexpected command reached workspace dispatcher",
+        )),
+    }
+}
+
+fn dispatch_workspace_code_route(
+    workspace: &FrontendWorkspace,
+    config: &FrontendConfig,
+    command: &CodeSubcommand,
+    default_profile: FrontendProfile,
+    run_args: &[String],
+) -> FrontendResult<FrontendCommandResult> {
+    let requested_step = config
+        .build_step_override
+        .clone()
+        .unwrap_or_else(|| FrontendBuildStep::default_for_code_subcommand(command).as_str().to_string());
+    let route = build_route::plan_workspace_build_route(workspace, requested_step.clone())?;
+    if route
+        .members
+        .iter()
+        .all(|member| member.mode == FrontendBuildWorkflowMode::Compatibility)
+    {
+        return build_route::execute_compatibility_build_route(
+            workspace,
+            config,
+            &FrontendCompatibilityBuildRequest {
+                requested_step,
+                profile: config.profile_override.unwrap_or(default_profile),
+                run_args: run_args.to_vec(),
+            },
+        );
+    }
+
+    match command {
+        CodeSubcommand::Build(_) => build_workspace_for_profile_with_config(
+            workspace,
+            config,
+            config.profile_override.unwrap_or(default_profile),
+        ),
+        CodeSubcommand::Check(_) => check_workspace_with_config(workspace, config),
+        CodeSubcommand::Run(_) => run_workspace_with_args_and_config(workspace, config, run_args),
+        CodeSubcommand::Test(_) => test_workspace_with_config(workspace, config),
+        CodeSubcommand::Emit(_) => Err(FrontendError::new(
+            FrontendErrorKind::Internal,
+            "emit commands do not participate in workspace build-step routing",
         )),
     }
 }
@@ -747,6 +817,47 @@ mod tests {
         let config = frontend_config_from_cli(&cli, None);
 
         assert_eq!(config.build_step_override.as_deref(), Some("docs"));
+    }
+
+    #[test]
+    fn workspace_dispatch_routes_compatibility_build_steps_through_named_step_selection() {
+        let root = std::env::temp_dir().join(format!(
+            "fol_frontend_dispatch_route_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system time before epoch")
+                .as_nanos()
+        ));
+        let src = root.join("src");
+        std::fs::create_dir_all(&src).unwrap();
+        std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
+        std::fs::write(root.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
+        std::fs::write(src.join("main.fol"), "fun[] main(): int = {\n    return 0\n}\n").unwrap();
+
+        let workspace = FrontendWorkspace {
+            root: WorkspaceRoot::new(root.clone()),
+            members: vec![PackageRoot::new(root.clone())],
+            std_root_override: None,
+            package_store_root_override: None,
+            build_root: root.join(".fol/build"),
+            cache_root: root.join(".fol/cache"),
+            git_cache_root: root.join(".fol/cache/git"),
+        };
+        let command = FrontendCommand::Code(CodeCommand {
+            command: CodeSubcommand::Build(BuildCommand::default()),
+        });
+        let config = FrontendConfig {
+            build_step_override: Some("check".to_string()),
+            ..FrontendConfig::default()
+        };
+
+        let result = dispatch_workspace_command(&command, &workspace, &config).unwrap();
+
+        assert_eq!(result.command, "check");
+        assert!(result.summary.contains("checked 1 workspace package(s)"));
+
+        std::fs::remove_dir_all(root).ok();
     }
 }
 fn code_has_direct_target(command: &CodeCommand) -> bool {
