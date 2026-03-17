@@ -270,6 +270,26 @@ Tests required:
 Exit criteria:
 - `build.fol` reaches resolver and typechecker as a real source unit
 
+Round 1 slice tracker:
+
+- [x] Slice 1. Add a concrete Phase 2 implementation tracker with completion
+  rules.
+- [ ] Slice 2. Add parsed source-unit kind metadata that distinguishes build
+  units from ordinary units.
+- [ ] Slice 3. Add prepared-package helpers for build source units.
+- [ ] Slice 4. Load `build.fol` into prepared formal-package syntax instead of
+  excluding it as a control file.
+- [ ] Slice 5. Carry source-unit kind metadata through resolved programs.
+- [ ] Slice 6. Carry source-unit kind metadata through typed programs.
+- [ ] Slice 7. Remove the ordinary typechecker hard rejection for `build.fol`
+  source units.
+- [ ] Slice 8. Keep lowering/runtime entry discovery from treating build units
+  as ordinary runtime source units.
+- [ ] Slice 9. Add package/resolver/typechecker coverage for build source-unit
+  visibility rules in Phase 2.
+- [ ] Slice 10. Re-export and test the full Phase 2 build source-unit pipeline
+  surface.
+
 ## Phase 3: Locate And Validate The Canonical Build Entry
 
 Goal:
