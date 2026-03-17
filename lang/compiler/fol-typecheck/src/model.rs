@@ -1,6 +1,6 @@
 use crate::{BuiltinTypeIds, CheckedTypeId, TypeTable};
 use fol_intrinsics::IntrinsicId;
-use fol_parser::ast::SyntaxNodeId;
+use fol_parser::ast::{ParsedSourceUnitKind, SyntaxNodeId};
 use fol_resolver::{PackageIdentity, ReferenceKind, ScopeId, SourceUnitId, SymbolId, SymbolKind};
 use std::collections::BTreeMap;
 
@@ -21,6 +21,7 @@ pub struct TypedSourceUnit {
     pub path: String,
     pub package: String,
     pub namespace: String,
+    pub kind: ParsedSourceUnitKind,
     pub scope_id: ScopeId,
     pub top_level_nodes: Vec<SyntaxNodeId>,
 }
@@ -155,6 +156,7 @@ impl TypedProgram {
                 path: unit.path.clone(),
                 package: unit.package.clone(),
                 namespace: unit.namespace.clone(),
+                kind: unit.kind,
                 scope_id: unit.scope_id,
                 top_level_nodes: unit.top_level_nodes.clone(),
             })
@@ -245,6 +247,18 @@ impl TypedProgram {
 
     pub fn source_units(&self) -> &[TypedSourceUnit] {
         &self.source_units
+    }
+
+    pub fn ordinary_source_units(&self) -> impl Iterator<Item = &TypedSourceUnit> {
+        self.source_units
+            .iter()
+            .filter(|unit| unit.kind == ParsedSourceUnitKind::Ordinary)
+    }
+
+    pub fn build_source_units(&self) -> impl Iterator<Item = &TypedSourceUnit> {
+        self.source_units
+            .iter()
+            .filter(|unit| unit.kind == ParsedSourceUnitKind::Build)
     }
 
     pub fn typed_symbol(&self, symbol_id: SymbolId) -> Option<&TypedSymbol> {
@@ -370,7 +384,7 @@ impl TypedProgram {
 mod tests {
     use super::{TypedProgram, TypedWorkspace};
     use crate::{BuiltinType, CheckedType};
-    use fol_parser::ast::AstParser;
+    use fol_parser::ast::{AstParser, ParsedSourceUnitKind};
     use fol_resolver::resolve_package;
     use fol_stream::FileStream;
 
@@ -422,5 +436,35 @@ mod tests {
         assert_eq!(workspace.package_count(), 1);
         assert_eq!(workspace.entry_identity(), &entry_identity);
         assert_eq!(workspace.entry_program().package_name(), "parser");
+    }
+
+    #[test]
+    fn typed_program_filters_build_and_ordinary_source_units() {
+        let root = std::env::temp_dir().join(format!(
+            "fol_typecheck_build_units_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("clock should be after epoch")
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(root.join("src")).expect("should create temp source dir");
+        std::fs::write(root.join("build.fol"), "`build`\n").expect("should write build file");
+        std::fs::write(root.join("src/main.fol"), "var value: int = 1\n")
+            .expect("should write ordinary source");
+
+        let mut stream =
+            FileStream::from_folder(root.to_str().expect("utf8 temp path")).expect("open temp pkg");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let syntax = parser.parse_package(&mut lexer).expect("temp pkg should parse");
+        let resolved = resolve_package(syntax).expect("temp pkg should resolve");
+        let typed = TypedProgram::from_resolved(resolved);
+
+        assert_eq!(typed.build_source_units().count(), 1);
+        assert_eq!(typed.ordinary_source_units().count(), 1);
+        assert_eq!(typed.source_units()[0].kind, ParsedSourceUnitKind::Build);
+
+        std::fs::remove_dir_all(root).ok();
     }
 }

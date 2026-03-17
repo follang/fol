@@ -12,6 +12,7 @@ pub mod model;
 pub mod session;
 pub mod types;
 
+pub use fol_parser::ast::ParsedSourceUnitKind;
 pub use builtins::BuiltinTypeIds;
 pub use errors::{TypecheckError, TypecheckErrorKind};
 pub use model::{
@@ -49,7 +50,7 @@ impl Typechecker {
 
 #[cfg(test)]
 mod tests {
-    use super::{TypecheckError, TypecheckErrorKind, Typechecker};
+    use super::{ParsedSourceUnitKind, TypecheckError, TypecheckErrorKind, Typechecker};
     use fol_parser::ast::SyntaxOrigin;
     use fol_resolver::resolve_package;
     use fol_stream::FileStream;
@@ -99,5 +100,10 @@ mod tests {
         assert_eq!(typed.package_name(), "parser");
         assert_eq!(typed.type_table().len(), 6);
         assert_eq!(typed.resolved().source_units.len(), 1);
+    }
+
+    #[test]
+    fn typechecker_reexports_parsed_source_unit_kinds() {
+        assert_eq!(ParsedSourceUnitKind::Build, fol_parser::ast::ParsedSourceUnitKind::Build);
     }
 }

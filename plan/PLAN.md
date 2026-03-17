@@ -280,7 +280,7 @@ Round 1 slice tracker:
 - [x] Slice 4. Load `build.fol` into prepared formal-package syntax instead of
   excluding it as a control file.
 - [x] Slice 5. Carry source-unit kind metadata through resolved programs.
-- [ ] Slice 6. Carry source-unit kind metadata through typed programs.
+- [x] Slice 6. Carry source-unit kind metadata through typed programs.
 - [ ] Slice 7. Remove the ordinary typechecker hard rejection for `build.fol`
   source units.
 - [ ] Slice 8. Keep lowering/runtime entry discovery from treating build units
