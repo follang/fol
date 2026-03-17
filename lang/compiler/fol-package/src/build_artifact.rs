@@ -32,6 +32,28 @@ pub struct BuildArtifactTargetConfig {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub enum BuildArtifactOutput {
+    EmittedRustCrate {
+        crate_root: String,
+    },
+    Binary {
+        binary_path: String,
+    },
+    GeneratedSourceBundle {
+        root: String,
+    },
+    DocsBundle {
+        root: String,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BuildArtifactReport {
+    pub artifact_name: String,
+    pub output: BuildArtifactOutput,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BuildArtifactDefinition {
     pub name: String,
     pub kind: BuildArtifactModelKind,
@@ -66,7 +88,8 @@ impl BuildArtifactSet {
 mod tests {
     use super::{
         BuildArtifactDefinition, BuildArtifactLinkage, BuildArtifactModelKind,
-        BuildArtifactModuleConfig, BuildArtifactRootSource, BuildArtifactSet,
+        BuildArtifactModuleConfig, BuildArtifactOutput, BuildArtifactReport,
+        BuildArtifactRootSource, BuildArtifactSet,
         BuildArtifactTargetConfig,
     };
 
@@ -138,5 +161,46 @@ mod tests {
         assert_eq!(definition.target.target.as_deref(), Some("x86_64-linux-gnu"));
         assert_eq!(definition.target.optimize.as_deref(), Some("release"));
         assert_eq!(definition.native_artifacts, vec!["ssl".to_string(), "zlib".to_string()]);
+    }
+
+    #[test]
+    fn artifact_reports_cover_backend_and_bundle_outputs() {
+        let emitted = BuildArtifactReport {
+            artifact_name: "app".to_string(),
+            output: BuildArtifactOutput::EmittedRustCrate {
+                crate_root: ".fol/build/emit/rust/app".to_string(),
+            },
+        };
+        let binary = BuildArtifactReport {
+            artifact_name: "app".to_string(),
+            output: BuildArtifactOutput::Binary {
+                binary_path: ".fol/build/debug/app".to_string(),
+            },
+        };
+        let docs = BuildArtifactReport {
+            artifact_name: "docs".to_string(),
+            output: BuildArtifactOutput::DocsBundle {
+                root: ".fol/build/docs".to_string(),
+            },
+        };
+
+        match emitted.output {
+            BuildArtifactOutput::EmittedRustCrate { crate_root } => {
+                assert!(crate_root.contains("emit/rust"));
+            }
+            other => panic!("unexpected emitted output: {other:?}"),
+        }
+        match binary.output {
+            BuildArtifactOutput::Binary { binary_path } => {
+                assert!(binary_path.ends_with("/app"));
+            }
+            other => panic!("unexpected binary output: {other:?}"),
+        }
+        match docs.output {
+            BuildArtifactOutput::DocsBundle { root } => {
+                assert!(root.ends_with("docs"));
+            }
+            other => panic!("unexpected docs output: {other:?}"),
+        }
     }
 }
