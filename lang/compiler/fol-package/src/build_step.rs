@@ -102,6 +102,21 @@ pub struct BuildStepReport {
     pub produced_outputs: Vec<String>,
 }
 
+impl BuildStepReport {
+    pub fn summary(&self) -> String {
+        format!(
+            "step:{} events={} outputs={}",
+            self.requested_step,
+            self.events.len(),
+            self.produced_outputs.len()
+        )
+    }
+
+    pub fn primary_output(&self) -> Option<&str> {
+        self.produced_outputs.first().map(String::as_str)
+    }
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct BuildStepExecutionRequest {
     pub requested_step: String,
@@ -294,6 +309,8 @@ mod tests {
         assert_eq!(report.events.len(), 2);
         assert_eq!(report.events[0].kind, BuildStepEventKind::Requested);
         assert_eq!(report.produced_outputs, vec!["zig-out/bin/app".to_string()]);
+        assert_eq!(report.summary(), "step:build events=2 outputs=1");
+        assert_eq!(report.primary_output(), Some("zig-out/bin/app"));
     }
 
     #[test]
