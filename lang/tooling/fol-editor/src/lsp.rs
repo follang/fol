@@ -675,7 +675,10 @@ fn analyze_document(
 
 struct SemanticSnapshot {
     analyzed_path: Option<PathBuf>,
+    source_document_path: PathBuf,
+    source_package_root: Option<PathBuf>,
     diagnostics: Vec<LspDiagnostic>,
+    resolved_workspace: Option<fol_resolver::ResolvedWorkspace>,
     typed_workspace: Option<fol_typecheck::TypedWorkspace>,
 }
 
@@ -693,22 +696,70 @@ impl SemanticSnapshot {
         document: &EditorDocument,
         position: LspPosition,
     ) -> Vec<EditorCompletionItem> {
+        if self.current_program().is_none() {
+            return self.fallback_completion_items(document, position);
+        }
         match completion_context(document, position) {
             CompletionContext::Plain => {}
             CompletionContext::TypePosition => {
                 let mut items = self.builtin_type_completion_items();
                 items.extend(self.visible_named_type_completion_items());
+                items.extend(self.fallback_local_named_type_items(document));
+                items.extend(self.fallback_imported_named_type_items(document));
                 return dedupe_completion_items(items);
             }
             CompletionContext::QualifiedPath { qualifier } => {
-                return self.qualified_completion_items(&qualifier);
+                let mut items = self.qualified_completion_items(&qualifier);
+                items.extend(self.fallback_qualified_completion_items(&qualifier));
+                return dedupe_completion_items(items);
             }
             CompletionContext::DotTrigger => return self.dot_intrinsic_fallback_completion_items(),
         }
         let mut items = self.local_completion_items(position);
         items.extend(self.current_package_top_level_completion_items(position));
         items.extend(self.import_alias_completion_items(position));
+        items.extend(self.fallback_local_scope_items(document, position));
+        items.extend(self.fallback_current_package_top_level_items(document, position));
+        items.extend(self.fallback_import_alias_items(document));
         dedupe_completion_items(items)
+    }
+
+    fn fallback_completion_items(
+        &self,
+        document: &EditorDocument,
+        position: LspPosition,
+    ) -> Vec<EditorCompletionItem> {
+        match completion_context(document, position) {
+            CompletionContext::DotTrigger => self.dot_intrinsic_fallback_completion_items(),
+            CompletionContext::QualifiedPath { qualifier } => {
+                self.fallback_qualified_completion_items(&qualifier)
+            }
+            CompletionContext::TypePosition => {
+                let mut items = self.builtin_type_completion_items();
+                items.extend(self.fallback_local_named_type_items(document));
+                items.extend(self.fallback_imported_named_type_items(document));
+                dedupe_completion_items(items)
+            }
+            CompletionContext::Plain => {
+                if position_to_offset(&document.text, position).is_none() {
+                    if let Some(line) = document.text.lines().nth(position.line as usize) {
+                        if line.contains("::") {
+                            let aliases = self.fallback_import_alias_items(document);
+                            if aliases.len() == 1 {
+                                let items = self.fallback_imported_package_items(&aliases[0].label);
+                                if !items.is_empty() {
+                                    return dedupe_completion_items(items);
+                                }
+                            }
+                        }
+                    }
+                }
+                let mut items = self.fallback_local_scope_items(document, position);
+                items.extend(self.fallback_current_package_top_level_items(document, position));
+                items.extend(self.fallback_import_alias_items(document));
+                dedupe_completion_items(items)
+            }
+        }
     }
 
     fn builtin_type_completion_items(&self) -> Vec<EditorCompletionItem> {
@@ -884,12 +935,200 @@ impl SemanticSnapshot {
         items
     }
 
+    fn fallback_local_scope_items(
+        &self,
+        document: &EditorDocument,
+        position: LspPosition,
+    ) -> Vec<EditorCompletionItem> {
+        let offset = position_to_offset(&document.text, position).unwrap_or(document.text.len());
+        let before_cursor = &document.text[..offset];
+        let mut items = self.fallback_import_alias_items(document);
+        items.extend(self.fallback_current_package_top_level_items(document, position));
+
+        if let Some(header) = before_cursor.rmatch_indices("fun").next().map(|(index, _)| &before_cursor[index..]) {
+            if let Some(open) = header.find('(') {
+                if let Some(close) = header[open + 1..].find(')') {
+                    for param in header[open + 1..open + 1 + close].split(',') {
+                        let name = param.split(':').next().unwrap_or("").trim();
+                        if !name.is_empty() {
+                            items.push(EditorCompletionItem {
+                                label: name.to_string(),
+                                kind: 6,
+                                detail: Some("parameter".to_string()),
+                                insert_text: None,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        for line in document.text.lines() {
+            let trimmed = line.trim();
+            if let Some(rest) = trimmed.strip_prefix("var ") {
+                let name = rest
+                    .split(|ch: char| ch == ':' || ch == '=' || ch.is_whitespace())
+                    .next()
+                    .unwrap_or("")
+                    .trim();
+                if !name.is_empty() {
+                    items.push(EditorCompletionItem {
+                        label: name.to_string(),
+                        kind: 6,
+                        detail: Some("binding".to_string()),
+                        insert_text: None,
+                    });
+                }
+            }
+        }
+
+        items
+    }
+
+    fn fallback_current_package_top_level_items(
+        &self,
+        document: &EditorDocument,
+        position: LspPosition,
+    ) -> Vec<EditorCompletionItem> {
+        let mut items = Vec::new();
+        let current_routine = current_routine_name(&document.text, position);
+        for line in document.text.lines() {
+            let trimmed = line.trim();
+            if let Some(name) = fallback_decl_name(trimmed, &["fun[] ", "fun[", "log[] ", "log[", "pro[] ", "pro["]) {
+                if current_routine.as_deref() == Some(name.as_str()) {
+                    continue;
+                }
+                items.push(EditorCompletionItem {
+                    label: name,
+                    kind: 3,
+                    detail: Some("routine".to_string()),
+                    insert_text: None,
+                });
+            } else if let Some(name) = fallback_decl_name(trimmed, &["def[] ", "def["]) {
+                items.push(EditorCompletionItem {
+                    label: name,
+                    kind: 12,
+                    detail: Some("definition".to_string()),
+                    insert_text: None,
+                });
+            } else if let Some(name) = fallback_decl_name(trimmed, &["typ[] ", "typ[", "typ "]) {
+                items.push(EditorCompletionItem {
+                    label: name,
+                    kind: 22,
+                    detail: Some("type".to_string()),
+                    insert_text: None,
+                });
+            } else if let Some(name) = fallback_decl_name(trimmed, &["ali[] ", "ali[", "ali "]) {
+                items.push(EditorCompletionItem {
+                    label: name,
+                    kind: 22,
+                    detail: Some("type alias".to_string()),
+                    insert_text: None,
+                });
+            }
+        }
+        items
+    }
+
+    fn fallback_local_named_type_items(&self, document: &EditorDocument) -> Vec<EditorCompletionItem> {
+        self.fallback_current_package_top_level_items(document, LspPosition { line: u32::MAX, character: u32::MAX })
+            .into_iter()
+            .filter(|item| item.detail.as_deref() == Some("type") || item.detail.as_deref() == Some("type alias"))
+            .collect()
+    }
+
+    fn fallback_import_alias_items(&self, document: &EditorDocument) -> Vec<EditorCompletionItem> {
+        document
+            .text
+            .lines()
+            .filter_map(|line| {
+                let trimmed = line.trim();
+                let rest = trimmed.strip_prefix("use ")?;
+                let alias = rest.split(':').next()?.trim();
+                (!alias.is_empty()).then(|| EditorCompletionItem {
+                    label: alias.to_string(),
+                    kind: 9,
+                    detail: Some("namespace".to_string()),
+                    insert_text: None,
+                })
+            })
+            .collect()
+    }
+
+    fn fallback_imported_named_type_items(&self, document: &EditorDocument) -> Vec<EditorCompletionItem> {
+        let aliases = self.fallback_import_alias_items(document);
+        let mut items = Vec::new();
+        for alias in aliases {
+            items.extend(
+                self.fallback_imported_package_items(&alias.label)
+                    .into_iter()
+                    .filter(|item| item.detail.as_deref() == Some("type") || item.detail.as_deref() == Some("type alias")),
+            );
+        }
+        items
+    }
+
+    fn fallback_qualified_completion_items(&self, qualifier: &str) -> Vec<EditorCompletionItem> {
+        let mut items = self.fallback_local_namespace_items(qualifier);
+        items.extend(self.fallback_imported_package_items(qualifier));
+        dedupe_completion_items(items)
+    }
+
+    fn fallback_imported_package_items(&self, qualifier: &str) -> Vec<EditorCompletionItem> {
+        let Some(package_root) = &self.source_package_root else {
+            return Vec::new();
+        };
+        let text = std::fs::read_to_string(&self.source_document_path).unwrap_or_default();
+        let rel_path = text.lines().find_map(|line| {
+            let trimmed = line.trim();
+            let rest = trimmed.strip_prefix("use ")?;
+            let (alias, rhs) = rest.split_once(':')?;
+            (alias.trim() == qualifier).then_some(rhs.trim().to_string())
+        });
+        let Some(rhs) = rel_path else {
+            return Vec::new();
+        };
+        let Some(start) = rhs.find('"') else {
+            return Vec::new();
+        };
+        let tail = &rhs[start + 1..];
+        let Some(end) = tail.find('"') else {
+            return Vec::new();
+        };
+        let target = package_root.join(&tail[..end]);
+        fallback_items_from_package_dir(&target)
+    }
+
+    fn fallback_local_namespace_items(&self, qualifier: &str) -> Vec<EditorCompletionItem> {
+        let Some(package_root) = &self.source_package_root else {
+            return Vec::new();
+        };
+        let namespace_dir = package_root.join("src").join(qualifier.replace("::", "/"));
+        let mut items = fallback_items_from_package_dir(&namespace_dir);
+        if let Ok(entries) = std::fs::read_dir(&namespace_dir) {
+            for entry in entries.filter_map(Result::ok) {
+                let path = entry.path();
+                if entry.file_type().map(|kind| kind.is_dir()).unwrap_or(false) {
+                    if let Some(name) = path.file_name().and_then(|name| name.to_str()) {
+                        items.push(EditorCompletionItem {
+                            label: name.to_string(),
+                            kind: 9,
+                            detail: Some("namespace".to_string()),
+                            insert_text: None,
+                        });
+                    }
+                }
+            }
+        }
+        items
+    }
+
     fn current_program(&self) -> Option<&fol_resolver::ResolvedProgram> {
-        let typed = self.typed_workspace.as_ref()?;
+        let resolved = self.resolved_workspace.as_ref()?;
         let analyzed_path = self.analyzed_path.as_ref()?;
         let path_text = analyzed_path.to_string_lossy();
-        typed.packages().find_map(|package| {
-            let program = package.program.resolved();
+        resolved.packages().find_map(|package| {
+            let program = &package.program;
             program
                 .source_units
                 .iter()
@@ -904,28 +1143,30 @@ impl SemanticSnapshot {
     ) -> Option<(&fol_resolver::ResolvedProgram, fol_resolver::ScopeId)> {
         let program = self.current_program()?;
         let analyzed_path = self.analyzed_path.as_ref()?;
-        let syntax_id = syntax_at_position(program, analyzed_path.as_path(), position)?;
-        program.scope_for_syntax(syntax_id).map(|scope_id| (program, scope_id))
+        if let Some(syntax_id) = syntax_at_position(program, analyzed_path.as_path(), position) {
+            if let Some(scope_id) = program.scope_for_syntax(syntax_id) {
+                return Some((program, scope_id));
+            }
+        }
+        if let Some(scope_id) = nearest_scope_before_position(program, analyzed_path.as_path(), position) {
+            return Some((program, scope_id));
+        }
+        self.current_source_unit(program).map(|unit| (program, unit.scope_id))
     }
 
     fn current_namespace_for_position(&self, position: LspPosition) -> Option<String> {
-        let (program, _) = self.scope_at_position(position)?;
-        let analyzed_path = self.analyzed_path.as_ref()?;
-        let path_text = analyzed_path.to_string_lossy();
-        program
-            .source_units
-            .iter()
-            .find(|unit| unit.path == path_text)
-            .map(|unit| unit.namespace.clone())
+        let program = self.current_program()?;
+        let _ = position;
+        self.current_source_unit(program).map(|unit| unit.namespace.clone())
     }
 
     fn reference_at(&self, position: LspPosition) -> Option<&fol_resolver::ResolvedReference> {
-        let typed = self.typed_workspace.as_ref()?;
+        let resolved = self.resolved_workspace.as_ref()?;
         let analyzed_path = self.analyzed_path.as_ref()?;
-        let needle = typed
+        let needle = resolved
             .packages()
             .find_map(|package| {
-                let program = package.program.resolved();
+                let program = &package.program;
                 let syntax_id = syntax_at_position(program, analyzed_path.as_path(), position)?;
                 program
                     .all_references()
@@ -935,17 +1176,26 @@ impl SemanticSnapshot {
     }
 
     fn hover_for_reference(&self, reference: &fol_resolver::ResolvedReference) -> Option<LspHover> {
-        let typed = self.typed_workspace.as_ref()?;
-        for package in typed.packages() {
+        let resolved = self.resolved_workspace.as_ref()?;
+        for package in resolved.packages() {
             let program = &package.program;
-            let resolved = program.resolved();
             if let Some(symbol_id) = reference.resolved {
-                let symbol = resolved.symbol(symbol_id)?;
-                let typed_symbol = program.typed_symbol(symbol_id);
+                let symbol = program.symbol(symbol_id)?;
                 let origin = symbol.origin.as_ref()?;
-                let type_summary = typed_symbol
+                let type_summary = self
+                    .typed_workspace
+                    .as_ref()
+                    .and_then(|typed| typed.package(&package.identity))
+                    .and_then(|typed_package| typed_package.program.typed_symbol(symbol_id))
                     .and_then(|typed_symbol| typed_symbol.declared_type)
-                    .map(|type_id| render_checked_type(program.type_table(), type_id))
+                    .map(|type_id| {
+                        let typed_package = self
+                            .typed_workspace
+                            .as_ref()
+                            .and_then(|typed| typed.package(&package.identity))
+                            .expect("typed package should exist when declared type is available");
+                        render_checked_type(typed_package.program.type_table(), type_id)
+                    })
                     .unwrap_or_else(|| "unknown".to_string());
                 return Some(LspHover {
                     contents: format!("{} {}: {}", render_symbol_kind(symbol.kind), symbol.name, type_summary),
@@ -965,11 +1215,11 @@ impl SemanticSnapshot {
         &self,
         reference: &fol_resolver::ResolvedReference,
     ) -> Option<LspLocation> {
-        let typed = self.typed_workspace.as_ref()?;
-        for package in typed.packages() {
-            let resolved = package.program.resolved();
+        let resolved = self.resolved_workspace.as_ref()?;
+        for package in resolved.packages() {
+            let program = &package.program;
             if let Some(symbol_id) = reference.resolved {
-                let symbol = resolved.symbol(symbol_id)?;
+                let symbol = program.symbol(symbol_id)?;
                 let origin = symbol.origin.as_ref()?;
                 let file = origin.file.as_ref()?;
                 return Some(LspLocation {
@@ -987,8 +1237,8 @@ impl SemanticSnapshot {
     }
 
     fn document_symbols_for_current_path(&self) -> Vec<LspDocumentSymbol> {
-        let typed = match &self.typed_workspace {
-            Some(typed) => typed,
+        let resolved = match &self.resolved_workspace {
+            Some(resolved) => resolved,
             None => return Vec::new(),
         };
         let Some(analyzed_path) = &self.analyzed_path else {
@@ -996,8 +1246,8 @@ impl SemanticSnapshot {
         };
         let path_text = analyzed_path.to_string_lossy();
         let mut symbols = Vec::new();
-        for package in typed.packages() {
-            let program = package.program.resolved();
+        for package in resolved.packages() {
+            let program = &package.program;
             for symbol in program.all_symbols() {
                 let Some(origin) = &symbol.origin else { continue };
                 let Some(file) = &origin.file else { continue };
@@ -1028,6 +1278,15 @@ impl SemanticSnapshot {
                 .then(left.name.cmp(&right.name))
         });
         nest_document_symbols(symbols)
+    }
+
+    fn current_source_unit<'a>(
+        &self,
+        program: &'a fol_resolver::ResolvedProgram,
+    ) -> Option<&'a fol_resolver::ResolvedSourceUnit> {
+        let analyzed_path = self.analyzed_path.as_ref()?;
+        let path_text = analyzed_path.to_string_lossy();
+        program.source_units.iter().find(move |unit| unit.path == path_text)
     }
 }
 
@@ -1076,7 +1335,10 @@ fn analyze_document_semantics(
         if !parser_diags.is_empty() {
             return Ok(SemanticSnapshot {
                 analyzed_path: Some(overlay.document_path().to_path_buf()),
+                source_document_path: mapping.document_path.clone(),
+                source_package_root: mapping.package_root.clone(),
                 diagnostics: parser_diags,
+                resolved_workspace: None,
                 typed_workspace: None,
             });
         }
@@ -1087,7 +1349,10 @@ fn analyze_document_semantics(
             Err(error) => {
                 return Ok(SemanticSnapshot {
                     analyzed_path: Some(overlay.document_path().to_path_buf()),
+                    source_document_path: mapping.document_path.clone(),
+                    source_package_root: mapping.package_root.clone(),
                     diagnostics: vec![diagnostic_to_lsp(&error.to_diagnostic())],
+                    resolved_workspace: None,
                     typed_workspace: None,
                 })
             }
@@ -1099,43 +1364,55 @@ fn analyze_document_semantics(
             Err(errors) => {
                 return Ok(SemanticSnapshot {
                     analyzed_path: Some(overlay.document_path().to_path_buf()),
+                    source_document_path: mapping.document_path.clone(),
+                    source_package_root: mapping.package_root.clone(),
                     diagnostics: errors
                         .iter()
                         .map(|error| error.to_diagnostic())
                         .filter(|diagnostic| diagnostic_targets_path(diagnostic, overlay.document_path()))
                         .map(|diagnostic| diagnostic_to_lsp(&diagnostic))
                         .collect(),
+                    resolved_workspace: None,
                     typed_workspace: None,
                 })
             }
         };
 
         let mut typechecker = Typechecker::new();
-        match typechecker.check_resolved_workspace(resolved) {
+        match typechecker.check_resolved_workspace(resolved.clone()) {
             Ok(typed_workspace) => Ok(SemanticSnapshot {
                 analyzed_path: Some(overlay.document_path().to_path_buf()),
+                source_document_path: mapping.document_path.clone(),
+                source_package_root: mapping.package_root.clone(),
                 diagnostics: Vec::new(),
+                resolved_workspace: Some(resolved),
                 typed_workspace: Some(typed_workspace),
             }),
             Err(errors) => Ok(SemanticSnapshot {
                 analyzed_path: Some(overlay.document_path().to_path_buf()),
+                source_document_path: mapping.document_path.clone(),
+                source_package_root: mapping.package_root.clone(),
                 diagnostics: errors
                     .iter()
                     .map(|error| error.to_diagnostic())
                     .filter(|diagnostic| diagnostic_targets_path(diagnostic, overlay.document_path()))
                     .map(|diagnostic| diagnostic_to_lsp(&diagnostic))
                     .collect(),
+                resolved_workspace: Some(resolved),
                 typed_workspace: None,
             }),
         }
     } else {
         Ok(SemanticSnapshot {
             analyzed_path: Some(mapping.document_path.clone()),
+            source_document_path: mapping.document_path.clone(),
+            source_package_root: mapping.package_root.clone(),
             diagnostics: parse_single_file_diagnostics(&mapping.document_path, &document.text)?
                 .into_iter()
                 .filter(|diagnostic| diagnostic_targets_path(diagnostic, &mapping.document_path))
                 .map(|diagnostic| diagnostic_to_lsp(&diagnostic))
                 .collect(),
+            resolved_workspace: None,
             typed_workspace: None,
         })
     }
@@ -1270,6 +1547,135 @@ fn syntax_at_position(
         }
     }
     best.map(|(syntax_id, _)| syntax_id)
+}
+
+fn nearest_scope_before_position(
+    program: &fol_resolver::ResolvedProgram,
+    path: &Path,
+    position: LspPosition,
+) -> Option<fol_resolver::ScopeId> {
+    let path_text = path.to_string_lossy();
+    let mut best: Option<((u32, u32), fol_resolver::ScopeId)> = None;
+    for index in 0..program.syntax_index().len() {
+        let syntax_id = fol_parser::ast::SyntaxNodeId(index);
+        let Some(scope_id) = program.scope_for_syntax(syntax_id) else {
+            continue;
+        };
+        let Some(origin) = program.syntax_index().origin(syntax_id) else {
+            continue;
+        };
+        let Some(file) = &origin.file else {
+            continue;
+        };
+        if file != &path_text {
+            continue;
+        }
+        let start = (
+            origin.line.saturating_sub(1) as u32,
+            origin.column.saturating_sub(1) as u32,
+        );
+        let cursor = (position.line, position.character);
+        if start > cursor {
+            continue;
+        }
+        match best {
+            Some((best_start, _)) if best_start >= start => {}
+            _ => best = Some((start, scope_id)),
+        }
+    }
+    best.map(|(_, scope_id)| scope_id)
+}
+
+fn fallback_decl_name(line: &str, prefixes: &[&str]) -> Option<String> {
+    for prefix in prefixes {
+        if let Some(rest) = line.strip_prefix(prefix) {
+            let name = rest
+                .split(|ch: char| ch == ':' || ch == '=' || ch == '(' || ch.is_whitespace())
+                .next()
+                .unwrap_or("")
+                .trim_matches(|ch: char| ch == '[' || ch == ']');
+            if !name.is_empty() {
+                return Some(name.to_string());
+            }
+        }
+    }
+    None
+}
+
+fn current_routine_name(text: &str, position: LspPosition) -> Option<String> {
+    let offset = position_to_offset(text, position).unwrap_or(text.len());
+    let before_cursor = &text[..offset];
+    let header = before_cursor
+        .rmatch_indices("fun")
+        .next()
+        .map(|(index, _)| &before_cursor[index..])?;
+    let rest = header.strip_prefix("fun").unwrap_or(header);
+    let rest = rest.trim_start_matches(|ch: char| ch == '[' || ch == ']' || !ch.is_ascii_alphanumeric());
+    let open = rest.find('(')?;
+    let name = rest[..open]
+        .trim()
+        .trim_matches(|ch: char| ch == '[' || ch == ']');
+    (!name.is_empty()).then(|| name.to_string())
+}
+
+fn fallback_items_from_package_dir(root: &Path) -> Vec<EditorCompletionItem> {
+    let mut items = Vec::new();
+    collect_fallback_items_from_dir(root, &mut items);
+    items
+}
+
+fn collect_fallback_items_from_dir(root: &Path, items: &mut Vec<EditorCompletionItem>) {
+    let Ok(entries) = std::fs::read_dir(root) else {
+        return;
+    };
+    for entry in entries.filter_map(Result::ok) {
+        let path = entry.path();
+        let Ok(file_type) = entry.file_type() else {
+            continue;
+        };
+        if file_type.is_dir() {
+            collect_fallback_items_from_dir(&path, items);
+            continue;
+        }
+        if !file_type.is_file() || path.extension().and_then(|ext| ext.to_str()) != Some("fol") {
+            continue;
+        }
+        let Ok(text) = std::fs::read_to_string(&path) else {
+            continue;
+        };
+        for line in text.lines() {
+            let trimmed = line.trim();
+            if let Some(name) = fallback_decl_name(trimmed, &["fun[exp] ", "fun["]) {
+                items.push(EditorCompletionItem {
+                    label: name,
+                    kind: 3,
+                    detail: Some("routine".to_string()),
+                    insert_text: None,
+                });
+            } else if let Some(name) = fallback_decl_name(trimmed, &["def[exp] ", "def["]) {
+                items.push(EditorCompletionItem {
+                    label: name,
+                    kind: 12,
+                    detail: Some("definition".to_string()),
+                    insert_text: None,
+                });
+            } else if let Some(name) = fallback_decl_name(trimmed, &["typ[exp] ", "typ["]) {
+                items.push(EditorCompletionItem {
+                    label: name,
+                    kind: 22,
+                    detail: Some("type".to_string()),
+                    insert_text: None,
+                });
+            } else if let Some(name) = fallback_decl_name(trimmed, &["ali[exp] ", "ali["]) {
+                items.push(EditorCompletionItem {
+                    label: name,
+                    kind: 22,
+                    detail: Some("type alias".to_string()),
+                    insert_text: None,
+                });
+            }
+        }
+    }
 }
 
 fn render_symbol_kind(kind: fol_resolver::SymbolKind) -> &'static str {
@@ -1585,7 +1991,7 @@ fn position_to_offset(text: &str, position: LspPosition) -> Option<usize> {
 mod tests {
     use super::{
         completion_context, CompletionContext, EditorLspServer, JsonRpcId, JsonRpcNotification, JsonRpcRequest,
-        LspCompletionList, LspCompletionParams, LspDefinitionParams,
+        LspCompletionContext, LspCompletionList, LspCompletionParams, LspDefinitionParams,
         LspDidChangeTextDocumentParams, LspDidCloseTextDocumentParams,
         LspDidOpenTextDocumentParams, LspDocumentSymbolParams, LspHover, LspHoverParams,
         LspInitializeResult, LspLocation, LspPosition, LspPublishDiagnosticsParams,
@@ -2061,6 +2467,46 @@ mod tests {
     }
 
     #[test]
+    fn lsp_server_keeps_plain_completion_available_when_typecheck_fails() {
+        let (root, uri) = sample_package_root("completion_type_error_fallback");
+        fs::write(
+            root.join("src/main.fol"),
+            "fun[] helper(): int = {\n    return 7\n}\n\nfun[] main(): int = {\n    var value: int = helper()\n    value = \"oops\"\n    return value\n}\n",
+        )
+        .unwrap();
+        let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
+        let mut server = EditorLspServer::new(EditorConfig::default());
+        let diagnostics = open_document(&mut server, uri.clone(), &text);
+        assert!(!diagnostics.is_empty());
+
+        let completion = server
+            .handle_request(JsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: JsonRpcId::Number(30),
+                method: "textDocument/completion".to_string(),
+                params: Some(
+                    serde_json::to_value(LspCompletionParams {
+                        text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                        position: LspPosition {
+                            line: 6,
+                            character: 12,
+                        },
+                        context: None,
+                    })
+                    .unwrap(),
+                ),
+            })
+            .unwrap()
+            .unwrap();
+
+        let completion: LspCompletionList = serde_json::from_value(completion.result.unwrap()).unwrap();
+        assert!(completion.items.iter().any(|item| item.label == "value"));
+        assert!(completion.items.iter().any(|item| item.label == "helper"));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
     fn lsp_server_returns_routine_parameter_completions() {
         let (root, uri) = sample_package_root("completion_params");
         fs::write(
@@ -2463,7 +2909,7 @@ mod tests {
                             character: 12,
                         },
                         context: Some(LspCompletionContext {
-                            trigger_kind: 2,
+                            trigger_kind: Some(2),
                             trigger_character: Some(".".to_string()),
                         }),
                     })
