@@ -3,6 +3,7 @@
 - [Overview](./000_overview/_index.md)
   - [Notation And Conventions](./000_overview/100_conventions.md)
   - [Frontend Workflow](./000_overview/200_frontend.md)
+  - [Editor Tooling](./000_overview/300_editor.md)
 - [Lexical Structure](./100_lexical/_index.md)
   - [Keywords](./100_lexical/100_keywords.md)
   - [Identifiers](./100_lexical/200_identifiers.md)

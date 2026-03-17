@@ -89,6 +89,7 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `fol-runtime`: implemented as the shared current `V1` runtime/support contract for the first backend
 - `fol-backend`: implemented as the first runnable `V1` backend, emitting Rust crates and buildable binaries
 - `fol-frontend`: implemented as the user-facing workflow/tooling layer above the compiler and backend
+- `fol-editor`: implemented as the first editor-tooling layer above compiler diagnostics and semantic analysis
 - `fol-diagnostics`: implemented, structured, and wired into the CLI
 - Root CLI: implemented as a thin entry shim into the frontend-owned `fol` workflow
 - Stream + lexer + parser: stable and consumed by package loading and resolver
@@ -635,6 +636,47 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - frontend diagnostic rendering across human/plain/json
 - At the repo level, `fol` is no longer only a compiler binary with stage flags.
   It is now the first complete workflow tool for the current `V1` compiler stack.
+
+### 5.14 Editor Milestone
+
+- `fol-editor` now exists as a workspace crate that owns both:
+- Tree-sitter-facing editor assets
+- the first language-server layer
+- The crate now provides the first real editor surface for the current `V1`
+  language boundary:
+- on-disk Tree-sitter grammar assets
+- corpus fixtures
+- `highlights.scm`
+- `locals.scm`
+- `symbols.scm`
+- public editor command helpers for:
+- `lsp`
+- `parse`
+- `highlight`
+- `symbols`
+- The LSP foundation is real and test-backed:
+- initialize / shutdown / exit
+- document open / change / close tracking
+- overlay analysis over in-memory editor buffers
+- compiler-backed diagnostics from parser, package loading, resolver, and typecheck
+- hover
+- go-to-definition for local and imported symbols
+- document symbols
+- Diagnostic conversion now explicitly reuses canonical `fol-diagnostics`
+  reports instead of inventing a second semantic diagnostic model.
+- Document-symbol output is now stabilized for nested items and real package
+  fixtures.
+- `fol-frontend` now exposes that crate under:
+- `fol editor lsp`
+- `fol editor parse <PATH>`
+- `fol editor highlight <PATH>`
+- `fol editor symbols <PATH>`
+- Editor coverage now includes:
+- query snapshot access on real fixtures
+- frontend dispatch tests for editor commands
+- stable plain/JSON output checks for editor subcommands
+- LSP request/response tests over temp packages, cross-package imports, and
+  checked-in real package fixtures
 
 ## 6. Current Front-End State By Layer
 

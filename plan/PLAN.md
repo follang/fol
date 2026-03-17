@@ -389,10 +389,10 @@ The minimum real fixture sources should include:
 
 ### Phase 11: Docs Closeout
 
-- `11.1` update the frontend book chapter with `fol editor ...`
-- `11.2` add a dedicated book entry for editor tooling
-- `11.3` update `README.md`
-- `11.4` update `PROGRESS.md`
+- `11.1` complete: updated the frontend book chapter with `fol editor ...`
+- `11.2` complete: added a dedicated book entry for editor tooling
+- `11.3` complete: updated `README.md`
+- `11.4` complete: updated `PROGRESS.md`
 - `11.5` close the plan only after Tree-sitter, queries, LSP basics, and frontend exposure are real
 
 ## Definition Of Done

@@ -54,6 +54,10 @@ The current command surface is:
 - `fol code test`
 - `fol code emit rust`
 - `fol code emit lowered`
+- `fol editor lsp`
+- `fol editor parse <PATH>`
+- `fol editor highlight <PATH>`
+- `fol editor symbols <PATH>`
 - `fol tool clean`
 - `fol tool completion`
 - hidden `_complete`
@@ -87,6 +91,7 @@ fol pack fetch
 fol code check
 fol code build --release
 fol code run -- --flag value
+fol editor symbols src/main.fol
 ```
 
 The goal is to make `fol` feel like the canonical language tool, not just a
@@ -123,6 +128,7 @@ For example:
 - `fol code run` builds first, then executes the produced binary
 - `fol code emit rust` keeps the backend in source-emission mode
 - `fol code emit lowered` writes lowered IR snapshots instead of invoking the backend
+- `fol editor ...` dispatches editor parsing, query, and LSP flows into `fol-editor`
 
 Compile-oriented flags belong to the commands that use them. For example:
 
@@ -190,6 +196,24 @@ highlighted in human mode, while plain mode stays stable and ANSI-free.
 
 Human mode is always colorized. There is no public color-policy switch.
 
+## Editor Tooling Entry
+
+The frontend also owns the public entrypoint for editor tooling.
+
+That command family is:
+
+- `fol editor lsp`
+- `fol editor parse <PATH>`
+- `fol editor highlight <PATH>`
+- `fol editor symbols <PATH>`
+
+The frontend does not implement Tree-sitter parsing or LSP semantics itself. It
+parses the command, applies output policy, dispatches into `fol-editor`, and
+renders the result or error in human/plain/json.
+
+This keeps editor workflows under the same `fol` binary instead of introducing
+a second public tool.
+
 ## Build Artifacts
 
 Frontend commands report explicit artifact roots.
@@ -236,6 +260,7 @@ It already covers:
 - workspace dependency/status reporting
 - full `V1` build/run/test orchestration
 - emitted Rust and lowered IR output
+- editor-tooling entrypoints for parse, highlight, symbols, and LSP startup
 - shell completions
 - safe cleanup of build/cache/git/package-store roots
 - frontend-owned direct compile routing
