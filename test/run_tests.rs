@@ -3653,9 +3653,8 @@ mod integration_tests {
                 .expect("formal example package should be discoverable");
             assert_eq!(
                 discovered,
-                root.join("src")
-                    .canonicalize()
-                    .expect("example source root should canonicalize")
+                root.canonicalize()
+                    .expect("example package root should canonicalize")
             );
         }
     }

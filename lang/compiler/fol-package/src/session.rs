@@ -606,7 +606,7 @@ fn is_package_control_file(root: &Path, source: &Source) -> bool {
     }
     matches!(
         source_path.file_name().and_then(|name| name.to_str()),
-        Some("package.yaml") | Some("package.fol") | Some("build.fol")
+        Some("package.yaml") | Some("package.fol")
     )
 }
 
@@ -939,14 +939,22 @@ mod tests {
         assert_eq!(loaded.identity.source_kind, PackageSourceKind::Package);
         assert_eq!(loaded.identity.display_name, "json");
         assert_eq!(loaded.package_name(), "json");
-        assert_eq!(loaded.syntax.source_units.len(), 1);
+        assert_eq!(loaded.syntax.source_units.len(), 2);
         assert!(
             loaded
                 .syntax
                 .source_units
                 .iter()
-                .all(|unit| !unit.path.ends_with("package.yaml") && !unit.path.ends_with("build.fol")),
-            "Installed package source loading should exclude package control files from the parsed source set",
+                .all(|unit| !unit.path.ends_with("package.yaml") && !unit.path.ends_with("package.fol")),
+            "Installed package source loading should keep legacy control files out of the parsed source set",
+        );
+        assert!(
+            loaded
+                .syntax
+                .source_units
+                .iter()
+                .any(|unit| unit.path.ends_with("build.fol")),
+            "Installed package source loading should keep build.fol in the parsed source set",
         );
         assert_eq!(
             loaded
@@ -978,8 +986,8 @@ mod tests {
     }
 
     #[test]
-    fn parse_directory_package_syntax_excludes_control_files_for_pkg_roots() {
-        let temp_root = unique_temp_root("pkg_control_file_exclusion");
+    fn parse_directory_package_syntax_keeps_build_files_for_pkg_roots() {
+        let temp_root = unique_temp_root("pkg_build_file_inclusion");
         fs::create_dir_all(temp_root.join("json"))
             .expect("Should create a temporary package-store fixture");
         fs::write(temp_root.join("json/package.yaml"), "name: json\nversion: 1.0.0\n")
@@ -998,9 +1006,9 @@ mod tests {
             "json",
             PackageSourceKind::Package,
         )
-        .expect("Pkg source parsing should exclude control files and keep ordinary source files");
+        .expect("Pkg source parsing should keep build files and ordinary source files");
 
-        assert_eq!(parsed.source_units.len(), 1);
+        assert_eq!(parsed.source_units.len(), 2);
         assert!(
             parsed
                 .source_units
@@ -1008,9 +1016,15 @@ mod tests {
                 .all(|unit| {
                     !unit.path.ends_with("package.yaml")
                         && !unit.path.ends_with("package.fol")
-                        && !unit.path.ends_with("build.fol")
                 }),
-            "Pkg source parsing should keep package control files out of the parsed source set",
+            "Pkg source parsing should keep legacy package control files out of the parsed source set",
+        );
+        assert!(
+            parsed
+                .source_units
+                .iter()
+                .any(|unit| unit.path.ends_with("build.fol")),
+            "Pkg source parsing should retain build.fol in the parsed source set",
         );
 
         fs::remove_dir_all(&temp_root)
@@ -1018,8 +1032,8 @@ mod tests {
     }
 
     #[test]
-    fn parse_directory_package_syntax_rejects_pkg_roots_with_only_control_files() {
-        let temp_root = unique_temp_root("pkg_controls_only");
+    fn parse_directory_package_syntax_accepts_pkg_roots_with_only_build_files() {
+        let temp_root = unique_temp_root("pkg_build_only");
         fs::create_dir_all(temp_root.join("json"))
             .expect("Should create a temporary package-store fixture");
         fs::write(temp_root.join("json/package.yaml"), "name: json\nversion: 1.0.0\n")
@@ -1029,20 +1043,15 @@ mod tests {
         fs::write(temp_root.join("json/package.fol"), "var ignored: int = 1;\n")
             .expect("Should write the ignored legacy control fixture");
 
-        let error = parse_directory_package_syntax(
+        let parsed = parse_directory_package_syntax(
             temp_root.join("json").as_path(),
             "json",
             PackageSourceKind::Package,
         )
-        .expect_err("Pkg roots with only control files should fail after control-file exclusion");
+        .expect("Pkg roots with only build.fol should now parse");
 
-        assert_eq!(error.kind(), crate::PackageErrorKind::InvalidInput);
-        assert!(
-            error
-                .to_string()
-                .contains("no loadable source files after excluding package control files"),
-            "Pkg control-only roots should fail with an explicit exclusion diagnostic",
-        );
+        assert_eq!(parsed.source_units.len(), 1);
+        assert_eq!(parsed.source_units[0].path, "build.fol");
 
         fs::remove_dir_all(&temp_root)
             .expect("Temporary package-store fixture should be removable after the test");
