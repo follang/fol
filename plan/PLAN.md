@@ -1,410 +1,415 @@
-# FOL Editor Plan
+# FOL Editor Plan: Highlighting + Completion
 
 Last updated: 2026-03-17
 
-This plan replaces the closed frontend/package-workflow record.
+This plan replaces the closed first `fol-editor` milestone.
 
-The next milestone is a single editor-tooling crate:
+The next active milestone is narrower and more practical:
 
-- `fol-editor`
+- make FOL highlighting feel complete and language-aware
+- implement the first useful LSP completion pass
 
-That crate will own both:
+This is not a “general editor improvements” bucket. It is a focused follow-up on
+the now-working Tree-sitter + LSP base.
 
-- the Tree-sitter grammar and query assets for editor syntax/structure work
-- the language server implementation for diagnostics and navigation
+## Goal
 
-The frontend should expose that functionality under:
+At closeout, the editor experience should feel like a real language, not a thin
+syntax demo.
 
-- `fol editor ...`
+That means:
 
-The goal is not to create a second compiler. The goal is to expose the current
-compiler and package truth through editor-facing tooling.
+- the Tree-sitter highlight layer should visibly distinguish the important FOL
+  surfaces
+- `fol tool lsp` should provide real `textDocument/completion`
+- completion should be useful in ordinary coding, not just technically present
 
 ## Desired End State
 
-At closeout, the repo should support this workflow:
+After this plan, the repo should support:
 
 ```text
-fol editor lsp
-fol editor parse path/to/file.fol
-fol editor highlight path/to/file.fol
-fol editor symbols path/to/file.fol
+fol tool lsp
+fol tool parse path/to/file.fol
+fol tool highlight path/to/file.fol
+fol tool symbols path/to/file.fol
+fol tool tree generate /tmp/fol
 ```
 
-And editor integrations should have:
+And editors should have:
 
-- a working Tree-sitter grammar for current `V1`
-- highlight queries
-- basic locals/symbol extraction queries
-- an LSP server that can:
-  - initialize
-  - track open documents
-  - publish diagnostics
-  - answer hover
-  - answer go-to-definition
-  - answer document symbols
+- richer Tree-sitter highlighting for current `V1`
+- stable query coverage for declaration modifiers and language keywords
+- first-pass LSP completion for:
+  - local bindings
+  - routine params
+  - top-level declarations in the current package
+  - imported declarations
+  - type names
+  - method/routine names where already semantically visible
+  - dot intrinsics for supported `V1` surfaces
+
+## Non-Goals
+
+This plan does not include:
+
+- rename
+- references
+- semantic tokens
+- code actions
+- snippet expansion policy
+- formatter support
+- fuzzy ranking or AI-style completion
+- full context-aware completion for every future `V2`/`V3` language surface
+
+Those belong in later editor follow-up work.
 
 ## Boundary
 
-`fol-editor` should own:
+This milestone should touch:
 
-- Tree-sitter grammar files
-- Tree-sitter corpus tests
-- editor queries
-- LSP transport/runtime
-- open-document state
-- file-to-package/workspace mapping for editor requests
-- conversion between canonical `fol-diagnostics` reports and LSP diagnostics
-- navigation/symbol response assembly
+- `lang/tooling/fol-editor`
+- `lang/tooling/fol-frontend` only where command dispatch/output changes are
+  needed
+- Neovim-facing Tree-sitter bundle generation only if required for query
+  packaging
+- book/docs only after the feature work is stable
 
-It should not own:
+It should not change:
 
-- package metadata parsing
-- name resolution semantics
-- typechecking semantics
-- lowering semantics
+- compiler semantics unless a completion/highlight pass exposes a real bug
+- package model
 - backend behavior
 
-Those stay in:
+## Principles
 
-- `fol-diagnostics`
-- `fol-package`
-- `fol-resolver`
-- `fol-typecheck`
-- `fol-lower`
+### 1. Highlighting should reflect FOL, not generic C-ish defaults
 
-## Crate Shape
+FOL has visible language markers like:
 
-Use one crate:
+- `fun[exp]`
+- `fun[par]`
+- `fun[rec]`
+- `log[...]`
+- `typ[...]`
+- `ali[...]`
+- shells like `nil`
+- effect-ish surfaces like `report`, `check`, `panic`
+- package/import kinds like `loc`, `pkg`, `std`
 
-- `fol-editor`
+Those should be represented intentionally in the query layer.
 
-Internal module split:
+### 2. Completion should come from semantic truth
 
-- `tree_sitter`
-- `queries`
-- `documents`
-- `workspace`
-- `lsp`
-- `convert`
+Completion should not be built from regexes or Tree-sitter-only guesses where
+compiler truth is available.
 
-The Tree-sitter side and LSP side live together, but remain internally
-separated.
+Preferred sources:
 
-## Frontend Surface
+- typed/resolved workspace state
+- current document overlay state
+- explicit intrinsic tables
 
-Add an `editor` command family to `fol-frontend`.
+### 3. Ship useful completion before clever completion
 
-Initial public commands:
+First pass should prefer:
 
-- `fol editor lsp`
-- `fol editor parse <PATH>`
-- `fol editor highlight <PATH>`
-- `fol editor symbols <PATH>`
+- predictable
+- stable
+- easy to test
 
-The frontend remains orchestration-only:
+over:
 
-- parse command
-- discover package/workspace roots if needed
-- call `fol-editor`
-- render output in human/plain/json
+- fuzzy ranking
+- edit-distance matching
+- complicated insert text transformations
 
-## Tree-sitter Scope
+## Highlighting Scope
 
-The Tree-sitter grammar should cover the current implemented language boundary,
-not future-doc syntax.
+The highlight pass should cover the current `V1` syntax more deeply than the
+first milestone.
 
-Target `V1` syntax:
+Target improvements:
 
-- top-level declarations:
-  - `use`
-  - `var`
+- declaration heads and head modifiers:
   - `fun`
   - `log`
   - `typ`
   - `ali`
-- records and entries
-- routines and methods
-- block expressions
-- `when`
-- `loop`
-- `return`
-- `report`
-- `break`
-- typed container literals
-- shell literals like `nil`
-- postfix `!`
-- qualified paths
-- dot intrinsics
-- comments/doc comments
+  - `var`
+  - `use`
+- bracketed declaration modes:
+  - `[exp]`
+  - `[par]`
+  - other currently surfaced markers that exist in the real parser/grammar
+- import source kinds:
+  - `loc`
+  - `pkg`
+  - `std`
+- control/effect keywords:
+  - `when`
+  - `loop`
+  - `return`
+  - `break`
+  - `report`
+  - `check`
+  - `panic`
+  - `unreachable`
+- declaration names by role:
+  - routines
+  - logs
+  - aliases
+  - records
+  - entries
+  - variants
+  - bindings
+- typed-binding punctuation and shells:
+  - type annotations
+  - `/`
+  - `!`
+  - `nil`
+- intrinsic-like dotted names:
+  - `.len`
+  - `.echo`
+  - comparison/bool/query intrinsics already supported in `V1`
 
-Do not try to encode typechecking or resolution into the grammar.
+The goal is not “more colors” by itself. The goal is that important syntactic
+roles are visually distinguishable.
 
-## Query Scope
+## Completion Scope
 
-Initial query files should support:
+The first completion pass should support these contexts:
 
-- highlights
-- injections if needed later
-- document symbols
-- locals/definitions references for editor structure
+### Plain identifier completion
 
-The initial required query set is:
+When completing in an identifier position, offer:
 
-- `highlights.scm`
-- `locals.scm`
-- `symbols.scm`
+- local bindings
+- routine params
+- top-level values/routines/types in the current package
+- imported symbols that are visible in the current scope
 
-These query assets should live as real `.scm` files on disk, not only as Rust
-string literals.
+### Qualified completion
 
-That matters because editor integrations such as Neovim Tree-sitter expect
-filesystem query assets in the usual Tree-sitter layout.
+When completing after a namespace/package qualifier, offer:
 
-`fol-editor` may also embed those files with `include_str!(...)` for internal
-CLI/LSP use if convenient, but the canonical source should remain the on-disk
-query files.
+- visible declarations exported by that namespace/package
 
-The intended layout is:
+### Type-position completion
 
-- Tree-sitter grammar source files
-- `queries/fol/highlights.scm`
-- `queries/fol/locals.scm`
-- `queries/fol/symbols.scm`
+When completing in a declared type position, offer:
 
-## LSP Scope
+- builtin types
+- visible named record/entry/alias types
+- imported type declarations
 
-The first LSP milestone should be practical, not maximal.
+### Dot completion
 
-Required first features:
+When completing after `.`, offer:
 
-- `initialize`
-- `initialized`
-- `shutdown`
-- `exit`
-- `textDocument/didOpen`
-- `textDocument/didChange`
-- `textDocument/didClose`
-- `textDocument/hover`
-- `textDocument/definition`
-- `textDocument/documentSymbol`
-- `textDocument/publishDiagnostics`
+- supported intrinsics for the receiver family, when type information is known
+- otherwise, a conservative fallback of current `V1` intrinsic names if the
+  receiver family cannot yet be derived safely
 
-The LSP should begin with full-document reanalysis, not deep incremental
-semantic invalidation.
+### Trigger behavior
 
-The intended public server entrypoint is:
+First pass triggers should be minimal and explicit:
 
-- `fol editor lsp`
+- ordinary completion request
+- `.` trigger for intrinsic/member-like completion
+- `:` or `/` should not gain completion unless that falls out naturally and
+  stays correct
 
-Editor integrations should launch the language server through the `fol`
-frontend instead of a second standalone binary.
+## Completion Output Contract
 
-## Analysis Model
+The LSP should advertise a real completion provider.
 
-The LSP should reuse compiler truth:
+First completion items should include:
 
-1. map file path to package/workspace root
-2. load the current package/workspace view
-3. replace the in-memory text for the active file
-4. run parse/package/resolve/typecheck as needed
-5. convert canonical `fol-diagnostics` reports and semantic results into LSP structures
+- `label`
+- `kind`
+- `detail`
+- simple `insertText` or plain replacement text
 
-Do not build a separate semantic analyzer in `fol-editor`.
+Do not overcomplicate the first pass with:
 
-`fol-diagnostics` is the canonical compiler diagnostic model.
+- snippets everywhere
+- documentation resolution requests
+- command-based follow-up actions
 
-So:
+Useful `kind` mapping matters:
 
-- CLI compiler diagnostics
-- future LSP diagnostics
+- variable/local
+- function/routine
+- method
+- module/namespace
+- type/class/struct-ish mapping for record/entry/alias surfaces
+- keyword
 
-should both derive from the same `fol-diagnostics` report shapes instead of
-inventing separate compiler-diagnostic models.
+## Testing Rules
 
-## Tree-sitter Vs Compiler Parser
+Every feature/fix commit in this milestone should include its relevant test.
 
-The Tree-sitter grammar is for editors.
+Required test layers:
 
-The compiler parser remains the source of compiler truth.
-
-So:
-
-- Tree-sitter should be editor-correct and stable
-- compiler parser should remain semantic/canonical for compilation
-
-The two should be tested against the same fixture corpus where practical, but
-they do not need to share an AST model.
-
-## Editor Integration Model
-
-The first editor integration target should be Neovim, but the layout should be
-generic enough for other editors.
-
-The split is:
-
-- Tree-sitter handles syntax trees, highlights, locals, and symbol-style
-  structure queries
-- LSP handles compiler-backed diagnostics, hover, definition, and document
-  symbols
-
-So the expected editor shape is:
-
-1. editor opens a `.fol` file
-2. Tree-sitter parses the file and applies the `.scm` queries
-3. the editor starts `fol editor lsp`
-4. the LSP uses compiler crates plus `fol-diagnostics` for semantic truth
-
-This keeps:
-
-- Tree-sitter as the editor syntax layer
-- `fol-diagnostics` as the canonical compiler-diagnostic model
-- `fol-package` / `fol-resolver` / `fol-typecheck` as semantic truth
-
-Do not design the query layer only for Rust-side consumption. It must be laid
-out so editors can consume the grammar and queries directly.
-
-## Test Strategy
-
-The milestone should be proven with:
-
-- Tree-sitter corpus tests
 - query snapshot tests
-- LSP request/response tests
-- real fixture files from `examples/` and `test/apps/fixtures/`
-- frontend integration tests for `fol editor ...`
+- `fol tool highlight` output tests
+- `fol tool symbols` stability where query changes affect symbol capture
+- LSP request/response tests for completion
+- root integration tests where frontend command behavior changes
 
-The minimum real fixture sources should include:
+Completion tests should cover:
 
-- single-file package
-- multi-file package
-- nested namespaces
-- `loc` import package
-- records, entries, aliases, methods
-- recoverable routines
-- containers and intrinsics
+- local bindings
+- params
+- imported names
+- type-position candidates
+- dot completion
+- no bogus suggestions from unrelated files
+
+## Fixture Policy
+
+Use real checked-in `.fol` fixtures where possible.
+
+Prefer:
+
+- `test/apps/fixtures/...`
+- `test/apps/showcases/...`
+- `xtra/logtiny`
+
+over tiny synthetic one-liners, unless a one-liner is the clearest regression.
 
 ## Phases
 
-### Phase 0: Freeze Scope
+### Phase 0: Freeze boundary and baseline
 
-- `0.1` complete: replaced the closed frontend plan with the `fol-editor` plan
-- `0.2` complete: froze the one-crate boundary for Tree-sitter plus LSP
-- `0.3` complete: froze the frontend command surface under `fol editor`
-- `0.4` complete: froze the “compiler truth, editor adapter” architecture
+- `0.1` replace the old editor-closeout plan with this focused highlight +
+  completion plan
+- `0.2` document the exact current highlight and completion gaps before changes
+- `0.3` add a small acceptance checklist for Neovim-facing verification
 
-### Phase 1: Crate Foundation
+### Phase 1: Highlight query audit
 
-- `1.1` complete: added the `fol-editor` workspace crate
-- `1.2` complete: added the public crate API shell
-- `1.3` complete: added structured editor-tooling error types
-- `1.4` complete: added shared document URI/path helpers
-- `1.5` complete: added a document store model
-- `1.6` complete: added editor config/session shells
+- `1.1` audit current `highlights.scm` against current `V1` grammar node shapes
+- `1.2` remove any remaining impossible or overly generic patterns
+- `1.3` lock query validity against the generated parser bundle path
+- `1.4` add tests that fail when highlight queries reference non-existent nodes
 
-### Phase 2: Tree-sitter Grammar Foundation
+### Phase 2: Declaration and modifier highlighting
 
-- `2.1` complete: added the Tree-sitter grammar scaffold
-- `2.2` complete: added base lexical tokens
-- `2.3` complete: added declaration parsing rules
-- `2.4` complete: added routine/type/body parsing rules
-- `2.5` complete: added expression and control-flow parsing rules
-- `2.6` complete: added comments and doc-comment handling
-- `2.7` complete: added error-recovery rules suitable for editors
-- `2.8` complete: added corpus smoke tests
+- `2.1` highlight declaration heads distinctly: `fun`, `log`, `typ`, `ali`,
+  `var`, `use`
+- `2.2` highlight declaration modifiers in bracket forms like `[exp]`, `[par]`,
+  and other real surfaced markers
+- `2.3` highlight declaration names by role: function/log/type/alias/binding
+- `2.4` add highlight snapshots for declaration-heavy real fixtures
 
-### Phase 3: Tree-sitter V1 Coverage
+### Phase 3: Keyword and import-kind highlighting
 
-- `3.1` complete: covered `use` declarations and source kinds
-- `3.2` complete: covered variables and typed bindings
-- `3.3` complete: covered functions, logicals, and methods
-- `3.4` complete: covered records, entries, and aliases
-- `3.5` complete: covered `when`, `loop`, `return`, `report`, and `break`
-- `3.6` complete: covered qualified paths and dot intrinsics
-- `3.7` complete: covered containers, shells, `nil`, and postfix `!`
-- `3.8` complete: added corpus fixtures from real `V1` examples
+- `3.1` highlight control/effect keywords consistently
+- `3.2` highlight import source-kind markers: `loc`, `pkg`, `std`
+- `3.3` highlight shell-related keywords/literals including `nil`
+- `3.4` lock real-fixture snapshots for keyword/import-heavy files
 
-### Phase 4: Query Layer
+### Phase 4: Type and intrinsic highlighting
 
-- `4.1` complete: added `highlights.scm`
-- `4.2` complete: highlighted declarations, types, keywords, and literals
-- `4.3` complete: highlighted intrinsics and qualified paths
-- `4.4` complete: added `locals.scm`
-- `4.5` complete: added `symbols.scm`
-- `4.6` complete: kept query assets in editor-consumable on-disk layout
-- `4.7` complete: snapshot query captures on real fixtures
+- `4.1` highlight builtin types and named type references more clearly
+- `4.2` highlight typed-binding/type-annotation surfaces distinctly
+- `4.3` highlight dotted intrinsic names like `.len`, `.echo`, comparisons, and
+  boolean/query intrinsics
+- `4.4` add snapshots for container/shell/intrinsic-heavy fixtures
 
-### Phase 5: Frontend Editor Commands
+### Phase 5: Highlight command and bundle hardening
 
-- `5.1` complete: added `editor` command family to `fol-frontend`
-- `5.2` complete: added `fol editor lsp`
-- `5.3` complete: added `fol editor parse`
-- `5.4` complete: added `fol editor highlight`
-- `5.5` complete: added `fol editor symbols`
-- `5.6` complete: added human/plain/json output for editor subcommands
-- `5.7` complete: kept `fol editor lsp` as the canonical public LSP entrypoint
-- `5.8` complete: added frontend integration tests for editor commands
+- `5.1` make `fol tool highlight` output more inspection-friendly for query work
+- `5.2` ensure `fol tool tree generate` always exports the latest query set
+- `5.3` add regression coverage so generated bundles contain the current query
+  files exactly
+- `5.4` verify the generated bundle remains Neovim-consumable
 
-### Phase 6: LSP Foundation
+### Phase 6: Completion protocol foundation
 
-- `6.1` complete: added LSP transport/session shell
-- `6.2` complete: added JSON-RPC message models
-- `6.3` complete: added initialize/shutdown/exit handling
-- `6.4` complete: added text document open/change/close tracking
-- `6.5` complete: added workspace root mapping from open files
-- `6.6` complete: added server smoke tests
+- `6.1` add `textDocument/completion` request handling to the LSP server
+- `6.2` advertise a real completion provider from `initialize`
+- `6.3` define the internal completion item model in `fol-editor`
+- `6.4` add focused stdio/request tests for completion request/response framing
 
-### Phase 7: Diagnostics
+### Phase 7: Scope and symbol completion
 
-- `7.1` complete: mapped open documents into compiler package/workspace analysis
-- `7.2` complete: published parser diagnostics from `fol-diagnostics`
-- `7.3` complete: published package/loading diagnostics from `fol-diagnostics`
-- `7.4` complete: published resolver diagnostics from `fol-diagnostics`
-- `7.5` complete: published typecheck diagnostics from `fol-diagnostics`
-- `7.6` complete: converted `fol-diagnostics` locations and related labels into LSP ranges
-- `7.7` complete: added diagnostics integration tests on real fixtures
+- `7.1` return local binding completions
+- `7.2` return routine parameter completions
+- `7.3` return current-package top-level declaration completions
+- `7.4` return imported visible declaration completions
+- `7.5` filter duplicate/irrelevant candidates deterministically
+- `7.6` lock tests for local/imported symbol completion
 
-### Phase 8: Hover And Definition
+### Phase 8: Type-position completion
 
-- `8.1` complete: added hover request handling
-- `8.2` complete: exposed symbol/type summary text for hover
-- `8.3` complete: added go-to-definition for local declarations
-- `8.4` complete: added go-to-definition for imported symbols
-- `8.5` complete: added integration tests for hover/definition
+- `8.1` detect ordinary declared-type completion contexts
+- `8.2` offer builtin type completions in type positions
+- `8.3` offer visible named type completions in type positions
+- `8.4` add tests for record/entry/alias/builtin type completion
 
-### Phase 9: Symbols
+### Phase 9: Qualified and namespace completion
 
-- `9.1` complete: added document-symbol extraction via compiler/tree-sitter data
-- `9.2` complete: included routines, types, bindings, and namespaces
-- `9.3` complete: kept symbol hierarchy stable for nested items
-- `9.4` complete: added integration tests for document symbols
+- `9.1` detect qualified path completion contexts
+- `9.2` offer namespace/package members after qualification
+- `9.3` keep package-local and imported namespace completion separated clearly
+- `9.4` add tests for `loc` and same-package namespace completion
 
-### Phase 10: Hardening
+### Phase 10: Dot completion
 
-- `10.1` complete: added editor-facing guidance for workspace-not-found situations
-- `10.2` complete: added editor-facing guidance for unsupported future-version syntax
-- `10.3` complete: added stable JSON error shapes for CLI editor subcommands
-- `10.4` complete: added deterministic fixture snapshots for parse/highlight/symbol output
-- `10.5` complete: locked real examples through tree-sitter and LSP test paths
+- `10.1` detect `.` completion trigger contexts
+- `10.2` map typed receiver families to supported `V1` intrinsics
+- `10.3` return conservative fallback intrinsic suggestions when typing context
+  is incomplete but still safe
+- `10.4` add tests for `.len`, `.echo`, comparison, and boolean/query completion
 
-### Phase 11: Docs Closeout
+### Phase 11: Ranking, filtering, and response shaping
 
-- `11.1` complete: updated the frontend book chapter with `fol editor ...`
-- `11.2` complete: added a dedicated book entry for editor tooling
-- `11.3` complete: updated `README.md`
-- `11.4` complete: updated `PROGRESS.md`
-- `11.5` complete: closed the plan after Tree-sitter, queries, LSP basics, and frontend exposure became real
+- `11.1` choose stable completion item kinds/details for FOL symbols
+- `11.2` return deterministic ordering for repeated requests
+- `11.3` avoid noisy suggestions from unrelated packages/files
+- `11.4` add plain tests locking item labels/kinds/order
 
-## Definition Of Done
+### Phase 12: Frontend and tool command coverage
 
-Do not close this plan until all of this is true:
+- `12.1` keep `fol tool lsp` compatible with the new completion capability
+- `12.2` extend frontend/editor tests if command summaries or help output shift
+- `12.3` ensure `fol tool parse/highlight/symbols` remain stable while query
+  work lands
 
-- `fol-editor` exists as a workspace crate
-- Tree-sitter grammar covers the current implemented `V1` syntax
-- highlight/local/symbol queries exist and are tested
-- `fol editor lsp` runs
-- the LSP can publish diagnostics for open files
-- hover and go-to-definition work for the initial supported cases
-- document symbols work
-- `fol editor parse/highlight/symbols` work through `fol-frontend`
-- docs describe the implemented editor workflow accurately
+### Phase 13: Real-editor hardening
+
+- `13.1` test the full Neovim path against the generated Tree-sitter bundle
+- `13.2` test real LSP diagnostics + completion on checked-in package fixtures
+- `13.3` fix any remaining overlay/root/filtering bugs exposed by editor use
+- `13.4` keep each discovered bug as a permanent regression test
+
+### Phase 14: Docs closeout
+
+- `14.1` update `book` docs for richer highlighting and first completion support
+- `14.2` update repo status docs if the public editor surface changed
+- `14.3` turn this file into a completion record once the milestone is finished
+
+## Acceptance Checklist
+
+This plan is only done when all of these are true:
+
+- `fol tool highlight <PATH>` visibly reports the richer highlight captures
+- generated Tree-sitter bundles contain the latest `.scm` queries
+- Neovim Tree-sitter highlighting covers declaration modifiers and intrinsic
+  surfaces better than the previous milestone
+- `fol tool lsp` advertises completion support
+- completion returns useful candidates for locals, imports, types, and dot
+  intrinsics
+- diagnostics still stay file-correct while completion is enabled
+- `make build` passes
+- `make test` passes
+
+## Progress
+
+Current milestone state:
+
+- `0 / 49` slices complete
+- `0%`
