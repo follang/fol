@@ -152,6 +152,7 @@ dependencies = [
  "dyn-clone",
  "fol-backend",
  "fol-diagnostics",
+ "fol-editor",
  "fol-frontend",
  "fol-intrinsics",
  "fol-lexer",
@@ -188,6 +189,10 @@ dependencies = [
  "serde",
  "serde_json",
 ]
+
+[[package]]
+name = "fol-editor"
+version = "0.1.0"
 
 [[package]]
 name = "fol-frontend"
