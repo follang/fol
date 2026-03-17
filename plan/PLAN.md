@@ -274,7 +274,7 @@ Round 1 slice tracker:
 
 - [x] Slice 1. Add a concrete Phase 2 implementation tracker with completion
   rules.
-- [ ] Slice 2. Add parsed source-unit kind metadata that distinguishes build
+- [x] Slice 2. Add parsed source-unit kind metadata that distinguishes build
   units from ordinary units.
 - [ ] Slice 3. Add prepared-package helpers for build source units.
 - [ ] Slice 4. Load `build.fol` into prepared formal-package syntax instead of

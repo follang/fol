@@ -63,7 +63,24 @@ pub struct ParsedSourceUnit {
     pub path: String,
     pub package: String,
     pub namespace: String,
+    pub kind: ParsedSourceUnitKind,
     pub items: Vec<ParsedTopLevel>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ParsedSourceUnitKind {
+    Ordinary,
+    Build,
+}
+
+impl ParsedSourceUnitKind {
+    pub fn from_path(path: &str) -> Self {
+        if path == "build.fol" || path.ends_with("/build.fol") {
+            Self::Build
+        } else {
+            Self::Ordinary
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -119,6 +136,7 @@ impl ParsedPackage {
                 path: source.path.clone(),
                 package: source.package.clone(),
                 namespace: source.namespace.clone(),
+                kind: ParsedSourceUnitKind::from_path(&source.path),
                 items: Vec::new(),
             })
             .collect::<Vec<_>>();
@@ -152,6 +170,21 @@ impl ParsedPackage {
             source_units,
             syntax_index,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ParsedSourceUnitKind;
+
+    #[test]
+    fn parsed_source_unit_kind_distinguishes_build_paths() {
+        assert_eq!(ParsedSourceUnitKind::from_path("src/main.fol"), ParsedSourceUnitKind::Ordinary);
+        assert_eq!(ParsedSourceUnitKind::from_path("build.fol"), ParsedSourceUnitKind::Build);
+        assert_eq!(
+            ParsedSourceUnitKind::from_path("/tmp/pkg/build.fol"),
+            ParsedSourceUnitKind::Build
+        );
     }
 }
 
