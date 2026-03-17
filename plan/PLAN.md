@@ -912,7 +912,7 @@ Each slice must land green with `make build` and `make test` before commit.
 4. `[complete]` Add dependency-provided artifact, step, and generated-output surface records.
 5. `[complete]` Add dependency build-handle and dependency-surface collection types.
 6. `[complete]` Add export-to-dependency bridge helpers that project prepared export mounts into dependency module surfaces.
-7. `[pending]` Add dependency build-evaluation mode enums for eager, lazy, and on-demand surface loading.
+7. `[complete]` Add dependency build-evaluation mode enums for eager, lazy, and on-demand surface loading.
 8. `[pending]` Extend dependency requests/handles in the draft build API to carry declared build-surface collections.
 9. `[pending]` Extend prepared-package modeling to retain optional dependency build-surface exports alongside compatibility exports.
 10. `[pending]` Re-export the draft dependency build-surface model from `fol-package`.

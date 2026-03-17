@@ -14,6 +14,23 @@ pub struct DependencyBuildHandle {
     pub package: String,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DependencyBuildEvaluationMode {
+    Eager,
+    Lazy,
+    OnDemand,
+}
+
+impl DependencyBuildEvaluationMode {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Eager => "eager",
+            Self::Lazy => "lazy",
+            Self::OnDemand => "on-demand",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct DependencyModuleSurfaceSet {
     pub modules: Vec<DependencyModuleSurface>,
@@ -105,7 +122,7 @@ mod tests {
     use super::{
         dependency_modules_from_exports, DependencyArtifactSurface,
         DependencyArtifactSurfaceSet, DependencyBuildHandle, DependencyBuildSurface,
-        DependencyBuildSurfaceSet, DependencyGeneratedOutputSurface,
+        DependencyBuildEvaluationMode, DependencyBuildSurfaceSet, DependencyGeneratedOutputSurface,
         DependencyGeneratedOutputSurfaceSet, DependencyModuleSurface, DependencyModuleSurfaceSet,
         DependencySourceRootSurface, DependencyStepSurface, DependencyStepSurfaceSet,
     };
@@ -163,6 +180,13 @@ mod tests {
 
         assert_eq!(handle.alias, "logtiny");
         assert_eq!(handle.package, "org/logtiny");
+    }
+
+    #[test]
+    fn dependency_build_evaluation_modes_cover_phase_eight_loading_strategies() {
+        assert_eq!(DependencyBuildEvaluationMode::Eager.as_str(), "eager");
+        assert_eq!(DependencyBuildEvaluationMode::Lazy.as_str(), "lazy");
+        assert_eq!(DependencyBuildEvaluationMode::OnDemand.as_str(), "on-demand");
     }
 
     #[test]
