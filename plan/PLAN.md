@@ -865,7 +865,7 @@ Each slice must land green with `make build` and `make test` before commit.
 5. `[complete]` Add target/optimize/native-artifact attachment fields to artifact definitions.
 6. `[complete]` Add artifact output/reporting model types for emitted crates, binaries, generated bundles, and docs bundles.
 7. `[complete]` Add compiler-pipeline plan records that connect package, resolver, typecheck, lower, and backend stages to one artifact definition.
-8. `[pending]` Add graph-to-artifact projection helpers for executable/library/test artifact nodes.
+8. `[complete]` Add graph-to-artifact projection helpers for executable/library/test artifact nodes.
 9. `[pending]` Add artifact-report summary helpers that preserve frontend-facing output strings and paths.
 10. `[pending]` Re-export the draft artifact-model surface from `fol-package`.
 

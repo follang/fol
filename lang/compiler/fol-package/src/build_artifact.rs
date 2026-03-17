@@ -68,6 +68,56 @@ pub enum BuildArtifactPipelineStage {
     Backend,
 }
 
+pub fn project_graph_artifacts(graph: &BuildGraph) -> Vec<BuildArtifactDefinition> {
+    graph.artifacts()
+        .iter()
+        .map(|artifact| BuildArtifactDefinition {
+            name: artifact.name.clone(),
+            kind: match artifact.kind {
+                BuildArtifactKind::Executable => BuildArtifactModelKind::Executable,
+                BuildArtifactKind::StaticLibrary => BuildArtifactModelKind::StaticLibrary,
+                BuildArtifactKind::SharedLibrary => BuildArtifactModelKind::SharedLibrary,
+                BuildArtifactKind::Object => BuildArtifactModelKind::TestBundle,
+            },
+            root_source: BuildArtifactRootSource {
+                path: graph
+                    .artifact_inputs_for(artifact.id)
+                    .find_map(|input| match input {
+                        crate::build_graph::BuildArtifactInput::Module(module_id) => {
+                            graph.modules().get(module_id.index()).map(|module| module.name.clone())
+                        }
+                        crate::build_graph::BuildArtifactInput::GeneratedFile(_) => None,
+                    })
+                    .unwrap_or_default(),
+            },
+            modules: BuildArtifactModuleConfig {
+                roots: graph
+                    .artifact_inputs_for(artifact.id)
+                    .filter_map(|input| match input {
+                        crate::build_graph::BuildArtifactInput::Module(module_id) => {
+                            graph.modules().get(module_id.index()).map(|module| module.name.clone())
+                        }
+                        crate::build_graph::BuildArtifactInput::GeneratedFile(_) => None,
+                    })
+                    .collect(),
+            },
+            output_name: artifact.name.clone(),
+            linkage: match artifact.kind {
+                BuildArtifactKind::Executable => BuildArtifactLinkage::Executable,
+                BuildArtifactKind::StaticLibrary => BuildArtifactLinkage::Static,
+                BuildArtifactKind::SharedLibrary | BuildArtifactKind::Object => {
+                    BuildArtifactLinkage::Shared
+                }
+            },
+            target: BuildArtifactTargetConfig {
+                target: None,
+                optimize: None,
+            },
+            native_artifacts: Vec::new(),
+        })
+        .collect()
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BuildArtifactDefinition {
     pub name: String,
@@ -102,12 +152,14 @@ impl BuildArtifactSet {
 #[cfg(test)]
 mod tests {
     use super::{
-        BuildArtifactDefinition, BuildArtifactLinkage, BuildArtifactModelKind,
+        project_graph_artifacts, BuildArtifactDefinition, BuildArtifactLinkage,
+        BuildArtifactModelKind,
         BuildArtifactModuleConfig, BuildArtifactOutput, BuildArtifactReport,
         BuildArtifactPipelinePlan, BuildArtifactPipelineStage, BuildArtifactRootSource,
         BuildArtifactSet,
         BuildArtifactTargetConfig,
     };
+    use crate::build_graph::{BuildArtifactKind, BuildGraph, BuildModuleKind};
 
     #[test]
     fn build_artifact_set_starts_empty() {
@@ -254,4 +306,23 @@ mod tests {
         assert_eq!(plan.stages[0], BuildArtifactPipelineStage::Package);
         assert_eq!(plan.stages[4], BuildArtifactPipelineStage::Backend);
     }
+
+    #[test]
+    fn graph_artifact_projection_maps_build_graph_nodes_into_artifact_definitions() {
+        let mut graph = BuildGraph::new();
+        let main = graph.add_module(BuildModuleKind::Source, "src/main.fol");
+        let exe = graph.add_artifact(BuildArtifactKind::Executable, "app");
+        let lib = graph.add_artifact(BuildArtifactKind::StaticLibrary, "support");
+        graph.add_artifact_module_input(exe, main);
+        graph.add_artifact_module_input(lib, main);
+
+        let projected = project_graph_artifacts(&graph);
+
+        assert_eq!(projected.len(), 2);
+        assert_eq!(projected[0].kind, BuildArtifactModelKind::Executable);
+        assert_eq!(projected[0].root_source.path, "src/main.fol");
+        assert_eq!(projected[1].kind, BuildArtifactModelKind::StaticLibrary);
+        assert_eq!(projected[1].modules.roots, vec!["src/main.fol".to_string()]);
+    }
 }
+use crate::build_graph::{BuildArtifactKind, BuildGraph};
