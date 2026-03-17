@@ -59,6 +59,12 @@ impl BuildStepDefinition {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum BuildStepPlanError {
+    UnknownStep(BuildStepId),
+    DependencyCycle(BuildStepId),
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct BuildStepExecutionRequest {
     pub requested_step: String,
@@ -77,12 +83,62 @@ impl BuildStepExecutionResult {
     }
 }
 
+pub fn plan_step_order(
+    graph: &BuildGraph,
+    requested_step: BuildStepId,
+) -> Result<Vec<BuildStepId>, BuildStepPlanError> {
+    if requested_step.index() >= graph.steps().len() {
+        return Err(BuildStepPlanError::UnknownStep(requested_step));
+    }
+
+    let mut visiting = vec![false; graph.steps().len()];
+    let mut visited = vec![false; graph.steps().len()];
+    let mut order = Vec::new();
+    visit_step_order(
+        graph,
+        requested_step,
+        &mut visiting,
+        &mut visited,
+        &mut order,
+    )?;
+    Ok(order)
+}
+
+fn visit_step_order(
+    graph: &BuildGraph,
+    step: BuildStepId,
+    visiting: &mut [bool],
+    visited: &mut [bool],
+    order: &mut Vec<BuildStepId>,
+) -> Result<(), BuildStepPlanError> {
+    let index = step.index();
+    if index >= graph.steps().len() {
+        return Err(BuildStepPlanError::UnknownStep(step));
+    }
+    if visited[index] {
+        return Ok(());
+    }
+    if visiting[index] {
+        return Err(BuildStepPlanError::DependencyCycle(step));
+    }
+
+    visiting[index] = true;
+    for dependency in graph.step_dependencies_for(step) {
+        visit_step_order(graph, dependency, visiting, visited, order)?;
+    }
+    visiting[index] = false;
+    visited[index] = true;
+    order.push(step);
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        BuildDefaultStepKind, BuildRequestedStep, BuildStepDefinition, BuildStepExecutionRequest,
-        BuildStepExecutionResult,
+        plan_step_order, BuildDefaultStepKind, BuildRequestedStep, BuildStepDefinition,
+        BuildStepExecutionRequest, BuildStepExecutionResult, BuildStepPlanError,
     };
+    use crate::build_graph::{BuildGraph, BuildStepId, BuildStepKind};
 
     #[test]
     fn build_default_step_kind_covers_phase_six_defaults() {
@@ -132,4 +188,41 @@ mod tests {
 
         assert_eq!(result.requested_step, "build");
     }
+
+    #[test]
+    fn step_order_planning_runs_dependencies_before_requested_step() {
+        let mut graph = BuildGraph::new();
+        let build = graph.add_step(BuildStepKind::Default, "build");
+        let generate = graph.add_step(BuildStepKind::CustomCommand, "generate");
+        let check = graph.add_step(BuildStepKind::Check, "check");
+        graph.add_step_dependency(build, generate);
+        graph.add_step_dependency(build, check);
+
+        let order = plan_step_order(&graph, build).expect("build order should plan");
+
+        assert_eq!(order, vec![generate, check, build]);
+    }
+
+    #[test]
+    fn step_order_planning_reports_unknown_requested_steps() {
+        let graph = BuildGraph::new();
+
+        let error = plan_step_order(&graph, BuildStepId::from_index(0)).unwrap_err();
+
+        assert_eq!(error, BuildStepPlanError::UnknownStep(BuildStepId::from_index(0)));
+    }
+
+    #[test]
+    fn step_order_planning_reports_dependency_cycles() {
+        let mut graph = BuildGraph::new();
+        let build = graph.add_step(BuildStepKind::Default, "build");
+        let check = graph.add_step(BuildStepKind::Check, "check");
+        graph.add_step_dependency(build, check);
+        graph.add_step_dependency(check, build);
+
+        let error = plan_step_order(&graph, build).unwrap_err();
+
+        assert_eq!(error, BuildStepPlanError::DependencyCycle(build));
+    }
 }
+use crate::build_graph::{BuildGraph, BuildStepId};
