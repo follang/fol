@@ -4,6 +4,8 @@ use crate::{
     SharedLibraryRequest, StandardOptimizeRequest, StandardTargetRequest, StaticLibraryRequest,
     TestArtifactRequest, UserOptionRequest,
 };
+use crate::build_api::{CopyFileRequest, WriteFileRequest};
+use crate::build_codegen::{CodegenRequest, SystemToolRequest};
 use crate::build_option::{
     BuildOptionDeclaration, BuildOptionDeclarationSet, BuildOptimizeMode, BuildTargetTriple,
     ResolvedBuildOptionSet, StandardOptimizeDeclaration, StandardTargetDeclaration,
@@ -216,6 +218,10 @@ pub enum BuildEvaluationOperationKind {
     InstallArtifact(BuildEvaluationInstallArtifactRequest),
     InstallFile(InstallFileRequest),
     InstallDir(InstallDirRequest),
+    WriteFile(WriteFileRequest),
+    CopyFile(CopyFileRequest),
+    SystemTool(SystemToolRequest),
+    Codegen(CodegenRequest),
     Dependency(DependencyRequest),
     Unsupported {
         label: String,
@@ -416,6 +422,22 @@ pub fn evaluate_build_plan(
                 api.install_dir(operation_request.clone())
                     .map_err(|error| evaluation_api_error(error, operation.origin.clone()))?;
             }
+            BuildEvaluationOperationKind::WriteFile(operation_request) => {
+                api.write_file(operation_request.clone())
+                    .map_err(|error| evaluation_api_error(error, operation.origin.clone()))?;
+            }
+            BuildEvaluationOperationKind::CopyFile(operation_request) => {
+                api.copy_file(operation_request.clone())
+                    .map_err(|error| evaluation_api_error(error, operation.origin.clone()))?;
+            }
+            BuildEvaluationOperationKind::SystemTool(operation_request) => {
+                api.add_system_tool(operation_request.clone())
+                    .map_err(|error| evaluation_api_error(error, operation.origin.clone()))?;
+            }
+            BuildEvaluationOperationKind::Codegen(operation_request) => {
+                api.add_codegen(operation_request.clone())
+                    .map_err(|error| evaluation_api_error(error, operation.origin.clone()))?;
+            }
             BuildEvaluationOperationKind::Dependency(operation_request) => {
                 api.dependency(operation_request.clone())
                     .map_err(|error| evaluation_api_error(error, operation.origin.clone()))?;
@@ -487,7 +509,10 @@ mod tests {
     };
     use crate::build_option::{BuildOptimizeMode, BuildOptionDeclaration, BuildTargetTriple};
     use crate::build_graph::BuildGraph;
-    use crate::{ExecutableRequest, StandardOptimizeRequest, StandardTargetRequest, UserOptionRequest};
+    use crate::{
+        CodegenKind, CodegenRequest, CopyFileRequest, ExecutableRequest, StandardOptimizeRequest,
+        StandardTargetRequest, SystemToolRequest, UserOptionRequest, WriteFileRequest,
+    };
     use fol_diagnostics::{DiagnosticCode, ToDiagnostic};
     use fol_parser::ast::SyntaxOrigin;
     use std::collections::BTreeMap;
@@ -867,5 +892,51 @@ mod tests {
         ));
         assert_eq!(result.resolved_options.get("target"), Some("aarch64-macos-gnu"));
         assert_eq!(result.resolved_options.get("optimize"), Some("release-fast"));
+    }
+
+    #[test]
+    fn build_evaluator_replays_generated_file_and_codegen_operations() {
+        let request = BuildEvaluationRequest {
+            package_root: "/pkg".to_string(),
+            inputs: BuildEvaluationInputs::default(),
+            operations: vec![
+                BuildEvaluationOperation {
+                    origin: None,
+                    kind: BuildEvaluationOperationKind::WriteFile(WriteFileRequest {
+                        name: "version".to_string(),
+                        path: "gen/version.fol".to_string(),
+                        contents: "generated".to_string(),
+                    }),
+                },
+                BuildEvaluationOperation {
+                    origin: None,
+                    kind: BuildEvaluationOperationKind::CopyFile(CopyFileRequest {
+                        name: "config".to_string(),
+                        source_path: "assets/config.json".to_string(),
+                        destination_path: "gen/config.json".to_string(),
+                    }),
+                },
+                BuildEvaluationOperation {
+                    origin: None,
+                    kind: BuildEvaluationOperationKind::SystemTool(SystemToolRequest {
+                        tool: "schema-gen".to_string(),
+                        args: vec!["api.yaml".to_string()],
+                        outputs: vec!["gen/api.fol".to_string()],
+                    }),
+                },
+                BuildEvaluationOperation {
+                    origin: None,
+                    kind: BuildEvaluationOperationKind::Codegen(CodegenRequest {
+                        kind: CodegenKind::Schema,
+                        input: "api.yaml".to_string(),
+                        output: "gen/api_bindings.fol".to_string(),
+                    }),
+                },
+            ],
+        };
+
+        let result = evaluate_build_plan(&request).expect("generated-file replay should succeed");
+
+        assert_eq!(result.graph.generated_files().len(), 4);
     }
 }
