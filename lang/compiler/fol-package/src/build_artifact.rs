@@ -31,6 +31,21 @@ pub struct BuildArtifactTargetConfig {
     pub optimize: Option<String>,
 }
 
+impl BuildArtifactTargetConfig {
+    pub fn apply_resolved_options(&self, resolved: &ResolvedBuildOptionSet) -> Self {
+        Self {
+            target: resolved
+                .get("target")
+                .map(str::to_string)
+                .or_else(|| self.target.clone()),
+            optimize: resolved
+                .get("optimize")
+                .map(str::to_string)
+                .or_else(|| self.optimize.clone()),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BuildArtifactOutput {
     EmittedRustCrate {
@@ -187,6 +202,7 @@ mod tests {
         BuildArtifactSet,
         BuildArtifactTargetConfig,
     };
+    use crate::build_option::ResolvedBuildOptionSet;
     use crate::build_graph::{BuildArtifactKind, BuildGraph, BuildModuleKind};
 
     #[test]
@@ -257,6 +273,22 @@ mod tests {
         assert_eq!(definition.target.target.as_deref(), Some("x86_64-linux-gnu"));
         assert_eq!(definition.target.optimize.as_deref(), Some("release"));
         assert_eq!(definition.native_artifacts, vec!["ssl".to_string(), "zlib".to_string()]);
+    }
+
+    #[test]
+    fn artifact_target_config_applies_resolved_target_and_optimize_overrides() {
+        let mut resolved = ResolvedBuildOptionSet::new();
+        resolved.insert("target", "aarch64-macos-gnu");
+        resolved.insert("optimize", "release-fast");
+
+        let config = BuildArtifactTargetConfig {
+            target: Some("x86_64-linux-gnu".to_string()),
+            optimize: Some("debug".to_string()),
+        }
+        .apply_resolved_options(&resolved);
+
+        assert_eq!(config.target.as_deref(), Some("aarch64-macos-gnu"));
+        assert_eq!(config.optimize.as_deref(), Some("release-fast"));
     }
 
     #[test]
@@ -376,3 +408,4 @@ mod tests {
     }
 }
 use crate::build_graph::{BuildArtifactKind, BuildGraph};
+use crate::build_option::ResolvedBuildOptionSet;
