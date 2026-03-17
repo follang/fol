@@ -847,7 +847,7 @@ Each slice must land green with `make build` and `make test` before commit.
 3. `[complete]` Add explicit evaluator-boundary and allowed-operation model types.
 4. `[complete]` Add build-evaluation error types with diagnostic integration and source locations.
 5. `[complete]` Add deterministic evaluation input modeling and stable determinism-key rendering.
-6. `[pending]` Add draft build-evaluation operation types for the public build API surface.
+6. `[complete]` Add draft build-evaluation operation types for the public build API surface.
 7. `[pending]` Evaluate option operations into a graph-backed `BuildApi`.
 8. `[pending]` Evaluate artifact, step, run, install, and dependency operations into a validated graph.
 9. `[pending]` Reject unsupported operations and graph-validation failures with explicit evaluation diagnostics.

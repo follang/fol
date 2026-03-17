@@ -1,4 +1,9 @@
 use crate::build_graph::BuildGraph;
+use crate::{
+    DependencyRequest, ExecutableRequest, InstallArtifactRequest, InstallDirRequest,
+    InstallFileRequest, SharedLibraryRequest, StandardOptimizeRequest, StandardTargetRequest,
+    StaticLibraryRequest, StepRequest, TestArtifactRequest, UserOptionRequest,
+};
 use fol_diagnostics::{
     Diagnostic, DiagnosticCode, DiagnosticLocation, ToDiagnostic, ToDiagnosticLocation,
 };
@@ -144,6 +149,7 @@ impl ToDiagnostic for BuildEvaluationError {
 pub struct BuildEvaluationRequest {
     pub package_root: String,
     pub inputs: BuildEvaluationInputs,
+    pub operations: Vec<BuildEvaluationOperation>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -177,11 +183,37 @@ impl BuildEvaluationInputs {
 impl BuildEvaluationRequest {
     pub fn determinism_key(&self) -> String {
         format!(
-            "root={};{}",
+            "root={};{};ops={}",
             self.package_root,
-            self.inputs.determinism_key()
+            self.inputs.determinism_key(),
+            self.operations.len()
         )
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BuildEvaluationOperation {
+    pub origin: Option<SyntaxOrigin>,
+    pub kind: BuildEvaluationOperationKind,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum BuildEvaluationOperationKind {
+    StandardTarget(StandardTargetRequest),
+    StandardOptimize(StandardOptimizeRequest),
+    Option(UserOptionRequest),
+    AddExe(ExecutableRequest),
+    AddStaticLib(StaticLibraryRequest),
+    AddSharedLib(SharedLibraryRequest),
+    AddTest(TestArtifactRequest),
+    Step(StepRequest),
+    InstallArtifact(InstallArtifactRequest),
+    InstallFile(InstallFileRequest),
+    InstallDir(InstallDirRequest),
+    Dependency(DependencyRequest),
+    Unsupported {
+        label: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -212,10 +244,11 @@ impl BuildEvaluationResult {
 mod tests {
     use super::{
         AllowedBuildTimeOperation, BuildEvaluationBoundary, BuildEvaluationError,
-        BuildEvaluationErrorKind, BuildEvaluationInputs, BuildEvaluationRequest,
-        BuildEvaluationResult,
+        BuildEvaluationErrorKind, BuildEvaluationInputs, BuildEvaluationOperation,
+        BuildEvaluationOperationKind, BuildEvaluationRequest, BuildEvaluationResult,
     };
     use crate::build_graph::BuildGraph;
+    use crate::{ExecutableRequest, StandardTargetRequest};
     use fol_diagnostics::{DiagnosticCode, ToDiagnostic};
     use fol_parser::ast::SyntaxOrigin;
     use std::collections::BTreeMap;
@@ -226,6 +259,7 @@ mod tests {
 
         assert!(request.package_root.is_empty());
         assert!(request.inputs.working_directory.is_empty());
+        assert!(request.operations.is_empty());
     }
 
     #[test]
@@ -335,7 +369,48 @@ mod tests {
 
         assert_eq!(
             request.determinism_key(),
-            "root=/pkg;cwd=;options=[target=native];env=[]"
+            "root=/pkg;cwd=;options=[target=native];env=[];ops=0"
         );
+    }
+
+    #[test]
+    fn build_evaluation_request_determinism_key_counts_operations() {
+        let request = BuildEvaluationRequest {
+            package_root: "/pkg".to_string(),
+            inputs: BuildEvaluationInputs::default(),
+            operations: vec![BuildEvaluationOperation {
+                origin: None,
+                kind: BuildEvaluationOperationKind::StandardTarget(StandardTargetRequest::new(
+                    "target",
+                )),
+            }],
+        };
+
+        assert_eq!(request.determinism_key(), "root=/pkg;cwd=;options=[];env=[];ops=1");
+    }
+
+    #[test]
+    fn build_evaluation_operations_keep_origin_and_payload_shape() {
+        let operation = BuildEvaluationOperation {
+            origin: Some(SyntaxOrigin {
+                file: Some("build.fol".to_string()),
+                line: 2,
+                column: 1,
+                length: 3,
+            }),
+            kind: BuildEvaluationOperationKind::AddExe(ExecutableRequest {
+                name: "app".to_string(),
+                root_module: "src/app.fol".to_string(),
+            }),
+        };
+
+        assert_eq!(operation.origin.as_ref().map(|origin| origin.line), Some(2));
+        match operation.kind {
+            BuildEvaluationOperationKind::AddExe(request) => {
+                assert_eq!(request.name, "app");
+                assert_eq!(request.root_module, "src/app.fol");
+            }
+            other => panic!("unexpected operation kind: {other:?}"),
+        }
     }
 }
