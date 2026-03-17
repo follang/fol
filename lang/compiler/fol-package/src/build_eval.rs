@@ -501,125 +501,22 @@ pub fn extract_build_program_from_source(
         return Ok(ExtractedBuildProgram::default());
     };
     let mut extracted = ExtractedBuildProgram::default();
-    let mut executable_artifacts = BTreeMap::new();
-    let mut test_artifacts = BTreeMap::new();
-    for (offset, raw_line) in body.lines().enumerate() {
-        let line_number = body_line + offset;
-        let line = raw_line
-            .split_once("//")
-            .map_or(raw_line, |(prefix, _)| prefix)
-            .trim()
-            .trim_end_matches(';')
-            .trim();
+    let mut scope = BuildExtractionScope::default();
+    for statement in split_build_statements(&body, body_line) {
+        let line = statement.text.trim();
         if line.is_empty() || line == "return ." {
             continue;
         }
-        let Some(call) = line.strip_prefix(&format!("{param_name}.")) else {
-            continue;
-        };
-        let Some((method, raw_args)) = call.split_once('(') else {
-            continue;
-        };
-        let args_text = raw_args.trim_end_matches(')').trim();
-        let args = parse_build_string_args(args_text);
-        let origin = SyntaxOrigin {
-            file: Some(build_path.display().to_string()),
-            line: line_number,
-            column: 1,
-            length: raw_line.len(),
-        };
-        let kind = match (method.trim(), args.as_slice()) {
-            ("standard_target", [name]) => {
-                BuildEvaluationOperationKind::StandardTarget(StandardTargetRequest::new(name.clone()))
-            }
-            ("standard_optimize", [name]) => BuildEvaluationOperationKind::StandardOptimize(
-                StandardOptimizeRequest::new(name.clone()),
-            ),
-            ("add_exe", [name, root_module]) => {
-                executable_artifacts.insert(
-                    name.clone(),
-                    ExtractedBuildArtifact {
-                        name: name.clone(),
-                        root_module: root_module.clone(),
-                    },
-                );
-                BuildEvaluationOperationKind::AddExe(ExecutableRequest {
-                    name: name.clone(),
-                    root_module: root_module.clone(),
-                })
-            }
-            ("add_static_lib", [name, root_module]) => {
-                BuildEvaluationOperationKind::AddStaticLib(StaticLibraryRequest {
-                    name: name.clone(),
-                    root_module: root_module.clone(),
-                })
-            }
-            ("add_shared_lib", [name, root_module]) => {
-                BuildEvaluationOperationKind::AddSharedLib(SharedLibraryRequest {
-                    name: name.clone(),
-                    root_module: root_module.clone(),
-                })
-            }
-            ("add_test", [name, root_module]) => {
-                test_artifacts.insert(
-                    name.clone(),
-                    ExtractedBuildArtifact {
-                        name: name.clone(),
-                        root_module: root_module.clone(),
-                    },
-                );
-                BuildEvaluationOperationKind::AddTest(TestArtifactRequest {
-                    name: name.clone(),
-                    root_module: root_module.clone(),
-                })
-            }
-            ("step", [name, depends_on @ ..]) => {
-                BuildEvaluationOperationKind::Step(BuildEvaluationStepRequest {
-                    name: name.clone(),
-                    depends_on: depends_on.to_vec(),
-                })
-            }
-            ("add_run", [name, artifact, depends_on @ ..]) => {
-                extracted.run_steps.insert(name.clone(), artifact.clone());
-                BuildEvaluationOperationKind::AddRun(BuildEvaluationRunRequest {
-                    name: name.clone(),
-                    artifact: artifact.clone(),
-                    depends_on: depends_on.to_vec(),
-                })
-            }
-            ("install", [name, artifact]) => {
-                BuildEvaluationOperationKind::InstallArtifact(
-                    BuildEvaluationInstallArtifactRequest {
-                        name: name.clone(),
-                        artifact: artifact.clone(),
-                    },
-                )
-            }
-            ("dependency", [alias, package]) => {
-                BuildEvaluationOperationKind::Dependency(DependencyRequest {
-                    alias: alias.clone(),
-                    package: package.clone(),
-                })
-            }
-            _ => {
-                return Err(BuildEvaluationError::with_origin(
-                    BuildEvaluationErrorKind::Unsupported,
-                    format!(
-                        "unsupported build API call in '{}': {}",
-                        build_path.display(),
-                        raw_line.trim()
-                    ),
-                    origin,
-                ))
-            }
-        };
-        extracted.operations.push(BuildEvaluationOperation {
-            origin: Some(origin),
-            kind,
-        });
+        parse_build_statement(
+            &mut extracted,
+            &mut scope,
+            build_path,
+            &param_name,
+            line,
+            statement.line,
+            statement.length,
+        )?;
     }
-    extracted.executable_artifacts = executable_artifacts.into_values().collect();
-    extracted.test_artifacts = test_artifacts.into_values().collect();
     Ok(extracted)
 }
 
@@ -659,12 +556,514 @@ fn extract_build_body(source: &str) -> Option<(String, String, usize)> {
     Some((param_name, body_source.trim_end_matches(';').to_string(), body_line))
 }
 
-fn parse_build_string_args(args: &str) -> Vec<String> {
-    args.split(',')
-        .map(str::trim)
-        .filter_map(|arg| arg.strip_prefix('"').and_then(|arg| arg.strip_suffix('"')))
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct BuildStatement {
+    line: usize,
+    length: usize,
+    text: String,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct BuildExtractionScope {
+    values: BTreeMap<String, BuildExtractionValue>,
+    next_run_index: usize,
+    next_install_index: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum BuildExtractionValue {
+    OptionName(String),
+    Artifact(ExtractedBuildArtifact),
+    StepName(String),
+}
+
+fn split_build_statements(body: &str, body_line: usize) -> Vec<BuildStatement> {
+    let mut statements = Vec::new();
+    let mut current = String::new();
+    let mut current_line = body_line;
+    let mut line = body_line;
+    let mut paren_depth = 0usize;
+    let mut brace_depth = 0usize;
+    let mut in_string = false;
+    let mut chars = body.chars().peekable();
+
+    while let Some(ch) = chars.next() {
+        if current.is_empty() && !ch.is_whitespace() {
+            current_line = line;
+        }
+        if ch == '\n' {
+            line += 1;
+        }
+        if !in_string && ch == '/' && chars.peek() == Some(&'/') {
+            for comment_ch in chars.by_ref() {
+                if comment_ch == '\n' {
+                    line += 1;
+                    break;
+                }
+            }
+            current.push(' ');
+            continue;
+        }
+        current.push(ch);
+        match ch {
+            '"' => in_string = !in_string,
+            '(' if !in_string => paren_depth += 1,
+            ')' if !in_string && paren_depth > 0 => paren_depth -= 1,
+            '{' if !in_string => brace_depth += 1,
+            '}' if !in_string && brace_depth > 0 => brace_depth -= 1,
+            ';' if !in_string && paren_depth == 0 && brace_depth == 0 => {
+                let text = current.trim().trim_end_matches(';').trim().to_string();
+                if !text.is_empty() {
+                    statements.push(BuildStatement {
+                        line: current_line,
+                        length: text.len(),
+                        text,
+                    });
+                }
+                current.clear();
+                current_line = line;
+            }
+            _ => {}
+        }
+    }
+
+    let tail = current.trim().trim_end_matches(';').trim();
+    if !tail.is_empty() {
+        statements.push(BuildStatement {
+            line: current_line,
+            length: tail.len(),
+            text: tail.to_string(),
+        });
+    }
+
+    statements
+}
+
+fn parse_build_statement(
+    extracted: &mut ExtractedBuildProgram,
+    scope: &mut BuildExtractionScope,
+    build_path: &Path,
+    graph_name: &str,
+    statement: &str,
+    line: usize,
+    length: usize,
+) -> Result<(), BuildEvaluationError> {
+    if let Some(rest) = statement.strip_prefix("var ") {
+        let Some((name, expr)) = rest.split_once('=') else {
+            return Err(build_source_unsupported(build_path, statement, line, length));
+        };
+        let value = parse_build_expression(
+            extracted,
+            scope,
+            build_path,
+            graph_name,
+            expr.trim(),
+            line,
+            length,
+        )?;
+        if let Some(value) = value {
+            scope.values.insert(name.trim().to_string(), value);
+        }
+        return Ok(());
+    }
+    parse_build_expression(extracted, scope, build_path, graph_name, statement, line, length)?;
+    Ok(())
+}
+
+fn parse_build_expression(
+    extracted: &mut ExtractedBuildProgram,
+    scope: &mut BuildExtractionScope,
+    build_path: &Path,
+    graph_name: &str,
+    expr: &str,
+    line: usize,
+    length: usize,
+) -> Result<Option<BuildExtractionValue>, BuildEvaluationError> {
+    if expr.trim() == graph_name {
+        return Ok(None);
+    }
+    let origin = SyntaxOrigin {
+        file: Some(build_path.display().to_string()),
+        line,
+        column: 1,
+        length,
+    };
+    let Some(call) = expr.strip_prefix(&format!("{graph_name}.")) else {
+        return Ok(None);
+    };
+    let Some((method, raw_args)) = call.split_once('(') else {
+        return Err(build_source_unsupported(build_path, expr, line, length));
+    };
+    let args_text = raw_args.trim_end_matches(')').trim();
+    match method.trim() {
+        "standard_target" => {
+            let name = parse_optional_single_string_arg(args_text).unwrap_or_else(|| "target".to_string());
+            extracted.operations.push(BuildEvaluationOperation {
+                origin: Some(origin),
+                kind: BuildEvaluationOperationKind::StandardTarget(StandardTargetRequest::new(name.clone())),
+            });
+            Ok(Some(BuildExtractionValue::OptionName(name)))
+        }
+        "standard_optimize" => {
+            let name =
+                parse_optional_single_string_arg(args_text).unwrap_or_else(|| "optimize".to_string());
+            extracted.operations.push(BuildEvaluationOperation {
+                origin: Some(origin),
+                kind: BuildEvaluationOperationKind::StandardOptimize(
+                    StandardOptimizeRequest::new(name.clone()),
+                ),
+            });
+            Ok(Some(BuildExtractionValue::OptionName(name)))
+        }
+        "add_exe" => parse_named_artifact_call(
+            extracted,
+            scope,
+            origin,
+            method.trim(),
+            args_text,
+            BuildNamedArtifactKind::Executable,
+        ),
+        "add_static_lib" => parse_named_artifact_call(
+            extracted,
+            scope,
+            origin,
+            method.trim(),
+            args_text,
+            BuildNamedArtifactKind::StaticLibrary,
+        ),
+        "add_shared_lib" => parse_named_artifact_call(
+            extracted,
+            scope,
+            origin,
+            method.trim(),
+            args_text,
+            BuildNamedArtifactKind::SharedLibrary,
+        ),
+        "add_test" => parse_named_artifact_call(
+            extracted,
+            scope,
+            origin,
+            method.trim(),
+            args_text,
+            BuildNamedArtifactKind::Test,
+        ),
+        "step" => {
+            let args = parse_top_level_args(args_text);
+            let Some(name) = resolve_build_string_arg(&args[0], scope) else {
+                return Err(build_source_unsupported(build_path, expr, line, length));
+            };
+            let depends_on = args
+                .iter()
+                .skip(1)
+                .filter_map(|arg| resolve_step_reference(arg, scope))
+                .collect::<Vec<_>>();
+            extracted.operations.push(BuildEvaluationOperation {
+                origin: Some(origin),
+                kind: BuildEvaluationOperationKind::Step(BuildEvaluationStepRequest {
+                    name: name.clone(),
+                    depends_on,
+                }),
+            });
+            Ok(Some(BuildExtractionValue::StepName(name)))
+        }
+        "add_run" => {
+            let args = parse_top_level_args(args_text);
+            let (name, artifact) = match args.as_slice() {
+                [artifact] => {
+                    let Some(artifact) = resolve_artifact_reference(artifact, scope) else {
+                        return Err(build_source_unsupported(build_path, expr, line, length));
+                    };
+                    let name = if scope.next_run_index == 0 {
+                        "run".to_string()
+                    } else {
+                        format!("run-{}", artifact.name)
+                    };
+                    scope.next_run_index += 1;
+                    (name, artifact.name)
+                }
+                [name, artifact, depends_on @ ..] => {
+                    let Some(name) = resolve_build_string_arg(name, scope) else {
+                        return Err(build_source_unsupported(build_path, expr, line, length));
+                    };
+                    let Some(artifact) = resolve_artifact_reference(artifact, scope) else {
+                        return Err(build_source_unsupported(build_path, expr, line, length));
+                    };
+                    let _ = depends_on;
+                    (name, artifact.name)
+                }
+                _ => return Err(build_source_unsupported(build_path, expr, line, length)),
+            };
+            extracted.run_steps.insert(name.clone(), artifact.clone());
+            extracted.operations.push(BuildEvaluationOperation {
+                origin: Some(origin),
+                kind: BuildEvaluationOperationKind::AddRun(BuildEvaluationRunRequest {
+                    name: name.clone(),
+                    artifact,
+                    depends_on: Vec::new(),
+                }),
+            });
+            Ok(Some(BuildExtractionValue::StepName(name)))
+        }
+        "install" => {
+            let args = parse_top_level_args(args_text);
+            let (name, artifact) = match args.as_slice() {
+                [artifact] => {
+                    let Some(artifact) = resolve_artifact_reference(artifact, scope) else {
+                        return Err(build_source_unsupported(build_path, expr, line, length));
+                    };
+                    let name = if scope.next_install_index == 0 {
+                        "install".to_string()
+                    } else {
+                        format!("install-{}", artifact.name)
+                    };
+                    scope.next_install_index += 1;
+                    (name, artifact.name)
+                }
+                [name, artifact] => {
+                    let Some(name) = resolve_build_string_arg(name, scope) else {
+                        return Err(build_source_unsupported(build_path, expr, line, length));
+                    };
+                    let Some(artifact) = resolve_artifact_reference(artifact, scope) else {
+                        return Err(build_source_unsupported(build_path, expr, line, length));
+                    };
+                    (name, artifact.name)
+                }
+                _ => return Err(build_source_unsupported(build_path, expr, line, length)),
+            };
+            extracted.operations.push(BuildEvaluationOperation {
+                origin: Some(origin),
+                kind: BuildEvaluationOperationKind::InstallArtifact(
+                    BuildEvaluationInstallArtifactRequest { name, artifact },
+                ),
+            });
+            Ok(None)
+        }
+        "dependency" => {
+            let args = parse_top_level_args(args_text);
+            let [alias, package] = args.as_slice() else {
+                return Err(build_source_unsupported(build_path, expr, line, length));
+            };
+            let Some(alias) = resolve_build_string_arg(alias, scope) else {
+                return Err(build_source_unsupported(build_path, expr, line, length));
+            };
+            let Some(package) = resolve_build_string_arg(package, scope) else {
+                return Err(build_source_unsupported(build_path, expr, line, length));
+            };
+            extracted.operations.push(BuildEvaluationOperation {
+                origin: Some(origin),
+                kind: BuildEvaluationOperationKind::Dependency(DependencyRequest { alias, package }),
+            });
+            Ok(None)
+        }
+        _ => Err(build_source_unsupported(build_path, expr, line, length)),
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum BuildNamedArtifactKind {
+    Executable,
+    StaticLibrary,
+    SharedLibrary,
+    Test,
+}
+
+fn parse_named_artifact_call(
+    extracted: &mut ExtractedBuildProgram,
+    scope: &BuildExtractionScope,
+    origin: SyntaxOrigin,
+    method: &str,
+    args_text: &str,
+    kind: BuildNamedArtifactKind,
+) -> Result<Option<BuildExtractionValue>, BuildEvaluationError> {
+    let (name, root_module) = if args_text.trim_start().starts_with('{') {
+        let fields = parse_build_object_fields(args_text)?;
+        let name = fields
+            .get("name")
+            .cloned()
+            .ok_or_else(|| evaluation_invalid_input("build artifact object is missing a 'name' field", Some(origin.clone())))?;
+        let root_module = fields
+            .get("root")
+            .or_else(|| fields.get("root_module"))
+            .cloned()
+            .ok_or_else(|| evaluation_invalid_input("build artifact object is missing a 'root' field", Some(origin.clone())))?;
+        (name, root_module)
+    } else {
+        let args = parse_top_level_args(args_text);
+        let [name, root_module] = args.as_slice() else {
+            return Err(evaluation_invalid_input(
+                format!("unsupported {method} arguments"),
+                Some(origin),
+            ));
+        };
+        let name = resolve_build_string_arg(name, scope)
+            .ok_or_else(|| evaluation_invalid_input(format!("unsupported {method} name"), Some(origin.clone())))?;
+        let root_module = resolve_build_string_arg(root_module, scope)
+            .ok_or_else(|| evaluation_invalid_input(format!("unsupported {method} root"), Some(origin.clone())))?;
+        (name, root_module)
+    };
+    let artifact = ExtractedBuildArtifact {
+        name: name.clone(),
+        root_module: root_module.clone(),
+    };
+    match kind {
+        BuildNamedArtifactKind::Executable => extracted.executable_artifacts.push(artifact.clone()),
+        BuildNamedArtifactKind::Test => extracted.test_artifacts.push(artifact.clone()),
+        BuildNamedArtifactKind::StaticLibrary | BuildNamedArtifactKind::SharedLibrary => {}
+    }
+    let kind = match kind {
+        BuildNamedArtifactKind::Executable => {
+            BuildEvaluationOperationKind::AddExe(ExecutableRequest { name, root_module })
+        }
+        BuildNamedArtifactKind::StaticLibrary => BuildEvaluationOperationKind::AddStaticLib(
+            StaticLibraryRequest { name, root_module },
+        ),
+        BuildNamedArtifactKind::SharedLibrary => BuildEvaluationOperationKind::AddSharedLib(
+            SharedLibraryRequest { name, root_module },
+        ),
+        BuildNamedArtifactKind::Test => {
+            BuildEvaluationOperationKind::AddTest(TestArtifactRequest { name, root_module })
+        }
+    };
+    extracted.operations.push(BuildEvaluationOperation {
+        origin: Some(origin),
+        kind,
+    });
+    Ok(Some(BuildExtractionValue::Artifact(artifact)))
+}
+
+fn parse_build_object_fields(
+    text: &str,
+) -> Result<BTreeMap<String, String>, BuildEvaluationError> {
+    let inner = text.trim().trim_start_matches('{').trim_end_matches('}');
+    let mut fields = BTreeMap::new();
+    for field in parse_top_level_args(inner) {
+        let Some((name, value)) = field.split_once('=') else {
+            continue;
+        };
+        let key = name.trim().to_string();
+        if let Some(value) = parse_quoted_string(value.trim()) {
+            fields.insert(key, value);
+        }
+    }
+    Ok(fields)
+}
+
+fn parse_top_level_args(args: &str) -> Vec<String> {
+    let mut parts = Vec::new();
+    let mut current = String::new();
+    let mut paren_depth = 0usize;
+    let mut brace_depth = 0usize;
+    let mut in_string = false;
+    for ch in args.chars() {
+        match ch {
+            '"' => {
+                in_string = !in_string;
+                current.push(ch);
+            }
+            '(' if !in_string => {
+                paren_depth += 1;
+                current.push(ch);
+            }
+            ')' if !in_string => {
+                paren_depth = paren_depth.saturating_sub(1);
+                current.push(ch);
+            }
+            '{' if !in_string => {
+                brace_depth += 1;
+                current.push(ch);
+            }
+            '}' if !in_string => {
+                brace_depth = brace_depth.saturating_sub(1);
+                current.push(ch);
+            }
+            ',' if !in_string && paren_depth == 0 && brace_depth == 0 => {
+                let part = current.trim();
+                if !part.is_empty() {
+                    parts.push(part.to_string());
+                }
+                current.clear();
+            }
+            _ => current.push(ch),
+        }
+    }
+    let tail = current.trim();
+    if !tail.is_empty() {
+        parts.push(tail.to_string());
+    }
+    parts
+}
+
+fn parse_optional_single_string_arg(args: &str) -> Option<String> {
+    let args = parse_top_level_args(args);
+    match args.as_slice() {
+        [] => None,
+        [arg] => parse_quoted_string(arg),
+        _ => None,
+    }
+}
+
+fn parse_quoted_string(text: &str) -> Option<String> {
+    text.strip_prefix('"')
+        .and_then(|value| value.strip_suffix('"'))
         .map(str::to_string)
-        .collect()
+}
+
+fn resolve_build_string_arg(
+    text: &str,
+    _scope: &BuildExtractionScope,
+) -> Option<String> {
+    parse_quoted_string(text.trim())
+}
+
+fn resolve_artifact_reference(
+    text: &str,
+    scope: &BuildExtractionScope,
+) -> Option<ExtractedBuildArtifact> {
+    if let Some(string) = parse_quoted_string(text.trim()) {
+        return Some(ExtractedBuildArtifact {
+            name: string.clone(),
+            root_module: String::new(),
+        });
+    }
+    match scope.values.get(text.trim()) {
+        Some(BuildExtractionValue::Artifact(artifact)) => Some(artifact.clone()),
+        _ => None,
+    }
+}
+
+fn resolve_step_reference(
+    text: &str,
+    scope: &BuildExtractionScope,
+) -> Option<String> {
+    if let Some(string) = parse_quoted_string(text.trim()) {
+        return Some(string);
+    }
+    match scope.values.get(text.trim()) {
+        Some(BuildExtractionValue::StepName(name)) => Some(name.clone()),
+        _ => None,
+    }
+}
+
+fn build_source_unsupported(
+    build_path: &Path,
+    statement: &str,
+    line: usize,
+    length: usize,
+) -> BuildEvaluationError {
+    BuildEvaluationError::with_origin(
+        BuildEvaluationErrorKind::Unsupported,
+        format!(
+            "unsupported build API call in '{}': {}",
+            build_path.display(),
+            statement.trim()
+        ),
+        SyntaxOrigin {
+            file: Some(build_path.display().to_string()),
+            line,
+            column: 1,
+            length,
+        },
+    )
 }
 
 fn evaluation_invalid_input(
@@ -1165,6 +1564,46 @@ mod tests {
         assert_eq!(evaluated.extracted.test_artifacts.len(), 1);
         assert_eq!(evaluated.extracted.run_steps.get("serve"), Some(&"app".to_string()));
         assert_eq!(evaluated.result.graph.artifacts().len(), 2);
+        assert_eq!(evaluated.result.graph.steps().len(), 1);
+    }
+
+    #[test]
+    fn build_source_evaluator_supports_object_style_artifacts_and_handle_calls() {
+        let source = concat!(
+            "def build(graph: int): int = {\n",
+            "    var target = graph.standard_target();\n",
+            "    var optimize = graph.standard_optimize();\n",
+            "    var app = graph.add_exe({\n",
+            "        name = \"demo\",\n",
+            "        root = \"src/demo.fol\",\n",
+            "        target = target,\n",
+            "        optimize = optimize,\n",
+            "    });\n",
+            "    graph.install(app);\n",
+            "    graph.add_run(app);\n",
+            "    return .\n",
+            "}\n",
+        );
+        let request = BuildEvaluationRequest {
+            package_root: "/pkg".to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: "/pkg".to_string(),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        };
+
+        let evaluated = evaluate_build_source(&request, Path::new("/pkg/build.fol"), source)
+            .expect("object style build body should evaluate")
+            .expect("build body should produce operations");
+
+        assert_eq!(evaluated.extracted.operations.len(), 5);
+        assert_eq!(evaluated.extracted.executable_artifacts.len(), 1);
+        assert_eq!(evaluated.extracted.executable_artifacts[0].name, "demo");
+        assert_eq!(evaluated.extracted.executable_artifacts[0].root_module, "src/demo.fol");
+        assert_eq!(evaluated.extracted.run_steps.get("run"), Some(&"demo".to_string()));
+        assert_eq!(evaluated.result.graph.artifacts().len(), 1);
+        assert_eq!(evaluated.result.graph.installs().len(), 1);
         assert_eq!(evaluated.result.graph.steps().len(), 1);
     }
 }

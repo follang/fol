@@ -1074,6 +1074,81 @@ mod tests {
     }
 
     #[test]
+    fn object_style_artifact_build_bodies_drive_default_build_and_run_steps() {
+        let root = std::env::temp_dir().join(format!(
+            "fol_frontend_build_route_object_root_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system time before epoch")
+                .as_nanos()
+        ));
+        fs::create_dir_all(root.join("src")).unwrap();
+        fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
+        fs::write(
+            root.join("build.fol"),
+            concat!(
+                "def build(graph: int): int = {\n",
+                "    var target = graph.standard_target();\n",
+                "    var optimize = graph.standard_optimize();\n",
+                "    var app = graph.add_exe({\n",
+                "        name = \"demo\",\n",
+                "        root = \"src/app.fol\",\n",
+                "        target = target,\n",
+                "        optimize = optimize,\n",
+                "    });\n",
+                "    graph.install(app);\n",
+                "    graph.add_run(app);\n",
+                "    return .\n",
+                "}\n",
+            ),
+        )
+        .unwrap();
+        fs::write(root.join("src/main.fol"), "var[exp] ignored: int = 1;\n").unwrap();
+        fs::write(
+            root.join("src/app.fol"),
+            "fun[] main(): int = {\n    return 0\n}\n",
+        )
+        .unwrap();
+        let workspace = FrontendWorkspace {
+            root: WorkspaceRoot::new(root.clone()),
+            members: vec![PackageRoot::new(root.clone())],
+            std_root_override: None,
+            package_store_root_override: None,
+            build_root: root.join(".fol/build"),
+            cache_root: root.join(".fol/cache"),
+            git_cache_root: root.join(".fol/cache/git"),
+        };
+
+        let build_result = execute_workspace_build_route(
+            &workspace,
+            &FrontendConfig::default(),
+            &FrontendCompatibilityBuildRequest {
+                requested_step: "build".to_string(),
+                profile: FrontendProfile::Debug,
+                run_args: Vec::new(),
+            },
+        )
+        .expect("object style add_exe should drive default build execution");
+        assert_eq!(build_result.command, "build");
+
+        let run_result = execute_workspace_build_route(
+            &workspace,
+            &FrontendConfig::default(),
+            &FrontendCompatibilityBuildRequest {
+                requested_step: "run".to_string(),
+                profile: FrontendProfile::Debug,
+                run_args: Vec::new(),
+            },
+        )
+        .expect("handle style add_run should drive default run execution");
+        assert_eq!(run_result.command, "run");
+        assert!(run_result.summary.contains("ran "));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
     fn workspace_executor_routes_modern_build_members_through_default_graph_planning() {
         let root = std::env::temp_dir().join(format!(
             "fol_frontend_build_route_modern_exec_{}_{}",
