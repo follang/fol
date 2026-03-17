@@ -155,6 +155,23 @@ The initial required query set is:
 - `locals.scm`
 - `symbols.scm`
 
+These query assets should live as real `.scm` files on disk, not only as Rust
+string literals.
+
+That matters because editor integrations such as Neovim Tree-sitter expect
+filesystem query assets in the usual Tree-sitter layout.
+
+`fol-editor` may also embed those files with `include_str!(...)` for internal
+CLI/LSP use if convenient, but the canonical source should remain the on-disk
+query files.
+
+The intended layout is:
+
+- Tree-sitter grammar source files
+- `queries/fol/highlights.scm`
+- `queries/fol/locals.scm`
+- `queries/fol/symbols.scm`
+
 ## LSP Scope
 
 The first LSP milestone should be practical, not maximal.
@@ -175,6 +192,13 @@ Required first features:
 
 The LSP should begin with full-document reanalysis, not deep incremental
 semantic invalidation.
+
+The intended public server entrypoint is:
+
+- `fol editor lsp`
+
+Editor integrations should launch the language server through the `fol`
+frontend instead of a second standalone binary.
 
 ## Analysis Model
 
@@ -212,6 +236,34 @@ So:
 The two should be tested against the same fixture corpus where practical, but
 they do not need to share an AST model.
 
+## Editor Integration Model
+
+The first editor integration target should be Neovim, but the layout should be
+generic enough for other editors.
+
+The split is:
+
+- Tree-sitter handles syntax trees, highlights, locals, and symbol-style
+  structure queries
+- LSP handles compiler-backed diagnostics, hover, definition, and document
+  symbols
+
+So the expected editor shape is:
+
+1. editor opens a `.fol` file
+2. Tree-sitter parses the file and applies the `.scm` queries
+3. the editor starts `fol editor lsp`
+4. the LSP uses compiler crates plus `fol-diagnostics` for semantic truth
+
+This keeps:
+
+- Tree-sitter as the editor syntax layer
+- `fol-diagnostics` as the canonical compiler-diagnostic model
+- `fol-package` / `fol-resolver` / `fol-typecheck` as semantic truth
+
+Do not design the query layer only for Rust-side consumption. It must be laid
+out so editors can consume the grammar and queries directly.
+
 ## Test Strategy
 
 The milestone should be proven with:
@@ -236,10 +288,10 @@ The minimum real fixture sources should include:
 
 ### Phase 0: Freeze Scope
 
-- `0.1` replace the closed frontend plan with the `fol-editor` plan
-- `0.2` freeze the one-crate boundary for Tree-sitter plus LSP
-- `0.3` freeze the frontend command surface under `fol editor`
-- `0.4` freeze the “compiler truth, editor adapter” architecture
+- `0.1` complete: replaced the closed frontend plan with the `fol-editor` plan
+- `0.2` complete: froze the one-crate boundary for Tree-sitter plus LSP
+- `0.3` complete: froze the frontend command surface under `fol editor`
+- `0.4` complete: froze the “compiler truth, editor adapter” architecture
 
 ### Phase 1: Crate Foundation
 
@@ -279,7 +331,8 @@ The minimum real fixture sources should include:
 - `4.3` highlight intrinsics and qualified paths
 - `4.4` add `locals.scm`
 - `4.5` add `symbols.scm`
-- `4.6` snapshot query captures on real fixtures
+- `4.6` keep query assets in editor-consumable on-disk layout
+- `4.7` snapshot query captures on real fixtures
 
 ### Phase 5: Frontend Editor Commands
 
@@ -289,7 +342,8 @@ The minimum real fixture sources should include:
 - `5.4` add `fol editor highlight`
 - `5.5` add `fol editor symbols`
 - `5.6` add human/plain/json output for editor subcommands
-- `5.7` add frontend integration tests for editor commands
+- `5.7` keep `fol editor lsp` as the canonical public LSP entrypoint
+- `5.8` add frontend integration tests for editor commands
 
 ### Phase 6: LSP Foundation
 
