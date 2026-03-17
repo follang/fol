@@ -40,22 +40,22 @@ It is not another compiler stage.
 
 The current command surface is:
 
-- `fol init`
-- `fol new`
+- `fol work init`
+- `fol work new`
 - `fol work info`
 - `fol work list`
 - `fol work deps`
 - `fol work status`
-- `fol fetch`
-- `fol update`
-- `fol check`
-- `fol build`
-- `fol run`
-- `fol test`
-- `fol emit rust`
-- `fol emit lowered`
-- `fol clean`
-- `fol completion`
+- `fol pack fetch`
+- `fol pack update`
+- `fol code check`
+- `fol code build`
+- `fol code run`
+- `fol code test`
+- `fol code emit rust`
+- `fol code emit lowered`
+- `fol tool clean`
+- `fol tool completion`
 - hidden `_complete`
 
 The root help contract is:
@@ -67,22 +67,23 @@ Both render the same frontend-owned help surface.
 
 Aliases are part of the tool contract too. Examples:
 
-- `fol build`, `fol b`, `fol make`
-- `fol fetch`, `fol f`, `fol sync`
-- `fol clean`, `fol cl`, `fol purge`
-- `fol check`, `fol c`, `fol verify`
+- `fol code build`, `fol code b`, `fol code make`
+- `fol pack fetch`, `fol pack f`, `fol pack sync`
+- `fol tool clean`, `fol tool cl`, `fol tool purge`
+- `fol code check`, `fol code c`, `fol code verify`
 - `fol work`, `fol w`, `fol ws`, `fol workspace`
+- `fol pack`, `fol pkg`, `fol package`
 
 ## One Tool
 
 The intended workflow is entrypoint-first:
 
 ```text
-fol init --bin
-fol fetch
-fol check
-fol build --release
-fol run -- --flag value
+fol work init --bin
+fol pack fetch
+fol code check
+fol code build --release
+fol code run -- --flag value
 ```
 
 The goal is to make `fol` feel like the canonical language tool, not just a
@@ -92,11 +93,11 @@ Direct compile is still supported too, but it is frontend-owned now:
 
 ```text
 fol path/to/package
-fol build path/to/package
-fol check path/to/package
-fol run path/to/package -- --flag value
-fol emit rust path/to/package
-fol emit lowered path/to/package
+fol code build path/to/package
+fol code check path/to/package
+fol code run path/to/package -- --flag value
+fol code emit rust path/to/package
+fol code emit lowered path/to/package
 ```
 
 ## How Dispatch Works
@@ -113,19 +114,19 @@ The frontend flow is:
 
 For example:
 
-- `fol check` loads the workspace and drives the compile pipeline through
+- `fol code check` loads the workspace and drives the compile pipeline through
   typecheck/lower without backend artifact production
-- `fol build` drives the full compiler and backend path
-- `fol run` builds first, then executes the produced binary
-- `fol emit rust` keeps the backend in source-emission mode
-- `fol emit lowered` writes lowered IR snapshots instead of invoking the backend
+- `fol code build` drives the full compiler and backend path
+- `fol code run` builds first, then executes the produced binary
+- `fol code emit rust` keeps the backend in source-emission mode
+- `fol code emit lowered` writes lowered IR snapshots instead of invoking the backend
 
 Compile-oriented flags belong to the commands that use them. For example:
 
 - `--std-root` and `--package-store-root` belong to compile/fetch flows
-- `--keep-build-dir` belongs to backend-producing flows such as `build`, `run`,
-  and `emit rust`
-- `dump lowered` is represented as `fol emit lowered`, not as a root flag in the
+- `--keep-build-dir` belongs to backend-producing flows such as `code build`,
+  `code run`, and `code emit rust`
+- `dump lowered` is represented as `fol code emit lowered`, not as a root flag in the
   public CLI
 
 ## Root Discovery
@@ -144,7 +145,7 @@ A workspace root is a parent root that owns multiple member packages plus
 frontend-owned roots such as build and cache directories.
 
 If no root is found, frontend diagnostics explain how to bootstrap one with
-`fol init --bin` or `fol init --workspace`.
+`fol work init --bin` or `fol work init --workspace`.
 
 ## Configuration And Precedence
 
