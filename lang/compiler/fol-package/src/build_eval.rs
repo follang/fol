@@ -36,6 +36,16 @@ pub enum AllowedBuildTimeOperation {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ForbiddenBuildTimeOperation {
+    ArbitraryFilesystemRead,
+    ArbitraryFilesystemWrite,
+    ArbitraryNetworkAccess,
+    WallClockAccess,
+    AmbientEnvironmentAccess,
+    UncontrolledProcessExecution,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BuildEvaluationErrorKind {
     InvalidInput,
     Unsupported,
@@ -1094,8 +1104,9 @@ fn evaluation_error(
 #[cfg(test)]
 mod tests {
     use super::{
-        evaluate_build_plan, evaluate_build_source, AllowedBuildTimeOperation, BuildEvaluationBoundary,
-        BuildEvaluationError, BuildEvaluationErrorKind, BuildEvaluationInputs,
+        evaluate_build_plan, evaluate_build_source, AllowedBuildTimeOperation,
+        BuildEvaluationBoundary, BuildEvaluationError, BuildEvaluationErrorKind,
+        BuildEvaluationInputs, ForbiddenBuildTimeOperation,
         BuildEvaluationInstallArtifactRequest, BuildEvaluationOperation,
         BuildEvaluationOperationKind, BuildEvaluationRequest, BuildEvaluationResult,
         BuildEvaluationRunRequest, BuildEvaluationStepRequest,
@@ -1161,6 +1172,22 @@ mod tests {
                 AllowedBuildTimeOperation::OptionRead,
             ]
         );
+    }
+
+    #[test]
+    fn forbidden_build_time_operations_cover_phase_four_runtime_gaps() {
+        let forbidden = vec![
+            ForbiddenBuildTimeOperation::ArbitraryFilesystemRead,
+            ForbiddenBuildTimeOperation::ArbitraryFilesystemWrite,
+            ForbiddenBuildTimeOperation::ArbitraryNetworkAccess,
+            ForbiddenBuildTimeOperation::WallClockAccess,
+            ForbiddenBuildTimeOperation::AmbientEnvironmentAccess,
+            ForbiddenBuildTimeOperation::UncontrolledProcessExecution,
+        ];
+
+        assert_eq!(forbidden.len(), 6);
+        assert!(forbidden.contains(&ForbiddenBuildTimeOperation::ArbitraryNetworkAccess));
+        assert!(forbidden.contains(&ForbiddenBuildTimeOperation::WallClockAccess));
     }
 
     #[test]
