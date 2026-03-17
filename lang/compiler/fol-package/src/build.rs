@@ -773,4 +773,30 @@ mod tests {
 
         assert_eq!(compatibility.mode(), PackageBuildMode::CompatibilityOnly);
     }
+
+    #[test]
+    fn package_build_mode_classifies_hybrid_build_files() {
+        let temp_root = unique_temp_root("hybrid_build");
+        fs::create_dir_all(&temp_root).expect("Should create temporary build fixture root");
+        let build_path = temp_root.join("build.fol");
+        fs::write(
+            &build_path,
+            concat!(
+                "def core: pkg = \"core\";\n",
+                "def root: loc = \"src\";\n",
+                "def build(graph: int): int = graph;\n",
+            ),
+        )
+        .expect("Should write the hybrid build fixture");
+
+        let build = parse_package_build(&build_path).expect("Hybrid build fixture should parse");
+
+        assert_eq!(build.mode(), PackageBuildMode::Hybrid);
+        assert_eq!(build.dependencies().len(), 1);
+        assert_eq!(build.exports().len(), 1);
+        assert!(build.has_entry_point());
+
+        fs::remove_dir_all(&temp_root)
+            .expect("Temporary build fixture root should be removable after the test");
+    }
 }

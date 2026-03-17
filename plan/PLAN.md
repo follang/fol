@@ -799,7 +799,7 @@ Each slice must land green with `make build` and `make test` before commit.
 6. `[complete]` Thread build-entry metadata through prepared package state.
 7. `[complete]` Add explicit build-mode classification for empty / compatibility /
    hybrid / modern build files.
-8. `[pending]` Cover compatibility-plus-entry coexistence in package parser
+8. `[complete]` Cover compatibility-plus-entry coexistence in package parser
    tests.
 9. `[pending]` Cover prepared-package loading for modern-entry package roots.
 10. `[pending]` Expose the richer package-build surface from `fol-package`'s
