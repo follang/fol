@@ -3,19 +3,25 @@
 //! `fol-editor` will host both the Tree-sitter-facing editor syntax layer and
 //! the compiler-backed language-server layer.
 
+mod commands;
 mod documents;
 mod error;
 mod paths;
 mod session;
 mod tree_sitter;
 
+pub use commands::{
+    editor_highlight_file, editor_lsp_entrypoint, editor_parse_file, editor_symbols_file,
+    EditorCommandSummary,
+};
 pub use documents::{EditorDocument, EditorDocumentStore};
 pub use error::{EditorError, EditorErrorKind, EditorResult};
 pub use paths::{EditorDocumentPath, EditorDocumentUri};
 pub use session::{EditorConfig, EditorSession};
 pub use tree_sitter::{
     fol_tree_sitter_corpus, fol_tree_sitter_grammar, fol_tree_sitter_highlights_query,
-    fol_tree_sitter_locals_query, TreeSitterCorpusCase,
+    fol_tree_sitter_locals_query, fol_tree_sitter_query_snapshots,
+    fol_tree_sitter_symbols_query, TreeSitterCorpusCase, TreeSitterQuerySnapshot,
 };
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -36,9 +42,11 @@ pub fn crate_name() -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::{
-        crate_name, fol_tree_sitter_corpus, fol_tree_sitter_grammar,
-        fol_tree_sitter_highlights_query, fol_tree_sitter_locals_query, Editor, EditorConfig, EditorDocument,
-        EditorDocumentPath, EditorDocumentStore, EditorDocumentUri, EditorError,
+        crate_name, editor_highlight_file, editor_lsp_entrypoint, editor_parse_file,
+        editor_symbols_file, fol_tree_sitter_corpus, fol_tree_sitter_grammar,
+        fol_tree_sitter_highlights_query, fol_tree_sitter_locals_query,
+        fol_tree_sitter_query_snapshots, fol_tree_sitter_symbols_query, Editor, EditorConfig,
+        EditorDocument, EditorDocumentPath, EditorDocumentStore, EditorDocumentUri, EditorError,
         EditorErrorKind, EditorResult, EditorSession, CRATE_NAME,
     };
     use std::path::PathBuf;
@@ -87,6 +95,18 @@ mod tests {
         assert!(fol_tree_sitter_grammar().contains("module.exports = grammar"));
         assert!(fol_tree_sitter_highlights_query().contains("@keyword"));
         assert!(fol_tree_sitter_locals_query().contains("@local.definition"));
+        assert!(fol_tree_sitter_symbols_query().contains("@symbol"));
+        assert!(!fol_tree_sitter_query_snapshots().is_empty());
         assert!(!fol_tree_sitter_corpus().is_empty());
+    }
+
+    #[test]
+    fn editor_commands_are_callable() {
+        let path = PathBuf::from("test/apps/fixtures/record_flow/main.fol");
+
+        assert_eq!(editor_lsp_entrypoint().unwrap().command, "lsp");
+        assert_eq!(editor_parse_file(&path).unwrap().command, "parse");
+        assert_eq!(editor_highlight_file(&path).unwrap().command, "highlight");
+        assert_eq!(editor_symbols_file(&path).unwrap().command, "symbols");
     }
 }

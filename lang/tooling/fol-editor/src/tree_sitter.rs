@@ -4,9 +4,16 @@ pub struct TreeSitterCorpusCase {
     pub source: &'static str,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TreeSitterQuerySnapshot {
+    pub name: &'static str,
+    pub query: &'static str,
+}
+
 const GRAMMAR_SOURCE: &str = include_str!("../tree-sitter/grammar.js");
 const HIGHLIGHTS_QUERY: &str = include_str!("../queries/fol/highlights.scm");
 const LOCALS_QUERY: &str = include_str!("../queries/fol/locals.scm");
+const SYMBOLS_QUERY: &str = include_str!("../queries/fol/symbols.scm");
 const CORPUS_DECLARATIONS: &str = include_str!("../tree-sitter/test/corpus/declarations.txt");
 const CORPUS_EXPRESSIONS: &str = include_str!("../tree-sitter/test/corpus/expressions.txt");
 const CORPUS_RECOVERABLE: &str = include_str!("../tree-sitter/test/corpus/recoverable.txt");
@@ -23,6 +30,10 @@ pub fn fol_tree_sitter_highlights_query() -> &'static str {
 
 pub fn fol_tree_sitter_locals_query() -> &'static str {
     LOCALS_QUERY
+}
+
+pub fn fol_tree_sitter_symbols_query() -> &'static str {
+    SYMBOLS_QUERY
 }
 
 pub fn fol_tree_sitter_corpus() -> &'static [TreeSitterCorpusCase] {
@@ -46,11 +57,29 @@ pub fn fol_tree_sitter_corpus() -> &'static [TreeSitterCorpusCase] {
     ]
 }
 
+pub fn fol_tree_sitter_query_snapshots() -> &'static [TreeSitterQuerySnapshot] {
+    &[
+        TreeSitterQuerySnapshot {
+            name: "highlights",
+            query: HIGHLIGHTS_QUERY,
+        },
+        TreeSitterQuerySnapshot {
+            name: "locals",
+            query: LOCALS_QUERY,
+        },
+        TreeSitterQuerySnapshot {
+            name: "symbols",
+            query: SYMBOLS_QUERY,
+        },
+    ]
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
         fol_tree_sitter_corpus, fol_tree_sitter_grammar, fol_tree_sitter_highlights_query,
-        fol_tree_sitter_locals_query,
+        fol_tree_sitter_locals_query, fol_tree_sitter_query_snapshots,
+        fol_tree_sitter_symbols_query,
     };
 
     #[test]
@@ -150,11 +179,34 @@ mod tests {
             "@local.definition",
             "@local.reference",
             "(param name: (identifier) @local.definition)",
-            "(var_decl name: (identifier) @local.definition)",
+            "(var_decl (typed_binding name: (identifier) @local.definition))",
             "(fun_decl name: (identifier) @local.definition.function)",
         ] {
             assert!(query.contains(needle), "missing locals capture marker: {needle}");
         }
+    }
+
+    #[test]
+    fn symbols_query_captures_types_functions_bindings_and_namespaces() {
+        let query = fol_tree_sitter_symbols_query();
+        for needle in [
+            "@symbol.scope",
+            "@symbol.function",
+            "@symbol.type",
+            "@symbol.variable",
+            "@symbol.namespace",
+        ] {
+            assert!(query.contains(needle), "missing symbol capture marker: {needle}");
+        }
+    }
+
+    #[test]
+    fn query_snapshots_stay_in_editor_consumable_order() {
+        let snapshots = fol_tree_sitter_query_snapshots();
+        assert_eq!(snapshots.len(), 3);
+        assert_eq!(snapshots[0].name, "highlights");
+        assert_eq!(snapshots[1].name, "locals");
+        assert_eq!(snapshots[2].name, "symbols");
     }
 
     #[test]

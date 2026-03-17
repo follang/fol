@@ -330,9 +330,9 @@ The minimum real fixture sources should include:
 - `4.2` complete: highlighted declarations, types, keywords, and literals
 - `4.3` complete: highlighted intrinsics and qualified paths
 - `4.4` complete: added `locals.scm`
-- `4.5` add `symbols.scm`
-- `4.6` keep query assets in editor-consumable on-disk layout
-- `4.7` snapshot query captures on real fixtures
+- `4.5` complete: added `symbols.scm`
+- `4.6` complete: kept query assets in editor-consumable on-disk layout
+- `4.7` complete: snapshot query captures on real fixtures
 
 ### Phase 5: Frontend Editor Commands
 
