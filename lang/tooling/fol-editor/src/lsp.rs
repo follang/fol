@@ -1959,6 +1959,58 @@ mod tests {
     }
 
     #[test]
+    fn lsp_server_locks_type_completion_matrix() {
+        let (root, uri) = sample_loc_workspace_root("completion_type_matrix");
+        fs::write(
+            root.join("app/src/main.fol"),
+            "use shared: loc = {\"../shared\"};\n\ntyp[] Local: rec = {\n    value: int\n}\n\nfun[] main(): int = {\n    var target: \n    return 0\n}\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("shared/src/lib.fol"),
+            "typ[exp] Status: ent = {\n    case Pending\n}\n\ntyp[exp] Report: rec = {\n    value: int\n}\n",
+        )
+        .unwrap();
+        let text = fs::read_to_string(root.join("app/src/main.fol")).unwrap();
+        let mut server = EditorLspServer::new(EditorConfig::default());
+        open_document(&mut server, uri.clone(), &text);
+
+        let completion = server
+            .handle_request(JsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: JsonRpcId::Number(38),
+                method: "textDocument/completion".to_string(),
+                params: Some(
+                    serde_json::to_value(LspCompletionParams {
+                        text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                        position: LspPosition {
+                            line: 6,
+                            character: 16,
+                        },
+                        context: None,
+                    })
+                    .unwrap(),
+                ),
+            })
+            .unwrap()
+            .unwrap();
+
+        let completion: LspCompletionList = serde_json::from_value(completion.result.unwrap()).unwrap();
+        let labels = completion
+            .items
+            .iter()
+            .map(|item| item.label.as_str())
+            .collect::<Vec<_>>();
+        assert!(labels.contains(&"int"));
+        assert!(labels.contains(&"str"));
+        assert!(labels.contains(&"Local"));
+        assert!(labels.contains(&"Status"));
+        assert!(labels.contains(&"Report"));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
     fn lsp_server_returns_current_package_top_level_completions() {
         let (root, uri) = sample_package_root("completion_top_level");
         fs::write(

@@ -371,7 +371,7 @@ over tiny synthetic one-liners, unless a one-liner is the clearest regression.
 - `8.1` complete: detect ordinary declared-type completion contexts
 - `8.2` complete: offer builtin type completions in type positions
 - `8.3` complete: offer visible named type completions in type positions
-- `8.4` add tests for record/entry/alias/builtin type completion
+- `8.4` complete: add tests for record/entry/alias/builtin type completion
 
 ### Phase 9: Qualified and namespace completion
 
@@ -446,5 +446,5 @@ The acceptance pass should also verify this real editor flow:
 
 Current milestone state:
 
-- `36 / 49` slices complete
-- `73%`
+- `37 / 49` slices complete
+- `76%`
