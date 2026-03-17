@@ -910,7 +910,7 @@ Each slice must land green with `make build` and `make test` before commit.
 2. `[complete]` Introduce a dedicated `build_dependency` module with dependency-surface shell types.
 3. `[complete]` Add dependency-provided module and source-root surface records.
 4. `[complete]` Add dependency-provided artifact, step, and generated-output surface records.
-5. `[pending]` Add dependency build-handle and dependency-surface collection types.
+5. `[complete]` Add dependency build-handle and dependency-surface collection types.
 6. `[pending]` Add export-to-dependency bridge helpers that project prepared export mounts into dependency module surfaces.
 7. `[pending]` Add dependency build-evaluation mode enums for eager, lazy, and on-demand surface loading.
 8. `[pending]` Extend dependency requests/handles in the draft build API to carry declared build-surface collections.

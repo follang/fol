@@ -9,6 +9,32 @@ pub struct DependencyBuildSurface {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DependencyBuildHandle {
+    pub alias: String,
+    pub package: String,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct DependencyModuleSurfaceSet {
+    pub modules: Vec<DependencyModuleSurface>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct DependencyArtifactSurfaceSet {
+    pub artifacts: Vec<DependencyArtifactSurface>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct DependencyStepSurfaceSet {
+    pub steps: Vec<DependencyStepSurface>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct DependencyGeneratedOutputSurfaceSet {
+    pub generated_outputs: Vec<DependencyGeneratedOutputSurface>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DependencyModuleSurface {
     pub name: String,
     pub source_namespace: String,
@@ -60,9 +86,10 @@ impl DependencyBuildSurfaceSet {
 #[cfg(test)]
 mod tests {
     use super::{
-        DependencyArtifactSurface, DependencyBuildSurface, DependencyBuildSurfaceSet,
-        DependencyGeneratedOutputSurface, DependencyModuleSurface, DependencySourceRootSurface,
-        DependencyStepSurface,
+        DependencyArtifactSurface, DependencyArtifactSurfaceSet, DependencyBuildHandle,
+        DependencyBuildSurface, DependencyBuildSurfaceSet, DependencyGeneratedOutputSurface,
+        DependencyGeneratedOutputSurfaceSet, DependencyModuleSurface, DependencyModuleSurfaceSet,
+        DependencySourceRootSurface, DependencyStepSurface, DependencyStepSurfaceSet,
     };
 
     #[test]
@@ -106,5 +133,49 @@ mod tests {
         assert_eq!(set.surfaces()[0].artifacts.len(), 1);
         assert_eq!(set.surfaces()[0].steps.len(), 1);
         assert_eq!(set.surfaces()[0].generated_outputs.len(), 1);
+    }
+
+    #[test]
+    fn dependency_build_handle_keeps_alias_and_package_identity() {
+        let handle = DependencyBuildHandle {
+            alias: "logtiny".to_string(),
+            package: "org/logtiny".to_string(),
+        };
+
+        assert_eq!(handle.alias, "logtiny");
+        assert_eq!(handle.package, "org/logtiny");
+    }
+
+    #[test]
+    fn dependency_surface_collection_types_preserve_inserted_items() {
+        let modules = DependencyModuleSurfaceSet {
+            modules: vec![DependencyModuleSurface {
+                name: "logtiny".to_string(),
+                source_namespace: "logtiny::src".to_string(),
+            }],
+        };
+        let artifacts = DependencyArtifactSurfaceSet {
+            artifacts: vec![DependencyArtifactSurface {
+                name: "logtiny".to_string(),
+                artifact_kind: "static-lib".to_string(),
+            }],
+        };
+        let steps = DependencyStepSurfaceSet {
+            steps: vec![DependencyStepSurface {
+                name: "test".to_string(),
+                step_kind: "test".to_string(),
+            }],
+        };
+        let outputs = DependencyGeneratedOutputSurfaceSet {
+            generated_outputs: vec![DependencyGeneratedOutputSurface {
+                name: "bindings".to_string(),
+                relative_path: "gen/bindings.fol".to_string(),
+            }],
+        };
+
+        assert_eq!(modules.modules.len(), 1);
+        assert_eq!(artifacts.artifacts.len(), 1);
+        assert_eq!(steps.steps.len(), 1);
+        assert_eq!(outputs.generated_outputs.len(), 1);
     }
 }
