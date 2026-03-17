@@ -213,6 +213,8 @@ pub struct BuildEvaluationRequest {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct BuildEvaluationInputs {
     pub working_directory: String,
+    pub target: Option<BuildTargetTriple>,
+    pub optimize: Option<BuildOptimizeMode>,
     pub options: BTreeMap<String, String>,
     pub environment: BTreeMap<String, String>,
 }
@@ -225,6 +227,16 @@ impl BuildEvaluationInputs {
             .map(|(key, value)| format!("{key}={value}"))
             .collect::<Vec<_>>()
             .join(",");
+        let target = self
+            .target
+            .as_ref()
+            .map(BuildTargetTriple::render)
+            .unwrap_or_default();
+        let optimize = self
+            .optimize
+            .as_ref()
+            .map(|mode| mode.as_str().to_string())
+            .unwrap_or_default();
         let environment = self
             .environment
             .iter()
@@ -232,8 +244,8 @@ impl BuildEvaluationInputs {
             .collect::<Vec<_>>()
             .join(",");
         format!(
-            "cwd={};options=[{}];env=[{}]",
-            self.working_directory, options, environment
+            "cwd={};target={};optimize={};options=[{}];env=[{}]",
+            self.working_directory, target, optimize, options, environment
         )
     }
 }
@@ -1167,6 +1179,8 @@ mod tests {
 
         assert!(request.package_root.is_empty());
         assert!(request.inputs.working_directory.is_empty());
+        assert!(request.inputs.target.is_none());
+        assert!(request.inputs.optimize.is_none());
         assert!(request.operations.is_empty());
     }
 
@@ -1349,13 +1363,15 @@ mod tests {
         environment.insert("AR".to_string(), "llvm-ar".to_string());
         let inputs = BuildEvaluationInputs {
             working_directory: "/work/app".to_string(),
+            target: BuildTargetTriple::parse("x86_64-linux-gnu"),
+            optimize: BuildOptimizeMode::parse("debug"),
             options,
             environment,
         };
 
         assert_eq!(
             inputs.determinism_key(),
-            "cwd=/work/app;options=[optimize=debug,target=native];env=[AR=llvm-ar,CC=clang]"
+            "cwd=/work/app;target=x86_64-linux-gnu;optimize=debug;options=[optimize=debug,target=native];env=[AR=llvm-ar,CC=clang]"
         );
     }
 
@@ -1370,10 +1386,12 @@ mod tests {
             .inputs
             .options
             .insert("target".to_string(), "native".to_string());
+        request.inputs.target = BuildTargetTriple::parse("aarch64-macos-gnu");
+        request.inputs.optimize = BuildOptimizeMode::parse("release-fast");
 
         assert_eq!(
             request.determinism_key(),
-            "root=/pkg;cwd=;options=[target=native];env=[];ops=0"
+            "root=/pkg;cwd=;target=aarch64-macos-gnu;optimize=release-fast;options=[target=native];env=[];ops=0"
         );
     }
 
@@ -1390,7 +1408,10 @@ mod tests {
             }],
         };
 
-        assert_eq!(request.determinism_key(), "root=/pkg;cwd=;options=[];env=[];ops=1");
+        assert_eq!(
+            request.determinism_key(),
+            "root=/pkg;cwd=;target=;optimize=;options=[];env=[];ops=1"
+        );
     }
 
     #[test]
