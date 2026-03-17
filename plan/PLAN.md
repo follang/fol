@@ -924,7 +924,7 @@ Each slice must land green with `make build` and `make test` before commit.
 
 1. `[complete]` Lock the ninth implementation round around generated-file and codegen modeling.
 2. `[complete]` Introduce a dedicated `build_codegen` module with generated-file shell types.
-3. `[pending]` Add generated-file action definitions for write, copy, and captured-tool outputs.
+3. `[complete]` Add generated-file action definitions for write, copy, and captured-tool outputs.
 4. `[pending]` Add generated-file install/helper projection types for install-file style flows.
 5. `[pending]` Add controlled system-tool invocation request/result model types.
 6. `[pending]` Add codegen request/result model types for FOL generation, schema generation, and asset preprocessing.
