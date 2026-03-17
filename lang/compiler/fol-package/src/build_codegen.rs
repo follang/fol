@@ -17,6 +17,11 @@ pub struct GeneratedFileSet {
     definitions: Vec<GeneratedFileDefinition>,
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct GeneratedOutputDependencySet {
+    outputs: Vec<GeneratedFileDefinition>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GeneratedFileInstallProjection {
     pub generated_file_name: String,
@@ -86,12 +91,30 @@ impl GeneratedFileSet {
     }
 }
 
+impl GeneratedOutputDependencySet {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn add(&mut self, definition: GeneratedFileDefinition) {
+        self.outputs.push(definition);
+    }
+
+    pub fn get(&self, name: &str) -> Option<&GeneratedFileDefinition> {
+        self.outputs.iter().find(|definition| definition.name == name)
+    }
+
+    pub fn outputs(&self) -> &[GeneratedFileDefinition] {
+        &self.outputs
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
         CodegenKind, CodegenRequest, CodegenResult, GeneratedFileAction,
         GeneratedFileDefinition, GeneratedFileInstallProjection, GeneratedFileSet,
-        SystemToolRequest, SystemToolResult,
+        GeneratedOutputDependencySet, SystemToolRequest, SystemToolResult,
     };
 
     #[test]
@@ -192,5 +215,24 @@ mod tests {
         assert!(matches!(schema.kind, CodegenKind::Schema));
         assert!(matches!(asset.kind, CodegenKind::AssetPreprocess));
         assert_eq!(asset.output, "gen/logo.bin");
+    }
+
+    #[test]
+    fn generated_output_dependency_set_supports_named_lookup() {
+        let mut outputs = GeneratedOutputDependencySet::new();
+        outputs.add(GeneratedFileDefinition {
+            name: "bindings".to_string(),
+            relative_path: "gen/bindings.fol".to_string(),
+            action: GeneratedFileAction::Write {
+                contents: "generated".to_string(),
+            },
+        });
+
+        assert_eq!(outputs.outputs().len(), 1);
+        assert_eq!(
+            outputs.get("bindings").map(|definition| definition.relative_path.as_str()),
+            Some("gen/bindings.fol")
+        );
+        assert!(outputs.get("missing").is_none());
     }
 }
