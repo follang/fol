@@ -48,7 +48,9 @@
 (param name: (identifier) @variable.parameter)
 (var_decl (typed_binding name: (identifier) @variable))
 (field_init name: (identifier) @property)
-(dot_intrinsic name: (identifier) @function.builtin)
+(dot_intrinsic "." @operator)
+(dot_intrinsic name: (identifier) @function.builtin
+  (#match? @function.builtin "^(len|echo|eq|nq|lt|gt|le|ge|not)$"))
 (unwrap_expr "!" @operator)
 (qualified_path (identifier) @namespace)
 (nil_literal) @constant.builtin

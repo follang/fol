@@ -338,7 +338,7 @@ over tiny synthetic one-liners, unless a one-liner is the clearest regression.
 
 - `4.1` complete: highlight builtin types and named type references more clearly
 - `4.2` complete: highlight typed-binding/type-annotation surfaces distinctly
-- `4.3` highlight dotted intrinsic names like `.len`, `.echo`, comparisons, and
+- `4.3` complete: highlight dotted intrinsic names like `.len`, `.echo`, comparisons, and
   boolean/query intrinsics
 - `4.4` add snapshots for container/shell/intrinsic-heavy fixtures
 
@@ -446,5 +446,5 @@ The acceptance pass should also verify this real editor flow:
 
 Current milestone state:
 
-- `17 / 49` slices complete
-- `35%`
+- `18 / 49` slices complete
+- `37%`

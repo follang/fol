@@ -233,7 +233,9 @@ mod tests {
     #[test]
     fn highlight_query_covers_intrinsics_and_qualified_paths() {
         let query = fol_tree_sitter_highlights_query();
+        assert!(query.contains("(dot_intrinsic \".\" @operator)"));
         assert!(query.contains("(dot_intrinsic name: (identifier) @function.builtin"));
+        assert!(query.contains("^(len|echo|eq|nq|lt|gt|le|ge|not)$"));
         assert!(query.contains("(qualified_path"));
         assert!(query.contains("@namespace"));
     }
@@ -297,6 +299,7 @@ mod tests {
             "(fun_decl declaration: (method_decl name: (identifier) @function.method))",
             "(log_decl declaration: (plain_log_decl name: (identifier) @function.builtin))",
             "(var_decl (typed_binding name: (identifier) @variable))",
+            "(dot_intrinsic \".\" @operator)",
             "(unwrap_expr \"!\" @operator)",
             "(nil_literal) @constant.builtin",
         ] {
@@ -671,6 +674,40 @@ mod tests {
             assert!(
                 shell.contains(needle),
                 "shell fixture lost type annotation capture: {needle}\n{shell}"
+            );
+        }
+
+        std::fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn dotted_intrinsics_keep_family_highlight_captures() {
+        let root = build_bundle_root("intrinsic_families");
+        let comparison_output = run_tree_sitter_query(
+            &root,
+            &root.join("queries/fol/highlights.scm"),
+            &PathBuf::from("test/apps/fixtures/intrinsics_comparison/main.fol"),
+        );
+        assert!(comparison_output.status.success());
+        let comparison = String::from_utf8_lossy(&comparison_output.stdout);
+        for needle in ["function.builtin", "operator"] {
+            assert!(
+                comparison.contains(needle),
+                "comparison intrinsic fixture lost intrinsic capture: {needle}\n{comparison}"
+            );
+        }
+
+        let echo_output = run_tree_sitter_query(
+            &root,
+            &root.join("queries/fol/highlights.scm"),
+            &PathBuf::from("test/apps/fixtures/intrinsics_not_len_echo/main.fol"),
+        );
+        assert!(echo_output.status.success());
+        let echo = String::from_utf8_lossy(&echo_output.stdout);
+        for needle in ["function.builtin", "operator"] {
+            assert!(
+                echo.contains(needle),
+                "len/echo fixture lost intrinsic capture: {needle}\n{echo}"
             );
         }
 
