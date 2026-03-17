@@ -37,7 +37,7 @@ pub fn init_package_root(
         starter_source_template(target),
     )?;
     fs::write(root.join("package.yaml"), starter_package_manifest(root))?;
-    fs::write(root.join("build.fol"), starter_build_file())?;
+    fs::write(root.join("build.fol"), starter_build_file(target))?;
 
     Ok(FrontendCommandResult::new("init", "initialized current directory").with_artifact(
         FrontendArtifactSummary::new(
@@ -124,8 +124,25 @@ fn starter_package_name(root: &Path) -> String {
     }
 }
 
-fn starter_build_file() -> &'static str {
-    "def root: loc = \"src\"\n"
+fn starter_build_file(target: PackageTargetKind) -> &'static str {
+    match target {
+        PackageTargetKind::Bin => concat!(
+            "// build.fol is the package build entry file.\n",
+            "// Today the frontend reads compatibility definitions here.\n",
+            "def root: loc = \"src\"\n",
+            "\n",
+            "// Future graph-backed builds will add a canonical build entry here.\n",
+            "// def build(graph: int): int = graph;\n",
+        ),
+        PackageTargetKind::Lib => concat!(
+            "// build.fol is the package build entry file.\n",
+            "// Today the frontend reads compatibility definitions here.\n",
+            "def root: loc = \"src\"\n",
+            "\n",
+            "// Library packages can later expose build steps from this file.\n",
+            "// def build(graph: int): int = graph;\n",
+        ),
+    }
 }
 
 #[cfg(test)]
@@ -166,7 +183,14 @@ mod tests {
         );
         assert_eq!(
             fs::read_to_string(root.join("build.fol")).unwrap(),
-            "def root: loc = \"src\"\n"
+            concat!(
+                "// build.fol is the package build entry file.\n",
+                "// Today the frontend reads compatibility definitions here.\n",
+                "def root: loc = \"src\"\n",
+                "\n",
+                "// Future graph-backed builds will add a canonical build entry here.\n",
+                "// def build(graph: int): int = graph;\n",
+            )
         );
 
         fs::remove_dir_all(root).ok();
@@ -234,7 +258,14 @@ mod tests {
         );
         assert_eq!(
             fs::read_to_string(root.join("build.fol")).unwrap(),
-            "def root: loc = \"src\"\n"
+            concat!(
+                "// build.fol is the package build entry file.\n",
+                "// Today the frontend reads compatibility definitions here.\n",
+                "def root: loc = \"src\"\n",
+                "\n",
+                "// Future graph-backed builds will add a canonical build entry here.\n",
+                "// def build(graph: int): int = graph;\n",
+            )
         );
 
         fs::remove_dir_all(parent).ok();
