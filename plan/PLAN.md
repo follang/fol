@@ -788,7 +788,7 @@ Each slice must land green with `make build` and `make test` before commit.
 
 1. `[complete]` Replace the old plan with this `build.fol` roadmap and lock the
    first implementation round.
-2. `[pending]` Split raw V1 package-control data into an explicit compatibility
+2. `[complete]` Split raw V1 package-control data into an explicit compatibility
    sub-structure in `PackageBuildDefinition`.
 3. `[pending]` Add compatibility accessors/helpers so callers stop depending on
    ad-hoc field layout.

@@ -34,10 +34,15 @@ pub struct PackageNativeArtifact {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct PackageBuildDefinition {
+pub struct PackageBuildCompatibility {
     pub dependencies: Vec<BuildDependency>,
     pub exports: Vec<BuildExport>,
     pub native_artifacts: Vec<PackageNativeArtifact>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct PackageBuildDefinition {
+    pub compatibility: PackageBuildCompatibility,
 }
 
 pub fn parse_package_build(path: &Path) -> Result<PackageBuildDefinition, PackageError> {
@@ -139,7 +144,7 @@ pub fn extract_package_build_definition(
                         &parsed.syntax_index,
                         item.node_id,
                     )?;
-                    build.dependencies.push(BuildDependency {
+                    build.compatibility.dependencies.push(BuildDependency {
                         alias: name.clone(),
                         locator: parse_package_locator(&dependency_target).map_err(|error| {
                             build_item_error(
@@ -165,7 +170,7 @@ pub fn extract_package_build_definition(
                             "package build export definitions do not accept parameters",
                         ));
                     }
-                    build.exports.push(BuildExport {
+                    build.compatibility.exports.push(BuildExport {
                         alias: name.clone(),
                         relative_path: build_string_body(
                             "export",
@@ -191,7 +196,7 @@ pub fn extract_package_build_definition(
                                 "package native artifact definitions do not accept parameters",
                             ));
                         }
-                        build.native_artifacts.push(PackageNativeArtifact {
+                        build.compatibility.native_artifacts.push(PackageNativeArtifact {
                             alias: name.clone(),
                             kind,
                             relative_path: build_string_body(
@@ -276,7 +281,8 @@ fn build_item_error(
 mod tests {
     use super::{
         extract_package_build_definition, parse_package_build, BuildDependency, BuildExport,
-        PackageBuildDefinition, PackageNativeArtifact, PackageNativeArtifactKind,
+        PackageBuildCompatibility, PackageBuildDefinition, PackageNativeArtifact,
+        PackageNativeArtifactKind,
     };
     use crate::{PackageErrorKind, PackageLocator, PackageLocatorKind};
     use fol_parser::ast::AstParser;
@@ -314,24 +320,26 @@ mod tests {
         assert_eq!(
             build,
             PackageBuildDefinition {
-                dependencies: vec![
-                    BuildDependency {
-                        alias: "core".to_string(),
-                        locator: PackageLocator::installed_store(
-                            "core",
-                            vec!["core".to_string()],
-                        ),
-                    },
-                    BuildDependency {
-                        alias: "tools".to_string(),
-                        locator: PackageLocator::installed_store(
-                            "org/tools",
-                            vec!["org".to_string(), "tools".to_string()],
-                        ),
-                    },
-                ],
-                exports: Vec::new(),
-                native_artifacts: Vec::new(),
+                compatibility: PackageBuildCompatibility {
+                    dependencies: vec![
+                        BuildDependency {
+                            alias: "core".to_string(),
+                            locator: PackageLocator::installed_store(
+                                "core",
+                                vec!["core".to_string()],
+                            ),
+                        },
+                        BuildDependency {
+                            alias: "tools".to_string(),
+                            locator: PackageLocator::installed_store(
+                                "org/tools",
+                                vec!["org".to_string(), "tools".to_string()],
+                            ),
+                        },
+                    ],
+                    exports: Vec::new(),
+                    native_artifacts: Vec::new(),
+                },
             }
         );
 
@@ -381,18 +389,20 @@ mod tests {
         assert_eq!(
             build,
             PackageBuildDefinition {
-                dependencies: Vec::new(),
-                exports: vec![
-                    BuildExport {
-                        alias: "root".to_string(),
-                        relative_path: "src".to_string(),
-                    },
-                    BuildExport {
-                        alias: "fmt".to_string(),
-                        relative_path: "src/fmt".to_string(),
-                    },
-                ],
-                native_artifacts: Vec::new(),
+                compatibility: PackageBuildCompatibility {
+                    dependencies: Vec::new(),
+                    exports: vec![
+                        BuildExport {
+                            alias: "root".to_string(),
+                            relative_path: "src".to_string(),
+                        },
+                        BuildExport {
+                            alias: "fmt".to_string(),
+                            relative_path: "src/fmt".to_string(),
+                        },
+                    ],
+                    native_artifacts: Vec::new(),
+                },
             }
         );
 
@@ -420,7 +430,7 @@ mod tests {
             parse_package_build(&build_path).expect("Build native artifact fixture should parse");
 
         assert_eq!(
-            build.native_artifacts,
+            build.compatibility.native_artifacts,
             vec![
                 PackageNativeArtifact {
                     alias: "api".to_string(),
@@ -444,8 +454,8 @@ mod tests {
                 },
             ],
         );
-        assert!(build.dependencies.is_empty());
-        assert!(build.exports.is_empty());
+        assert!(build.compatibility.dependencies.is_empty());
+        assert!(build.compatibility.exports.is_empty());
 
         fs::remove_dir_all(&temp_root)
             .expect("Temporary build fixture root should be removable after the test");
@@ -511,9 +521,9 @@ mod tests {
         let build = parse_package_build(&build_path)
             .expect("Build files should parse ordinary use declarations even though they do not define package edges");
 
-        assert!(build.dependencies.is_empty());
-        assert!(build.exports.is_empty());
-        assert!(build.native_artifacts.is_empty());
+        assert!(build.compatibility.dependencies.is_empty());
+        assert!(build.compatibility.exports.is_empty());
+        assert!(build.compatibility.native_artifacts.is_empty());
 
         fs::remove_dir_all(&temp_root)
             .expect("Temporary build fixture root should be removable after the test");
@@ -530,9 +540,9 @@ mod tests {
         let build = parse_package_build(&build_path)
             .expect("Build files should allow unrelated top-level FOL declarations in phase one");
 
-        assert!(build.dependencies.is_empty());
-        assert!(build.exports.is_empty());
-        assert!(build.native_artifacts.is_empty());
+        assert!(build.compatibility.dependencies.is_empty());
+        assert!(build.compatibility.exports.is_empty());
+        assert!(build.compatibility.native_artifacts.is_empty());
 
         fs::remove_dir_all(&temp_root)
             .expect("Temporary build fixture root should be removable after the test");
@@ -572,15 +582,17 @@ mod tests {
         assert_eq!(
             build,
             PackageBuildDefinition {
-                dependencies: vec![BuildDependency {
-                    alias: "core".to_string(),
-                    locator: PackageLocator::installed_store("core", vec!["core".to_string()]),
-                }],
-                exports: vec![BuildExport {
-                    alias: "root".to_string(),
-                    relative_path: "src".to_string(),
-                }],
-                native_artifacts: Vec::new(),
+                compatibility: PackageBuildCompatibility {
+                    dependencies: vec![BuildDependency {
+                        alias: "core".to_string(),
+                        locator: PackageLocator::installed_store("core", vec!["core".to_string()]),
+                    }],
+                    exports: vec![BuildExport {
+                        alias: "root".to_string(),
+                        relative_path: "src".to_string(),
+                    }],
+                    native_artifacts: Vec::new(),
+                },
             }
         );
 

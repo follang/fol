@@ -268,7 +268,7 @@ impl PackageSession {
         }
 
         if let Some(store_root) = store_root {
-            for dependency in &build.dependencies {
+            for dependency in &build.compatibility.dependencies {
                 let path_segments = locator_use_path_segments(&dependency.locator);
                 self.load_package_from_store(store_root, &path_segments)?;
             }
@@ -532,7 +532,7 @@ fn compute_prepared_exports(
     syntax: &ParsedPackage,
 ) -> Result<Vec<PreparedExportMount>, PackageError> {
     let mut exports = BTreeSet::new();
-    for export in &build.exports {
+    for export in &build.compatibility.exports {
         let source_prefix =
             build_export_namespace_prefix(syntax.package.as_str(), export.relative_path.as_str())?;
         let matching_namespaces = syntax
@@ -956,6 +956,7 @@ mod tests {
                 .build
                 .as_ref()
                 .expect("Installed package roots should retain parsed build definitions")
+                .compatibility
                 .exports
                 .len(),
             1

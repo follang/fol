@@ -56,9 +56,10 @@ impl PreparedPackage {
 mod tests {
     use super::PreparedPackage;
     use crate::{
-        BuildDependency, BuildExport, PackageBuildDefinition, PackageConfig, PackageDependencyDecl,
-        PackageDependencySourceKind, PackageIdentity, PackageLocator, PackageMetadata, PackageNativeArtifact,
-        PackageNativeArtifactKind, PackageSourceKind, PreparedExportMount,
+        build::PackageBuildCompatibility, BuildDependency, BuildExport, PackageBuildDefinition,
+        PackageConfig, PackageDependencyDecl, PackageDependencySourceKind, PackageIdentity,
+        PackageLocator, PackageMetadata, PackageNativeArtifact, PackageNativeArtifactKind,
+        PackageSourceKind, PreparedExportMount,
     };
     use fol_parser::ast::{AstParser, ParsedPackage};
     use fol_stream::FileStream;
@@ -125,19 +126,21 @@ mod tests {
                 }],
             },
             PackageBuildDefinition {
-                dependencies: vec![BuildDependency {
-                    alias: "core".to_string(),
-                    locator: PackageLocator::installed_store("core", vec!["core".to_string()]),
-                }],
-                exports: vec![BuildExport {
-                    alias: "root".to_string(),
-                    relative_path: "src".to_string(),
-                }],
-                native_artifacts: vec![PackageNativeArtifact {
-                    alias: "api".to_string(),
-                    kind: PackageNativeArtifactKind::Header,
-                    relative_path: "include/api.h".to_string(),
-                }],
+                compatibility: PackageBuildCompatibility {
+                    dependencies: vec![BuildDependency {
+                        alias: "core".to_string(),
+                        locator: PackageLocator::installed_store("core", vec!["core".to_string()]),
+                    }],
+                    exports: vec![BuildExport {
+                        alias: "root".to_string(),
+                        relative_path: "src".to_string(),
+                    }],
+                    native_artifacts: vec![PackageNativeArtifact {
+                        alias: "api".to_string(),
+                        kind: PackageNativeArtifactKind::Header,
+                        relative_path: "include/api.h".to_string(),
+                    }],
+                },
             },
             vec![PreparedExportMount {
                 source_namespace: "json::src".to_string(),
@@ -147,12 +150,18 @@ mod tests {
         );
 
         assert_eq!(prepared.metadata.as_ref().map(|meta| meta.name.as_str()), Some("json"));
-        assert_eq!(prepared.build.as_ref().map(|build| build.exports.len()), Some(1));
         assert_eq!(
             prepared
                 .build
                 .as_ref()
-                .map(|build| build.native_artifacts.len()),
+                .map(|build| build.compatibility.exports.len()),
+            Some(1)
+        );
+        assert_eq!(
+            prepared
+                .build
+                .as_ref()
+                .map(|build| build.compatibility.native_artifacts.len()),
             Some(1)
         );
         assert_eq!(prepared.exports.len(), 1);
