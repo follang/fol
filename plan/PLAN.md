@@ -801,7 +801,7 @@ Each slice must land green with `make build` and `make test` before commit.
    hybrid / modern build files.
 8. `[complete]` Cover compatibility-plus-entry coexistence in package parser
    tests.
-9. `[pending]` Cover prepared-package loading for modern-entry package roots.
+9. `[complete]` Cover prepared-package loading for modern-entry package roots.
 10. `[pending]` Expose the richer package-build surface from `fol-package`'s
     public API.
 

@@ -1114,6 +1114,47 @@ mod tests {
     }
 
     #[test]
+    fn package_session_keeps_modern_build_entry_metadata_for_formal_pkg_roots() {
+        let temp_root = unique_temp_root("pkg_modern_build_entry");
+        let store_root = temp_root.join("store");
+        fs::create_dir_all(store_root.join("json"))
+            .expect("Should create a temporary package-store fixture");
+        fs::write(
+            store_root.join("json/package.yaml"),
+            "name: json\nversion: 1.0.0\n",
+        )
+        .expect("Should write the package metadata fixture");
+        fs::write(store_root.join("json/lib.fol"), "var[exp] answer: int = 42;\n")
+            .expect("Should write the package source fixture");
+        fs::write(
+            store_root.join("json/build.fol"),
+            "def build(graph: int): int = graph;\n",
+        )
+        .expect("Should write the modern build entry fixture");
+        let mut session = PackageSession::new();
+
+        let loaded = session
+            .load_package_from_store(
+                &store_root,
+                &[UsePathSegment {
+                    separator: None,
+                    spelling: "json".to_string(),
+                }],
+            )
+            .expect("Package session should load pkg roots with modern build entry metadata");
+
+        assert!(loaded.exports.is_empty());
+        assert!(loaded.has_build_entry_point());
+        assert_eq!(
+            loaded.build_entry_point().map(|entry| entry.name.as_str()),
+            Some("build")
+        );
+
+        fs::remove_dir_all(&temp_root)
+            .expect("Temporary package-store fixture should be removable after the test");
+    }
+
+    #[test]
     fn package_session_rejects_pkg_roots_without_required_metadata() {
         let temp_root = unique_temp_root("missing_pkg_metadata");
         let store_root = temp_root.join("store");
