@@ -978,8 +978,8 @@ Each slice must land green with `make build` and `make test` before commit.
 6. `[complete]` Update `book` tooling/editor sections so build-file workflows and LSP/editor entrypoints are documented together.
 7. `[complete]` Add frontend editor-command regression coverage for `build.fol` parse/highlight/symbol extraction.
 8. `[complete]` Add LSP regression coverage for `build.fol` symbol extraction and completion affordances.
-9. `[pending]` Add a checked-in `examples/` tree with simple exe, static-lib, shared-lib, generated-file, and dependency-workspace sample projects.
-10. `[pending]` Add tests that validate the checked-in examples are discoverable and their formal package `build.fol` files parse cleanly.
+9. `[complete]` Add a checked-in `examples/` tree with simple exe, static-lib, shared-lib, generated-file, and dependency-workspace sample projects.
+10. `[complete]` Add tests that validate the checked-in examples are discoverable and their formal package `build.fol` files parse cleanly.
 
 ## Success Criteria
 

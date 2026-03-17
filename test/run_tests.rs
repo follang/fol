@@ -32,6 +32,10 @@ mod integration_tests {
         LspDocumentSymbol, LspDocumentSymbolParams, LspPosition, LspTextDocumentIdentifier,
         LspTextDocumentItem,
     };
+    use fol_package::{
+        infer_package_root, parse_directory_package_syntax, parse_package_build, PackageBuildMode,
+        PackageSourceKind,
+    };
     use serde_json::Value;
     use std::path::{Path, PathBuf};
     use std::process::Command;
@@ -74,6 +78,22 @@ mod integration_tests {
             command.env(key, value);
         }
         command.output().expect("Should run fol CLI with env")
+    }
+
+    fn repo_root() -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+    }
+
+    fn example_package_roots() -> Vec<PathBuf> {
+        let root = repo_root().join("examples");
+        vec![
+            root.join("exe_basic"),
+            root.join("static_lib"),
+            root.join("shared_lib"),
+            root.join("generated_file"),
+            root.join("dependency_workspace/app"),
+            root.join("dependency_workspace/shared"),
+        ]
     }
 
     fn parse_cli_json(output: &std::process::Output) -> Value {
@@ -3608,6 +3628,55 @@ mod integration_tests {
         assert!(completion.items.iter().any(|item| item.label == "echo"));
 
         std::fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_examples_tree_contains_discoverable_formal_packages() {
+        for root in example_package_roots() {
+            assert!(
+                root.join("package.yaml").is_file(),
+                "missing package.yaml in {}",
+                root.display()
+            );
+            assert!(
+                root.join("build.fol").is_file(),
+                "missing build.fol in {}",
+                root.display()
+            );
+            let display_name = root
+                .file_name()
+                .and_then(|name| name.to_str())
+                .expect("example package name should be utf-8");
+            let syntax = parse_directory_package_syntax(&root, display_name, PackageSourceKind::Package)
+                .expect("formal example package syntax should parse");
+            let discovered = infer_package_root(&syntax)
+                .expect("formal example package should be discoverable");
+            assert_eq!(
+                discovered,
+                root.join("src")
+                    .canonicalize()
+                    .expect("example source root should canonicalize")
+            );
+        }
+    }
+
+    #[test]
+    fn test_examples_build_files_parse_cleanly() {
+        for root in example_package_roots() {
+            let build = parse_package_build(&root.join("build.fol"))
+                .expect("checked-in example build.fol should parse cleanly");
+            assert_eq!(
+                build.mode(),
+                PackageBuildMode::CompatibilityOnly,
+                "example build should stay on the current working compatibility surface: {}",
+                root.display()
+            );
+            assert!(
+                build.has_compatibility_controls(),
+                "example build should keep a compatibility root for current package loading: {}",
+                root.display()
+            );
+        }
     }
 
     #[test]
